@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-16 (P5A merged #2049; P5B.1 offline replay in PR) |
+| **Last updated** | 2026-10-17 (P5-H1 immutable profile revision history in draft PR) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -77,6 +77,13 @@
 - **Offline replay** — `VsiApdsP5b1OfflineReplayService` + ops CLI; `dryRun: true` only; bounded pagination over persisted APDS decisions.
 - **Evidence store design** — additive `vsi_apds_p5_correlation_evidence` migration; append-only revisions; write gate `VSI_P5B1_EVIDENCE_STORE_WRITE_ENABLED` default OFF (hard-blocked on production `NODE_ENV`).
 - **Evidence** — [`research/VSI_P5B1_OFFLINE_CORRELATION.md`](research/VSI_P5B1_OFFLINE_CORRELATION.md).
+
+## Implemented (P5-H1 — immutable revision history, draft PR)
+
+- **History table** — `vehicle_signal_capability_profile_revisions` (append-only; one row per committed `profileRevision`).
+- **Atomic capture** — same transaction as mutable profile upsert / lifecycle limitation revision when `VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED=true` (default **false**).
+- **As-of contract** — `selectVsiProfileRevisionAsOf` (read-only); does **not** wire P5B.1 replay yet.
+- **Evidence** — [`research/VSI_P5H1_PROFILE_REVISION_HISTORY.md`](research/VSI_P5H1_PROFILE_REVISION_HISTORY.md).
 
 ## Explicit non-goals (this slice)
 

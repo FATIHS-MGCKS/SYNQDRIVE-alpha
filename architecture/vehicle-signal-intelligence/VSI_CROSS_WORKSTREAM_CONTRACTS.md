@@ -76,7 +76,7 @@ VSI and APDS documentation must treat **provider call cost** as orthogonal to **
 | VSI → APDS | Emit read-only events (profile revision changed) | Enabling shadow or production polling flags |
 | Shadow epoch | APDS logs profile snapshot id at decision time | Changing `WORKER_APD_SHADOW_ENABLED` in VSI PRs without VDC/APDS authority |
 
-Reference: VDC change ledger APDS-9.x evidence; `vsi-apds-consumer.adapter.contract.ts`; P5A [`research/VSI_P5_APDS_INTEGRATION.md`](research/VSI_P5_APDS_INTEGRATION.md) (shadow service **not** wired — P5B gate default OFF); P5B.1 offline observer [`research/VSI_P5B1_OFFLINE_CORRELATION.md`](research/VSI_P5B1_OFFLINE_CORRELATION.md) (no poll-tier changes).
+Reference: VDC change ledger APDS-9.x evidence; `vsi-apds-consumer.adapter.contract.ts`; P5A [`research/VSI_P5_APDS_INTEGRATION.md`](research/VSI_P5_APDS_INTEGRATION.md) (shadow service **not** wired — P5B gate default OFF); P5B.1 offline observer [`research/VSI_P5B1_OFFLINE_CORRELATION.md`](research/VSI_P5B1_OFFLINE_CORRELATION.md) (no poll-tier changes); P5-H1 immutable profile revision history [`research/VSI_P5H1_PROFILE_REVISION_HISTORY.md`](research/VSI_P5H1_PROFILE_REVISION_HISTORY.md) (capture gate default OFF; P5B.1 replay unchanged until follow-up).
 
 **P4 internal resolver routing (operational):** production may expose `/api/v1/api/v1/internal/vsi/capability-resolver/...` (double prefix). Document-only in P5; do not alter working route without gateway contract review.
 
