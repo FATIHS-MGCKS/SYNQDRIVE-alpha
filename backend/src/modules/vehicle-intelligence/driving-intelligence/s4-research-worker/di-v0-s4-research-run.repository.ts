@@ -9,18 +9,28 @@ export type DiV0S4ResearchInsertRunResult =
   | { outcome: 'idempotent_duplicate' }
   | { outcome: 'sql_error'; code: string; message: string };
 
-const IDEMPOTENCY_INDEX = 'di_v0_s4_research_runs_idempotency_uq';
+export type DiV0S4ResearchStoredRun = {
+  id: string;
+  researchIntentKey: string | null;
+  researchStatus: string;
+  osmContextKey: string | null;
+  osmSnapshotSha256: string | null;
+};
+
+const EXACT_IDEMPOTENCY_INDEX = 'di_v0_s4_research_runs_exact_idempotency_uq';
+const SUCCEEDED_INTENT_INDEX = 'di_v0_s4_research_runs_succeeded_intent_uq';
 
 function isIdempotentUniqueViolation(error: unknown): boolean {
   const text = error instanceof Error ? error.message : String(error);
-  if (text.includes(IDEMPOTENCY_INDEX) && text.includes('23505')) return true;
+  if (text.includes('23505') && (text.includes(EXACT_IDEMPOTENCY_INDEX) || text.includes(SUCCEEDED_INTENT_INDEX))) {
+    return true;
+  }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     const meta = error.meta as { code?: string; message?: string; constraint?: string } | undefined;
     const msg = `${meta?.message ?? ''} ${meta?.constraint ?? ''} ${error.message}`;
-    if (msg.includes(IDEMPOTENCY_INDEX)) return true;
-    if (error.code === 'P2002') return true;
+    if (msg.includes(EXACT_IDEMPOTENCY_INDEX) || msg.includes(SUCCEEDED_INTENT_INDEX)) return true;
     if (error.code === 'P2010' && (meta?.code === '23505' || msg.includes('23505'))) {
-      return msg.includes(IDEMPOTENCY_INDEX) || msg.includes('unique');
+      return msg.includes('unique') || msg.includes('di_v0_s4_research_runs_');
     }
   }
   return false;
@@ -28,6 +38,75 @@ function isIdempotentUniqueViolation(error: unknown): boolean {
 
 export class DiV0S4ResearchRunRepository {
   constructor(private readonly prisma: PrismaClient) {}
+
+  async findSucceededForIntent(workItemId: string, researchIntentKey: string): Promise<DiV0S4ResearchStoredRun | null> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        research_intent_key: string | null;
+        research_status: string;
+        osm_context_key: string | null;
+        osm_snapshot_sha256: string | null;
+      }>
+    >`
+      SELECT id, research_intent_key, research_status, osm_context_key, osm_snapshot_sha256
+      FROM di_v0_s4_research_runs_v1
+      WHERE work_item_id = ${workItemId}
+        AND research_intent_key = ${researchIntentKey}
+        AND research_status = 'SUCCEEDED'
+      LIMIT 1`;
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      researchIntentKey: row.research_intent_key,
+      researchStatus: row.research_status,
+      osmContextKey: row.osm_context_key,
+      osmSnapshotSha256: row.osm_snapshot_sha256,
+    };
+  }
+
+  async findExactDuplicate(scope: {
+    workItemId: string;
+    researchIntentKey: string;
+    result: DiV0S4ResearchPersistableRun;
+  }): Promise<DiV0S4ResearchStoredRun | null> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        research_intent_key: string | null;
+        research_status: string;
+        osm_context_key: string | null;
+        osm_snapshot_sha256: string | null;
+      }>
+    >`
+      SELECT id, research_intent_key, research_status, osm_context_key, osm_snapshot_sha256
+      FROM di_v0_s4_research_runs_v1
+      WHERE work_item_id = ${scope.workItemId}
+        AND research_intent_key = ${scope.researchIntentKey}
+        AND research_status = ${scope.result.researchStatus}
+        AND COALESCE(osm_context_key, 'NONE') = COALESCE(${scope.result.osmContextKey}, 'NONE')
+        AND COALESCE(osm_snapshot_sha256, 'NONE') = COALESCE(${scope.result.osmSnapshotSha256}, 'NONE')
+      LIMIT 1`;
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      researchIntentKey: row.research_intent_key,
+      researchStatus: row.research_status,
+      osmContextKey: row.osm_context_key,
+      osmSnapshotSha256: row.osm_snapshot_sha256,
+    };
+  }
+
+  async countSucceededForIntent(workItemId: string, researchIntentKey: string): Promise<number> {
+    const [{ n }] = await this.prisma.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM di_v0_s4_research_runs_v1
+      WHERE work_item_id = ${workItemId}
+        AND research_intent_key = ${researchIntentKey}
+        AND research_status = 'SUCCEEDED'`;
+    return Number(n);
+  }
 
   async insertRun(scope: {
     organizationId: string;

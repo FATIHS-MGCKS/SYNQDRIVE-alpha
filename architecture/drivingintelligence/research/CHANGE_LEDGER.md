@@ -2019,6 +2019,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
 
+### EXP-021 S4 research extension — PR C final correctness gate (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Migration `20261017203000_di_v0_s4_research_runs_idempotency_fix` (partial unique SUCCEEDED per intent + exact retry key); `acknowledgePersistedRun` verifies stored status on duplicate; neutral outbox release enables OSM-HIT follow-up; worker-thread pipeline deadline; postgres CI script + S4 workflow hook; matrix EXECUTED/NOT_EXECUTED inventory |
+| WHY | Neutral `ROAD_CONTEXT_UNAVAILABLE` must not block later `SUCCEEDED`; never report success on unique conflict alone |
+| VALIDATION | `test:di:s4-research-worker` (isolated timeout + bbox); `test:di:s4-research-worker:postgres:ci` on ephemeral PG |
+| NON_EFFECTS | No S4/L3/S1/QC/FSM mutation; flags OFF; no deploy |
+
 ### EXP-021 S4 research extension — PR C hardening (2026-10-17)
 
 | Event | Detail |

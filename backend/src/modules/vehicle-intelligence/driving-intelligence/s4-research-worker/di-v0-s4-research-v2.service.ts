@@ -193,8 +193,9 @@ export class DiV0S4ResearchV2Service {
     }
 
     const processingBudgetMs = DI_V0_S4_RESEARCH_V2_TUNING.maxProcessingMsPerTrip;
-    const runResult = await Promise.race([
-      processDiV0S4ResearchRoadMatchingV2({
+    let runResult;
+    try {
+      runResult = await processDiV0S4ResearchRoadMatchingV2({
         organizationId: row.organizationId,
         vehicleId: row.vehicleId,
         tripId: row.tripId,
@@ -216,18 +217,14 @@ export class DiV0S4ResearchV2Service {
         },
         shadowByBucket,
         osmProvider: this.osmProvider,
-      }),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('PROCESSING_TIMEOUT')), processingBudgetMs);
-      }),
-    ]).catch(async (error) => {
+        pipelineDeadlineMs: processingBudgetMs,
+      });
+    } catch (error) {
       const next = new Date(now.getTime() + DI_V0_S4_RESEARCH_V2_TUNING.baseRetryDelayMs);
       const code = error instanceof Error && error.message === 'PROCESSING_TIMEOUT' ? 'PROCESSING_TIMEOUT' : 'PROCESSING_ERROR';
       await this.outbox.markFailedRetryable(row.outboxId, row.claimToken, code, next);
-      return null;
-    });
-
-    if (!runResult) return 'FAILED';
+      return 'FAILED';
+    }
 
     const insert = await this.runs.insertRun({
       organizationId: row.organizationId,
@@ -240,6 +237,16 @@ export class DiV0S4ResearchV2Service {
       result: runResult,
     });
 
+    return this.acknowledgePersistedRun(row, intentKey, runResult, insert, now);
+  }
+
+  private async acknowledgePersistedRun(
+    row: { outboxId: string; workItemId: string; claimToken: string },
+    intentKey: string,
+    runResult: Awaited<ReturnType<typeof processDiV0S4ResearchRoadMatchingV2>>,
+    insert: Awaited<ReturnType<DiV0S4ResearchRunRepository['insertRun']>>,
+    now: Date,
+  ): Promise<'SUCCEEDED' | 'NEUTRAL' | 'FAILED'> {
     if (insert.outcome === 'sql_error') {
       const next = new Date(now.getTime() + DI_V0_S4_RESEARCH_V2_TUNING.baseRetryDelayMs);
       await this.outbox.markFailedRetryable(row.outboxId, row.claimToken, `RUN_SQL_${insert.code}`, next);
@@ -247,12 +254,34 @@ export class DiV0S4ResearchV2Service {
     }
 
     if (insert.outcome === 'idempotent_duplicate') {
-      if (runResult.researchStatus === 'ROAD_CONTEXT_UNAVAILABLE') {
-        await this.outbox.releaseAfterNeutral(row.outboxId, row.claimToken);
-      } else {
-        await this.outbox.markSucceeded(row.outboxId, row.claimToken);
+      const stored =
+        (await this.runs.findExactDuplicate({
+          workItemId: row.workItemId,
+          researchIntentKey: intentKey,
+          result: runResult,
+        })) ?? (runResult.researchStatus === 'SUCCEEDED'
+          ? await this.runs.findSucceededForIntent(row.workItemId, intentKey)
+          : null);
+      if (!stored || stored.researchIntentKey !== intentKey) {
+        const next = new Date(now.getTime() + DI_V0_S4_RESEARCH_V2_TUNING.baseRetryDelayMs);
+        await this.outbox.markFailedRetryable(row.outboxId, row.claimToken, 'IDEMPOTENT_ROW_MISSING', next);
+        return 'FAILED';
       }
-      return runResult.researchStatus === 'SUCCEEDED' ? 'SUCCEEDED' : 'NEUTRAL';
+      if (stored.researchStatus !== runResult.researchStatus) {
+        const next = new Date(now.getTime() + DI_V0_S4_RESEARCH_V2_TUNING.baseRetryDelayMs);
+        await this.outbox.markFailedRetryable(row.outboxId, row.claimToken, 'IDEMPOTENT_STATUS_MISMATCH', next);
+        return 'FAILED';
+      }
+      if (stored.researchStatus === 'SUCCEEDED') {
+        const acked = await this.outbox.markSucceeded(row.outboxId, row.claimToken);
+        return acked ? 'SUCCEEDED' : 'FAILED';
+      }
+      if (stored.researchStatus === 'ROAD_CONTEXT_UNAVAILABLE') {
+        await this.outbox.releaseAfterNeutral(row.outboxId, row.claimToken);
+        return 'NEUTRAL';
+      }
+      const acked = await this.outbox.markSucceeded(row.outboxId, row.claimToken);
+      return acked ? 'NEUTRAL' : 'FAILED';
     }
 
     if (runResult.researchStatus === 'ROAD_CONTEXT_UNAVAILABLE') {
@@ -260,11 +289,10 @@ export class DiV0S4ResearchV2Service {
       return 'NEUTRAL';
     }
     if (runResult.researchStatus === 'SNAPSHOT_INVALID') {
-      await this.outbox.markSucceeded(row.outboxId, row.claimToken);
-      return 'NEUTRAL';
+      const acked = await this.outbox.markSucceeded(row.outboxId, row.claimToken);
+      return acked ? 'NEUTRAL' : 'FAILED';
     }
     const acked = await this.outbox.markSucceeded(row.outboxId, row.claimToken);
-    if (!acked) return 'FAILED';
-    return 'SUCCEEDED';
+    return acked ? 'SUCCEEDED' : 'FAILED';
   }
 }

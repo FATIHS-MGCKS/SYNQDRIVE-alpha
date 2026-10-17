@@ -4,19 +4,23 @@ import { S4A_POSTGRES_LIVE, type S4aTenant } from '../../s4a-foundation/__tests_
 import { PrismaService } from '@shared/database/prisma.service';
 import { DiV0S4ResearchFileRegistryOsmProvider } from '../di-v0-s4-research-osm-context';
 import { DiV0S4ResearchOutboxRepository } from '../di-v0-s4-research-outbox.repository';
+import { DiV0S4ResearchRunRepository } from '../di-v0-s4-research-run.repository';
 import { DiV0S4ResearchV2Service } from '../di-v0-s4-research-v2.service';
 import { DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2 } from '../di-v0-s4-research-bundle.version';
+import { buildResearchIntentKey, resolveOsmDataVersion } from '../di-v0-s4-research-intent';
 import {
   applyResearchTestEnv,
   cleanupS4ResearchTenant,
   restoreResearchTestEnv,
   seedS4ResearchCompletedPrimaryFixture,
 } from './di-v0-s4-research-postgres-harness';
+import { SYNTHETIC_RESEARCH_OSM_FIXTURE } from './di-v0-s4-research-fixtures';
 import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)('S4 research V2 worker (postgres)', () => {
   let db: PrismaClient;
   let outbox: DiV0S4ResearchOutboxRepository;
+  let runs: DiV0S4ResearchRunRepository;
   const tenants: S4aTenant[] = [];
 
   function mkSvc(osm = new DiV0S4ResearchFileRegistryOsmProvider(new Map())): DiV0S4ResearchV2Service {
@@ -28,6 +32,7 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
     db = new Client();
     await db.$connect();
     outbox = new DiV0S4ResearchOutboxRepository(db);
+    runs = new DiV0S4ResearchRunRepository(db);
   });
 
   afterEach(async () => {
@@ -53,7 +58,11 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
     return Number(n);
   }
 
-  it('COMPLETED S4 → one neutral research run (no OSM) and S4 stays COMPLETED', async () => {
+  async function succeededCount(workItemId: string, intentKey: string): Promise<number> {
+    return runs.countSucceededForIntent(workItemId, intentKey);
+  }
+
+  it('COMPLETED S4 → neutral without OSM, outbox re-discoverable (neutral recovery)', async () => {
     const fx = await seedS4ResearchCompletedPrimaryFixture(db);
     tenants.push(fx.tenant);
     const envBackup = applyResearchTestEnv(fx.tenant);
@@ -63,11 +72,54 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
       expect(pass1.configured).toBe(true);
       expect(pass1.discovered).toBe(1);
       expect(pass1.claimed).toBe(1);
+      expect(pass1.neutral).toBe(1);
       expect(await wiStatus(fx.workItemId)).toBe('COMPLETED');
       expect(await runCount(fx.tenant.tripId)).toBe(1);
       const pass2 = await svc.runPass();
-      expect(pass2.discovered).toBe(0);
+      expect(pass2.discovered).toBeGreaterThanOrEqual(1);
       expect(await runCount(fx.tenant.tripId)).toBe(1);
+    } finally {
+      restoreResearchTestEnv(envBackup);
+    }
+  });
+
+  it('neutral → OSM HIT SUCCEEDED → third pass does not double SUCCEEDED', async () => {
+    const fx = await seedS4ResearchCompletedPrimaryFixture(db);
+    tenants.push(fx.tenant);
+    const envBackup = applyResearchTestEnv(fx.tenant);
+    const emptyOsm = new DiV0S4ResearchFileRegistryOsmProvider(new Map());
+    try {
+      const wi = await db.diV0S4WorkItem.findFirst({ where: { id: fx.workItemId } });
+      const intentKey = buildResearchIntentKey({
+        pinnedSnapshotHash: wi!.pinnedSnapshotHash!,
+        combinedInputIdentity: wi!.combinedInputIdentity ?? '',
+        osmDataVersion: resolveOsmDataVersion(),
+      });
+
+      const svcNeutral = mkSvc(emptyOsm);
+      const pass1 = await svcNeutral.runPass();
+      expect(pass1.neutral).toBe(1);
+      const neutralRows = await db.$queryRaw<Array<{ research_status: string }>>`
+        SELECT research_status FROM di_v0_s4_research_runs_v1 WHERE work_item_id = ${fx.workItemId}`;
+      expect(neutralRows.some((r) => r.research_status === 'ROAD_CONTEXT_UNAVAILABLE')).toBe(true);
+      expect(await succeededCount(fx.workItemId, intentKey)).toBe(0);
+
+      const registry = new Map([[fx.tenant.tripId, SYNTHETIC_RESEARCH_OSM_FIXTURE]]);
+      const svcHit = mkSvc(new DiV0S4ResearchFileRegistryOsmProvider(registry));
+      const pass2 = await svcHit.runPass();
+      expect(pass2.succeeded).toBe(1);
+      expect(await succeededCount(fx.workItemId, intentKey)).toBe(1);
+      const hit = await db.$queryRaw<Array<{ research_status: string; windows_json: unknown }>>`
+        SELECT research_status, windows_json FROM di_v0_s4_research_runs_v1
+        WHERE work_item_id = ${fx.workItemId} AND research_status = 'SUCCEEDED'`;
+      expect(hit.length).toBe(1);
+      expect(Array.isArray(hit[0]?.windows_json)).toBe(true);
+      expect((hit[0]?.windows_json as unknown[]).length).toBeGreaterThan(0);
+
+      const pass3 = await svcHit.runPass();
+      expect(pass3.discovered).toBe(0);
+      expect(await succeededCount(fx.workItemId, intentKey)).toBe(1);
+      expect(await runCount(fx.tenant.tripId)).toBe(2);
     } finally {
       restoreResearchTestEnv(envBackup);
     }
@@ -108,9 +160,9 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
       const svc = mkSvc();
       await svc.runPass();
       expect(await wiStatus(fx.workItemId)).toBe('COMPLETED');
-      const runs = await db.$queryRaw<Array<{ research_status: string }>>`
+      const statusRows = await db.$queryRaw<Array<{ research_status: string }>>`
         SELECT research_status FROM di_v0_s4_research_runs_v1 WHERE trip_id = ${fx.tenant.tripId}`;
-      expect(runs[0]?.research_status).toBe('SNAPSHOT_INVALID');
+      expect(statusRows[0]?.research_status).toBe('SNAPSHOT_INVALID');
     } finally {
       restoreResearchTestEnv(envBackup);
     }
@@ -126,6 +178,7 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
         enabledSince: since,
         researchOrgAllowlist: [fx.tenant.organizationId],
         researchVehicleAllowlist: [fx.tenant.vehicleId],
+        osmDataVersion: resolveOsmDataVersion(),
         limit: 10,
         now: new Date(),
       });

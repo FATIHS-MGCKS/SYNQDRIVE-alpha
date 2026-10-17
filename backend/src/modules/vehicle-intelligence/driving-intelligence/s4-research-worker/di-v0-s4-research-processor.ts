@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import {
   DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
-  runRoadMatchingPipeline,
   S4_RESEARCH_GEOMETRY_PROJECTION_ID,
 } from '../s4-research';
+import { runRoadMatchingPipelineIsolated } from './di-v0-s4-research-pipeline-isolated';
 import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../s4d-replay/di-v0-s4d-verified-snapshot';
 import type { DiV0S4dSnapshotRow } from '../s4d-replay/di-v0-s4d-verified-snapshot';
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
@@ -33,6 +33,7 @@ export type DiV0S4ResearchProcessInput = {
   snapshotRow: DiV0S4dSnapshotRow;
   shadowByBucket: ReadonlyMap<string, DiV0S4ResearchShadowBucketEvidence>;
   osmProvider: DiV0S4ResearchOsmProvider;
+  pipelineDeadlineMs?: number;
 };
 
 export type DiV0S4ResearchPersistableRun =
@@ -134,6 +135,8 @@ export async function processDiV0S4ResearchRoadMatchingV2(
       summaryJson: {
         reason: 'ROAD_CONTEXT_UNAVAILABLE',
         osmMiss: osm.reason,
+        corridorAnalysisScope:
+          osm.reason === 'BBOX_TOO_LARGE' ? 'CORRIDOR_EXCEEDS_OSM_LIMIT' : 'FULL_CORRIDOR_REQUESTED',
         independentRoadIdAccuracy: 'NOT_ASSESSABLE',
         geometryProjectionId: S4_RESEARCH_GEOMETRY_PROJECTION_ID,
         researchBundleVersion: DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2,
@@ -148,11 +151,15 @@ export async function processDiV0S4ResearchRoadMatchingV2(
   );
 
   const roadContext = buildRoadContextFromOsmBody(osm.overpassBody, buckets, DI_V0_S4_RESEARCH_CORRIDOR_MARGIN_M);
-  const pipeline = runRoadMatchingPipeline({
-    buckets,
-    roadContext,
-    config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
-  });
+  const deadlineMs = input.pipelineDeadlineMs ?? 120_000;
+  const pipeline = await runRoadMatchingPipelineIsolated(
+    {
+      buckets,
+      roadContext,
+      config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+    },
+    deadlineMs,
+  );
 
   return {
     kind: 'ARTIFACT',

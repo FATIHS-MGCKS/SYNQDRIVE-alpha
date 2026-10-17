@@ -8,7 +8,7 @@ describe('DiV0S4ResearchRunRepository.insertRun', () => {
         new Prisma.PrismaClientKnownRequestError('Unique', {
           code: 'P2010',
           clientVersion: 'test',
-          meta: { code: '23505', message: 'duplicate key di_v0_s4_research_runs_idempotency_uq' },
+          meta: { code: '23505', message: 'duplicate key di_v0_s4_research_runs_exact_idempotency_uq' },
         }),
       ),
     };

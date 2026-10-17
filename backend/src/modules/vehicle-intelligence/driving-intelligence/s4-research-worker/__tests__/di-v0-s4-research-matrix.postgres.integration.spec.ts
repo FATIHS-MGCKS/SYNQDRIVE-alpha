@@ -1,5 +1,5 @@
 /**
- * 16-case research worker matrix (postgres). Skipped unless DI_V0_S4A_POSTGRES_INTEGRATION=1 + migrations applied.
+ * 16-case research worker matrix (postgres). Each case is EXECUTED here or marked NOT_EXECUTED explicitly.
  */
 import { randomUUID } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
@@ -19,24 +19,26 @@ import {
 import { SYNTHETIC_RESEARCH_OSM_FIXTURE, RUPTELA_RESEARCH_OSM_FIXTURE } from './di-v0-s4-research-fixtures';
 import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
 
-const MATRIX: Array<{ id: number; name: string }> = [
-  { id: 1, name: 'COMPLETED → one research run' },
-  { id: 2, name: 'research failure → S4 stays COMPLETED' },
-  { id: 3, name: 'research OFF → no writes' },
-  { id: 4, name: 'vehicle outside allowlist' },
-  { id: 5, name: 'invalid snapshot hash scope' },
-  { id: 6, name: 'missing coordinates neutral' },
-  { id: 7, name: 'missing OSM neutral' },
-  { id: 8, name: 'repeated delivery idempotent' },
-  { id: 9, name: 'parallel claim single winner' },
-  { id: 10, name: 'version intent isolation' },
-  { id: 11, name: 'historical V1 library unchanged (unit elsewhere)' },
-  { id: 12, name: 'V2 replay reproducible (library elsewhere)' },
-  { id: 13, name: 'S4 evaluation unchanged' },
-  { id: 14, name: 'Tesla/Ruptela fixture OSM HIT' },
-  { id: 15, name: 'processing timeout budget configured' },
-  { id: 16, name: 'no customer read / FSM mutation paths (audit elsewhere)' },
-];
+export type MatrixCaseStatus = 'EXECUTED' | 'NOT_EXECUTED';
+
+export const MATRIX_CASE_STATUS: Record<number, { name: string; status: MatrixCaseStatus; note?: string }> = {
+  1: { name: 'COMPLETED → one research run', status: 'EXECUTED', note: 'covered in v2 neutral→HIT spec' },
+  2: { name: 'research failure → S4 stays COMPLETED', status: 'NOT_EXECUTED', note: 'retryable failure path — unit/service elsewhere' },
+  3: { name: 'research OFF → no writes', status: 'EXECUTED' },
+  4: { name: 'vehicle outside allowlist', status: 'NOT_EXECUTED', note: 'covered in v2 postgres spec' },
+  5: { name: 'invalid snapshot hash scope', status: 'EXECUTED' },
+  6: { name: 'missing coordinates neutral', status: 'NOT_EXECUTED', note: 'fixture lacks coordinate-stripped snapshot' },
+  7: { name: 'missing OSM neutral', status: 'EXECUTED' },
+  8: { name: 'repeated delivery idempotent', status: 'EXECUTED' },
+  9: { name: 'parallel claim single winner', status: 'EXECUTED' },
+  10: { name: 'version intent isolation', status: 'EXECUTED' },
+  11: { name: 'historical V1 library unchanged', status: 'NOT_EXECUTED', note: 's4-research library unit suite' },
+  12: { name: 'V2 replay reproducible', status: 'NOT_EXECUTED', note: 's4-research library unit suite' },
+  13: { name: 'S4 evaluation unchanged', status: 'NOT_EXECUTED', note: 'S4D/S4C postgres matrix' },
+  14: { name: 'Tesla/Ruptela fixture OSM HIT', status: 'EXECUTED' },
+  15: { name: 'processing timeout budget configured', status: 'NOT_EXECUTED', note: 'worker isolated unit + DI_V0_S4_RESEARCH_V2_TUNING (not postgres)' },
+  16: { name: 'no customer read / FSM mutation paths', status: 'NOT_EXECUTED', note: 'dormant-audit spec' },
+};
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)('S4 research matrix (postgres)', () => {
   let db: PrismaClient;
@@ -65,8 +67,16 @@ const MATRIX: Array<{ id: number; name: string }> = [
     if (db) await db.$disconnect();
   });
 
-  it('documents matrix scope', () => {
-    expect(MATRIX.length).toBe(16);
+  it('matrix case inventory (16 cases, explicit EXECUTED vs NOT_EXECUTED)', () => {
+    expect(Object.keys(MATRIX_CASE_STATUS).length).toBe(16);
+    const executed = Object.values(MATRIX_CASE_STATUS).filter((c) => c.status === 'EXECUTED').length;
+    const notExecuted = Object.values(MATRIX_CASE_STATUS).filter((c) => c.status === 'NOT_EXECUTED').length;
+    expect(executed + notExecuted).toBe(16);
+    expect(executed).toBeGreaterThanOrEqual(8);
+    // eslint-disable-next-line no-console
+    console.log(
+      `S4_RESEARCH_MATRIX_EXECUTED_COUNT=${executed} S4_RESEARCH_MATRIX_NOT_EXECUTED_COUNT=${notExecuted}`,
+    );
   });
 
   it('case 1+7+14: OSM HIT persists road-matching windows (synthetic fixture)', async () => {
@@ -109,11 +119,12 @@ const MATRIX: Array<{ id: number; name: string }> = [
     try {
       const svc = mkSvc(new DiV0S4ResearchFileRegistryOsmProvider(registry));
       await svc.runPass();
-      await svc.runPass();
+      const second = await svc.runPass();
+      expect(second.discovered).toBe(0);
       const [{ n }] = await db.$queryRaw<Array<{ n: bigint }>>`
         SELECT count(*)::bigint AS n FROM di_v0_s4_research_runs_v1
         WHERE trip_id = ${fx.tenant.tripId} AND research_status = 'SUCCEEDED'`;
-      expect(Number(n)).toBeGreaterThanOrEqual(1);
+      expect(Number(n)).toBe(1);
     } finally {
       restoreResearchTestEnv(envBackup);
     }
@@ -152,6 +163,18 @@ const MATRIX: Array<{ id: number; name: string }> = [
       osmDataVersion: 'v2',
     });
     expect(a).not.toBe(b);
+    const c = buildResearchIntentKey({
+      pinnedSnapshotHash: 'h2',
+      combinedInputIdentity: 'c',
+      osmDataVersion: 'v1',
+    });
+    expect(a).not.toBe(c);
+    const d = buildResearchIntentKey({
+      pinnedSnapshotHash: 'h',
+      combinedInputIdentity: 'c2',
+      osmDataVersion: 'v1',
+    });
+    expect(a).not.toBe(d);
   });
 
   it('case 2+5: SQL error path uses retry not silent success', async () => {
