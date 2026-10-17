@@ -1,0 +1,682 @@
+{
+  "schema": "LDI10D_PHASE2B_TOPOLOGY_AUDIT_V1",
+  "headSha": "17ae3288ee89cdd73fd5f76fa82666ed27682c66",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "osmSnapshotSha256": "8afff85539dad9d1590022656f291d50b01215d99cd4a9bcc4af2aef74c073d9",
+  "ldi08SnapshotSha256": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009",
+  "inputIntegrity": "PASS",
+  "baseline": {
+    "groups": 32,
+    "candidates": 75,
+    "gpsPresent": 346,
+    "rowAbsent": 16,
+    "associated": 14,
+    "unknown": 18,
+    "g2": 11,
+    "g3": 6,
+    "g1": 1
+  },
+  "associationsChanged": false,
+  "groupingChanged": false,
+  "g2TopologyAudits": [
+    {
+      "groupId": "MANEUVER_ACCELERATION_5",
+      "topWayIds": [
+        35538144,
+        586982631
+      ],
+      "topHighways": [
+        "residential",
+        "residential"
+      ],
+      "names": [
+        "Ebereschenring",
+        "Ebereschenring"
+      ],
+      "oneway": [
+        null,
+        null
+      ],
+      "distanceGapM": 0.027706618268535266,
+      "classification": "SAME_ROAD_SPLIT",
+      "sharedNodes": [
+        5607540147
+      ],
+      "sameName": true,
+      "sameHighwayClass": true,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Matching name/ref and highway with sub-5m centroid gap — dual-way representation of one carriageway.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "topWayIds": [
+        1314429093,
+        66750173
+      ],
+      "topHighways": [
+        "tertiary",
+        "tertiary"
+      ],
+      "names": [
+        "An der Rehbocksweide",
+        "An der Rehbocksweide"
+      ],
+      "oneway": [
+        null,
+        null
+      ],
+      "distanceGapM": 3.0675064332371176,
+      "classification": "SAME_ROAD_SPLIT",
+      "sharedNodes": [
+        2180087793
+      ],
+      "sameName": true,
+      "sameHighwayClass": true,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Matching name/ref and highway with sub-5m centroid gap — dual-way representation of one carriageway.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "topWayIds": [
+        48144282,
+        25727782
+      ],
+      "topHighways": [
+        "living_street",
+        "tertiary"
+      ],
+      "names": [
+        "Oberviechtacher Straße",
+        "Berliner Ring"
+      ],
+      "oneway": [
+        "no",
+        "no"
+      ],
+      "distanceGapM": 0.7210369847054221,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        611857126
+      ],
+      "sameName": false,
+      "sameHighwayClass": false,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Different highway classes (living_street vs tertiary) within competition radius.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_10",
+      "topWayIds": [
+        25727782,
+        203389730
+      ],
+      "topHighways": [
+        "tertiary",
+        "service"
+      ],
+      "names": [
+        "Berliner Ring",
+        null
+      ],
+      "oneway": [
+        "no",
+        null
+      ],
+      "distanceGapM": 4.227771748766174,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [],
+      "sameName": false,
+      "sameHighwayClass": false,
+      "minPolylineSeparationM": 13.621950855867581,
+      "rationale": [
+        "Different highway classes (tertiary vs service) within competition radius.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "topWayIds": [
+        25727783,
+        48250200
+      ],
+      "topHighways": [
+        "residential",
+        "residential"
+      ],
+      "names": [
+        "Schützenstraße",
+        "Vogelsang"
+      ],
+      "oneway": [
+        null,
+        null
+      ],
+      "distanceGapM": 0,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        2179921460
+      ],
+      "sameName": false,
+      "sameHighwayClass": true,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Single shared endpoint node — branch choice at junction.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_15",
+      "topWayIds": [
+        208147197,
+        48247523
+      ],
+      "topHighways": [
+        "service",
+        "residential"
+      ],
+      "names": [
+        null,
+        "Quedlinburger Straße"
+      ],
+      "oneway": [
+        "no",
+        "no"
+      ],
+      "distanceGapM": 4.654337351008793,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        610470334
+      ],
+      "sameName": false,
+      "sameHighwayClass": false,
+      "minPolylineSeparationM": 6.235555648361666,
+      "rationale": [
+        "Different highway classes (service vs residential) within competition radius.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_16",
+      "topWayIds": [
+        203391046,
+        1208811616
+      ],
+      "topHighways": [
+        "service",
+        "service"
+      ],
+      "names": [
+        null,
+        "Quedlinburger Straße"
+      ],
+      "oneway": [
+        null,
+        "no"
+      ],
+      "distanceGapM": 0,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        2134022381
+      ],
+      "sameName": false,
+      "sameHighwayClass": true,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Single shared endpoint node — branch choice at junction.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_18",
+      "topWayIds": [
+        35538144,
+        35538143
+      ],
+      "topHighways": [
+        "residential",
+        "residential"
+      ],
+      "names": [
+        "Ebereschenring",
+        "Talblick"
+      ],
+      "oneway": [
+        null,
+        null
+      ],
+      "distanceGapM": 3.0537385953266494e-9,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        416362289
+      ],
+      "sameName": false,
+      "sameHighwayClass": true,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Single shared endpoint node — branch choice at junction.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_30",
+      "topWayIds": [
+        48247523,
+        1208811611
+      ],
+      "topHighways": [
+        "residential",
+        "service"
+      ],
+      "names": [
+        "Quedlinburger Straße",
+        null
+      ],
+      "oneway": [
+        "no",
+        null
+      ],
+      "distanceGapM": 0,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        11200156447
+      ],
+      "sameName": false,
+      "sameHighwayClass": false,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Different highway classes (residential vs service) within competition radius.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_31",
+      "topWayIds": [
+        48247523,
+        572869008
+      ],
+      "topHighways": [
+        "residential",
+        "service"
+      ],
+      "names": [
+        "Quedlinburger Straße",
+        null
+      ],
+      "oneway": [
+        "no",
+        null
+      ],
+      "distanceGapM": 3.173846357592841,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        5503508730
+      ],
+      "sameName": false,
+      "sameHighwayClass": false,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Different highway classes (residential vs service) within competition radius.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_32",
+      "topWayIds": [
+        1208811616,
+        203391046
+      ],
+      "topHighways": [
+        "service",
+        "service"
+      ],
+      "names": [
+        "Quedlinburger Straße",
+        null
+      ],
+      "oneway": [
+        "no",
+        null
+      ],
+      "distanceGapM": 1.0084288959433252e-9,
+      "classification": "GENUINE_ALTERNATIVE_ROADS",
+      "sharedNodes": [
+        2134022381
+      ],
+      "sameName": false,
+      "sameHighwayClass": true,
+      "minPolylineSeparationM": 0,
+      "rationale": [
+        "Single shared endpoint node — branch choice at junction.",
+        "Phase 2 G2 gate (5m gap) still fires — association remains UNKNOWN without threshold change."
+      ],
+      "wouldRemainUnknownUnderPhase2Gates": true
+    }
+  ],
+  "unknownReassessment": [
+    {
+      "groupId": "MANEUVER_ACCELERATION_2",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_123deg"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_3",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_173deg"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_4",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_5",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "SAME_ROAD_SPLIT",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "SAME_ROAD_SPLIT",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_7",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "NO_WAY_WITHIN_UNCERTAINTY_RADIUS"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_10",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_13",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_177deg"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_15",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_16",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_17",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_93deg"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_18",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_19",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_176deg"
+      ],
+      "topologyInsight": null,
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_30",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_31",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_32",
+      "phase2Outcome": "UNKNOWN",
+      "replayOutcome": "UNKNOWN",
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "topologyInsight": "GENUINE_ALTERNATIVE_ROADS",
+      "associationWouldChange": false,
+      "remainsUnknownUnderCurrentGates": true
+    }
+  ],
+  "summary": {
+    "g2TopologyAudited": 11,
+    "sameRoadSplitCases": 2,
+    "genuineAlternativeRoads": 9,
+    "topologyIndeterminate": 0
+  },
+  "turnRestrictionCount": 3,
+  "pedestrianCrossingNodesExcluded": 8,
+  "controlComparison": {
+    "unclearAccelerationGroups": [
+      "MANEUVER_ACCELERATION_2",
+      "MANEUVER_ACCELERATION_3",
+      "MANEUVER_ACCELERATION_4",
+      "MANEUVER_ACCELERATION_6",
+      "MANEUVER_ACCELERATION_8",
+      "MANEUVER_ACCELERATION_9",
+      "MANEUVER_ACCELERATION_12",
+      "MANEUVER_ACCELERATION_13"
+    ],
+    "plausibleAccelerationGroups": [
+      "MANEUVER_ACCELERATION_1",
+      "MANEUVER_ACCELERATION_5",
+      "MANEUVER_ACCELERATION_7",
+      "MANEUVER_ACCELERATION_10",
+      "MANEUVER_ACCELERATION_11",
+      "MANEUVER_ACCELERATION_14",
+      "MANEUVER_ACCELERATION_15",
+      "MANEUVER_ACCELERATION_16"
+    ],
+    "pairs": [
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_2",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "BEARING_MISMATCH_123deg"
+        ],
+        "topologyClass": null,
+        "qcDoesNotExplainTopology": false
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_3",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "BEARING_MISMATCH_173deg"
+        ],
+        "topologyClass": null,
+        "qcDoesNotExplainTopology": false
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_4",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "topologyClass": null,
+        "qcDoesNotExplainTopology": false
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_6",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "topologyClass": "SAME_ROAD_SPLIT",
+        "qcDoesNotExplainTopology": true
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_8",
+        "unclearAssociation": "ASSOCIATED",
+        "unclearAmbiguity": [],
+        "topologyClass": null,
+        "qcDoesNotExplainTopology": false
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_9",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "topologyClass": "GENUINE_ALTERNATIVE_ROADS",
+        "qcDoesNotExplainTopology": true
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_12",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "topologyClass": "GENUINE_ALTERNATIVE_ROADS",
+        "qcDoesNotExplainTopology": true
+      },
+      {
+        "unclearGroupId": "MANEUVER_ACCELERATION_13",
+        "unclearAssociation": "UNKNOWN",
+        "unclearAmbiguity": [
+          "BEARING_MISMATCH_177deg"
+        ],
+        "topologyClass": null,
+        "qcDoesNotExplainTopology": false
+      }
+    ],
+    "falseAssociationRisks": [
+      "Centroid snap near parallel residential/service ways (G2)",
+      "GPS heading vs OSM segment bearing mismatch on curves (G3)",
+      "Sparse 1Hz buckets at intersection approach",
+      "Dual carriageway / split OSM ways counted as competitors"
+    ],
+    "mapboxNotUsed": true
+  }
+}
