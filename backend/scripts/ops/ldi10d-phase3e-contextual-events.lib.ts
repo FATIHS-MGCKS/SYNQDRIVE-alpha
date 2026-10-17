@@ -65,11 +65,16 @@ export type ContextualDrivingEvent = {
   qcStatus: 'COMPLETE_TRUSTED' | 'PARTIAL' | 'QC_BLOCKED' | 'UNASSESSABLE';
   spatialContext: {
     osmFrozenSnapshotSha256: string;
-    roadAssociation: 'UNSUPPORTED_OUT_OF_FROZEN_BBOX' | 'NOT_ATTEMPTED';
+    roadAssociation:
+      | 'UNSUPPORTED_OUT_OF_FROZEN_BBOX'
+      | 'NOT_ATTEMPTED'
+      | 'CONFIRMED'
+      | 'AMBIGUOUS'
+      | 'UNKNOWN';
     junctionNodeId: number | null;
     osmWayId: number | null;
     ambiguityPreserved: boolean;
-    trafficSignalCoverage: 'NOT_MAPPED';
+    trafficSignalCoverage: 'NOT_MAPPED' | 'MAPPED_NODE_PROXIMATE';
     note: string;
   };
   precedingEvents: string[];

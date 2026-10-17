@@ -264,6 +264,7 @@
     "ldi10d:phase3c2-tesla-seven-algorithm-replay": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3c2-tesla-seven-algorithm-replay.ts",
     "ldi10d:phase3d-gps-evidence-quality": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3d-gps-evidence-quality.ts",
     "ldi10d:phase3e-contextual-events": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e-contextual-events.ts",
+    "ldi10d:phase3e1-tesla-osm-spatial": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e1-tesla-osm-spatial.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
