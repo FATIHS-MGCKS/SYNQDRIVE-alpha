@@ -22,9 +22,9 @@
 
 ## OSM strategy (bounded)
 
+- `DiV0S4ResearchCachedOsmProvider`: versioned `di_v0_s4_research_osm_cache_v1` + optional `DI_V0_S4_RESEARCH_OSM_OVERPASS_ENABLED` bounded fetch (bbox span cap, timeout, response size, concurrency).
 - Corridor bbox from GPS buckets + margin (75 m).
-- Default runtime: `DiV0S4ResearchNullOsmProvider` → `ROAD_CONTEXT_UNAVAILABLE`.
-- Cache table `di_v0_s4_research_osm_cache_v1` for future bounded FILE_REGISTRY / OVERPASS_BOUNDED providers.
+- `ROAD_CONTEXT_UNAVAILABLE` persists neutral run and **releases** outbox row for rediscovery when OSM becomes available.
 - Frozen Tesla OSM remains evidence-only (not used for arbitrary trips).
 
 ## Artifacts

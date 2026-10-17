@@ -82,10 +82,9 @@ export class DiV0S4ResearchFileRegistryOsmProvider implements DiV0S4ResearchOsmP
   }): Promise<DiV0S4ResearchOsmResolveResult> {
     const key = `${input.organizationId}:${input.tripId}`;
     const body = this.registry.get(key) ?? this.registry.get(input.tripId);
-    const bbox = { south: 0, west: 0, north: 0, east: 0 };
     const osmContextKey = buildOsmContextKey({
-      bbox,
-      corridorMarginM: 0,
+      bbox: input.bbox,
+      corridorMarginM: input.corridorMarginM,
       providerKind: this.kind,
       dataVersion: key,
     });

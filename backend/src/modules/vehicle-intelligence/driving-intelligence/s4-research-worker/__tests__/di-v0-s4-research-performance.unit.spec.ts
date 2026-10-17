@@ -1,5 +1,5 @@
 /**
- * Performance budget guard: 1136-bucket Tesla replay (reference ~78.6s on owner dev hardware; cap 180s here).
+ * Performance budget guard: 1136-bucket Tesla replay (reference ~78.6s on owner dev hardware; cap = maxProcessingMsPerTrip 120s).
  * Skips on CI when fixture absent.
  */
 import * as fs from 'node:fs';
@@ -9,6 +9,7 @@ import {
   buildRoadContextFromOverpass,
   runRoadMatchingPipeline,
 } from '../../s4-research';
+import { DI_V0_S4_RESEARCH_V2_TUNING } from '../di-v0-s4-research-v2.config';
 
 const repoRoot = path.resolve(__dirname, '../../../../../../..');
 const osmPath = path.join(
@@ -25,7 +26,7 @@ describe('s4-research V2 performance budget (Tesla 1136 buckets)', () => {
   const testFn = hasFixture ? it : it.skip;
 
   testFn(
-    'full pipeline completes under 180s budget',
+    `full pipeline completes under ${DI_V0_S4_RESEARCH_V2_TUNING.maxProcessingMsPerTrip}ms budget`,
     () => {
       const grid = JSON.parse(fs.readFileSync(gridPath, 'utf8')) as {
         buckets: Array<{
@@ -55,8 +56,8 @@ describe('s4-research V2 performance budget (Tesla 1136 buckets)', () => {
         config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
       });
       const elapsed = Date.now() - t0;
-      expect(elapsed).toBeLessThan(180_000);
+      expect(elapsed).toBeLessThan(DI_V0_S4_RESEARCH_V2_TUNING.maxProcessingMsPerTrip);
     },
-    190_000,
+    DI_V0_S4_RESEARCH_V2_TUNING.maxProcessingMsPerTrip + 10_000,
   );
 });

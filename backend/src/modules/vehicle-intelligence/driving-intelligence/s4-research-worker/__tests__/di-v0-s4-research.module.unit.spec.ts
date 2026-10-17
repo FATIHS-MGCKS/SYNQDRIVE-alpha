@@ -5,8 +5,11 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { SchedulerLeaderElectionModule } from '@shared/scheduler-leader/scheduler-leader-election.module';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { DiV0S4ResearchModule } from '../di-v0-s4-research.module';
+import { DiV0S4ResearchCachedOsmProvider } from '../di-v0-s4-research-cached-osm.provider';
 import { DiV0S4ResearchV2Scheduler } from '../di-v0-s4-research-v2.scheduler';
 import { DiV0S4ResearchV2Service } from '../di-v0-s4-research-v2.service';
+import { DI_V0_S4_RESEARCH_OSM_PROVIDER } from '../di-v0-s4-research.tokens';
+import { DiV0S4ResearchFileRegistryOsmProvider } from '../di-v0-s4-research-osm-context';
 import { RESEARCH_ENV_KEYS, restoreResearchTestEnv } from './di-v0-s4-research-postgres-harness';
 
 describe('DiV0S4ResearchModule bootstrap', () => {
@@ -68,6 +71,7 @@ describe('DiV0S4ResearchModule bootstrap', () => {
   it('compiles with research OFF (default env)', async () => {
     const moduleRef = await compileModule();
     try {
+      expect(moduleRef.get(DI_V0_S4_RESEARCH_OSM_PROVIDER)).toBe(moduleRef.get(DiV0S4ResearchCachedOsmProvider));
       expect(moduleRef.get(DiV0S4ResearchV2Service).isConfigured()).toBe(false);
       const setIntervalSpy = jest.spyOn(global, 'setInterval');
       expect(setIntervalSpy).not.toHaveBeenCalled();

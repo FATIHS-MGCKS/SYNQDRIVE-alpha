@@ -11,8 +11,10 @@ export const DI_V0_S4_RESEARCH_V2_TUNING = {
   defaultBatchLimit: 5,
   maxBatchLimit: 20,
   defaultSchedulerIntervalMs: 120_000,
+  /** Hard per-trip processing budget (scheduler interval may be longer). */
   maxProcessingMsPerTrip: 120_000,
   baseRetryDelayMs: 60_000,
+  maxProcessingAttempts: 8,
 } as const;
 
 export interface DiV0S4ResearchV2RuntimeConfig {

@@ -8,10 +8,11 @@ import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../s4d-replay/di-v0-s4
 import type { DiV0S4dSnapshotRow } from '../s4d-replay/di-v0-s4d-verified-snapshot';
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 import { DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2 } from './di-v0-s4-research-bundle.version';
+import { buildResearchGpsBucketsFromParsedContainer } from './di-v0-s4-research-snapshot-adapter';
 import {
-  buildResearchGpsBucketsFromParsedContainer,
-  type DiV0S4ResearchShadowL3ByBucket,
-} from './di-v0-s4-research-snapshot-adapter';
+  summarizeShadowEvidenceCompleteness,
+  type DiV0S4ResearchShadowBucketEvidence,
+} from './di-v0-s4-research-shadow-evidence';
 import {
   buildRoadContextFromOsmBody,
   corridorBboxFromBuckets,
@@ -30,7 +31,7 @@ export type DiV0S4ResearchProcessInput = {
   sourceFamily: string;
   combinedInputIdentity: string;
   snapshotRow: DiV0S4dSnapshotRow;
-  shadowL3ByBucket: DiV0S4ResearchShadowL3ByBucket;
+  shadowByBucket: ReadonlyMap<string, DiV0S4ResearchShadowBucketEvidence>;
   osmProvider: DiV0S4ResearchOsmProvider;
 };
 
@@ -84,7 +85,7 @@ export async function processDiV0S4ResearchRoadMatchingV2(
 
   let buckets;
   try {
-    buckets = buildResearchGpsBucketsFromParsedContainer(verified.parsed, input.shadowL3ByBucket);
+    buckets = buildResearchGpsBucketsFromParsedContainer(verified.parsed, input.shadowByBucket);
   } catch {
     return {
       kind: 'NEUTRAL',
@@ -141,6 +142,11 @@ export async function processDiV0S4ResearchRoadMatchingV2(
     };
   }
 
+  const evidenceCompleteness = summarizeShadowEvidenceCompleteness(
+    buckets.map((b) => b.bucketLabelUtc),
+    input.shadowByBucket,
+  );
+
   const roadContext = buildRoadContextFromOsmBody(osm.overpassBody, buckets, DI_V0_S4_RESEARCH_CORRIDOR_MARGIN_M);
   const pipeline = runRoadMatchingPipeline({
     buckets,
@@ -162,6 +168,7 @@ export async function processDiV0S4ResearchRoadMatchingV2(
       pinnedSnapshotHash: input.snapshotHash,
       independentRoadIdAccuracy: 'NOT_ASSESSABLE',
       associatedIsNotGroundTruth: true,
+      evidenceCompleteness,
     },
     windowsJson: pipeline.windows,
   };

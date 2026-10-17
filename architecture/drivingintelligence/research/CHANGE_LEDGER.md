@@ -2019,6 +2019,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
 
+### EXP-021 S4 research extension — PR C hardening (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Cached OSM provider + bounded Overpass config; intent-key outbox (`outbox_id`, `research_intent_key`); run insert SQL error handling; shadow S1/QC evidence; 120s processing budget; matrix postgres spec |
+| WHY | Enable real OSM-HIT research artifacts, versioned reprocessing, and fail-closed persistence without S4 coupling |
+| NON_EFFECTS | Flags default OFF; no S4/L3/QC/FSM mutation |
+
 ### EXP-021 S4 research extension — PR C async road-matching V2 worker (2026-10-17)
 
 | Event | Detail |

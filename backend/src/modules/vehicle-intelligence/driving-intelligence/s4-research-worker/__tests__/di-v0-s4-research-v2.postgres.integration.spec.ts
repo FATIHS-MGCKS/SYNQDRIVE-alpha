@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
 import { S4A_POSTGRES_LIVE, type S4aTenant } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DiV0S4ResearchNullOsmProvider } from '../di-v0-s4-research-osm-context';
+import { DiV0S4ResearchFileRegistryOsmProvider } from '../di-v0-s4-research-osm-context';
 import { DiV0S4ResearchOutboxRepository } from '../di-v0-s4-research-outbox.repository';
 import { DiV0S4ResearchV2Service } from '../di-v0-s4-research-v2.service';
 import { DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2 } from '../di-v0-s4-research-bundle.version';
@@ -19,7 +19,7 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
   let outbox: DiV0S4ResearchOutboxRepository;
   const tenants: S4aTenant[] = [];
 
-  function mkSvc(osm = new DiV0S4ResearchNullOsmProvider()): DiV0S4ResearchV2Service {
+  function mkSvc(osm = new DiV0S4ResearchFileRegistryOsmProvider(new Map())): DiV0S4ResearchV2Service {
     return new DiV0S4ResearchV2Service(db as unknown as PrismaService, osm);
   }
 
