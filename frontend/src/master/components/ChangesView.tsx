@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dtc02-p4-safety-certification-2026-10-17',
+    version: '4.9.2250',
+    title: 'DTC-02 P4 — adaptive scheduler safety & fallback certification',
+    summary: [
+      'Safety certification matrix (planner, webhook, poll apply), source-trust reconciliation classifier, P4 PostgreSQL scenarios, BullMQ shadow failure isolation.',
+      'Future deferral policy design stub — DTC_02_ADAPTIVE_DEFERRAL_ENABLED remains OFF; no enqueue/cadence changes.',
+      'Governance evidence DTC02_P4_SAFETY_CERTIFICATION.md with P5 activation blockers.',
+    ],
+    reason:
+      'Certify fail-closed behavior and source-trust consistency before any adaptive activation.',
+    previousBehavior:
+      'P3 shadow only; no formal certification matrix or reconciliation classifier.',
+    details:
+      'dtc/certification/dtc-02-*.ts, dimo-dtc.processor.shadow-cert.spec.ts, architecture/dtc-error-codes/evidence/DTC02_P4_SAFETY_CERTIFICATION.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T21:00:00.000Z',
+  },
+  {
     id: 'dtc02-p3-adaptive-shadow-2026-10-17',
     version: '4.9.2249',
     title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
