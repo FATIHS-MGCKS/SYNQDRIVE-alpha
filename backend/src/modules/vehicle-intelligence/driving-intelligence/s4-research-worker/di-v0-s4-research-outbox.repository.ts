@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import { S4_RESEARCH_GEOMETRY_PROJECTION_ID } from '../s4-research/version';
 import { DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2 } from './di-v0-s4-research-bundle.version';
+import { buildResearchIntentKey } from './di-v0-s4-research-intent';
 
 export type DiV0S4ResearchOutboxStatus =
   | 'PENDING'
@@ -42,7 +42,16 @@ export class DiV0S4ResearchOutboxRepository {
     if (input.researchOrgAllowlist.length === 0 || input.researchVehicleAllowlist.length === 0) return 0;
     const orgs = input.researchOrgAllowlist;
     const vehicles = input.researchVehicleAllowlist;
-    const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
+    const candidates = await this.prisma.$queryRaw<
+      Array<{
+        work_item_id: string;
+        organization_id: string;
+        trip_id: string;
+        vehicle_id: string;
+        pinned_snapshot_hash: string;
+        combined_input_identity: string;
+      }>
+    >`
       WITH active_primary AS (
         SELECT DISTINCT ON (organization_id, trip_id)
           id, organization_id, trip_id, vehicle_id
@@ -51,76 +60,73 @@ export class DiV0S4ResearchOutboxRepository {
           AND purpose_discriminator = 'PRIMARY'
           AND status <> 'SUPERSEDED'
         ORDER BY organization_id, trip_id, boundary_occurrence DESC, created_at DESC
-      ),
-      candidates AS (
-        SELECT
-          wi.id AS work_item_id,
-          wi.organization_id,
-          wi.trip_id,
-          wi.vehicle_id,
-          wi.pinned_snapshot_hash,
-          coalesce(wi.combined_input_identity, '') AS combined_input_identity,
-          'DI_V0_S4_RESEARCH_INTENT_V1:sha256:' || encode(
-            digest(
-              convert_to(
-                json_build_object(
-                  'b', ${DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2},
-                  'c', coalesce(wi.combined_input_identity, ''),
-                  'g', ${S4_RESEARCH_GEOMETRY_PROJECTION_ID},
-                  'o', ${input.osmDataVersion},
-                  'p', wi.pinned_snapshot_hash
-                )::text,
-                'UTF8'
-              ),
-              'sha256'
-            ),
-            'hex'
-          ) AS research_intent_key
-        FROM di_v0_s4_work_items wi
-        INNER JOIN active_primary ap
-          ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
-        WHERE wi.status = 'COMPLETED'
-          AND wi.run_purpose = 'PRIMARY'
-          AND wi.purpose_discriminator = 'PRIMARY'
-          AND wi.pinned_snapshot_hash IS NOT NULL
-          AND wi.shadow_run_id IS NOT NULL
-          AND wi.completed_at IS NOT NULL
-          AND wi.completed_at >= ${input.enabledSince}
-          AND wi.organization_id = ANY(${orgs}::text[])
-          AND wi.vehicle_id = ANY(${vehicles}::text[])
-      )
-      INSERT INTO di_v0_s4_research_outbox_v1 (
-        outbox_id, work_item_id, research_intent_key, organization_id, trip_id, vehicle_id,
-        research_bundle_version, status, next_attempt_at
       )
       SELECT
-        gen_random_uuid()::text,
-        c.work_item_id,
-        c.research_intent_key,
-        c.organization_id,
-        c.trip_id,
-        c.vehicle_id,
-        ${DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2},
-        'PENDING',
-        ${input.now}
-      FROM candidates c
-      WHERE NOT EXISTS (
-        SELECT 1 FROM di_v0_s4_research_runs_v1 r
-        WHERE r.work_item_id = c.work_item_id
-          AND r.research_intent_key = c.research_intent_key
+        wi.id AS work_item_id,
+        wi.organization_id,
+        wi.trip_id,
+        wi.vehicle_id,
+        wi.pinned_snapshot_hash,
+        coalesce(wi.combined_input_identity, '') AS combined_input_identity
+      FROM di_v0_s4_work_items wi
+      INNER JOIN active_primary ap
+        ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
+      WHERE wi.status = 'COMPLETED'
+        AND wi.run_purpose = 'PRIMARY'
+        AND wi.purpose_discriminator = 'PRIMARY'
+        AND wi.pinned_snapshot_hash IS NOT NULL
+        AND wi.shadow_run_id IS NOT NULL
+        AND wi.completed_at IS NOT NULL
+        AND wi.completed_at >= ${input.enabledSince}
+        AND wi.organization_id = ANY(${orgs}::text[])
+        AND wi.vehicle_id = ANY(${vehicles}::text[])
+      ORDER BY wi.id
+      LIMIT ${input.limit}`;
+
+    let inserted = 0;
+    for (const candidate of candidates) {
+      const researchIntentKey = buildResearchIntentKey({
+        pinnedSnapshotHash: candidate.pinned_snapshot_hash,
+        combinedInputIdentity: candidate.combined_input_identity,
+        osmDataVersion: input.osmDataVersion,
+      });
+      const blockedByRun = await this.prisma.$queryRaw<Array<{ one: number }>>`
+        SELECT 1 AS one FROM di_v0_s4_research_runs_v1 r
+        WHERE r.work_item_id = ${candidate.work_item_id}
+          AND r.research_intent_key = ${researchIntentKey}
           AND r.research_status IN ('SUCCEEDED', 'SNAPSHOT_INVALID')
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM di_v0_s4_research_outbox_v1 o
-        WHERE o.work_item_id = c.work_item_id
-          AND o.research_intent_key = c.research_intent_key
+        LIMIT 1`;
+      if (blockedByRun.length > 0) continue;
+
+      const blockedByOutbox = await this.prisma.$queryRaw<Array<{ one: number }>>`
+        SELECT 1 AS one FROM di_v0_s4_research_outbox_v1 o
+        WHERE o.work_item_id = ${candidate.work_item_id}
+          AND o.research_intent_key = ${researchIntentKey}
           AND o.status IN ('PENDING', 'PROCESSING', 'FAILED_RETRYABLE')
-      )
-      ORDER BY c.work_item_id
-      LIMIT ${input.limit}
-      ON CONFLICT (work_item_id, research_intent_key) DO NOTHING
-      RETURNING outbox_id`;
-    return rows.length;
+        LIMIT 1`;
+      if (blockedByOutbox.length > 0) continue;
+
+      const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
+        INSERT INTO di_v0_s4_research_outbox_v1 (
+          outbox_id, work_item_id, research_intent_key, organization_id, trip_id, vehicle_id,
+          research_bundle_version, status, next_attempt_at
+        )
+        VALUES (
+          gen_random_uuid()::text,
+          ${candidate.work_item_id},
+          ${researchIntentKey},
+          ${candidate.organization_id},
+          ${candidate.trip_id},
+          ${candidate.vehicle_id},
+          ${DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2},
+          'PENDING',
+          ${input.now}
+        )
+        ON CONFLICT (work_item_id, research_intent_key) DO NOTHING
+        RETURNING outbox_id`;
+      inserted += rows.length;
+    }
+    return inserted;
   }
 
   async claimBatch(limit: number, now: Date): Promise<DiV0S4ResearchOutboxRow[]> {
