@@ -176,57 +176,31 @@ export class HvChargingCounterEvidenceRepository {
     ).length;
     const missingBucketCount = input.buckets.length - availableBucketCount;
 
-    return this.prisma.$transaction(async (tx) => {
-      let batch;
-      try {
-        batch = await tx.batteryHvChargingCounterIngestionBatch.create({
-          data: {
-            organizationId: input.organizationId,
-            vehicleId: input.vehicleId,
-            segmentFingerprint: input.segmentFingerprint,
-            sourceHvChargeSessionId: input.sourceHvChargeSessionId,
-            dimoTokenId: input.dimoTokenId,
-            evidenceContractVersion: M3_3_HV_CHARGING_ADDED_ENERGY_BUCKET_EVIDENCE_V1,
-            queryWindowFrom: input.queryWindowFrom,
-            queryWindowTo: input.queryWindowTo,
-            segmentStartAt: input.segmentStartAt,
-            segmentEndAt: input.segmentEndAt,
-            providerObservedAt: input.providerObservedAt,
-            observationSetFingerprint: input.observationSetFingerprint,
-            bucketWidth: HV_CHARGING_COUNTER_BUCKET_WIDTH,
-            aggregationMode: HV_CHARGING_COUNTER_AGGREGATION_MODE,
-            bucketCount: input.buckets.length,
-            availableBucketCount,
-            missingBucketCount,
-            dimoQueryKind: HV_CHARGING_COUNTER_DIMO_QUERY_KIND,
-            idempotencyKey: batchIdempotencyKey,
-          },
-        });
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          const raced = await tx.batteryHvChargingCounterIngestionBatch.findUnique({
-            where: {
-              organizationId_vehicleId_idempotencyKey: {
-                organizationId: input.organizationId,
-                vehicleId: input.vehicleId,
-                idempotencyKey: batchIdempotencyKey,
-              },
-            },
-          });
-          if (raced) {
-            return {
-              created: false,
-              batchId: raced.id,
-              observationsInserted: 0,
-              revisionsCreated: 0,
-            };
-          }
-        }
-        throw error;
-      }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+      const batch = await tx.batteryHvChargingCounterIngestionBatch.create({
+        data: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          segmentFingerprint: input.segmentFingerprint,
+          sourceHvChargeSessionId: input.sourceHvChargeSessionId,
+          dimoTokenId: input.dimoTokenId,
+          evidenceContractVersion: M3_3_HV_CHARGING_ADDED_ENERGY_BUCKET_EVIDENCE_V1,
+          queryWindowFrom: input.queryWindowFrom,
+          queryWindowTo: input.queryWindowTo,
+          segmentStartAt: input.segmentStartAt,
+          segmentEndAt: input.segmentEndAt,
+          providerObservedAt: input.providerObservedAt,
+          observationSetFingerprint: input.observationSetFingerprint,
+          bucketWidth: HV_CHARGING_COUNTER_BUCKET_WIDTH,
+          aggregationMode: HV_CHARGING_COUNTER_AGGREGATION_MODE,
+          bucketCount: input.buckets.length,
+          availableBucketCount,
+          missingBucketCount,
+          dimoQueryKind: HV_CHARGING_COUNTER_DIMO_QUERY_KIND,
+          idempotencyKey: batchIdempotencyKey,
+        },
+      });
 
       let observationsInserted = 0;
       let revisionsCreated = 0;
@@ -291,21 +265,7 @@ export class HvChargingCounterEvidenceRepository {
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
           ) {
-            const raced = await tx.batteryHvChargingCounterObservation.findUnique({
-              where: {
-                organizationId_vehicleId_idempotencyKey: {
-                  organizationId: input.organizationId,
-                  vehicleId: input.vehicleId,
-                  idempotencyKey,
-                },
-              },
-            });
-            if (raced) {
-              continue;
-            }
-            throw new HvChargingCounterEvidencePersistenceConflictError(
-              `revision slot conflict segment=${input.segmentFingerprint} bucket=${bucket.bucketStartAt.toISOString()} revision=${revisionNumber}`,
-            );
+            throw error;
           }
           throw error;
         }
@@ -332,5 +292,32 @@ export class HvChargingCounterEvidenceRepository {
         revisionsCreated,
       };
     });
+    } catch (error) {
+      if (
+        error instanceof HvChargingCounterEvidenceEmptyWriteError ||
+        error instanceof HvChargingCounterEvidencePersistenceConflictError
+      ) {
+        throw error;
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findBatchByIdempotency({
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          idempotencyKey: batchIdempotencyKey,
+        });
+        if (raced) {
+          return {
+            created: false,
+            batchId: raced.id,
+            observationsInserted: 0,
+            revisionsCreated: 0,
+          };
+        }
+      }
+      throw error;
+    }
   }
 }

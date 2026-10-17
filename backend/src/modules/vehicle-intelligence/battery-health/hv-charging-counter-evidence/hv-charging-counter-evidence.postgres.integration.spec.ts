@@ -405,10 +405,15 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
       where: { organizationId: org.id, vehicleId: vehicle.id, segmentFingerprint },
     });
 
+    const corruptFingerprint =
+      fp.slice(0, 63) + (fp.endsWith('a') ? 'b' : 'a');
+    expect(corruptFingerprint).toHaveLength(64);
+    expect(corruptFingerprint).not.toBe(fp);
+
     await expect(
       repository.persistBatch({
         ...basePersistInput(org.id, vehicle.id, segmentFingerprint, bucketStart, buckets, fp),
-        observationSetFingerprint: `${fp}-mismatched`,
+        observationSetFingerprint: corruptFingerprint,
       }),
     ).rejects.toThrow('refusing empty observation write');
 
