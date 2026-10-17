@@ -80,7 +80,7 @@ import {
   computePossibleStartCoreFetchFrom,
   computeStartBoundaryWindowFrom,
 } from './start-boundary-window.util';
-import { isTripStartBoundaryAdmissionShadowEnabled } from './start-boundary-admission/trip-start-boundary-admission-shadow.config';
+import { isTripStartBoundaryAdmissionShadowEnabledForVehicle } from './start-boundary-admission/trip-start-boundary-admission-shadow.config';
 import {
   mergeShadowStartBoundaryIntoEvidenceSummary,
   runStartBoundaryAdmissionShadow,
@@ -1395,7 +1395,7 @@ export class TripDetectionOrchestrationService {
           clickhouseAssistedStart: analyticsStartDecision.evidencePath !== 'DIMO_ONLY',
           startConfirmationSummary: analyticsStartDecision.summary,
         };
-        if (isTripStartBoundaryAdmissionShadowEnabled()) {
+        if (isTripStartBoundaryAdmissionShadowEnabledForVehicle(vehicleId)) {
           try {
             const integrationModality = await resolveTripStartIntegrationModality(
               this.prisma,
