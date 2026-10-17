@@ -2018,3 +2018,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Outbox `claim_token`/`claim_expires_at`; fenced acks; expired PROCESSING reclaim; discovery excludes existing outbox rows; Nest bootstrap `resolveDiV0P2AutoProjectionV2Bootstrap`; scheduler registry `di_v0_p2_auto_projection_v2`; expanded Postgres/module tests |
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
+
+### EXP-021 S4 research extension — PR B pure road-matching library (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/*` — contracts, OSM parse/topology, baseline + Viterbi matchers, pipeline, GPS bucket evidence, F4-B promotion audit helpers; frozen LDI-10D Tesla/OSM fixtures under `architecture/drivingintelligence/evidence/ldi-10d/`; `npm run test:di:s4-research`; transpile-only Tesla replay harness `backend/scripts/test/di-s4-research-tesla-replay.harness.ts` |
+| WHY | Isolate reusable deterministic road-matching/context algorithms from offline PR #2051 research for future S4 shadow evaluation without enabling live execution |
+| SOURCE | PR #2051 audit reference `6311d8c375dc5652bd64212ca4ed208175dc8148` — logic re-extracted; fixture-bound IDs/time/OSM pins remain in evidence/tests only |
+| VALIDATION | Tesla replay parity: baseline `{ASSOCIATED:264, AMBIGUOUS:512, UNKNOWN:360}`, Viterbi `{ASSOCIATED:300, AMBIGUOUS:357, UNKNOWN:479}`; F4-B promotions=36, impossible transitions ≥5, STILL_AMBIGUOUS preserved |
+| NON_EFFECTS | No Nest/scheduler/BullMQ/Prisma/DIMO/OSM network; no S4A–S4F/L3/S1/QC/score/UI changes; no deploy; `ROAD_ID_GROUND_TRUTH=NOT_ASSESSABLE` unchanged |
