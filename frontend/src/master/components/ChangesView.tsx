@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dtc02-p2-webhook-capability-2026-10-17',
+    version: '4.9.2248',
+    title: 'DTC-02 P2 — webhook capability classification & poll/webhook parity (default OFF)',
+    summary: [
+      'Gated P2 webhook ingress (DTC_02_* env + allowlist, requires DTC-01A) with CONFIRMED_COMPLETE/PARTIAL/STALE/DUPLICATE/UNKNOWN classification from provider evidence.',
+      'Reuses DtcSnapshotApplyService and source-head watermarks; no false clears on partial/missing/unknown; synqdrive_dtc02_webhook_capability_total metric.',
+      'Legacy and 01A paths unchanged when DTC_02 flags OFF; no deploy or production activation in this PR.',
+    ],
+    reason:
+      'Harden webhook vs poll convergence and observability before any webhook-first pilot without changing legacy behavior under default flags.',
+    previousBehavior:
+      '01A webhook path built proposals directly without explicit capability classification or P2 metrics.',
+    details:
+      'dtc-02.config.ts, dtc-02-webhook-capability.ts, dimo-webhook.controller handleDtcEvent01aP2, architecture/dtc-error-codes/evidence/DTC02_P2_WEBHOOK_CAPABILITY.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T17:00:00.000Z',
+  },
+  {
     id: 'vsi-p5h1-profile-revision-history-2026-10-17',
     version: '4.9.2247',
     title: 'VSI P5-H1 — immutable signal profile revision history (capture gate default OFF)',

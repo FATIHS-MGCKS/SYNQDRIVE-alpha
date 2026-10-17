@@ -45,6 +45,14 @@ const ALLOWED_WEBHOOK_PHASES = new Set([
 
 const ALLOWED_EVIDENCE = new Set(['legacy', 'partial', 'complete', 'unknown']);
 
+const ALLOWED_WEBHOOK_CAPABILITY = new Set([
+  'CONFIRMED_COMPLETE',
+  'PARTIAL',
+  'STALE',
+  'DUPLICATE',
+  'UNKNOWN',
+]);
+
 export type Dtc02MetricsHandles = {
   schedulerTickTotal: Counter<string>;
   fanOutVehiclesTotal: Counter<string>;
@@ -56,6 +64,7 @@ export type Dtc02MetricsHandles = {
   webhookTotal: Counter<string>;
   webhookSkipTotal: Counter<string>;
   webhookEvidenceTotal: Counter<string>;
+  webhookCapabilityTotal: Counter<string>;
   outboxPending: Gauge<string>;
   outboxUnprocessedErrors: Gauge<string>;
   fleetFreshnessVehicles: Gauge<string>;
@@ -178,6 +187,13 @@ export function registerDtc02Metrics(registry: Registry): Dtc02MetricsHandles {
     registers: [registry],
   });
 
+  const webhookCapabilityTotal = new Counter({
+    name: 'synqdrive_dtc02_webhook_capability_total',
+    help: 'DTC-02 P2 webhook ingress capability classification (no vehicle labels)',
+    labelNames: ['classification'],
+    registers: [registry],
+  });
+
   const outboxPending = new Gauge({
     name: 'synqdrive_dtc02_outbox_pending',
     help: 'Unprocessed vehicle_dtc_snapshot_outbox rows',
@@ -214,6 +230,7 @@ export function registerDtc02Metrics(registry: Registry): Dtc02MetricsHandles {
     webhookTotal,
     webhookSkipTotal,
     webhookEvidenceTotal,
+    webhookCapabilityTotal,
     outboxPending,
     outboxUnprocessedErrors,
     fleetFreshnessVehicles,
@@ -239,4 +256,12 @@ export function assertDtc02MetricLabelsForTests(handles: Dtc02MetricsHandles): v
   for (const evidence of ALLOWED_EVIDENCE) {
     handles.webhookEvidenceTotal.inc({ evidence }, 0);
   }
+  for (const classification of ALLOWED_WEBHOOK_CAPABILITY) {
+    handles.webhookCapabilityTotal.inc({ classification }, 0);
+  }
+}
+
+export function normalizeWebhookCapabilityClassification(raw: string | undefined): string {
+  const value = (raw ?? '').trim().toUpperCase();
+  return ALLOWED_WEBHOOK_CAPABILITY.has(value) ? value : 'UNKNOWN';
 }

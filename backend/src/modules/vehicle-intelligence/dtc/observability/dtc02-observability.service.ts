@@ -8,6 +8,7 @@ import {
   normalizePollOutcome,
   normalizePollPath,
   normalizeWebhookSkipReason,
+  normalizeWebhookCapabilityClassification,
   registerDtc02Metrics,
   safeMetricCall,
   type Dtc02MetricsHandles,
@@ -103,6 +104,21 @@ export class Dtc02ObservabilityService implements OnModuleInit {
   recordWebhookEvidence(evidence: 'legacy' | 'partial' | 'complete' | 'unknown'): void {
     safeMetricCall(() => {
       this.handles?.webhookEvidenceTotal.inc({ evidence });
+    });
+  }
+
+  recordWebhookCapability(
+    classification:
+      | 'CONFIRMED_COMPLETE'
+      | 'PARTIAL'
+      | 'STALE'
+      | 'DUPLICATE'
+      | 'UNKNOWN',
+  ): void {
+    safeMetricCall(() => {
+      this.handles?.webhookCapabilityTotal.inc({
+        classification: normalizeWebhookCapabilityClassification(classification),
+      });
     });
   }
 
