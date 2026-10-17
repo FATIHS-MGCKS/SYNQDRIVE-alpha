@@ -434,7 +434,10 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     expect(first.code).toBe(0);
     expect(first.output).toContain(MIGRATION_NAME);
     expect(first.output).toContain(S4B_MIGRATION_NAME);
-    expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_FULL_TABLES);
+    const deployed = await s4TablesPresent(viaPrisma.prisma);
+    expect(deployed.filter((t) => S4_FULL_TABLES.includes(t)).sort()).toEqual(S4_FULL_TABLES);
+    expect(deployed.filter((t) => S4_RESEARCH_TABLES.includes(t)).sort()).toEqual(S4_RESEARCH_TABLES);
+    expect(deployed).toEqual(S4_PRISMA_DEPLOY_FULL_TABLES);
     const second = await viaPrisma.applyWithPrisma();
     expect(second.code).toBe(0);
     expect(second.output).toContain('No pending migrations to apply');
