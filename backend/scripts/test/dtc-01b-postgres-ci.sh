@@ -40,7 +40,20 @@ for mig in 20261015180000_vehicle_dtc_source_head_01b 20261015193000_vehicle_dtc
   fi
 done
 
-# Ephemeral disposable DB: Prisma schema may include columns not yet in the migration chain (VO/RFRF precedent).
+# Ephemeral disposable DB: apply targeted parity for columns present in schema.prisma but absent from the
+# migration chain (VO/RFRF precedent). Avoid full `prisma db push` when possible — db push can emit invalid
+# SQL (e.g. RenamePrimaryKey batches) on large drift surfaces.
+apply_ephemeral_schema_parity() {
+  local parity_sql="${ROOT}/scripts/test/sql/ensure-ephemeral-prisma-schema-parity.sql"
+  if [[ ! -f "${parity_sql}" ]]; then
+    echo "missing parity SQL: ${parity_sql}" >&2
+    exit 1
+  fi
+  docker exec -i "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${DISPOSABLE_DB}" -v ON_ERROR_STOP=1 \
+    < "${parity_sql}"
+  echo "TEST_SCHEMA_DRIFT_SYNC=TARGETED_SQL_PARITY"
+}
+
 verify_dtc01b_prisma_schema() {
   node <<'NODE'
 const { PrismaClient } = require('@prisma/client');
@@ -61,12 +74,12 @@ NODE
 }
 
 sync_schema_drift_if_needed() {
+  apply_ephemeral_schema_parity
   if verify_dtc01b_prisma_schema 2>/dev/null; then
-    echo "TEST_SCHEMA_DRIFT_SYNC=NONE"
     return 0
   fi
 
-  echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH_TEST_ONLY"
+  echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH_FALLBACK"
   local log
   log="$(mktemp /tmp/dtc01b-dbpush.XXXXXX.log)"
   set +e
