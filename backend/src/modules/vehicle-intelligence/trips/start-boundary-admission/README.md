@@ -4,6 +4,8 @@ Pure resolver + shadow comparison for evidence-backed live start boundaries.
 
 **P1B:** Optional runtime shadow at start confirmation (`TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED`, default OFF). Legacy `resolveConfirmedStartBoundary` remains the **canonical writer**; shadow results land under `shadowStartBoundaryAdmission` in FSM evidence summary only. EXP021 / video anchors are **offline** (PR #2051); they **do not** feed runtime boundary selection.
 
+**P1B.5:** When global shadow is ON, `TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS` (comma-separated UUIDs) scopes execution per vehicle. Empty allowlist → shadow for **nobody** (fail-closed). Per-vehicle evidence (legacy vs shadow start, delta, movement sources, coverage, decision, integration modality from `VehicleDataSourceLink`) is stored in FSM evidence — not in Prometheus vehicle labels.
+
 ## Principle
 
 Provider segment existence may establish **candidate trip context**, but **physical start-boundary authority** requires **temporally localized** movement corroboration (core speed/odometer, route position/speed). Segment aggregates (`distanceKm`, max speed, segment odometer delta) support **activity context** only — they do **not** authorize exact `segment.startTime`.

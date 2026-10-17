@@ -10,6 +10,10 @@ export const TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV =
 export const TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED_ENV =
   'TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED';
 
+/** Comma-separated vehicle UUID allowlist; required when global shadow is ON (fail-closed when empty). */
+export const TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV =
+  'TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS';
+
 export function parseTripStartBoundaryAdmissionShadowEnabled(
   raw: string | undefined,
   fallback = false,
@@ -37,4 +41,36 @@ export function isTripStartBoundaryAdmissionShadowRouteFetchEnabled(
     env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED_ENV],
     false,
   );
+}
+
+export function parseTripStartBoundaryAdmissionShadowVehicleAllowlist(
+  raw: string | undefined,
+): Set<string> {
+  if (!raw?.trim()) return new Set();
+  return new Set(
+    raw
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * P1B.5 — vehicle-scoped shadow pilot gate (global OFF by default).
+ * Global ON without a non-empty allowlist enables shadow for nobody (fail-closed).
+ */
+export function isTripStartBoundaryAdmissionShadowEnabledForVehicle(
+  vehicleId: string,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (!isTripStartBoundaryAdmissionShadowEnabled(env)) {
+    return false;
+  }
+  const allowlist = parseTripStartBoundaryAdmissionShadowVehicleAllowlist(
+    env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV],
+  );
+  if (allowlist.size === 0) {
+    return false;
+  }
+  return allowlist.has(vehicleId);
 }

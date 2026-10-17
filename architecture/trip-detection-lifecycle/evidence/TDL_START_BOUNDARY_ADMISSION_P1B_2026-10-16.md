@@ -68,6 +68,22 @@ This is an **admission / shadow** outcome: it does **not** claim `03:38:26.989Z`
 
 Resolved read-only from active DIMO `VehicleDataSourceLink` connection-identity metadata (`verifiedModality`). Not inferred from EV/ICE profile or segment detection mechanism. Fail-open → `UNKNOWN`.
 
+## P1B.5 — vehicle-scoped pilot allowlist (2026-10-17)
+
+| Env | Semantics |
+|-----|-----------|
+| `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED` | Global gate (default **OFF**) |
+| `TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS` | Comma-separated vehicle UUIDs; required when global ON; **empty → nobody** (fail-closed) |
+
+**Planned two-vehicle pilot (ops reference, not hardcoded in runtime):**
+
+| Pilot | Vehicle ID | DIMO token |
+|-------|------------|------------|
+| Tesla Model 3 SR | `68868291-5478-42cd-b0c4-cc77b2a78e21` | `186946` |
+| VW Tiguan | `19fedd4b-c4e8-4de8-a125-dab293326e7e` | `192922` |
+
+Per-vehicle shadow payload remains under `shadowStartBoundaryAdmission` in FSM evidence (legacy vs proposed start, delta, movement sources, coverage, decision, integration modality from data link). Prometheus counters stay **without** vehicle-id labels.
+
 ## Validation
 
 ```bash

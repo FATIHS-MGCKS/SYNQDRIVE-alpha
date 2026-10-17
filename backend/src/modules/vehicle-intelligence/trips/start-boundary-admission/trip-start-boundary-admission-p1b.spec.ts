@@ -114,6 +114,7 @@ describe('trip-start-boundary-admission P1B', () => {
       providerContext: {},
       env: {
         ...envOn,
+        TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS: 'veh-1',
         TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED: 'true',
       },
     });

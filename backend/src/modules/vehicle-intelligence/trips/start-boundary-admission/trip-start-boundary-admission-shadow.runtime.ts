@@ -7,7 +7,7 @@ import type { TripStartIntegrationModality } from './trip-start-boundary-admissi
 import type { StartBoundaryEvidenceContext } from './trip-start-boundary-legacy-resolution';
 import type { TripCoreDataPoint } from '../../../dimo/dimo-segments.service';
 import {
-  isTripStartBoundaryAdmissionShadowEnabled,
+  isTripStartBoundaryAdmissionShadowEnabledForVehicle,
   isTripStartBoundaryAdmissionShadowRouteFetchEnabled,
 } from './trip-start-boundary-admission-shadow.config';
 import { normalizeSegmentDetectionMechanism } from './trip-start-boundary-admission.types';
@@ -90,7 +90,7 @@ export async function runStartBoundaryAdmissionShadow(
   params: RunStartBoundaryAdmissionShadowParams,
 ): Promise<ShadowStartBoundaryAdmissionSummary | null> {
   const env = params.env ?? process.env;
-  if (!isTripStartBoundaryAdmissionShadowEnabled(env)) {
+  if (!isTripStartBoundaryAdmissionShadowEnabledForVehicle(params.vehicleId, env)) {
     return null;
   }
 

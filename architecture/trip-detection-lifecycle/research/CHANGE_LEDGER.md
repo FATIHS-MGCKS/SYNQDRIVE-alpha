@@ -4,6 +4,7 @@ Append-only record for this authority directory.
 
 | Date (UTC) | Change | Workstream | Evidence |
 |------------|--------|------------|----------|
+| 2026-10-17 | P1B.5 vehicle-scoped shadow allowlist (`TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS`); global OFF default; fail-closed empty allowlist; two-pilot UUID test matrix (Tesla/Tiguan); no Prometheus vehicle labels | TDL P1B | [TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md](../evidence/TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md) |
 | 2026-09-06 | Created partial authority at `architecture/trip-detection-lifecycle/` | Canonical authority bootstrap | Branch `cursor/trip-detection-lifecycle-authority-bootstrap-64c8` |
 | 2026-09-06 | Registry transition `NOT_STARTED` → `AUDIT_IN_PROGRESS` | Same | `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` |
 | 2026-09-06 | Indexed P1 + P2–R8 + Production evidence | Same | [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
