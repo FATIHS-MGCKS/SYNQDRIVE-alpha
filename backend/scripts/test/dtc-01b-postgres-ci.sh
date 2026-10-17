@@ -13,9 +13,45 @@ PG_PORT="${CI_PG_PORT:-5432}"
 BASE_DB="${CI_PG_BASE_DB:-synqdrive}"
 DISPOSABLE_DB="${DTC01B_DISPOSABLE_DB:-dtc01b_test_ci}"
 
+fail_closed_database_url() {
+  local name="$1" url="$2"
+  local lower="${url,,}"
+  case "$lower" in
+    *127.0.0.1*|*localhost*|*@postgres:*) ;;
+    *)
+      echo "${name} must target ephemeral local PostgreSQL (127.0.0.1, localhost, or CI service host postgres)" >&2
+      exit 1
+      ;;
+  esac
+  case "$lower" in
+    *srv1374778*|*app.synqdrive.eu*|*hstgr.cloud*|*mein-vps*|*synqdrive.eu*)
+      echo "${name} must not reference production hosts" >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_disposable_database_name() {
+  local db_name="$1"
+  if [[ ! "${db_name}" =~ ^dtc01b_test_[a-zA-Z0-9_]+$ ]]; then
+    echo "Refusing: database name must match dtc01b_test_* (got ${db_name})" >&2
+    exit 1
+  fi
+  local db_lower="${db_name,,}"
+  case "${db_lower}" in
+    synqdrive | production | prod | app | postgres | template0 | template1)
+      echo "Refusing: production-like database name (${db_name})" >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_disposable_database_name "${DISPOSABLE_DB}"
+
 bash scripts/test/ci-start-postgres.sh
 
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${DISPOSABLE_DB}?schema=public"
+fail_closed_database_url "DATABASE_URL" "${DATABASE_URL}"
 
 docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${BASE_DB}" -v ON_ERROR_STOP=1 \
   -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DISPOSABLE_DB}' AND pid <> pg_backend_pid();" \
@@ -44,6 +80,8 @@ done
 # migration chain (VO/RFRF precedent). Avoid full `prisma db push` when possible — db push can emit invalid
 # SQL (e.g. RenamePrimaryKey batches) on large drift surfaces.
 apply_ephemeral_schema_parity() {
+  fail_closed_database_url "DATABASE_URL (parity)" "${DATABASE_URL}"
+  assert_disposable_database_name "${DISPOSABLE_DB}"
   local parity_sql="${ROOT}/scripts/test/sql/ensure-ephemeral-prisma-schema-parity.sql"
   if [[ ! -f "${parity_sql}" ]]; then
     echo "missing parity SQL: ${parity_sql}" >&2
