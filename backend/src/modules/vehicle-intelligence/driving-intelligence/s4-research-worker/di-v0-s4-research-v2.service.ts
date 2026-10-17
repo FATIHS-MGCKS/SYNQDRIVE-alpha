@@ -9,6 +9,7 @@ import {
 import { DiV0S4ResearchOutboxRepository } from './di-v0-s4-research-outbox.repository';
 import { processDiV0S4ResearchRoadMatchingV2 } from './di-v0-s4-research-processor';
 import { DiV0S4ResearchRunRepository } from './di-v0-s4-research-run.repository';
+import { DiV0S4ResearchS4ReadRepository } from './di-v0-s4-research-s4-read.repository';
 import {
   evaluateDiV0S4ResearchEnablement,
   parseDiV0S4ResearchControlPlaneConfig,
@@ -40,6 +41,7 @@ export type DiV0S4ResearchV2PassResult = {
 export class DiV0S4ResearchV2Service {
   private readonly outbox: DiV0S4ResearchOutboxRepository;
   private readonly runs: DiV0S4ResearchRunRepository;
+  private readonly s4Read: DiV0S4ResearchS4ReadRepository;
   private readonly runtimeConfig: DiV0S4ResearchV2RuntimeConfig;
   private readonly s4ControlPlane: DiV0S4ControlPlaneConfig;
   private readonly osmDataVersion: string;
@@ -54,6 +56,7 @@ export class DiV0S4ResearchV2Service {
     this.osmDataVersion = resolveOsmDataVersion(process.env);
     this.outbox = new DiV0S4ResearchOutboxRepository(prisma as unknown as PrismaClient);
     this.runs = new DiV0S4ResearchRunRepository(prisma as unknown as PrismaClient);
+    this.s4Read = new DiV0S4ResearchS4ReadRepository(prisma as unknown as PrismaClient);
   }
 
   isConfigured(): boolean {
@@ -124,14 +127,13 @@ export class DiV0S4ResearchV2Service {
     const leaseOk = await this.outbox.renewClaimLease(row.outboxId, row.claimToken, now);
     if (!leaseOk) return 'FAILED';
 
-    const killRow = await this.prisma.diV0S4Control.findFirst();
+    const killState = await this.s4Read.loadGlobalKillState();
     const kill = evaluateDiV0S4KillRow(
-      killRow ? { kind: 'ROW', killState: killRow.killState } : { kind: 'MISSING' },
+      killState != null
+        ? { kind: 'ROW', killState: killState as 'KILLED' | 'NOT_KILLED' }
+        : { kind: 'MISSING' },
     );
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: row.vehicleId },
-      select: { organizationId: true },
-    });
+    const vehicleOrganizationId = await this.s4Read.loadVehicleOrganizationId(row.vehicleId);
     const enable = evaluateDiV0S4ResearchEnablement(
       this.runtimeConfig.controlPlane,
       this.s4ControlPlane,
@@ -139,7 +141,7 @@ export class DiV0S4ResearchV2Service {
       {
         organizationId: row.organizationId,
         vehicleId: row.vehicleId,
-        vehicleOrganizationId: vehicle?.organizationId ?? null,
+        vehicleOrganizationId,
       },
     );
     if (!enable.enabled) {
@@ -147,17 +149,19 @@ export class DiV0S4ResearchV2Service {
       return 'FAILED';
     }
 
-    const wi = await this.prisma.diV0S4WorkItem.findFirst({
-      where: { id: row.workItemId, organizationId: row.organizationId, tripId: row.tripId },
+    const wi = await this.s4Read.loadWorkItemForResearch({
+      workItemId: row.workItemId,
+      organizationId: row.organizationId,
+      tripId: row.tripId,
     });
-    if (!wi || wi.status !== 'COMPLETED' || !wi.pinnedSnapshotHash) {
+    if (!wi || wi.status !== 'COMPLETED') {
       await this.outbox.markSkipped(row.outboxId, row.claimToken, 'WORK_ITEM_INELIGIBLE');
       return 'FAILED';
     }
 
     const intentKey = buildResearchIntentKey({
       pinnedSnapshotHash: wi.pinnedSnapshotHash,
-      combinedInputIdentity: wi.combinedInputIdentity ?? '',
+      combinedInputIdentity: wi.combinedInputIdentity,
       osmDataVersion: this.osmDataVersion,
     });
     if (intentKey !== row.researchIntentKey) {
@@ -165,12 +169,10 @@ export class DiV0S4ResearchV2Service {
       return 'FAILED';
     }
 
-    const snap = await this.prisma.diV0S4EvidenceSnapshot.findFirst({
-      where: {
-        organizationId: row.organizationId,
-        tripId: row.tripId,
-        snapshotHash: wi.pinnedSnapshotHash,
-      },
+    const snap = await this.s4Read.loadEvidenceSnapshot({
+      organizationId: row.organizationId,
+      tripId: row.tripId,
+      snapshotHash: wi.pinnedSnapshotHash,
     });
     if (!snap) {
       await this.outbox.markSkipped(row.outboxId, row.claimToken, 'SNAPSHOT_MISSING');
@@ -179,15 +181,10 @@ export class DiV0S4ResearchV2Service {
 
     let shadowByBucket = new Map<string, DiV0S4ResearchShadowBucketEvidence>();
     if (wi.shadowRunId) {
-      const intervals = await this.prisma.diV0ShadowInterval.findMany({
-        where: { shadowRunId: wi.shadowRunId, organizationId: row.organizationId, tripId: row.tripId },
-        select: {
-          intervalStart: true,
-          estimatedSpeedKmh: true,
-          motionState: true,
-          speedEvidenceState: true,
-          valueConfidence: true,
-        },
+      const intervals = await this.s4Read.loadShadowIntervals({
+        shadowRunId: wi.shadowRunId,
+        organizationId: row.organizationId,
+        tripId: row.tripId,
       });
       shadowByBucket = buildShadowEvidenceByBucket(intervals);
     }
@@ -203,7 +200,7 @@ export class DiV0S4ResearchV2Service {
         boundaryFingerprint: wi.boundaryFingerprint,
         snapshotHash: wi.pinnedSnapshotHash,
         sourceFamily: wi.sourceFamily,
-        combinedInputIdentity: wi.combinedInputIdentity ?? '',
+        combinedInputIdentity: wi.combinedInputIdentity,
         snapshotRow: {
           organization_id: snap.organizationId,
           vehicle_id: snap.vehicleId,
@@ -212,7 +209,7 @@ export class DiV0S4ResearchV2Service {
           acquisition_window_start: snap.acquisitionWindowStart,
           acquisition_window_end: snap.acquisitionWindowEnd,
           channel_manifest: snap.channelManifest,
-          payload_gzip: Buffer.from(snap.payloadGzip),
+          payload_gzip: snap.payloadGzip,
           uncompressed_bytes: snap.uncompressedBytes,
         },
         shadowByBucket,
@@ -231,7 +228,7 @@ export class DiV0S4ResearchV2Service {
       vehicleId: row.vehicleId,
       tripId: row.tripId,
       workItemId: row.workItemId,
-      combinedInputIdentity: wi.combinedInputIdentity ?? '',
+      combinedInputIdentity: wi.combinedInputIdentity,
       pinnedSnapshotHash: wi.pinnedSnapshotHash,
       researchIntentKey: intentKey,
       result: runResult,

@@ -44,4 +44,15 @@ describe('DI V0 S4 research worker dormant-by-construction audit', () => {
     expect(proc.includes("status = 'FAILED'")).toBe(false);
     expect(proc.includes('di_v0_s4_work_items')).toBe(false);
   });
+
+  it('uses fenced SQL read repository for S4 tables (no Prisma S4 delegates in production)', () => {
+    const files = fs.readdirSync(WORKER_DIR).filter((f) => f.endsWith('.ts') && !f.includes('.spec.'));
+    for (const file of files) {
+      const body = stripComments(fs.readFileSync(path.join(WORKER_DIR, file), 'utf8'));
+      expect(body).not.toMatch(/\.diV0S4[A-Za-z]*\s*\./);
+    }
+    expect(
+      fs.existsSync(path.join(WORKER_DIR, 'di-v0-s4-research-s4-read.repository.ts')),
+    ).toBe(true);
+  });
 });

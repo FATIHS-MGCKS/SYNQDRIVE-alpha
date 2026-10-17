@@ -1,9 +1,23 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { Worker } from 'worker_threads';
 import type { RoadMatchingPipelineInput, RoadMatchingPipelineResult } from '../s4-research/contracts';
 
 type WorkerReply =
   | { ok: true; result: RoadMatchingPipelineResult }
   | { ok: false; error: string };
+
+function resolvePipelineWorkerPath(): { script: string; execArgv?: string[] } {
+  const js = join(__dirname, 'di-v0-s4-research-pipeline.worker.js');
+  if (existsSync(js)) {
+    return { script: js };
+  }
+  const ts = join(__dirname, 'di-v0-s4-research-pipeline.worker.ts');
+  return {
+    script: ts,
+    execArgv: ['--require', 'ts-node/register/transpile-only'],
+  };
+}
 
 /**
  * Runs the CPU-heavy pipeline in a worker thread so deadlineMs can terminate it.
@@ -13,20 +27,10 @@ export async function runRoadMatchingPipelineIsolated(
   input: RoadMatchingPipelineInput,
   deadlineMs: number,
 ): Promise<RoadMatchingPipelineResult> {
-  const pipelineModule = require.resolve('../s4-research');
-  const workerSource = `
-    const { parentPort, workerData } = require('worker_threads');
-    const { runRoadMatchingPipeline } = require(${JSON.stringify(pipelineModule)});
-    try {
-      const result = runRoadMatchingPipeline(workerData.input);
-      parentPort.postMessage({ ok: true, result });
-    } catch (e) {
-      parentPort.postMessage({ ok: false, error: e && e.message ? e.message : String(e) });
-    }
-  `;
+  const { script, execArgv } = resolvePipelineWorkerPath();
 
   return new Promise<RoadMatchingPipelineResult>((resolve, reject) => {
-    const worker = new Worker(workerSource, { eval: true, workerData: { input } });
+    const worker = new Worker(script, { workerData: { input }, execArgv });
     const timer = setTimeout(() => {
       void worker.terminate();
       finish(() => reject(new Error('PROCESSING_TIMEOUT')));
@@ -51,7 +55,7 @@ export async function runRoadMatchingPipelineIsolated(
       fn();
     };
     worker.once('exit', (code) => {
-      if (code !== 0) {
+      if (!settled && code !== 0) {
         finish(() => {
           clearTimeout(timer);
           reject(new Error(`PIPELINE_WORKER_EXIT_${code}`));

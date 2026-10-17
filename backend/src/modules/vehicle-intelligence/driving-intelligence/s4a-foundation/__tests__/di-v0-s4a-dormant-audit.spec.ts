@@ -9,6 +9,10 @@ import {
   P2_TRIP_SPEED_QUALITY_DIR,
   stripComments,
 } from './di-v0-s4a-dormant-audit.p2-fence';
+import {
+  collectS4ResearchS4aFenceViolations,
+  S4_RESEARCH_WORKER_DIR,
+} from './di-v0-s4a-dormant-audit.research-fence';
 
 const REPO_ROOT = path.join(__dirname, '../../../../../../..');
 const FOUNDATION_DIR = path.join(__dirname, '..');
@@ -18,6 +22,7 @@ const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
+const S4_RESEARCH_DIR = S4_RESEARCH_WORKER_DIR;
 const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
 const TRIPS_DI_BOUNDARY_ADMISSION_DIR = path.join(__dirname, '../../../trips/di-boundary-admission');
 
@@ -99,6 +104,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4D_DIR + path.sep) ||
           file.startsWith(S4E_DIR + path.sep) ||
           file.startsWith(S4F_DIR + path.sep) ||
+          file.startsWith(S4_RESEARCH_DIR + path.sep) ||
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
           file.startsWith(TRIPS_DI_BOUNDARY_ADMISSION_DIR + path.sep) ||
           file.endsWith('backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts') ||
@@ -118,6 +124,9 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           if (p2Violations.length > 0) hits.push(...p2Violations.map((v) => `${file}: ${v}`));
           continue;
         }
+        const researchViolations = collectS4ResearchS4aFenceViolations(file, source);
+        if (researchViolations.length > 0) hits.push(...researchViolations.map((v) => `${file}: ${v}`));
+        if (file.startsWith(S4_RESEARCH_DIR + path.sep)) continue;
         if (isUnauthorizedNonP2S4aImport(file, source)) hits.push(file);
       }
     }
@@ -180,6 +189,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
     const hits: string[] = [];
     for (const file of walk(path.join(REPO_ROOT, 'backend/src'), /\.ts$/)) {
       if (file.includes(`${path.sep}platform-admin${path.sep}platform-ops-di-s4`)) continue;
+      if (file.startsWith(S4_RESEARCH_DIR + path.sep)) continue;
       if (/\.diV0S4[A-Za-z]*\s*\./.test(fs.readFileSync(file, 'utf8'))) hits.push(file);
     }
     expect(hits).toEqual([]);
@@ -193,6 +203,14 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
       if (/SET\s+status\s*=\s*\$\{/.test(code)) offending.push(`${path.basename(file)}: parameterised status`);
     }
     expect(offending).toEqual([]);
+  });
+
+  it('S4 research worker S4A import fence (read-only allowlist)', () => {
+    const violations: string[] = [];
+    for (const file of walk(S4_RESEARCH_DIR, /\.ts$/)) {
+      violations.push(...collectS4ResearchS4aFenceViolations(file, fs.readFileSync(file, 'utf8')));
+    }
+    expect(violations).toEqual([]);
   });
 
   describe('P2 trip-speed-quality S4A import fence (negative guards)', () => {

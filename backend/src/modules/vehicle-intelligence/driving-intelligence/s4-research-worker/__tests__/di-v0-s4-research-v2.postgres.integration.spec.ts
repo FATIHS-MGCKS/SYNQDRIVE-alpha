@@ -14,7 +14,7 @@ import {
   restoreResearchTestEnv,
   seedS4ResearchCompletedPrimaryFixture,
 } from './di-v0-s4-research-postgres-harness';
-import { SYNTHETIC_RESEARCH_OSM_FIXTURE } from './di-v0-s4-research-fixtures';
+import { SYNTHETIC_RESEARCH_OSM_FIXTURE, mutableOsmFixture } from './di-v0-s4-research-fixtures';
 import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)('S4 research V2 worker (postgres)', () => {
@@ -89,10 +89,15 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
     const envBackup = applyResearchTestEnv(fx.tenant);
     const emptyOsm = new DiV0S4ResearchFileRegistryOsmProvider(new Map());
     try {
-      const wi = await db.diV0S4WorkItem.findFirst({ where: { id: fx.workItemId } });
+      const wiRows = await db.$queryRaw<
+        Array<{ pinned_snapshot_hash: string; combined_input_identity: string | null }>
+      >`
+        SELECT pinned_snapshot_hash, combined_input_identity
+        FROM di_v0_s4_work_items WHERE id = ${fx.workItemId} LIMIT 1`;
+      const wi = wiRows[0]!;
       const intentKey = buildResearchIntentKey({
-        pinnedSnapshotHash: wi!.pinnedSnapshotHash!,
-        combinedInputIdentity: wi!.combinedInputIdentity ?? '',
+        pinnedSnapshotHash: wi.pinned_snapshot_hash,
+        combinedInputIdentity: wi.combined_input_identity ?? '',
         osmDataVersion: resolveOsmDataVersion(),
       });
 
@@ -104,7 +109,7 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
       expect(neutralRows.some((r) => r.research_status === 'ROAD_CONTEXT_UNAVAILABLE')).toBe(true);
       expect(await succeededCount(fx.workItemId, intentKey)).toBe(0);
 
-      const registry = new Map([[fx.tenant.tripId, SYNTHETIC_RESEARCH_OSM_FIXTURE]]);
+      const registry = new Map([[fx.tenant.tripId, mutableOsmFixture(SYNTHETIC_RESEARCH_OSM_FIXTURE)]]);
       const svcHit = mkSvc(new DiV0S4ResearchFileRegistryOsmProvider(registry));
       const pass2 = await svcHit.runPass();
       expect(pass2.succeeded).toBe(1);

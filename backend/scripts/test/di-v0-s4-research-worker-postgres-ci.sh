@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 EXPECTED_V2_POSTGRES_TESTS=7
-EXPECTED_MATRIX_POSTGRES_TESTS=11
+EXPECTED_MATRIX_POSTGRES_TESTS=10
 
 fail_closed_url() {
   local name="$1" url="$2"

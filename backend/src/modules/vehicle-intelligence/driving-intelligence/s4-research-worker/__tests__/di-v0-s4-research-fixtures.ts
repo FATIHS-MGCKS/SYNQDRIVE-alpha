@@ -13,6 +13,15 @@ export const SYNTHETIC_RESEARCH_OSM_FIXTURE = {
   ],
 } as const;
 
+export type DiV0S4ResearchOsmRegistryBody = { elements?: unknown[] };
+
+/** Mutable copy for test registries (readonly `as const` fixtures are not assignable to Map values). */
+export function mutableOsmFixture(
+  fixture: Readonly<{ elements?: readonly unknown[] }>,
+): DiV0S4ResearchOsmRegistryBody {
+  return JSON.parse(JSON.stringify(fixture)) as DiV0S4ResearchOsmRegistryBody;
+}
+
 /** Ruptela-style corridor fixture (distinct way id). */
 export const RUPTELA_RESEARCH_OSM_FIXTURE = {
   elements: [

@@ -16,7 +16,11 @@ import {
   restoreResearchTestEnv,
   seedS4ResearchCompletedPrimaryFixture,
 } from './di-v0-s4-research-postgres-harness';
-import { SYNTHETIC_RESEARCH_OSM_FIXTURE, RUPTELA_RESEARCH_OSM_FIXTURE } from './di-v0-s4-research-fixtures';
+import {
+  SYNTHETIC_RESEARCH_OSM_FIXTURE,
+  RUPTELA_RESEARCH_OSM_FIXTURE,
+  mutableOsmFixture,
+} from './di-v0-s4-research-fixtures';
 import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
 
 export type MatrixCaseStatus = 'EXECUTED' | 'NOT_EXECUTED';
@@ -83,7 +87,7 @@ export const MATRIX_CASE_STATUS: Record<number, { name: string; status: MatrixCa
     const fx = await seedS4ResearchCompletedPrimaryFixture(db);
     tenants.push(fx.tenant);
     const envBackup = applyResearchTestEnv(fx.tenant);
-    const registry = new Map<string, { elements?: unknown[] }>([[fx.tenant.tripId, SYNTHETIC_RESEARCH_OSM_FIXTURE]]);
+    const registry = new Map([[fx.tenant.tripId, mutableOsmFixture(SYNTHETIC_RESEARCH_OSM_FIXTURE)]]);
     try {
       const svc = mkSvc(new DiV0S4ResearchFileRegistryOsmProvider(registry));
       const pass = await svc.runPass();
@@ -115,7 +119,7 @@ export const MATRIX_CASE_STATUS: Record<number, { name: string; status: MatrixCa
     const fx = await seedS4ResearchCompletedPrimaryFixture(db);
     tenants.push(fx.tenant);
     const envBackup = applyResearchTestEnv(fx.tenant);
-    const registry = new Map([[fx.tenant.tripId, SYNTHETIC_RESEARCH_OSM_FIXTURE]]);
+    const registry = new Map([[fx.tenant.tripId, mutableOsmFixture(SYNTHETIC_RESEARCH_OSM_FIXTURE)]]);
     try {
       const svc = mkSvc(new DiV0S4ResearchFileRegistryOsmProvider(registry));
       await svc.runPass();
@@ -204,7 +208,7 @@ export const MATRIX_CASE_STATUS: Record<number, { name: string; status: MatrixCa
     const fx = await seedS4ResearchCompletedPrimaryFixture(db);
     tenants.push(fx.tenant);
     const provider = new DiV0S4ResearchFileRegistryOsmProvider(
-      new Map([[fx.tenant.tripId, RUPTELA_RESEARCH_OSM_FIXTURE]]),
+      new Map([[fx.tenant.tripId, mutableOsmFixture(RUPTELA_RESEARCH_OSM_FIXTURE)]]),
     );
     const res = await provider.resolve({
       organizationId: fx.tenant.organizationId,

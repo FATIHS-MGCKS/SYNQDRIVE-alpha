@@ -18,20 +18,10 @@ describe('DiV0S4ResearchModule bootstrap', () => {
     $queryRaw: jest.Mock;
     $executeRaw: jest.Mock;
     $transaction: jest.Mock;
-    diV0S4Control: { findFirst: jest.Mock };
-    vehicle: { findUnique: jest.Mock };
-    diV0S4WorkItem: { findFirst: jest.Mock };
-    diV0S4EvidenceSnapshot: { findFirst: jest.Mock };
-    diV0ShadowInterval: { findMany: jest.Mock };
   } = {
     $queryRaw: jest.fn().mockResolvedValue([]),
     $executeRaw: jest.fn().mockResolvedValue(0),
     $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(prismaStub)),
-    diV0S4Control: { findFirst: jest.fn().mockResolvedValue(null) },
-    vehicle: { findUnique: jest.fn() },
-    diV0S4WorkItem: { findFirst: jest.fn() },
-    diV0S4EvidenceSnapshot: { findFirst: jest.fn() },
-    diV0ShadowInterval: { findMany: jest.fn().mockResolvedValue([]) },
   };
 
   @Global()
