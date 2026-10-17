@@ -1,0 +1,2255 @@
+{
+  "schema": "LDI10C_MANEUVER_TIMELINE_V1",
+  "headSha": "2644d5dff5df9c695d907dc91203f62205e9f40c",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+  "productionMutations": "NONE",
+  "provenance": {
+    "ok": true,
+    "errors": [],
+    "hashes": {
+      "ldi08CombinedSnapshotSha256": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009",
+      "ldi08CandidatesSha256": "2f2cfabdd40e6744cda364641c80896e4559845ab62fdd927d6a23907e27231c",
+      "ldi10aCandidateAuditSha256": "8e2ba39e562bf339bb59cbd8db8e15d3eeaa423b843b950f6685e5437d7a2e33",
+      "ldi10bManeuverPhysicsSha256": "8bf2a4257c519dff8357aed4ad6c67873e6e01dddc8bd4a8002177449123d9cb"
+    },
+    "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:79635496216a2588666db3f1be87609f803d073421db6ebc64e65f7c88b264fa"
+  },
+  "tolerances": {
+    "temporal": {
+      "mode": "exact_1s_calendar_bucket_inclusive",
+      "toleranceMs": 0,
+      "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+    },
+    "spatial": {
+      "mode": "observed_gps_per_bucket_only",
+      "interpolationForbidden": true,
+      "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+    }
+  },
+  "sequentialPatterns": [
+    {
+      "patternId": "OVERSEGMENTATION_SINGLE_STEP_CLUSTER",
+      "type": "OVERSEGMENTATION_CLUSTER",
+      "groupIds": [
+        "MANEUVER_DECELERATION_21",
+        "MANEUVER_DECELERATION_23",
+        "MANEUVER_DECELERATION_24",
+        "MANEUVER_DECELERATION_27",
+        "MANEUVER_DECELERATION_31",
+        "MANEUVER_DECELERATION_32",
+        "MANEUVER_ACCELERATION_16"
+      ],
+      "gapMsBetweenGroups": null,
+      "note": "7 single-step groups — consistent with LDI-10B oversplitRisk on ±3 km/h gate.",
+      "notDriverIntent": true
+    }
+  ],
+  "maneuvers": [
+    {
+      "sequenceIndex": 1,
+      "groupId": "MANEUVER_ACCELERATION_1",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:06Z",
+        "end": "2026-10-13T15:53:08Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_1",
+        "L3_ACCEL_2"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 15.68159285839468,
+      "speedEndKmh": 29.71845374003237,
+      "meanAccelMs2": 1.949564011338568,
+      "maxAbsAccelMs2": 1.9636556970648054,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 12.639307426571095,
+        "bearingStartDeg": 186.56310467255523,
+        "bearingEndDeg": 182.6145528758685,
+        "centroid": {
+          "latitude": 51.407820533333336,
+          "longitude": 9.6687711
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:06Z",
+          "2026-10-13T15:53:07Z",
+          "2026-10-13T15:53:08Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:06Z",
+          "speedKmh": 15.68159285839468,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:07Z",
+          "speedKmh": 22.75075336782798,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:08Z",
+          "speedKmh": 29.71845374003237,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 2,
+      "groupId": "MANEUVER_DECELERATION_17",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:10Z",
+        "end": "2026-10-13T15:53:13Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_1",
+        "L3_DECEL_2",
+        "L3_DECEL_3"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 30.13228995795328,
+      "speedEndKmh": 15.56033086311674,
+      "meanAccelMs2": -1.349255471744124,
+      "maxAbsAccelMs2": 1.5336274621478334,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 19.320701493702504,
+        "bearingStartDeg": 183.5015863993144,
+        "bearingEndDeg": 181.4029013302502,
+        "centroid": {
+          "latitude": 51.407505400000005,
+          "longitude": 9.66873455
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:10Z",
+          "2026-10-13T15:53:11Z",
+          "2026-10-13T15:53:12Z",
+          "2026-10-13T15:53:13Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:10Z",
+          "speedKmh": 30.13228995795328,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:11Z",
+          "speedKmh": 26.1081315488506,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:12Z",
+          "speedKmh": 21.08138972684894,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:13Z",
+          "speedKmh": 15.56033086311674,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 3,
+      "groupId": "MANEUVER_ACCELERATION_2",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:14Z",
+        "end": "2026-10-13T15:53:19Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_3",
+        "L3_ACCEL_4",
+        "L3_ACCEL_5",
+        "L3_ACCEL_6",
+        "L3_ACCEL_7"
+      ],
+      "candidateCount": 5,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 1,
+      "speedStartKmh": 14.86096950727662,
+      "speedEndKmh": 32.52711304372985,
+      "meanAccelMs2": 0.981452418691846,
+      "maxAbsAccelMs2": 1.156353515323698,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 6,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 33.05837011355818,
+        "bearingStartDeg": 146.75019305658577,
+        "bearingEndDeg": 87.47081103740004,
+        "centroid": {
+          "latitude": 51.40734385,
+          "longitude": 9.668921366666666
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:14Z",
+          "2026-10-13T15:53:15Z",
+          "2026-10-13T15:53:16Z",
+          "2026-10-13T15:53:17Z",
+          "2026-10-13T15:53:18Z",
+          "2026-10-13T15:53:19Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:14Z",
+          "speedKmh": 14.86096950727662,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:15Z",
+          "speedKmh": 18.21366965105763,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:16Z",
+          "speedKmh": 22.37654230622294,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:17Z",
+          "speedKmh": 25.86988025975725,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:18Z",
+          "speedKmh": 29.158754114208,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:19Z",
+          "speedKmh": 32.52711304372985,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 4,
+      "groupId": "MANEUVER_DECELERATION_18",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:22Z",
+        "end": "2026-10-13T15:53:24Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_4",
+        "L3_DECEL_5"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 34.34216273672313,
+      "speedEndKmh": 22.90096696559001,
+      "meanAccelMs2": -1.5890549682129338,
+      "maxAbsAccelMs2": 1.6271337926513307,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 15.977027010630444,
+        "bearingStartDeg": 80.37697611805692,
+        "bearingEndDeg": 87.02217367622552,
+        "centroid": {
+          "latitude": 51.40736663333333,
+          "longitude": 9.669719966666667
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:22Z",
+          "2026-10-13T15:53:23Z",
+          "2026-10-13T15:53:24Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:22Z",
+          "speedKmh": 34.34216273672313,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:23Z",
+          "speedKmh": 28.7586486191348,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:24Z",
+          "speedKmh": 22.90096696559001,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 5,
+      "groupId": "MANEUVER_ACCELERATION_3",
+      "kind": "ACCELERATION",
+      "taxonomy": "UNCLEAR",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:26Z",
+        "end": "2026-10-13T15:53:29Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_8",
+        "L3_ACCEL_9",
+        "L3_ACCEL_10"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 2,
+      "speedStartKmh": 22.51415051122485,
+      "speedEndKmh": 35.86579351787941,
+      "meanAccelMs2": 1.2362632413569035,
+      "maxAbsAccelMs2": 1.4696966132624518,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 24.9624041816885,
+        "bearingStartDeg": 148.89871130361252,
+        "bearingEndDeg": 168.26743411792972,
+        "centroid": {
+          "latitude": 51.407235775000004,
+          "longitude": 9.670037875
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:26Z",
+          "2026-10-13T15:53:27Z",
+          "2026-10-13T15:53:28Z",
+          "2026-10-13T15:53:29Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:26Z",
+          "speedKmh": 22.51415051122485,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:27Z",
+          "speedKmh": 27.5564776088443,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:28Z",
+          "speedKmh": 32.84738541658913,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:29Z",
+          "speedKmh": 35.86579351787941,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 6,
+      "groupId": "MANEUVER_ACCELERATION_4",
+      "kind": "ACCELERATION",
+      "taxonomy": "UNCLEAR",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:38Z",
+        "end": "2026-10-13T15:53:40Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_11",
+        "L3_ACCEL_12"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 1,
+      "speedStartKmh": 30.81337000694906,
+      "speedEndKmh": 38.86142950781184,
+      "meanAccelMs2": 1.1177860417864973,
+      "maxAbsAccelMs2": 1.2867343450612396,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 19.692007582871952,
+        "bearingStartDeg": 275.76911578590807,
+        "bearingEndDeg": 278.15000769976155,
+        "centroid": {
+          "latitude": 51.4065733,
+          "longitude": 9.6695972
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:38Z",
+          "2026-10-13T15:53:39Z",
+          "2026-10-13T15:53:40Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:38Z",
+          "speedKmh": 30.81337000694906,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:39Z",
+          "speedKmh": 35.44561364916952,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:40Z",
+          "speedKmh": 38.86142950781184,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 7,
+      "groupId": "MANEUVER_DECELERATION_19",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:45Z",
+        "end": "2026-10-13T15:53:48Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_6",
+        "L3_DECEL_7",
+        "L3_DECEL_8"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 38.04521152365421,
+      "speedEndKmh": 24.90853396882618,
+      "meanAccelMs2": -1.2163590328544471,
+      "maxAbsAccelMs2": 1.3817042673093303,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 26.71987396776127,
+        "bearingStartDeg": 280.5750756388303,
+        "bearingEndDeg": 275.75364008225074,
+        "centroid": {
+          "latitude": 51.406658300000004,
+          "longitude": 9.6684458
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:45Z",
+          "2026-10-13T15:53:46Z",
+          "2026-10-13T15:53:47Z",
+          "2026-10-13T15:53:48Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:45Z",
+          "speedKmh": 38.04521152365421,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:46Z",
+          "speedKmh": 34.71918001844113,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:47Z",
+          "speedKmh": 29.88266933113977,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:48Z",
+          "speedKmh": 24.90853396882618,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 8,
+      "groupId": "MANEUVER_ACCELERATION_5",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:50Z",
+        "end": "2026-10-13T15:53:52Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_13",
+        "L3_ACCEL_14"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 24.69612611240841,
+      "speedEndKmh": 36.43067714968225,
+      "meanAccelMs2": 1.6297987551769224,
+      "maxAbsAccelMs2": 1.6611240806205578,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 17.042318223690234,
+        "bearingStartDeg": 195.19438113799475,
+        "bearingEndDeg": 188.34993681226405,
+        "centroid": {
+          "latitude": 51.40654493333333,
+          "longitude": 9.668091066666667
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:50Z",
+          "2026-10-13T15:53:51Z",
+          "2026-10-13T15:53:52Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:50Z",
+          "speedKmh": 24.69612611240841,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:51Z",
+          "speedKmh": 30.67617280264242,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:52Z",
+          "speedKmh": 36.43067714968225,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 9,
+      "groupId": "MANEUVER_DECELERATION_20",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:55Z",
+        "end": "2026-10-13T15:53:58Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_9",
+        "L3_DECEL_10",
+        "L3_DECEL_11"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 36.56431190951881,
+      "speedEndKmh": 14.81133598101723,
+      "meanAccelMs2": -2.01416443782422,
+      "maxAbsAccelMs2": 2.3225776857218556,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 22.46489241338925,
+        "bearingStartDeg": 201.95576483547245,
+        "bearingEndDeg": 208.76687040815617,
+        "centroid": {
+          "latitude": 51.406083724999995,
+          "longitude": 9.667892049999999
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:53:55Z",
+          "2026-10-13T15:53:56Z",
+          "2026-10-13T15:53:57Z",
+          "2026-10-13T15:53:58Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:53:55Z",
+          "speedKmh": 36.56431190951881,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:56Z",
+          "speedKmh": 30.91543744357054,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:57Z",
+          "speedKmh": 23.17261564961591,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:58Z",
+          "speedKmh": 14.81133598101723,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 10,
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:05Z",
+        "end": "2026-10-13T15:54:09Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_15",
+        "L3_ACCEL_16",
+        "L3_ACCEL_17",
+        "L3_ACCEL_18"
+      ],
+      "candidateCount": 4,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 2,
+      "speedStartKmh": 13.70749000182446,
+      "speedEndKmh": 39.65706242433433,
+      "meanAccelMs2": 1.802053640452074,
+      "maxAbsAccelMs2": 2.1975876569843114,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 5,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 31.32084823548405,
+        "bearingStartDeg": 156.4973296197304,
+        "bearingEndDeg": 108.15051743972015,
+        "centroid": {
+          "latitude": 51.40586828000001,
+          "longitude": 9.667942960000001
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:54:05Z",
+          "2026-10-13T15:54:06Z",
+          "2026-10-13T15:54:07Z",
+          "2026-10-13T15:54:08Z",
+          "2026-10-13T15:54:09Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:54:05Z",
+          "speedKmh": 13.70749000182446,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:06Z",
+          "speedKmh": 20.83174406495309,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:07Z",
+          "speedKmh": 28.74305963009661,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:08Z",
+          "speedKmh": 35.5457827589182,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:09Z",
+          "speedKmh": 39.65706242433433,
+          "qc": "UNTRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 11,
+      "groupId": "MANEUVER_ACCELERATION_7",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:14Z",
+        "end": "2026-10-13T15:54:16Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_19",
+        "L3_ACCEL_20"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 40.0935108395671,
+      "speedEndKmh": 47.84729064951079,
+      "meanAccelMs2": 1.0769138624921788,
+      "maxAbsAccelMs2": 1.123086375181267,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 24.335655388254576,
+        "bearingStartDeg": 123.29478704752057,
+        "bearingEndDeg": 123.21156658665427,
+        "centroid": {
+          "latitude": 51.4055294,
+          "longitude": 9.669010533333333
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:54:14Z",
+          "2026-10-13T15:54:15Z",
+          "2026-10-13T15:54:16Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:54:14Z",
+          "speedKmh": 40.0935108395671,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:15Z",
+          "speedKmh": 43.80417969885823,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:16Z",
+          "speedKmh": 47.84729064951079,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 12,
+      "groupId": "MANEUVER_DECELERATION_21",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:33Z",
+        "end": "2026-10-13T15:54:34Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_12"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 31.70512541607216,
+      "speedEndKmh": 28.38652035011717,
+      "meanAccelMs2": -0.9218347405430529,
+      "maxAbsAccelMs2": 0.9218347405430529,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 8.343600080228592,
+        "bearingStartDeg": 123.76129784645781,
+        "bearingEndDeg": 123.76129784645781,
+        "centroid": {
+          "latitude": 51.40456245,
+          "longitude": 9.6717783
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:54:33Z",
+          "2026-10-13T15:54:34Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:54:33Z",
+          "speedKmh": 31.70512541607216,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:34Z",
+          "speedKmh": 28.38652035011717,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 13,
+      "groupId": "MANEUVER_ACCELERATION_8",
+      "kind": "ACCELERATION",
+      "taxonomy": "UNCLEAR",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:36Z",
+        "end": "2026-10-13T15:54:39Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_21",
+        "L3_ACCEL_22",
+        "L3_ACCEL_23"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 3,
+      "speedStartKmh": 28.00286593485928,
+      "speedEndKmh": 43.10578318538609,
+      "meanAccelMs2": 1.3984182639376674,
+      "maxAbsAccelMs2": 1.6724608026002505,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 30.366532802480606,
+        "bearingStartDeg": 187.86124975017592,
+        "bearingEndDeg": 192.4634398151037,
+        "centroid": {
+          "latitude": 51.404308725,
+          "longitude": 9.6719008
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:54:36Z",
+          "2026-10-13T15:54:37Z",
+          "2026-10-13T15:54:38Z",
+          "2026-10-13T15:54:39Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:54:36Z",
+          "speedKmh": 28.00286593485928,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:37Z",
+          "speedKmh": 33.48517349556024,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:38Z",
+          "speedKmh": 39.50603238492114,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:39Z",
+          "speedKmh": 43.10578318538609,
+          "qc": "UNTRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 14,
+      "groupId": "MANEUVER_DECELERATION_22",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:55:30Z",
+        "end": "2026-10-13T15:55:34Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_13",
+        "L3_DECEL_14",
+        "L3_DECEL_15",
+        "L3_DECEL_16"
+      ],
+      "candidateCount": 4,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 46.87206563662043,
+      "speedEndKmh": 28.12183966351427,
+      "meanAccelMs2": -1.30209902591015,
+      "maxAbsAccelMs2": 1.5512576848495425,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 5,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 42.160918521233,
+        "bearingStartDeg": 258.22938513638115,
+        "bearingEndDeg": 258.3584054870238,
+        "centroid": {
+          "latitude": 51.400726639999995,
+          "longitude": 9.66499362
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:55:30Z",
+          "2026-10-13T15:55:31Z",
+          "2026-10-13T15:55:32Z",
+          "2026-10-13T15:55:33Z",
+          "2026-10-13T15:55:34Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:55:30Z",
+          "speedKmh": 46.87206563662043,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:31Z",
+          "speedKmh": 43.42172178286768,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:32Z",
+          "speedKmh": 38.05245922081009,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:33Z",
+          "speedKmh": 32.46793155535174,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:34Z",
+          "speedKmh": 28.12183966351427,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 15,
+      "groupId": "MANEUVER_DECELERATION_23",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:55:55Z",
+        "end": "2026-10-13T15:55:56Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_17"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 22.26521204882516,
+      "speedEndKmh": 19.1823534417853,
+      "meanAccelMs2": -0.8563496130666277,
+      "maxAbsAccelMs2": 0.8563496130666277,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 5.632458496641545,
+        "bearingStartDeg": 254.66039401408977,
+        "bearingEndDeg": 254.66039401408977,
+        "centroid": {
+          "latitude": 51.4003933,
+          "longitude": 9.66275745
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:55:55Z",
+          "2026-10-13T15:55:56Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:55:55Z",
+          "speedKmh": 22.26521204882516,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:56Z",
+          "speedKmh": 19.1823534417853,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 16,
+      "groupId": "MANEUVER_DECELERATION_24",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:21Z",
+        "end": "2026-10-13T15:56:22Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_18"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 28.54511881773472,
+      "speedEndKmh": 23.16327765645895,
+      "meanAccelMs2": -1.494955878132159,
+      "maxAbsAccelMs2": 1.494955878132159,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 7.432693776793221,
+        "bearingStartDeg": 258.5232328419813,
+        "bearingEndDeg": 258.5232328419813,
+        "centroid": {
+          "latitude": 51.40003995,
+          "longitude": 9.6602308
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:21Z",
+          "2026-10-13T15:56:22Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:21Z",
+          "speedKmh": 28.54511881773472,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:22Z",
+          "speedKmh": 23.16327765645895,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 17,
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:23Z",
+        "end": "2026-10-13T15:56:26Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_24",
+        "L3_ACCEL_25",
+        "L3_ACCEL_26"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 1,
+      "speedStartKmh": 20.31792315113556,
+      "speedEndKmh": 35.84143051960846,
+      "meanAccelMs2": 1.4373617933771203,
+      "maxAbsAccelMs2": 1.7648997442886027,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 22.80453285787,
+        "bearingStartDeg": 260.925949564012,
+        "bearingEndDeg": 266.6026368950861,
+        "centroid": {
+          "latitude": 51.400011625000005,
+          "longitude": 9.659951225
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:23Z",
+          "2026-10-13T15:56:24Z",
+          "2026-10-13T15:56:25Z",
+          "2026-10-13T15:56:26Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:23Z",
+          "speedKmh": 20.31792315113556,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:24Z",
+          "speedKmh": 24.16102577182262,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:25Z",
+          "speedKmh": 30.51466485126159,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:26Z",
+          "speedKmh": 35.84143051960846,
+          "qc": "UNTRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 18,
+      "groupId": "MANEUVER_DECELERATION_25",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:29Z",
+        "end": "2026-10-13T15:56:32Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_19",
+        "L3_DECEL_20",
+        "L3_DECEL_21"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 40.18482306867904,
+      "speedEndKmh": 19.76693282898798,
+      "meanAccelMs2": -1.8905453925639868,
+      "maxAbsAccelMs2": 2.3757491838991127,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 26.604189710039467,
+        "bearingStartDeg": 268.0492620387979,
+        "bearingEndDeg": 270.0000357944325,
+        "centroid": {
+          "latitude": 51.3999908,
+          "longitude": 9.65909455
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:29Z",
+          "2026-10-13T15:56:30Z",
+          "2026-10-13T15:56:31Z",
+          "2026-10-13T15:56:32Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:29Z",
+          "speedKmh": 40.18482306867904,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:30Z",
+          "speedKmh": 36.44944263326013,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:31Z",
+          "speedKmh": 27.89674557122332,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:32Z",
+          "speedKmh": 19.76693282898798,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 19,
+      "groupId": "MANEUVER_ACCELERATION_10",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:34Z",
+        "end": "2026-10-13T15:56:37Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_27",
+        "L3_ACCEL_28",
+        "L3_ACCEL_29"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 18.32435100256082,
+      "speedEndKmh": 34.88002450942327,
+      "meanAccelMs2": 1.5329327321168937,
+      "maxAbsAccelMs2": 1.8066614419958358,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 22.163618422153522,
+        "bearingStartDeg": 271.99061149393253,
+        "bearingEndDeg": 280.6140335162367,
+        "centroid": {
+          "latitude": 51.399996625,
+          "longitude": 9.658639125
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:34Z",
+          "2026-10-13T15:56:35Z",
+          "2026-10-13T15:56:36Z",
+          "2026-10-13T15:56:37Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:34Z",
+          "speedKmh": 18.32435100256082,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:35Z",
+          "speedKmh": 23.59480706998575,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:36Z",
+          "speedKmh": 30.09878826117076,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:37Z",
+          "speedKmh": 34.88002450942327,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 20,
+      "groupId": "MANEUVER_DECELERATION_26",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:42Z",
+        "end": "2026-10-13T15:56:44Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_22",
+        "L3_DECEL_23"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 37.76960053524903,
+      "speedEndKmh": 26.17384775940475,
+      "meanAccelMs2": -1.6105212188672615,
+      "maxAbsAccelMs2": 1.6321282060822866,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 17.718854996307112,
+        "bearingStartDeg": 297.8137793223689,
+        "bearingEndDeg": 296.93578594547495,
+        "centroid": {
+          "latitude": 51.400234966666666,
+          "longitude": 9.6576322
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:42Z",
+          "2026-10-13T15:56:43Z",
+          "2026-10-13T15:56:44Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:42Z",
+          "speedKmh": 37.76960053524903,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:43Z",
+          "speedKmh": 31.8939389933528,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:44Z",
+          "speedKmh": 26.17384775940475,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 21,
+      "groupId": "MANEUVER_ACCELERATION_11",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:46Z",
+        "end": "2026-10-13T15:56:48Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_30",
+        "L3_ACCEL_31"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 26.91248028857381,
+      "speedEndKmh": 35.00857275872599,
+      "meanAccelMs2": 1.1244572875211358,
+      "maxAbsAccelMs2": 1.1802771450709384,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 17.311932228238437,
+        "bearingStartDeg": 279.3904536449868,
+        "bearingEndDeg": 278.0083378635148,
+        "centroid": {
+          "latitude": 51.4003183,
+          "longitude": 9.657214966666666
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:46Z",
+          "2026-10-13T15:56:47Z",
+          "2026-10-13T15:56:48Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:46Z",
+          "speedKmh": 26.91248028857381,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:47Z",
+          "speedKmh": 31.16147801082919,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:48Z",
+          "speedKmh": 35.00857275872599,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 22,
+      "groupId": "MANEUVER_DECELERATION_27",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:50Z",
+        "end": "2026-10-13T15:56:51Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_24"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 34.58042298521137,
+      "speedEndKmh": 31.28037434945735,
+      "meanAccelMs2": -0.916680176598339,
+      "maxAbsAccelMs2": 0.916680176598339,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 9.20751622636344,
+        "bearingStartDeg": 281.6351634279823,
+        "bearingEndDeg": 281.6351634279823,
+        "centroid": {
+          "latitude": 51.40037165,
+          "longitude": 9.6567383
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:50Z",
+          "2026-10-13T15:56:51Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:50Z",
+          "speedKmh": 34.58042298521137,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:51Z",
+          "speedKmh": 31.28037434945735,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 23,
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:53Z",
+        "end": "2026-10-13T15:56:55Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_32",
+        "L3_ACCEL_33"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 1,
+      "speedStartKmh": 29.23944616118931,
+      "speedEndKmh": 36.73800351902802,
+      "meanAccelMs2": 1.0414662996998207,
+      "maxAbsAccelMs2": 1.1979006911886003,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 18.014200572638366,
+        "bearingStartDeg": 313.0951453307827,
+        "bearingEndDeg": 328.076196705566,
+        "centroid": {
+          "latitude": 51.40049886666667,
+          "longitude": 9.656381633333332
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:53Z",
+          "2026-10-13T15:56:54Z",
+          "2026-10-13T15:56:55Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:53Z",
+          "speedKmh": 29.23944616118931,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:54Z",
+          "speedKmh": 32.42556103074906,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:55Z",
+          "speedKmh": 36.73800351902802,
+          "qc": "UNTRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 24,
+      "groupId": "MANEUVER_ACCELERATION_13",
+      "kind": "ACCELERATION",
+      "taxonomy": "UNCLEAR",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:56Z",
+        "end": "2026-10-13T15:56:58Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_34",
+        "L3_ACCEL_35"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+      "touchesUntrustedQcBucket": true,
+      "untrustedBucketsInWindow": 1,
+      "speedStartKmh": 39.3806652105221,
+      "speedEndKmh": 47.30818281058259,
+      "meanAccelMs2": 1.1010441111195124,
+      "maxAbsAccelMs2": 1.2658086991848922,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 23.750706385287202,
+        "bearingStartDeg": 342.36740206220054,
+        "bearingEndDeg": 348.43677000880774,
+        "centroid": {
+          "latitude": 51.40075553333333,
+          "longitude": 9.656200533333333
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:56:56Z",
+          "2026-10-13T15:56:57Z",
+          "2026-10-13T15:56:58Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:56:56Z",
+          "speedKmh": 39.3806652105221,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:57Z",
+          "speedKmh": 42.75127149351698,
+          "qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:58Z",
+          "speedKmh": 47.30818281058259,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": [
+        "UNTRUSTED_QC_in_window — promotion-grade spatial interpretation degraded per LDI-10B"
+      ]
+    },
+    {
+      "sequenceIndex": 25,
+      "groupId": "MANEUVER_DECELERATION_28",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:04Z",
+        "end": "2026-10-13T15:57:08Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_25",
+        "L3_DECEL_26",
+        "L3_DECEL_27",
+        "L3_DECEL_28"
+      ],
+      "candidateCount": 4,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 48.37646478529513,
+      "speedEndKmh": 23.22617208857812,
+      "meanAccelMs2": -1.746548103938681,
+      "maxAbsAccelMs2": 2.0431893963112913,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 5,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 40.78382151024873,
+        "bearingStartDeg": 0,
+        "bearingEndDeg": 358.02788883509015,
+        "centroid": {
+          "latitude": 51.4018013,
+          "longitude": 9.65612496
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:04Z",
+          "2026-10-13T15:57:05Z",
+          "2026-10-13T15:57:06Z",
+          "2026-10-13T15:57:07Z",
+          "2026-10-13T15:57:08Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:04Z",
+          "speedKmh": 48.37646478529513,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:05Z",
+          "speedKmh": 43.36992999992185,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:06Z",
+          "speedKmh": 37.39643054524652,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:07Z",
+          "speedKmh": 30.04094871852587,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:08Z",
+          "speedKmh": 23.22617208857812,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 26,
+      "groupId": "MANEUVER_ACCELERATION_14",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:13Z",
+        "end": "2026-10-13T15:57:15Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_36",
+        "L3_ACCEL_37"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 23.39430016785373,
+      "speedEndKmh": 31.51934223582861,
+      "meanAccelMs2": 1.1284780649965112,
+      "maxAbsAccelMs2": 1.1804051298199525,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 15.149935426931545,
+        "bearingStartDeg": 153.29985239453458,
+        "bearingEndDeg": 167.74737135310124,
+        "centroid": {
+          "latitude": 51.40198663333334,
+          "longitude": 9.656456633333333
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:13Z",
+          "2026-10-13T15:57:14Z",
+          "2026-10-13T15:57:15Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:13Z",
+          "speedKmh": 23.39430016785373,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:14Z",
+          "speedKmh": 27.26988376847678,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:15Z",
+          "speedKmh": 31.51934223582861,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 27,
+      "groupId": "MANEUVER_DECELERATION_29",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:17Z",
+        "end": "2026-10-13T15:57:20Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_29",
+        "L3_DECEL_30",
+        "L3_DECEL_31"
+      ],
+      "candidateCount": 3,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 34.98025244068968,
+      "speedEndKmh": 23.9209416426777,
+      "meanAccelMs2": -1.0240102590751834,
+      "maxAbsAccelMs2": 1.2765192127624165,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 4,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 24.369965079914692,
+        "bearingStartDeg": 172.8794415244372,
+        "bearingEndDeg": 169.16923953662797,
+        "centroid": {
+          "latitude": 51.401635799999994,
+          "longitude": 9.656548725
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:17Z",
+          "2026-10-13T15:57:18Z",
+          "2026-10-13T15:57:19Z",
+          "2026-10-13T15:57:20Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:17Z",
+          "speedKmh": 34.98025244068968,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:18Z",
+          "speedKmh": 31.63908239271639,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:19Z",
+          "speedKmh": 27.04361322677169,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:20Z",
+          "speedKmh": 23.9209416426777,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 28,
+      "groupId": "MANEUVER_DECELERATION_30",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:26Z",
+        "end": "2026-10-13T15:57:28Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_32",
+        "L3_DECEL_33"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 22.79439279967193,
+      "speedEndKmh": 13.06792390889749,
+      "meanAccelMs2": -1.3508984570520055,
+      "maxAbsAccelMs2": 1.4432676154450668,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 9.77701632448316,
+        "bearingStartDeg": 84.3904606063474,
+        "bearingEndDeg": 82.185708744115,
+        "centroid": {
+          "latitude": 51.4014516,
+          "longitude": 9.657158866666666
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:26Z",
+          "2026-10-13T15:57:27Z",
+          "2026-10-13T15:57:28Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:26Z",
+          "speedKmh": 22.79439279967193,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:27Z",
+          "speedKmh": 17.59862938406969,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:28Z",
+          "speedKmh": 13.06792390889749,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 29,
+      "groupId": "MANEUVER_DECELERATION_31",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:29Z",
+        "end": "2026-10-13T15:57:30Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_34"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 10.09093277816898,
+      "speedEndKmh": 6.903931360765319,
+      "meanAccelMs2": -0.8852781715010171,
+      "maxAbsAccelMs2": 0.8852781715010171,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 2.4352985027131977,
+        "bearingStartDeg": 85.54812732368737,
+        "bearingEndDeg": 85.54812732368737,
+        "centroid": {
+          "latitude": 51.40146245,
+          "longitude": 9.657287499999999
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:29Z",
+          "2026-10-13T15:57:30Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:29Z",
+          "speedKmh": 10.09093277816898,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:30Z",
+          "speedKmh": 6.903931360765319,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 30,
+      "groupId": "MANEUVER_ACCELERATION_15",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:31Z",
+        "end": "2026-10-13T15:57:33Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_38",
+        "L3_ACCEL_39"
+      ],
+      "candidateCount": 2,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 7.348158897817711,
+      "speedEndKmh": 16.92683181154806,
+      "meanAccelMs2": 1.3303712380181039,
+      "maxAbsAccelMs2": 1.5109955493463636,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 3,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 7.104301597480341,
+        "bearingStartDeg": 82.13655254644834,
+        "bearingEndDeg": 75.43685028483014,
+        "centroid": {
+          "latitude": 51.40147053333334,
+          "longitude": 9.6573711
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:31Z",
+          "2026-10-13T15:57:32Z",
+          "2026-10-13T15:57:33Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:31Z",
+          "speedKmh": 7.348158897817711,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:32Z",
+          "speedKmh": 12.78774287546462,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:33Z",
+          "speedKmh": 16.92683181154806,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 31,
+      "groupId": "MANEUVER_DECELERATION_32",
+      "kind": "DECELERATION",
+      "taxonomy": "LONGITUDINAL_DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:39Z",
+        "end": "2026-10-13T15:57:40Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_35"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 10.9200539667996,
+      "speedEndKmh": 6.678424272231664,
+      "meanAccelMs2": -1.1782304707133155,
+      "maxAbsAccelMs2": 1.1782304707133155,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 2.5364373665547992,
+        "bearingStartDeg": 73.18168738943717,
+        "bearingEndDeg": 73.18168738943717,
+        "centroid": {
+          "latitude": 51.4015433,
+          "longitude": 9.6577841
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:39Z",
+          "2026-10-13T15:57:40Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:39Z",
+          "speedKmh": 10.9200539667996,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:40Z",
+          "speedKmh": 6.678424272231664,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "sequenceIndex": 32,
+      "groupId": "MANEUVER_ACCELERATION_16",
+      "kind": "ACCELERATION",
+      "taxonomy": "LONGITUDINAL_ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:44Z",
+        "end": "2026-10-13T15:57:45Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_40"
+      ],
+      "candidateCount": 1,
+      "plausibilityVerdict": "PLAUSIBLE",
+      "touchesUntrustedQcBucket": false,
+      "untrustedBucketsInWindow": 0,
+      "speedStartKmh": 11.3656145601573,
+      "speedEndKmh": 16.6107235908303,
+      "meanAccelMs2": 1.4569747307424998,
+      "maxAbsAccelMs2": 1.4569747307424998,
+      "spatialMatch": {
+        "temporalPolicy": {
+          "mode": "exact_1s_calendar_bucket_inclusive",
+          "toleranceMs": 0,
+          "description": "Rows selected when evaluationIndexUtc is within [maneuver.startUtc, maneuver.endUtc] inclusive; no sub-second slack or interpolation."
+        },
+        "spatialPolicy": {
+          "mode": "observed_gps_per_bucket_only",
+          "interpolationForbidden": true,
+          "description": "Coordinates taken only from gps.availability=PRESENT rows in the temporal window; ROW_ABSENT buckets omitted from geometry."
+        },
+        "gpsPresentInWindow": 2,
+        "gpsAbsentInWindow": 0,
+        "pathLengthM": 4.201031042410711,
+        "bearingStartDeg": 74.65174985944122,
+        "bearingEndDeg": 74.65174985944122,
+        "centroid": {
+          "latitude": 51.401558300000005,
+          "longitude": 9.6578908
+        },
+        "matchedBucketUtc": [
+          "2026-10-13T15:57:44Z",
+          "2026-10-13T15:57:45Z"
+        ]
+      },
+      "speedProgression": [
+        {
+          "utc": "2026-10-13T15:57:44Z",
+          "speedKmh": 11.3656145601573,
+          "qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:45Z",
+          "speedKmh": 16.6107235908303,
+          "qc": "TRUSTED"
+        }
+      ],
+      "limitations": []
+    }
+  ]
+}

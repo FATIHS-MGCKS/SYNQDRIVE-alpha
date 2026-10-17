@@ -1,0 +1,34 @@
+{
+  "schema": "LDI10D_PHASE3E6_TIMESTAMP_SYNC_V1",
+  "headSha": "1ed00dcbcdc626eef8a40cdfd064aea0df1fb260",
+  "overlayUtcProvenance": "OCR CEST→UTC from ChatGPT pack",
+  "dimoJoinWindowSec": 2,
+  "offsetSensitivityMedianM": [
+    {
+      "shiftSec": -2,
+      "medianM": 29.69091249697992,
+      "n": 141
+    },
+    {
+      "shiftSec": -1,
+      "medianM": 11.43064315806669,
+      "n": 140
+    },
+    {
+      "shiftSec": 0,
+      "medianM": 1.6679238994077152,
+      "n": 139
+    },
+    {
+      "shiftSec": 1,
+      "medianM": 22.193574978427474,
+      "n": 140
+    },
+    {
+      "shiftSec": 2,
+      "medianM": 41.74523666211743,
+      "n": 139
+    }
+  ],
+  "arbitraryShiftApplied": false
+}

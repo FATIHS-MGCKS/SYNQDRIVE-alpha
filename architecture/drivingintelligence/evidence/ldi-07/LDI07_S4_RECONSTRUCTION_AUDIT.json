@@ -1,0 +1,140 @@
+{
+  "schema": "LDI07_HISTORICAL_S4_RECONSTRUCTION_V1",
+  "headSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "observedAtUtc": "2026-10-16T23:21:02.568Z",
+  "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+  "primaryTripId": "a682d3df-545a-4a8a-aa14-d45c23fae985",
+  "trip": {
+    "startUtc": "2026-07-21T13:47:54.000Z",
+    "endUtc": "2026-07-21T14:46:31.000Z",
+    "status": "COMPLETED",
+    "dimoSegmentId": null,
+    "durationMinutes": 58.61666666666667
+  },
+  "acquisitionWindow": {
+    "fromUtc": "2026-07-21T13:47:54Z",
+    "toUtc": "2026-07-21T14:46:31Z",
+    "widening": {
+      "fromUtc": "2026-07-21T13:47:54Z",
+      "toUtc": "2026-07-21T14:46:31Z",
+      "widenedStartMs": 0,
+      "widenedEndMs": 0
+    }
+  },
+  "rawGps": {
+    "vehicleTripWaypointCount": 499,
+    "validCoordinateCount": 499,
+    "uniqueSecondBuckets": 499,
+    "vehiclePositionUpdatesInTripWindow": 0,
+    "routeArtifact": null,
+    "provenance": "VehicleTripWaypoint canonical measured route; S4 production uses DIMO historical position query at pin time"
+  },
+  "cadence": {
+    "medianDeltaMs": 7000,
+    "p95DeltaMs": 7000,
+    "summary": {
+      "gapThresholdSeconds": 3,
+      "gapRunCount": 498,
+      "maxGapSeconds": 21,
+      "gapsGte3s": 498
+    }
+  },
+  "s4PinAbsence": {
+    "workItems": [],
+    "missingPinHypothesis": [
+      "NO_S4_WORK_ITEM_ROW",
+      "MISSING_diV0BoundaryAdmissionV1"
+    ],
+    "tripEndEraNote": "LIKELY_PRE_S4_DISCOVERY_CONTAINMENT_OR_BACKLOG"
+  },
+  "offlineReconstruction": {
+    "algorithm": "computeDiV0TripIntervals+evaluateDiV0SpeedQcInterval_v2",
+    "intervalCount": 3517,
+    "trustedFraction": 0,
+    "trustedOrLimitedFraction": 0,
+    "trustedFractionOnPresentBuckets": 0,
+    "trustedOrLimitedOnPresentBuckets": 0,
+    "presentIntervalCount": 499,
+    "caveats": [
+      "7s waypoint cadence vs 1Hz QC grid yields ROW_ABSENT majority — no gap interpolation",
+      "Waypoints are trip-mirrored observations not byte-identical to S4 pinned POSITION channel",
+      "No R1_OBD channel in offline path — OBD corroboration absent",
+      "No production writes; not a substitute for owner-approved S4 backfill"
+    ]
+  },
+  "hfObdIndependent": {
+    "hfAvailable": "TRIP_AGGREGATE_ONLY_no_bucket_hf_without_S4_or_provider",
+    "obdAvailable": "NO_PERSISTED_OBD_SERIES",
+    "analyticsCacheOverlapRows": 0
+  },
+  "nativeEventAlignments": [
+    {
+      "eventId": "b5a8be42-9e14-4868-8d4e-e485c0409a53",
+      "eventType": "HARSH_ACCELERATION",
+      "recordedAtUtc": "2026-07-21T13:59:15.000Z",
+      "bucketLabelUtc": "2026-07-21T13:59:15Z",
+      "waypointAtBucket": false,
+      "nearestWaypointDeltaMs": 2000,
+      "eventSpeedKmh": 99,
+      "l3SpeedAtBucketKmh": null
+    },
+    {
+      "eventId": "653d9422-86b6-4e20-b8bc-a04edf12814e",
+      "eventType": "HARSH_ACCELERATION",
+      "recordedAtUtc": "2026-07-21T14:03:44.000Z",
+      "bucketLabelUtc": "2026-07-21T14:03:44Z",
+      "waypointAtBucket": false,
+      "nearestWaypointDeltaMs": 2000,
+      "eventSpeedKmh": 83.66666666666667,
+      "l3SpeedAtBucketKmh": null
+    },
+    {
+      "eventId": "443944c3-8273-4f0d-9a54-9b427110c142",
+      "eventType": "HARSH_CORNERING",
+      "recordedAtUtc": "2026-07-21T14:06:56.000Z",
+      "bucketLabelUtc": "2026-07-21T14:06:56Z",
+      "waypointAtBucket": false,
+      "nearestWaypointDeltaMs": 1000,
+      "eventSpeedKmh": 104.3333333333333,
+      "l3SpeedAtBucketKmh": null
+    },
+    {
+      "eventId": "a5f054ed-70e5-420c-9953-6cdff001ea1c",
+      "eventType": "HARSH_ACCELERATION",
+      "recordedAtUtc": "2026-07-21T14:09:21.000Z",
+      "bucketLabelUtc": "2026-07-21T14:09:21Z",
+      "waypointAtBucket": false,
+      "nearestWaypointDeltaMs": 1000,
+      "eventSpeedKmh": 91,
+      "l3SpeedAtBucketKmh": null
+    },
+    {
+      "eventId": "0f03c898-b778-4005-ac42-1d9500b3697f",
+      "eventType": "EXTREME_BRAKING",
+      "recordedAtUtc": "2026-07-21T14:10:19.000Z",
+      "bucketLabelUtc": "2026-07-21T14:10:19Z",
+      "waypointAtBucket": false,
+      "nearestWaypointDeltaMs": 1000,
+      "eventSpeedKmh": 92.66666666666667,
+      "l3SpeedAtBucketKmh": null
+    },
+    {
+      "eventId": "b5caf781-c157-404e-afd4-ffa0a01ce686",
+      "eventType": "HARSH_ACCELERATION",
+      "recordedAtUtc": "2026-07-21T14:10:47.000Z",
+      "bucketLabelUtc": "2026-07-21T14:10:47Z",
+      "waypointAtBucket": false,
+      "nearestWaypointDeltaMs": 1000,
+      "eventSpeedKmh": 93,
+      "l3SpeedAtBucketKmh": null
+    }
+  ],
+  "fusionAlternateSecondary": {
+    "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+    "workItemId": "31820150-03b7-4019-8e3d-84c2b1d0b8a5",
+    "shadowIntervals": 362,
+    "positionPresent": 346,
+    "r1ObdNumeric": 61
+  },
+  "circularDependencyNote": "Native TELEMETRY_EVENTS and trip waypoints both derive from DIMO/Ruptela ingestion; event.speedKmh is not an independent kinematic witness."
+}

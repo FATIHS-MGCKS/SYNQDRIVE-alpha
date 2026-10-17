@@ -1,0 +1,7 @@
+{
+  "schema": "LDI10D_PHASE3E5_STOP_CONTEXT_V1",
+  "headSha": "92d19b51c94ac14ba5061a7687c5a2fed19f4805",
+  "observedStandstills": 0,
+  "inferredStopCandidates": [],
+  "labelingNote": "Low overlay speed ≠ confirmed standstill; no tachometer OCR in pack"
+}

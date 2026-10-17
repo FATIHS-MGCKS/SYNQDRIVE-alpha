@@ -1,0 +1,257 @@
+{
+  "schema": "LDI03_TEMPORAL_ALIGNMENT_V1",
+  "evaluationGrid": "UTC calendar 1s bucket labels (index only; original timestamps preserved per row)",
+  "hfCadence": {
+    "sampleCount": 109,
+    "medianDeltaMs": 5000,
+    "minDeltaMs": 1000,
+    "maxDeltaMs": 37000,
+    "note": "R1 HF subset buckets are sparse vs shadow grid — gaps are not interpolated"
+  },
+  "obdSampling": {
+    "numericSpeedBuckets": 109,
+    "temporalSemantics": "INTERVAL_ONLY"
+  },
+  "l3Sampling": {
+    "numericBuckets": 969,
+    "trustedBuckets": 950
+  },
+  "nativeEventTiming": {
+    "count": 0,
+    "minRecordedAtUtc": null,
+    "maxRecordedAtUtc": null
+  },
+  "missingBuckets": {
+    "positionAbsent": 4,
+    "hfAbsent": 981,
+    "obdAbsent": 981
+  },
+  "gpsObdSpeedConflicts": [
+    {
+      "indexUtc": "2026-10-14T19:05:47Z",
+      "l3Kmh": 22.83531878192048,
+      "obdKmh": 0,
+      "deltaKmh": 22.83531878192048
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:14Z",
+      "l3Kmh": 14.5212246289489,
+      "obdKmh": 0,
+      "deltaKmh": 14.5212246289489
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:15Z",
+      "l3Kmh": 10.27825872420711,
+      "obdKmh": 0,
+      "deltaKmh": 10.27825872420711
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:18Z",
+      "l3Kmh": 9.907899731376643,
+      "obdKmh": 0,
+      "deltaKmh": 9.907899731376643
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:19Z",
+      "l3Kmh": 11.72597410005583,
+      "obdKmh": 0,
+      "deltaKmh": 11.72597410005583
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:22Z",
+      "l3Kmh": 20.00248414941029,
+      "obdKmh": 3,
+      "deltaKmh": 17.00248414941029
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:26Z",
+      "l3Kmh": 25.40388345601525,
+      "obdKmh": 16,
+      "deltaKmh": 9.40388345601525
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:27Z",
+      "l3Kmh": 27.7849883266166,
+      "obdKmh": 10,
+      "deltaKmh": 17.7849883266166
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:29Z",
+      "l3Kmh": 30.1392362346492,
+      "obdKmh": 15,
+      "deltaKmh": 15.1392362346492
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:30Z",
+      "l3Kmh": 30.95284528734297,
+      "obdKmh": 17,
+      "deltaKmh": 13.95284528734297
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:33Z",
+      "l3Kmh": 33.33425660881151,
+      "obdKmh": 16,
+      "deltaKmh": 17.334256608811508
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:34Z",
+      "l3Kmh": 33.73708188236483,
+      "obdKmh": 24,
+      "deltaKmh": 9.737081882364834
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:37Z",
+      "l3Kmh": 32.27303049640632,
+      "obdKmh": 10,
+      "deltaKmh": 22.27303049640632
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:38Z",
+      "l3Kmh": 29.76499159597527,
+      "obdKmh": 14,
+      "deltaKmh": 15.764991595975271
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:41Z",
+      "l3Kmh": 26.32422297005217,
+      "obdKmh": 14,
+      "deltaKmh": 12.324222970052169
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:42Z",
+      "l3Kmh": 26.96408222230653,
+      "obdKmh": 17,
+      "deltaKmh": 9.96408222230653
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:48Z",
+      "l3Kmh": 19.39737903953336,
+      "obdKmh": 10,
+      "deltaKmh": 9.397379039533359
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:50Z",
+      "l3Kmh": 11.41752393872487,
+      "obdKmh": 30,
+      "deltaKmh": 18.58247606127513
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:53Z",
+      "l3Kmh": 9.30740312725097,
+      "obdKmh": 20,
+      "deltaKmh": 10.69259687274903
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:54Z",
+      "l3Kmh": 9.427785673619601,
+      "obdKmh": 28,
+      "deltaKmh": 18.572214326380397
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:55Z",
+      "l3Kmh": 10.97371434941294,
+      "obdKmh": 27,
+      "deltaKmh": 16.02628565058706
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:58Z",
+      "l3Kmh": 21.87989282130088,
+      "obdKmh": 10,
+      "deltaKmh": 11.879892821300881
+    },
+    {
+      "indexUtc": "2026-10-14T19:06:59Z",
+      "l3Kmh": 24.67014204186659,
+      "obdKmh": 9,
+      "deltaKmh": 15.67014204186659
+    },
+    {
+      "indexUtc": "2026-10-14T19:07:01Z",
+      "l3Kmh": 33.46579269524208,
+      "obdKmh": 8,
+      "deltaKmh": 25.46579269524208
+    },
+    {
+      "indexUtc": "2026-10-14T19:09:06Z",
+      "l3Kmh": 33.30434267901335,
+      "obdKmh": 24,
+      "deltaKmh": 9.304342679013352
+    },
+    {
+      "indexUtc": "2026-10-14T19:09:08Z",
+      "l3Kmh": 39.60083523396066,
+      "obdKmh": 26,
+      "deltaKmh": 13.600835233960659
+    },
+    {
+      "indexUtc": "2026-10-14T19:14:32Z",
+      "l3Kmh": 27.47758145476054,
+      "obdKmh": 36,
+      "deltaKmh": 8.52241854523946
+    },
+    {
+      "indexUtc": "2026-10-14T19:14:34Z",
+      "l3Kmh": 35.46469097774806,
+      "obdKmh": 25,
+      "deltaKmh": 10.464690977748063
+    },
+    {
+      "indexUtc": "2026-10-14T19:14:38Z",
+      "l3Kmh": 51.52358685718419,
+      "obdKmh": 27,
+      "deltaKmh": 24.523586857184192
+    },
+    {
+      "indexUtc": "2026-10-14T19:14:40Z",
+      "l3Kmh": 55.08385226996439,
+      "obdKmh": 27,
+      "deltaKmh": 28.08385226996439
+    },
+    {
+      "indexUtc": "2026-10-14T19:18:30Z",
+      "l3Kmh": 47.75506069497301,
+      "obdKmh": 60,
+      "deltaKmh": 12.244939305026989
+    },
+    {
+      "indexUtc": "2026-10-14T19:18:48Z",
+      "l3Kmh": 20.58592135946721,
+      "obdKmh": 27,
+      "deltaKmh": 6.414078640532789
+    },
+    {
+      "indexUtc": "2026-10-14T19:18:50Z",
+      "l3Kmh": 26.21815959023118,
+      "obdKmh": 19,
+      "deltaKmh": 7.218159590231181
+    },
+    {
+      "indexUtc": "2026-10-14T19:18:52Z",
+      "l3Kmh": 34.89030920729543,
+      "obdKmh": 19,
+      "deltaKmh": 15.89030920729543
+    },
+    {
+      "indexUtc": "2026-10-14T19:18:53Z",
+      "l3Kmh": 38.46032339795142,
+      "obdKmh": 20,
+      "deltaKmh": 18.46032339795142
+    },
+    {
+      "indexUtc": "2026-10-14T19:21:32Z",
+      "l3Kmh": 21.07276627674871,
+      "obdKmh": 13,
+      "deltaKmh": 8.072766276748709
+    }
+  ],
+  "gpsObdSpeedConflictCount": 36,
+  "duplicateNativeEvents": [],
+  "clockOffsetAnalysis": {
+    "status": "NOT_COMPUTED",
+    "reason": "No independent UTC anchor on this trip pin — use providerTimestamp vs bucket label only"
+  },
+  "outOfOrderData": {
+    "status": "NOT_DETECTED_IN_BUCKET_ORDER",
+    "method": "Rows sorted by evaluationIndexUtc ascending"
+  }
+}

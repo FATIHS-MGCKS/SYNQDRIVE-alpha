@@ -1,0 +1,12 @@
+{
+  "schema": "LDI10D_PHASE3E6_OCR_COVERAGE_V1",
+  "headSha": "1ed00dcbcdc626eef8a40cdfd064aea0df1fb260",
+  "originalMovAvailable": "NO",
+  "fullVideo1HzOcrCompleted": "NO",
+  "reason": "Handoff documents incomplete 1-Hz OCR; only 206×5s CSV available",
+  "videoSecondsTotalPinned": 1027.588333,
+  "videoSecondsAnalyzedCoverage": "206 sparse samples (~5s cadence), not 1028×1Hz",
+  "ocrFramesAnalyzed": 206,
+  "handoffScript": "architecture/drivingintelligence/evidence/ldi-10d/phase3e6-handoff/ocr_full.py",
+  "framesDirPresent": false
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "EXP021_EV_GROUND_TRUTH_PROJECTION_EXCERPT_V1",
+  "note": "Full projection_json not frozen in pre-deploy package; excerpt from Production read @ a0ce01f (manifest projectionStore + policyVersions).",
+  "projectionId": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+  "policyVersions": {
+    "qcPolicyVersion": "DI_V0_SPEED_QC_POLICY_V2",
+    "projectionVersion": "DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1",
+    "calibrationVersion": "CALIBRATION_UNSET_V0",
+    "inputEvidenceVersion": "DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:1fb2cead072c6efad9fc29e62f5106e2d1ae83d8f6ba5e9cac12561dadddccbb"
+  },
+  "projectionStore": {
+    "id": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+    "lifecycleStatus": "CURRENT",
+    "contentFingerprint": "9219741e48bc78cfadf4385ca1ad77dd82bcf5bbc0f986dd3d664bd2f1fff61f",
+    "idempotencyKey": "8c91b87c349365fc55eaaf2e649d0cb4a47e4424a56071320c464f41901a9eea",
+    "verifiedSpeedSummary": {
+      "qcTrustedMaxKmh": 129.7885665128692,
+      "qcTrustedMeanKmh": 66.09,
+      "trustedNumericCoveragePercent": 68.2,
+      "assessabilityLevel": "PARTIAL",
+      "assessabilityReasons": [
+        "TRUSTED_COVERAGE_PARTIAL"
+      ]
+    }
+  },
+  "tripBoundaries": {
+    "startUtc": "2026-10-16T03:36:00.000Z",
+    "endUtc": "2026-10-16T03:54:55.989Z",
+    "tripStatus": "COMPLETED",
+    "isRepaired": false,
+    "boundaryRepairGeneration": null
+  },
+  "boundaryReconciliation": {
+    "ownerReportedEndBerlin": "2026-10-16T05:54:55.989+02:00",
+    "tripEndUtc": "2026-10-16T03:54:55.989Z",
+    "snapshotAcquisitionStartUtc": "2026-10-16T03:36:00.000Z",
+    "snapshotAcquisitionEndUtc": "2026-10-16T03:54:56.000Z",
+    "acquisitionGridStartLabel": "2026-10-16T03:36:00Z",
+    "acquisitionGridEndLabel": "2026-10-16T03:54:56Z",
+    "note": "Trip end (segment boundary) is not identical to exclusive 1s acquisition grid end; grid uses second-aligned bucket labels from snapshot window.",
+    "perSecondRowCount": 1136
+  }
+}

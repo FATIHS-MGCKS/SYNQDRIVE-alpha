@@ -1,0 +1,98 @@
+{
+  "schema": "EXP021_POST_DEPLOY_STATE_V2",
+  "observedAtUtc": "2026-10-16T16:34:32.031Z",
+  "committedPostDeployCapture": {
+    "epistemic": "CONFIRMED",
+    "source": "committed post-deploy/ artifacts (not regenerated in this export)",
+    "manifestPath": "post-deploy/POST_DEPLOY_BASELINE_MANIFEST.json",
+    "manifestSha256": "11a991414ef57790815261094711adbf5ddc15e4d56fac9922baeae901b500e1",
+    "preDeployUnchanged": true,
+    "admission": {
+      "evaluation": {
+        "ok": false,
+        "code": "ADMISSION_RECORD_MISSING",
+        "expectedRevisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020"
+      },
+      "rawMetaAdmissionV1": null
+    },
+    "productReadBoundaryGate": {
+      "ok": false,
+      "reason": "ADMISSION_NOT_SATISFIED",
+      "admission": {
+        "ok": false,
+        "code": "ADMISSION_RECORD_MISSING",
+        "expectedRevisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020"
+      }
+    },
+    "boundaryFingerprints": {
+      "pinned": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020",
+      "live": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020",
+      "match": true
+    },
+    "projectionStore": {
+      "id": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+      "lifecycleStatus": "CURRENT",
+      "contentFingerprint": "9219741e48bc78cfadf4385ca1ad77dd82bcf5bbc0f986dd3d664bd2f1fff61f",
+      "idempotencyKey": "8c91b87c349365fc55eaaf2e649d0cb4a47e4424a56071320c464f41901a9eea",
+      "verifiedSpeedSummary": {
+        "qcTrustedMaxKmh": 129.7885665128692,
+        "qcTrustedMeanKmh": 66.09,
+        "trustedNumericCoveragePercent": 68.2,
+        "assessabilityLevel": "PARTIAL",
+        "assessabilityReasons": [
+          "TRUSTED_COVERAGE_PARTIAL"
+        ]
+      }
+    },
+    "productionShaAtPostDeployCapture": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+    "globalCurrentV2Inventory": {
+      "schema": "EXP021_CURRENT_V2_READABILITY_INVENTORY_V1",
+      "observedAtUtc": "2026-10-16T16:15:35.100Z",
+      "qcPolicyVersion": "DI_V0_SPEED_QC_POLICY_V2",
+      "productionSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+      "categories": {
+        "totalCurrentV2": 13,
+        "productReadWouldSucceed": 0,
+        "admissionValidRevisionMatch": 0,
+        "admissionMissing": 13,
+        "admissionRevisionMismatch": 0,
+        "releasePreconditionBlocked": 0,
+        "boundaryFingerprintMismatchVsWorkItem": 0,
+        "tripOpenOrMissingEnd": 0
+      },
+      "note": "Single consistent DB snapshot on Production. CURRENT rows exist; product read gate would block all 13 until reconciliation step-4 scan + release.",
+      "productionMutations": "NONE",
+      "providerCalls": 0
+    }
+  },
+  "liveReadAtExport": {
+    "epistemic": "CONFIRMED",
+    "source": "Production Postgres read-only at supplement v2 export time",
+    "observedPhase": "POST_DEPLOY_LIVE_READ",
+    "preDeployArtifactsUnchanged": true,
+    "tripStatus": "COMPLETED",
+    "boundaryFingerprintWorkItem": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020",
+    "boundaryFingerprintLive": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020",
+    "boundaryFingerprintMatch": true,
+    "admission": {
+      "ok": false,
+      "code": "ADMISSION_RECORD_MISSING",
+      "expectedRevisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020"
+    },
+    "productReadBoundaryGate": {
+      "ok": false,
+      "reason": "ADMISSION_NOT_SATISFIED",
+      "admission": {
+        "ok": false,
+        "code": "ADMISSION_RECORD_MISSING",
+        "expectedRevisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020"
+      }
+    },
+    "currentProjection": {
+      "projectionId": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+      "lifecycleStatus": "CURRENT",
+      "readability": "CURRENT_ROW_EXISTS_PRODUCT_READ_BLOCKED"
+    }
+  },
+  "separationNote": "pre-deploy/ and supplement-v1/ not modified; post-deploy/ committed capture referenced, live read additive"
+}

@@ -1,0 +1,581 @@
+{
+  "schema": "LDI10D_PHASE3E1_SPATIAL_BEFORE_AFTER_V1",
+  "headSha": "aae97962deee5d239775e1a1d78415a513f6f6af",
+  "contextualEventsReplayed": 66,
+  "classificationDeltas": [
+    {
+      "eventId": "P3E_UNKNOWN_ROAD_CTX_TRIP",
+      "evidenceClassificationBefore": "UNKNOWN",
+      "evidenceClassificationAfter": "INFERRED_CANDIDATE",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "tesla_osm_corridor_restores_partial_road_context"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_105_114",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_134_138",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_JUNC_APP_145_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "confirmed_topology_junction_within_45m"
+      ]
+    },
+    {
+      "eventId": "P3E_JUNC_EXIT_145_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "confirmed_topology_junction_within_45m"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_163_172",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_LOWSEQ_168_171",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_LOWSEQ_174_177",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_JUNC_APP_184_merged_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "confirmed_topology_junction_within_45m"
+      ]
+    },
+    {
+      "eventId": "P3E_JUNC_EXIT_184_merged_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "confirmed_topology_junction_within_45m"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_ACC_187_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_APP_219",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_222_231",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_233_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_231",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_253_merged_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_HARD_BRK_256_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "hard_braking_near_confirmed_junction_may_be_ordinary_approach"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_ACC_293",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_294_298",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_300_merged_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_298",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_343_merged_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_HARD_BRK_344_merged_merged_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "hard_braking_near_confirmed_junction_may_be_ordinary_approach"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_ACC_393_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_402_merged_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_419_428",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_452_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_457_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_518_522",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_ACC_524",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_522",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_553_562",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_578_582",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_DEC_584_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_APP_584",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_587_591",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_596_600",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_602_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_600",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_605_609",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_ACC_624_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_646",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_658_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_732_merged_merged_merged_merged_merged_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_HARD_BRK_736_merged_merged",
+      "evidenceClassificationBefore": "INFERRED_CANDIDATE",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": [
+        "hard_braking_near_confirmed_junction_may_be_ordinary_approach"
+      ]
+    },
+    {
+      "eventId": "P3E_STR_ACC_750_merged_merged_merged_merged_merged_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_854_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_915_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_929",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_934",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_983_merged_merged_merged",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_APP_984",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_987_997",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_APP_998",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_DEC_1000",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1001_1010",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_STR_ACC_1012",
+      "evidenceClassificationBefore": "OBSERVED",
+      "evidenceClassificationAfter": "OBSERVED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_1010",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_APP_1029",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1032_1041",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1045_1064",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "CONFIRMED",
+      "reasons": [
+        "curve_kinematics_with_confirmed_way_association"
+      ]
+    },
+    {
+      "eventId": "P3E_CURVE_APP_1069",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1072_1091",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "AMBIGUOUS",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1096_1100",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "UNKNOWN",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1104_1108",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "UNKNOWN",
+      "reasons": []
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1118_1122",
+      "evidenceClassificationBefore": "CONTEXT_SUPPORTED",
+      "evidenceClassificationAfter": "CONTEXT_SUPPORTED",
+      "spatialBefore": "UNSUPPORTED_OUT_OF_FROZEN_BBOX",
+      "spatialAfter": "UNKNOWN",
+      "reasons": []
+    }
+  ],
+  "spatialUnsupportedEvents": {
+    "before": 66,
+    "after": 0
+  },
+  "junctionContextEvents": {
+    "before": 4,
+    "after": 4
+  },
+  "bucketAssociation": {
+    "roadAssociated": 264,
+    "roadAmbiguous": 512,
+    "roadUnknown": 360
+  },
+  "temporalEvidencePreserved": true
+}

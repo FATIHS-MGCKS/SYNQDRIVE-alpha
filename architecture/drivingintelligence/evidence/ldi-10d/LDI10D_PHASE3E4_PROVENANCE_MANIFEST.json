@@ -1,0 +1,23 @@
+{
+  "schema": "LDI10D_PHASE3E4_PROVENANCE_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "reviewPack": "architecture/drivingintelligence/evidence/ldi-10d/phase3e4-review-pack",
+  "artifacts": [
+    {
+      "file": "LDI10D_PHASE3E4_VIDEO_INVENTORY.json",
+      "sha256": "54794b742b70aa6969ebe49ff9cece504896a9600ea9f20c1633ef8b1ce31482"
+    },
+    {
+      "file": "LDI10D_PHASE3E4_IPHONE_GPS_OBSERVATIONS.json",
+      "sha256": "fb55ce69542a00a22651ac580257f0c57466124bcfe483690fb7ead7c909e670"
+    },
+    {
+      "file": "LDI10D_PHASE3E4_SPATIAL_COMPARISON.json",
+      "sha256": "751de2bc430877cb9007e7baf273324f14b7c25244d408518c057cb7a79d5c46"
+    },
+    {
+      "file": "LDI10D_PHASE3E4_OCR_VALIDATION.json",
+      "sha256": "a8197735f218e2f5c85e057307064cb638314132164fa8e360899687014bb67a"
+    }
+  ]
+}

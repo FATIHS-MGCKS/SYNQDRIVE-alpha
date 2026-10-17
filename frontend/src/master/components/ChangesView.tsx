@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-ev-ground-truth-pre-deploy-2026-10-16',
+    version: '4.9.2247',
+    title: 'EXP021 — EV Ground Truth reference campaign (pre-deploy baseline, ops CLI)',
+    summary: [
+      'Owner-confirmed Tesla Model 3 trip frozen under architecture/drivingintelligence/evidence/exp021-ev-ground-truth/pre-deploy/ with SHA256SUMS (manifest + 1136s QC replay, no route dump).',
+      'Read-only Production capture @ a0ce01f… documents admission gap, trip end vs second-aligned acquisition grid, verified V2 PARTIAL 68.2% trusted numeric.',
+      'npm run exp021:ev-ground-truth:baseline for post-deploy re-capture; video protocol template only — no algorithm/QC/deploy changes.',
+    ],
+    reason:
+      'Durable EV speed/dynamics/regen evaluation reference after joint deploy; separate from deploy scope (priority 1 optimization reference).',
+    previousBehavior:
+      'No frozen owner Tesla reference package or per-second replay export for this trip.',
+    details:
+      'exp021-ev-ground-truth-baseline.ts, evidence/exp021-ev-ground-truth/*, EXP021_EV_GROUND_TRUTH_PRE_DEPLOY_BASELINE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-16T11:50:00.000Z',
+  },
+  {
     id: 'vsi-p5-apds-readonly-correlation-2026-10-16',
     version: '4.9.2246',
     title: 'VSI P5 — read-only APDS capability/demand correlation (P5B gate default OFF)',

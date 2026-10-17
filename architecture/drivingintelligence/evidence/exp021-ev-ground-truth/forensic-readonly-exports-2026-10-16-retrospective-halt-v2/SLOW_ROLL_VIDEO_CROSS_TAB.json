@@ -1,0 +1,366 @@
+[
+  {
+    "label": "2026-10-16T03:37:45Z",
+    "tacho": null,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 47,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:37:46Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:37:47Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:37:48Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:37:49Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:37:50Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:37:51Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:37:55Z",
+    "tacho": 3,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 2,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:37:56Z",
+    "tacho": 2,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:00Z",
+    "tacho": 2,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:01Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:02Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:03Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:04Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:05Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:06Z",
+    "tacho": 5,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:07Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:08Z",
+    "tacho": 5,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:11Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:12Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:13Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:14Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:57Z",
+    "tacho": 5,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:58Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:38:59Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:39:00Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:39:01Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:39:47Z",
+    "tacho": 2,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:41:48Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:41:49Z",
+    "tacho": 1,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:42:47Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:42:48Z",
+    "tacho": 1,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:43:41Z",
+    "tacho": 2,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:45:50Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:45:51Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:45:52Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:45:53Z",
+    "tacho": null,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:20Z",
+    "tacho": null,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:21Z",
+    "tacho": 1,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:25Z",
+    "tacho": 4,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 4,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:26Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:27Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:28Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:29Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:30Z",
+    "tacho": 1,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:32Z",
+    "tacho": 6,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 2,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:33Z",
+    "tacho": 5,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:34Z",
+    "tacho": 1,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:37Z",
+    "tacho": 4,
+    "legBasis": "PRESENT_CHAIN",
+    "presentChainSpanSec": 3,
+    "aggregateEligible": false
+  },
+  {
+    "label": "2026-10-16T03:54:38Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:39Z",
+    "tacho": 4,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  },
+  {
+    "label": "2026-10-16T03:54:40Z",
+    "tacho": 3,
+    "legBasis": "CALENDAR_1S",
+    "presentChainSpanSec": 1,
+    "aggregateEligible": true
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "status": "REJECTED",
+  "rejectedAtUtc": "2026-10-16",
+  "primaryReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL treats distant/missing OSM signals as veto over geometry/video halt indicia — rejected.",
+  "v02BaselineUnchanged": true,
+  "retuneMapThresholdsToRestoreHits": false,
+  "decisionEffectiveUseRequires": "Separate future hypothesis with explicit proof; map context is enrichment-only until then."
+}

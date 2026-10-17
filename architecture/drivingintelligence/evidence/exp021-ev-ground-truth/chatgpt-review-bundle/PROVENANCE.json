@@ -1,0 +1,10 @@
+{
+  "schema": "EXP021_EV_GROUND_TRUTH_PROVENANCE_V1",
+  "baselinePhase": "PRE_DEPLOY",
+  "observedAtUtc": "2026-10-16T11:44:44.239Z",
+  "artifactHashes": {
+    "manifestSha256": "0d6eea5714849d0d2c873d9fcfec25611b421e8bb90cc8ee89e2c6e1dcfc78d8",
+    "perSecondReplaySha256": "68bff4d695ee1a922be1c980a1a9d441dcc1145e1dee57e8c17fe73ed0864157"
+  },
+  "packageSha256": "5958932d12361160f5f15223653393e68afb4f29689d9a5cee3a013e10433a8e"
+}

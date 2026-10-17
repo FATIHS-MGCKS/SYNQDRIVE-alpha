@@ -1,0 +1,10 @@
+{
+  "schema": "LDI10D_PHASE3D_VALIDATION_V1",
+  "headSha": "0cabca3af016583ae452b91eef32fb41c1317488",
+  "fixtureIntegrity": "PASS",
+  "fixtureHashParity": true,
+  "phase3c2BaselineMaeKmh": 2.303091434778603,
+  "phase3c2PairedN": 748,
+  "l3BaselineDrift": "NONE",
+  "productionMutations": "NONE"
+}

@@ -1,0 +1,228 @@
+{
+  "schema": "LDI10D_PHASE3E10_ROAD_V1",
+  "headSha": "9c6a5ebe1d7e75aef99a810e2aa7f7dee7cf3dc7",
+  "roadIdGroundTruth": "NOT_ASSESSABLE",
+  "casesReviewed": 22,
+  "cases": [
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:46Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 2.68698269503315,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:56Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.7906686468675195,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:06Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 5.820372851200902,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:11Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.9564243714041066,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:31Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.49887881083250296,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:36Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.26223088852053356,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:41Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "VERIFIED",
+      "dimoHaversineM": 0.13111578265635807,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:46Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 3.7023870906791965,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:43:26Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "ASSOCIATED",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.738745177084257,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:46:27Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "ASSOCIATED",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 1.4452450672266115,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:07Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 1.8002521229805986,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:12Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "ASSOCIATED",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 2.0416400820201983,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:49:22Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 2.224221362471296,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:02Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "ASSOCIATED",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 1.0030673912754282,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:17Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 1.4782835348506496,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:37Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "ASSOCIATED",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 1.015398835961438,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:42Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.8907107454594955,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:52:02Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "ASSOCIATED",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.4997101335663322,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:52:37Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 3.050648935097554,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:52:57Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "VERIFIED",
+      "dimoHaversineM": 21.883791751984365,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:53:02Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 1.0441949409900624,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:53:07Z",
+      "baseline": "AMBIGUOUS",
+      "viterbi": "UNKNOWN",
+      "iphoneAtUtc": true,
+      "iphoneConfidence": "HIGH_CONFIDENCE",
+      "dimoHaversineM": 0.36146593358635876,
+      "note": "iPhone overlay does not resolve road-ID ground truth; descriptive only",
+      "iphoneResolvesRoadId": false
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "LDI10D_PHASE3E7_GPS_FREEZE_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "cases": [
+    {
+      "frameId": "63_0091",
+      "videoNum": "63",
+      "secondIndex": 90,
+      "video": "TC_00063.MOV",
+      "rawText": "16.10.2026, 05:42:11\n+51.323675,+9.512930\n142.6 mu. M.\nGeschwindiakeit:21 2km/h",
+      "overlayLocal": "2010-20-26T05:42:11+02:00",
+      "overlayUtc": null,
+      "lat": 51.323675,
+      "lon": 9.51293,
+      "iphoneSpeedKmh": 2,
+      "uncertainFields": [],
+      "evidenceLevel": "OCR_PARSED",
+      "dimoHaversineM": null,
+      "dimoBucketUtc": null,
+      "frameCrosscheckM": null,
+      "baselineRoad": "UNKNOWN",
+      "viterbiRoad": "UNKNOWN",
+      "tachoKmh": null,
+      "l3Kmh": null,
+      "gpsFreezeSuspected": true
+    },
+    {
+      "frameId": "63_0106",
+      "videoNum": "63",
+      "secondIndex": 105,
+      "video": "TC_00063.MOV",
+      "rawText": "16.10.2026, 05:42:26\n\n+51.323675,+9.512930\n\n142.6 mt. M.\nGeschwindiakeit:21 2kna/h° °",
+      "overlayLocal": "2010-20-26T05:42:26+02:00",
+      "overlayUtc": null,
+      "lat": 51.323675,
+      "lon": 9.51293,
+      "iphoneSpeedKmh": null,
+      "uncertainFields": [
+        "altitude",
+        "iphone_speed"
+      ],
+      "evidenceLevel": "OCR_PARSED",
+      "dimoHaversineM": null,
+      "dimoBucketUtc": null,
+      "frameCrosscheckM": null,
+      "baselineRoad": "UNKNOWN",
+      "viterbiRoad": "UNKNOWN",
+      "tachoKmh": null,
+      "l3Kmh": null,
+      "gpsFreezeSuspected": true
+    }
+  ]
+}

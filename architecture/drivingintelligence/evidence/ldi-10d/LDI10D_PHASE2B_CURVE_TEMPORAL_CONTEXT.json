@@ -1,0 +1,553 @@
+{
+  "schema": "LDI10D_PHASE2B_CURVE_TEMPORAL_V1",
+  "headSha": "17ae3288ee89cdd73fd5f76fa82666ed27682c66",
+  "groups": [
+    {
+      "groupId": "MANEUVER_ACCELERATION_1",
+      "headingChangeDeg": 3.948551796686729,
+      "maxStepHeadingChangeDeg": 3.948551796686729,
+      "speedStartKmh": 15.68159285839468,
+      "speedEndKmh": 29.71845374003237,
+      "minSpeedKmhInWindow": 15.68159285839468,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_2",
+      "headingChangeDeg": 59.27938201918573,
+      "maxStepHeadingChangeDeg": 25.30527256222348,
+      "speedStartKmh": 14.86096950727662,
+      "speedEndKmh": 32.52711304372985,
+      "minSpeedKmhInWindow": 14.86096950727662,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "SUPPORTED",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_3",
+      "headingChangeDeg": 19.36872281431721,
+      "maxStepHeadingChangeDeg": 17.0913352805033,
+      "speedStartKmh": 22.51415051122485,
+      "speedEndKmh": 35.86579351787941,
+      "minSpeedKmhInWindow": 22.51415051122485,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "POSSIBLE",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_4",
+      "headingChangeDeg": 2.3808919138534748,
+      "maxStepHeadingChangeDeg": 2.3808919138534748,
+      "speedStartKmh": 30.81337000694906,
+      "speedEndKmh": 38.86142950781184,
+      "minSpeedKmhInWindow": 30.81337000694906,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_5",
+      "headingChangeDeg": 6.844444325730706,
+      "maxStepHeadingChangeDeg": 6.844444325730706,
+      "speedStartKmh": 24.69612611240841,
+      "speedEndKmh": 36.43067714968225,
+      "minSpeedKmhInWindow": 24.69612611240841,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "headingChangeDeg": 48.34681218001026,
+      "maxStepHeadingChangeDeg": 26.564076295979135,
+      "speedStartKmh": 13.70749000182446,
+      "speedEndKmh": 39.65706242433433,
+      "minSpeedKmhInWindow": 13.70749000182446,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "SUPPORTED",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_7",
+      "headingChangeDeg": 0.08322046086630053,
+      "maxStepHeadingChangeDeg": 0.08322046086630053,
+      "speedStartKmh": 40.0935108395671,
+      "speedEndKmh": 47.84729064951079,
+      "minSpeedKmhInWindow": 40.0935108395671,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_8",
+      "headingChangeDeg": 4.6021900649277825,
+      "maxStepHeadingChangeDeg": 7.300712797176004,
+      "speedStartKmh": 28.00286593485928,
+      "speedEndKmh": 43.10578318538609,
+      "minSpeedKmhInWindow": 28.00286593485928,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "headingChangeDeg": 5.676687331074106,
+      "maxStepHeadingChangeDeg": 3.6893937398129992,
+      "speedStartKmh": 20.31792315113556,
+      "speedEndKmh": 35.84143051960846,
+      "minSpeedKmhInWindow": 20.31792315113556,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_10",
+      "headingChangeDeg": 8.623422022304169,
+      "maxStepHeadingChangeDeg": 5.120613284906881,
+      "speedStartKmh": 18.32435100256082,
+      "speedEndKmh": 34.88002450942327,
+      "minSpeedKmhInWindow": 18.32435100256082,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_11",
+      "headingChangeDeg": 1.3821157814720095,
+      "maxStepHeadingChangeDeg": 1.3821157814720095,
+      "speedStartKmh": 26.91248028857381,
+      "speedEndKmh": 35.00857275872599,
+      "minSpeedKmhInWindow": 26.91248028857381,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "headingChangeDeg": 14.981051374783306,
+      "maxStepHeadingChangeDeg": 14.981051374783306,
+      "speedStartKmh": 29.23944616118931,
+      "speedEndKmh": 36.73800351902802,
+      "minSpeedKmhInWindow": 29.23944616118931,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "POSSIBLE",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_13",
+      "headingChangeDeg": 6.069367946607201,
+      "maxStepHeadingChangeDeg": 6.069367946607201,
+      "speedStartKmh": 39.3806652105221,
+      "speedEndKmh": 47.30818281058259,
+      "minSpeedKmhInWindow": 39.3806652105221,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_14",
+      "headingChangeDeg": 14.447518958566661,
+      "maxStepHeadingChangeDeg": 14.447518958566661,
+      "speedStartKmh": 23.39430016785373,
+      "speedEndKmh": 31.51934223582861,
+      "minSpeedKmhInWindow": 23.39430016785373,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "POSSIBLE",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_15",
+      "headingChangeDeg": 6.699702261618199,
+      "maxStepHeadingChangeDeg": 6.699702261618199,
+      "speedStartKmh": 7.348158897817711,
+      "speedEndKmh": 16.92683181154806,
+      "minSpeedKmhInWindow": 7.348158897817711,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_16",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 11.3656145601573,
+      "speedEndKmh": 16.6107235908303,
+      "minSpeedKmhInWindow": 11.3656145601573,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "POSSIBLE",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_17",
+      "headingChangeDeg": 2.098685069064203,
+      "maxStepHeadingChangeDeg": 4.370001094267877,
+      "speedStartKmh": 30.13228995795328,
+      "speedEndKmh": 15.56033086311674,
+      "minSpeedKmhInWindow": 15.56033086311674,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_18",
+      "headingChangeDeg": 6.645197558168604,
+      "maxStepHeadingChangeDeg": 6.645197558168604,
+      "speedStartKmh": 34.34216273672313,
+      "speedEndKmh": 22.90096696559001,
+      "minSpeedKmhInWindow": 22.90096696559001,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_19",
+      "headingChangeDeg": 4.821435556579559,
+      "maxStepHeadingChangeDeg": 4.726181117198223,
+      "speedStartKmh": 38.04521152365421,
+      "speedEndKmh": 24.90853396882618,
+      "minSpeedKmhInWindow": 24.90853396882618,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_20",
+      "headingChangeDeg": 6.811105572683715,
+      "maxStepHeadingChangeDeg": 3.5401634097139834,
+      "speedStartKmh": 36.56431190951881,
+      "speedEndKmh": 14.81133598101723,
+      "minSpeedKmhInWindow": 14.81133598101723,
+      "stopAndGoPattern": "POSSIBLE",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_21",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 31.70512541607216,
+      "speedEndKmh": 28.38652035011717,
+      "minSpeedKmhInWindow": 28.38652035011717,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_22",
+      "headingChangeDeg": 0.12902035064263373,
+      "maxStepHeadingChangeDeg": 2.426260061779203,
+      "speedStartKmh": 46.87206563662043,
+      "speedEndKmh": 28.12183966351427,
+      "minSpeedKmhInWindow": 28.12183966351427,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_23",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 22.26521204882516,
+      "speedEndKmh": 19.1823534417853,
+      "minSpeedKmhInWindow": 19.1823534417853,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_24",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 28.54511881773472,
+      "speedEndKmh": 23.16327765645895,
+      "minSpeedKmhInWindow": 23.16327765645895,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_25",
+      "headingChangeDeg": 1.9507737556346,
+      "maxStepHeadingChangeDeg": 2.2999246481520004,
+      "speedStartKmh": 40.18482306867904,
+      "speedEndKmh": 19.76693282898798,
+      "minSpeedKmhInWindow": 19.76693282898798,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_26",
+      "headingChangeDeg": 0.8779933768939259,
+      "maxStepHeadingChangeDeg": 0.8779933768939259,
+      "speedStartKmh": 37.76960053524903,
+      "speedEndKmh": 26.17384775940475,
+      "minSpeedKmhInWindow": 26.17384775940475,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_27",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 34.58042298521137,
+      "speedEndKmh": 31.28037434945735,
+      "minSpeedKmhInWindow": 31.28037434945735,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "POSSIBLE",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_28",
+      "headingChangeDeg": 1.9721111649098475,
+      "maxStepHeadingChangeDeg": 2.3985169332097485,
+      "speedStartKmh": 48.37646478529513,
+      "speedEndKmh": 23.22617208857812,
+      "minSpeedKmhInWindow": 23.22617208857812,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "POSSIBLE",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_29",
+      "headingChangeDeg": 3.710201987809228,
+      "maxStepHeadingChangeDeg": 2.789067879266554,
+      "speedStartKmh": 34.98025244068968,
+      "speedEndKmh": 23.9209416426777,
+      "minSpeedKmhInWindow": 23.9209416426777,
+      "stopAndGoPattern": "UNKNOWN",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "UNKNOWN",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_30",
+      "headingChangeDeg": 2.204751862232399,
+      "maxStepHeadingChangeDeg": 2.204751862232399,
+      "speedStartKmh": 22.79439279967193,
+      "speedEndKmh": 13.06792390889749,
+      "minSpeedKmhInWindow": 13.06792390889749,
+      "stopAndGoPattern": "POSSIBLE",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_31",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 10.09093277816898,
+      "speedEndKmh": 6.903931360765319,
+      "minSpeedKmhInWindow": 6.903931360765319,
+      "stopAndGoPattern": "POSSIBLE",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "SUPPORTED",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_32",
+      "headingChangeDeg": 0,
+      "maxStepHeadingChangeDeg": null,
+      "speedStartKmh": 10.9200539667996,
+      "speedEndKmh": 6.678424272231664,
+      "minSpeedKmhInWindow": 6.678424272231664,
+      "stopAndGoPattern": "POSSIBLE",
+      "curveContext": "UNKNOWN",
+      "junctionApproach": "POSSIBLE",
+      "decelAccelContext": "SUPPORTED",
+      "notes": [
+        "Kinematic labels describe observed L3 speed buckets only.",
+        "No causal claim (signals, intent, pedal, regen)."
+      ],
+      "notDriverIntentNotBrakePedal": true
+    }
+  ],
+  "curveContextSupported": 2,
+  "stopGoContextSupported": 0,
+  "notDriverIntentNotBrakePedal": true
+}

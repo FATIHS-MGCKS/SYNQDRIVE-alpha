@@ -1,0 +1,9 @@
+KOMPAKTE CURSOR-ÜBERGABE
+
+Dieses Paket enthält Bericht, Cursor-Prompts, Vergleichstabellen, Frame-Beobachtungen, manuelle Annotationen, Kennzahlen, Skripte, Baseline-Quellen und Diagramm.
+
+Die JPEG-Einzelbilder und Prüfbögen fehlen absichtlich wegen des Uploadlimits. Bildpfade in den Daten verweisen auf das vollständige Evidenzpaket. Die numerischen Auswertungsskripte compare.py, enrich.py und finalize_rows.py können mit den enthaltenen Annotationen ausgeführt werden. Eine unabhängige visuelle Nachprüfung benötigt das vollständige Paket oder die Originalvideos.
+
+SHA256SUMS_REVIEW ist unverändert das Hashverzeichnis des vollständigen Pakets. KOMPAKT_MANIFEST.json benennt tatsächlich enthaltene Dateien mit Hashes und sämtliche ausgelassenen Dateien. Das vollständige Paket bleibt die übergeordnete Evidenzquelle; dessen Hash steht im Manifest.
+
+Cursor: zuerst Bericht.md und Cursor-Prompts.md lesen. In PR #2051 als kompakte externe Review-Evidenz integrieren. Keine vollständige Bildübernahme behaupten. Bestehende Pre-Deploy-Evidenz unverändert erhalten. Dann Auftrag 1 zur Herkunft der Fahrtgrenze bearbeiten, anschließend Auftrag 2. Keine Algorithmusänderung oder produktive Mutation durch diese Übergabe.

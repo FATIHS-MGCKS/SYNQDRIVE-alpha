@@ -1,0 +1,297 @@
+{
+  "disclaimer": "knownHaltsFoundCount is CANDIDATE COVERAGE (overlap), not classification accuracy.",
+  "knownHaltsTotal": 5,
+  "knownHaltsCandidateCoverageCount": 5,
+  "knownHaltsClassificationAlignedCount": 5,
+  "mainHaltRows": [
+    {
+      "knownHaltId": "LONG_HALT_1",
+      "videoWindowUtc": {
+        "from": "2026-10-16T03:40:19Z",
+        "to": "2026-10-16T03:40:49Z"
+      },
+      "videoTachoZeroDurationSec": 31,
+      "candidateCoverage": {
+        "overlappingEventIds": [
+          "GAP_EVT_005"
+        ],
+        "overlapMeansCandidateFound": true,
+        "classificationCorrect": true
+      },
+      "matchedCandidateWindow": {
+        "from": "2026-10-16T03:40:19Z",
+        "to": "2026-10-16T03:40:50Z",
+        "eventId": "GAP_EVT_005",
+        "classification": "LIKELY_HALT"
+      },
+      "predictedClass": "LIKELY_HALT",
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.1336668274961743,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 32,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.1,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:40:17Z→2026-10-16T03:40:18Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 9.4,
+          "role": "calendar leg 2026-10-16T03:40:51Z→2026-10-16T03:40:52Z"
+        }
+      ],
+      "supportingEvidence": [
+        "Small endpoint chord 1.1 m across 32s gap.",
+        "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+      ],
+      "contradictingEvidence": [],
+      "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+      "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+    },
+    {
+      "knownHaltId": "LONG_HALT_2",
+      "videoWindowUtc": {
+        "from": "2026-10-16T03:41:50Z",
+        "to": "2026-10-16T03:42:29Z"
+      },
+      "videoTachoZeroDurationSec": 40,
+      "candidateCoverage": {
+        "overlappingEventIds": [
+          "GAP_EVT_006"
+        ],
+        "overlapMeansCandidateFound": true,
+        "classificationCorrect": true
+      },
+      "matchedCandidateWindow": {
+        "from": "2026-10-16T03:41:50Z",
+        "to": "2026-10-16T03:42:30Z",
+        "eventId": "GAP_EVT_006",
+        "classification": "LIKELY_HALT"
+      },
+      "predictedClass": "LIKELY_HALT",
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 2.12296344489598,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 41,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.2,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": 2.8,
+          "role": "calendar leg 2026-10-16T03:41:48Z→2026-10-16T03:41:49Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 11.7,
+          "role": "calendar leg 2026-10-16T03:42:31Z→2026-10-16T03:42:32Z"
+        }
+      ],
+      "supportingEvidence": [
+        "Small endpoint chord 2.1 m across 41s gap.",
+        "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+        "Slow-roll geometry adjacent to gap."
+      ],
+      "contradictingEvidence": [],
+      "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+      "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+    },
+    {
+      "knownHaltId": "LONG_HALT_3",
+      "videoWindowUtc": {
+        "from": "2026-10-16T03:42:50Z",
+        "to": "2026-10-16T03:42:57Z"
+      },
+      "videoTachoZeroDurationSec": 8,
+      "candidateCoverage": {
+        "overlappingEventIds": [
+          "GAP_EVT_007"
+        ],
+        "overlapMeansCandidateFound": true,
+        "classificationCorrect": true
+      },
+      "matchedCandidateWindow": {
+        "from": "2026-10-16T03:42:51Z",
+        "to": "2026-10-16T03:42:57Z",
+        "eventId": "GAP_EVT_007",
+        "classification": "LIKELY_HALT"
+      },
+      "predictedClass": "LIKELY_HALT",
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 0.4912108229850152,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 7,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.3,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:42:48Z→2026-10-16T03:42:50Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 8.2,
+          "role": "calendar leg 2026-10-16T03:42:58Z→2026-10-16T03:42:59Z"
+        }
+      ],
+      "supportingEvidence": [
+        "Small endpoint chord 0.5 m across 7s gap.",
+        "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+      ],
+      "contradictingEvidence": [],
+      "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+      "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+    },
+    {
+      "knownHaltId": "LONG_HALT_4",
+      "videoWindowUtc": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:02Z"
+      },
+      "videoTachoZeroDurationSec": 20,
+      "candidateCoverage": {
+        "overlappingEventIds": [
+          "GAP_EVT_008"
+        ],
+        "overlapMeansCandidateFound": true,
+        "classificationCorrect": true
+      },
+      "matchedCandidateWindow": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:36Z",
+        "eventId": "GAP_EVT_008",
+        "classification": "LIKELY_HALT"
+      },
+      "predictedClass": "LIKELY_HALT",
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.6693710515541964,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 54,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.1,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 12,
+          "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+        }
+      ],
+      "supportingEvidence": [
+        "Small endpoint chord 1.7 m across 54s gap.",
+        "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+      ],
+      "contradictingEvidence": [],
+      "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+      "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+    },
+    {
+      "knownHaltId": "LONG_HALT_5",
+      "videoWindowUtc": {
+        "from": "2026-10-16T03:44:10Z",
+        "to": "2026-10-16T03:44:35Z"
+      },
+      "videoTachoZeroDurationSec": 26,
+      "candidateCoverage": {
+        "overlappingEventIds": [
+          "GAP_EVT_008"
+        ],
+        "overlapMeansCandidateFound": true,
+        "classificationCorrect": true
+      },
+      "matchedCandidateWindow": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:36Z",
+        "eventId": "GAP_EVT_008",
+        "classification": "LIKELY_HALT"
+      },
+      "predictedClass": "LIKELY_HALT",
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.6693710515541964,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 54,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.1,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 12,
+          "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+        }
+      ],
+      "supportingEvidence": [
+        "Small endpoint chord 1.7 m across 54s gap.",
+        "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+      ],
+      "contradictingEvidence": [],
+      "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+      "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+    }
+  ],
+  "referenceDurationsSec": [
+    31,
+    40,
+    8,
+    20,
+    26
+  ],
+  "referenceDurationsNote": "Per-window tacho-0 second counts from video overlay (not a single 31–40s band)."
+}

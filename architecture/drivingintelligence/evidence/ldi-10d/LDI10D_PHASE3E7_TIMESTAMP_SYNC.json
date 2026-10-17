@@ -1,0 +1,421 @@
+{
+  "schema": "LDI10D_PHASE3E7_TIMESTAMP_SYNC_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "status": "PARTIAL",
+  "overlayVsManifestSync": [
+    {
+      "frameId": "62_0001",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:37:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0016",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:37:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0031",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:38:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0046",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:38:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0061",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:38:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0076",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:38:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0091",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:39:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0106",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:39:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0121",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:39:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0136",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:39:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0151",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:40:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "62_0166",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:40:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0001",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:40:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0016",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:40:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0031",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:41:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0046",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:41:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0061",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:41:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0076",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:41:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0091",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:42:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0106",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:42:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0121",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:42:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0136",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:42:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0151",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:43:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "63_0166",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:43:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0001",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:43:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0016",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:43:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0031",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:44:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0046",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:44:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0061",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:44:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0076",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:44:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0091",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:45:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0106",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:45:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0121",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:45:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0136",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:45:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0151",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:46:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "64_0166",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:46:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0001",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:46:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0016",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:46:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0031",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:47:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0046",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:47:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0061",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:47:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0076",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:47:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0091",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:48:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0106",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:48:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0121",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:48:41Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0136",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:48:56Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0151",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:49:11Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "65_0166",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:49:26Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0001",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:49:42Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0016",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:49:57Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0031",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:50:12Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0046",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:50:27Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0061",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:50:42Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0076",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:50:57Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0091",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:51:12Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0106",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:51:27Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0121",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:51:42Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0136",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:51:57Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0151",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:52:12Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "66_0166",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:52:27Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0001",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:52:42Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0016",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:52:57Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0031",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:53:12Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0046",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:53:27Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0061",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:53:42Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0076",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:53:57Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0091",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:54:12Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0106",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:54:27Z",
+      "deltaSec": null
+    },
+    {
+      "frameId": "67_0121",
+      "overlayUtc": null,
+      "manifestSyncUtc": "2026-10-16T03:54:42Z",
+      "deltaSec": null
+    }
+  ]
+}

@@ -1,0 +1,394 @@
+{
+  "schema": "LDI05_HISTORICAL_EVENT_AUDIT_V1",
+  "headSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "observedAtUtc": "2026-10-16T22:44:47.808Z",
+  "mode": {
+    "readOnly": true,
+    "providerCalls": false,
+    "productionMutations": false
+  },
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "manifestRuptelaTripCount": 8,
+  "perTripAudit": [
+    {
+      "tripId": "f502a4a0-02d2-421d-bb39-7c9af25ba38e",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "tripStartUtc": "2026-10-14T19:04:00.000Z",
+      "tripEndUtc": "2026-10-14T19:31:00.000Z",
+      "behaviorEnrichedAt": "2026-10-14T20:02:23.172Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "14b46f94-a727-4441-af8b-913d9e64b859",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T20:02:19.881Z",
+          "completedAt": "2026-10-14T20:02:21.350Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "id": "b8928fea-edbb-4822-9ced-4b5d72ca84db",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T19:47:20.027Z",
+          "completedAt": "2026-10-14T19:47:21.072Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "id": "3e32b017-ce63-48fa-96c5-da950d81ec7a",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T19:27:19.498Z",
+          "completedAt": "2026-10-14T19:27:20.689Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T19:47:21.076Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T19:27:20.693Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T20:02:21.357Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "24deb8af-d9fd-4341-8b10-1b43fca70e52",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "tripStartUtc": "2026-10-13T18:13:00.000Z",
+      "tripEndUtc": "2026-10-13T18:16:05.000Z",
+      "behaviorEnrichedAt": "2026-10-13T18:22:44.250Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "613cccc3-5ed5-4088-88bb-0258e114838d",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-13T18:22:37.725Z",
+          "completedAt": "2026-10-13T18:22:38.623Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-13T18:22:38.627Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "3815920e-19f6-4af5-b5d5-172efe1ceb89",
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "tripStartUtc": "2026-10-11T16:54:00.000Z",
+      "tripEndUtc": "2026-10-11T17:04:10.051Z",
+      "behaviorEnrichedAt": "2026-10-11T17:16:25.524Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "9caabafb-88af-4912-85d6-5cd96b136ad0",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-11T17:16:19.046Z",
+          "completedAt": "2026-10-11T17:16:19.937Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-11T17:16:19.941Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "08f2e58c-fb66-4c35-bb94-7a98e3a8a3aa",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "tripStartUtc": "2026-10-10T22:39:00.000Z",
+      "tripEndUtc": "2026-10-10T23:07:10.911Z",
+      "behaviorEnrichedAt": "2026-10-10T23:19:55.851Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "19c5c48a-12cc-46c7-93b9-ab849175a6b1",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-10T23:19:49.353Z",
+          "completedAt": "2026-10-10T23:19:50.277Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-10T23:19:50.282Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "be07d73f-91cf-4d1c-8aea-bd550e595b08",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "tripStartUtc": "2026-10-09T17:20:00.000Z",
+      "tripEndUtc": "2026-10-09T17:36:48.000Z",
+      "behaviorEnrichedAt": "2026-10-10T00:12:17.460Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "74b24030-e30e-4c50-91f6-3bdb96734ebc",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-10T00:12:16.352Z",
+          "completedAt": "2026-10-10T00:12:17.491Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "id": "147edf79-4625-41b9-9e77-db2f21880f4a",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-09T18:06:20.653Z",
+          "completedAt": "2026-10-09T18:06:21.953Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-10T00:12:17.500Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-09T18:06:21.963Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "533b2bf8-fa07-4f0b-bc40-d540447a1542",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "tripStartUtc": "2026-10-14T14:47:05.040Z",
+      "tripEndUtc": "2026-10-14T14:58:31.040Z",
+      "behaviorEnrichedAt": "2026-10-14T19:47:22.678Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "4305077e-d8ec-4e01-a8cf-4b80dcf8a2a9",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T19:47:21.750Z",
+          "completedAt": "2026-10-14T19:47:22.695Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "id": "6f3cd936-b266-406c-b417-73f4e395fd63",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T16:17:28.975Z",
+          "completedAt": "2026-10-14T16:17:30.421Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T16:17:30.427Z",
+          "errorCode": null,
+          "errorMessage": null
+        },
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T19:47:22.699Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "c26d3c13-867c-4be7-bb24-0704e4fd09fb",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "tripStartUtc": "2026-10-14T14:39:00.000Z",
+      "tripEndUtc": "2026-10-14T14:58:35.000Z",
+      "behaviorEnrichedAt": "2026-10-14T15:00:27.712Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "560155fb-cebd-4ba5-8e98-ee9dfe19d5d0",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T15:00:20.799Z",
+          "completedAt": "2026-10-14T15:00:22.001Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T15:00:22.007Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    },
+    {
+      "tripId": "c65e7b49-358c-4f9b-b34f-0354aa1f1949",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "tripStartUtc": "2026-10-14T14:17:00.000Z",
+      "tripEndUtc": "2026-10-14T14:28:51.000Z",
+      "behaviorEnrichedAt": "2026-10-14T14:31:45.058Z",
+      "telemetryEventsInTripWindow": 0,
+      "telemetryEventsWithTripId": 0,
+      "telemetryEventsUnassignedInWindow": 0,
+      "dimoBrakingIntakeRows": 0,
+      "nativeIngestJobs": [
+        {
+          "id": "8c12a20a-4438-4383-9302-3174b36987b9",
+          "status": "COMPLETED",
+          "createdAt": "2026-10-14T14:31:37.890Z",
+          "completedAt": "2026-10-14T14:31:39.000Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "nativeAnalysisStages": [
+        {
+          "status": "COMPLETED",
+          "updatedAt": "2026-10-14T14:31:39.004Z",
+          "errorCode": null,
+          "errorMessage": null
+        }
+      ],
+      "tripHardBrakingCount": 0,
+      "tripHardAccelerationCount": 0
+    }
+  ],
+  "vehicleWide": [
+    {
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "totalTelemetryEvents": 820,
+      "eventTypeHistogram": [
+        {
+          "eventType": "HARSH_ACCELERATION",
+          "count": 792
+        },
+        {
+          "eventType": "HARSH_CORNERING",
+          "count": 26
+        },
+        {
+          "eventType": "EXTREME_BRAKING",
+          "count": 2
+        }
+      ],
+      "earliestEvent": {
+        "recordedAt": "2026-07-07T15:45:26.000Z",
+        "tripId": "ef4d83a3-438b-45e7-8580-4fa012e6f867",
+        "providerEventName": null
+      },
+      "latestEvent": {
+        "recordedAt": "2026-10-10T18:51:49.000Z",
+        "tripId": "3a45e2d5-d3dc-4f4e-b2cf-7c68d6621fe3",
+        "providerEventName": "behavior.harshAcceleration"
+      },
+      "eventsNotOnManifestTripIds": 820
+    },
+    {
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "totalTelemetryEvents": 0,
+      "eventTypeHistogram": [],
+      "earliestEvent": null,
+      "latestEvent": null,
+      "eventsNotOnManifestTripIds": 0
+    },
+    {
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "totalTelemetryEvents": 140,
+      "eventTypeHistogram": [
+        {
+          "eventType": "HARSH_ACCELERATION",
+          "count": 19
+        },
+        {
+          "eventType": "HARSH_CORNERING",
+          "count": 105
+        },
+        {
+          "eventType": "EXTREME_BRAKING",
+          "count": 16
+        }
+      ],
+      "earliestEvent": {
+        "recordedAt": "2026-07-03T10:22:38.000Z",
+        "tripId": "905272c1-2473-42ab-8c77-3bb7d25a7891",
+        "providerEventName": null
+      },
+      "latestEvent": {
+        "recordedAt": "2026-10-13T17:27:03.000Z",
+        "tripId": "7b3fe123-15a1-4c19-bb78-20ef986b8e7b",
+        "providerEventName": "behavior.harshCornering"
+      },
+      "eventsNotOnManifestTripIds": 140
+    }
+  ],
+  "summary": {
+    "orgRuptelaTelemetryEventTotal": 960,
+    "allManifestWindowsZeroTelemetry": true,
+    "anyBehaviorEnrichedAt": true,
+    "anyDimoBrakingIntake": false,
+    "anyNativeIngestJobCompleted": true,
+    "rootCauseHypothesis": "CONFIRMED_ingest_ran_provider_zero_on_8_trips_960_TELEMETRY_EVENTS_on_other_trips_not_manifest_ids"
+  }
+}

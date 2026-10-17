@@ -1,0 +1,6 @@
+{
+  "schema": "LDI10D_PHASE3E5_TIMESTAMP_SYNC_V1",
+  "headSha": "92d19b51c94ac14ba5061a7687c5a2fed19f4805",
+  "overlayUtcSource": "ChatGPT pack (CEST→UTC); joined to DIMO buckets ±2 s",
+  "meanAlignmentNote": "No arbitrary shift applied"
+}

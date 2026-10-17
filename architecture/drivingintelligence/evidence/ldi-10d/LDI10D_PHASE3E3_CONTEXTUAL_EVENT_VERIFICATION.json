@@ -1,0 +1,6 @@
+{
+  "schema": "LDI10D_PHASE3E3_CONTEXTUAL_EVENT_VERIFICATION_V1",
+  "headSha": "fd7c01031c9b92f96d9a1f8df166c0a6dc01801b",
+  "eventsReplayed": 66,
+  "note": "See LDI10D_PHASE3E2_CONTEXTUAL_EVENT_REASSESSMENT.json for full 66-event spatial linkage; 3E.3 adds braking reconstructions above."
+}

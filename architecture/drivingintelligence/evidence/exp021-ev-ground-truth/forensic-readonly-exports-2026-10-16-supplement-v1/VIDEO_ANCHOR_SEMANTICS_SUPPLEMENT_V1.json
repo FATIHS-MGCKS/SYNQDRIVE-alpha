@@ -1,0 +1,21 @@
+{
+  "schema": "EXP021_EV_GT_VIDEO_ANCHOR_SEMANTICS_V1",
+  "firstVisibleClockLabelUtc": "2026-10-16T03:37:41Z",
+  "semantics": "First visible on-screen clock label (Europe/Berlin 05:37:41). Not video PTS=0. Owner reports reverse maneuver as departure; exact first physical motion frame NOT calibrated.",
+  "ownerStatements": {
+    "reverseManeuverAtVideoStart": {
+      "epistemic": "CONFIRMED",
+      "source": "owner + external-video-review-kompakt Bericht.md / ZUERST_LESEN",
+      "note": "Qualitative departure context; not a sub-second timestamp."
+    },
+    "exactFirstMotionAtPtsZero": {
+      "epistemic": "UNKNOWN",
+      "source": "not calibrated in kompakt review",
+      "note": "Do NOT equate first visible clock label or video file t=0 with proven first physical motion."
+    }
+  },
+  "offsets": {
+    "persistedStartToFirstVisibleClockLabelSeconds": 101,
+    "persistedStartToLifecycleCandidateStartSeconds": 146.989
+  }
+}

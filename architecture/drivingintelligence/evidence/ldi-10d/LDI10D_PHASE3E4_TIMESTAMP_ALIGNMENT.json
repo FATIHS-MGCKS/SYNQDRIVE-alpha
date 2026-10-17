@@ -1,0 +1,9 @@
+{
+  "schema": "LDI10D_PHASE3E4_TIMESTAMP_ALIGNMENT_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "cestAssumption": "Overlay timestamps parsed as Europe/Berlin CEST (+02:00) pending systematic clock audit.",
+  "status": "OVERLAY_MATCHES_METADATA_OFFSET",
+  "meanAbsOverlayVsMetadataOffsetSec": 0,
+  "pairedSpatialBuckets": 17,
+  "note": "No arbitrary shift applied to improve metrics."
+}

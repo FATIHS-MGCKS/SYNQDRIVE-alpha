@@ -1,0 +1,23 @@
+{
+  "schema": "LDI10D_PHASE3E5_OCR_VALIDATION_V1",
+  "headSha": "92d19b51c94ac14ba5061a7687c5a2fed19f4805",
+  "sourcePack": "architecture/drivingintelligence/evidence/ldi-10d/phase3e5-research-pack",
+  "framesSampleInZip": false,
+  "frameCrosscheckSource": "LDI10D_PHASE3E4_IPHONE_GPS_OBSERVATIONS.json (18 review frames)",
+  "stats": {
+    "total": 206,
+    "verifiedCount": 137,
+    "freezeCandidates": 7,
+    "jumpRejections": 0,
+    "dimoRejections": 23,
+    "partialCount": 41
+  },
+  "verificationBreakdown": {
+    "REJECTED_PARTIAL_OCR": 41,
+    "VERIFIED_DIMO_CORROBORATED": 130,
+    "VERIFIED_FRAME_CROSSCHECK": 7,
+    "REJECTED_DIMO_DISAGREEMENT": 23,
+    "REJECTED_RAW_COORD_PATTERN": 4,
+    "REJECTED_LON_BAND": 1
+  }
+}

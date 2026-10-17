@@ -1,0 +1,1099 @@
+{
+  "schema": "LDI10D_ROAD_FEATURE_INVENTORY_V1",
+  "osmSnapshotSha256": "8afff85539dad9d1590022656f291d50b01215d99cd4a9bcc4af2aef74c073d9",
+  "counts": {
+    "ways": 155,
+    "trafficSignals": 0,
+    "crossings": 8,
+    "junctionTaggedNodes": 0,
+    "turnRestrictions": 3
+  },
+  "waysSummary": [
+    {
+      "osmId": 23546768,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 25727782,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": "no",
+      "nodeCount": 70
+    },
+    {
+      "osmId": 25727783,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 25728750,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 59
+    },
+    {
+      "osmId": 35538139,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 42
+    },
+    {
+      "osmId": 35538140,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "yes",
+      "nodeCount": 13
+    },
+    {
+      "osmId": 35538142,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 15
+    },
+    {
+      "osmId": 35538143,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 13
+    },
+    {
+      "osmId": 35538144,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 45
+    },
+    {
+      "osmId": 47984059,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 13
+    },
+    {
+      "osmId": 47984064,
+      "highway": "tertiary",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 9
+    },
+    {
+      "osmId": 47990313,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 47990314,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 17
+    },
+    {
+      "osmId": 47990315,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 47990316,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 47990317,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 9
+    },
+    {
+      "osmId": 47993279,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 48002401,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 48133717,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 21
+    },
+    {
+      "osmId": 48135922,
+      "highway": "residential",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 48136205,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 39
+    },
+    {
+      "osmId": 48136307,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 48136308,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 19
+    },
+    {
+      "osmId": 48136309,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 22
+    },
+    {
+      "osmId": 48143100,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 48144282,
+      "highway": "living_street",
+      "maxspeed": null,
+      "oneway": "no",
+      "nodeCount": 40
+    },
+    {
+      "osmId": 48144283,
+      "highway": "living_street",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 10
+    },
+    {
+      "osmId": 48144284,
+      "highway": "living_street",
+      "maxspeed": "7",
+      "oneway": null,
+      "nodeCount": 26
+    },
+    {
+      "osmId": 48144285,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 48145181,
+      "highway": "residential",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 48145182,
+      "highway": "residential",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 48145183,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "yes",
+      "nodeCount": 12
+    },
+    {
+      "osmId": 48245276,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 48245281,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 19
+    },
+    {
+      "osmId": 48245288,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 40
+    },
+    {
+      "osmId": 48245554,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 29
+    },
+    {
+      "osmId": 48247254,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 10
+    },
+    {
+      "osmId": 48247523,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 13
+    },
+    {
+      "osmId": 48247524,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 48247525,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 48250200,
+      "highway": "residential",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 20
+    },
+    {
+      "osmId": 48250211,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 9
+    },
+    {
+      "osmId": 48290595,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 19
+    },
+    {
+      "osmId": 48290864,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 48291252,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 48294337,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 48295884,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 17
+    },
+    {
+      "osmId": 48295885,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "yes",
+      "nodeCount": 24
+    },
+    {
+      "osmId": 48295886,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "yes",
+      "nodeCount": 21
+    },
+    {
+      "osmId": 48616360,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 48865009,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 48865010,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 27
+    },
+    {
+      "osmId": 48980093,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 57792205,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 12
+    },
+    {
+      "osmId": 59399061,
+      "highway": "residential",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 14
+    },
+    {
+      "osmId": 59973820,
+      "highway": "service",
+      "maxspeed": "20",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 59973821,
+      "highway": "service",
+      "maxspeed": "20",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 66750170,
+      "highway": "tertiary",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 66750173,
+      "highway": "tertiary",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 10
+    },
+    {
+      "osmId": 87593168,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 87593181,
+      "highway": "residential",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 121821467,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 41
+    },
+    {
+      "osmId": 121821468,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 29
+    },
+    {
+      "osmId": 121846828,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 11
+    },
+    {
+      "osmId": 121846830,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 3
+    },
+    {
+      "osmId": 121846831,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 45
+    },
+    {
+      "osmId": 121846833,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 19
+    },
+    {
+      "osmId": 121848483,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 6
+    },
+    {
+      "osmId": 121848484,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 49
+    },
+    {
+      "osmId": 181020423,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 28
+    },
+    {
+      "osmId": 181020428,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 8
+    },
+    {
+      "osmId": 181157947,
+      "highway": "residential",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 16
+    },
+    {
+      "osmId": 192239340,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 15
+    },
+    {
+      "osmId": 192239344,
+      "highway": "living_street",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 192241685,
+      "highway": "residential",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 31
+    },
+    {
+      "osmId": 193095405,
+      "highway": "tertiary_link",
+      "maxspeed": "50",
+      "oneway": "yes",
+      "nodeCount": 8
+    },
+    {
+      "osmId": 203388828,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 203389724,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 203389727,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 9
+    },
+    {
+      "osmId": 203389730,
+      "highway": "service",
+      "maxspeed": "10",
+      "oneway": null,
+      "nodeCount": 50
+    },
+    {
+      "osmId": 203389731,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 203389732,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 14
+    },
+    {
+      "osmId": 203391045,
+      "highway": "service",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 203391046,
+      "highway": "service",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 207592580,
+      "highway": "residential",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 207593151,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 207759734,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 208147197,
+      "highway": "service",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 16
+    },
+    {
+      "osmId": 208383626,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 208489472,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 208489474,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 208489478,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 208493566,
+      "highway": "service",
+      "maxspeed": "20",
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 208495897,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 208495898,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 208503163,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 208537706,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 208732980,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 9
+    },
+    {
+      "osmId": 208732981,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 208802829,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 276144131,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 276144446,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 276296910,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "yes",
+      "nodeCount": 21
+    },
+    {
+      "osmId": 308770423,
+      "highway": "residential",
+      "maxspeed": null,
+      "oneway": "no",
+      "nodeCount": 4
+    },
+    {
+      "osmId": 308770425,
+      "highway": "residential",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 12
+    },
+    {
+      "osmId": 325457024,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 379815427,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 379815428,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 379815430,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 379815432,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 6
+    },
+    {
+      "osmId": 572868599,
+      "highway": "service",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 572869008,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 575301620,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 575367448,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 579623486,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 579693521,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": "no",
+      "nodeCount": 31
+    },
+    {
+      "osmId": 581371772,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 581373406,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 586982631,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 680196562,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 700538859,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 2
+    },
+    {
+      "osmId": 847073943,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 847073944,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 871439688,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 21
+    },
+    {
+      "osmId": 889115730,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 957756924,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 8
+    },
+    {
+      "osmId": 962832526,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 7
+    },
+    {
+      "osmId": 1208811610,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208811611,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1208811612,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1208811613,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1208811614,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208811616,
+      "highway": "service",
+      "maxspeed": "30",
+      "oneway": "no",
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208811618,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208811619,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 1208898810,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": "yes",
+      "nodeCount": 4
+    },
+    {
+      "osmId": 1208898813,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1208898815,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208898816,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208898817,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1208898818,
+      "highway": "service",
+      "maxspeed": "20",
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 1208898819,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208898820,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1208898821,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 1208898824,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1209175921,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1209175922,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1209175923,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 4
+    },
+    {
+      "osmId": 1209175924,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 5
+    },
+    {
+      "osmId": 1314429093,
+      "highway": "tertiary",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1314429094,
+      "highway": "residential",
+      "maxspeed": "30",
+      "oneway": null,
+      "nodeCount": 3
+    },
+    {
+      "osmId": 1456778508,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 8
+    },
+    {
+      "osmId": 1516291704,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": null,
+      "nodeCount": 10
+    },
+    {
+      "osmId": 1518323533,
+      "highway": "tertiary",
+      "maxspeed": "50",
+      "oneway": "no",
+      "nodeCount": 2
+    },
+    {
+      "osmId": 1518323534,
+      "highway": "service",
+      "maxspeed": null,
+      "oneway": null,
+      "nodeCount": 2
+    }
+  ],
+  "signals": []
+}

@@ -1,0 +1,743 @@
+{
+  "schema": "LDI10D_PHASE3E_EVENT_GRAPH_V1",
+  "nodes": [
+    {
+      "eventId": "P3E_UNKNOWN_ROAD_CTX_TRIP",
+      "eventType": "UNKNOWN_ROAD_CONTEXT"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_105_114",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_134_138",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_JUNC_APP_145_merged",
+      "eventType": "JUNCTION_APPROACH"
+    },
+    {
+      "eventId": "P3E_JUNC_EXIT_145_merged",
+      "eventType": "JUNCTION_EXIT"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_163_172",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_LOWSEQ_168_171",
+      "eventType": "REPEATED_LOW_SPEED_SEQUENCE"
+    },
+    {
+      "eventId": "P3E_LOWSEQ_174_177",
+      "eventType": "REPEATED_LOW_SPEED_SEQUENCE"
+    },
+    {
+      "eventId": "P3E_JUNC_APP_184_merged_merged",
+      "eventType": "JUNCTION_APPROACH"
+    },
+    {
+      "eventId": "P3E_JUNC_EXIT_184_merged_merged",
+      "eventType": "JUNCTION_EXIT"
+    },
+    {
+      "eventId": "P3E_STR_ACC_187_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_APP_219",
+      "eventType": "CURVE_APPROACH"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_222_231",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_ACC_233_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_231",
+      "eventType": "CURVE_EXIT_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_253_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_HARD_BRK_256_merged",
+      "eventType": "HARD_BRAKING_CANDIDATE"
+    },
+    {
+      "eventId": "P3E_STR_ACC_293",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_294_298",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_ACC_300_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_298",
+      "eventType": "CURVE_EXIT_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_343_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_HARD_BRK_344_merged_merged_merged",
+      "eventType": "HARD_BRAKING_CANDIDATE"
+    },
+    {
+      "eventId": "P3E_STR_ACC_393_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_402_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_419_428",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_DEC_452_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_457_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_518_522",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_ACC_524",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_522",
+      "eventType": "CURVE_EXIT_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_553_562",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_578_582",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_DEC_584_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_APP_584",
+      "eventType": "CURVE_APPROACH"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_587_591",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_596_600",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_ACC_602_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_600",
+      "eventType": "CURVE_EXIT_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_605_609",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_ACC_624_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_646",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_STR_ACC_658_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_732_merged_merged_merged_merged_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_HARD_BRK_736_merged_merged",
+      "eventType": "HARD_BRAKING_CANDIDATE"
+    },
+    {
+      "eventId": "P3E_STR_ACC_750_merged_merged_merged_merged_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_ACC_854_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_ACC_915_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_929",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_STR_ACC_934",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_STR_DEC_983_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_APP_984",
+      "eventType": "CURVE_APPROACH"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_987_997",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_APP_998",
+      "eventType": "CURVE_APPROACH"
+    },
+    {
+      "eventId": "P3E_STR_DEC_1000",
+      "eventType": "STRAIGHT_ROAD_DECELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1001_1010",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_STR_ACC_1012",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_1010",
+      "eventType": "CURVE_EXIT_ACCELERATION"
+    },
+    {
+      "eventId": "P3E_CURVE_APP_1029",
+      "eventType": "CURVE_APPROACH"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1032_1041",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1045_1064",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_APP_1069",
+      "eventType": "CURVE_APPROACH"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1072_1091",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1096_1100",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1104_1108",
+      "eventType": "CURVE_TRAVERSAL"
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1118_1122",
+      "eventType": "CURVE_TRAVERSAL"
+    }
+  ],
+  "edges": [
+    {
+      "fromEventId": "P3E_UNKNOWN_ROAD_CTX_TRIP",
+      "toEventId": "P3E_CURVE_TRAV_105_114",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_105_114",
+      "toEventId": "P3E_CURVE_TRAV_134_138",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_134_138",
+      "toEventId": "P3E_JUNC_APP_145",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_JUNC_APP_145_merged",
+      "toEventId": "P3E_JUNC_APP_146",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_JUNC_EXIT_145_merged",
+      "toEventId": "P3E_JUNC_EXIT_146",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_163_172",
+      "toEventId": "P3E_LOWSEQ_168_171",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_LOWSEQ_168_171",
+      "toEventId": "P3E_LOWSEQ_174_177",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_LOWSEQ_174_177",
+      "toEventId": "P3E_JUNC_APP_184",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_JUNC_APP_184_merged_merged",
+      "toEventId": "P3E_JUNC_APP_185",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_JUNC_EXIT_184_merged_merged",
+      "toEventId": "P3E_JUNC_EXIT_185",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_187_merged_merged",
+      "toEventId": "P3E_STR_ACC_188",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_APP_219",
+      "toEventId": "P3E_CURVE_TRAV_222_231",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_222_231",
+      "toEventId": "P3E_CURVE_EXIT_231",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_233_merged_merged_merged",
+      "toEventId": "P3E_STR_ACC_234",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_EXIT_231",
+      "toEventId": "P3E_STR_ACC_233",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_253_merged_merged_merged_merged",
+      "toEventId": "P3E_STR_DEC_254",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_HARD_BRK_256_merged",
+      "toEventId": "P3E_STR_DEC_257",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_293",
+      "toEventId": "P3E_CURVE_TRAV_294_298",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_294_298",
+      "toEventId": "P3E_CURVE_EXIT_298",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_300_merged_merged_merged_merged",
+      "toEventId": "P3E_STR_ACC_301",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_EXIT_298",
+      "toEventId": "P3E_STR_ACC_300",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_343_merged_merged_merged_merged",
+      "toEventId": "P3E_STR_DEC_344",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_HARD_BRK_344_merged_merged_merged",
+      "toEventId": "P3E_STR_DEC_345",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_393_merged_merged",
+      "toEventId": "P3E_STR_ACC_394",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_402_merged_merged_merged_merged",
+      "toEventId": "P3E_STR_DEC_403",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_419_428",
+      "toEventId": "P3E_STR_DEC_452",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_452_merged",
+      "toEventId": "P3E_STR_DEC_453",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_457_merged_merged",
+      "toEventId": "P3E_STR_DEC_458",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_518_522",
+      "toEventId": "P3E_CURVE_EXIT_522",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_524",
+      "toEventId": "P3E_CURVE_TRAV_553_562",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_EXIT_522",
+      "toEventId": "P3E_STR_ACC_524",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_553_562",
+      "toEventId": "P3E_CURVE_TRAV_578_582",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_578_582",
+      "toEventId": "P3E_STR_DEC_584",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_584_merged_merged",
+      "toEventId": "P3E_CURVE_APP_584",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_APP_584",
+      "toEventId": "P3E_STR_DEC_585",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_587_591",
+      "toEventId": "P3E_CURVE_TRAV_596_600",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_596_600",
+      "toEventId": "P3E_CURVE_EXIT_600",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_602_merged_merged",
+      "toEventId": "P3E_STR_ACC_603",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_EXIT_600",
+      "toEventId": "P3E_STR_ACC_602",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_605_609",
+      "toEventId": "P3E_STR_ACC_624",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_624_merged",
+      "toEventId": "P3E_STR_ACC_625",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_646",
+      "toEventId": "P3E_STR_ACC_658",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_658_merged_merged_merged",
+      "toEventId": "P3E_STR_ACC_659",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_732_merged_merged_merged_merged_merged_merged_merged_merged",
+      "toEventId": "P3E_STR_DEC_733",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_HARD_BRK_736_merged_merged",
+      "toEventId": "P3E_STR_DEC_737",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_750_merged_merged_merged_merged_merged_merged_merged_merged",
+      "toEventId": "P3E_STR_ACC_751",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_854_merged_merged",
+      "toEventId": "P3E_STR_ACC_855",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_915_merged_merged",
+      "toEventId": "P3E_STR_ACC_916",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_929",
+      "toEventId": "P3E_STR_ACC_934",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_934",
+      "toEventId": "P3E_STR_DEC_983",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_983_merged_merged_merged",
+      "toEventId": "P3E_STR_DEC_984",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_APP_984",
+      "toEventId": "P3E_STR_DEC_985",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_987_997",
+      "toEventId": "P3E_CURVE_APP_998",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_APP_998",
+      "toEventId": "P3E_STR_DEC_1000",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_DEC_1000",
+      "toEventId": "P3E_CURVE_TRAV_1001_1010",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_1001_1010",
+      "toEventId": "P3E_CURVE_EXIT_1010",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_STR_ACC_1012",
+      "toEventId": "P3E_CURVE_APP_1029",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_EXIT_1010",
+      "toEventId": "P3E_STR_ACC_1012",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_APP_1029",
+      "toEventId": "P3E_CURVE_TRAV_1032_1041",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_1032_1041",
+      "toEventId": "P3E_CURVE_TRAV_1045_1064",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_1045_1064",
+      "toEventId": "P3E_CURVE_APP_1069",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_APP_1069",
+      "toEventId": "P3E_CURVE_TRAV_1072_1091",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_1072_1091",
+      "toEventId": "P3E_CURVE_TRAV_1096_1100",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_1096_1100",
+      "toEventId": "P3E_CURVE_TRAV_1104_1108",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    },
+    {
+      "fromEventId": "P3E_CURVE_TRAV_1104_1108",
+      "toEventId": "P3E_CURVE_TRAV_1118_1122",
+      "relationship": "TEMPORAL_NEXT",
+      "linkEvidence": "OBSERVED"
+    }
+  ],
+  "researchedSequences": [
+    {
+      "template": "DECELERATION → JUNCTION_APPROACH → ACCELERATION",
+      "eventIds": [
+        "P3E_JUNC_APP_145_merged",
+        "P3E_JUNC_EXIT_145_merged",
+        "P3E_JUNC_APP_184_merged_merged",
+        "P3E_JUNC_EXIT_184_merged_merged",
+        "P3E_STR_ACC_187_merged_merged",
+        "P3E_CURVE_APP_219",
+        "P3E_STR_ACC_233_merged_merged_merged",
+        "P3E_CURVE_EXIT_231"
+      ],
+      "observedTransitions": [
+        "temporal_order_on_timeline"
+      ],
+      "inferredTransitions": [
+        "semantic_template_fit_not_validated_as_single_maneuver"
+      ],
+      "note": "Sequence membership is research-only; gaps may contain untrusted seconds."
+    },
+    {
+      "template": "DECELERATION → CURVE_TRAVERSAL → ACCELERATION",
+      "eventIds": [
+        "P3E_CURVE_TRAV_105_114",
+        "P3E_CURVE_TRAV_134_138",
+        "P3E_JUNC_APP_145_merged",
+        "P3E_CURVE_TRAV_163_172",
+        "P3E_JUNC_APP_184_merged_merged",
+        "P3E_CURVE_APP_219",
+        "P3E_CURVE_TRAV_222_231",
+        "P3E_CURVE_EXIT_231"
+      ],
+      "observedTransitions": [
+        "temporal_order_on_timeline"
+      ],
+      "inferredTransitions": [
+        "semantic_template_fit_not_validated_as_single_maneuver"
+      ],
+      "note": "Sequence membership is research-only; gaps may contain untrusted seconds."
+    },
+    {
+      "template": "HIGH_SPEED → STRONG_DECELERATION → LOW_SPEED → ACCELERATION",
+      "eventIds": [
+        "P3E_JUNC_EXIT_145_merged",
+        "P3E_LOWSEQ_168_171",
+        "P3E_LOWSEQ_174_177",
+        "P3E_JUNC_EXIT_184_merged_merged",
+        "P3E_STR_ACC_187_merged_merged",
+        "P3E_STR_ACC_233_merged_merged_merged",
+        "P3E_CURVE_EXIT_231",
+        "P3E_HARD_BRK_256_merged"
+      ],
+      "observedTransitions": [
+        "temporal_order_on_timeline"
+      ],
+      "inferredTransitions": [
+        "semantic_template_fit_not_validated_as_single_maneuver"
+      ],
+      "note": "Sequence membership is research-only; gaps may contain untrusted seconds."
+    },
+    {
+      "template": "REPEATED_DECELERATION → LOW_SPEED → ACCELERATION",
+      "eventIds": [
+        "P3E_JUNC_APP_145_merged",
+        "P3E_JUNC_EXIT_145_merged",
+        "P3E_LOWSEQ_168_171",
+        "P3E_LOWSEQ_174_177",
+        "P3E_JUNC_APP_184_merged_merged",
+        "P3E_JUNC_EXIT_184_merged_merged",
+        "P3E_STR_ACC_187_merged_merged",
+        "P3E_CURVE_APP_219"
+      ],
+      "observedTransitions": [
+        "temporal_order_on_timeline"
+      ],
+      "inferredTransitions": [
+        "semantic_template_fit_not_validated_as_single_maneuver"
+      ],
+      "note": "Sequence membership is research-only; gaps may contain untrusted seconds."
+    }
+  ]
+}

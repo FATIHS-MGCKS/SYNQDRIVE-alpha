@@ -1,0 +1,148 @@
+{
+  "status": "INITIAL_INVENTORY_NOT_FULL_ANALYSIS",
+  "trip_id": "358d0158-b2a9-47ed-af26-33926c5770b4",
+  "timezone": "Europe/Berlin UTC+02:00",
+  "files": [
+    {
+      "name": "TC_00062.MOV",
+      "size": 134242250,
+      "sha256": "b81328f1f00345bccfd8378efaf1b8dff4e486061f73b1c73ae396b3a4ebcf21",
+      "duration": 179.875,
+      "frames": "4495",
+      "fps": "35960/1439",
+      "width": 1280,
+      "height": 720,
+      "created": "2026-10-16T03:37:41.000000Z",
+      "drive_id": "1haghGlbC1eb1NegQJmGQrs0rmItTXynw",
+      "visible_berlin_time_samples": [
+        "05:37:41",
+        "05:39:11",
+        "05:40:41"
+      ],
+      "presentation_intervals_seconds": {
+        "0.04": 4449,
+        "0.041667": 30,
+        "0.041666": 15
+      }
+    },
+    {
+      "name": "TC_00063.MOV",
+      "size": 134375279,
+      "sha256": "7eedec0c9377dc33a511fc1516c2f533f0ca92d0b443499473ac30c84e7acd69",
+      "duration": 179.995,
+      "frames": "4498",
+      "fps": "899600/35999",
+      "width": 1280,
+      "height": 720,
+      "created": "2026-10-16T03:40:41.000000Z",
+      "drive_id": "15hlDvzC1fo2art75pEd2GrmbS-sQbM8z",
+      "visible_berlin_time_samples": [
+        "05:40:41",
+        "05:42:11",
+        "05:43:41"
+      ],
+      "presentation_intervals_seconds": {
+        "0.04": 4452,
+        "0.041667": 30,
+        "0.041666": 15
+      }
+    },
+    {
+      "name": "TC_00064.MOV",
+      "size": 134704631,
+      "sha256": "808aa3563ed89446a103c9eea6455536cf46ec246b9ca98b1555ff8eea68d888",
+      "duration": 179.955,
+      "frames": "4497",
+      "fps": "299800/11997",
+      "width": 1280,
+      "height": 720,
+      "created": "2026-10-16T03:43:41.000000Z",
+      "drive_id": "1Rvy3PaVbf8OLd753MEBriZMwX6v2SBAJ",
+      "visible_berlin_time_samples": [
+        "05:43:41",
+        "05:45:11",
+        "05:46:41"
+      ],
+      "presentation_intervals_seconds": {
+        "0.04": 4451,
+        "0.041667": 30,
+        "0.041666": 15
+      }
+    },
+    {
+      "name": "TC_00065.MOV",
+      "size": 134073547,
+      "sha256": "ef9a24d87e5422bac034e0cfb43e72184223a83e6cb972db910c2a3e758064e1",
+      "duration": 179.955,
+      "frames": "4497",
+      "fps": "299800/11997",
+      "width": 1280,
+      "height": 720,
+      "created": "2026-10-16T03:46:41.000000Z",
+      "drive_id": "18MRwZbBHyAToXbKUOtaFCr0ve5R9Vdcm",
+      "visible_berlin_time_samples": [
+        "05:46:41",
+        "05:48:11",
+        "05:49:41"
+      ],
+      "presentation_intervals_seconds": {
+        "0.04": 4451,
+        "0.041667": 30,
+        "0.041666": 15
+      }
+    },
+    {
+      "name": "TC_00066.MOV",
+      "size": 133529264,
+      "sha256": "d31ff7c1f6ff9718846f3429eb69fd88e6ee03cd5c991f4cf3c67843eb1dfca4",
+      "duration": 179.995,
+      "frames": "4498",
+      "fps": "899600/35999",
+      "width": 1280,
+      "height": 720,
+      "created": "2026-10-16T03:49:42.000000Z",
+      "drive_id": "18xdPmP8MkU7RqvHqisRezeiZJ6rV1U67",
+      "visible_berlin_time_samples": [
+        "05:49:41",
+        "05:51:12",
+        "05:52:41"
+      ],
+      "presentation_intervals_seconds": {
+        "0.04": 4452,
+        "0.041667": 30,
+        "0.041666": 15
+      }
+    },
+    {
+      "name": "TC_00067.MOV",
+      "size": 95466010,
+      "sha256": "6471c4164f942fbddf0b8ef1fcdf556a10dc5cdd61e7c5d2809628357580bc76",
+      "duration": 127.813333,
+      "frames": "3194",
+      "fps": "119775/4793",
+      "width": 1280,
+      "height": 720,
+      "created": "2026-10-16T03:52:42.000000Z",
+      "drive_id": "1iyZU1c4SCX4g031W4aBJRQheH_87gHSo",
+      "visible_berlin_time_samples": [
+        "05:52:42",
+        "05:53:46",
+        "05:54:49"
+      ],
+      "presentation_intervals_seconds": {
+        "0.04": 3161,
+        "0.041667": 21,
+        "0.041666": 11
+      }
+    }
+  ],
+  "limitations": [
+    "18 sample frames visually inspected (start/middle/near-end), not continuous analysis.",
+    "SHA256 calculated on downloaded original bytes; sizes match Drive metadata; no upstream checksum returned.",
+    "Overlay clock not yet calibrated against physical time; sensor latency and drift unknown.",
+    "TimeStamp Camera identified in container metadata; actual GPS source and independence from DIMO not yet verified.",
+    "File boundary gaps/overlaps below second precision unresolved.",
+    "DI replay and projection not available yet.",
+    "Pedal/power/regen indicator classification not established."
+  ]
+}

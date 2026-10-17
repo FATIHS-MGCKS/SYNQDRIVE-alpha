@@ -1,0 +1,68 @@
+{
+  "schema": "LDI10D_OSM_ROAD_CONTEXT_EXPORT_V1_PROPOSED",
+  "status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "pinnedTripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "pinnedVehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+  "upstreamEvidenceHashes": {
+    "ldi08CombinedSnapshotSha256": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009",
+    "ldi10cRouteGeojson": "see LDI10C_ROUTE.geojson at commit",
+    "s4PinHash": "DI_V0_S4_EVIDENCE_V1:sha256:79635496216a2588666db3f1be87609f803d073421db6ebc64e65f7c88b264fa"
+  },
+  "bboxFromObservedGps": {
+    "south": 51.3999883,
+    "west": 9.6561166,
+    "north": 51.4079316,
+    "east": 9.6719416,
+    "bufferMetersRecommended": 50,
+    "note": "From LDI-10C Phase 1; expand buffer only in export metadata, not silently in GPS"
+  },
+  "osmProvenance": {
+    "source": "OpenStreetMap contributors",
+    "extractMethod": "Overpass API POST interpreter OR planet extract clip",
+    "queryVersion": "string — hash of Overpass QL",
+    "fetchedAtUtc": "ISO-8601",
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors"
+  },
+  "layers": {
+    "nodes": {
+      "traffic_signals": { "tags": ["highway=traffic_signals"], "epistemic": "MAP_FEATURE_NOT_OBSERVED_STATE" },
+      "junctions": { "tags": ["junction=crossing", "junction=roundabout"], "epistemic": "MAP_FEATURE" }
+    },
+    "ways": {
+      "drivable": { "tags": ["highway~motorway|trunk|primary|secondary|tertiary|residential|service"], "geometry": "WGS84" },
+      "maxspeedTagged": { "field": "maxspeed", "epistemic": "TAGGED_LIMIT_NOT_ENFORCEMENT" }
+    },
+    "curvature": {
+      "derivation": "OSM way vertex angle OR separate bearing on matched way",
+      "notGpsBearingProxy": true
+    }
+  },
+  "maneuverAssociation": {
+    "schema": "LDI10D_MANEUVER_ROAD_ASSOCIATION_V1",
+    "inputs": ["LDI10B group windowUtc", "LDI10C maneuver centroid/sub-route", "LDI08 per-bucket GPS"],
+    "rules": {
+      "temporal": "exact 1s bucket inclusive; no interpolation across ROW_ABSENT",
+      "spatial": "nearest way/signal within uncertaintyRadiusM; if multiple candidates within radius → UNKNOWN",
+      "uncertaintyRadiusM": "default 25; configurable; must be recorded per row"
+    },
+    "record": {
+      "groupId": "string",
+      "candidateIds": ["string"],
+      "associationClass": "NEAREST_WAY | NEAREST_SIGNAL | INTERSECTION_PROXIMATE | CURVATURE_PROXIMATE | UNKNOWN",
+      "distanceM": "number | null",
+      "featureOsmId": "number | null",
+      "featureTags": "object",
+      "gpsBucketsUsed": ["ISO UTC"],
+      "confidence": "OBSERVED_GPS | INFERRED_MAP | UNKNOWN",
+      "notTrafficLightState": true,
+      "notBrakePedal": true,
+      "notDriverIntent": true
+    }
+  },
+  "separationOfConcerns": {
+    "observable": ["L3 speed deltas", "GPS position per bucket", "native events if present", "stop candidate from L3≤threshold"],
+    "inferred": ["near traffic signal node", "road class", "tagged maxspeed"],
+    "forbiddenClaims": ["signal phase red/green", "brake actuation", "regen", "harsh driving style label without model"]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "freezeId": "EXP021_RETROSPECTIVE_HALT_V0_2_FROZEN_REVIEW_2026-10-16",
+  "frozenAtUtc": "2026-10-16T18:59:16.945Z",
+  "fileHashes": {
+    "scripts/ops/exp021-retrospective-halt-prototype-v2.lib.ts": "c3d8f64fc852bbd86832b8ccdc97da6953fdb79e1a84c2c638c4b97ffca19645",
+    "scripts/ops/exp021-retrospective-halt-prototype.lib.ts": "dbdab821250ac20d7b486c4328ac1a0ffc2ef20615d576dad856633760a32350",
+    "scripts/ops/exp021-retrospective-halt-overpass.lib.ts": "d2ee16f7dd0badecc3d61f56028159d32d4120398559ad74c0b6442f0c1cd6c4",
+    "scripts/ops/exp021-retrospective-halt-prototype.ts": "ec49f478051fc941e3b57d57b50ee0f58e4a52d426eb2a3b99a17bc06241ed28",
+    "src/modules/vehicle-intelligence/driving-intelligence/core/calibration/CALIBRATION_UNSET_V0.ts": "7ee9e9468d31063a7a1607e999b1a35738b92b22cab04895bd4cc055c043dafa"
+  },
+  "parameterSnapshot": {
+    "prototypeVersions": {
+      "v0_1": "EXP021_RETROSPECTIVE_HALT_PROTOTYPE_V0_1",
+      "v0_2": "EXP021_RETROSPECTIVE_HALT_PROTOTYPE_V0_2"
+    },
+    "geometryThresholds": {
+      "nearStopMaxKmh": 1.5,
+      "slowRollMinKmh": 1.5,
+      "slowRollMaxKmh": 5,
+      "movingMinKmh": 5
+    },
+    "minDisplacementMForAnyInference": 0.68,
+    "calibrationBundle": {
+      "calibrationVersion": "CALIBRATION_UNSET_V0",
+      "stopStationaryBandMaxKmh": 3,
+      "stopMovingBandMinKmh": 5,
+      "l3CrawlBandMaxKmh": 5,
+      "holdNoiseDisplacementM": 0.68,
+      "holdMovementLowerBoundMinKmh": 5,
+      "confidenceHighSpeedRangePct": 0.1,
+      "confidenceModerateSpeedRangeAbsKmh": 5,
+      "confidenceModerateSpeedRangePct": 0.2,
+      "r1CorroborationAbsKmh": 5,
+      "r1ConflictAbsKmh": 10
+    },
+    "v0_2ScoringNote": "Composite hypothesis margins frozen in v2 lib — no edits in freeze review step",
+    "mapContextDecisionRule": "NONE — mapContextVariantB is enrichment/logging only; classification identical A vs B"
+  },
+  "parameterSnapshotHash": "dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7"
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "LDI10D_PHASE3E7_SPEED_VALIDATION_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "pinnedL3BaselineMaeKmh": 2.303091434778604,
+  "sparseOcrSecondL3VsTacho": {
+    "n": 39,
+    "maeKmh": 2.3644316276137456
+  },
+  "note": "Sparse 15s OCR seconds only; not full-trip validation; iPhone overlay speed not used as GT",
+  "speedImprovementProven": "NO"
+}

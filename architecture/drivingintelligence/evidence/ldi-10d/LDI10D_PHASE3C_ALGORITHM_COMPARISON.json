@@ -1,0 +1,225 @@
+{
+  "schema": "LDI10D_PHASE3C_ALGORITHM_COMPARISON_V1",
+  "headSha": "53600304f4ae179e8b0f043ae8b3927ec74ab252",
+  "algorithms": [
+    "L3_BASELINE_PRODUCTION",
+    "L3_REPLAY_FROM_PINNED_POSITIONS",
+    "ADAPTIVE_DT_LEG_MEAN",
+    "MEDIAN_LEG_3S",
+    "CAUSAL_EMA_LEGS",
+    "MOTION_GATE_DISPLACEMENT",
+    "NONCAUSAL_OFFLINE_CENTERED_MEAN"
+  ],
+  "tripPin": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "ldi08Sha256": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009",
+  "comparisonMatrix": [
+    {
+      "algorithm": "L3_BASELINE_PRODUCTION",
+      "tripVsPinnedMae": 2.164030807608123e-15,
+      "videoVsTachoMae": 2.303091434778606,
+      "videoCoverage": 0.6584507042253521,
+      "risks": []
+    },
+    {
+      "algorithm": "L3_REPLAY_FROM_PINNED_POSITIONS",
+      "tripVsPinnedMae": 2.164030807608123e-15,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": []
+    },
+    {
+      "algorithm": "ADAPTIVE_DT_LEG_MEAN",
+      "tripVsPinnedMae": 4.249948203711674e-15,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": []
+    },
+    {
+      "algorithm": "MEDIAN_LEG_3S",
+      "tripVsPinnedMae": 1.125389684787522,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "ASYMMETRIC_LEGS_BIAS"
+      ]
+    },
+    {
+      "algorithm": "CAUSAL_EMA_LEGS",
+      "tripVsPinnedMae": 1.7846197987137102,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "LAG_UNDER_ACCELERATION"
+      ]
+    },
+    {
+      "algorithm": "MOTION_GATE_DISPLACEMENT",
+      "tripVsPinnedMae": 4.249948203711674e-15,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "COVERAGE_LOSS_AT_CRAWL"
+      ]
+    },
+    {
+      "algorithm": "NONCAUSAL_OFFLINE_CENTERED_MEAN",
+      "tripVsPinnedMae": 1.3710842901587044,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "NONCAUSAL_OFFLINE_ONLY_NOT_FOR_PRODUCTION_STREAM"
+      ]
+    }
+  ],
+  "algorithmsOnTrip": {
+    "L3_BASELINE_PRODUCTION": {
+      "numericCoverage": 0.8756906077348067,
+      "trustedCoverage": 0.8121546961325967,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 2.164030807608123e-15,
+        "rmseKmh": 3.3678069859495956e-15,
+        "p95AbsKmh": 7.105427357601002e-15,
+        "maxAbsKmh": 7.105427357601002e-15,
+        "biasKmh": -2.0251625204888848e-16
+      },
+      "vsObdWitness": {
+        "n": 50,
+        "maeKmh": 4.503765790257135,
+        "rmseKmh": 5.909571011226022,
+        "p95AbsKmh": 11.729652753249972,
+        "maxAbsKmh": 15.105783185386088,
+        "biasKmh": 2.5561020775623873
+      },
+      "causal": true
+    },
+    "L3_REPLAY_FROM_PINNED_POSITIONS": {
+      "numericCoverage": 0.8756906077348067,
+      "trustedCoverage": 0.8121546961325967,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 2.164030807608123e-15,
+        "rmseKmh": 3.3678069859495956e-15,
+        "p95AbsKmh": 7.105427357601002e-15,
+        "maxAbsKmh": 7.105427357601002e-15,
+        "biasKmh": -2.0251625204888848e-16
+      },
+      "vsObdWitness": {
+        "n": 50,
+        "maeKmh": 4.503765790257135,
+        "rmseKmh": 5.909571011226022,
+        "p95AbsKmh": 11.729652753249972,
+        "maxAbsKmh": 15.105783185386088,
+        "biasKmh": 2.5561020775623873
+      },
+      "causal": true
+    },
+    "ADAPTIVE_DT_LEG_MEAN": {
+      "numericCoverage": 0.8839779005524862,
+      "trustedCoverage": 0.8121546961325967,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 4.249948203711674e-15,
+        "rmseKmh": 5.890418655091109e-15,
+        "p95AbsKmh": 1.4210854715202004e-14,
+        "maxAbsKmh": 2.1316282072803006e-14,
+        "biasKmh": -1.6750987133758062e-15
+      },
+      "vsObdWitness": {
+        "n": 51,
+        "maeKmh": 4.427698419816868,
+        "rmseKmh": 5.85200026915121,
+        "p95AbsKmh": 11.729652753249972,
+        "maxAbsKmh": 15.105783185386088,
+        "biasKmh": 2.5182241916847614
+      },
+      "causal": true
+    },
+    "MEDIAN_LEG_3S": {
+      "numericCoverage": 0.8839779005524862,
+      "trustedCoverage": 0.8121546961325967,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 1.125389684787522,
+        "rmseKmh": 1.5731585207731191,
+        "p95AbsKmh": 3.5321491804353045,
+        "maxAbsKmh": 5.3677477302700005,
+        "biasKmh": -1.125389684787522
+      },
+      "vsObdWitness": {
+        "n": 51,
+        "maeKmh": 3.868218664129304,
+        "rmseKmh": 5.241341709087852,
+        "p95AbsKmh": 10.662893672032581,
+        "maxAbsKmh": 14.349171097809709,
+        "biasKmh": 1.0304375898238074
+      },
+      "causal": true
+    },
+    "CAUSAL_EMA_LEGS": {
+      "numericCoverage": 0.8839779005524862,
+      "trustedCoverage": 0.8121546961325967,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 1.7846197987137102,
+        "rmseKmh": 2.393646149704317,
+        "p95AbsKmh": 4.718888220349804,
+        "maxAbsKmh": 7.63468873115745,
+        "biasKmh": -0.07085208363340183
+      },
+      "vsObdWitness": {
+        "n": 51,
+        "maeKmh": 3.4672677790048354,
+        "rmseKmh": 4.45548325718273,
+        "p95AbsKmh": 6.971339573158254,
+        "maxAbsKmh": 11.479505994656797,
+        "biasKmh": 1.8054415282619534
+      },
+      "causal": true
+    },
+    "MOTION_GATE_DISPLACEMENT": {
+      "numericCoverage": 0.8756906077348067,
+      "trustedCoverage": 0.8066298342541437,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 4.249948203711674e-15,
+        "rmseKmh": 5.890418655091109e-15,
+        "p95AbsKmh": 1.4210854715202004e-14,
+        "maxAbsKmh": 2.1316282072803006e-14,
+        "biasKmh": -1.6750987133758062e-15
+      },
+      "vsObdWitness": {
+        "n": 49,
+        "maeKmh": 4.562886948350794,
+        "rmseKmh": 5.965153191423883,
+        "p95AbsKmh": 11.729652753249972,
+        "maxAbsKmh": 15.105783185386088,
+        "biasKmh": 2.5754749966214585
+      },
+      "causal": true
+    },
+    "NONCAUSAL_OFFLINE_CENTERED_MEAN": {
+      "numericCoverage": 0.8839779005524862,
+      "trustedCoverage": 0.8121546961325967,
+      "vsPinnedL3": {
+        "n": 307,
+        "maeKmh": 1.3710842901587044,
+        "rmseKmh": 1.8493866433273458,
+        "p95AbsKmh": 3.8429046800764297,
+        "maxAbsKmh": 6.131067797453362,
+        "biasKmh": -0.07230917953038654
+      },
+      "vsObdWitness": {
+        "n": 51,
+        "maeKmh": 3.644523602431762,
+        "rmseKmh": 4.593058564127206,
+        "p95AbsKmh": 8.599152680197143,
+        "maxAbsKmh": 11.734011536494684,
+        "biasKmh": 2.1376523999318966
+      },
+      "causal": false
+    }
+  },
+  "bestValidatedCandidate": "L3_BASELINE_PRODUCTION",
+  "gpsAuthorityPreserved": true
+}

@@ -1,0 +1,1653 @@
+[
+  {
+    "eventId": "GAP_EVT_001",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:36:00Z",
+      "to": "2026-10-16T03:36:05Z"
+    },
+    "gapDurationSec": 6,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "NOT_DISTINGUISHABLE",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 3.3 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": null,
+      "impliedChordKmh": null,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": null,
+      "legIntoGapClass": null,
+      "legOutOfGapClass": null,
+      "distantBeforeMeanKmh": null,
+      "distantAfterMeanKmh": 3.314766397760526
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 0,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [],
+    "bracketStructure": {
+      "calendarAdjacentBefore": null,
+      "calendarAdjacentAfter": "2026-10-16T03:36:06Z",
+      "calendarBracketBeforeLabels": [],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:36:06Z"
+      ],
+      "distantContextBeforeLabels": [],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:36:56Z",
+        "2026-10-16T03:36:58Z",
+        "2026-10-16T03:37:45Z",
+        "2026-10-16T03:37:46Z",
+        "2026-10-16T03:37:47Z",
+        "2026-10-16T03:37:48Z",
+        "2026-10-16T03:37:49Z",
+        "2026-10-16T03:37:50Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:36:06Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 507.76968071263406,
+      "nearestTrafficSignalId": 3861337111,
+      "travelBearingDeg": null,
+      "bearingToNearestSignalDeg": 91.68120119694163,
+      "bearingDeltaDeg": null,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_002",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:36:07Z",
+      "to": "2026-10-16T03:36:55Z"
+    },
+    "gapDurationSec": 49,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_HALT",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 0.0 km/h averages displacement over entire 49s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Small endpoint chord 0.5 m across 49s gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 3.8 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 0.4815928532581046,
+      "impliedChordKmh": 0.035382332076105645,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": null,
+      "legIntoGapClass": null,
+      "legOutOfGapClass": "INCONCLUSIVE_SCATTER",
+      "distantBeforeMeanKmh": null,
+      "distantAfterMeanKmh": 3.7731020865178913
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 3,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 0.4815928532581046,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 49,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 0,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:36:56Z→2026-10-16T03:36:58Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:36:06Z",
+      "calendarAdjacentAfter": "2026-10-16T03:36:56Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:36:06Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:36:56Z",
+        "2026-10-16T03:36:58Z"
+      ],
+      "distantContextBeforeLabels": [],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:37:45Z",
+        "2026-10-16T03:37:46Z",
+        "2026-10-16T03:37:47Z",
+        "2026-10-16T03:37:48Z",
+        "2026-10-16T03:37:49Z",
+        "2026-10-16T03:37:50Z",
+        "2026-10-16T03:37:51Z",
+        "2026-10-16T03:37:52Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:36:58Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 507.76968071263406,
+      "nearestTrafficSignalId": 3861337111,
+      "travelBearingDeg": 313.84181438520704,
+      "bearingToNearestSignalDeg": 91.68120119694163,
+      "bearingDeltaDeg": 137.83938681173458,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_003",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:36:59Z",
+      "to": "2026-10-16T03:37:44Z"
+    },
+    "gapDurationSec": 46,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_HALT",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 0.1 km/h averages displacement over entire 46s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Small endpoint chord 0.8 m across 46s gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "WEAK_SUPPORTS",
+        "text": "Slow-roll geometry adjacent to gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 2.9 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 0.8255875621342117,
+      "impliedChordKmh": 0.06461120051485135,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": 4.292107187655675,
+      "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+      "legOutOfGapClass": "SLOW_ROLL_GEOMETRY",
+      "distantBeforeMeanKmh": null,
+      "distantAfterMeanKmh": 2.8926835099894204
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 3,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 0.8255875621342117,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 46,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 0.1,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:36:56Z→2026-10-16T03:36:58Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 4.3,
+        "role": "calendar leg 2026-10-16T03:37:45Z→2026-10-16T03:37:46Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:36:58Z",
+      "calendarAdjacentAfter": "2026-10-16T03:37:45Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:36:56Z",
+        "2026-10-16T03:36:58Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:37:45Z",
+        "2026-10-16T03:37:46Z",
+        "2026-10-16T03:37:47Z",
+        "2026-10-16T03:37:48Z",
+        "2026-10-16T03:37:49Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:36:06Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:37:50Z",
+        "2026-10-16T03:37:51Z",
+        "2026-10-16T03:37:52Z",
+        "2026-10-16T03:37:53Z",
+        "2026-10-16T03:37:55Z",
+        "2026-10-16T03:37:56Z",
+        "2026-10-16T03:37:57Z",
+        "2026-10-16T03:37:59Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:49Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 508.6263588152617,
+      "nearestTrafficSignalId": 3861337111,
+      "travelBearingDeg": 216.08784985827404,
+      "bearingToNearestSignalDeg": 91.76608027488084,
+      "bearingDeltaDeg": 124.3217695833932,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_004",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:38:19Z",
+      "to": "2026-10-16T03:38:21Z"
+    },
+    "gapDurationSec": 3,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "NOT_DISTINGUISHABLE",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 1.9 km/h averages displacement over entire 3s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 4.6 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 29.7 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 1.6041966980236546,
+      "impliedChordKmh": 1.9250360376283855,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": 8.284087429500955,
+      "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+      "legOutOfGapClass": "MOVING_GEOMETRY",
+      "distantBeforeMeanKmh": 4.645190311263927,
+      "distantAfterMeanKmh": 29.657949022550888
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 2,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 1.6041966980236546,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 3,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 1.9,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:38:17Z→2026-10-16T03:38:18Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 8.3,
+        "role": "calendar leg 2026-10-16T03:38:22Z→2026-10-16T03:38:23Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:38:18Z",
+      "calendarAdjacentAfter": "2026-10-16T03:38:22Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:38:14Z",
+        "2026-10-16T03:38:15Z",
+        "2026-10-16T03:38:16Z",
+        "2026-10-16T03:38:17Z",
+        "2026-10-16T03:38:18Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:38:22Z",
+        "2026-10-16T03:38:23Z",
+        "2026-10-16T03:38:24Z",
+        "2026-10-16T03:38:25Z",
+        "2026-10-16T03:38:26Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:38:06Z",
+        "2026-10-16T03:38:07Z",
+        "2026-10-16T03:38:08Z",
+        "2026-10-16T03:38:09Z",
+        "2026-10-16T03:38:10Z",
+        "2026-10-16T03:38:11Z",
+        "2026-10-16T03:38:12Z",
+        "2026-10-16T03:38:13Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:38:27Z",
+        "2026-10-16T03:38:28Z",
+        "2026-10-16T03:38:29Z",
+        "2026-10-16T03:38:30Z",
+        "2026-10-16T03:38:31Z",
+        "2026-10-16T03:38:32Z",
+        "2026-10-16T03:38:33Z",
+        "2026-10-16T03:38:34Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:26Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 499.9865677365863,
+      "nearestTrafficSignalId": 3861337111,
+      "travelBearingDeg": 245.4246239945657,
+      "bearingToNearestSignalDeg": 89.6811785479336,
+      "bearingDeltaDeg": 155.7434454466321,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_005",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:40:19Z",
+      "to": "2026-10-16T03:40:50Z"
+    },
+    "gapDurationSec": 32,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_HALT",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 0.1 km/h averages displacement over entire 32s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Small endpoint chord 1.1 m across 32s gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 43.3 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 33.0 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 1.1336668274961743,
+      "impliedChordKmh": 0.12753751809331962,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": 9.391902453217165,
+      "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+      "legOutOfGapClass": "MOVING_GEOMETRY",
+      "distantBeforeMeanKmh": 43.347097377281045,
+      "distantAfterMeanKmh": 33.0141574130635
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 5,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 1.1336668274961743,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 32,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 0.1,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:40:17Z→2026-10-16T03:40:18Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 9.4,
+        "role": "calendar leg 2026-10-16T03:40:51Z→2026-10-16T03:40:52Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:40:18Z",
+      "calendarAdjacentAfter": "2026-10-16T03:40:51Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:40:14Z",
+        "2026-10-16T03:40:15Z",
+        "2026-10-16T03:40:16Z",
+        "2026-10-16T03:40:17Z",
+        "2026-10-16T03:40:18Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:40:51Z",
+        "2026-10-16T03:40:52Z",
+        "2026-10-16T03:40:53Z",
+        "2026-10-16T03:40:54Z",
+        "2026-10-16T03:40:55Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:40:06Z",
+        "2026-10-16T03:40:07Z",
+        "2026-10-16T03:40:08Z",
+        "2026-10-16T03:40:09Z",
+        "2026-10-16T03:40:10Z",
+        "2026-10-16T03:40:11Z",
+        "2026-10-16T03:40:12Z",
+        "2026-10-16T03:40:13Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:40:56Z",
+        "2026-10-16T03:40:57Z",
+        "2026-10-16T03:40:58Z",
+        "2026-10-16T03:40:59Z",
+        "2026-10-16T03:41:00Z",
+        "2026-10-16T03:41:01Z",
+        "2026-10-16T03:41:02Z",
+        "2026-10-16T03:41:03Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:40:55Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 18.120133772154297,
+      "nearestTrafficSignalId": 1975690266,
+      "travelBearingDeg": 101.31299276605023,
+      "bearingToNearestSignalDeg": 102.0067548605657,
+      "bearingDeltaDeg": 0.6937620945154777,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_006",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:41:50Z",
+      "to": "2026-10-16T03:42:30Z"
+    },
+    "gapDurationSec": 41,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_HALT",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 0.2 km/h averages displacement over entire 41s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Small endpoint chord 2.1 m across 41s gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "WEAK_SUPPORTS",
+        "text": "Slow-roll geometry adjacent to gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 55.8 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 34.3 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 2.12296344489598,
+      "impliedChordKmh": 0.18640654638111046,
+      "legIntoGapKmh": 2.8021121500568564,
+      "legOutOfGapKmh": 11.651795603477284,
+      "legIntoGapClass": "SLOW_ROLL_GEOMETRY",
+      "legOutOfGapClass": "MOVING_GEOMETRY",
+      "distantBeforeMeanKmh": 55.793949495098545,
+      "distantAfterMeanKmh": 34.332789179661134
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 6,
+      "LIKELY_SLOW_ROLL_STOP_GO": 1,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 2.12296344489598,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 41,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 0.2,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": 2.8,
+        "role": "calendar leg 2026-10-16T03:41:48Z→2026-10-16T03:41:49Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 11.7,
+        "role": "calendar leg 2026-10-16T03:42:31Z→2026-10-16T03:42:32Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:41:49Z",
+      "calendarAdjacentAfter": "2026-10-16T03:42:31Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:41:45Z",
+        "2026-10-16T03:41:46Z",
+        "2026-10-16T03:41:47Z",
+        "2026-10-16T03:41:48Z",
+        "2026-10-16T03:41:49Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:42:31Z",
+        "2026-10-16T03:42:32Z",
+        "2026-10-16T03:42:33Z",
+        "2026-10-16T03:42:34Z",
+        "2026-10-16T03:42:35Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:41:37Z",
+        "2026-10-16T03:41:38Z",
+        "2026-10-16T03:41:39Z",
+        "2026-10-16T03:41:40Z",
+        "2026-10-16T03:41:41Z",
+        "2026-10-16T03:41:42Z",
+        "2026-10-16T03:41:43Z",
+        "2026-10-16T03:41:44Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:42:36Z",
+        "2026-10-16T03:42:37Z",
+        "2026-10-16T03:42:38Z",
+        "2026-10-16T03:42:39Z",
+        "2026-10-16T03:42:40Z",
+        "2026-10-16T03:42:41Z",
+        "2026-10-16T03:42:42Z",
+        "2026-10-16T03:42:43Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:42:35Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 5.195960089979623,
+      "nearestTrafficSignalId": 3580338394,
+      "travelBearingDeg": 185.63523177697877,
+      "bearingToNearestSignalDeg": 212.976880707784,
+      "bearingDeltaDeg": 27.341648930805235,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_007",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:42:51Z",
+      "to": "2026-10-16T03:42:57Z"
+    },
+    "gapDurationSec": 7,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_HALT",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 0.3 km/h averages displacement over entire 7s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Small endpoint chord 0.5 m across 7s gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 28.6 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 40.7 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 0.4912108229850152,
+      "impliedChordKmh": 0.25262270896372213,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": 8.242512023287304,
+      "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+      "legOutOfGapClass": "MOVING_GEOMETRY",
+      "distantBeforeMeanKmh": 28.622061255227106,
+      "distantAfterMeanKmh": 40.714330248900964
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 5,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 0.4912108229850152,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 7,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 0.3,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:42:48Z→2026-10-16T03:42:50Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 8.2,
+        "role": "calendar leg 2026-10-16T03:42:58Z→2026-10-16T03:42:59Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:42:50Z",
+      "calendarAdjacentAfter": "2026-10-16T03:42:58Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:42:46Z",
+        "2026-10-16T03:42:47Z",
+        "2026-10-16T03:42:48Z",
+        "2026-10-16T03:42:50Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:42:58Z",
+        "2026-10-16T03:42:59Z",
+        "2026-10-16T03:43:00Z",
+        "2026-10-16T03:43:01Z",
+        "2026-10-16T03:43:02Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:42:38Z",
+        "2026-10-16T03:42:39Z",
+        "2026-10-16T03:42:40Z",
+        "2026-10-16T03:42:41Z",
+        "2026-10-16T03:42:42Z",
+        "2026-10-16T03:42:43Z",
+        "2026-10-16T03:42:44Z",
+        "2026-10-16T03:42:45Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:43:03Z",
+        "2026-10-16T03:43:04Z",
+        "2026-10-16T03:43:05Z",
+        "2026-10-16T03:43:06Z",
+        "2026-10-16T03:43:07Z",
+        "2026-10-16T03:43:08Z",
+        "2026-10-16T03:43:09Z",
+        "2026-10-16T03:43:10Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:43:02Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 6.475673681682689,
+      "nearestTrafficSignalId": 2528191467,
+      "travelBearingDeg": 205.11250632555925,
+      "bearingToNearestSignalDeg": 251.1665973941237,
+      "bearingDeltaDeg": 46.054091068564446,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_008",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:43:43Z",
+      "to": "2026-10-16T03:44:36Z"
+    },
+    "gapDurationSec": 54,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_HALT",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 0.1 km/h averages displacement over entire 54s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Small endpoint chord 1.7 m across 54s gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "SUPPORTS",
+        "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 33.0 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 54.8 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 1.6693710515541964,
+      "impliedChordKmh": 0.11129140343694642,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": 12.011657798081133,
+      "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+      "legOutOfGapClass": "MOVING_GEOMETRY",
+      "distantBeforeMeanKmh": 32.96369947505117,
+      "distantAfterMeanKmh": 54.78875706359889
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 5,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 1.6693710515541964,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 54,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 0.1,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 12,
+        "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:43:42Z",
+      "calendarAdjacentAfter": "2026-10-16T03:44:37Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:43:38Z",
+        "2026-10-16T03:43:39Z",
+        "2026-10-16T03:43:40Z",
+        "2026-10-16T03:43:41Z",
+        "2026-10-16T03:43:42Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:44:37Z",
+        "2026-10-16T03:44:38Z",
+        "2026-10-16T03:44:39Z",
+        "2026-10-16T03:44:40Z",
+        "2026-10-16T03:44:41Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:43:30Z",
+        "2026-10-16T03:43:31Z",
+        "2026-10-16T03:43:32Z",
+        "2026-10-16T03:43:33Z",
+        "2026-10-16T03:43:34Z",
+        "2026-10-16T03:43:35Z",
+        "2026-10-16T03:43:36Z",
+        "2026-10-16T03:43:37Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:44:42Z",
+        "2026-10-16T03:44:43Z",
+        "2026-10-16T03:44:44Z",
+        "2026-10-16T03:44:45Z",
+        "2026-10-16T03:44:46Z",
+        "2026-10-16T03:44:47Z",
+        "2026-10-16T03:44:48Z",
+        "2026-10-16T03:44:49Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:44:41Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 5.798457777403979,
+      "nearestTrafficSignalId": 3199787347,
+      "travelBearingDeg": 177.61411438343077,
+      "bearingToNearestSignalDeg": 208.10019912924025,
+      "bearingDeltaDeg": 30.486084745809478,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_009",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:54:22Z",
+      "to": "2026-10-16T03:54:24Z"
+    },
+    "gapDurationSec": 3,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Chord-implied 1.4 km/h averages displacement over entire 3s gap — compatible with halt+departure inside gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "WEAK_SUPPORTS",
+        "text": "Slow-roll geometry adjacent to gap.",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 28.8 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      },
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant depart context mean leg 3.3 km/h (includes post-halt driving).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": 1.1832203079417392,
+      "impliedChordKmh": 1.419864369530087,
+      "legIntoGapKmh": 2.7851248372039907,
+      "legOutOfGapKmh": 3.945659601797485,
+      "legIntoGapClass": "SLOW_ROLL_GEOMETRY",
+      "legOutOfGapClass": "SLOW_ROLL_GEOMETRY",
+      "distantBeforeMeanKmh": 28.787298070071405,
+      "distantAfterMeanKmh": 3.2934604263128207
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 1,
+      "LIKELY_SLOW_ROLL_STOP_GO": 4,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "endpointChordM",
+        "value": 1.1832203079417392,
+        "role": "gap endpoints (calendar-adjacent present)"
+      },
+      {
+        "feature": "gapDurationSec",
+        "value": 3,
+        "role": "ROW_ABSENT span"
+      },
+      {
+        "feature": "impliedChordKmh",
+        "value": 1.4,
+        "role": "average over gap — not standstill duration"
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": 2.8,
+        "role": "calendar leg 2026-10-16T03:54:20Z→2026-10-16T03:54:21Z"
+      },
+      {
+        "feature": "legOutOfGapKmh",
+        "value": 3.9,
+        "role": "calendar leg 2026-10-16T03:54:25Z→2026-10-16T03:54:26Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:54:21Z",
+      "calendarAdjacentAfter": "2026-10-16T03:54:25Z",
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:54:17Z",
+        "2026-10-16T03:54:18Z",
+        "2026-10-16T03:54:19Z",
+        "2026-10-16T03:54:20Z",
+        "2026-10-16T03:54:21Z"
+      ],
+      "calendarBracketAfterLabels": [
+        "2026-10-16T03:54:25Z",
+        "2026-10-16T03:54:26Z",
+        "2026-10-16T03:54:27Z",
+        "2026-10-16T03:54:28Z",
+        "2026-10-16T03:54:29Z"
+      ],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:54:09Z",
+        "2026-10-16T03:54:10Z",
+        "2026-10-16T03:54:11Z",
+        "2026-10-16T03:54:12Z",
+        "2026-10-16T03:54:13Z",
+        "2026-10-16T03:54:14Z",
+        "2026-10-16T03:54:15Z",
+        "2026-10-16T03:54:16Z"
+      ],
+      "distantContextAfterLabels": [
+        "2026-10-16T03:54:30Z",
+        "2026-10-16T03:54:32Z",
+        "2026-10-16T03:54:33Z",
+        "2026-10-16T03:54:34Z",
+        "2026-10-16T03:54:37Z",
+        "2026-10-16T03:54:38Z",
+        "2026-10-16T03:54:39Z",
+        "2026-10-16T03:54:40Z"
+      ]
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:29Z",
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 571.9393027784093,
+      "nearestTrafficSignalId": 3762563160,
+      "travelBearingDeg": 270.0000066275928,
+      "bearingToNearestSignalDeg": 183.8940941180379,
+      "bearingDeltaDeg": 86.10591250955491,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "GAP_EVT_010",
+    "kind": "POSITION_GAP",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:54:45Z",
+      "to": "2026-10-16T03:54:55Z"
+    },
+    "gapDurationSec": 11,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+    "classification": "NOT_DISTINGUISHABLE",
+    "rulesApplied": [
+      "V0_2_COMPOSITE_HYPOTHESIS",
+      "CALENDAR_ADJACENT_GAP_EDGES",
+      "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+      "MIN_DISPLACEMENT_M=0.68"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION coordinates",
+      "optional R1_OBD at labels"
+    ],
+    "supportingAndContradicting": [
+      {
+        "tier": "NEUTRAL",
+        "text": "Distant approach context mean leg 3.3 km/h (not gap-edge).",
+        "epistemic": "INFERRED"
+      }
+    ],
+    "metrics": {
+      "endpointDisplacementM": null,
+      "impliedChordKmh": null,
+      "legIntoGapKmh": null,
+      "legOutOfGapKmh": null,
+      "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+      "legOutOfGapClass": null,
+      "distantBeforeMeanKmh": 3.3123808727775983,
+      "distantAfterMeanKmh": null
+    },
+    "hypothesisScores": {
+      "LIKELY_HALT": 0,
+      "LIKELY_SLOW_ROLL_STOP_GO": 0,
+      "LIKELY_MOVING_WITH_GAP": 0
+    },
+    "decisiveFeatures": [
+      {
+        "feature": "legIntoGapKmh",
+        "value": null,
+        "role": "calendar leg 2026-10-16T03:54:42Z→2026-10-16T03:54:44Z"
+      }
+    ],
+    "bracketStructure": {
+      "calendarAdjacentBefore": "2026-10-16T03:54:44Z",
+      "calendarAdjacentAfter": null,
+      "calendarBracketBeforeLabels": [
+        "2026-10-16T03:54:40Z",
+        "2026-10-16T03:54:41Z",
+        "2026-10-16T03:54:42Z",
+        "2026-10-16T03:54:44Z"
+      ],
+      "calendarBracketAfterLabels": [],
+      "distantContextBeforeLabels": [
+        "2026-10-16T03:54:29Z",
+        "2026-10-16T03:54:30Z",
+        "2026-10-16T03:54:32Z",
+        "2026-10-16T03:54:33Z",
+        "2026-10-16T03:54:34Z",
+        "2026-10-16T03:54:37Z",
+        "2026-10-16T03:54:38Z",
+        "2026-10-16T03:54:39Z"
+      ],
+      "distantContextAfterLabels": []
+    },
+    "retrospectiveStatementPossibleAtUtc": null,
+    "mapContextVariantB": {
+      "available": true,
+      "osmMeta": {
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "requestMethod": "POST"
+      },
+      "nearestTrafficSignalM": 567.127653111242,
+      "nearestTrafficSignalId": 3762563160,
+      "travelBearingDeg": null,
+      "bearingToNearestSignalDeg": 183.32822261655645,
+      "bearingDeltaDeg": null,
+      "roadAssociation": "not_resolved_v0_2",
+      "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+      "epistemic": "INFERRED"
+    }
+  },
+  {
+    "eventId": "SLOW_EVT_001",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:37:46Z",
+      "to": "2026-10-16T03:37:51Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 6
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:51Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_002",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:37:56Z",
+      "to": "2026-10-16T03:37:56Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:56Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_003",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:38:00Z",
+      "to": "2026-10-16T03:38:08Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 9
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:08Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_004",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:38:11Z",
+      "to": "2026-10-16T03:38:14Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 4
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:14Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_005",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:38:57Z",
+      "to": "2026-10-16T03:39:01Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 5
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:39:01Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_006",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:39:47Z",
+      "to": "2026-10-16T03:39:47Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:39:47Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_007",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:41:48Z",
+      "to": "2026-10-16T03:41:48Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:41:48Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_008",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:42:47Z",
+      "to": "2026-10-16T03:42:47Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:42:47Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_009",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:43:41Z",
+      "to": "2026-10-16T03:43:41Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:43:41Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_010",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:45:50Z",
+      "to": "2026-10-16T03:45:52Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 3
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:45:52Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_011",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:54:20Z",
+      "to": "2026-10-16T03:54:20Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:20Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_012",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:54:26Z",
+      "to": "2026-10-16T03:54:29Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 4
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:29Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_013",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:54:33Z",
+      "to": "2026-10-16T03:54:33Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 1
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:33Z",
+    "mapContextVariantB": null
+  },
+  {
+    "eventId": "SLOW_EVT_014",
+    "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+    "consideredWindowUtc": {
+      "from": "2026-10-16T03:54:38Z",
+      "to": "2026-10-16T03:54:40Z"
+    },
+    "gapDurationSec": null,
+    "standstillDurationSec": null,
+    "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "rulesApplied": [
+      "LEG_GEOMETRY_1_5_TO_5_KMH",
+      "SCATTER_FILTER",
+      "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+    ],
+    "measurementsUsed": [
+      "pinned POSITION leg geometry"
+    ],
+    "supportingAndContradicting": [],
+    "metrics": {
+      "segmentSeconds": 3
+    },
+    "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:40Z",
+    "mapContextVariantB": null
+  }
+]

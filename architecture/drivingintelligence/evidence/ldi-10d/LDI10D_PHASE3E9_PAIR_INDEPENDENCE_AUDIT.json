@@ -1,0 +1,71 @@
+{
+  "schema": "LDI10D_PHASE3E9_PAIR_AUDIT_V1",
+  "headSha": "39185bae69eb8053911f1dcfe688abbf24d82f56",
+  "setAUsesDimoDistanceFilter": false,
+  "pairedRows": 698,
+  "uniqueDimoBuckets": 676,
+  "duplicateBucketAssignments": 22,
+  "missingDimoJoin": 96,
+  "multiOcrPerBucket": [
+    {
+      "bucketUtc": "2026-10-16T03:37:45Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:40:18Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:41:49Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:42:50Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:42:58Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:43:42Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:44:37Z",
+      "count": 3
+    },
+    {
+      "bucketUtc": "2026-10-16T03:37:53Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:37:57Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:38:18Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:38:22Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:42:48Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:50:02Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:50:20Z",
+      "count": 2
+    },
+    {
+      "bucketUtc": "2026-10-16T03:51:23Z",
+      "count": 2
+    }
+  ]
+}

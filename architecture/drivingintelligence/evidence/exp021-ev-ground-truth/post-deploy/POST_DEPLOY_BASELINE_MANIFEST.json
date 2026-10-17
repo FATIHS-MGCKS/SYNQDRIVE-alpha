@@ -1,0 +1,151 @@
+{
+  "schema": "EXP021_EV_GROUND_TRUTH_BASELINE_MANIFEST_V1",
+  "baselinePhase": "POST_DEPLOY",
+  "observedAtUtc": "2026-10-16T16:14:16.947Z",
+  "productionSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "analysisCodeSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "generationCommand": "cd backend && npx ts-node -r tsconfig-paths/register scripts/ops/exp021-ev-ground-truth-baseline.ts --out-dir <dir>",
+  "policyVersions": {
+    "qcPolicyVersion": "DI_V0_SPEED_QC_POLICY_V2",
+    "projectionVersion": "DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1",
+    "calibrationVersion": "CALIBRATION_UNSET_V0",
+    "inputEvidenceVersion": "DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:1fb2cead072c6efad9fc29e62f5106e2d1ae83d8f6ba5e9cac12561dadddccbb"
+  },
+  "referenceCampaign": {
+    "codename": "EXP021_EV_GROUND_TRUTH",
+    "vehicleLabel": "Tesla Model 3 (owner-confirmed)",
+    "dimoTokenId": "186946",
+    "priorityNote": "OPTIMIZATION_PRIORITY=1_AFTER_JOINT_DEPLOY; not part of current joint deploy"
+  },
+  "identities": {
+    "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+    "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "primaryWorkItemId": "99fe9d1b-5cb6-4cbb-ba0c-e5f27a5cd50a",
+    "shadowRunId": "62117347-71b5-4946-b633-52cb10017043",
+    "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+    "currentV2ProjectionId": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+    "boundaryFingerprintPinned": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020",
+    "boundaryFingerprintLive": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020",
+    "boundaryFingerprintMatch": true,
+    "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:302385ed3e346345524aceed2b69172242df385dd4797c824c0645f0de915cab"
+  },
+  "tripBoundaries": {
+    "startUtc": "2026-10-16T03:36:00.000Z",
+    "endUtc": "2026-10-16T03:54:55.989Z",
+    "tripStatus": "COMPLETED",
+    "isRepaired": false,
+    "boundaryRepairGeneration": null
+  },
+  "fsm": {
+    "state": "RESTING",
+    "activeTripId": null
+  },
+  "admission": {
+    "evaluation": {
+      "ok": false,
+      "code": "ADMISSION_RECORD_MISSING",
+      "expectedRevisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020"
+    },
+    "rawMetaAdmissionV1": null
+  },
+  "productReadBoundaryGate": {
+    "ok": false,
+    "reason": "ADMISSION_NOT_SATISFIED",
+    "admission": {
+      "ok": false,
+      "code": "ADMISSION_RECORD_MISSING",
+      "expectedRevisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:59fcdaad8dc96c213cec40cb56fed11ced0cd0c76887a3532259f169658f4020"
+    }
+  },
+  "repairHistory": [
+    {
+      "id": "b893f141-8f88-a34e-ccdd-87fbca3fc261",
+      "repairType": "PARTIAL_TRIP_BOUNDARY_EXTENSION",
+      "status": "SUPPRESSED",
+      "reason": "End extension below minimum repair span — treated as exact match",
+      "windowFromUtc": "2026-10-16T03:36:00.000Z",
+      "windowToUtc": "2026-10-16T03:57:00.000Z",
+      "appliedAtUtc": null,
+      "createdAtUtc": "2026-10-16T04:07:00.309Z"
+    }
+  ],
+  "outbox": {
+    "status": "SUCCEEDED",
+    "qcPolicyVersion": "DI_V0_SPEED_QC_POLICY_V2",
+    "attemptCount": 0,
+    "lastErrorCode": null,
+    "updatedAtUtc": "2026-10-16T04:08:00.746Z"
+  },
+  "projectionStore": {
+    "id": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+    "lifecycleStatus": "CURRENT",
+    "contentFingerprint": "9219741e48bc78cfadf4385ca1ad77dd82bcf5bbc0f986dd3d664bd2f1fff61f",
+    "idempotencyKey": "8c91b87c349365fc55eaaf2e649d0cb4a47e4424a56071320c464f41901a9eea",
+    "verifiedSpeedSummary": {
+      "qcTrustedMaxKmh": 129.7885665128692,
+      "qcTrustedMeanKmh": 66.09,
+      "trustedNumericCoveragePercent": 68.2,
+      "assessabilityLevel": "PARTIAL",
+      "assessabilityReasons": [
+        "TRUSTED_COVERAGE_PARTIAL"
+      ]
+    }
+  },
+  "forensicReplay": {
+    "replayMode": "ACTIVE_PRIMARY",
+    "dbTransactionReadOnly": "on",
+    "dbTransactionIsolation": "repeatable read",
+    "snapshotVerified": true,
+    "channelManifest": [
+      {
+        "channel": "NATIVE_EVENT",
+        "outcome": "DISABLED",
+        "reasonCode": "FLAG_OFF",
+        "formatVersion": null,
+        "payloadSha256": null,
+        "attestationRef": null,
+        "channelEvidenceHash": null
+      },
+      {
+        "channel": "POSITION",
+        "outcome": "PRESENT",
+        "reasonCode": null,
+        "formatVersion": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+        "payloadSha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2",
+        "attestationRef": null,
+        "channelEvidenceHash": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2"
+      },
+      {
+        "channel": "R1_OBD",
+        "outcome": "NOT_APPLICABLE",
+        "reasonCode": "SOURCE_FAMILY",
+        "formatVersion": null,
+        "payloadSha256": null,
+        "attestationRef": null,
+        "channelEvidenceHash": null
+      }
+    ]
+  },
+  "boundaryReconciliation": {
+    "ownerReportedEndBerlin": "2026-10-16T05:54:55.989+02:00",
+    "tripEndUtc": "2026-10-16T03:54:55.989Z",
+    "snapshotAcquisitionStartUtc": "2026-10-16T03:36:00.000Z",
+    "snapshotAcquisitionEndUtc": "2026-10-16T03:54:56.000Z",
+    "acquisitionGridStartLabel": "2026-10-16T03:36:00Z",
+    "acquisitionGridEndLabel": "2026-10-16T03:54:56Z",
+    "note": "Trip end (segment boundary) is not identical to exclusive 1s acquisition grid end; grid uses second-aligned bucket labels from snapshot window.",
+    "perSecondRowCount": 1136
+  },
+  "video": {
+    "receivedAndAnalyzed": false,
+    "ownerReportsVideoExists": true,
+    "protocolReady": true
+  },
+  "postDeployVerification": {
+    "status": "PENDING_OWNER_AUTHORIZATION",
+    "expectationIfBoundariesUnchanged": "Admission reconcile should restore product visibility without new S4 fetch (expectation until observed)."
+  },
+  "productionMutations": "NONE",
+  "providerCalls": "NONE"
+}

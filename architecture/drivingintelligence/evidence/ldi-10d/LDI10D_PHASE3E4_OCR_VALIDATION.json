@@ -1,0 +1,13 @@
+{
+  "schema": "LDI10D_PHASE3E4_OCR_VALIDATION_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "framesProcessed": 18,
+  "observationsTotal": 19,
+  "ocrVerifiedOrHuman": 16,
+  "byStatus": {
+    "PARTIAL_OCR": 2,
+    "VERIFIED_OCR": 15,
+    "UNREADABLE": 1,
+    "HUMAN_PRELIMINARY": 1
+  }
+}

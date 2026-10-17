@@ -1,0 +1,26 @@
+{
+  "schema": "LDI10D_PHASE3E4_FAILURE_REGISTER_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "items": [
+    {
+      "id": "FM_MOV_UNAVAILABLE",
+      "severity": "BLOCKER_FULL_EXTRACTION",
+      "description": "Original MOV files not in repository; Google Drive requires owner auth."
+    },
+    {
+      "id": "FM_SPARSE_FRAMES",
+      "severity": "LIMITATION",
+      "description": "18 sampled frames insufficient for per-second GPS track or road-ID validation."
+    },
+    {
+      "id": "FM_OCR_UNCERTAINTY",
+      "severity": "LIMITATION",
+      "description": "OCR may misread digits; uncertain fields not auto-corrected."
+    },
+    {
+      "id": "FM_ROAD_ID_GT",
+      "severity": "GAP",
+      "description": "No independent road-identity ground truth for accuracy proof."
+    }
+  ]
+}

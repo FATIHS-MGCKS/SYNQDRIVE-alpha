@@ -1,0 +1,19 @@
+video,video_offset_s,frame_file,timestamp_overlay,latitude,longitude,iphone_speed_kmh,tesla_speed_kmh,ocr_status,notes
+TC_00062.MOV,15,frames/TC_00062_15.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00062.MOV,60,frames/TC_00062_60.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00062.MOV,120,frames/TC_00062_120.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00063.MOV,15,frames/TC_00063_15.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00063.MOV,60,frames/TC_00063_60.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00063.MOV,120,frames/TC_00063_120.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00064.MOV,15,frames/TC_00064_15.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00064.MOV,60,frames/TC_00064_60.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00064.MOV,120,frames/TC_00064_120.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00065.MOV,15,frames/TC_00065_15.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00065.MOV,60,frames/TC_00065_60.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00065.MOV,120,frames/TC_00065_120.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00066.MOV,15,frames/TC_00066_15.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00066.MOV,60,frames/TC_00066_60.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00066.MOV,120,frames/TC_00066_120.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00067.MOV,15,frames/TC_00067_15.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00067.MOV,60,frames/TC_00067_60.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth
+TC_00067.MOV,120,frames/TC_00067_120.jpg,NOT_TRANSCRIBED,,,,,REQUIRES_VERIFICATION,Image available for visual review; do not treat as GPS ground truth

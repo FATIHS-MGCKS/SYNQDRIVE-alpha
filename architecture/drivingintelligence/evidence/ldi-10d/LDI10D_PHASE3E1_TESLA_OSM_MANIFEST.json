@@ -1,0 +1,37 @@
+{
+  "schema": "LDI10D_PHASE3E1_TESLA_OSM_MANIFEST_V1",
+  "headSha": "aae97962deee5d239775e1a1d78415a513f6f6af",
+  "teslaOsmSnapshotFile": "LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json",
+  "teslaOsmSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+  "acquisitionMode": "live_overpass_post",
+  "querySha256": "65dbf94384162a9db7a0f92c1e709cdbc30e2083ecfa37ff04180ddb91df8e4f",
+  "ldi08OsmPreserved": {
+    "file": "LDI10D_OSM_FROZEN_SNAPSHOT.json",
+    "sha256": "8afff85539dad9d1590022656f291d50b01215d99cd4a9bcc4af2aef74c073d9",
+    "matchesRepo": true
+  },
+  "provenance": {
+    "source": "OpenStreetMap contributors",
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors — https://www.openstreetmap.org/copyright",
+    "endpoint": "https://overpass-api.de/api/interpreter",
+    "fetchedAtUtc": "2026-10-17T06:42:42.277Z",
+    "querySha256": "65dbf94384162a9db7a0f92c1e709cdbc30e2083ecfa37ff04180ddb91df8e4f",
+    "queryText": "[out:json][timeout:90];\n(\n  node[\"highway\"=\"traffic_signals\"](51.24314926661876,9.426463689168566,51.33603773338124,9.518277310831435);\n  node[\"highway\"=\"crossing\"](51.24314926661876,9.426463689168566,51.33603773338124,9.518277310831435);\n  node[\"junction\"](51.24314926661876,9.426463689168566,51.33603773338124,9.518277310831435);\n  way[\"highway\"~\"^(motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|residential|unclassified|service|living_street)$\"](51.24314926661876,9.426463689168566,51.33603773338124,9.518277310831435);\n  relation[\"type\"=\"restriction\"](51.24314926661876,9.426463689168566,51.33603773338124,9.518277310831435);\n);\nout body geom;",
+    "boundingBox": {
+      "south": 51.24314926661876,
+      "north": 51.33603773338124,
+      "west": 9.426463689168566,
+      "east": 9.518277310831435,
+      "marginM": 75
+    },
+    "corridorMarginM": 75,
+    "corridorDerivation": "Min/max lat/lon of PRESENT finite Tesla fixture coordinates plus 75 m geodesic margin (LDI-10D Phase 2 parity).",
+    "inputFixture": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016",
+    "positionPayloadSha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2",
+    "mode": "live_overpass_post",
+    "httpStatus": 200,
+    "rawResponseSha256": "7f02141e31d8c95fa59bd39442e3343947e653ebcf077667aa12bf10c973987c",
+    "odbComplianceNote": "Frozen extract for forensic evidence only; separate from LDI-08 pin snapshot; ODbL share-alike applies to derivatives."
+  }
+}

@@ -1,0 +1,746 @@
+[
+  {
+    "eventId": "GAP_EVT_001",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": false,
+    "ruleFired": null,
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3861337111,
+          "euclideanM": 504.51804166198735,
+          "alongRouteM": 504.51804166198735,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3861337112,
+          "euclideanM": 525.3471656184774,
+          "alongRouteM": 525.3471656184774,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3861337114,
+          "euclideanM": 540.7511399278858,
+          "alongRouteM": 540.7511399278858,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3861337113,
+          "euclideanM": 553.7296829725066,
+          "alongRouteM": 553.7296829725066,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 4340557848,
+          "euclideanM": 602.1968985553762,
+          "alongRouteM": 602.1968985553762,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 4340557844,
+          "euclideanM": 606.8213667503782,
+          "alongRouteM": 606.8213667503782,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 7881194944,
+          "euclideanM": 625.8064038450414,
+          "alongRouteM": 625.8064038450414,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 7881194945,
+          "euclideanM": 629.7336859002329,
+          "alongRouteM": 629.7336859002329,
+          "bearingDeltaDeg": null
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3861337111,
+        "alongRouteM": 504.51804166198735,
+        "euclideanM": 504.51804166198735,
+        "bearingDeltaDeg": null
+      },
+      "routeBasis": {
+        "presentPointCount": 3,
+        "windowUtc": {
+          "from": "2026-10-16T03:35:00Z",
+          "to": "2026-10-16T03:37:05Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [
+        "travel_bearing_unresolved"
+      ],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_002",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": true,
+    "ruleFired": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3861337111,
+          "euclideanM": 504.51804166198735,
+          "alongRouteM": 504.51804166198735,
+          "bearingDeltaDeg": 138.1383271302583
+        },
+        {
+          "id": 3861337112,
+          "euclideanM": 525.3471656184774,
+          "alongRouteM": 525.3471656184774,
+          "bearingDeltaDeg": 138.05955884701183
+        },
+        {
+          "id": 3861337114,
+          "euclideanM": 540.7511399278858,
+          "alongRouteM": 540.7511399278858,
+          "bearingDeltaDeg": 157.3349637359919
+        },
+        {
+          "id": 3861337113,
+          "euclideanM": 553.7296829725066,
+          "alongRouteM": 553.7296829725066,
+          "bearingDeltaDeg": 156.81545542050446
+        },
+        {
+          "id": 4340557848,
+          "euclideanM": 602.1968985553762,
+          "alongRouteM": 602.1968985553762,
+          "bearingDeltaDeg": 92.35379065106258
+        },
+        {
+          "id": 4340557844,
+          "euclideanM": 606.8213667503782,
+          "alongRouteM": 606.8213667503782,
+          "bearingDeltaDeg": 91.8623499568923
+        },
+        {
+          "id": 7881194944,
+          "euclideanM": 625.8064038450414,
+          "alongRouteM": 625.8064038450414,
+          "bearingDeltaDeg": 168.00427691421822
+        },
+        {
+          "id": 7881194945,
+          "euclideanM": 629.7336859002329,
+          "alongRouteM": 629.7336859002329,
+          "bearingDeltaDeg": 168.52736672246647
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3861337111,
+        "alongRouteM": 504.51804166198735,
+        "euclideanM": 504.51804166198735,
+        "bearingDeltaDeg": 138.1383271302583
+      },
+      "routeBasis": {
+        "presentPointCount": 13,
+        "windowUtc": {
+          "from": "2026-10-16T03:35:07Z",
+          "to": "2026-10-16T03:37:55Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_003",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": true,
+    "ruleFired": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3861337111,
+          "euclideanM": 505.3786367812925,
+          "alongRouteM": 506.5192505583819,
+          "bearingDeltaDeg": 124.02279131561184
+        },
+        {
+          "id": 3861337112,
+          "euclideanM": 526.2067098043161,
+          "alongRouteM": 527.3473235814055,
+          "bearingDeltaDeg": 124.10479245595431
+        },
+        {
+          "id": 3861337114,
+          "euclideanM": 541.8098351181613,
+          "alongRouteM": 542.9504488952507,
+          "bearingDeltaDeg": 104.86617472460378
+        },
+        {
+          "id": 3861337113,
+          "euclideanM": 554.7844878601782,
+          "alongRouteM": 555.9251016372675,
+          "bearingDeltaDeg": 105.38574385260804
+        },
+        {
+          "id": 4340557848,
+          "euclideanM": 602.2287882125512,
+          "alongRouteM": 603.3694019896406,
+          "bearingDeltaDeg": 5.2916943962471805
+        },
+        {
+          "id": 4340557844,
+          "euclideanM": 606.8434685434187,
+          "alongRouteM": 607.984082320508,
+          "bearingDeltaDeg": 5.783938950166998
+        },
+        {
+          "id": 7881194944,
+          "euclideanM": 626.9186364340057,
+          "alongRouteM": 628.0592502110951,
+          "bearingDeltaDeg": 70.2734178522189
+        },
+        {
+          "id": 7881194945,
+          "euclideanM": 630.8481749760157,
+          "alongRouteM": 631.988788753105,
+          "bearingDeltaDeg": 70.79544064735623
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3861337111,
+        "alongRouteM": 506.5192505583819,
+        "euclideanM": 505.3786367812925,
+        "bearingDeltaDeg": 124.02279131561184
+      },
+      "routeBasis": {
+        "presentPointCount": 58,
+        "windowUtc": {
+          "from": "2026-10-16T03:35:59Z",
+          "to": "2026-10-16T03:38:44Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_004",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": false,
+    "ruleFired": null,
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3861337111,
+          "euclideanM": 496.64455372482115,
+          "alongRouteM": 524.1385737102667,
+          "bearingDeltaDeg": 155.45307119229727
+        },
+        {
+          "id": 3861337112,
+          "euclideanM": 517.4856974817772,
+          "alongRouteM": 544.9797174672226,
+          "bearingDeltaDeg": 155.45215504124542
+        },
+        {
+          "id": 3861337114,
+          "euclideanM": 527.4826323583094,
+          "alongRouteM": 554.9766523437548,
+          "bearingDeltaDeg": 135.74153633858856
+        },
+        {
+          "id": 3861337113,
+          "euclideanM": 540.5851605090297,
+          "alongRouteM": 568.0791804944752,
+          "bearingDeltaDeg": 136.23769866212666
+        },
+        {
+          "id": 4340557848,
+          "euclideanM": 594.223642392356,
+          "alongRouteM": 621.7176623778015,
+          "bearingDeltaDeg": 22.260021666762185
+        },
+        {
+          "id": 4340557844,
+          "euclideanM": 598.9975309374323,
+          "alongRouteM": 626.4915509228778,
+          "bearingDeltaDeg": 21.77525422181847
+        },
+        {
+          "id": 7881194944,
+          "euclideanM": 606.9360213334271,
+          "alongRouteM": 634.4300413188726,
+          "bearingDeltaDeg": 99.93273734208816
+        },
+        {
+          "id": 7881194945,
+          "euclideanM": 610.8985110432875,
+          "alongRouteM": 638.392531028733,
+          "bearingDeltaDeg": 100.46973780280297
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3861337111,
+        "alongRouteM": 524.1385737102667,
+        "euclideanM": 496.64455372482115,
+        "bearingDeltaDeg": 155.45307119229727
+      },
+      "routeBasis": {
+        "presentPointCount": 92,
+        "windowUtc": {
+          "from": "2026-10-16T03:37:19Z",
+          "to": "2026-10-16T03:39:21Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_005",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": true,
+    "ruleFired": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 1975690266,
+          "euclideanM": 20.891815475945243,
+          "alongRouteM": 619.5278891310899,
+          "bearingDeltaDeg": 12.546923345734967
+        },
+        {
+          "id": 3565961051,
+          "euclideanM": 48.85762623373965,
+          "alongRouteM": 647.4936998888843,
+          "bearingDeltaDeg": 58.82278807128205
+        },
+        {
+          "id": 3565961050,
+          "euclideanM": 50.81695308775157,
+          "alongRouteM": 649.4530267428962,
+          "bearingDeltaDeg": 11.337545569267377
+        },
+        {
+          "id": 10671818919,
+          "euclideanM": 59.32678617488865,
+          "alongRouteM": 657.9628598300333,
+          "bearingDeltaDeg": 36.1376813623051
+        },
+        {
+          "id": 1975662222,
+          "euclideanM": 60.851335395285346,
+          "alongRouteM": 659.48740905043,
+          "bearingDeltaDeg": 13.826887347357626
+        },
+        {
+          "id": 7881194945,
+          "euclideanM": 99.9607988483234,
+          "alongRouteM": 698.596872503468,
+          "bearingDeltaDeg": 176.61597990074983
+        },
+        {
+          "id": 7881194944,
+          "euclideanM": 106.84642427083394,
+          "alongRouteM": 705.4824979259786,
+          "bearingDeltaDeg": 176.10210672100686
+        },
+        {
+          "id": 3861337115,
+          "euclideanM": 299.3822345011976,
+          "alongRouteM": 898.0183081563423,
+          "bearingDeltaDeg": 72.35788796767577
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 1975690266,
+        "alongRouteM": 619.5278891310899,
+        "euclideanM": 20.891815475945243,
+        "bearingDeltaDeg": 12.546923345734967
+      },
+      "routeBasis": {
+        "presentPointCount": 119,
+        "windowUtc": {
+          "from": "2026-10-16T03:39:19Z",
+          "to": "2026-10-16T03:41:50Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_006",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": true,
+    "ruleFired": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3580338394,
+          "euclideanM": 4.621735645686611,
+          "alongRouteM": 802.4094318631994,
+          "bearingDeltaDeg": 14.595792610413753
+        },
+        {
+          "id": 1975690240,
+          "euclideanM": 30.416681856097508,
+          "alongRouteM": 828.2043780736103,
+          "bearingDeltaDeg": 65.09500912939515
+        },
+        {
+          "id": 618003850,
+          "euclideanM": 38.65192400557229,
+          "alongRouteM": 836.4396202230851,
+          "bearingDeltaDeg": 7.140161141338467
+        },
+        {
+          "id": 2528191472,
+          "euclideanM": 60.172428938066396,
+          "alongRouteM": 857.9601251555792,
+          "bearingDeltaDeg": 10.736812262985467
+        },
+        {
+          "id": 864443958,
+          "euclideanM": 96.52562219722137,
+          "alongRouteM": 894.3133184147341,
+          "bearingDeltaDeg": 178.3147918573728
+        },
+        {
+          "id": 864443925,
+          "euclideanM": 107.19958772565225,
+          "alongRouteM": 904.987283943165,
+          "bearingDeltaDeg": 169.79181735601404
+        },
+        {
+          "id": 2528191483,
+          "euclideanM": 108.57801827391506,
+          "alongRouteM": 906.3657144914279,
+          "bearingDeltaDeg": 175.42436724093554
+        },
+        {
+          "id": 3580344796,
+          "euclideanM": 122.54543016526802,
+          "alongRouteM": 920.3331263827808,
+          "bearingDeltaDeg": 169.94292359473977
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3580338394,
+        "alongRouteM": 802.4094318631994,
+        "euclideanM": 4.621735645686611,
+        "bearingDeltaDeg": 14.595792610413753
+      },
+      "routeBasis": {
+        "presentPointCount": 111,
+        "windowUtc": {
+          "from": "2026-10-16T03:40:50Z",
+          "to": "2026-10-16T03:43:30Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_007",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": true,
+    "ruleFired": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 2528191467,
+          "euclideanM": 8.634595290226542,
+          "alongRouteM": 122.2294551873531,
+          "bearingDeltaDeg": 3.7604138345745923
+        },
+        {
+          "id": 2528191463,
+          "euclideanM": 37.02357865295412,
+          "alongRouteM": 150.61843855008067,
+          "bearingDeltaDeg": 34.58529018452623
+        },
+        {
+          "id": 2528191461,
+          "euclideanM": 42.06030826197294,
+          "alongRouteM": 155.6551681590995,
+          "bearingDeltaDeg": 38.48620356865251
+        },
+        {
+          "id": 2528191460,
+          "euclideanM": 55.08638970632602,
+          "alongRouteM": 168.68124960345256,
+          "bearingDeltaDeg": 5.966056051816594
+        },
+        {
+          "id": 2528191472,
+          "euclideanM": 65.46243027807166,
+          "alongRouteM": 179.0572901751982,
+          "bearingDeltaDeg": 162.31851234285648
+        },
+        {
+          "id": 618003850,
+          "euclideanM": 76.63839178684499,
+          "alongRouteM": 190.23325168397156,
+          "bearingDeltaDeg": 178.4000972349208
+        },
+        {
+          "id": 3580338394,
+          "euclideanM": 110.21789116193936,
+          "alongRouteM": 223.81275105906593,
+          "bearingDeltaDeg": 174.7917157049137
+        },
+        {
+          "id": 1975690240,
+          "euclideanM": 113.24977696331698,
+          "alongRouteM": 226.84463686044353,
+          "bearingDeltaDeg": 169.88892093866957
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 2528191467,
+        "alongRouteM": 122.2294551873531,
+        "euclideanM": 8.634595290226542,
+        "bearingDeltaDeg": 3.7604138345745923
+      },
+      "routeBasis": {
+        "presentPointCount": 64,
+        "windowUtc": {
+          "from": "2026-10-16T03:41:51Z",
+          "to": "2026-10-16T03:43:57Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_008",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": true,
+    "ruleFired": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3199787347,
+          "euclideanM": 7.556322875611007,
+          "alongRouteM": 508.4670969526456,
+          "bearingDeltaDeg": 42.46067812131619
+        },
+        {
+          "id": 3199787348,
+          "euclideanM": 17.16078952326526,
+          "alongRouteM": 518.0715636002999,
+          "bearingDeltaDeg": 165.9182183847904
+        },
+        {
+          "id": 766011773,
+          "euclideanM": 28.488715313943437,
+          "alongRouteM": 529.399489390978,
+          "bearingDeltaDeg": 51.224519275235366
+        },
+        {
+          "id": 3199787344,
+          "euclideanM": 33.72329742238637,
+          "alongRouteM": 534.634071499421,
+          "bearingDeltaDeg": 36.19336569076063
+        },
+        {
+          "id": 2319438134,
+          "euclideanM": 34.3315508728963,
+          "alongRouteM": 535.2423249499309,
+          "bearingDeltaDeg": 58.122020241509176
+        },
+        {
+          "id": 445341127,
+          "euclideanM": 42.278527128719226,
+          "alongRouteM": 543.1893012057538,
+          "bearingDeltaDeg": 19.827938794377474
+        },
+        {
+          "id": 2360170298,
+          "euclideanM": 198.36398657916405,
+          "alongRouteM": 699.2747606561986,
+          "bearingDeltaDeg": 170.86723238537257
+        },
+        {
+          "id": 4264494642,
+          "euclideanM": 208.06782371903577,
+          "alongRouteM": 708.9785977960704,
+          "bearingDeltaDeg": 173.35454571922276
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3199787347,
+        "alongRouteM": 508.4670969526456,
+        "euclideanM": 7.556322875611007,
+        "bearingDeltaDeg": 42.46067812131619
+      },
+      "routeBasis": {
+        "presentPointCount": 112,
+        "windowUtc": {
+          "from": "2026-10-16T03:42:43Z",
+          "to": "2026-10-16T03:45:36Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_009",
+    "classificationWithMapV1": "LIKELY_SLOW_ROLL_STOP_GO",
+    "changed": false,
+    "ruleFired": null,
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3762563160,
+          "euclideanM": 567.4300797869707,
+          "alongRouteM": 1103.3481509782218,
+          "bearingDeltaDeg": 85.90581960185963
+        },
+        {
+          "id": 2447426343,
+          "euclideanM": 577.4353819892937,
+          "alongRouteM": 1113.3534531805446,
+          "bearingDeltaDeg": 88.051877514702
+        },
+        {
+          "id": 3762563159,
+          "euclideanM": 599.3678314205712,
+          "alongRouteM": 1135.2859026118222,
+          "bearingDeltaDeg": 89.45435279302893
+        },
+        {
+          "id": 2447426334,
+          "euclideanM": 599.9301680996634,
+          "alongRouteM": 1135.8482392909145,
+          "bearingDeltaDeg": 87.4596470905397
+        },
+        {
+          "id": 3762563161,
+          "euclideanM": 810.3722196349594,
+          "alongRouteM": 1346.2902908262104,
+          "bearingDeltaDeg": 113.37130928819693
+        },
+        {
+          "id": 3762563162,
+          "euclideanM": 813.158321177165,
+          "alongRouteM": 1349.076392368416,
+          "bearingDeltaDeg": 113.82157039009519
+        },
+        {
+          "id": 3762563163,
+          "euclideanM": 817.8486880588036,
+          "alongRouteM": 1353.7667592500547,
+          "bearingDeltaDeg": 116.36769163828274
+        },
+        {
+          "id": 2435580596,
+          "euclideanM": 836.3185018310901,
+          "alongRouteM": 1372.236573022341,
+          "bearingDeltaDeg": 113.64259024423711
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3762563160,
+        "alongRouteM": 1103.3481509782218,
+        "euclideanM": 567.4300797869707,
+        "bearingDeltaDeg": 85.90581960185963
+      },
+      "routeBasis": {
+        "presentPointCount": 76,
+        "windowUtc": {
+          "from": "2026-10-16T03:53:22Z",
+          "to": "2026-10-16T03:55:24Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  },
+  {
+    "eventId": "GAP_EVT_010",
+    "classificationWithMapV1": "NOT_DISTINGUISHABLE",
+    "changed": false,
+    "ruleFired": null,
+    "mapAnalysis": {
+      "signalCandidates": [
+        {
+          "id": 3762563160,
+          "euclideanM": 562.5989558254728,
+          "alongRouteM": 818.7086324034692,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 2447426343,
+          "euclideanM": 572.818018403618,
+          "alongRouteM": 828.9276949816144,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3762563159,
+          "euclideanM": 594.8928941970715,
+          "alongRouteM": 851.0025707750681,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 2447426334,
+          "euclideanM": 595.251942957487,
+          "alongRouteM": 851.3616195354834,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3762563161,
+          "euclideanM": 808.668211458418,
+          "alongRouteM": 1064.7778880364144,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3762563162,
+          "euclideanM": 811.5109159462023,
+          "alongRouteM": 1067.6205925241989,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 3762563163,
+          "euclideanM": 816.5235709775192,
+          "alongRouteM": 1072.6332475555157,
+          "bearingDeltaDeg": null
+        },
+        {
+          "id": 2435580596,
+          "euclideanM": 834.647653769386,
+          "alongRouteM": 1090.7573303473825,
+          "bearingDeltaDeg": null
+        }
+      ],
+      "nearestAlongRoute": {
+        "id": 3762563160,
+        "alongRouteM": 818.7086324034692,
+        "euclideanM": 562.5989558254728,
+        "bearingDeltaDeg": null
+      },
+      "routeBasis": {
+        "presentPointCount": 53,
+        "windowUtc": {
+          "from": "2026-10-16T03:53:45Z",
+          "to": "2026-10-16T03:55:55Z"
+        },
+        "note": "Measured PRESENT polyline ±60s; not OSM-driven route."
+      },
+      "missingData": [
+        "travel_bearing_unresolved"
+      ],
+      "alternativesNote": "Other signals may align on parallel carriageway; no turn restriction or lane join — assignment ambiguous without road graph."
+    }
+  }
+]

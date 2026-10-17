@@ -1,0 +1,17 @@
+{
+  "endpointChordM": {
+    "name": "Endpunkt-Abstand (Kalender-benachbarte PRESENT-Punkte über die Lücke)",
+    "not": [
+      "gemessene Weglänge",
+      "tatsächliche Fahrgeschwindigkeit",
+      "mittlere Fahrgeschwindigkeit entlang der Strecke"
+    ],
+    "is": "mittlere Netto-Ortsveränderung = chordM / gapDurationSec (nur für Bericht oft als km/h umgerechnet)",
+    "uncertainty": "Unbekannte Trajektorie innerhalb ROW_ABSENT; Werte allein belegen weder Stillstandsdauer noch Bewegung durch die ganze Lücke."
+  },
+  "separateFields": [
+    "endpointDisplacementM",
+    "gapDurationSec",
+    "netDisplacementRateKmh (derived)"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "schema": "LDI10D_PHASE3E6_SPEED_ACCURACY_V1",
+  "headSha": "1ed00dcbcdc626eef8a40cdfd064aea0df1fb260",
+  "pinnedHistoricalBaseline": {
+    "pairedN": 748,
+    "maeKmh": 2.303091434778604,
+    "p95Kmh": 4.485008608925095,
+    "biasKmh": -2.067576220371462,
+    "toleranceMae": 0.02,
+    "toleranceP95": 0.02,
+    "toleranceBias": 0.02
+  },
+  "baselineSpeedMaeKmh": 2.303091434778606,
+  "holdoutTachoWitnessMaeKmh": 2.7321396260079056,
+  "bestValidatedCandidate": "L3_BASELINE_PRODUCTION",
+  "speedAccuracyImprovementProven": "NO",
+  "comparisonMatrix": [
+    {
+      "algorithm": "L3_BASELINE_PRODUCTION",
+      "tripVsPinnedMae": 2.164030807608123e-15,
+      "videoVsTachoMae": 2.303091434778606,
+      "videoCoverage": 0.6584507042253521,
+      "risks": []
+    },
+    {
+      "algorithm": "L3_REPLAY_FROM_PINNED_POSITIONS",
+      "tripVsPinnedMae": 2.164030807608123e-15,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": []
+    },
+    {
+      "algorithm": "ADAPTIVE_DT_LEG_MEAN",
+      "tripVsPinnedMae": 4.249948203711674e-15,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": []
+    },
+    {
+      "algorithm": "MEDIAN_LEG_3S",
+      "tripVsPinnedMae": 1.125389684787522,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "ASYMMETRIC_LEGS_BIAS"
+      ]
+    },
+    {
+      "algorithm": "CAUSAL_EMA_LEGS",
+      "tripVsPinnedMae": 1.7846197987137102,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "LAG_UNDER_ACCELERATION"
+      ]
+    },
+    {
+      "algorithm": "MOTION_GATE_DISPLACEMENT",
+      "tripVsPinnedMae": 4.249948203711674e-15,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "COVERAGE_LOSS_AT_CRAWL"
+      ]
+    },
+    {
+      "algorithm": "NONCAUSAL_OFFLINE_CENTERED_MEAN",
+      "tripVsPinnedMae": 1.3710842901587044,
+      "videoVsTachoMae": null,
+      "videoCoverage": null,
+      "risks": [
+        "NONCAUSAL_OFFLINE_ONLY_NOT_FOR_PRODUCTION_STREAM"
+      ]
+    }
+  ],
+  "note": "Holdout clip split from Phase 3C research; no retuning in 3E.6"
+}

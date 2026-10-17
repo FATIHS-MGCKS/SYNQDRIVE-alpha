@@ -1,0 +1,10 @@
+{
+  "schema": "LDI10D_PHASE3E2_VALIDATION_V1",
+  "headSha": "1532bb00f13b682f822c8039dee7df71053ac6a1",
+  "inputIntegrity": "PASS",
+  "teslaOsmSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+  "frozenEvidenceMutated": false,
+  "l3BaselineDrift": "NONE",
+  "qcMutations": "NONE",
+  "productionMutations": "NONE"
+}

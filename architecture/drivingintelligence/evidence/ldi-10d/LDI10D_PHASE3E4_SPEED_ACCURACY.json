@@ -1,0 +1,29 @@
+{
+  "schema": "LDI10D_PHASE3E4_SPEED_ACCURACY_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "trustedTachoReference": {
+    "pairedN": 748,
+    "maeKmh": 2.303091434778604,
+    "p95Kmh": 4.485008608925095,
+    "biasKmh": -2.067576220371462,
+    "toleranceMae": 0.02,
+    "toleranceP95": 0.02,
+    "toleranceBias": 0.02
+  },
+  "l3BaselineMaeKmh": 2.303091434778606,
+  "bestNewCandidateMaeKmh": "NOT_ASSESSABLE",
+  "speedImprovementProven": "NO",
+  "biasHypothesesResearchOnly": [
+    "coordinate_quantization",
+    "sampling_cadence",
+    "temporal_windowing",
+    "gps_smoothing",
+    "motion_gating",
+    "low_speed_bias",
+    "accel_decel_lag",
+    "coordinate_freezes",
+    "chord_distance_on_curves",
+    "gps_accuracy_degradation"
+  ],
+  "iphoneSpeedVsL3": "NOT_ASSESSABLE_INSUFFICIENT_PAIRED_SAMPLES"
+}

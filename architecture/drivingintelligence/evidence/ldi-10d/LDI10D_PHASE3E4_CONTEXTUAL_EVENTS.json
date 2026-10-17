@@ -1,0 +1,14 @@
+{
+  "schema": "LDI10D_PHASE3E4_CONTEXTUAL_EVENTS_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "observedStandstills": 0,
+  "inferredStopCandidates": 2,
+  "labeling": {
+    "OBSERVED": 0,
+    "CONTEXT_SUPPORTED": 0,
+    "INFERRED_CANDIDATE": 2,
+    "UNKNOWN": "MAJORITY",
+    "QC_BLOCKED": "N/A"
+  },
+  "note": "Low iPhone overlay speed on a frame does not prove sustained standstill; no production event mutation."
+}

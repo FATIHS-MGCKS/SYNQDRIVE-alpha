@@ -1,0 +1,32 @@
+{
+  "schema": "LDI10D_PHASE3E5_ROAD_MATCHING_AT_VERIFIED_V1",
+  "headSha": "92d19b51c94ac14ba5061a7687c5a2fed19f4805",
+  "note": "Outcome distribution at verified iPhone overlay UTC only; not road-ID accuracy.",
+  "tripWidePinnedCounts": {
+    "baseline": {
+      "ASSOCIATED": 264,
+      "AMBIGUOUS": 512,
+      "UNKNOWN": 360
+    },
+    "viterbi": {
+      "ASSOCIATED": 300,
+      "AMBIGUOUS": 357,
+      "UNKNOWN": 479
+    }
+  },
+  "atVerifiedIphoneUtc": {
+    "baseline": {
+      "ASSOCIATED": 38,
+      "AMBIGUOUS": 79,
+      "UNKNOWN": 20
+    },
+    "viterbi": {
+      "ASSOCIATED": 44,
+      "AMBIGUOUS": 57,
+      "UNKNOWN": 36
+    },
+    "disagreementBuckets": 22
+  },
+  "roadMatchingAccuracy": "NOT_ASSESSABLE",
+  "viterbiImprovementProven": "NO"
+}

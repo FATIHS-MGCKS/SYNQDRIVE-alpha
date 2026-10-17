@@ -1,0 +1,8 @@
+{
+  "schema": "LDI10D_PHASE3E6_EVIDENCE_QUALITY_V1",
+  "headSha": "1ed00dcbcdc626eef8a40cdfd064aea0df1fb260",
+  "perSecondBuckets": 1136,
+  "sparseOcrSeconds": 197,
+  "confidenceUncalibrated": true,
+  "l3BaselineDrift": "NONE"
+}

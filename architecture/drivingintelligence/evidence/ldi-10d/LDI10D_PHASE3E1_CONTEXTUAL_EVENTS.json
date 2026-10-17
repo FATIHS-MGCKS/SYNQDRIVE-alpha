@@ -1,0 +1,2948 @@
+{
+  "schema": "LDI10D_PHASE3E1_CONTEXTUAL_EVENTS_V1",
+  "headSha": "aae97962deee5d239775e1a1d78415a513f6f6af",
+  "replayedFrom": "LDI10D_PHASE3E_CONTEXTUAL_EVENTS.json",
+  "preservedPhase3eArtifact": true,
+  "eventCount": 66,
+  "events": [
+    {
+      "eventId": "P3E_UNKNOWN_ROAD_CTX_TRIP",
+      "eventType": "UNKNOWN_ROAD_CONTEXT",
+      "startUtc": "2026-10-16T03:36:00Z",
+      "endUtc": "2026-10-16T03:54:55Z",
+      "observedGpsCount": 867,
+      "missingGpsCount": 269,
+      "l3SpeedEvidence": {
+        "minKmh": 5.101907095063161,
+        "maxKmh": 191.4429317601504,
+        "startKmh": null,
+        "endKmh": null,
+        "trustedBuckets": 775,
+        "untrustedOrAbsentBuckets": 361
+      },
+      "qcStatus": "PARTIAL",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 830481616,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_105_114"
+      ],
+      "supportingEvidence": [
+        "verified_osm_sha256",
+        "tesla_bbox_outside_frozen_osm_nodes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "confirmed_bucket_fraction=0.30"
+      ],
+      "evidenceClassification": "INFERRED_CANDIDATE",
+      "provenance": [
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json",
+        "TESLA_POSITION_GRID.json",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_105_114",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:37:45Z",
+      "endUtc": "2026-10-16T03:37:54Z",
+      "observedGpsCount": 9,
+      "missingGpsCount": 1,
+      "l3SpeedEvidence": {
+        "minKmh": null,
+        "maxKmh": null,
+        "startKmh": null,
+        "endKmh": null,
+        "trustedBuckets": 0,
+        "untrustedOrAbsentBuckets": 10
+      },
+      "qcStatus": "QC_BLOCKED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 830481616,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_UNKNOWN_ROAD_CTX_TRIP"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_134_138"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_134_138",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:38:14Z",
+      "endUtc": "2026-10-16T03:38:18Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": null,
+        "maxKmh": null,
+        "startKmh": null,
+        "endKmh": null,
+        "trustedBuckets": 0,
+        "untrustedOrAbsentBuckets": 5
+      },
+      "qcStatus": "PARTIAL",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 830481616,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_105_114"
+      ],
+      "followingEvents": [
+        "P3E_JUNC_APP_145"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_JUNC_APP_145_merged",
+      "eventType": "JUNCTION_APPROACH",
+      "startUtc": "2026-10-16T03:38:23Z",
+      "endUtc": "2026-10-16T03:38:26Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 9.768956628632328,
+        "maxKmh": 16.08014440027438,
+        "startKmh": 9.768956628632328,
+        "endKmh": 16.08014440027438,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 830481616,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_134_138"
+      ],
+      "followingEvents": [
+        "P3E_JUNC_APP_146"
+      ],
+      "supportingEvidence": [
+        "kinematic_decel_low_speed_valley"
+      ],
+      "contradictingEvidence": [
+        "no_osm_junction_association_on_tesla_route"
+      ],
+      "uncertaintyReasons": [
+        "junction_not_confirmed_without_topology"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_kinematic_junction_proxy_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_JUNC_EXIT_145_merged",
+      "eventType": "JUNCTION_EXIT",
+      "startUtc": "2026-10-16T03:38:25Z",
+      "endUtc": "2026-10-16T03:38:28Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 16.08014440027438,
+        "maxKmh": 22.64636483920146,
+        "startKmh": 16.08014440027438,
+        "endKmh": 22.64636483920146,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 830481616,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_JUNC_APP_146"
+      ],
+      "followingEvents": [
+        "P3E_JUNC_EXIT_146"
+      ],
+      "supportingEvidence": [
+        "kinematic_accel_after_low_speed_valley"
+      ],
+      "contradictingEvidence": [
+        "no_osm_junction_association_on_tesla_route"
+      ],
+      "uncertaintyReasons": [
+        "exit_not_confirmed_without_topology"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_kinematic_junction_proxy_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_163_172",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:38:43Z",
+      "endUtc": "2026-10-16T03:38:52Z",
+      "observedGpsCount": 10,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 7.510852930450326,
+        "maxKmh": 26.36572081579057,
+        "startKmh": 26.36572081579057,
+        "endKmh": 12.94828020077084,
+        "trustedBuckets": 10,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_JUNC_EXIT_146"
+      ],
+      "followingEvents": [
+        "P3E_LOWSEQ_168_171"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_LOWSEQ_168_171",
+      "eventType": "REPEATED_LOW_SPEED_SEQUENCE",
+      "startUtc": "2026-10-16T03:38:48Z",
+      "endUtc": "2026-10-16T03:38:51Z",
+      "observedGpsCount": 4,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 7.510852930450326,
+        "maxKmh": 11.88204236666288,
+        "startKmh": 8.86263303635681,
+        "endKmh": 11.88204236666288,
+        "trustedBuckets": 4,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_163_172"
+      ],
+      "followingEvents": [
+        "P3E_LOWSEQ_174_177"
+      ],
+      "supportingEvidence": [
+        "trusted_L3_below_12kmh_consecutive"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "not_inferred_as_stop_or_jam"
+      ],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_LOWSEQ_174_177",
+      "eventType": "REPEATED_LOW_SPEED_SEQUENCE",
+      "startUtc": "2026-10-16T03:38:54Z",
+      "endUtc": "2026-10-16T03:38:57Z",
+      "observedGpsCount": 4,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 5.55245181078252,
+        "maxKmh": 11.80417754943928,
+        "startKmh": 11.80417754943928,
+        "endKmh": 5.55245181078252,
+        "trustedBuckets": 4,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 280186605,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_LOWSEQ_168_171"
+      ],
+      "followingEvents": [
+        "P3E_JUNC_APP_184"
+      ],
+      "supportingEvidence": [
+        "trusted_L3_below_12kmh_consecutive"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "not_inferred_as_stop_or_jam"
+      ],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_JUNC_APP_184_merged_merged",
+      "eventType": "JUNCTION_APPROACH",
+      "startUtc": "2026-10-16T03:39:02Z",
+      "endUtc": "2026-10-16T03:39:07Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 6.880991189401206,
+        "maxKmh": 13.5312378317186,
+        "startKmh": 6.880991189401206,
+        "endKmh": 13.5312378317186,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 280186605,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_LOWSEQ_174_177"
+      ],
+      "followingEvents": [
+        "P3E_JUNC_APP_185"
+      ],
+      "supportingEvidence": [
+        "kinematic_decel_low_speed_valley"
+      ],
+      "contradictingEvidence": [
+        "no_osm_junction_association_on_tesla_route"
+      ],
+      "uncertaintyReasons": [
+        "junction_not_confirmed_without_topology"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_kinematic_junction_proxy_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_JUNC_EXIT_184_merged_merged",
+      "eventType": "JUNCTION_EXIT",
+      "startUtc": "2026-10-16T03:39:04Z",
+      "endUtc": "2026-10-16T03:39:09Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 13.5312378317186,
+        "maxKmh": 19.93211035567517,
+        "startKmh": 13.5312378317186,
+        "endKmh": 19.93211035567517,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 280186605,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_JUNC_APP_185"
+      ],
+      "followingEvents": [
+        "P3E_JUNC_EXIT_185"
+      ],
+      "supportingEvidence": [
+        "kinematic_accel_after_low_speed_valley"
+      ],
+      "contradictingEvidence": [
+        "no_osm_junction_association_on_tesla_route"
+      ],
+      "uncertaintyReasons": [
+        "exit_not_confirmed_without_topology"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_kinematic_junction_proxy_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_187_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:39:06Z",
+      "endUtc": "2026-10-16T03:39:09Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 19.93211035567517,
+        "maxKmh": 24.62105544807492,
+        "startKmh": 19.93211035567517,
+        "endKmh": 24.62105544807492,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 280186605,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_JUNC_APP_187"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_188"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.7"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_APP_219",
+      "eventType": "CURVE_APPROACH",
+      "startUtc": "2026-10-16T03:39:39Z",
+      "endUtc": "2026-10-16T03:39:41Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 38.13325494348501,
+        "maxKmh": 43.21461562873431,
+        "startKmh": 43.21461562873431,
+        "endKmh": 38.13325494348501,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2139540098,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_189"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_222_231"
+      ],
+      "supportingEvidence": [
+        "L3_deceleration_before_heading_change"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "ordinary_braking_before_curve_not_unusual"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_approach_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_222_231",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:39:42Z",
+      "endUtc": "2026-10-16T03:39:51Z",
+      "observedGpsCount": 10,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 7.706399710650907,
+        "maxKmh": 32.55209822752126,
+        "startKmh": 32.55209822752126,
+        "endKmh": 17.44683798985873,
+        "trustedBuckets": 8,
+        "untrustedOrAbsentBuckets": 2
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2139540098,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_APP_219"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_EXIT_231"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_233_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:39:52Z",
+      "endUtc": "2026-10-16T03:39:56Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 22.07750215404516,
+        "maxKmh": 27.66446574868516,
+        "startKmh": 22.07750215404516,
+        "endKmh": 27.66446574868516,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 456835684,
+        "osmWayId": 802341543,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_EXIT_231"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_234"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=5.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_231",
+      "eventType": "CURVE_EXIT_ACCELERATION",
+      "startUtc": "2026-10-16T03:39:52Z",
+      "endUtc": "2026-10-16T03:39:54Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 22.07750215404516,
+        "maxKmh": 32.91262315553863,
+        "startKmh": 22.07750215404516,
+        "endKmh": 32.91262315553863,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 456835684,
+        "osmWayId": 802341543,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_222_231"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_233"
+      ],
+      "supportingEvidence": [
+        "L3_acceleration_after_curve_segment"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_exit_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_253_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:40:12Z",
+      "endUtc": "2026-10-16T03:40:17Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 32.0381666319844,
+        "maxKmh": 36.28106003691384,
+        "startKmh": 36.28106003691384,
+        "endKmh": 32.0381666319844,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 12571148603,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_236"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_254"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-4.2"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_HARD_BRK_256_merged",
+      "eventType": "HARD_BRAKING_CANDIDATE",
+      "startUtc": "2026-10-16T03:40:15Z",
+      "endUtc": "2026-10-16T03:40:17Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 13.34944358042911,
+        "maxKmh": 21.51179265162189,
+        "startKmh": 21.51179265162189,
+        "endKmh": 13.34944358042911,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 12571148603,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_256"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_257"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-8.2"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "not_emergency_without_independent_evidence"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "pinned_production_L3",
+        "phase3e_heuristic_delta_8kmh",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_293",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:40:52Z",
+      "endUtc": "2026-10-16T03:40:53Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 11.30899974584118,
+        "maxKmh": 15.38945771724443,
+        "startKmh": 11.30899974584118,
+        "endKmh": 15.38945771724443,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 12571148603,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_HARD_BRK_257"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_294_298"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.1"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_294_298",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:40:54Z",
+      "endUtc": "2026-10-16T03:40:58Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 19.80470131352302,
+        "maxKmh": 24.73741124652379,
+        "startKmh": 19.80470131352302,
+        "endKmh": 24.73741124652379,
+        "trustedBuckets": 5,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 737913653,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_293"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_EXIT_298"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_300_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:40:59Z",
+      "endUtc": "2026-10-16T03:41:04Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 27.97224929020184,
+        "maxKmh": 32.99217224114804,
+        "startKmh": 27.97224929020184,
+        "endKmh": 32.99217224114804,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 1975690262,
+        "osmWayId": 738657614,
+        "ambiguityPreserved": false,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_EXIT_298"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_301"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=5.0"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_298",
+      "eventType": "CURVE_EXIT_ACCELERATION",
+      "startUtc": "2026-10-16T03:40:59Z",
+      "endUtc": "2026-10-16T03:41:01Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 27.97224929020184,
+        "maxKmh": 39.24850870555156,
+        "startKmh": 27.97224929020184,
+        "endKmh": 39.24850870555156,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 1975690262,
+        "osmWayId": 738657614,
+        "ambiguityPreserved": false,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_294_298"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_300"
+      ],
+      "supportingEvidence": [
+        "L3_acceleration_after_curve_segment"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_exit_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_343_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:41:42Z",
+      "endUtc": "2026-10-16T03:41:47Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 47.48965977055267,
+        "maxKmh": 55.08765136545298,
+        "startKmh": 55.08765136545298,
+        "endKmh": 47.48965977055267,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 7783091671,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_304"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_344"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-7.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_HARD_BRK_344_merged_merged_merged",
+      "eventType": "HARD_BRAKING_CANDIDATE",
+      "startUtc": "2026-10-16T03:41:43Z",
+      "endUtc": "2026-10-16T03:41:47Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 37.88855332049125,
+        "maxKmh": 47.48965977055267,
+        "startKmh": 47.48965977055267,
+        "endKmh": 37.88855332049125,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 7783091671,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_344"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_345"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-9.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "not_emergency_without_independent_evidence"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "pinned_production_L3",
+        "phase3e_heuristic_delta_8kmh",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_393_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:42:32Z",
+      "endUtc": "2026-10-16T03:42:35Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 14.70419117703299,
+        "maxKmh": 20.68017457080185,
+        "startKmh": 14.70419117703299,
+        "endKmh": 20.68017457080185,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 12960095208,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_HARD_BRK_347"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_394"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=6.0"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_402_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:42:41Z",
+      "endUtc": "2026-10-16T03:42:46Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 28.3791174791332,
+        "maxKmh": 33.34750772748296,
+        "startKmh": 33.34750772748296,
+        "endKmh": 28.3791174791332,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2528191472,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_395"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_403"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-5.0"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_419_428",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:42:59Z",
+      "endUtc": "2026-10-16T03:43:08Z",
+      "observedGpsCount": 10,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 11.18549238808422,
+        "maxKmh": 45.92857702447581,
+        "startKmh": 11.18549238808422,
+        "endKmh": 45.92857702447581,
+        "trustedBuckets": 10,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 1422527559,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_406"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_452"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_452_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:43:31Z",
+      "endUtc": "2026-10-16T03:43:33Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 38.89515635688165,
+        "maxKmh": 43.23291745076559,
+        "startKmh": 43.23291745076559,
+        "endKmh": 38.89515635688165,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 321751771,
+        "osmWayId": 61523259,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_419_428"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_453"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-4.3"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_457_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:43:36Z",
+      "endUtc": "2026-10-16T03:43:40Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 18.78146197155657,
+        "maxKmh": 22.95872800793129,
+        "startKmh": 22.95872800793129,
+        "endKmh": 18.78146197155657,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 245237648,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_453"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_458"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-4.2"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_518_522",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:44:38Z",
+      "endUtc": "2026-10-16T03:44:42Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 15.22041372313729,
+        "maxKmh": 42.79212380844434,
+        "startKmh": 15.22041372313729,
+        "endKmh": 42.79212380844434,
+        "trustedBuckets": 5,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 766826999,
+        "osmWayId": 313935876,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_460"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_EXIT_522"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_524",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:44:43Z",
+      "endUtc": "2026-10-16T03:44:44Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 47.21609264561945,
+        "maxKmh": 51.78488706628991,
+        "startKmh": 47.21609264561945,
+        "endKmh": 51.78488706628991,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 61285592,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_EXIT_522"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_553_562"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_522",
+      "eventType": "CURVE_EXIT_ACCELERATION",
+      "startUtc": "2026-10-16T03:44:43Z",
+      "endUtc": "2026-10-16T03:44:45Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 47.21609264561945,
+        "maxKmh": 55.64600533238013,
+        "startKmh": 47.21609264561945,
+        "endKmh": 55.64600533238013,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 61285592,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_518_522"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_524"
+      ],
+      "supportingEvidence": [
+        "L3_acceleration_after_curve_segment"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_exit_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_553_562",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:45:13Z",
+      "endUtc": "2026-10-16T03:45:22Z",
+      "observedGpsCount": 10,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 50.73170186874827,
+        "maxKmh": 58.43421718310555,
+        "startKmh": 53.27624841168895,
+        "endKmh": 58.43421718310555,
+        "trustedBuckets": 10,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 278568336,
+        "osmWayId": 25557899,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_524"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_578_582"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_578_582",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:45:38Z",
+      "endUtc": "2026-10-16T03:45:42Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 44.99279039263748,
+        "maxKmh": 54.73185463916099,
+        "startKmh": 54.73185463916099,
+        "endKmh": 44.99279039263748,
+        "trustedBuckets": 5,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 2537126436,
+        "osmWayId": 106287039,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_553_562"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_584"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_584_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:45:43Z",
+      "endUtc": "2026-10-16T03:45:46Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 34.379335545677,
+        "maxKmh": 40.00141064027274,
+        "startKmh": 40.00141064027274,
+        "endKmh": 34.379335545677,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 1322336550,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_578_582"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_APP_584"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-5.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_APP_584",
+      "eventType": "CURVE_APPROACH",
+      "startUtc": "2026-10-16T03:45:44Z",
+      "endUtc": "2026-10-16T03:45:46Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 24.51683699157072,
+        "maxKmh": 34.379335545677,
+        "startKmh": 34.379335545677,
+        "endKmh": 24.51683699157072,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 1322336550,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_584"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_585"
+      ],
+      "supportingEvidence": [
+        "L3_deceleration_before_heading_change"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "ordinary_braking_before_curve_not_unusual"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_approach_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_587_591",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:45:47Z",
+      "endUtc": "2026-10-16T03:45:51Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 8.218108768303168,
+        "maxKmh": 19.74303396564671,
+        "startKmh": 19.74303396564671,
+        "endKmh": null,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 2
+      },
+      "qcStatus": "PARTIAL",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 32961302,
+        "osmWayId": 313935872,
+        "ambiguityPreserved": false,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_586"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_596_600"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_596_600",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:45:56Z",
+      "endUtc": "2026-10-16T03:46:00Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 13.49729944014566,
+        "maxKmh": 38.18101763003089,
+        "startKmh": 13.49729944014566,
+        "endKmh": 38.18101763003089,
+        "trustedBuckets": 5,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 13798873410,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_587_591"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_EXIT_600"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_602_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:46:01Z",
+      "endUtc": "2026-10-16T03:46:04Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 42.35716816912814,
+        "maxKmh": 46.68248874034447,
+        "startKmh": 42.35716816912814,
+        "endKmh": 46.68248874034447,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 243074060,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_EXIT_600"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_603"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.3"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_600",
+      "eventType": "CURVE_EXIT_ACCELERATION",
+      "startUtc": "2026-10-16T03:46:01Z",
+      "endUtc": "2026-10-16T03:46:03Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 42.35716816912814,
+        "maxKmh": 50.87814203690601,
+        "startKmh": 42.35716816912814,
+        "endKmh": 50.87814203690601,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 243074060,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_596_600"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_602"
+      ],
+      "supportingEvidence": [
+        "L3_acceleration_after_curve_segment"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_exit_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_605_609",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:46:05Z",
+      "endUtc": "2026-10-16T03:46:09Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 58.30386461598112,
+        "maxKmh": 63.85597275155602,
+        "startKmh": 58.30386461598112,
+        "endKmh": 63.85597275155602,
+        "trustedBuckets": 5,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 1219197264,
+        "osmWayId": 846057098,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_604"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_624"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_624_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:46:23Z",
+      "endUtc": "2026-10-16T03:46:25Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 63.65369399134025,
+        "maxKmh": 68.01875499519906,
+        "startKmh": 63.65369399134025,
+        "endKmh": 68.01875499519906,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 322527961,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_605_609"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_625"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.4"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_646",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:46:45Z",
+      "endUtc": "2026-10-16T03:46:46Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 58.80813708492457,
+        "maxKmh": 63.14654248597417,
+        "startKmh": 63.14654248597417,
+        "endKmh": 58.80813708492457,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 1204466386,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_625"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_658"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-4.3"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_658_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:46:57Z",
+      "endUtc": "2026-10-16T03:47:01Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 46.26654580471977,
+        "maxKmh": 51.25196104086429,
+        "startKmh": 46.26654580471977,
+        "endKmh": 51.25196104086429,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 4484034880,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_646"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_659"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=5.0"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_732_merged_merged_merged_merged_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:48:11Z",
+      "endUtc": "2026-10-16T03:48:20Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 77.34918731656326,
+        "maxKmh": 82.11533121196321,
+        "startKmh": 82.11533121196321,
+        "endKmh": 77.34918731656326,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 3939471929,
+        "osmWayId": 128163974,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_661"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_733"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-4.8"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_HARD_BRK_736_merged_merged",
+      "eventType": "HARD_BRAKING_CANDIDATE",
+      "startUtc": "2026-10-16T03:48:15Z",
+      "endUtc": "2026-10-16T03:48:18Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 47.33271750821854,
+        "maxKmh": 56.46483035798181,
+        "startKmh": 56.46483035798181,
+        "endKmh": 47.33271750821854,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 3939471929,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_736"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_737"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-9.1"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "not_emergency_without_independent_evidence"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "pinned_production_L3",
+        "phase3e_heuristic_delta_8kmh",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_750_merged_merged_merged_merged_merged_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:48:29Z",
+      "endUtc": "2026-10-16T03:48:39Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 13.83750230799642,
+        "maxKmh": 19.16284902345842,
+        "startKmh": 13.83750230799642,
+        "endKmh": 19.16284902345842,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2135177309,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_740"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_751"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=5.3"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_854_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:50:13Z",
+      "endUtc": "2026-10-16T03:50:16Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 111.0926178143239,
+        "maxKmh": 115.542164119329,
+        "startKmh": 111.0926178143239,
+        "endKmh": 115.542164119329,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": null,
+        "osmWayId": 60126142,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_759"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_855"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.4"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_915_merged_merged",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:51:14Z",
+      "endUtc": "2026-10-16T03:51:17Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 102.7512566272693,
+        "maxKmh": 107.3523501656281,
+        "startKmh": 102.7512566272693,
+        "endKmh": 107.3523501656281,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 278930473,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_856"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_916"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_929",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:51:28Z",
+      "endUtc": "2026-10-16T03:51:29Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 114.9630315228698,
+        "maxKmh": 119.2269965138147,
+        "startKmh": 119.2269965138147,
+        "endKmh": 114.9630315228698,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 1395994898,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_917"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_934"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-4.3"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_934",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:51:33Z",
+      "endUtc": "2026-10-16T03:51:34Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 107.76490578143,
+        "maxKmh": 111.9140347511017,
+        "startKmh": 107.76490578143,
+        "endKmh": 111.9140347511017,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 1808469136,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_929"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_983"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.1"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_983_merged_merged_merged",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:52:22Z",
+      "endUtc": "2026-10-16T03:52:26Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 97.34805734497267,
+        "maxKmh": 102.6175411965039,
+        "startKmh": 102.6175411965039,
+        "endKmh": 97.34805734497267,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2523418725,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_934"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_984"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-5.3"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_APP_984",
+      "eventType": "CURVE_APPROACH",
+      "startUtc": "2026-10-16T03:52:24Z",
+      "endUtc": "2026-10-16T03:52:26Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 77.22250911187606,
+        "maxKmh": 90.90688704152242,
+        "startKmh": 90.90688704152242,
+        "endKmh": 77.22250911187606,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2523418723,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_984"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_985"
+      ],
+      "supportingEvidence": [
+        "L3_deceleration_before_heading_change"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "ordinary_braking_before_curve_not_unusual"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_approach_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_987_997",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:52:27Z",
+      "endUtc": "2026-10-16T03:52:37Z",
+      "observedGpsCount": 11,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 58.91234217577873,
+        "maxKmh": 71.0956780221721,
+        "startKmh": 71.0956780221721,
+        "endKmh": 58.91234217577873,
+        "trustedBuckets": 11,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 227162020,
+        "osmWayId": 245089893,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_986"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_APP_998"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_APP_998",
+      "eventType": "CURVE_APPROACH",
+      "startUtc": "2026-10-16T03:52:38Z",
+      "endUtc": "2026-10-16T03:52:40Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 48.0898017002884,
+        "maxKmh": 57.38365262475497,
+        "startKmh": 57.38365262475497,
+        "endKmh": 48.0898017002884,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 13176902049,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_987_997"
+      ],
+      "followingEvents": [
+        "P3E_STR_DEC_1000"
+      ],
+      "supportingEvidence": [
+        "L3_deceleration_before_heading_change"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "ordinary_braking_before_curve_not_unusual"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_approach_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_DEC_1000",
+      "eventType": "STRAIGHT_ROAD_DECELERATION",
+      "startUtc": "2026-10-16T03:52:39Z",
+      "endUtc": "2026-10-16T03:52:40Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 48.0898017002884,
+        "maxKmh": 53.72630338981165,
+        "startKmh": 53.72630338981165,
+        "endKmh": 48.0898017002884,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 13176902054,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_APP_998"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1001_1010"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=-5.6"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1001_1010",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:52:41Z",
+      "endUtc": "2026-10-16T03:52:50Z",
+      "observedGpsCount": 10,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 31.82180326472431,
+        "maxKmh": 54.15276075898327,
+        "startKmh": 42.93597212141901,
+        "endKmh": 54.15276075898327,
+        "trustedBuckets": 10,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 13176902054,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "MAPPED_NODE_PROXIMATE",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_DEC_1000"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_EXIT_1010"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_STR_ACC_1012",
+      "eventType": "STRAIGHT_ROAD_ACCELERATION",
+      "startUtc": "2026-10-16T03:52:51Z",
+      "endUtc": "2026-10-16T03:52:52Z",
+      "observedGpsCount": 2,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 59.91181372823911,
+        "maxKmh": 64.77080225118361,
+        "startKmh": 59.91181372823911,
+        "endKmh": 64.77080225118361,
+        "trustedBuckets": 2,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2447426353,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_EXIT_1010"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_APP_1029"
+      ],
+      "supportingEvidence": [
+        "observed_L3_delta_kmh=4.9"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "OBSERVED",
+      "provenance": [
+        "pinned_production_L3",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_EXIT_1010",
+      "eventType": "CURVE_EXIT_ACCELERATION",
+      "startUtc": "2026-10-16T03:52:51Z",
+      "endUtc": "2026-10-16T03:52:53Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 59.91181372823911,
+        "maxKmh": 68.36059365507525,
+        "startKmh": 59.91181372823911,
+        "endKmh": 68.36059365507525,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 2447426353,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_1001_1010"
+      ],
+      "followingEvents": [
+        "P3E_STR_ACC_1012"
+      ],
+      "supportingEvidence": [
+        "L3_acceleration_after_curve_segment"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_exit_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_APP_1029",
+      "eventType": "CURVE_APPROACH",
+      "startUtc": "2026-10-16T03:53:09Z",
+      "endUtc": "2026-10-16T03:53:11Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 66.4791676171318,
+        "maxKmh": 72.80695452890458,
+        "startKmh": 72.80695452890458,
+        "endKmh": 66.4791676171318,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": 227161912,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_STR_ACC_1012"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1032_1041"
+      ],
+      "supportingEvidence": [
+        "L3_deceleration_before_heading_change"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "ordinary_braking_before_curve_not_unusual"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_approach_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1032_1041",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:53:12Z",
+      "endUtc": "2026-10-16T03:53:21Z",
+      "observedGpsCount": 10,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 57.39839235246548,
+        "maxKmh": 63.25955870642592,
+        "startKmh": 63.25955870642592,
+        "endKmh": 57.39839235246548,
+        "trustedBuckets": 10,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 227161912,
+        "osmWayId": 21121340,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_APP_1029"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1045_1064"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1045_1064",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:53:25Z",
+      "endUtc": "2026-10-16T03:53:44Z",
+      "observedGpsCount": 20,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 38.85314656160367,
+        "maxKmh": 51.45868244208376,
+        "startKmh": 51.45868244208376,
+        "endKmh": 50.78015612528185,
+        "trustedBuckets": 20,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "CONFIRMED",
+        "junctionNodeId": 1346984787,
+        "osmWayId": 1013690637,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_1032_1041"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_APP_1069"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_APP_1069",
+      "eventType": "CURVE_APPROACH",
+      "startUtc": "2026-10-16T03:53:49Z",
+      "endUtc": "2026-10-16T03:53:51Z",
+      "observedGpsCount": 3,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 28.99587981213054,
+        "maxKmh": 36.47360171757009,
+        "startKmh": 36.47360171757009,
+        "endKmh": 28.99587981213054,
+        "trustedBuckets": 3,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_1045_1064"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1072_1091"
+      ],
+      "supportingEvidence": [
+        "L3_deceleration_before_heading_change"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "ordinary_braking_before_curve_not_unusual"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_approach_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1072_1091",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:53:52Z",
+      "endUtc": "2026-10-16T03:54:11Z",
+      "observedGpsCount": 20,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 13.99787970018053,
+        "maxKmh": 30.52570965882076,
+        "startKmh": 25.65393317101792,
+        "endKmh": 30.52570965882076,
+        "trustedBuckets": 20,
+        "untrustedOrAbsentBuckets": 0
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "AMBIGUOUS",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_APP_1069"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1096_1100"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1096_1100",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:54:16Z",
+      "endUtc": "2026-10-16T03:54:20Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": 8.676354320362286,
+        "maxKmh": 22.83022957852818,
+        "startKmh": 22.83022957852818,
+        "endKmh": null,
+        "trustedBuckets": 4,
+        "untrustedOrAbsentBuckets": 1
+      },
+      "qcStatus": "COMPLETE_TRUSTED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "UNKNOWN",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_1072_1091"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1104_1108"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1104_1108",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:54:24Z",
+      "endUtc": "2026-10-16T03:54:28Z",
+      "observedGpsCount": 4,
+      "missingGpsCount": 1,
+      "l3SpeedEvidence": {
+        "minKmh": null,
+        "maxKmh": null,
+        "startKmh": null,
+        "endKmh": null,
+        "trustedBuckets": 0,
+        "untrustedOrAbsentBuckets": 5
+      },
+      "qcStatus": "QC_BLOCKED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "UNKNOWN",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_1096_1100"
+      ],
+      "followingEvents": [
+        "P3E_CURVE_TRAV_1118_1122"
+      ],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    },
+    {
+      "eventId": "P3E_CURVE_TRAV_1118_1122",
+      "eventType": "CURVE_TRAVERSAL",
+      "startUtc": "2026-10-16T03:54:38Z",
+      "endUtc": "2026-10-16T03:54:42Z",
+      "observedGpsCount": 5,
+      "missingGpsCount": 0,
+      "l3SpeedEvidence": {
+        "minKmh": null,
+        "maxKmh": null,
+        "startKmh": null,
+        "endKmh": null,
+        "trustedBuckets": 0,
+        "untrustedOrAbsentBuckets": 5
+      },
+      "qcStatus": "QC_BLOCKED",
+      "spatialContext": {
+        "osmFrozenSnapshotSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+        "roadAssociation": "UNKNOWN",
+        "junctionNodeId": null,
+        "osmWayId": null,
+        "ambiguityPreserved": true,
+        "trafficSignalCoverage": "NOT_MAPPED",
+        "note": "Tesla-specific frozen OSM; association uses distance+heading+temporal continuity — no automatic nearest-road win when competitors within 5 m."
+      },
+      "precedingEvents": [
+        "P3E_CURVE_TRAV_1104_1108"
+      ],
+      "followingEvents": [],
+      "supportingEvidence": [
+        "GPS_heading_change_cumulative",
+        "consecutive_present_fixes"
+      ],
+      "contradictingEvidence": [],
+      "uncertaintyReasons": [
+        "no_osm_curve_geometry_on_tesla_route"
+      ],
+      "evidenceClassification": "CONTEXT_SUPPORTED",
+      "provenance": [
+        "phase3e_curve_segment_v1",
+        "LDI10D_PHASE3E1_TESLA_OSM"
+      ],
+      "notDriverIntentNotTrafficClaim": true
+    }
+  ]
+}

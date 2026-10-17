@@ -1,0 +1,156 @@
+[
+  {
+    "bucketLabelUtc": "2026-10-16T03:37:56Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.972116393313728,
+      "centerToNext": 1.5629838307795374
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:00Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.2375840338432345,
+      "centerToNext": 2.8320259114861193
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:01Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.8320259114861193,
+      "centerToNext": 2.9721166407355804
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:13Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.372479498046495,
+      "centerToNext": 2.9696041861544273
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:14Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.9696041861544273,
+      "centerToNext": 2.122962460157074
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:15Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.122962460157074,
+      "centerToNext": 1.7007801842713564
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:16Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 1.7007801842713564,
+      "centerToNext": 2.3334895387014623
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:17Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 2.3334895387014623,
+      "centerToNext": 2.3889879626670734
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:43:41Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 3.6372963364822515,
+      "centerToNext": 1.601206942483302
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:54:40Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 3.1799377475241575,
+      "centerToNext": 1.4167626245324667
+    }
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:54:41Z",
+    "positionState": "FRESH",
+    "coordsPresent": {
+      "prev": true,
+      "center": true,
+      "next": true
+    },
+    "exportLegImpliedNullReason": "V2 STATIONARY_BAND QC path accepts null L3 without writing supportAssessment.legImpliedSpeedMps (CONFIRMED evaluate-di-v0-speed-qc-interval.ts).",
+    "offlineLegImpliedKmhFromPinnedCoords": {
+      "prevToCenter": 1.4167626245324667,
+      "centerToNext": 1.7688716133371847
+    }
+  }
+]

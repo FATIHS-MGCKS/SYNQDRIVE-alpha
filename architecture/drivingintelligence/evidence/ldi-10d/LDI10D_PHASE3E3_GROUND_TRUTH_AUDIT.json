@@ -1,0 +1,1363 @@
+{
+  "schema": "LDI10D_PHASE3E3_GROUND_TRUTH_AUDIT_V1",
+  "headSha": "fd7c01031c9b92f96d9a1f8df166c0a6dc01801b",
+  "available": false,
+  "status": "NOT_ASSESSABLE",
+  "sourcesInspected": [
+    "TESLA_POSITION_GRID.json (observed GPS — not independent road ID)",
+    "VIDEO_TACHO_REFERENCE.json (speed witness — not road identity)",
+    "LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json (same OSM used by matcher — not independent GT)",
+    "LDI10D_PHASE3E2 contextual reassessment (algorithm output)"
+  ],
+  "acquisitionPlan": [
+    "Owner manual map review with dashcam frame ↔ OSM way ID labels",
+    "Independent survey-grade trace or third-party map matching export",
+    "Documented route plan with named waypoints external to SynqDrive"
+  ],
+  "manualReviewCaseCount": 40,
+  "manualReviewCases": [
+    {
+      "caseId": "MR_1_2026-10-16T034107Z",
+      "bucketLabelUtc": "2026-10-16T03:41:07Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:41:07Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 738657614,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 59.04583321945788,
+        "lat": 51.32944,
+        "lon": 9.513299,
+        "headingDeg": 180.2418957570674,
+        "candidateWayIds": [
+          105886041,
+          738657614,
+          39226550,
+          4321529
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 13.86122426746433,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_2_2026-10-16T034306Z",
+      "bucketLabelUtc": "2026-10-16T03:43:06Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:43:06Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 135453187,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 39.16842612629203,
+        "lat": 51.322256,
+        "lon": 9.512545,
+        "headingDeg": 123.13900875559943,
+        "candidateWayIds": [
+          427206848,
+          135453187,
+          135453185,
+          1266800977
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 6.251164224575934,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_3_2026-10-16T034326Z",
+      "bucketLabelUtc": "2026-10-16T03:43:26Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:43:26Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 227313773,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 55.98112381515622,
+        "lat": 51.320137,
+        "lon": 9.514977,
+        "headingDeg": 162.89057393239932,
+        "candidateWayIds": [
+          1423658500,
+          227313773
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 6.943821405507771,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_178deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_4_2026-10-16T034330Z",
+      "bucketLabelUtc": "2026-10-16T03:43:30Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:43:30Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 61523259,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 47.10404578220751,
+        "lat": 51.319629,
+        "lon": 9.515215,
+        "headingDeg": 163.346314779282,
+        "candidateWayIds": [
+          846065590,
+          61523259,
+          1507906274,
+          401761059
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 7.896288810150939,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_5_2026-10-16T034509Z",
+      "bucketLabelUtc": "2026-10-16T03:45:09Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:45:09Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 246706935,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 55.79398080353337,
+        "lat": 51.314815,
+        "lon": 9.517058,
+        "headingDeg": 170.5537829419618,
+        "candidateWayIds": [
+          1290021535,
+          246706935
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 15.96512283829006,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_173deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_6_2026-10-16T034537Z",
+      "bucketLabelUtc": "2026-10-16T03:45:37Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:45:37Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 106287039,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 56.59720828102777,
+        "lat": 51.311949,
+        "lon": 9.513478,
+        "headingDeg": 217.51137733532852,
+        "candidateWayIds": [
+          19882409,
+          246706933,
+          106287039,
+          205261741
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 10.518950618952939,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_7_2026-10-16T034618Z",
+      "bucketLabelUtc": "2026-10-16T03:46:18Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:46:18Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 25891134,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 65.60663958106078,
+        "lat": 51.308317,
+        "lon": 9.512703,
+        "headingDeg": 164.21430407523167,
+        "candidateWayIds": [
+          27009525,
+          25891134,
+          26833329
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 10.531130583448258,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_8_2026-10-16T034627Z",
+      "bucketLabelUtc": "2026-10-16T03:46:27Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:46:27Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 86433534,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 74.9562467001636,
+        "lat": 51.306897,
+        "lon": 9.513555,
+        "headingDeg": 156.6107536542188,
+        "candidateWayIds": [
+          40983142,
+          86433534
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 5.1310635853216375,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_9_2026-10-16T034629Z",
+      "bucketLabelUtc": "2026-10-16T03:46:29Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:46:29Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 86433534,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 74.42448803028293,
+        "lat": 51.30656,
+        "lon": 9.513815,
+        "headingDeg": 153.1896237171054,
+        "candidateWayIds": [
+          40983142,
+          86433534
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 7.281558935870328,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_10_2026-10-16T034637Z",
+      "bucketLabelUtc": "2026-10-16T03:46:37Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:46:37Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 829413399,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 70.38119737507246,
+        "lat": 51.305342,
+        "lon": 9.515064,
+        "headingDeg": 144.7145554517623,
+        "candidateWayIds": [
+          40983142,
+          829413399
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 7.027177181608646,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_178deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_11_2026-10-16T034705Z",
+      "bucketLabelUtc": "2026-10-16T03:47:05Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:05Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 837152730,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 73.81093926987295,
+        "lat": 51.301515,
+        "lon": 9.516457,
+        "headingDeg": 198.10691637308068,
+        "candidateWayIds": [
+          829413401,
+          837152730
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 6.945360750951477,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_178deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_12_2026-10-16T034708Z",
+      "bucketLabelUtc": "2026-10-16T03:47:08Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:08Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 837152730,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 77.5573052572954,
+        "lat": 51.300997,
+        "lon": 9.516089,
+        "headingDeg": 206.64006031970635,
+        "candidateWayIds": [
+          829413401,
+          829413402,
+          837152730
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 9.14397001605644,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_13_2026-10-16T034710Z",
+      "bucketLabelUtc": "2026-10-16T03:47:10Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:10Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 837152730,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 79.30807495381133,
+        "lat": 51.300661,
+        "lon": 9.515765,
+        "headingDeg": 212.78422733791055,
+        "candidateWayIds": [
+          829413402,
+          837152730
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 7.2533978521522355,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_14_2026-10-16T034712Z",
+      "bucketLabelUtc": "2026-10-16T03:47:12Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:12Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 837152730,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 80.68281069865336,
+        "lat": 51.300337,
+        "lon": 9.515391,
+        "headingDeg": 216.70917818481078,
+        "candidateWayIds": [
+          128165225,
+          837152730
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 11.18236932563142,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_178deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_15_2026-10-16T034717Z",
+      "bucketLabelUtc": "2026-10-16T03:47:17Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:17Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 837152730,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 84.39476781116086,
+        "lat": 51.299544,
+        "lon": 9.514337,
+        "headingDeg": 220.60518155760005,
+        "candidateWayIds": [
+          128165225,
+          309915325,
+          837152730
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 6.61920061011307,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_16_2026-10-16T034724Z",
+      "bucketLabelUtc": "2026-10-16T03:47:24Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:24Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 1128379006,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 85.03063741541428,
+        "lat": 51.298338,
+        "lon": 9.512912,
+        "headingDeg": 209.16295111900018,
+        "candidateWayIds": [
+          128165225,
+          1128379006
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 8.163930416627865,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_176deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_17_2026-10-16T034728Z",
+      "bucketLabelUtc": "2026-10-16T03:47:28Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:28Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 1128379006,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 82.57088602487073,
+        "lat": 51.297575,
+        "lon": 9.512362,
+        "headingDeg": 201.40579252562685,
+        "candidateWayIds": [
+          128165225,
+          1128379006
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 2.957130430544011,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_176deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_18_2026-10-16T034751Z",
+      "bucketLabelUtc": "2026-10-16T03:47:51Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:47:51Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 128163974,
+        "qcTrustLevel": "UNTRUSTED",
+        "l3Kmh": null,
+        "lat": 51.292773,
+        "lon": 9.509502,
+        "headingDeg": 212.51928056505585,
+        "candidateWayIds": [
+          26122898,
+          128163974
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 15.200961874475274,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_80deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_19_2026-10-16T034816Z",
+      "bucketLabelUtc": "2026-10-16T03:48:16Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:48:16Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 206289214,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 47.33271750821854,
+        "lat": 51.289407,
+        "lon": 9.502703,
+        "headingDeg": 238.06299208299967,
+        "candidateWayIds": [
+          206289213,
+          206289214
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 19.188941985682508,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_20_2026-10-16T034920Z",
+      "bucketLabelUtc": "2026-10-16T03:49:20Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:49:20Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 25623377,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 116.8677611464188,
+        "lat": 51.286372,
+        "lon": 9.487105,
+        "headingDeg": 266.44322621180146,
+        "candidateWayIds": [
+          128205110,
+          25623377
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 12.259270463499996,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_21_2026-10-16T034936Z",
+      "bucketLabelUtc": "2026-10-16T03:49:36Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:49:36Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 128216819,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 113.6983302826488,
+        "lat": 51.284296,
+        "lon": 9.480572,
+        "headingDeg": 219.53543022737682,
+        "candidateWayIds": [
+          25623160,
+          128216819
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 8.76868877991026,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_22_2026-10-16T034951Z",
+      "bucketLabelUtc": "2026-10-16T03:49:51Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:49:51Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 316312798,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 112.140973786667,
+        "lat": 51.280442,
+        "lon": 9.477996,
+        "headingDeg": 203.62302312126167,
+        "candidateWayIds": [
+          60126146,
+          316312798
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 12.897749184771213,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_23_2026-10-16T035023Z",
+      "bucketLabelUtc": "2026-10-16T03:50:23Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:50:23Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 60126142,
+        "qcTrustLevel": "UNTRUSTED",
+        "l3Kmh": 191.4429317601504,
+        "lat": 51.275121,
+        "lon": 9.466693,
+        "headingDeg": 254.30290344151314,
+        "candidateWayIds": [
+          256058120,
+          369729511,
+          60126142
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 9.281308314134474,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_24_2026-10-16T035036Z",
+      "bucketLabelUtc": "2026-10-16T03:50:36Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:50:36Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 256058119,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 120.5046382100103,
+        "lat": 51.273125,
+        "lon": 9.461282,
+        "headingDeg": 222.87692362835,
+        "candidateWayIds": [
+          126090747,
+          256058119
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 8.622584264817998,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_25_2026-10-16T035039Z",
+      "bucketLabelUtc": "2026-10-16T03:50:39Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:50:39Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 316312797,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 120.6735948520761,
+        "lat": 51.272414,
+        "lon": 9.460396,
+        "headingDeg": 215.66121394743467,
+        "candidateWayIds": [
+          126090747,
+          316312797,
+          821636103
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 9.162327537950382,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_26_2026-10-16T035045Z",
+      "bucketLabelUtc": "2026-10-16T03:50:45Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:50:45Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 30390113,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 122.9816804306074,
+        "lat": 51.270884,
+        "lon": 9.458774,
+        "headingDeg": 214.60315265995703,
+        "candidateWayIds": [
+          1169866352,
+          821636093,
+          438461206,
+          30390113
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 4.868543255347617,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_95deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_27_2026-10-16T035102Z",
+      "bucketLabelUtc": "2026-10-16T03:51:02Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:51:02Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 30390062,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 118.0599953595313,
+        "lat": 51.266905,
+        "lon": 9.453557,
+        "headingDeg": 216.45475823176858,
+        "candidateWayIds": [
+          322049472,
+          30390062
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 10.47188521062617,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_28_2026-10-16T035116Z",
+      "bucketLabelUtc": "2026-10-16T03:51:16Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:51:16Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 96956756,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 111.815600381933,
+        "lat": 51.263596,
+        "lon": 9.450596,
+        "headingDeg": 206.03002717395293,
+        "candidateWayIds": [
+          33203958,
+          96956756
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 10.683427783181093,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_178deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_29_2026-10-16T035134Z",
+      "bucketLabelUtc": "2026-10-16T03:51:34Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:51:34Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 106293488,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 111.9140347511017,
+        "lat": 51.259155,
+        "lon": 9.44596,
+        "headingDeg": 217.3650087462308,
+        "candidateWayIds": [
+          245089907,
+          106293488
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 10.4464129727911,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_30_2026-10-16T035135Z",
+      "bucketLabelUtc": "2026-10-16T03:51:35Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:51:35Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 106293488,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 115.6767715875464,
+        "lat": 51.258928,
+        "lon": 9.445685,
+        "headingDeg": 217.1669004580727,
+        "candidateWayIds": [
+          245089907,
+          106293488
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 12.806890542916241,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_180deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_31_2026-10-16T035137Z",
+      "bucketLabelUtc": "2026-10-16T03:51:37Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:51:37Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 25623109,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 119.4251340239634,
+        "lat": 51.258455,
+        "lon": 9.445123,
+        "headingDeg": 216.24758968142652,
+        "candidateWayIds": [
+          245089926,
+          19882411,
+          245089918,
+          25623109
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 1.7441613270762446,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_95deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_32_2026-10-16T035138Z",
+      "bucketLabelUtc": "2026-10-16T03:51:38Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:51:38Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 25623109,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 121.2680282532474,
+        "lat": 51.258212,
+        "lon": 9.444841,
+        "headingDeg": 215.98908900826,
+        "candidateWayIds": [
+          245089894,
+          25623109,
+          123917341
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 14.018905584599903,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_179deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_33_2026-10-16T035202Z",
+      "bucketLabelUtc": "2026-10-16T03:52:02Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:52:02Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 120075145,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 119.2354634809781,
+        "lat": 51.251416,
+        "lon": 9.439754,
+        "headingDeg": 200.4709706281478,
+        "candidateWayIds": [
+          236738766,
+          120075145,
+          120075146,
+          68440519
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 13.998212527950729,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_93deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_34_2026-10-16T035236Z",
+      "bucketLabelUtc": "2026-10-16T03:52:36Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:52:36Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 245089893,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 60.27953397631094,
+        "lat": 51.244549,
+        "lon": 9.432693,
+        "headingDeg": 232.9958574741283,
+        "candidateWayIds": [
+          236764387,
+          245089893,
+          1443742485
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 3.76799316272243,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_172deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_35_2026-10-16T035248Z",
+      "bucketLabelUtc": "2026-10-16T03:52:48Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:52:48Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 236764396,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 41.61657562839821,
+        "lat": 51.243917,
+        "lon": 9.431163,
+        "headingDeg": 307.4416475269683,
+        "candidateWayIds": [
+          241355039,
+          236764396
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 5.650945583480482,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_174deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_36_2026-10-16T035356Z",
+      "bucketLabelUtc": "2026-10-16T03:53:56Z",
+      "selectionReason": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:53:56Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "ASSOCIATED",
+        "baselineWayId": null,
+        "candidateWayId": 22885899,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 14.76329151899024,
+        "lat": 51.249683,
+        "lon": 9.431002,
+        "headingDeg": 135.47366704955948,
+        "candidateWayIds": [
+          22787714,
+          22885899,
+          219511401,
+          219511387
+        ],
+        "competingWithin5m": false,
+        "nearestDistanceM": 2.3169504636169025,
+        "graphContinuityFromPrev": true,
+        "ambiguityReasons": [
+          "BEARING_MISMATCH_68deg"
+        ],
+        "riskNote": "POTENTIAL_FALSE_POSITIVE_ASSOCIATION",
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_37_2026-10-16T033904Z",
+      "bucketLabelUtc": "2026-10-16T03:39:04Z",
+      "selectionReason": "OUTCOME_OR_WAY_CHANGE",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "UNKNOWN",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:39:04Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "UNKNOWN",
+        "baselineWayId": null,
+        "candidateWayId": null,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 13.5312378317186,
+        "lat": 51.333867,
+        "lon": 9.504511,
+        "headingDeg": 137.73628867499093,
+        "candidateWayIds": [
+          802341546,
+          1568217862
+        ],
+        "competingWithin5m": true,
+        "nearestDistanceM": 22.3415545242048,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "riskNote": null,
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_38_2026-10-16T033905Z",
+      "bucketLabelUtc": "2026-10-16T03:39:05Z",
+      "selectionReason": "OUTCOME_OR_WAY_CHANGE",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "UNKNOWN",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:39:05Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "UNKNOWN",
+        "baselineWayId": null,
+        "candidateWayId": null,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 16.49188378233659,
+        "lat": 51.333838,
+        "lon": 9.50455,
+        "headingDeg": 139.9622245532397,
+        "candidateWayIds": [
+          802341546,
+          1568217862
+        ],
+        "competingWithin5m": true,
+        "nearestDistanceM": 18.129831748958225,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "riskNote": null,
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_39_2026-10-16T033906Z",
+      "bucketLabelUtc": "2026-10-16T03:39:06Z",
+      "selectionReason": "OUTCOME_OR_WAY_CHANGE",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "UNKNOWN",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:39:06Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "UNKNOWN",
+        "baselineWayId": null,
+        "candidateWayId": null,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 19.93211035567517,
+        "lat": 51.333804,
+        "lon": 9.504596,
+        "headingDeg": 139.79237535959805,
+        "candidateWayIds": [
+          802341546,
+          1568217862
+        ],
+        "competingWithin5m": true,
+        "nearestDistanceM": 13.179852667156476,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "riskNote": null,
+        "rowAbsent": false
+      }
+    },
+    {
+      "caseId": "MR_40_2026-10-16T033907Z",
+      "bucketLabelUtc": "2026-10-16T03:39:07Z",
+      "selectionReason": "OUTCOME_OR_WAY_CHANGE",
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "UNKNOWN",
+      "independentLabel": "NOT_AVAILABLE",
+      "reviewStatus": "QUEUED_FOR_OWNER",
+      "evidence": {
+        "bucketLabelUtc": "2026-10-16T03:39:07Z",
+        "baselineOutcome": "AMBIGUOUS",
+        "candidateOutcome": "UNKNOWN",
+        "baselineWayId": null,
+        "candidateWayId": null,
+        "qcTrustLevel": "TRUSTED",
+        "l3Kmh": 24.62105544807492,
+        "lat": 51.333762,
+        "lon": 9.504653,
+        "headingDeg": 139.70473446892981,
+        "candidateWayIds": [
+          802341546,
+          1568217862
+        ],
+        "competingWithin5m": true,
+        "nearestDistanceM": 7.058216158269701,
+        "graphContinuityFromPrev": false,
+        "ambiguityReasons": [
+          "COMPETING_WAYS_WITHIN_5M"
+        ],
+        "riskNote": null,
+        "rowAbsent": false
+      }
+    }
+  ]
+}

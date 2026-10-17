@@ -1,0 +1,331 @@
+{
+  "schema": "EXP021_P22A_INDEPENDENT_VALIDATION_V1",
+  "observedAtUtc": "2026-10-16T19:11:42.511Z",
+  "prNumber": 2051,
+  "headSha": "4a5e5a221255cd689a8e1e2393a5d6606961d832",
+  "v0_2": {
+    "version": "EXP021_RETROSPECTIVE_HALT_PROTOTYPE_V0_2",
+    "parameterSnapshotHash": "dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7",
+    "parameterSnapshotHashVerifiedUnchanged": true,
+    "detectorCodeModifiedInP22A": false
+  },
+  "leakageProtection": {
+    "teslaReferencePartition": "DEVELOPMENT_ONLY",
+    "holdoutClipsContaminated": [
+      "TC_00063.MOV",
+      "TC_00066.MOV"
+    ],
+    "mapContextAsGroundTruth": "FORBIDDEN",
+    "thresholdTuningOnValidationCases": "FORBIDDEN"
+  },
+  "p22aResult": "BLOCKED_INSUFFICIENT_GROUND_TRUTH",
+  "videoAnchorInventory": [
+    {
+      "caseType": "HALT_WITHOUT_SIGNAL",
+      "anchorId": "DEV_TESLA_E02_LONG_ZERO_TACHO",
+      "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "utcWindow": {
+        "from": "2026-10-16T03:40:19Z",
+        "to": "2026-10-16T03:40:49Z",
+        "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
+      },
+      "videoSource": "TC_00063.MOV (holdout-contaminated)",
+      "videoTimeOffset": "visible Berlin 05:40:19–49",
+      "tachoObserved": "31× tacho 0 (visually reviewed)",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "DEVELOPMENT_LEAKAGE_RISK",
+      "leakageNotes": [
+        "Tesla EV-GT reference used for detector development and freeze review — not an independent blind holdout.",
+        "Map/traffic-signal context explicitly excluded from ground truth per P22A rules.",
+        "Holdout clip TC_00063 named in evaluation-protocol.json — hypotheses already influenced."
+      ],
+      "p22aLabelsAssertable": [
+        "HALT_PRESENT",
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "SLOW_ROLL_NO_FULL_HALT",
+      "anchorId": "DEV_TESLA_E03_DECEL_TO_8",
+      "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "utcWindow": {
+        "from": "2026-10-16T03:41:42Z",
+        "to": "2026-10-16T03:41:47Z",
+        "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
+      },
+      "videoSource": "TC_00063.MOV",
+      "videoTimeOffset": "05:41:42–47 Berlin",
+      "tachoObserved": "56→8 km/h tacho, no claim of full standstill",
+      "labelCoverage": "FULLY_OBSERVED",
+      "independentEvidenceQuality": "DEVELOPMENT_LEAKAGE_RISK",
+      "leakageNotes": [
+        "Tesla EV-GT reference used for detector development and freeze review — not an independent blind holdout.",
+        "Map/traffic-signal context explicitly excluded from ground truth per P22A rules."
+      ],
+      "p22aLabelsAssertable": [
+        "SLOW_ROLL",
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "STOP_AND_GO",
+      "anchorId": "DEV_TESLA_E07_POST_GAP_ACCEL",
+      "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "utcWindow": {
+        "from": "2026-10-16T03:44:36Z",
+        "to": "2026-10-16T03:44:41Z",
+        "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
+      },
+      "videoSource": "TC_00064.MOV",
+      "videoTimeOffset": "05:44:36–41 Berlin",
+      "tachoObserved": "6→42 km/h after E06 gap",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "DEVELOPMENT_LEAKAGE_RISK",
+      "leakageNotes": [
+        "Tesla EV-GT reference used for detector development and freeze review — not an independent blind holdout.",
+        "Map/traffic-signal context explicitly excluded from ground truth per P22A rules."
+      ],
+      "p22aLabelsAssertable": [
+        "MOVEMENT_DURING_GAP",
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "MOVEMENT_DURING_GAP",
+      "anchorId": "DEV_TESLA_E06_ZERO_WITH_TACHO_UNKNOWN",
+      "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "utcWindow": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:35Z",
+        "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
+      },
+      "videoSource": "TC_00064.MOV",
+      "videoTimeOffset": "05:43:43–44:35 Berlin",
+      "tachoObserved": "46×0; 05:44:03–09 UNKNOWN; 1×>5 in gap window per ABC",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "DEVELOPMENT_LEAKAGE_RISK",
+      "leakageNotes": [
+        "Tesla EV-GT reference used for detector development and freeze review — not an independent blind holdout.",
+        "Map/traffic-signal context explicitly excluded from ground truth per P22A rules."
+      ],
+      "p22aLabelsAssertable": [
+        "HALT_PRESENT",
+        "MOVEMENT_DURING_GAP",
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "MANEUVER_RETURN_SAME_POINT",
+      "anchorId": "DEV_TESLA_E01_DEPARTURE_REVERSE",
+      "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "utcWindow": {
+        "from": "2026-10-16T03:37:41Z",
+        "to": "2026-10-16T03:37:47Z",
+        "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
+      },
+      "videoSource": "TC_00062.MOV",
+      "videoTimeOffset": "first visible 05:37:41+",
+      "tachoObserved": "tacho 0 + reverse camera; first motion time NOT_DETERMINED",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "DEVELOPMENT_LEAKAGE_RISK",
+      "leakageNotes": [
+        "Tesla EV-GT reference used for detector development and freeze review — not an independent blind holdout.",
+        "Map/traffic-signal context explicitly excluded from ground truth per P22A rules."
+      ],
+      "p22aLabelsAssertable": [
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "MANEUVER_RETURN_SAME_POINT",
+      "anchorId": "DEV_TESLA_E12_PARKING_END",
+      "datasetPartition": "HOLDOUT_CONTAMINATED",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "utcWindow": {
+        "from": "2026-10-16T03:54:20Z",
+        "to": "2026-10-16T03:54:49Z",
+        "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
+      },
+      "videoSource": "TC_00067.MOV (holdout-adjacent)",
+      "videoTimeOffset": "05:54:20–49 Berlin",
+      "tachoObserved": "maneuver + DI numeric gap; video ends before trip end",
+      "labelCoverage": "UNKNOWN_DOMINANT",
+      "independentEvidenceQuality": "DEVELOPMENT_LEAKAGE_RISK",
+      "leakageNotes": [
+        "Tesla EV-GT reference used for detector development and freeze review — not an independent blind holdout.",
+        "Map/traffic-signal context explicitly excluded from ground truth per P22A rules.",
+        "Holdout policy: TC_00066 holdout; E12 in late clip — still same development drive."
+      ],
+      "p22aLabelsAssertable": [
+        "MANEUVER_RETURN_SAME_POINT",
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "STOP_AND_GO",
+      "anchorId": "RD003_RD003_GT_CLIP_001",
+      "datasetPartition": "INDEPENDENT_CANDIDATE_RD003",
+      "tripId": null,
+      "utcWindow": {
+        "from": "2026-09-02T19:03:49.400Z",
+        "to": null,
+        "note": "RD003: CANDIDATE_VIDEO_CLOCK only; INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO per RD003_RETROSPECTIVE"
+      },
+      "videoSource": "IMG_2803.mp4",
+      "videoTimeOffset": "sparse 1 Hz video-time observations (not full frame coverage)",
+      "tachoObserved": "STOP → LAUNCH → acceleration",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "CANDIDATE_UNALIGNED",
+      "leakageNotes": [
+        "Not wired to P21 forensic loader / v0_2 gap replay on this audit pass.",
+        "GROUND_TRUTH_VALIDATED=NO at ingestion (DI-EV-0034B).",
+        "Alignment fit ≠ independent proof (RD003 §Video/alignment chain)."
+      ],
+      "p22aLabelsAssertable": [
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "STOP_AND_GO",
+      "anchorId": "RD003_RD003_GT_CLIP_005",
+      "datasetPartition": "INDEPENDENT_CANDIDATE_RD003",
+      "tripId": null,
+      "utcWindow": {
+        "from": "2026-09-02T19:12:10.300Z",
+        "to": null,
+        "note": "RD003: CANDIDATE_VIDEO_CLOCK only; INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO per RD003_RETROSPECTIVE"
+      },
+      "videoSource": "IMG_2807.mp4",
+      "videoTimeOffset": "sparse 1 Hz video-time observations (not full frame coverage)",
+      "tachoObserved": "DECELERATION → STOP → acceleration",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "CANDIDATE_UNALIGNED",
+      "leakageNotes": [
+        "Not wired to P21 forensic loader / v0_2 gap replay on this audit pass.",
+        "GROUND_TRUTH_VALIDATED=NO at ingestion (DI-EV-0034B).",
+        "Alignment fit ≠ independent proof (RD003 §Video/alignment chain)."
+      ],
+      "p22aLabelsAssertable": [
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "MANEUVER_RETURN_SAME_POINT",
+      "anchorId": "RD003_RD003_GT_CLIP_009",
+      "datasetPartition": "INDEPENDENT_CANDIDATE_RD003",
+      "tripId": null,
+      "utcWindow": {
+        "from": null,
+        "to": null,
+        "note": "RD003: CANDIDATE_VIDEO_CLOCK only; INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO per RD003_RETROSPECTIVE"
+      },
+      "videoSource": "IMG_2811.mp4",
+      "videoTimeOffset": "sparse 1 Hz video-time observations (not full frame coverage)",
+      "tachoObserved": "REVERSE → STOP → forward launch",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "CANDIDATE_UNALIGNED",
+      "leakageNotes": [
+        "Not wired to P21 forensic loader / v0_2 gap replay on this audit pass.",
+        "GROUND_TRUTH_VALIDATED=NO at ingestion (DI-EV-0034B).",
+        "Alignment fit ≠ independent proof (RD003 §Video/alignment chain)."
+      ],
+      "p22aLabelsAssertable": [
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "SLOW_ROLL_NO_FULL_HALT",
+      "anchorId": "RD003_RD003_GT_CLIP_002",
+      "datasetPartition": "INDEPENDENT_CANDIDATE_RD003",
+      "tripId": null,
+      "utcWindow": {
+        "from": null,
+        "to": null,
+        "note": "RD003: CANDIDATE_VIDEO_CLOCK only; INDEPENDENT_ABSOLUTE_ACCURACY_VALIDATED=NO per RD003_RETROSPECTIVE"
+      },
+      "videoSource": "IMG_2804.mp4",
+      "videoTimeOffset": "sparse 1 Hz video-time observations (not full frame coverage)",
+      "tachoObserved": "STABLE_CRUISE negative control",
+      "labelCoverage": "PARTIALLY_OBSERVED",
+      "independentEvidenceQuality": "CANDIDATE_UNALIGNED",
+      "leakageNotes": [
+        "Not wired to P21 forensic loader / v0_2 gap replay on this audit pass.",
+        "GROUND_TRUTH_VALIDATED=NO at ingestion (DI-EV-0034B).",
+        "Alignment fit ≠ independent proof (RD003 §Video/alignment chain)."
+      ],
+      "p22aLabelsAssertable": [
+        "NOT_DISTINGUISHABLE"
+      ]
+    },
+    {
+      "caseType": "MOVEMENT_DURING_GAP",
+      "anchorId": "RD004_B_LATE_BUCKET_RECOVERY",
+      "datasetPartition": "INDEPENDENT_CANDIDATE_RD004",
+      "tripId": null,
+      "utcWindow": {
+        "from": null,
+        "to": null,
+        "note": "Segment B exact-window replay — telemetry timing, not halt video GT"
+      },
+      "videoSource": "RD004-B segment exports (alignment segments)",
+      "videoTimeOffset": "NOT_ALIGNED_FOR_HALT_LABELS",
+      "tachoObserved": "N/A — documents provider late arrival + watermark gaps",
+      "labelCoverage": "UNKNOWN_DOMINANT",
+      "independentEvidenceQuality": "CANDIDATE_SPARSE_ALIGNED_FIT_ONLY",
+      "leakageNotes": [
+        "RD004 proves capture/recovery mechanics; does not supply per-second halt labels for v0_2.",
+        "26 buckets permanently excluded under overlap-only policy (RD004-B.4)."
+      ],
+      "p22aLabelsAssertable": [
+        "MOVEMENT_DURING_GAP",
+        "NOT_DISTINGUISHABLE"
+      ]
+    }
+  ],
+  "independentValidation": {
+    "availableIndependentVideoCases": 5,
+    "validatedHaltCases": 0,
+    "validatedSlowRollCases": 0,
+    "validatedStopAndGoCases": 0,
+    "validatedMovementGapCases": 0,
+    "validatedManeuverCases": 0,
+    "falseHaltCount": 0,
+    "falseMovementCount": 0,
+    "unknownCount": 5,
+    "groundTruthCoverage": "0 independent cases with trip-aligned v0_2 replay + validated per-second halt labels",
+    "metricsComputed": []
+  },
+  "developmentDiagnostics": {
+    "source": "forensic-readonly-exports-2026-10-16-retrospective-halt-v2-freeze/REVIEW_SUMMARY.md",
+    "notCountedAsIndependentValidation": true,
+    "likelyHaltWithoutVideoTachoInGap": [
+      "GAP_EVT_002",
+      "GAP_EVT_003"
+    ],
+    "videoSupportedLikelyHalt": [
+      "GAP_EVT_005",
+      "GAP_EVT_007"
+    ],
+    "videoNotDecisiveLikelyHalt": [
+      "GAP_EVT_006",
+      "GAP_EVT_008"
+    ],
+    "falseHaltSignalsNaturalGaps": {
+      "likelyHaltWithoutOverlappingMainHaltWindow": 2,
+      "likelyHaltWithVideoContradictionOrNoStopEvidence": 1
+    },
+    "interpretation": "Development-only counters — do not populate P22A independent FALSE_HALT_COUNT without blind labels."
+  },
+  "transferability": {
+    "offlineTripCount": 11,
+    "verdict": "ROBUSTNESS_SIGNAL_ONLY",
+    "hitRateClaim": "FORBIDDEN_WITHOUT_INDEPENDENT_VIDEO"
+  },
+  "productionMutations": "NONE",
+  "nextSafeAction": "Capture new independent video with sub-minute UTC alignment; label five case types; bind to P21 pin; replay v0_2 without threshold changes."
+}

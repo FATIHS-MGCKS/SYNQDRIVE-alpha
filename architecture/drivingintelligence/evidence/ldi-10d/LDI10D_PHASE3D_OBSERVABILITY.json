@@ -1,0 +1,54 @@
+{
+  "schema": "LDI10D_PHASE3D_OBSERVABILITY_V1",
+  "headSha": "5849fe9c1cb240062ed01a8f4e7d47a14f1934de",
+  "tripLevel": {
+    "bucketsTotal": 1136,
+    "positionPresent": 867,
+    "rowAbsent": 269,
+    "frozenCoordinateBuckets": 0,
+    "timestampIrregularities": 0,
+    "geometryOutlierInferred": 1,
+    "qcUntrusted": 347,
+    "trustedSpeed": 775,
+    "trustedLimitedWithNumeric": 0,
+    "insufficientEvidence": 346,
+    "replayL3Numeric": 822,
+    "maxL3DriftKmh": 0,
+    "meanL3DriftKmh": null,
+    "qcReasonHistogram": {
+      "NO_NUMERIC": 346,
+      "OK_STATIONARY_NULL_SPEED": 14,
+      "OK": 775,
+      "GEOMETRY_JUMP": 1
+    },
+    "abstentionHistogram": {
+      "INCOMPLETE_SUPPORT": 2,
+      "ROW_ABSENT": 312,
+      "NONE": 822
+    },
+    "videoPairedTrustedN": 748,
+    "accelDecelEvidence": {
+      "consecutiveTrustedNumericPairs": 758,
+      "accelerationCandidateBucketsDeltaGte4Kmh": 66,
+      "decelerationCandidateBucketsDeltaLteMinus4Kmh": 56,
+      "epistemic": "OBSERVED_DELTA_ON_PINNED_L3",
+      "note": "Calendar-adjacent 1 s buckets with TRUSTED/TRUSTED_LIMITED pinned L3 at both ends; ±4 km/h delta heuristic for observability only (not native event confirmation)."
+    }
+  },
+  "samplingCadence": {
+    "expectedDeltaSec": 1,
+    "irregularBuckets": 0
+  },
+  "speedEstimation": {
+    "pinnedProductionNumeric": 775,
+    "replayL3Numeric": 822
+  },
+  "temporalUncertaintyNote": "Bucket labels are query-anchored 1 s grid starts; video tacho aligned to displayed second with quantized clock uncertainty.",
+  "accelDecelEvidence": {
+    "consecutiveTrustedNumericPairs": 758,
+    "accelerationCandidateBucketsDeltaGte4Kmh": 66,
+    "decelerationCandidateBucketsDeltaLteMinus4Kmh": 56,
+    "epistemic": "OBSERVED_DELTA_ON_PINNED_L3",
+    "note": "Calendar-adjacent 1 s buckets with TRUSTED/TRUSTED_LIMITED pinned L3 at both ends; ±4 km/h delta heuristic for observability only (not native event confirmation)."
+  }
+}

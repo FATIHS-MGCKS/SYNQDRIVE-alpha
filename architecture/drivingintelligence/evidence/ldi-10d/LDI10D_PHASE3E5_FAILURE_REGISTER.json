@@ -1,0 +1,31 @@
+{
+  "schema": "LDI10D_PHASE3E5_FAILURE_REGISTER_V1",
+  "headSha": "92d19b51c94ac14ba5061a7687c5a2fed19f4805",
+  "items": [
+    {
+      "id": "FM_NO_FRAME_CROPS_IN_LIGHT_ZIP",
+      "severity": "LIMITATION",
+      "description": "CURSOR_LIGHT zip lacks frames_sample; frame validation uses Phase 3E.4 review pack only."
+    },
+    {
+      "id": "FM_OCR_PARTIAL_ROWS",
+      "severity": "DATA_QUALITY",
+      "description": "41 PARTIAL_REVIEW_REQUIRED rows excluded from verified set."
+    },
+    {
+      "id": "FM_LON_OCR_ERRORS",
+      "severity": "DATA_QUALITY",
+      "description": "Examples: 9.545266, 9.572081, 9.873 fragment — rejected by lon band."
+    },
+    {
+      "id": "FM_GPS_FREEZE",
+      "severity": "FINDING",
+      "description": "7 rows with repeated coords and changing displayed speed."
+    },
+    {
+      "id": "FM_ROAD_ID_GT",
+      "severity": "GAP",
+      "description": "Independent road-identity labels absent — accuracy NOT_ASSESSABLE."
+    }
+  ]
+}

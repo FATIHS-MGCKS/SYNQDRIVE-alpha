@@ -1,0 +1,95 @@
+{
+  "schema": "LDI08_NATIVE_EVENT_OVERLAP_V1",
+  "nativeEventCount": 2,
+  "corneringOverlap": [
+    {
+      "overlapId": "CORNER_NATIVE_1",
+      "nativeEventId": "ef5beb2b-fcca-4f57-8dfb-580da3cb065b",
+      "eventType": "HARSH_CORNERING",
+      "providerEventName": "behavior.harshCornering",
+      "source": "TELEMETRY_EVENTS",
+      "provenance": "DrivingEvent TELEMETRY_EVENTS — provider-reported not physically validated",
+      "recordedAtUtc": "2026-10-13T15:54:37Z",
+      "normalizedBucketUtc": "2026-10-13T15:54:37Z",
+      "temporalUncertaintyMs": 0,
+      "nativeSpeedKmh": 26.66666666666667,
+      "nativeDeltaKmh": null,
+      "onBucketExact": true,
+      "l3AtBucket": {
+        "speedKmh": 33.48517349556024,
+        "qcTrustLevel": "UNTRUSTED",
+        "reasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ]
+      },
+      "gpsTrajectoryWitness": {
+        "bearingChangeDeg": 7.300712797176004,
+        "note": "bearing_change_between_prev_center_next_present_gps_not_independent_gt"
+      },
+      "curvatureCoincidence": "DESCRIPTIVE_moderate_or_low_bearing_change"
+    },
+    {
+      "overlapId": "CORNER_NATIVE_2",
+      "nativeEventId": "1ceb252f-02c4-4c5b-a09e-3e677ac7d585",
+      "eventType": "HARSH_CORNERING",
+      "providerEventName": "behavior.harshCornering",
+      "source": "TELEMETRY_EVENTS",
+      "provenance": "DrivingEvent TELEMETRY_EVENTS — provider-reported not physically validated",
+      "recordedAtUtc": "2026-10-13T15:58:16Z",
+      "normalizedBucketUtc": "2026-10-13T15:58:16Z",
+      "temporalUncertaintyMs": 0,
+      "nativeSpeedKmh": 21,
+      "nativeDeltaKmh": null,
+      "onBucketExact": true,
+      "l3AtBucket": {
+        "speedKmh": null,
+        "qcTrustLevel": "UNTRUSTED",
+        "reasonCodes": [
+          "NO_NUMERIC"
+        ]
+      },
+      "gpsTrajectoryWitness": {
+        "bearingChangeDeg": 140.67694660792444,
+        "note": "bearing_change_between_prev_center_next_present_gps_not_independent_gt"
+      },
+      "curvatureCoincidence": "DESCRIPTIVE_elevated_bearing_change_at_bucket"
+    }
+  ],
+  "brakeAccelOverlapFromLdi03Table": [
+    {
+      "overlapId": "OVL_NONE",
+      "nativeEventId": null,
+      "nativeType": null,
+      "hfBrakeId": null,
+      "l3DecelId": "L3_DECEL_1",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "notes": [
+        "No native harsh events on trip; hfBrakeSegments=0; l3DecelWindows=35"
+      ]
+    }
+  ],
+  "nativeEvents": [
+    {
+      "id": "ef5beb2b-fcca-4f57-8dfb-580da3cb065b",
+      "eventType": "HARSH_CORNERING",
+      "recordedAtUtc": "2026-10-13T15:54:37Z",
+      "normalizedBucketUtc": "2026-10-13T15:54:37Z",
+      "speedKmh": 26.66666666666667,
+      "deltaKmh": null,
+      "source": "TELEMETRY_EVENTS",
+      "provenance": "TELEMETRY_EVENTS",
+      "timestampUncertaintyNote": "Bucket alignment uses whole-second UTC; sub-second offset preserved in recordedAtUtc"
+    },
+    {
+      "id": "1ceb252f-02c4-4c5b-a09e-3e677ac7d585",
+      "eventType": "HARSH_CORNERING",
+      "recordedAtUtc": "2026-10-13T15:58:16Z",
+      "normalizedBucketUtc": "2026-10-13T15:58:16Z",
+      "speedKmh": 21,
+      "deltaKmh": null,
+      "source": "TELEMETRY_EVENTS",
+      "provenance": "TELEMETRY_EVENTS",
+      "timestampUncertaintyNote": "Bucket alignment uses whole-second UTC; sub-second offset preserved in recordedAtUtc"
+    }
+  ]
+}

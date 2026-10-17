@@ -1,0 +1,11 @@
+{
+  "schema": "LDI10D_PHASE3E7_EVIDENCE_GAPS_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "gaps": [
+    "BLOCKED_MISSING_SOURCE: frame images not in repository",
+    "BLOCKED_MISSING_SOURCE: original MOVs not in workspace",
+    "NOT_ASSESSABLE: road-ID ground truth",
+    "NOT_ASSESSABLE: absolute GPS accuracy without independent reference",
+    "NOT_EXECUTED: full 1-Hz OCR on 1028 frames"
+  ]
+}

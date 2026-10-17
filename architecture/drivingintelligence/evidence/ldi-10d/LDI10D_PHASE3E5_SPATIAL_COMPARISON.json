@@ -1,0 +1,12 @@
+{
+  "schema": "LDI10D_PHASE3E5_SPATIAL_COMPARISON_V1",
+  "headSha": "92d19b51c94ac14ba5061a7687c5a2fed19f4805",
+  "verifiedPairCount": 137,
+  "haversineM": {
+    "medianM": 1.5950496596670667,
+    "p90M": 23.462359686628414,
+    "p95M": 31.702714782553635,
+    "robustCount": 137
+  },
+  "roadIdGroundTruth": "NOT_ASSESSABLE"
+}

@@ -1,0 +1,27 @@
+{
+  "source": "OpenStreetMap contributors",
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors — https://www.openstreetmap.org/copyright",
+  "endpoint": "https://overpass-api.de/api/interpreter",
+  "fetchedAtUtc": "2026-10-17T04:53:02.779Z",
+  "querySha256": "53190a889296ad9575b37333e0eaa660fd96a3a37859e1a285b747ca36a072ad",
+  "queryText": "[out:json][timeout:90];\n(\n  node[\"highway\"=\"traffic_signals\"](51.399314566618756,9.655036597188841,51.40860533338124,9.67302160281116);\n  node[\"highway\"=\"crossing\"](51.399314566618756,9.655036597188841,51.40860533338124,9.67302160281116);\n  node[\"junction\"](51.399314566618756,9.655036597188841,51.40860533338124,9.67302160281116);\n  way[\"highway\"~\"^(motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|residential|unclassified|service|living_street)$\"](51.399314566618756,9.655036597188841,51.40860533338124,9.67302160281116);\n  relation[\"type\"=\"restriction\"](51.399314566618756,9.655036597188841,51.40860533338124,9.67302160281116);\n);\nout body geom;",
+  "boundingBox": {
+    "south": 51.399314566618756,
+    "north": 51.40860533338124,
+    "west": 9.655036597188841,
+    "east": 9.67302160281116,
+    "marginM": 75
+  },
+  "inputArtifactHashes": {
+    "ldi10b": "8bf2a4257c519dff8357aed4ad6c67873e6e01dddc8bd4a8002177449123d9cb",
+    "ldi10cRoute": "a3b76198ff4920d0151ee607b6c22d0eca021df1ee9fb9f78552a203d214266d",
+    "ldi10cTimeline": "440cbbb19a0499d55bf0a72cbad4258c438d9414c91b4d2596f5b29ca5816e4b",
+    "ldi10cPhase2": "a1e3cff6a3aa0b557bd7cc9aacebca155670e121fdddf61a5bed853900b44909",
+    "ldi10cPhase3": "4bce7db7c6a266bdbf5e3f959b87b5ed69f8dfe0d77fa34cbe438d26f4d77587",
+    "ldi08Snapshot": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009"
+  },
+  "mode": "reuse_frozen_file",
+  "odbComplianceNote": "Frozen extract for forensic evidence only; do not merge into tenant DB without legal review. Share-alike obligations apply to derivative databases.",
+  "apiComplianceNote": "Single bbox query; User-Agent set; no production DB access"
+}

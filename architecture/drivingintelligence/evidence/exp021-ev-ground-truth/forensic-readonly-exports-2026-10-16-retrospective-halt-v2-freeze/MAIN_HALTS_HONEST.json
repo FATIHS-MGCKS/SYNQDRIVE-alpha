@@ -1,0 +1,258 @@
+[
+  {
+    "haltId": "LONG_HALT_1",
+    "referenceSemantics": "LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video overlay — not five proven independent physical halt events.",
+    "physicalHaltProven": false,
+    "videoWindowUtc": {
+      "from": "2026-10-16T03:40:19Z",
+      "to": "2026-10-16T03:40:49Z"
+    },
+    "videoWindowBerlin": {
+      "from": "16.10.2026, 05:40:19",
+      "to": "16.10.2026, 05:40:49"
+    },
+    "berlinEqualsUtcPlus2h": true,
+    "videoTacho0LabeledSeconds": 31,
+    "videoBreakdownFullWindow": {
+      "tacho0": 31,
+      "tacho1to3": 0,
+      "tacho3to5": 0,
+      "tachoGt5": 0,
+      "unknown": 0,
+      "totalLabeledSeconds": 31
+    },
+    "h4h5Note": null,
+    "detectorOutcome": "PROBABLE_HALT_CLASSIFIED",
+    "detectorOutcomeDetail": "Mindestens ein überlappendes Ereignis LIKELY_HALT — bedeutet nicht zeitliche Lokalisierung des Halts innerhalb des Fensters.",
+    "overlappingGapEvents": [
+      {
+        "eventId": "GAP_EVT_005",
+        "classificationV02": "LIKELY_HALT",
+        "gapWindowUtc": {
+          "from": "2026-10-16T03:40:19Z",
+          "to": "2026-10-16T03:40:50Z"
+        },
+        "note": null
+      }
+    ],
+    "multipleEventsShareHalt": false,
+    "visualReviewPerformed": false,
+    "annotationOnlyEvaluation": true,
+    "sharedGapEventIds": [
+      "GAP_EVT_005"
+    ],
+    "coClaimedWithOtherMainHalts": []
+  },
+  {
+    "haltId": "LONG_HALT_2",
+    "referenceSemantics": "LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video overlay — not five proven independent physical halt events.",
+    "physicalHaltProven": false,
+    "videoWindowUtc": {
+      "from": "2026-10-16T03:41:50Z",
+      "to": "2026-10-16T03:42:29Z"
+    },
+    "videoWindowBerlin": {
+      "from": "16.10.2026, 05:41:50",
+      "to": "16.10.2026, 05:42:29"
+    },
+    "berlinEqualsUtcPlus2h": true,
+    "videoTacho0LabeledSeconds": 40,
+    "videoBreakdownFullWindow": {
+      "tacho0": 40,
+      "tacho1to3": 0,
+      "tacho3to5": 0,
+      "tachoGt5": 0,
+      "unknown": 0,
+      "totalLabeledSeconds": 40
+    },
+    "h4h5Note": null,
+    "detectorOutcome": "PROBABLE_HALT_CLASSIFIED",
+    "detectorOutcomeDetail": "Mindestens ein überlappendes Ereignis LIKELY_HALT — bedeutet nicht zeitliche Lokalisierung des Halts innerhalb des Fensters.",
+    "overlappingGapEvents": [
+      {
+        "eventId": "GAP_EVT_006",
+        "classificationV02": "LIKELY_HALT",
+        "gapWindowUtc": {
+          "from": "2026-10-16T03:41:50Z",
+          "to": "2026-10-16T03:42:30Z"
+        },
+        "note": null
+      }
+    ],
+    "multipleEventsShareHalt": false,
+    "visualReviewPerformed": false,
+    "annotationOnlyEvaluation": true,
+    "sharedGapEventIds": [
+      "GAP_EVT_006"
+    ],
+    "coClaimedWithOtherMainHalts": []
+  },
+  {
+    "haltId": "LONG_HALT_3",
+    "referenceSemantics": "LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video overlay — not five proven independent physical halt events.",
+    "physicalHaltProven": false,
+    "videoWindowUtc": {
+      "from": "2026-10-16T03:42:50Z",
+      "to": "2026-10-16T03:42:57Z"
+    },
+    "videoWindowBerlin": {
+      "from": "16.10.2026, 05:42:50",
+      "to": "16.10.2026, 05:42:57"
+    },
+    "berlinEqualsUtcPlus2h": true,
+    "videoTacho0LabeledSeconds": 8,
+    "videoBreakdownFullWindow": {
+      "tacho0": 8,
+      "tacho1to3": 0,
+      "tacho3to5": 0,
+      "tachoGt5": 0,
+      "unknown": 0,
+      "totalLabeledSeconds": 8
+    },
+    "h4h5Note": null,
+    "detectorOutcome": "PROBABLE_HALT_CLASSIFIED",
+    "detectorOutcomeDetail": "Mindestens ein überlappendes Ereignis LIKELY_HALT — bedeutet nicht zeitliche Lokalisierung des Halts innerhalb des Fensters.",
+    "overlappingGapEvents": [
+      {
+        "eventId": "GAP_EVT_007",
+        "classificationV02": "LIKELY_HALT",
+        "gapWindowUtc": {
+          "from": "2026-10-16T03:42:51Z",
+          "to": "2026-10-16T03:42:57Z"
+        },
+        "note": null
+      }
+    ],
+    "multipleEventsShareHalt": false,
+    "visualReviewPerformed": false,
+    "annotationOnlyEvaluation": true,
+    "sharedGapEventIds": [
+      "GAP_EVT_007"
+    ],
+    "coClaimedWithOtherMainHalts": []
+  },
+  {
+    "haltId": "LONG_HALT_4",
+    "referenceSemantics": "LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video overlay — not five proven independent physical halt events.",
+    "physicalHaltProven": false,
+    "videoWindowUtc": {
+      "from": "2026-10-16T03:43:43Z",
+      "to": "2026-10-16T03:44:02Z"
+    },
+    "videoWindowBerlin": {
+      "from": "16.10.2026, 05:43:43",
+      "to": "16.10.2026, 05:44:02"
+    },
+    "berlinEqualsUtcPlus2h": true,
+    "videoTacho0LabeledSeconds": 20,
+    "videoBreakdownFullWindow": {
+      "tacho0": 20,
+      "tacho1to3": 0,
+      "tacho3to5": 0,
+      "tachoGt5": 0,
+      "unknown": 0,
+      "totalLabeledSeconds": 20
+    },
+    "h4h5Note": {
+      "annotationGapBetweenH4H5": {
+        "utc": {
+          "from": "2026-10-16T03:44:03Z",
+          "to": "2026-10-16T03:44:09Z"
+        },
+        "berlin": {
+          "from": "2026-10-16 05:44:03",
+          "to": "2026-10-16 05:44:09"
+        },
+        "tacho": "unknown",
+        "physicalEventCountH4H5": "UNCLEAR_NOT_INFERRED_FROM_GAP",
+        "note": "No restart inferred from unknown tacho alone; GAP_EVT_008 spans one position gap, not erroneous merge of halts."
+      },
+      "sharedPositionGapCandidate": "GAP_EVT_008",
+      "physicalEventCount": "UNCLEAR_NOT_INFERRED_FROM_GAP"
+    },
+    "detectorOutcome": "PROBABLE_HALT_CLASSIFIED",
+    "detectorOutcomeDetail": "Mindestens ein überlappendes Ereignis LIKELY_HALT — bedeutet nicht zeitliche Lokalisierung des Halts innerhalb des Fensters.",
+    "overlappingGapEvents": [
+      {
+        "eventId": "GAP_EVT_008",
+        "classificationV02": "LIKELY_HALT",
+        "gapWindowUtc": {
+          "from": "2026-10-16T03:43:43Z",
+          "to": "2026-10-16T03:44:36Z"
+        },
+        "note": "Lückenkandidat breiter als annotiertes Tacho-0-Fenster — Halt nicht innerhalb des Kandidaten lokalisiert."
+      }
+    ],
+    "multipleEventsShareHalt": false,
+    "visualReviewPerformed": false,
+    "annotationOnlyEvaluation": true,
+    "sharedGapEventIds": [
+      "GAP_EVT_008"
+    ],
+    "coClaimedWithOtherMainHalts": [
+      "LONG_HALT_5"
+    ]
+  },
+  {
+    "haltId": "LONG_HALT_5",
+    "referenceSemantics": "LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video overlay — not five proven independent physical halt events.",
+    "physicalHaltProven": false,
+    "videoWindowUtc": {
+      "from": "2026-10-16T03:44:10Z",
+      "to": "2026-10-16T03:44:35Z"
+    },
+    "videoWindowBerlin": {
+      "from": "16.10.2026, 05:44:10",
+      "to": "16.10.2026, 05:44:35"
+    },
+    "berlinEqualsUtcPlus2h": true,
+    "videoTacho0LabeledSeconds": 26,
+    "videoBreakdownFullWindow": {
+      "tacho0": 26,
+      "tacho1to3": 0,
+      "tacho3to5": 0,
+      "tachoGt5": 0,
+      "unknown": 0,
+      "totalLabeledSeconds": 26
+    },
+    "h4h5Note": {
+      "annotationGapBetweenH4H5": {
+        "utc": {
+          "from": "2026-10-16T03:44:03Z",
+          "to": "2026-10-16T03:44:09Z"
+        },
+        "berlin": {
+          "from": "2026-10-16 05:44:03",
+          "to": "2026-10-16 05:44:09"
+        },
+        "tacho": "unknown",
+        "physicalEventCountH4H5": "UNCLEAR_NOT_INFERRED_FROM_GAP",
+        "note": "No restart inferred from unknown tacho alone; GAP_EVT_008 spans one position gap, not erroneous merge of halts."
+      },
+      "sharedPositionGapCandidate": "GAP_EVT_008",
+      "physicalEventCount": "UNCLEAR_NOT_INFERRED_FROM_GAP"
+    },
+    "detectorOutcome": "PROBABLE_HALT_CLASSIFIED",
+    "detectorOutcomeDetail": "Mindestens ein überlappendes Ereignis LIKELY_HALT — bedeutet nicht zeitliche Lokalisierung des Halts innerhalb des Fensters.",
+    "overlappingGapEvents": [
+      {
+        "eventId": "GAP_EVT_008",
+        "classificationV02": "LIKELY_HALT",
+        "gapWindowUtc": {
+          "from": "2026-10-16T03:43:43Z",
+          "to": "2026-10-16T03:44:36Z"
+        },
+        "note": "Lückenkandidat breiter als annotiertes Tacho-0-Fenster — Halt nicht innerhalb des Kandidaten lokalisiert."
+      }
+    ],
+    "multipleEventsShareHalt": false,
+    "visualReviewPerformed": false,
+    "annotationOnlyEvaluation": true,
+    "sharedGapEventIds": [
+      "GAP_EVT_008"
+    ],
+    "coClaimedWithOtherMainHalts": [
+      "LONG_HALT_4"
+    ]
+  }
+]

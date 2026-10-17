@@ -1,0 +1,1057 @@
+{
+  "LONG_HALT_1": {
+    "perLabel": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:19Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:20Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:21Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:22Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:23Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:24Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:25Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:26Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:27Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:28Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:29Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:30Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:31Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:32Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:33Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:34Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:35Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:36Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:37Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:38Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:39Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:40Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:41Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:42Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:43Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:44Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:45Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:46Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:47Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:48Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:49Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      }
+    ],
+    "rejectedProviderRowsNearHalt": [],
+    "summary": {
+      "labels": 31,
+      "pinRowAbsentWithProviderRowCount0": 31,
+      "pinAbsentFreshAlsoAbsent": 31,
+      "epistemic": "CONFIRMED on this query path: ROW_ABSENT ↔ providerRowCount=0 in pinned snapshot material (semantic validator enforces)."
+    }
+  },
+  "LONG_HALT_2": {
+    "perLabel": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:50Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:51Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:52Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:53Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:54Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:55Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:56Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:57Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:58Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:59Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:00Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:01Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:02Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:03Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:04Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:05Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:06Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:07Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:08Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:09Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:10Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:11Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:12Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:13Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:14Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:15Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:16Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:17Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:18Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:19Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:20Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:21Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:22Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:23Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:24Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:25Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:26Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:27Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:28Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:29Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      }
+    ],
+    "rejectedProviderRowsNearHalt": [],
+    "summary": {
+      "labels": 40,
+      "pinRowAbsentWithProviderRowCount0": 40,
+      "pinAbsentFreshAlsoAbsent": 40,
+      "epistemic": "CONFIRMED on this query path: ROW_ABSENT ↔ providerRowCount=0 in pinned snapshot material (semantic validator enforces)."
+    }
+  },
+  "LONG_HALT_3": {
+    "perLabel": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:50Z",
+        "pinnedAvailability": "PRESENT",
+        "pinnedProviderRowCount": 1,
+        "freshProviderRowCount": 1,
+        "freshAvailability": "PRESENT",
+        "rowAbsentMeansNoRawProviderRow": "N/A"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:51Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:52Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:53Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:54Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:55Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:56Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:57Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      }
+    ],
+    "rejectedProviderRowsNearHalt": [],
+    "summary": {
+      "labels": 8,
+      "pinRowAbsentWithProviderRowCount0": 7,
+      "pinAbsentFreshAlsoAbsent": 7,
+      "epistemic": "CONFIRMED on this query path: ROW_ABSENT ↔ providerRowCount=0 in pinned snapshot material (semantic validator enforces)."
+    }
+  },
+  "LONG_HALT_4": {
+    "perLabel": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:43Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:44Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:45Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:46Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:47Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:48Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:49Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:50Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:51Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:52Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:53Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:54Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:55Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:56Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:57Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:58Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:59Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:00Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:01Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:02Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      }
+    ],
+    "rejectedProviderRowsNearHalt": [],
+    "summary": {
+      "labels": 20,
+      "pinRowAbsentWithProviderRowCount0": 20,
+      "pinAbsentFreshAlsoAbsent": 20,
+      "epistemic": "CONFIRMED on this query path: ROW_ABSENT ↔ providerRowCount=0 in pinned snapshot material (semantic validator enforces)."
+    }
+  },
+  "LONG_HALT_5": {
+    "perLabel": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:10Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:11Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:12Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:13Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:14Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:15Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:16Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:17Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:18Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:19Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:20Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:21Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:22Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:23Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:24Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:25Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:26Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:27Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:28Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:29Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:30Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:31Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:32Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:33Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:34Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:35Z",
+        "pinnedAvailability": "ROW_ABSENT",
+        "pinnedProviderRowCount": 0,
+        "freshProviderRowCount": 0,
+        "freshAvailability": "ROW_ABSENT",
+        "rowAbsentMeansNoRawProviderRow": "CONFIRMED"
+      }
+    ],
+    "rejectedProviderRowsNearHalt": [],
+    "summary": {
+      "labels": 26,
+      "pinRowAbsentWithProviderRowCount0": 26,
+      "pinAbsentFreshAlsoAbsent": 26,
+      "epistemic": "CONFIRMED on this query path: ROW_ABSENT ↔ providerRowCount=0 in pinned snapshot material (semantic validator enforces)."
+    }
+  }
+}
