@@ -29,7 +29,13 @@ function associatePresentBucket(params: {
 }): BaselineBucketMatch {
   const { lat, lon, headingDeg, prevConfirmedWayId, ctx, config } = params;
   const ambiguityReasons: string[] = [];
-  const hits = nearestWayCandidates(lat, lon, ctx.ways, config.uncertaintyRadiusM);
+  const hits = nearestWayCandidates(
+    lat,
+    lon,
+    ctx.ways,
+    config.uncertaintyRadiusM,
+    config.pointToSegmentDistanceM,
+  );
 
   let outcome: InternalMatchOutcome = 'UNKNOWN';
   let osmWayId: number | null = null;

@@ -72,7 +72,13 @@ export function buildViterbiMatches(
       continue;
     }
 
-    const hits = nearestWayCandidates(b.latitude, b.longitude, ways, config.uncertaintyRadiusM).slice(
+    const hits = nearestWayCandidates(
+      b.latitude,
+      b.longitude,
+      ways,
+      config.uncertaintyRadiusM,
+      config.pointToSegmentDistanceM,
+    ).slice(
       0,
       TOP_K,
     );

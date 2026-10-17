@@ -78,32 +78,64 @@ export function parseOverpassElements(body: { elements?: Array<Record<string, un
   return { ways, nodes };
 }
 
-function pointToSegmentDistanceM(
+/** Local equirectangular meters (no network; short-segment safe). */
+export function latLonToLocalMeters(
+  lat: number,
+  lon: number,
+  refLat: number,
+  refLon: number,
+): { x: number; y: number } {
+  const cosLat = Math.cos((refLat * Math.PI) / 180);
+  return {
+    y: (lat - refLat) * 111_320,
+    x: (lon - refLon) * 111_320 * cosLat,
+  };
+}
+
+/**
+ * Shortest distance from point P to segment AB in a consistent local metric frame.
+ * Projection uses planar geometry on equirectangular coords anchored at the segment midpoint.
+ */
+export function pointToSegmentDistanceM(
   plat: number,
   plon: number,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
 ): number {
-  const dA = haversineMeters(plat, plon, a.lat, a.lon);
-  const segLen = haversineMeters(a.lat, a.lon, b.lat, b.lon);
-  if (segLen < 0.5) return dA;
-  const t = Math.max(
-    0,
-    Math.min(
-      1,
-      ((plat - a.lat) * (b.lat - a.lat) + (plon - a.lon) * (b.lon - a.lon)) / (segLen * segLen + 1e-12),
-    ),
-  );
-  const projLat = a.lat + t * (b.lat - a.lat);
-  const projLon = a.lon + t * (b.lon - a.lon);
-  return haversineMeters(plat, plon, projLat, projLon);
+  const refLat = (a.lat + b.lat) / 2;
+  const refLon = (a.lon + b.lon) / 2;
+  const p = latLonToLocalMeters(plat, plon, refLat, refLon);
+  const aM = latLonToLocalMeters(a.lat, a.lon, refLat, refLon);
+  const bM = latLonToLocalMeters(b.lat, b.lon, refLat, refLon);
+  const dx = bM.x - aM.x;
+  const dy = bM.y - aM.y;
+  const segLenSq = dx * dx + dy * dy;
+  if (segLenSq < 0.25) {
+    const dAx = p.x - aM.x;
+    const dAy = p.y - aM.y;
+    const dBx = p.x - bM.x;
+    const dBy = p.y - bM.y;
+    return Math.min(Math.hypot(dAx, dAy), Math.hypot(dBx, dBy));
+  }
+  const t = Math.max(0, Math.min(1, ((p.x - aM.x) * dx + (p.y - aM.y) * dy) / segLenSq));
+  const projX = aM.x + t * dx;
+  const projY = aM.y + t * dy;
+  return Math.hypot(p.x - projX, p.y - projY);
 }
+
+export type PointToSegmentDistanceM = (
+  plat: number,
+  plon: number,
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+) => number;
 
 export function nearestWayCandidates(
   lat: number,
   lon: number,
   ways: ResearchOsmWay[],
   radiusM: number,
+  distanceFn: PointToSegmentDistanceM = pointToSegmentDistanceM,
 ): Array<{ way: ResearchOsmWay; distanceM: number; segmentBearingDeg: number | null }> {
   const hits: Array<{ way: ResearchOsmWay; distanceM: number; segmentBearingDeg: number | null }> = [];
   for (const way of ways) {
@@ -111,7 +143,7 @@ export function nearestWayCandidates(
     let best = Infinity;
     let bestBearing: number | null = null;
     for (let i = 1; i < way.nodes.length; i++) {
-      const d = pointToSegmentDistanceM(lat, lon, way.nodes[i - 1], way.nodes[i]);
+      const d = distanceFn(lat, lon, way.nodes[i - 1], way.nodes[i]);
       if (d < best) {
         best = d;
         bestBearing = bearingDeg(
@@ -328,6 +360,12 @@ export function buildDrivableGraph(params: {
   return { junctionCandidates };
 }
 
+/**
+ * Way–way adjacency from shared geometry nodes (rounded lat/lon keys).
+ * LIMITATIONS: does not model OSM `layer`/`level` separation — ways that meet only
+ * at the same lat/lon (e.g. grade-separated bridge stacks) are treated as connected.
+ * Does not infer connectivity from spatial overlap without a shared node coordinate.
+ */
 export function buildWayAdjacency(ways: ResearchOsmWay[]): Map<number, Set<number>> {
   const nodeToWays = new Map<number, number[]>();
   for (const w of ways) {

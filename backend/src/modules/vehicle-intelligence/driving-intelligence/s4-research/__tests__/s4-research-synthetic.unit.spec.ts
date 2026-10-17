@@ -68,19 +68,21 @@ describe('s4-research synthetic', () => {
     expect(result.windows.some((w) => w.baseline.hypothesis === 'AMBIGUOUS')).toBe(true);
   });
 
-  it('graph transition conflict on impossible hop', () => {
-    const w1 = straightWay(1, 51.3, 9.5, 5);
-    const w2 = straightWay(2, 51.31, 9.51, 5);
+  it('pipeline surfaces graph transition conflict when Viterbi hops between disconnected ways', () => {
+    const w1 = straightWay(1, 51.3, 9.5, 8);
+    const w2 = straightWay(2, 51.305, 9.505, 8);
     const buckets = [
-      bucket(0, 51.3001, 9.5, { l3SpeedKmh: 90 }),
-      bucket(1, 51.3101, 9.51, { l3SpeedKmh: 90 }),
+      bucket(0, 51.3002, 9.5, { l3SpeedKmh: 50 }),
+      bucket(1, 51.3003, 9.5, { l3SpeedKmh: 50 }),
+      bucket(2, 51.3052, 9.505, { l3SpeedKmh: 50 }),
+      bucket(3, 51.3053, 9.505, { l3SpeedKmh: 50 }),
     ];
     const result = runRoadMatchingPipeline({
       buckets,
       roadContext: { ways: [w1, w2], signalNodes: [], confirmedJunctions: [] },
       config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
     });
-    expect(result.summary.graphTransitionConflicts).toBeGreaterThanOrEqual(0);
+    expect(result.summary.graphTransitionConflicts).toBeGreaterThanOrEqual(1);
   });
 
   it('ROW_ABSENT yields UNKNOWN without inventing standstill', () => {

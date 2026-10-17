@@ -1,3 +1,5 @@
+import type { PointToSegmentDistanceM } from './osm-parse';
+
 export type S4ResearchAlgorithmConfig = {
   uncertaintyRadiusM: number;
   signalSearchRadiusM: number;
@@ -5,6 +7,8 @@ export type S4ResearchAlgorithmConfig = {
   competitorGapM: number;
   viterbiTopK: number;
   junctionAttachMaxM: number;
+  /** Replay/audit override only (e.g. legacy geometry V1 diff). */
+  pointToSegmentDistanceM?: PointToSegmentDistanceM;
 };
 
 export const DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG: S4ResearchAlgorithmConfig = {

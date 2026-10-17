@@ -28,4 +28,10 @@ Pure, side-effect-free road-matching and contextual evidence helpers under:
 cd backend && npm run test:di:s4-research
 ```
 
-Frozen Tesla replay (LDI-10D Phase 3E pins) via transpile-only harness — see `scripts/test/di-s4-research-tesla-replay.harness.ts`.
+Frozen Tesla replay via transpile-only harness — see `scripts/test/di-s4-research-tesla-replay.harness.ts`.
+
+- **Geometry V2 authoritative pins:** `LDI10D_GEOMETRY_V2_REPLAY_PINS.json`
+- **Legacy V1 geometry pins (historical):** `LDI10D_LEGACY_GEOMETRY_V1_REPLAY_PINS.json`
+- **Per-bucket V1→V2 diff:** `LDI10D_GEOMETRY_V1_V2_BUCKET_DIFF.json` (488/1136 buckets; not a ground-truth accuracy claim)
+
+**Adjacency:** `buildWayAdjacency` uses shared rounded node coordinates only — no OSM `layer`/`level`; grade-separated ways at identical coordinates may be treated as connected.

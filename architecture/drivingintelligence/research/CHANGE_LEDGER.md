@@ -2019,6 +2019,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
 
+### EXP-021 S4 research extension — PR B geometry hardening (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Correct `pointToSegmentDistanceM` to local equirectangular meters; bump algorithm bundle to V2; legacy V1 geometry + replay pins archived; Tesla bucket diff export `LDI10D_GEOMETRY_V1_V2_BUCKET_DIFF.json` (488/1136 buckets changed labels/ways); geometry + graph-conflict unit tests |
+| FINDING | V1 pins (264/512/360 baseline, 300/357/479 Viterbi, 36 promotions) were geometry-artifact — V2 pins 483/384/269, 510/244/382, 27 promotions; **independentRoadIdAccuracy NOT_ASSESSABLE** unchanged |
+| NON_EFFECTS | No S4 runtime/L3/S1/QC/HV product changes; no deploy |
+
 ### EXP-021 S4 research extension — PR B pure road-matching library (2026-10-17)
 
 | Event | Detail |

@@ -1,6 +1,6 @@
 /**
  * Frozen Tesla LDI-10D replay harness (transpile-only; not imported by Nest runtime).
- * Exit 0 on parity with LDI-10D Phase 3E pins; exit 1 otherwise.
+ * Exit 0 on parity with geometry V2 pins; exit 1 otherwise.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -9,22 +9,18 @@ import {
   buildRoadContextFromOverpass,
   buildWayCandidateDetails,
   classifyAmbiguousPromotion,
+  S4_RESEARCH_GEOMETRY_PROJECTION_ID,
   type ResearchGpsBucket,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research';
 import { buildBaselineMatches } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/baseline-matching';
 import { buildViterbiMatches, headingsFromBaseline } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/viterbi-matching';
 import { buildWayAdjacency, graphReachable } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/osm-parse';
 
-const EXPECTED_BASELINE = { ASSOCIATED: 264, AMBIGUOUS: 512, UNKNOWN: 360 };
-const EXPECTED_VITERBI = { ASSOCIATED: 300, AMBIGUOUS: 357, UNKNOWN: 479 };
-const F4B_PROMOTIONS = 36;
-const F4B_IMPOSSIBLE = 5;
-
 const repoRoot = path.resolve(__dirname, '../../..');
 const evidenceDir = path.join(repoRoot, 'architecture/drivingintelligence/evidence/ldi-10d');
 const fixturePath = path.join(evidenceDir, 'fixtures/tesla-20261016/TESLA_POSITION_GRID.json');
 const osmPath = path.join(evidenceDir, 'LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json');
-const f4bPath = path.join(evidenceDir, 'LDI10D_F4B_AMBIGUOUS_PROMOTIONS.json');
+const pinsPath = path.join(evidenceDir, 'LDI10D_GEOMETRY_V2_REPLAY_PINS.json');
 
 function summarizeInternal(
   rows: ReturnType<typeof buildBaselineMatches>,
@@ -43,6 +39,18 @@ function fail(msg: string): void {
 }
 
 function main(): void {
+  const pins = JSON.parse(fs.readFileSync(pinsPath, 'utf8')) as {
+    geometryProjectionId: string;
+    baseline: Record<'ASSOCIATED' | 'AMBIGUOUS' | 'UNKNOWN', number>;
+    viterbi: Record<'ASSOCIATED' | 'AMBIGUOUS' | 'UNKNOWN', number>;
+    promotions: number;
+    impossibleViterbiTransitions: number;
+    promotionClassDistribution: Record<string, number>;
+  };
+  if (pins.geometryProjectionId !== S4_RESEARCH_GEOMETRY_PROJECTION_ID) {
+    fail(`geometry id mismatch harness=${S4_RESEARCH_GEOMETRY_PROJECTION_ID} pins=${pins.geometryProjectionId}`);
+  }
+
   const grid = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
     buckets: Array<{
       bucketLabelUtc: string;
@@ -78,11 +86,11 @@ function main(): void {
 
   const baseline = summarizeInternal(baselineInternal);
   const viterbi = summarizeInternal(viterbiInternal);
-  if (JSON.stringify(baseline) !== JSON.stringify(EXPECTED_BASELINE)) {
-    fail(`baseline mismatch: ${JSON.stringify(baseline)}`);
+  if (JSON.stringify(baseline) !== JSON.stringify(pins.baseline)) {
+    fail(`baseline mismatch: ${JSON.stringify(baseline)} expected ${JSON.stringify(pins.baseline)}`);
   }
-  if (JSON.stringify(viterbi) !== JSON.stringify(EXPECTED_VITERBI)) {
-    fail(`viterbi mismatch: ${JSON.stringify(viterbi)}`);
+  if (JSON.stringify(viterbi) !== JSON.stringify(pins.viterbi)) {
+    fail(`viterbi mismatch: ${JSON.stringify(viterbi)} expected ${JSON.stringify(pins.viterbi)}`);
   }
 
   let promotions = 0;
@@ -91,7 +99,7 @@ function main(): void {
     const vitLabel = viterbiInternal[i].outcome === 'CONFIRMED' ? 'ASSOCIATED' : viterbiInternal[i].outcome;
     if (baseLabel === 'AMBIGUOUS' && vitLabel === 'ASSOCIATED') promotions += 1;
   }
-  if (promotions !== F4B_PROMOTIONS) fail(`promotion count ${promotions} !== ${F4B_PROMOTIONS}`);
+  if (promotions !== pins.promotions) fail(`promotion count ${promotions} !== ${pins.promotions}`);
 
   const adj = buildWayAdjacency(roadContext.ways);
   let impossible = 0;
@@ -102,21 +110,11 @@ function main(): void {
       if (!graphReachable(adj, prev, cur)) impossible += 1;
     }
   }
-  if (impossible < F4B_IMPOSSIBLE) fail(`impossible transitions ${impossible} < ${F4B_IMPOSSIBLE}`);
-
-  if (fs.existsSync(f4bPath)) {
-    const pinned = JSON.parse(fs.readFileSync(f4bPath, 'utf8')) as {
-      reproducibility: { promotionCount: number };
-      impossibleTransitions: unknown[];
-      classDistribution: Record<string, number>;
-    };
-    if (pinned.reproducibility.promotionCount !== F4B_PROMOTIONS) fail('pinned F4B promotionCount mismatch');
-    if (pinned.impossibleTransitions.length !== F4B_IMPOSSIBLE) fail('pinned F4B impossibleTransitions length mismatch');
-    const stillAmbiguous = pinned.classDistribution.STILL_AMBIGUOUS ?? 0;
-    if (stillAmbiguous < 29) fail(`pinned STILL_AMBIGUOUS ${stillAmbiguous} < 29`);
+  if (impossible < pins.impossibleViterbiTransitions) {
+    fail(`impossible transitions ${impossible} < ${pins.impossibleViterbiTransitions}`);
   }
 
-  let stillAmbiguousReplay = 0;
+  const classDist: Record<string, number> = {};
   for (let i = 0; i < buckets.length; i++) {
     if (baselineInternal[i].outcome !== 'AMBIGUOUS' || viterbiInternal[i].outcome !== 'CONFIRMED') continue;
     const prevWay = i > 0 ? viterbiInternal[i - 1].osmWayId : null;
@@ -140,16 +138,19 @@ function main(): void {
       parallelCarriagewayHint: false,
       config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
     });
-    if (decisionClass === 'STILL_AMBIGUOUS') stillAmbiguousReplay += 1;
+    classDist[decisionClass] = (classDist[decisionClass] ?? 0) + 1;
   }
-  if (stillAmbiguousReplay < 20) fail(`replay STILL_AMBIGUOUS ${stillAmbiguousReplay} < 20`);
+  for (const [k, v] of Object.entries(pins.promotionClassDistribution)) {
+    if ((classDist[k] ?? 0) !== v) fail(`promotion class ${k}: got ${classDist[k] ?? 0} expected ${v}`);
+  }
 
   const result = {
+    geometryProjectionId: S4_RESEARCH_GEOMETRY_PROJECTION_ID,
     baseline,
     viterbi,
     promotions,
     impossible,
-    stillAmbiguousReplay,
+    promotionClassDistribution: classDist,
     wayCount: roadContext.ways.length,
     independentAccuracy: 'NOT_ASSESSABLE',
   };

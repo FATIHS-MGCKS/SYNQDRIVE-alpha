@@ -19,7 +19,7 @@ export function buildWayCandidateDetails(
   ways: import('./contracts').ResearchOsmWay[],
   config: S4ResearchAlgorithmConfig,
 ): WayCandidateEvidence[] {
-  const hits = nearestWayCandidates(lat, lon, ways, config.uncertaintyRadiusM);
+  const hits = nearestWayCandidates(lat, lon, ways, config.uncertaintyRadiusM, config.pointToSegmentDistanceM);
   const nearestDist = hits[0]?.distanceM ?? null;
   return hits.slice(0, 8).map((h) => {
     const bearingDeltaDeg =

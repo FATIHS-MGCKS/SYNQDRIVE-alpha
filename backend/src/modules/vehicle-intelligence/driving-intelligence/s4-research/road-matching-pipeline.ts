@@ -79,6 +79,7 @@ export function runRoadMatchingPipeline(input: RoadMatchingPipelineInput): RoadM
         b.longitude,
         corridorWays,
         input.config.uncertaintyRadiusM,
+        input.config.pointToSegmentDistanceM,
       );
       topDist = hits[0]?.distanceM ?? null;
     }

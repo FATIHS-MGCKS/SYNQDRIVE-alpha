@@ -12,8 +12,8 @@ const evidenceDir = path.join(
 const fixturePath = path.join(evidenceDir, 'fixtures/tesla-20261016/TESLA_POSITION_GRID.json');
 const osmPath = path.join(evidenceDir, 'LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json');
 
-const EXPECTED_BASELINE = { ASSOCIATED: 264, AMBIGUOUS: 512, UNKNOWN: 360 };
-const EXPECTED_VITERBI = { ASSOCIATED: 300, AMBIGUOUS: 357, UNKNOWN: 479 };
+const EXPECTED_BASELINE = { ASSOCIATED: 483, AMBIGUOUS: 384, UNKNOWN: 269 };
+const EXPECTED_VITERBI = { ASSOCIATED: 510, AMBIGUOUS: 244, UNKNOWN: 382 };
 
 describe('s4-research Tesla frozen fixture replay', () => {
   it('has fixture artifacts present', () => {
@@ -33,14 +33,14 @@ describe('s4-research Tesla frozen fixture replay', () => {
       viterbi: typeof EXPECTED_VITERBI;
       promotions: number;
       impossible: number;
-      stillAmbiguousReplay: number;
+      promotionClassDistribution: Record<string, number>;
       independentAccuracy: string;
     };
     expect(result.baseline).toEqual(EXPECTED_BASELINE);
     expect(result.viterbi).toEqual(EXPECTED_VITERBI);
-    expect(result.promotions).toBe(36);
-    expect(result.impossible).toBeGreaterThanOrEqual(5);
-    expect(result.stillAmbiguousReplay).toBeGreaterThanOrEqual(20);
+    expect(result.promotions).toBe(27);
+    expect(result.impossible).toBeGreaterThanOrEqual(2);
+    expect(result.promotionClassDistribution?.STILL_AMBIGUOUS).toBe(5);
     expect(result.independentAccuracy).toBe('NOT_ASSESSABLE');
   }, 180_000);
 });
