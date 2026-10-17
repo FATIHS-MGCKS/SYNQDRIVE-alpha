@@ -1,0 +1,2591 @@
+{
+  "schema": "LDI10D_MANEUVER_ROAD_ASSOCIATION_V1",
+  "headSha": "0c2b542f75c8dc9002460d424b47435ef521c044",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "osmSnapshotSha256": "8afff85539dad9d1590022656f291d50b01215d99cd4a9bcc4af2aef74c073d9",
+  "uncertaintyRadiusM": 25,
+  "groupingUnchanged": {
+    "groups": 32,
+    "candidates": 75
+  },
+  "qcMutations": "NONE",
+  "associations": [
+    {
+      "groupId": "MANEUVER_ACCELERATION_1",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:06Z",
+        "end": "2026-10-13T15:53:08Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_1",
+        "L3_ACCEL_2"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:06Z",
+          "lat": 51.4078733,
+          "lon": 9.6687783,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:07Z",
+          "lat": 51.4078283,
+          "lon": 9.66877,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:08Z",
+          "lat": 51.40776,
+          "lon": 9.668765,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.407820533333336,
+        "longitude": 9.6687711
+      },
+      "pathLengthM": 12.639307426571095,
+      "bearingStartDeg": 186.56310467255523,
+      "bearingEndDeg": 182.6145528758685,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        1208898810,
+        35538140
+      ],
+      "nearestWay": {
+        "osmWayId": 1208898810,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": "yes",
+        "distanceM": 1.7058303080890056,
+        "segmentBearingDeg": 186.18236396802934
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        1208898810
+      ],
+      "distancesM": {
+        "nearestWayM": 1.7058303080890056,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 0.38074070452589126,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_2",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:14Z",
+        "end": "2026-10-13T15:53:19Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_3",
+        "L3_ACCEL_4",
+        "L3_ACCEL_5",
+        "L3_ACCEL_6",
+        "L3_ACCEL_7"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 5,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:14Z",
+          "lat": 51.4073916,
+          "lon": 9.66874,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:15Z",
+          "lat": 51.4073583,
+          "lon": 9.668775,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:16Z",
+          "lat": 51.4073316,
+          "lon": 9.668845,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:17Z",
+          "lat": 51.407325,
+          "lon": 9.6689416,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:18Z",
+          "lat": 51.4073266,
+          "lon": 9.6690516,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:19Z",
+          "lat": 51.40733,
+          "lon": 9.669175,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 6,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40734385,
+        "longitude": 9.668921366666666
+      },
+      "pathLengthM": 33.05837011355818,
+      "bearingStartDeg": 146.75019305658577,
+      "bearingEndDeg": 87.47081103740004,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 4.32295444979345,
+        "segmentBearingDeg": 270.00005221165384
+      },
+      "trafficSignalProximity": [
+        {
+          "osmNodeId": 2185728618,
+          "kind": "crossing",
+          "distanceM": 12.206301581188212,
+          "tags": {
+            "crossing:island": "no",
+            "crossing:markings": "no",
+            "crossing:signals": "no",
+            "highway": "crossing",
+            "tactile_paving": "no"
+          },
+          "notObservedSignalPhase": true
+        }
+      ],
+      "roadFeatureIds": [
+        2185728618
+      ],
+      "distancesM": {
+        "nearestWayM": 4.32295444979345,
+        "nearestSignalM": 12.206301581188212
+      },
+      "bearingCompatibilityDeg": 123.24985915506807,
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_123deg"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_3",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:26Z",
+        "end": "2026-10-13T15:53:29Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_8",
+        "L3_ACCEL_9",
+        "L3_ACCEL_10"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:26Z",
+          "lat": 51.4073333,
+          "lon": 9.6699783,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:27Z",
+          "lat": 51.4072816,
+          "lon": 9.6700283,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:28Z",
+          "lat": 51.4072066,
+          "lon": 9.6700583,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:29Z",
+          "lat": 51.4071216,
+          "lon": 9.6700866,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.407235775000004,
+        "longitude": 9.670037875
+      },
+      "pathLengthM": 24.9624041816885,
+      "bearingStartDeg": 148.89871130361252,
+      "bearingEndDeg": 168.26743411792972,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144,
+        35538143
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 8.285278514674104,
+        "segmentBearingDeg": 335.43658449599684
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 8.285278514674104,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 173.46212680761568,
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_173deg"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_4",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:38Z",
+        "end": "2026-10-13T15:53:40Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_11",
+        "L3_ACCEL_12"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:38Z",
+          "lat": 51.4065633,
+          "lon": 9.669735,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:39Z",
+          "lat": 51.4065716,
+          "lon": 9.6696033,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:40Z",
+          "lat": 51.406585,
+          "lon": 9.6694533,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4065733,
+        "longitude": 9.6695972
+      },
+      "pathLengthM": 19.692007582871952,
+      "bearingStartDeg": 275.76911578590807,
+      "bearingEndDeg": 278.15000769976155,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 2.0261923536391238,
+        "segmentBearingDeg": 96.24902442546431
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 2.0261923536391238,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 179.52009136044376,
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_5",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:50Z",
+        "end": "2026-10-13T15:53:52Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_13",
+        "L3_ACCEL_14"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:50Z",
+          "lat": 51.4066166,
+          "lon": 9.6681166,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:51Z",
+          "lat": 51.4065516,
+          "lon": 9.6680883,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:52Z",
+          "lat": 51.4064666,
+          "lon": 9.6680683,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40654493333333,
+        "longitude": 9.668091066666667
+      },
+      "pathLengthM": 17.042318223690234,
+      "bearingStartDeg": 195.19438113799475,
+      "bearingEndDeg": 188.34993681226405,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144,
+        586982631
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 12.58945594941372,
+        "segmentBearingDeg": 76.49467557435082
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 12.58945594941372,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 118.69970556364393,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:05Z",
+        "end": "2026-10-13T15:54:09Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_15",
+        "L3_ACCEL_16",
+        "L3_ACCEL_17",
+        "L3_ACCEL_18"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 4,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:54:05Z",
+          "lat": 51.4059416,
+          "lon": 9.6677983,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:06Z",
+          "lat": 51.4059033,
+          "lon": 9.667825,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:07Z",
+          "lat": 51.4058633,
+          "lon": 9.6679016,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:08Z",
+          "lat": 51.4058316,
+          "lon": 9.6680216,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:09Z",
+          "lat": 51.4058016,
+          "lon": 9.6681683,
+          "l3Qc": "UNTRUSTED"
+        }
+      ],
+      "gpsPresentCount": 5,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40586828000001,
+        "longitude": 9.667942960000001
+      },
+      "pathLengthM": 31.32084823548405,
+      "bearingStartDeg": 156.4973296197304,
+      "bearingEndDeg": 108.15051743972015,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        1314429093,
+        66750173,
+        66750170,
+        1314429094
+      ],
+      "nearestWay": {
+        "osmWayId": 1314429093,
+        "highway": "tertiary",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 0.6153992365205566,
+        "segmentBearingDeg": 107.64817730789366
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 0.6153992365205566,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 48.84915231183675,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_7",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:14Z",
+        "end": "2026-10-13T15:54:16Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_19",
+        "L3_ACCEL_20"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:54:14Z",
+          "lat": 51.4055883,
+          "lon": 9.6688666,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:15Z",
+          "lat": 51.4055316,
+          "lon": 9.669005,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:16Z",
+          "lat": 51.4054683,
+          "lon": 9.66916,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4055294,
+        "longitude": 9.669010533333333
+      },
+      "pathLengthM": 24.335655388254576,
+      "bearingStartDeg": 123.29478704752057,
+      "bearingEndDeg": 123.21156658665427,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [],
+      "nearestWay": null,
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": null,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": null,
+      "ambiguityReasons": [
+        "NO_WAY_WITHIN_UNCERTAINTY_RADIUS"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_8",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:36Z",
+        "end": "2026-10-13T15:54:39Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_21",
+        "L3_ACCEL_22",
+        "L3_ACCEL_23"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:54:36Z",
+          "lat": 51.404435,
+          "lon": 9.6719416,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:37Z",
+          "lat": 51.40436,
+          "lon": 9.671925,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:38Z",
+          "lat": 51.4042716,
+          "lon": 9.6718866,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:39Z",
+          "lat": 51.4041683,
+          "lon": 9.67185,
+          "l3Qc": "UNTRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.404308725,
+        "longitude": 9.6719008
+      },
+      "pathLengthM": 30.366532802480606,
+      "bearingStartDeg": 187.86124975017592,
+      "bearingEndDeg": 192.4634398151037,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        207593151,
+        23546768,
+        193095405
+      ],
+      "nearestWay": {
+        "osmWayId": 207593151,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": null,
+        "distanceM": 7.343181442147296,
+        "segmentBearingDeg": 195.4633639513494
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        207593151
+      ],
+      "distancesM": {
+        "nearestWayM": 7.343181442147296,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 7.602114201173492,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:23Z",
+        "end": "2026-10-13T15:56:26Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_24",
+        "L3_ACCEL_25",
+        "L3_ACCEL_26"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:23Z",
+          "lat": 51.4000233,
+          "lon": 9.6601016,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:24Z",
+          "lat": 51.400015,
+          "lon": 9.6600183,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:25Z",
+          "lat": 51.4000066,
+          "lon": 9.65991,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:26Z",
+          "lat": 51.4000016,
+          "lon": 9.659775,
+          "l3Qc": "UNTRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.400011625000005,
+        "longitude": 9.659951225
+      },
+      "pathLengthM": 22.80453285787,
+      "bearingStartDeg": 260.925949564012,
+      "bearingEndDeg": 266.6026368950861,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        48144282,
+        25727782,
+        48865010
+      ],
+      "nearestWay": {
+        "osmWayId": 48144282,
+        "highway": "living_street",
+        "maxspeed": null,
+        "oneway": "no",
+        "distanceM": 1.3366351835576566,
+        "segmentBearingDeg": 351.7295693586536
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 1.3366351835576566,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 90.80361979464158,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_10",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:34Z",
+        "end": "2026-10-13T15:56:37Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_27",
+        "L3_ACCEL_28",
+        "L3_ACCEL_29"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:34Z",
+          "lat": 51.3999883,
+          "lon": 9.658785,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:35Z",
+          "lat": 51.39999,
+          "lon": 9.6587066,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:36Z",
+          "lat": 51.3999966,
+          "lon": 9.6585966,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:37Z",
+          "lat": 51.4000116,
+          "lon": 9.6584683,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.399996625,
+        "longitude": 9.658639125
+      },
+      "pathLengthM": 22.163618422153522,
+      "bearingStartDeg": 271.99061149393253,
+      "bearingEndDeg": 280.6140335162367,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782,
+        203389730,
+        48250211,
+        203389724
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 5.634455278405292,
+        "segmentBearingDeg": 275.2453238316915
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 5.634455278405292,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 3.254712337758974,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_11",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:46Z",
+        "end": "2026-10-13T15:56:48Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_30",
+        "L3_ACCEL_31"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:46Z",
+          "lat": 51.4003066,
+          "lon": 9.657335,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:47Z",
+          "lat": 51.4003183,
+          "lon": 9.6572216,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:48Z",
+          "lat": 51.40033,
+          "lon": 9.6570883,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4003183,
+        "longitude": 9.657214966666666
+      },
+      "pathLengthM": 17.311932228238437,
+      "bearingStartDeg": 279.3904536449868,
+      "bearingEndDeg": 278.0083378635148,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782,
+        871439688
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 1.768701163235553,
+        "segmentBearingDeg": 285.3910963419441
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 1.768701163235553,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 6.0006426969573,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:53Z",
+        "end": "2026-10-13T15:56:55Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_32",
+        "L3_ACCEL_33"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:53Z",
+          "lat": 51.40044,
+          "lon": 9.656465,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:54Z",
+          "lat": 51.4004916,
+          "lon": 9.6563766,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:55Z",
+          "lat": 51.400565,
+          "lon": 9.6563033,
+          "l3Qc": "UNTRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40049886666667,
+        "longitude": 9.656381633333332
+      },
+      "pathLengthM": 18.014200572638366,
+      "bearingStartDeg": 313.0951453307827,
+      "bearingEndDeg": 328.076196705566,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727783,
+        48250200,
+        276144131,
+        25727782,
+        871439688
+      ],
+      "nearestWay": {
+        "osmWayId": 25727783,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 11.926897900495602,
+        "segmentBearingDeg": 188.04773008644733
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 11.926897900495602,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 125.04741524433538,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_13",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:56Z",
+        "end": "2026-10-13T15:56:58Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_34",
+        "L3_ACCEL_35"
+      ],
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:56Z",
+          "lat": 51.400655,
+          "lon": 9.656245,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:57Z",
+          "lat": 51.40075,
+          "lon": 9.6561966,
+          "l3Qc": "UNTRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:58Z",
+          "lat": 51.4008616,
+          "lon": 9.65616,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40075553333333,
+        "longitude": 9.656200533333333
+      },
+      "pathLengthM": 23.750706385287202,
+      "bearingStartDeg": 342.36740206220054,
+      "bearingEndDeg": 348.43677000880774,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        276144131,
+        25728750,
+        59973820,
+        59973821
+      ],
+      "nearestWay": {
+        "osmWayId": 276144131,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": null,
+        "distanceM": 7.103047475803191,
+        "segmentBearingDeg": 165.7131927858975
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 7.103047475803191,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 176.65420927630305,
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_177deg"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_14",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:13Z",
+        "end": "2026-10-13T15:57:15Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_36",
+        "L3_ACCEL_37"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:13Z",
+          "lat": 51.4020466,
+          "lon": 9.65642,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:14Z",
+          "lat": 51.401995,
+          "lon": 9.6564616,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:15Z",
+          "lat": 51.4019183,
+          "lon": 9.6564883,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40198663333334,
+        "longitude": 9.656456633333333
+      },
+      "pathLengthM": 15.149935426931545,
+      "bearingStartDeg": 153.29985239453458,
+      "bearingEndDeg": 167.74737135310124,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        48247523,
+        48247254
+      ],
+      "nearestWay": {
+        "osmWayId": 48247523,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": "no",
+        "distanceM": 6.177255190624518,
+        "segmentBearingDeg": 170.70294749114032
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        48247523
+      ],
+      "distancesM": {
+        "nearestWayM": 6.177255190624518,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 17.40309509660574,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_15",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:31Z",
+        "end": "2026-10-13T15:57:33Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_38",
+        "L3_ACCEL_39"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:31Z",
+          "lat": 51.401465,
+          "lon": 9.657325,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:32Z",
+          "lat": 51.4014683,
+          "lon": 9.6573633,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:33Z",
+          "lat": 51.4014783,
+          "lon": 9.657425,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40147053333334,
+        "longitude": 9.6573711
+      },
+      "pathLengthM": 7.104301597480341,
+      "bearingStartDeg": 82.13655254644834,
+      "bearingEndDeg": 75.43685028483014,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        208147197,
+        48247523,
+        572869008,
+        1208811611,
+        203391045
+      ],
+      "nearestWay": {
+        "osmWayId": 208147197,
+        "highway": "service",
+        "maxspeed": "30",
+        "oneway": "no",
+        "distanceM": 1.0756558954712334,
+        "segmentBearingDeg": 164.95884354093835
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 1.0756558954712334,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 82.82229099449,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_16",
+      "kind": "ACCELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:44Z",
+        "end": "2026-10-13T15:57:45Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_40"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:44Z",
+          "lat": 51.4015533,
+          "lon": 9.6578616,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:45Z",
+          "lat": 51.4015633,
+          "lon": 9.65792,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.401558300000005,
+        "longitude": 9.6578908
+      },
+      "pathLengthM": 4.201031042410711,
+      "bearingStartDeg": 74.65174985944122,
+      "bearingEndDeg": 74.65174985944122,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        203391046,
+        1208811616,
+        203391045
+      ],
+      "nearestWay": {
+        "osmWayId": 203391046,
+        "highway": "service",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 2.1804800459393614,
+        "segmentBearingDeg": 165.10921011105586
+      },
+      "trafficSignalProximity": [
+        {
+          "osmNodeId": 2134022381,
+          "kind": "crossing",
+          "distanceM": 2.1804800459393614,
+          "tags": {
+            "crossing": "zebra",
+            "highway": "crossing",
+            "tactile_paving": "no"
+          },
+          "notObservedSignalPhase": true
+        }
+      ],
+      "roadFeatureIds": [
+        2134022381
+      ],
+      "distancesM": {
+        "nearestWayM": 2.1804800459393614,
+        "nearestSignalM": 2.1804800459393614
+      },
+      "bearingCompatibilityDeg": 90.45746025161463,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_17",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:10Z",
+        "end": "2026-10-13T15:53:13Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_1",
+        "L3_DECEL_2",
+        "L3_DECEL_3"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:10Z",
+          "lat": 51.4075983,
+          "lon": 9.668745,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:11Z",
+          "lat": 51.40753,
+          "lon": 9.6687383,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:12Z",
+          "lat": 51.4074683,
+          "lon": 9.6687283,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:13Z",
+          "lat": 51.407425,
+          "lon": 9.6687266,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.407505400000005,
+        "longitude": 9.66873455
+      },
+      "pathLengthM": 19.320701493702504,
+      "bearingStartDeg": 183.5015863993144,
+      "bearingEndDeg": 181.4029013302502,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 21.465914781397924,
+        "segmentBearingDeg": 276.5585044783573
+      },
+      "trafficSignalProximity": [
+        {
+          "osmNodeId": 2185728618,
+          "kind": "crossing",
+          "distanceM": 21.599467133624625,
+          "tags": {
+            "crossing:island": "no",
+            "crossing:markings": "no",
+            "crossing:signals": "no",
+            "highway": "crossing",
+            "tactile_paving": "no"
+          },
+          "notObservedSignalPhase": true
+        }
+      ],
+      "roadFeatureIds": [
+        2185728618
+      ],
+      "distancesM": {
+        "nearestWayM": 21.465914781397924,
+        "nearestSignalM": 21.599467133624625
+      },
+      "bearingCompatibilityDeg": 93.0569180790429,
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_93deg"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_18",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:22Z",
+        "end": "2026-10-13T15:53:24Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_4",
+        "L3_DECEL_5"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:22Z",
+          "lat": 51.4073566,
+          "lon": 9.6696016,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:23Z",
+          "lat": 51.40737,
+          "lon": 9.6697283,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:24Z",
+          "lat": 51.4073733,
+          "lon": 9.66983,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40736663333333,
+        "longitude": 9.669719966666667
+      },
+      "pathLengthM": 15.977027010630444,
+      "bearingStartDeg": 80.37697611805692,
+      "bearingEndDeg": 87.02217367622552,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144,
+        35538143
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 14.915266118387965,
+        "segmentBearingDeg": 256.8982968804357
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 14.915266118387965,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 176.52132076237876,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_19",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:45Z",
+        "end": "2026-10-13T15:53:48Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_6",
+        "L3_DECEL_7",
+        "L3_DECEL_8"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:45Z",
+          "lat": 51.4066366,
+          "lon": 9.668645,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:46Z",
+          "lat": 51.4066533,
+          "lon": 9.6685016,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:47Z",
+          "lat": 51.4066683,
+          "lon": 9.6683716,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:48Z",
+          "lat": 51.406675,
+          "lon": 9.668265,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.406658300000004,
+        "longitude": 9.6684458
+      },
+      "pathLengthM": 26.71987396776127,
+      "bearingStartDeg": 280.5750756388303,
+      "bearingEndDeg": 275.75364008225074,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        35538144,
+        586982631
+      ],
+      "nearestWay": {
+        "osmWayId": 35538144,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 12.000552750765769,
+        "segmentBearingDeg": 96.10188918566325
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 12.000552750765769,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 175.52681354683295,
+      "ambiguityReasons": [
+        "BEARING_MISMATCH_176deg"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_20",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:55Z",
+        "end": "2026-10-13T15:53:58Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_9",
+        "L3_DECEL_10",
+        "L3_DECEL_11"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:53:55Z",
+          "lat": 51.406185,
+          "lon": 9.6679633,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:56Z",
+          "lat": 51.406105,
+          "lon": 9.6679116,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:57Z",
+          "lat": 51.4060433,
+          "lon": 9.667865,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:53:58Z",
+          "lat": 51.4060016,
+          "lon": 9.6678283,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.406083724999995,
+        "longitude": 9.667892049999999
+      },
+      "pathLengthM": 22.46489241338925,
+      "bearingStartDeg": 201.95576483547245,
+      "bearingEndDeg": 208.76687040815617,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        1314429094,
+        1314429093,
+        586982631,
+        66750170
+      ],
+      "nearestWay": {
+        "osmWayId": 1314429094,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 0.592742086190884,
+        "segmentBearingDeg": 201.5187358122319
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        1314429094
+      ],
+      "distancesM": {
+        "nearestWayM": 0.592742086190884,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 0.43702902324054094,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_21",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:33Z",
+        "end": "2026-10-13T15:54:34Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_12"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:54:33Z",
+          "lat": 51.4045833,
+          "lon": 9.6717283,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:54:34Z",
+          "lat": 51.4045416,
+          "lon": 9.6718283,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40456245,
+        "longitude": 9.6717783
+      },
+      "pathLengthM": 8.343600080228592,
+      "bearingStartDeg": 123.76129784645781,
+      "bearingEndDeg": 123.76129784645781,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        66750173,
+        207593151,
+        23546768
+      ],
+      "nearestWay": {
+        "osmWayId": 66750173,
+        "highway": "tertiary",
+        "maxspeed": "30",
+        "oneway": null,
+        "distanceM": 1.3320845702328707,
+        "segmentBearingDeg": 117.2344394665812
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        66750173
+      ],
+      "distancesM": {
+        "nearestWayM": 1.3320845702328707,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 6.526858379876614,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_22",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:55:30Z",
+        "end": "2026-10-13T15:55:34Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_13",
+        "L3_DECEL_14",
+        "L3_DECEL_15",
+        "L3_DECEL_16"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 4,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:55:30Z",
+          "lat": 51.400765,
+          "lon": 9.6653133,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:31Z",
+          "lat": 51.4007416,
+          "lon": 9.6651333,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:32Z",
+          "lat": 51.400725,
+          "lon": 9.6649716,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:33Z",
+          "lat": 51.4007083,
+          "lon": 9.6648333,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:34Z",
+          "lat": 51.4006933,
+          "lon": 9.6647166,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 5,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.400726639999995,
+        "longitude": 9.66499362
+      },
+      "pathLengthM": 42.160918521233,
+      "bearingStartDeg": 258.22938513638115,
+      "bearingEndDeg": 258.3584054870238,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 17.142815674169995,
+        "segmentBearingDeg": 256.1713330315446
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 17.142815674169995,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 2.0580521048365767,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_23",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:55:55Z",
+        "end": "2026-10-13T15:55:56Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_17"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:55:55Z",
+          "lat": 51.4004,
+          "lon": 9.6627966,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:55:56Z",
+          "lat": 51.4003866,
+          "lon": 9.6627183,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4003933,
+        "longitude": 9.66275745
+      },
+      "pathLengthM": 5.632458496641545,
+      "bearingStartDeg": 254.66039401408977,
+      "bearingEndDeg": 254.66039401408977,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 2.005571224854911,
+        "segmentBearingDeg": 256.16131334887166
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 2.005571224854911,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 1.5009193347818837,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_24",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:21Z",
+        "end": "2026-10-13T15:56:22Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_18"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:21Z",
+          "lat": 51.4000466,
+          "lon": 9.6602833,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:22Z",
+          "lat": 51.4000333,
+          "lon": 9.6601783,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40003995,
+        "longitude": 9.6602308
+      },
+      "pathLengthM": 7.432693776793221,
+      "bearingStartDeg": 258.5232328419813,
+      "bearingEndDeg": 258.5232328419813,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782,
+        48144282,
+        48865010
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 3.425379226680756,
+        "segmentBearingDeg": 263.0053785885761
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 3.425379226680756,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 4.482145746594767,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_25",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:29Z",
+        "end": "2026-10-13T15:56:32Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_19",
+        "L3_DECEL_20",
+        "L3_DECEL_21"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:29Z",
+          "lat": 51.399995,
+          "lon": 9.6593033,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:30Z",
+          "lat": 51.3999916,
+          "lon": 9.6591433,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:31Z",
+          "lat": 51.3999883,
+          "lon": 9.6590116,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:32Z",
+          "lat": 51.3999883,
+          "lon": 9.65892,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.3999908,
+        "longitude": 9.65909455
+      },
+      "pathLengthM": 26.604189710039467,
+      "bearingStartDeg": 268.0492620387979,
+      "bearingEndDeg": 270.0000357944325,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782,
+        203389730,
+        208503163
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 13.43993043833035,
+        "segmentBearingDeg": 271.47094542562326
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 13.43993043833035,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 3.4216833868253502,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_26",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:42Z",
+        "end": "2026-10-13T15:56:44Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_22",
+        "L3_DECEL_23"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:42Z",
+          "lat": 51.4001966,
+          "lon": 9.65775,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:43Z",
+          "lat": 51.4002383,
+          "lon": 9.6576233,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:44Z",
+          "lat": 51.40027,
+          "lon": 9.6575233,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.400234966666666,
+        "longitude": 9.6576322
+      },
+      "pathLengthM": 17.718854996307112,
+      "bearingStartDeg": 297.8137793223689,
+      "bearingEndDeg": 296.93578594547495,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782,
+        871439688
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 7.611831436986209,
+        "segmentBearingDeg": 291.7017094444909
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 7.611831436986209,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 6.112069877877957,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_27",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:50Z",
+        "end": "2026-10-13T15:56:51Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_24"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:56:50Z",
+          "lat": 51.4003633,
+          "lon": 9.6568033,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:56:51Z",
+          "lat": 51.40038,
+          "lon": 9.6566733,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40037165,
+        "longitude": 9.6567383
+      },
+      "pathLengthM": 9.20751622636344,
+      "bearingStartDeg": 281.6351634279823,
+      "bearingEndDeg": 281.6351634279823,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25727782,
+        871439688
+      ],
+      "nearestWay": {
+        "osmWayId": 25727782,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": "no",
+        "distanceM": 3.1861227996786767,
+        "segmentBearingDeg": 275.6113699886462
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25727782
+      ],
+      "distancesM": {
+        "nearestWayM": 3.1861227996786767,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 6.023793439336146,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_28",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:04Z",
+        "end": "2026-10-13T15:57:08Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_25",
+        "L3_DECEL_26",
+        "L3_DECEL_27",
+        "L3_DECEL_28"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 4,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:04Z",
+          "lat": 51.4016,
+          "lon": 9.6561316,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:05Z",
+          "lat": 51.4017183,
+          "lon": 9.6561316,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:06Z",
+          "lat": 51.4018166,
+          "lon": 9.656125,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:07Z",
+          "lat": 51.401905,
+          "lon": 9.65612,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:08Z",
+          "lat": 51.4019666,
+          "lon": 9.6561166,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 5,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4018013,
+        "longitude": 9.65612496
+      },
+      "pathLengthM": 40.78382151024873,
+      "bearingStartDeg": 0,
+      "bearingEndDeg": 358.02788883509015,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        25728750
+      ],
+      "nearestWay": {
+        "osmWayId": 25728750,
+        "highway": "tertiary",
+        "maxspeed": "50",
+        "oneway": null,
+        "distanceM": 11.825432633223143,
+        "segmentBearingDeg": 356.44741750309515
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        25728750
+      ],
+      "distancesM": {
+        "nearestWayM": 11.825432633223143,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 3.552582496904847,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_29",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:17Z",
+        "end": "2026-10-13T15:57:20Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_29",
+        "L3_DECEL_30",
+        "L3_DECEL_31"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 3,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:17Z",
+          "lat": 51.40175,
+          "lon": 9.6565233,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:18Z",
+          "lat": 51.4016666,
+          "lon": 9.65654,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:19Z",
+          "lat": 51.4015933,
+          "lon": 9.6565566,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:20Z",
+          "lat": 51.4015333,
+          "lon": 9.656575,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 4,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.401635799999994,
+        "longitude": 9.656548725
+      },
+      "pathLengthM": 24.369965079914692,
+      "bearingStartDeg": 172.8794415244372,
+      "bearingEndDeg": 169.16923953662797,
+      "associationOutcome": "ASSOCIATED",
+      "associationClass": "NEAREST_WAY",
+      "confidence": "INFERRED_MAP",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        48247523
+      ],
+      "nearestWay": {
+        "osmWayId": 48247523,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": "no",
+        "distanceM": 13.334130545837533,
+        "segmentBearingDeg": 158.0467227062045
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [
+        48247523
+      ],
+      "distancesM": {
+        "nearestWayM": 13.334130545837533,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 14.832718818232706,
+      "ambiguityReasons": [],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_30",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:26Z",
+        "end": "2026-10-13T15:57:28Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_32",
+        "L3_DECEL_33"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 2,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:26Z",
+          "lat": 51.4014466,
+          "lon": 9.657085,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:27Z",
+          "lat": 51.4014516,
+          "lon": 9.6571666,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:28Z",
+          "lat": 51.4014566,
+          "lon": 9.657225,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 3,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4014516,
+        "longitude": 9.657158866666666
+      },
+      "pathLengthM": 9.77701632448316,
+      "bearingStartDeg": 84.3904606063474,
+      "bearingEndDeg": 82.185708744115,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        48247523,
+        1208811611,
+        572869008,
+        208147197
+      ],
+      "nearestWay": {
+        "osmWayId": 48247523,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": "no",
+        "distanceM": 2.0201828006706872,
+        "segmentBearingDeg": 84.02397787788772
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 2.0201828006706872,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 0.36648272845968677,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_31",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:29Z",
+        "end": "2026-10-13T15:57:30Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_34"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:29Z",
+          "lat": 51.4014616,
+          "lon": 9.65727,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:30Z",
+          "lat": 51.4014633,
+          "lon": 9.657305,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.40146245,
+        "longitude": 9.657287499999999
+      },
+      "pathLengthM": 2.4352985027131977,
+      "bearingStartDeg": 85.54812732368737,
+      "bearingEndDeg": 85.54812732368737,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        48247523,
+        572869008,
+        208147197,
+        1208811611
+      ],
+      "nearestWay": {
+        "osmWayId": 48247523,
+        "highway": "residential",
+        "maxspeed": "30",
+        "oneway": "no",
+        "distanceM": 0.9199772637783291,
+        "segmentBearingDeg": 81.07494004603615
+      },
+      "trafficSignalProximity": [],
+      "roadFeatureIds": [],
+      "distancesM": {
+        "nearestWayM": 0.9199772637783291,
+        "nearestSignalM": null
+      },
+      "bearingCompatibilityDeg": 4.4731872776512205,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_32",
+      "kind": "DECELERATION",
+      "windowUtc": {
+        "start": "2026-10-13T15:57:39Z",
+        "end": "2026-10-13T15:57:40Z"
+      },
+      "candidateIds": [
+        "L3_DECEL_35"
+      ],
+      "plausibilityVerdictPreserved": "PLAUSIBLE",
+      "stepCount": 1,
+      "gpsBucketsUsed": [
+        {
+          "utc": "2026-10-13T15:57:39Z",
+          "lat": 51.40154,
+          "lon": 9.6577666,
+          "l3Qc": "TRUSTED"
+        },
+        {
+          "utc": "2026-10-13T15:57:40Z",
+          "lat": 51.4015466,
+          "lon": 9.6578016,
+          "l3Qc": "TRUSTED"
+        }
+      ],
+      "gpsPresentCount": 2,
+      "gpsAbsentInWindow": 0,
+      "centroid": {
+        "latitude": 51.4015433,
+        "longitude": 9.6577841
+      },
+      "pathLengthM": 2.5364373665547992,
+      "bearingStartDeg": 73.18168738943717,
+      "bearingEndDeg": 73.18168738943717,
+      "associationOutcome": "UNKNOWN",
+      "associationClass": "UNKNOWN",
+      "confidence": "UNKNOWN",
+      "uncertaintyRadiusM": 25,
+      "candidateRoadWayIds": [
+        1208811616,
+        203391046,
+        203391045
+      ],
+      "nearestWay": {
+        "osmWayId": 1208811616,
+        "highway": "service",
+        "maxspeed": "30",
+        "oneway": "no",
+        "distanceM": 5.904868963001384,
+        "segmentBearingDeg": 254.10854044627516
+      },
+      "trafficSignalProximity": [
+        {
+          "osmNodeId": 2134022381,
+          "kind": "crossing",
+          "distanceM": 5.904868964009813,
+          "tags": {
+            "crossing": "zebra",
+            "highway": "crossing",
+            "tactile_paving": "no"
+          },
+          "notObservedSignalPhase": true
+        }
+      ],
+      "roadFeatureIds": [
+        2134022381
+      ],
+      "distancesM": {
+        "nearestWayM": 5.904868963001384,
+        "nearestSignalM": 5.904868964009813
+      },
+      "bearingCompatibilityDeg": 179.07314694316202,
+      "ambiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "notSignalPhaseNotBrakeNotIntentNotViolation": true,
+      "evidenceProvenance": [
+        "LDI08_COMBINED_SNAPSHOT.gps",
+        "LDI10B_MANEUVER_PHYSICS.json",
+        "LDI10D_OSM_FROZEN_SNAPSHOT.json"
+      ],
+      "mapContextDoesNotValidateL3Speed": true
+    }
+  ]
+}

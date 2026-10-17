@@ -1,0 +1,28 @@
+# LDI-10D Phase 2 — Result
+
+## Mandatory block
+
+```
+LDI10D_PHASE=2
+LDI10D_RESULT=FROZEN_OSM_AND_MANEUVER_ASSOCIATION_COMPLETE
+OSM_SNAPSHOT_STATUS=FROZEN
+OSM_SNAPSHOT_SHA256=8afff85539dad9d1590022656f291d50b01215d99cd4a9bcc4af2aef74c073d9
+ROAD_FEATURES=155
+TRAFFIC_SIGNALS=0
+INTERSECTIONS=8
+GROUPS_ANALYZED=32
+GROUPS_ASSOCIATED=14
+GROUPS_UNKNOWN=18
+UNCLEAR_GROUPS_UNCHANGED=8
+QC_MUTATIONS=NONE
+PRODUCTION_MUTATIONS=NONE
+NEXT_SAFE_ACTION=Owner_review_OSM_attribution_and_association_UNKNOWN_rate_before_phase3
+STOP=LDI10D_phase2_complete_wait_owner_review
+```
+
+## Repro
+
+```bash
+cd backend && npm run ldi10d:phase2-osm-road-context
+cd backend && LDI10D_USE_FROZEN_OSM=1 npm run ldi10d:phase2-osm-road-context
+```
