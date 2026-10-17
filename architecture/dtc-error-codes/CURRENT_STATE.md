@@ -2,6 +2,12 @@
 
 **Epistemic:** `CONFIRMED` for deployed SHA and migration ledger; `INFERRED` for pilot activation until owner enables flags.
 
+## DTC-02 P1 (repository — not deployed)
+
+- Observability-only PR: Prometheus `synqdrive_dtc02_*` metrics on existing DTC ingress (no cadence / semantics changes).
+- Evidence: [`evidence/DTC02_P1_OBSERVABILITY.md`](evidence/DTC02_P1_OBSERVABILITY.md)
+- occurrenceCount documentation: [`docs/dtc-02-occurrence-count-semantics.md`](../../docs/dtc-02-occurrence-count-semantics.md)
+
 ## Runtime (Production @ `3a7cc0cc`)
 
 | Control | State |

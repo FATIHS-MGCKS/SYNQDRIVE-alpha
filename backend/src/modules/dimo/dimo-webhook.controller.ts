@@ -42,6 +42,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import dimoConfig from '@config/dimo.config';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 import { SnapshotWakeIntakeService } from '@workers/snapshot-wake/snapshot-wake-intake.service';
+import { Dtc02ObservabilityService } from '@modules/vehicle-intelligence/dtc/observability/dtc02-observability.service';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
@@ -59,6 +60,7 @@ export class DimoWebhookController {
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
     private readonly snapshotWakeIntake: SnapshotWakeIntakeService,
     @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
+    @Optional() private readonly dtc02Observability?: Dtc02ObservabilityService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.error(
@@ -298,11 +300,13 @@ export class DimoWebhookController {
     dtcValue: unknown,
     webhookTimestamp: string | null,
   ) {
+    this.dtc02Observability?.recordWebhookPhase('received');
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { organizationId: true, registryLifecycle: true },
     });
     if (!vehicle) {
+      this.dtc02Observability?.recordWebhookPhase('rejected');
       this.logger.warn(`DTC webhook fail-closed: unknown vehicle=${vehicleId} tokenId=${tokenId}`);
       return;
     }
@@ -312,6 +316,8 @@ export class DimoWebhookController {
       registryLifecycle: vehicle.registryLifecycle,
     });
     if (!admission.mutate) {
+      this.dtc02Observability?.recordWebhookSkip(admission.reason);
+      this.dtc02Observability?.recordWebhookPhase('rejected');
       if (admission.reason === 'COHORT_GATE_INVALID_CONFIG') {
         this.logger.error(
           `DTC webhook skipped vehicle=${vehicleId} reason=${admission.reason} (fix cohort env on all replicas)`,
@@ -321,6 +327,8 @@ export class DimoWebhookController {
       }
       return;
     }
+
+    this.dtc02Observability?.recordWebhookPhase('admitted');
 
     if (admission.runtimePath === 'safety01a') {
       assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
@@ -367,6 +375,9 @@ export class DimoWebhookController {
         dtcPollError: null,
       },
     });
+
+    this.dtc02Observability?.recordWebhookEvidence('legacy');
+    this.dtc02Observability?.recordWebhookPhase('processed');
   }
 
   private async handleDtcEvent01a(
@@ -392,6 +403,7 @@ export class DimoWebhookController {
         pollError: 'NO_ACTIVE_DIMO_BINDING',
         auditRef,
       });
+      this.dtc02Observability?.recordWebhookPhase('error');
       return;
     }
 
@@ -413,9 +425,15 @@ export class DimoWebhookController {
         pollError: `${built.outcome}:${built.reason}`,
         auditRef,
       });
+      this.dtc02Observability?.recordWebhookPhase('rejected');
       return;
     }
 
-    await this.dtcSnapshotApply!.applyBuiltProposal(built);
+    try {
+      await this.dtcSnapshotApply!.applyBuiltProposal(built);
+    } catch (err) {
+      this.dtc02Observability?.recordWebhookPhase('error');
+      throw err;
+    }
   }
 }
