@@ -251,6 +251,7 @@
     "ldi10a:longitudinal-candidate-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10a-longitudinal-candidate-forensics.ts",
     "ldi10b:maneuver-physics-audit": "ts-node -r tsconfig-paths/register scripts/ops/ldi10b-maneuver-physics-audit.ts",
     "ldi10c:spatial-trip-reconstruction": "ts-node -r tsconfig-paths/register scripts/ops/ldi10c-spatial-trip-reconstruction.ts",
+    "ldi10c:phase2-unclear-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10c-phase2-unclear-forensics.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
