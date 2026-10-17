@@ -22,11 +22,13 @@ export interface HvChargingCounterCaptureResultV1 {
     | 'disabled'
     | 'ongoing_session'
     | 'non_native_source'
-    | 'unchanged_session_identity'
+    | 'unchanged_within_revalidation_window'
     | 'duplicate_batch'
     | 'rate_limited'
     | 'provider_error'
-    | 'no_dimo_token';
+    | 'no_dimo_token'
+    | 'provider_empty_intervals'
+    | 'provider_invalid_response';
   batchId?: string;
   observationSetFingerprint?: string;
   bucketsWritten?: number;

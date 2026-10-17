@@ -9,6 +9,10 @@ import {
   M3_3_HV_CHARGING_ADDED_ENERGY_BUCKET_EVIDENCE_V1,
 } from './hv-charging-counter-evidence.constants.v1';
 import {
+  HvChargingCounterEvidenceEmptyWriteError,
+  HvChargingCounterEvidencePersistenceConflictError,
+} from './hv-charging-counter-evidence.errors.v1';
+import {
   buildHvChargingCounterBatchIdempotencyKeyV1,
   buildHvChargingCounterObservationIdempotencyKeyV1,
 } from './hv-charging-counter-evidence.fingerprint.v1';
@@ -35,6 +39,24 @@ export interface PersistCounterEvidenceBatchResult {
   batchId: string;
   observationsInserted: number;
   revisionsCreated: number;
+}
+
+function bucketMatchesLatestRevision(
+  latest: {
+    availability: string;
+    valueKwh: number | null;
+    minKwh: number | null;
+    maxKwh: number | null;
+  } | null,
+  bucket: HvChargingCounterBucketInputV1,
+): boolean {
+  if (latest == null) return false;
+  return (
+    latest.availability === bucket.availability &&
+    (latest.valueKwh ?? null) === (bucket.valueKwh ?? null) &&
+    (latest.minKwh ?? null) === (bucket.minKwh ?? null) &&
+    (latest.maxKwh ?? null) === (bucket.maxKwh ?? null)
+  );
 }
 
 @Injectable()
@@ -100,29 +122,56 @@ export class HvChargingCounterEvidenceRepository {
     const missingBucketCount = input.buckets.length - availableBucketCount;
 
     return this.prisma.$transaction(async (tx) => {
-      const batch = await tx.batteryHvChargingCounterIngestionBatch.create({
-        data: {
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          segmentFingerprint: input.segmentFingerprint,
-          sourceHvChargeSessionId: input.sourceHvChargeSessionId,
-          dimoTokenId: input.dimoTokenId,
-          evidenceContractVersion: M3_3_HV_CHARGING_ADDED_ENERGY_BUCKET_EVIDENCE_V1,
-          queryWindowFrom: input.queryWindowFrom,
-          queryWindowTo: input.queryWindowTo,
-          segmentStartAt: input.segmentStartAt,
-          segmentEndAt: input.segmentEndAt,
-          providerObservedAt: input.providerObservedAt,
-          observationSetFingerprint: input.observationSetFingerprint,
-          bucketWidth: HV_CHARGING_COUNTER_BUCKET_WIDTH,
-          aggregationMode: HV_CHARGING_COUNTER_AGGREGATION_MODE,
-          bucketCount: input.buckets.length,
-          availableBucketCount,
-          missingBucketCount,
-          dimoQueryKind: HV_CHARGING_COUNTER_DIMO_QUERY_KIND,
-          idempotencyKey: batchIdempotencyKey,
-        },
-      });
+      let batch;
+      try {
+        batch = await tx.batteryHvChargingCounterIngestionBatch.create({
+          data: {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            segmentFingerprint: input.segmentFingerprint,
+            sourceHvChargeSessionId: input.sourceHvChargeSessionId,
+            dimoTokenId: input.dimoTokenId,
+            evidenceContractVersion: M3_3_HV_CHARGING_ADDED_ENERGY_BUCKET_EVIDENCE_V1,
+            queryWindowFrom: input.queryWindowFrom,
+            queryWindowTo: input.queryWindowTo,
+            segmentStartAt: input.segmentStartAt,
+            segmentEndAt: input.segmentEndAt,
+            providerObservedAt: input.providerObservedAt,
+            observationSetFingerprint: input.observationSetFingerprint,
+            bucketWidth: HV_CHARGING_COUNTER_BUCKET_WIDTH,
+            aggregationMode: HV_CHARGING_COUNTER_AGGREGATION_MODE,
+            bucketCount: input.buckets.length,
+            availableBucketCount,
+            missingBucketCount,
+            dimoQueryKind: HV_CHARGING_COUNTER_DIMO_QUERY_KIND,
+            idempotencyKey: batchIdempotencyKey,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const raced = await tx.batteryHvChargingCounterIngestionBatch.findUnique({
+            where: {
+              organizationId_vehicleId_idempotencyKey: {
+                organizationId: input.organizationId,
+                vehicleId: input.vehicleId,
+                idempotencyKey: batchIdempotencyKey,
+              },
+            },
+          });
+          if (raced) {
+            return {
+              created: false,
+              batchId: raced.id,
+              observationsInserted: 0,
+              revisionsCreated: 0,
+            };
+          }
+        }
+        throw error;
+      }
 
       let observationsInserted = 0;
       let revisionsCreated = 0;
@@ -139,14 +188,7 @@ export class HvChargingCounterEvidenceRepository {
           orderBy: { revisionNumber: 'desc' },
         });
 
-        const sameValue =
-          latest != null &&
-          latest.availability === bucket.availability &&
-          (latest.valueKwh ?? null) === (bucket.valueKwh ?? null) &&
-          (latest.minKwh ?? null) === (bucket.minKwh ?? null) &&
-          (latest.maxKwh ?? null) === (bucket.maxKwh ?? null);
-
-        if (sameValue) {
+        if (bucketMatchesLatestRevision(latest, bucket)) {
           continue;
         }
 
@@ -194,10 +236,30 @@ export class HvChargingCounterEvidenceRepository {
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
           ) {
-            continue;
+            const raced = await tx.batteryHvChargingCounterObservation.findUnique({
+              where: {
+                organizationId_vehicleId_idempotencyKey: {
+                  organizationId: input.organizationId,
+                  vehicleId: input.vehicleId,
+                  idempotencyKey,
+                },
+              },
+            });
+            if (raced) {
+              continue;
+            }
+            throw new HvChargingCounterEvidencePersistenceConflictError(
+              `revision slot conflict segment=${input.segmentFingerprint} bucket=${bucket.bucketStartAt.toISOString()} revision=${revisionNumber}`,
+            );
           }
           throw error;
         }
+      }
+
+      if (input.buckets.length > 0 && observationsInserted === 0) {
+        throw new HvChargingCounterEvidenceEmptyWriteError(
+          'refusing empty observation write for non-empty bucket set',
+        );
       }
 
       return {

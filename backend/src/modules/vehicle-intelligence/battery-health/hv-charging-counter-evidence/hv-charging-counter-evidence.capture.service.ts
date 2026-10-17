@@ -9,14 +9,9 @@ import {
   computeHvChargingCounterObservationSetFingerprintV1,
 } from './hv-charging-counter-evidence.fingerprint.v1';
 import { mapDimoIntervalRowsToBucketInputsV1 } from './hv-charging-counter-evidence.mapper.v1';
+import { decideHvChargingCounterProviderQueryV1 } from './hv-charging-counter-evidence.revalidation.policy.v1';
 import { HvChargingCounterEvidenceRepository } from './hv-charging-counter-evidence.repository';
 import type { HvChargingCounterCaptureResultV1 } from './hv-charging-counter-evidence.types.v1';
-
-function sameInstant(a: Date | null | undefined, b: Date | null | undefined): boolean {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  return a.getTime() === b.getTime();
-}
 
 @Injectable()
 export class HvChargingCounterEvidenceCaptureService {
@@ -44,6 +39,7 @@ export class HvChargingCounterEvidenceCaptureService {
           organizationId: input.organizationId,
           vehicleId: input.vehicleId,
           session: row.session,
+          persistResult: row,
         }),
       );
     }
@@ -54,6 +50,8 @@ export class HvChargingCounterEvidenceCaptureService {
     organizationId: string;
     vehicleId: string;
     session: HvChargeSessionPersistResult['session'];
+    persistResult?: Pick<HvChargeSessionPersistResult, 'changed' | 'changeKind'>;
+    evaluatedAt?: Date;
   }): Promise<HvChargingCounterCaptureResultV1> {
     if (!isBatteryV2HvChargingCounterBucketCaptureEnabled()) {
       return { skipped: true, skipReason: 'disabled' };
@@ -67,22 +65,38 @@ export class HvChargingCounterEvidenceCaptureService {
       return { skipped: true, skipReason: 'ongoing_session' };
     }
 
+    const evaluatedAt = input.evaluatedAt ?? new Date();
     const latest = await this.repository.findLatestBatchForSegment({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       segmentFingerprint: session.segmentFingerprint,
     });
-    if (
-      latest &&
-      sameInstant(latest.segmentStartAt, session.startAt) &&
-      sameInstant(latest.segmentEndAt, session.endAt) &&
-      sameInstant(latest.providerObservedAt, session.providerObservedAt)
-    ) {
+
+    const revalidation = decideHvChargingCounterProviderQueryV1({
+      latestBatch: latest
+        ? {
+            segmentStartAt: latest.segmentStartAt,
+            segmentEndAt: latest.segmentEndAt,
+            providerObservedAt: latest.providerObservedAt,
+            createdAt: latest.createdAt,
+          }
+        : null,
+      session: {
+        startAt: session.startAt,
+        endAt: session.endAt,
+        providerObservedAt: session.providerObservedAt,
+        updatedAt: session.updatedAt,
+      },
+      persistResult: input.persistResult,
+      evaluatedAt,
+    });
+
+    if (!revalidation.queryProvider) {
       return {
         skipped: true,
-        skipReason: 'unchanged_session_identity',
-        observationSetFingerprint: latest.observationSetFingerprint,
-        batchId: latest.id,
+        skipReason: 'unchanged_within_revalidation_window',
+        observationSetFingerprint: latest?.observationSetFingerprint,
+        batchId: latest?.id,
       };
     }
 
@@ -101,9 +115,9 @@ export class HvChargingCounterEvidenceCaptureService {
     const queryWindowFrom = session.startAt;
     const queryWindowTo = session.endAt;
 
-    let rows;
+    let fetchResult;
     try {
-      rows = await this.intervalClient.fetchIntervalBuckets({
+      fetchResult = await this.intervalClient.fetchIntervalBuckets({
         tokenId,
         from: queryWindowFrom,
         to: queryWindowTo,
@@ -121,7 +135,21 @@ export class HvChargingCounterEvidenceCaptureService {
       return { skipped: true, skipReason: 'provider_error' };
     }
 
-    const buckets = mapDimoIntervalRowsToBucketInputsV1(rows);
+    if (fetchResult.status === 'no_vehicle_jwt') {
+      return { skipped: true, skipReason: 'no_dimo_token' };
+    }
+    if (fetchResult.status === 'invalid_response_shape') {
+      return { skipped: true, skipReason: 'provider_invalid_response' };
+    }
+    if (fetchResult.status === 'empty_interval_series') {
+      return { skipped: true, skipReason: 'provider_empty_intervals' };
+    }
+
+    const buckets = mapDimoIntervalRowsToBucketInputsV1(fetchResult.rows);
+    if (buckets.length === 0) {
+      return { skipped: true, skipReason: 'provider_empty_intervals' };
+    }
+
     const observationSetFingerprint = computeHvChargingCounterObservationSetFingerprintV1(
       buckets,
     );

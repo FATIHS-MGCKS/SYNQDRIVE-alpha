@@ -14,6 +14,17 @@ Default-OFF durable storage for DIMO `powertrainTractionBatteryChargingAddedEner
 
 `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED` — default **false**.
 
+## P1.1 — Correction revalidation policy
+
+DIMO does not expose an explicit interval-bucket revision signal. Corrected values are only discoverable by re-querying the segment window.
+
+- **Skip DIMO query** when the latest sidecar batch matches session start/end/`providerObservedAt`, the HV session was not re-ingested (`updatedAt` ≤ batch `createdAt`), the persist result is unchanged, and the batch is younger than `BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS` (default 6h).
+- **Force DIMO query** when any of: no prior batch, session identity changed, persist `changed`, session `updatedAt` after batch, or revalidation interval elapsed.
+
+**Trade-off:** lower query frequency reduces rate-budget use but increases correction-detection latency (bounded by the interval unless a provider refresh re-ingest occurs).
+
+Unavailable provider outcomes (`no_vehicle_jwt`, `empty_interval_series`, invalid shape, rate limit) do **not** create ingestion batches.
+
 ## Rollback / disable
 
 1. Unset flag or set `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED=false`.

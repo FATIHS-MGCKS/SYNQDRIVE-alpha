@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
-import type { HvChargingCounterDimoIntervalRowV1 } from './hv-charging-counter-evidence.types.v1';
+import { classifyDimoIntervalGraphqlPayload } from './hv-charging-counter-evidence.provider-fetch.v1';
+import type { HvChargingCounterIntervalFetchResultV1 } from './hv-charging-counter-evidence.provider-fetch.v1';
 
 function buildChargingAddedEnergyIntervalQuery(
   tokenId: number,
@@ -34,11 +35,11 @@ export class DimoChargingAddedEnergyIntervalClient {
     to: Date;
     organizationId: string;
     vehicleId: string;
-  }): Promise<HvChargingCounterDimoIntervalRowV1[]> {
+  }): Promise<HvChargingCounterIntervalFetchResultV1> {
     const vehicleJwt = await this.dimoAuth.getVehicleJwt(input.tokenId);
     if (!vehicleJwt) {
       this.logger.debug(`No vehicle JWT for tokenId=${input.tokenId}`);
-      return [];
+      return { status: 'no_vehicle_jwt', rows: [] };
     }
 
     const query = buildChargingAddedEnergyIntervalQuery(
@@ -58,8 +59,6 @@ export class DimoChargingAddedEnergyIntervalClient {
       undefined,
       context,
     );
-    const rows = result?.data?.signals;
-    if (!Array.isArray(rows)) return [];
-    return rows as HvChargingCounterDimoIntervalRowV1[];
+    return classifyDimoIntervalGraphqlPayload(result?.data);
   }
 }

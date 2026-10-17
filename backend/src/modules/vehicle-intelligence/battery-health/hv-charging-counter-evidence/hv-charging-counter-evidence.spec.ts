@@ -1,4 +1,4 @@
-import { BatteryMeasurementQuality } from '@prisma/client';
+import { BatteryMeasurementQuality, type HvChargeSession } from '@prisma/client';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
 import { HvChargingCounterEvidenceCaptureService } from './hv-charging-counter-evidence.capture.service';
 import { computeHvChargingCounterObservationSetFingerprintV1 } from './hv-charging-counter-evidence.fingerprint.v1';
@@ -10,6 +10,7 @@ jest.mock('@config/battery-health-v2.config', () => {
   return {
     ...actual,
     isBatteryV2HvChargingCounterBucketCaptureEnabled: jest.fn(),
+    getBatteryV2HvChargingCounterRevalidationIntervalMs: jest.fn().mockReturnValue(6 * 60 * 60 * 1000),
   };
 });
 
@@ -29,10 +30,27 @@ function sessionRow(overrides: Record<string, unknown> = {}) {
     endAt: new Date('2026-10-16T19:52:53.932Z'),
     isOngoing: false,
     providerObservedAt: new Date('2026-10-16T19:52:53.932Z'),
+    updatedAt: new Date('2026-10-16T19:52:53.932Z'),
     energyAddedKwh: 18.66,
     quality: BatteryMeasurementQuality.SHADOW,
     ...overrides,
-  } as never;
+  } as HvChargeSession;
+}
+
+function buildCapture() {
+  const intervalClient = { fetchIntervalBuckets: jest.fn() };
+  const repository = {
+    findLatestBatchForSegment: jest.fn(),
+    findBatchByIdempotency: jest.fn(),
+    persistBatch: jest.fn(),
+  };
+  const prisma = { vehicle: { findFirst: jest.fn() } };
+  const capture = new HvChargingCounterEvidenceCaptureService(
+    prisma as never,
+    repository as never,
+    intervalClient as never,
+  );
+  return { capture, intervalClient, repository, prisma };
 }
 
 describe('hv-charging-counter-evidence (unit)', () => {
@@ -58,25 +76,12 @@ describe('hv-charging-counter-evidence (unit)', () => {
   });
 
   it('flag OFF: capture does not call interval client', async () => {
-    const intervalClient = { fetchIntervalBuckets: jest.fn() };
-    const repository = {
-      findLatestBatchForSegment: jest.fn(),
-      findBatchByIdempotency: jest.fn(),
-      persistBatch: jest.fn(),
-    };
-    const prisma = { vehicle: { findFirst: jest.fn() } };
-    const capture = new HvChargingCounterEvidenceCaptureService(
-      prisma as never,
-      repository as never,
-      intervalClient as never,
-    );
-
+    const { capture, intervalClient, repository } = buildCapture();
     const result = await capture.captureForSession({
       organizationId: ORG,
       vehicleId: VEH,
       session: sessionRow(),
     });
-
     expect(result).toEqual({ skipped: true, skipReason: 'disabled' });
     expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
     expect(repository.persistBatch).not.toHaveBeenCalled();
@@ -84,26 +89,10 @@ describe('hv-charging-counter-evidence (unit)', () => {
 
   it('rate-limited provider errors fail closed without throwing', async () => {
     (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
-    const intervalClient = {
-      fetchIntervalBuckets: jest
-        .fn()
-        .mockRejectedValue(new Error('429 rate limit exceeded')),
-    };
-    const repository = {
-      findLatestBatchForSegment: jest.fn().mockResolvedValue(null),
-      findBatchByIdempotency: jest.fn(),
-      persistBatch: jest.fn(),
-    };
-    const prisma = {
-      vehicle: {
-        findFirst: jest.fn().mockResolvedValue({ dimoVehicle: { tokenId: 186946 } }),
-      },
-    };
-    const capture = new HvChargingCounterEvidenceCaptureService(
-      prisma as never,
-      repository as never,
-      intervalClient as never,
-    );
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    intervalClient.fetchIntervalBuckets.mockRejectedValue(new Error('429 rate limit exceeded'));
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
 
     const result = await capture.captureForSession({
       organizationId: ORG,
@@ -111,6 +100,144 @@ describe('hv-charging-counter-evidence (unit)', () => {
       session: sessionRow(),
     });
     expect(result.skipReason).toBe('rate_limited');
+    expect(repository.persistBatch).not.toHaveBeenCalled();
+  });
+
+  it('skips DIMO query within revalidation window when session identity unchanged', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository } = buildCapture();
+    const session = sessionRow();
+    repository.findLatestBatchForSegment.mockResolvedValue({
+      id: 'batch-1',
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      createdAt: new Date('2026-10-16T20:00:00.000Z'),
+      observationSetFingerprint: 'fp-old',
+    });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      persistResult: { changed: false, changeKind: 'no_op' },
+      evaluatedAt: new Date('2026-10-16T21:00:00.000Z'),
+    });
+
+    expect(result.skipReason).toBe('unchanged_within_revalidation_window');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('re-queries after revalidation interval to allow corrected bucket discovery', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    const session = sessionRow();
+    repository.findLatestBatchForSegment.mockResolvedValue({
+      id: 'batch-1',
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      createdAt: new Date('2026-10-16T10:00:00.000Z'),
+      observationSetFingerprint: 'fp-old',
+    });
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({
+      status: 'success',
+      rows: [{ timestamp: '2026-10-16T13:15:02.931Z', addedKwhLast: 0.5 }],
+    });
+    repository.findBatchByIdempotency.mockResolvedValue(null);
+    repository.persistBatch.mockResolvedValue({
+      created: true,
+      batchId: 'batch-2',
+      observationsInserted: 1,
+      revisionsCreated: 1,
+    });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      persistResult: { changed: false, changeKind: 'no_op' },
+      evaluatedAt: new Date('2026-10-17T10:00:00.000Z'),
+    });
+
+    expect(intervalClient.fetchIntervalBuckets).toHaveBeenCalled();
+    expect(result.skipped).toBe(false);
+    expect(result.revisionsCreated).toBe(1);
+  });
+
+  it('queries immediately when persist result changed even inside revalidation window', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    const session = sessionRow();
+    repository.findLatestBatchForSegment.mockResolvedValue({
+      id: 'batch-1',
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      createdAt: new Date('2026-10-16T20:00:00.000Z'),
+      observationSetFingerprint: 'fp-old',
+    });
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({
+      status: 'success',
+      rows: [{ timestamp: '2026-10-16T13:15:02.931Z', addedKwhLast: 0 }],
+    });
+    repository.findBatchByIdempotency.mockResolvedValue(null);
+    repository.persistBatch.mockResolvedValue({
+      created: true,
+      batchId: 'batch-2',
+      observationsInserted: 1,
+      revisionsCreated: 1,
+    });
+
+    await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      persistResult: { changed: true, changeKind: 'provider_refresh' },
+      evaluatedAt: new Date('2026-10-16T20:30:00.000Z'),
+    });
+
+    expect(intervalClient.fetchIntervalBuckets).toHaveBeenCalled();
+  });
+
+  it('does not persist batch for empty interval series', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({
+      status: 'empty_interval_series',
+      rows: [],
+    });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(),
+    });
+
+    expect(result.skipReason).toBe('provider_empty_intervals');
+    expect(repository.persistBatch).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes no vehicle JWT from provider error', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({
+      status: 'no_vehicle_jwt',
+      rows: [],
+    });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(),
+    });
+    expect(result.skipReason).toBe('no_dimo_token');
     expect(repository.persistBatch).not.toHaveBeenCalled();
   });
 
