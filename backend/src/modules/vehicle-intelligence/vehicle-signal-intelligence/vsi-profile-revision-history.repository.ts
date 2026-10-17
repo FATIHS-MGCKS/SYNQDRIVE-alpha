@@ -101,39 +101,67 @@ export class VsiProfileRevisionHistoryRepository {
     };
     const scanCap = Math.min(Math.max(input.maxEligibleScan ?? MAX_ELIGIBLE_REVISION_SCAN, 1), 10_000);
 
-    const eligibleRevisionCountExact = await this.prisma.vehicleSignalCapabilityProfileRevision.count({
-      where: scope,
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const eligibleRevisionCountExact = await tx.vehicleSignalCapabilityProfileRevision.count({
+        where: scope,
+      });
 
-    if (eligibleRevisionCountExact > scanCap) {
+      if (eligibleRevisionCountExact > scanCap) {
+        return {
+          bestRevision: null,
+          queryEvidence: {
+            completeness: VsiProfileRevisionAsOfQueryCompleteness.INCOMPLETE,
+            eligibleRevisionCountExact: null,
+            maxEligibleProfileRevision: null,
+          },
+        };
+      }
+
+      const best = await tx.vehicleSignalCapabilityProfileRevision.findFirst({
+        where: scope,
+        orderBy: [{ profileRevision: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+      });
+
+      const maxEligible = await tx.vehicleSignalCapabilityProfileRevision.aggregate({
+        where: scope,
+        _max: { profileRevision: true },
+      });
+
+      const maxRev = maxEligible._max.profileRevision;
+      if (eligibleRevisionCountExact > 0 && !best) {
+        return {
+          bestRevision: null,
+          queryEvidence: {
+            completeness: VsiProfileRevisionAsOfQueryCompleteness.INCOMPLETE,
+            eligibleRevisionCountExact: null,
+            maxEligibleProfileRevision: null,
+          },
+        };
+      }
+      if (
+        best &&
+        maxRev != null &&
+        best.profileRevision !== maxRev
+      ) {
+        return {
+          bestRevision: null,
+          queryEvidence: {
+            completeness: VsiProfileRevisionAsOfQueryCompleteness.INCOMPLETE,
+            eligibleRevisionCountExact: null,
+            maxEligibleProfileRevision: null,
+          },
+        };
+      }
+
       return {
-        bestRevision: null,
+        bestRevision: best ? mapRow(best) : null,
         queryEvidence: {
-          completeness: VsiProfileRevisionAsOfQueryCompleteness.INCOMPLETE,
-          eligibleRevisionCountExact: null,
-          maxEligibleProfileRevision: null,
+          completeness: VsiProfileRevisionAsOfQueryCompleteness.COMPLETE,
+          eligibleRevisionCountExact,
+          maxEligibleProfileRevision: maxRev,
         },
       };
-    }
-
-    const best = await this.prisma.vehicleSignalCapabilityProfileRevision.findFirst({
-      where: scope,
-      orderBy: [{ profileRevision: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
-
-    const maxEligible = await this.prisma.vehicleSignalCapabilityProfileRevision.aggregate({
-      where: scope,
-      _max: { profileRevision: true },
-    });
-
-    return {
-      bestRevision: best ? mapRow(best) : null,
-      queryEvidence: {
-        completeness: VsiProfileRevisionAsOfQueryCompleteness.COMPLETE,
-        eligibleRevisionCountExact,
-        maxEligibleProfileRevision: maxEligible._max.profileRevision,
-      },
-    };
   }
 
   async resolveRevisionAsOf(input: {

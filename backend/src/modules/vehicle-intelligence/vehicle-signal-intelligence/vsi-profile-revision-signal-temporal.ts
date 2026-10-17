@@ -12,6 +12,9 @@ export type VsiProfileRevisionSignalTemporalState =
 
 const EMPIRICAL_REQUIRES_PROVENANCE = new Set(['OBSERVED', 'OBSERVED_STALE']);
 
+/**
+ * Each present empirical timestamp is evaluated independently — timestamps cannot mask each other.
+ */
 export function assessVsiProfileRevisionSignalTemporalState(input: {
   empiricalObservation: string;
   lastSourceTimestamp: string | null;
@@ -24,16 +27,23 @@ export function assessVsiProfileRevisionSignalTemporalState(input: {
 
   const sourceMs = parseSignalTimestampMs(input.lastSourceTimestamp);
   const validMs = parseSignalTimestampMs(input.lastValidObservationAt);
-  const evidenceMs =
-    sourceMs != null && validMs != null
-      ? Math.min(sourceMs, validMs)
-      : sourceMs ?? validMs;
 
-  if (evidenceMs == null || !Number.isFinite(evidenceMs)) {
-    return VsiProfileRevisionSignalTemporalState.MISSING_TEMPORAL_PROVENANCE;
-  }
-  if (evidenceMs > input.decisionAtMs) {
+  if (sourceMs != null && sourceMs > input.decisionAtMs) {
     return VsiProfileRevisionSignalTemporalState.FUTURE_SIGNAL_EVIDENCE;
   }
+  if (validMs != null && validMs > input.decisionAtMs) {
+    return VsiProfileRevisionSignalTemporalState.FUTURE_SIGNAL_EVIDENCE;
+  }
+
+  const hasSource = sourceMs != null && Number.isFinite(sourceMs);
+  const hasValid = validMs != null && Number.isFinite(validMs);
+
+  if (!hasSource && !hasValid) {
+    return VsiProfileRevisionSignalTemporalState.MISSING_TEMPORAL_PROVENANCE;
+  }
+  if (!hasSource || !hasValid) {
+    return VsiProfileRevisionSignalTemporalState.MISSING_TEMPORAL_PROVENANCE;
+  }
+
   return VsiProfileRevisionSignalTemporalState.VALID_PAST_SIGNAL_EVIDENCE;
 }

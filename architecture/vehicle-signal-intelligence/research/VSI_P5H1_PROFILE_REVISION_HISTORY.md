@@ -18,7 +18,7 @@
 - **As-of query** — `loadDecisionTimeRevisionEvidence` / `resolveRevisionAsOf` filter `recorded_at <= decisionAt` AND `evaluated_at <= decisionAt` in SQL with exact eligible counts; incomplete scans fail closed (`UNPROVEN_TEMPORAL_AUTHORITY`).
 - **Signal temporal provenance** — `OBSERVED` / `OBSERVED_STALE` require valid past timestamps for verified signal evidence; missing timestamps → `MISSING_TEMPORAL_PROVENANCE` (not silently verified).
 - Atomic capture in the **same transaction** as mutable profile upsert when `VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED=true`.
-- Pure read-only as-of resolver: `selectVsiProfileRevisionAsOf` → `NO_PRIOR_REVISION` | `PRIOR_REVISION_FOUND` | `VERIFIED_DECISION_TIME_EVIDENCE` | `STALE_AT_DECISION` | `UNPROVEN_TEMPORAL_AUTHORITY`.
+- Pure read-only as-of resolver: `selectVsiProfileRevisionAsOf` → `NO_PRIOR_REVISION` | `PRIOR_REVISION_FOUND` | `STALE_AT_DECISION` | `UNPROVEN_TEMPORAL_AUTHORITY`. `VERIFIED_DECISION_TIME_EVIDENCE` is reserved until durable commit-visibility proof exists (not `recorded_at` alone).
 
 ## Non-goals (this phase)
 

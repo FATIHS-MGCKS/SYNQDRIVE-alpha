@@ -81,7 +81,7 @@ describe('selectVsiProfileRevisionAsOf', () => {
     expect(result.authority).toBe(VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION);
   });
 
-  it('returns VERIFIED when revision and signals are strictly before decision', () => {
+  it('returns PRIOR_REVISION_FOUND when temporal bounds pass but commit visibility is unproven', () => {
     const best = row({
       profileRevision: 2,
       evaluatedAt: new Date('2026-10-10T18:00:00.000Z'),
@@ -93,8 +93,27 @@ describe('selectVsiProfileRevisionAsOf', () => {
       historicalLinkAttributionProven: true,
       queryEvidence: completeEvidence(2, 2),
     });
-    expect(result.authority).toBe(VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE);
+    expect(result.authority).toBe(VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND);
     expect(result.selectedRevision?.profileRevision).toBe(2);
+    expect(result.limitations).toContain('PERSISTENCE_COMMIT_VISIBILITY_UNPROVEN');
+  });
+
+  it('does not emit VERIFIED for insert-time before decision (commit order still unproven)', () => {
+    const decisionAt = new Date('2026-10-11T00:00:00.000Z');
+    const result = selectVsiProfileRevisionAsOf({
+      revisions: [
+        row({
+          profileRevision: 1,
+          evaluatedAt: new Date('2026-10-10T12:00:00.000Z'),
+          recordedAt: new Date('2026-10-10T23:59:59.000Z'),
+        }),
+      ],
+      decisionAt,
+      historicalLinkAttributionProven: true,
+      queryEvidence: completeEvidence(1, 1),
+    });
+    expect(result.authority).not.toBe(VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE);
+    expect(result.limitations).toContain('PERSISTENCE_COMMIT_VISIBILITY_UNPROVEN');
   });
 
   it('returns STALE_AT_DECISION when signal evidence is after decision', () => {
@@ -144,6 +163,24 @@ describe('selectVsiProfileRevisionAsOf', () => {
     });
     expect(result.authority).toBe(VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND);
     expect(result.limitations.some((l) => l.startsWith('MISSING_TEMPORAL_PROVENANCE'))).toBe(true);
+  });
+
+  it('returns UNPROVEN for malformed signals snapshot', () => {
+    const result = selectVsiProfileRevisionAsOf({
+      revisions: [
+        row({
+          profileRevision: 1,
+          evaluatedAt: new Date('2026-10-10T12:00:00.000Z'),
+          recordedAt: new Date('2026-10-10T12:00:01.000Z'),
+          signalsSnapshot: { not: 'an-array' },
+        }),
+      ],
+      decisionAt: new Date('2026-10-11T00:00:00.000Z'),
+      historicalLinkAttributionProven: true,
+      queryEvidence: completeEvidence(1, 1),
+    });
+    expect(result.authority).toBe(VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY);
+    expect(result.limitations).toContain('MALFORMED_SIGNALS_SNAPSHOT');
   });
 
   it('returns UNPROVEN when recorded_at equals decision time', () => {

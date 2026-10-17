@@ -25,6 +25,18 @@ export type VsiProfileRevisionAsOfSelectionResult = {
   limitations: string[];
 };
 
+export function isVsiProfileRevisionSignalsSnapshotWellFormed(signalsSnapshot: unknown): boolean {
+  if (!Array.isArray(signalsSnapshot)) {
+    return false;
+  }
+  for (const raw of signalsSnapshot) {
+    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function revisionToProfileContext(row: VsiProfileRevisionHistoryRowV1): VsiCapabilityResolverProfileContext {
   const signals = Array.isArray(row.signalsSnapshot) ? row.signalsSnapshot : [];
   return {
@@ -56,9 +68,9 @@ function revisionToProfileContext(row: VsiProfileRevisionHistoryRowV1): VsiCapab
 }
 
 /**
- * `recorded_at` is the database insert timestamp (see migration: `clock_timestamp()` default).
- * It is an **upper-bound persistence marker**, not a cross-system logical commit proof relative to APDS.
- * VERIFIED requires strict `recorded_at < decisionAt` plus complete query evidence and signal provenance.
+ * `recorded_at` is the database insert timestamp (`clock_timestamp()` default).
+ * It bounds when the row was written, not when the transaction became visible relative to APDS `decisionAt`.
+ * `VERIFIED_DECISION_TIME_EVIDENCE` is not emitted without durable commit-visibility proof (none in P5-H1).
  */
 export function selectVsiProfileRevisionAsOf(
   input: VsiProfileRevisionAsOfSelectionInput,
@@ -144,6 +156,14 @@ export function selectVsiProfileRevisionAsOf(
     };
   }
 
+  if (!isVsiProfileRevisionSignalsSnapshotWellFormed(selected.signalsSnapshot)) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: selected,
+      limitations: ['MALFORMED_SIGNALS_SNAPSHOT'],
+    };
+  }
+
   const profile = revisionToProfileContext(selected);
   if (profile.profileContractVersion === VSI_PROFILE_CONTRACT_VERSION_V1) {
     limitations.push('LEGACY_PROFILE_V1');
@@ -205,8 +225,9 @@ export function selectVsiProfileRevisionAsOf(
   }
 
   limitations.push('PERSISTENCE_RECORDED_AT_UPPER_BOUND_ONLY');
+  limitations.push('PERSISTENCE_COMMIT_VISIBILITY_UNPROVEN');
   return {
-    authority: VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE,
+    authority: VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND,
     selectedRevision: selected,
     limitations,
   };

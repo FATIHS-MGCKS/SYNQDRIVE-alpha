@@ -348,10 +348,14 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
       historicalLinkAttributionProven: true,
     });
     expect(atDecision.selectedRevision?.profileRevision).toBe(1);
-    expect([
-      VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE,
-      VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND,
-    ]).toContain(atDecision.authority);
+    expect(atDecision.authority).toBe(VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND);
+    expect(
+      atDecision.limitations.some(
+        (l) =>
+          l === 'PERSISTENCE_COMMIT_VISIBILITY_UNPROVEN' ||
+          l.startsWith('MISSING_TEMPORAL_PROVENANCE:'),
+      ),
+    ).toBe(true);
 
     await cleanupOrg(prisma, organizationId);
   });
@@ -454,8 +458,82 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
     });
     expect(resolved.queryEvidence.eligibleRevisionCountExact).toBe(1);
     expect(resolved.selectedRevision?.profileRevision).toBe(1);
-    expect(resolved.authority).toBe(VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE);
+    expect(resolved.authority).toBe(VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND);
+    expect(resolved.limitations).toContain('PERSISTENCE_COMMIT_VISIBILITY_UNPROVEN');
 
+    await prisma.vehicleSignalCapabilityProfileRevision.update({
+      where: { id: (await prisma.vehicleSignalCapabilityProfileRevision.findFirst({
+        where: { organizationId, profileRevision: 1 },
+      }))!.id },
+      data: {
+        signalsSnapshot: [
+          {
+            canonicalSignalKey: 'lv_voltage',
+            empiricalObservation: 'OBSERVED',
+            lastSourceTimestamp: '2026-10-12T00:00:00.000Z',
+            lastValidObservationAt: '2026-10-11T09:00:00.000Z',
+          },
+        ],
+      },
+    });
+    const staleMixed = await historyRepo.resolveRevisionAsOf({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      decisionAt,
+      historicalLinkAttributionProven: true,
+    });
+    expect(staleMixed.authority).toBe(VsiProfileRevisionAsOfAuthority.STALE_AT_DECISION);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('rejects malformed signals snapshot at as-of resolution', async () => {
+    process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
+    const { organizationId, fixture } = await seedFixture();
+    const beforeDecision = new Date('2026-10-11T10:00:00.000Z');
+    await prisma.vehicleSignalCapabilityProfileRevision.create({
+      data: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        profileRevision: 1,
+        profileContractVersion: VSI_PROFILE_CONTRACT_VERSION,
+        contentFingerprint: 'malformed-snapshot',
+        providerIdentity: 'DIMO',
+        verifiedModality: 'HARDWARE_DEVICE',
+        telemetrySourceFamily: 'RUPTELA_R1',
+        evaluatedAt: beforeDecision,
+        recordedAt: beforeDecision,
+        signalsSnapshot: { invalid: true },
+        profileLimitations: [],
+        materializationTrigger: 'SNAPSHOT_HOOK',
+        sourceLinkLifecycleContext: {
+          version: 'vsi-profile-revision-link-context-v1',
+          linkId: fixture.linkId,
+          isActive: true,
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          deactivatedAt: null,
+          supersededByLinkId: null,
+        },
+        sourceProvenance: {
+          version: 'vsi-profile-revision-provenance-v1',
+          declaredCatalogCheckedAt: null,
+          lastMaterializedSourceTimestamp: null,
+          lastMaterializedProviderFetchAt: null,
+          lastProvenStrictSourceAdvanceAt: null,
+        },
+      },
+    });
+    const resolved = await historyRepo.resolveRevisionAsOf({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      decisionAt: new Date('2026-10-11T12:00:00.000Z'),
+      historicalLinkAttributionProven: true,
+    });
+    expect(resolved.authority).toBe(VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY);
+    expect(resolved.limitations).toContain('MALFORMED_SIGNALS_SNAPSHOT');
     await cleanupOrg(prisma, organizationId);
   });
 
