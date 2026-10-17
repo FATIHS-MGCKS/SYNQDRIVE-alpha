@@ -113,7 +113,8 @@ export class LvMeasuredIntelligenceReadService {
         : {}),
     };
 
-    const [sessions, rawObservations, featureRowCount, openGapCount, latestD3] = await Promise.all([
+    const [sessions, rawObservations, globalLatestRow, featureRowCount, openGapCount, latestD3] =
+      await Promise.all([
       this.prisma.batteryRestSession.findMany({
         where: {
           organizationId: input.organizationId,
@@ -126,6 +127,15 @@ export class LvMeasuredIntelligenceReadService {
         where: historicalWhere,
         orderBy: { voltageObservedAt: dateRangeMode ? 'asc' : 'desc' },
         take: observationLimit,
+        select: GE_SELECT,
+      }),
+      this.prisma.batteryGeneralizedEvidenceObservation.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          voltage: { not: null },
+        },
+        orderBy: { voltageObservedAt: 'desc' },
         select: GE_SELECT,
       }),
       this.prisma.batteryRestSessionFeature.count({
@@ -180,13 +190,24 @@ export class LvMeasuredIntelligenceReadService {
             orderBy: { computedAt: 'desc' },
           });
 
-    const dedupedHistorical = dedupeObservationsBySourceMeasurementId(rawObservations).map((row) =>
-      this.mapGeRowToMeasuredPoint(row),
-    );
+    const dedupedRows = dedupeObservationsBySourceMeasurementId(rawObservations);
+    const orderedHistoricalRows = dateRangeMode
+      ? [...dedupedRows].sort((a, b) => {
+          const aAt = a.voltageObservedAt?.getTime() ?? a.createdAt.getTime();
+          const bAt = b.voltageObservedAt?.getTime() ?? b.createdAt.getTime();
+          return aAt - bAt;
+        })
+      : dedupedRows;
+    const dedupedHistorical = orderedHistoricalRows.map((row) => this.mapGeRowToMeasuredPoint(row));
 
-    const latestMeasured = dateRangeMode
-      ? (dedupedHistorical.length > 0 ? dedupedHistorical[dedupedHistorical.length - 1] : null)
-      : (dedupedHistorical[0] ?? null);
+    const latestMeasured = globalLatestRow ? this.mapGeRowToMeasuredPoint(globalLatestRow) : null;
+    const historicalWindowLatestMeasured =
+      dateRangeMode && dedupedHistorical.length > 0
+        ? dedupedHistorical[dedupedHistorical.length - 1]
+        : null;
+    const historicalObservationsTruncated = rawObservations.length >= observationLimit;
+    const inputCoverageIncomplete =
+      historicalObservationsTruncated || openGapCount > 0;
 
     const obsBySession = new Map<string, GeRow[]>();
     for (const row of sessionObservations) {
@@ -231,8 +252,11 @@ export class LvMeasuredIntelligenceReadService {
         historicalQueryMode: dateRangeMode ? 'DATE_RANGE_ASC' : 'RECENT_DESC_LIMIT',
         historicalMeasuredFrom: dateRangeMode?.from.toISOString() ?? null,
         historicalMeasuredTo: dateRangeMode?.to.toISOString() ?? null,
-        historicalObservationsTruncated: rawObservations.length >= observationLimit,
+        historicalObservationsTruncated,
         featureRowsTruncated: featureRowCount > LV_MEASURED_INTELLIGENCE_MAX_FEATURE_ROWS_PER_VEHICLE,
+        latestMeasuredSemantic: 'VEHICLE_GLOBAL_LATEST',
+        historicalWindowLatestMeasured,
+        inputCoverageIncomplete,
       },
     };
   }
