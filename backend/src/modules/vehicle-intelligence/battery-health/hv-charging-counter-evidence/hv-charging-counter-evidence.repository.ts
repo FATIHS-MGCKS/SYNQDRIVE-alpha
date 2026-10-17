@@ -16,7 +16,7 @@ import {
   buildHvChargingCounterBatchIdempotencyKeyV1,
   buildHvChargingCounterObservationIdempotencyKeyV1,
 } from './hv-charging-counter-evidence.fingerprint.v1';
-import { mergeRevalidationCheckpointMonotonicV1 } from './hv-charging-counter-evidence.checkpoint.v1';
+import { upsertRevalidationCheckpointAtomicallyV1 } from './hv-charging-counter-evidence.checkpoint.persistence.v1';
 import { isReducedCoverageUnchangedValuesV1 } from './hv-charging-counter-evidence.coverage.v1';
 import { buildHvChargingCounterObservationProvenanceV1 } from './hv-charging-counter-evidence.mapper.v1';
 import type { HvChargingCounterBucketInputV1 } from './hv-charging-counter-evidence.types.v1';
@@ -106,58 +106,7 @@ export class HvChargingCounterEvidenceRepository {
     queriedAt: Date;
     observationSetFingerprint: string;
   }) {
-    return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.batteryHvChargingCounterRevalidationCheckpoint.findUnique({
-        where: {
-          organizationId_vehicleId_segmentFingerprint: {
-            organizationId: input.organizationId,
-            vehicleId: input.vehicleId,
-            segmentFingerprint: input.segmentFingerprint,
-          },
-        },
-      });
-
-      const merged = mergeRevalidationCheckpointMonotonicV1(
-        existing
-          ? {
-              lastProviderQueryAt: existing.lastProviderQueryAt,
-              lastObservationSetFingerprint:
-                existing.lastObservationSetFingerprint ?? input.observationSetFingerprint,
-            }
-          : null,
-        {
-          queriedAt: input.queriedAt,
-          observationSetFingerprint: input.observationSetFingerprint,
-        },
-      );
-
-      return tx.batteryHvChargingCounterRevalidationCheckpoint.upsert({
-        where: {
-          organizationId_vehicleId_segmentFingerprint: {
-            organizationId: input.organizationId,
-            vehicleId: input.vehicleId,
-            segmentFingerprint: input.segmentFingerprint,
-          },
-        },
-        create: {
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          segmentFingerprint: input.segmentFingerprint,
-          segmentStartAt: input.segmentStartAt,
-          segmentEndAt: input.segmentEndAt,
-          providerObservedAt: input.providerObservedAt,
-          lastProviderQueryAt: merged.lastProviderQueryAt,
-          lastObservationSetFingerprint: merged.lastObservationSetFingerprint,
-        },
-        update: {
-          segmentStartAt: input.segmentStartAt,
-          segmentEndAt: input.segmentEndAt,
-          providerObservedAt: input.providerObservedAt,
-          lastProviderQueryAt: merged.lastProviderQueryAt,
-          lastObservationSetFingerprint: merged.lastObservationSetFingerprint,
-        },
-      });
-    });
+    return this.prisma.$transaction((tx) => upsertRevalidationCheckpointAtomicallyV1(tx, input));
   }
 
   findBatchByIdempotency(input: {

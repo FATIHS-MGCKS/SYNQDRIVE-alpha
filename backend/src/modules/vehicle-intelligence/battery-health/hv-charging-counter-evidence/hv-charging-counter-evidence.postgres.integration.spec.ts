@@ -421,6 +421,237 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
     expect(row?.lastProviderQueryAt.toISOString()).toBe(queriedAt.toISOString());
   });
 
+  function checkpointBase(orgId: string, vehicleId: string, segmentFingerprint: string) {
+    return {
+      organizationId: orgId,
+      vehicleId,
+      segmentFingerprint,
+      segmentStartAt: new Date('2026-10-16T13:15:02.931Z'),
+      segmentEndAt: new Date('2026-10-16T19:52:53.932Z'),
+      providerObservedAt: new Date('2026-10-16T19:52:53.932Z'),
+    };
+  }
+
+  describe('recordProviderRevalidationCheckpoint P1.3 atomicity', () => {
+    const later = new Date('2026-10-16T16:00:00.000Z');
+    const earlier = new Date('2026-10-16T10:00:00.000Z');
+    const mid = new Date('2026-10-16T13:00:00.000Z');
+
+    it('sequential earlier then later advances checkpoint', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-seq-early-late-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      await repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: earlier,
+        observationSetFingerprint: 'd'.repeat(64),
+      });
+      await repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: later,
+        observationSetFingerprint: 'c'.repeat(64),
+      });
+      const row = await repository.findRevalidationCheckpoint({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(row?.lastProviderQueryAt.toISOString()).toBe(later.toISOString());
+      expect(row?.lastObservationSetFingerprint).toBe('c'.repeat(64));
+    });
+
+    it('sequential later then earlier preserves later checkpoint', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-seq-late-early-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      await repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: later,
+        observationSetFingerprint: 'c'.repeat(64),
+      });
+      await repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: earlier,
+        observationSetFingerprint: 'd'.repeat(64),
+      });
+      const row = await repository.findRevalidationCheckpoint({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(row?.lastProviderQueryAt.toISOString()).toBe(later.toISOString());
+      expect(row?.lastObservationSetFingerprint).toBe('c'.repeat(64));
+    });
+
+    it('concurrent later and earlier writes keep MAX(lastProviderQueryAt)', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-concurrent-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      await Promise.all([
+        repository.recordProviderRevalidationCheckpoint({
+          ...base,
+          queriedAt: later,
+          observationSetFingerprint: 'c'.repeat(64),
+        }),
+        repository.recordProviderRevalidationCheckpoint({
+          ...base,
+          queriedAt: earlier,
+          observationSetFingerprint: 'd'.repeat(64),
+        }),
+      ]);
+      const row = await repository.findRevalidationCheckpoint({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(row?.lastProviderQueryAt.toISOString()).toBe(later.toISOString());
+      expect(row?.lastObservationSetFingerprint).toBe('c'.repeat(64));
+    });
+
+    it('concurrent first insert race leaves a single monotonic row', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-first-insert-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      await Promise.all([
+        repository.recordProviderRevalidationCheckpoint({
+          ...base,
+          queriedAt: mid,
+          observationSetFingerprint: 'e'.repeat(64),
+        }),
+        repository.recordProviderRevalidationCheckpoint({
+          ...base,
+          queriedAt: later,
+          observationSetFingerprint: 'c'.repeat(64),
+        }),
+      ]);
+      const count = await prisma.batteryHvChargingCounterRevalidationCheckpoint.count({
+        where: {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segmentFingerprint: segment,
+        },
+      });
+      expect(count).toBe(1);
+      const row = await repository.findRevalidationCheckpoint({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(row?.lastProviderQueryAt.getTime()).toBe(
+        Math.max(mid.getTime(), later.getTime()),
+      );
+    });
+
+    it('stress: many concurrent writes retain global max timestamp and matching fingerprint', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-stress-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      const stamps = [
+        earlier,
+        mid,
+        later,
+        new Date('2026-10-16T11:00:00.000Z'),
+        new Date('2026-10-16T15:00:00.000Z'),
+        new Date('2026-10-16T17:00:00.000Z'),
+      ];
+      const maxMs = Math.max(...stamps.map((d) => d.getTime()));
+      const maxDate = stamps.find((d) => d.getTime() === maxMs)!;
+      const maxFp = 'f'.repeat(64);
+
+      await Promise.all(
+        stamps.map((queriedAt, i) =>
+          repository.recordProviderRevalidationCheckpoint({
+            ...base,
+            queriedAt,
+            observationSetFingerprint:
+              queriedAt.getTime() === maxMs ? maxFp : `${i}`.padStart(64, '0'),
+          }),
+        ),
+      );
+
+      const row = await repository.findRevalidationCheckpoint({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(row?.lastProviderQueryAt.toISOString()).toBe(maxDate.toISOString());
+      expect(row?.lastObservationSetFingerprint).toBe(maxFp);
+    });
+
+    it('equal timestamps sequential: second fingerprint wins (>= policy)', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-equal-ts-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      await repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: later,
+        observationSetFingerprint: 'a'.repeat(64),
+      });
+      await repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: later,
+        observationSetFingerprint: 'b'.repeat(64),
+      });
+      const row = await repository.findRevalidationCheckpoint({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(row?.lastObservationSetFingerprint).toBe('b'.repeat(64));
+    });
+
+    it('duplicate idempotent checkpoint write is stable', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+      const segment = `cp-dup-${suffix}`;
+      const base = checkpointBase(org.id, vehicle.id, segment);
+      const input = {
+        ...base,
+        queriedAt: later,
+        observationSetFingerprint: 'c'.repeat(64),
+      };
+      const a = await repository.recordProviderRevalidationCheckpoint(input);
+      const b = await repository.recordProviderRevalidationCheckpoint(input);
+      expect(a.lastProviderQueryAt.toISOString()).toBe(b.lastProviderQueryAt.toISOString());
+      expect(a.lastObservationSetFingerprint).toBe(b.lastObservationSetFingerprint);
+    });
+
+    it('tenant isolation for checkpoints', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const tenantA = await createTenantVehicle(prisma, `cpa-${suffix}`);
+      const tenantB = await createTenantVehicle(prisma, `cpb-${suffix}`);
+      const segment = `shared-segment-${suffix}`;
+      await repository.recordProviderRevalidationCheckpoint({
+        ...checkpointBase(tenantA.org.id, tenantA.vehicle.id, segment),
+        queriedAt: later,
+        observationSetFingerprint: 'c'.repeat(64),
+      });
+      await repository.recordProviderRevalidationCheckpoint({
+        ...checkpointBase(tenantB.org.id, tenantB.vehicle.id, segment),
+        queriedAt: earlier,
+        observationSetFingerprint: 'd'.repeat(64),
+      });
+      const rowA = await repository.findRevalidationCheckpoint({
+        organizationId: tenantA.org.id,
+        vehicleId: tenantA.vehicle.id,
+        segmentFingerprint: segment,
+      });
+      const rowB = await repository.findRevalidationCheckpoint({
+        organizationId: tenantB.org.id,
+        vehicleId: tenantB.vehicle.id,
+        segmentFingerprint: segment,
+      });
+      expect(rowA?.lastProviderQueryAt.toISOString()).toBe(later.toISOString());
+      expect(rowB?.lastProviderQueryAt.toISOString()).toBe(earlier.toISOString());
+    });
+  });
+
   it('does not leave orphan batch rows after failed transaction (empty-write guard)', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle } = await createTenantVehicle(prisma, suffix);
