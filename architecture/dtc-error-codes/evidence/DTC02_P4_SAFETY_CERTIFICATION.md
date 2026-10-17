@@ -1,7 +1,7 @@
 # DTC-02 P4 — safety & fallback certification (repository)
 
 **Date:** 2026-10-17  
-**Last CI evidence update:** pending until post-fix workflow run on PR #2073  
+**Last CI evidence update:** 2026-10-17 — [DTC-01B PostgreSQL integration run `39080405414`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/39080405414) (job `117536007853`, HEAD `b70a72612`)  
 **Epistemic:** `CONFIRMED` for repository unit/BullMQ shadow isolation tests (local/CI only where wired); **NOT_DEPLOYED**; deferral **NOT ENABLED**; production webhook reliability **NOT CLAIMED**.
 
 ## Evidence tiers (do not conflate)
@@ -10,7 +10,7 @@
 |------|----------------|-----------|
 | **Local unit / matrix** | Pure planner, webhook classification, shadow processor isolation, deferral kill-switch | Run via `npm test` patterns in Validation; **not** part of Legal/Vehicle Detail scoped CI jobs unless explicitly added |
 | **DTC-01B disposable PostgreSQL (CI)** | Snapshot apply, advisory lock, 01B/01C head semantics (`dtc-01b.postgres.integration.spec.ts`, **8** tests) | **PASS** when workflow `DTC-01B PostgreSQL integration` is green — **does not** substitute for P4 PG |
-| **DTC-02 P4 disposable PostgreSQL (CI)** | Source-trust surface on real PG (`dtc-02-p4.postgres.integration.spec.ts`, **4** tests) | **PENDING CI** until `backend/scripts/test/dtc-01b-postgres-ci.sh` run includes P4 suite and job logs show `4 passed, 4 total` |
+| **DTC-02 P4 disposable PostgreSQL (CI)** | Source-trust surface on real PG (`dtc-02-p4.postgres.integration.spec.ts`, **4** tests) | **PASS** on disposable `dtc01b_test_ci` via `dtc-01b-postgres-ci.sh` — job log: `Tests: 4 passed, 4 total` (missing source-head; align after apply; outbox drain; partial-after-complete) |
 | **Future production** | Live webhook delivery, deferral pilot, enqueue cutover | **NOT STARTED** — P5 blockers remain |
 
 ## Safety certification matrix (summary)
