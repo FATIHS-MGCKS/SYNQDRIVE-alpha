@@ -1,0 +1,56 @@
+{
+  "schema": "LDI10D_PHASE1_SUMMARY_V1",
+  "phase": 1,
+  "mode": "READ_ONLY_AUDIT",
+  "productionMutations": "NONE",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "ldiChainPreserved": {
+    "shadowBuckets": 362,
+    "gpsPresentPoints": 346,
+    "candidates": 75,
+    "groups": 32,
+    "unclearGroups": 8,
+    "ldi10cResultsModified": false
+  },
+  "mapbox": {
+    "frontend": ["frontend/src/components/MapboxMap.tsx", "frontend/src/rental/components/trips/useTripsRouteMap.ts"],
+    "backendMatching": "backend/src/modules/vehicle-intelligence/trips/mapbox.service.ts",
+    "chunkedMatcher": "backend/src/modules/vehicle-intelligence/trips/route-artifact/chunked-matching/",
+    "stationsVendors": ["backend/src/modules/stations/station-mapbox.service.ts", "backend/src/modules/vendors/vendor-mapbox.service.ts"],
+    "inDrivingIntelligenceModule": false
+  },
+  "osm": {
+    "overpassPrototype": "backend/scripts/ops/exp021-retrospective-halt-overpass.lib.ts",
+    "frozenInLdiChain": false,
+    "bboxFromLdi10c": {
+      "south": 51.3999883,
+      "west": 9.6561166,
+      "north": 51.4079316,
+      "east": 9.6719416
+    }
+  },
+  "gpsGeometry": {
+    "source": "S4_POSITION_PIN",
+    "mapMatched": false,
+    "interpolation": false,
+    "rowAbsentBuckets": 16
+  },
+  "recommendedPhase2": {
+    "scope": "frozen_OSM_export_plus_maneuver_association_json",
+    "excludes": ["mapbox_matching", "qc_threshold_changes", "maneuver_reclassification", "production_deploy"]
+  },
+  "machineBlock": {
+    "LDI10D_PHASE": 1,
+    "LDI10D_RESULT": "MAPBOX_OSM_ARCHITECTURE_AUDIT_COMPLETE",
+    "MAPBOX_CURRENT": "YES_trips_fleet_stations_vendors",
+    "MAP_MATCHING_EXISTING": "YES_trip_enrichment_only",
+    "OSM_EXISTING": "EXP021_PROTOTYPE_ONLY",
+    "GPS_GEOMETRY_SOURCE": "RAW_S4_PIN_LDI10C",
+    "GPS_TIMESTAMP_PRESERVATION": "1HZ_BUCKET_UTC",
+    "ROAD_CONTEXT_FEASIBILITY": "YES_WITH_FROZEN_OSM",
+    "LICENSE_REVIEW": "REQUIRED_MAPBOX_AND_ODBL",
+    "RECOMMENDED_PHASE2": "OSM_FREEZE_AND_ASSOCIATION",
+    "PRODUCTION_MUTATIONS": "NONE",
+    "STOP": "LDI10D_phase1_complete_wait_owner_review"
+  }
+}
