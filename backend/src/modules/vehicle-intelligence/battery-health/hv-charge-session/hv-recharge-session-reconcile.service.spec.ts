@@ -328,6 +328,7 @@ describe('HvRechargeSessionReconcileProducerService', () => {
   const prisma = {
     hvChargeSession: { findMany: jest.fn() },
     vehicleBatteryCapability: { findMany: jest.fn() },
+    $queryRaw: jest.fn(),
   };
   const jobProducer = { enqueue: jest.fn() };
   const deadLetters = { isDeadLetter: jest.fn() };
@@ -341,6 +342,7 @@ describe('HvRechargeSessionReconcileProducerService', () => {
     jobProducer.enqueue.mockResolvedValue('job-1');
     prisma.hvChargeSession = { findMany: jest.fn().mockResolvedValue([]) };
     prisma.vehicleBatteryCapability = { findMany: jest.fn().mockResolvedValue([]) };
+    prisma.$queryRaw = jest.fn().mockResolvedValue([]);
     producer = new HvRechargeSessionReconcileProducerService(
       prisma as never,
       jobProducer as never,
@@ -358,17 +360,9 @@ describe('HvRechargeSessionReconcileProducerService', () => {
   });
 
   it('enqueues periodic reconcile for ongoing sessions and capable vehicles', async () => {
-    prisma.hvChargeSession.findMany.mockResolvedValue([
-      { vehicleId: 'veh-ongoing', organizationId: ORG },
-    ]);
-    prisma.vehicleBatteryCapability.findMany.mockResolvedValue([
-      {
-        vehicleId: 'veh-capable',
-        organizationId: ORG,
-        signalKey: 'dimo.segments.recharge',
-        status: 'AVAILABLE',
-        vehicle: { fuelType: 'ELECTRIC' },
-      },
+    prisma.$queryRaw.mockResolvedValue([
+      { vehicleId: 'veh-ongoing', organizationId: ORG, category: 'ongoing' },
+      { vehicleId: 'veh-capable', organizationId: ORG, category: 'capability' },
     ]);
 
     const enqueued = await producer.reconcilePeriodic(10, new Date('2026-07-16T12:00:00.000Z'));
