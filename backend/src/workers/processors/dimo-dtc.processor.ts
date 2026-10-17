@@ -24,6 +24,8 @@ import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dt
 import { resolveActiveDimoBindingForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
 import { requireDtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 import { Dtc02ObservabilityService } from '@modules/vehicle-intelligence/dtc/observability/dtc02-observability.service';
+import { runDtc02AdaptiveSchedulerShadowBatch } from '@modules/vehicle-intelligence/dtc/adaptive/dtc-02-adaptive-shadow.runtime';
+import { logDtc02AdaptiveSchedulerShadowConfigOnBoot } from '@modules/vehicle-intelligence/dtc/adaptive/dtc-02-adaptive-shadow.config';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -48,6 +50,7 @@ export class DimoDtcProcessor extends WorkerHost {
   ) {
     super();
     logDtc01fCohortConfigOnBoot(this.logger);
+    logDtc02AdaptiveSchedulerShadowConfigOnBoot(this.logger);
   }
 
   async process(job: Job): Promise<void> {
@@ -84,7 +87,9 @@ export class DimoDtcProcessor extends WorkerHost {
     });
 
     const pollBucket = Math.floor(Date.now() / (3 * 3600_000));
+    const evaluatedAtMs = Date.now();
     let enqueued = 0;
+    const shadowCandidateIds: string[] = [];
 
     for (const vehicle of vehicles) {
       const tokenId = vehicle.dimoVehicle?.tokenId;
@@ -137,7 +142,16 @@ export class DimoDtcProcessor extends WorkerHost {
         },
       );
       enqueued++;
+      shadowCandidateIds.push(vehicle.id);
     }
+
+    await runDtc02AdaptiveSchedulerShadowBatch({
+      prisma: this.prisma,
+      observability: this.dtc02Observability,
+      candidateVehicleIds: shadowCandidateIds,
+      evaluatedAtMs,
+      logger: this.logger,
+    });
 
     this.dtc02Observability?.recordFanOutEligible(vehicles.length, enqueued);
     void this.dtc02Observability?.refreshSourceTrustFromDb(this.prisma);

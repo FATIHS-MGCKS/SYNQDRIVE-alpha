@@ -1,5 +1,18 @@
 # DTC / Error Codes — change ledger (append-only)
 
+## 2026-10-17 — DTC-02 P3 adaptive scheduler shadow (draft, default OFF)
+
+- Pure planner `planDtc02AdaptivePollCheck` + shadow batch on natural fan-out; flags `DTC_02_ADAPTIVE_SCHEDULER_SHADOW_*`.
+- Projected-only metrics `synqdrive_dtc02_adaptive_*`; legacy 3h `DimoDtcScheduler` unchanged; no DIMO delta.
+- Evidence: `evidence/DTC02_P3_ADAPTIVE_SHADOW.md` — P4 required before adaptive enqueue.
+
+## 2026-10-17 — DTC-02 P2 webhook capability & parity (draft, default OFF)
+
+- Gated ingress: `DTC_02_WEBHOOK_CAPABILITY_ENABLED` + per-vehicle allowlist (requires 01A); `planDtc02WebhookIngress` classification; P2 webhook handler in `DimoWebhookController`.
+- Completeness type `webhook_provider_confirmed_complete` (explicit attestation only); DIMO triggers remain partial.
+- Metric `synqdrive_dtc02_webhook_capability_total`; parity/capability unit suites (`dtc-02-*`).
+- Evidence: `evidence/DTC02_P2_WEBHOOK_CAPABILITY.md` — no production webhook reliability claim.
+
 ## 2026-10-17 — DTC-02 P1 observability (draft, not deployed)
 
 - Added `synqdrive_dtc02_*` Prometheus metrics on existing DTC scheduler fan-out, poll, webhook, and source-trust DB snapshots (no cadence/semantics/clear behavior changes).
