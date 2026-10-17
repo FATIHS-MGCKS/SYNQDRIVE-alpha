@@ -36,5 +36,5 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - name: DTC-01B/01C PostgreSQL integration
+      - name: DTC-01B/01C + DTC-02 P4 PostgreSQL integration
         run: bash backend/scripts/test/dtc-01b-postgres-ci.sh
