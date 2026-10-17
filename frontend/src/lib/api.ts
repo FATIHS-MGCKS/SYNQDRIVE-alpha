@@ -3896,6 +3896,8 @@ export const api = {
         vehicleId: string;
         sessionLimit?: number;
         observationLimit?: number;
+        measuredFrom?: string;
+        measuredTo?: string;
       }) => {
         const q = new URLSearchParams({
           organizationId: params.organizationId,
@@ -3903,6 +3905,8 @@ export const api = {
         });
         if (params.sessionLimit != null) q.set('sessionLimit', String(params.sessionLimit));
         if (params.observationLimit != null) q.set('observationLimit', String(params.observationLimit));
+        if (params.measuredFrom) q.set('measuredFrom', params.measuredFrom);
+        if (params.measuredTo) q.set('measuredTo', params.measuredTo);
         return get<import('../master/battery-v2-shadow-inspection/lv-measured-intelligence.types').LvMeasuredIntelligenceV1>(
           `/admin/battery-v2/lv-measured-intelligence?${q.toString()}`,
         );

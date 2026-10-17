@@ -112,6 +112,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-14T21:50:00.000Z',
   },
   {
+    id: 'battery-v2-g5c-n13-p10-live-product-corrections-2026-10-17',
+    version: '4.9.2244',
+    title: 'Battery V2 G5C-N13-P10 — LV measured live corrections (slope quality + history browse)',
+    summary: [
+      'N13 read model labels CONTEXT_LIMITED C3 slopes (short observation span, two-point minimum, charging end, duplicate nominal rung) without recomputing stored C3 rows.',
+      'Bounded measuredFrom/measuredTo historical MEASURED browse (120-day max); Master Admin mobile REST episode cards and explicit DERIVED slope limitations.',
+    ],
+    reason:
+      'Production Ruptela C3 slopes near −14k/−24k mV/h are arithmetically correct but not interpretable resting trends; operators need transparent labeling and months of deduped voltage history.',
+    previousBehavior:
+      'Extreme slopes displayed like ordinary DERIVED trends; vehicle timeline capped at 300 recent points without date-range control.',
+    details:
+      'lv-measured-intelligence-slope-quality.policy.ts, LvMeasuredIntelligenceSection.tsx, GET lv-measured-intelligence measuredFrom/To, docs/audits/battery-v2-g5c-n13-p10-live-product-corrections-2026-10-17.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T07:00:00.000Z',
+  },
+  {
     id: 'battery-v2-g5c-n13-lv-measured-intelligence-v1-2026-10-16',
     version: '4.9.2243',
     title: 'Battery V2 G5C-N13 — LV measured intelligence V1 (Master Admin read model)',
