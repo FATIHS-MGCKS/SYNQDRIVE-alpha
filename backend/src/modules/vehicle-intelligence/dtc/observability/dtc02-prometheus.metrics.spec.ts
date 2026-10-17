@@ -1,8 +1,10 @@
 import { Registry } from 'prom-client';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
+  assertDtc02AdaptiveMetricLabelsForTests,
   assertDtc02MetricLabelsForTests,
   classifyProviderFailure,
+  metricExpositionForbiddenLabelPattern,
   normalizeFanOutSkipReason,
   normalizePollOutcome,
   normalizeWebhookSkipReason,
@@ -14,14 +16,17 @@ describe('dtc02-prometheus.metrics', () => {
     const registry = new Registry();
     const handles = registerDtc02Metrics(registry);
     assertDtc02MetricLabelsForTests(handles);
+    assertDtc02AdaptiveMetricLabelsForTests(handles);
     const text = await registry.metrics();
     expect(text).toContain('synqdrive_dtc02_scheduler_tick_total');
+    expect(text).toContain('synqdrive_dtc02_adaptive_shadow_total');
+    expect(text).toContain('synqdrive_dtc02_adaptive_plan_total');
     expect(text).toContain('synqdrive_dtc02_fan_out_skip_total');
     expect(text).toContain('synqdrive_dtc02_poll_outcome_total');
     expect(text).toContain('synqdrive_dtc02_webhook_total');
     expect(text).toContain('synqdrive_dtc02_outbox_pending');
     expect(text).toContain('synqdrive_dtc02_head_vls_divergence_vehicles');
-    expect(text).not.toMatch(/vehicle_id|token_id|vin|tenant/i);
+    expect(text).not.toMatch(metricExpositionForbiddenLabelPattern());
   });
 
   it('normalizes skip and outcome labels to low cardinality', () => {

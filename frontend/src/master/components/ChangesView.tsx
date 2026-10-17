@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dtc02-p3-adaptive-shadow-2026-10-17',
+    version: '4.9.2249',
+    title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
+    summary: [
+      'Pure planner proposes next DTC check from lifecycle, source-head/VLS freshness, webhook evidence quality, active DTCs, and provider error state.',
+      'Shadow batch runs on existing 3h fan-out only — no adaptive enqueue, no scheduler cadence change, no DIMO calls, no episode/head mutations.',
+      'Projected metrics synqdrive_dtc02_adaptive_*; per-vehicle allowlist; P4 required before real adaptive scheduling.',
+    ],
+    reason:
+      'Measure projected poll reduction and freshness tradeoffs safely before any adaptive cutover.',
+    previousBehavior:
+      'Only legacy 3h fan-out with DTC-02 observability; no adaptive plan comparison.',
+    details:
+      'dtc/adaptive/dtc-02-adaptive-*.ts, dimo-dtc.processor shadow hook, architecture/dtc-error-codes/evidence/DTC02_P3_ADAPTIVE_SHADOW.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T19:10:00.000Z',
+  },
+  {
     id: 'dtc02-p2-webhook-capability-2026-10-17',
     version: '4.9.2248',
     title: 'DTC-02 P2 — webhook capability classification & poll/webhook parity (default OFF)',
