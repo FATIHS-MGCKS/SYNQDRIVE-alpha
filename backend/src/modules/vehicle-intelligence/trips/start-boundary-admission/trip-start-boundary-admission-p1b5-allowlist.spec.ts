@@ -1,6 +1,8 @@
 import {
   TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV,
+  TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED_ENV,
   TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV,
+  TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_ALLOWLIST_MAX,
   isTripStartBoundaryAdmissionShadowEnabledForVehicle,
   parseTripStartBoundaryAdmissionShadowVehicleAllowlist,
 } from './trip-start-boundary-admission-shadow.config';
@@ -10,19 +12,23 @@ import { TripDetectionOrchestrationService } from '../trip-detection-orchestrati
 import { TRIP_TRACKING_TRIGGERS } from '../trip-detection.types';
 import {
   buildOrchestrationHarness,
+  P1B_ORCH_LEGACY_START,
   P1B_ORCH_NOW,
 } from './trip-start-boundary-admission-p1b-orchestration.harness';
 
-/** P1B.5 live-pilot vehicle IDs (ops reference; not hardcoded in runtime). */
 const PILOT_TESLA_VEHICLE_ID = '68868291-5478-42cd-b0c4-cc77b2a78e21';
 const PILOT_TIGUAN_VEHICLE_ID = '19fedd4b-c4e8-4de8-a125-dab293326e7e';
 const NON_PILOT_VEHICLE_ID = '00000000-0000-4000-8000-000000000099';
 
-describe('P1B.5 — vehicle-scoped shadow allowlist', () => {
+function allowlistUuid(index: number): string {
+  const suffix = String(index).padStart(12, '0');
+  return `00000000-0000-4000-8000-${suffix}`;
+}
+
+function restoreEnv() {
   const originalEnabled = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
   const originalAllowlist = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV];
-
-  afterEach(() => {
+  return () => {
     if (originalEnabled === undefined) {
       delete process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
     } else {
@@ -33,59 +39,95 @@ describe('P1B.5 — vehicle-scoped shadow allowlist', () => {
     } else {
       process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] = originalAllowlist;
     }
-  });
+  };
+}
 
-  it('parses comma-separated UUID allowlist with trimming', () => {
-    const set = parseTripStartBoundaryAdmissionShadowVehicleAllowlist(
-      ` ${PILOT_TESLA_VEHICLE_ID} , ${PILOT_TIGUAN_VEHICLE_ID} `,
+describe('P1B.5 — allowlist UUID validation (fail-closed)', () => {
+  it('accepts trimmed canonical UUIDs and deduplicates', () => {
+    const parsed = parseTripStartBoundaryAdmissionShadowVehicleAllowlist(
+      ` ${PILOT_TESLA_VEHICLE_ID} , ${PILOT_TESLA_VEHICLE_ID.toUpperCase()} , ${PILOT_TIGUAN_VEHICLE_ID} `,
     );
-    expect(set.size).toBe(2);
-    expect(set.has(PILOT_TESLA_VEHICLE_ID)).toBe(true);
-    expect(set.has(PILOT_TIGUAN_VEHICLE_ID)).toBe(true);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.allowlist.size).toBe(2);
+      expect(parsed.allowlist.has(PILOT_TESLA_VEHICLE_ID.toLowerCase())).toBe(true);
+      expect(parsed.allowlist.has(PILOT_TIGUAN_VEHICLE_ID.toLowerCase())).toBe(true);
+    }
   });
 
-  it('global OFF — shadow disabled for pilot vehicles even with allowlist', () => {
+  it('rejects empty entries, ALL, wildcards, and non-UUID tokens', () => {
+    expect(parseTripStartBoundaryAdmissionShadowVehicleAllowlist('ALL').ok).toBe(false);
+    expect(parseTripStartBoundaryAdmissionShadowVehicleAllowlist('*').ok).toBe(false);
+    expect(
+      parseTripStartBoundaryAdmissionShadowVehicleAllowlist(`${PILOT_TESLA_VEHICLE_ID},`).ok,
+    ).toBe(false);
+    expect(
+      parseTripStartBoundaryAdmissionShadowVehicleAllowlist(`veh-p1b,${PILOT_TESLA_VEHICLE_ID}`).ok,
+    ).toBe(false);
+    expect(
+      parseTripStartBoundaryAdmissionShadowVehicleAllowlist(
+        `${PILOT_TESLA_VEHICLE_ID},not-a-uuid`,
+      ).ok,
+    ).toBe(false);
+  });
+
+  it('rejects more than 16 unique UUIDs (entire list invalid)', () => {
+    const ids = Array.from({ length: TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_ALLOWLIST_MAX + 1 }, (_, i) =>
+      allowlistUuid(i + 1),
+    );
+    expect(parseTripStartBoundaryAdmissionShadowVehicleAllowlist(ids.join(',')).ok).toBe(false);
+  });
+
+  it('malformed allowlist disables shadow for pilot vehicles', () => {
+    const teardown = restoreEnv();
+    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
+    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] =
+      `${PILOT_TESLA_VEHICLE_ID},bad-entry`;
+    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(false);
+    teardown();
+  });
+});
+
+describe('P1B.5 — vehicle-scoped shadow allowlist matrix', () => {
+  let teardown: () => void;
+
+  beforeEach(() => {
+    teardown = restoreEnv();
+    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
+  });
+
+  afterEach(() => {
+    teardown();
+  });
+
+  it('global OFF — shadow disabled even with allowlist', () => {
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'false';
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] =
       `${PILOT_TESLA_VEHICLE_ID},${PILOT_TIGUAN_VEHICLE_ID}`;
-    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(
-      false,
-    );
+    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(false);
   });
 
-  it('global ON + empty allowlist — fail-closed for all vehicles', () => {
-    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
+  it('global ON + missing/empty allowlist — fail-closed', () => {
     delete process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV];
     expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(false);
-    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TIGUAN_VEHICLE_ID)).toBe(
-      false,
-    );
-    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(NON_PILOT_VEHICLE_ID)).toBe(false);
+    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] = '   ';
+    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TIGUAN_VEHICLE_ID)).toBe(false);
   });
 
-  it('global ON + Tesla only — Tiguan and non-pilot excluded', () => {
-    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
+  it('Tesla only', () => {
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] = PILOT_TESLA_VEHICLE_ID;
     expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(true);
-    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TIGUAN_VEHICLE_ID)).toBe(
-      false,
-    );
+    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TIGUAN_VEHICLE_ID)).toBe(false);
     expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(NON_PILOT_VEHICLE_ID)).toBe(false);
   });
 
-  it('global ON + Tiguan only — Tesla excluded', () => {
-    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
+  it('Tiguan only', () => {
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] = PILOT_TIGUAN_VEHICLE_ID;
-    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TIGUAN_VEHICLE_ID)).toBe(
-      true,
-    );
-    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(
-      false,
-    );
+    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TIGUAN_VEHICLE_ID)).toBe(true);
+    expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(false);
   });
 
-  it('global ON + both pilots — both enabled', () => {
-    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
+  it('both pilots', () => {
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] =
       `${PILOT_TESLA_VEHICLE_ID},${PILOT_TIGUAN_VEHICLE_ID}`;
     expect(isTripStartBoundaryAdmissionShadowEnabledForVehicle(PILOT_TESLA_VEHICLE_ID)).toBe(true);
@@ -94,31 +136,26 @@ describe('P1B.5 — vehicle-scoped shadow allowlist', () => {
   });
 });
 
-describe('P1B.5 orchestration — allowlist wiring', () => {
-  const modalitySpy = jest.spyOn(modality, 'resolveTripStartIntegrationModality');
-  const shadowSpy = jest.spyOn(shadowRuntime, 'runStartBoundaryAdmissionShadow');
-  const originalEnabled = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
-  const originalAllowlist = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV];
+describe('P1B.5 orchestration — allowlist wiring + legacy parity', () => {
+  let modalitySpy: jest.SpiedFunction<typeof modality.resolveTripStartIntegrationModality>;
+  let shadowSpy: jest.SpiedFunction<typeof shadowRuntime.runStartBoundaryAdmissionShadow>;
+  let teardown: () => void;
 
   beforeEach(() => {
     jest.useFakeTimers({ now: P1B_ORCH_NOW });
-    modalitySpy.mockReset().mockResolvedValue('HARDWARE_DEVICE');
-    shadowSpy.mockReset().mockResolvedValue(null);
+    teardown = restoreEnv();
+    modalitySpy = jest.spyOn(modality, 'resolveTripStartIntegrationModality');
+    shadowSpy = jest.spyOn(shadowRuntime, 'runStartBoundaryAdmissionShadow');
+    modalitySpy.mockResolvedValue('SOFTWARE_INTEGRATION');
+    shadowSpy.mockResolvedValue(null);
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = 'true';
   });
 
   afterEach(() => {
     jest.useRealTimers();
-    if (originalEnabled === undefined) {
-      delete process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
-    } else {
-      process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV] = originalEnabled;
-    }
-    if (originalAllowlist === undefined) {
-      delete process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV];
-    } else {
-      process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] = originalAllowlist;
-    }
+    modalitySpy?.mockRestore();
+    shadowSpy?.mockRestore();
+    teardown();
   });
 
   async function confirmForVehicle(vehicleId: string, dimoTokenId: number) {
@@ -133,13 +170,14 @@ describe('P1B.5 orchestration — allowlist wiring', () => {
     return h;
   }
 
-  it('Tesla pilot — shadow runs; modality resolved from data link (not model)', async () => {
+  it('Tesla pilot — shadow runs; legacy start unchanged', async () => {
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] = PILOT_TESLA_VEHICLE_ID;
-    await confirmForVehicle(PILOT_TESLA_VEHICLE_ID, 186946);
+    const h = await confirmForVehicle(PILOT_TESLA_VEHICLE_ID, 186946);
     expect(modalitySpy).toHaveBeenCalledTimes(1);
     expect(shadowSpy).toHaveBeenCalledTimes(1);
-    expect(shadowSpy.mock.calls[0][0].vehicleId).toBe(PILOT_TESLA_VEHICLE_ID);
-    expect(shadowSpy.mock.calls[0][0].dimoTokenId).toBe(186946);
+    expect(h.createTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ startTime: P1B_ORCH_LEGACY_START }),
+    );
   });
 
   it('Tiguan pilot — shadow runs when allowlisted alone', async () => {
@@ -149,11 +187,25 @@ describe('P1B.5 orchestration — allowlist wiring', () => {
     expect(shadowSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('non-pilot vehicle — no modality read, no shadow despite global ON', async () => {
+  it('non-pilot — no modality read, no shadow', async () => {
     process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] =
       `${PILOT_TESLA_VEHICLE_ID},${PILOT_TIGUAN_VEHICLE_ID}`;
-    await confirmForVehicle(NON_PILOT_VEHICLE_ID, 999999);
+    const h = await confirmForVehicle(NON_PILOT_VEHICLE_ID, 999999);
     expect(modalitySpy).not.toHaveBeenCalled();
     expect(shadowSpy).not.toHaveBeenCalled();
+    expect(h.createTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ startTime: P1B_ORCH_LEGACY_START }),
+    );
+  });
+
+  it('invalid mixed allowlist — no shadow for Tesla', async () => {
+    process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV] =
+      `${PILOT_TESLA_VEHICLE_ID},not-valid`;
+    const h = await confirmForVehicle(PILOT_TESLA_VEHICLE_ID, 186946);
+    expect(modalitySpy).not.toHaveBeenCalled();
+    expect(shadowSpy).not.toHaveBeenCalled();
+    expect(h.createTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ startTime: P1B_ORCH_LEGACY_START }),
+    );
   });
 });

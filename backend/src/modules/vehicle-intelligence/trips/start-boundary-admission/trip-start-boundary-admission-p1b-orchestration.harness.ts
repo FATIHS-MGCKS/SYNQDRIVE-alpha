@@ -29,11 +29,14 @@ export function boundaryResolution() {
   };
 }
 
+/** Canonical test vehicle UUID (not a production pilot ID). */
+export const P1B_ORCH_TEST_VEHICLE_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
 export function buildOrchestrationHarness(options?: {
   vehicleId?: string;
   dimoTokenId?: number;
 }) {
-  const vehicleId = options?.vehicleId ?? 'veh-p1b';
+  const vehicleId = options?.vehicleId ?? P1B_ORCH_TEST_VEHICLE_ID;
   const scheduleActiveTick = jest.fn().mockResolvedValue(undefined);
   const transitionState = jest.fn().mockResolvedValue({});
   const createTrip = jest.fn().mockResolvedValue({

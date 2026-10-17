@@ -4,7 +4,7 @@ Pure resolver + shadow comparison for evidence-backed live start boundaries.
 
 **P1B:** Optional runtime shadow at start confirmation (`TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED`, default OFF). Legacy `resolveConfirmedStartBoundary` remains the **canonical writer**; shadow results land under `shadowStartBoundaryAdmission` in FSM evidence summary only. EXP021 / video anchors are **offline** (PR #2051); they **do not** feed runtime boundary selection.
 
-**P1B.5:** When global shadow is ON, `TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS` (comma-separated UUIDs) scopes execution per vehicle. Empty allowlist → shadow for **nobody** (fail-closed). Per-vehicle evidence (legacy vs shadow start, delta, movement sources, coverage, decision, integration modality from `VehicleDataSourceLink`) is stored in FSM evidence — not in Prometheus vehicle labels.
+**P1B.5:** When global shadow is ON, `TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS` (comma-separated canonical UUIDs, max 16 unique) scopes execution per vehicle. Empty or **any invalid entry** → shadow for **nobody** (fail-closed; no partial allowlist). Per-vehicle evidence (legacy vs shadow start, delta, movement sources, coverage, decision, integration modality from `VehicleDataSourceLink`) is stored in FSM evidence. Prometheus: cardinality-safe counters including `synqdrive_trip_start_boundary_admission_shadow_route_fetch_attempts_total` (no vehicle-id labels).
 
 ## Principle
 

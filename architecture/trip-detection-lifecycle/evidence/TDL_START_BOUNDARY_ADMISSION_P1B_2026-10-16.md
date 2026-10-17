@@ -73,7 +73,8 @@ Resolved read-only from active DIMO `VehicleDataSourceLink` connection-identity 
 | Env | Semantics |
 |-----|-----------|
 | `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED` | Global gate (default **OFF**) |
-| `TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS` | Comma-separated vehicle UUIDs; required when global ON; **empty → nobody** (fail-closed) |
+| `TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS` | Comma-separated **canonical UUIDs** (max 16 unique); required when global ON; **empty → nobody**; **any invalid token → entire list invalid** (fail-closed; no partial release) |
+| `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED` | Optional shadow-only route enrichment (default OFF); attempts/errors via `synqdrive_trip_start_boundary_admission_shadow_route_fetch_*_total` (no vehicle labels) |
 
 **Planned two-vehicle pilot (ops reference, not hardcoded in runtime):**
 

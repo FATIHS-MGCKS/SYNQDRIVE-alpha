@@ -11,21 +11,24 @@ import {
   P1B_ORCH_CANDIDATE,
   P1B_ORCH_LEGACY_START,
   P1B_ORCH_NOW,
+  P1B_ORCH_TEST_VEHICLE_ID,
 } from './trip-start-boundary-admission-p1b-orchestration.harness';
 
-const VEHICLE = 'veh-p1b';
+const VEHICLE = P1B_ORCH_TEST_VEHICLE_ID;
 
 describe('P1B orchestration — shadow gate wiring', () => {
-  const modalitySpy = jest.spyOn(modality, 'resolveTripStartIntegrationModality');
-  const shadowSpy = jest.spyOn(shadowRuntime, 'runStartBoundaryAdmissionShadow');
+  let modalitySpy: jest.SpiedFunction<typeof modality.resolveTripStartIntegrationModality>;
+  let shadowSpy: jest.SpiedFunction<typeof shadowRuntime.runStartBoundaryAdmissionShadow>;
 
   const originalEnv = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
   const originalAllowlist = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV];
 
   beforeEach(() => {
     jest.useFakeTimers({ now: P1B_ORCH_NOW });
-    modalitySpy.mockReset().mockResolvedValue('SOFTWARE_INTEGRATION');
-    shadowSpy.mockReset().mockResolvedValue({
+    modalitySpy = jest.spyOn(modality, 'resolveTripStartIntegrationModality');
+    shadowSpy = jest.spyOn(shadowRuntime, 'runStartBoundaryAdmissionShadow');
+    modalitySpy.mockResolvedValue('SOFTWARE_INTEGRATION');
+    shadowSpy.mockResolvedValue({
       vehicleId: VEHICLE,
       dimoTokenId: 186946,
       integrationModality: 'SOFTWARE_INTEGRATION',
@@ -53,6 +56,8 @@ describe('P1B orchestration — shadow gate wiring', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    modalitySpy?.mockRestore();
+    shadowSpy?.mockRestore();
     if (originalEnv === undefined) {
       delete process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
     } else {

@@ -103,13 +103,19 @@ export async function runStartBoundaryAdmissionShadow(
       routePoints.length === 0 &&
       isTripStartBoundaryAdmissionShadowRouteFetchEnabled(env)
     ) {
-      routePoints = await params.segments.fetchRouteEnrichment(
-        params.dimoTokenId,
-        params.evidence.boundaryWindowFrom,
-        params.confirmedAt,
-        params.providerContext,
-      );
-      additionalShadowRouteFetchPerformed = true;
+      params.tripMetrics?.tripStartBoundaryAdmissionShadowRouteFetchAttempts?.inc();
+      try {
+        routePoints = await params.segments.fetchRouteEnrichment(
+          params.dimoTokenId,
+          params.evidence.boundaryWindowFrom,
+          params.confirmedAt,
+          params.providerContext,
+        );
+        additionalShadowRouteFetchPerformed = true;
+      } catch (fetchErr) {
+        params.tripMetrics?.tripStartBoundaryAdmissionShadowRouteFetchErrors?.inc();
+        throw fetchErr;
+      }
     }
 
     const comparison = compareStartBoundaryAdmissionShadow({
@@ -168,7 +174,7 @@ export async function runStartBoundaryAdmissionShadow(
 
     return summary;
   } catch (err) {
-    params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors.inc({
+    params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors?.inc({
       phase: 'start_confirmation',
     });
     params.logger?.warn(
