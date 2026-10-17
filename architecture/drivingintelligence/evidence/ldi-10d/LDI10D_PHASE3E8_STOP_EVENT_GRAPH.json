@@ -1,0 +1,7 @@
+{
+  "schema": "LDI10D_PHASE3E8_STOP_EVENT_GRAPH_V1",
+  "headSha": "f1ffccbbc0803207b38e5e9e031cc2bc918f270e",
+  "observedStandstills": 0,
+  "inferredCandidates": 62,
+  "hardBrakingReaudit": "SEE_LDI10D_PHASE3E2_HARD_BRAKING_CASES.md"
+}

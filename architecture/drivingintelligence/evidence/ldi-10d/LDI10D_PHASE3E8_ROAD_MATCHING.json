@@ -1,0 +1,7 @@
+{
+  "schema": "LDI10D_PHASE3E8_ROAD_MATCHING_V1",
+  "headSha": "f1ffccbbc0803207b38e5e9e031cc2bc918f270e",
+  "roadIdGroundTruth": "NOT_ASSESSABLE",
+  "improvementProven": "NO",
+  "disagreementsAt1Hz": 155
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "LDI10D_PHASE3E8_COVERAGE_MATRIX_V1",
+  "headSha": "f1ffccbbc0803207b38e5e9e031cc2bc918f270e",
+  "videoSecondsTotal": 1027.588333,
+  "expected1HzSamples": 1028,
+  "framesExtracted": 1028,
+  "ocrFramesProcessed": 1028,
+  "gpsFullyReadable": 676,
+  "gpsPartial": 118,
+  "gpsUnreadable": 234,
+  "gpsIndependentlyVerified": 17,
+  "gate": "PASS"
+}

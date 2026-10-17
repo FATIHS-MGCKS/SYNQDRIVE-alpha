@@ -1,0 +1,12 @@
+{
+  "schema": "LDI10D_PHASE3E8_INPUT_INTEGRITY_V1",
+  "headSha": "f1ffccbbc0803207b38e5e9e031cc2bc918f270e",
+  "originalMovAvailable": "YES_DOWNLOADED_TO_TMP",
+  "movSha256": "b81328f1f00345bccfd8378efaf1b8dff4e486061f73b1c73ae396b3a4ebcf21  /tmp/ldi10d-phase3e8-movs/TC_00062.MOV\n7eedec0c9377dc33a511fc1516c2f533f0ca92d0b443499473ac30c84e7acd69  /tmp/ldi10d-phase3e8-movs/TC_00063.MOV\n808aa3563ed89446a103c9eea6455536cf46ec246b9ca98b1555ff8eea68d888  /tmp/ldi10d-phase3e8-movs/TC_00064.MOV\nef9a24d87e5422bac034e0cfb43e72184223a83e6cb972db910c2a3e758064e1  /tmp/ldi10d-phase3e8-movs/TC_00065.MOV\nd31ff7c1f6ff9718846f3429eb69fd88e6ee03cd5c991f4cf3c67843eb1dfca4  /tmp/ldi10d-phase3e8-movs/TC_00066.MOV\n6471c4164f942fbddf0b8ef1fcdf556a10dc5cdd61e7c5d2809628357580bc76  /tmp/ldi10d-phase3e8-movs/TC_00067.MOV",
+  "videosDownloaded": 6,
+  "coverageGate": "PASS",
+  "expected1Hz": 1028,
+  "ocrCheckpointRows": 1028,
+  "ocrProcessingCoveragePercent": 100,
+  "note": "MOVs not committed; SHA recorded from /tmp/ldi10d-phase3e8-movs"
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "LDI10D_PHASE3E8_DIMO_IPHONE_COMPARISON_V1",
+  "headSha": "f1ffccbbc0803207b38e5e9e031cc2bc918f270e",
+  "evaluationA_noDimoFilter": {
+    "n": 698,
+    "medianM": 2.780741518443654,
+    "p90M": 34.80622116147934,
+    "p95M": 64.33454953607401,
+    "p99M": 72.4194337957833,
+    "maxM": 3341.296350742937
+  },
+  "evaluationB_dimo35mCompatibility": {
+    "n": 632,
+    "medianM": 2.0545441469495884,
+    "p90M": 29.638918598574698,
+    "p95M": 33.171355102808924,
+    "p99M": 34.76131641846791,
+    "maxM": 34.87381580763291
+  },
+  "absoluteAccuracy": "NOT_ASSESSABLE"
+}
