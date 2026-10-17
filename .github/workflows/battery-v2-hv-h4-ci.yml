@@ -10,6 +10,7 @@ on:
       - 'backend/scripts/ops/battery-hv-h4-charge-throughput-report.ts'
       - 'backend/scripts/ops/m3-3-hv-h4-a3-o2-r4-1-phase-a-preflight.ts'
       - 'backend/scripts/test/battery-hv-h4-coverage-report-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
       - 'architecture/battery-v2/scripts/validate-h4-exposure-coverage-contracts.sh'
       - 'architecture/battery-v2/CURRENT_STATE.md'
       - 'architecture/battery-v2/graph/**'
@@ -55,22 +56,12 @@ jobs:
   hv-h4-postgres:
     name: HV-H4 coverage PostgreSQL
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: battery-hv-h4-coverage-ci-postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -78,6 +69,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Fail closed unless DATABASE_URL is localhost
         run: |
+          set -euo pipefail
           case "${DATABASE_URL}" in
             *127.0.0.1*|*localhost*) ;;
             *)
