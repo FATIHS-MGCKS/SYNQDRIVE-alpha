@@ -1,0 +1,29 @@
+# LDI10C Phase 3 — Result
+
+## Root cause (evidence-backed)
+
+All eight UNCLEAR groups share **S1 cross-source conflict** (integer R1 OBD/HF vs L3) → `sourceRelation` CONFLICTING/CONFLICT_EXPLAINED → QC `UNTRUSTED` / `CROSS_SOURCE_CONFLICT`. GPS geometry jumps are **not** supported. Kinematic acceleration remains **plausible** from L3/GPS; OBD is **not** independent ground truth.
+
+## Mandatory block
+
+```
+LDI10C_PHASE=3
+LDI10C_PHASE3_RESULT=GPS_QC_ROOT_CAUSE_ANALYSIS_COMPLETE
+EVIDENCE_INTEGRITY=PASS
+UNCLEAR_GROUPS_AUDITED=8
+ROOT_CAUSE_GPS_JUMP=0
+ROOT_CAUSE_TIMESTAMP=0
+ROOT_CAUSE_QUANTIZATION=8
+ROOT_CAUSE_QC_IMPLEMENTATION=0
+ROOT_CAUSE_QC_POLICY_TRIGGERED_GROUPS=8
+ROOT_CAUSE_OBD_ALIGNMENT=8
+ROOT_CAUSE_MULTIPLE=8
+ROOT_CAUSE_INDETERMINATE=8
+CONTROL_GROUPS_COMPARED=16
+ACCEL_CLASS_BIAS_FOUND=NO_DISCRIMINATOR_IS_CROSS_SOURCE_CONFLICT_IN_WINDOW
+QC_IMPLEMENTATION_DEFECT_FOUND=false
+GROUPING_UNCHANGED=32_groups_75_candidates
+PRODUCTION_MUTATIONS=NONE
+NEXT_SAFE_ACTION=Owner_review_independent_capture_for_conflict_windows;optional_policy_study_R1_vs_L3_without_threshold_change
+STOP=LDI10C_phase3_complete_no_LDI10D_no_deploy
+```

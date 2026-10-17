@@ -1,0 +1,3417 @@
+{
+  "schema": "LDI10C_PHASE3_ROOT_CAUSE_V1",
+  "headSha": "026338e614f59433120aac765c9b55d523623c28",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+  "productionMutations": "NONE",
+  "provenance": {
+    "ok": true,
+    "errors": [],
+    "hashes": {
+      "ldi08Snapshot": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009",
+      "ldi08Candidates": "2f2cfabdd40e6744cda364641c80896e4559845ab62fdd927d6a23907e27231c",
+      "ldi09Forensics": "b6014b1804a97b790391e56b0cef3ffde41a310916990edf34a12b7781bf4f74",
+      "ldi09Conflict": "28a3070df815842f7bc2245a4fb3b417477d628673471844669fd0f8b30d420d",
+      "ldi10aAudit": "8e2ba39e562bf339bb59cbd8db8e15d3eeaa423b843b950f6685e5437d7a2e33",
+      "ldi10bPhysics": "8bf2a4257c519dff8357aed4ad6c67873e6e01dddc8bd4a8002177449123d9cb",
+      "ldi10cTimeline": "440cbbb19a0499d55bf0a72cbad4258c438d9414c91b4d2596f5b29ca5816e4b",
+      "ldi10cRoute": "a3b76198ff4920d0151ee607b6c22d0eca021df1ee9fb9f78552a203d214266d"
+    },
+    "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:79635496216a2588666db3f1be87609f803d073421db6ebc64e65f7c88b264fa",
+    "ldi08SnapshotSha256": "effe180fe128a6c9f5c5f74f52f34ddc0c7d6f9960825d55573b02ca5b2f7009",
+    "phase2UnclearGroupsSha256": "a1e3cff6a3aa0b557bd7cc9aacebca155670e121fdddf61a5bed853900b44909"
+  },
+  "unclearGroupIds": [
+    "MANEUVER_ACCELERATION_12",
+    "MANEUVER_ACCELERATION_13",
+    "MANEUVER_ACCELERATION_2",
+    "MANEUVER_ACCELERATION_3",
+    "MANEUVER_ACCELERATION_4",
+    "MANEUVER_ACCELERATION_6",
+    "MANEUVER_ACCELERATION_8",
+    "MANEUVER_ACCELERATION_9"
+  ],
+  "cases": [
+    {
+      "groupId": "MANEUVER_ACCELERATION_2",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:14Z",
+        "end": "2026-10-13T15:53:19Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_3",
+        "L3_ACCEL_4",
+        "L3_ACCEL_5",
+        "L3_ACCEL_6",
+        "L3_ACCEL_7"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:14Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4073916,
+            "longitude": 9.66874,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 14.86096950727662,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": 14,
+            "originalBucketLabelUtc": "2026-10-13T15:53:14Z"
+          },
+          "hf": {
+            "speedKmh": 14,
+            "originalBucketLabelUtc": "2026-10-13T15:53:14Z"
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 14.86096950727662
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:15Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4073583,
+            "longitude": 9.668775,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 18.21366965105763,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 146.75019305658577,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 18.21366965105763
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:16Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4073316,
+            "longitude": 9.668845,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 22.37654230622294,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 14,
+            "originalBucketLabelUtc": "2026-10-13T15:53:16Z"
+          },
+          "hf": {
+            "speedKmh": 14,
+            "originalBucketLabelUtc": "2026-10-13T15:53:16Z"
+          },
+          "bearingFromPrevDeg": 121.4449204943623,
+          "headingChangeFromPrevDeg": 25.30527256222348,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 22.37654230622294
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:17Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.407325,
+            "longitude": 9.6689416,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 25.86988025975725,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": 21,
+            "originalBucketLabelUtc": "2026-10-13T15:53:17Z"
+          },
+          "hf": {
+            "speedKmh": 21,
+            "originalBucketLabelUtc": "2026-10-13T15:53:17Z"
+          },
+          "bearingFromPrevDeg": 96.25068844561179,
+          "headingChangeFromPrevDeg": 25.194232048750507,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 25.86988025975725
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:18Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4073266,
+            "longitude": 9.6690516,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 29.158754114208,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:53:18Z"
+          },
+          "hf": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:53:18Z"
+          },
+          "bearingFromPrevDeg": 88.66416138586851,
+          "headingChangeFromPrevDeg": 7.5865270597432755,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 29.158754114208
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:19Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.40733,
+            "longitude": 9.669175,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 32.52711304372985,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 87.47081103740004,
+          "headingChangeFromPrevDeg": 1.1933503484684707,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 32.52711304372985
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_3",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:14Z",
+          "endUtc": "2026-10-13T15:53:15Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:14Z",
+            "after": "2026-10-13T15:53:15Z"
+          },
+          "speedBeforeKmh": 14.86096950727662,
+          "speedAfterKmh": 18.21366965105763,
+          "deltaVKmh": 3.352700143781009,
+          "deltaTMs": 1000,
+          "accelMs2": 0.9313055954947247,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_4",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:15Z",
+          "endUtc": "2026-10-13T15:53:16Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:15Z",
+            "after": "2026-10-13T15:53:16Z"
+          },
+          "speedBeforeKmh": 18.21366965105763,
+          "speedAfterKmh": 22.37654230622294,
+          "deltaVKmh": 4.162872655165312,
+          "deltaTMs": 1000,
+          "accelMs2": 1.156353515323698,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": true,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_5",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:16Z",
+          "endUtc": "2026-10-13T15:53:17Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:16Z",
+            "after": "2026-10-13T15:53:17Z"
+          },
+          "speedBeforeKmh": 22.37654230622294,
+          "speedAfterKmh": 25.86988025975725,
+          "deltaVKmh": 3.493337953534308,
+          "deltaTMs": 1000,
+          "accelMs2": 0.9703716537595299,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": true,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_6",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:17Z",
+          "endUtc": "2026-10-13T15:53:18Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:17Z",
+            "after": "2026-10-13T15:53:18Z"
+          },
+          "speedBeforeKmh": 25.86988025975725,
+          "speedAfterKmh": 29.158754114208,
+          "deltaVKmh": 3.2888738544507525,
+          "deltaTMs": 1000,
+          "accelMs2": 0.9135760706807645,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": true,
+          "hfCorroboratedBothEnds": true,
+          "crossSourceNote": "OBD_AND_HF_SPEED_AGREE_L3_BOTH_ENDS_shared_DIMO_lineage",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_7",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:18Z",
+          "endUtc": "2026-10-13T15:53:19Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:18Z",
+            "after": "2026-10-13T15:53:19Z"
+          },
+          "speedBeforeKmh": 29.158754114208,
+          "speedAfterKmh": 32.52711304372985,
+          "deltaVKmh": 3.368358929521847,
+          "deltaTMs": 1000,
+          "accelMs2": 0.935655258200513,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:16Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4073316,
+            "longitude": 9.668845,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 22.37654230622294,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 14,
+            "originalBucketLabelUtc": "2026-10-13T15:53:16Z"
+          },
+          "hf": {
+            "speedKmh": 14,
+            "originalBucketLabelUtc": "2026-10-13T15:53:16Z"
+          },
+          "bearingFromPrevDeg": 121.4449204943623,
+          "headingChangeFromPrevDeg": 25.30527256222348,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 22.37654230622294
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:53:16Z: OBD/HF integer 14 km/h vs L3 22.38"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:53:16Z: sourceRelation=CONFLICTING L3=22.38 OBD=14 Δ=-8.38 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=33.1 GPS-present buckets=6",
+            "mean longitudinal accel (L3-derived)=0.981 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_2",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 5000,
+        "stepCount": 5,
+        "meanAccelMs2": 0.981452418691846,
+        "maxAbsAccelMs2": 1.156353515323698,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 5,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 4,
+        "hfBucketsPresent": 4,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 33.05837011355818,
+        "gpsPresentBuckets": 6
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_3",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:26Z",
+        "end": "2026-10-13T15:53:29Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_8",
+        "L3_ACCEL_9",
+        "L3_ACCEL_10"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:26Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4073333,
+            "longitude": 9.6699783,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 22.51415051122485,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 22.51415051122485
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:27Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4072816,
+            "longitude": 9.6700283,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 27.5564776088443,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 20,
+            "originalBucketLabelUtc": "2026-10-13T15:53:27Z"
+          },
+          "hf": {
+            "speedKmh": 20,
+            "originalBucketLabelUtc": "2026-10-13T15:53:27Z"
+          },
+          "bearingFromPrevDeg": 148.89871130361252,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 27.5564776088443
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:28Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4072066,
+            "longitude": 9.6700583,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 32.84738541658913,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 23,
+            "originalBucketLabelUtc": "2026-10-13T15:53:28Z"
+          },
+          "hf": {
+            "speedKmh": 23,
+            "originalBucketLabelUtc": "2026-10-13T15:53:28Z"
+          },
+          "bearingFromPrevDeg": 165.99004658411582,
+          "headingChangeFromPrevDeg": 17.0913352805033,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 32.84738541658913
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:29Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4071216,
+            "longitude": 9.6700866,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.86579351787941,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 168.26743411792972,
+          "headingChangeFromPrevDeg": 2.277387533813908,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.86579351787941
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_8",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:26Z",
+          "endUtc": "2026-10-13T15:53:27Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:26Z",
+            "after": "2026-10-13T15:53:27Z"
+          },
+          "speedBeforeKmh": 22.51415051122485,
+          "speedAfterKmh": 27.5564776088443,
+          "deltaVKmh": 5.042327097619449,
+          "deltaTMs": 1000,
+          "accelMs2": 1.4006464160054024,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": true,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_9",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:27Z",
+          "endUtc": "2026-10-13T15:53:28Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:27Z",
+            "after": "2026-10-13T15:53:28Z"
+          },
+          "speedBeforeKmh": 27.5564776088443,
+          "speedAfterKmh": 32.84738541658913,
+          "deltaVKmh": 5.290907807744826,
+          "deltaTMs": 1000,
+          "accelMs2": 1.4696966132624518,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start",
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": true,
+          "conflictAtEnd": true,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_10",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:28Z",
+          "endUtc": "2026-10-13T15:53:29Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:28Z",
+            "after": "2026-10-13T15:53:29Z"
+          },
+          "speedBeforeKmh": 32.84738541658913,
+          "speedAfterKmh": 35.86579351787941,
+          "deltaVKmh": 3.0184081012902837,
+          "deltaTMs": 1000,
+          "accelMs2": 0.8384466948028566,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": true,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:27Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4072816,
+            "longitude": 9.6700283,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 27.5564776088443,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 20,
+            "originalBucketLabelUtc": "2026-10-13T15:53:27Z"
+          },
+          "hf": {
+            "speedKmh": 20,
+            "originalBucketLabelUtc": "2026-10-13T15:53:27Z"
+          },
+          "bearingFromPrevDeg": 148.89871130361252,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 27.5564776088443
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:28Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4072066,
+            "longitude": 9.6700583,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 32.84738541658913,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 23,
+            "originalBucketLabelUtc": "2026-10-13T15:53:28Z"
+          },
+          "hf": {
+            "speedKmh": 23,
+            "originalBucketLabelUtc": "2026-10-13T15:53:28Z"
+          },
+          "bearingFromPrevDeg": 165.99004658411582,
+          "headingChangeFromPrevDeg": 17.0913352805033,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 32.84738541658913
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:53:27Z: OBD/HF integer 20 km/h vs L3 27.56",
+            "2026-10-13T15:53:28Z: OBD/HF integer 23 km/h vs L3 32.85"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:53:27Z: sourceRelation=CONFLICTING L3=27.56 OBD=20 Δ=-7.56 (shared R1 lineage)",
+            "2026-10-13T15:53:28Z: sourceRelation=CONFLICTING L3=32.85 OBD=23 Δ=-9.85 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=25.0 GPS-present buckets=4",
+            "mean longitudinal accel (L3-derived)=1.236 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_3",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.2362632413569035,
+        "maxAbsAccelMs2": 1.4696966132624518,
+        "untrustedBuckets": 2,
+        "conflictingSourceRelationBuckets": 2,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 2
+        },
+        "obdBucketsPresent": 2,
+        "hfBucketsPresent": 2,
+        "conflictedCandidateSteps": 3,
+        "gpsPathLengthM": 24.9624041816885,
+        "gpsPresentBuckets": 4
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_4",
+      "windowUtc": {
+        "start": "2026-10-13T15:53:38Z",
+        "end": "2026-10-13T15:53:40Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_11",
+        "L3_ACCEL_12"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:38Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4065633,
+            "longitude": 9.669735,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 30.81337000694906,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": 29,
+            "originalBucketLabelUtc": "2026-10-13T15:53:38Z"
+          },
+          "hf": {
+            "speedKmh": 29,
+            "originalBucketLabelUtc": "2026-10-13T15:53:38Z"
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 30.81337000694906
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:39Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4065716,
+            "longitude": 9.6696033,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.44561364916952,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:53:39Z"
+          },
+          "hf": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:53:39Z"
+          },
+          "bearingFromPrevDeg": 275.76911578590807,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.44561364916952
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:40Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.406585,
+            "longitude": 9.6694533,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 38.86142950781184,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 278.15000769976155,
+          "headingChangeFromPrevDeg": 2.3808919138534748,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 38.86142950781184
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_11",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:38Z",
+          "endUtc": "2026-10-13T15:53:39Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:38Z",
+            "after": "2026-10-13T15:53:39Z"
+          },
+          "speedBeforeKmh": 30.81337000694906,
+          "speedAfterKmh": 35.44561364916952,
+          "deltaVKmh": 4.6322436422204625,
+          "deltaTMs": 1000,
+          "accelMs2": 1.2867343450612396,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_12",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:53:39Z",
+          "endUtc": "2026-10-13T15:53:40Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:53:39Z",
+            "after": "2026-10-13T15:53:40Z"
+          },
+          "speedBeforeKmh": 35.44561364916952,
+          "speedAfterKmh": 38.86142950781184,
+          "deltaVKmh": 3.4158158586423184,
+          "deltaTMs": 1000,
+          "accelMs2": 0.9488377385117551,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:53:39Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4065716,
+            "longitude": 9.6696033,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.44561364916952,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:53:39Z"
+          },
+          "hf": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:53:39Z"
+          },
+          "bearingFromPrevDeg": 275.76911578590807,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.44561364916952
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:53:39Z: OBD/HF integer 28 km/h vs L3 35.45"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:53:39Z: sourceRelation=CONFLICTING L3=35.45 OBD=28 Δ=-7.45 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=19.7 GPS-present buckets=3",
+            "mean longitudinal accel (L3-derived)=1.118 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_4",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.1177860417864973,
+        "maxAbsAccelMs2": 1.2867343450612396,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 2,
+        "hfBucketsPresent": 2,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 19.692007582871952,
+        "gpsPresentBuckets": 3
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:05Z",
+        "end": "2026-10-13T15:54:09Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_15",
+        "L3_ACCEL_16",
+        "L3_ACCEL_17",
+        "L3_ACCEL_18"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:05Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4059416,
+            "longitude": 9.6677983,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 13.70749000182446,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 13.70749000182446
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:06Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4059033,
+            "longitude": 9.667825,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 20.83174406495309,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": 17,
+            "originalBucketLabelUtc": "2026-10-13T15:54:06Z"
+          },
+          "hf": {
+            "speedKmh": 17,
+            "originalBucketLabelUtc": "2026-10-13T15:54:06Z"
+          },
+          "bearingFromPrevDeg": 156.4973296197304,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 20.83174406495309
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:07Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4058633,
+            "longitude": 9.6679016,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 28.74305963009661,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 129.93325332375127,
+          "headingChangeFromPrevDeg": 26.564076295979135,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 28.74305963009661
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:08Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4058316,
+            "longitude": 9.6680216,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.5457827589182,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:08Z"
+          },
+          "hf": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:08Z"
+          },
+          "bearingFromPrevDeg": 112.95163235006964,
+          "headingChangeFromPrevDeg": 16.98162097368163,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.5457827589182
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:09Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4058016,
+            "longitude": 9.6681683,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 39.65706242433433,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:09Z"
+          },
+          "hf": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:09Z"
+          },
+          "bearingFromPrevDeg": 108.15051743972015,
+          "headingChangeFromPrevDeg": 4.801114910349497,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 39.65706242433433
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_15",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:05Z",
+          "endUtc": "2026-10-13T15:54:06Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:05Z",
+            "after": "2026-10-13T15:54:06Z"
+          },
+          "speedBeforeKmh": 13.70749000182446,
+          "speedAfterKmh": 20.83174406495309,
+          "deltaVKmh": 7.124254063128628,
+          "deltaTMs": 1000,
+          "accelMs2": 1.9789594619801745,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_16",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:06Z",
+          "endUtc": "2026-10-13T15:54:07Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:06Z",
+            "after": "2026-10-13T15:54:07Z"
+          },
+          "speedBeforeKmh": 20.83174406495309,
+          "speedAfterKmh": 28.74305963009661,
+          "deltaVKmh": 7.911315565143521,
+          "deltaTMs": 1000,
+          "accelMs2": 2.1975876569843114,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_17",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:07Z",
+          "endUtc": "2026-10-13T15:54:08Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:07Z",
+            "after": "2026-10-13T15:54:08Z"
+          },
+          "speedBeforeKmh": 28.74305963009661,
+          "speedAfterKmh": 35.5457827589182,
+          "deltaVKmh": 6.80272312882159,
+          "deltaTMs": 1000,
+          "accelMs2": 1.8896453135615527,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_18",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:08Z",
+          "endUtc": "2026-10-13T15:54:09Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:08Z",
+            "after": "2026-10-13T15:54:09Z"
+          },
+          "speedBeforeKmh": 35.5457827589182,
+          "speedAfterKmh": 39.65706242433433,
+          "deltaVKmh": 4.111279665416127,
+          "deltaTMs": 1000,
+          "accelMs2": 1.1420221292822574,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start",
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": true,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:08Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4058316,
+            "longitude": 9.6680216,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.5457827589182,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:08Z"
+          },
+          "hf": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:08Z"
+          },
+          "bearingFromPrevDeg": 112.95163235006964,
+          "headingChangeFromPrevDeg": 16.98162097368163,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.5457827589182
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:09Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4058016,
+            "longitude": 9.6681683,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 39.65706242433433,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:09Z"
+          },
+          "hf": {
+            "speedKmh": 27,
+            "originalBucketLabelUtc": "2026-10-13T15:54:09Z"
+          },
+          "bearingFromPrevDeg": 108.15051743972015,
+          "headingChangeFromPrevDeg": 4.801114910349497,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 39.65706242433433
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:54:08Z: OBD/HF integer 27 km/h vs L3 35.55",
+            "2026-10-13T15:54:09Z: OBD/HF integer 27 km/h vs L3 39.66"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:54:08Z: sourceRelation=CONFLICTING L3=35.55 OBD=27 Δ=-8.55 (shared R1 lineage)",
+            "2026-10-13T15:54:09Z: sourceRelation=CONFLICT_EXPLAINED L3=39.66 OBD=27 Δ=-12.66 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=31.3 GPS-present buckets=5",
+            "mean longitudinal accel (L3-derived)=1.802 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_6",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 4000,
+        "stepCount": 4,
+        "meanAccelMs2": 1.802053640452074,
+        "maxAbsAccelMs2": 2.1975876569843114,
+        "untrustedBuckets": 2,
+        "conflictingSourceRelationBuckets": 2,
+        "qcReasonCounts": {
+          "OK": 3,
+          "CROSS_SOURCE_CONFLICT": 2
+        },
+        "obdBucketsPresent": 3,
+        "hfBucketsPresent": 3,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 31.32084823548405,
+        "gpsPresentBuckets": 5
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_8",
+      "windowUtc": {
+        "start": "2026-10-13T15:54:36Z",
+        "end": "2026-10-13T15:54:39Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_21",
+        "L3_ACCEL_22",
+        "L3_ACCEL_23"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:36Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.404435,
+            "longitude": 9.6719416,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 28.00286593485928,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:36Z"
+          },
+          "hf": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:36Z"
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 28.00286593485928
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:37Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.40436,
+            "longitude": 9.671925,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 33.48517349556024,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:37Z"
+          },
+          "hf": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:37Z"
+          },
+          "bearingFromPrevDeg": 187.86124975017592,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 33.48517349556024
+          },
+          "nativeEvents": [
+            {
+              "eventType": "HARSH_CORNERING",
+              "providerEventName": "behavior.harshCornering",
+              "providerTimestampUtc": "2026-10-13T15:54:37Z",
+              "overlapClass": "EXACT_BUCKET"
+            }
+          ]
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:38Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4042716,
+            "longitude": 9.6718866,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 39.50603238492114,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:38Z"
+          },
+          "hf": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:38Z"
+          },
+          "bearingFromPrevDeg": 195.16196254735192,
+          "headingChangeFromPrevDeg": 7.300712797176004,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 39.50603238492114
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:39Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4041683,
+            "longitude": 9.67185,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 43.10578318538609,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:54:39Z"
+          },
+          "hf": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:54:39Z"
+          },
+          "bearingFromPrevDeg": 192.4634398151037,
+          "headingChangeFromPrevDeg": 2.6985227322482217,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 43.10578318538609
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_21",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:36Z",
+          "endUtc": "2026-10-13T15:54:37Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:36Z",
+            "after": "2026-10-13T15:54:37Z"
+          },
+          "speedBeforeKmh": 28.00286593485928,
+          "speedAfterKmh": 33.48517349556024,
+          "deltaVKmh": 5.48230756070096,
+          "deltaTMs": 1000,
+          "accelMs2": 1.5228632113058223,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_22",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:37Z",
+          "endUtc": "2026-10-13T15:54:38Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:37Z",
+            "after": "2026-10-13T15:54:38Z"
+          },
+          "speedBeforeKmh": 33.48517349556024,
+          "speedAfterKmh": 39.50603238492114,
+          "deltaVKmh": 6.020858889360902,
+          "deltaTMs": 1000,
+          "accelMs2": 1.6724608026002505,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start",
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": true,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_23",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:54:38Z",
+          "endUtc": "2026-10-13T15:54:39Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:54:38Z",
+            "after": "2026-10-13T15:54:39Z"
+          },
+          "speedBeforeKmh": 39.50603238492114,
+          "speedAfterKmh": 43.10578318538609,
+          "deltaVKmh": 3.599750800464946,
+          "deltaTMs": 1000,
+          "accelMs2": 0.9999307779069294,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start",
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": true,
+          "conflictAtEnd": true,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:37Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.40436,
+            "longitude": 9.671925,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 33.48517349556024,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:37Z"
+          },
+          "hf": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:37Z"
+          },
+          "bearingFromPrevDeg": 187.86124975017592,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 33.48517349556024
+          },
+          "nativeEvents": [
+            {
+              "eventType": "HARSH_CORNERING",
+              "providerEventName": "behavior.harshCornering",
+              "providerTimestampUtc": "2026-10-13T15:54:37Z",
+              "overlapClass": "EXACT_BUCKET"
+            }
+          ]
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:38Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4042716,
+            "longitude": 9.6718866,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 39.50603238492114,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:38Z"
+          },
+          "hf": {
+            "speedKmh": 26,
+            "originalBucketLabelUtc": "2026-10-13T15:54:38Z"
+          },
+          "bearingFromPrevDeg": 195.16196254735192,
+          "headingChangeFromPrevDeg": 7.300712797176004,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 39.50603238492114
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:54:39Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4041683,
+            "longitude": 9.67185,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 43.10578318538609,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:54:39Z"
+          },
+          "hf": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:54:39Z"
+          },
+          "bearingFromPrevDeg": 192.4634398151037,
+          "headingChangeFromPrevDeg": 2.6985227322482217,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 43.10578318538609
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:54:37Z: OBD/HF integer 26 km/h vs L3 33.49",
+            "2026-10-13T15:54:38Z: OBD/HF integer 26 km/h vs L3 39.51",
+            "2026-10-13T15:54:39Z: OBD/HF integer 28 km/h vs L3 43.11"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:54:37Z: sourceRelation=CONFLICTING L3=33.49 OBD=26 Δ=-7.49 (shared R1 lineage)",
+            "2026-10-13T15:54:38Z: sourceRelation=CONFLICT_EXPLAINED L3=39.51 OBD=26 Δ=-13.51 (shared R1 lineage)",
+            "2026-10-13T15:54:39Z: sourceRelation=CONFLICT_EXPLAINED L3=43.11 OBD=28 Δ=-15.11 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=30.4 GPS-present buckets=4",
+            "mean longitudinal accel (L3-derived)=1.398 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_8",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.3984182639376674,
+        "maxAbsAccelMs2": 1.6724608026002505,
+        "untrustedBuckets": 3,
+        "conflictingSourceRelationBuckets": 3,
+        "qcReasonCounts": {
+          "OK": 1,
+          "CROSS_SOURCE_CONFLICT": 3
+        },
+        "obdBucketsPresent": 4,
+        "hfBucketsPresent": 4,
+        "conflictedCandidateSteps": 3,
+        "gpsPathLengthM": 30.366532802480606,
+        "gpsPresentBuckets": 4
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:23Z",
+        "end": "2026-10-13T15:56:26Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_24",
+        "L3_ACCEL_25",
+        "L3_ACCEL_26"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:23Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4000233,
+            "longitude": 9.6601016,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 20.31792315113556,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 20.31792315113556
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:24Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.400015,
+            "longitude": 9.6600183,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 24.16102577182262,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 260.925949564012,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 24.16102577182262
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:25Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4000066,
+            "longitude": 9.65991,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 30.51466485126159,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 262.9132431552731,
+          "headingChangeFromPrevDeg": 1.987293591261107,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 30.51466485126159
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:26Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4000016,
+            "longitude": 9.659775,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.84143051960846,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 29,
+            "originalBucketLabelUtc": "2026-10-13T15:56:26Z"
+          },
+          "hf": {
+            "speedKmh": 29,
+            "originalBucketLabelUtc": "2026-10-13T15:56:26Z"
+          },
+          "bearingFromPrevDeg": 266.6026368950861,
+          "headingChangeFromPrevDeg": 3.6893937398129992,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.84143051960846
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_24",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:23Z",
+          "endUtc": "2026-10-13T15:56:24Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:23Z",
+            "after": "2026-10-13T15:56:24Z"
+          },
+          "speedBeforeKmh": 20.31792315113556,
+          "speedAfterKmh": 24.16102577182262,
+          "deltaVKmh": 3.843102620687059,
+          "deltaTMs": 1000,
+          "accelMs2": 1.0675285057464052,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": false,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_25",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:24Z",
+          "endUtc": "2026-10-13T15:56:25Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:24Z",
+            "after": "2026-10-13T15:56:25Z"
+          },
+          "speedBeforeKmh": 24.16102577182262,
+          "speedAfterKmh": 30.51466485126159,
+          "deltaVKmh": 6.35363907943897,
+          "deltaTMs": 1000,
+          "accelMs2": 1.7648997442886027,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": false,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_26",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:25Z",
+          "endUtc": "2026-10-13T15:56:26Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:25Z",
+            "after": "2026-10-13T15:56:26Z"
+          },
+          "speedBeforeKmh": 30.51466485126159,
+          "speedAfterKmh": 35.84143051960846,
+          "deltaVKmh": 5.326765668346869,
+          "deltaTMs": 1000,
+          "accelMs2": 1.4796571300963526,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:26Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4000016,
+            "longitude": 9.659775,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 35.84143051960846,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 29,
+            "originalBucketLabelUtc": "2026-10-13T15:56:26Z"
+          },
+          "hf": {
+            "speedKmh": 29,
+            "originalBucketLabelUtc": "2026-10-13T15:56:26Z"
+          },
+          "bearingFromPrevDeg": 266.6026368950861,
+          "headingChangeFromPrevDeg": 3.6893937398129992,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 35.84143051960846
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:56:26Z: OBD/HF integer 29 km/h vs L3 35.84"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:56:26Z: sourceRelation=CONFLICTING L3=35.84 OBD=29 Δ=-6.84 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=22.8 GPS-present buckets=4",
+            "mean longitudinal accel (L3-derived)=1.437 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_9",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.4373617933771203,
+        "maxAbsAccelMs2": 1.7648997442886027,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 3,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 1,
+        "hfBucketsPresent": 1,
+        "conflictedCandidateSteps": 1,
+        "gpsPathLengthM": 22.80453285787,
+        "gpsPresentBuckets": 4
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:53Z",
+        "end": "2026-10-13T15:56:55Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_32",
+        "L3_ACCEL_33"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:53Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.40044,
+            "longitude": 9.656465,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 29.23944616118931,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 29.23944616118931
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:54Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4004916,
+            "longitude": 9.6563766,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 32.42556103074906,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 313.0951453307827,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 32.42556103074906
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:55Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.400565,
+            "longitude": 9.6563033,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 36.73800351902802,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:56:55Z"
+          },
+          "hf": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:56:55Z"
+          },
+          "bearingFromPrevDeg": 328.076196705566,
+          "headingChangeFromPrevDeg": 14.981051374783306,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 36.73800351902802
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_32",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:53Z",
+          "endUtc": "2026-10-13T15:56:54Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:53Z",
+            "after": "2026-10-13T15:56:54Z"
+          },
+          "speedBeforeKmh": 29.23944616118931,
+          "speedAfterKmh": 32.42556103074906,
+          "deltaVKmh": 3.1861148695597485,
+          "deltaTMs": 1000,
+          "accelMs2": 0.8850319082110413,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "HIGH_CONFIDENCE",
+          "confidenceRationale": [
+            "both_endpoints_TRUSTED_consecutive_1s"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": false,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_33",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:54Z",
+          "endUtc": "2026-10-13T15:56:55Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:54Z",
+            "after": "2026-10-13T15:56:55Z"
+          },
+          "speedBeforeKmh": 32.42556103074906,
+          "speedAfterKmh": 36.73800351902802,
+          "deltaVKmh": 4.312442488278961,
+          "deltaTMs": 1000,
+          "accelMs2": 1.1979006911886003,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:55Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.400565,
+            "longitude": 9.6563033,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 36.73800351902802,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:56:55Z"
+          },
+          "hf": {
+            "speedKmh": 28,
+            "originalBucketLabelUtc": "2026-10-13T15:56:55Z"
+          },
+          "bearingFromPrevDeg": 328.076196705566,
+          "headingChangeFromPrevDeg": 14.981051374783306,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 36.73800351902802
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:56:55Z: OBD/HF integer 28 km/h vs L3 36.74"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:56:55Z: sourceRelation=CONFLICTING L3=36.74 OBD=28 Δ=-8.74 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=18.0 GPS-present buckets=3",
+            "mean longitudinal accel (L3-derived)=1.041 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_12",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.0414662996998207,
+        "maxAbsAccelMs2": 1.1979006911886003,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 1,
+        "hfBucketsPresent": 1,
+        "conflictedCandidateSteps": 1,
+        "gpsPathLengthM": 18.014200572638366,
+        "gpsPresentBuckets": 3
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_13",
+      "windowUtc": {
+        "start": "2026-10-13T15:56:56Z",
+        "end": "2026-10-13T15:56:58Z"
+      },
+      "candidateIds": [
+        "L3_ACCEL_34",
+        "L3_ACCEL_35"
+      ],
+      "plausibilityPreserved": "UNCLEAR_QC_OR_GAPS",
+      "secondBySecond": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:56Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.400655,
+            "longitude": 9.656245,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 39.3806652105221,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": null,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 39.3806652105221
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:57Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.40075,
+            "longitude": 9.6561966,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 42.75127149351698,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 33,
+            "originalBucketLabelUtc": "2026-10-13T15:56:57Z"
+          },
+          "hf": {
+            "speedKmh": 33,
+            "originalBucketLabelUtc": "2026-10-13T15:56:57Z"
+          },
+          "bearingFromPrevDeg": 342.36740206220054,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 42.75127149351698
+          },
+          "nativeEvents": []
+        },
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:58Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.4008616,
+            "longitude": 9.65616,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 47.30818281058259,
+            "qcTrustLevel": "TRUSTED",
+            "qcReasonCodes": [
+              "OK"
+            ]
+          },
+          "obd": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "hf": {
+            "speedKmh": null,
+            "originalBucketLabelUtc": null
+          },
+          "bearingFromPrevDeg": 348.43677000880774,
+          "headingChangeFromPrevDeg": 6.069367946607201,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 47.30818281058259
+          },
+          "nativeEvents": []
+        }
+      ],
+      "candidatesForensics": [
+        {
+          "candidateId": "L3_ACCEL_34",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:56Z",
+          "endUtc": "2026-10-13T15:56:57Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:56Z",
+            "after": "2026-10-13T15:56:57Z"
+          },
+          "speedBeforeKmh": 39.3806652105221,
+          "speedAfterKmh": 42.75127149351698,
+          "deltaVKmh": 3.3706062829948777,
+          "deltaTMs": 1000,
+          "accelMs2": 0.9362795230541326,
+          "qcClassStart": "TRUSTED",
+          "qcClassEnd": "UNTRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_end"
+          ],
+          "hfAvailableStart": false,
+          "hfAvailableEnd": true,
+          "obdAvailableStart": false,
+          "obdAvailableEnd": true,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": null,
+          "temporalOffsetObdEndMs": 0,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        },
+        {
+          "candidateId": "L3_ACCEL_35",
+          "kind": "ACCELERATION",
+          "startUtc": "2026-10-13T15:56:57Z",
+          "endUtc": "2026-10-13T15:56:58Z",
+          "sourceBuckets": {
+            "before": "2026-10-13T15:56:57Z",
+            "after": "2026-10-13T15:56:58Z"
+          },
+          "speedBeforeKmh": 42.75127149351698,
+          "speedAfterKmh": 47.30818281058259,
+          "deltaVKmh": 4.556911317065612,
+          "deltaTMs": 1000,
+          "accelMs2": 1.2658086991848922,
+          "qcClassStart": "UNTRUSTED",
+          "qcClassEnd": "TRUSTED",
+          "confidenceTier": "CONFLICTED",
+          "confidenceRationale": [
+            "l3_cross_source_conflict_at_start"
+          ],
+          "hfAvailableStart": true,
+          "hfAvailableEnd": false,
+          "obdAvailableStart": true,
+          "obdAvailableEnd": false,
+          "obdCorroboratedBothEnds": false,
+          "hfCorroboratedBothEnds": false,
+          "crossSourceNote": "L3_PRIMARY_ONLY",
+          "temporalOffsetObdStartMs": 0,
+          "temporalOffsetObdEndMs": null,
+          "conflictAtStart": false,
+          "conflictAtEnd": false,
+          "gpsJumpSuspected": false,
+          "quantizedObdOrHf": true,
+          "unrealisticAccelSpike": false,
+          "decelerationNotBrakePedal": true,
+          "decelerationNotRegen": true
+        }
+      ],
+      "untrustedBuckets": [
+        {
+          "evaluationIndexUtc": "2026-10-13T15:56:57Z",
+          "gps": {
+            "availability": "PRESENT",
+            "latitude": 51.40075,
+            "longitude": 9.6561966,
+            "missingReason": null
+          },
+          "l3": {
+            "speedKmh": 42.75127149351698,
+            "qcTrustLevel": "UNTRUSTED",
+            "qcReasonCodes": [
+              "CROSS_SOURCE_CONFLICT"
+            ]
+          },
+          "obd": {
+            "speedKmh": 33,
+            "originalBucketLabelUtc": "2026-10-13T15:56:57Z"
+          },
+          "hf": {
+            "speedKmh": 33,
+            "originalBucketLabelUtc": "2026-10-13T15:56:57Z"
+          },
+          "bearingFromPrevDeg": 342.36740206220054,
+          "headingChangeFromPrevDeg": null,
+          "gpsJumpScreen": {
+            "suspected": false,
+            "impliedPathSpeedKmh": null,
+            "l3SpeedKmh": 42.75127149351698
+          },
+          "nativeEvents": []
+        }
+      ],
+      "hypotheses": {
+        "A_GPS_JUMP_OR_SPEED_SPIKE": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "No candidate gpsJumpSuspected; no GEOMETRY_JUMP qcReasonCodes in window"
+          ]
+        },
+        "B_TIMESTAMP_SKEW_OR_BUCKET_ALIGNMENT": {
+          "verdict": "INDETERMINATE",
+          "evidence": [
+            "OBD originalBucketLabelUtc matches evaluation index at step endpoints; sub-second skew not observable on 1 Hz grid"
+          ]
+        },
+        "C_GPS_QUANTIZATION_OR_CADENCE": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:56:57Z: OBD/HF integer 33 km/h vs L3 42.75"
+          ]
+        },
+        "D_L3_DERIVATION_OR_QC_DEFECT": {
+          "verdict": "REJECTED",
+          "evidence": [
+            "UNTRUSTED buckets align with evaluateDiV0SpeedQcInterval policy: sourceRelation CONFLICTING|CONFLICT_EXPLAINED → CROSS_SOURCE_CONFLICT (not a defect vs frozen pin)"
+          ]
+        },
+        "E_OBD_QUANTIZATION_OR_ALIGNMENT": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "2026-10-13T15:56:57Z: sourceRelation=CONFLICTING L3=42.75 OBD=33 Δ=-9.75 (shared R1 lineage)"
+          ]
+        },
+        "F_GENUINE_PHYSICAL_ACCELERATION": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "pathLengthM=23.8 GPS-present buckets=3",
+            "mean longitudinal accel (L3-derived)=1.101 m/s² — kinematically plausible; not independently validated"
+          ]
+        },
+        "G_COMPOUND_CAUSES": {
+          "verdict": "SUPPORTED",
+          "evidence": [
+            "Compound: S1 cross-source relation conflict (QC UNTRUSTED) + L3/OBD step conflicts on maneuver candidates; not single-cause GPS jump"
+          ]
+        }
+      },
+      "featureVector": {
+        "groupId": "MANEUVER_ACCELERATION_13",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.1010441111195124,
+        "maxAbsAccelMs2": 1.2658086991848922,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 1,
+        "hfBucketsPresent": 1,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 23.750706385287202,
+        "gpsPresentBuckets": 3
+      },
+      "measuredVsDerived": {
+        "measuredGpsCoordinates": "S4 position pin per bucket",
+        "derivedL3Speed": "SHADOW_RUN_L3_RECONSTRUCTION_PINNED",
+        "derivedLongitudinalAccel": "L3 Δv over 1s candidate steps (LDI-10A)",
+        "independentPhysicalMotionValidated": false
+      }
+    }
+  ],
+  "controlComparison": {
+    "unclearAccel": [
+      {
+        "groupId": "MANEUVER_ACCELERATION_2",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 5000,
+        "stepCount": 5,
+        "meanAccelMs2": 0.981452418691846,
+        "maxAbsAccelMs2": 1.156353515323698,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 5,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 4,
+        "hfBucketsPresent": 4,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 33.05837011355818,
+        "gpsPresentBuckets": 6
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_3",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.2362632413569035,
+        "maxAbsAccelMs2": 1.4696966132624518,
+        "untrustedBuckets": 2,
+        "conflictingSourceRelationBuckets": 2,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 2
+        },
+        "obdBucketsPresent": 2,
+        "hfBucketsPresent": 2,
+        "conflictedCandidateSteps": 3,
+        "gpsPathLengthM": 24.9624041816885,
+        "gpsPresentBuckets": 4
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_4",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.1177860417864973,
+        "maxAbsAccelMs2": 1.2867343450612396,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 2,
+        "hfBucketsPresent": 2,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 19.692007582871952,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_6",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 4000,
+        "stepCount": 4,
+        "meanAccelMs2": 1.802053640452074,
+        "maxAbsAccelMs2": 2.1975876569843114,
+        "untrustedBuckets": 2,
+        "conflictingSourceRelationBuckets": 2,
+        "qcReasonCounts": {
+          "OK": 3,
+          "CROSS_SOURCE_CONFLICT": 2
+        },
+        "obdBucketsPresent": 3,
+        "hfBucketsPresent": 3,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 31.32084823548405,
+        "gpsPresentBuckets": 5
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_8",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.3984182639376674,
+        "maxAbsAccelMs2": 1.6724608026002505,
+        "untrustedBuckets": 3,
+        "conflictingSourceRelationBuckets": 3,
+        "qcReasonCounts": {
+          "OK": 1,
+          "CROSS_SOURCE_CONFLICT": 3
+        },
+        "obdBucketsPresent": 4,
+        "hfBucketsPresent": 4,
+        "conflictedCandidateSteps": 3,
+        "gpsPathLengthM": 30.366532802480606,
+        "gpsPresentBuckets": 4
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_9",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.4373617933771203,
+        "maxAbsAccelMs2": 1.7648997442886027,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 3,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 1,
+        "hfBucketsPresent": 1,
+        "conflictedCandidateSteps": 1,
+        "gpsPathLengthM": 22.80453285787,
+        "gpsPresentBuckets": 4
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_12",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.0414662996998207,
+        "maxAbsAccelMs2": 1.1979006911886003,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 1,
+        "hfBucketsPresent": 1,
+        "conflictedCandidateSteps": 1,
+        "gpsPathLengthM": 18.014200572638366,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_13",
+        "plausibilityVerdict": "UNCLEAR_QC_OR_GAPS",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.1010441111195124,
+        "maxAbsAccelMs2": 1.2658086991848922,
+        "untrustedBuckets": 1,
+        "conflictingSourceRelationBuckets": 1,
+        "qcReasonCounts": {
+          "OK": 2,
+          "CROSS_SOURCE_CONFLICT": 1
+        },
+        "obdBucketsPresent": 1,
+        "hfBucketsPresent": 1,
+        "conflictedCandidateSteps": 2,
+        "gpsPathLengthM": 23.750706385287202,
+        "gpsPresentBuckets": 3
+      }
+    ],
+    "plausibleAccel": [
+      {
+        "groupId": "MANEUVER_ACCELERATION_1",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.949564011338568,
+        "maxAbsAccelMs2": 1.9636556970648054,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 3
+        },
+        "obdBucketsPresent": 2,
+        "hfBucketsPresent": 2,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 12.639307426571095,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_5",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.6297987551769224,
+        "maxAbsAccelMs2": 1.6611240806205578,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 3
+        },
+        "obdBucketsPresent": 2,
+        "hfBucketsPresent": 2,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 17.042318223690234,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_7",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.0769138624921788,
+        "maxAbsAccelMs2": 1.123086375181267,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 3
+        },
+        "obdBucketsPresent": 0,
+        "hfBucketsPresent": 0,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 24.335655388254576,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_10",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 3000,
+        "stepCount": 3,
+        "meanAccelMs2": 1.5329327321168937,
+        "maxAbsAccelMs2": 1.8066614419958358,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 4
+        },
+        "obdBucketsPresent": 0,
+        "hfBucketsPresent": 0,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 22.163618422153522,
+        "gpsPresentBuckets": 4
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_11",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.1244572875211358,
+        "maxAbsAccelMs2": 1.1802771450709384,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 3
+        },
+        "obdBucketsPresent": 0,
+        "hfBucketsPresent": 0,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 17.311932228238437,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_14",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.1284780649965112,
+        "maxAbsAccelMs2": 1.1804051298199525,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 3
+        },
+        "obdBucketsPresent": 0,
+        "hfBucketsPresent": 0,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 15.149935426931545,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_15",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 2000,
+        "stepCount": 2,
+        "meanAccelMs2": 1.3303712380181039,
+        "maxAbsAccelMs2": 1.5109955493463636,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 3
+        },
+        "obdBucketsPresent": 0,
+        "hfBucketsPresent": 0,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 7.104301597480341,
+        "gpsPresentBuckets": 3
+      },
+      {
+        "groupId": "MANEUVER_ACCELERATION_16",
+        "plausibilityVerdict": "PLAUSIBLE",
+        "durationMs": 1000,
+        "stepCount": 1,
+        "meanAccelMs2": 1.4569747307424998,
+        "maxAbsAccelMs2": 1.4569747307424998,
+        "untrustedBuckets": 0,
+        "conflictingSourceRelationBuckets": 0,
+        "qcReasonCounts": {
+          "OK": 2
+        },
+        "obdBucketsPresent": 0,
+        "hfBucketsPresent": 0,
+        "conflictedCandidateSteps": 0,
+        "gpsPathLengthM": 4.201031042410711,
+        "gpsPresentBuckets": 2
+      }
+    ],
+    "systematicBias": {
+      "accelClassOnlyBecauseAllUnclearAreAccel": true,
+      "discriminator": "Among 16 acceleration groups, UNCLEAR ⊆ those with ≥1 CONFLICTING/CONFLICT_EXPLAINED sourceRelation bucket inside maneuver window",
+      "plausibleAccelConflictingBuckets": true,
+      "qcPipelineNote": "UNTRUSTED is applied when S1 marks cross-source conflict; occurs when sparse integer OBD is present and disagrees with L3 — not an acceleration-specific QC rule",
+      "thresholdModification": "NONE — read-only phase"
+    }
+  },
+  "qcImplementationAudit": {
+    "computeDiV0TripIntervals": {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/compute-trip-intervals.ts",
+      "role": "Derives L3 speed per shadow bucket; sets sourceRelation via assessSourceRelationAtLabel(l3, r1, calibration)",
+      "lineRef": "assessSourceRelationAtLabel at interval build (~line 93)"
+    },
+    "assessSourceRelationAtLabel": {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/claims/cross-source-relation.ts",
+      "policy": "CONFLICT_EXPLAINED when |OBD-L3| ≥ max(abs, 25% L3); CONFLICTING in between corroboration and conflict bands; OBD INTERVAL_ONLY"
+    },
+    "evaluateDiV0SpeedQcInterval": {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/speed-qc/evaluate-di-v0-speed-qc-interval.ts",
+      "trustSemantics": {
+        "TRUSTED": "OK / high confidence numeric path",
+        "TRUSTED_LIMITED": "OK_MODERATE, stationary band, etc.",
+        "UNTRUSTED": "Includes CROSS_SOURCE_CONFLICT when shadow.sourceRelation is CONFLICTING or CONFLICT_EXPLAINED (before leg geometry checks)",
+        "CONFLICTED_candidate_tier": "LDI-10A: L3 vs OBD at candidate endpoints ≥ max(5 km/h, 25% L3) — separate from per-bucket QC label"
+      },
+      "frozenPinPolicy": "LDI08 rows built with DI_V0_SPEED_QC_POLICY_V2 in ldi03-ruptela-combined-pin.lib.ts"
+    },
+    "frozenEvidenceMatch": {
+      "observedPattern": "All 12 UNTRUSTED buckets across eight groups: qcReasonCodes=[CROSS_SOURCE_CONFLICT] and sourceRelation CONFLICTING|CONFLICT_EXPLAINED with integer OBD/HF speeds",
+      "defectFound": false,
+      "note": "Behavior matches documented early-exit in evaluateDiV0SpeedQcInterval; root cause is cross-source disagreement, not missing implementation"
+    }
+  },
+  "summaryCounts": {
+    "unclearAudited": 8,
+    "rootCauseGpsJumpSupported": 0,
+    "rootCauseTimestampSupported": 0,
+    "rootCauseQuantizationSupported": 8,
+    "rootCauseQcImplementationSupported": 0,
+    "rootCauseObdAlignmentSupported": 8,
+    "rootCauseMultipleSupported": 8,
+    "rootCauseIndeterminate": 8,
+    "controlGroupsCompared": 16,
+    "qcImplementationDefectFound": false
+  }
+}
