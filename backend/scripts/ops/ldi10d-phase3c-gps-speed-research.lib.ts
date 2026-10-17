@@ -156,7 +156,41 @@ export type TripSpeedPoint = {
   causal: boolean;
 };
 
-function computeCandidateSpeed(
+export function fixtureRowsToObservations(
+  rows: Array<{
+    bucketLabelUtc: string;
+    availability: string;
+    latitude: number | null;
+    longitude: number | null;
+  }>,
+): NormalizedPositionObservation[] {
+  return rows.map((r) => {
+    if (r.availability !== 'PRESENT' || r.latitude == null || r.longitude == null) {
+      return {
+        bucketLabel: r.bucketLabelUtc,
+        intervalStart: r.bucketLabelUtc,
+        intervalEnd: r.bucketLabelUtc,
+        referenceTime: r.bucketLabelUtc,
+        availability: r.availability === 'SIGNAL_NULL' ? 'SIGNAL_NULL' : 'ROW_ABSENT',
+        sourceFamily: 'API_SYNTHETIC',
+        provenance: { sourceSignal: 'TESLA_FIXTURE', derivedFrom: ['LDI10D_PHASE3C2'] },
+      };
+    }
+    return {
+      bucketLabel: r.bucketLabelUtc,
+      intervalStart: r.bucketLabelUtc,
+      intervalEnd: r.bucketLabelUtc,
+      referenceTime: r.bucketLabelUtc,
+      availability: 'PRESENT',
+      latitude: r.latitude,
+      longitude: r.longitude,
+      sourceFamily: 'API_SYNTHETIC',
+      provenance: { sourceSignal: 'TESLA_FIXTURE', derivedFrom: ['LDI10D_PHASE3C2'] },
+    };
+  });
+}
+
+export function computeCandidateSpeed(
   algo: AlgorithmId,
   classified: ReturnType<typeof classifyPositionRows>,
   centerIndex: number,

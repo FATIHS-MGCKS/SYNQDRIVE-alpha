@@ -1,0 +1,221 @@
+{
+  "schema": "LDI10D_PHASE3C2_ALGORITHM_REPLAY_V1",
+  "headSha": "c1a5e624045d6ba94925f830e5cc8650dd879f54",
+  "fixture": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016",
+  "hashParity": true,
+  "singleTripNote": "Single-trip witness validation only — not independent multi-trip validation.",
+  "algorithms": [
+    {
+      "algorithm": "L3_BASELINE_PRODUCTION",
+      "numericCoverage": 0.7235915492957746,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 2.303091434778603,
+        "rmseKmh": 2.620864066244389,
+        "p95AbsKmh": 4.482993843287588,
+        "maxAbsKmh": 6.079589878533255,
+        "biasKmh": -2.067576220371461
+      },
+      "allTachoReadablePairs": {
+        "n": 784,
+        "maeKmh": 2.2952683728200447,
+        "rmseKmh": 3.3285092164706804,
+        "p95AbsKmh": 4.468716717434802,
+        "maxAbsKmh": 59.44293176015043,
+        "biasKmh": -1.8908367501681902
+      },
+      "lowSpeedMae": {
+        "n": 74,
+        "maeKmh": 0.7258523257462293,
+        "rmseKmh": 1.0087570226984524,
+        "p95AbsKmh": 2.1019070950631606,
+        "maxAbsKmh": 3.2181087683031677,
+        "biasKmh": 0.262156764774547
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    },
+    {
+      "algorithm": "L3_REPLAY_FROM_PINNED_POSITIONS",
+      "numericCoverage": 0.7235915492957746,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 2.303091434778603,
+        "rmseKmh": 2.620864066244389,
+        "p95AbsKmh": 4.482993843287588,
+        "maxAbsKmh": 6.079589878533255,
+        "biasKmh": -2.067576220371461
+      },
+      "allTachoReadablePairs": {
+        "n": 784,
+        "maeKmh": 2.2952683728200447,
+        "rmseKmh": 3.3285092164706804,
+        "p95AbsKmh": 4.468716717434802,
+        "maxAbsKmh": 59.44293176015043,
+        "biasKmh": -1.8908367501681902
+      },
+      "lowSpeedMae": {
+        "n": 74,
+        "maeKmh": 0.7258523257462293,
+        "rmseKmh": 1.0087570226984524,
+        "p95AbsKmh": 2.1019070950631606,
+        "maxAbsKmh": 3.2181087683031677,
+        "biasKmh": 0.262156764774547
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    },
+    {
+      "algorithm": "ADAPTIVE_DT_LEG_MEAN",
+      "numericCoverage": 0.7235915492957746,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 2.3030914347786062,
+        "rmseKmh": 2.6208640662443914,
+        "p95AbsKmh": 4.482993843287588,
+        "maxAbsKmh": 6.07958987853327,
+        "biasKmh": -2.0675762203714636
+      },
+      "allTachoReadablePairs": {
+        "n": 784,
+        "maeKmh": 2.2952683728200465,
+        "rmseKmh": 3.3285092164706827,
+        "p95AbsKmh": 4.46871671743483,
+        "maxAbsKmh": 59.44293176015046,
+        "biasKmh": -1.890836750168192
+      },
+      "lowSpeedMae": {
+        "n": 74,
+        "maeKmh": 0.7258523257462293,
+        "rmseKmh": 1.008757022698452,
+        "p95AbsKmh": 2.1019070950631606,
+        "maxAbsKmh": 3.218108768303166,
+        "biasKmh": 0.2621567647745468
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    },
+    {
+      "algorithm": "MEDIAN_LEG_3S",
+      "numericCoverage": 0.7235915492957746,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 3.055961227564299,
+        "rmseKmh": 3.456244657222695,
+        "p95AbsKmh": 6.12424380668736,
+        "maxAbsKmh": 8.938406779184561,
+        "biasKmh": -3.048225422176
+      },
+      "allTachoReadablePairs": {
+        "n": 784,
+        "maeKmh": 2.948389266903638,
+        "rmseKmh": 3.384969020711659,
+        "p95AbsKmh": 6.100856935184197,
+        "maxAbsKmh": 8.938406779184561,
+        "biasKmh": -2.9330545061680064
+      },
+      "lowSpeedMae": {
+        "n": 74,
+        "maeKmh": 0.9514169702336248,
+        "rmseKmh": 1.3686528398850104,
+        "p95AbsKmh": 2.5562905092702763,
+        "maxAbsKmh": 5.757487976712696,
+        "biasKmh": -0.8492861435942369
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    },
+    {
+      "algorithm": "CAUSAL_EMA_LEGS",
+      "numericCoverage": 0.7235915492957746,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 3.766392667565082,
+        "rmseKmh": 4.655050008763323,
+        "p95AbsKmh": 9.480114018954254,
+        "maxAbsKmh": 15.553509718712533,
+        "biasKmh": -2.125052510302696
+      },
+      "allTachoReadablePairs": {
+        "n": 784,
+        "maeKmh": 3.6933294464682285,
+        "rmseKmh": 4.614109057342886,
+        "p95AbsKmh": 9.410764279156894,
+        "maxAbsKmh": 15.553509718712533,
+        "biasKmh": -1.9543776535593298
+      },
+      "lowSpeedMae": {
+        "n": 74,
+        "maeKmh": 3.2609861531625297,
+        "rmseKmh": 4.700868830028775,
+        "p95AbsKmh": 9.858370608606716,
+        "maxAbsKmh": 13.6775963715925,
+        "biasKmh": 2.540462626948767
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    },
+    {
+      "algorithm": "MOTION_GATE_DISPLACEMENT",
+      "numericCoverage": 0.7227112676056338,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 2.3030914347786062,
+        "rmseKmh": 2.6208640662443914,
+        "p95AbsKmh": 4.482993843287588,
+        "maxAbsKmh": 6.07958987853327,
+        "biasKmh": -2.0675762203714636
+      },
+      "allTachoReadablePairs": {
+        "n": 783,
+        "maeKmh": 2.2974426400663877,
+        "rmseKmh": 3.330566643672799,
+        "p95AbsKmh": 4.46871671743483,
+        "maxAbsKmh": 59.44293176015046,
+        "biasKmh": -1.8940087219039559
+      },
+      "lowSpeedMae": {
+        "n": 73,
+        "maeKmh": 0.7276747258395362,
+        "rmseKmh": 1.0132700484273187,
+        "p95AbsKmh": 2.1019070950631606,
+        "maxAbsKmh": 3.218108768303166,
+        "biasKmh": 0.25762717088194026
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    },
+    {
+      "algorithm": "NONCAUSAL_OFFLINE_CENTERED_MEAN",
+      "numericCoverage": 0.7235915492957746,
+      "trustedWitnessPairs": {
+        "n": 748,
+        "maeKmh": 2.922001191537823,
+        "rmseKmh": 3.6215228606580574,
+        "p95AbsKmh": 6.542792919604608,
+        "maxAbsKmh": 27.577490830271273,
+        "biasKmh": -1.992063450843538
+      },
+      "allTachoReadablePairs": {
+        "n": 784,
+        "maeKmh": 2.8981620774965426,
+        "rmseKmh": 3.821284638815047,
+        "p95AbsKmh": 6.617772163807075,
+        "maxAbsKmh": 37.65354283583176,
+        "biasKmh": -1.8058360951250703
+      },
+      "lowSpeedMae": {
+        "n": 74,
+        "maeKmh": 2.0080637686487206,
+        "rmseKmh": 3.05719418607752,
+        "p95AbsKmh": 6.652641054732632,
+        "maxAbsKmh": 10.306849873342522,
+        "biasKmh": 1.5083227338256935
+      },
+      "frozenCoordAbstentions": 0,
+      "gapAbstentions": 314
+    }
+  ],
+  "bestCandidate": "L3_BASELINE_PRODUCTION",
+  "accuracyImprovementProven": false
+}
