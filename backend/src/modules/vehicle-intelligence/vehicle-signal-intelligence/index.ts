@@ -81,3 +81,9 @@ export {
 export { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 export { evaluateVsiSignalProfile } from './vsi-profile-evaluator';
 export { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
+export { isVsiP5h1ProfileRevisionHistoryCaptureEnabled } from './vsi-p5h1-profile-revision-history.config';
+export {
+  selectVsiProfileRevisionAsOf,
+  VsiProfileRevisionAsOfAuthority,
+} from './vsi-profile-revision-as-of.resolver';
+export { VsiProfileRevisionHistoryRepository } from './vsi-profile-revision-history.repository';

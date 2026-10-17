@@ -1661,6 +1661,7 @@ model Organization {
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles                           VehicleSignalCapabilityProfile[]
+  vehicleSignalCapabilityProfileRevisions                   VehicleSignalCapabilityProfileRevision[]
   vsiProfileLifecycleOutbox                                 VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
@@ -3044,6 +3045,7 @@ model Vehicle {
   vehicleProviderSourceObservations    VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles          VehicleSignalCapabilityProfile[]
+  vehicleSignalCapabilityProfileRevisions  VehicleSignalCapabilityProfileRevision[]
   vsiProfileLifecycleOutbox                VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
@@ -4522,6 +4524,40 @@ model VehicleSignalCapabilityProfile {
   @@index([organizationId, vehicleId])
   @@index([vehicleId, evaluatedAt(sort: Desc)])
   @@map("vehicle_signal_capability_profiles")
+}
+
+/// VSI P5-H1 — immutable append-only revision history for decision-time evidence (capture gate default OFF).
+model VehicleSignalCapabilityProfileRevision {
+  id                              String   @id @default(uuid())
+  organizationId                  String   @map("organization_id")
+  vehicleId                       String   @map("vehicle_id")
+  providerSourceLinkId            String   @map("provider_source_link_id")
+  profileRevision                 Int      @map("profile_revision")
+  profileContractVersion          String   @map("profile_contract_version")
+  contentFingerprint              String   @map("content_fingerprint")
+  providerIdentity                String   @map("provider_identity")
+  verifiedModality                String?  @map("verified_modality")
+  telemetrySourceFamily           String?  @map("telemetry_source_family")
+  evaluatedAt                     DateTime @map("evaluated_at") @db.Timestamptz(3)
+  recordedAt                      DateTime @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  declaredCatalogCheckedAt        DateTime? @map("declared_catalog_checked_at") @db.Timestamptz(3)
+  lastMaterializedSourceTimestamp DateTime? @map("last_materialized_source_timestamp") @db.Timestamptz(3)
+  lastMaterializedProviderFetchAt DateTime? @map("last_materialized_provider_fetch_at") @db.Timestamptz(3)
+  lastProvenStrictSourceAdvanceAt DateTime? @map("last_proven_strict_source_advance_at") @db.Timestamptz(3)
+  signalsSnapshot                 Json     @map("signals_snapshot")
+  profileLimitations              Json     @default("[]") @map("profile_limitations")
+  materializationTrigger          String   @map("materialization_trigger")
+  sourceLinkLifecycleContext      Json     @default("{}") @map("source_link_lifecycle_context")
+  sourceProvenance                Json     @default("{}") @map("source_provenance")
+  createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "vehicle_signal_capability_profile_revisions_org_fkey")
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade, map: "vehicle_signal_capability_profile_revisions_vehicle_fkey")
+
+  @@unique([organizationId, vehicleId, providerSourceLinkId, profileRevision], map: "vehicle_signal_capability_profile_revisions_scope_revision_key")
+  @@index([organizationId, vehicleId, providerSourceLinkId, recordedAt(sort: Desc)], map: "vehicle_signal_capability_profile_revisions_scope_recorded_idx")
+  @@index([organizationId, vehicleId, providerSourceLinkId, evaluatedAt(sort: Desc)], map: "vehicle_signal_capability_profile_revisions_scope_evaluated_idx")
+  @@map("vehicle_signal_capability_profile_revisions")
 }
 
 enum VsiProfileLifecycleOutboxEventType {
