@@ -9,10 +9,10 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../src/app.module';
-import { PrismaService } from '../../src/shared/database/prisma.service';
+import { PrismaClient } from '@prisma/client';
+import type { PrismaService } from '../../src/shared/database/prisma.service';
 import { LvMeasuredIntelligenceReadService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-measured-intelligence/lv-measured-intelligence-read.service';
+import type { LongitudinalProfileRevisionInspectionService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import { buildLvOperationalConditionInputV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-input.builder';
 import { evaluateLvOperationalConditionV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-v1.evaluator';
 
@@ -56,14 +56,17 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const appModule = await AppModule.forRootAsync();
-  const app = await NestFactory.createApplicationContext(appModule, {
-    logger: ['error', 'warn'],
-  });
+  const prisma = new PrismaClient();
+  const d4InspectionStub = {
+    inspectRevision: async () => ({ status: 'NOT_FOUND' as const }),
+  } satisfies Pick<LongitudinalProfileRevisionInspectionService, 'inspectRevision'>;
+  const readModel = new LvMeasuredIntelligenceReadService(
+    prisma as unknown as PrismaService,
+    d4InspectionStub as LongitudinalProfileRevisionInspectionService,
+  );
 
   try {
-    const prisma = app.get(PrismaService);
-    const readModel = app.get(LvMeasuredIntelligenceReadService);
+    await prisma.$connect();
 
     const report: Record<string, unknown> = {
       evaluatedAt: new Date().toISOString(),
@@ -111,7 +114,7 @@ async function main(): Promise<void> {
 
     console.log(JSON.stringify(report, null, 2));
   } finally {
-    await app.close();
+    await prisma.$disconnect();
   }
 }
 
