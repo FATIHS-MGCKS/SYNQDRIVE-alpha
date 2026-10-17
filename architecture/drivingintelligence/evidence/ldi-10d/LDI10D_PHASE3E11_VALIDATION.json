@@ -1,0 +1,48 @@
+{
+  "schema": "LDI10D_PHASE3E11_VALIDATION_V1",
+  "headSha": "e51796e4abd4e23761b87863a6b967c391b25fda",
+  "inputIntegrity": "PASS",
+  "movSha256": {
+    "ok": true,
+    "lines": [
+      "b81328f1f00345bccfd8378efaf1b8dff4e486061f73b1c73ae396b3a4ebcf21 TC_00062.MOV",
+      "7eedec0c9377dc33a511fc1516c2f533f0ca92d0b443499473ac30c84e7acd69 TC_00063.MOV",
+      "808aa3563ed89446a103c9eea6455536cf46ec246b9ca98b1555ff8eea68d888 TC_00064.MOV",
+      "ef9a24d87e5422bac034e0cfb43e72184223a83e6cb972db910c2a3e758064e1 TC_00065.MOV",
+      "d31ff7c1f6ff9718846f3429eb69fd88e6ee03cd5c991f4cf3c67843eb1dfca4 TC_00066.MOV",
+      "6471c4164f942fbddf0b8ef1fcdf556a10dc5cdd61e7c5d2809628357580bc76 TC_00067.MOV"
+    ],
+    "mismatches": []
+  },
+  "l3BaselineMae": 2.303091434778606,
+  "l3Drift": "NONE",
+  "p3dPreflightOk": true,
+  "ocr": {
+    "labelCounts": {
+      "HUMAN_REVIEW_REQUIRED": 70,
+      "REFERENCE_CORROBORATED": 18,
+      "UNREADABLE": 54
+    },
+    "fieldRates": {
+      "latitude": {
+        "n": 18,
+        "errors": 0,
+        "wilson": {
+          "low": 0.8241154494176252,
+          "high": 1.0000000000000002
+        }
+      },
+      "longitude": {
+        "n": 18,
+        "errors": 0,
+        "wilson": {
+          "low": 0.8241154494176252,
+          "high": 1.0000000000000002
+        }
+      },
+      "note": "Rates computed only on REFERENCE_CORROBORATED (3E.4 pack vs checkpoint); not visual ground truth"
+    },
+    "assessable": "REFERENCE_SUBSET_ONLY"
+  },
+  "qcMutations": "NONE"
+}

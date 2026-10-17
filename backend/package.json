@@ -274,6 +274,7 @@
     "ldi10d:phase3e8-full-video-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e8-full-video-forensics.ts",
     "ldi10d:phase3e9-ocr-quality-audit": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e9-ocr-quality-audit.ts",
     "ldi10d:phase3e10-independent-validation": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e10-independent-validation.ts",
+    "ldi10d:phase3e11-evidence-hardening": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e11-evidence-hardening.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",

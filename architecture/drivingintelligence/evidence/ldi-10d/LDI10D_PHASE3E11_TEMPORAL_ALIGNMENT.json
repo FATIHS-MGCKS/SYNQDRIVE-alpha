@@ -1,0 +1,83 @@
+{
+  "schema": "LDI10D_PHASE3E11_TEMPORAL_V1",
+  "headSha": "e51796e4abd4e23761b87863a6b967c391b25fda",
+  "documentedUtcFirst": true,
+  "offsetsTested": [
+    -2,
+    -1,
+    0,
+    1,
+    2
+  ],
+  "perOffset": [
+    {
+      "shiftSec": -2,
+      "validPairs": 690,
+      "uniqueBuckets": 676,
+      "duplicateBucketAssignments": 14,
+      "medianM": 21.349538968114775,
+      "p90M": 42.17396259639511,
+      "p95M": 51.13558337263863,
+      "movingMedianM": 22.056465294635718,
+      "stationaryMedianM": 16.67149507864287,
+      "freezePointMedianM": 12.37925391959409,
+      "freezePointCount": 202
+    },
+    {
+      "shiftSec": -1,
+      "validPairs": 690,
+      "uniqueBuckets": 677,
+      "duplicateBucketAssignments": 13,
+      "medianM": 4.757255854488859,
+      "p90M": 25.801385543629067,
+      "p95M": 32.72999487045731,
+      "movingMedianM": 4.905074486664028,
+      "stationaryMedianM": 4.326534752907294,
+      "freezePointMedianM": 1.460513363145471,
+      "freezePointCount": 203
+    },
+    {
+      "shiftSec": 0,
+      "validPairs": 690,
+      "uniqueBuckets": 675,
+      "duplicateBucketAssignments": 15,
+      "medianM": 2.8220888899368255,
+      "p90M": 34.81474656527832,
+      "p95M": 64.33454953607401,
+      "movingMedianM": 3.813918786710903,
+      "stationaryMedianM": 1.7912961509622796,
+      "freezePointMedianM": 17.096267390608855,
+      "freezePointCount": 205
+    },
+    {
+      "shiftSec": 1,
+      "validPairs": 689,
+      "uniqueBuckets": 672,
+      "duplicateBucketAssignments": 17,
+      "medianM": 22.138695249712377,
+      "p90M": 68.97493908221892,
+      "p95M": 94.99274292592233,
+      "movingMedianM": 23.509665575667427,
+      "stationaryMedianM": 11.80871714025983,
+      "freezePointMedianM": 34.09375441699468,
+      "freezePointCount": 204
+    },
+    {
+      "shiftSec": 2,
+      "validPairs": 687,
+      "uniqueBuckets": 670,
+      "duplicateBucketAssignments": 17,
+      "medianM": 38.26866686774861,
+      "p90M": 102.9642647415477,
+      "p95M": 125.33926983566353,
+      "movingMedianM": 42.191834633826,
+      "stationaryMedianM": 23.223628749922,
+      "freezePointMedianM": 51.33614906271061,
+      "freezePointCount": 203
+    }
+  ],
+  "conclusion": "Lowest median at a non-zero shift is sensitivity-only; overlay metadata UTC remains primary alignment per 3E.8. Latency between overlay refresh and DIMO sample not independently measured.",
+  "baselineMedianM": 2.8220888899368255,
+  "baselineP95M": 64.33454953607401,
+  "uniquePairsAtZero": 675
+}
