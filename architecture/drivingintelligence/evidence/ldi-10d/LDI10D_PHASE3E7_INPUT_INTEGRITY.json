@@ -1,0 +1,11 @@
+{
+  "schema": "LDI10D_PHASE3E7_INPUT_INTEGRITY_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "inputIntegrity": "PASS",
+  "pack": "architecture/drivingintelligence/evidence/ldi-10d/phase3e7-partial-pack",
+  "frameManifestRows": 1028,
+  "ocr15sSamples": 69,
+  "originalMovInWorkspace": "NO",
+  "full1HzOcrComplete": "NO",
+  "note": "69×15s sparse OCR only; 1028 frames EXTRACTED with hashes, no images in repo"
+}

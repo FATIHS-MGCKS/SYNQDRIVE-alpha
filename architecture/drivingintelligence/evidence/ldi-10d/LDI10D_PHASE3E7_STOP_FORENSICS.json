@@ -1,0 +1,39 @@
+{
+  "schema": "LDI10D_PHASE3E7_STOP_FORENSICS_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "observedStandstills": 0,
+  "contextSupportedStops": 0,
+  "inferredStopCandidates": 3,
+  "events": [
+    {
+      "video": "TC_00063.MOV",
+      "intervalUtc": null,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "iphoneSpeedKmh": 1,
+      "evidence": [
+        "OCR_15S_SPARSE"
+      ],
+      "uncertainty": "LOW_SPEED_ONLY_NOT_STANDSTILL_PROOF"
+    },
+    {
+      "video": "TC_00065.MOV",
+      "intervalUtc": null,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "iphoneSpeedKmh": 0,
+      "evidence": [
+        "OCR_15S_SPARSE"
+      ],
+      "uncertainty": "LOW_SPEED_ONLY_NOT_STANDSTILL_PROOF"
+    },
+    {
+      "video": "TC_00067.MOV",
+      "intervalUtc": null,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "iphoneSpeedKmh": 0,
+      "evidence": [
+        "OCR_15S_SPARSE"
+      ],
+      "uncertainty": "LOW_SPEED_ONLY_NOT_STANDSTILL_PROOF"
+    }
+  ]
+}

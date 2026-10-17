@@ -1,0 +1,9 @@
+{
+  "schema": "LDI10D_PHASE3E7_OCR_COVERAGE_V1",
+  "headSha": "96244e434496e3e14b8aca3fe7ba46b9187d71b8",
+  "videoSecondsTotal": 1027.588333,
+  "framesAvailable": 1028,
+  "ocrFramesProcessed": 69,
+  "coverageFractionOcr": 0.06712062256809338,
+  "cadence": "15s_within_each_mov"
+}
