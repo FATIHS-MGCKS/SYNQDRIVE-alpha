@@ -1,0 +1,26 @@
+{
+  "schema": "LDI10D_PHASE3E3_TRANSITION_MATRIX_V1",
+  "headSha": "fd7c01031c9b92f96d9a1f8df166c0a6dc01801b",
+  "matrix": {
+    "ASSOCIATED": {
+      "ASSOCIATED": 264,
+      "AMBIGUOUS": 0,
+      "UNKNOWN": 0
+    },
+    "AMBIGUOUS": {
+      "ASSOCIATED": 36,
+      "AMBIGUOUS": 357,
+      "UNKNOWN": 119
+    },
+    "UNKNOWN": {
+      "ASSOCIATED": 0,
+      "AMBIGUOUS": 0,
+      "UNKNOWN": 360
+    }
+  },
+  "grossChanges": 155,
+  "netAssociatedDelta": 36,
+  "netAmbiguousDelta": -155,
+  "netUnknownDelta": 119,
+  "note": "Rows=baseline (3E.1), cols=candidate Viterbi (3E.2). ASSOCIATED normalizes CONFIRMED."
+}

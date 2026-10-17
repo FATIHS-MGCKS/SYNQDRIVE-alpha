@@ -1,0 +1,25 @@
+{
+  "schema": "LDI10D_PHASE3E3_ROAD_MATCHING_COMPARISON_V1",
+  "headSha": "fd7c01031c9b92f96d9a1f8df166c0a6dc01801b",
+  "algorithms": {
+    "phase3e1_baseline": {
+      "associated": 264,
+      "ambiguous": 512,
+      "unknown": 360
+    },
+    "phase3e2_viterbi_causal": {
+      "associated": 300,
+      "ambiguous": 357,
+      "unknown": 479
+    },
+    "phase3e3_greedy_heading_gated": {
+      "associated": 256,
+      "ambiguous": 520,
+      "unknown": 360
+    }
+  },
+  "impossibleGraphTransitions": 5,
+  "viterbiReplayRuntimeMs": 78560,
+  "independentAccuracy": "NOT_ASSESSABLE",
+  "accuracyImprovementProven": "NO"
+}
