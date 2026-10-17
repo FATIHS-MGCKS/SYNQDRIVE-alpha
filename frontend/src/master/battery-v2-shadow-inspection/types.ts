@@ -98,6 +98,13 @@ export function formatSlope(mvPerHour: number | null | undefined): string {
   return `${mvPerHour.toFixed(1)} mV/h`;
 }
 
+export function formatDurationMs(ms: number | null | undefined): string {
+  if (ms == null || Number.isNaN(ms)) return '—';
+  if (ms < 60_000) return `${Math.round(ms / 1000)} s`;
+  if (ms < 3_600_000) return `${(ms / 60_000).toFixed(1)} min`;
+  return `${(ms / 3_600_000).toFixed(2)} h`;
+}
+
 export type RestSessionFeatureInputRetentionPointV1 = {
   observationId: string;
   sourceMeasurementId: string;

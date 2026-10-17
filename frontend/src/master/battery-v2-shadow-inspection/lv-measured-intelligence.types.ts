@@ -17,6 +17,8 @@ export type LvMeasuredVoltagePointV1 = {
   engineRunning: boolean | null;
 };
 
+export type LvMeasuredSlopeInterpretabilityV1 = 'REST_SELF_DISCHARGE_TREND' | 'CONTEXT_LIMITED';
+
 export type LvMeasuredSessionDerivedFeaturesV1 = {
   epistemicBand: 'DERIVED';
   canonicalFeatureRowId: string | null;
@@ -27,6 +29,8 @@ export type LvMeasuredSessionDerivedFeaturesV1 = {
   maximumRestVoltageMv: number | null;
   medianRestVoltageMv: number | null;
   robustRestSlopeMvPerHour: number | null;
+  slopeInterpretability: LvMeasuredSlopeInterpretabilityV1;
+  slopeLimitationCodes: string[];
   numberOfValidRestPoints: number | null;
   missingRungCount: number | null;
   observationSpanMs: number | null;
@@ -74,6 +78,9 @@ export type LvMeasuredIntelligenceV1 = {
   provenance: {
     openProviderObservabilityGapCount: number;
     deduplicationPolicy: string;
+    historicalQueryMode: 'RECENT_DESC_LIMIT' | 'DATE_RANGE_ASC';
+    historicalMeasuredFrom: string | null;
+    historicalMeasuredTo: string | null;
     historicalObservationsTruncated: boolean;
     featureRowsTruncated: boolean;
   };

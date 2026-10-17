@@ -6,6 +6,14 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-17 — G5C-N13-P10 live product corrections (slope quality + historical browse)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | N13 read-model C3 slope interpretability policy; `measuredFrom`/`measuredTo` historical browse; Master Admin mobile episode selection and CONTEXT_LIMITED slope labeling |
+| **WHY** | Production Ruptela extreme slopes are valid C3 arithmetic over unsuitable short-span / charging-transition pairs — must not present as reliable resting trends |
+| **NON_EFFECTS** | No C3 recompute; no SOH/publication; no ingest rate change |
+
 ## 2026-10-16 — G5C-N13 LV measured intelligence V1 (internal Master Admin read model)
 
 | Field | Value |

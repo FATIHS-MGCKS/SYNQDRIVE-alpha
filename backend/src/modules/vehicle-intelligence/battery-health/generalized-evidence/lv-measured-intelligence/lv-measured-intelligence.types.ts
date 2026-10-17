@@ -1,10 +1,14 @@
 import type { LvMeasuredEpistemicBand, LvMeasuredOperationalContext } from './lv-measured-intelligence-context.policy';
 
+export type LvMeasuredHistoricalQueryModeV1 = 'RECENT_DESC_LIMIT' | 'DATE_RANGE_ASC';
+
 export type LvMeasuredIntelligenceReadInput = {
   organizationId: string;
   vehicleId: string;
   sessionLimit?: number;
   observationLimit?: number;
+  measuredFrom?: Date;
+  measuredTo?: Date;
 };
 
 export type LvMeasuredVoltagePointV1 = {
@@ -24,6 +28,8 @@ export type LvMeasuredVoltagePointV1 = {
   engineRunning: boolean | null;
 };
 
+export type LvMeasuredSlopeInterpretabilityV1 = 'REST_SELF_DISCHARGE_TREND' | 'CONTEXT_LIMITED';
+
 export type LvMeasuredSessionDerivedFeaturesV1 = {
   epistemicBand: 'DERIVED';
   canonicalFeatureRowId: string | null;
@@ -34,6 +40,8 @@ export type LvMeasuredSessionDerivedFeaturesV1 = {
   maximumRestVoltageMv: number | null;
   medianRestVoltageMv: number | null;
   robustRestSlopeMvPerHour: number | null;
+  slopeInterpretability: LvMeasuredSlopeInterpretabilityV1;
+  slopeLimitationCodes: string[];
   numberOfValidRestPoints: number | null;
   missingRungCount: number | null;
   observationSpanMs: number | null;
@@ -58,6 +66,9 @@ export type LvMeasuredRestSessionEpisodeV1 = {
 export type LvMeasuredIntelligenceProvenanceV1 = {
   openProviderObservabilityGapCount: number;
   deduplicationPolicy: 'ONE_ROW_PER_SOURCE_MEASUREMENT_ID';
+  historicalQueryMode: LvMeasuredHistoricalQueryModeV1;
+  historicalMeasuredFrom: string | null;
+  historicalMeasuredTo: string | null;
   historicalObservationsTruncated: boolean;
   featureRowsTruncated: boolean;
 };

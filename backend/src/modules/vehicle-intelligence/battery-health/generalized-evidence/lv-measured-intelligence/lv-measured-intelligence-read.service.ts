@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   BatteryProviderObservabilityGapStatus,
   type BatteryGeneralizedEvidenceObservation,
@@ -14,9 +14,11 @@ import {
   LV_MEASURED_INTELLIGENCE_DEFAULT_OBSERVATION_LIMIT,
   LV_MEASURED_INTELLIGENCE_DEFAULT_SESSION_LIMIT,
   LV_MEASURED_INTELLIGENCE_MAX_FEATURE_ROWS_PER_VEHICLE,
+  LV_MEASURED_INTELLIGENCE_MAX_HISTORICAL_RANGE_DAYS,
   LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT,
   LV_MEASURED_INTELLIGENCE_MAX_SESSION_LIMIT,
 } from './lv-measured-intelligence.constants';
+import { assessLvMeasuredC3SlopeQualityV1 } from './lv-measured-intelligence-slope-quality.policy';
 import {
   actualRestAgeMsToHours,
   mapEvidenceClassToOperationalContext,
@@ -83,6 +85,34 @@ export class LvMeasuredIntelligenceReadService {
       LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT,
     );
 
+    const dateRangeMode =
+      input.measuredFrom != null && input.measuredTo != null
+        ? { from: input.measuredFrom, to: input.measuredTo }
+        : null;
+    if (dateRangeMode) {
+      const maxSpanMs = LV_MEASURED_INTELLIGENCE_MAX_HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000;
+      if (dateRangeMode.from.getTime() > dateRangeMode.to.getTime()) {
+        throw new BadRequestException('measuredFrom must be <= measuredTo');
+      }
+      if (dateRangeMode.to.getTime() - dateRangeMode.from.getTime() > maxSpanMs) {
+        throw new BadRequestException('measured date range exceeds maximum span');
+      }
+    }
+
+    const historicalWhere = {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      voltage: { not: null },
+      ...(dateRangeMode
+        ? {
+            voltageObservedAt: {
+              gte: dateRangeMode.from,
+              lte: dateRangeMode.to,
+            },
+          }
+        : {}),
+    };
+
     const [sessions, rawObservations, featureRowCount, openGapCount, latestD3] = await Promise.all([
       this.prisma.batteryRestSession.findMany({
         where: {
@@ -93,12 +123,8 @@ export class LvMeasuredIntelligenceReadService {
         take: sessionLimit,
       }),
       this.prisma.batteryGeneralizedEvidenceObservation.findMany({
-        where: {
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          voltage: { not: null },
-        },
-        orderBy: { voltageObservedAt: 'desc' },
+        where: historicalWhere,
+        orderBy: { voltageObservedAt: dateRangeMode ? 'asc' : 'desc' },
         take: observationLimit,
         select: GE_SELECT,
       }),
@@ -158,7 +184,9 @@ export class LvMeasuredIntelligenceReadService {
       this.mapGeRowToMeasuredPoint(row),
     );
 
-    const latestMeasured = dedupedHistorical[0] ?? null;
+    const latestMeasured = dateRangeMode
+      ? (dedupedHistorical.length > 0 ? dedupedHistorical[dedupedHistorical.length - 1] : null)
+      : (dedupedHistorical[0] ?? null);
 
     const obsBySession = new Map<string, GeRow[]>();
     for (const row of sessionObservations) {
@@ -200,6 +228,9 @@ export class LvMeasuredIntelligenceReadService {
       provenance: {
         openProviderObservabilityGapCount: openGapCount,
         deduplicationPolicy: 'ONE_ROW_PER_SOURCE_MEASUREMENT_ID',
+        historicalQueryMode: dateRangeMode ? 'DATE_RANGE_ASC' : 'RECENT_DESC_LIMIT',
+        historicalMeasuredFrom: dateRangeMode?.from.toISOString() ?? null,
+        historicalMeasuredTo: dateRangeMode?.to.toISOString() ?? null,
         historicalObservationsTruncated: rawObservations.length >= observationLimit,
         featureRowsTruncated: featureRowCount > LV_MEASURED_INTELLIGENCE_MAX_FEATURE_ROWS_PER_VEHICLE,
       },
@@ -232,6 +263,13 @@ export class LvMeasuredIntelligenceReadService {
 
     if (canonical) {
       const retentionPoints = this.parseRetentionPointsFromInputSummary(canonical.inputSummary);
+      const slopeQuality = assessLvMeasuredC3SlopeQualityV1({
+        robustRestSlopeMvPerHour: canonical.robustRestSlopeMvPerHour,
+        numberOfValidRestPoints: canonical.numberOfValidRestPoints,
+        observationSpanMs: canonical.observationSpanMs,
+        sessionEndReason: session.endReason,
+        retentionPoints,
+      });
       derivedFeatures = {
         epistemicBand: 'DERIVED',
         canonicalFeatureRowId: canonical.id,
@@ -242,6 +280,8 @@ export class LvMeasuredIntelligenceReadService {
         maximumRestVoltageMv: canonical.maximumRestVoltageMv,
         medianRestVoltageMv: canonical.medianRestVoltageMv,
         robustRestSlopeMvPerHour: canonical.robustRestSlopeMvPerHour,
+        slopeInterpretability: slopeQuality.interpretability,
+        slopeLimitationCodes: slopeQuality.limitationCodes,
         numberOfValidRestPoints: canonical.numberOfValidRestPoints,
         missingRungCount: canonical.missingRungCount,
         observationSpanMs: canonical.observationSpanMs,
