@@ -1,0 +1,25 @@
+# LDI-10D Phase 3A — Junction & curve context
+
+**Junctions:** only **35 CONFIRMED_TOPOLOGY** nodes from Phase 2B (114 ambiguous excluded).
+
+- JUNCTION_APPROACH events: **12** (merged adjacent buckets)
+- CURVE_TRAVERSAL events: **12** (merged)
+
+Curvature from **GPS heading steps** only — no lateral acceleration claim.
+
+## Sample junction approaches (first 15)
+
+| UTC | Certainty | Junction node | Speed km/h | QC |
+| --- | --- | --- | --- | --- |
+| 2026-10-13T15:53:04Z | CANDIDATE | 2185728633 | — | T0/U1 |
+| 2026-10-13T15:53:55Z | CONFIRMED | 5607540141 | 36.56431190951881 | T1/U0 |
+| 2026-10-13T15:54:32Z | CONFIRMED | 254978367 | 34.17060328836985 | T1/U0 |
+| 2026-10-13T15:56:20Z | CONFIRMED | 611857126 | 29.92554460797208 | T1/U0 |
+| 2026-10-13T15:56:50Z | CONFIRMED | 2179921460 | 34.58042298521137 | T1/U0 |
+| 2026-10-13T15:57:07Z | CONFIRMED | 610470329 | 30.04094871852587 | T1/U0 |
+| 2026-10-13T15:57:24Z | CONFIRMED | 610470334 | 26.29816260520381 | T1/U0 |
+| 2026-10-13T15:58:16Z | CANDIDATE | 610470329 | — | T0/U1 |
+| 2026-10-13T15:58:19Z | CANDIDATE | 610470329 | — | T0/U1 |
+| 2026-10-13T15:58:22Z | CANDIDATE | 610470329 | — | T0/U1 |
+| 2026-10-13T15:58:28Z | CANDIDATE | 610470334 | — | T0/U1 |
+| 2026-10-13T15:58:41Z | CANDIDATE | 610470339 | 5.071339893754495 | T0/U1 |
