@@ -1,6 +1,6 @@
 {
   "schema": "LDI10D_PHASE2A_UNKNOWN_ROOT_CAUSES_V1",
-  "headSha": "5f220e1e904d23ac726f98d8ba1c87d84fbc1afe",
+  "headSha": "e68be2d51ef97c184dabf902f63cebd48b4b80e8",
   "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
   "osmSnapshotSha256": "8afff85539dad9d1590022656f291d50b01215d99cd4a9bcc4af2aef74c073d9",
   "associationSha256": "bfafb50548c92f21b034a9f1053af5d6c37d041e91039b7918e78dc46bfc40a2",
@@ -31,6 +31,2013 @@
   ],
   "unknownCount": 18,
   "associatedCount": 14,
+  "unknownGroups": [
+    {
+      "groupId": "MANEUVER_ACCELERATION_2",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "BEARING_MISMATCH_123deg"
+      ],
+      "rejectionGatesFired": [
+        "G3_BEARING_DELTA_GT_45"
+      ],
+      "rootCauses": [
+        "BEARING"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:14Z",
+        "windowEndUtc": "2026-10-13T15:53:19Z",
+        "windowBucketCount": 6,
+        "gpsPresentCount": 6,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 5
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40734385,
+        "longitude": 9.668921366666666
+      },
+      "pathLengthM": 33.05837011355818,
+      "bearingStartDeg": 146.75019305658577,
+      "bearingEndDeg": 87.47081103740004,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 4.32295444979345,
+          "segmentBearingDeg": 270.00005221165384,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:14Z",
+          "lat": 51.4073916,
+          "lon": 9.66874,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 8.953647833007192,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:15Z",
+          "lat": 51.4073583,
+          "lon": 9.668775,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 5.419148743783812,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:16Z",
+          "lat": 51.4073316,
+          "lon": 9.668845,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 3.6607678199207934,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:17Z",
+          "lat": 51.407325,
+          "lon": 9.6689416,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 4.086676740035313,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:18Z",
+          "lat": 51.4073266,
+          "lon": 9.6690516,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 11.553374796282258,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:19Z",
+          "lat": 51.40733,
+          "lon": 9.669175,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 11.274021407626147,
+          "distinctWaysWithinRadius": 1
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 1,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 1,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 4,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 123.24985915506807
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_3",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "BEARING_MISMATCH_173deg"
+      ],
+      "rejectionGatesFired": [
+        "G3_BEARING_DELTA_GT_45"
+      ],
+      "rootCauses": [
+        "BEARING"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:26Z",
+        "windowEndUtc": "2026-10-13T15:53:29Z",
+        "windowBucketCount": 4,
+        "gpsPresentCount": 4,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 3
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.407235775000004,
+        "longitude": 9.670037875
+      },
+      "pathLengthM": 24.9624041816885,
+      "bearingStartDeg": 148.89871130361252,
+      "bearingEndDeg": 168.26743411792972,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 8.285278514674104,
+          "segmentBearingDeg": 335.43658449599684,
+          "gapToNextM": 10.642635553665716
+        },
+        {
+          "osmWayId": 35538143,
+          "highway": "residential",
+          "distanceM": 18.92791406833982,
+          "segmentBearingDeg": 352.86860205360864,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:26Z",
+          "lat": 51.4073333,
+          "lon": 9.6699783,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 0.7409661103858532,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:27Z",
+          "lat": 51.4072816,
+          "lon": 9.6700283,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 3.423848226973859,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:28Z",
+          "lat": 51.4072066,
+          "lon": 9.6700583,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 11.818275127299975,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:29Z",
+          "lat": 51.4071216,
+          "lon": 9.6700866,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 21.40817861298891,
+          "distinctWaysWithinRadius": 1
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 2,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 2,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 2,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 173.46212680761568
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_4",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "rejectionGatesFired": [
+        "G3_BEARING_DELTA_GT_45"
+      ],
+      "rootCauses": [
+        "BEARING"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:38Z",
+        "windowEndUtc": "2026-10-13T15:53:40Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.4065733,
+        "longitude": 9.6695972
+      },
+      "pathLengthM": 19.692007582871952,
+      "bearingStartDeg": 275.76911578590807,
+      "bearingEndDeg": 278.15000769976155,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 2.0261923536391238,
+          "segmentBearingDeg": 96.24902442546431,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:38Z",
+          "lat": 51.4065633,
+          "lon": 9.669735,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 1.5360345413797067,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:39Z",
+          "lat": 51.4065716,
+          "lon": 9.6696033,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 2.330822679034746,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:40Z",
+          "lat": 51.406585,
+          "lon": 9.6694533,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 8.535631442579117,
+          "distinctWaysWithinRadius": 1
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 1,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 1,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 1,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 179.52009136044376
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_5",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:50Z",
+        "windowEndUtc": "2026-10-13T15:53:52Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40654493333333,
+        "longitude": 9.668091066666667
+      },
+      "pathLengthM": 17.042318223690234,
+      "bearingStartDeg": 195.19438113799475,
+      "bearingEndDeg": 188.34993681226405,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 12.58945594941372,
+          "segmentBearingDeg": 76.49467557435082,
+          "gapToNextM": 0.027706618268535266
+        },
+        {
+          "osmWayId": 586982631,
+          "highway": "residential",
+          "distanceM": 12.617162567682255,
+          "segmentBearingDeg": 187.7729248511167,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:50Z",
+          "lat": 51.4066166,
+          "lon": 9.6681166,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 4.441097522976604,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:51Z",
+          "lat": 51.4065516,
+          "lon": 9.6680883,
+          "nearestWayId": 586982631,
+          "nearestDistanceM": 11.87869874628286,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:52Z",
+          "lat": 51.4064666,
+          "lon": 9.6680683,
+          "nearestWayId": 586982631,
+          "nearestDistanceM": 20.88973538143174,
+          "distinctWaysWithinRadius": 2
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 2,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 3,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 3,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 118.69970556364393
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Two residential ways within 0.0m (ids 35538144, 586982631) — centroid snap ambiguous",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_6",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:54:05Z",
+        "windowEndUtc": "2026-10-13T15:54:09Z",
+        "windowBucketCount": 5,
+        "gpsPresentCount": 5,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 4
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40586828000001,
+        "longitude": 9.667942960000001
+      },
+      "pathLengthM": 31.32084823548405,
+      "bearingStartDeg": 156.4973296197304,
+      "bearingEndDeg": 108.15051743972015,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 1314429093,
+          "highway": "tertiary",
+          "distanceM": 0.6153992365205566,
+          "segmentBearingDeg": 107.64817730789366,
+          "gapToNextM": 3.0675064332371176
+        },
+        {
+          "osmWayId": 66750173,
+          "highway": "tertiary",
+          "distanceM": 3.682905669757674,
+          "segmentBearingDeg": 107.61383469985856,
+          "gapToNextM": 16.696222275534904
+        },
+        {
+          "osmWayId": 66750170,
+          "highway": "tertiary",
+          "distanceM": 20.379127945292577,
+          "segmentBearingDeg": 102.0091584585648,
+          "gapToNextM": 4.385692265001538
+        },
+        {
+          "osmWayId": 1314429094,
+          "highway": "residential",
+          "distanceM": 24.764820210294115,
+          "segmentBearingDeg": 201.5187358122319,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:54:05Z",
+          "lat": 51.4059416,
+          "lon": 9.6677983,
+          "nearestWayId": 1314429093,
+          "nearestDistanceM": 5.133759626544262,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:54:06Z",
+          "lat": 51.4059033,
+          "lon": 9.667825,
+          "nearestWayId": 1314429093,
+          "nearestDistanceM": 3.618703279849971,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:54:07Z",
+          "lat": 51.4058633,
+          "lon": 9.6679016,
+          "nearestWayId": 1314429093,
+          "nearestDistanceM": 3.1385111094456444,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:54:08Z",
+          "lat": 51.4058316,
+          "lon": 9.6680216,
+          "nearestWayId": 66750173,
+          "nearestDistanceM": 3.982403537604454,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:54:09Z",
+          "lat": 51.4058016,
+          "lon": 9.6681683,
+          "nearestWayId": 66750173,
+          "nearestDistanceM": 4.246708182793922,
+          "distinctWaysWithinRadius": 2
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 4,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 5,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 5,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": true,
+          "deltaDeg": 48.84915231183675
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": "Two tertiary ways within 3.1m (ids 1314429093, 66750173) — centroid snap ambiguous",
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_7",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "NO_WAY_WITHIN_UNCERTAINTY_RADIUS"
+      ],
+      "rejectionGatesFired": [
+        "G1_NO_WAY_WITHIN_RADIUS"
+      ],
+      "rootCauses": [
+        "DISTANCE"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:54:14Z",
+        "windowEndUtc": "2026-10-13T15:54:16Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.4055294,
+        "longitude": 9.669010533333333
+      },
+      "pathLengthM": 24.335655388254576,
+      "bearingStartDeg": 123.29478704752057,
+      "bearingEndDeg": 123.21156658665427,
+      "wayCandidatesWithinRadius": [],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:54:14Z",
+          "lat": 51.4055883,
+          "lon": 9.6688666,
+          "nearestWayId": null,
+          "nearestDistanceM": null,
+          "distinctWaysWithinRadius": 0
+        },
+        {
+          "utc": "2026-10-13T15:54:15Z",
+          "lat": 51.4055316,
+          "lon": 9.669005,
+          "nearestWayId": null,
+          "nearestDistanceM": null,
+          "distinctWaysWithinRadius": 0
+        },
+        {
+          "utc": "2026-10-13T15:54:16Z",
+          "lat": 51.4054683,
+          "lon": 9.66916,
+          "nearestWayId": null,
+          "nearestDistanceM": null,
+          "distinctWaysWithinRadius": 0
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 0,
+          "wouldPassG1": false,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 1,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 1,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": null
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_9",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:56:23Z",
+        "windowEndUtc": "2026-10-13T15:56:26Z",
+        "windowBucketCount": 4,
+        "gpsPresentCount": 4,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 3
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.400011625000005,
+        "longitude": 9.659951225
+      },
+      "pathLengthM": 22.80453285787,
+      "bearingStartDeg": 260.925949564012,
+      "bearingEndDeg": 266.6026368950861,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 48144282,
+          "highway": "living_street",
+          "distanceM": 1.3366351835576566,
+          "segmentBearingDeg": 351.7295693586536,
+          "gapToNextM": 0.7210369847054221
+        },
+        {
+          "osmWayId": 25727782,
+          "highway": "tertiary",
+          "distanceM": 2.0576721682630787,
+          "segmentBearingDeg": 266.8291625038713,
+          "gapToNextM": 0
+        },
+        {
+          "osmWayId": 48865010,
+          "highway": "residential",
+          "distanceM": 2.0576721682630787,
+          "segmentBearingDeg": 163.62226402811928,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:56:23Z",
+          "lat": 51.4000233,
+          "lon": 9.6601016,
+          "nearestWayId": 48144282,
+          "nearestDistanceM": 11.46710170888798,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:56:24Z",
+          "lat": 51.400015,
+          "lon": 9.6600183,
+          "nearestWayId": 48144282,
+          "nearestDistanceM": 5.630470756192148,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:56:25Z",
+          "lat": 51.4000066,
+          "lon": 9.65991,
+          "nearestWayId": 48144282,
+          "nearestDistanceM": 2.139055301352803,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:56:26Z",
+          "lat": 51.4000016,
+          "lon": 9.659775,
+          "nearestWayId": 48144282,
+          "nearestDistanceM": 11.4395315641652,
+          "distinctWaysWithinRadius": 3
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 3,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 3,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 7,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 90.80361979464158
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Parallel/stacked ways within 0.7m: living_street (id 48144282) vs tertiary (id 25727782)",
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_10",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:56:34Z",
+        "windowEndUtc": "2026-10-13T15:56:37Z",
+        "windowBucketCount": 4,
+        "gpsPresentCount": 4,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 3
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.399996625,
+        "longitude": 9.658639125
+      },
+      "pathLengthM": 22.163618422153522,
+      "bearingStartDeg": 271.99061149393253,
+      "bearingEndDeg": 280.6140335162367,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 25727782,
+          "highway": "tertiary",
+          "distanceM": 5.634455278405292,
+          "segmentBearingDeg": 275.2453238316915,
+          "gapToNextM": 4.227771748766174
+        },
+        {
+          "osmWayId": 203389730,
+          "highway": "service",
+          "distanceM": 9.862227027171466,
+          "segmentBearingDeg": 285.2575026707263,
+          "gapToNextM": 3.798923002680649
+        },
+        {
+          "osmWayId": 48250211,
+          "highway": "residential",
+          "distanceM": 13.661150029852115,
+          "segmentBearingDeg": 158.2515340447028,
+          "gapToNextM": 7.429651425699378
+        },
+        {
+          "osmWayId": 203389724,
+          "highway": "service",
+          "distanceM": 21.090801455551492,
+          "segmentBearingDeg": 240.72025343123465,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:56:34Z",
+          "lat": 51.3999883,
+          "lon": 9.658785,
+          "nearestWayId": 25727782,
+          "nearestDistanceM": 6.432633499328415,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:56:35Z",
+          "lat": 51.39999,
+          "lon": 9.6587066,
+          "nearestWayId": 25727782,
+          "nearestDistanceM": 2.939094852343564,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:56:36Z",
+          "lat": 51.3999966,
+          "lon": 9.6585966,
+          "nearestWayId": 25727782,
+          "nearestDistanceM": 4.247298618815073,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:56:37Z",
+          "lat": 51.4000116,
+          "lon": 9.6584683,
+          "nearestWayId": 25727782,
+          "nearestDistanceM": 3.7106844486319854,
+          "distinctWaysWithinRadius": 4
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 4,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 6,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 6,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": true,
+          "deltaDeg": 3.254712337758974
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": "Parallel/stacked ways within 4.2m: tertiary (id 25727782) vs service (id 203389730)",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_12",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:56:53Z",
+        "windowEndUtc": "2026-10-13T15:56:55Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40049886666667,
+        "longitude": 9.656381633333332
+      },
+      "pathLengthM": 18.014200572638366,
+      "bearingStartDeg": 313.0951453307827,
+      "bearingEndDeg": 328.076196705566,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 25727783,
+          "highway": "residential",
+          "distanceM": 11.926897900495602,
+          "segmentBearingDeg": 188.04773008644733,
+          "gapToNextM": 0
+        },
+        {
+          "osmWayId": 48250200,
+          "highway": "residential",
+          "distanceM": 11.926897900495602,
+          "segmentBearingDeg": 169.8627757339841,
+          "gapToNextM": 1.9917746199391946
+        },
+        {
+          "osmWayId": 276144131,
+          "highway": "tertiary",
+          "distanceM": 13.918672520434797,
+          "segmentBearingDeg": 156.81131133997462,
+          "gapToNextM": 0.42668700692060213
+        },
+        {
+          "osmWayId": 25727782,
+          "highway": "tertiary",
+          "distanceM": 14.345359527355399,
+          "segmentBearingDeg": 297.74377493787074,
+          "gapToNextM": 5.751721221941477
+        },
+        {
+          "osmWayId": 871439688,
+          "highway": "service",
+          "distanceM": 20.097080749296875,
+          "segmentBearingDeg": 351.87522002644226,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:56:53Z",
+          "lat": 51.40044,
+          "lon": 9.656465,
+          "nearestWayId": 25727782,
+          "nearestDistanceM": 8.236274705501897,
+          "distinctWaysWithinRadius": 5
+        },
+        {
+          "utc": "2026-10-13T15:56:54Z",
+          "lat": 51.4004916,
+          "lon": 9.6563766,
+          "nearestWayId": 25727783,
+          "nearestDistanceM": 11.07534799447524,
+          "distinctWaysWithinRadius": 5
+        },
+        {
+          "utc": "2026-10-13T15:56:55Z",
+          "lat": 51.400565,
+          "lon": 9.6563033,
+          "nearestWayId": 276144131,
+          "nearestDistanceM": 5.518796278307683,
+          "distinctWaysWithinRadius": 5
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 5,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 7,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 8,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 125.04741524433538
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Two residential ways within 0.0m (ids 25727783, 48250200) — centroid snap ambiguous",
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_13",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "BEARING_MISMATCH_177deg"
+      ],
+      "rejectionGatesFired": [
+        "G3_BEARING_DELTA_GT_45"
+      ],
+      "rootCauses": [
+        "BEARING"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:56:56Z",
+        "windowEndUtc": "2026-10-13T15:56:58Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40075553333333,
+        "longitude": 9.656200533333333
+      },
+      "pathLengthM": 23.750706385287202,
+      "bearingStartDeg": 342.36740206220054,
+      "bearingEndDeg": 348.43677000880774,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 276144131,
+          "highway": "tertiary",
+          "distanceM": 7.103047475803191,
+          "segmentBearingDeg": 165.7131927858975,
+          "gapToNextM": 8.243940509516088
+        },
+        {
+          "osmWayId": 25728750,
+          "highway": "tertiary",
+          "distanceM": 15.346987985319279,
+          "segmentBearingDeg": 352.9072723228708,
+          "gapToNextM": 0
+        },
+        {
+          "osmWayId": 59973820,
+          "highway": "service",
+          "distanceM": 15.346987985319279,
+          "segmentBearingDeg": 254.11897651508536,
+          "gapToNextM": 9.002203958204818
+        },
+        {
+          "osmWayId": 59973821,
+          "highway": "service",
+          "distanceM": 24.349191943524097,
+          "segmentBearingDeg": 252.00674831382133,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:56:56Z",
+          "lat": 51.400655,
+          "lon": 9.656245,
+          "nearestWayId": 276144131,
+          "nearestDistanceM": 5.58071437524269,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:56:57Z",
+          "lat": 51.40075,
+          "lon": 9.6561966,
+          "nearestWayId": 276144131,
+          "nearestDistanceM": 7.35201354010154,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:56:58Z",
+          "lat": 51.4008616,
+          "lon": 9.65616,
+          "nearestWayId": 25728750,
+          "nearestDistanceM": 4.531880685643492,
+          "distinctWaysWithinRadius": 4
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 4,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 8,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 8,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 176.65420927630305
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "UNCLEAR_QC_OR_GAPS"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_15",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:57:31Z",
+        "windowEndUtc": "2026-10-13T15:57:33Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40147053333334,
+        "longitude": 9.6573711
+      },
+      "pathLengthM": 7.104301597480341,
+      "bearingStartDeg": 82.13655254644834,
+      "bearingEndDeg": 75.43685028483014,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 208147197,
+          "highway": "service",
+          "distanceM": 1.0756558954712334,
+          "segmentBearingDeg": 164.95884354093835,
+          "gapToNextM": 4.654337351008793
+        },
+        {
+          "osmWayId": 48247523,
+          "highway": "residential",
+          "distanceM": 5.729993246480026,
+          "segmentBearingDeg": 81.07494004603615,
+          "gapToNextM": 4.1340406837276795
+        },
+        {
+          "osmWayId": 572869008,
+          "highway": "service",
+          "distanceM": 9.864033930207706,
+          "segmentBearingDeg": 343.20649883771233,
+          "gapToNextM": 3.4118639402942943
+        },
+        {
+          "osmWayId": 1208811611,
+          "highway": "service",
+          "distanceM": 13.275897870502,
+          "segmentBearingDeg": 163.34676635476126,
+          "gapToNextM": 6.7279561929882234
+        },
+        {
+          "osmWayId": 203391045,
+          "highway": "service",
+          "distanceM": 20.003854063490223,
+          "segmentBearingDeg": 164.89022216344267,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:57:31Z",
+          "lat": 51.401465,
+          "lon": 9.657325,
+          "nearestWayId": 48247523,
+          "nearestDistanceM": 2.6101282419187353,
+          "distinctWaysWithinRadius": 5
+        },
+        {
+          "utc": "2026-10-13T15:57:32Z",
+          "lat": 51.4014683,
+          "lon": 9.6573633,
+          "nearestWayId": 208147197,
+          "nearestDistanceM": 1.570540584058112,
+          "distinctWaysWithinRadius": 5
+        },
+        {
+          "utc": "2026-10-13T15:57:33Z",
+          "lat": 51.4014783,
+          "lon": 9.657425,
+          "nearestWayId": 208147197,
+          "nearestDistanceM": 3.311209030323406,
+          "distinctWaysWithinRadius": 5
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 5,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 7,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 10,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 82.82229099449
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": "Parallel/stacked ways within 4.7m: service (id 208147197) vs residential (id 48247523)",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_ACCELERATION_16",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:57:44Z",
+        "windowEndUtc": "2026-10-13T15:57:45Z",
+        "windowBucketCount": 2,
+        "gpsPresentCount": 2,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 1
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.401558300000005,
+        "longitude": 9.6578908
+      },
+      "pathLengthM": 4.201031042410711,
+      "bearingStartDeg": 74.65174985944122,
+      "bearingEndDeg": 74.65174985944122,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 203391046,
+          "highway": "service",
+          "distanceM": 2.1804800459393614,
+          "segmentBearingDeg": 165.10921011105586,
+          "gapToNextM": 0
+        },
+        {
+          "osmWayId": 1208811616,
+          "highway": "service",
+          "distanceM": 2.1804800459393614,
+          "segmentBearingDeg": 254.10854044627516,
+          "gapToNextM": 18.87992768429234
+        },
+        {
+          "osmWayId": 203391045,
+          "highway": "service",
+          "distanceM": 21.060407730231702,
+          "segmentBearingDeg": 164.89022216344267,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:57:44Z",
+          "lat": 51.4015533,
+          "lon": 9.6578616,
+          "nearestWayId": 203391046,
+          "nearestDistanceM": 1.3454764952508311,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:57:45Z",
+          "lat": 51.4015633,
+          "lon": 9.65792,
+          "nearestWayId": 203391046,
+          "nearestDistanceM": 4.06485021849772,
+          "distinctWaysWithinRadius": 3
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 4,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 8,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 12,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 90.45746025161463
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Two service ways within 0.0m (ids 203391046, 1208811616) — centroid snap ambiguous",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_17",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "BEARING_MISMATCH_93deg"
+      ],
+      "rejectionGatesFired": [
+        "G3_BEARING_DELTA_GT_45"
+      ],
+      "rootCauses": [
+        "BEARING"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:10Z",
+        "windowEndUtc": "2026-10-13T15:53:13Z",
+        "windowBucketCount": 4,
+        "gpsPresentCount": 4,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 3
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.407505400000005,
+        "longitude": 9.66873455
+      },
+      "pathLengthM": 19.320701493702504,
+      "bearingStartDeg": 183.5015863993144,
+      "bearingEndDeg": 181.4029013302502,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 21.465914781397924,
+          "segmentBearingDeg": 276.5585044783573,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:10Z",
+          "lat": 51.4075983,
+          "lon": 9.668745,
+          "nearestWayId": 1208898810,
+          "nearestDistanceM": 23.13970430341911,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:11Z",
+          "lat": 51.40753,
+          "lon": 9.6687383,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 24.210916458006455,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:12Z",
+          "lat": 51.4074683,
+          "lon": 9.6687283,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 17.321476544529965,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:13Z",
+          "lat": 51.407425,
+          "lon": 9.6687266,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 12.558612369680002,
+          "distinctWaysWithinRadius": 1
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 2,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 3,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 3,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 93.0569180790429
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_18",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:22Z",
+        "windowEndUtc": "2026-10-13T15:53:24Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40736663333333,
+        "longitude": 9.669719966666667
+      },
+      "pathLengthM": 15.977027010630444,
+      "bearingStartDeg": 80.37697611805692,
+      "bearingEndDeg": 87.02217367622552,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 14.915266118387965,
+          "segmentBearingDeg": 256.8982968804357,
+          "gapToNextM": 3.0537385953266494e-9
+        },
+        {
+          "osmWayId": 35538143,
+          "highway": "residential",
+          "distanceM": 14.915266121441704,
+          "segmentBearingDeg": 352.86860205360864,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:22Z",
+          "lat": 51.4073566,
+          "lon": 9.6696016,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 8.486397724855976,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:23Z",
+          "lat": 51.40737,
+          "lon": 9.6697283,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 14.27841140801548,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:24Z",
+          "lat": 51.4073733,
+          "lon": 9.66983,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 7.320326219105661,
+          "distinctWaysWithinRadius": 2
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 2,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 2,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 2,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 176.52132076237876
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Two residential ways within 0.0m (ids 35538144, 35538143) — centroid snap ambiguous",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_19",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "BEARING_MISMATCH_176deg"
+      ],
+      "rejectionGatesFired": [
+        "G3_BEARING_DELTA_GT_45"
+      ],
+      "rootCauses": [
+        "BEARING"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:53:45Z",
+        "windowEndUtc": "2026-10-13T15:53:48Z",
+        "windowBucketCount": 4,
+        "gpsPresentCount": 4,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 3
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.406658300000004,
+        "longitude": 9.6684458
+      },
+      "pathLengthM": 26.71987396776127,
+      "bearingStartDeg": 280.5750756388303,
+      "bearingEndDeg": 275.75364008225074,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 35538144,
+          "highway": "residential",
+          "distanceM": 12.000552750765769,
+          "segmentBearingDeg": 96.10188918566325,
+          "gapToNextM": 12.525904854715902
+        },
+        {
+          "osmWayId": 586982631,
+          "highway": "residential",
+          "distanceM": 24.52645760548167,
+          "segmentBearingDeg": 187.7729248511167,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:53:45Z",
+          "lat": 51.4066366,
+          "lon": 9.668645,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 2.013206502245009,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:46Z",
+          "lat": 51.4066533,
+          "lon": 9.6685016,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 8.106713292088312,
+          "distinctWaysWithinRadius": 1
+        },
+        {
+          "utc": "2026-10-13T15:53:47Z",
+          "lat": 51.4066683,
+          "lon": 9.6683716,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 6.879562392961299,
+          "distinctWaysWithinRadius": 2
+        },
+        {
+          "utc": "2026-10-13T15:53:48Z",
+          "lat": 51.406675,
+          "lon": 9.668265,
+          "nearestWayId": 35538144,
+          "nearestDistanceM": 1.5251327513083486,
+          "distinctWaysWithinRadius": 2
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 2,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": false
+        },
+        "radiusM50": {
+          "wayCount": 2,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 3,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 175.52681354683295
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": null,
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_30",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:57:26Z",
+        "windowEndUtc": "2026-10-13T15:57:28Z",
+        "windowBucketCount": 3,
+        "gpsPresentCount": 3,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 2
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.4014516,
+        "longitude": 9.657158866666666
+      },
+      "pathLengthM": 9.77701632448316,
+      "bearingStartDeg": 84.3904606063474,
+      "bearingEndDeg": 82.185708744115,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 48247523,
+          "highway": "residential",
+          "distanceM": 2.0201828006706872,
+          "segmentBearingDeg": 84.02397787788772,
+          "gapToNextM": 0
+        },
+        {
+          "osmWayId": 1208811611,
+          "highway": "service",
+          "distanceM": 2.0201828006706872,
+          "segmentBearingDeg": 163.34676635476126,
+          "gapToNextM": 3.1487028957488503
+        },
+        {
+          "osmWayId": 572869008,
+          "highway": "service",
+          "distanceM": 5.1688856964195375,
+          "segmentBearingDeg": 343.20649883771233,
+          "gapToNextM": 10.295936382533075
+        },
+        {
+          "osmWayId": 208147197,
+          "highway": "service",
+          "distanceM": 15.464822078952611,
+          "segmentBearingDeg": 164.95884354093835,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:57:26Z",
+          "lat": 51.4014466,
+          "lon": 9.657085,
+          "nearestWayId": 48247523,
+          "nearestDistanceM": 6.871440594647947,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:57:27Z",
+          "lat": 51.4014516,
+          "lon": 9.6571666,
+          "nearestWayId": 48247523,
+          "nearestDistanceM": 1.6721251888229334,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:57:28Z",
+          "lat": 51.4014566,
+          "lon": 9.657225,
+          "nearestWayId": 48247523,
+          "nearestDistanceM": 1.221714066778037,
+          "distinctWaysWithinRadius": 4
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 5,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 5,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 8,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": true,
+          "deltaDeg": 0.36648272845968677
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Parallel/stacked ways within 0.0m: residential (id 48247523) vs service (id 1208811611)",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_31",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:57:29Z",
+        "windowEndUtc": "2026-10-13T15:57:30Z",
+        "windowBucketCount": 2,
+        "gpsPresentCount": 2,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 1
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.40146245,
+        "longitude": 9.657287499999999
+      },
+      "pathLengthM": 2.4352985027131977,
+      "bearingStartDeg": 85.54812732368737,
+      "bearingEndDeg": 85.54812732368737,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 48247523,
+          "highway": "residential",
+          "distanceM": 0.9199772637783291,
+          "segmentBearingDeg": 81.07494004603615,
+          "gapToNextM": 3.173846357592841
+        },
+        {
+          "osmWayId": 572869008,
+          "highway": "service",
+          "distanceM": 4.09382362137117,
+          "segmentBearingDeg": 343.20649883771233,
+          "gapToNextM": 2.4144835886711844
+        },
+        {
+          "osmWayId": 208147197,
+          "highway": "service",
+          "distanceM": 6.5083072100423545,
+          "segmentBearingDeg": 164.95884354093835,
+          "gapToNextM": 0.9512272871758416
+        },
+        {
+          "osmWayId": 1208811611,
+          "highway": "service",
+          "distanceM": 7.459534497218196,
+          "segmentBearingDeg": 163.34676635476126,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:57:29Z",
+          "lat": 51.4014616,
+          "lon": 9.65727,
+          "nearestWayId": 48247523,
+          "nearestDistanceM": 1.634277852111528,
+          "distinctWaysWithinRadius": 4
+        },
+        {
+          "utc": "2026-10-13T15:57:30Z",
+          "lat": 51.4014633,
+          "lon": 9.657305,
+          "nearestWayId": 48247523,
+          "nearestDistanceM": 1.4096776599820127,
+          "distinctWaysWithinRadius": 5
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 5,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 7,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 9,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": true,
+          "deltaDeg": 4.4731872776512205
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": false
+        }
+      },
+      "topologyNote": "Parallel/stacked ways within 3.2m: residential (id 48247523) vs service (id 572869008)",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    },
+    {
+      "groupId": "MANEUVER_DECELERATION_32",
+      "associationOutcome": "UNKNOWN",
+      "phase2AmbiguityReasons": [
+        "COMPETING_WAYS_WITHIN_5M"
+      ],
+      "rejectionGatesFired": [
+        "G2_COMPETING_WAYS_GAP_LT_5M"
+      ],
+      "rootCauses": [
+        "MULTIPLE_CANDIDATES",
+        "TOPOLOGY"
+      ],
+      "temporalCoverage": {
+        "windowStartUtc": "2026-10-13T15:57:39Z",
+        "windowEndUtc": "2026-10-13T15:57:40Z",
+        "windowBucketCount": 2,
+        "gpsPresentCount": 2,
+        "gpsAbsentInWindow": 0,
+        "durationSec": 1
+      },
+      "gpsUncertaintyM": 25,
+      "centroid": {
+        "latitude": 51.4015433,
+        "longitude": 9.6577841
+      },
+      "pathLengthM": 2.5364373665547992,
+      "bearingStartDeg": 73.18168738943717,
+      "bearingEndDeg": 73.18168738943717,
+      "wayCandidatesWithinRadius": [
+        {
+          "osmWayId": 1208811616,
+          "highway": "service",
+          "distanceM": 5.904868963001384,
+          "segmentBearingDeg": 254.10854044627516,
+          "gapToNextM": 1.0084288959433252e-9
+        },
+        {
+          "osmWayId": 203391046,
+          "highway": "service",
+          "distanceM": 5.904868964009813,
+          "segmentBearingDeg": 165.10921011105586,
+          "gapToNextM": 8.748082154129598
+        },
+        {
+          "osmWayId": 203391045,
+          "highway": "service",
+          "distanceM": 14.652951118139411,
+          "segmentBearingDeg": 164.89022216344267,
+          "gapToNextM": null
+        }
+      ],
+      "perBucketNearestWay": [
+        {
+          "utc": "2026-10-13T15:57:39Z",
+          "lat": 51.40154,
+          "lon": 9.6577666,
+          "nearestWayId": 1208811616,
+          "nearestDistanceM": 7.163484940899161,
+          "distinctWaysWithinRadius": 3
+        },
+        {
+          "utc": "2026-10-13T15:57:40Z",
+          "lat": 51.4015466,
+          "lon": 9.6578016,
+          "nearestWayId": 1208811616,
+          "nearestDistanceM": 4.6514724716957945,
+          "distinctWaysWithinRadius": 3
+        }
+      ],
+      "counterfactual": {
+        "radiusM35": {
+          "wayCount": 4,
+          "wouldPassG1": true,
+          "wouldStillCompeteAt5m": true
+        },
+        "radiusM50": {
+          "wayCount": 9,
+          "wouldPassG1": true
+        },
+        "radiusM75": {
+          "wayCount": 11,
+          "wouldPassG1": true
+        },
+        "bearingCompat60Deg": {
+          "wouldPassG3": false,
+          "deltaDeg": 179.07314694316202
+        },
+        "competingGapThreshold3m": {
+          "wouldStillFireG2": true
+        }
+      },
+      "topologyNote": "Two service ways within 0.0m (ids 1208811616, 203391046) — centroid snap ambiguous",
+      "plausibilityVerdictPreserved": "PLAUSIBLE"
+    }
+  ],
+  "crossingSemantics": [
+    {
+      "osmNodeId": 613111950,
+      "lat": 51.4029137,
+      "lon": 9.6558837,
+      "highwayTag": "crossing",
+      "crossingTag": "zebra",
+      "crossingRef": null,
+      "tactilePaving": null,
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 1363012743,
+      "lat": 51.4045704,
+      "lon": 9.6629933,
+      "highwayTag": "crossing",
+      "crossingTag": "zebra",
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 2028001701,
+      "lat": 51.4084207,
+      "lon": 9.6577782,
+      "highwayTag": "crossing",
+      "crossingTag": "zebra",
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 2133990617,
+      "lat": 51.4084656,
+      "lon": 9.6600259,
+      "highwayTag": "crossing",
+      "crossingTag": null,
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 2134001943,
+      "lat": 51.4021723,
+      "lon": 9.6633592,
+      "highwayTag": "crossing",
+      "crossingTag": null,
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 2134022381,
+      "lat": 51.4015654,
+      "lon": 9.6578615,
+      "highwayTag": "crossing",
+      "crossingTag": "zebra",
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 2180087821,
+      "lat": 51.4065168,
+      "lon": 9.6625657,
+      "highwayTag": "crossing",
+      "crossingTag": "zebra",
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    },
+    {
+      "osmNodeId": 2185728618,
+      "lat": 51.4073115,
+      "lon": 9.6687532,
+      "highwayTag": "crossing",
+      "crossingTag": null,
+      "crossingRef": null,
+      "tactilePaving": "no",
+      "segregated": null,
+      "semanticClass": "PEDESTRIAN_CROSSING",
+      "isRoadIntersection": false,
+      "notes": "Tagged crossing — describes pedestrian/cycle crossing geometry, not a drivable intersection node."
+    }
+  ],
+  "osmSignalCoverage": {
+    "queryIncludedTrafficSignals": true,
+    "bbox": {
+      "south": 51.399314566618756,
+      "north": 51.40860533338124,
+      "west": 9.655036597188841,
+      "east": 9.67302160281116,
+      "marginM": 75
+    },
+    "rawElementCounts": {
+      "nodes": 8,
+      "ways": 155,
+      "relations": 3,
+      "nodesWithHighwayTag": 8,
+      "nodesHighwayTrafficSignals": 0,
+      "nodesHighwayCrossing": 8,
+      "nodesWithJunctionTag": 0,
+      "nodesHighwayOther": []
+    },
+    "conclusion": "NO_MAPPED_SIGNALS_IN_BBOX",
+    "rationale": [
+      "Zero nodes with highway=traffic_signals in frozen Overpass response elements (complete extract for query).",
+      "Crossing nodes (highway=crossing) are pedestrian/cycle crossing points — not signalized intersections."
+    ]
+  },
   "rootCauseDistributionUnknown": {
     "DISTANCE": 1,
     "BEARING": 6,
