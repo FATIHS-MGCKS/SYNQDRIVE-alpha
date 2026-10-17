@@ -143,7 +143,7 @@ export function LvMeasuredIntelligenceSection({
               className="rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40"
               onClick={historyRange.onUseRecentMode}
             >
-              Recent limit
+              {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.historyRecentLimit')}
             </button>
           </div>
         </div>
@@ -252,11 +252,13 @@ export function LvMeasuredIntelligenceSection({
                 </div>
                 <div className="text-muted-foreground">
                   {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.table.measuredPts')}:{' '}
-                  {ep.measuredPoints.length} · C3 span:{' '}
+                  {ep.measuredPoints.length} ·{' '}
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.mobileC3Span')}:{' '}
                   {formatDurationMs(ep.derivedFeatures?.observationSpanMs)}
                 </div>
                 <div>
-                  DERIVED slope: <span className="font-medium tabular-nums">{slope.value}</span>
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.mobileDerivedSlope')}{' '}
+                  <span className="font-medium tabular-nums">{slope.value}</span>
                   {slope.limited ? (
                     <span className="block text-amber-800 dark:text-amber-200 mt-0.5">
                       {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.slope.contextLimited')}
@@ -305,7 +307,9 @@ export function LvMeasuredIntelligenceSection({
                     <td className="py-1.5 pr-2">
                       <span className="tabular-nums">{slope.value}</span>
                       {slope.limited ? (
-                        <span className="block text-amber-800 dark:text-amber-200 text-[10px]">CONTEXT_LIMITED</span>
+                        <span className="block text-amber-800 dark:text-amber-200 text-[10px]">
+                          {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.slope.contextLimitedBadge')}
+                        </span>
                       ) : null}
                     </td>
                     <td className="py-1.5 pr-2">
