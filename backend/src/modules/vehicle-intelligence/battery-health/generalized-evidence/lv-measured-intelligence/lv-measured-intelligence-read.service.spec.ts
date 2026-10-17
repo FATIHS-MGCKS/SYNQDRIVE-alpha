@@ -15,6 +15,7 @@ function buildService(overrides: {
   vehicleExists: boolean;
   sessions?: unknown[];
   observations?: unknown[];
+  globalLatestObservation?: unknown | null;
   sessionObservations?: unknown[];
   featureRows?: unknown[];
   featureCount?: number;
@@ -34,6 +35,7 @@ function buildService(overrides: {
         }
         return Promise.resolve(overrides.observations ?? []);
       }),
+      findFirst: jest.fn().mockResolvedValue(overrides.globalLatestObservation ?? null),
     },
     batteryRestSessionFeature: {
       count: jest.fn().mockResolvedValue(overrides.featureCount ?? 0),
@@ -265,5 +267,71 @@ describe('LvMeasuredIntelligenceReadService', () => {
     const result = await service.readVehicleIntelligence({ organizationId: org, vehicleId: vehicle });
     expect(result.longitudinalD4.note).toBe('NO_D3_LONGITUDINAL_REVISION_MATERIALIZED');
     expect(result.longitudinalD4.epistemicBand).toBe('CONTEXT_LIMITED');
+  });
+
+  it('keeps latestMeasured as vehicle-global latest in date-range mode (not window tail)', async () => {
+    const windowOld = new Date('2026-01-01T10:00:00Z');
+    const windowNew = new Date('2026-01-02T10:00:00Z');
+    const globalNewest = new Date('2026-03-15T12:00:00Z');
+    const { service } = buildService({
+      vehicleExists: true,
+      observations: [
+        {
+          id: 'hist-old',
+          sourceMeasurementId: 'm-old',
+          voltage: 12.1,
+          voltageObservedAt: windowOld,
+          providerObservationAt: windowOld,
+          providerTimestampSource: 'PROVIDER_FIELD_TIMESTAMP',
+          evidenceClass: BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
+          restSessionId: 'sess-1',
+          actualRestAgeMs: 28_800_000,
+          nominalRestIntervalIndex: 1,
+          isLvCharging: false,
+          engineRunning: false,
+          createdAt: windowOld,
+        },
+        {
+          id: 'hist-new-in-window',
+          sourceMeasurementId: 'm-win',
+          voltage: 12.2,
+          voltageObservedAt: windowNew,
+          providerObservationAt: windowNew,
+          providerTimestampSource: 'PROVIDER_FIELD_TIMESTAMP',
+          evidenceClass: BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
+          restSessionId: 'sess-1',
+          actualRestAgeMs: 28_800_000,
+          nominalRestIntervalIndex: 1,
+          isLvCharging: false,
+          engineRunning: false,
+          createdAt: windowNew,
+        },
+      ],
+      globalLatestObservation: {
+        id: 'global-latest',
+        sourceMeasurementId: 'm-global',
+        voltage: 12.55,
+        voltageObservedAt: globalNewest,
+        providerObservationAt: globalNewest,
+        providerTimestampSource: 'PROVIDER_FIELD_TIMESTAMP',
+        evidenceClass: BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
+        restSessionId: 'sess-2',
+        actualRestAgeMs: 3_600_000,
+        nominalRestIntervalIndex: 0,
+        isLvCharging: false,
+        engineRunning: false,
+        createdAt: globalNewest,
+      },
+    });
+    const result = await service.readVehicleIntelligence({
+      organizationId: org,
+      vehicleId: vehicle,
+      measuredFrom: new Date('2026-01-01T00:00:00Z'),
+      measuredTo: new Date('2026-01-03T00:00:00Z'),
+    });
+    expect(result.latestMeasured?.observationId).toBe('global-latest');
+    expect(result.provenance.latestMeasuredSemantic).toBe('VEHICLE_GLOBAL_LATEST');
+    expect(result.provenance.historicalWindowLatestMeasured?.observationId).toBe('hist-new-in-window');
+    expect(result.historicalMeasured.at(-1)?.observationId).toBe('hist-new-in-window');
   });
 });
