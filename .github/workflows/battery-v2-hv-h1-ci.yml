@@ -7,6 +7,7 @@ on:
       - 'backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/hv-capacity-method-signal-requirements.ts'
       - 'architecture/battery-v2/scripts/validate-h1-provider-evidence-contracts.sh'
       - 'backend/scripts/test/battery-hv-h1-evidence-readiness-report-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
       - 'backend/scripts/ops/battery-hv-h1-evidence-readiness-report.ts'
       - 'backend/package.json'
       - 'backend/package-lock.json'
@@ -45,27 +46,29 @@ jobs:
   hv-h1-postgres:
     name: HV-H1 read-only report PostgreSQL
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: battery-hv-h1-ci-postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - name: Fail closed unless DATABASE_URL is localhost
+        run: |
+          set -euo pipefail
+          case "${DATABASE_URL}" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target localhost for HV-H1 postgres CI" >&2
+              exit 1
+              ;;
+          esac
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
       - run: npm ci && npx prisma generate
         working-directory: backend
         env:
