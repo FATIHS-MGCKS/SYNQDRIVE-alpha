@@ -19,6 +19,7 @@ import type { HvChargeSessionIngestResult } from './hv-charge-session-ingest.ser
 import type { HvChargeSessionPersistResult } from './hv-charge-session.types';
 import { ErdRechargeCanonicalProjectionRuntimeService } from '../../energy-events/erd-recharge-write-authority/erd-recharge-canonical-projection-runtime.service';
 import type { HvFallbackChargeSessionDetectResult } from './hv-fallback-charge-session-detector.service';
+import { HvChargingCounterEvidenceCaptureService } from '../hv-charging-counter-evidence/hv-charging-counter-evidence.capture.service';
 
 export interface HvRechargeSessionReconcileInput {
   organizationId: string;
@@ -57,6 +58,8 @@ export class HvRechargeSessionReconcileService {
     private readonly metrics: TripMetricsService,
     @Optional()
     private readonly erdCanonicalProjectionRuntime?: ErdRechargeCanonicalProjectionRuntimeService,
+    @Optional()
+    private readonly chargingCounterEvidence?: HvChargingCounterEvidenceCaptureService,
   ) {}
 
   async reconcile(input: HvRechargeSessionReconcileInput): Promise<HvRechargeSessionReconcileResult> {
@@ -146,6 +149,7 @@ export class HvRechargeSessionReconcileService {
           evaluatedAt: window.to,
         });
         this.scheduleCanonicalProjection(input, ingest, fallback);
+        this.scheduleChargingCounterEvidence(input, ingest, fallback);
         return { skipped: false, ingest, fallback };
       }
 
@@ -171,6 +175,7 @@ export class HvRechargeSessionReconcileService {
         evaluatedAt: window.to,
       });
       this.scheduleCanonicalProjection(input, ingest, fallback);
+      this.scheduleChargingCounterEvidence(input, ingest, fallback);
       return { skipped: false, ingest, fallback };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -243,6 +248,29 @@ export class HvRechargeSessionReconcileService {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn(
           `ERD canonical projection post-reconcile hook failed vehicle=${input.vehicleId}: ${message}`,
+        );
+      });
+  }
+
+  private scheduleChargingCounterEvidence(
+    input: HvRechargeSessionReconcileInput,
+    ingest?: HvChargeSessionIngestResult,
+    fallback?: HvFallbackChargeSessionDetectResult,
+  ): void {
+    if (!this.chargingCounterEvidence) return;
+    const sessionResults = this.collectPersistedSessions(ingest, fallback);
+    if (sessionResults.length === 0) return;
+
+    void this.chargingCounterEvidence
+      .captureForPersistResults({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        results: sessionResults,
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `HV charging counter evidence capture failed vehicle=${input.vehicleId}: ${message}`,
         );
       });
   }

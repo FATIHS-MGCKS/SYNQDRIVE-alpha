@@ -87,6 +87,10 @@ describe('HvRechargeSessionReconcileService', () => {
     batteryV2HvRechargeProviderDelay: { observe: jest.fn() },
   };
 
+  const chargingCounterEvidence = {
+    captureForPersistResults: jest.fn().mockResolvedValue([]),
+  };
+
   let service: HvRechargeSessionReconcileService;
 
   beforeEach(() => {
@@ -112,7 +116,24 @@ describe('HvRechargeSessionReconcileService', () => {
       ingest as never,
       fallbackDetector as never,
       metrics as never,
+      undefined,
+      chargingCounterEvidence as never,
     );
+  });
+
+  it('invokes charging counter sidecar without failing reconcile when sidecar throws', async () => {
+    ingest.ingestForVehicle.mockResolvedValue(mockIngestResult());
+    chargingCounterEvidence.captureForPersistResults.mockRejectedValue(
+      new Error('sidecar failed'),
+    );
+
+    const result = await service.reconcile({
+      organizationId: ORG,
+      vehicleId: VEH,
+    });
+
+    expect(result.skipped).toBe(false);
+    expect(chargingCounterEvidence.captureForPersistResults).toHaveBeenCalled();
   });
 
   it('skips when feature flag is disabled', async () => {
