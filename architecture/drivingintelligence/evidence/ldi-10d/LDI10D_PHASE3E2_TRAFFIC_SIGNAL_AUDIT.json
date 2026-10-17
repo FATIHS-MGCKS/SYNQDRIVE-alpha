@@ -1,0 +1,13 @@
+{
+  "schema": "LDI10D_PHASE3E2_TRAFFIC_SIGNAL_AUDIT_V1",
+  "headSha": "1532bb00f13b682f822c8039dee7df71053ac6a1",
+  "summary": {
+    "rawTrafficSignals": 632,
+    "uniqueTrafficSignalLocations": 632,
+    "routeRelevantSignals": 48,
+    "pedestrianOnly": 1,
+    "uncertainAssociations": 18
+  },
+  "recordsOmitted": true,
+  "recordCount": 632
+}

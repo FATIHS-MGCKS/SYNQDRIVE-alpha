@@ -1,0 +1,21 @@
+{
+  "schema": "LDI10D_PHASE3E2_ROAD_ASSOCIATION_COMPARISON_V1",
+  "headSha": "1532bb00f13b682f822c8039dee7df71053ac6a1",
+  "baseline": {
+    "associated": 264,
+    "ambiguous": 512,
+    "unknown": 360,
+    "roadAssociated": 264,
+    "roadAmbiguous": 512,
+    "roadUnknown": 360
+  },
+  "candidateViterbiForward": {
+    "roadAssociated": 300,
+    "roadAmbiguous": 357,
+    "roadUnknown": 479
+  },
+  "bucketsChanged": 536,
+  "implausibleTransitions": 15,
+  "independentAccuracyValidation": "NOT_ASSESSABLE",
+  "note": "No independent driven-road ground truth in repo; higher ASSOCIATED rate is not claimed as accuracy improvement."
+}
