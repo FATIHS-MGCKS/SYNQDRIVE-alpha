@@ -9,7 +9,9 @@ export type DtcSnapshotIngressChannel = 'poll_signals_latest' | 'webhook_obd_dtc
  */
 export type DtcSnapshotCompletenessEvidence =
   | 'signals_latest_complete'
-  | 'webhook_partial_upsert_only';
+  | 'webhook_partial_upsert_only'
+  /** DTC-02 P2 only — explicit provider attestation; never inferred from missing fields. */
+  | 'webhook_provider_confirmed_complete';
 
 export type DtcSnapshotDecisionOutcome =
   | 'APPLY_CONFIRMED_SNAPSHOT'

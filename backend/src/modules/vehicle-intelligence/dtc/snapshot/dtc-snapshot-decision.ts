@@ -50,6 +50,12 @@ function channelWatermark(
       prevHash: head.lastPartialWebhookCodesHash,
     };
   }
+  if (proposal.completeness === 'webhook_provider_confirmed_complete') {
+    return {
+      prevMs: head.lastConfirmedCompleteSourceAtMs,
+      prevHash: head.lastConfirmedCompleteCodesHash,
+    };
+  }
   return {
     prevMs: head.lastConfirmedCompleteSourceAtMs,
     prevHash: head.lastConfirmedCompleteCodesHash,
@@ -156,7 +162,9 @@ export function evaluateDtcSnapshotDecision(
   }
 
   const isWebhookPartial = proposal.completeness === 'webhook_partial_upsert_only';
-  const isComplete = proposal.completeness === 'signals_latest_complete';
+  const isComplete =
+    proposal.completeness === 'signals_latest_complete' ||
+    proposal.completeness === 'webhook_provider_confirmed_complete';
 
   let allowClears = isComplete;
   let outcome: DtcSnapshotDecision['outcome'] = isComplete

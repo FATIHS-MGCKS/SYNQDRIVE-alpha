@@ -7,6 +7,7 @@ on:
       - 'backend/prisma/migrations/**'
       - 'backend/src/modules/vehicle-intelligence/dtc/**'
       - 'backend/scripts/test/dtc-01b-postgres-ci.sh'
+      - 'backend/scripts/test/sql/ensure-ephemeral-prisma-schema-parity.sql'
       - 'backend/scripts/test/ci-start-postgres.sh'
       - 'backend/package.json'
       - 'backend/package-lock.json'

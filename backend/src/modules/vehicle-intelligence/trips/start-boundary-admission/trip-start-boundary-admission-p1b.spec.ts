@@ -89,7 +89,7 @@ describe('trip-start-boundary-admission P1B', () => {
   it('B3 — shadow runtime failure does not throw', async () => {
     const seg = segment({ startTime: TESLA_PROVIDER });
     const result = await runStartBoundaryAdmissionShadow({
-      vehicleId: 'veh-1',
+      vehicleId: '11111111-1111-4111-8111-111111111111',
       dimoTokenId: 186946,
       candidateStartAt: TESLA_CANDIDATE,
       confirmedAt: TESLA_CONFIRMED,
@@ -114,6 +114,8 @@ describe('trip-start-boundary-admission P1B', () => {
       providerContext: {},
       env: {
         ...envOn,
+        TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS:
+          '11111111-1111-4111-8111-111111111111',
         TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED: 'true',
       },
     });

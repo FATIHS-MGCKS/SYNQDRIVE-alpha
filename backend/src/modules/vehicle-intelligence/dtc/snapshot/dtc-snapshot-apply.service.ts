@@ -16,6 +16,7 @@ import {
 } from './dtc-snapshot-outbox.flush';
 import type { DtcSnapshotOutboxPayload } from './dtc-snapshot-outbox.types';
 import { isDtc01aSafetyFoundationEnabled } from './dtc-01a.config';
+import { Dtc02ObservabilityService } from '../observability/dtc02-observability.service';
 
 export interface DtcSnapshotApplyResult {
   decision: DtcSnapshotDecision;
@@ -34,6 +35,7 @@ export class DtcSnapshotApplyService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly dtc02Observability?: Dtc02ObservabilityService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -160,6 +162,7 @@ export class DtcSnapshotApplyService implements OnModuleInit {
               ? null
               : decision.reasons.join(';').slice(0, 500),
         });
+        this.observeWebhookSnapshotApply(proposal, decision.outcome);
         return;
       }
 
@@ -208,7 +211,8 @@ export class DtcSnapshotApplyService implements OnModuleInit {
           : headRow?.bindingEpoch ?? head.bindingEpoch ?? 1;
 
       const isConfirmedComplete =
-        proposal.completeness === 'signals_latest_complete' &&
+        (proposal.completeness === 'signals_latest_complete' ||
+          proposal.completeness === 'webhook_provider_confirmed_complete') &&
         (decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT' ||
           decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS' ||
           decision.outcome === 'APPLY_BINDING_REBASELINE' ||
@@ -360,7 +364,28 @@ export class DtcSnapshotApplyService implements OnModuleInit {
       `DTC-01C applied vehicle=${proposal.vehicleId} outcome=${decision.outcome} upserts=${upserted.length} clears=${cleared.length} ref=${proposal.auditRef}`,
     );
 
+    this.observeWebhookSnapshotApply(proposal, decision.outcome);
+
     return { decision, upserted, cleared };
+  }
+
+  private observeWebhookSnapshotApply(
+    proposal: DtcSnapshotProposal,
+    outcome: string,
+  ): void {
+    if (!proposal.auditRef.startsWith('dtc-webhook:')) {
+      return;
+    }
+    this.dtc02Observability?.recordPollOutcome('safety01a', outcome);
+    const evidence =
+      proposal.completeness === 'webhook_partial_upsert_only'
+        ? 'partial'
+        : proposal.completeness === 'signals_latest_complete' ||
+            proposal.completeness === 'webhook_provider_confirmed_complete'
+          ? 'complete'
+          : 'unknown';
+    this.dtc02Observability?.recordWebhookEvidence(evidence);
+    this.dtc02Observability?.recordWebhookPhase('processed');
   }
 
   /** Idempotent delivery for downstream + notification intents (crash/restart safe). */

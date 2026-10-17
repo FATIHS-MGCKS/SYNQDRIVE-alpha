@@ -33,6 +33,14 @@ const S4A_FOUNDATION_TABLES = [
   'di_v0_s4_work_items',
 ];
 const S4_FULL_TABLES = [...S4A_FOUNDATION_TABLES, 'di_v0_s4_trip_primary_boundary_seq'].sort();
+/** EXP-021 S4 research worker tables (separate migrations; not part of S4A dormant foundation). */
+const S4_RESEARCH_TABLES = [
+  'di_v0_s4_research_osm_cache_v1',
+  'di_v0_s4_research_outbox_v1',
+  'di_v0_s4_research_runs_v1',
+].sort();
+/** Full `di_v0_s4_%` set after `prisma migrate deploy` on ephemeral CI (S4A/S4B follow-ups + research). */
+const S4_PRISMA_DEPLOY_FULL_TABLES = [...S4_FULL_TABLES, ...S4_RESEARCH_TABLES].sort();
 const S2_TABLES = ['di_v0_shadow_intervals', 'di_v0_shadow_runs'];
 
 interface ProcessResult {
