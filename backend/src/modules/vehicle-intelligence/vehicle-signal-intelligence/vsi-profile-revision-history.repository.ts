@@ -1,9 +1,64 @@
 import type { PrismaService } from '../../../shared/database/prisma.service';
+import {
+  selectVsiProfileRevisionAsOf,
+  type VsiProfileRevisionAsOfSelectionResult,
+} from './vsi-profile-revision-as-of.resolver';
+import {
+  VsiProfileRevisionAsOfQueryCompleteness,
+  type VsiProfileRevisionAsOfQueryEvidenceV1,
+  type VsiProfileRevisionAsOfResolutionV1,
+} from './vsi-profile-revision-as-of.types';
 import type { VsiProfileRevisionHistoryRowV1 } from './vsi-profile-revision-history.types';
+
+const MAX_ELIGIBLE_REVISION_SCAN = 4096;
+
+function mapRow(row: {
+  organizationId: string;
+  vehicleId: string;
+  providerSourceLinkId: string;
+  profileRevision: number;
+  profileContractVersion: string;
+  contentFingerprint: string;
+  providerIdentity: string;
+  verifiedModality: string | null;
+  telemetrySourceFamily: string | null;
+  evaluatedAt: Date;
+  recordedAt: Date;
+  signalsSnapshot: unknown;
+  profileLimitations: unknown;
+  materializationTrigger: string;
+  sourceLinkLifecycleContext: unknown;
+  sourceProvenance: unknown;
+}): VsiProfileRevisionHistoryRowV1 {
+  return {
+    organizationId: row.organizationId,
+    vehicleId: row.vehicleId,
+    providerSourceLinkId: row.providerSourceLinkId,
+    profileRevision: row.profileRevision,
+    profileContractVersion: row.profileContractVersion,
+    contentFingerprint: row.contentFingerprint,
+    providerIdentity: row.providerIdentity,
+    verifiedModality: row.verifiedModality,
+    telemetrySourceFamily: row.telemetrySourceFamily,
+    evaluatedAt: row.evaluatedAt,
+    recordedAt: row.recordedAt,
+    signalsSnapshot: row.signalsSnapshot,
+    profileLimitations: Array.isArray(row.profileLimitations)
+      ? (row.profileLimitations as string[])
+      : [],
+    materializationTrigger: row.materializationTrigger as VsiProfileRevisionHistoryRowV1['materializationTrigger'],
+    sourceLinkLifecycleContext: row.sourceLinkLifecycleContext as VsiProfileRevisionHistoryRowV1['sourceLinkLifecycleContext'],
+    sourceProvenance: row.sourceProvenance as VsiProfileRevisionHistoryRowV1['sourceProvenance'],
+  };
+}
 
 export class VsiProfileRevisionHistoryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * @deprecated For as-of resolution use {@link loadDecisionTimeRevisionEvidence} or {@link resolveRevisionAsOf}.
+   * Listing without decision-time filters can omit older eligible revisions.
+   */
   async listRevisionsForLink(input: {
     organizationId: string;
     vehicleId: string;
@@ -20,26 +75,93 @@ export class VsiProfileRevisionHistoryRepository {
       orderBy: [{ profileRevision: 'desc' }],
       take: limit,
     });
+    return rows.map(mapRow);
+  }
 
-    return rows.map((row) => ({
-      organizationId: row.organizationId,
-      vehicleId: row.vehicleId,
-      providerSourceLinkId: row.providerSourceLinkId,
-      profileRevision: row.profileRevision,
-      profileContractVersion: row.profileContractVersion,
-      contentFingerprint: row.contentFingerprint,
-      providerIdentity: row.providerIdentity,
-      verifiedModality: row.verifiedModality,
-      telemetrySourceFamily: row.telemetrySourceFamily,
-      evaluatedAt: row.evaluatedAt,
-      recordedAt: row.recordedAt,
-      signalsSnapshot: row.signalsSnapshot,
-      profileLimitations: Array.isArray(row.profileLimitations)
-        ? (row.profileLimitations as string[])
-        : [],
-      materializationTrigger: row.materializationTrigger as VsiProfileRevisionHistoryRowV1['materializationTrigger'],
-      sourceLinkLifecycleContext: row.sourceLinkLifecycleContext as VsiProfileRevisionHistoryRowV1['sourceLinkLifecycleContext'],
-      sourceProvenance: row.sourceProvenance as VsiProfileRevisionHistoryRowV1['sourceProvenance'],
-    }));
+  /**
+   * Decision-time-aware bounded load: temporal filters applied in SQL.
+   */
+  async loadDecisionTimeRevisionEvidence(input: {
+    organizationId: string;
+    vehicleId: string;
+    providerSourceLinkId: string;
+    decisionAt: Date;
+    maxEligibleScan?: number;
+  }): Promise<{
+    bestRevision: VsiProfileRevisionHistoryRowV1 | null;
+    queryEvidence: VsiProfileRevisionAsOfQueryEvidenceV1;
+  }> {
+    const decisionAt = input.decisionAt;
+    const scope = {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      providerSourceLinkId: input.providerSourceLinkId,
+      recordedAt: { lte: decisionAt },
+      evaluatedAt: { lte: decisionAt },
+    };
+    const scanCap = Math.min(Math.max(input.maxEligibleScan ?? MAX_ELIGIBLE_REVISION_SCAN, 1), 10_000);
+
+    const eligibleRevisionCountExact = await this.prisma.vehicleSignalCapabilityProfileRevision.count({
+      where: scope,
+    });
+
+    if (eligibleRevisionCountExact > scanCap) {
+      return {
+        bestRevision: null,
+        queryEvidence: {
+          completeness: VsiProfileRevisionAsOfQueryCompleteness.INCOMPLETE,
+          eligibleRevisionCountExact: null,
+          maxEligibleProfileRevision: null,
+        },
+      };
+    }
+
+    const best = await this.prisma.vehicleSignalCapabilityProfileRevision.findFirst({
+      where: scope,
+      orderBy: [{ profileRevision: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const maxEligible = await this.prisma.vehicleSignalCapabilityProfileRevision.aggregate({
+      where: scope,
+      _max: { profileRevision: true },
+    });
+
+    return {
+      bestRevision: best ? mapRow(best) : null,
+      queryEvidence: {
+        completeness: VsiProfileRevisionAsOfQueryCompleteness.COMPLETE,
+        eligibleRevisionCountExact,
+        maxEligibleProfileRevision: maxEligible._max.profileRevision,
+      },
+    };
+  }
+
+  async resolveRevisionAsOf(input: {
+    organizationId: string;
+    vehicleId: string;
+    providerSourceLinkId: string;
+    decisionAt: Date;
+    historicalLinkAttributionProven: boolean;
+  }): Promise<VsiProfileRevisionAsOfResolutionV1> {
+    const { bestRevision, queryEvidence } = await this.loadDecisionTimeRevisionEvidence({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      providerSourceLinkId: input.providerSourceLinkId,
+      decisionAt: input.decisionAt,
+    });
+
+    const selection: VsiProfileRevisionAsOfSelectionResult = selectVsiProfileRevisionAsOf({
+      revisions: bestRevision ? [bestRevision] : [],
+      decisionAt: input.decisionAt,
+      historicalLinkAttributionProven: input.historicalLinkAttributionProven,
+      queryEvidence,
+    });
+
+    return {
+      authority: selection.authority,
+      selectedRevision: selection.selectedRevision,
+      limitations: selection.limitations,
+      queryEvidence,
+    };
   }
 }

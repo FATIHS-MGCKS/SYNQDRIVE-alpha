@@ -13,8 +13,10 @@
 ## Solution (additive)
 
 - Table `vehicle_signal_capability_profile_revisions` — append-only, one row per committed `profileRevision`.
-- `recorded_at` — database default at insert (persistence time); never backdated from application code.
+- `recorded_at` — PostgreSQL `clock_timestamp()` default at **insert** (statement-level wall clock). This is a **persistence upper-bound marker** for the immutable row, not a cross-system logical commit proof relative to APDS decision clocks. Never backdated from application code.
 - `evaluated_at` — profile evaluation time (source observation / projection semantics).
+- **As-of query** — `loadDecisionTimeRevisionEvidence` / `resolveRevisionAsOf` filter `recorded_at <= decisionAt` AND `evaluated_at <= decisionAt` in SQL with exact eligible counts; incomplete scans fail closed (`UNPROVEN_TEMPORAL_AUTHORITY`).
+- **Signal temporal provenance** — `OBSERVED` / `OBSERVED_STALE` require valid past timestamps for verified signal evidence; missing timestamps → `MISSING_TEMPORAL_PROVENANCE` (not silently verified).
 - Atomic capture in the **same transaction** as mutable profile upsert when `VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED=true`.
 - Pure read-only as-of resolver: `selectVsiProfileRevisionAsOf` → `NO_PRIOR_REVISION` | `PRIOR_REVISION_FOUND` | `VERIFIED_DECISION_TIME_EVIDENCE` | `STALE_AT_DECISION` | `UNPROVEN_TEMPORAL_AUTHORITY`.
 

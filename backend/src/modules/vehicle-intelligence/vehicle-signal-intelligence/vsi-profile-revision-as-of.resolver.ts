@@ -1,24 +1,22 @@
-import { parseSignalTimestampMs } from './vsi-capability-resolver.freshness';
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 import type { VsiProfileRevisionHistoryRowV1 } from './vsi-profile-revision-history.types';
-
-export const VsiProfileRevisionAsOfAuthority = {
-  NO_PRIOR_REVISION: 'NO_PRIOR_REVISION',
-  PRIOR_REVISION_FOUND: 'PRIOR_REVISION_FOUND',
-  VERIFIED_DECISION_TIME_EVIDENCE: 'VERIFIED_DECISION_TIME_EVIDENCE',
-  STALE_AT_DECISION: 'STALE_AT_DECISION',
-  UNPROVEN_TEMPORAL_AUTHORITY: 'UNPROVEN_TEMPORAL_AUTHORITY',
-} as const;
-
-export type VsiProfileRevisionAsOfAuthority =
-  (typeof VsiProfileRevisionAsOfAuthority)[keyof typeof VsiProfileRevisionAsOfAuthority];
+import {
+  assessVsiProfileRevisionSignalTemporalState,
+  VsiProfileRevisionSignalTemporalState,
+} from './vsi-profile-revision-signal-temporal';
+import {
+  VsiProfileRevisionAsOfAuthority,
+  VsiProfileRevisionAsOfQueryCompleteness,
+  type VsiProfileRevisionAsOfQueryEvidenceV1,
+} from './vsi-profile-revision-as-of.types';
 
 export type VsiProfileRevisionAsOfSelectionInput = {
   revisions: readonly VsiProfileRevisionHistoryRowV1[];
   decisionAt: Date;
   /** When false, attribution cannot be proven at decision time. */
   historicalLinkAttributionProven: boolean;
+  queryEvidence: VsiProfileRevisionAsOfQueryEvidenceV1;
 };
 
 export type VsiProfileRevisionAsOfSelectionResult = {
@@ -58,8 +56,9 @@ function revisionToProfileContext(row: VsiProfileRevisionHistoryRowV1): VsiCapab
 }
 
 /**
- * Read-only as-of selection for immutable revision history (P5-H1 contract).
- * Does not synthesize revisions; does not enable P5B.1 VERIFIED_CORRELATION by itself.
+ * `recorded_at` is the database insert timestamp (see migration: `clock_timestamp()` default).
+ * It is an **upper-bound persistence marker**, not a cross-system logical commit proof relative to APDS.
+ * VERIFIED requires strict `recorded_at < decisionAt` plus complete query evidence and signal provenance.
  */
 export function selectVsiProfileRevisionAsOf(
   input: VsiProfileRevisionAsOfSelectionInput,
@@ -82,25 +81,66 @@ export function selectVsiProfileRevisionAsOf(
     };
   }
 
-  const eligible = input.revisions
-    .filter((row) => {
-      const recordedMs = row.recordedAt.getTime();
-      const evaluatedMs = row.evaluatedAt.getTime();
-      return (
-        Number.isFinite(recordedMs) &&
-        Number.isFinite(evaluatedMs) &&
-        recordedMs <= decisionMs &&
-        evaluatedMs <= decisionMs
-      );
-    })
-    .sort((a, b) => b.profileRevision - a.profileRevision);
+  if (input.queryEvidence.completeness !== VsiProfileRevisionAsOfQueryCompleteness.COMPLETE) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: null,
+      limitations: ['AS_OF_QUERY_INCOMPLETE'],
+    };
+  }
 
-  const selected = eligible[0] ?? null;
-  if (!selected) {
+  const eligibleCount = input.queryEvidence.eligibleRevisionCountExact;
+  if (eligibleCount == null) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: null,
+      limitations: ['AS_OF_ELIGIBLE_COUNT_UNKNOWN'],
+    };
+  }
+
+  if (eligibleCount === 0) {
     return {
       authority: VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION,
       selectedRevision: null,
       limitations: ['NO_IMMUTABLE_REVISION_RECORDED_BEFORE_DECISION'],
+    };
+  }
+
+  const selected = input.revisions[0] ?? null;
+  if (!selected) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: null,
+      limitations: ['AS_OF_BEST_REVISION_NOT_LOADED'],
+    };
+  }
+
+  if (
+    input.queryEvidence.maxEligibleProfileRevision != null &&
+    selected.profileRevision !== input.queryEvidence.maxEligibleProfileRevision
+  ) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: null,
+      limitations: ['AS_OF_BEST_REVISION_MISMATCH'],
+    };
+  }
+
+  const recordedMs = selected.recordedAt.getTime();
+  const evaluatedMs = selected.evaluatedAt.getTime();
+  if (!Number.isFinite(recordedMs) || !Number.isFinite(evaluatedMs)) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: selected,
+      limitations: ['INVALID_PROFILE_TEMPORAL_AUTHORITY'],
+    };
+  }
+
+  if (recordedMs > decisionMs || evaluatedMs > decisionMs) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: selected,
+      limitations: ['PROFILE_TEMPORAL_FILTER_VIOLATION'],
     };
   }
 
@@ -109,21 +149,29 @@ export function selectVsiProfileRevisionAsOf(
     limitations.push('LEGACY_PROFILE_V1');
   }
 
-  let futureSignalEvidence = false;
+  let hasFutureSignal = false;
+  let hasMissingProvenance = false;
   for (const signal of profile.signals) {
-    const ts = parseSignalTimestampMs(signal.lastSourceTimestamp);
-    if (ts != null && ts > decisionMs) {
-      futureSignalEvidence = true;
-      limitations.push(`SIGNAL_EVIDENCE_AFTER_DECISION:${signal.canonicalSignalKey}`);
+    const state = assessVsiProfileRevisionSignalTemporalState({
+      empiricalObservation: signal.empiricalObservation,
+      lastSourceTimestamp: signal.lastSourceTimestamp,
+      lastValidObservationAt: signal.lastValidObservationAt,
+      decisionAtMs: decisionMs,
+    });
+    if (state === VsiProfileRevisionSignalTemporalState.FUTURE_SIGNAL_EVIDENCE) {
+      hasFutureSignal = true;
+      limitations.push(`FUTURE_SIGNAL_EVIDENCE:${signal.canonicalSignalKey}`);
     }
-    const validAt = parseSignalTimestampMs(signal.lastValidObservationAt);
-    if (validAt != null && validAt > decisionMs) {
-      futureSignalEvidence = true;
-      limitations.push(`LAST_VALID_OBSERVATION_AFTER_DECISION:${signal.canonicalSignalKey}`);
+    if (state === VsiProfileRevisionSignalTemporalState.MISSING_TEMPORAL_PROVENANCE) {
+      hasMissingProvenance = true;
+      limitations.push(`MISSING_TEMPORAL_PROVENANCE:${signal.canonicalSignalKey}`);
+    }
+    if (state === VsiProfileRevisionSignalTemporalState.VALID_PAST_SIGNAL_EVIDENCE) {
+      limitations.push(`VALID_PAST_SIGNAL_EVIDENCE:${signal.canonicalSignalKey}`);
     }
   }
 
-  if (futureSignalEvidence) {
+  if (hasFutureSignal) {
     return {
       authority: VsiProfileRevisionAsOfAuthority.STALE_AT_DECISION,
       selectedRevision: selected,
@@ -139,6 +187,24 @@ export function selectVsiProfileRevisionAsOf(
     };
   }
 
+  if (hasMissingProvenance) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND,
+      selectedRevision: selected,
+      limitations,
+    };
+  }
+
+  if (recordedMs >= decisionMs) {
+    limitations.push('PERSISTENCE_RECORDED_AT_NOT_STRICTLY_BEFORE_DECISION');
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: selected,
+      limitations,
+    };
+  }
+
+  limitations.push('PERSISTENCE_RECORDED_AT_UPPER_BOUND_ONLY');
   return {
     authority: VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE,
     selectedRevision: selected,

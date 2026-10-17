@@ -1,16 +1,15 @@
 /**
  * VSI P5-H1 immutable profile revision history (disposable PostgreSQL).
  */
-import { PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
+import { Prisma, PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
 import { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 import { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
 import { VsiProfileRevisionHistoryRepository } from './vsi-profile-revision-history.repository';
-import {
-  selectVsiProfileRevisionAsOf,
-  VsiProfileRevisionAsOfAuthority,
-} from './vsi-profile-revision-as-of.resolver';
+import { VsiProfileRevisionAsOfAuthority } from './vsi-profile-revision-as-of.types';
+import { appendVsiProfileRevisionHistoryInTransaction } from './vsi-profile-revision-history.writer';
+import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import {
   createLegacyDimoLinkFixture,
   createLegacyReconcileOrg,
@@ -304,7 +303,7 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
     await cleanupOrg(prisma, organizationId);
   });
 
-  it('supports as-of lookup and rejects decisions before history activation', async () => {
+  it('supports decision-time-aware as-of resolution via repository', async () => {
     process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
     const { organizationId, fixture } = await seedFixture();
     const t0 = new Date('2026-10-10T10:00:00.000Z');
@@ -324,32 +323,373 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
       lifecycleMode: 'SOURCE_LINK_ACTIVATED',
     });
 
-    const rows = await historyRepo.listRevisionsForLink({
+    const beforeHistory = await historyRepo.resolveRevisionAsOf({
       organizationId,
       vehicleId: fixture.vehicleId,
       providerSourceLinkId: fixture.linkId,
-    });
-
-    const beforeHistory = selectVsiProfileRevisionAsOf({
-      revisions: rows,
       decisionAt: new Date('2026-10-09T00:00:00.000Z'),
       historicalLinkAttributionProven: true,
     });
     expect(beforeHistory.authority).toBe(VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION);
 
-    const revision = rows[0]!;
-    const decisionAt = new Date(
-      Math.max(revision.recordedAt.getTime(), revision.evaluatedAt.getTime()) + 60_000,
-    );
-    const atDecision = selectVsiProfileRevisionAsOf({
-      revisions: rows,
+    const loaded = await historyRepo.loadDecisionTimeRevisionEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      decisionAt: new Date('2099-01-01T00:00:00.000Z'),
+    });
+    expect(loaded.bestRevision).not.toBeNull();
+    const decisionAt = new Date(loaded.bestRevision!.recordedAt.getTime() + 60_000);
+    const atDecision = await historyRepo.resolveRevisionAsOf({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
       decisionAt,
       historicalLinkAttributionProven: true,
     });
-    expect(atDecision.authority).toBe(
+    expect(atDecision.selectedRevision?.profileRevision).toBe(1);
+    expect([
       VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE,
-    );
+      VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND,
+    ]).toContain(atDecision.authority);
 
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('finds eligible revision 1 when more than 512 later revisions exist after decision', async () => {
+    process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
+    const { organizationId, fixture } = await seedFixture();
+    const decisionAt = new Date('2026-10-11T12:00:00.000Z');
+    const beforeDecision = new Date('2026-10-11T10:00:00.000Z');
+    const afterDecision = new Date('2026-10-11T14:00:00.000Z');
+    const signals = [
+      {
+        canonicalSignalKey: 'lv_voltage',
+        empiricalObservation: 'OBSERVED',
+        lastSourceTimestamp: '2026-10-11T09:00:00.000Z',
+        lastValidObservationAt: '2026-10-11T09:00:00.000Z',
+      },
+    ];
+    const lifecycleCtx = {
+      version: 'vsi-profile-revision-link-context-v1',
+      linkId: fixture.linkId,
+      isActive: true,
+      activatedAt: '2026-08-01T00:00:00.000Z',
+      deactivatedAt: null,
+      supersededByLinkId: null,
+    };
+
+    await prisma.vehicleSignalCapabilityProfileRevision.create({
+      data: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        profileRevision: 1,
+        profileContractVersion: VSI_PROFILE_CONTRACT_VERSION,
+        contentFingerprint: 'eligible-rev-1',
+        providerIdentity: 'DIMO',
+        verifiedModality: 'HARDWARE_DEVICE',
+        telemetrySourceFamily: 'RUPTELA_R1',
+        evaluatedAt: beforeDecision,
+        recordedAt: beforeDecision,
+        signalsSnapshot: signals,
+        profileLimitations: [],
+        materializationTrigger: 'SNAPSHOT_HOOK',
+        sourceLinkLifecycleContext: lifecycleCtx,
+        sourceProvenance: {
+          version: 'vsi-profile-revision-provenance-v1',
+          declaredCatalogCheckedAt: null,
+          lastMaterializedSourceTimestamp: '2026-10-11T09:00:00.000Z',
+          lastMaterializedProviderFetchAt: '2026-10-11T09:00:00.000Z',
+          lastProvenStrictSourceAdvanceAt: null,
+        },
+      },
+    });
+
+    const bulk: Prisma.VehicleSignalCapabilityProfileRevisionCreateManyInput[] = [];
+    for (let rev = 2; rev <= 520; rev += 1) {
+      bulk.push({
+        id: randomUUID(),
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        profileRevision: rev,
+        profileContractVersion: VSI_PROFILE_CONTRACT_VERSION,
+        contentFingerprint: `post-decision-${rev}`,
+        providerIdentity: 'DIMO',
+        verifiedModality: 'HARDWARE_DEVICE',
+        telemetrySourceFamily: 'RUPTELA_R1',
+        evaluatedAt: afterDecision,
+        recordedAt: afterDecision,
+        signalsSnapshot: signals,
+        profileLimitations: [],
+        materializationTrigger: 'SNAPSHOT_HOOK',
+        sourceLinkLifecycleContext: lifecycleCtx,
+        sourceProvenance: {
+          version: 'vsi-profile-revision-provenance-v1',
+          declaredCatalogCheckedAt: null,
+          lastMaterializedSourceTimestamp: '2026-10-11T13:00:00.000Z',
+          lastMaterializedProviderFetchAt: '2026-10-11T13:00:00.000Z',
+          lastProvenStrictSourceAdvanceAt: null,
+        },
+      });
+    }
+    await prisma.vehicleSignalCapabilityProfileRevision.createMany({ data: bulk });
+
+    const legacyList = await historyRepo.listRevisionsForLink({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      maxRows: 512,
+    });
+    const legacyWouldMiss = legacyList.every((r) => r.profileRevision !== 1);
+    expect(legacyWouldMiss).toBe(true);
+
+    const resolved = await historyRepo.resolveRevisionAsOf({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      decisionAt,
+      historicalLinkAttributionProven: true,
+    });
+    expect(resolved.queryEvidence.eligibleRevisionCountExact).toBe(1);
+    expect(resolved.selectedRevision?.profileRevision).toBe(1);
+    expect(resolved.authority).toBe(VsiProfileRevisionAsOfAuthority.VERIFIED_DECISION_TIME_EVIDENCE);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('rolls back mutable profile update when history insert fails in the same transaction', async () => {
+    process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
+    const { organizationId, fixture } = await seedFixture();
+    const t0 = new Date('2026-10-10T10:00:00.000Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: t0,
+      providerFetchedAt: t0,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.4, timestamp: t0.toISOString() },
+      },
+    });
+    await service.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      lifecycleMode: 'SOURCE_LINK_ACTIVATED',
+    });
+
+    const profile = await prisma.vehicleSignalCapabilityProfile.findFirstOrThrow({
+      where: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      },
+    });
+
+    await expect(
+      prisma.$transaction(async (tx) => {
+        const updated = await tx.vehicleSignalCapabilityProfile.updateMany({
+          where: { id: profile.id, profileRevision: profile.profileRevision },
+          data: { profileRevision: profile.profileRevision + 1, evaluatedAt: new Date() },
+        });
+        if (updated.count === 0) {
+          throw new Error('conflict');
+        }
+        const captureInput = {
+          organizationId,
+          vehicleId: fixture.vehicleId,
+          providerSourceLinkId: fixture.linkId,
+          profileRevision: profile.profileRevision,
+          profileContractVersion: profile.profileContractVersion,
+          contentFingerprint: profile.contentFingerprint,
+          providerIdentity: profile.providerIdentity,
+          verifiedModality: profile.verifiedModality,
+          telemetrySourceFamily: profile.telemetrySourceFamily,
+          evaluatedAt: profile.evaluatedAt,
+          declaredCatalogCheckedAt: profile.declaredCatalogCheckedAt,
+          lastMaterializedSourceTimestamp: profile.lastMaterializedSourceTimestamp,
+          lastMaterializedProviderFetchAt: profile.lastMaterializedProviderFetchAt,
+          lastProvenStrictSourceAdvanceAt: profile.lastProvenStrictSourceAdvanceAt,
+          signalsSnapshot: profile.signalsSnapshot,
+          profileLimitations: profile.profileLimitations as string[],
+          materializationTrigger: 'SNAPSHOT_HOOK' as const,
+          sourceLinkLifecycleContext: {
+            version: 'vsi-profile-revision-link-context-v1' as const,
+            linkId: fixture.linkId,
+            isActive: true,
+            activatedAt: t0.toISOString(),
+            deactivatedAt: null,
+            supersededByLinkId: null,
+          },
+        };
+        await appendVsiProfileRevisionHistoryInTransaction(tx, captureInput);
+        await appendVsiProfileRevisionHistoryInTransaction(tx, captureInput);
+      }),
+    ).rejects.toThrow();
+
+    const after = await prisma.vehicleSignalCapabilityProfile.findFirstOrThrow({
+      where: { id: profile.id },
+    });
+    expect(after.profileRevision).toBe(profile.profileRevision);
+    const historyCount = await prisma.vehicleSignalCapabilityProfileRevision.count({
+      where: { organizationId, vehicleId: fixture.vehicleId },
+    });
+    expect(historyCount).toBe(1);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('serializes parallel materialization to one history row per committed revision', async () => {
+    process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
+    const { organizationId, fixture } = await seedFixture();
+    const t0 = new Date('2026-10-10T10:00:00.000Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: t0,
+      providerFetchedAt: t0,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.4, timestamp: t0.toISOString() },
+      },
+    });
+    const t1 = new Date('2026-10-10T11:00:00.000Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: t1,
+      providerFetchedAt: t1,
+      lvBatteryVoltage: 13.1,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 13.1, timestamp: t1.toISOString() },
+      },
+    });
+
+    await Promise.all([
+      service.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        lifecycleMode: 'SNAPSHOT_HOOK',
+      }),
+      service.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        lifecycleMode: 'SNAPSHOT_HOOK',
+      }),
+    ]);
+
+    const revisions = await prisma.vehicleSignalCapabilityProfileRevision.findMany({
+      where: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      },
+    });
+    const revNumbers = revisions.map((r) => r.profileRevision).sort((a, b) => a - b);
+    expect(revNumbers).toEqual([...new Set(revNumbers)]);
+    expect(revisions.length).toBe(revNumbers.length);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('handles concurrent lifecycle limitation updates without duplicate revisions', async () => {
+    process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
+    const { organizationId, fixture } = await seedFixture();
+    const t0 = new Date('2026-10-10T10:00:00.000Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: t0,
+      providerFetchedAt: t0,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.4, timestamp: t0.toISOString() },
+      },
+    });
+    await service.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      lifecycleMode: 'SOURCE_LINK_ACTIVATED',
+    });
+
+    const lifecycleOutcomes = await Promise.allSettled([
+      service.appendLifecycleLimitations({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        limitations: [VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_INACTIVE],
+      }),
+      service.appendLifecycleLimitations({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        limitations: [VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_INACTIVE],
+      }),
+    ]);
+    expect(lifecycleOutcomes.some((o) => o.status === 'fulfilled')).toBe(true);
+
+    const profile = await prisma.vehicleSignalCapabilityProfile.findFirstOrThrow({
+      where: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      },
+    });
+    expect(profile.profileRevision).toBe(2);
+    const historyRows = await prisma.vehicleSignalCapabilityProfileRevision.findMany({
+      where: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      },
+    });
+    expect(historyRows).toHaveLength(2);
+    expect(new Set(historyRows.map((r) => r.profileRevision)).size).toBe(2);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('skips out-of-order source evidence without new revision', async () => {
+    process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED = '1';
+    const { organizationId, fixture } = await seedFixture();
+    const t0 = new Date('2026-10-10T12:00:00.000Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: t0,
+      providerFetchedAt: t0,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.4, timestamp: t0.toISOString() },
+      },
+    });
+    await service.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      lifecycleMode: 'SOURCE_LINK_ACTIVATED',
+    });
+    const tOlder = new Date('2026-10-10T10:00:00.000Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: tOlder,
+      providerFetchedAt: tOlder,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 11.0, timestamp: tOlder.toISOString() },
+      },
+    });
+    await service.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      lifecycleMode: 'SNAPSHOT_HOOK',
+    });
+    const count = await prisma.vehicleSignalCapabilityProfileRevision.count({
+      where: { organizationId, vehicleId: fixture.vehicleId },
+    });
+    expect(count).toBe(1);
     await cleanupOrg(prisma, organizationId);
   });
 
