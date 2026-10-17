@@ -1,6 +1,5 @@
 import {
   classifyRestingVoltage,
-  normalizeBatteryType,
   specUsedForRestingThresholds,
 } from '../../battery-status';
 import {
@@ -9,15 +8,19 @@ import {
   LV_OPERATIONAL_MIN_REST_AGE_HOURS,
 } from './lv-operational-condition-v1.constants';
 import {
+  evaluateStartabilityV1,
   isEligibleRestObservationForConditionV1,
-  isWakeStartabilityObservationV1,
   medianRestVoltageMv,
+  selectEpisodeRepresentativesForOperationalRisk,
 } from './lv-operational-condition-observation.policy';
 import type {
   LvOperationalConditionAssessmentV1,
   LvOperationalConditionInputV1,
+  LvOperationalConditionObservationV1,
   LvOperationalConditionReasonCodeV1,
   LvOperationalConditionStatusV1,
+  LvOperationalDataQualityStatusV1,
+  LvOperationalRestingChargeBandV1,
 } from './lv-operational-condition-v1.types';
 
 function mapRestingStatusToOperationalRisk(
@@ -37,38 +40,78 @@ function mapRestingStatusToOperationalRisk(
   }
 }
 
-function estimateSocFromRestVoltageV1(
-  voltageV: number,
-  chemistry: ReturnType<typeof normalizeBatteryType>,
-): { status: 'EVALUABLE' | 'NOT_EVALUABLE' | 'UNKNOWN'; percent: number | null; codes: LvOperationalConditionReasonCodeV1[] } {
-  if (chemistry === 'LITHIUM' || chemistry === 'UNKNOWN') {
+function buildCoarseRestingChargeBand(
+  restingBandStatus: string,
+  chemistryType: string,
+): LvOperationalRestingChargeBandV1 {
+  if (chemistryType === 'LITHIUM' || chemistryType === 'UNKNOWN' || restingBandStatus === 'UNSUPPORTED') {
     return {
-      status: 'NOT_EVALUABLE',
-      percent: null,
-      codes: ['SOC_ESTIMATE_NOT_SUPPORTED'],
+      qualification: 'NOT_EVALUABLE',
+      bandStatus: null,
+      reasonCodes: ['REST_CHARGE_BAND_NOT_EVALUABLE'],
     };
   }
-  const classified = classifyRestingVoltage(voltageV, chemistry, { specProvided: true });
-  if (classified.status === 'UNSUPPORTED') {
+  if (restingBandStatus === 'UNKNOWN') {
     return {
-      status: 'NOT_EVALUABLE',
-      percent: null,
-      codes: ['SOC_ESTIMATE_NOT_SUPPORTED'],
+      qualification: 'NOT_EVALUABLE',
+      bandStatus: null,
+      reasonCodes: ['REST_CHARGE_BAND_NOT_EVALUABLE'],
     };
   }
-  const bands: Record<string, number> = {
-    GOOD: 90,
-    WATCH: 70,
-    WARNING: 45,
-    CRITICAL: 20,
-    UNKNOWN: 0,
-  };
-  const percent = bands[classified.status] ?? null;
   return {
-    status: percent == null ? 'UNKNOWN' : 'EVALUABLE',
-    percent,
-    codes: percent == null ? ['SOC_ESTIMATE_CONTEXT_LIMITED'] : [],
+    qualification: 'COARSE_BAND_ONLY',
+    bandStatus: restingBandStatus as LvOperationalRestingChargeBandV1['bandStatus'],
+    reasonCodes: ['REST_CHARGE_BAND_COARSE_ONLY'],
   };
+}
+
+function deriveDataQuality(input: LvOperationalConditionInputV1): {
+  status: LvOperationalDataQualityStatusV1;
+  reasonCodes: LvOperationalConditionReasonCodeV1[];
+} {
+  const codes: LvOperationalConditionReasonCodeV1[] = [];
+  if (input.openProviderObservabilityGapCount > 0) {
+    codes.push('PROVIDER_GAP_OPEN');
+  }
+  if (input.inputCoverageIncomplete || input.historicalObservationsTruncated) {
+    codes.push('INPUT_COVERAGE_TRUNCATED');
+  }
+  if (
+    input.chemistry.sourceType?.toUpperCase() === 'MANUAL' &&
+    input.chemistry.sourceConfidence != null &&
+    input.chemistry.sourceConfidence >= 0.99
+  ) {
+    codes.push('MANUAL_BATTERY_SPEC_NOT_PHYSICALLY_VERIFIED');
+  }
+
+  const eligible = input.eligibleRestObservations.filter(isEligibleRestObservationForConditionV1);
+  const withTemp = eligible.filter((o) => o.temperatureC != null && Number.isFinite(o.temperatureC));
+  if (eligible.length > 0 && withTemp.length === 0) {
+    codes.push('TEMPERATURE_MISSING_WHERE_REQUIRED');
+  }
+
+  if (eligible.length === 0) {
+    return { status: 'INSUFFICIENT', reasonCodes: codes };
+  }
+  if (codes.length > 0) {
+    return { status: 'DEGRADED', reasonCodes: codes };
+  }
+  return { status: 'ADEQUATE', reasonCodes: [] };
+}
+
+function deriveAssessmentConfidence(
+  episodeRepresentatives: LvOperationalConditionObservationV1[],
+  dataQuality: LvOperationalDataQualityStatusV1,
+): LvOperationalConditionAssessmentV1['assessmentConfidence'] {
+  if (episodeRepresentatives.length === 0 || dataQuality === 'INSUFFICIENT') {
+    return 'NONE';
+  }
+  if (dataQuality === 'DEGRADED') {
+    return episodeRepresentatives.length >= 2 ? 'LOW' : 'NONE';
+  }
+  if (episodeRepresentatives.length >= 3) return 'HIGH';
+  if (episodeRepresentatives.length >= 2) return 'MEDIUM';
+  return 'LOW';
 }
 
 /**
@@ -81,27 +124,25 @@ export function evaluateLvOperationalConditionV1(
   const limitations: string[] = [
     'Internal non-authoritative model; not customer publication.',
     'No measured SOH %, CCA, capacity or remaining lifetime from voltage alone.',
+    'Resting voltage bands reuse battery-status.ts chemistry thresholds; not a calibrated SoC % estimator.',
+    'sourceConfidence on VehicleBatterySpec does not prove physical battery verification.',
   ];
 
   const chemistryType = input.chemistry.normalizedType;
   if (chemistryType === 'UNKNOWN') {
     reasonCodes.push('CHEMISTRY_UNKNOWN');
   }
-  if (input.openProviderObservabilityGapCount > 0) {
-    reasonCodes.push('PROVIDER_GAP_OPEN');
-  }
-  if (input.inputCoverageIncomplete || input.historicalObservationsTruncated) {
-    reasonCodes.push('INPUT_COVERAGE_TRUNCATED');
-    limitations.push('Historical input may be truncated or incomplete; assessment uses bounded sample only.');
-  }
+
+  const dataQualityResult = deriveDataQuality(input);
+  reasonCodes.push(...dataQualityResult.reasonCodes);
 
   const eligible = input.eligibleRestObservations.filter(isEligibleRestObservationForConditionV1);
-  const agedEligible = eligible.filter(
-    (o) =>
-      o.actualRestAgeHours == null || o.actualRestAgeHours >= LV_OPERATIONAL_MIN_REST_AGE_HOURS,
+  const unverifiedRest = eligible.filter(
+    (o) => o.actualRestAgeHours == null || o.actualRestAgeHours < LV_OPERATIONAL_MIN_REST_AGE_HOURS,
   );
-
-  if (eligible.length > 0 && agedEligible.length === 0) {
+  if (eligible.length > 0 && unverifiedRest.length === eligible.length) {
+    reasonCodes.push('REST_STABILIZATION_UNVERIFIED');
+  } else if (unverifiedRest.length > 0) {
     reasonCodes.push('REST_AGE_TOO_SHORT');
   }
 
@@ -116,24 +157,19 @@ export function evaluateLvOperationalConditionV1(
     limitations.push('Longitudinal C3 slopes flagged CONTEXT_LIMITED are excluded from risk escalation.');
   }
 
-  const wakeObs = input.wakeVoltageObservations.filter(isWakeStartabilityObservationV1);
-  const startabilityStatus: LvOperationalConditionStatusV1 =
-    wakeObs.length > 0 ? 'GREEN' : 'UNKNOWN';
-  if (wakeObs.length > 0) {
-    reasonCodes.push('STARTABILITY_WAKE_OBSERVED');
-  } else {
-    reasonCodes.push('STARTABILITY_NOT_OBSERVED');
-  }
+  const startability = evaluateStartabilityV1([
+    ...input.eligibleRestObservations,
+    ...input.wakeVoltageObservations,
+  ]);
+  reasonCodes.push(...startability.reasonCodes);
+
+  const episodeRepresentatives = selectEpisodeRepresentativesForOperationalRisk(eligible);
 
   let operationalRiskStatus: LvOperationalConditionStatusV1 = 'UNKNOWN';
-  let confidence: LvOperationalConditionAssessmentV1['confidence'] = 'NONE';
+  let restingVoltageBand: LvOperationalConditionAssessmentV1['restingVoltageBand'] = 'NOT_EVALUABLE';
+  let restingThresholdSource: LvOperationalConditionAssessmentV1['restingThresholdSource'] = 'NONE';
 
-  const restForRisk =
-    agedEligible.length >= LV_OPERATIONAL_MIN_ELIGIBLE_REST_OBSERVATIONS
-      ? agedEligible
-      : agedEligible.length > 0
-        ? agedEligible
-        : [];
+  const restForRisk = episodeRepresentatives;
 
   const medianMv = medianRestVoltageMv(restForRisk);
   const minMv =
@@ -146,6 +182,9 @@ export function evaluateLvOperationalConditionV1(
   } else if (restForRisk.length === 0) {
     reasonCodes.push('NO_ELIGIBLE_REST_OBSERVATIONS');
     operationalRiskStatus = 'UNKNOWN';
+  } else if (restForRisk.length < LV_OPERATIONAL_MIN_ELIGIBLE_REST_OBSERVATIONS) {
+    reasonCodes.push('NO_ELIGIBLE_REST_OBSERVATIONS');
+    operationalRiskStatus = 'UNKNOWN';
   } else {
     const medianV = medianMv != null ? medianMv / 1000 : null;
     const specProvided = specUsedForRestingThresholds({
@@ -153,9 +192,10 @@ export function evaluateLvOperationalConditionV1(
       batteryVolt: input.chemistry.nominalVoltageV,
       sourceConfidence: input.chemistry.sourceConfidence,
     });
-    const resting = classifyRestingVoltage(medianV, chemistryType, {
-      specProvided,
-    });
+    const resting = classifyRestingVoltage(medianV, chemistryType, { specProvided });
+    restingThresholdSource = resting.thresholdSource;
+    restingVoltageBand = resting.status === 'UNSUPPORTED' ? 'UNSUPPORTED' : resting.status;
+
     if (resting.status === 'UNSUPPORTED') {
       reasonCodes.push('CHEMISTRY_UNSUPPORTED');
       operationalRiskStatus = 'UNKNOWN';
@@ -163,42 +203,33 @@ export function evaluateLvOperationalConditionV1(
       const mapped = mapRestingStatusToOperationalRisk(resting.status);
       operationalRiskStatus = mapped.status;
       reasonCodes.push(mapped.code);
-      confidence =
-        restForRisk.length >= 3 && !input.inputCoverageIncomplete
-          ? 'HIGH'
-          : restForRisk.length >= 2
-            ? 'MEDIUM'
-            : 'LOW';
     }
   }
 
-  if (
-    input.inputCoverageIncomplete &&
-    operationalRiskStatus === 'GREEN' &&
-    confidence !== 'HIGH'
-  ) {
-    operationalRiskStatus = 'YELLOW';
-    limitations.push('Provisional GREEN downgraded to YELLOW due to incomplete input coverage.');
-  }
+  const restingChargeBand = buildCoarseRestingChargeBand(
+    restingVoltageBand === 'NOT_EVALUABLE' ? 'UNKNOWN' : restingVoltageBand,
+    chemistryType,
+  );
+  reasonCodes.push(...restingChargeBand.reasonCodes);
 
-  const latestRest = restForRisk[restForRisk.length - 1] ?? input.latestGlobalObservation;
-  const soc = latestRest
-    ? estimateSocFromRestVoltageV1(latestRest.voltageV, chemistryType)
-    : {
-        status: 'UNKNOWN' as const,
-        percent: null,
-        codes: ['SOC_ESTIMATE_CONTEXT_LIMITED'] as LvOperationalConditionReasonCodeV1[],
-      };
+  const assessmentConfidence = deriveAssessmentConfidence(
+    restForRisk,
+    dataQualityResult.status,
+  );
 
   const evidenceIds = [
-    ...new Set([
-      ...restForRisk.map((o) => o.observationId),
-      ...wakeObs.map((o) => o.observationId),
-      input.latestGlobalObservation?.observationId,
-    ].filter(Boolean) as string[]),
+    ...new Set(
+      [
+        ...restForRisk.map((o) => o.observationId),
+        ...input.wakeVoltageObservations.map((o) => o.observationId),
+        input.latestGlobalObservation?.observationId,
+        input.latestEligibleRestObservation?.observationId,
+      ].filter(Boolean) as string[],
+    ),
   ];
 
   const freshness =
+    input.latestEligibleRestObservation?.voltageObservedAt ??
     input.latestGlobalObservation?.voltageObservedAt ??
     (restForRisk.length > 0 ? restForRisk[restForRisk.length - 1].voltageObservedAt : null);
 
@@ -207,21 +238,21 @@ export function evaluateLvOperationalConditionV1(
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
     evaluatedAtIso: input.evaluatedAtIso,
+    restingVoltageBand,
+    restingThresholdSource,
+    restingChargeBand,
     operationalRiskStatus,
-    confidence,
+    dataQuality: dataQualityResult.status,
+    assessmentConfidence,
     chemistry: input.chemistry,
-    socEstimation: {
-      status: soc.status,
-      estimatedSocPercent: soc.percent,
-      reasonCodes: soc.codes,
-    },
-    startabilityStatus,
+    startabilityStatus: startability.status,
     actualStateOfHealth: 'UNKNOWN',
     evidenceObservationIds: evidenceIds,
     dataFreshnessObservedAt: freshness,
     reasonCodes: [...new Set(reasonCodes)],
     limitations,
-    eligibleRestObservationCount: restForRisk.length,
+    eligibleRestObservationCount: eligible.length,
+    qualifiedRestEpisodeCount: restForRisk.length,
     qualifiedRestVoltageMv: {
       min: minMv,
       max: maxMv,

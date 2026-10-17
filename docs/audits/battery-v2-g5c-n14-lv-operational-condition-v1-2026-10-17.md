@@ -48,22 +48,23 @@ Chemistry is taken from `VehicleBatterySpec` only — not inferred from vehicle 
 - Date-range mode: `historicalMeasured` ascending after dedup; `provenance.historicalWindowLatestMeasured` = last point in window (not global latest).
 - `provenance.inputCoverageIncomplete` when historical cap hit or open provider gaps.
 
-## Model V1 (`LV_OPERATIONAL_CONDITION_V1_2026-10-17`)
+## Model P1 (`LV_OPERATIONAL_CONDITION_V1_P1_2026-10-17`)
 
-- Statuses: `GREEN` | `YELLOW` | `RED` | `UNKNOWN`.
-- Resting voltage bands reuse `classifyRestingVoltage` with spec-aware chemistry (AGM / EFB / lead-acid).
-- Charging/driving observations excluded; context-limited C3 slopes do not escalate risk.
-- SOC: coarse band from rest voltage only where chemistry supports it; lithium/unknown → `NOT_EVALUABLE`.
-- SOH: always `UNKNOWN`.
+- **Separated outputs:** `restingVoltageBand`, `restingChargeBand` (coarse, no % SoC), `operationalRiskStatus`, `dataQuality`, `assessmentConfidence`, `actualStateOfHealth` (always UNKNOWN).
+- Resting bands: `classifyRestingVoltage` in `battery-status.ts` (AGM vs DEFAULT lead-acid/EFB) — documented via `chemistry.restingThresholdAuthority`.
+- Provider gaps / truncated history affect **data quality** and **confidence**, not voltage-derived operational risk.
+- Charging/driving excluded; episode representatives (one per `restSessionId`) for risk; dedup by `sourceMeasurementId`.
+- Startability: **UNKNOWN** unless validated pre-start rest + load signature in same session; REST_WAKE alone never GREEN.
+- No pseudo SoC % (removed 90/70/45/20 mapping).
 
-### Provisional operational risk (offline evaluation on medians above)
+### Revised offline evaluation (episode-median logic aligned with P1)
 
-| Vehicle | Provisional risk | Notes |
-|---------|------------------|--------|
-| KS MS 661 | **YELLOW** | AGM median rest 12.506 V → WATCH band; latest global point is charging (excluded from rest risk) |
-| WOB L 7503 | **YELLOW** | Median rest 12.556 V would be GREEN for lead-acid, but open provider gap + incomplete-coverage policy avoids unconditional GREEN |
+| Vehicle | Resting band | Operational risk | Data quality | Confidence | Startability | SOH |
+|---------|--------------|------------------|--------------|------------|--------------|-----|
+| KS MS 661 | WATCH (AGM ~12.506 V median) | **YELLOW** | DEGRADED (no temp on GE rows; manual spec note) | LOW/MEDIUM | **UNKNOWN** | UNKNOWN |
+| WOB L 7503 | GOOD (lead-acid ~12.556 V median) | **GREEN** | **DEGRADED** (open provider gap; manual spec note) | LOW | **UNKNOWN** | UNKNOWN |
 
-Startability: **UNKNOWN** (no REST_WAKE in bounded samples).
+Manual `VehicleBatterySpec` (confidence 1.0) is **not** treated as independent physical verification (`MANUAL_BATTERY_SPEC_NOT_PHYSICALLY_VERIFIED`).
 
 ## Adversarial cases (unit tests)
 

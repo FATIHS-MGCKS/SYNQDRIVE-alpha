@@ -4,6 +4,7 @@ import {
   normalizeBatteryType,
   selectBestBatterySpec,
 } from '../../battery-status';
+import { dedupeObservationsBySourceMeasurementId } from '../lv-measured-intelligence/lv-measured-intelligence-dedup.policy';
 import { mapEvidenceClassToOperationalContext } from '../lv-measured-intelligence/lv-measured-intelligence-context.policy';
 import { LvMeasuredIntelligenceReadService } from '../lv-measured-intelligence/lv-measured-intelligence-read.service';
 import { LV_OPERATIONAL_CONDITION_MODEL_VERSION } from './lv-operational-condition-v1.constants';
@@ -11,18 +12,25 @@ import type {
   LvOperationalConditionInputV1,
   LvOperationalConditionObservationV1,
 } from './lv-operational-condition-v1.types';
-import { isEligibleRestObservationForConditionV1 } from './lv-operational-condition-observation.policy';
+import {
+  dedupeConditionObservationsBySourceMeasurementId,
+  isEligibleRestObservationForConditionV1,
+  selectLatestEligibleRestObservation,
+} from './lv-operational-condition-observation.policy';
 
 const GE_LOAD_SELECT = {
   id: true,
   sourceMeasurementId: true,
+  restSessionId: true,
   voltage: true,
   voltageObservedAt: true,
+  providerObservationAt: true,
   evidenceClass: true,
   actualRestAgeMs: true,
   isLvCharging: true,
   engineRunning: true,
   temperatureC: true,
+  createdAt: true,
 } as const;
 
 export async function buildLvOperationalConditionInputV1(
@@ -65,11 +73,15 @@ export async function buildLvOperationalConditionInputV1(
     select: GE_LOAD_SELECT,
   });
 
-  const mapRow = (row: (typeof geRows)[number]): LvOperationalConditionObservationV1 => ({
+  const dedupedRows = dedupeObservationsBySourceMeasurementId(geRows);
+
+  const mapRow = (row: (typeof dedupedRows)[number]): LvOperationalConditionObservationV1 => ({
     observationId: row.id,
     sourceMeasurementId: row.sourceMeasurementId,
+    restSessionId: row.restSessionId,
     voltageV: row.voltage ?? 0,
     voltageObservedAt: row.voltageObservedAt?.toISOString() ?? '',
+    providerObservationAt: row.providerObservationAt?.toISOString() ?? null,
     operationalContext: mapEvidenceClassToOperationalContext(
       row.evidenceClass,
       row.isLvCharging,
@@ -82,9 +94,11 @@ export async function buildLvOperationalConditionInputV1(
     engineRunning: row.engineRunning,
   });
 
-  const observations = geRows.map(mapRow);
-  const eligibleRestObservations = observations.filter(isEligibleRestObservationForConditionV1);
-  const wakeVoltageObservations = observations.filter(
+  const observations = dedupedRows.map(mapRow);
+  const dedupedObservations = dedupeConditionObservationsBySourceMeasurementId(observations);
+  const eligibleRestObservations = dedupedObservations.filter(isEligibleRestObservationForConditionV1);
+  const latestEligibleRestObservation = selectLatestEligibleRestObservation(dedupedObservations);
+  const wakeVoltageObservations = dedupedObservations.filter(
     (o) => o.evidenceClass === BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
   );
 
@@ -92,8 +106,10 @@ export async function buildLvOperationalConditionInputV1(
     ? {
         observationId: measured.latestMeasured.observationId,
         sourceMeasurementId: measured.latestMeasured.sourceMeasurementId,
+        restSessionId: measured.latestMeasured.restSessionId ?? null,
         voltageV: measured.latestMeasured.voltageV,
         voltageObservedAt: measured.latestMeasured.voltageObservedAt,
+        providerObservationAt: measured.latestMeasured.providerObservationAt ?? null,
         operationalContext: measured.latestMeasured.operationalContext,
         evidenceClass: measured.latestMeasured.evidenceClass,
         actualRestAgeHours: measured.latestMeasured.actualRestAgeHours,
@@ -127,6 +143,7 @@ export async function buildLvOperationalConditionInputV1(
       nominalVoltageV: bestSpec?.batteryVolt ?? null,
       ampereHours: bestSpec?.batteryAmpere ?? null,
       authority: bestSpec ? 'VEHICLE_BATTERY_SPEC' : 'NONE',
+      restingThresholdAuthority: 'BATTERY_STATUS_CLASSIFY_RESTING_VOLTAGE_V1',
     },
     openProviderObservabilityGapCount: measured.provenance.openProviderObservabilityGapCount,
     historicalQueryMode: measured.provenance.historicalQueryMode,
@@ -134,6 +151,7 @@ export async function buildLvOperationalConditionInputV1(
     historicalObservationsTruncated: measured.provenance.historicalObservationsTruncated,
     eligibleRestObservations,
     latestGlobalObservation,
+    latestEligibleRestObservation,
     wakeVoltageObservations,
     sessionFeatures,
   };

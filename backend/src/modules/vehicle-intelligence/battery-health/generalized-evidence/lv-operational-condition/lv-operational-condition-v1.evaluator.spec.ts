@@ -18,6 +18,7 @@ function baseInput(
       nominalVoltageV: 12,
       ampereHours: 80,
       authority: 'VEHICLE_BATTERY_SPEC',
+      restingThresholdAuthority: 'BATTERY_STATUS_CLASSIFY_RESTING_VOLTAGE_V1',
     },
     openProviderObservabilityGapCount: 0,
     historicalQueryMode: 'RECENT_DESC_LIMIT',
@@ -25,6 +26,7 @@ function baseInput(
     historicalObservationsTruncated: false,
     eligibleRestObservations: [],
     latestGlobalObservation: null,
+    latestEligibleRestObservation: null,
     wakeVoltageObservations: [],
     sessionFeatures: [],
     ...overrides,
@@ -37,8 +39,10 @@ function restObs(
   return {
     observationId: partial.observationId ?? 'obs-1',
     sourceMeasurementId: partial.sourceMeasurementId ?? 'm-1',
+    restSessionId: partial.restSessionId ?? 'sess-1',
     voltageV: partial.voltageV,
     voltageObservedAt: partial.voltageObservedAt ?? '2026-10-01T08:00:00.000Z',
+    providerObservationAt: partial.providerObservationAt ?? partial.voltageObservedAt ?? '2026-10-01T08:00:00.000Z',
     operationalContext: partial.operationalContext ?? 'REST',
     evidenceClass: partial.evidenceClass ?? 'PARKED_REST_CANDIDATE',
     actualRestAgeHours: partial.actualRestAgeHours ?? 8,
@@ -83,23 +87,51 @@ describe('evaluateLvOperationalConditionV1', () => {
     expect(result.eligibleRestObservationCount).toBe(0);
   });
 
-  it('flags provider gap and truncated history', () => {
+  it('does not downgrade GREEN operational risk when provider gap or truncated coverage', () => {
     const result = evaluateLvOperationalConditionV1(
       baseInput({
         openProviderObservabilityGapCount: 1,
         inputCoverageIncomplete: true,
         historicalObservationsTruncated: true,
-        eligibleRestObservations: [restObs({ voltageV: 12.55 }), restObs({ voltageV: 12.52, observationId: 'o2' })],
+        chemistry: {
+          ...baseInput().chemistry,
+          normalizedType: 'LEAD_ACID',
+        },
+        eligibleRestObservations: [
+          restObs({ voltageV: 12.65, restSessionId: 's1' }),
+          restObs({ voltageV: 12.62, observationId: 'o2', restSessionId: 's2' }),
+        ],
       }),
     );
+    expect(result.operationalRiskStatus).toBe('GREEN');
+    expect(result.dataQuality).toBe('DEGRADED');
     expect(result.reasonCodes).toContain('PROVIDER_GAP_OPEN');
     expect(result.reasonCodes).toContain('INPUT_COVERAGE_TRUNCATED');
+    expect(result.assessmentConfidence).toBe('LOW');
   });
 
-  it('does not treat context-limited extreme slopes as escalation', () => {
+  it('does not emit pseudo-exact SoC percentages', () => {
     const result = evaluateLvOperationalConditionV1(
       baseInput({
-        eligibleRestObservations: [restObs({ voltageV: 12.5 }), restObs({ voltageV: 12.48, observationId: 'o2' })],
+        eligibleRestObservations: [
+          restObs({ voltageV: 12.65, restSessionId: 's1' }),
+          restObs({ voltageV: 12.62, observationId: 'o2', restSessionId: 's2' }),
+        ],
+      }),
+    );
+    expect(result).not.toHaveProperty('socEstimation');
+    expect(result.restingChargeBand.qualification).toBe('COARSE_BAND_ONLY');
+    expect(result.restingChargeBand.bandStatus).toBe('GOOD');
+    expect((result as Record<string, unknown>).estimatedSocPercent).toBeUndefined();
+  });
+
+  it('flags context-limited extreme slopes without RED escalation', () => {
+    const result = evaluateLvOperationalConditionV1(
+      baseInput({
+        eligibleRestObservations: [
+          restObs({ voltageV: 12.5, restSessionId: 's1' }),
+          restObs({ voltageV: 12.48, observationId: 'o2', restSessionId: 's2' }),
+        ],
         sessionFeatures: [
           {
             restSessionId: 'sess',
@@ -116,26 +148,93 @@ describe('evaluateLvOperationalConditionV1', () => {
     expect(result.operationalRiskStatus).not.toBe('RED');
   });
 
-  it('classifies healthy AGM rest voltages as GREEN', () => {
+  it('classifies healthy AGM rest voltages as GREEN resting band and YELLOW traffic light at watch threshold', () => {
     const result = evaluateLvOperationalConditionV1(
       baseInput({
         eligibleRestObservations: [
-          restObs({ voltageV: 12.65 }),
-          restObs({ voltageV: 12.62, observationId: 'o2' }),
+          restObs({ voltageV: 12.5, restSessionId: 's1' }),
+          restObs({ voltageV: 12.52, observationId: 'o2', restSessionId: 's2' }),
         ],
       }),
     );
-    expect(result.operationalRiskStatus).toBe('GREEN');
-    expect(result.socEstimation.status).toBe('EVALUABLE');
-    expect(result.socEstimation.estimatedSocPercent).not.toBeNull();
+    expect(result.restingVoltageBand).toBe('WATCH');
+    expect(result.operationalRiskStatus).toBe('YELLOW');
   });
 
-  it('returns UNKNOWN for single-point rest session', () => {
+  it('returns UNKNOWN risk when rest stabilization is unverified', () => {
     const result = evaluateLvOperationalConditionV1(
       baseInput({
         eligibleRestObservations: [restObs({ voltageV: 12.1, actualRestAgeHours: 0.1 })],
       }),
     );
-    expect(result.reasonCodes).toContain('REST_AGE_TOO_SHORT');
+    expect(result.reasonCodes).toContain('REST_STABILIZATION_UNVERIFIED');
+    expect(result.operationalRiskStatus).toBe('UNKNOWN');
+  });
+
+  it('keeps startability UNKNOWN when only wake voltage exists', () => {
+    const result = evaluateLvOperationalConditionV1(
+      baseInput({
+        wakeVoltageObservations: [
+          restObs({
+            observationId: 'wake',
+            voltageV: 12.1,
+            evidenceClass: 'REST_WAKE_VOLTAGE',
+            actualRestAgeHours: 0.05,
+          }),
+        ],
+      }),
+    );
+    expect(result.startabilityStatus).toBe('UNKNOWN');
+    expect(result.startabilityStatus).not.toBe('GREEN');
+  });
+
+  it('matches KS MS 661 AGM median rest (~12.506 V) as WATCH/YELLOW without coverage downgrade', () => {
+    const result = evaluateLvOperationalConditionV1(
+      baseInput({
+        chemistry: { ...baseInput().chemistry, normalizedType: 'AGM', ampereHours: 70 },
+        inputCoverageIncomplete: true,
+        eligibleRestObservations: [
+          restObs({ voltageV: 12.506, restSessionId: 'ks-a' }),
+          restObs({ voltageV: 12.51, observationId: 'ks-b', restSessionId: 'ks-b' }),
+        ],
+      }),
+    );
+    expect(result.restingVoltageBand).toBe('WATCH');
+    expect(result.operationalRiskStatus).toBe('YELLOW');
+    expect(result.dataQuality).toBe('DEGRADED');
+  });
+
+  it('matches WOB L 7503 lead-acid median rest (~12.556 V) as GREEN risk with degraded data under provider gap', () => {
+    const result = evaluateLvOperationalConditionV1(
+      baseInput({
+        chemistry: { ...baseInput().chemistry, normalizedType: 'LEAD_ACID', ampereHours: 60 },
+        openProviderObservabilityGapCount: 1,
+        eligibleRestObservations: [
+          restObs({ voltageV: 12.556, restSessionId: 'wob-a' }),
+          restObs({ voltageV: 12.55, observationId: 'wob-b', restSessionId: 'wob-b' }),
+        ],
+      }),
+    );
+    expect(result.restingVoltageBand).toBe('GOOD');
+    expect(result.operationalRiskStatus).toBe('GREEN');
+    expect(result.dataQuality).toBe('DEGRADED');
+    expect(result.reasonCodes).toContain('PROVIDER_GAP_OPEN');
+  });
+
+  it('marks manual spec confidence 1.0 as not physically verified in data quality', () => {
+    const result = evaluateLvOperationalConditionV1(
+      baseInput({
+        chemistry: {
+          ...baseInput().chemistry,
+          sourceType: 'MANUAL',
+          sourceConfidence: 1,
+        },
+        eligibleRestObservations: [
+          restObs({ voltageV: 12.65, restSessionId: 's1' }),
+          restObs({ voltageV: 12.62, observationId: 'o2', restSessionId: 's2' }),
+        ],
+      }),
+    );
+    expect(result.reasonCodes).toContain('MANUAL_BATTERY_SPEC_NOT_PHYSICALLY_VERIFIED');
   });
 });
