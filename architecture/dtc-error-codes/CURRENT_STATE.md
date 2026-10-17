@@ -8,6 +8,12 @@
 - Evidence: [`evidence/DTC02_P1_OBSERVABILITY.md`](evidence/DTC02_P1_OBSERVABILITY.md)
 - occurrenceCount documentation: [`docs/dtc-02-occurrence-count-semantics.md`](../../docs/dtc-02-occurrence-count-semantics.md)
 
+## DTC-02 P2 (repository — default OFF, not deployed)
+
+- Webhook capability classification + gated ingress (`DTC_02_*` env); reuses 01A snapshot apply and source-head watermarks.
+- Evidence: [`evidence/DTC02_P2_WEBHOOK_CAPABILITY.md`](evidence/DTC02_P2_WEBHOOK_CAPABILITY.md)
+- **No production activation** in this workstream; no live webhook reliability claim.
+
 ## Runtime (Production @ `3a7cc0cc`)
 
 | Control | State |

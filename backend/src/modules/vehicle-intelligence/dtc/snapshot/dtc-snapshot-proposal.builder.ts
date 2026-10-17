@@ -98,6 +98,7 @@ export function buildWebhookObdDtcProposal(input: {
   auditRef: string;
   value: unknown;
   webhookTimestamp: string | null;
+  completenessEvidence?: 'webhook_partial_upsert_only' | 'webhook_provider_confirmed_complete';
 }): DtcSnapshotProposalBuildResult {
   const payload = assessObdDtcValue(input.value);
   if (payload.valueClass === 'MISSING' || payload.valueClass === 'NULL') {
@@ -125,13 +126,17 @@ export function buildWebhookObdDtcProposal(input: {
   }
 
   const sourceObservedAt = ts.class === 'VALID' ? ts.observedAt : new Date(0);
+  const completeness =
+    input.completenessEvidence === 'webhook_provider_confirmed_complete'
+      ? 'webhook_provider_confirmed_complete'
+      : 'webhook_partial_upsert_only';
   return {
     ok: true,
     proposal: assembleProposal({
       vehicleId: input.vehicleId,
       organizationId: input.organizationId,
       channel: 'webhook_obd_dtc_list',
-      completeness: 'webhook_partial_upsert_only',
+      completeness,
       binding: input.binding,
       sourceObservedAt,
       codes: payload.codes,

@@ -22,9 +22,18 @@ import {
   evaluateDtcWebhookAdmission,
   logDtc01fCohortConfigOnBoot,
 } from '../vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
+import {
+  logDtc02WebhookCapabilityConfigOnBoot,
+  shouldUseDtc02WebhookCapabilityForVehicle,
+} from '../vehicle-intelligence/dtc/snapshot/dtc-02.config';
+import {
+  enforceDtc02NoFalseClear,
+  planDtc02WebhookIngress,
+} from '../vehicle-intelligence/dtc/snapshot/dtc-02-webhook-capability';
 import { DtcSnapshotApplyService } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
 import { buildWebhookObdDtcProposal } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
+import { mapSourceHeadRow } from '../vehicle-intelligence/dtc/snapshot/dtc-source-head.mapper';
 import { assertDtcSnapshotApplyWired } from '../vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
@@ -68,6 +77,7 @@ export class DimoWebhookController {
       );
     }
     logDtc01fCohortConfigOnBoot(this.logger);
+    logDtc02WebhookCapabilityConfigOnBoot(this.logger);
   }
 
   /** Read at request time so PM2 --update-env picks up changes without stale ctor cache. */
@@ -212,9 +222,12 @@ export class DimoWebhookController {
       return { status: 'ignored', reason: 'unknown_vehicle' };
     }
 
-    if (signalName === 'obdDTCList' && value) {
-      await this.handleDtcEvent(vehicle.id, tokenId, value, timestamp);
-      return { status: 'processed', type: 'dtc' };
+    if (signalName === 'obdDTCList') {
+      const valuePresent = value !== undefined && value !== null && value !== '';
+      if (valuePresent || shouldUseDtc02WebhookCapabilityForVehicle(vehicle.id)) {
+        await this.handleDtcEvent(vehicle.id, tokenId, value, timestamp);
+        return { status: 'processed', type: 'dtc' };
+      }
     }
 
     if (isRpmWebhookSignal(signalName, payload.metricName)) {
@@ -387,6 +400,17 @@ export class DimoWebhookController {
     webhookTimestamp: string | null,
     vehicle: { organizationId: string | null },
   ): Promise<void> {
+    if (shouldUseDtc02WebhookCapabilityForVehicle(vehicleId)) {
+      await this.handleDtcEvent01aP2(
+        vehicleId,
+        tokenId,
+        dtcValue,
+        webhookTimestamp,
+        vehicle,
+      );
+      return;
+    }
+
     const fetchObservedAt = new Date();
     const auditRef = `dtc-webhook:${vehicleId}:${fetchObservedAt.getTime()}`;
 
@@ -431,6 +455,98 @@ export class DimoWebhookController {
 
     try {
       await this.dtcSnapshotApply!.applyBuiltProposal(built);
+    } catch (err) {
+      this.dtc02Observability?.recordWebhookPhase('error');
+      throw err;
+    }
+  }
+
+  private async handleDtcEvent01aP2(
+    vehicleId: string,
+    tokenId: number,
+    dtcValue: unknown,
+    webhookTimestamp: string | null,
+    vehicle: { organizationId: string | null },
+  ): Promise<void> {
+    const fetchObservedAt = new Date();
+    const auditRef = `dtc-webhook:${vehicleId}:${fetchObservedAt.getTime()}`;
+
+    const binding = await resolveActiveDimoBindingForVehicle(
+      this.prisma,
+      vehicleId,
+      tokenId,
+    );
+    if (!binding) {
+      await this.dtcSnapshotApply!.recordRejectedFetchMetadata({
+        vehicleId,
+        fetchObservedAt,
+        pollStatus: 'rejected_snapshot',
+        pollError: 'NO_ACTIVE_DIMO_BINDING',
+        auditRef,
+      });
+      this.dtc02Observability?.recordWebhookCapability('UNKNOWN');
+      this.dtc02Observability?.recordWebhookPhase('error');
+      return;
+    }
+
+    const headRow = await this.prisma.vehicleDtcSourceHead.findUnique({
+      where: { vehicleId },
+    });
+    const head = mapSourceHeadRow(headRow);
+    const previousActive = await this.prisma.vehicleDtcEvent.findMany({
+      where: { vehicleId, isActive: true },
+      select: { dtcCode: true },
+    });
+    const activeDtcCodes = new Set(previousActive.map((e) => e.dtcCode));
+
+    const plan = planDtc02WebhookIngress({
+      vehicleId,
+      organizationId: vehicle.organizationId,
+      binding,
+      fetchObservedAt,
+      auditRef,
+      value: dtcValue,
+      webhookTimestamp,
+      head,
+      activeDtcCodes,
+    });
+
+    this.dtc02Observability?.recordWebhookCapability(plan.classification);
+
+    if (!plan.shouldApply) {
+      const pollError = `DTC02:${plan.classification}:${plan.reasons.join(';')}`.slice(0, 500);
+      await this.dtcSnapshotApply!.recordRejectedFetchMetadata({
+        vehicleId,
+        organizationId: vehicle.organizationId,
+        fetchObservedAt,
+        pollStatus:
+          plan.classification === 'DUPLICATE' ? 'success' : 'rejected_snapshot',
+        pollError: plan.classification === 'DUPLICATE' ? 'DTC02:DUPLICATE' : pollError,
+        auditRef,
+      });
+      this.dtc02Observability?.recordWebhookPhase(
+        plan.classification === 'DUPLICATE' ? 'processed' : 'rejected',
+      );
+      return;
+    }
+
+    if (!plan.build?.ok) {
+      this.dtc02Observability?.recordWebhookPhase('rejected');
+      return;
+    }
+
+    const preview = plan.previewDecision;
+    if (preview) {
+      const clamped = enforceDtc02NoFalseClear(plan.classification, preview);
+      if (!clamped.allowClears && preview.allowClears) {
+        this.logger.warn(
+          `DTC-02 clamped unauthorized clears vehicle=${vehicleId} classification=${plan.classification}`,
+        );
+      }
+    }
+
+    try {
+      await this.dtcSnapshotApply!.applyBuiltProposal(plan.build);
     } catch (err) {
       this.dtc02Observability?.recordWebhookPhase('error');
       throw err;

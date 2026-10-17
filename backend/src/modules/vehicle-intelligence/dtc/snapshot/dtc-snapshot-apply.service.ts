@@ -211,7 +211,8 @@ export class DtcSnapshotApplyService implements OnModuleInit {
           : headRow?.bindingEpoch ?? head.bindingEpoch ?? 1;
 
       const isConfirmedComplete =
-        proposal.completeness === 'signals_latest_complete' &&
+        (proposal.completeness === 'signals_latest_complete' ||
+          proposal.completeness === 'webhook_provider_confirmed_complete') &&
         (decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT' ||
           decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS' ||
           decision.outcome === 'APPLY_BINDING_REBASELINE' ||
@@ -379,7 +380,8 @@ export class DtcSnapshotApplyService implements OnModuleInit {
     const evidence =
       proposal.completeness === 'webhook_partial_upsert_only'
         ? 'partial'
-        : proposal.completeness === 'signals_latest_complete'
+        : proposal.completeness === 'signals_latest_complete' ||
+            proposal.completeness === 'webhook_provider_confirmed_complete'
           ? 'complete'
           : 'unknown';
     this.dtc02Observability?.recordWebhookEvidence(evidence);
