@@ -1,0 +1,4 @@
+/** Versioned research algorithm bundle (offline / shadow extension only). */
+export const S4_RESEARCH_ROAD_MATCHING_ALGORITHM_ID = 'S4_RESEARCH_ROAD_MATCHING_V1';
+export const S4_RESEARCH_VITERBI_ALGORITHM_ID = 'S4_RESEARCH_VITERBI_FORWARD_V1';
+export const S4_RESEARCH_BASELINE_ALGORITHM_ID = 'S4_RESEARCH_BASELINE_BUCKET_V1';

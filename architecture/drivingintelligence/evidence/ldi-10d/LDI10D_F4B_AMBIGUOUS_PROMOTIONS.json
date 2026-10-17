@@ -1,0 +1,2960 @@
+{
+  "schema": "LDI10D_F4B_AMBIGUOUS_PROMOTIONS_V1",
+  "headSha": "76c203eb6a4045de011f7fe505502d7c8d0bf99c",
+  "mode": "OFFLINE_RESEARCH_ONLY",
+  "reproducibility": {
+    "promotionCount": 36,
+    "ambiguousToUnknown": 119,
+    "baselineAssociatedUnchanged": 264,
+    "baselineAssociatedRowStable": true
+  },
+  "classDistribution": {
+    "TOPOLOGY_PLAUSIBLE": 4,
+    "STILL_AMBIGUOUS": 29,
+    "STRUCTURALLY_CONTRADICTED": 2,
+    "INSUFFICIENT_EVIDENCE": 1
+  },
+  "competitorsWithin5mHistogram": {
+    "1": 36
+  },
+  "impossibleTransitions": [
+    {
+      "bucketIndex": 345,
+      "bucketLabelUtc": "2026-10-16T03:41:45Z",
+      "prevBucketLabelUtc": "2026-10-16T03:41:44Z",
+      "prevWayId": 573848031,
+      "curWayId": 427206838,
+      "graphReachable": false,
+      "prevHighway": "service",
+      "curHighway": "primary",
+      "reviewNote": "Non-promotion ASSOCIATED hop — Viterbi continuity cost tradeoff."
+    },
+    {
+      "bucketIndex": 605,
+      "bucketLabelUtc": "2026-10-16T03:46:05Z",
+      "prevBucketLabelUtc": "2026-10-16T03:46:04Z",
+      "prevWayId": 72285288,
+      "curWayId": 846057098,
+      "graphReachable": false,
+      "prevHighway": "primary",
+      "curHighway": "primary",
+      "reviewNote": "Non-promotion ASSOCIATED hop — Viterbi continuity cost tradeoff."
+    },
+    {
+      "bucketIndex": 863,
+      "bucketLabelUtc": "2026-10-16T03:50:23Z",
+      "prevBucketLabelUtc": "2026-10-16T03:50:22Z",
+      "prevWayId": 256058120,
+      "curWayId": 60126142,
+      "graphReachable": false,
+      "prevHighway": "motorway",
+      "curHighway": "motorway",
+      "reviewNote": "Promotion bucket on implausible graph hop — temporal prior may dominate emission."
+    },
+    {
+      "bucketIndex": 916,
+      "bucketLabelUtc": "2026-10-16T03:51:16Z",
+      "prevBucketLabelUtc": "2026-10-16T03:51:15Z",
+      "prevWayId": 25588352,
+      "curWayId": 96956756,
+      "graphReachable": false,
+      "prevHighway": "motorway",
+      "curHighway": "motorway_link",
+      "reviewNote": "Promotion bucket on implausible graph hop — temporal prior may dominate emission."
+    },
+    {
+      "bucketIndex": 947,
+      "bucketLabelUtc": "2026-10-16T03:51:47Z",
+      "prevBucketLabelUtc": "2026-10-16T03:51:46Z",
+      "prevWayId": 245089899,
+      "curWayId": 245089905,
+      "graphReachable": false,
+      "prevHighway": "motorway_link",
+      "curHighway": "motorway",
+      "reviewNote": "Non-promotion ASSOCIATED hop — Viterbi continuity cost tradeoff."
+    }
+  ],
+  "recurringAmbiguityCauses": [
+    {
+      "cause": "VITERBI_GRAPH_CONTINUITY_WIN",
+      "promotionHits": 33
+    },
+    {
+      "cause": "BEARING_MISMATCH_180deg",
+      "promotionHits": 12
+    },
+    {
+      "cause": "BEARING_MISMATCH_179deg",
+      "promotionHits": 9
+    },
+    {
+      "cause": "BEARING_MISMATCH_178deg",
+      "promotionHits": 5
+    },
+    {
+      "cause": "BEARING_MISMATCH_176deg",
+      "promotionHits": 2
+    },
+    {
+      "cause": "BEARING_MISMATCH_95deg",
+      "promotionHits": 2
+    },
+    {
+      "cause": "BEARING_MISMATCH_173deg",
+      "promotionHits": 1
+    },
+    {
+      "cause": "BEARING_MISMATCH_80deg",
+      "promotionHits": 1
+    },
+    {
+      "cause": "NARROW_VITERBI_COST_MARGIN",
+      "promotionHits": 1
+    },
+    {
+      "cause": "BEARING_MISMATCH_93deg",
+      "promotionHits": 1
+    },
+    {
+      "cause": "BEARING_MISMATCH_172deg",
+      "promotionHits": 1
+    },
+    {
+      "cause": "BEARING_MISMATCH_174deg",
+      "promotionHits": 1
+    },
+    {
+      "cause": "BEARING_MISMATCH_68deg",
+      "promotionHits": 1
+    }
+  ],
+  "candidateCollapseAssessment": {
+    "justified": "NO",
+    "riskSummary": "Topology-only collapse on parallel carriageways, ramps, and service roads remains high-risk without independent road-ID ground truth.",
+    "goNoGo": "NO_GO",
+    "rationale": [
+      "5 implausible graph hops in Viterbi ASSOCIATED chain.",
+      "29/36 promotions remain STILL_AMBIGUOUS after topology-only review.",
+      "Blind topology-based candidate collapse is not justified; require independent road-ID evidence or owner map review before further F4 matcher work."
+    ]
+  },
+  "roadIdAccuracy": "NOT_ASSESSABLE",
+  "promotions": [
+    {
+      "bucketIndex": 307,
+      "bucketLabelUtc": "2026-10-16T03:41:07Z",
+      "lat": 51.32944,
+      "lon": 9.513299,
+      "headingDeg": 180.2418957570674,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 59.04583321945788,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 738657614,
+      "baselineCompetingWayIds": [
+        105886041,
+        738657614,
+        39226550,
+        4321529,
+        29283329
+      ],
+      "viterbiTopKWayIds": [
+        105886041,
+        738657614,
+        39226550,
+        4321529
+      ],
+      "candidates": [
+        {
+          "osmWayId": 105886041,
+          "distanceM": 13.86122426746433,
+          "segmentBearingDeg": 359.49207201291165,
+          "bearingDeltaDeg": 179.25017625584425,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 738657614,
+          "distanceM": 20.029081077491547,
+          "segmentBearingDeg": 181.69757159152846,
+          "bearingDeltaDeg": 1.4556758344610614,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 39226550,
+          "distanceM": 20.757136184846818,
+          "segmentBearingDeg": 92.78583759783061,
+          "bearingDeltaDeg": 87.45605815923679,
+          "highway": "residential",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 4321529,
+          "distanceM": 22.17822805237503,
+          "segmentBearingDeg": 2.1376412541976606,
+          "bearingDeltaDeg": 178.10425450286974,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 29283329,
+          "distanceM": 22.178228053780487,
+          "segmentBearingDeg": 90.64191326052651,
+          "bearingDeltaDeg": 89.59998249654089,
+          "highway": "residential",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": null,
+      "prevViterbiWayId": null,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 738657614,
+        "totalCost": 394.9210249192252,
+        "emissionCost": 40.058162154983094,
+        "transitionCost": 5,
+        "prevWayId": null,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 449.8628627642421,
+        "costMarginToRunnerUp": 54.94183784501689,
+        "selectionSummary": "MIN_TOTAL_COST"
+      }
+    },
+    {
+      "bucketIndex": 426,
+      "bucketLabelUtc": "2026-10-16T03:43:06Z",
+      "lat": 51.322256,
+      "lon": 9.512545,
+      "headingDeg": 123.13900875559943,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 39.16842612629203,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 135453187,
+      "baselineCompetingWayIds": [
+        427206848,
+        135453187,
+        135453185,
+        1266800977
+      ],
+      "viterbiTopKWayIds": [
+        427206848,
+        135453187,
+        135453185,
+        1266800977
+      ],
+      "candidates": [
+        {
+          "osmWayId": 427206848,
+          "distanceM": 6.251164224575934,
+          "segmentBearingDeg": 303.30457951525534,
+          "bearingDeltaDeg": 179.8344292403441,
+          "highway": "secondary",
+          "oneway": null,
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 135453187,
+          "distanceM": 18.17301267182119,
+          "segmentBearingDeg": 117.98905825113934,
+          "bearingDeltaDeg": 5.149950504460094,
+          "highway": "secondary",
+          "oneway": null,
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 135453185,
+          "distanceM": 18.173012674988712,
+          "segmentBearingDeg": 30.97562541032414,
+          "bearingDeltaDeg": 92.16338334527529,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 1266800977,
+          "distanceM": 18.880979263977544,
+          "segmentBearingDeg": 212.87670723715297,
+          "bearingDeltaDeg": 89.73769848155354,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "secondary",
+      "chosenTopologyNote": "highway=secondary",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 135453187,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 135453187,
+        "totalCost": 183.51615077954068,
+        "emissionCost": 36.34602534364238,
+        "transitionCost": 0,
+        "prevWayId": 135453187,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 252.1701254358983,
+        "costMarginToRunnerUp": 68.65397465635763,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 446,
+      "bucketLabelUtc": "2026-10-16T03:43:26Z",
+      "lat": 51.320137,
+      "lon": 9.514977,
+      "headingDeg": 162.89057393239932,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 55.98112381515622,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 227313773,
+      "baselineCompetingWayIds": [
+        1423658500,
+        227313773
+      ],
+      "viterbiTopKWayIds": [
+        1423658500,
+        227313773
+      ],
+      "candidates": [
+        {
+          "osmWayId": 1423658500,
+          "distanceM": 6.943821405507771,
+          "segmentBearingDeg": 340.8985904819054,
+          "bearingDeltaDeg": 178.00801654950607,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 227313773,
+          "distanceM": 14.30582570032871,
+          "segmentBearingDeg": 163.22031725983618,
+          "bearingDeltaDeg": 0.32974332743685864,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "secondary",
+      "chosenTopologyNote": "highway=secondary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 227313773,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_178deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 227313773,
+        "totalCost": 1870.2885478288626,
+        "emissionCost": 28.61165140065742,
+        "transitionCost": 0,
+        "prevWayId": 227313773,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1946.6768964282053,
+        "costMarginToRunnerUp": 76.38834859934263,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 450,
+      "bucketLabelUtc": "2026-10-16T03:43:30Z",
+      "lat": 51.319629,
+      "lon": 9.515215,
+      "headingDeg": 163.346314779282,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 47.10404578220751,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 61523259,
+      "baselineCompetingWayIds": [
+        846065590,
+        61523259,
+        1507906274,
+        401761059,
+        1423658500
+      ],
+      "viterbiTopKWayIds": [
+        846065590,
+        61523259,
+        1507906274,
+        401761059
+      ],
+      "candidates": [
+        {
+          "osmWayId": 846065590,
+          "distanceM": 7.896288810150939,
+          "segmentBearingDeg": 344.2023530003688,
+          "bearingDeltaDeg": 179.1439617789132,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 61523259,
+          "distanceM": 13.300282541327286,
+          "segmentBearingDeg": 164.62735869252106,
+          "bearingDeltaDeg": 1.2810439132390457,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 1507906274,
+          "distanceM": 23.58097965155899,
+          "segmentBearingDeg": 162.5066976659583,
+          "bearingDeltaDeg": 0.8396171133236976,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 401761059,
+          "distanceM": 24.058934307678904,
+          "segmentBearingDeg": 74.64625528166931,
+          "bearingDeltaDeg": 88.7000594976127,
+          "highway": "residential",
+          "oneway": "no",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 1423658500,
+          "distanceM": 24.058934307678904,
+          "segmentBearingDeg": 341.9043371563674,
+          "bearingDeltaDeg": 178.55802237708536,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "secondary",
+      "chosenTopologyNote": "highway=secondary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 61523259,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 61523259,
+        "totalCost": 1954.4007291399216,
+        "emissionCost": 26.600565082654573,
+        "transitionCost": 0,
+        "prevWayId": 61523259,
+        "runnerUpWayId": 1507906274,
+        "runnerUpTotalCost": 2014.962123360385,
+        "costMarginToRunnerUp": 60.5613942204634,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 549,
+      "bucketLabelUtc": "2026-10-16T03:45:09Z",
+      "lat": 51.314815,
+      "lon": 9.517058,
+      "headingDeg": 170.5537829419618,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 55.79398080353337,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 246706935,
+      "baselineCompetingWayIds": [
+        1290021535,
+        246706935
+      ],
+      "viterbiTopKWayIds": [
+        1290021535,
+        246706935
+      ],
+      "candidates": [
+        {
+          "osmWayId": 1290021535,
+          "distanceM": 15.96512283829006,
+          "segmentBearingDeg": 343.2617886904881,
+          "bearingDeltaDeg": 172.70800574852632,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 246706935,
+          "distanceM": 21.27227702873262,
+          "segmentBearingDeg": 168.8222112982321,
+          "bearingDeltaDeg": 1.7315716437296942,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 246706934,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_173deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 246706935,
+        "totalCost": 1006.4543012928343,
+        "emissionCost": 42.54455405746524,
+        "transitionCost": 2,
+        "prevWayId": 246706934,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1066.9097472353692,
+        "costMarginToRunnerUp": 60.45544594253488,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 577,
+      "bucketLabelUtc": "2026-10-16T03:45:37Z",
+      "lat": 51.311949,
+      "lon": 9.513478,
+      "headingDeg": 217.51137733532852,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 56.59720828102777,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 106287039,
+      "baselineCompetingWayIds": [
+        19882409,
+        246706933,
+        106287039,
+        205261741
+      ],
+      "viterbiTopKWayIds": [
+        19882409,
+        246706933,
+        106287039,
+        205261741
+      ],
+      "candidates": [
+        {
+          "osmWayId": 19882409,
+          "distanceM": 10.518950618952939,
+          "segmentBearingDeg": 37.73269304413077,
+          "bearingDeltaDeg": 179.77868429119775,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 246706933,
+          "distanceM": 16.034014575980617,
+          "segmentBearingDeg": 40.10610222177911,
+          "bearingDeltaDeg": 177.4052751135494,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 106287039,
+          "distanceM": 20.590052207109427,
+          "segmentBearingDeg": 219.73535596327727,
+          "bearingDeltaDeg": 2.2239786279487532,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 205261741,
+          "distanceM": 21.458621007861417,
+          "segmentBearingDeg": 39.22828428366023,
+          "bearingDeltaDeg": 178.2830930516683,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 106287039,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 106287039,
+        "totalCost": 1407.4926235561595,
+        "emissionCost": 41.18010441421885,
+        "transitionCost": 0,
+        "prevWayId": 106287039,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1471.3125191419406,
+        "costMarginToRunnerUp": 63.81989558578107,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 618,
+      "bucketLabelUtc": "2026-10-16T03:46:18Z",
+      "lat": 51.308317,
+      "lon": 9.512703,
+      "headingDeg": 164.21430407523167,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 65.60663958106078,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 25891134,
+      "baselineCompetingWayIds": [
+        27009525,
+        25891134,
+        26833329
+      ],
+      "viterbiTopKWayIds": [
+        27009525,
+        25891134,
+        26833329
+      ],
+      "candidates": [
+        {
+          "osmWayId": 27009525,
+          "distanceM": 10.531130583448258,
+          "segmentBearingDeg": 345.60776747594724,
+          "bearingDeltaDeg": 178.60653659928442,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 25891134,
+          "distanceM": 17.30908984073812,
+          "segmentBearingDeg": 161.94129737755588,
+          "bearingDeltaDeg": 2.2730066976757826,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 26833329,
+          "distanceM": 23.589659315628033,
+          "segmentBearingDeg": 345.37091950977054,
+          "bearingDeltaDeg": 178.84338456546112,
+          "highway": "residential",
+          "oneway": null,
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 25891134,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 25891134,
+        "totalCost": 319.5889020456886,
+        "emissionCost": 34.61817968147624,
+        "transitionCost": 0,
+        "prevWayId": 25891134,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 389.97072236421235,
+        "costMarginToRunnerUp": 70.38182031852375,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 627,
+      "bucketLabelUtc": "2026-10-16T03:46:27Z",
+      "lat": 51.306897,
+      "lon": 9.513555,
+      "headingDeg": 156.6107536542188,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 74.9562467001636,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 86433534,
+      "baselineCompetingWayIds": [
+        40983142,
+        86433534
+      ],
+      "viterbiTopKWayIds": [
+        40983142,
+        86433534
+      ],
+      "candidates": [
+        {
+          "osmWayId": 40983142,
+          "distanceM": 5.1310635853216375,
+          "segmentBearingDeg": 336.0901540047318,
+          "bearingDeltaDeg": 179.479400350513,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 86433534,
+          "distanceM": 10.930919329299417,
+          "segmentBearingDeg": 153.80124816461466,
+          "bearingDeltaDeg": 2.8095054896041347,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 86433534,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 86433534,
+        "totalCost": 552.2353131379202,
+        "emissionCost": 21.861838658598835,
+        "transitionCost": 0,
+        "prevWayId": 86433534,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 635.3734744793214,
+        "costMarginToRunnerUp": 83.1381613414012,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 629,
+      "bucketLabelUtc": "2026-10-16T03:46:29Z",
+      "lat": 51.30656,
+      "lon": 9.513815,
+      "headingDeg": 153.1896237171054,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 74.42448803028293,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 86433534,
+      "baselineCompetingWayIds": [
+        40983142,
+        86433534
+      ],
+      "viterbiTopKWayIds": [
+        40983142,
+        86433534
+      ],
+      "candidates": [
+        {
+          "osmWayId": 40983142,
+          "distanceM": 7.281558935870328,
+          "segmentBearingDeg": 332.178291907924,
+          "bearingDeltaDeg": 178.9886681908186,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 86433534,
+          "distanceM": 17.025833458383932,
+          "segmentBearingDeg": 152.483326106974,
+          "bearingDeltaDeg": 0.7062976101314007,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 86433534,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 86433534,
+        "totalCost": 594.1734790841491,
+        "emissionCost": 34.051666916767864,
+        "transitionCost": 0,
+        "prevWayId": 86433534,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 665.1218121673812,
+        "costMarginToRunnerUp": 70.94833308323211,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 637,
+      "bucketLabelUtc": "2026-10-16T03:46:37Z",
+      "lat": 51.305342,
+      "lon": 9.515064,
+      "headingDeg": 144.7145554517623,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 70.38119737507246,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 829413399,
+      "baselineCompetingWayIds": [
+        40983142,
+        829413399
+      ],
+      "viterbiTopKWayIds": [
+        40983142,
+        829413399
+      ],
+      "candidates": [
+        {
+          "osmWayId": 40983142,
+          "distanceM": 7.027177181608646,
+          "segmentBearingDeg": 326.3007955706669,
+          "bearingDeltaDeg": 178.41375988109542,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 829413399,
+          "distanceM": 18.052266123407822,
+          "segmentBearingDeg": 144.3199414731555,
+          "bearingDeltaDeg": 0.3946139786067988,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 829413399,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_178deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 829413399,
+        "totalCost": 760.379894490821,
+        "emissionCost": 36.104532246815644,
+        "transitionCost": 0,
+        "prevWayId": 829413399,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 829.2753622440054,
+        "costMarginToRunnerUp": 68.89546775318433,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 665,
+      "bucketLabelUtc": "2026-10-16T03:47:05Z",
+      "lat": 51.301515,
+      "lon": 9.516457,
+      "headingDeg": 198.10691637308068,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 73.81093926987295,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 837152730,
+      "baselineCompetingWayIds": [
+        829413401,
+        837152730
+      ],
+      "viterbiTopKWayIds": [
+        829413401,
+        837152730
+      ],
+      "candidates": [
+        {
+          "osmWayId": 829413401,
+          "distanceM": 6.945360750951477,
+          "segmentBearingDeg": 16.526145480198352,
+          "bearingDeltaDeg": 178.41922910711767,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 837152730,
+          "distanceM": 12.191204502417193,
+          "segmentBearingDeg": 197.019920380567,
+          "bearingDeltaDeg": 1.0869959925136925,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 837152730,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_178deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 837152730,
+        "totalCost": 1207.390907720488,
+        "emissionCost": 24.382409004834386,
+        "transitionCost": 0,
+        "prevWayId": 837152730,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1288.0084987156536,
+        "costMarginToRunnerUp": 80.61759099516553,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 668,
+      "bucketLabelUtc": "2026-10-16T03:47:08Z",
+      "lat": 51.300997,
+      "lon": 9.516089,
+      "headingDeg": 206.64006031970635,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 77.5573052572954,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 837152730,
+      "baselineCompetingWayIds": [
+        829413401,
+        829413402,
+        837152730
+      ],
+      "viterbiTopKWayIds": [
+        829413401,
+        829413402,
+        837152730
+      ],
+      "candidates": [
+        {
+          "osmWayId": 829413401,
+          "distanceM": 9.14397001605644,
+          "segmentBearingDeg": 25.238808508184206,
+          "bearingDeltaDeg": 178.59874818847786,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 829413402,
+          "distanceM": 18.69633977895062,
+          "segmentBearingDeg": 26.22955530949821,
+          "bearingDeltaDeg": 179.58949498979186,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 837152730,
+          "distanceM": 21.71865545068603,
+          "segmentBearingDeg": 215.13959837633524,
+          "bearingDeltaDeg": 8.499538056628893,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": null,
+      "prevViterbiWayId": null,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 837152730,
+        "totalCost": 1375.1104176358067,
+        "emissionCost": 43.43731090137206,
+        "transitionCost": 5,
+        "prevWayId": null,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1426.6731067344347,
+        "costMarginToRunnerUp": 51.56268909862797,
+        "selectionSummary": "MIN_TOTAL_COST"
+      }
+    },
+    {
+      "bucketIndex": 670,
+      "bucketLabelUtc": "2026-10-16T03:47:10Z",
+      "lat": 51.300661,
+      "lon": 9.515765,
+      "headingDeg": 212.78422733791055,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 79.30807495381133,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 837152730,
+      "baselineCompetingWayIds": [
+        829413402,
+        837152730
+      ],
+      "viterbiTopKWayIds": [
+        829413402,
+        837152730
+      ],
+      "candidates": [
+        {
+          "osmWayId": 829413402,
+          "distanceM": 7.2533978521522355,
+          "segmentBearingDeg": 33.524954063851226,
+          "bearingDeltaDeg": 179.25927327405932,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 837152730,
+          "distanceM": 21.993808588486694,
+          "segmentBearingDeg": 215.13959837633524,
+          "bearingDeltaDeg": 2.3553710384246926,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 837152730,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 837152730,
+        "totalCost": 1420.53678413127,
+        "emissionCost": 43.98761717697339,
+        "transitionCost": 0,
+        "prevWayId": 837152730,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1481.5491669542967,
+        "costMarginToRunnerUp": 61.012382823026655,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 672,
+      "bucketLabelUtc": "2026-10-16T03:47:12Z",
+      "lat": 51.300337,
+      "lon": 9.515391,
+      "headingDeg": 216.70917818481078,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 80.68281069865336,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 837152730,
+      "baselineCompetingWayIds": [
+        128165225,
+        837152730
+      ],
+      "viterbiTopKWayIds": [
+        128165225,
+        837152730
+      ],
+      "candidates": [
+        {
+          "osmWayId": 128165225,
+          "distanceM": 11.18236932563142,
+          "segmentBearingDeg": 35.1643727323023,
+          "bearingDeltaDeg": 178.45519454749152,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 837152730,
+          "distanceM": 21.863388685217895,
+          "segmentBearingDeg": 219.36631514085946,
+          "bearingDeltaDeg": 2.6571369560486744,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 837152730,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_178deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 837152730,
+        "totalCost": 1465.3336952773418,
+        "emissionCost": 43.72677737043579,
+        "transitionCost": 0,
+        "prevWayId": 837152730,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1526.6069179069061,
+        "costMarginToRunnerUp": 61.273222629564316,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 677,
+      "bucketLabelUtc": "2026-10-16T03:47:17Z",
+      "lat": 51.299544,
+      "lon": 9.514337,
+      "headingDeg": 220.60518155760005,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 84.39476781116086,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 837152730,
+      "baselineCompetingWayIds": [
+        128165225,
+        309915325,
+        837152730
+      ],
+      "viterbiTopKWayIds": [
+        128165225,
+        309915325,
+        837152730
+      ],
+      "candidates": [
+        {
+          "osmWayId": 128165225,
+          "distanceM": 6.61920061011307,
+          "segmentBearingDeg": 40.91340102130215,
+          "bearingDeltaDeg": 179.6917805362979,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 309915325,
+          "distanceM": 12.547741484609196,
+          "segmentBearingDeg": 271.8788300636676,
+          "bearingDeltaDeg": 51.27364850606753,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 837152730,
+          "distanceM": 14.150615694359102,
+          "segmentBearingDeg": 220.38348092659334,
+          "bearingDeltaDeg": 0.221700631006712,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 837152730,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 837152730,
+        "totalCost": 1732.7131038407847,
+        "emissionCost": 28.301231388718204,
+        "transitionCost": 0,
+        "prevWayId": 837152730,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1809.4118724520665,
+        "costMarginToRunnerUp": 76.69876861128182,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 684,
+      "bucketLabelUtc": "2026-10-16T03:47:24Z",
+      "lat": 51.298338,
+      "lon": 9.512912,
+      "headingDeg": 209.16295111900018,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 85.03063741541428,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 1128379006,
+      "baselineCompetingWayIds": [
+        128165225,
+        1128379006
+      ],
+      "viterbiTopKWayIds": [
+        128165225,
+        1128379006
+      ],
+      "candidates": [
+        {
+          "osmWayId": 128165225,
+          "distanceM": 8.163930416627865,
+          "segmentBearingDeg": 33.29700958509619,
+          "bearingDeltaDeg": 175.865941533904,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 1128379006,
+          "distanceM": 15.4909607188573,
+          "segmentBearingDeg": 206.39460739805963,
+          "bearingDeltaDeg": 2.7683437209405497,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 1128379006,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_176deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 1128379006,
+        "totalCost": 1994.5293616509748,
+        "emissionCost": 30.9819214377146,
+        "transitionCost": 0,
+        "prevWayId": 1128379006,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 2068.5474402132604,
+        "costMarginToRunnerUp": 74.01807856228561,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 688,
+      "bucketLabelUtc": "2026-10-16T03:47:28Z",
+      "lat": 51.297575,
+      "lon": 9.512362,
+      "headingDeg": 201.40579252562685,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 82.57088602487073,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 1128379006,
+      "baselineCompetingWayIds": [
+        128165225,
+        1128379006
+      ],
+      "viterbiTopKWayIds": [
+        128165225,
+        1128379006
+      ],
+      "candidates": [
+        {
+          "osmWayId": 128165225,
+          "distanceM": 2.957130430544011,
+          "segmentBearingDeg": 25.134773223205286,
+          "bearingDeltaDeg": 176.27101930242156,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 1128379006,
+          "distanceM": 15.668754182196386,
+          "segmentBearingDeg": 202.646436093246,
+          "bearingDeltaDeg": 1.240643567619145,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 1128379006,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_176deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 1128379006,
+        "totalCost": 2169.794520983994,
+        "emissionCost": 31.33750836439277,
+        "transitionCost": 0,
+        "prevWayId": 1128379006,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 2243.4570126196013,
+        "costMarginToRunnerUp": 73.66249163560724,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 711,
+      "bucketLabelUtc": "2026-10-16T03:47:51Z",
+      "lat": 51.292773,
+      "lon": 9.509502,
+      "headingDeg": 212.51928056505585,
+      "qcTrustLevel": "UNTRUSTED",
+      "l3Kmh": null,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 128163974,
+      "baselineCompetingWayIds": [
+        26122898,
+        128163974
+      ],
+      "viterbiTopKWayIds": [
+        26122898,
+        128163974
+      ],
+      "candidates": [
+        {
+          "osmWayId": 26122898,
+          "distanceM": 15.200961874475274,
+          "segmentBearingDeg": 132.48004008429052,
+          "bearingDeltaDeg": 80.03924048076533,
+          "highway": "unclassified",
+          "oneway": null,
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 128163974,
+          "distanceM": 20.875630176110107,
+          "segmentBearingDeg": 213.567616990642,
+          "bearingDeltaDeg": 1.0483364255861432,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 128163974,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": true
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_80deg"
+      ],
+      "decisionClass": "INSUFFICIENT_EVIDENCE",
+      "decisionRationale": [
+        "ADJACENT_ROW_ABSENT_GAP",
+        "QC_UNTRUSTED"
+      ],
+      "viterbi": {
+        "chosenWayId": 128163974,
+        "totalCost": 2908.348136472724,
+        "emissionCost": 41.751260352220214,
+        "transitionCost": 0,
+        "prevWayId": 128163974,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 2971.596876120504,
+        "costMarginToRunnerUp": 63.248739647779985,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 736,
+      "bucketLabelUtc": "2026-10-16T03:48:16Z",
+      "lat": 51.289407,
+      "lon": 9.502703,
+      "headingDeg": 238.06299208299967,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 47.33271750821854,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 206289214,
+      "baselineCompetingWayIds": [
+        206289213,
+        206289214
+      ],
+      "viterbiTopKWayIds": [
+        206289213,
+        206289214
+      ],
+      "candidates": [
+        {
+          "osmWayId": 206289213,
+          "distanceM": 19.188941985682508,
+          "segmentBearingDeg": 57.65178084159112,
+          "bearingDeltaDeg": 179.58878875859145,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 206289214,
+          "distanceM": 24.72448426547947,
+          "segmentBearingDeg": 236.5163213194091,
+          "bearingDeltaDeg": 1.5466707635905834,
+          "highway": "primary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "primary",
+      "chosenTopologyNote": "highway=primary; bridge=yes; layer=1; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 390812607,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 206289214,
+        "totalCost": 1171.7555657730138,
+        "emissionCost": 49.44896853095894,
+        "transitionCost": 2,
+        "prevWayId": 390812607,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1225.306597242055,
+        "costMarginToRunnerUp": 53.55103146904116,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 800,
+      "bucketLabelUtc": "2026-10-16T03:49:20Z",
+      "lat": 51.286372,
+      "lon": 9.487105,
+      "headingDeg": 266.44322621180146,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 116.8677611464188,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 25623377,
+      "baselineCompetingWayIds": [
+        128205110,
+        25623377
+      ],
+      "viterbiTopKWayIds": [
+        128205110,
+        25623377
+      ],
+      "candidates": [
+        {
+          "osmWayId": 128205110,
+          "distanceM": 12.259270463499996,
+          "segmentBearingDeg": 86.48771545279601,
+          "bearingDeltaDeg": 179.95551075900545,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 25623377,
+          "distanceM": 21.03913105702276,
+          "segmentBearingDeg": 262.13073130647564,
+          "bearingDeltaDeg": 4.312494905325821,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 25623377,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 25623377,
+        "totalCost": 908.4278536711878,
+        "emissionCost": 42.07826211404552,
+        "transitionCost": 0,
+        "prevWayId": 25623377,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 971.3495915571423,
+        "costMarginToRunnerUp": 62.921737885954485,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 816,
+      "bucketLabelUtc": "2026-10-16T03:49:36Z",
+      "lat": 51.284296,
+      "lon": 9.480572,
+      "headingDeg": 219.53543022737682,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 113.6983302826488,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 128216819,
+      "baselineCompetingWayIds": [
+        25623160,
+        128216819
+      ],
+      "viterbiTopKWayIds": [
+        25623160,
+        128216819
+      ],
+      "candidates": [
+        {
+          "osmWayId": 25623160,
+          "distanceM": 8.76868877991026,
+          "segmentBearingDeg": 39.75914863892058,
+          "bearingDeltaDeg": 179.77628158845624,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 128216819,
+          "distanceM": 17.38960708502452,
+          "segmentBearingDeg": 215.65809119873745,
+          "bearingDeltaDeg": 3.877339028639369,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 128216819,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 128216819,
+        "totalCost": 1421.4636678914196,
+        "emissionCost": 34.77921417004904,
+        "transitionCost": 0,
+        "prevWayId": 128216819,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1491.6844537213706,
+        "costMarginToRunnerUp": 70.22078582995096,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 831,
+      "bucketLabelUtc": "2026-10-16T03:49:51Z",
+      "lat": 51.280442,
+      "lon": 9.477996,
+      "headingDeg": 203.62302312126167,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 112.140973786667,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 316312798,
+      "baselineCompetingWayIds": [
+        60126146,
+        316312798
+      ],
+      "viterbiTopKWayIds": [
+        60126146,
+        316312798
+      ],
+      "candidates": [
+        {
+          "osmWayId": 60126146,
+          "distanceM": 12.897749184771213,
+          "segmentBearingDeg": 23.738339295899834,
+          "bearingDeltaDeg": 179.88468382536183,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 316312798,
+          "distanceM": 20.386973499483616,
+          "segmentBearingDeg": 208.70865189520404,
+          "bearingDeltaDeg": 5.085628773942375,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 316312798,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 316312798,
+        "totalCost": 1713.1117745205877,
+        "emissionCost": 40.77394699896723,
+        "transitionCost": 0,
+        "prevWayId": 316312798,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1777.3378275216205,
+        "costMarginToRunnerUp": 64.22605300103282,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 863,
+      "bucketLabelUtc": "2026-10-16T03:50:23Z",
+      "lat": 51.275121,
+      "lon": 9.466693,
+      "headingDeg": 254.30290344151314,
+      "qcTrustLevel": "UNTRUSTED",
+      "l3Kmh": 191.4429317601504,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 60126142,
+      "baselineCompetingWayIds": [
+        256058120,
+        369729511,
+        60126142
+      ],
+      "viterbiTopKWayIds": [
+        256058120,
+        369729511,
+        60126142
+      ],
+      "candidates": [
+        {
+          "osmWayId": 256058120,
+          "distanceM": 9.281308314134474,
+          "segmentBearingDeg": 73.97776804250486,
+          "bearingDeltaDeg": 179.67486460099173,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 369729511,
+          "distanceM": 24.81988952969258,
+          "segmentBearingDeg": 75.93600402664697,
+          "bearingDeltaDeg": 178.36689941486617,
+          "highway": "unclassified",
+          "oneway": null,
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 60126142,
+          "distanceM": 24.955628547998824,
+          "segmentBearingDeg": 253.90620125185453,
+          "bearingDeltaDeg": 0.3967021896586118,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": false,
+      "prevViterbiWayId": 256058120,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STRUCTURALLY_CONTRADICTED",
+      "decisionRationale": [
+        "QC_UNTRUSTED",
+        "VITERBI_GRAPH_DISCONTINUITY_FROM_PREV_ASSOCIATED"
+      ],
+      "viterbi": {
+        "chosenWayId": 60126142,
+        "totalCost": 154.91125709599766,
+        "emissionCost": 49.91125709599765,
+        "transitionCost": 5,
+        "prevWayId": null,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 156.45301459125216,
+        "costMarginToRunnerUp": 1.541757495254501,
+        "selectionSummary": "NARROW_COST_MARGIN"
+      }
+    },
+    {
+      "bucketIndex": 876,
+      "bucketLabelUtc": "2026-10-16T03:50:36Z",
+      "lat": 51.273125,
+      "lon": 9.461282,
+      "headingDeg": 222.87692362835,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 120.5046382100103,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 256058119,
+      "baselineCompetingWayIds": [
+        126090747,
+        256058119
+      ],
+      "viterbiTopKWayIds": [
+        126090747,
+        256058119
+      ],
+      "candidates": [
+        {
+          "osmWayId": 126090747,
+          "distanceM": 8.622584264817998,
+          "segmentBearingDeg": 42.58838242036484,
+          "bearingDeltaDeg": 179.71145879201484,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 256058119,
+          "distanceM": 17.68152299709842,
+          "segmentBearingDeg": 221.45968915810474,
+          "bearingDeltaDeg": 1.417234470245262,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 256058119,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 256058119,
+        "totalCost": 387.9454999196287,
+        "emissionCost": 35.36304599419684,
+        "transitionCost": 0,
+        "prevWayId": 256058119,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 457.5824539254318,
+        "costMarginToRunnerUp": 69.63695400580315,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 879,
+      "bucketLabelUtc": "2026-10-16T03:50:39Z",
+      "lat": 51.272414,
+      "lon": 9.460396,
+      "headingDeg": 215.66121394743467,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 120.6735948520761,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 316312797,
+      "baselineCompetingWayIds": [
+        126090747,
+        316312797,
+        821636103
+      ],
+      "viterbiTopKWayIds": [
+        126090747,
+        316312797,
+        821636103
+      ],
+      "candidates": [
+        {
+          "osmWayId": 126090747,
+          "distanceM": 9.162327537950382,
+          "segmentBearingDeg": 34.87989928493511,
+          "bearingDeltaDeg": 179.21868533750043,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 316312797,
+          "distanceM": 16.31309147306905,
+          "segmentBearingDeg": 215.2975843380428,
+          "bearingDeltaDeg": 0.3636296093918645,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 821636103,
+          "distanceM": 18.78177677821103,
+          "segmentBearingDeg": 59.87792075522191,
+          "bearingDeltaDeg": 155.78329319221277,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 316312797,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 316312797,
+        "totalCost": 451.6968748079851,
+        "emissionCost": 32.6261829461381,
+        "transitionCost": 0,
+        "prevWayId": 316312797,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 524.0706918618471,
+        "costMarginToRunnerUp": 72.37381705386196,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 885,
+      "bucketLabelUtc": "2026-10-16T03:50:45Z",
+      "lat": 51.270884,
+      "lon": 9.458774,
+      "headingDeg": 214.60315265995703,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 122.9816804306074,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 30390113,
+      "baselineCompetingWayIds": [
+        1169866352,
+        821636093,
+        438461206,
+        30390113,
+        30390147
+      ],
+      "viterbiTopKWayIds": [
+        1169866352,
+        821636093,
+        438461206,
+        30390113
+      ],
+      "candidates": [
+        {
+          "osmWayId": 1169866352,
+          "distanceM": 4.868543255347617,
+          "segmentBearingDeg": 119.46977404607208,
+          "bearingDeltaDeg": 95.13337861388496,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 821636093,
+          "distanceM": 10.048598046834272,
+          "segmentBearingDeg": 302.9061969953919,
+          "bearingDeltaDeg": 88.30304433543486,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 438461206,
+          "distanceM": 18.101622631991514,
+          "segmentBearingDeg": 300.0284478930211,
+          "bearingDeltaDeg": 85.42529523306408,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 30390113,
+          "distanceM": 20.995836331832972,
+          "segmentBearingDeg": 215.5317218996385,
+          "bearingDeltaDeg": 0.9285692396814795,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 30390147,
+          "distanceM": 22.281001684245425,
+          "segmentBearingDeg": 34.718267132917504,
+          "bearingDeltaDeg": 179.88488552703953,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 30390111,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_95deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 30390113,
+        "totalCost": 748.9698093776458,
+        "emissionCost": 41.991672663665945,
+        "transitionCost": 2,
+        "prevWayId": 30390111,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 809.9781367139799,
+        "costMarginToRunnerUp": 61.008327336334105,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 902,
+      "bucketLabelUtc": "2026-10-16T03:51:02Z",
+      "lat": 51.266905,
+      "lon": 9.453557,
+      "headingDeg": 216.45475823176858,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 118.0599953595313,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 30390062,
+      "baselineCompetingWayIds": [
+        322049472,
+        30390062
+      ],
+      "viterbiTopKWayIds": [
+        322049472,
+        30390062
+      ],
+      "candidates": [
+        {
+          "osmWayId": 322049472,
+          "distanceM": 10.47188521062617,
+          "segmentBearingDeg": 36.6091668791334,
+          "bearingDeltaDeg": 179.84559135263518,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 30390062,
+          "distanceM": 24.351146232231315,
+          "segmentBearingDeg": 214.9172048830252,
+          "bearingDeltaDeg": 1.537553348743387,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 30390062,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 30390062,
+        "totalCost": 1237.413918085941,
+        "emissionCost": 48.70229246446263,
+        "transitionCost": 0,
+        "prevWayId": 30390062,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 1293.7116256214783,
+        "costMarginToRunnerUp": 56.297707535537256,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 916,
+      "bucketLabelUtc": "2026-10-16T03:51:16Z",
+      "lat": 51.263596,
+      "lon": 9.450596,
+      "headingDeg": 206.03002717395293,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 111.815600381933,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 96956756,
+      "baselineCompetingWayIds": [
+        33203958,
+        96956756
+      ],
+      "viterbiTopKWayIds": [
+        33203958,
+        96956756
+      ],
+      "candidates": [
+        {
+          "osmWayId": 33203958,
+          "distanceM": 10.683427783181093,
+          "segmentBearingDeg": 23.853861394333762,
+          "bearingDeltaDeg": 177.82383422038083,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 96956756,
+          "distanceM": 16.75166812834622,
+          "segmentBearingDeg": 230.93242742169724,
+          "bearingDeltaDeg": 24.90240024774431,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway_link",
+      "chosenTopologyNote": "highway=motorway_link; oneway=yes",
+      "graphContinuityFromPrevViterbi": false,
+      "prevViterbiWayId": 25588352,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_178deg"
+      ],
+      "decisionClass": "STRUCTURALLY_CONTRADICTED",
+      "decisionRationale": [
+        "VITERBI_GRAPH_DISCONTINUITY_FROM_PREV_ASSOCIATED"
+      ],
+      "viterbi": {
+        "chosenWayId": 96956756,
+        "totalCost": 399.0565279621237,
+        "emissionCost": 33.50333625669244,
+        "transitionCost": 0,
+        "prevWayId": 96956756,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 459.7457210646259,
+        "costMarginToRunnerUp": 60.6891931025022,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 934,
+      "bucketLabelUtc": "2026-10-16T03:51:34Z",
+      "lat": 51.259155,
+      "lon": 9.44596,
+      "headingDeg": 217.3650087462308,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 111.9140347511017,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 106293488,
+      "baselineCompetingWayIds": [
+        245089907,
+        106293488
+      ],
+      "viterbiTopKWayIds": [
+        245089907,
+        106293488
+      ],
+      "candidates": [
+        {
+          "osmWayId": 245089907,
+          "distanceM": 10.4464129727911,
+          "segmentBearingDeg": 37.75306139099126,
+          "bearingDeltaDeg": 179.61194735523955,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 106293488,
+          "distanceM": 16.89495119225302,
+          "segmentBearingDeg": 231.01828887650547,
+          "bearingDeltaDeg": 13.653280130274652,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway_link",
+      "chosenTopologyNote": "highway=motorway_link; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 52159171,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "TOPOLOGY_PLAUSIBLE",
+      "decisionRationale": [
+        "TEMPORAL_GRAPH_CONTINUITY_SUPPORTS_PICK"
+      ],
+      "viterbi": {
+        "chosenWayId": 106293488,
+        "totalCost": 60.15749375226695,
+        "emissionCost": 33.78990238450604,
+        "transitionCost": 0,
+        "prevWayId": 106293488,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 131.3675913677609,
+        "costMarginToRunnerUp": 71.21009761549394,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 935,
+      "bucketLabelUtc": "2026-10-16T03:51:35Z",
+      "lat": 51.258928,
+      "lon": 9.445685,
+      "headingDeg": 217.1669004580727,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 115.6767715875464,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 106293488,
+      "baselineCompetingWayIds": [
+        245089907,
+        106293488
+      ],
+      "viterbiTopKWayIds": [
+        245089907,
+        106293488
+      ],
+      "candidates": [
+        {
+          "osmWayId": 245089907,
+          "distanceM": 12.806890542916241,
+          "segmentBearingDeg": 37.42599665349513,
+          "bearingDeltaDeg": 179.74090380457756,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 106293488,
+          "distanceM": 20.8154068180979,
+          "segmentBearingDeg": 221.3310883912731,
+          "bearingDeltaDeg": 4.164187933200424,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway_link",
+      "chosenTopologyNote": "highway=motorway_link; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 106293488,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_180deg"
+      ],
+      "decisionClass": "TOPOLOGY_PLAUSIBLE",
+      "decisionRationale": [
+        "TEMPORAL_GRAPH_CONTINUITY_SUPPORTS_PICK"
+      ],
+      "viterbi": {
+        "chosenWayId": 106293488,
+        "totalCost": 101.78830738846275,
+        "emissionCost": 41.6308136361958,
+        "transitionCost": 0,
+        "prevWayId": 106293488,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 165.15749375226696,
+        "costMarginToRunnerUp": 63.369186363804204,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 937,
+      "bucketLabelUtc": "2026-10-16T03:51:37Z",
+      "lat": 51.258455,
+      "lon": 9.445123,
+      "headingDeg": 216.24758968142652,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 119.4251340239634,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 25623109,
+      "baselineCompetingWayIds": [
+        245089926,
+        19882411,
+        245089918,
+        25623109,
+        123917341
+      ],
+      "viterbiTopKWayIds": [
+        245089926,
+        19882411,
+        245089918,
+        25623109
+      ],
+      "candidates": [
+        {
+          "osmWayId": 245089926,
+          "distanceM": 1.7441613270762446,
+          "segmentBearingDeg": 121.53769502337474,
+          "bearingDeltaDeg": 94.70989465805178,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 19882411,
+          "distanceM": 8.27768296992633,
+          "segmentBearingDeg": 298.2008837768039,
+          "bearingDeltaDeg": 81.95329409537737,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 245089918,
+          "distanceM": 14.727893360314964,
+          "segmentBearingDeg": 299.4732578500241,
+          "bearingDeltaDeg": 83.22566816859756,
+          "highway": "secondary",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 25623109,
+          "distanceM": 15.349206934564341,
+          "segmentBearingDeg": 213.89399602423183,
+          "bearingDeltaDeg": 2.3535936571946934,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 123917341,
+          "distanceM": 16.301041332825235,
+          "segmentBearingDeg": 37.2234403417408,
+          "bearingDeltaDeg": 179.02414933968572,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 123917546,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_95deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 25623109,
+        "totalCost": 222.06747514760033,
+        "emissionCost": 30.698413869128682,
+        "transitionCost": 2,
+        "prevWayId": 123917546,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 294.3690612784717,
+        "costMarginToRunnerUp": 72.30158613087136,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 938,
+      "bucketLabelUtc": "2026-10-16T03:51:38Z",
+      "lat": 51.258212,
+      "lon": 9.444841,
+      "headingDeg": 215.98908900826,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 121.2680282532474,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 25623109,
+      "baselineCompetingWayIds": [
+        245089894,
+        25623109,
+        123917341
+      ],
+      "viterbiTopKWayIds": [
+        245089894,
+        25623109,
+        123917341
+      ],
+      "candidates": [
+        {
+          "osmWayId": 245089894,
+          "distanceM": 14.018905584599903,
+          "segmentBearingDeg": 37.07775428952874,
+          "bearingDeltaDeg": 178.91133471873127,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 25623109,
+          "distanceM": 19.441468289957147,
+          "segmentBearingDeg": 213.89399602423183,
+          "bearingDeltaDeg": 2.0950929840281844,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 123917341,
+          "distanceM": 20.84833061128336,
+          "segmentBearingDeg": 37.2234403417408,
+          "bearingDeltaDeg": 178.7656486665192,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 25623109,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_179deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 25623109,
+        "totalCost": 260.9504117275146,
+        "emissionCost": 38.88293657991429,
+        "transitionCost": 0,
+        "prevWayId": 25623109,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 327.06747514760036,
+        "costMarginToRunnerUp": 66.11706342008574,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 962,
+      "bucketLabelUtc": "2026-10-16T03:52:02Z",
+      "lat": 51.251416,
+      "lon": 9.439754,
+      "headingDeg": 200.4709706281478,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 119.2354634809781,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 120075145,
+      "baselineCompetingWayIds": [
+        236738766,
+        120075145,
+        120075146,
+        68440519
+      ],
+      "viterbiTopKWayIds": [
+        236738766,
+        120075145,
+        120075146,
+        68440519
+      ],
+      "candidates": [
+        {
+          "osmWayId": 236738766,
+          "distanceM": 13.998212527950729,
+          "segmentBearingDeg": 293.22059057343506,
+          "bearingDeltaDeg": 92.74961994528726,
+          "highway": "unclassified",
+          "oneway": null,
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 120075145,
+          "distanceM": 19.486793699565496,
+          "segmentBearingDeg": 199.1908754847478,
+          "bearingDeltaDeg": 1.2800951433999899,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 120075146,
+          "distanceM": 22.395422444446083,
+          "segmentBearingDeg": 19.287055345255,
+          "bearingDeltaDeg": 178.8160847171072,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 68440519,
+          "distanceM": 24.912957676366975,
+          "segmentBearingDeg": 199.18275714396103,
+          "bearingDeltaDeg": 1.2882134841867696,
+          "highway": "motorway",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway",
+      "chosenTopologyNote": "highway=motorway; bridge=yes; layer=1; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 245089913,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_93deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 120075145,
+        "totalCost": 977.3588037053285,
+        "emissionCost": 38.97358739913099,
+        "transitionCost": 2,
+        "prevWayId": 245089913,
+        "runnerUpWayId": 68440519,
+        "runnerUpTotalCost": 1012.7023855848977,
+        "costMarginToRunnerUp": 35.34358187956923,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 996,
+      "bucketLabelUtc": "2026-10-16T03:52:36Z",
+      "lat": 51.244549,
+      "lon": 9.432693,
+      "headingDeg": 232.9958574741283,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 60.27953397631094,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 245089893,
+      "baselineCompetingWayIds": [
+        236764387,
+        245089893,
+        1443742485
+      ],
+      "viterbiTopKWayIds": [
+        236764387,
+        245089893,
+        1443742485
+      ],
+      "candidates": [
+        {
+          "osmWayId": 236764387,
+          "distanceM": 3.76799316272243,
+          "segmentBearingDeg": 61.14586058347021,
+          "bearingDeltaDeg": 171.84999689065808,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 245089893,
+          "distanceM": 8.965929985842422,
+          "segmentBearingDeg": 226.3077611868747,
+          "bearingDeltaDeg": 6.688096287253586,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 1443742485,
+          "distanceM": 12.917685016293895,
+          "segmentBearingDeg": 46.76994472014621,
+          "bearingDeltaDeg": 173.77408724601793,
+          "highway": "motorway_link",
+          "oneway": "no",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway_link",
+      "chosenTopologyNote": "highway=motorway_link; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 245089893,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_172deg"
+      ],
+      "decisionClass": "STILL_AMBIGUOUS",
+      "decisionRationale": [
+        "OPPOSING_PARALLEL_CARRIAGEWAY_SET_WITHOUT_ROAD_ID_GT"
+      ],
+      "viterbi": {
+        "chosenWayId": 245089893,
+        "totalCost": 2572.371767360997,
+        "emissionCost": 17.931859971684844,
+        "transitionCost": 0,
+        "prevWayId": 245089893,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 2659.4399073893123,
+        "costMarginToRunnerUp": 87.06814002831516,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 1008,
+      "bucketLabelUtc": "2026-10-16T03:52:48Z",
+      "lat": 51.243917,
+      "lon": 9.431163,
+      "headingDeg": 307.4416475269683,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 41.61657562839821,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 236764396,
+      "baselineCompetingWayIds": [
+        241355039,
+        236764396
+      ],
+      "viterbiTopKWayIds": [
+        241355039,
+        236764396
+      ],
+      "candidates": [
+        {
+          "osmWayId": 241355039,
+          "distanceM": 5.650945583480482,
+          "segmentBearingDeg": 133.74455266951327,
+          "bearingDeltaDeg": 173.69709485745506,
+          "highway": "secondary",
+          "oneway": null,
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 236764396,
+          "distanceM": 17.262068296014366,
+          "segmentBearingDeg": 297.9073355435618,
+          "bearingDeltaDeg": 9.534311983406496,
+          "highway": "motorway_link",
+          "oneway": "yes",
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "motorway_link",
+      "chosenTopologyNote": "highway=motorway_link; oneway=yes",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 236764396,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_174deg"
+      ],
+      "decisionClass": "TOPOLOGY_PLAUSIBLE",
+      "decisionRationale": [
+        "TEMPORAL_GRAPH_CONTINUITY_SUPPORTS_PICK"
+      ],
+      "viterbi": {
+        "chosenWayId": 236764396,
+        "totalCost": 3031.437851293417,
+        "emissionCost": 34.52413659202873,
+        "transitionCost": 0,
+        "prevWayId": 236764396,
+        "runnerUpWayId": null,
+        "runnerUpTotalCost": 3101.9137147013885,
+        "costMarginToRunnerUp": 70.47586340797125,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    },
+    {
+      "bucketIndex": 1076,
+      "bucketLabelUtc": "2026-10-16T03:53:56Z",
+      "lat": 51.249683,
+      "lon": 9.431002,
+      "headingDeg": 135.47366704955948,
+      "qcTrustLevel": "TRUSTED",
+      "l3Kmh": 14.76329151899024,
+      "baselineOutcome": "AMBIGUOUS",
+      "candidateOutcome": "ASSOCIATED",
+      "baselineWayId": null,
+      "chosenOsmWayId": 22885899,
+      "baselineCompetingWayIds": [
+        22787714,
+        22885899,
+        219511401,
+        219511387
+      ],
+      "viterbiTopKWayIds": [
+        22787714,
+        22885899,
+        219511401,
+        219511387
+      ],
+      "candidates": [
+        {
+          "osmWayId": 22787714,
+          "distanceM": 2.3169504636169025,
+          "segmentBearingDeg": 203.59179504849664,
+          "bearingDeltaDeg": 68.11812799893715,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": true
+        },
+        {
+          "osmWayId": 22885899,
+          "distanceM": 12.780661447737433,
+          "segmentBearingDeg": 113.58949110891035,
+          "bearingDeltaDeg": 21.88417594064913,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 219511401,
+          "distanceM": 19.42630353138339,
+          "segmentBearingDeg": 113.64741546188623,
+          "bearingDeltaDeg": 21.826251587673255,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        },
+        {
+          "osmWayId": 219511387,
+          "distanceM": 19.42630353138804,
+          "segmentBearingDeg": 23.376182464542524,
+          "bearingDeltaDeg": 112.09748458501696,
+          "highway": "service",
+          "oneway": null,
+          "within5mOfNearest": false
+        }
+      ],
+      "competingWithin5m": false,
+      "competitorsWithin5mCount": 1,
+      "parallelCarriagewayHint": false,
+      "chosenHighway": "service",
+      "chosenTopologyNote": "highway=service",
+      "graphContinuityFromPrevViterbi": true,
+      "prevViterbiWayId": 22787714,
+      "adjacentRowAbsent": {
+        "prev": false,
+        "next": false
+      },
+      "baselineAmbiguityReasons": [
+        "BEARING_MISMATCH_68deg"
+      ],
+      "decisionClass": "TOPOLOGY_PLAUSIBLE",
+      "decisionRationale": [
+        "TEMPORAL_GRAPH_CONTINUITY_SUPPORTS_PICK",
+        "REASONABLE_SNAP_DISTANCE"
+      ],
+      "viterbi": {
+        "chosenWayId": 22885899,
+        "totalCost": 6295.19327960761,
+        "emissionCost": 25.561322895474866,
+        "transitionCost": 2,
+        "prevWayId": 22787714,
+        "runnerUpWayId": 219511401,
+        "runnerUpTotalCost": 6346.484563774901,
+        "costMarginToRunnerUp": 51.29128416729145,
+        "selectionSummary": "GRAPH_ADJACENT_CONTINUITY"
+      }
+    }
+  ]
+}
