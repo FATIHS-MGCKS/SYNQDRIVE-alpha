@@ -1,0 +1,7 @@
+/** Versioned research algorithm bundle (offline / shadow extension only). */
+export const S4_RESEARCH_GEOMETRY_PROJECTION_ID = 'S4_RESEARCH_LOCAL_EQUIRECTANGULAR_V2';
+/** @deprecated Historical pins only — used mismatched deg/m projection (see legacy/). */
+export const S4_RESEARCH_GEOMETRY_PROJECTION_LEGACY_V1 = 'S4_RESEARCH_LOCAL_PROJECTION_LEGACY_V1';
+export const S4_RESEARCH_ROAD_MATCHING_ALGORITHM_ID = 'S4_RESEARCH_ROAD_MATCHING_V2';
+export const S4_RESEARCH_VITERBI_ALGORITHM_ID = 'S4_RESEARCH_VITERBI_FORWARD_V2';
+export const S4_RESEARCH_BASELINE_ALGORITHM_ID = 'S4_RESEARCH_BASELINE_BUCKET_V2';
