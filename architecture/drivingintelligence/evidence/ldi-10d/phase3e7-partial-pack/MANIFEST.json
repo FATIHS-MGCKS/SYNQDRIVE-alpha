@@ -1,0 +1,49 @@
+{
+  "status": "PARTIAL_1HZ_FRAME_EXTRACTION_COMPLETE_OCR_15S_ONLY",
+  "videos": [
+    {
+      "name": "TC_00062.MOV",
+      "duration_s": 179.875,
+      "creation_time_utc": "2026-10-16T03:37:41.000000Z",
+      "frames_1hz": 180
+    },
+    {
+      "name": "TC_00063.MOV",
+      "duration_s": 179.995,
+      "creation_time_utc": "2026-10-16T03:40:41.000000Z",
+      "frames_1hz": 180
+    },
+    {
+      "name": "TC_00064.MOV",
+      "duration_s": 179.955,
+      "creation_time_utc": "2026-10-16T03:43:41.000000Z",
+      "frames_1hz": 180
+    },
+    {
+      "name": "TC_00065.MOV",
+      "duration_s": 179.955,
+      "creation_time_utc": "2026-10-16T03:46:41.000000Z",
+      "frames_1hz": 180
+    },
+    {
+      "name": "TC_00066.MOV",
+      "duration_s": 179.995,
+      "creation_time_utc": "2026-10-16T03:49:42.000000Z",
+      "frames_1hz": 180
+    },
+    {
+      "name": "TC_00067.MOV",
+      "duration_s": 127.813333,
+      "creation_time_utc": "2026-10-16T03:52:42.000000Z",
+      "frames_1hz": 128
+    }
+  ],
+  "frame_count": 1028,
+  "ocr_sample_count": 69,
+  "limitations": [
+    "OCR at 15-second intervals only; not full 1 Hz",
+    "No DIMO POSITION fixture included",
+    "No validated road IDs or confirmed stops",
+    "Do not treat frame hash as GPS fix"
+  ]
+}
