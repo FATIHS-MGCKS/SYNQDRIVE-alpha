@@ -1,0 +1,27 @@
+# LDI-10D Phase 3D — Result
+
+```json
+{
+  "LDI10D_PHASE": "3D",
+  "INPUT_INTEGRITY": "PASS",
+  "BUCKETS_ANALYZED": 1136,
+  "TRUSTED_COVERAGE": 775,
+  "ROW_ABSENT": 269,
+  "FROZEN_COORDINATE_BUCKETS": 0,
+  "QC_UNTRUSTED": 347,
+  "TOP_COVERAGE_LOSS_CAUSES": "PROVIDER_ROW_ABSENT,QC_NO_NUMERIC_OR_UNTRUSTED,L3_SUPPORT_WINDOW_GAPS",
+  "RECOVERABLE_COVERAGE": "research_estimate_91_not_measured",
+  "CONFIDENCE_MODEL_STATUS": "EVIDENCE_ONLY_UNCALIBRATED",
+  "L3_BASELINE_DRIFT": "NONE",
+  "REPLAY_TESTS": "PASS",
+  "PRODUCTION_MUTATIONS": "NONE",
+  "NEXT_SAFE_ACTION": "WAIT_OWNER_REVIEW",
+  "STOP": "WAIT_OWNER_REVIEW"
+}
+```
+
+## Repro
+```bash
+cd backend && npm run ldi10d:phase3d-gps-evidence-quality
+cd backend && npx jest ldi10d-phase3d --runInBand
+```

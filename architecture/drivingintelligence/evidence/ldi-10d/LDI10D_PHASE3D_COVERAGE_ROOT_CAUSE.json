@@ -1,0 +1,37 @@
+{
+  "schema": "LDI10D_PHASE3D_COVERAGE_ROOT_CAUSE_V1",
+  "headSha": "0cabca3af016583ae452b91eef32fb41c1317488",
+  "causes": [
+    {
+      "causeId": "PROVIDER_ROW_ABSENT",
+      "layer": "PROVIDER",
+      "bucketImpact": 269,
+      "recoverableResearchOnly": false,
+      "note": "No DIMO provider row mapped to bucket — not recoverable without new telemetry"
+    },
+    {
+      "causeId": "QC_NO_NUMERIC_OR_UNTRUSTED",
+      "layer": "QC",
+      "bucketImpact": 78,
+      "recoverableResearchOnly": true,
+      "note": "Present position but QC did not emit trusted numeric speed — policy-sensitive, not measured recovery"
+    },
+    {
+      "causeId": "L3_SUPPORT_WINDOW_GAPS",
+      "layer": "ALGORITHM",
+      "bucketImpact": 13,
+      "recoverableResearchOnly": true,
+      "note": "Abstention from L3 support/hold semantics — algorithm change may shift coverage, not create GPS"
+    },
+    {
+      "causeId": "FROZEN_COORDINATE_HOLD",
+      "layer": "ALGORITHM",
+      "bucketImpact": 0,
+      "recoverableResearchOnly": false,
+      "note": "Repeated coordinates — abstention intentional; not GPS interpolation"
+    }
+  ],
+  "recoverableBucketsEstimate": 91,
+  "irrecoverableBucketsEstimate": 269,
+  "disclaimer": "Recoverable counts are research hypotheses only — not measured recovered GPS."
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "LDI10D_PHASE3D_OBSERVABILITY_V1",
+  "headSha": "0cabca3af016583ae452b91eef32fb41c1317488",
+  "tripLevel": {
+    "bucketsTotal": 1136,
+    "positionPresent": 867,
+    "rowAbsent": 269,
+    "frozenCoordinateBuckets": 0,
+    "timestampIrregularities": 0,
+    "geometryOutlierInferred": 1,
+    "qcUntrusted": 347,
+    "trustedSpeed": 775,
+    "trustedLimitedWithNumeric": 0,
+    "insufficientEvidence": 346,
+    "replayL3Numeric": 822,
+    "maxL3DriftKmh": 0,
+    "meanL3DriftKmh": null,
+    "qcReasonHistogram": {
+      "NO_NUMERIC": 346,
+      "OK_STATIONARY_NULL_SPEED": 14,
+      "OK": 775,
+      "GEOMETRY_JUMP": 1
+    },
+    "abstentionHistogram": {
+      "INCOMPLETE_SUPPORT": 2,
+      "ROW_ABSENT": 312,
+      "NONE": 822
+    },
+    "videoPairedTrustedN": 748
+  },
+  "samplingCadence": {
+    "expectedDeltaSec": 1,
+    "irregularBuckets": 0
+  },
+  "speedEstimation": {
+    "pinnedProductionNumeric": 775,
+    "replayL3Numeric": 822
+  },
+  "temporalUncertaintyNote": "Bucket labels are query-anchored 1 s grid starts; video tacho aligned to displayed second with quantized clock uncertainty."
+}
