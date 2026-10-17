@@ -7,3 +7,6 @@ export const LV_MEASURED_INTELLIGENCE_DEFAULT_OBSERVATION_LIMIT = 200;
 export const LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT = 500;
 
 export const LV_MEASURED_INTELLIGENCE_MAX_FEATURE_ROWS_PER_VEHICLE = 2000;
+
+/** Max inclusive calendar span for measuredFrom/measuredTo historical browsing. */
+export const LV_MEASURED_INTELLIGENCE_MAX_HISTORICAL_RANGE_DAYS = 120;

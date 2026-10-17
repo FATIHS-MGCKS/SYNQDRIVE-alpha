@@ -157,6 +157,19 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   const [inspection, setInspection] = useState<RestSessionFeatureShadowInspectionV1 | null>(null);
   const [lvMeasured, setLvMeasured] = useState<LvMeasuredIntelligenceV1 | null>(null);
   const [lvMeasuredLoading, setLvMeasuredLoading] = useState(false);
+  const [lvHistoryUseDateRange, setLvHistoryUseDateRange] = useState(true);
+  const defaultHistoryTo = useMemo(() => new Date(), []);
+  const defaultHistoryFrom = useMemo(() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 90);
+    return d;
+  }, []);
+  const toDatetimeLocalValue = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  };
+  const [lvHistoryFromInput, setLvHistoryFromInput] = useState(() => toDatetimeLocalValue(defaultHistoryFrom));
+  const [lvHistoryToInput, setLvHistoryToInput] = useState(() => toDatetimeLocalValue(defaultHistoryTo));
   const [phase, setPhase] = useState<LoadPhase>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -227,12 +240,21 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
     }
     setLvMeasuredLoading(true);
     try {
-      const data = await api.admin.batteryV2.getLvMeasuredIntelligence({
+      const base = {
         organizationId,
         vehicleId,
         sessionLimit: 40,
-        observationLimit: 300,
-      });
+        observationLimit: 500,
+      };
+      const data = await api.admin.batteryV2.getLvMeasuredIntelligence(
+        lvHistoryUseDateRange
+          ? {
+              ...base,
+              measuredFrom: new Date(lvHistoryFromInput).toISOString(),
+              measuredTo: new Date(lvHistoryToInput).toISOString(),
+            }
+          : base,
+      );
       setLvMeasured(data);
     } catch {
       setLvMeasured(null);
@@ -240,7 +262,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
     } finally {
       setLvMeasuredLoading(false);
     }
-  }, [organizationId, vehicleId]);
+  }, [organizationId, vehicleId, lvHistoryUseDateRange, lvHistoryFromInput, lvHistoryToInput]);
 
   useEffect(() => {
     void loadLvMeasuredIntelligence();
@@ -365,7 +387,56 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
         <>
           {lvMeasuredLoading && !lvMeasured ? <MasterLoadingState variant="card" count={1} /> : null}
           {lvMeasured ? (
-            <LvMeasuredIntelligenceSection data={lvMeasured} selectedRestSessionId={restSessionId} />
+            <LvMeasuredIntelligenceSection
+              data={lvMeasured}
+              selectedRestSessionId={restSessionId}
+              onSelectRestSessionId={setRestSessionId}
+              historyRange={{
+                measuredFrom: lvHistoryFromInput,
+                measuredTo: lvHistoryToInput,
+                useDateRange: lvHistoryUseDateRange,
+                onMeasuredFromChange: setLvHistoryFromInput,
+                onMeasuredToChange: setLvHistoryToInput,
+                onApplyDateRange: () => {
+                  setLvHistoryUseDateRange(true);
+                  if (!organizationId || !vehicleId) return;
+                  setLvMeasuredLoading(true);
+                  void api.admin.batteryV2
+                    .getLvMeasuredIntelligence({
+                      organizationId,
+                      vehicleId,
+                      sessionLimit: 40,
+                      observationLimit: 500,
+                      measuredFrom: new Date(lvHistoryFromInput).toISOString(),
+                      measuredTo: new Date(lvHistoryToInput).toISOString(),
+                    })
+                    .then(setLvMeasured)
+                    .catch(() => {
+                      setLvMeasured(null);
+                      setErrorMessage(resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.loadError'));
+                    })
+                    .finally(() => setLvMeasuredLoading(false));
+                },
+                onUseRecentMode: () => {
+                  setLvHistoryUseDateRange(false);
+                  if (!organizationId || !vehicleId) return;
+                  setLvMeasuredLoading(true);
+                  void api.admin.batteryV2
+                    .getLvMeasuredIntelligence({
+                      organizationId,
+                      vehicleId,
+                      sessionLimit: 40,
+                      observationLimit: 300,
+                    })
+                    .then(setLvMeasured)
+                    .catch(() => {
+                      setLvMeasured(null);
+                      setErrorMessage(resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.loadError'));
+                    })
+                    .finally(() => setLvMeasuredLoading(false));
+                },
+              }}
+            />
           ) : null}
         </>
       )}

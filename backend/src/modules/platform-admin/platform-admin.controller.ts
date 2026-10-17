@@ -508,6 +508,8 @@ export class PlatformAdminController {
     @Query('vehicleId') vehicleId?: string,
     @Query('sessionLimit') sessionLimit?: string,
     @Query('observationLimit') observationLimit?: string,
+    @Query('measuredFrom') measuredFrom?: string,
+    @Query('measuredTo') measuredTo?: string,
     @Req() req?: any,
   ) {
     if (!organizationId || !vehicleId) {
@@ -515,11 +517,21 @@ export class PlatformAdminController {
     }
     const parsedSessionLimit = sessionLimit ? Number(sessionLimit) : undefined;
     const parsedObservationLimit = observationLimit ? Number(observationLimit) : undefined;
+    const parsedMeasuredFrom = measuredFrom ? new Date(measuredFrom) : undefined;
+    const parsedMeasuredTo = measuredTo ? new Date(measuredTo) : undefined;
+    if (parsedMeasuredFrom && Number.isNaN(parsedMeasuredFrom.getTime())) {
+      throw new BadRequestException('measuredFrom is not a valid ISO timestamp');
+    }
+    if (parsedMeasuredTo && Number.isNaN(parsedMeasuredTo.getTime())) {
+      throw new BadRequestException('measuredTo is not a valid ISO timestamp');
+    }
     const result = await this.batteryV2LvMeasuredIntelligence.getVehicleMeasuredIntelligence({
       organizationId,
       vehicleId,
       sessionLimit: Number.isFinite(parsedSessionLimit) ? parsedSessionLimit : undefined,
       observationLimit: Number.isFinite(parsedObservationLimit) ? parsedObservationLimit : undefined,
+      measuredFrom: parsedMeasuredFrom,
+      measuredTo: parsedMeasuredTo,
     });
     void this.audit.record({
       ...AuditService.contextFromRequest(req),

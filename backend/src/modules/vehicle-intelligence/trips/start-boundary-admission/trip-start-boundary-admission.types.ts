@@ -104,6 +104,7 @@ export interface StartBoundaryAdmissionShadowComparison {
   deltaMs: number;
   decision: EvidenceBackedStartBoundaryDecision;
   evidenceSources: MovementEvidenceSource[];
+  movementEvidenceCoverage: MovementEvidenceCoverageState;
   uncertainty: EvidenceBackedStartBoundaryUncertainty;
   integrationModality: TripStartIntegrationModality;
 }

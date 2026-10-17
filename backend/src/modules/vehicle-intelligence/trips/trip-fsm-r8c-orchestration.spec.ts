@@ -110,10 +110,21 @@ function buildPossibleStartHarness(overrides: Record<string, unknown> = {}) {
     },
     hasClickHouseAnalyticsDetectors: jest.fn().mockReturnValue(false),
     resolveConfirmedStartBoundary: jest.fn().mockResolvedValue({
-      startAt: T0,
-      source: 'core',
-      adjustedMs: 0,
-      dimoSegmentId: `v2-${VEHICLE}-${T0.getTime()}`,
+      legacy: {
+        startAt: T0,
+        source: 'CORE_ACTIVITY',
+        startLatitude: null,
+        startLongitude: null,
+        adjustedMs: 0,
+        dimoSegmentId: `v2-${VEHICLE}-${T0.getTime()}`,
+      },
+      evidence: {
+        boundaryWindowFrom: T0,
+        segments: [],
+        matchingSegment: null,
+        routePoints: [],
+        legacyRouteFetchPerformed: false,
+      },
     }),
     tripMetrics: {
       tripEvidencePaths: throwingStartConfirmationMetric(),

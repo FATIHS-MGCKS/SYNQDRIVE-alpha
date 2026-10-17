@@ -344,6 +344,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripStartRecognitionLatency: Histogram<string>;
   readonly snapshotWakeToFetchSeconds: Histogram<string>;
   readonly tripStartBoundaryAdjustment: Histogram<string>;
+  readonly tripStartBoundaryAdmissionShadowComparisons: Counter<string>;
+  readonly tripStartBoundaryAdmissionShadowErrors: Counter<string>;
+  readonly tripStartBoundaryAdmissionShadowDeltaSeconds: Histogram<string>;
   readonly tripEndCandidateLatency: Histogram<string>;
   readonly tripEndRecognitionLatency: Histogram<string>;
   readonly tripEndBoundaryAdjustment: Histogram<string>;
@@ -1011,6 +1014,35 @@ export class TripMetricsService implements OnModuleInit {
         'Absolute seconds between initial start candidate and confirmed canonical start boundary.',
       buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
       labelNames: ['profile', 'source', 'direction', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowComparisons = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_comparisons_total',
+      help:
+        'P1B evidence-backed start boundary shadow comparisons at trip start confirmation (non-authoritative).',
+      labelNames: [
+        'integration_modality',
+        'decision',
+        'legacy_source',
+        'evidence_coverage',
+      ],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowErrors = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_errors_total',
+      help: 'P1B start boundary shadow execution failures (non-blocking).',
+      labelNames: ['phase'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowDeltaSeconds = new Histogram({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_delta_seconds',
+      help:
+        'Absolute seconds between legacy canonical start and P1A shadow-proposed start at confirmation.',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
+      labelNames: ['integration_modality', 'decision', 'legacy_source'],
       registers: [this.registry],
     });
 

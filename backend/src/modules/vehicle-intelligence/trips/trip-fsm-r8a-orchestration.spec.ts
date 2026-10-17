@@ -865,9 +865,21 @@ describe('R8A — start liveness observability', () => {
         ]),
       },
       resolveConfirmedStartBoundary: jest.fn().mockResolvedValue({
-        startAt: T0,
-        source: 'core',
-        adjustedMs: 0,
+        legacy: {
+          startAt: T0,
+          source: 'CORE_ACTIVITY',
+          startLatitude: null,
+          startLongitude: null,
+          adjustedMs: 0,
+          dimoSegmentId: null,
+        },
+        evidence: {
+          boundaryWindowFrom: T0,
+          segments: [],
+          matchingSegment: null,
+          routePoints: [],
+          legacyRouteFetchPerformed: false,
+        },
       }),
       tripMetrics: {
         ...throwingMetrics(),
