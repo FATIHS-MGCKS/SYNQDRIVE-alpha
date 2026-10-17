@@ -301,6 +301,86 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
     expect(bCount).toBe(1);
   });
 
+  it('accepts reduced-coverage provider response without new observation revisions', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+    const segmentFingerprint = `reduced-coverage-${suffix}`;
+    const bucketStartA = new Date('2026-10-16T18:00:00.000Z');
+    const bucketStartB = new Date('2026-10-16T18:01:00.000Z');
+    const bucketsFull = [
+      {
+        bucketStartAt: bucketStartA,
+        bucketEndAt: new Date(bucketStartA.getTime() + 60_000),
+        valueKwh: 10,
+        minKwh: 10,
+        maxKwh: 10,
+        availability: HV_CHARGING_COUNTER_AVAILABILITY.AVAILABLE,
+      },
+      {
+        bucketStartAt: bucketStartB,
+        bucketEndAt: new Date(bucketStartB.getTime() + 60_000),
+        valueKwh: 11,
+        minKwh: 11,
+        maxKwh: 11,
+        availability: HV_CHARGING_COUNTER_AVAILABILITY.AVAILABLE,
+      },
+    ];
+    const fpFull = computeHvChargingCounterObservationSetFingerprintV1(bucketsFull);
+    await repository.persistBatch(
+      basePersistInput(org.id, vehicle.id, segmentFingerprint, bucketStartA, bucketsFull, fpFull),
+    );
+
+    const bucketsReduced = [bucketsFull[0]];
+    const fpReduced = computeHvChargingCounterObservationSetFingerprintV1(bucketsReduced);
+    expect(fpReduced).not.toBe(fpFull);
+
+    const reduced = await repository.persistBatch(
+      basePersistInput(
+        org.id,
+        vehicle.id,
+        segmentFingerprint,
+        bucketStartA,
+        bucketsReduced,
+        fpReduced,
+      ),
+    );
+    expect(reduced.created).toBe(true);
+    expect(reduced.revisionsCreated).toBe(0);
+
+    const observationCount = await prisma.batteryHvChargingCounterObservation.count({
+      where: { organizationId: org.id, vehicleId: vehicle.id, segmentFingerprint },
+    });
+    expect(observationCount).toBe(2);
+    const batchCount = await prisma.batteryHvChargingCounterIngestionBatch.count({
+      where: { organizationId: org.id, vehicleId: vehicle.id, segmentFingerprint },
+    });
+    expect(batchCount).toBe(2);
+  });
+
+  it('persists revalidation checkpoint for provider-query anchor', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+    const segmentFingerprint = `checkpoint-${suffix}`;
+    const queriedAt = new Date('2026-10-16T16:00:00.000Z');
+    await repository.recordProviderRevalidationCheckpoint({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segmentFingerprint,
+      segmentStartAt: new Date('2026-10-16T13:15:02.931Z'),
+      segmentEndAt: new Date('2026-10-16T19:52:53.932Z'),
+      providerObservedAt: new Date('2026-10-16T19:52:53.932Z'),
+      queriedAt,
+      observationSetFingerprint: 'a'.repeat(64),
+    });
+
+    const row = await repository.findRevalidationCheckpoint({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segmentFingerprint,
+    });
+    expect(row?.lastProviderQueryAt.toISOString()).toBe(queriedAt.toISOString());
+  });
+
   it('does not leave orphan batch rows after failed transaction (empty-write guard)', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle } = await createTenantVehicle(prisma, suffix);

@@ -1847,6 +1847,7 @@ model Organization {
   hvChargeSessions                                          HvChargeSession[]
   batteryHvChargingCounterIngestionBatches                  BatteryHvChargingCounterIngestionBatch[]
   batteryHvChargingCounterObservations                      BatteryHvChargingCounterObservation[]
+  batteryHvChargingCounterRevalidationCheckpoints           BatteryHvChargingCounterRevalidationCheckpoint[]
   hvCapacityObservations                                    HvCapacityObservation[]
   batteryV2JobDeadLetters                                   BatteryV2JobDeadLetter[]
   batteryRetentionAggregates                                BatteryRetentionAggregate[]
@@ -3076,6 +3077,7 @@ model Vehicle {
   hvChargeSessions                       HvChargeSession[]
   batteryHvChargingCounterIngestionBatches BatteryHvChargingCounterIngestionBatch[]
   batteryHvChargingCounterObservations   BatteryHvChargingCounterObservation[]
+  batteryHvChargingCounterRevalidationCheckpoints BatteryHvChargingCounterRevalidationCheckpoint[]
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
@@ -9725,6 +9727,26 @@ model BatteryHvChargingCounterObservation {
   @@index([batchId], map: "battery_hv_cc_obs_batch_idx")
   @@index([organizationId, vehicleId, segmentFingerprint, bucketStartAt], map: "battery_hv_cc_obs_segment_bucket_idx")
   @@map("battery_hv_charging_counter_observations")
+}
+
+/// Provider revalidation anchor when duplicate batch prevents a new durable batch timestamp (R22-P1.1).
+model BatteryHvChargingCounterRevalidationCheckpoint {
+  organizationId                String   @map("organization_id")
+  vehicleId                     String   @map("vehicle_id")
+  segmentFingerprint            String   @map("segment_fingerprint")
+  segmentStartAt                DateTime @map("segment_start_at")
+  segmentEndAt                  DateTime? @map("segment_end_at")
+  providerObservedAt            DateTime? @map("provider_observed_at")
+  lastProviderQueryAt           DateTime @map("last_provider_query_at")
+  lastObservationSetFingerprint String?  @db.Char(64) @map("last_observation_set_fingerprint")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, vehicleId, segmentFingerprint])
+  @@index([organizationId, vehicleId], map: "battery_hv_cc_revalidation_checkpoint_vehicle_idx")
+  @@map("battery_hv_charging_counter_revalidation_checkpoints")
 }
 
 /// M3.3-HV-H4-A3.1 — append-only H4 charge session source evidence revision (no runtime writer).

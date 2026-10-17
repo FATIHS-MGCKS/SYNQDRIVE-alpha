@@ -41,6 +41,8 @@ function buildCapture() {
   const intervalClient = { fetchIntervalBuckets: jest.fn() };
   const repository = {
     findLatestBatchForSegment: jest.fn(),
+    findRevalidationCheckpoint: jest.fn().mockResolvedValue(null),
+    recordProviderRevalidationCheckpoint: jest.fn().mockResolvedValue(undefined),
     findBatchByIdempotency: jest.fn(),
     persistBatch: jest.fn(),
   };
@@ -239,6 +241,58 @@ describe('hv-charging-counter-evidence (unit)', () => {
     });
     expect(result.skipReason).toBe('no_dimo_token');
     expect(repository.persistBatch).not.toHaveBeenCalled();
+  });
+
+  it('records revalidation checkpoint on duplicate batch and blocks repeat query within interval', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    const session = sessionRow({
+      updatedAt: new Date('2026-10-16T09:00:00.000Z'),
+    });
+    const t0 = new Date('2026-10-16T10:00:00.000Z');
+    const t0Plus6h = new Date('2026-10-16T16:00:00.000Z');
+    const t0Plus6h5m = new Date('2026-10-16T16:05:00.000Z');
+    const rows = [{ timestamp: '2026-10-16T13:15:02.931Z', addedKwhLast: 0 }];
+
+    repository.findLatestBatchForSegment.mockResolvedValue({
+      id: 'batch-t0',
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      createdAt: t0,
+      observationSetFingerprint: 'fp-t0',
+    });
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({ status: 'success', rows });
+    repository.findBatchByIdempotency.mockResolvedValue({ id: 'batch-t0' });
+
+    const first = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      evaluatedAt: t0Plus6h,
+    });
+    expect(first.skipReason).toBe('duplicate_batch');
+    expect(repository.recordProviderRevalidationCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({ queriedAt: t0Plus6h }),
+    );
+
+    repository.findRevalidationCheckpoint.mockResolvedValue({
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      lastProviderQueryAt: t0Plus6h,
+    });
+    intervalClient.fetchIntervalBuckets.mockClear();
+
+    const second = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      evaluatedAt: t0Plus6h5m,
+    });
+    expect(second.skipReason).toBe('unchanged_within_revalidation_window');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
   });
 
   it('observation set fingerprint is stable for identical bucket inputs', () => {

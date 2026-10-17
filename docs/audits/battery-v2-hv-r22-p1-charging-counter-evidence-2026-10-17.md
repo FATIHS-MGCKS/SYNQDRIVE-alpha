@@ -25,6 +25,8 @@ DIMO does not expose an explicit interval-bucket revision signal. Corrected valu
 
 Unavailable provider outcomes (`no_vehicle_jwt`, `empty_interval_series`, invalid shape, rate limit) do **not** create ingestion batches.
 
+**P1.1 final review:** `battery_hv_charging_counter_revalidation_checkpoints` records `last_provider_query_at` after a successful provider fetch (including duplicate-batch recognition) so unchanged observation sets do not trigger repeat DIMO queries within the revalidation interval. Reduced-coverage provider responses (fewer buckets, unchanged values) persist a new batch without false observation revisions.
+
 ## Rollback / disable
 
 1. Unset flag or set `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED=false`.

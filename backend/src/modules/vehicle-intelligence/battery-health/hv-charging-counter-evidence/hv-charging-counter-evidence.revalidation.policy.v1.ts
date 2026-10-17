@@ -11,11 +11,20 @@ function sameInstant(a: Date | null | undefined, b: Date | null | undefined): bo
   return a.getTime() === b.getTime();
 }
 
-export interface HvChargingCounterLatestBatchSnapshotV1 {
+export interface HvChargingCounterRevalidationAnchorV1 {
   segmentStartAt: Date;
   segmentEndAt: Date | null;
   providerObservedAt: Date | null;
-  createdAt: Date;
+  lastDurableBatchCreatedAt: Date | null;
+  lastProviderQueryAt: Date | null;
+}
+
+function resolveRevalidationAnchorAt(anchor: HvChargingCounterRevalidationAnchorV1): Date | null {
+  const candidates = [anchor.lastDurableBatchCreatedAt, anchor.lastProviderQueryAt].filter(
+    (d): d is Date => d != null,
+  );
+  if (candidates.length === 0) return null;
+  return new Date(Math.max(...candidates.map((d) => d.getTime())));
 }
 
 /**
@@ -25,9 +34,12 @@ export interface HvChargingCounterLatestBatchSnapshotV1 {
  * values are only discoverable by re-querying the segment window. Skipping queries when session
  * identity is unchanged minimizes rate-budget use but delays correction detection until the
  * revalidation interval elapses or the HV session row is re-ingested (changed persist result).
+ *
+ * `lastProviderQueryAt` (checkpoint) prevents repeat queries within the interval after a
+ * duplicate-batch revalidation left `lastDurableBatchCreatedAt` unchanged at T0.
  */
 export function decideHvChargingCounterProviderQueryV1(input: {
-  latestBatch: HvChargingCounterLatestBatchSnapshotV1 | null;
+  anchor: HvChargingCounterRevalidationAnchorV1 | null;
   session: {
     startAt: Date;
     endAt: Date | null;
@@ -37,15 +49,21 @@ export function decideHvChargingCounterProviderQueryV1(input: {
   persistResult?: Pick<HvChargeSessionPersistResult, 'changed' | 'changeKind'>;
   evaluatedAt: Date;
 }): HvChargingCounterRevalidationDecisionV1 {
-  const latest = input.latestBatch;
-  if (!latest) {
+  const anchor = input.anchor;
+  if (!anchor || anchor.lastDurableBatchCreatedAt == null) {
+    if (anchor?.lastProviderQueryAt == null) {
+      return { queryProvider: true, reason: 'no_prior_batch' };
+    }
+  }
+
+  if (!anchor) {
     return { queryProvider: true, reason: 'no_prior_batch' };
   }
 
   const identityUnchanged =
-    sameInstant(latest.segmentStartAt, input.session.startAt) &&
-    sameInstant(latest.segmentEndAt, input.session.endAt) &&
-    sameInstant(latest.providerObservedAt, input.session.providerObservedAt);
+    sameInstant(anchor.segmentStartAt, input.session.startAt) &&
+    sameInstant(anchor.segmentEndAt, input.session.endAt) &&
+    sameInstant(anchor.providerObservedAt, input.session.providerObservedAt);
 
   if (!identityUnchanged) {
     return { queryProvider: true, reason: 'session_identity_changed' };
@@ -55,12 +73,21 @@ export function decideHvChargingCounterProviderQueryV1(input: {
     return { queryProvider: true, reason: 'persist_result_changed' };
   }
 
-  if (input.session.updatedAt.getTime() > latest.createdAt.getTime()) {
+  const durableCreatedAt = anchor.lastDurableBatchCreatedAt;
+  if (
+    durableCreatedAt != null &&
+    input.session.updatedAt.getTime() > durableCreatedAt.getTime()
+  ) {
     return { queryProvider: true, reason: 'session_reingested' };
   }
 
+  const revalidationAnchorAt = resolveRevalidationAnchorAt(anchor);
+  if (revalidationAnchorAt == null) {
+    return { queryProvider: true, reason: 'no_prior_batch' };
+  }
+
   const intervalMs = getBatteryV2HvChargingCounterRevalidationIntervalMs();
-  const elapsedMs = input.evaluatedAt.getTime() - latest.createdAt.getTime();
+  const elapsedMs = input.evaluatedAt.getTime() - revalidationAnchorAt.getTime();
   if (elapsedMs >= intervalMs) {
     return { queryProvider: true, reason: 'revalidation_interval_elapsed' };
   }

@@ -16,6 +16,7 @@ import {
   buildHvChargingCounterBatchIdempotencyKeyV1,
   buildHvChargingCounterObservationIdempotencyKeyV1,
 } from './hv-charging-counter-evidence.fingerprint.v1';
+import { isReducedCoverageUnchangedValuesV1 } from './hv-charging-counter-evidence.coverage.v1';
 import { buildHvChargingCounterObservationProvenanceV1 } from './hv-charging-counter-evidence.mapper.v1';
 import type { HvChargingCounterBucketInputV1 } from './hv-charging-counter-evidence.types.v1';
 
@@ -75,6 +76,60 @@ export class HvChargingCounterEvidenceRepository {
         segmentFingerprint: input.segmentFingerprint,
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findRevalidationCheckpoint(input: {
+    organizationId: string;
+    vehicleId: string;
+    segmentFingerprint: string;
+  }) {
+    return this.prisma.batteryHvChargingCounterRevalidationCheckpoint.findUnique({
+      where: {
+        organizationId_vehicleId_segmentFingerprint: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          segmentFingerprint: input.segmentFingerprint,
+        },
+      },
+    });
+  }
+
+  async recordProviderRevalidationCheckpoint(input: {
+    organizationId: string;
+    vehicleId: string;
+    segmentFingerprint: string;
+    segmentStartAt: Date;
+    segmentEndAt: Date | null;
+    providerObservedAt: Date | null;
+    queriedAt: Date;
+    observationSetFingerprint: string;
+  }) {
+    return this.prisma.batteryHvChargingCounterRevalidationCheckpoint.upsert({
+      where: {
+        organizationId_vehicleId_segmentFingerprint: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          segmentFingerprint: input.segmentFingerprint,
+        },
+      },
+      create: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        segmentFingerprint: input.segmentFingerprint,
+        segmentStartAt: input.segmentStartAt,
+        segmentEndAt: input.segmentEndAt,
+        providerObservedAt: input.providerObservedAt,
+        lastProviderQueryAt: input.queriedAt,
+        lastObservationSetFingerprint: input.observationSetFingerprint,
+      },
+      update: {
+        segmentStartAt: input.segmentStartAt,
+        segmentEndAt: input.segmentEndAt,
+        providerObservedAt: input.providerObservedAt,
+        lastProviderQueryAt: input.queriedAt,
+        lastObservationSetFingerprint: input.observationSetFingerprint,
+      },
     });
   }
 
@@ -257,9 +312,17 @@ export class HvChargingCounterEvidenceRepository {
       }
 
       if (input.buckets.length > 0 && observationsInserted === 0) {
-        throw new HvChargingCounterEvidenceEmptyWriteError(
-          'refusing empty observation write for non-empty bucket set',
-        );
+        const reducedCoverage = await isReducedCoverageUnchangedValuesV1(tx, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          segmentFingerprint: input.segmentFingerprint,
+          buckets: input.buckets,
+        });
+        if (!reducedCoverage) {
+          throw new HvChargingCounterEvidenceEmptyWriteError(
+            'refusing empty observation write for non-empty bucket set',
+          );
+        }
       }
 
       return {

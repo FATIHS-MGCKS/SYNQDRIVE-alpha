@@ -9,7 +9,10 @@ import {
   computeHvChargingCounterObservationSetFingerprintV1,
 } from './hv-charging-counter-evidence.fingerprint.v1';
 import { mapDimoIntervalRowsToBucketInputsV1 } from './hv-charging-counter-evidence.mapper.v1';
-import { decideHvChargingCounterProviderQueryV1 } from './hv-charging-counter-evidence.revalidation.policy.v1';
+import {
+  decideHvChargingCounterProviderQueryV1,
+  type HvChargingCounterRevalidationAnchorV1,
+} from './hv-charging-counter-evidence.revalidation.policy.v1';
 import { HvChargingCounterEvidenceRepository } from './hv-charging-counter-evidence.repository';
 import type { HvChargingCounterCaptureResultV1 } from './hv-charging-counter-evidence.types.v1';
 
@@ -71,16 +74,26 @@ export class HvChargingCounterEvidenceCaptureService {
       vehicleId: input.vehicleId,
       segmentFingerprint: session.segmentFingerprint,
     });
+    const checkpoint = await this.repository.findRevalidationCheckpoint({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      segmentFingerprint: session.segmentFingerprint,
+    });
+
+    const anchor: HvChargingCounterRevalidationAnchorV1 | null =
+      latest || checkpoint
+        ? {
+            segmentStartAt: latest?.segmentStartAt ?? checkpoint!.segmentStartAt,
+            segmentEndAt: latest?.segmentEndAt ?? checkpoint!.segmentEndAt,
+            providerObservedAt:
+              latest?.providerObservedAt ?? checkpoint!.providerObservedAt,
+            lastDurableBatchCreatedAt: latest?.createdAt ?? null,
+            lastProviderQueryAt: checkpoint?.lastProviderQueryAt ?? null,
+          }
+        : null;
 
     const revalidation = decideHvChargingCounterProviderQueryV1({
-      latestBatch: latest
-        ? {
-            segmentStartAt: latest.segmentStartAt,
-            segmentEndAt: latest.segmentEndAt,
-            providerObservedAt: latest.providerObservedAt,
-            createdAt: latest.createdAt,
-          }
-        : null,
+      anchor,
       session: {
         startAt: session.startAt,
         endAt: session.endAt,
@@ -166,6 +179,16 @@ export class HvChargingCounterEvidenceCaptureService {
       idempotencyKey: batchIdempotencyKey,
     });
     if (existing) {
+      await this.repository.recordProviderRevalidationCheckpoint({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        segmentFingerprint: session.segmentFingerprint,
+        segmentStartAt: session.startAt,
+        segmentEndAt: session.endAt,
+        providerObservedAt: session.providerObservedAt,
+        queriedAt: evaluatedAt,
+        observationSetFingerprint,
+      });
       return {
         skipped: true,
         skipReason: 'duplicate_batch',
@@ -187,6 +210,17 @@ export class HvChargingCounterEvidenceCaptureService {
       providerObservedAt: session.providerObservedAt,
       observationSetFingerprint,
       buckets,
+    });
+
+    await this.repository.recordProviderRevalidationCheckpoint({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      segmentFingerprint: session.segmentFingerprint,
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      queriedAt: evaluatedAt,
+      observationSetFingerprint,
     });
 
     if (!persist.created) {
