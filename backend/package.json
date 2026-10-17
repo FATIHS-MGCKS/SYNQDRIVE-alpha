@@ -257,6 +257,7 @@
     "ldi10d:phase2a-unknown-root-cause": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase2a-unknown-root-cause.ts",
     "ldi10d:phase2b-topology-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase2b-topology-forensics.ts",
     "ldi10d:phase3a-temporal-events": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3a-temporal-events.ts",
+    "ldi10d:phase3b-trip-continuity": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3b-trip-continuity.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
