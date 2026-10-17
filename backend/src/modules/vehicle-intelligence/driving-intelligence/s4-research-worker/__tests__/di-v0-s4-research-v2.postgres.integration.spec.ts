@@ -11,11 +11,15 @@ import { buildResearchIntentKey, resolveOsmDataVersion } from '../di-v0-s4-resea
 import {
   applyResearchTestEnv,
   cleanupS4ResearchTenant,
+  ensureS4ResearchPostgresControlPlane,
   restoreResearchTestEnv,
   seedS4ResearchCompletedPrimaryFixture,
 } from './di-v0-s4-research-postgres-harness';
 import { SYNTHETIC_RESEARCH_OSM_FIXTURE, mutableOsmFixture } from './di-v0-s4-research-fixtures';
-import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
+import {
+  driftP2PinnedSnapshotBoundaryFingerprint,
+  P2_DRIFTED_BOUNDARY_FINGERPRINT,
+} from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)('S4 research V2 worker (postgres)', () => {
   let db: PrismaClient;
@@ -31,6 +35,7 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
     const { PrismaClient: Client } = await import('@prisma/client');
     db = new Client();
     await db.$connect();
+    await ensureS4ResearchPostgresControlPlane(db);
     outbox = new DiV0S4ResearchOutboxRepository(db);
     runs = new DiV0S4ResearchRunRepository(db);
   });
@@ -160,7 +165,7 @@ import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quali
     const fx = await seedS4ResearchCompletedPrimaryFixture(db);
     tenants.push(fx.tenant);
     const envBackup = applyResearchTestEnv(fx.tenant);
-    await driftP2PinnedSnapshotBoundaryFingerprint(db, fx.tenant, fx.snapshotHash, `DI_V0_S4_BOUNDARY_FP_V1:sha256:${'x'.repeat(64)}`);
+    await driftP2PinnedSnapshotBoundaryFingerprint(db, fx.tenant, fx.snapshotHash, P2_DRIFTED_BOUNDARY_FINGERPRINT);
     try {
       const svc = mkSvc();
       await svc.runPass();

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { S4aTenant } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
+import { setKillState, type S4aTenant } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import {
   cleanupP2Tenant,
   seedP2CompletedPrimaryFixture,
@@ -10,6 +10,11 @@ export type S4ResearchCompletedFixture = P2CompletedPrimaryFixture;
 
 export async function seedS4ResearchCompletedPrimaryFixture(db: PrismaClient): Promise<S4ResearchCompletedFixture> {
   return seedP2CompletedPrimaryFixture(db);
+}
+
+/** Research worker enablement requires a readable GLOBAL NOT_KILLED control row (fail-closed otherwise). */
+export async function ensureS4ResearchPostgresControlPlane(db: PrismaClient): Promise<void> {
+  await setKillState(db, 'NOT_KILLED');
 }
 
 export async function cleanupS4ResearchTenant(db: PrismaClient, tenant: S4aTenant): Promise<void> {

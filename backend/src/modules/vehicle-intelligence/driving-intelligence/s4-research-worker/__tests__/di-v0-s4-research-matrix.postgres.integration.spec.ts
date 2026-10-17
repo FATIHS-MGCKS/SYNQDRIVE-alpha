@@ -13,6 +13,7 @@ import { buildResearchIntentKey, resolveOsmDataVersion } from '../di-v0-s4-resea
 import {
   applyResearchTestEnv,
   cleanupS4ResearchTenant,
+  ensureS4ResearchPostgresControlPlane,
   restoreResearchTestEnv,
   seedS4ResearchCompletedPrimaryFixture,
 } from './di-v0-s4-research-postgres-harness';
@@ -21,7 +22,10 @@ import {
   RUPTELA_RESEARCH_OSM_FIXTURE,
   mutableOsmFixture,
 } from './di-v0-s4-research-fixtures';
-import { driftP2PinnedSnapshotBoundaryFingerprint } from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
+import {
+  driftP2PinnedSnapshotBoundaryFingerprint,
+  P2_DRIFTED_BOUNDARY_FINGERPRINT,
+} from '../../trip-speed-quality/__tests__/di-v0-trip-speed-quality-postgres-harness';
 
 export type MatrixCaseStatus = 'EXECUTED' | 'NOT_EXECUTED';
 
