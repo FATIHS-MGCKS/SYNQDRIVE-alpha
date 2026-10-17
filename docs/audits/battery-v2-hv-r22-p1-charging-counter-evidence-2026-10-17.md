@@ -27,6 +27,16 @@ Unavailable provider outcomes (`no_vehicle_jwt`, `empty_interval_series`, invali
 
 **P1.1 final review:** `battery_hv_charging_counter_revalidation_checkpoints` records `last_provider_query_at` after a successful provider fetch (including duplicate-batch recognition) so unchanged observation sets do not trigger repeat DIMO queries within the revalidation interval. Reduced-coverage provider responses (fewer buckets, unchanged values) persist a new batch without false observation revisions.
 
+## P1.2 — Session re-ingest vs checkpoint
+
+After a durable batch at T0, a session row may be touched (`updatedAt` > batch `createdAt`) without identity or persist changes. A subsequent scheduler tick may revalidate with identical DIMO observations and advance `last_provider_query_at` to T1 (> session `updatedAt`). **Further ticks must not query DIMO** until the revalidation interval elapses or genuinely new source evidence appears.
+
+`session_reingested` authorization requires `session.updatedAt > lastProviderQueryAt` (not merely `> lastDurableBatchCreatedAt`).
+
+## Checkpoint monotonicity
+
+`mergeRevalidationCheckpointMonotonicV1` ensures concurrent or out-of-order provider responses cannot regress `lastProviderQueryAt` or replace a newer observation-set fingerprint with an older write. Repository upserts merge inside a transaction before persist.
+
 ## Rollback / disable
 
 1. Unset flag or set `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED=false`.

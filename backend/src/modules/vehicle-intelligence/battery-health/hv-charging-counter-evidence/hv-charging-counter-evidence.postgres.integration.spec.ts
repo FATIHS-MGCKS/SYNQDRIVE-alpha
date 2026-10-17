@@ -357,6 +357,46 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
     expect(batchCount).toBe(2);
   });
 
+  it('checkpoint timestamps stay monotonic under concurrent out-of-order writes', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+    const segmentFingerprint = `checkpoint-monotonic-${suffix}`;
+    const later = new Date('2026-10-16T16:00:00.000Z');
+    const earlier = new Date('2026-10-16T10:00:00.000Z');
+    const fpLate = 'c'.repeat(64);
+    const fpEarly = 'd'.repeat(64);
+
+    const base = {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segmentFingerprint,
+      segmentStartAt: new Date('2026-10-16T13:15:02.931Z'),
+      segmentEndAt: new Date('2026-10-16T19:52:53.932Z'),
+      providerObservedAt: new Date('2026-10-16T19:52:53.932Z'),
+    };
+
+    await Promise.all([
+      repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: later,
+        observationSetFingerprint: fpLate,
+      }),
+      repository.recordProviderRevalidationCheckpoint({
+        ...base,
+        queriedAt: earlier,
+        observationSetFingerprint: fpEarly,
+      }),
+    ]);
+
+    const row = await repository.findRevalidationCheckpoint({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segmentFingerprint,
+    });
+    expect(row?.lastProviderQueryAt.toISOString()).toBe(later.toISOString());
+    expect(row?.lastObservationSetFingerprint).toBe(fpLate);
+  });
+
   it('persists revalidation checkpoint for provider-query anchor', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle } = await createTenantVehicle(prisma, suffix);

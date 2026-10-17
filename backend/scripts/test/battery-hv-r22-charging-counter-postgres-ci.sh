@@ -27,6 +27,7 @@ log "unit tests (hv-charging-counter-evidence)"
 npx jest \
   hv-charging-counter-evidence.spec \
   hv-charging-counter-evidence.revalidation.policy.v1.spec \
+  hv-charging-counter-evidence.checkpoint.v1.spec \
   hv-charging-counter-evidence.provider-fetch.v1.spec \
   --runInBand
 

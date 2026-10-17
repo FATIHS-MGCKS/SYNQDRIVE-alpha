@@ -243,6 +243,54 @@ describe('hv-charging-counter-evidence (unit)', () => {
     expect(repository.persistBatch).not.toHaveBeenCalled();
   });
 
+  it('P1.2: session updated after batch then duplicate revalidate blocks next scheduler DIMO query', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    const t0 = new Date('2026-10-16T10:00:00.000Z');
+    const tSessionEdit = new Date('2026-10-16T12:00:00.000Z');
+    const tRevalidate = new Date('2026-10-16T12:30:00.000Z');
+    const tTick = new Date('2026-10-16T12:35:00.000Z');
+    const session = sessionRow({ updatedAt: tSessionEdit });
+    const rows = [{ timestamp: '2026-10-16T13:15:02.931Z', addedKwhLast: 0 }];
+
+    repository.findLatestBatchForSegment.mockResolvedValue({
+      id: 'batch-t0',
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      createdAt: t0,
+      observationSetFingerprint: 'fp-t0',
+    });
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({ status: 'success', rows });
+    repository.findBatchByIdempotency.mockResolvedValue({ id: 'batch-t0' });
+
+    await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      evaluatedAt: tRevalidate,
+    });
+
+    repository.findRevalidationCheckpoint.mockResolvedValue({
+      segmentStartAt: session.startAt,
+      segmentEndAt: session.endAt,
+      providerObservedAt: session.providerObservedAt,
+      lastProviderQueryAt: tRevalidate,
+    });
+    intervalClient.fetchIntervalBuckets.mockClear();
+
+    const tick = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session,
+      evaluatedAt: tTick,
+    });
+
+    expect(tick.skipReason).toBe('unchanged_within_revalidation_window');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
   it('records revalidation checkpoint on duplicate batch and blocks repeat query within interval', async () => {
     (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
     const { capture, intervalClient, repository, prisma } = buildCapture();

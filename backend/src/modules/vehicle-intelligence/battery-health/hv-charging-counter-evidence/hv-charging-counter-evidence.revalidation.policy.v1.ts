@@ -74,11 +74,17 @@ export function decideHvChargingCounterProviderQueryV1(input: {
   }
 
   const durableCreatedAt = anchor.lastDurableBatchCreatedAt;
+  const lastProviderQueryAt = anchor.lastProviderQueryAt;
   if (
     durableCreatedAt != null &&
     input.session.updatedAt.getTime() > durableCreatedAt.getTime()
   ) {
-    return { queryProvider: true, reason: 'session_reingested' };
+    const sessionEditNotYetRevalidated =
+      lastProviderQueryAt == null ||
+      input.session.updatedAt.getTime() > lastProviderQueryAt.getTime();
+    if (sessionEditNotYetRevalidated) {
+      return { queryProvider: true, reason: 'session_reingested' };
+    }
   }
 
   const revalidationAnchorAt = resolveRevalidationAnchorAt(anchor);

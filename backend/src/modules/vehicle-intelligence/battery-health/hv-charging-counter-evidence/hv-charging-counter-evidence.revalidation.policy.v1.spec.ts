@@ -93,6 +93,32 @@ describe('decideHvChargingCounterProviderQueryV1', () => {
     });
   });
 
+  it('P1.2: does not re-query after session edit once checkpoint is newer than session.updatedAt', () => {
+    const t0Batch = new Date('2026-10-16T10:00:00.000Z');
+    const tSessionEdit = new Date('2026-10-16T12:00:00.000Z');
+    const tRevalidate = new Date('2026-10-16T12:30:00.000Z');
+    const tSchedulerTick = new Date('2026-10-16T12:35:00.000Z');
+
+    const afterRevalidate = decideHvChargingCounterProviderQueryV1({
+      anchor: {
+        ...anchorBase,
+        lastDurableBatchCreatedAt: t0Batch,
+        lastProviderQueryAt: tRevalidate,
+      },
+      session: {
+        ...sessionBase,
+        updatedAt: tSessionEdit,
+      },
+      persistResult: { changed: false, changeKind: 'no_op' },
+      evaluatedAt: tSchedulerTick,
+    });
+
+    expect(afterRevalidate).toEqual({
+      queryProvider: false,
+      reason: 'unchanged_within_revalidation_window',
+    });
+  });
+
   it('queries when persist result changed (provider refresh path)', () => {
     const decision = decideHvChargingCounterProviderQueryV1({
       anchor: {
