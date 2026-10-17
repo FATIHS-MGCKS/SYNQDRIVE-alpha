@@ -267,6 +267,7 @@
     "ldi10d:phase3e1-tesla-osm-spatial": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e1-tesla-osm-spatial.ts",
     "ldi10d:phase3e2-spatial-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e2-spatial-forensics.ts",
     "ldi10d:phase3e3-road-matching-accuracy": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e3-road-matching-accuracy.ts",
+    "ldi10d:f4b-ambiguous-promotion-audit": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-f4b-ambiguous-promotion-audit.ts",
     "ldi10d:phase3e4-iphone-gps-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e4-iphone-gps-forensics.ts",
     "ldi10d:phase3e5-mov-ocr-validation": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e5-mov-ocr-validation.ts",
     "ldi10d:phase3e6-full-video-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi10d-phase3e6-full-video-forensics.ts",
