@@ -1,0 +1,732 @@
+{
+  "schema": "LDI10D_PHASE3E10_STOP_V1",
+  "headSha": "9c6a5ebe1d7e75aef99a810e2aa7f7dee7cf3dc7",
+  "summary": {
+    "OVERLAY_OBSERVED_STATIONARY": 5,
+    "MULTISOURCE_SUPPORTED_STOP": 0,
+    "INFERRED_STOP_CANDIDATE": 27,
+    "GPS_FREEZE_SUSPECTED": 4,
+    "UNKNOWN": 26
+  },
+  "cases": [
+    {
+      "videoNum": "62",
+      "secondIndex": 38,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 1.8,
+        "impliedSpeedKmh": 6656.617566621236
+      },
+      "counterEvidence": [
+        "Implied displacement speed contradicts low overlay speed"
+      ]
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 39,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 1.8,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 40,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 1.8,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 41,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 1.8,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 75,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.6,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 93,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 1,
+        "impliedSpeedKmh": 85.01295698813502
+      },
+      "counterEvidence": [
+        "Implied displacement speed contradicts low overlay speed"
+      ]
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 96,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 1.6,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 127,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 1,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "62",
+      "secondIndex": 129,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 1,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "63",
+      "secondIndex": 36,
+      "classification": "GPS_FREEZE_SUSPECTED",
+      "evidence": {
+        "speedKmh": 0,
+        "freezeClass": "OCR_STALE_COORD_REPEAT",
+        "rationale": "Displayed speed <2 km/h with valid coords"
+      },
+      "counterEvidence": [
+        "Repeated coordinates with OCR speed change pattern"
+      ]
+    },
+    {
+      "videoNum": "63",
+      "secondIndex": 111,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.7,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "63",
+      "secondIndex": 175,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 1,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 7,
+      "classification": "GPS_FREEZE_SUSPECTED",
+      "evidence": {
+        "speedKmh": 0.3,
+        "freezeClass": "OCR_SPEED_ONLY_ARTIFACT",
+        "rationale": "Displayed speed <2 km/h with valid coords"
+      },
+      "counterEvidence": [
+        "Repeated coordinates with OCR speed change pattern"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 9,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 7.627408591768329
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 10,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 11,
+      "classification": "OVERLAY_OBSERVED_STATIONARY",
+      "evidence": {
+        "consecutiveLowSpeedSec": 3,
+        "coords": [
+          51.318941,
+          9.515266
+        ]
+      },
+      "counterEvidence": [
+        "Overlay-only; no multisource confirmation"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 12,
+      "classification": "OVERLAY_OBSERVED_STATIONARY",
+      "evidence": {
+        "consecutiveLowSpeedSec": 4,
+        "coords": [
+          51.318941,
+          9.515266
+        ]
+      },
+      "counterEvidence": [
+        "Overlay-only; no multisource confirmation"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 15,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 16,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 19,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 20,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 21,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 22,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 23,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 24,
+      "classification": "OVERLAY_OBSERVED_STATIONARY",
+      "evidence": {
+        "consecutiveLowSpeedSec": 3,
+        "coords": [
+          51.318941,
+          9.515266
+        ]
+      },
+      "counterEvidence": [
+        "Overlay-only; no multisource confirmation"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 25,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 26,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 51851.484155506834
+      },
+      "counterEvidence": [
+        "Implied displacement speed contradicts low overlay speed"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 27,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 28,
+      "classification": "OVERLAY_OBSERVED_STATIONARY",
+      "evidence": {
+        "consecutiveLowSpeedSec": 3,
+        "coords": [
+          51.318941,
+          9.515266
+        ]
+      },
+      "counterEvidence": [
+        "Overlay-only; no multisource confirmation"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 29,
+      "classification": "OVERLAY_OBSERVED_STATIONARY",
+      "evidence": {
+        "consecutiveLowSpeedSec": 4,
+        "coords": [
+          51.318941,
+          9.515266
+        ]
+      },
+      "counterEvidence": [
+        "Overlay-only; no multisource confirmation"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 30,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 31,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 32,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 33,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 34,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 35,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 36,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 37,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 38,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 39,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 40,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 41,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 42,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 43,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": null
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 44,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.5,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 55,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0.5,
+        "impliedSpeedKmh": 0
+      },
+      "counterEvidence": []
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 61,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 1,
+        "impliedSpeedKmh": 69.25626740911758
+      },
+      "counterEvidence": [
+        "Implied displacement speed contradicts low overlay speed"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 63,
+      "classification": "GPS_FREEZE_SUSPECTED",
+      "evidence": {
+        "speedKmh": 1,
+        "freezeClass": "OCR_STALE_COORD_REPEAT",
+        "rationale": "Displayed speed <2 km/h with valid coords"
+      },
+      "counterEvidence": [
+        "Repeated coordinates with OCR speed change pattern"
+      ]
+    },
+    {
+      "videoNum": "64",
+      "secondIndex": 112,
+      "classification": "INFERRED_STOP_CANDIDATE",
+      "evidence": {
+        "speedKmh": 0,
+        "impliedSpeedKmh": 121.72111558063722
+      },
+      "counterEvidence": [
+        "Implied displacement speed contradicts low overlay speed"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 118,
+      "classification": "GPS_FREEZE_SUSPECTED",
+      "evidence": {
+        "speedKmh": 0,
+        "freezeClass": "OCR_STALE_COORD_REPEAT",
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Repeated coordinates with OCR speed change pattern"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 116,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.8,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 117,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.8,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 118,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 119,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 120,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 121,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 122,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 123,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 124,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 125,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 126,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    },
+    {
+      "videoNum": "67",
+      "secondIndex": 127,
+      "classification": "UNKNOWN",
+      "evidence": {
+        "speedKmh": 0.7,
+        "rationale": "Low displayed speed but coordinates missing or out of corridor — not OBSERVED standstill"
+      },
+      "counterEvidence": [
+        "Missing or out-of-corridor GPS — cannot claim physical stop"
+      ]
+    }
+  ]
+}

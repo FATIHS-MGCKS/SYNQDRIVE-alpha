@@ -1,0 +1,3452 @@
+{
+  "schema": "LDI10D_PHASE3E10_FREEZE_V1",
+  "headSha": "9c6a5ebe1d7e75aef99a810e2aa7f7dee7cf3dc7",
+  "segmentsReviewed": 246,
+  "confirmed": 0,
+  "cases": [
+    {
+      "videoNum": "62",
+      "startSec": 2,
+      "endSec": 5,
+      "durationSec": 4,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 1.1922519965710208
+    },
+    {
+      "videoNum": "62",
+      "startSec": 6,
+      "endSec": 8,
+      "durationSec": 3,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 2.0949702579167564
+    },
+    {
+      "videoNum": "62",
+      "startSec": 9,
+      "endSec": 20,
+      "durationSec": 12,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 1.784535878056477
+    },
+    {
+      "videoNum": "62",
+      "startSec": 21,
+      "endSec": 23,
+      "durationSec": 3,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 1.8666333671937445
+    },
+    {
+      "videoNum": "62",
+      "startSec": 31,
+      "endSec": 32,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "SUSPECTED",
+      "confidence": "MEDIUM",
+      "supportingEvidence": [
+        "DIMO displacement minimal across segment (context only)"
+      ],
+      "counterArguments": [
+        "DIMO agreement is not independent iPhone GPS proof"
+      ],
+      "dimoDisplacementM": 0.6590220827906931
+    },
+    {
+      "videoNum": "62",
+      "startSec": 33,
+      "endSec": 36,
+      "durationSec": 4,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 1.7086974391587
+    },
+    {
+      "videoNum": "62",
+      "startSec": 40,
+      "endSec": 41,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 0
+    },
+    {
+      "videoNum": "62",
+      "startSec": 44,
+      "endSec": 45,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 4.894392583139097
+    },
+    {
+      "videoNum": "62",
+      "startSec": 47,
+      "endSec": 48,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 7.544215250737488
+    },
+    {
+      "videoNum": "62",
+      "startSec": 49,
+      "endSec": 50,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 8.433962968570192
+    },
+    {
+      "videoNum": "62",
+      "startSec": 52,
+      "endSec": 53,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.021752962018937
+    },
+    {
+      "videoNum": "62",
+      "startSec": 57,
+      "endSec": 58,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.538117026202086
+    },
+    {
+      "videoNum": "62",
+      "startSec": 60,
+      "endSec": 61,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 8.240497007009798
+    },
+    {
+      "videoNum": "62",
+      "startSec": 63,
+      "endSec": 64,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 5.558472977913084
+    },
+    {
+      "videoNum": "62",
+      "startSec": 65,
+      "endSec": 66,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 3.5773527748975065
+    },
+    {
+      "videoNum": "62",
+      "startSec": 72,
+      "endSec": 73,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 3.603282406011883
+    },
+    {
+      "videoNum": "62",
+      "startSec": 74,
+      "endSec": 76,
+      "durationSec": 3,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 3.9075068531242816
+    },
+    {
+      "videoNum": "62",
+      "startSec": 79,
+      "endSec": 81,
+      "durationSec": 3,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 2.567060187409691
+    },
+    {
+      "videoNum": "62",
+      "startSec": 84,
+      "endSec": 85,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "SUSPECTED",
+      "confidence": "MEDIUM",
+      "supportingEvidence": [
+        "DIMO displacement minimal across segment (context only)"
+      ],
+      "counterArguments": [
+        "DIMO agreement is not independent iPhone GPS proof"
+      ],
+      "dimoDisplacementM": 4.950342241471662
+    },
+    {
+      "videoNum": "62",
+      "startSec": 88,
+      "endSec": 89,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.940608332002203
+    },
+    {
+      "videoNum": "62",
+      "startSec": 91,
+      "endSec": 92,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.416490405549968
+    },
+    {
+      "videoNum": "62",
+      "startSec": 94,
+      "endSec": 95,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.546711908141614
+    },
+    {
+      "videoNum": "62",
+      "startSec": 98,
+      "endSec": 99,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.330118645567616
+    },
+    {
+      "videoNum": "62",
+      "startSec": 100,
+      "endSec": 101,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.513916930921306
+    },
+    {
+      "videoNum": "62",
+      "startSec": 103,
+      "endSec": 104,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.897103831692585
+    },
+    {
+      "videoNum": "62",
+      "startSec": 107,
+      "endSec": 108,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 12.935932318438194
+    },
+    {
+      "videoNum": "62",
+      "startSec": 110,
+      "endSec": 111,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.283835558222922
+    },
+    {
+      "videoNum": "62",
+      "startSec": 112,
+      "endSec": 113,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.023004071007158
+    },
+    {
+      "videoNum": "62",
+      "startSec": 115,
+      "endSec": 116,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 12.545303935519451
+    },
+    {
+      "videoNum": "62",
+      "startSec": 118,
+      "endSec": 119,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.981019992605114
+    },
+    {
+      "videoNum": "62",
+      "startSec": 120,
+      "endSec": 121,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.85499995158735
+    },
+    {
+      "videoNum": "62",
+      "startSec": 123,
+      "endSec": 124,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 5.434516471945961
+    },
+    {
+      "videoNum": "62",
+      "startSec": 125,
+      "endSec": 126,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 1.1461520766972861
+    },
+    {
+      "videoNum": "62",
+      "startSec": 131,
+      "endSec": 132,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 6.886345314603416
+    },
+    {
+      "videoNum": "62",
+      "startSec": 133,
+      "endSec": 134,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.801988318410903
+    },
+    {
+      "videoNum": "62",
+      "startSec": 137,
+      "endSec": 138,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.410976140515077
+    },
+    {
+      "videoNum": "62",
+      "startSec": 141,
+      "endSec": 142,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 13.691102658227926
+    },
+    {
+      "videoNum": "62",
+      "startSec": 143,
+      "endSec": 144,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.549906944380707
+    },
+    {
+      "videoNum": "62",
+      "startSec": 146,
+      "endSec": 147,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.479061221582572
+    },
+    {
+      "videoNum": "62",
+      "startSec": 149,
+      "endSec": 150,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.481489967289646
+    },
+    {
+      "videoNum": "62",
+      "startSec": 151,
+      "endSec": 152,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.59062809127256
+    },
+    {
+      "videoNum": "62",
+      "startSec": 153,
+      "endSec": 154,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 6.870139157480631
+    },
+    {
+      "videoNum": "62",
+      "startSec": 156,
+      "endSec": 179,
+      "durationSec": 24,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "63",
+      "startSec": 0,
+      "endSec": 5,
+      "durationSec": 6,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "63",
+      "startSec": 19,
+      "endSec": 20,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 10.016222012692287
+    },
+    {
+      "videoNum": "63",
+      "startSec": 21,
+      "endSec": 22,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.789746259964176
+    },
+    {
+      "videoNum": "63",
+      "startSec": 23,
+      "endSec": 24,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.012069436684328
+    },
+    {
+      "videoNum": "63",
+      "startSec": 25,
+      "endSec": 26,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.456995809822807
+    },
+    {
+      "videoNum": "63",
+      "startSec": 27,
+      "endSec": 28,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.348016708020886
+    },
+    {
+      "videoNum": "63",
+      "startSec": 31,
+      "endSec": 32,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "DIMO moved 16.8m across segment — overlay coords stale"
+      ],
+      "dimoDisplacementM": 16.79963194260704
+    },
+    {
+      "videoNum": "63",
+      "startSec": 35,
+      "endSec": 36,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.169629551234753
+    },
+    {
+      "videoNum": "63",
+      "startSec": 40,
+      "endSec": 41,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "DIMO moved 17.5m across segment — overlay coords stale"
+      ],
+      "dimoDisplacementM": 17.459815708084037
+    },
+    {
+      "videoNum": "63",
+      "startSec": 42,
+      "endSec": 43,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.573744100026886
+    },
+    {
+      "videoNum": "63",
+      "startSec": 44,
+      "endSec": 45,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.47142567684751
+    },
+    {
+      "videoNum": "63",
+      "startSec": 46,
+      "endSec": 47,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.366436745191432
+    },
+    {
+      "videoNum": "63",
+      "startSec": 49,
+      "endSec": 50,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.27103320888645
+    },
+    {
+      "videoNum": "63",
+      "startSec": 52,
+      "endSec": 53,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.386582340298666
+    },
+    {
+      "videoNum": "63",
+      "startSec": 56,
+      "endSec": 57,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.79963350036517
+    },
+    {
+      "videoNum": "63",
+      "startSec": 58,
+      "endSec": 59,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.239811923706927
+    },
+    {
+      "videoNum": "63",
+      "startSec": 60,
+      "endSec": 61,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.135388442706464
+    },
+    {
+      "videoNum": "63",
+      "startSec": 62,
+      "endSec": 63,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.914282001095183
+    },
+    {
+      "videoNum": "63",
+      "startSec": 65,
+      "endSec": 71,
+      "durationSec": 7,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "63",
+      "startSec": 74,
+      "endSec": 103,
+      "durationSec": 30,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "63",
+      "startSec": 105,
+      "endSec": 108,
+      "durationSec": 4,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "63",
+      "startSec": 112,
+      "endSec": 113,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 6.556600664170836
+    },
+    {
+      "videoNum": "63",
+      "startSec": 114,
+      "endSec": 115,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.526785857351742
+    },
+    {
+      "videoNum": "63",
+      "startSec": 117,
+      "endSec": 118,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 10.505047586290837
+    },
+    {
+      "videoNum": "63",
+      "startSec": 127,
+      "endSec": 128,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 0
+    },
+    {
+      "videoNum": "63",
+      "startSec": 130,
+      "endSec": 131,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 0
+    },
+    {
+      "videoNum": "63",
+      "startSec": 135,
+      "endSec": 137,
+      "durationSec": 3,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 0
+    },
+    {
+      "videoNum": "63",
+      "startSec": 143,
+      "endSec": 144,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 9.642233912014259
+    },
+    {
+      "videoNum": "63",
+      "startSec": 150,
+      "endSec": 151,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 14.627271805177902
+    },
+    {
+      "videoNum": "63",
+      "startSec": 152,
+      "endSec": 153,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.171287827562157
+    },
+    {
+      "videoNum": "63",
+      "startSec": 159,
+      "endSec": 160,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.665338568475157
+    },
+    {
+      "videoNum": "63",
+      "startSec": 161,
+      "endSec": 162,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.400336278772938
+    },
+    {
+      "videoNum": "63",
+      "startSec": 163,
+      "endSec": 164,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.590275757153247
+    },
+    {
+      "videoNum": "63",
+      "startSec": 168,
+      "endSec": 169,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.579400088094596
+    },
+    {
+      "videoNum": "63",
+      "startSec": 172,
+      "endSec": 173,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.117983985535744
+    },
+    {
+      "videoNum": "63",
+      "startSec": 177,
+      "endSec": 178,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 3.5825855604063572
+    },
+    {
+      "videoNum": "64",
+      "startSec": 0,
+      "endSec": 8,
+      "durationSec": 9,
+      "class3e9": "OCR_SPEED_ONLY_ARTIFACT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 9,
+      "endSec": 16,
+      "durationSec": 8,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 19,
+      "endSec": 20,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 22,
+      "endSec": 24,
+      "durationSec": 3,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 26,
+      "endSec": 29,
+      "durationSec": 4,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 31,
+      "endSec": 32,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 34,
+      "endSec": 35,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 40,
+      "endSec": 41,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 46,
+      "endSec": 49,
+      "durationSec": 4,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 52,
+      "endSec": 53,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": null
+    },
+    {
+      "videoNum": "64",
+      "startSec": 54,
+      "endSec": 55,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 0
+    },
+    {
+      "videoNum": "64",
+      "startSec": 59,
+      "endSec": 60,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 9.405747552595683
+    },
+    {
+      "videoNum": "64",
+      "startSec": 62,
+      "endSec": 63,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.755786734949051
+    },
+    {
+      "videoNum": "64",
+      "startSec": 67,
+      "endSec": 68,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.508239876784792
+    },
+    {
+      "videoNum": "64",
+      "startSec": 71,
+      "endSec": 72,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.633185565379385
+    },
+    {
+      "videoNum": "64",
+      "startSec": 73,
+      "endSec": 74,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.291120543333346
+    },
+    {
+      "videoNum": "64",
+      "startSec": 75,
+      "endSec": 76,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.351920319795497
+    },
+    {
+      "videoNum": "64",
+      "startSec": 79,
+      "endSec": 80,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.549923168517125
+    },
+    {
+      "videoNum": "64",
+      "startSec": 85,
+      "endSec": 86,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 16.30147097881064
+    },
+    {
+      "videoNum": "64",
+      "startSec": 93,
+      "endSec": 94,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.02434221903195
+    },
+    {
+      "videoNum": "64",
+      "startSec": 95,
+      "endSec": 96,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 14.742392137529915
+    },
+    {
+      "videoNum": "64",
+      "startSec": 97,
+      "endSec": 98,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.963466248774507
+    },
+    {
+      "videoNum": "64",
+      "startSec": 99,
+      "endSec": 100,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.009396964901217
+    },
+    {
+      "videoNum": "64",
+      "startSec": 102,
+      "endSec": 103,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.480542243969985
+    },
+    {
+      "videoNum": "64",
+      "startSec": 106,
+      "endSec": 107,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.050005695883772
+    },
+    {
+      "videoNum": "64",
+      "startSec": 110,
+      "endSec": 111,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 17.01486758100051
+    },
+    {
+      "videoNum": "64",
+      "startSec": 112,
+      "endSec": 113,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 16.918441180081167
+    },
+    {
+      "videoNum": "64",
+      "startSec": 114,
+      "endSec": 115,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.41147217085428
+    },
+    {
+      "videoNum": "64",
+      "startSec": 119,
+      "endSec": 120,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 13.798317952366245
+    },
+    {
+      "videoNum": "64",
+      "startSec": 123,
+      "endSec": 124,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 8.84422019687445
+    },
+    {
+      "videoNum": "64",
+      "startSec": 126,
+      "endSec": 127,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 4.8457999498069935
+    },
+    {
+      "videoNum": "64",
+      "startSec": 131,
+      "endSec": 132,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 0.39339494393474816
+    },
+    {
+      "videoNum": "64",
+      "startSec": 143,
+      "endSec": 144,
+      "durationSec": 2,
+      "class3e9": "REAL_OVERLAY_GPS_FREEZE",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "DIMO moved 15.8m across segment — overlay coords stale"
+      ],
+      "dimoDisplacementM": 15.822211611840048
+    },
+    {
+      "videoNum": "64",
+      "startSec": 146,
+      "endSec": 147,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.46880841540277
+    },
+    {
+      "videoNum": "64",
+      "startSec": 150,
+      "endSec": 151,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.71071067111879
+    },
+    {
+      "videoNum": "64",
+      "startSec": 152,
+      "endSec": 153,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 18.198034470505682
+    },
+    {
+      "videoNum": "64",
+      "startSec": 159,
+      "endSec": 160,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 18.114702088840243
+    },
+    {
+      "videoNum": "64",
+      "startSec": 164,
+      "endSec": 165,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 20.57292715326314
+    },
+    {
+      "videoNum": "64",
+      "startSec": 168,
+      "endSec": 169,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 20.5408226337482
+    },
+    {
+      "videoNum": "64",
+      "startSec": 175,
+      "endSec": 176,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 19.615782909048672
+    },
+    {
+      "videoNum": "64",
+      "startSec": 177,
+      "endSec": 178,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 19.36511682959078
+    },
+    {
+      "videoNum": "65",
+      "startSec": 7,
+      "endSec": 8,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 14.361091695564529
+    },
+    {
+      "videoNum": "65",
+      "startSec": 9,
+      "endSec": 10,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.240470976607925
+    },
+    {
+      "videoNum": "65",
+      "startSec": 16,
+      "endSec": 17,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.456202461364759
+    },
+    {
+      "videoNum": "65",
+      "startSec": 22,
+      "endSec": 23,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 19.949134566614266
+    },
+    {
+      "videoNum": "65",
+      "startSec": 24,
+      "endSec": 25,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 20.65009985453206
+    },
+    {
+      "videoNum": "65",
+      "startSec": 26,
+      "endSec": 27,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 21.39700393063487
+    },
+    {
+      "videoNum": "65",
+      "startSec": 32,
+      "endSec": 33,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 22.754800153243078
+    },
+    {
+      "videoNum": "65",
+      "startSec": 34,
+      "endSec": 35,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 23.15201089287732
+    },
+    {
+      "videoNum": "65",
+      "startSec": 37,
+      "endSec": 38,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 23.761113038578582
+    },
+    {
+      "videoNum": "65",
+      "startSec": 49,
+      "endSec": 50,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 23.038941210852947
+    },
+    {
+      "videoNum": "65",
+      "startSec": 51,
+      "endSec": 52,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 23.625883225011087
+    },
+    {
+      "videoNum": "65",
+      "startSec": 56,
+      "endSec": 57,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 24.65737234778915
+    },
+    {
+      "videoNum": "65",
+      "startSec": 58,
+      "endSec": 59,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 24.967139020566133
+    },
+    {
+      "videoNum": "65",
+      "startSec": 61,
+      "endSec": 62,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 25.566093566214416
+    },
+    {
+      "videoNum": "65",
+      "startSec": 64,
+      "endSec": 65,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 26.078824039621406
+    },
+    {
+      "videoNum": "65",
+      "startSec": 69,
+      "endSec": 70,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 27.033506815463898
+    },
+    {
+      "videoNum": "65",
+      "startSec": 72,
+      "endSec": 73,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 27.27023371024245
+    },
+    {
+      "videoNum": "65",
+      "startSec": 75,
+      "endSec": 76,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 27.185055639300327
+    },
+    {
+      "videoNum": "65",
+      "startSec": 77,
+      "endSec": 78,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 26.729960598249008
+    },
+    {
+      "videoNum": "65",
+      "startSec": 79,
+      "endSec": 80,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 26.190558886591297
+    },
+    {
+      "videoNum": "65",
+      "startSec": 81,
+      "endSec": 82,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 25.831386593656163
+    },
+    {
+      "videoNum": "65",
+      "startSec": 85,
+      "endSec": 86,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 24.355864765207116
+    },
+    {
+      "videoNum": "65",
+      "startSec": 87,
+      "endSec": 88,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 24.373209876132602
+    },
+    {
+      "videoNum": "65",
+      "startSec": 90,
+      "endSec": 91,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 22.13111543904821
+    },
+    {
+      "videoNum": "65",
+      "startSec": 92,
+      "endSec": 93,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 18.93843084368979
+    },
+    {
+      "videoNum": "65",
+      "startSec": 99,
+      "endSec": 100,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 4.720911006011309
+    },
+    {
+      "videoNum": "65",
+      "startSec": 101,
+      "endSec": 102,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 3.891770902780444
+    },
+    {
+      "videoNum": "65",
+      "startSec": 106,
+      "endSec": 107,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 2.8934790464175992
+    },
+    {
+      "videoNum": "65",
+      "startSec": 109,
+      "endSec": 110,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 6.207567144836182
+    },
+    {
+      "videoNum": "65",
+      "startSec": 114,
+      "endSec": 115,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.52969267786402
+    },
+    {
+      "videoNum": "65",
+      "startSec": 116,
+      "endSec": 117,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.864249769079054
+    },
+    {
+      "videoNum": "65",
+      "startSec": 118,
+      "endSec": 119,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 18.18314688906027
+    },
+    {
+      "videoNum": "65",
+      "startSec": 121,
+      "endSec": 122,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.856545429404328
+    },
+    {
+      "videoNum": "65",
+      "startSec": 129,
+      "endSec": 130,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 22.53440429265338
+    },
+    {
+      "videoNum": "65",
+      "startSec": 133,
+      "endSec": 134,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 20.986882865652994
+    },
+    {
+      "videoNum": "65",
+      "startSec": 135,
+      "endSec": 136,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 20.997367515478935
+    },
+    {
+      "videoNum": "65",
+      "startSec": 137,
+      "endSec": 138,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 22.611055741746156
+    },
+    {
+      "videoNum": "65",
+      "startSec": 139,
+      "endSec": 140,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 24.18698311476224
+    },
+    {
+      "videoNum": "65",
+      "startSec": 141,
+      "endSec": 142,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 47.44343371010822
+    },
+    {
+      "videoNum": "65",
+      "startSec": 144,
+      "endSec": 145,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 24.563462789444575
+    },
+    {
+      "videoNum": "65",
+      "startSec": 146,
+      "endSec": 147,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 25.834615056941566
+    },
+    {
+      "videoNum": "65",
+      "startSec": 152,
+      "endSec": 153,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 29.894785140582925
+    },
+    {
+      "videoNum": "65",
+      "startSec": 156,
+      "endSec": 157,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.574368006345132
+    },
+    {
+      "videoNum": "65",
+      "startSec": 159,
+      "endSec": 160,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 32.665312462355956
+    },
+    {
+      "videoNum": "65",
+      "startSec": 163,
+      "endSec": 164,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.532246874213804
+    },
+    {
+      "videoNum": "65",
+      "startSec": 166,
+      "endSec": 167,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.591136811553355
+    },
+    {
+      "videoNum": "65",
+      "startSec": 172,
+      "endSec": 173,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.907801469764124
+    },
+    {
+      "videoNum": "65",
+      "startSec": 176,
+      "endSec": 177,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.672776538843774
+    },
+    {
+      "videoNum": "66",
+      "startSec": 3,
+      "endSec": 4,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 30.74758067612584
+    },
+    {
+      "videoNum": "66",
+      "startSec": 5,
+      "endSec": 6,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 30.757624394098183
+    },
+    {
+      "videoNum": "66",
+      "startSec": 11,
+      "endSec": 12,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.330320678500158
+    },
+    {
+      "videoNum": "66",
+      "startSec": 13,
+      "endSec": 14,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.804848670638755
+    },
+    {
+      "videoNum": "66",
+      "startSec": 15,
+      "endSec": 16,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 32.12987053289538
+    },
+    {
+      "videoNum": "66",
+      "startSec": 17,
+      "endSec": 18,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.48758352844407
+    },
+    {
+      "videoNum": "66",
+      "startSec": 20,
+      "endSec": 21,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 0
+    },
+    {
+      "videoNum": "66",
+      "startSec": 28,
+      "endSec": 29,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 29.911079349402314
+    },
+    {
+      "videoNum": "66",
+      "startSec": 30,
+      "endSec": 31,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 30.402849933580566
+    },
+    {
+      "videoNum": "66",
+      "startSec": 32,
+      "endSec": 33,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 32.87482010302781
+    },
+    {
+      "videoNum": "66",
+      "startSec": 37,
+      "endSec": 38,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 35.89981939247101
+    },
+    {
+      "videoNum": "66",
+      "startSec": 40,
+      "endSec": 41,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 71.10015012830623
+    },
+    {
+      "videoNum": "66",
+      "startSec": 44,
+      "endSec": 45,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 34.58824367225872
+    },
+    {
+      "videoNum": "66",
+      "startSec": 46,
+      "endSec": 47,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 34.17349113522778
+    },
+    {
+      "videoNum": "66",
+      "startSec": 48,
+      "endSec": 49,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.684261558252494
+    },
+    {
+      "videoNum": "66",
+      "startSec": 50,
+      "endSec": 51,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.59210682841047
+    },
+    {
+      "videoNum": "66",
+      "startSec": 64,
+      "endSec": 65,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 34.16127304354844
+    },
+    {
+      "videoNum": "66",
+      "startSec": 72,
+      "endSec": 73,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.4729772139921
+    },
+    {
+      "videoNum": "66",
+      "startSec": 76,
+      "endSec": 77,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.18481655802148
+    },
+    {
+      "videoNum": "66",
+      "startSec": 79,
+      "endSec": 80,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 32.902511562305165
+    },
+    {
+      "videoNum": "66",
+      "startSec": 83,
+      "endSec": 84,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.238916901083204
+    },
+    {
+      "videoNum": "66",
+      "startSec": 88,
+      "endSec": 89,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 29.248545800658636
+    },
+    {
+      "videoNum": "66",
+      "startSec": 93,
+      "endSec": 94,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 30.44182593741025
+    },
+    {
+      "videoNum": "66",
+      "startSec": 96,
+      "endSec": 97,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.40002016095405
+    },
+    {
+      "videoNum": "66",
+      "startSec": 99,
+      "endSec": 100,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 35.13601818291044
+    },
+    {
+      "videoNum": "66",
+      "startSec": 102,
+      "endSec": 103,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 69.16206817733844
+    },
+    {
+      "videoNum": "66",
+      "startSec": 106,
+      "endSec": 107,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 32.45871844152029
+    },
+    {
+      "videoNum": "66",
+      "startSec": 109,
+      "endSec": 110,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 59.25513269186027
+    },
+    {
+      "videoNum": "66",
+      "startSec": 112,
+      "endSec": 113,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 31.67508573103652
+    },
+    {
+      "videoNum": "66",
+      "startSec": 119,
+      "endSec": 120,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 34.85347967594402
+    },
+    {
+      "videoNum": "66",
+      "startSec": 123,
+      "endSec": 124,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 70.96757665501858
+    },
+    {
+      "videoNum": "66",
+      "startSec": 125,
+      "endSec": 126,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 35.67075231286186
+    },
+    {
+      "videoNum": "66",
+      "startSec": 128,
+      "endSec": 129,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 35.640867865039965
+    },
+    {
+      "videoNum": "66",
+      "startSec": 130,
+      "endSec": 131,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 35.832477892618506
+    },
+    {
+      "videoNum": "66",
+      "startSec": 133,
+      "endSec": 134,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 35.220156454066775
+    },
+    {
+      "videoNum": "66",
+      "startSec": 136,
+      "endSec": 137,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.79219751608637
+    },
+    {
+      "videoNum": "66",
+      "startSec": 139,
+      "endSec": 140,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.23326329713334
+    },
+    {
+      "videoNum": "66",
+      "startSec": 142,
+      "endSec": 143,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 32.95217901858912
+    },
+    {
+      "videoNum": "66",
+      "startSec": 144,
+      "endSec": 145,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.14920935313566
+    },
+    {
+      "videoNum": "66",
+      "startSec": 147,
+      "endSec": 148,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.325374860379114
+    },
+    {
+      "videoNum": "66",
+      "startSec": 150,
+      "endSec": 151,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.769659958535286
+    },
+    {
+      "videoNum": "66",
+      "startSec": 153,
+      "endSec": 154,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 33.38239267022649
+    },
+    {
+      "videoNum": "66",
+      "startSec": 161,
+      "endSec": 162,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 26.136089172380654
+    },
+    {
+      "videoNum": "66",
+      "startSec": 166,
+      "endSec": 167,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.965747793669426
+    },
+    {
+      "videoNum": "66",
+      "startSec": 168,
+      "endSec": 169,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.24030005792082
+    },
+    {
+      "videoNum": "66",
+      "startSec": 171,
+      "endSec": 172,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 17.82857263285079
+    },
+    {
+      "videoNum": "66",
+      "startSec": 178,
+      "endSec": 179,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 12.511161120724658
+    },
+    {
+      "videoNum": "67",
+      "startSec": 3,
+      "endSec": 4,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 8.777057963964506
+    },
+    {
+      "videoNum": "67",
+      "startSec": 8,
+      "endSec": 9,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.900105599488931
+    },
+    {
+      "videoNum": "67",
+      "startSec": 10,
+      "endSec": 11,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 18.599543667791426
+    },
+    {
+      "videoNum": "67",
+      "startSec": 12,
+      "endSec": 13,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 20.12039616905363
+    },
+    {
+      "videoNum": "67",
+      "startSec": 14,
+      "endSec": 15,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 21.251750763809444
+    },
+    {
+      "videoNum": "67",
+      "startSec": 16,
+      "endSec": 17,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 21.7294957344169
+    },
+    {
+      "videoNum": "67",
+      "startSec": 18,
+      "endSec": 19,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 22.03837469394293
+    },
+    {
+      "videoNum": "67",
+      "startSec": 21,
+      "endSec": 22,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 22.792856909822813
+    },
+    {
+      "videoNum": "67",
+      "startSec": 23,
+      "endSec": 24,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 23.028510389903094
+    },
+    {
+      "videoNum": "67",
+      "startSec": 26,
+      "endSec": 27,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 20.702327512263267
+    },
+    {
+      "videoNum": "67",
+      "startSec": 29,
+      "endSec": 30,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 18.175920103887222
+    },
+    {
+      "videoNum": "67",
+      "startSec": 31,
+      "endSec": 32,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.332836024032453
+    },
+    {
+      "videoNum": "67",
+      "startSec": 33,
+      "endSec": 34,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.1526827476387
+    },
+    {
+      "videoNum": "67",
+      "startSec": 36,
+      "endSec": 37,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 16.453325677868417
+    },
+    {
+      "videoNum": "67",
+      "startSec": 40,
+      "endSec": 41,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 15.730126081161565
+    },
+    {
+      "videoNum": "67",
+      "startSec": 45,
+      "endSec": 46,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 12.521255733147045
+    },
+    {
+      "videoNum": "67",
+      "startSec": 52,
+      "endSec": 53,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 11.804403559122138
+    },
+    {
+      "videoNum": "67",
+      "startSec": 56,
+      "endSec": 57,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 12.340280906624958
+    },
+    {
+      "videoNum": "67",
+      "startSec": 58,
+      "endSec": 59,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.57480448935823
+    },
+    {
+      "videoNum": "67",
+      "startSec": 60,
+      "endSec": 61,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 14.27771351728547
+    },
+    {
+      "videoNum": "67",
+      "startSec": 62,
+      "endSec": 63,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 13.969502217218263
+    },
+    {
+      "videoNum": "67",
+      "startSec": 65,
+      "endSec": 66,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 11.727208283215449
+    },
+    {
+      "videoNum": "67",
+      "startSec": 77,
+      "endSec": 78,
+      "durationSec": 2,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 6.41221315497384
+    },
+    {
+      "videoNum": "67",
+      "startSec": 83,
+      "endSec": 85,
+      "durationSec": 3,
+      "class3e9": "OCR_STALE_COORD_REPEAT",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [
+        "3E.9 classified as OCR artifact"
+      ],
+      "dimoDisplacementM": 7.720578579198764
+    },
+    {
+      "videoNum": "67",
+      "startSec": 90,
+      "endSec": 91,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 8.714810317939952
+    },
+    {
+      "videoNum": "67",
+      "startSec": 100,
+      "endSec": 104,
+      "durationSec": 5,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 2.252081092549344
+    },
+    {
+      "videoNum": "67",
+      "startSec": 105,
+      "endSec": 106,
+      "durationSec": 2,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 1.2600290070735631
+    },
+    {
+      "videoNum": "67",
+      "startSec": 107,
+      "endSec": 111,
+      "durationSec": 5,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 2.5042670043180806
+    },
+    {
+      "videoNum": "67",
+      "startSec": 112,
+      "endSec": 115,
+      "durationSec": 4,
+      "class3e9": "AMBIGUOUS_MIXED",
+      "reviewClass": "UNKNOWN",
+      "confidence": "LOW",
+      "supportingEvidence": [],
+      "counterArguments": [],
+      "dimoDisplacementM": 1.014242564261043
+    },
+    {
+      "videoNum": "67",
+      "startSec": 116,
+      "endSec": 117,
+      "durationSec": 2,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": 0.9552089888000934
+    },
+    {
+      "videoNum": "67",
+      "startSec": 118,
+      "endSec": 127,
+      "durationSec": 10,
+      "class3e9": "LEGIT_LOW_SPEED_STATIC",
+      "reviewClass": "SUSPECTED",
+      "confidence": "LOW",
+      "supportingEvidence": [
+        "Low speed static overlay pattern"
+      ],
+      "counterArguments": [
+        "Static overlay ≠ confirmed GPS receiver freeze"
+      ],
+      "dimoDisplacementM": null
+    }
+  ]
+}

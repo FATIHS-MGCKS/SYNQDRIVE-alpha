@@ -1,0 +1,224 @@
+{
+  "schema": "LDI10D_PHASE3E10_VALIDATION_V1",
+  "headSha": "9c6a5ebe1d7e75aef99a810e2aa7f7dee7cf3dc7",
+  "inputIntegrity": {
+    "checks": [
+      {
+        "metric": "videos",
+        "expected": 6,
+        "observed": 6,
+        "match": true,
+        "note": "SHA lines in phase3e8-work/MOV_SHA256.txt"
+      },
+      {
+        "metric": "mov_sha_lines",
+        "expected": 6,
+        "observed": 6,
+        "match": true
+      },
+      {
+        "metric": "video_seconds_total",
+        "expected": 1027.588333,
+        "observed": 1027.588333,
+        "match": true
+      },
+      {
+        "metric": "ocr_timepoints",
+        "expected": 1028,
+        "observed": 1028,
+        "match": true
+      },
+      {
+        "metric": "gps_fully_readable",
+        "expected": 676,
+        "observed": 676,
+        "match": true
+      },
+      {
+        "metric": "gps_partial",
+        "expected": 118,
+        "observed": 118,
+        "match": true
+      },
+      {
+        "metric": "gps_unreadable_or_oob",
+        "expected": 234,
+        "observed": 234,
+        "match": true
+      },
+      {
+        "metric": "dimo_iphone_pairs_set_a",
+        "expected": 698,
+        "observed": 698,
+        "match": true
+      },
+      {
+        "metric": "freeze_segments_3e9",
+        "expected": 246,
+        "observed": 246,
+        "match": true
+      },
+      {
+        "metric": "low_speed_candidates",
+        "expected": 62,
+        "observed": 62,
+        "match": true
+      },
+      {
+        "metric": "l3_baseline_mae_kmh",
+        "expected": 2.303091434778604,
+        "observed": 2.303091434778606,
+        "match": true
+      }
+    ],
+    "contradictions": [],
+    "inputIntegrity": "PASS"
+  },
+  "ocr": {
+    "framesDualOcr": 60,
+    "framesIndependentlyLabeled": 17,
+    "ocrErrorRateAssessable": "PARTIAL_FRAME_REF_ONLY",
+    "fieldErrorRates": {
+      "latitude": {
+        "errors": 0,
+        "n": 60,
+        "wilson": {
+          "low": 0.939826069522067,
+          "high": 0.9999999999999998
+        }
+      },
+      "longitude": {
+        "errors": 0,
+        "n": 60,
+        "wilson": {
+          "low": 0.939826069522067,
+          "high": 0.9999999999999998
+        }
+      },
+      "speed": {
+        "errors": 0,
+        "n": 60,
+        "wilson": {
+          "low": 0.939826069522067,
+          "high": 0.9999999999999998
+        }
+      }
+    },
+    "machineDualMismatchRate": 0.7333333333333333,
+    "note": "Tesseract re-run is not visual ground truth; FRAME_REF_INDEPENDENT uses frozen 3E.4 pack only"
+  },
+  "spatial": {
+    "beforeGate": {
+      "n": 698,
+      "medianM": 2.780741518443654,
+      "p90M": 34.80622116147934,
+      "p95M": 64.33454953607401,
+      "maxM": 3341.296350742937
+    },
+    "afterGate": {
+      "n": 334,
+      "medianM": 1.556728973043897,
+      "p90M": 25.175709871218753,
+      "p95M": 33.34860173766781,
+      "maxM": 73.17481827721546
+    },
+    "utcOffsetSensitivity": [
+      {
+        "shiftSec": -2,
+        "medianM": 21.349538968114775,
+        "n": 690
+      },
+      {
+        "shiftSec": -1,
+        "medianM": 4.757255854488859,
+        "n": 690
+      },
+      {
+        "shiftSec": 0,
+        "medianM": 2.8220888899368255,
+        "n": 690
+      },
+      {
+        "shiftSec": 1,
+        "medianM": 22.138695249712377,
+        "n": 689
+      },
+      {
+        "shiftSec": 2,
+        "medianM": 38.26866686774861,
+        "n": 687
+      }
+    ]
+  },
+  "pairs": {
+    "setAUsesDimoDistanceFilter": false,
+    "pairedRows": 698,
+    "uniqueDimoBuckets": 676,
+    "duplicateBucketAssignments": 22,
+    "missingDimoJoin": 96,
+    "multiOcrPerBucket": [
+      {
+        "bucketUtc": "2026-10-16T03:37:45Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:40:18Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:41:49Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:42:50Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:42:58Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:43:42Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:44:37Z",
+        "count": 3
+      },
+      {
+        "bucketUtc": "2026-10-16T03:37:53Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:37:57Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:38:18Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:38:22Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:42:48Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:50:02Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:50:20Z",
+        "count": 2
+      },
+      {
+        "bucketUtc": "2026-10-16T03:51:23Z",
+        "count": 2
+      }
+    ]
+  },
+  "l3BaselineMaeKmh": 2.303091434778606,
+  "l3BaselineDrift": "NONE"
+}

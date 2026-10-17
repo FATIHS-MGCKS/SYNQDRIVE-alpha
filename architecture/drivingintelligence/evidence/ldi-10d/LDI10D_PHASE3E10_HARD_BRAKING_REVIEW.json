@@ -1,0 +1,31 @@
+{
+  "schema": "LDI10D_PHASE3E10_HARD_BRAKING_V1",
+  "headSha": "9c6a5ebe1d7e75aef99a810e2aa7f7dee7cf3dc7",
+  "casesReviewed": 3,
+  "cases": [
+    {
+      "eventId": "P3E_HARD_BRK_256_merged",
+      "startUtc": "2026-10-16T03:40:15Z",
+      "endUtc": "2026-10-16T03:40:17Z",
+      "brakingProven": false,
+      "classification": "COMPUTATIONAL_CANDIDATE_ONLY",
+      "note": "L3 deceleration context from 3E.2; not re-validated as emergency braking"
+    },
+    {
+      "eventId": "P3E_HARD_BRK_344_merged_merged_merged",
+      "startUtc": "2026-10-16T03:41:43Z",
+      "endUtc": "2026-10-16T03:41:47Z",
+      "brakingProven": false,
+      "classification": "COMPUTATIONAL_CANDIDATE_ONLY",
+      "note": "L3 deceleration context from 3E.2; not re-validated as emergency braking"
+    },
+    {
+      "eventId": "P3E_HARD_BRK_736_merged_merged",
+      "startUtc": "2026-10-16T03:48:15Z",
+      "endUtc": "2026-10-16T03:48:18Z",
+      "brakingProven": false,
+      "classification": "COMPUTATIONAL_CANDIDATE_ONLY",
+      "note": "L3 deceleration context from 3E.2; not re-validated as emergency braking"
+    }
+  ]
+}

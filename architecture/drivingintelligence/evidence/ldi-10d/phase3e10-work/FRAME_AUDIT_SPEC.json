@@ -1,0 +1,302 @@
+[
+  {
+    "videoNum": "62",
+    "secondIndex": 15,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 60,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 120,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 60,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 120,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 15,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 60,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 120,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 15,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 60,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 120,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 15,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 60,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 120,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 15,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 60,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 120,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 30,
+    "stratum": "frame_ref_mandatory"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 0,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 1,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 2,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 4,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 0,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 1,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 2,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 3,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 0,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 1,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 2,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 3,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 0,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 2,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 4,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 6,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 0,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 1,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 2,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 3,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 0,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 2,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 3,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 4,
+    "stratum": "fully_readable"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 1,
+    "stratum": "partial"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 24,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 25,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "62",
+    "secondIndex": 26,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 6,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 7,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "63",
+    "secondIndex": 8,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 17,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 18,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "64",
+    "secondIndex": 21,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 1,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 3,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "65",
+    "secondIndex": 5,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 7,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 22,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "66",
+    "secondIndex": 23,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 5,
+    "stratum": "problematic"
+  },
+  {
+    "videoNum": "67",
+    "secondIndex": 6,
+    "stratum": "problematic"
+  }
+]
