@@ -272,6 +272,13 @@ export type TripObservability = {
   qcReasonHistogram: Record<string, number>;
   abstentionHistogram: Record<string, number>;
   videoPairedTrustedN: number;
+  accelDecelEvidence: {
+    consecutiveTrustedNumericPairs: number;
+    accelerationCandidateBucketsDeltaGte4Kmh: number;
+    decelerationCandidateBucketsDeltaLteMinus4Kmh: number;
+    epistemic: 'OBSERVED_DELTA_ON_PINNED_L3';
+    note: string;
+  };
 };
 
 export function buildTripObservability(
@@ -296,6 +303,28 @@ export function buildTripObservability(
     abstHist[key] = (abstHist[key] ?? 0) + 1;
   }
 
+  let consecutiveTrustedPairs = 0;
+  let accelCandidates = 0;
+  let decelCandidates = 0;
+  for (let i = 1; i < buckets.length; i++) {
+    const prev = buckets[i - 1]!;
+    const cur = buckets[i]!;
+    const dt = (labelMs(cur.bucketLabelUtc) - labelMs(prev.bucketLabelUtc)) / 1000;
+    if (dt !== 1) continue;
+    if (
+      prev.pinnedProductionL3Kmh == null ||
+      cur.pinnedProductionL3Kmh == null ||
+      !isTrustedQc(prev.qcTrustLevel) ||
+      !isTrustedQc(cur.qcTrustLevel)
+    ) {
+      continue;
+    }
+    consecutiveTrustedPairs += 1;
+    const delta = cur.pinnedProductionL3Kmh - prev.pinnedProductionL3Kmh;
+    if (delta >= 4) accelCandidates += 1;
+    if (delta <= -4) decelCandidates += 1;
+  }
+
   return {
     bucketsTotal: records.length,
     positionPresent: tagCount('POSITION_PRESENT'),
@@ -315,6 +344,14 @@ export function buildTripObservability(
     qcReasonHistogram: qcHist,
     abstentionHistogram: abstHist,
     videoPairedTrustedN: videoPairedN,
+    accelDecelEvidence: {
+      consecutiveTrustedNumericPairs: consecutiveTrustedPairs,
+      accelerationCandidateBucketsDeltaGte4Kmh: accelCandidates,
+      decelerationCandidateBucketsDeltaLteMinus4Kmh: decelCandidates,
+      epistemic: 'OBSERVED_DELTA_ON_PINNED_L3',
+      note:
+        'Calendar-adjacent 1 s buckets with TRUSTED/TRUSTED_LIMITED pinned L3 at both ends; ±4 km/h delta heuristic for observability only (not native event confirmation).',
+    },
   };
 }
 

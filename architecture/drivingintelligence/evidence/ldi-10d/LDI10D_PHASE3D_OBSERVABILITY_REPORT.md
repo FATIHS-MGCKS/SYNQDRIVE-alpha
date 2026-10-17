@@ -13,6 +13,9 @@
 | Replay L3 numeric | 822 |
 | Max L3 replay drift vs pin (km/h) | 0 |
 | Video paired TRUSTED witness n | 748 |
+| Accel/decel trusted pairs (1 s) | 758 |
+| Accel candidate buckets (Δ≥4 km/h) | 66 |
+| Decel candidate buckets (Δ≤−4 km/h) | 56 |
 
 ## QC reason histogram (top)
 

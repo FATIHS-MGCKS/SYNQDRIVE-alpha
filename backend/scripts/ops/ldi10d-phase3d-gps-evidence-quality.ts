@@ -89,6 +89,7 @@ function main(): void {
         },
         temporalUncertaintyNote:
           'Bucket labels are query-anchored 1 s grid starts; video tacho aligned to displayed second with quantized clock uncertainty.',
+        accelDecelEvidence: observability.accelDecelEvidence,
       },
       null,
       2,
@@ -113,6 +114,9 @@ function main(): void {
       `| Replay L3 numeric | ${observability.replayL3Numeric} |`,
       `| Max L3 replay drift vs pin (km/h) | ${observability.maxL3DriftKmh} |`,
       `| Video paired TRUSTED witness n | ${observability.videoPairedTrustedN} |`,
+      `| Accel/decel trusted pairs (1 s) | ${observability.accelDecelEvidence.consecutiveTrustedNumericPairs} |`,
+      `| Accel candidate buckets (Δ≥4 km/h) | ${observability.accelDecelEvidence.accelerationCandidateBucketsDeltaGte4Kmh} |`,
+      `| Decel candidate buckets (Δ≤−4 km/h) | ${observability.accelDecelEvidence.decelerationCandidateBucketsDeltaLteMinus4Kmh} |`,
       '',
       '## QC reason histogram (top)',
       '',
