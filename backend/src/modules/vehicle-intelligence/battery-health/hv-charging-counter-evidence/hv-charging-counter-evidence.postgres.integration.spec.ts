@@ -1,10 +1,7 @@
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  HV_CHARGING_COUNTER_AVAILABILITY,
-  type HvChargingCounterAvailabilityV1,
-} from './hv-charging-counter-evidence.constants.v1';
+import { HV_CHARGING_COUNTER_AVAILABILITY } from './hv-charging-counter-evidence.constants.v1';
 import type { HvChargingCounterBucketInputV1 } from './hv-charging-counter-evidence.types.v1';
 import { computeHvChargingCounterObservationSetFingerprintV1 } from './hv-charging-counter-evidence.fingerprint.v1';
 import { HvChargingCounterEvidenceRepository } from './hv-charging-counter-evidence.repository';
