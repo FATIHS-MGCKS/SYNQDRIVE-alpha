@@ -1,0 +1,204 @@
+{
+  "schema": "LDI10D_PHASE3E4_SPATIAL_COMPARISON_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "pairedFixes": [
+    {
+      "observationId": "OBS_TC_00062MOV_15",
+      "bucketLabelUtc": "2026-10-16T03:37:56Z",
+      "haversineM": 1.4236586916281662,
+      "dimoLat": 51.335312,
+      "dimoLon": 9.506074,
+      "iphoneLat": 51.335304,
+      "iphoneLon": 9.50609,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00062MOV_60",
+      "bucketLabelUtc": "2026-10-16T03:38:41Z",
+      "haversineM": 2.6899278278925562,
+      "dimoLat": 51.334371,
+      "dimoLon": 9.504639,
+      "iphoneLat": 51.334348,
+      "iphoneLon": 9.504627,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00062MOV_120",
+      "bucketLabelUtc": "2026-10-16T03:39:41Z",
+      "haversineM": 0.13111578265635807,
+      "dimoLat": 51.33098,
+      "dimoLon": 9.508294,
+      "iphoneLat": 51.330979,
+      "iphoneLon": 9.508293,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00063MOV_60",
+      "bucketLabelUtc": "2026-10-16T03:41:41Z",
+      "haversineM": 1.1206002917629567,
+      "dimoLat": 51.324223,
+      "dimoLon": 9.51297,
+      "iphoneLat": 51.324213,
+      "iphoneLon": 9.512972,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00063MOV_120",
+      "bucketLabelUtc": "2026-10-16T03:42:41Z",
+      "haversineM": 7.882596177517685,
+      "dimoLat": 51.322907,
+      "dimoLon": 9.512564,
+      "iphoneLat": 51.322969,
+      "iphoneLon": 9.512619,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00064MOV_60",
+      "bucketLabelUtc": "2026-10-16T03:44:41Z",
+      "haversineM": 8.785415433621765,
+      "dimoLat": 51.318715,
+      "dimoLon": 9.515328,
+      "iphoneLat": 51.318782,
+      "iphoneLon": 9.515261,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00064MOV_120",
+      "bucketLabelUtc": "2026-10-16T03:45:41Z",
+      "haversineM": 14.657545905918491,
+      "dimoLat": 51.31158,
+      "dimoLon": 9.512886,
+      "iphoneLat": 51.311658,
+      "iphoneLon": 9.513056,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00065MOV_15",
+      "bucketLabelUtc": "2026-10-16T03:46:56Z",
+      "haversineM": 13.516306659449345,
+      "dimoLat": 51.302877,
+      "dimoLon": 9.516763,
+      "iphoneLat": 51.302997,
+      "iphoneLon": 9.516732,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00065MOV_60",
+      "bucketLabelUtc": "2026-10-16T03:47:41Z",
+      "haversineM": 1.7804770249546815,
+      "dimoLat": 51.294878,
+      "dimoLon": 9.511165,
+      "iphoneLat": 51.294894,
+      "iphoneLon": 9.511164,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00065MOV_120",
+      "bucketLabelUtc": "2026-10-16T03:48:41Z",
+      "haversineM": 1.0386943194711016,
+      "dimoLat": 51.288222,
+      "dimoLon": 9.500239,
+      "iphoneLat": 51.288231,
+      "iphoneLon": 9.500235,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00066MOV_15",
+      "bucketLabelUtc": "2026-10-16T03:49:57Z",
+      "haversineM": 32.9454834727249,
+      "dimoLat": 51.278988,
+      "dimoLon": 9.476597,
+      "iphoneLat": 51.279231,
+      "iphoneLon": 9.476868,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00066MOV_60",
+      "bucketLabelUtc": "2026-10-16T03:50:42Z",
+      "haversineM": 34.87381580763291,
+      "dimoLat": 51.27165,
+      "dimoLon": 9.459597,
+      "iphoneLat": 51.271917,
+      "iphoneLon": 9.45986,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00066MOV_120",
+      "bucketLabelUtc": "2026-10-16T03:51:42Z",
+      "haversineM": 69.65112274841876,
+      "dimoLat": 51.257184,
+      "dimoLon": 9.443733,
+      "iphoneLat": 51.257713,
+      "iphoneLon": 9.444269,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00067MOV_15",
+      "bucketLabelUtc": "2026-10-16T03:52:57Z",
+      "haversineM": 21.883791751984365,
+      "dimoLat": 51.245121,
+      "dimoLon": 9.429942,
+      "iphoneLat": 51.244934,
+      "iphoneLon": 9.43004,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00067MOV_60",
+      "bucketLabelUtc": "2026-10-16T03:53:42Z",
+      "haversineM": 2.304731051905675,
+      "dimoLat": 51.25013,
+      "dimoLon": 9.429153,
+      "iphoneLat": 51.250118,
+      "iphoneLon": 9.429126,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00067MOV_120",
+      "bucketLabelUtc": "2026-10-16T03:54:42Z",
+      "haversineM": 26678.776372981065,
+      "dimoLat": 51.248852,
+      "dimoLon": 9.4318,
+      "iphoneLat": 51.48878,
+      "iphoneLon": 9.431788,
+      "alignmentSource": "video_metadata_offset",
+      "alignmentDeltaSec": 0
+    },
+    {
+      "observationId": "OBS_TC_00062_30_HUMAN_PRELIMINARY",
+      "bucketLabelUtc": "2026-10-16T03:38:11Z",
+      "haversineM": 8.337591184799862,
+      "dimoLat": 51.335222,
+      "dimoLon": 9.506192,
+      "iphoneLat": 51.335267,
+      "iphoneLon": 9.506096,
+      "alignmentSource": "overlay_utc",
+      "alignmentDeltaSec": 0
+    }
+  ],
+  "haversineM": {
+    "median": 8.337591184799862,
+    "p90": 34.87381580763291,
+    "p95": 69.65112274841876,
+    "max": 26678.776372981065,
+    "robustPairCount": 16,
+    "outlierPairCount": 1,
+    "outlierThresholdM": 500
+  },
+  "roadIdentityGroundTruth": "NOT_ASSESSABLE",
+  "note": "iPhone overlay coordinates are independent spatial reference, not road-ID ground truth."
+}

@@ -1,0 +1,145 @@
+{
+  "schema": "LDI10D_PHASE3E4_VIDEO_INVENTORY_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "videoSourcesAccessible": "FRAMES_ONLY",
+  "googleDriveSources": [
+    {
+      "video": "TC_00062.MOV",
+      "url": "https://drive.google.com/file/d/1haghGlbC1eb1NegQJmGQrs0rmItTXynw/view?usp=drivesdk"
+    },
+    {
+      "video": "TC_00063.MOV",
+      "url": "https://drive.google.com/file/d/15hlDvzC1fo2art75pEd2GrmbS-sQbM8z/view?usp=drivesdk"
+    },
+    {
+      "video": "TC_00064.MOV",
+      "url": "https://drive.google.com/file/d/1Rvy3PaVbf8OLd753MEBriZMwX6v2SBAJ/view?usp=drivesdk"
+    },
+    {
+      "video": "TC_00065.MOV",
+      "url": "https://drive.google.com/file/d/18MRwZbBHyAToXbKUOtaFCr0ve5R9Vdcm/view?usp=drivesdk"
+    },
+    {
+      "video": "TC_00066.MOV",
+      "url": "https://drive.google.com/file/d/18xdPmP8MkU7RqvHqisRezeiZJ6rV1U67/view?usp=drivesdk"
+    },
+    {
+      "video": "TC_00067.MOV",
+      "url": "https://drive.google.com/file/d/1iyZU1c4SCX4g031W4aBJRQheH_87gHSo/view?usp=drivesdk"
+    }
+  ],
+  "metadata": [
+    {
+      "video": "TC_00062.MOV",
+      "duration_s": 179.875,
+      "creation_time_utc": "2026-10-16T03:37:41.000000Z",
+      "source": "Google Drive original MOV"
+    },
+    {
+      "video": "TC_00063.MOV",
+      "duration_s": 179.995,
+      "creation_time_utc": "2026-10-16T03:40:41.000000Z",
+      "source": "Google Drive original MOV"
+    },
+    {
+      "video": "TC_00064.MOV",
+      "duration_s": 179.955,
+      "creation_time_utc": "2026-10-16T03:43:41.000000Z",
+      "source": "Google Drive original MOV"
+    },
+    {
+      "video": "TC_00065.MOV",
+      "duration_s": 179.955,
+      "creation_time_utc": "2026-10-16T03:46:41.000000Z",
+      "source": "Google Drive original MOV"
+    },
+    {
+      "video": "TC_00066.MOV",
+      "duration_s": 179.995,
+      "creation_time_utc": "2026-10-16T03:49:42.000000Z",
+      "source": "Google Drive original MOV"
+    },
+    {
+      "video": "TC_00067.MOV",
+      "duration_s": 127.813333,
+      "creation_time_utc": "2026-10-16T03:52:42.000000Z",
+      "source": "Google Drive original MOV"
+    }
+  ],
+  "movFilesInRepository": false,
+  "sampledFrames": [
+    {
+      "file": "frames/TC_00062_120.jpg",
+      "sha256": "34fdcbc4338033470dab61ecbb20c05e7f5bce885bcaf5b6d10e91f4a15a2e22"
+    },
+    {
+      "file": "frames/TC_00062_15.jpg",
+      "sha256": "0a0bd63fd42ecb1031840005f9ad679919057aa68a151121a88f1ef7001e3446"
+    },
+    {
+      "file": "frames/TC_00062_60.jpg",
+      "sha256": "d6bb1c40ee247940a8e50462158b8e1a5dff4cecffc37660f8ac5bdbf505114b"
+    },
+    {
+      "file": "frames/TC_00063_120.jpg",
+      "sha256": "7476e6f4ab6171fc9b44c9f60d8a5700aecb292c75019df171112219dc0244d9"
+    },
+    {
+      "file": "frames/TC_00063_15.jpg",
+      "sha256": "b336c1e23ada0ce7c5ee988518f8fa4c799d10aee694663ada8cca916d050866"
+    },
+    {
+      "file": "frames/TC_00063_60.jpg",
+      "sha256": "80a51dbad7d749d4aa4d09005b73cf0bdef77e5421b16c75b8ac77b2511a3bb2"
+    },
+    {
+      "file": "frames/TC_00064_120.jpg",
+      "sha256": "8b3b6f6ec5e7cc53166609bb9e1fa39d8b2c861e91344c05097fb7a7373bdd02"
+    },
+    {
+      "file": "frames/TC_00064_15.jpg",
+      "sha256": "c6e16b8cb7ad1793b8917cc90e80d762a0a9c06644a295819214921fd9d85f97"
+    },
+    {
+      "file": "frames/TC_00064_60.jpg",
+      "sha256": "1a35dac1ec3d9e252fd0f0004bea8e18fdce9438acbd76dfe829f79a12407edc"
+    },
+    {
+      "file": "frames/TC_00065_120.jpg",
+      "sha256": "059c88365ac1ae2cdd5b418992212a1d75f852dc73ef75cc4bc6de5d9f36db7e"
+    },
+    {
+      "file": "frames/TC_00065_15.jpg",
+      "sha256": "d398a3421623ee86355f85d42e395ea1fec13d5129c7bbd18acf31c9f57db78b"
+    },
+    {
+      "file": "frames/TC_00065_60.jpg",
+      "sha256": "f131f358afd1d51858b8d97c8a5188248b4e69b71e40184d0d2a47b92351aa50"
+    },
+    {
+      "file": "frames/TC_00066_120.jpg",
+      "sha256": "f0a478c9a037c245a938d46e1855edabf526cc0e8ebbbb11fde5cbb2945930c6"
+    },
+    {
+      "file": "frames/TC_00066_15.jpg",
+      "sha256": "b49655119cd8b42eb53afb74f5a0ccfa4a28dc994742b3f18d061e6c6c8374ba"
+    },
+    {
+      "file": "frames/TC_00066_60.jpg",
+      "sha256": "a183ad37de20335992722b7e4d99789f81ed90b5bb265b4c94b4c90884684209"
+    },
+    {
+      "file": "frames/TC_00067_120.jpg",
+      "sha256": "5a4d0b23bfb28dd6dffd1869180b997543d770969dbcd3e180b2fa7e0365c101"
+    },
+    {
+      "file": "frames/TC_00067_15.jpg",
+      "sha256": "06cf285165e6082245928bf601a23b4bbe525434bd658b1196ef329ad6dacaf6"
+    },
+    {
+      "file": "frames/TC_00067_60.jpg",
+      "sha256": "5122d7553fc16c63296fe7426ff3c5cc7f2020a12a726a115c4a2fdb54864f12"
+    }
+  ],
+  "note": "Full MOV extraction requires owner-provided files or authenticated Drive fetch; not performed in CI."
+}

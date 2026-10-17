@@ -1,0 +1,18 @@
+{
+  "schema": "LDI10D_PHASE3E4_ROAD_MATCHING_COMPARISON_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "frozenOsmSha256": "34058acfba7f667414a174dc5489db02a49d8e24ba824ed4b63ec353c4769332",
+  "baseline": {
+    "ASSOCIATED": 264,
+    "AMBIGUOUS": 512,
+    "UNKNOWN": 360
+  },
+  "viterbi": {
+    "ASSOCIATED": 300,
+    "AMBIGUOUS": 357,
+    "UNKNOWN": 479
+  },
+  "accuracyVsIphoneRoadId": "NOT_ASSESSABLE",
+  "improvementProven": "NO",
+  "note": "More ASSOCIATED buckets do not prove better matching without independent road-ID labels."
+}

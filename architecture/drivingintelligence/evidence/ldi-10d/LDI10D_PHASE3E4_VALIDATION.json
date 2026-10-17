@@ -1,0 +1,9 @@
+{
+  "schema": "LDI10D_PHASE3E4_VALIDATION_V1",
+  "headSha": "c16b06a8c5e604293ada00ba472536dcd2a8ea1b",
+  "inputIntegrity": "PASS",
+  "frozenEvidenceMutated": false,
+  "l3BaselineDrift": "NONE",
+  "qcMutations": "NONE",
+  "productionMutations": "NONE"
+}
