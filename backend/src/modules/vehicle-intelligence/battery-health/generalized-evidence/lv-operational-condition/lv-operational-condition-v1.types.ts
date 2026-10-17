@@ -31,7 +31,9 @@ export type LvOperationalConditionReasonCodeV1 =
   | 'STARTABILITY_WAKE_WITHOUT_VALIDATED_SIGNATURE'
   | 'STARTABILITY_MISSING_PRE_START_REFERENCE'
   | 'STARTABILITY_MISSING_LOAD_SIGNATURE'
-  | 'STARTABILITY_VALIDATED_SIGNATURE';
+  | 'STARTABILITY_GE_SEQUENCE_NOT_CRANK_PROOF'
+  | 'STARTABILITY_MISSING_CRANK_LOAD_EVIDENCE'
+  | 'STARTABILITY_CRANK_EVIDENCE_VALIDATED';
 
 export type LvOperationalDataQualityStatusV1 = 'ADEQUATE' | 'DEGRADED' | 'INSUFFICIENT';
 
@@ -65,6 +67,18 @@ export type LvOperationalConditionObservationV1 = {
   engineRunning: boolean | null;
 };
 
+export type LvOperationalCrankEvidenceV1 = {
+  source: 'BATTERY_FEATURES';
+  crankTripId: string | null;
+  crankAtIso: string | null;
+  vPreCrankV: number | null;
+  vMinCrankV: number | null;
+  crankDropV: number | null;
+  vRecovery5sV: number | null;
+  vRecovery30sV: number | null;
+  crankObservationCount: number;
+};
+
 export type LvOperationalConditionSessionFeatureV1 = {
   restSessionId: string;
   robustRestSlopeMvPerHour: number | null;
@@ -89,6 +103,7 @@ export type LvOperationalConditionInputV1 = {
   latestEligibleRestObservation: LvOperationalConditionObservationV1 | null;
   wakeVoltageObservations: LvOperationalConditionObservationV1[];
   sessionFeatures: LvOperationalConditionSessionFeatureV1[];
+  crankEvidence: LvOperationalCrankEvidenceV1 | null;
 };
 
 export type LvOperationalRestingChargeBandV1 = {
@@ -110,6 +125,9 @@ export type LvOperationalConditionAssessmentV1 = {
   assessmentConfidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
   chemistry: LvOperationalConditionChemistryAuthorityV1;
   startabilityStatus: LvOperationalConditionStatusV1;
+  startabilityCrankDropBand: BatteryHealthStatus | 'UNKNOWN';
+  crankEvidence: LvOperationalCrankEvidenceV1 | null;
+  latestEligibleRestAgeHours: number | null;
   actualStateOfHealth: 'UNKNOWN';
   evidenceObservationIds: string[];
   dataFreshnessObservedAt: string | null;

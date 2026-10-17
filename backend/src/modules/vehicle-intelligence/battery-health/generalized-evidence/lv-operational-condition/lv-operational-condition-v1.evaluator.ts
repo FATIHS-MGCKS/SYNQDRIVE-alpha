@@ -8,11 +8,11 @@ import {
   LV_OPERATIONAL_MIN_REST_AGE_HOURS,
 } from './lv-operational-condition-v1.constants';
 import {
-  evaluateStartabilityV1,
   isEligibleRestObservationForConditionV1,
   medianRestVoltageMv,
   selectEpisodeRepresentativesForOperationalRisk,
 } from './lv-operational-condition-observation.policy';
+import { evaluateStartabilityV1 } from './lv-operational-condition-startability.policy';
 import type {
   LvOperationalConditionAssessmentV1,
   LvOperationalConditionInputV1,
@@ -126,6 +126,7 @@ export function evaluateLvOperationalConditionV1(
     'No measured SOH %, CCA, capacity or remaining lifetime from voltage alone.',
     'Resting voltage bands reuse battery-status.ts chemistry thresholds; not a calibrated SoC % estimator.',
     'sourceConfidence on VehicleBatterySpec does not prove physical battery verification.',
+    'Startability requires battery_features crank/load voltage evidence; GE REST_WAKE sequences alone are insufficient (P1.1).',
   ];
 
   const chemistryType = input.chemistry.normalizedType;
@@ -157,10 +158,10 @@ export function evaluateLvOperationalConditionV1(
     limitations.push('Longitudinal C3 slopes flagged CONTEXT_LIMITED are excluded from risk escalation.');
   }
 
-  const startability = evaluateStartabilityV1([
-    ...input.eligibleRestObservations,
-    ...input.wakeVoltageObservations,
-  ]);
+  const startability = evaluateStartabilityV1({
+    observations: [...input.eligibleRestObservations, ...input.wakeVoltageObservations],
+    crankEvidence: input.crankEvidence,
+  });
   reasonCodes.push(...startability.reasonCodes);
 
   const episodeRepresentatives = selectEpisodeRepresentativesForOperationalRisk(eligible);
@@ -246,6 +247,9 @@ export function evaluateLvOperationalConditionV1(
     assessmentConfidence,
     chemistry: input.chemistry,
     startabilityStatus: startability.status,
+    startabilityCrankDropBand: startability.crankDropBand,
+    crankEvidence: input.crankEvidence,
+    latestEligibleRestAgeHours: input.latestEligibleRestObservation?.actualRestAgeHours ?? null,
     actualStateOfHealth: 'UNKNOWN',
     evidenceObservationIds: evidenceIds,
     dataFreshnessObservedAt: freshness,

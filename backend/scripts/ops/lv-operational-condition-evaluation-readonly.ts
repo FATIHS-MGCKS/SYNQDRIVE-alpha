@@ -28,6 +28,13 @@ import { evaluateLvOperationalConditionV1 } from '../../src/modules/vehicle-inte
       }
     }
   }
+  // Read-only harness: satisfy app.config JWT gate without enabling HTTP auth.
+  if (!process.env.JWT_SECRET?.trim()) {
+    process.env.JWT_SECRET = 'lv-operational-condition-readonly-harness';
+  }
+  if (!process.env.NODE_ENV?.trim()) {
+    process.env.NODE_ENV = 'development';
+  }
 }
 
 function parseArgs(prefix: string): string[] {

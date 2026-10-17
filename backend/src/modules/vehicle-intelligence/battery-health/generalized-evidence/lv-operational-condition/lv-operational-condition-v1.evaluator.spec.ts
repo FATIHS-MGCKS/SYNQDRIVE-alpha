@@ -29,6 +29,7 @@ function baseInput(
     latestEligibleRestObservation: null,
     wakeVoltageObservations: [],
     sessionFeatures: [],
+    crankEvidence: null,
     ...overrides,
   };
 }

@@ -1,11 +1,11 @@
 import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
 import {
   dedupeConditionObservationsBySourceMeasurementId,
-  evaluateStartabilityV1,
   observationProviderEventTimeMs,
   selectEpisodeRepresentativesForOperationalRisk,
   selectLatestEligibleRestObservation,
 } from './lv-operational-condition-observation.policy';
+import { evaluateStartabilityV1 } from './lv-operational-condition-startability.policy';
 import type { LvOperationalConditionObservationV1 } from './lv-operational-condition-v1.types';
 
 function obs(
@@ -88,44 +88,51 @@ describe('lv-operational-condition observation policy', () => {
   });
 
   it('never treats REST_WAKE alone as validated startability', () => {
-    const result = evaluateStartabilityV1([
-      obs({
-        observationId: 'wake',
-        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
-        restSessionId: 'sess-1',
-        actualRestAgeHours: 0.1,
-      }),
-    ]);
+    const result = evaluateStartabilityV1({
+      observations: [
+        obs({
+          observationId: 'wake',
+          evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+          restSessionId: 'sess-1',
+          actualRestAgeHours: 0.1,
+        }),
+      ],
+      crankEvidence: null,
+    });
     expect(result.status).toBe('UNKNOWN');
-    expect(result.reasonCodes).toContain('STARTABILITY_WAKE_WITHOUT_VALIDATED_SIGNATURE');
+    expect(result.reasonCodes).toContain('STARTABILITY_GE_SEQUENCE_NOT_CRANK_PROOF');
   });
 
-  it('accepts startability only with pre-start rest and load signature in same session', () => {
-    const result = evaluateStartabilityV1([
-      obs({
-        observationId: 'pre',
-        restSessionId: 'sess-1',
-        evidenceClass: BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
-        providerObservationAt: '2026-10-01T08:00:00.000Z',
-        actualRestAgeHours: 4,
-      }),
-      obs({
-        observationId: 'wake',
-        restSessionId: 'sess-1',
-        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
-        providerObservationAt: '2026-10-01T08:05:00.000Z',
-        actualRestAgeHours: 4,
-      }),
-      obs({
-        observationId: 'load',
-        restSessionId: 'sess-1',
-        evidenceClass: BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION,
-        providerObservationAt: '2026-10-01T08:06:00.000Z',
-        operationalContext: 'DRIVING',
-        engineRunning: true,
-      }),
-    ]);
-    expect(result.status).toBe('GREEN');
-    expect(result.reasonCodes).toContain('STARTABILITY_VALIDATED_SIGNATURE');
+  it('does not accept GE REST+WAKE+ENGINE_OFF sequence without crank evidence (P1.1)', () => {
+    const result = evaluateStartabilityV1({
+      observations: [
+        obs({
+          observationId: 'pre',
+          restSessionId: 'sess-1',
+          evidenceClass: BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
+          providerObservationAt: '2026-10-01T08:00:00.000Z',
+          actualRestAgeHours: 4,
+        }),
+        obs({
+          observationId: 'wake',
+          restSessionId: 'sess-1',
+          evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+          providerObservationAt: '2026-10-01T08:05:00.000Z',
+          actualRestAgeHours: 4,
+        }),
+        obs({
+          observationId: 'load',
+          restSessionId: 'sess-1',
+          evidenceClass: BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION,
+          providerObservationAt: '2026-10-01T08:06:00.000Z',
+          operationalContext: 'DRIVING',
+          engineRunning: true,
+        }),
+      ],
+      crankEvidence: null,
+    });
+    expect(result.status).toBe('UNKNOWN');
+    expect(result.reasonCodes).toContain('STARTABILITY_GE_SEQUENCE_NOT_CRANK_PROOF');
+    expect(result.reasonCodes).not.toContain('STARTABILITY_CRANK_EVIDENCE_VALIDATED');
   });
 });

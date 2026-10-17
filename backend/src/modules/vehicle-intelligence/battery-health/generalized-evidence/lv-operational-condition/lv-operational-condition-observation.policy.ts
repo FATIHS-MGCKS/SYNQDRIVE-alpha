@@ -1,29 +1,9 @@
-import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
-import type {
-  LvOperationalConditionObservationV1,
-  LvOperationalConditionReasonCodeV1,
-} from './lv-operational-condition-v1.types';
+import type { LvOperationalConditionObservationV1 } from './lv-operational-condition-v1.types';
 import { LV_OPERATIONAL_MIN_REST_AGE_HOURS } from './lv-operational-condition-v1.constants';
 import {
   dedupeKeyForObservationRow,
   dedupeObservationsBySourceMeasurementId,
 } from '../lv-measured-intelligence/lv-measured-intelligence-dedup.policy';
-
-const REST_WAKE = BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE;
-const REST_STABLE = BatteryGeneralizedEvidenceClass.REST_STABLE_VOLTAGE;
-const PARKED_REST = BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE;
-const ENGINE_OFF = BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION;
-const DRIVING_NON_CHARGING = BatteryGeneralizedEvidenceClass.DRIVING_NON_CHARGING;
-
-const PRE_START_REST_CLASSES: ReadonlySet<BatteryGeneralizedEvidenceClass> = new Set([
-  PARKED_REST,
-  REST_STABLE,
-]);
-
-const LOAD_SIGNATURE_CLASSES: ReadonlySet<BatteryGeneralizedEvidenceClass> = new Set([
-  ENGINE_OFF,
-  DRIVING_NON_CHARGING,
-]);
 
 /** Provider event time when present; otherwise ingestion/voltage timestamp. */
 export function observationProviderEventTimeMs(obs: LvOperationalConditionObservationV1): number {
@@ -132,83 +112,4 @@ export function medianRestVoltageMv(observations: LvOperationalConditionObservat
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 1) return sorted[mid];
   return (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function findPreStartRestReference(
-  observations: LvOperationalConditionObservationV1[],
-  wake: LvOperationalConditionObservationV1,
-): LvOperationalConditionObservationV1 | null {
-  const wakeSession = wake.restSessionId?.trim();
-  const wakeAt = observationProviderEventTimeMs(wake);
-  const candidates = observations.filter((obs) => {
-    if (!PRE_START_REST_CLASSES.has(obs.evidenceClass as BatteryGeneralizedEvidenceClass)) {
-      return false;
-    }
-    if (!isEligibleRestObservationForConditionV1(obs)) return false;
-    if (!hasVerifiedRestStabilization(obs)) return false;
-    if (wakeSession && obs.restSessionId?.trim() === wakeSession) {
-      return observationProviderEventTimeMs(obs) <= wakeAt;
-    }
-    return false;
-  });
-  if (candidates.length === 0) return null;
-  return candidates.sort((a, b) => observationProviderEventTimeMs(b) - observationProviderEventTimeMs(a))[0];
-}
-
-function findLoadVoltageSignatureAfterWake(
-  observations: LvOperationalConditionObservationV1[],
-  wake: LvOperationalConditionObservationV1,
-): LvOperationalConditionObservationV1 | null {
-  const wakeSession = wake.restSessionId?.trim();
-  const wakeAt = observationProviderEventTimeMs(wake);
-  const maxDeltaMs = 15 * 60 * 1000;
-  const candidates = observations.filter((obs) => {
-    if (!LOAD_SIGNATURE_CLASSES.has(obs.evidenceClass as BatteryGeneralizedEvidenceClass)) {
-      return false;
-    }
-    const at = observationProviderEventTimeMs(obs);
-    if (at < wakeAt || at > wakeAt + maxDeltaMs) return false;
-    if (wakeSession && obs.restSessionId?.trim() === wakeSession) return true;
-    return false;
-  });
-  if (candidates.length === 0) return null;
-  return candidates.sort((a, b) => observationProviderEventTimeMs(a) - observationProviderEventTimeMs(b))[0];
-}
-
-export function hasValidatedStartabilitySignatureV1(
-  observations: LvOperationalConditionObservationV1[],
-  wake: LvOperationalConditionObservationV1,
-): boolean {
-  if (wake.evidenceClass !== REST_WAKE) return false;
-  const preStart = findPreStartRestReference(observations, wake);
-  const loadSignature = findLoadVoltageSignatureAfterWake(observations, wake);
-  return preStart != null && loadSignature != null;
-}
-
-export function evaluateStartabilityV1(
-  allObservations: LvOperationalConditionObservationV1[],
-): {
-  status: 'GREEN' | 'UNKNOWN';
-  reasonCodes: LvOperationalConditionReasonCodeV1[];
-} {
-  const wakes = allObservations.filter((o) => o.evidenceClass === REST_WAKE);
-  if (wakes.length === 0) {
-    return { status: 'UNKNOWN', reasonCodes: ['STARTABILITY_NOT_OBSERVED'] };
-  }
-
-  const validated = wakes.some((wake) => hasValidatedStartabilitySignatureV1(allObservations, wake));
-  if (validated) {
-    return { status: 'GREEN', reasonCodes: ['STARTABILITY_VALIDATED_SIGNATURE'] };
-  }
-
-  const reasonCodes: LvOperationalConditionReasonCodeV1[] = [
-    'STARTABILITY_WAKE_WITHOUT_VALIDATED_SIGNATURE',
-  ];
-  if (wakes.some((w) => findPreStartRestReference(allObservations, w) == null)) {
-    reasonCodes.push('STARTABILITY_MISSING_PRE_START_REFERENCE');
-  }
-  if (wakes.some((w) => findLoadVoltageSignatureAfterWake(allObservations, w) == null)) {
-    reasonCodes.push('STARTABILITY_MISSING_LOAD_SIGNATURE');
-  }
-  return { status: 'UNKNOWN', reasonCodes };
 }

@@ -56,9 +56,24 @@ export async function buildLvOperationalConditionInputV1(
     sessionLimit: input.sessionLimit,
   });
 
-  const specs = await deps.prisma.vehicleBatterySpec.findMany({
-    where: { vehicleId: input.vehicleId },
-  });
+  const [specs, batteryFeatures] = await Promise.all([
+    deps.prisma.vehicleBatterySpec.findMany({
+      where: { vehicleId: input.vehicleId },
+    }),
+    deps.prisma.batteryFeatures.findUnique({
+      where: { vehicleId: input.vehicleId },
+      select: {
+        crankTripId: true,
+        crankAt: true,
+        vPreCrank: true,
+        vMinCrank: true,
+        crankDrop: true,
+        vRecovery5s: true,
+        vRecovery30s: true,
+        crankObservationCount: true,
+      },
+    }),
+  ]);
   const bestSpec = selectBestBatterySpec(specs);
   const normalizedType = normalizeBatteryType(bestSpec?.batteryType);
 
@@ -154,5 +169,18 @@ export async function buildLvOperationalConditionInputV1(
     latestEligibleRestObservation,
     wakeVoltageObservations,
     sessionFeatures,
+    crankEvidence: batteryFeatures
+      ? {
+          source: 'BATTERY_FEATURES',
+          crankTripId: batteryFeatures.crankTripId,
+          crankAtIso: batteryFeatures.crankAt?.toISOString() ?? null,
+          vPreCrankV: batteryFeatures.vPreCrank,
+          vMinCrankV: batteryFeatures.vMinCrank,
+          crankDropV: batteryFeatures.crankDrop,
+          vRecovery5sV: batteryFeatures.vRecovery5s,
+          vRecovery30sV: batteryFeatures.vRecovery30s,
+          crankObservationCount: batteryFeatures.crankObservationCount,
+        }
+      : null,
   };
 }

@@ -1,4 +1,4 @@
-export const LV_OPERATIONAL_CONDITION_MODEL_VERSION = 'LV_OPERATIONAL_CONDITION_V1_P1_2026-10-17';
+export const LV_OPERATIONAL_CONDITION_MODEL_VERSION = 'LV_OPERATIONAL_CONDITION_V1_P1_1_2026-10-17';
 
 /** Minimum rest age (hours) before a rest voltage may inform operational risk. */
 export const LV_OPERATIONAL_MIN_REST_AGE_HOURS = 1;
