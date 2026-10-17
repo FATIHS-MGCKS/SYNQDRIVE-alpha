@@ -1,0 +1,16 @@
+{
+  "note": "Historical replay pins from PR B initial extract (point-to-segment used degree numerator with meter-squared denominator). Preserved for audit — not authoritative after geometry V2.",
+  "geometryProjectionId": "S4_RESEARCH_LOCAL_PROJECTION_LEGACY_V1",
+  "algorithmBundle": {
+    "roadMatching": "S4_RESEARCH_ROAD_MATCHING_V1",
+    "baseline": "S4_RESEARCH_BASELINE_BUCKET_V1",
+    "viterbi": "S4_RESEARCH_VITERBI_FORWARD_V1"
+  },
+  "teslaFrozenFixture": "fixtures/tesla-20261016/TESLA_POSITION_GRID.json",
+  "corridorMarginM": 75,
+  "baseline": { "ASSOCIATED": 264, "AMBIGUOUS": 512, "UNKNOWN": 360 },
+  "viterbi": { "ASSOCIATED": 300, "AMBIGUOUS": 357, "UNKNOWN": 479 },
+  "promotions": 36,
+  "impossibleViterbiTransitions": 5,
+  "independentRoadIdAccuracy": "NOT_ASSESSABLE"
+}
