@@ -61,6 +61,7 @@ export const MATRIX_CASE_STATUS: Record<number, { name: string; status: MatrixCa
     const { PrismaClient: Client } = await import('@prisma/client');
     db = new Client();
     await db.$connect();
+    await ensureS4ResearchPostgresControlPlane(db);
     outbox = new DiV0S4ResearchOutboxRepository(db);
   });
 
@@ -252,7 +253,7 @@ export const MATRIX_CASE_STATUS: Record<number, { name: string; status: MatrixCa
     const fx = await seedS4ResearchCompletedPrimaryFixture(db);
     tenants.push(fx.tenant);
     const envBackup = applyResearchTestEnv(fx.tenant);
-    await driftP2PinnedSnapshotBoundaryFingerprint(db, fx.tenant, fx.snapshotHash, `DI_V0_S4_BOUNDARY_FP_V1:sha256:${'z'.repeat(64)}`);
+    await driftP2PinnedSnapshotBoundaryFingerprint(db, fx.tenant, fx.snapshotHash, P2_DRIFTED_BOUNDARY_FINGERPRINT);
     try {
       const svc = mkSvc(new DiV0S4ResearchFileRegistryOsmProvider(new Map()));
       await svc.runPass();
