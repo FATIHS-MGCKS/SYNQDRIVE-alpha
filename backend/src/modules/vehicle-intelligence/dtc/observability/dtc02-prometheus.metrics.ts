@@ -53,6 +53,28 @@ const ALLOWED_WEBHOOK_CAPABILITY = new Set([
   'UNKNOWN',
 ]);
 
+const ALLOWED_ADAPTIVE_SHADOW_PHASES = new Set(['run', 'skipped_invalid_config', 'error']);
+
+const ALLOWED_ADAPTIVE_PLAN_OUTCOMES = new Set([
+  'defer_projected',
+  'accelerate_projected',
+  'legacy_parity',
+  'excluded',
+]);
+
+const ALLOWED_ADAPTIVE_EVIDENCE_QUALITY = new Set(['high', 'medium', 'low', 'unknown']);
+
+const ALLOWED_ADAPTIVE_FALLBACK_REASONS = new Set([
+  'UNKNOWN_CAPABILITY',
+  'PROVIDER_ERROR',
+  'STALE_SOURCE',
+  'UNRELIABLE_WEBHOOK',
+  'PARTIAL_BLOCKS_COMPLETE',
+  'CONSERVATIVE',
+  'EXCLUDED_LIFECYCLE',
+  'OTHER',
+]);
+
 export type Dtc02MetricsHandles = {
   schedulerTickTotal: Counter<string>;
   fanOutVehiclesTotal: Counter<string>;
@@ -65,6 +87,10 @@ export type Dtc02MetricsHandles = {
   webhookSkipTotal: Counter<string>;
   webhookEvidenceTotal: Counter<string>;
   webhookCapabilityTotal: Counter<string>;
+  adaptiveShadowTotal: Counter<string>;
+  adaptivePlanTotal: Counter<string>;
+  adaptiveFallbackTotal: Counter<string>;
+  adaptiveProjectedReductionSeconds: Histogram<string>;
   outboxPending: Gauge<string>;
   outboxUnprocessedErrors: Gauge<string>;
   fleetFreshnessVehicles: Gauge<string>;
@@ -194,6 +220,35 @@ export function registerDtc02Metrics(registry: Registry): Dtc02MetricsHandles {
     registers: [registry],
   });
 
+  const adaptiveShadowTotal = new Counter({
+    name: 'synqdrive_dtc02_adaptive_shadow_total',
+    help: 'DTC-02 P3 adaptive scheduler shadow batch phases (projected only)',
+    labelNames: ['phase'],
+    registers: [registry],
+  });
+
+  const adaptivePlanTotal = new Counter({
+    name: 'synqdrive_dtc02_adaptive_plan_total',
+    help: 'DTC-02 P3 adaptive poll plan outcomes (projected vs legacy 3h tick)',
+    labelNames: ['outcome', 'evidence_quality'],
+    registers: [registry],
+  });
+
+  const adaptiveFallbackTotal = new Counter({
+    name: 'synqdrive_dtc02_adaptive_fallback_total',
+    help: 'DTC-02 P3 adaptive planner legacy fallback reasons (normalized)',
+    labelNames: ['reason'],
+    registers: [registry],
+  });
+
+  const adaptiveProjectedReductionSeconds = new Histogram({
+    name: 'synqdrive_dtc02_adaptive_projected_poll_reduction_seconds',
+    help: 'Projected poll spacing reduction vs legacy next check (shadow only; not observed savings)',
+    labelNames: ['kind'],
+    buckets: [0, 300, 900, 1800, 3600, 7200, 10800],
+    registers: [registry],
+  });
+
   const outboxPending = new Gauge({
     name: 'synqdrive_dtc02_outbox_pending',
     help: 'Unprocessed vehicle_dtc_snapshot_outbox rows',
@@ -231,6 +286,10 @@ export function registerDtc02Metrics(registry: Registry): Dtc02MetricsHandles {
     webhookSkipTotal,
     webhookEvidenceTotal,
     webhookCapabilityTotal,
+    adaptiveShadowTotal,
+    adaptivePlanTotal,
+    adaptiveFallbackTotal,
+    adaptiveProjectedReductionSeconds,
     outboxPending,
     outboxUnprocessedErrors,
     fleetFreshnessVehicles,
@@ -264,4 +323,56 @@ export function assertDtc02MetricLabelsForTests(handles: Dtc02MetricsHandles): v
 export function normalizeWebhookCapabilityClassification(raw: string | undefined): string {
   const value = (raw ?? '').trim().toUpperCase();
   return ALLOWED_WEBHOOK_CAPABILITY.has(value) ? value : 'UNKNOWN';
+}
+
+export function normalizeAdaptivePlanOutcome(raw: string | undefined): string {
+  const value = (raw ?? '').trim().toLowerCase();
+  return ALLOWED_ADAPTIVE_PLAN_OUTCOMES.has(value) ? value : 'legacy_parity';
+}
+
+export function normalizeAdaptiveEvidenceQuality(raw: string | undefined): string {
+  const value = (raw ?? '').trim().toLowerCase();
+  return ALLOWED_ADAPTIVE_EVIDENCE_QUALITY.has(value) ? value : 'unknown';
+}
+
+export function normalizeAdaptiveFallbackReason(decisionReason: string | undefined): string {
+  const r = (decisionReason ?? '').toUpperCase();
+  if (r.includes('EXCLUDED')) return 'EXCLUDED_LIFECYCLE';
+  if (r.includes('UNKNOWN_PROVIDER')) return 'UNKNOWN_CAPABILITY';
+  if (r.includes('PROVIDER')) return 'PROVIDER_ERROR';
+  if (r.includes('STALE') || r.includes('MISSING_SUCCESS')) return 'STALE_SOURCE';
+  if (r.includes('UNRELIABLE_WEBHOOK')) return 'UNRELIABLE_WEBHOOK';
+  if (r.includes('PARTIAL_WEBHOOK')) return 'PARTIAL_BLOCKS_COMPLETE';
+  if (r.includes('FALLBACK') || r.includes('LEGACY')) return 'CONSERVATIVE';
+  return 'OTHER';
+}
+
+export function classifyAdaptivePlanOutcome(input: {
+  excluded: boolean;
+  projectedPollReductionMs: number;
+}): string {
+  if (input.excluded) return 'excluded';
+  if (input.projectedPollReductionMs >= 5 * 60_000) return 'defer_projected';
+  if (input.projectedPollReductionMs <= -5 * 60_000) return 'accelerate_projected';
+  return 'legacy_parity';
+}
+
+/** For tests: ensure metric exposition strings do not use forbidden label names. */
+export function metricExpositionForbiddenLabelPattern(): RegExp {
+  return /\bvehicle_id\b|\btoken_id\b|\bvin\b|\btenant_id\b/i;
+}
+
+export function assertDtc02AdaptiveMetricLabelsForTests(handles: Dtc02MetricsHandles): void {
+  for (const phase of ALLOWED_ADAPTIVE_SHADOW_PHASES) {
+    handles.adaptiveShadowTotal.inc({ phase }, 0);
+  }
+  for (const outcome of ALLOWED_ADAPTIVE_PLAN_OUTCOMES) {
+    for (const evidence_quality of ALLOWED_ADAPTIVE_EVIDENCE_QUALITY) {
+      handles.adaptivePlanTotal.inc({ outcome, evidence_quality }, 0);
+    }
+  }
+  for (const reason of ALLOWED_ADAPTIVE_FALLBACK_REASONS) {
+    handles.adaptiveFallbackTotal.inc({ reason }, 0);
+  }
+  handles.adaptiveProjectedReductionSeconds.observe({ kind: 'projected' }, 0);
 }

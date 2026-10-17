@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import type { PrismaService } from '@shared/database/prisma.service';
+import type { Dtc02AdaptivePlannerResult } from '../adaptive/dtc-02-adaptive-planner.types';
 import { collectDtc02SourceTrustSnapshot, type Dtc02SourceTrustSnapshot } from './dtc02-source-trust.snapshot';
 import { classifyProviderFailure } from './dtc02-prometheus.metrics';
 import {
@@ -9,6 +10,10 @@ import {
   normalizePollPath,
   normalizeWebhookSkipReason,
   normalizeWebhookCapabilityClassification,
+  classifyAdaptivePlanOutcome,
+  normalizeAdaptiveEvidenceQuality,
+  normalizeAdaptiveFallbackReason,
+  normalizeAdaptivePlanOutcome,
   registerDtc02Metrics,
   safeMetricCall,
   type Dtc02MetricsHandles,
@@ -104,6 +109,38 @@ export class Dtc02ObservabilityService implements OnModuleInit {
   recordWebhookEvidence(evidence: 'legacy' | 'partial' | 'complete' | 'unknown'): void {
     safeMetricCall(() => {
       this.handles?.webhookEvidenceTotal.inc({ evidence });
+    });
+  }
+
+  recordAdaptiveShadowPhase(phase: 'run' | 'skipped_invalid_config' | 'error'): void {
+    safeMetricCall(() => {
+      this.handles?.adaptiveShadowTotal.inc({ phase });
+    });
+  }
+
+  recordAdaptiveShadowPlan(plan: Dtc02AdaptivePlannerResult): void {
+    safeMetricCall(() => {
+      if (!this.handles) return;
+      const outcome = normalizeAdaptivePlanOutcome(
+        classifyAdaptivePlanOutcome({
+          excluded: plan.excluded,
+          projectedPollReductionMs: plan.projectedPollReductionMs,
+        }),
+      );
+      const evidenceQuality = normalizeAdaptiveEvidenceQuality(plan.evidenceQuality);
+      this.handles.adaptivePlanTotal.inc({ outcome, evidence_quality: evidenceQuality });
+      if (plan.requiresLegacyFallback) {
+        this.handles.adaptiveFallbackTotal.inc({
+          reason: normalizeAdaptiveFallbackReason(plan.decisionReason),
+        });
+      }
+      const reductionSec = Math.max(0, -plan.projectedPollReductionMs) / 1000;
+      this.handles.adaptiveProjectedReductionSeconds.observe({ kind: 'projected' }, reductionSec);
+      const freshnessDeltaSec = (plan.proposedNextCheckAtMs - plan.legacyNextCheckAtMs) / 1000;
+      this.handles.adaptiveProjectedReductionSeconds.observe(
+        { kind: 'freshness_tradeoff' },
+        freshnessDeltaSec,
+      );
     });
   }
 
