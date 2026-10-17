@@ -1,0 +1,75 @@
+{
+  "schema": "LDI10D_PHASE3C_VALIDATION_V1",
+  "headSha": "53600304f4ae179e8b0f043ae8b3927ec74ab252",
+  "videoSession": "EXP021_V0_2_FROZEN_PRE_DEPLOY_BASELINE",
+  "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+  "historicalBaselineReproduced": true,
+  "baselineStats": {
+    "n": 748,
+    "maeKmh": 2.303091434778606,
+    "rmseKmh": 2.6208640662443883,
+    "p95AbsKmh": 4.482993843287602,
+    "maxAbsKmh": 6.0795898785332625,
+    "biasKmh": -2.0675762203714627
+  },
+  "independentHoldout": {
+    "status": "PRELIMINARY",
+    "holdoutClips": [
+      "TC_00063.MOV",
+      "TC_00066.MOV"
+    ],
+    "developmentSubsetStats": {
+      "n": 495,
+      "maeKmh": 2.0838001370391828,
+      "rmseKmh": 2.4507821812687776,
+      "p95AbsKmh": 4.619370842190804,
+      "maxAbsKmh": 6.0795898785332625,
+      "biasKmh": -1.8287631206481987
+    },
+    "holdoutSubsetStats": {
+      "n": 253,
+      "maeKmh": 2.7321396260079056,
+      "rmseKmh": 2.9251691616086832,
+      "p95AbsKmh": 4.253705488298706,
+      "maxAbsKmh": 4.773003486185303,
+      "biasKmh": -2.534819241569152
+    },
+    "note": "Holdout clips excluded from development subset; optimization not performed. Tacho is reference witness, not OBD ground truth. Full blind validation requires future drives."
+  },
+  "candidateVsTacho": {
+    "L3_BASELINE_PRODUCTION": {
+      "n": 748,
+      "maeKmh": 2.303091434778606,
+      "rmseKmh": 2.6208640662443883,
+      "p95AbsKmh": 4.482993843287602,
+      "maxAbsKmh": 6.0795898785332625,
+      "biasKmh": -2.0675762203714627
+    },
+    "L3_REPLAY_FROM_PINNED_POSITIONS": {
+      "status": "NOT_ASSESSABLE",
+      "reason": "Pinned DIMO POSITION channel coordinates not present in repo (payload sha256 only); cannot recompute candidate speeds on identical video reference seconds without new fetch."
+    },
+    "ADAPTIVE_DT_LEG_MEAN": {
+      "status": "NOT_ASSESSABLE",
+      "reason": "Pinned DIMO POSITION channel coordinates not present in repo (payload sha256 only); cannot recompute candidate speeds on identical video reference seconds without new fetch."
+    },
+    "MEDIAN_LEG_3S": {
+      "status": "NOT_ASSESSABLE",
+      "reason": "Pinned DIMO POSITION channel coordinates not present in repo (payload sha256 only); cannot recompute candidate speeds on identical video reference seconds without new fetch."
+    },
+    "CAUSAL_EMA_LEGS": {
+      "status": "NOT_ASSESSABLE",
+      "reason": "Pinned DIMO POSITION channel coordinates not present in repo (payload sha256 only); cannot recompute candidate speeds on identical video reference seconds without new fetch."
+    },
+    "MOTION_GATE_DISPLACEMENT": {
+      "status": "NOT_ASSESSABLE",
+      "reason": "Pinned DIMO POSITION channel coordinates not present in repo (payload sha256 only); cannot recompute candidate speeds on identical video reference seconds without new fetch."
+    },
+    "NONCAUSAL_OFFLINE_CENTERED_MEAN": {
+      "status": "NOT_ASSESSABLE",
+      "reason": "Pinned DIMO POSITION channel coordinates not present in repo (payload sha256 only); cannot recompute candidate speeds on identical video reference seconds without new fetch."
+    }
+  },
+  "tripIndependentVideoReference": "NOT_ASSESSABLE",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9"
+}

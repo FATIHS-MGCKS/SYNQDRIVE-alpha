@@ -1,0 +1,22 @@
+{
+  "schema": "LDI10D_PHASE3C_ERROR_ANALYSIS_V1",
+  "headSha": "53600304f4ae179e8b0f043ae8b3927ec74ab252",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "frozenCoordinateRuns": 4,
+  "frozenCoordinateBuckets": 9,
+  "positionJumpsOver50m": 0,
+  "unevenDtBuckets": 0,
+  "repeatedCoordinateWithNonzeroL3": 0,
+  "lowSpeedBelow10KmhBuckets": 21,
+  "obdL3ConflictBuckets": 11,
+  "failureModes": [
+    "FROZEN_OR_REPEATED_COORDINATES",
+    "GPS_JITTER_AND_POSITION_JUMPS",
+    "UNEVEN_TIME_GRID",
+    "TIMESTAMP_QUANTIZATION",
+    "ACCEL_DECEL_SMOOTHING_LAG",
+    "LOW_SPEED_BAND",
+    "MISSING_OR_CONFLICTING_STREAMS"
+  ],
+  "note": "Distinguish true speed changes from artifacts via abstention (no invented stillstand speeds) and witness cross-checks."
+}
