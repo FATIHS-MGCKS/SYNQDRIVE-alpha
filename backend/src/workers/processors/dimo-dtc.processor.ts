@@ -23,6 +23,9 @@ import { evaluateDtcPollEligibility } from '@modules/vehicle-intelligence/dtc/sn
 import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
 import { requireDtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
+import { Dtc02ObservabilityService } from '@modules/vehicle-intelligence/dtc/observability/dtc02-observability.service';
+import { runDtc02AdaptiveSchedulerShadowBatch } from '@modules/vehicle-intelligence/dtc/adaptive/dtc-02-adaptive-shadow.runtime';
+import { logDtc02AdaptiveSchedulerShadowConfigOnBoot } from '@modules/vehicle-intelligence/dtc/adaptive/dtc-02-adaptive-shadow.config';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -43,9 +46,11 @@ export class DimoDtcProcessor extends WorkerHost {
     @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly queue: Queue,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
     @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
+    @Optional() private readonly dtc02Observability?: Dtc02ObservabilityService,
   ) {
     super();
     logDtc01fCohortConfigOnBoot(this.logger);
+    logDtc02AdaptiveSchedulerShadowConfigOnBoot(this.logger);
   }
 
   async process(job: Job): Promise<void> {
@@ -63,8 +68,12 @@ export class DimoDtcProcessor extends WorkerHost {
       return;
     }
 
-    if (!canEnqueueQueue(this.logger, 'dtc-poll-fanout')) return;
+    if (!canEnqueueQueue(this.logger, 'dtc-poll-fanout')) {
+      this.dtc02Observability?.recordSchedulerTick('skipped_backpressure');
+      return;
+    }
 
+    this.dtc02Observability?.recordSchedulerTick('success');
     this.logger.log('Starting DTC poll fan-out');
 
     const vehicles = await this.prisma.vehicle.findMany({
@@ -78,17 +87,23 @@ export class DimoDtcProcessor extends WorkerHost {
     });
 
     const pollBucket = Math.floor(Date.now() / (3 * 3600_000));
+    const evaluatedAtMs = Date.now();
     let enqueued = 0;
+    const shadowCandidateIds: string[] = [];
 
     for (const vehicle of vehicles) {
       const tokenId = vehicle.dimoVehicle?.tokenId;
-      if (!tokenId) continue;
+      if (!tokenId) {
+        this.dtc02Observability?.recordFanOutSkip('MISSING_DIMO_TOKEN');
+        continue;
+      }
 
       const admission = evaluateDtcPollJobAdmission({
         vehicleId: vehicle.id,
         registryLifecycle: vehicle.registryLifecycle,
       });
       if (!admission.enqueue) {
+        this.dtc02Observability?.recordFanOutSkip(admission.reason);
         this.logger.debug(
           `DTC fan-out skip vehicle=${vehicle.id} reason=${admission.reason}`,
         );
@@ -107,6 +122,9 @@ export class DimoDtcProcessor extends WorkerHost {
           vehicleDimoVehicleId: vehicle.dimoVehicleId,
         });
         if (!eligibility.eligible) {
+          this.dtc02Observability?.recordFanOutSkip(
+            `POLL_INELIGIBLE:${eligibility.reason}`,
+          );
           this.logger.debug(
             `DTC fan-out skip vehicle=${vehicle.id} reason=${eligibility.reason}`,
           );
@@ -124,7 +142,26 @@ export class DimoDtcProcessor extends WorkerHost {
         },
       );
       enqueued++;
+      shadowCandidateIds.push(vehicle.id);
     }
+
+    try {
+      await runDtc02AdaptiveSchedulerShadowBatch({
+        prisma: this.prisma,
+        observability: this.dtc02Observability,
+        candidateVehicleIds: shadowCandidateIds,
+        evaluatedAtMs,
+        logger: this.logger,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `DTC-02 adaptive shadow hook failed (non-fatal): ${(err as Error).message}`,
+      );
+      this.dtc02Observability?.recordAdaptiveShadowPhase('error');
+    }
+
+    this.dtc02Observability?.recordFanOutEligible(vehicles.length, enqueued);
+    void this.dtc02Observability?.refreshSourceTrustFromDb(this.prisma);
 
     this.logger.log(
       `DTC fan-out enqueued ${enqueued}/${vehicles.length} per-vehicle jobs (bucket=${pollBucket})`,
@@ -134,6 +171,7 @@ export class DimoDtcProcessor extends WorkerHost {
   private async pollVehicleDtc(vehicleId: string, tokenId: number): Promise<void> {
     const fetchObservedAt = new Date();
     const auditRef = `dtc-poll:${vehicleId}:${fetchObservedAt.getTime()}`;
+    const started = Date.now();
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -144,17 +182,20 @@ export class DimoDtcProcessor extends WorkerHost {
       registryLifecycle: vehicle?.registryLifecycle,
     });
     if (!admission.enqueue) {
+      this.dtc02Observability?.recordPollOutcome('unknown', 'skipped_admission');
       this.logger.warn(
         `DTC poll skip vehicle=${vehicleId} reason=${admission.reason} auditRef=${auditRef}`,
       );
       return;
     }
+    const path = admission.runtimePath === 'safety01a' ? 'safety01a' : 'legacy';
+    this.dtc02Observability?.recordPollAttempt(path);
     if (admission.runtimePath === 'safety01a') {
-      await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef);
+      await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef, started);
       return;
     }
 
-    await this.pollVehicleDtcLegacy(vehicleId, tokenId, fetchObservedAt);
+    await this.pollVehicleDtcLegacy(vehicleId, tokenId, fetchObservedAt, started);
   }
 
   private async pollVehicleDtc01a(
@@ -162,6 +203,7 @@ export class DimoDtcProcessor extends WorkerHost {
     tokenId: number,
     fetchObservedAt: Date,
     auditRef: string,
+    startedMs: number,
   ): Promise<void> {
     const snapshotApply = requireDtcSnapshotApplyService(
       this.dtcSnapshotApply,
@@ -176,7 +218,10 @@ export class DimoDtcProcessor extends WorkerHost {
         dimoVehicleId: true,
       },
     });
-    if (!vehicle) return;
+    if (!vehicle) {
+      this.dtc02Observability?.recordPollOutcome('safety01a', 'skipped_ineligible');
+      return;
+    }
 
     const link = await this.prisma.vehicleDataSourceLink.findFirst({
       where: { vehicleId, provider: 'DIMO', isActive: true },
@@ -196,6 +241,12 @@ export class DimoDtcProcessor extends WorkerHost {
         reason: eligibility.reason,
         auditRef,
       });
+      this.dtc02Observability?.recordPollOutcome('safety01a', 'skipped_ineligible');
+      this.dtc02Observability?.observePollDuration(
+        'safety01a',
+        'failure',
+        (Date.now() - startedMs) / 1000,
+      );
       return;
     }
 
@@ -209,6 +260,12 @@ export class DimoDtcProcessor extends WorkerHost {
           pollError: 'NO_VEHICLE_JWT',
           auditRef,
         });
+        this.dtc02Observability?.recordPollOutcome('safety01a', 'failure');
+        this.dtc02Observability?.observePollDuration(
+          'safety01a',
+          'failure',
+          (Date.now() - startedMs) / 1000,
+        );
         return;
       }
 
@@ -219,11 +276,13 @@ export class DimoDtcProcessor extends WorkerHost {
           }
         }
       `;
+      this.dtc02Observability?.recordProviderPollRequest('attempt');
       const result = await this.telemetry.queryGraphQL(jwt, query, undefined, {
         organizationId: vehicle.organizationId,
         vehicleId,
         tokenId,
       });
+      this.dtc02Observability?.recordProviderPollRequest('success');
 
       const binding = await resolveActiveDimoBindingForVehicle(
         this.prisma,
@@ -238,6 +297,12 @@ export class DimoDtcProcessor extends WorkerHost {
           pollError: 'NO_ACTIVE_DIMO_BINDING',
           auditRef,
         });
+        this.dtc02Observability?.recordPollOutcome('safety01a', 'failure');
+        this.dtc02Observability?.observePollDuration(
+          'safety01a',
+          'failure',
+          (Date.now() - startedMs) / 1000,
+        );
         return;
       }
 
@@ -259,10 +324,22 @@ export class DimoDtcProcessor extends WorkerHost {
           pollError: `${built.outcome}:${built.reason}`,
           auditRef,
         });
+        this.dtc02Observability?.recordPollOutcome('safety01a', 'rejected_snapshot');
+        this.dtc02Observability?.observePollDuration(
+          'safety01a',
+          'failure',
+          (Date.now() - startedMs) / 1000,
+        );
         return;
       }
 
-      await snapshotApply.applyBuiltProposal(built);
+      const applyResult = await snapshotApply.applyBuiltProposal(built);
+      this.dtc02Observability?.recordPollOutcome('safety01a', applyResult.decision.outcome);
+      this.dtc02Observability?.observePollDuration(
+        'safety01a',
+        'success',
+        (Date.now() - startedMs) / 1000,
+      );
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       const is403 = errorMessage.includes('403');
@@ -273,6 +350,12 @@ export class DimoDtcProcessor extends WorkerHost {
         pollError: errorMessage.slice(0, 500),
         auditRef,
       });
+      this.dtc02Observability?.recordProviderFailureAsOutcome('safety01a', errorMessage);
+      this.dtc02Observability?.observePollDuration(
+        'safety01a',
+        'failure',
+        (Date.now() - startedMs) / 1000,
+      );
       this.logger.warn(`DTC-01A poll failed vehicleId=${vehicleId} error=${errorMessage}`);
     }
   }
@@ -281,11 +364,18 @@ export class DimoDtcProcessor extends WorkerHost {
     vehicleId: string,
     tokenId: number,
     now: Date,
+    startedMs: number,
   ): Promise<void> {
     try {
       const jwt = await this.auth.getVehicleJwt(tokenId);
       if (!jwt) {
         this.logger.warn(`No Vehicle JWT for vehicleId=${vehicleId}`);
+        this.dtc02Observability?.recordPollOutcome('legacy', 'failure');
+        this.dtc02Observability?.observePollDuration(
+          'legacy',
+          'failure',
+          (Date.now() - startedMs) / 1000,
+        );
         return;
       }
 
@@ -301,11 +391,13 @@ export class DimoDtcProcessor extends WorkerHost {
           }
         }
       `;
+      this.dtc02Observability?.recordProviderPollRequest('attempt');
       const result = await this.telemetry.queryGraphQL(jwt, query, undefined, {
         organizationId: vehicle?.organizationId,
         vehicleId,
         tokenId,
       });
+      this.dtc02Observability?.recordProviderPollRequest('success');
 
       const dtcSignal = result?.data?.signalsLatest?.obdDTCList ?? null;
       const newCodes: string[] = normalizeDtcCodes(dtcSignal?.value);
@@ -347,11 +439,25 @@ export class DimoDtcProcessor extends WorkerHost {
 
       await this.emitDtcHealthNotifications(vehicleId, previousCodes, newCodeSet);
 
+      this.dtc02Observability?.recordPollOutcome('legacy', 'legacy_success');
+      this.dtc02Observability?.observePollDuration(
+        'legacy',
+        'success',
+        (Date.now() - startedMs) / 1000,
+      );
+
       this.logger.debug(
         `DTC poll success: vehicleId=${vehicleId} active=${newCodes.length}`,
       );
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+
+      this.dtc02Observability?.recordProviderFailureAsOutcome('legacy', errorMessage);
+      this.dtc02Observability?.observePollDuration(
+        'legacy',
+        'failure',
+        (Date.now() - startedMs) / 1000,
+      );
 
       this.logger.warn(`DTC poll failed: vehicleId=${vehicleId} error=${errorMessage}`);
 

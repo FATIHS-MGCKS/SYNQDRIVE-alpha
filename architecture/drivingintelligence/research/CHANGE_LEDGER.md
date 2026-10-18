@@ -2018,3 +2018,47 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Outbox `claim_token`/`claim_expires_at`; fenced acks; expired PROCESSING reclaim; discovery excludes existing outbox rows; Nest bootstrap `resolveDiV0P2AutoProjectionV2Bootstrap`; scheduler registry `di_v0_p2_auto_projection_v2`; expanded Postgres/module tests |
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
+
+### EXP-021 S4 research extension — PR C final correctness gate (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Migration `20261017203000_di_v0_s4_research_runs_idempotency_fix` (partial unique SUCCEEDED per intent + exact retry key); `acknowledgePersistedRun` verifies stored status on duplicate; neutral outbox release enables OSM-HIT follow-up; worker-thread pipeline deadline; postgres CI script + S4 workflow hook; matrix EXECUTED/NOT_EXECUTED inventory |
+| WHY | Neutral `ROAD_CONTEXT_UNAVAILABLE` must not block later `SUCCEEDED`; never report success on unique conflict alone |
+| VALIDATION | `test:di:s4-research-worker` (isolated timeout + bbox); `test:di:s4-research-worker:postgres:ci` on ephemeral PG |
+| NON_EFFECTS | No S4/L3/S1/QC/FSM mutation; flags OFF; no deploy |
+
+### EXP-021 S4 research extension — PR C hardening (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Cached OSM provider + bounded Overpass config; intent-key outbox (`outbox_id`, `research_intent_key`); run insert SQL error handling; shadow S1/QC evidence; 120s processing budget; matrix postgres spec |
+| WHY | Enable real OSM-HIT research artifacts, versioned reprocessing, and fail-closed persistence without S4 coupling |
+| NON_EFFECTS | Flags default OFF; no S4/L3/QC/FSM mutation |
+
+### EXP-021 S4 research extension — PR C async road-matching V2 worker (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `s4-research-worker/`: control plane (`DI_V0_S4_RESEARCH_*`), outbox discovery on COMPLETED PRIMARY S4 rows, run persistence, snapshot adapter, OSM corridor helpers + null default provider; migration `20261017183000_di_v0_s4_research_v1`; `DiV0S4ResearchModule` in `VehicleIntelligenceModule`; scheduler registry `di_v0_s4_research_v2` |
+| WHY | Post-shadow research isolation: road-matching V2 artifacts without coupling to S4C completion or customer surfaces |
+| VALIDATION | `test:di:s4-research-worker` unit + dormant audit; postgres matrix spec (S4 stays COMPLETED, idempotency, allowlist, parallel claim); performance budget spec (1136-bucket Tesla, 180s cap) |
+| NON_EFFECTS | No S4A–S4F decision changes; no L3/S1/QC/FSM mutation; flags default OFF; no production deploy in this PR |
+
+### EXP-021 S4 research extension — PR B geometry hardening (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Correct `pointToSegmentDistanceM` to local equirectangular meters; bump algorithm bundle to V2; legacy V1 geometry + replay pins archived; Tesla bucket diff export `LDI10D_GEOMETRY_V1_V2_BUCKET_DIFF.json` (488/1136 buckets changed labels/ways); geometry + graph-conflict unit tests |
+| FINDING | V1 pins (264/512/360 baseline, 300/357/479 Viterbi, 36 promotions) were geometry-artifact — V2 pins 483/384/269, 510/244/382, 27 promotions; **independentRoadIdAccuracy NOT_ASSESSABLE** unchanged |
+| NON_EFFECTS | No S4 runtime/L3/S1/QC/HV product changes; no deploy |
+
+### EXP-021 S4 research extension — PR B pure road-matching library (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/*` — contracts, OSM parse/topology, baseline + Viterbi matchers, pipeline, GPS bucket evidence, F4-B promotion audit helpers; frozen LDI-10D Tesla/OSM fixtures under `architecture/drivingintelligence/evidence/ldi-10d/`; `npm run test:di:s4-research`; transpile-only Tesla replay harness `backend/scripts/test/di-s4-research-tesla-replay.harness.ts` |
+| WHY | Isolate reusable deterministic road-matching/context algorithms from offline PR #2051 research for future S4 shadow evaluation without enabling live execution |
+| SOURCE | PR #2051 audit reference `6311d8c375dc5652bd64212ca4ed208175dc8148` — logic re-extracted; fixture-bound IDs/time/OSM pins remain in evidence/tests only |
+| VALIDATION | Tesla replay parity: baseline `{ASSOCIATED:264, AMBIGUOUS:512, UNKNOWN:360}`, Viterbi `{ASSOCIATED:300, AMBIGUOUS:357, UNKNOWN:479}`; F4-B promotions=36, impossible transitions ≥5, STILL_AMBIGUOUS preserved |
+| NON_EFFECTS | No Nest/scheduler/BullMQ/Prisma/DIMO/OSM network; no S4A–S4F/L3/S1/QC/score/UI changes; no deploy; `ROAD_ID_GROUND_TRUTH=NOT_ASSESSABLE` unchanged |

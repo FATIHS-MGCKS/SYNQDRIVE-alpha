@@ -36,6 +36,82 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dtc02-p3-adaptive-shadow-2026-10-17',
+    version: '4.9.2249',
+    title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
+    summary: [
+      'Pure planner proposes next DTC check from lifecycle, source-head/VLS freshness, webhook evidence quality, active DTCs, and provider error state.',
+      'Shadow batch runs on existing 3h fan-out only — no adaptive enqueue, no scheduler cadence change, no DIMO calls, no episode/head mutations.',
+      'Projected metrics synqdrive_dtc02_adaptive_*; per-vehicle allowlist; P4 required before real adaptive scheduling.',
+    ],
+    reason:
+      'Measure projected poll reduction and freshness tradeoffs safely before any adaptive cutover.',
+    previousBehavior:
+      'Only legacy 3h fan-out with DTC-02 observability; no adaptive plan comparison.',
+    details:
+      'dtc/adaptive/dtc-02-adaptive-*.ts, dimo-dtc.processor shadow hook, architecture/dtc-error-codes/evidence/DTC02_P3_ADAPTIVE_SHADOW.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T19:10:00.000Z',
+  },
+  {
+    id: 'dtc02-p2-webhook-capability-2026-10-17',
+    version: '4.9.2248',
+    title: 'DTC-02 P2 — webhook capability classification & poll/webhook parity (default OFF)',
+    summary: [
+      'Gated P2 webhook ingress (DTC_02_* env + allowlist, requires DTC-01A) with CONFIRMED_COMPLETE/PARTIAL/STALE/DUPLICATE/UNKNOWN classification from provider evidence.',
+      'Reuses DtcSnapshotApplyService and source-head watermarks; no false clears on partial/missing/unknown; synqdrive_dtc02_webhook_capability_total metric.',
+      'Legacy and 01A paths unchanged when DTC_02 flags OFF; no deploy or production activation in this PR.',
+    ],
+    reason:
+      'Harden webhook vs poll convergence and observability before any webhook-first pilot without changing legacy behavior under default flags.',
+    previousBehavior:
+      '01A webhook path built proposals directly without explicit capability classification or P2 metrics.',
+    details:
+      'dtc-02.config.ts, dtc-02-webhook-capability.ts, dimo-webhook.controller handleDtcEvent01aP2, architecture/dtc-error-codes/evidence/DTC02_P2_WEBHOOK_CAPABILITY.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T17:00:00.000Z',
+  },
+  {
+    id: 'exp021-s4-research-pr-b-pure-library-2026-10-17',
+    version: '4.9.2248',
+    title: 'EXP021 S4 research PR B — pure road-matching library (no runtime wiring)',
+    summary: [
+      'driving-intelligence/s4-research: deterministic OSM parse, separate baseline + forward Viterbi hypotheses, F4-B promotion audit helpers.',
+      'Typed GPS/QC/L3 + versioned OSM inputs; ASSOCIATED is algorithmic only; independentRoadIdAccuracy NOT_ASSESSABLE.',
+      'Frozen LDI-10D Tesla/OSM fixtures for replay; npm run test:di:s4-research; no Nest/scheduler/DB/DIMO/OSM network changes.',
+    ],
+    reason:
+      'Prepare reusable offline road-matching for future S4 shadow evaluation without activating live S4A–S4F execution.',
+    previousBehavior:
+      'Road matching existed only on offline research branch (PR #2051 ops libs), not as an isolated pure library on main.',
+    details:
+      's4-research/*, di-s4-research-tesla-replay.harness.ts, architecture/drivingintelligence/evidence/ldi-10d fixtures',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T16:20:00.000Z',
+  },
+  {
+    id: 'vsi-p5h1-profile-revision-history-2026-10-17',
+    version: '4.9.2247',
+    title: 'VSI P5-H1 — immutable signal profile revision history (capture gate default OFF)',
+    summary: [
+      'Additive table vehicle_signal_capability_profile_revisions with atomic same-transaction capture on profile revision commits.',
+      'Feature gate VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED default false; no production backfill; P5B.1 offline replay behavior unchanged.',
+      'Read-only as-of resolver contract for future decision-time evidence; disposable PostgreSQL certification.',
+    ],
+    reason:
+      'Close P5B.1 R2 gap: mutable current profiles cannot prove decision-time APDS correlation without durable immutable revisions.',
+    previousBehavior:
+      'Only vehicle_signal_capability_profiles current row; no persisted revision history for shadow replay.',
+    details:
+      'vsi-profile-revision-history.*, vsi-profile-revision-as-of.resolver.ts, migration 20261017120000_vsi_profile_revision_history',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T07:30:00.000Z',
+  },
+  {
     id: 'vsi-p5-apds-readonly-correlation-2026-10-16',
     version: '4.9.2246',
     title: 'VSI P5 — read-only APDS capability/demand correlation (P5B gate default OFF)',

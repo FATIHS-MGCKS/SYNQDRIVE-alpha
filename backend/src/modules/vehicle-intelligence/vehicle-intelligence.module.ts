@@ -47,6 +47,7 @@ import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
 import { DtcSnapshotApplyService } from './dtc/snapshot/dtc-snapshot-apply.service';
+import { Dtc02ObservabilityModule } from './dtc/observability/dtc02-observability.module';
 import { DtcKnowledgeService } from './dtc-knowledge/dtc-knowledge.service';
 import { DtcKnowledgeEnrichmentService } from './dtc-knowledge/dtc-knowledge-enrichment.service';
 import { DtcAiResearchService } from './dtc-knowledge/dtc-ai-research.service';
@@ -112,6 +113,7 @@ import {
   HvRechargeSessionReconcileProducerService,
   HvRechargeSessionReconcileService,
 } from './battery-health/hv-charge-session';
+import { HvChargingCounterEvidenceModule } from './battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.module';
 import {
   HvCapacityCrossSessionAssessmentService,
   HvCapacityM2SampleProviderService,
@@ -298,6 +300,7 @@ import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-
 import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds-p5.service';
 import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
+import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/di-v0-s4-research.module';
 
 @Module({
   imports: [
@@ -305,6 +308,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     VsiReadonlySignalComposerModule,
     DiV0S4RuntimeModule,
     DiV0TripSpeedQualityModule,
+    DiV0S4ResearchModule,
     forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
@@ -315,9 +319,11 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     forwardRef(() => RentalDrivingAnalysisModule),
     forwardRef(() => NotificationsModule),
     DataAuthorizationsModule,
+    Dtc02ObservabilityModule,
     VehicleFindingsModule,
     TasksModule,
     BatteryV2JobsProducerModule,
+    HvChargingCounterEvidenceModule,
     EventTripAssociationModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },
@@ -648,6 +654,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     EnrichmentJobsService,
     DtcService,
     DtcSnapshotApplyService,
+    Dtc02ObservabilityModule,
     FindingLifecycleService,
     FindingBridgeService,
     DtcKnowledgeService,

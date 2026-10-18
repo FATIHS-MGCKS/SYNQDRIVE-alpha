@@ -1,0 +1,20 @@
+{
+  "schema": "LDI10D_TESLA_FIXTURE_PROVENANCE_V1",
+  "recoveryObservedAtUtc": "2026-10-17T06:03:43.853Z",
+  "recoveryMode": "READ_ONLY_PRODUCTION_DB",
+  "productionMutations": "NONE",
+  "providerCalls": "NONE",
+  "referenceManifest": "architecture/drivingintelligence/evidence/exp021-ev-ground-truth/pre-deploy/PRE_DEPLOY_BASELINE_MANIFEST.json",
+  "expectedPositionPayloadSha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2",
+  "recoveredPositionPayloadSha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2",
+  "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+  "dimoTokenId": 186946,
+  "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+  "privacyReview": {
+    "credentialsInFixture": false,
+    "accessTokensInFixture": false,
+    "unrelatedPersonalData": false,
+    "thirdPartyLocationTracesOutsideTrip": false,
+    "note": "Fixture contains only this owner-authorized research trip GPS grid (Germany route ~2026-10-16). Repository visibility follows org git access; coordinates are sensitive mobility data."
+  }
+}

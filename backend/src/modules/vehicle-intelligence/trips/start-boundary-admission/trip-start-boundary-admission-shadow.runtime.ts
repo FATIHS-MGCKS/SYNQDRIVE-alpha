@@ -7,7 +7,7 @@ import type { TripStartIntegrationModality } from './trip-start-boundary-admissi
 import type { StartBoundaryEvidenceContext } from './trip-start-boundary-legacy-resolution';
 import type { TripCoreDataPoint } from '../../../dimo/dimo-segments.service';
 import {
-  isTripStartBoundaryAdmissionShadowEnabled,
+  isTripStartBoundaryAdmissionShadowEnabledForVehicle,
   isTripStartBoundaryAdmissionShadowRouteFetchEnabled,
 } from './trip-start-boundary-admission-shadow.config';
 import { normalizeSegmentDetectionMechanism } from './trip-start-boundary-admission.types';
@@ -90,7 +90,7 @@ export async function runStartBoundaryAdmissionShadow(
   params: RunStartBoundaryAdmissionShadowParams,
 ): Promise<ShadowStartBoundaryAdmissionSummary | null> {
   const env = params.env ?? process.env;
-  if (!isTripStartBoundaryAdmissionShadowEnabled(env)) {
+  if (!isTripStartBoundaryAdmissionShadowEnabledForVehicle(params.vehicleId, env)) {
     return null;
   }
 
@@ -103,13 +103,19 @@ export async function runStartBoundaryAdmissionShadow(
       routePoints.length === 0 &&
       isTripStartBoundaryAdmissionShadowRouteFetchEnabled(env)
     ) {
-      routePoints = await params.segments.fetchRouteEnrichment(
-        params.dimoTokenId,
-        params.evidence.boundaryWindowFrom,
-        params.confirmedAt,
-        params.providerContext,
-      );
-      additionalShadowRouteFetchPerformed = true;
+      params.tripMetrics?.tripStartBoundaryAdmissionShadowRouteFetchAttempts?.inc();
+      try {
+        routePoints = await params.segments.fetchRouteEnrichment(
+          params.dimoTokenId,
+          params.evidence.boundaryWindowFrom,
+          params.confirmedAt,
+          params.providerContext,
+        );
+        additionalShadowRouteFetchPerformed = true;
+      } catch (fetchErr) {
+        params.tripMetrics?.tripStartBoundaryAdmissionShadowRouteFetchErrors?.inc();
+        throw fetchErr;
+      }
     }
 
     const comparison = compareStartBoundaryAdmissionShadow({
@@ -168,7 +174,7 @@ export async function runStartBoundaryAdmissionShadow(
 
     return summary;
   } catch (err) {
-    params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors.inc({
+    params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors?.inc({
       phase: 'start_confirmation',
     });
     params.logger?.warn(

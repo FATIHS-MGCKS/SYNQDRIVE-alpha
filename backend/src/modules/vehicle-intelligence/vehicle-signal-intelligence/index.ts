@@ -81,3 +81,15 @@ export {
 export { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 export { evaluateVsiSignalProfile } from './vsi-profile-evaluator';
 export { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
+export { isVsiP5h1ProfileRevisionHistoryCaptureEnabled } from './vsi-p5h1-profile-revision-history.config';
+export { selectVsiProfileRevisionAsOf } from './vsi-profile-revision-as-of.resolver';
+export { VsiProfileRevisionAsOfAuthority } from './vsi-profile-revision-as-of.types';
+export {
+  VsiProfileRevisionAsOfQueryCompleteness,
+  type VsiProfileRevisionAsOfResolutionV1,
+} from './vsi-profile-revision-as-of.types';
+export {
+  assessVsiProfileRevisionSignalTemporalState,
+  VsiProfileRevisionSignalTemporalState,
+} from './vsi-profile-revision-signal-temporal';
+export { VsiProfileRevisionHistoryRepository } from './vsi-profile-revision-history.repository';

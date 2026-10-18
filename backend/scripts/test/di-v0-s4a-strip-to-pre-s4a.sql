@@ -4,6 +4,10 @@
 
 BEGIN;
 
+DROP TABLE IF EXISTS "di_v0_s4_research_runs_v1";
+DROP TABLE IF EXISTS "di_v0_s4_research_outbox_v1";
+DROP TABLE IF EXISTS "di_v0_s4_research_osm_cache_v1";
+
 DROP TABLE "di_v0_s4_work_items";
 DROP TABLE "di_v0_s4_trip_primary_boundary_seq";
 DROP TABLE "di_v0_s4_evidence_snapshots";
@@ -26,7 +30,10 @@ DROP FUNCTION di_v0_s4_trip_primary_boundary_seq_scope_guard();
 DELETE FROM "_prisma_migrations" WHERE migration_name IN (
   '20260927200000_di_v0_s4a_dormant_foundation',
   '20260928120000_di_v0_s4b_boundary_occurrence_and_execution_v2',
-  '20261013120000_di_v0_s4_near_realtime_eligible_ck'
+  '20261013120000_di_v0_s4_near_realtime_eligible_ck',
+  '20261017183000_di_v0_s4_research_v1',
+  '20261017194500_di_v0_s4_research_outbox_intent_v2',
+  '20261017203000_di_v0_s4_research_runs_idempotency_fix'
 );
 
 COMMIT;

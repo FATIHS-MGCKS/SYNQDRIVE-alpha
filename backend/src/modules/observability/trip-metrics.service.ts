@@ -347,6 +347,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripStartBoundaryAdmissionShadowComparisons: Counter<string>;
   readonly tripStartBoundaryAdmissionShadowErrors: Counter<string>;
   readonly tripStartBoundaryAdmissionShadowDeltaSeconds: Histogram<string>;
+  readonly tripStartBoundaryAdmissionShadowRouteFetchAttempts: Counter<string>;
+  readonly tripStartBoundaryAdmissionShadowRouteFetchErrors: Counter<string>;
   readonly tripEndCandidateLatency: Histogram<string>;
   readonly tripEndRecognitionLatency: Histogram<string>;
   readonly tripEndBoundaryAdjustment: Histogram<string>;
@@ -1043,6 +1045,19 @@ export class TripMetricsService implements OnModuleInit {
         'Absolute seconds between legacy canonical start and P1A shadow-proposed start at confirmation.',
       buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
       labelNames: ['integration_modality', 'decision', 'legacy_source'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowRouteFetchAttempts = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_route_fetch_attempts_total',
+      help:
+        'P1B shadow-only additional route enrichment provider call attempts (before provider I/O).',
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowRouteFetchErrors = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_route_fetch_errors_total',
+      help: 'P1B shadow-only additional route enrichment provider call failures.',
       registers: [this.registry],
     });
 
