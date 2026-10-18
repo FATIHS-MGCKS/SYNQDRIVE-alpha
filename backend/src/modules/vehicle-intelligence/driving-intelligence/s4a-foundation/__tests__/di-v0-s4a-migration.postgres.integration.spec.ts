@@ -33,6 +33,14 @@ const S4A_FOUNDATION_TABLES = [
   'di_v0_s4_work_items',
 ];
 const S4_FULL_TABLES = [...S4A_FOUNDATION_TABLES, 'di_v0_s4_trip_primary_boundary_seq'].sort();
+/** EXP-021 S4 research worker tables (separate migrations; not part of S4A dormant foundation). */
+const S4_RESEARCH_TABLES = [
+  'di_v0_s4_research_osm_cache_v1',
+  'di_v0_s4_research_outbox_v1',
+  'di_v0_s4_research_runs_v1',
+].sort();
+/** Full `di_v0_s4_%` set after `prisma migrate deploy` on ephemeral CI (S4A/S4B follow-ups + research). */
+const S4_PRISMA_DEPLOY_FULL_TABLES = [...S4_FULL_TABLES, ...S4_RESEARCH_TABLES].sort();
 const S2_TABLES = ['di_v0_shadow_intervals', 'di_v0_shadow_runs'];
 
 interface ProcessResult {
@@ -426,7 +434,10 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     expect(first.code).toBe(0);
     expect(first.output).toContain(MIGRATION_NAME);
     expect(first.output).toContain(S4B_MIGRATION_NAME);
-    expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_FULL_TABLES);
+    const deployed = await s4TablesPresent(viaPrisma.prisma);
+    expect(deployed.filter((t) => S4_FULL_TABLES.includes(t)).sort()).toEqual(S4_FULL_TABLES);
+    expect(deployed.filter((t) => S4_RESEARCH_TABLES.includes(t)).sort()).toEqual(S4_RESEARCH_TABLES);
+    expect(deployed).toEqual(S4_PRISMA_DEPLOY_FULL_TABLES);
     const second = await viaPrisma.applyWithPrisma();
     expect(second.code).toBe(0);
     expect(second.output).toContain('No pending migrations to apply');
