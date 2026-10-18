@@ -1,7 +1,15 @@
 /**
  * Operator CLI flow — service + activity audit parity (disposable PostgreSQL).
  */
-import { ActivityAction, ActivityEntity, BusinessType, PhysicalDeviceModelCode, PrismaClient } from '@prisma/client';
+import {
+  ActivityAction,
+  ActivityEntity,
+  BusinessType,
+  PhysicalDeviceModelCode,
+  PrismaClient,
+  UserPlatformRole,
+  UserStatus,
+} from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -10,7 +18,6 @@ import {
   recordPdiP1b7ManualIntakeActivityAudit,
   PDI_P1B7_OPERATOR_CLI_ROUTE,
 } from './pdi-p1b7-manual-intake-operator.lib';
-import { createOperatorTestMasterAdmin } from './pdi-p1b7-operator-cli.fixture';
 
 const LIVE =
   process.env.PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION === '1' && !!process.env.DATABASE_URL;
@@ -46,7 +53,16 @@ const LIVE =
     const orgId = await createOrg();
     const serial = `R1-OP-${randomUUID().slice(0, 8)}`;
     const idempotencyKey = `pdi-op-${randomUUID()}`;
-    const actorUserId = randomUUID();
+    const actor = await prisma.user.create({
+      data: {
+        email: `pdi-flow-${randomUUID().slice(0, 8)}@example.com`,
+        name: 'PDI flow test master admin',
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        status: UserStatus.ACTIVE,
+        passwordHash: 'not-used',
+      },
+      select: { id: true },
+    });
 
     const first = await service.manualIntake(
       {
@@ -56,11 +72,11 @@ const LIVE =
         ownerOrganizationId: orgId,
         idempotencyKey,
       },
-      actorUserId,
+      actor.id,
     );
 
     const activityLogId = await recordPdiP1b7ManualIntakeActivityAudit(audit, {
-      actorUserId,
+      actorUserId: actor.id,
       operatorAttestation: 'integration test operator attestation',
       result: first,
       executeMode: true,
@@ -75,7 +91,7 @@ const LIVE =
         ownerOrganizationId: orgId,
         idempotencyKey,
       },
-      actorUserId,
+      actor.id,
     );
     expect(replay.id).toBe(first.id);
 
@@ -96,7 +112,8 @@ const LIVE =
     expect(activity?.entity).toBe(ActivityEntity.ADMIN_OPERATION);
     expect(activity?.route).toBe(PDI_P1B7_OPERATOR_CLI_ROUTE);
 
-    await prisma.activityLog.deleteMany({ where: { userId: actorUserId } });
+    await prisma.activityLog.deleteMany({ where: { userId: actor.id } });
+    await prisma.user.delete({ where: { id: actor.id } });
     await prisma.physicalDeviceAssignment.deleteMany({ where: { physicalDeviceId: first.id } });
     await prisma.physicalDeviceInventoryAuditEvent.deleteMany({
       where: { physicalDeviceId: first.id },

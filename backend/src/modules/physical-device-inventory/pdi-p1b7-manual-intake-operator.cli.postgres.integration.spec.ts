@@ -11,7 +11,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
+import { join, resolve } from 'node:path';
 import { MASTER_ADMIN_SMOKE_EMAIL } from '@modules/master-admin-smoke-lifecycle/master-admin-smoke-lifecycle.constants';
 import {
   PDI_P1B7_AUTHORIZED_INTAKE,
@@ -31,8 +31,8 @@ const execFileAsync = promisify(execFile);
 const LIVE =
   process.env.PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION === '1' && !!process.env.DATABASE_URL;
 
-const BACKEND_ROOT = path.resolve(__dirname, '../../..');
-const CLI_SCRIPT = path.join(BACKEND_ROOT, 'scripts/ops/pdi-p1b7-manual-intake-operator.ts');
+const BACKEND_ROOT = resolve(__dirname, '../../..');
+const CLI_SCRIPT = join(BACKEND_ROOT, 'scripts/ops/pdi-p1b7-manual-intake-operator.ts');
 
 async function runCli(
   args: string[],
@@ -67,10 +67,12 @@ async function runCli(
 (LIVE ? describe : describe.skip)('PDI P1B.7 operator CLI (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   let masterAdmin: { id: string; email: string };
+  const createdUserIds: string[] = [];
 
   beforeAll(async () => {
     await seedPdiP1b7OperatorPreflightIdentity(prisma);
     masterAdmin = await createOperatorTestMasterAdmin(prisma);
+    createdUserIds.push(masterAdmin.id);
   });
 
   afterAll(async () => {
@@ -92,7 +94,9 @@ async function runCli(
       await prisma.physicalDeviceAssignment.deleteMany({ where: { physicalDeviceId: device.id } });
       await prisma.physicalDevice.delete({ where: { id: device.id } });
     }
-    await prisma.user.deleteMany({ where: { email: { contains: '@acceptance.internal.synqdrive.eu' } } });
+    if (createdUserIds.length > 0) {
+      await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    }
     await prisma.$disconnect();
   });
 
@@ -124,6 +128,7 @@ async function runCli(
         status: UserStatus.ACTIVE,
       },
     });
+    createdUserIds.push(user.id);
     const result = await runCli([
       `--actor-email=${user.email}`,
       '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
@@ -135,6 +140,7 @@ async function runCli(
 
   it('rejects inactive master admin actor', async () => {
     const inactive = await createInactiveSmokeStyleMasterAdmin(prisma);
+    createdUserIds.push(inactive.id);
     const result = await runCli([
       `--actor-email=${inactive.email}`,
       '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
@@ -144,14 +150,21 @@ async function runCli(
   });
 
   it('rejects master-admin smoke acceptance email', async () => {
-    const smoke = await prisma.user.create({
-      data: {
+    const smoke = await prisma.user.upsert({
+      where: { email: MASTER_ADMIN_SMOKE_EMAIL },
+      create: {
         email: MASTER_ADMIN_SMOKE_EMAIL,
         platformRole: UserPlatformRole.MASTER_ADMIN,
         status: UserStatus.ACTIVE,
         passwordHash: 'x',
       },
+      update: {
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        status: UserStatus.ACTIVE,
+      },
+      select: { id: true },
     });
+    createdUserIds.push(smoke.id);
     const result = await runCli([
       `--actor-email=${MASTER_ADMIN_SMOKE_EMAIL}`,
       '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
