@@ -36,25 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'exp021-s4-research-pr-c-worker-2026-10-17',
-    version: '4.9.2250',
-    title: 'EXP021 S4 research PR C — async road-matching V2 after shadow completion',
-    summary: [
-      's4-research-worker: P2-style outbox + scheduler on COMPLETED PRIMARY S4 rows; reuses pinned S4D evidence snapshot (no new DIMO positions).',
-      'Road matching V2 only; neutral ROAD_CONTEXT_UNAVAILABLE when OSM missing; research failures never mutate S4 work items.',
-      'Flags DI_V0_S4_RESEARCH_* default OFF; migration di_v0_s4_research_*; npm run test:di:s4-research-worker.',
-    ],
-    reason:
-      'Isolate post-shadow road-matching research from S4C completion and customer surfaces while keeping PR B pure library mergeable separately.',
-    previousBehavior:
-      'PR B provided offline road-matching only; no async research persistence or post-completion hook.',
-    details:
-      's4-research-worker/*, prisma migration 20261017183000_di_v0_s4_research_v1, EXP021_S4_RESEARCH_PR_C_WORKER.md',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-10-17T20:30:00.000Z',
-  },
-  {
     id: 'dtc02-p3-adaptive-shadow-2026-10-17',
     version: '4.9.2249',
     title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
