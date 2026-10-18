@@ -2,7 +2,7 @@
 # Regression gate: production database identity + destructive prisma fence (ephemeral CI only).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 OPS_LIB="${ROOT}/scripts/ops/lib/production-database-identity-guard.lib.sh"
