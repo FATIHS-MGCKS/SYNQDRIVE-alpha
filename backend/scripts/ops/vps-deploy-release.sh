@@ -73,6 +73,28 @@ RELEASE_DIR="/opt/synqdrive/releases/${RELEASE_ID}"
 BACKUP_DIR="/opt/synqdrive/shared/backups"
 TS="$(date -u +%Y%m%d%H%M%S)"
 
+vps_run_production_db_preflight() {
+  local backup_file="${1:-}"
+  local ops_dir="${2:-$DEPLOY_EXECUTOR_OPS_DIR}"
+  if [[ -f "${ops_dir}/vps-production-database-deploy-preflight.sh" ]]; then
+    export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
+    if [[ -n "$backup_file" ]]; then
+      bash "${ops_dir}/vps-production-database-deploy-preflight.sh" "$backup_file"
+    else
+      bash "${ops_dir}/vps-production-database-deploy-preflight.sh"
+    fi
+    return 0
+  fi
+  if [[ ! -f /opt/synqdrive/shared/backend.env ]]; then
+    return 0
+  fi
+  echo "!! ABORT: production VPS deploy requires database guard preflight (executor missing ${ops_dir}/vps-production-database-deploy-preflight.sh)" >&2
+  exit 41
+}
+
+echo "==> Pre-deploy production database identity preflight (live schema)"
+vps_run_production_db_preflight "" "$DEPLOY_EXECUTOR_OPS_DIR"
+
 echo "==> Pre-deploy DB backup"
 mkdir -p "$BACKUP_DIR"
 
@@ -85,20 +107,26 @@ if [[ "$DISK_USE_PCT" -ge 85 ]]; then
   echo "!! WARN: root filesystem ${DISK_USE_PCT}% full"
 fi
 
-BACKUP_FILE="${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
-sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_FILE}"
-if [[ ! -s "${BACKUP_FILE}" ]]; then
-  echo "!! ABORT: pre-deploy backup missing or empty (${BACKUP_FILE})" >&2
+PRE_DEPLOY_BACKUP="${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+sudo -u postgres pg_dump synqdrive | gzip > "${PRE_DEPLOY_BACKUP}"
+if [[ ! -s "${PRE_DEPLOY_BACKUP}" ]]; then
+  echo "!! ABORT: pre-deploy backup missing or empty (${PRE_DEPLOY_BACKUP})" >&2
   exit 1
 fi
-if ! gzip -t "${BACKUP_FILE}"; then
-  echo "!! ABORT: pre-deploy backup failed gzip integrity check (${BACKUP_FILE})" >&2
+if ! gzip -t "${PRE_DEPLOY_BACKUP}"; then
+  echo "!! ABORT: pre-deploy backup failed gzip integrity check (${PRE_DEPLOY_BACKUP})" >&2
   exit 1
 fi
-echo "Pre-deploy backup OK: ${BACKUP_FILE} ($(stat -c%s "${BACKUP_FILE}") bytes)"
+echo "Pre-deploy backup OK: ${PRE_DEPLOY_BACKUP} ($(stat -c%s "${PRE_DEPLOY_BACKUP}") bytes)"
+# shellcheck source=lib/production-database-identity-guard.lib.sh
+source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/production-database-identity-guard.lib.sh"
+pdb_guard_write_backup_capture_sidecar "${PRE_DEPLOY_BACKUP}" synqdrive >/dev/null
 if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh ]]; then
   bash /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh "$(date +%s)" || true
 fi
+
+echo "==> Pre-deploy backup content gate"
+vps_run_production_db_preflight "${PRE_DEPLOY_BACKUP}" "$DEPLOY_EXECUTOR_OPS_DIR"
 
 echo "==> Clone release ${RELEASE_ID}"
 vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
@@ -154,7 +182,20 @@ echo "==> Backend install/build/migrate"
 cd "$RELEASE_DIR/backend"
 npm ci
 npx prisma generate
+export SYNQDRIVE_MIGRATION_AUTHORITY=1
+export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
+if [[ -z "${DATABASE_URL:-}" && -f /opt/synqdrive/shared/backend.env ]]; then
+  DATABASE_URL="$(grep -m1 '^DATABASE_URL=' /opt/synqdrive/shared/backend.env | cut -d= -f2- | tr -d '"')"
+  export DATABASE_URL
+fi
+vps_run_production_db_preflight "${PRE_DEPLOY_BACKUP}" "$RELEASE_OPS_DIR"
+STAMP_PATH="${PDB_GUARD_AUTHORITY_STAMP_PATH:-/opt/synqdrive/shared/state/migration-authority.stamp}"
+export SYNQDRIVE_MIGRATION_PREFLIGHT_NONCE="$(pdb_guard_read_migration_preflight_nonce "$STAMP_PATH")"
+export SYNQDRIVE_STAMP_OID_LIVE="$(
+  sudo -u postgres psql -d synqdrive -tAc "SELECT oid::text FROM pg_database WHERE datname='synqdrive'" | tr -d '[:space:]'
+)"
 npm run prisma:migrate:deploy
+pdb_guard_consume_migration_authority_stamp "$DATABASE_URL"
 sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
