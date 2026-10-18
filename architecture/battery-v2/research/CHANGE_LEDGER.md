@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-18 — HV R22 P1 Nest DI boot hotfix (HvChargingCounterEvidenceModule ↔ Dimo cycle)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `HvChargingCounterEvidenceModule` used direct `DimoModule` import while `DimoModule` ↔ `VehicleIntelligenceModule` cycle already exists via `forwardRef` |
+| **OBSERVATION** | Main `f30be79f` Nest production boot check failed: `HvChargingCounterEvidenceModule imports[0] is undefined` |
+| **CHANGE** | `forwardRef(() => DimoModule)` in `hv-charging-counter-evidence.module.ts`; `hv-charging-counter-evidence.nest-di.spec.ts`; CI boot script path registration |
+| **WHY** | Smallest cycle-safe fix aligned with `VehicleOnboardingModule`, `BatteryV2JobsModule`, `MisuseCasesModule` |
+| **VALIDATION** | Nest DI spec; `synqdrive-nest-boot-check-ci.sh` |
+| **NON_EFFECTS** | No HV capture policy, DIMO GraphQL query, S4/DTC/Trip FSM, or feature-flag changes |
+| **EVIDENCE** | [HV_R22_P1_NEST_BOOT_HOTFIX.md](../evidence/HV_R22_P1_NEST_BOOT_HOTFIX.md) |
+
+---
+
 ## 2026-10-17 — G5C-N13-P10 live product corrections (slope quality + historical browse)
 
 | Field | Value |
