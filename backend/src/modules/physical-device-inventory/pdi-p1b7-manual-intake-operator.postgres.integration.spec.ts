@@ -117,8 +117,6 @@ const LIVE =
     expect(activity?.entity).toBe(ActivityEntity.ADMIN_OPERATION);
     expect(activity?.route).toBe(PDI_P1B7_OPERATOR_CLI_ROUTE);
 
-    await prisma.activityLog.deleteMany({ where: { userId: actor.id } });
-    await prisma.user.delete({ where: { id: actor.id } });
     await prisma.physicalDeviceAssignment.deleteMany({ where: { physicalDeviceId: first.id } });
     await prisma.physicalDeviceInventoryAuditEvent.deleteMany({
       where: { physicalDeviceId: first.id },

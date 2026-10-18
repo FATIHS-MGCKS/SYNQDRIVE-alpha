@@ -21,21 +21,10 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../src/app.module';
-import { AuditService } from '../../src/modules/activity-log/audit.service';
-import { PrismaService } from '../../src/shared/database/prisma.service';
-import { PhysicalDeviceInventoryService } from '../../src/modules/physical-device-inventory/physical-device-inventory.service';
 import {
-  assertPdiP1b7ExecuteGates,
-  buildPdiP1b7ManualIntakeDto,
-  PDI_P1B7_AUTHORIZED_INTAKE,
-  recordPdiP1b7ManualIntakeActivityAudit,
-  resolveAuthorizedMasterAdminActor,
-  runPdiP1b7Preflight,
-  toSafeOperatorResultSummary,
-  validatePdiP1b7ManualIntakeDto,
-} from '../../src/modules/physical-device-inventory/pdi-p1b7-manual-intake-operator.lib';
+  createPdiP1b7OperatorApplicationContext,
+  runPdiP1b7ManualIntakeOperator,
+} from '../../src/modules/physical-device-inventory/pdi-p1b7-manual-intake-operator.runner';
 
 function loadEnvFile(): void {
   const envPath = path.resolve(__dirname, '..', '..', '.env');
@@ -59,89 +48,26 @@ async function main(): Promise<void> {
   const actorEmail = parseArg('--actor-email');
   const operatorAttestation = parseArg('--operator-attestation');
 
-  assertPdiP1b7ExecuteGates({
-    execute,
-    confirmFlag: confirm,
-    operatorAttestation,
-  });
-
-  const appModule = await AppModule.forRootAsync();
-  const app = await NestFactory.createApplicationContext(appModule, {
-    logger: ['error', 'warn', 'log'],
-  });
+  const app = await createPdiP1b7OperatorApplicationContext();
 
   try {
-    const prisma = app.get(PrismaService);
-    const inventory = app.get(PhysicalDeviceInventoryService);
-    const audit = app.get(AuditService);
-
-    const actor = await resolveAuthorizedMasterAdminActor(prisma, {
+    const outcome = await runPdiP1b7ManualIntakeOperator(app, {
+      execute,
+      confirmFlag: confirm,
       actorUserId,
       actorEmail,
+      operatorAttestation,
     });
 
-    const preflight = await runPdiP1b7Preflight(prisma);
-    const dto = buildPdiP1b7ManualIntakeDto();
-    await validatePdiP1b7ManualIntakeDto(dto);
-
-    const report = {
-      mode: execute ? 'execute' : 'dry-run',
-      authorizedScope: PDI_P1B7_AUTHORIZED_INTAKE,
-      actor: { id: actor.id, email: actor.email, platformRole: actor.platformRole },
-      preflight,
-      plannedDto: {
-        modelCode: dto.modelCode,
-        serialNumber: dto.serialNumber,
-        warehouseLocation: dto.warehouseLocation,
-        ownerOrganizationId: dto.ownerOrganizationId,
-        idempotencyKey: dto.idempotencyKey,
-        intakeNotesLength: dto.intakeNotes?.length ?? 0,
-        imei: null,
-      },
-    };
-
-    if (!execute) {
-      console.log(JSON.stringify(report, null, 2));
-      if (!preflight.ok) {
-        console.error('Dry-run preflight blocking reasons:', preflight.blockingReasons.join(', '));
-        process.exitCode = 2;
-      }
+    if (!outcome.ok) {
+      console.error(outcome.stderr);
+      process.exitCode = outcome.exitCode;
       return;
     }
 
-    if (!preflight.ok) {
-      throw new Error(`Preflight failed: ${preflight.blockingReasons.join(', ')}`);
-    }
-
-    const result = await inventory.manualIntake(dto, actor.id);
-    const activityLogId = await recordPdiP1b7ManualIntakeActivityAudit(audit, {
-      actorUserId: actor.id,
-      operatorAttestation: operatorAttestation!,
-      result,
-      executeMode: true,
-    });
-
-    console.log(
-      JSON.stringify(
-        {
-          ...report,
-          result: toSafeOperatorResultSummary(result),
-          activityAudit: {
-            recorded: activityLogId != null,
-            activityLogId,
-            note:
-              activityLogId == null
-                ? 'Intake committed; Activity audit record failed (same fire-and-forget contract as HTTP controller — verify activity_logs manually)'
-                : undefined,
-          },
-        },
-        null,
-        2,
-      ),
-    );
-
-    if (activityLogId == null) {
-      process.exitCode = 3;
+    console.log(outcome.stdout);
+    if (outcome.exitCode !== 0) {
+      process.exitCode = outcome.exitCode;
     }
   } finally {
     await app.close();

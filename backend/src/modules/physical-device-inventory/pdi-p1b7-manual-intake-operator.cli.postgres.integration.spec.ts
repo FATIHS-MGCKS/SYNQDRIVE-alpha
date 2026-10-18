@@ -1,8 +1,7 @@
 /**
- * PDI P1B.7 operator CLI — disposable PostgreSQL (subprocess + Nest context paths).
+ * PDI P1B.7 operator CLI — disposable PostgreSQL (Nest application context + shared runner).
  */
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import type { INestApplicationContext } from '@nestjs/common';
 import {
   BusinessType,
   PhysicalDeviceModelCode,
@@ -11,12 +10,15 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { join, resolve } from 'node:path';
 import { MASTER_ADMIN_SMOKE_EMAIL } from '@modules/master-admin-smoke-lifecycle/master-admin-smoke-lifecycle.constants';
 import {
   PDI_P1B7_AUTHORIZED_INTAKE,
   recordPdiP1b7ManualIntakeActivityAudit,
 } from './pdi-p1b7-manual-intake-operator.lib';
+import {
+  createPdiP1b7OperatorApplicationContext,
+  runPdiP1b7ManualIntakeOperator,
+} from './pdi-p1b7-manual-intake-operator.runner';
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
@@ -26,56 +28,28 @@ import {
   seedPdiP1b7OperatorPreflightIdentity,
 } from './pdi-p1b7-operator-cli.fixture';
 
-const execFileAsync = promisify(execFile);
-
 const LIVE =
   process.env.PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION === '1' && !!process.env.DATABASE_URL;
 
-const BACKEND_ROOT = resolve(__dirname, '../../..');
-const CLI_SCRIPT = join(BACKEND_ROOT, 'scripts/ops/pdi-p1b7-manual-intake-operator.ts');
-
-async function runCli(
-  args: string[],
-  env: Record<string, string | undefined> = {},
-): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const baseEnv = {
-    ...process.env,
-    ...env,
-    PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED: 'true',
-  };
-  try {
-    const { stdout, stderr } = await execFileAsync(
-      'npx',
-      ['ts-node', '-r', 'tsconfig-paths/register', CLI_SCRIPT, ...args],
-      {
-        cwd: BACKEND_ROOT,
-        env: baseEnv as NodeJS.ProcessEnv,
-        maxBuffer: 4 * 1024 * 1024,
-      },
-    );
-    return { exitCode: 0, stdout, stderr };
-  } catch (error: unknown) {
-    const err = error as { code?: number; stdout?: string; stderr?: string };
-    return {
-      exitCode: typeof err.code === 'number' ? err.code : 1,
-      stdout: err.stdout ?? '',
-      stderr: err.stderr ?? '',
-    };
-  }
-}
+const ATTESTATION = 'Owner authorized PDI P1B.7 Gate B test';
 
 (LIVE ? describe : describe.skip)('PDI P1B.7 operator CLI (PostgreSQL)', () => {
   const prisma = new PrismaClient();
+  let app: INestApplicationContext;
   let masterAdmin: { id: string; email: string };
   const createdUserIds: string[] = [];
+  const envSnapshot = { ...process.env };
 
   beforeAll(async () => {
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED = 'true';
     await seedPdiP1b7OperatorPreflightIdentity(prisma);
     masterAdmin = await createOperatorTestMasterAdmin(prisma);
     createdUserIds.push(masterAdmin.id);
-  });
+    app = await createPdiP1b7OperatorApplicationContext({ prisma });
+  }, 60_000);
 
   afterAll(async () => {
+    await app?.close();
     await prisma.physicalDeviceAssignment.deleteMany({
       where: { idempotencyKey: PDI_P1B7_AUTHORIZED_INTAKE.idempotencyKey },
     });
@@ -97,27 +71,65 @@ async function runCli(
     if (createdUserIds.length > 0) {
       await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     }
+    for (const key of Object.keys(process.env)) {
+      if (!(key in envSnapshot)) {
+        delete process.env[key];
+      }
+    }
+    Object.assign(process.env, envSnapshot);
     await prisma.$disconnect();
   });
 
+  async function runOperator(
+    input: Parameters<typeof runPdiP1b7ManualIntakeOperator>[1],
+    env: Record<string, string | undefined> = {},
+  ) {
+    const prev: Record<string, string | undefined> = {};
+    for (const [key, value] of Object.entries(env)) {
+      prev[key] = process.env[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    const outcome = await runPdiP1b7ManualIntakeOperator(app, input);
+    for (const [key, value] of Object.entries(prev)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    return outcome;
+  }
+
   it('rejects execute when operator flag is OFF', async () => {
-    const result = await runCli(
-      [
-        '--execute',
-        '--confirm-p1b7-manual-intake',
-        `--actor-email=${masterAdmin.email}`,
-        '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-      ],
+    const outcome = await runOperator(
+      {
+        execute: true,
+        confirmFlag: true,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      },
       { PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED: 'false' },
     );
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr + result.stdout).toMatch(/PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED/i);
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stderr).toMatch(/PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED/i);
+    }
   });
 
   it('rejects missing master admin actor', async () => {
-    const result = await runCli(['--operator-attestation=Owner authorized PDI P1B.7 Gate B test']);
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/actor/i);
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stderr).toMatch(/actor/i);
+    }
   });
 
   it('rejects non-master-admin actor', async () => {
@@ -135,26 +147,32 @@ async function runCli(
         NOW()
       )
     `;
-    const user = { id: userId, email: userEmail };
-    createdUserIds.push(user.id);
-    const result = await runCli([
-      `--actor-email=${user.email}`,
-      '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-    ]);
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/MASTER_ADMIN/i);
-    await prisma.user.delete({ where: { id: user.id } });
+    createdUserIds.push(userId);
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      actorEmail: userEmail,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stderr).toMatch(/MASTER_ADMIN/i);
+    }
   });
 
   it('rejects inactive master admin actor', async () => {
     const inactive = await createInactiveSmokeStyleMasterAdmin(prisma);
     createdUserIds.push(inactive.id);
-    const result = await runCli([
-      `--actor-email=${inactive.email}`,
-      '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-    ]);
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/not ACTIVE/i);
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      actorEmail: inactive.email,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stderr).toMatch(/not ACTIVE/i);
+    }
   });
 
   it('rejects master-admin smoke acceptance email', async () => {
@@ -179,13 +197,16 @@ async function runCli(
       select: { id: true },
     });
     createdUserIds.push(smoke.id);
-    const result = await runCli([
-      `--actor-email=${MASTER_ADMIN_SMOKE_EMAIL}`,
-      '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-    ]);
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/smoke acceptance account/i);
-    await prisma.user.delete({ where: { id: smoke.id } });
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      actorEmail: MASTER_ADMIN_SMOKE_EMAIL,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stderr).toMatch(/smoke acceptance account/i);
+    }
   });
 
   it('dry-run succeeds without inventory mutation', async () => {
@@ -197,12 +218,17 @@ async function runCli(
         },
       },
     });
-    const result = await runCli([
-      `--actor-email=${masterAdmin.email}`,
-      '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-    ]);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(/"mode": "dry-run"/);
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      actorEmail: masterAdmin.email,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) {
+      expect(outcome.stdout).toMatch(/"mode": "dry-run"/);
+      expect(outcome.exitCode).toBe(0);
+    }
     const after = await prisma.physicalDevice.count({
       where: {
         serialNumber: {
@@ -215,31 +241,38 @@ async function runCli(
   });
 
   it('rejects execute without confirmation flag', async () => {
-    const result = await runCli(
-      [
-        '--execute',
-        `--actor-email=${masterAdmin.email}`,
-        '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-      ],
+    const outcome = await runOperator(
+      {
+        execute: true,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      },
       { PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED: 'true' },
     );
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/confirm-p1b7-manual-intake/i);
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.stderr).toMatch(/confirm-p1b7-manual-intake/i);
+    }
   });
 
   it('dry-run fails when DIMO serial mismatches authorized scope', async () => {
-    // Temporarily break identity by updating token 192922 serial in raw json
     await prisma.$executeRaw`
       UPDATE dimo_vehicles
       SET raw_json = jsonb_set(raw_json, '{aftermarketDevice,serial}', '"WRONG-SERIAL"')
       WHERE token_id = ${PDI_P1B7_AUTHORIZED_INTAKE.dimoToken}
     `;
-    const result = await runCli([
-      `--actor-email=${masterAdmin.email}`,
-      '--operator-attestation=Owner authorized PDI P1B.7 Gate B test',
-    ]);
-    expect(result.exitCode).toBe(2);
-    expect(result.stderr).toMatch(/DIMO_SERIAL_MISMATCH|blocking reasons/i);
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      actorEmail: masterAdmin.email,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.exitCode).toBe(2);
+      expect(outcome.stderr).toMatch(/DIMO_SERIAL_MISMATCH|blocking reasons/i);
+    }
     await seedPdiP1b7OperatorPreflightIdentity(prisma);
   });
 
@@ -263,7 +296,7 @@ async function runCli(
     const recordSpy = jest.spyOn(audit, 'record').mockResolvedValue(null);
     const activityLogId = await recordPdiP1b7ManualIntakeActivityAudit(audit, {
       actorUserId: masterAdmin.id,
-      operatorAttestation: 'Owner authorized PDI P1B.7 Gate B test',
+      operatorAttestation: ATTESTATION,
       result: device,
       executeMode: true,
     });

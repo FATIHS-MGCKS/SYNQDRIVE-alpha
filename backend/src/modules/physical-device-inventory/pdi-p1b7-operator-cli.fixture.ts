@@ -14,15 +14,32 @@ export async function seedPdiP1b7OperatorPreflightIdentity(prisma: PrismaClient)
     update: {},
   });
 
-  const dimoId = randomUUID();
-  await insertDimoMirrorRaw(prisma, {
-    id: dimoId,
-    externalId: `0x${randomUUID().replace(/-/g, '')}`,
-    tokenId: PDI_P1B7_AUTHORIZED_INTAKE.dimoToken,
-    rawJson: {
-      aftermarketDevice: { id: 'R1-test', serial: PDI_P1B7_AUTHORIZED_INTAKE.serialNumber },
-    },
+  const authorizedSerialJson = JSON.stringify({
+    aftermarketDevice: { id: 'R1-test', serial: PDI_P1B7_AUTHORIZED_INTAKE.serialNumber },
   });
+  const existingDimo = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id::text AS id FROM dimo_vehicles
+    WHERE token_id = ${PDI_P1B7_AUTHORIZED_INTAKE.dimoToken}::int
+    LIMIT 1
+  `;
+  let dimoId = existingDimo[0]?.id;
+  if (dimoId) {
+    await prisma.$executeRaw`
+      UPDATE dimo_vehicles
+      SET raw_json = ${authorizedSerialJson}::jsonb, updated_at = NOW()
+      WHERE token_id = ${PDI_P1B7_AUTHORIZED_INTAKE.dimoToken}::int
+    `;
+  } else {
+    dimoId = randomUUID();
+    await insertDimoMirrorRaw(prisma, {
+      id: dimoId,
+      externalId: `0x${randomUUID().replace(/-/g, '')}`,
+      tokenId: PDI_P1B7_AUTHORIZED_INTAKE.dimoToken,
+      rawJson: {
+        aftermarketDevice: { id: 'R1-test', serial: PDI_P1B7_AUTHORIZED_INTAKE.serialNumber },
+      },
+    });
+  }
 
   const vin = `PDI${randomUUID().replace(/-/g, '').slice(0, 14)}`;
   await prisma.$executeRaw`
