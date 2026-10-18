@@ -19,7 +19,10 @@ on:
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-semantic-validate.ts'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research-worker/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/**'
       - 'backend/scripts/test/di-v0-s4a-*.sh'
+      - 'backend/scripts/test/di-v0-s4-research-worker-postgres-ci.sh'
       - 'backend/scripts/test/ci-start-postgres.sh'
       - 'backend/scripts/test/di-v0-p2-trip-speed-quality-postgres-ci.sh'
       - 'backend/prisma/migrations/20261013180000_di_v0_trip_speed_quality_projection_v1/**'
@@ -84,8 +87,14 @@ jobs:
               backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-semantic-validate.ts) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/*) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research-worker/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/*) return 0 ;;
               backend/scripts/test/di-v0-s4a-*) return 0 ;;
               backend/scripts/test/di-v0-p2-trip-speed-quality-postgres-ci.sh) return 0 ;;
+              backend/scripts/test/di-v0-s4-research-worker-postgres-ci.sh) return 0 ;;
+              backend/prisma/migrations/20261017183000_di_v0_s4_research_v1/*) return 0 ;;
+              backend/prisma/migrations/20261017194500_di_v0_s4_research_outbox_intent_v2/*) return 0 ;;
+              backend/prisma/migrations/20261017203000_di_v0_s4_research_runs_idempotency_fix/*) return 0 ;;
               backend/prisma/migrations/20261013180000_di_v0_trip_speed_quality_projection_v1/*) return 0 ;;
               backend/scripts/ops/di-v0-s4-historical-backlog-quarantine-production/*) return 0 ;;
               backend/scripts/ops/di-v0-s4-gate6-open-rekill-production/*) return 0 ;;
@@ -202,6 +211,7 @@ jobs:
           npm run test:di:s4p9b:gate6-reopen-contract
           npm run test:dimo:provider-budget
           npm run test:dimo:provider-budget:redis
+          npm run test:di:s4-research-worker
 
   s4a-postgres-tests:
     name: S4 PostgreSQL test suites (S4A–S4F)
@@ -266,6 +276,7 @@ jobs:
           npm run test:di:s4f:postgres
           npm run test:di:s4p9b:backlog-quarantine:postgres
           npm run test:di:trip-speed-quality:postgres:ci
+          npm run test:di:s4-research-worker:postgres:ci
 
   s4a-postgres-integration:
     name: S4A PostgreSQL integration
