@@ -9,7 +9,7 @@ CONTAINER_NAME="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_CONTAINER:-phase_a_tls_postg
 PG_PORT="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PORT:-5433}"
 PG_USER="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_USER:-synqdrive}"
 PG_PASSWORD="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PASSWORD:-synqdrive}"
-PG_DB="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_DB:-synqdrive}"
+PG_DB="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_DB:-synqdrive_ci_ephemeral_tls}"
 # Same tag as workflow services; ECR Public avoids Docker Hub unauthenticated rate limits on CI runners.
 PG_IMAGE="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PG_IMAGE:-public.ecr.aws/docker/library/postgres:16-alpine}"
 

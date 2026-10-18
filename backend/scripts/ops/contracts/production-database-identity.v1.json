@@ -17,7 +17,7 @@
     "^rfrf_",
     "^guard_test_",
     "^test_",
-    "^synqdrive_ci_ephemeral$"
+    "^synqdrive_ci_ephemeral"
   ],
   "reservedProductionNames": ["synqdrive"],
   "requiredPublicTables": [
