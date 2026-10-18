@@ -12,6 +12,16 @@ PRISMA_GUARD="${ROOT}/scripts/ops/lib/prisma-cli-guard.mjs"
 log() { printf '[production-database-guard-gate] %s\n' "$*"; }
 fail() { echo "!! FAIL: $*" >&2; exit 1; }
 
+expect_fail() {
+  set +e
+  "$@"
+  local rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]]; then
+    fail "expected failure: $*"
+  fi
+}
+
 export SYNQDRIVE_GUARD_TEST_MODE=1
 # shellcheck source=../ops/lib/production-database-identity-guard.lib.sh
 source "$OPS_LIB"
@@ -37,24 +47,18 @@ createdb_if_needed() {
 
 log "1) legacy stub without ledger rejected"
 createdb_if_needed "guard_stub_${EPHEMERAL_DB}"
-if pdb_guard_assert_live_schema_contract "guard_stub_${EPHEMERAL_DB}" 2>/dev/null; then
-  fail "expected stub without ledger to fail"
-fi
+expect_fail pdb_guard_assert_live_schema_contract "guard_stub_${EPHEMERAL_DB}"
 
 log "2) migration vs runtime DSN mismatch rejected"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
 export SYNQDRIVE_MIGRATION_DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/other_db?schema=public"
-if pdb_guard_assert_parsed_urls_equivalent "$DATABASE_URL" "$SYNQDRIVE_MIGRATION_DATABASE_URL" "runtime" "migration" 2>/dev/null; then
-  fail "expected DSN mismatch to fail"
-fi
+expect_fail pdb_guard_assert_parsed_urls_equivalent "$DATABASE_URL" "$SYNQDRIVE_MIGRATION_DATABASE_URL" "runtime" "migration"
 unset SYNQDRIVE_MIGRATION_DATABASE_URL
 
 log "3) empty backup rejected"
 EMPTY="$(mktemp /tmp/pdb-empty-backup.XXXXXX.sql.gz)"
 printf '' | gzip -c > "$EMPTY"
-if pdb_backup_gate_assert_dump_file "$EMPTY" 2>/dev/null; then
-  fail "expected empty backup to fail"
-fi
+expect_fail pdb_backup_gate_assert_dump_file "$EMPTY"
 
 log "4) additive migrate deploy on ephemeral DB"
 createdb_if_needed "$EPHEMERAL_DB"
@@ -66,9 +70,7 @@ PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resi
 log "5) destructive migrate reset blocked (reserved name)"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/synqdrive?schema=public"
 export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
-if node "$PRISMA_GUARD" migrate reset --force 2>/dev/null; then
-  fail "expected migrate reset blocked"
-fi
+expect_fail node "$PRISMA_GUARD" migrate reset --force
 
 log "6) simulated app role cannot DROP SCHEMA"
 psql_admin -d postgres <<SQL
@@ -81,18 +83,14 @@ END\$\$;
 REVOKE CREATE ON SCHEMA public FROM guard_test_app;
 GRANT CONNECT ON DATABASE postgres TO guard_test_app;
 SQL
-if psql -h 127.0.0.1 -p "$PG_PORT" -U guard_test_app -d postgres -c 'DROP SCHEMA public CASCADE;' 2>/dev/null; then
-  fail "expected guard_test_app DROP SCHEMA to fail"
-fi
+expect_fail psql -h 127.0.0.1 -p "$PG_PORT" -U guard_test_app -d postgres -c 'DROP SCHEMA public CASCADE;'
 
 log "7) migrate resolve blocked under deploy authority on simulated VPS"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/synqdrive?schema=public"
 export SYNQDRIVE_MIGRATION_AUTHORITY=1
 touch /tmp/synqdrive-vps-marker-test
 # prisma guard checks /opt/synqdrive/shared/backend.env — skip full VPS path; bash guard:
-if pdb_guard_assert_migration_resolve_authority 2>/dev/null; then
-  fail "migrate resolve should require recovery authorization"
-fi
+expect_fail pdb_guard_assert_migration_resolve_authority
 export SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED=1
 unset SYNQDRIVE_MIGRATION_AUTHORITY
 pdb_guard_assert_migration_resolve_authority
