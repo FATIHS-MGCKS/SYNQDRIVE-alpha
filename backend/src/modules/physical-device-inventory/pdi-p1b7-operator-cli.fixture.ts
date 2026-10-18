@@ -1,6 +1,6 @@
 import { BusinessType, PrismaClient, UserPlatformRole, UserStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { insertDimoMirrorRaw } from '../../vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-reconciliation-postgres.fixture';
+import { insertDimoMirrorRaw } from '../vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-reconciliation-postgres.fixture';
 import { PDI_P1B7_AUTHORIZED_INTAKE } from './pdi-p1b7-manual-intake-operator.lib';
 
 export async function seedPdiP1b7OperatorPreflightIdentity(prisma: PrismaClient): Promise<void> {
