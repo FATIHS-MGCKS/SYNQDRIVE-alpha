@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   BatteryProviderObservabilityGapStatus,
   type BatteryGeneralizedEvidenceObservation,
@@ -8,7 +8,10 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { selectCanonicalRestSessionFeatureShadowRow } from '../rest-session-features/rest-session-feature-canonical-row.policy';
 import type { RestSessionFeatureInputRetentionPointV1 } from '../rest-session-features/rest-session-feature-input-snapshot.types';
-import type { LongitudinalProfileRevisionInspector } from '../rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
+import {
+  LongitudinalProfileRevisionInspectionService,
+  type LongitudinalProfileRevisionInspector,
+} from '../rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import {
   LV_MEASURED_INTELLIGENCE_CONTRACT_VERSION,
   LV_MEASURED_INTELLIGENCE_DEFAULT_OBSERVATION_LIMIT,
@@ -58,6 +61,7 @@ type GeRow = Pick<
 export class LvMeasuredIntelligenceReadService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(LongitudinalProfileRevisionInspectionService)
     private readonly d4Inspection: LongitudinalProfileRevisionInspector,
   ) {}
 
