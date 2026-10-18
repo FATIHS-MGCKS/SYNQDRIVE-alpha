@@ -1,5 +1,13 @@
 # DTC / Error Codes — change ledger (append-only)
 
+## 2026-10-18 — P1B.6 Nest DI boot hotfix (invalid VI export)
+
+- **OBSERVATION:** Production deploy to `e9524c5b` aborted at `SYNQDRIVE_BOOT_CHECK=1`; `/opt/synqdrive/current` remained `d43ff450`.
+- **ROOT CAUSE:** `VehicleIntelligenceModule` exported `Dtc02ObservabilityService` without provider registration (service owned by `Dtc02ObservabilityModule` only).
+- **CHANGE:** Re-export `Dtc02ObservabilityModule`; remove direct service export.
+- **CI:** `synqdrive-nest-boot-check-ci.sh` + `nest-boot-check` job on critical vehicle-detail / legal-documents gates; `dtc02-observability.nest-di.spec.ts`.
+- **VALIDATION:** Compiled boot check PASS; DTC observability + webhook unit suites PASS.
+
 ## 2026-10-17 — DTC-02 P3 adaptive scheduler shadow (draft, default OFF)
 
 - Pure planner `planDtc02AdaptivePollCheck` + shadow batch on natural fan-out; flags `DTC_02_ADAPTIVE_SCHEDULER_SHADOW_*`.
