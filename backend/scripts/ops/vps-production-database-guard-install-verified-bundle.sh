@@ -12,8 +12,19 @@ if [[ "${SYNQDRIVE_GUARD_BUNDLE_INSTALL_AUTHORIZED:-}" != "1" ]]; then
   echo "!! ABORT: SYNQDRIVE_GUARD_BUNDLE_INSTALL_AUTHORIZED=1 required (owner GO)" >&2
   exit 41
 fi
+REQUIRED_SHA="${SYNQDRIVE_GUARD_BUNDLE_REQUIRED_SHA:-}"
+if [[ -z "$REQUIRED_SHA" ]]; then
+  echo "!! ABORT: SYNQDRIVE_GUARD_BUNDLE_REQUIRED_SHA must pin the verified git commit" >&2
+  exit 41
+fi
+ACTUAL_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [[ "$ACTUAL_SHA" != "$REQUIRED_SHA" ]]; then
+  echo "!! ABORT: bundle source SHA ${ACTUAL_SHA:-unknown} != required ${REQUIRED_SHA}" >&2
+  exit 41
+fi
 [[ -f "$MANIFEST_SHA" ]] || { echo "!! ABORT: missing ${MANIFEST_SHA}" >&2; exit 1; }
 [[ -d "$TARGET_OPS" ]] || { echo "!! ABORT: target ops dir missing: ${TARGET_OPS}" >&2; exit 1; }
+echo "==> Guard bundle SHA pin verified: ${REQUIRED_SHA:0:12}"
 
 echo "==> Verifying guard bundle manifest"
 while read -r line; do
@@ -38,9 +49,17 @@ while read -r line; do
       src="${REPO_ROOT}/${rel}"
       dest="${TARGET_OPS}/${rel#backend/scripts/ops/}"
       ;;
-    backend/scripts/test/prisma-migrate-deploy-resilient.sh|backend/scripts/test/production-database-guard-postgres-gate.sh|backend/scripts/test/verify-destructive-prisma-entrypoints.sh|backend/scripts/test/verify-unguarded-prisma-invocations.sh)
+    backend/package.json)
       src="${REPO_ROOT}/${rel}"
-      dest="/opt/synqdrive/current/${rel#backend/}"
+      dest="$(dirname "$(dirname "$TARGET_OPS")")/package.json"
+      ;;
+    backend/scripts/test/*)
+      src="${REPO_ROOT}/${rel}"
+      if [[ "$TARGET_OPS" == /opt/synqdrive/current/* ]]; then
+        dest="/opt/synqdrive/current/${rel#backend/}"
+      else
+        dest="$(dirname "$(dirname "$TARGET_OPS")")/scripts/test/${rel#backend/scripts/test/}"
+      fi
       ;;
     *)
       continue

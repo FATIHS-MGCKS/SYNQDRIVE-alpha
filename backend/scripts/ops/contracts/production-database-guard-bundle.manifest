@@ -1,17 +1,22 @@
 # SHA-256 of guard bundle files (repo-relative). Regenerate: backend/scripts/ops/update-production-database-guard-bundle-manifest.sh
 .github/workflows/production-database-guard.yml
 architecture/dsrg/PRODUCTION_DATABASE_DDL_GUARD.md
+backend/package.json
 backend/scripts/ops/contracts/production-database-identity.v1.json
 backend/scripts/ops/contracts/production-database-guard-bundle.manifest
 backend/scripts/ops/lib/prisma-cli-guard.mjs
+backend/scripts/ops/lib/production-database-backup-capture-verify.py
 backend/scripts/ops/lib/production-database-backup-content-gate.lib.sh
 backend/scripts/ops/lib/production-database-identity-guard.lib.sh
+backend/scripts/ops/lib/production-database-migration-authority-stamp.mjs
 backend/scripts/ops/prisma-migration-history-name-parity.sh
 backend/scripts/ops/prisma-with-guard.sh
 backend/scripts/ops/update-production-database-guard-bundle-manifest.sh
+backend/scripts/ops/vps-deploy-release.sh
 backend/scripts/ops/vps-production-database-guard-install-verified-bundle.sh
 backend/scripts/ops/vps-production-database-deploy-preflight.sh
 backend/scripts/test/prisma-migrate-deploy-resilient.sh
+backend/scripts/test/production-database-guard-bootstrap-dry-run.sh
 backend/scripts/test/production-database-guard-postgres-gate.sh
 backend/scripts/test/verify-destructive-prisma-entrypoints.sh
 backend/scripts/test/verify-unguarded-prisma-invocations.sh

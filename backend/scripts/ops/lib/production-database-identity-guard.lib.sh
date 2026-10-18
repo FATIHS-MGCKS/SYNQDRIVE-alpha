@@ -196,69 +196,125 @@ pdb_guard_assert_runtime_matches_live_fingerprint() {
   printf '%s' "${oid}|${db_live}|${url_host}|${url_port}|public"
 }
 
+pdb_guard_write_backup_capture_sidecar() {
+  local backup_file="${1:-}"
+  local backup_db_name="${2:-synqdrive}"
+  local capture_file="${3:-${backup_file}.capture.json}"
+  [[ -f "$backup_file" ]] || pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup file missing for capture"
+  local oid port
+  oid="$(pdb_guard_psql_as_postgres "$backup_db_name" -tAc "SELECT oid::text FROM pg_database WHERE datname='${backup_db_name}'" | tr -d '[:space:]')"
+  port="$(pdb_guard_psql_as_postgres "$backup_db_name" -tAc "SELECT COALESCE(inet_server_port()::text,'0')" | tr -d '[:space:]')"
+  python3 - "$capture_file" "$backup_db_name" "$oid" "$port" <<'PY'
+import json, sys, datetime
+path, db, oid, port = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+doc = {
+    "dbname": db,
+    "db_oid": oid,
+    "server_port": port,
+    "captured_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(doc, fh)
+PY
+  printf '%s' "$capture_file"
+}
+
 pdb_guard_assert_backup_dump_target_parity() {
   local url="${1:-${DATABASE_URL:-}}"
   local backup_file="${2:-}"
   local backup_db_name="${3:-synqdrive}"
+  local capture_file="${4:-${backup_file}.capture.json}"
   [[ -f "$backup_file" ]] || pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup file missing for parity check"
+  [[ -f "$capture_file" ]] || pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup capture sidecar missing (${capture_file})"
   local url_db
   url_db="$(pdb_guard_url_field "$url" 4)"
   if [[ "$url_db" != "$backup_db_name" ]]; then
     pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "pg_dump target ${backup_db_name} != DATABASE_URL database ${url_db}"
   fi
-  if ! gzip -dc "$backup_file" 2>/dev/null | head -n 200 | grep -qE "PostgreSQL database dump|CREATE DATABASE|\\\\connect|${backup_db_name}"; then
-    pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup artifact does not appear to target database ${backup_db_name}"
+  local fp oid_live
+  fp="$(pdb_guard_assert_runtime_matches_live_fingerprint "$url")"
+  oid_live="${fp%%|*}"
+  local capture_oid
+  capture_oid="$(python3 - "$capture_file" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1]))["db_oid"])
+PY
+)"
+  if [[ "$capture_oid" != "$oid_live" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup capture OID ${capture_oid} != live OID ${oid_live}"
   fi
-  pdb_guard_assert_runtime_matches_live_fingerprint "$url" >/dev/null
+  local verify_py="${_GUARD_LIB_DIR}/production-database-backup-capture-verify.py"
+  local result
+  result="$(python3 "$verify_py" "$capture_file" "$backup_file" "$backup_db_name")"
+  case "${result%%|*}" in
+    FAIL) pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup dump target proof: ${result#FAIL|}" ;;
+    OK) ;;
+    *) pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup capture verify internal error" ;;
+  esac
 }
 
 PDB_GUARD_AUTHORITY_STAMP_PATH="${SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_PATH:-/opt/synqdrive/shared/state/migration-authority.stamp}"
 
+pdb_guard_migration_stamp_mjs() {
+  printf '%s' "${_GUARD_LIB_DIR}/production-database-migration-authority-stamp.mjs"
+}
+
 pdb_guard_write_migration_authority_stamp() {
   local url="${1:-${DATABASE_URL:-}}"
-  local fp oid db_live ledger_distinct issued_at body
+  local stamp_path="${2:-$PDB_GUARD_AUTHORITY_STAMP_PATH}"
+  local fp oid db_live ledger_distinct release_sha
   fp="$(pdb_guard_assert_runtime_matches_live_fingerprint "$url")"
   oid="${fp%%|*}"
   db_live="$(pdb_guard_url_field "$url" 4)"
   ledger_distinct="$(pdb_guard_psql_as_postgres "$db_live" -tAc \
     "SELECT count(DISTINCT migration_name) FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL" | tr -d '[:space:]')"
-  issued_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  body="v1|oid=${oid}|db=${db_live}|ledger=${ledger_distinct}|issued=${issued_at}"
-  local mac
-  mac="$(printf '%s' "$body" | sha256sum | awk '{print $1}')"
-  mkdir -p "$(dirname "$PDB_GUARD_AUTHORITY_STAMP_PATH")" 2>/dev/null || true
-  if [[ -w "$(dirname "$PDB_GUARD_AUTHORITY_STAMP_PATH")" ]] 2>/dev/null; then
-    printf '%s\nmac=%s\n' "$body" "$mac" > "$PDB_GUARD_AUTHORITY_STAMP_PATH"
-    chmod 600 "$PDB_GUARD_AUTHORITY_STAMP_PATH" 2>/dev/null || true
-  fi
-  printf '%s\nmac=%s\n' "$body" "$mac"
+  release_sha="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-unset}"
+  node "$(pdb_guard_migration_stamp_mjs)" write \
+    --stamp-path "$stamp_path" \
+    --oid "$oid" \
+    --db "$db_live" \
+    --ledger "$ledger_distinct" \
+    --release-sha "$release_sha"
+}
+
+pdb_guard_read_migration_preflight_nonce() {
+  local stamp_file="${1:-${SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_FILE:-$PDB_GUARD_AUTHORITY_STAMP_PATH}}"
+  grep -E '^v2\|' "$stamp_file" | sed -n 's/.*|nonce=\([^|]*\).*/\1/p' | head -1
 }
 
 pdb_guard_assert_migration_authority_stamp() {
   local url="${1:-${DATABASE_URL:-}}"
   local stamp_file="${SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_FILE:-$PDB_GUARD_AUTHORITY_STAMP_PATH}"
-  [[ -f "$stamp_file" ]] || pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "missing migration authority stamp (run deploy preflight first)"
-  local body mac_file mac_exp
-  body="$(grep -v '^mac=' "$stamp_file" | head -1)"
-  mac_file="$(grep '^mac=' "$stamp_file" | cut -d= -f2-)"
-  mac_exp="$(printf '%s' "$body" | sha256sum | awk '{print $1}')"
-  if [[ "$mac_file" != "$mac_exp" ]]; then
-    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migration authority stamp integrity check failed"
-  fi
-  local fp oid_live
+  local fp oid_live db_live
   fp="$(pdb_guard_assert_runtime_matches_live_fingerprint "$url")"
   oid_live="${fp%%|*}"
-  local oid_stamp="${body#*oid=}"; oid_stamp="${oid_stamp%%|*}"
-  if [[ "$oid_stamp" != "$oid_live" ]]; then
-    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migration authority stamp database OID mismatch"
+  db_live="$(pdb_guard_url_field "$url" 4)"
+  local nonce="${SYNQDRIVE_MIGRATION_PREFLIGHT_NONCE:-}"
+  if [[ -z "$nonce" ]]; then
+    nonce="$(pdb_guard_read_migration_preflight_nonce "$stamp_file")"
   fi
-  local issued="${body#*issued=}"
-  local now_epoch stamp_epoch
-  now_epoch="$(date -u +%s)"
-  stamp_epoch="$(date -u -d "$issued" +%s 2>/dev/null || date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$issued" +%s 2>/dev/null || echo 0)"
-  if [[ "$stamp_epoch" -gt 0 && $((now_epoch - stamp_epoch)) -gt 7200 ]]; then
-    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migration authority stamp expired (>${issued})"
-  fi
+  node "$(pdb_guard_migration_stamp_mjs)" verify \
+    --stamp-path "$stamp_file" \
+    --oid-live "$oid_live" \
+    --db-live "$db_live" \
+    --release-sha "${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}" \
+    --preflight-nonce "$nonce"
+}
+
+pdb_guard_consume_migration_authority_stamp() {
+  local url="${1:-${DATABASE_URL:-}}"
+  local stamp_file="${SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_FILE:-$PDB_GUARD_AUTHORITY_STAMP_PATH}"
+  local fp oid_live db_live
+  fp="$(pdb_guard_assert_runtime_matches_live_fingerprint "$url")"
+  oid_live="${fp%%|*}"
+  db_live="$(pdb_guard_url_field "$url" 4)"
+  node "$(pdb_guard_migration_stamp_mjs)" verify \
+    --stamp-path "$stamp_file" \
+    --oid-live "$oid_live" \
+    --db-live "$db_live" \
+    --release-sha "${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}" \
+    --preflight-nonce "${SYNQDRIVE_MIGRATION_PREFLIGHT_NONCE:-$(pdb_guard_read_migration_preflight_nonce "$stamp_file")}" \
+    --mark-consumed 1
 }
 
 pdb_guard_assert_no_destructive_recovery_flags() {

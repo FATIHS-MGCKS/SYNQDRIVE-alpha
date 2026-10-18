@@ -30,7 +30,7 @@ pdb_guard_assert_production_vps_target "$DATABASE_URL"
 
 if [[ -n "$BACKUP_FILE" ]]; then
   pdb_backup_gate_assert_dump_file "$BACKUP_FILE"
-  pdb_guard_assert_backup_dump_target_parity "$DATABASE_URL" "$BACKUP_FILE" "$BACKUP_DB_NAME"
+  pdb_guard_assert_backup_dump_target_parity "$DATABASE_URL" "$BACKUP_FILE" "$BACKUP_DB_NAME" "${BACKUP_FILE}.capture.json"
 fi
 
 pdb_guard_write_migration_authority_stamp "$DATABASE_URL" >/dev/null

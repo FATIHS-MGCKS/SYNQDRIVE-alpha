@@ -17,7 +17,8 @@ Prevent Prisma reset/push, test harnesses, or deploy scripts from targeting prod
   - Live PostgreSQL session (`current_database()`, database OID, `inet_server_port()`)
   - Backup `pg_dump` target name vs DSN database component
 - **No** self-comparison of the same URL string.
-- Migration authority **stamp** (`migration-authority.stamp`): HMAC-SHA256(body) over `oid|db|ledger|issued` after live preflight — required for production `migrate deploy` (not flag-only).
+- Migration authority **stamp** (`migration-authority.stamp`): **HMAC-SHA256** with key in `/opt/synqdrive/shared/state/migration-authority.hmac.key` (never logged). Body binds `oid|db|ledger|issued|expires|release|nonce|context`. Single-use via `consumed=1` after migrate. Preflight nonce must match deploy env.
+- Backup **capture sidecar** (`*.capture.json`) records `db_oid` at dump time; Python verifier scans full gzip for `\\connect` targets (no `head|grep` pipes).
 
 ## P2 — Prisma fence
 
@@ -62,6 +63,7 @@ Executor on `d43ff450` lacks guard files. **Approved path** (no CI skip, no ad-h
 
 ```bash
 SYNQDRIVE_GUARD_BUNDLE_INSTALL_AUTHORIZED=1 \
+SYNQDRIVE_GUARD_BUNDLE_REQUIRED_SHA=<40-char-guard-commit> \
   bash backend/scripts/ops/vps-production-database-guard-install-verified-bundle.sh \
   /opt/synqdrive/current/backend/scripts/ops
 ```

@@ -7,6 +7,8 @@ on:
       - 'backend/scripts/test/production-database-guard-postgres-gate.sh'
       - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
       - 'backend/scripts/test/verify-destructive-prisma-entrypoints.sh'
+      - 'backend/scripts/test/production-database-guard-bootstrap-dry-run.sh'
+      - 'backend/scripts/test/verify-unguarded-prisma-invocations.sh'
       - 'backend/package.json'
       - '.github/workflows/production-database-guard.yml'
   push:
@@ -17,6 +19,8 @@ on:
       - 'backend/scripts/test/production-database-guard-postgres-gate.sh'
       - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
       - 'backend/scripts/test/verify-destructive-prisma-entrypoints.sh'
+      - 'backend/scripts/test/production-database-guard-bootstrap-dry-run.sh'
+      - 'backend/scripts/test/verify-unguarded-prisma-invocations.sh'
   workflow_dispatch:
 
 jobs:
@@ -38,6 +42,9 @@ jobs:
         working-directory: backend
       - name: Start ephemeral PostgreSQL
         run: bash scripts/test/ci-start-postgres.sh
+        working-directory: backend
+      - name: Bootstrap dry-run (SHA-pinned bundle)
+        run: bash scripts/test/production-database-guard-bootstrap-dry-run.sh
         working-directory: backend
       - name: Run production database guard postgres gate
         run: bash scripts/test/production-database-guard-postgres-gate.sh

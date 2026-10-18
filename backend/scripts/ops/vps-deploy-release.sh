@@ -118,6 +118,9 @@ if ! gzip -t "${PRE_DEPLOY_BACKUP}"; then
   exit 1
 fi
 echo "Pre-deploy backup OK: ${PRE_DEPLOY_BACKUP} ($(stat -c%s "${PRE_DEPLOY_BACKUP}") bytes)"
+# shellcheck source=lib/production-database-identity-guard.lib.sh
+source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/production-database-identity-guard.lib.sh"
+pdb_guard_write_backup_capture_sidecar "${PRE_DEPLOY_BACKUP}" synqdrive >/dev/null
 if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh ]]; then
   bash /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh "$(date +%s)" || true
 fi
@@ -181,8 +184,18 @@ npm ci
 npx prisma generate
 export SYNQDRIVE_MIGRATION_AUTHORITY=1
 export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
+if [[ -z "${DATABASE_URL:-}" && -f /opt/synqdrive/shared/backend.env ]]; then
+  DATABASE_URL="$(grep -m1 '^DATABASE_URL=' /opt/synqdrive/shared/backend.env | cut -d= -f2- | tr -d '"')"
+  export DATABASE_URL
+fi
 vps_run_production_db_preflight "${PRE_DEPLOY_BACKUP}" "$RELEASE_OPS_DIR"
+STAMP_PATH="${PDB_GUARD_AUTHORITY_STAMP_PATH:-/opt/synqdrive/shared/state/migration-authority.stamp}"
+export SYNQDRIVE_MIGRATION_PREFLIGHT_NONCE="$(pdb_guard_read_migration_preflight_nonce "$STAMP_PATH")"
+export SYNQDRIVE_STAMP_OID_LIVE="$(
+  sudo -u postgres psql -d synqdrive -tAc "SELECT oid::text FROM pg_database WHERE datname='synqdrive'" | tr -d '[:space:]'
+)"
 npm run prisma:migrate:deploy
+pdb_guard_consume_migration_authority_stamp "$DATABASE_URL"
 sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
