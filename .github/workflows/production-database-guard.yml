@@ -34,7 +34,7 @@ jobs:
         run: npm ci
         working-directory: backend
       - name: Verify destructive Prisma entrypoints
-        run: bash scripts/test/verify-destructive-prisma-entrypoints.sh
+        run: bash scripts/test/verify-destructive-prisma-entrypoints.sh && bash scripts/test/verify-unguarded-prisma-invocations.sh
         working-directory: backend
       - name: Start ephemeral PostgreSQL
         run: bash scripts/test/ci-start-postgres.sh

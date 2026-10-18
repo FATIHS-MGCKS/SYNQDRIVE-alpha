@@ -2,6 +2,7 @@
 /**
  * Fail-closed Prisma CLI wrapper — blocks destructive commands against production identity.
  */
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -54,19 +55,65 @@ function argvJoined(args) {
   return ` ${args.join(' ')} `.toLowerCase();
 }
 
+function schemaOverride(args) {
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === '--schema' && args[i + 1]) return args[i + 1];
+    if (args[i].startsWith('--schema=')) return args[i].slice('--schema='.length);
+  }
+  return null;
+}
+
 function isDestructive(args) {
   const joined = argvJoined(args);
   if (joined.includes(' migrate reset') || joined.includes(' migrate dev')) return true;
-  if (joined.includes(' db push')) {
-    if (joined.includes('force-reset') || joined.includes('accept-data-loss')) return true;
-  }
+  if (joined.includes(' db push')) return true;
+  if (joined.includes(' db execute') && joined.includes('drop schema')) return true;
   return false;
+}
+
+function assertDsnParity(contract) {
+  const runtime = parseDatabaseUrl(process.env.DATABASE_URL);
+  const migrate = parseDatabaseUrl(process.env.SYNQDRIVE_MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL);
+  const direct = parseDatabaseUrl(process.env.DIRECT_URL);
+  if (!runtime) return;
+  const eq = (a, b, label) => {
+    if (!b) return;
+    if (a.host !== b.host || a.port !== b.port || a.database !== b.database || a.schema !== b.schema) {
+      console.error(`PDB_GUARD: ${label} DSN mismatch vs DATABASE_URL`);
+      process.exit(EXIT_IDENTITY);
+    }
+  };
+  eq(runtime, migrate, 'migration');
+  eq(runtime, direct, 'DIRECT_URL');
+}
+
+function readStamp(stampPath) {
+  if (!existsSync(stampPath)) return null;
+  const text = readFileSync(stampPath, 'utf8');
+  const body = text.split('\n').find((l) => l.startsWith('v1|'));
+  const mac = text.split('\n').find((l) => l.startsWith('mac='))?.slice(4);
+  if (!body || !mac) return null;
+  const expected = createHash('sha256').update(body).digest('hex');
+  if (mac !== expected) {
+    console.error('PDB_GUARD: migration authority stamp MAC invalid');
+    process.exit(EXIT_DESTRUCTIVE);
+  }
+  return body;
 }
 
 function assertAllowed(args) {
   const contract = loadContract();
   const parsed = parseDatabaseUrl(process.env.DATABASE_URL);
   const profile = process.env.SYNQDRIVE_DATABASE_IDENTITY_PROFILE ?? (isVpsProductionContext() ? 'production_vps' : 'unset');
+  const schemaArg = schemaOverride(args);
+  if (schemaArg && schemaArg !== 'public' && parsed && isReservedProductionName(parsed.database, contract)) {
+    console.error(`PDB_GUARD: --schema ${schemaArg} not allowed on production database`);
+    process.exit(EXIT_IDENTITY);
+  }
+  if (parsed?.schema && parsed.schema !== 'public' && isReservedProductionName(parsed.database, contract)) {
+    console.error(`PDB_GUARD: DATABASE_URL schema ${parsed.schema} not allowed on production`);
+    process.exit(EXIT_IDENTITY);
+  }
 
   if (process.env.SYNQDRIVE_PRODUCTION_GUARD_BYPASS === '1') {
     console.error('PDB_GUARD: SYNQDRIVE_PRODUCTION_GUARD_BYPASS=1 is forbidden');
@@ -76,6 +123,8 @@ function assertAllowed(args) {
     console.error('PDB_GUARD: SYNQDRIVE_ALLOW_DESTRUCTIVE_PRISMA=1 is not an approved bypass');
     process.exit(EXIT_DESTRUCTIVE);
   }
+
+  assertDsnParity(contract);
 
   if (isDestructive(args)) {
     if (!parsed?.database) {
@@ -106,10 +155,30 @@ function assertAllowed(args) {
   }
 
   const joined = argvJoined(args);
+  if (joined.includes(' migrate resolve')) {
+    if (parsed && isReservedProductionName(parsed.database, contract) && isVpsProductionContext()) {
+      if (process.env.SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED !== '1') {
+        console.error('PDB_GUARD: migrate resolve requires recovery authorization on production VPS');
+        process.exit(EXIT_DESTRUCTIVE);
+      }
+      if (process.env.SYNQDRIVE_MIGRATION_AUTHORITY === '1') {
+        console.error('PDB_GUARD: migrate resolve cannot run under deploy migration authority');
+        process.exit(EXIT_DESTRUCTIVE);
+      }
+    }
+  }
+
   if (joined.includes(' migrate deploy')) {
     if (parsed && isReservedProductionName(parsed.database, contract) && isVpsProductionContext()) {
       if (process.env.SYNQDRIVE_MIGRATION_AUTHORITY !== '1') {
-        console.error('PDB_GUARD: migrate deploy requires SYNQDRIVE_MIGRATION_AUTHORITY=1 on production VPS');
+        console.error('PDB_GUARD: migrate deploy requires deploy pipeline authority on production VPS');
+        process.exit(EXIT_DESTRUCTIVE);
+      }
+      const stampPath =
+        process.env.SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_FILE ??
+        '/opt/synqdrive/shared/state/migration-authority.stamp';
+      if (!readStamp(stampPath)) {
+        console.error('PDB_GUARD: missing or invalid migration authority stamp');
         process.exit(EXIT_DESTRUCTIVE);
       }
     }

@@ -11,10 +11,16 @@ source "${OPS_DIR}/lib/production-database-backup-content-gate.lib.sh"
 
 BACKUP_FILE="${1:-}"
 DATABASE_URL="${DATABASE_URL:-}"
+MIGRATION_DATABASE_URL="${SYNQDRIVE_MIGRATION_DATABASE_URL:-}"
+BACKUP_DB_NAME="${SYNQDRIVE_BACKUP_DATABASE_NAME:-synqdrive}"
 
 if [[ -z "$DATABASE_URL" && -f /opt/synqdrive/shared/backend.env ]]; then
   DATABASE_URL="$(grep -m1 '^DATABASE_URL=' /opt/synqdrive/shared/backend.env | cut -d= -f2- | tr -d '"')"
   export DATABASE_URL
+fi
+if [[ -z "$MIGRATION_DATABASE_URL" ]]; then
+  MIGRATION_DATABASE_URL="$DATABASE_URL"
+  export SYNQDRIVE_MIGRATION_DATABASE_URL="$MIGRATION_DATABASE_URL"
 fi
 
 export SYNQDRIVE_DATABASE_IDENTITY_PROFILE="${SYNQDRIVE_DATABASE_IDENTITY_PROFILE:-production_vps}"
@@ -24,7 +30,8 @@ pdb_guard_assert_production_vps_target "$DATABASE_URL"
 
 if [[ -n "$BACKUP_FILE" ]]; then
   pdb_backup_gate_assert_dump_file "$BACKUP_FILE"
-  pdb_guard_assert_urls_match "$DATABASE_URL" "$DATABASE_URL"
+  pdb_guard_assert_backup_dump_target_parity "$DATABASE_URL" "$BACKUP_FILE" "$BACKUP_DB_NAME"
 fi
 
+pdb_guard_write_migration_authority_stamp "$DATABASE_URL" >/dev/null
 echo "==> production database deploy preflight PASS"

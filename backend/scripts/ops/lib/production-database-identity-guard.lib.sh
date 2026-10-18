@@ -122,18 +122,142 @@ PY
   fi
 }
 
-pdb_guard_assert_urls_match() {
-  local a="${1:-}"
-  local b="${2:-}"
-  [[ -n "$a" && -n "$b" ]] || pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "url comparison requires two non-empty URLs"
-  local da db
-  da="$(pdb_guard_url_field "$a" 4)"
-  db="$(pdb_guard_url_field "$b" 4)"
-  local ha hb
-  ha="$(pdb_guard_url_field "$a" 2)"
-  hb="$(pdb_guard_url_field "$b" 2)"
-  if [[ "$da" != "$db" || "$ha" != "$hb" ]]; then
-    pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "DATABASE_URL target (${ha}/${da}) does not match backup target (${hb}/${db})"
+pdb_guard_normalize_host() {
+  local h="${1,,}"
+  case "$h" in
+    ""|localhost|127.0.0.1|::1) printf '%s' "local" ;;
+    *) printf '%s' "$h" ;;
+  esac
+}
+
+pdb_guard_assert_parsed_urls_equivalent() {
+  local url_a="${1:-}"
+  local url_b="${2:-}"
+  local label_a="${3:-first}"
+  local label_b="${4:-second}"
+  [[ -n "$url_a" && -n "$url_b" ]] || pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "connection comparison requires two URLs"
+  local ua ha pa da sa _pa ub hb pb db sb _pb
+  IFS=$'\t' read -r ua ha pa da sa _pa < <(pdb_guard_parse_database_url "$url_a")
+  IFS=$'\t' read -r ub hb pb db sb _pb < <(pdb_guard_parse_database_url "$url_b")
+  if [[ "$(pdb_guard_normalize_host "$ha")" != "$(pdb_guard_normalize_host "$hb")" || "$pa" != "$pb" || "$da" != "$db" || "$sa" != "$sb" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "${label_a} vs ${label_b} DSN mismatch (host/port/db/schema)"
+  fi
+}
+
+pdb_guard_live_server_fingerprint() {
+  local db="${1:-synqdrive}"
+  pdb_guard_psql_as_postgres "$db" -tAc "
+SELECT current_database(),
+       (SELECT oid::text FROM pg_database WHERE datname = current_database()),
+       COALESCE(inet_server_addr()::text, 'local'),
+       COALESCE(inet_server_port()::text, '0'),
+       current_setting('search_path');
+"
+}
+
+pdb_guard_assert_runtime_matches_live_fingerprint() {
+  local url="${1:-${DATABASE_URL:-}}"
+  local migrate_url="${2:-${SYNQDRIVE_MIGRATION_DATABASE_URL:-$url}}"
+  local db
+  db="$(pdb_guard_url_field "$url" 4)"
+  pdb_guard_assert_parsed_urls_equivalent "$url" "$migrate_url" "runtime DATABASE_URL" "migration DSN"
+  if [[ -n "${DIRECT_URL:-}" ]]; then
+    pdb_guard_assert_parsed_urls_equivalent "$url" "$DIRECT_URL" "runtime DATABASE_URL" "DIRECT_URL"
+  fi
+
+  local live_line db_live oid srv_port
+  live_line="$(pdb_guard_live_server_fingerprint "$db")"
+  db_live="$(echo "$live_line" | awk -F'|' '{gsub(/ /,"",$1); print $1}')"
+  oid="$(echo "$live_line" | awk -F'|' '{gsub(/ /,"",$2); print $2}')"
+  srv_port="$(echo "$live_line" | awk -F'|' '{gsub(/ /,"",$4); print $4}')"
+
+  local url_db url_host url_port url_schema
+  url_db="$(pdb_guard_url_field "$url" 4)"
+  url_host="$(pdb_guard_url_field "$url" 2)"
+  url_port="$(pdb_guard_url_field "$url" 3)"
+  url_schema="$(pdb_guard_url_field "$url" 5)"
+
+  if [[ "$url_db" != "$db_live" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "DATABASE_URL database ${url_db} != live session ${db_live}"
+  fi
+  if [[ "$url_schema" != "public" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "DATABASE_URL schema must be public (got ${url_schema})"
+  fi
+  case "$(pdb_guard_normalize_host "$url_host")" in
+    local) ;;
+    *)
+      pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "production DATABASE_URL host must be local (got ${url_host})"
+      ;;
+  esac
+  if [[ "$url_port" != "$srv_port" && "$srv_port" != "0" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_IDENTITY" "DATABASE_URL port ${url_port} != live server port ${srv_port}"
+  fi
+
+  printf '%s' "${oid}|${db_live}|${url_host}|${url_port}|public"
+}
+
+pdb_guard_assert_backup_dump_target_parity() {
+  local url="${1:-${DATABASE_URL:-}}"
+  local backup_file="${2:-}"
+  local backup_db_name="${3:-synqdrive}"
+  [[ -f "$backup_file" ]] || pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup file missing for parity check"
+  local url_db
+  url_db="$(pdb_guard_url_field "$url" 4)"
+  if [[ "$url_db" != "$backup_db_name" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "pg_dump target ${backup_db_name} != DATABASE_URL database ${url_db}"
+  fi
+  if ! gzip -dc "$backup_file" 2>/dev/null | head -n 200 | grep -qE "PostgreSQL database dump|CREATE DATABASE|\\\\connect|${backup_db_name}"; then
+    pdb_guard_die "$PDB_GUARD_EXIT_BACKUP" "backup artifact does not appear to target database ${backup_db_name}"
+  fi
+  pdb_guard_assert_runtime_matches_live_fingerprint "$url" >/dev/null
+}
+
+PDB_GUARD_AUTHORITY_STAMP_PATH="${SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_PATH:-/opt/synqdrive/shared/state/migration-authority.stamp}"
+
+pdb_guard_write_migration_authority_stamp() {
+  local url="${1:-${DATABASE_URL:-}}"
+  local fp oid db_live ledger_distinct issued_at body
+  fp="$(pdb_guard_assert_runtime_matches_live_fingerprint "$url")"
+  oid="${fp%%|*}"
+  db_live="$(pdb_guard_url_field "$url" 4)"
+  ledger_distinct="$(pdb_guard_psql_as_postgres "$db_live" -tAc \
+    "SELECT count(DISTINCT migration_name) FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL" | tr -d '[:space:]')"
+  issued_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  body="v1|oid=${oid}|db=${db_live}|ledger=${ledger_distinct}|issued=${issued_at}"
+  local mac
+  mac="$(printf '%s' "$body" | sha256sum | awk '{print $1}')"
+  mkdir -p "$(dirname "$PDB_GUARD_AUTHORITY_STAMP_PATH")" 2>/dev/null || true
+  if [[ -w "$(dirname "$PDB_GUARD_AUTHORITY_STAMP_PATH")" ]] 2>/dev/null; then
+    printf '%s\nmac=%s\n' "$body" "$mac" > "$PDB_GUARD_AUTHORITY_STAMP_PATH"
+    chmod 600 "$PDB_GUARD_AUTHORITY_STAMP_PATH" 2>/dev/null || true
+  fi
+  printf '%s\nmac=%s\n' "$body" "$mac"
+}
+
+pdb_guard_assert_migration_authority_stamp() {
+  local url="${1:-${DATABASE_URL:-}}"
+  local stamp_file="${SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_FILE:-$PDB_GUARD_AUTHORITY_STAMP_PATH}"
+  [[ -f "$stamp_file" ]] || pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "missing migration authority stamp (run deploy preflight first)"
+  local body mac_file mac_exp
+  body="$(grep -v '^mac=' "$stamp_file" | head -1)"
+  mac_file="$(grep '^mac=' "$stamp_file" | cut -d= -f2-)"
+  mac_exp="$(printf '%s' "$body" | sha256sum | awk '{print $1}')"
+  if [[ "$mac_file" != "$mac_exp" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migration authority stamp integrity check failed"
+  fi
+  local fp oid_live
+  fp="$(pdb_guard_assert_runtime_matches_live_fingerprint "$url")"
+  oid_live="${fp%%|*}"
+  local oid_stamp="${body#*oid=}"; oid_stamp="${oid_stamp%%|*}"
+  if [[ "$oid_stamp" != "$oid_live" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migration authority stamp database OID mismatch"
+  fi
+  local issued="${body#*issued=}"
+  local now_epoch stamp_epoch
+  now_epoch="$(date -u +%s)"
+  stamp_epoch="$(date -u -d "$issued" +%s 2>/dev/null || date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$issued" +%s 2>/dev/null || echo 0)"
+  if [[ "$stamp_epoch" -gt 0 && $((now_epoch - stamp_epoch)) -gt 7200 ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migration authority stamp expired (>${issued})"
   fi
 }
 
@@ -149,6 +273,11 @@ pdb_guard_assert_no_destructive_recovery_flags() {
 pdb_guard_psql_as_postgres() {
   local db=$1
   shift
+  if [[ "${SYNQDRIVE_GUARD_TEST_MODE:-}" == "1" ]]; then
+    PGPASSWORD="${PGPASSWORD:-${CI_PG_PASSWORD:-synqdrive}}" psql -h "${CI_PG_HOST:-127.0.0.1}" -p "${CI_PG_PORT:-5432}" \
+      -U "${CI_PG_USER:-synqdrive}" -v ON_ERROR_STOP=1 -d "$db" "$@"
+    return 0
+  fi
   sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$db" "$@"
 }
 
@@ -268,12 +397,23 @@ PY
   fi
 
   pdb_guard_assert_no_destructive_recovery_flags
+  pdb_guard_assert_runtime_matches_live_fingerprint "$url" >/dev/null
   pdb_guard_assert_live_schema_contract "$db"
 }
 
-pdb_guard_assert_migration_authority() {
+pdb_guard_assert_migration_deploy_authority() {
   if [[ "${SYNQDRIVE_MIGRATION_AUTHORITY:-}" != "1" ]]; then
-    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migrate deploy on production requires SYNQDRIVE_MIGRATION_AUTHORITY=1"
+    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migrate deploy on production requires deploy pipeline authority"
+  fi
+  pdb_guard_assert_migration_authority_stamp "${DATABASE_URL:-}"
+}
+
+pdb_guard_assert_migration_resolve_authority() {
+  if [[ "${SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED:-}" != "1" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migrate resolve on production requires SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED=1"
+  fi
+  if [[ "${SYNQDRIVE_MIGRATION_AUTHORITY:-}" == "1" ]]; then
+    pdb_guard_die "$PDB_GUARD_EXIT_DESTRUCTIVE" "migrate resolve cannot run under normal deploy migration authority"
   fi
 }
 
@@ -327,8 +467,15 @@ pdb_guard_assert_prisma_command_allowed() {
     local db
     db="$(pdb_guard_url_field "${DATABASE_URL:-}" 4 2>/dev/null || echo "")"
     if pdb_guard_database_name_is_reserved_production "$db" && pdb_guard_is_vps_production_context; then
-      pdb_guard_assert_migration_authority
+      pdb_guard_assert_migration_deploy_authority
       pdb_guard_assert_production_vps_target "${DATABASE_URL:-}"
+    fi
+  fi
+  if [[ "$joined" == *" migrate resolve"* ]]; then
+    local db
+    db="$(pdb_guard_url_field "${DATABASE_URL:-}" 4 2>/dev/null || echo "")"
+    if pdb_guard_database_name_is_reserved_production "$db" && pdb_guard_is_vps_production_context; then
+      pdb_guard_assert_migration_resolve_authority
     fi
   fi
 }

@@ -245,7 +245,7 @@
     "prisma:migrate:dev": "bash scripts/ops/prisma-with-guard.sh migrate dev",
     "prisma:migrate:deploy": "bash scripts/ops/prisma-with-guard.sh migrate deploy",
     "test:production-database-guard": "bash scripts/test/production-database-guard-postgres-gate.sh",
-    "test:production-database-guard:entrypoints": "bash scripts/test/verify-destructive-prisma-entrypoints.sh",
+    "test:production-database-guard:entrypoints": "bash scripts/test/verify-destructive-prisma-entrypoints.sh && bash scripts/test/verify-unguarded-prisma-invocations.sh",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:prune": "ts-node prisma/prune-master-data.ts",

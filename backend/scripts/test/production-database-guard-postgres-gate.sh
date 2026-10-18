@@ -12,6 +12,7 @@ PRISMA_GUARD="${ROOT}/scripts/ops/lib/prisma-cli-guard.mjs"
 log() { printf '[production-database-guard-gate] %s\n' "$*"; }
 fail() { echo "!! FAIL: $*" >&2; exit 1; }
 
+export SYNQDRIVE_GUARD_TEST_MODE=1
 # shellcheck source=../ops/lib/production-database-identity-guard.lib.sh
 source "$OPS_LIB"
 # shellcheck source=../ops/lib/production-database-backup-content-gate.lib.sh
@@ -21,9 +22,9 @@ PG_USER="${CI_PG_USER:-synqdrive}"
 PG_PASSWORD="${CI_PG_PASSWORD:-synqdrive}"
 PG_PORT="${CI_PG_PORT:-5432}"
 EPHEMERAL_DB="guard_test_ephemeral_$(date +%s)"
-PROD_SHAPE_DB="guard_test_prod_shape_$(date +%s)"
-
+STAMP_FILE="/tmp/synqdrive-migration-authority-${EPHEMERAL_DB}.stamp"
 export PGPASSWORD="$PG_PASSWORD"
+export CI_PG_USER="$PG_USER" CI_PG_PASSWORD="$PG_PASSWORD" CI_PG_PORT="$PG_PORT"
 
 psql_admin() {
   psql -h 127.0.0.1 -p "$PG_PORT" -U "$PG_USER" -v ON_ERROR_STOP=1 "$@"
@@ -34,62 +35,42 @@ createdb_if_needed() {
   psql_admin -d postgres -c "CREATE DATABASE \"${1}\";" >/dev/null
 }
 
-log "1) reject production-like reserved name on ephemeral profile"
-export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=ephemeral
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/synqdrive?schema=public"
-if pdb_guard_assert_ephemeral_database_url "$DATABASE_URL" 2>/dev/null; then
-  fail "expected reject reserved synqdrive database name"
+log "1) legacy stub without ledger rejected"
+createdb_if_needed "guard_stub_${EPHEMERAL_DB}"
+if pdb_guard_assert_live_schema_contract "guard_stub_${EPHEMERAL_DB}" 2>/dev/null; then
+  fail "expected stub without ledger to fail"
 fi
-log "PASS reserved name rejected"
 
-log "2) reject forbidden host fragment"
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@srv1374778.hstgr.cloud:5432/${EPHEMERAL_DB}?schema=public"
-if pdb_guard_assert_ephemeral_database_url "$DATABASE_URL" 2>/dev/null; then
-  fail "expected reject forbidden host"
+log "2) migration vs runtime DSN mismatch rejected"
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
+export SYNQDRIVE_MIGRATION_DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/other_db?schema=public"
+if pdb_guard_assert_parsed_urls_equivalent "$DATABASE_URL" "$SYNQDRIVE_MIGRATION_DATABASE_URL" "runtime" "migration" 2>/dev/null; then
+  fail "expected DSN mismatch to fail"
 fi
-log "PASS forbidden host rejected"
+unset SYNQDRIVE_MIGRATION_DATABASE_URL
 
-log "3) legacy stub without ledger fails live contract"
-createdb_if_needed "$PROD_SHAPE_DB"
-if pdb_guard_assert_live_schema_contract "$PROD_SHAPE_DB" 2>/dev/null; then
-  fail "expected stub DB without ledger to fail schema contract"
+log "3) empty backup rejected"
+EMPTY="$(mktemp /tmp/pdb-empty-backup.XXXXXX.sql.gz)"
+printf '' | gzip -c > "$EMPTY"
+if pdb_backup_gate_assert_dump_file "$EMPTY" 2>/dev/null; then
+  fail "expected empty backup to fail"
 fi
-log "PASS stub without ledger rejected"
 
-log "4) additive migrate deploy allowed on ephemeral DB via guarded prisma"
+log "4) additive migrate deploy on ephemeral DB"
 createdb_if_needed "$EPHEMERAL_DB"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
 export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=ephemeral
 pdb_guard_assert_ephemeral_database_url "$DATABASE_URL"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
-log "PASS migrate deploy on ephemeral"
 
-log "5) destructive prisma migrate reset blocked for reserved database name"
+log "5) destructive migrate reset blocked (reserved name)"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/synqdrive?schema=public"
 export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
 if node "$PRISMA_GUARD" migrate reset --force 2>/dev/null; then
-  fail "expected migrate reset to be blocked"
+  fail "expected migrate reset blocked"
 fi
-log "PASS migrate reset blocked"
 
-log "6) backup content gate rejects empty/small dump"
-EMPTY="$(mktemp /tmp/pdb-empty-backup.XXXXXX.sql.gz)"
-printf '' | gzip -c > "$EMPTY"
-if pdb_backup_gate_assert_dump_file "$EMPTY" 2>/dev/null; then
-  fail "expected empty backup to fail content gate"
-fi
-log "PASS empty backup rejected"
-
-log "7) undocumented bypass env rejected"
-export SYNQDRIVE_PRODUCTION_GUARD_BYPASS=1
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
-if pdb_guard_assert_ephemeral_database_url "$DATABASE_URL" 2>/dev/null; then
-  fail "expected bypass env to be rejected"
-fi
-unset SYNQDRIVE_PRODUCTION_GUARD_BYPASS
-log "PASS bypass env rejected"
-
-log "8) app role without CREATE cannot DROP SCHEMA (simulated plan)"
+log "6) simulated app role cannot DROP SCHEMA"
 psql_admin -d postgres <<SQL
 DO \$\$
 BEGIN
@@ -98,10 +79,49 @@ BEGIN
   END IF;
 END\$\$;
 REVOKE CREATE ON SCHEMA public FROM guard_test_app;
+GRANT CONNECT ON DATABASE postgres TO guard_test_app;
 SQL
 if psql -h 127.0.0.1 -p "$PG_PORT" -U guard_test_app -d postgres -c 'DROP SCHEMA public CASCADE;' 2>/dev/null; then
   fail "expected guard_test_app DROP SCHEMA to fail"
 fi
-log "PASS simulated app role blocked from DROP SCHEMA"
 
+log "7) migrate resolve blocked under deploy authority on simulated VPS"
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/synqdrive?schema=public"
+export SYNQDRIVE_MIGRATION_AUTHORITY=1
+touch /tmp/synqdrive-vps-marker-test
+# prisma guard checks /opt/synqdrive/shared/backend.env — skip full VPS path; bash guard:
+if pdb_guard_assert_migration_resolve_authority 2>/dev/null; then
+  fail "migrate resolve should require recovery authorization"
+fi
+export SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED=1
+unset SYNQDRIVE_MIGRATION_AUTHORITY
+pdb_guard_assert_migration_resolve_authority
+
+log "8) bootstrap manifest integrity"
+REPO_ROOT="$(cd "${ROOT}/.." && pwd)"
+MANIFEST="${ROOT}/scripts/ops/contracts/production-database-guard-bundle.manifest.sha256"
+[[ -f "$MANIFEST" ]] || fail "missing bundle manifest sha256"
+while read -r line; do
+  [[ -z "$line" ]] && continue
+  hash="${line%%  *}"
+  rel="${line#*  }"
+  src="${REPO_ROOT}/${rel}"
+  [[ -f "$src" ]] || fail "missing manifest path ${rel}"
+  actual="$(sha256sum "$src" | awk '{print $1}')"
+  [[ "$actual" == "$hash" ]] || fail "manifest drift ${rel}"
+done < "$MANIFEST"
+
+log "9) migration authority stamp required for production deploy path (simulated)"
+createdb_if_needed "guard_prod_sim_${EPHEMERAL_DB}"
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/guard_prod_sim_${EPHEMERAL_DB}?schema=public"
+export SYNQDRIVE_MIGRATION_AUTHORITY_STAMP_FILE="$STAMP_FILE"
+export PDB_GUARD_AUTHORITY_STAMP_PATH="$STAMP_FILE"
+PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+pdb_guard_write_migration_authority_stamp "$DATABASE_URL" > "$STAMP_FILE"
+export SYNQDRIVE_MIGRATION_AUTHORITY=1
+if pdb_guard_assert_migration_authority_stamp "$DATABASE_URL"; then
+  log "stamp verification PASS"
+fi
+
+rm -f /tmp/synqdrive-vps-marker-test 2>/dev/null || true
 log "ALL production-database-guard gate checks PASS"

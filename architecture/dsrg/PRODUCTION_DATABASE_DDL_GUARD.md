@@ -2,79 +2,82 @@
 
 **Status:** PROPOSED (repository guard + deploy gates; VPS role migration not applied)  
 **Last updated:** 2026-10-18  
-**Related incident:** `DROP SCHEMA "public" CASCADE` logged 2026-10-18T13:18:10Z on `synqdrive@synqdrive` (failed with out-of-shared-memory; partial schema damage followed).
+**Clean PR:** supersedes scope-drifted draft #2077
 
 ## Purpose
 
-Prevent Prisma reset/push, test harnesses, or deploy scripts from targeting the production `synqdrive` database or accepting empty/stub backups before `prisma migrate deploy`.
+Prevent Prisma reset/push, test harnesses, or deploy scripts from targeting production `synqdrive` or accepting empty/stub backups before `prisma migrate deploy`.
 
 ## P1 — Identity contract
 
-- Versioned contract: `backend/scripts/ops/contracts/production-database-identity.v1.json`
+- Contract: `backend/scripts/ops/contracts/production-database-identity.v1.json`
 - Library: `backend/scripts/ops/lib/production-database-identity-guard.lib.sh`
-- Profiles:
-  - `ephemeral` — CI/local disposable DBs; rejects reserved name `synqdrive` and production URL fragments.
-  - `production_vps` — VPS deploy; requires `synqdrive` @ localhost, live schema + ledger floors, blocks recovery/cutover flags.
+- Compares **independently**:
+  - Runtime `DATABASE_URL` vs `SYNQDRIVE_MIGRATION_DATABASE_URL` / `DIRECT_URL`
+  - Live PostgreSQL session (`current_database()`, database OID, `inet_server_port()`)
+  - Backup `pg_dump` target name vs DSN database component
+- **No** self-comparison of the same URL string.
+- Migration authority **stamp** (`migration-authority.stamp`): HMAC-SHA256(body) over `oid|db|ledger|issued` after live preflight — required for production `migrate deploy` (not flag-only).
 
-Numeric floors (min table count, min ledger rows) are **sanity bounds**, not business truth. Pair deploy with before/after snapshots.
+## P2 — Prisma fence
 
-## P2 — Destructive Prisma fence
+- `prisma-cli-guard.mjs` + `prisma-with-guard.sh`
+- Production VPS: blocks `migrate reset`, `migrate dev`, all `db push`, destructive `db execute`
+- `migrate deploy`: deploy authority flag **plus** valid stamp file
+- `migrate resolve`: only with `SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED=1` and **without** deploy migration authority
+- Rejects non-`public` `--schema` / datasource schema on production name
+- CI: `verify-unguarded-prisma-invocations.sh` fails raw `npx prisma migrate` in `scripts/ops`
 
-- `backend/scripts/ops/lib/prisma-cli-guard.mjs` (invoked via `prisma-with-guard.sh` and `prisma:migrate:*` npm scripts)
-- `backend/scripts/test/prisma-migrate-deploy-resilient.sh` routes all `migrate deploy` / `resolve` through the guard.
-- Blocks: `migrate reset`, `migrate dev`, `db push --force-reset`, `db push --accept-data-loss` on production identity.
-- Production `migrate deploy` requires `SYNQDRIVE_MIGRATION_AUTHORITY=1` (set only from `vps-deploy-release.sh`).
+## P3 — Role separation (documented + isolated test only)
 
-**Limitation:** Direct `npx prisma` bypass remains possible until CI grep gate fails undocumented entrypoints. App role DDL exposure requires role migration (P3).
+### Production read-only snapshot (2026-10-18)
 
-## P3 — Role / ownership plan (not applied on VPS)
+| Item | Value |
+|------|--------|
+| Schema `public` owner | `pg_database_owner` (PG16) |
+| Table owners | ~450 × `synqdrive`, rare `postgres` |
+| `synqdrive` | `CREATE` on DB + schema; not superuser |
+| Extensions | inspect before migration (`\dx`) |
 
-### Read-only production snapshot (2026-10-18)
+### Target model (no mass `ALTER TABLE … OWNER TO synqdrive` after migrate)
 
-| Object | Observation |
-|--------|-------------|
-| Schema `public` owner | `pg_database_owner` (PostgreSQL 16) |
-| Table owners | ~450 tables `synqdrive`, 1 `postgres` |
-| Role `synqdrive` | `CREATE` on database + schema `public`, not superuser |
-| Role `postgres` | superuser (migrations / ownership fix script) |
+**Do not** extend `pg-fix-app-table-ownership.sql` to re-own all tables to the app role — that restores DROP capability on production objects.
 
-`REVOKE CREATE ON SCHEMA public FROM synqdrive` alone **does not** remove destructive DDL for objects owned by `synqdrive` (DROP TABLE) and does not prevent `DROP SCHEMA` by schema owner (`pg_database_owner`).
+1. **`synqdrive_migrate`**: runs `prisma migrate deploy`; owns **new** migration artifacts (`_prisma_migrations` rows, new tables/indexes from DDL).
+2. **`synqdrive` (app)**: `CONNECT`, `USAGE` on `public`; `SELECT/INSERT/UPDATE/DELETE` on data tables via grants; **not** owner of schema or migration-created objects.
+3. **Existing tables** today owned by `synqdrive`: phased plan — create migrate-owned shadow schema or transfer ownership to `synqdrive_migrate` with explicit `GRANT` to app (never back to app ownership for DDL-bearing objects).
+4. **Sequences**: `USAGE, SELECT` to app; owner `synqdrive_migrate`.
+5. **Default privileges**: `ALTER DEFAULT PRIVILEGES FOR ROLE synqdrive_migrate IN SCHEMA public GRANT … TO synqdrive`.
+6. Optional **event trigger** blocking `DROP SCHEMA` / `DROP DATABASE` except `synqdrive_migrate` / `postgres`.
 
-### Target model
-
-1. **`synqdrive_migrate`** (login, not superuser): runs `npm run prisma:migrate:deploy` under `SYNQDRIVE_MIGRATION_AUTHORITY=1`; owns new migration objects; member of `pg_database_owner` or explicit owner of `public` during maintenance window.
-2. **`synqdrive` (app)**: `CONNECT`, `USAGE` on `public`; `SELECT/INSERT/UPDATE/DELETE` on tables; **no** `CREATE` on schema; **not** owner of tables created after cutover (migrate role owns, then `ALTER TABLE ... OWNER TO synqdrive` via existing `pg-fix-app-table-ownership.sql` extended).
-3. **Event trigger (optional hardening):** reject `DROP SCHEMA`, `DROP DATABASE`, `DROP TABLE` unless `current_user = synqdrive_migrate` or `postgres`.
-
-### Migration steps (owner GO required)
-
-1. Create `synqdrive_migrate` with password in secrets manager (not `backend.env` app copy).
-2. `REVOKE CREATE ON SCHEMA public FROM synqdrive;`
-3. Re-assign table/sequence ownership batch (extend `pg-fix-app-table-ownership.sql`).
-4. Update `vps-deploy-release.sh` to run `prisma migrate deploy` as `synqdrive_migrate` DSN override (single step, not app `DATABASE_URL`).
-5. Verify app replicas still use `synqdrive` DSN.
-6. Record in DSRG evidence.
+Validated in CI via simulated role (`guard_test_app` + `REVOKE CREATE`) — not on VPS.
 
 ## P4 — Deploy / backup gate
 
-- `vps-production-database-deploy-preflight.sh` — live schema + optional backup file.
-- `production-database-backup-content-gate.lib.sh` — COPY block row floors, gzip size, non-empty core tables.
-- Integrated in `vps-deploy-release.sh`: pre-backup live check → pg_dump → backup content gate → migrate preflight.
+`vps-deploy-release.sh`: live preflight → `pg_dump` + size/gzip checks → backup COPY content gate → clone → stamp → `migrate deploy`.
 
-## P5 — Regression
+## P5 — Bootstrap first protected deploy
 
-- `backend/scripts/test/production-database-guard-postgres-gate.sh`
-- CI: `.github/workflows/production-database-guard.yml`
-
-## P6 — Ledger name parity
-
-- Script: `backend/scripts/ops/prisma-migration-history-name-parity.sh`
-- Production (2026-10-18): 435 ledger rows = 419 successful distinct + 16 rolled-back attempts; release tree `d43ff450` has 402 migration folders — 17 successful ledger names not present in that tree (historical tail / reconciliations applied on VPS ahead of folder inventory). Use set diff output for promotion reviews; `migrate status` UP TO DATE is necessary but not sufficient.
-
-## Validation commands
+Executor on `d43ff450` lacks guard files. **Approved path** (no CI skip, no ad-hoc copy):
 
 ```bash
-cd backend && bash scripts/test/production-database-guard-postgres-gate.sh
-cd backend && bash scripts/ops/prisma-migration-history-name-parity.sh  # on VPS read-only
-bash backend/scripts/test/verify-destructive-prisma-entrypoints.sh
+SYNQDRIVE_GUARD_BUNDLE_INSTALL_AUTHORIZED=1 \
+  bash backend/scripts/ops/vps-production-database-guard-install-verified-bundle.sh \
+  /opt/synqdrive/current/backend/scripts/ops
+```
+
+- Manifest: `production-database-guard-bundle.manifest.sha256`
+- Installs only listed paths after per-file SHA-256 verification
+- Does **not** deploy application code
+- Next `vps-deploy-release.sh` run uses installed preflight before any migration
+
+## P6 — Ledger parity
+
+`prisma-migration-history-name-parity.sh` — 435 rows = 419 successful distinct + 16 rolled back; folder tree count differs (historical VPS tail).
+
+## Validation
+
+```bash
+cd backend && npm run test:production-database-guard:entrypoints
+cd backend && npm run test:production-database-guard   # requires CI postgres
 ```
