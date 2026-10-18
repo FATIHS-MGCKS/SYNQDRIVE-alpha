@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-17 — G5C-N14 LV operational condition V1 (internal estimator, backend-only)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Pure `evaluateLvOperationalConditionV1` engine; N13 `latestMeasured` global semantics + historical window tail; read-only evaluation harness |
+| **WHY** | First chemistry-aware, evidence-bounded LV operational risk prototype on Ruptela REST observations without SOH fabrication |
+| **VALIDATION** | Unit specs (adversarial charging voltage, context-limited slopes, chemistry unknown); production read-only forensics KS MS 661 / WOB L 7503 |
+| **NON_EFFECTS** | No customer publication; no C3/D3 recompute; no production writes; no E3/F6 |
+
 ## 2026-10-17 — G5C-N13-P10 live product corrections (slope quality + historical browse)
 
 | Field | Value |

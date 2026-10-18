@@ -63,6 +63,8 @@ export type LvMeasuredRestSessionEpisodeV1 = {
   contextLimitedReason: string | null;
 };
 
+export type LvMeasuredLatestMeasuredSemanticV1 = 'VEHICLE_GLOBAL_LATEST';
+
 export type LvMeasuredIntelligenceProvenanceV1 = {
   openProviderObservabilityGapCount: number;
   deduplicationPolicy: 'ONE_ROW_PER_SOURCE_MEASUREMENT_ID';
@@ -71,6 +73,12 @@ export type LvMeasuredIntelligenceProvenanceV1 = {
   historicalMeasuredTo: string | null;
   historicalObservationsTruncated: boolean;
   featureRowsTruncated: boolean;
+  /** `latestMeasured` is always the newest vehicle-wide voltage observation, not the historical window tail. */
+  latestMeasuredSemantic: LvMeasuredLatestMeasuredSemanticV1;
+  /** Last point inside the selected historical window (null when not in date-range mode). */
+  historicalWindowLatestMeasured: LvMeasuredVoltagePointV1 | null;
+  /** True when bounded historical input may omit older observations (truncation or provider gaps). */
+  inputCoverageIncomplete: boolean;
 };
 
 export type LvMeasuredLongitudinalD4SummaryV1 = {

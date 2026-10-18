@@ -31,11 +31,18 @@ export type LongitudinalProfileRevisionInspectOutcome =
       view: LongitudinalProfileRevisionInspectView;
     };
 
+/** Narrow read-only port for D4 revision inspection (Nest service + ops harness stubs). */
+export type LongitudinalProfileRevisionInspector = {
+  inspectRevision(
+    request: LongitudinalProfileRevisionInspectRequest,
+  ): Promise<LongitudinalProfileRevisionInspectOutcome>;
+};
+
 /**
  * M3.3F F4.1 D4 — read-only D3 revision inspection (ops / evidence; no customer HTTP).
  */
 @Injectable()
-export class LongitudinalProfileRevisionInspectionService {
+export class LongitudinalProfileRevisionInspectionService implements LongitudinalProfileRevisionInspector {
   constructor(
     private readonly materializationRepository: LongitudinalProfileMaterializationRepository,
     private readonly sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
