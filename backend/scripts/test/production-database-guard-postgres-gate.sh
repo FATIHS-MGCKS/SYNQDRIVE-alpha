@@ -14,7 +14,7 @@ fail() { echo "!! FAIL: $*" >&2; exit 1; }
 
 expect_fail() {
   set +e
-  "$@"
+  ( "$@" )
   local rc=$?
   set -e
   if [[ "$rc" -eq 0 ]]; then
