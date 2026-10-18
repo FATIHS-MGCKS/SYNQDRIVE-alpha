@@ -36,25 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'dtc02-p4-safety-certification-2026-10-17',
-    version: '4.9.2250',
-    title: 'DTC-02 P4 — adaptive scheduler safety & fallback certification',
-    summary: [
-      'Safety certification matrix (planner, webhook, poll apply), source-trust reconciliation classifier, P4 PostgreSQL scenarios, BullMQ shadow failure isolation.',
-      'Future deferral policy design stub — DTC_02_ADAPTIVE_DEFERRAL_ENABLED remains OFF; no enqueue/cadence changes.',
-      'Governance evidence DTC02_P4_SAFETY_CERTIFICATION.md with P5 activation blockers.',
-    ],
-    reason:
-      'Certify fail-closed behavior and source-trust consistency before any adaptive activation.',
-    previousBehavior:
-      'P3 shadow only; no formal certification matrix or reconciliation classifier.',
-    details:
-      'dtc/certification/dtc-02-*.ts, dimo-dtc.processor.shadow-cert.spec.ts, architecture/dtc-error-codes/evidence/DTC02_P4_SAFETY_CERTIFICATION.md',
-    affectsArchitecture: true,
-    module: 'DTC / Error Codes',
-    createdAt: '2026-10-17T21:00:00.000Z',
-  },
-  {
     id: 'dtc02-p3-adaptive-shadow-2026-10-17',
     version: '4.9.2249',
     title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
@@ -91,6 +72,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'DTC / Error Codes',
     createdAt: '2026-10-17T17:00:00.000Z',
+  },
+  {
+    id: 'exp021-s4-research-pr-b-pure-library-2026-10-17',
+    version: '4.9.2248',
+    title: 'EXP021 S4 research PR B — pure road-matching library (no runtime wiring)',
+    summary: [
+      'driving-intelligence/s4-research: deterministic OSM parse, separate baseline + forward Viterbi hypotheses, F4-B promotion audit helpers.',
+      'Typed GPS/QC/L3 + versioned OSM inputs; ASSOCIATED is algorithmic only; independentRoadIdAccuracy NOT_ASSESSABLE.',
+      'Frozen LDI-10D Tesla/OSM fixtures for replay; npm run test:di:s4-research; no Nest/scheduler/DB/DIMO/OSM network changes.',
+    ],
+    reason:
+      'Prepare reusable offline road-matching for future S4 shadow evaluation without activating live S4A–S4F execution.',
+    previousBehavior:
+      'Road matching existed only on offline research branch (PR #2051 ops libs), not as an isolated pure library on main.',
+    details:
+      's4-research/*, di-s4-research-tesla-replay.harness.ts, architecture/drivingintelligence/evidence/ldi-10d fixtures',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T16:20:00.000Z',
   },
   {
     id: 'vsi-p5h1-profile-revision-history-2026-10-17',
