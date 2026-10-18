@@ -28,7 +28,7 @@
 | `evidenceQuality` | `high` / `medium` / `low` / `unknown` |
 | `requiresLegacyFallback` | Planner defers to legacy tick |
 | `safetyConstraints` | Invariants applied |
-| `projectedPollReductionMs` | `legacyNext - proposed` (**projected**) |
+| `projectedPollReductionMs` | `proposed - legacyNext` (≤ 0 under P3 no-later-than-legacy bound; **projected**) |
 
 ## Safety invariants
 

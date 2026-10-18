@@ -145,13 +145,20 @@ export class DimoDtcProcessor extends WorkerHost {
       shadowCandidateIds.push(vehicle.id);
     }
 
-    await runDtc02AdaptiveSchedulerShadowBatch({
-      prisma: this.prisma,
-      observability: this.dtc02Observability,
-      candidateVehicleIds: shadowCandidateIds,
-      evaluatedAtMs,
-      logger: this.logger,
-    });
+    try {
+      await runDtc02AdaptiveSchedulerShadowBatch({
+        prisma: this.prisma,
+        observability: this.dtc02Observability,
+        candidateVehicleIds: shadowCandidateIds,
+        evaluatedAtMs,
+        logger: this.logger,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `DTC-02 adaptive shadow hook failed (non-fatal): ${(err as Error).message}`,
+      );
+      this.dtc02Observability?.recordAdaptiveShadowPhase('error');
+    }
 
     this.dtc02Observability?.recordFanOutEligible(vehicles.length, enqueued);
     void this.dtc02Observability?.refreshSourceTrustFromDb(this.prisma);
