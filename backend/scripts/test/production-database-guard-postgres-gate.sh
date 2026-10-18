@@ -135,6 +135,7 @@ ALTER TABLE app_data OWNER TO guard_app;
 REVOKE CREATE ON SCHEMA public FROM guard_app;
 ALTER TABLE app_data OWNER TO guard_migrate;
 GRANT SELECT, INSERT, UPDATE, DELETE ON app_data TO guard_app;
+GRANT USAGE, CREATE ON SCHEMA public TO guard_migrate;
 SQL
 PGPASSWORD=guard_app_local psql -h 127.0.0.1 -p "$PG_PORT" -U guard_app -d "$ROLE_DB" -c 'INSERT INTO app_data VALUES (2);' >/dev/null
 expect_fail env PGPASSWORD=guard_app_local psql -h 127.0.0.1 -p "$PG_PORT" -U guard_app -d "$ROLE_DB" -c 'DROP TABLE app_data;'
