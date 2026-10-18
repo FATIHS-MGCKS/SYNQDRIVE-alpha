@@ -103,6 +103,7 @@ preflight() {
   fi
 
   mkdir -p "$LOG_DIR"
+  chmod 1777 "$LOG_DIR" 2>/dev/null || true
   echo "==> Preflight OK backup=${BACKUP_FILE} target=${TARGET_DB} log_dir=${LOG_DIR} phase=${phase}"
 }
 
@@ -125,10 +126,12 @@ restore_backup() {
   guard_sql_file "$head_scan"
   rm -f "$head_scan"
 
+  set +o pipefail
   set +e
   gunzip -c "$BACKUP_FILE" | sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$TARGET_DB" >"$log" 2>"$err"
-  local rc=$?
+  local rc=${PIPESTATUS[1]:-$?}
   set -e
+  set -o pipefail
   if [[ $rc -ne 0 ]]; then
     echo "!! RESTORE FAILED rc=${rc} — see ${log} and ${err}" >&2
     exit 2
