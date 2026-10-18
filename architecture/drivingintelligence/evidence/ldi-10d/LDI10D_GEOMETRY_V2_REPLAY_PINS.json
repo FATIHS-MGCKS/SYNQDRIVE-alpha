@@ -1,0 +1,23 @@
+{
+  "note": "Corrected local equirectangular point-to-segment distance (S4_RESEARCH_LOCAL_EQUIRECTANGULAR_V2). independentRoadIdAccuracy remains NOT_ASSESSABLE.",
+  "geometryProjectionId": "S4_RESEARCH_LOCAL_EQUIRECTANGULAR_V2",
+  "algorithmBundle": {
+    "roadMatching": "S4_RESEARCH_ROAD_MATCHING_V2",
+    "baseline": "S4_RESEARCH_BASELINE_BUCKET_V2",
+    "viterbi": "S4_RESEARCH_VITERBI_FORWARD_V2"
+  },
+  "teslaFrozenFixture": "fixtures/tesla-20261016/TESLA_POSITION_GRID.json",
+  "corridorMarginM": 75,
+  "baseline": { "ASSOCIATED": 483, "AMBIGUOUS": 384, "UNKNOWN": 269 },
+  "viterbi": { "ASSOCIATED": 510, "AMBIGUOUS": 244, "UNKNOWN": 382 },
+  "promotions": 27,
+  "impossibleViterbiTransitions": 2,
+  "graphTransitionConflicts": 2,
+  "promotionClassDistribution": {
+    "TOPOLOGY_PLAUSIBLE": 20,
+    "STRUCTURALLY_CONTRADICTED": 1,
+    "STILL_AMBIGUOUS": 5,
+    "INSUFFICIENT_EVIDENCE": 1
+  },
+  "independentRoadIdAccuracy": "NOT_ASSESSABLE"
+}

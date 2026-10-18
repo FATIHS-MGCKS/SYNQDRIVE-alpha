@@ -74,6 +74,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-17T17:00:00.000Z',
   },
   {
+    id: 'exp021-s4-research-pr-b-pure-library-2026-10-17',
+    version: '4.9.2248',
+    title: 'EXP021 S4 research PR B — pure road-matching library (no runtime wiring)',
+    summary: [
+      'driving-intelligence/s4-research: deterministic OSM parse, separate baseline + forward Viterbi hypotheses, F4-B promotion audit helpers.',
+      'Typed GPS/QC/L3 + versioned OSM inputs; ASSOCIATED is algorithmic only; independentRoadIdAccuracy NOT_ASSESSABLE.',
+      'Frozen LDI-10D Tesla/OSM fixtures for replay; npm run test:di:s4-research; no Nest/scheduler/DB/DIMO/OSM network changes.',
+    ],
+    reason:
+      'Prepare reusable offline road-matching for future S4 shadow evaluation without activating live S4A–S4F execution.',
+    previousBehavior:
+      'Road matching existed only on offline research branch (PR #2051 ops libs), not as an isolated pure library on main.',
+    details:
+      's4-research/*, di-s4-research-tesla-replay.harness.ts, architecture/drivingintelligence/evidence/ldi-10d fixtures',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T16:20:00.000Z',
+  },
+  {
     id: 'vsi-p5h1-profile-revision-history-2026-10-17',
     version: '4.9.2247',
     title: 'VSI P5-H1 — immutable signal profile revision history (capture gate default OFF)',

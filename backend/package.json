@@ -38,6 +38,7 @@
     "ops:di:p21-trip-speed-quality-preview": "ts-node scripts/ops/di-v0-trip-speed-quality-preview.ts",
     "test:di:s4c": "jest s4c-executor --testPathIgnorePatterns=postgres",
     "test:di:s4c:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/__tests__/di-v0-s4c-orchestration.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/__tests__/di-v0-s4c-postgres.matrix.integration.spec.ts",
+    "test:di:s4-research": "jest s4-research --runInBand --testTimeout=180000",
     "test:di:s4d": "jest s4d-replay --testPathIgnorePatterns=postgres",
     "test:di:s4d:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/__tests__/di-v0-s4d-postgres.matrix.integration.spec.ts",
     "test:di:s4e": "jest s4e-drift-watcher --testPathIgnorePatterns=postgres.integration",
