@@ -113,6 +113,7 @@ import {
   HvRechargeSessionReconcileProducerService,
   HvRechargeSessionReconcileService,
 } from './battery-health/hv-charge-session';
+import { HvChargingCounterEvidenceModule } from './battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.module';
 import {
   HvCapacityCrossSessionAssessmentService,
   HvCapacityM2SampleProviderService,
@@ -322,6 +323,7 @@ import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/
     VehicleFindingsModule,
     TasksModule,
     BatteryV2JobsProducerModule,
+    HvChargingCounterEvidenceModule,
     EventTripAssociationModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },
