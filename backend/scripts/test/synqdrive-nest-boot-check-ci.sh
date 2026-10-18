@@ -45,6 +45,7 @@ log "DTC-02 / deploy Nest DI metadata regression (unit)"
 npx jest --runTestsByPath \
   src/modules/vehicle-intelligence/dtc/observability/dtc02-observability.nest-di.spec.ts \
   src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-g5c-n7.nest-di.spec.ts \
+  src/modules/vehicle-intelligence/battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.nest-di.spec.ts \
   scripts/test/synqdrive-boot-check-exit.contract.spec.ts \
   --runInBand
 
