@@ -145,7 +145,59 @@ sync_schema_drift_if_needed() {
 
 sync_schema_drift_if_needed
 
-export DTC_01B_PG_INTEGRATION=1
-npm test -- --testPathPatterns=dtc-01b.postgres.integration.spec --runInBand
+assert_dtc_disposable_pg_ci_env() {
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    echo "Refusing: DATABASE_URL is required for disposable PostgreSQL certification" >&2
+    exit 1
+  fi
+  fail_closed_database_url "DATABASE_URL" "${DATABASE_URL}"
+  if [[ "${DTC_01B_PG_INTEGRATION:-}" != "1" ]]; then
+    echo "Refusing: DTC_01B_PG_INTEGRATION=1 is required (prevents silent describe.skip)" >&2
+    exit 1
+  fi
+}
 
-echo "DTC-01B PostgreSQL integration: PASS"
+run_jest_postgres_suite() {
+  local label="$1"
+  local pattern="$2"
+  local expected_tests="$3"
+
+  local listed
+  listed="$(npx jest --listTests --testPathPatterns="${pattern}" 2>/dev/null | wc -l | tr -d '[:space:]')"
+  if [[ "${listed}" -lt 1 ]]; then
+    echo "${label}: zero test files discovered (pattern=${pattern})" >&2
+    exit 1
+  fi
+
+  local log
+  log="$(mktemp /tmp/dtc-pg-ci.XXXXXX.log)"
+  set +e
+  npm test -- --testPathPatterns="${pattern}" --runInBand --verbose 2>&1 | tee "${log}"
+  local test_exit=${PIPESTATUS[0]}
+  set -e
+
+  if ! grep -qE "Tests:[[:space:]]+${expected_tests} passed, ${expected_tests} total" "${log}"; then
+    echo "${label}: expected ${expected_tests} passed tests (discovery/execution mismatch or failure)" >&2
+    grep -E 'Tests:|PASS |FAIL ' "${log}" >&2 || true
+    exit 1
+  fi
+  if [[ "${test_exit}" -ne 0 ]]; then
+    exit "${test_exit}"
+  fi
+  echo "${label}: PASS (${expected_tests}/${expected_tests})"
+}
+
+export DTC_01B_PG_INTEGRATION=1
+assert_dtc_disposable_pg_ci_env
+
+run_jest_postgres_suite \
+  "DTC-01B PostgreSQL integration" \
+  "dtc-01b.postgres.integration.spec" \
+  "8"
+
+run_jest_postgres_suite \
+  "DTC-02 P4 PostgreSQL integration" \
+  "dtc-02-p4.postgres.integration.spec" \
+  "4"
+
+echo "DTC disposable PostgreSQL certification (01B + P4): PASS"

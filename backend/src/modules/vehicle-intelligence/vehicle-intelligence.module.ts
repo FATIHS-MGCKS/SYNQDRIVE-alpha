@@ -299,6 +299,7 @@ import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-
 import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds-p5.service';
 import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
+import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/di-v0-s4-research.module';
 
 @Module({
   imports: [
@@ -306,6 +307,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     VsiReadonlySignalComposerModule,
     DiV0S4RuntimeModule,
     DiV0TripSpeedQualityModule,
+    DiV0S4ResearchModule,
     forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),

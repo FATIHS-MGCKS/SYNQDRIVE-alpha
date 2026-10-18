@@ -8,6 +8,12 @@
 - **CI:** `synqdrive-nest-boot-check-ci.sh` + `nest-boot-check` job on critical vehicle-detail / legal-documents gates; `dtc02-observability.nest-di.spec.ts`.
 - **VALIDATION:** Compiled boot check PASS; DTC observability + webhook unit suites PASS.
 
+## 2026-10-17 — DTC-02 P4 safety & fallback certification (draft)
+
+- Certification matrix unit tests, source-trust reconciliation classifier, P4 PostgreSQL scenarios, BullMQ shadow isolation spec.
+- Future deferral policy module (always OFF in P4); governance evidence `DTC02_P4_SAFETY_CERTIFICATION.md`.
+- No deferral activation, no production repair, no scheduler/enqueue changes.
+
 ## 2026-10-17 — DTC-02 P3 adaptive scheduler shadow (draft, default OFF)
 
 - Pure planner `planDtc02AdaptivePollCheck` + shadow batch on natural fan-out; flags `DTC_02_ADAPTIVE_SCHEDULER_SHADOW_*`.

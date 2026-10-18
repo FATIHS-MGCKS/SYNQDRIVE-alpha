@@ -2019,6 +2019,32 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
 
+### EXP-021 S4 research extension — PR C final correctness gate (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Migration `20261017203000_di_v0_s4_research_runs_idempotency_fix` (partial unique SUCCEEDED per intent + exact retry key); `acknowledgePersistedRun` verifies stored status on duplicate; neutral outbox release enables OSM-HIT follow-up; worker-thread pipeline deadline; postgres CI script + S4 workflow hook; matrix EXECUTED/NOT_EXECUTED inventory |
+| WHY | Neutral `ROAD_CONTEXT_UNAVAILABLE` must not block later `SUCCEEDED`; never report success on unique conflict alone |
+| VALIDATION | `test:di:s4-research-worker` (isolated timeout + bbox); `test:di:s4-research-worker:postgres:ci` on ephemeral PG |
+| NON_EFFECTS | No S4/L3/S1/QC/FSM mutation; flags OFF; no deploy |
+
+### EXP-021 S4 research extension — PR C hardening (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Cached OSM provider + bounded Overpass config; intent-key outbox (`outbox_id`, `research_intent_key`); run insert SQL error handling; shadow S1/QC evidence; 120s processing budget; matrix postgres spec |
+| WHY | Enable real OSM-HIT research artifacts, versioned reprocessing, and fail-closed persistence without S4 coupling |
+| NON_EFFECTS | Flags default OFF; no S4/L3/QC/FSM mutation |
+
+### EXP-021 S4 research extension — PR C async road-matching V2 worker (2026-10-17)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `s4-research-worker/`: control plane (`DI_V0_S4_RESEARCH_*`), outbox discovery on COMPLETED PRIMARY S4 rows, run persistence, snapshot adapter, OSM corridor helpers + null default provider; migration `20261017183000_di_v0_s4_research_v1`; `DiV0S4ResearchModule` in `VehicleIntelligenceModule`; scheduler registry `di_v0_s4_research_v2` |
+| WHY | Post-shadow research isolation: road-matching V2 artifacts without coupling to S4C completion or customer surfaces |
+| VALIDATION | `test:di:s4-research-worker` unit + dormant audit; postgres matrix spec (S4 stays COMPLETED, idempotency, allowlist, parallel claim); performance budget spec (1136-bucket Tesla, 180s cap) |
+| NON_EFFECTS | No S4A–S4F decision changes; no L3/S1/QC/FSM mutation; flags default OFF; no production deploy in this PR |
+
 ### EXP-021 S4 research extension — PR B geometry hardening (2026-10-17)
 
 | Event | Detail |

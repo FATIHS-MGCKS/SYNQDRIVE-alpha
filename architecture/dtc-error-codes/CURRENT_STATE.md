@@ -8,6 +8,11 @@
 - Evidence: [`evidence/DTC02_P1_OBSERVABILITY.md`](evidence/DTC02_P1_OBSERVABILITY.md)
 - occurrenceCount documentation: [`docs/dtc-02-occurrence-count-semantics.md`](../../docs/dtc-02-occurrence-count-semantics.md)
 
+## DTC-02 P4 (repository — certification, deferral NOT enabled)
+
+- Safety/fallback certification tests + source-trust reconciliation classifier; future deferral policy stub (default OFF).
+- Evidence: [`evidence/DTC02_P4_SAFETY_CERTIFICATION.md`](evidence/DTC02_P4_SAFETY_CERTIFICATION.md)
+
 ## DTC-02 P3 (repository — default OFF, not deployed)
 
 - Adaptive poll planner (pure) + shadow batch on existing `dtc-poll` fan-out; **no** enqueue/cadence/DIMO changes.
