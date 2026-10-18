@@ -156,7 +156,6 @@ async function runCli(
         email: MASTER_ADMIN_SMOKE_EMAIL,
         platformRole: UserPlatformRole.MASTER_ADMIN,
         status: UserStatus.ACTIVE,
-        passwordHash: 'x',
       },
       update: {
         platformRole: UserPlatformRole.MASTER_ADMIN,

@@ -59,7 +59,6 @@ const LIVE =
         name: 'PDI flow test master admin',
         platformRole: UserPlatformRole.MASTER_ADMIN,
         status: UserStatus.ACTIVE,
-        passwordHash: 'not-used',
       },
       select: { id: true },
     });
