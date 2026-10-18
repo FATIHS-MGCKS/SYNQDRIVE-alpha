@@ -29,7 +29,7 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
 
 jobs:
   hv-h4-unit-and-contracts:

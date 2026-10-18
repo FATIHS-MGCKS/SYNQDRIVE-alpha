@@ -23,7 +23,7 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
   REDIS_HOST: 127.0.0.1
   REDIS_PORT: 6379
   JWT_SECRET: ci-synqdrive-nest-boot-check-jwt-secret-not-for-production
@@ -162,7 +162,7 @@ jobs:
       - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
       - name: OSM charging importer tests (pyosmium required)
         run: |
           sudo apt-get update -qq
@@ -174,11 +174,11 @@ jobs:
           python3 scripts/ops/osm-charging-stations/tests/test_charging_refresh_safety.py
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
       - run: npm run test:boundary-repair:postgres
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
           BOUNDARY_REPAIR_POSTGRES_INTEGRATION: '1'
 
   frontend-component:

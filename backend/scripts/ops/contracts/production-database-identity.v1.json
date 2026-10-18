@@ -16,7 +16,8 @@
     "^synqdrive_staging_brake$",
     "^rfrf_",
     "^guard_test_",
-    "^test_"
+    "^test_",
+    "^synqdrive_ci_ephemeral$"
   ],
   "reservedProductionNames": ["synqdrive"],
   "requiredPublicTables": [

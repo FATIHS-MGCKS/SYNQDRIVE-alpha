@@ -68,12 +68,6 @@ pdb_guard_profile() {
   printf '%s' "unset"
 }
 
-pdb_guard_ci_disposable_synqdrive_db_allowed() {
-  [[ "${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-}" == "1" ]] \
-    && [[ "${GITHUB_ACTIONS:-}" == "true" ]] \
-    && ! pdb_guard_is_vps_production_context
-}
-
 pdb_guard_database_name_is_reserved_production() {
   local db=$1
   python3 - "$db" "$_GUARD_CONTRACT" <<'PY'
