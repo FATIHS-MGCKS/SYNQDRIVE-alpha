@@ -1,0 +1,48 @@
+name: Production database guard
+
+on:
+  pull_request:
+    paths:
+      - 'backend/scripts/ops/**'
+      - 'backend/scripts/test/production-database-guard-postgres-gate.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/scripts/test/verify-destructive-prisma-entrypoints.sh'
+      - 'backend/package.json'
+      - '.github/workflows/production-database-guard.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/scripts/ops/**'
+      - 'backend/scripts/test/production-database-guard-postgres-gate.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/scripts/test/verify-destructive-prisma-entrypoints.sh'
+  workflow_dispatch:
+
+jobs:
+  production-database-guard:
+    name: Production DB guard gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        run: npm ci
+        working-directory: backend
+      - name: Verify destructive Prisma entrypoints
+        run: bash scripts/test/verify-destructive-prisma-entrypoints.sh
+        working-directory: backend
+      - name: Start ephemeral PostgreSQL
+        run: bash scripts/test/ci-start-postgres.sh
+        working-directory: backend
+      - name: Run production database guard postgres gate
+        run: bash scripts/test/production-database-guard-postgres-gate.sh
+        working-directory: backend
+        env:
+          CI_PG_USER: synqdrive
+          CI_PG_PASSWORD: synqdrive
+          CI_PG_PORT: 5432
