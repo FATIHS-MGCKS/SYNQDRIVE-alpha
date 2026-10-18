@@ -1,4 +1,4 @@
-import { UserPlatformRole, PhysicalDeviceModelCode } from '@prisma/client';
+import { UserPlatformRole, UserStatus, PhysicalDeviceModelCode } from '@prisma/client';
 import {
   assertPdiP1b7ExecuteGates,
   buildPdiP1b7ManualIntakeDto,
@@ -31,6 +31,18 @@ describe('pdi-p1b7-manual-intake-operator.lib', () => {
     expect(dto.serialNumber).toBe(PDI_P1B7_AUTHORIZED_INTAKE.serialNumber);
     expect(dto.idempotencyKey).toBe(PDI_P1B7_AUTHORIZED_INTAKE.idempotencyKey);
     expect(dto.imei).toBeUndefined();
+  });
+
+  it('blocks execute when operator env gate is OFF', () => {
+    delete process.env.PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED;
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED = 'true';
+    expect(() =>
+      assertPdiP1b7ExecuteGates({
+        execute: true,
+        confirmFlag: true,
+        operatorAttestation: 'Owner authorized PDI P1B.7 Gate B',
+      }),
+    ).toThrow(/PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED/);
   });
 
   it('requires operator env gate and confirmation for execute', () => {
@@ -67,6 +79,7 @@ describe('pdi-p1b7-manual-intake-operator.lib', () => {
           id: 'u1',
           email: 'user@example.com',
           platformRole: UserPlatformRole.USER,
+          status: UserStatus.ACTIVE,
         }),
       },
     };
@@ -82,6 +95,7 @@ describe('pdi-p1b7-manual-intake-operator.lib', () => {
           id: 'admin-1',
           email: 'admin@synqdrive.de',
           platformRole: UserPlatformRole.MASTER_ADMIN,
+          status: UserStatus.ACTIVE,
         }),
       },
     };

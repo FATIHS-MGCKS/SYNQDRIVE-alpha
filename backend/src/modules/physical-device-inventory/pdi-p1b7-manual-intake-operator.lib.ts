@@ -5,8 +5,10 @@ import {
   ActivityEntity,
   PhysicalDeviceModelCode,
   UserPlatformRole,
+  UserStatus,
   type PrismaClient,
 } from '@prisma/client';
+import { MASTER_ADMIN_SMOKE_EMAIL } from '@modules/master-admin-smoke-lifecycle/master-admin-smoke-lifecycle.constants';
 import type { AuditService } from '@modules/activity-log/audit.service';
 import type { PhysicalDeviceListItemDto } from './physical-device-inventory.types';
 import { ManualIntakePhysicalDeviceDto } from './dto/manual-intake-physical-device.dto';
@@ -93,13 +95,21 @@ export async function resolveAuthorizedMasterAdminActor(
 
   const user = await prisma.user.findFirst({
     where: actorUserId ? { id: actorUserId } : { email: actorEmail },
-    select: { id: true, email: true, platformRole: true },
+    select: { id: true, email: true, platformRole: true, status: true },
   });
   if (!user) {
     throw new Error('Actor user not found');
   }
   if (user.platformRole !== UserPlatformRole.MASTER_ADMIN) {
     throw new Error('Actor is not MASTER_ADMIN — refusing to attribute intake');
+  }
+  if (user.status !== UserStatus.ACTIVE) {
+    throw new Error('Actor user is not ACTIVE — refusing operator attribution');
+  }
+  if (user.email.toLowerCase() === MASTER_ADMIN_SMOKE_EMAIL) {
+    throw new Error(
+      'Master-admin smoke acceptance account cannot be used for PDI production operator intake',
+    );
   }
   return user;
 }

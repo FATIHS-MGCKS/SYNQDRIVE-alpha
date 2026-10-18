@@ -7,7 +7,7 @@ Single-device scope: DIMO **192922**, serial **R1-865918076209847**, idempotency
 | Layer | Proof |
 |-------|--------|
 | Server access | SSH as `synqdrive-admin` (Hostinger VPS ops identity) |
-| Application actor | Real `User` row with `platformRole=MASTER_ADMIN` via `--actor-email` or `--actor-user-id` |
+| Application actor | Real **ACTIVE** `MASTER_ADMIN` user via `--actor-email` or `--actor-user-id` (smoke acceptance account rejected) |
 | Execution gate | `PDI_P1B7_MANUAL_INTAKE_OPERATOR_ENABLED=true` plus `--execute --confirm-p1b7-manual-intake` |
 | Owner scope | Frozen payload in `pdi-p1b7-manual-intake-operator.lib.ts` (not overridable by CLI) |
 | Attestation | `--operator-attestation="..."` stored in Activity `metaJson` |
