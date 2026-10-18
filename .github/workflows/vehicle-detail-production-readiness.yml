@@ -8,6 +8,9 @@ on:
       - 'docs/audits/vehicle-detail-**'
       - 'docs/testing/vehicle-detail-**'
       - '.github/workflows/vehicle-detail-production-readiness.yml'
+      - 'backend/scripts/test/synqdrive-nest-boot-check-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/scripts/test/ci-start-redis.sh'
   workflow_dispatch:
   push:
     branches:
@@ -20,6 +23,10 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: 6379
+  JWT_SECRET: ci-synqdrive-nest-boot-check-jwt-secret-not-for-production
 
 jobs:
   install-lockfile:
@@ -258,6 +265,44 @@ jobs:
       - run: npm ci && npm run build
         working-directory: frontend
 
+  nest-boot-check:
+    name: Nest production boot check
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: synqdrive-nest-boot-check-postgres
+      - name: Start Redis (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-redis.sh
+        env:
+          CI_REDIS_CONTAINER: synqdrive-nest-boot-check-redis
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - name: Fail closed on missing CI-local database config
+        run: |
+          set -euo pipefail
+          case "${DATABASE_URL}" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - run: bash scripts/test/synqdrive-nest-boot-check-ci.sh
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_HOST: ${{ env.REDIS_HOST }}
+          REDIS_PORT: ${{ env.REDIS_PORT }}
+
   security-scan:
     name: Security / dependency scan
     needs: install-lockfile
@@ -289,6 +334,7 @@ jobs:
       - playwright-e2e
       - accessibility
       - production-build
+      - nest-boot-check
       - security-scan
     steps:
       - run: echo "All critical vehicle-detail CI gates passed."

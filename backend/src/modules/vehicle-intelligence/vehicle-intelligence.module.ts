@@ -48,7 +48,6 @@ import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service
 import { DtcService } from './dtc/dtc.service';
 import { DtcSnapshotApplyService } from './dtc/snapshot/dtc-snapshot-apply.service';
 import { Dtc02ObservabilityModule } from './dtc/observability/dtc02-observability.module';
-import { Dtc02ObservabilityService } from './dtc/observability/dtc02-observability.service';
 import { DtcKnowledgeService } from './dtc-knowledge/dtc-knowledge.service';
 import { DtcKnowledgeEnrichmentService } from './dtc-knowledge/dtc-knowledge-enrichment.service';
 import { DtcAiResearchService } from './dtc-knowledge/dtc-ai-research.service';
@@ -653,7 +652,7 @@ import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/
     EnrichmentJobsService,
     DtcService,
     DtcSnapshotApplyService,
-    Dtc02ObservabilityService,
+    Dtc02ObservabilityModule,
     FindingLifecycleService,
     FindingBridgeService,
     DtcKnowledgeService,
