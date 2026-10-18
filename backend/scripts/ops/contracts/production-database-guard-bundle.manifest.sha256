@@ -6,7 +6,7 @@ a276e80589e8af1eee43c6e9e421ba81be4d24683d27b781f4a7384d3c5f3ea5  backend/packag
 678abbc824eaaffc41d50116a3dcb7d24baf55d647f75b95e2067e155d0b299d  backend/scripts/ops/lib/prisma-cli-guard.mjs
 a88143a876246d7b0838ca01063b875bd847673b8c1ffb460ce0d372703117ff  backend/scripts/ops/lib/production-database-backup-capture-verify.py
 4acb7c6fc7167e1693a0411c2f4b9b4e97b853e7be18674f4882e71fe5ee0c2f  backend/scripts/ops/lib/production-database-backup-content-gate.lib.sh
-dc7439bcf046a315330a4c7e76ba42685b414c628bb640db2e1c44cb5bc3dfeb  backend/scripts/ops/lib/production-database-identity-guard.lib.sh
+5a0da258bf208e2d74bc5447b10db44aa3385cf8c0b941c1d169e99b23803031  backend/scripts/ops/lib/production-database-identity-guard.lib.sh
 2201f7919d45b61e4ef488683b2f71598464df7af61634ecfea7793376dd6e96  backend/scripts/ops/lib/production-database-migration-authority-stamp.mjs
 d856a48863acd7ed6ca7553bb4672bb5e7a9340b4bdf20042da3458c19e680f3  backend/scripts/ops/prisma-migration-history-name-parity.sh
 fdacc2e3028241ea1ab57838b7aed53142c2a31a2368b3cb457e5cda27c388ff  backend/scripts/ops/prisma-with-guard.sh
