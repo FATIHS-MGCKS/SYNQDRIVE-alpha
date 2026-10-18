@@ -73,6 +73,28 @@ RELEASE_DIR="/opt/synqdrive/releases/${RELEASE_ID}"
 BACKUP_DIR="/opt/synqdrive/shared/backups"
 TS="$(date -u +%Y%m%d%H%M%S)"
 
+vps_run_production_db_preflight() {
+  local backup_file="${1:-}"
+  local ops_dir="${2:-$DEPLOY_EXECUTOR_OPS_DIR}"
+  if [[ -f "${ops_dir}/vps-production-database-deploy-preflight.sh" ]]; then
+    export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
+    if [[ -n "$backup_file" ]]; then
+      bash "${ops_dir}/vps-production-database-deploy-preflight.sh" "$backup_file"
+    else
+      bash "${ops_dir}/vps-production-database-deploy-preflight.sh"
+    fi
+    return 0
+  fi
+  if [[ ! -f /opt/synqdrive/shared/backend.env ]]; then
+    return 0
+  fi
+  echo "!! ABORT: production VPS deploy requires database guard preflight (executor missing ${ops_dir}/vps-production-database-deploy-preflight.sh)" >&2
+  exit 41
+}
+
+echo "==> Pre-deploy production database identity preflight (live schema)"
+vps_run_production_db_preflight "" "$DEPLOY_EXECUTOR_OPS_DIR"
+
 echo "==> Pre-deploy DB backup"
 mkdir -p "$BACKUP_DIR"
 
@@ -85,10 +107,14 @@ if [[ "$DISK_USE_PCT" -ge 85 ]]; then
   echo "!! WARN: root filesystem ${DISK_USE_PCT}% full"
 fi
 
-sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+PRE_DEPLOY_BACKUP="${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+sudo -u postgres pg_dump synqdrive | gzip > "${PRE_DEPLOY_BACKUP}"
 if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh ]]; then
   bash /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh "$(date +%s)" || true
 fi
+
+echo "==> Pre-deploy backup content gate"
+vps_run_production_db_preflight "${PRE_DEPLOY_BACKUP}" "$DEPLOY_EXECUTOR_OPS_DIR"
 
 echo "==> Clone release ${RELEASE_ID}"
 vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
@@ -144,6 +170,9 @@ echo "==> Backend install/build/migrate"
 cd "$RELEASE_DIR/backend"
 npm ci
 npx prisma generate
+export SYNQDRIVE_MIGRATION_AUTHORITY=1
+export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=production_vps
+vps_run_production_db_preflight "${PRE_DEPLOY_BACKUP}" "$RELEASE_OPS_DIR"
 npm run prisma:migrate:deploy
 sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
