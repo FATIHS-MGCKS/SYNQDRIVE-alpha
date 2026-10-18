@@ -9,10 +9,9 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { PrismaClient } from '@prisma/client';
-import type { PrismaService } from '../../src/shared/database/prisma.service';
+import { PrismaService } from '../../src/shared/database/prisma.service';
 import { LvMeasuredIntelligenceReadService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-measured-intelligence/lv-measured-intelligence-read.service';
-import type { LongitudinalProfileRevisionInspectionService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
+import type { LongitudinalProfileRevisionInspector } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import { buildLvOperationalConditionInputV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-input.builder';
 import { evaluateLvOperationalConditionV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-v1.evaluator';
 
@@ -44,6 +43,10 @@ function parseArgs(prefix: string): string[] {
     .filter(Boolean);
 }
 
+const d4InspectionReadonlyStub: LongitudinalProfileRevisionInspector = {
+  inspectRevision: async () => ({ status: 'NOT_FOUND' }),
+};
+
 async function main(): Promise<void> {
   const organizationId =
     parseArgs('--organization-id')[0] ?? process.env.ORG_ID?.trim();
@@ -56,13 +59,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const prisma = new PrismaClient();
-  const d4InspectionStub = {
-    inspectRevision: async () => ({ status: 'NOT_FOUND' as const }),
-  } satisfies Pick<LongitudinalProfileRevisionInspectionService, 'inspectRevision'>;
+  const prisma = new PrismaService();
   const readModel = new LvMeasuredIntelligenceReadService(
-    prisma as unknown as PrismaService,
-    d4InspectionStub as LongitudinalProfileRevisionInspectionService,
+    prisma,
+    d4InspectionReadonlyStub,
   );
 
   try {
@@ -108,6 +108,7 @@ async function main(): Promise<void> {
         inputCoverageIncomplete: conditionInput.inputCoverageIncomplete,
         eligibleRestCount: conditionInput.eligibleRestObservations.length,
         wakeObservationCount: conditionInput.wakeVoltageObservations.length,
+        crankEvidence: conditionInput.crankEvidence,
         assessment,
       });
     }

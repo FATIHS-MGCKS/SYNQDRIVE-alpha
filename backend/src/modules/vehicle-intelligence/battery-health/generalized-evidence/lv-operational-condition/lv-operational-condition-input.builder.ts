@@ -1,5 +1,11 @@
 import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
+
+/** Read-only Prisma surface for LV operational condition input assembly (ops harness + Nest). */
+export type LvOperationalConditionInputPrismaPort = Pick<
+  PrismaService,
+  'vehicleBatterySpec' | 'batteryFeatures' | 'batteryGeneralizedEvidenceObservation'
+>;
 import {
   normalizeBatteryType,
   selectBestBatterySpec,
@@ -35,7 +41,7 @@ const GE_LOAD_SELECT = {
 
 export async function buildLvOperationalConditionInputV1(
   deps: {
-    prisma: PrismaService;
+    prisma: LvOperationalConditionInputPrismaPort;
     readModel: LvMeasuredIntelligenceReadService;
   },
   input: {
