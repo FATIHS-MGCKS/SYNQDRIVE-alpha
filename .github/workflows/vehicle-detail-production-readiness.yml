@@ -131,7 +131,7 @@ jobs:
         env:
           POSTGRES_USER: synqdrive
           POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
+          POSTGRES_DB: synqdrive_ci_ephemeral
         ports:
           - 5432:5432
         options: >-
@@ -152,13 +152,13 @@ jobs:
           sudo apt-get install -y -qq postgresql-client
           export PGPASSWORD=synqdrive
           for i in $(seq 1 30); do
-            if psql -h 127.0.0.1 -U synqdrive -d synqdrive -c 'SELECT 1' >/dev/null 2>&1; then
+            if psql -h 127.0.0.1 -U synqdrive -d synqdrive_ci_ephemeral -c 'SELECT 1' >/dev/null 2>&1; then
               break
             fi
             sleep 2
           done
-          psql -h 127.0.0.1 -U synqdrive -d synqdrive -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
-          psql -h 127.0.0.1 -U synqdrive -d synqdrive -v ON_ERROR_STOP=1 -c 'SELECT PostGIS_Version();'
+          psql -h 127.0.0.1 -U synqdrive -d synqdrive_ci_ephemeral -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
+          psql -h 127.0.0.1 -U synqdrive -d synqdrive_ci_ephemeral -v ON_ERROR_STOP=1 -c 'SELECT PostGIS_Version();'
       - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
         working-directory: backend
         env:
