@@ -201,31 +201,6 @@ async function runCli(
   });
 
   it('dry-run fails when DIMO serial mismatches authorized scope', async () => {
-    const dimoId = randomUUID();
-    const { insertDimoMirrorRaw } = await import(
-      '../../vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-reconciliation-postgres.fixture'
-    );
-    await insertDimoMirrorRaw(prisma, {
-      id: dimoId,
-      externalId: `0x${randomUUID().replace(/-/g, '')}`,
-      tokenId: 192921,
-      rawJson: { aftermarketDevice: { serial: 'WRONG-SERIAL' } },
-    });
-    const badVehicleId = randomUUID();
-    await prisma.$executeRaw`
-      INSERT INTO vehicles (
-        id, organization_id, vin, make, model, year, fuel_type, hardware_type,
-        dimo_vehicle_id, registry_lifecycle, created_at, updated_at
-      ) VALUES (
-        ${badVehicleId}::uuid,
-        ${PDI_P1B7_AUTHORIZED_INTAKE.ownerOrganizationId}::uuid,
-        ${`VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`},
-        'VW', 'Tiguan', 2022, 'GASOLINE', 'LTE_R1',
-        ${dimoId},
-        'ACTIVE'::"VehicleRegistryLifecycle",
-        NOW(), NOW()
-      )
-    `;
     // Temporarily break identity by updating token 192922 serial in raw json
     await prisma.$executeRaw`
       UPDATE dimo_vehicles

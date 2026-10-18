@@ -10,6 +10,7 @@ import {
   recordPdiP1b7ManualIntakeActivityAudit,
   PDI_P1B7_OPERATOR_CLI_ROUTE,
 } from './pdi-p1b7-manual-intake-operator.lib';
+import { createOperatorTestMasterAdmin } from './pdi-p1b7-operator-cli.fixture';
 
 const LIVE =
   process.env.PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION === '1' && !!process.env.DATABASE_URL;
