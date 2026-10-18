@@ -53,15 +53,21 @@ const LIVE =
     const orgId = await createOrg();
     const serial = `R1-OP-${randomUUID().slice(0, 8)}`;
     const idempotencyKey = `pdi-op-${randomUUID()}`;
-    const actor = await prisma.user.create({
-      data: {
-        email: `pdi-flow-${randomUUID().slice(0, 8)}@example.com`,
-        name: 'PDI flow test master admin',
-        platformRole: UserPlatformRole.MASTER_ADMIN,
-        status: UserStatus.ACTIVE,
-      },
-      select: { id: true },
-    });
+    const actorId = randomUUID();
+    const actorEmail = `pdi-flow-${randomUUID().slice(0, 8)}@example.com`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, platform_role, status, created_at, updated_at)
+      VALUES (
+        ${actorId}::uuid,
+        ${actorEmail},
+        'PDI flow test master admin',
+        ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole",
+        ${UserStatus.ACTIVE}::"UserStatus",
+        NOW(),
+        NOW()
+      )
+    `;
+    const actor = { id: actorId };
 
     const first = await service.manualIntake(
       {

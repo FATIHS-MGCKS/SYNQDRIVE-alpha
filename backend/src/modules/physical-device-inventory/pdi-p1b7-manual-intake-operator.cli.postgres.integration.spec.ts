@@ -121,13 +121,21 @@ async function runCli(
   });
 
   it('rejects non-master-admin actor', async () => {
-    const user = await prisma.user.create({
-      data: {
-        email: `pdi-user-${randomUUID().slice(0, 8)}@example.com`,
-        platformRole: UserPlatformRole.USER,
-        status: UserStatus.ACTIVE,
-      },
-    });
+    const userId = randomUUID();
+    const userEmail = `pdi-user-${randomUUID().slice(0, 8)}@example.com`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, platform_role, status, created_at, updated_at)
+      VALUES (
+        ${userId}::uuid,
+        ${userEmail},
+        'PDI non-admin test user',
+        ${UserPlatformRole.USER}::"UserPlatformRole",
+        ${UserStatus.ACTIVE}::"UserStatus",
+        NOW(),
+        NOW()
+      )
+    `;
+    const user = { id: userId, email: userEmail };
     createdUserIds.push(user.id);
     const result = await runCli([
       `--actor-email=${user.email}`,
@@ -150,17 +158,24 @@ async function runCli(
   });
 
   it('rejects master-admin smoke acceptance email', async () => {
-    const smoke = await prisma.user.upsert({
+    const smokeId = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, platform_role, status, created_at, updated_at)
+      VALUES (
+        ${smokeId}::uuid,
+        ${MASTER_ADMIN_SMOKE_EMAIL},
+        'Smoke acceptance',
+        ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole",
+        ${UserStatus.ACTIVE}::"UserStatus",
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (email) DO UPDATE SET
+        platform_role = EXCLUDED.platform_role,
+        status = EXCLUDED.status
+    `;
+    const smoke = await prisma.user.findUniqueOrThrow({
       where: { email: MASTER_ADMIN_SMOKE_EMAIL },
-      create: {
-        email: MASTER_ADMIN_SMOKE_EMAIL,
-        platformRole: UserPlatformRole.MASTER_ADMIN,
-        status: UserStatus.ACTIVE,
-      },
-      update: {
-        platformRole: UserPlatformRole.MASTER_ADMIN,
-        status: UserStatus.ACTIVE,
-      },
       select: { id: true },
     });
     createdUserIds.push(smoke.id);

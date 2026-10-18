@@ -49,22 +49,36 @@ export async function seedPdiP1b7OperatorPreflightIdentity(prisma: PrismaClient)
   `;
 }
 
+async function insertTestUser(
+  prisma: PrismaClient,
+  input: { email: string; name: string; status: UserStatus },
+): Promise<{ id: string; email: string }> {
+  const id = randomUUID();
+  await prisma.$executeRaw`
+    INSERT INTO users (id, email, name, platform_role, status, created_at, updated_at)
+    VALUES (
+      ${id}::uuid,
+      ${input.email},
+      ${input.name},
+      ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole",
+      ${input.status}::"UserStatus",
+      NOW(),
+      NOW()
+    )
+  `;
+  return { id, email: input.email };
+}
+
 export async function createOperatorTestMasterAdmin(prisma: PrismaClient): Promise<{
   id: string;
   email: string;
 }> {
   const email = `pdi-operator-test-${randomUUID().slice(0, 8)}@acceptance.internal.synqdrive.eu`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name: 'PDI Operator Test Master Admin',
-      platformRole: UserPlatformRole.MASTER_ADMIN,
-      status: UserStatus.ACTIVE,
-      passwordHash: 'not-used',
-    },
-    select: { id: true, email: true },
+  return insertTestUser(prisma, {
+    email,
+    name: 'PDI Operator Test Master Admin',
+    status: UserStatus.ACTIVE,
   });
-  return user;
 }
 
 export async function createInactiveSmokeStyleMasterAdmin(prisma: PrismaClient): Promise<{
@@ -72,15 +86,9 @@ export async function createInactiveSmokeStyleMasterAdmin(prisma: PrismaClient):
   email: string;
 }> {
   const email = `inactive-smoke-${randomUUID().slice(0, 8)}@acceptance.internal.synqdrive.eu`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name: 'Inactive Master Admin',
-      platformRole: UserPlatformRole.MASTER_ADMIN,
-      status: UserStatus.INACTIVE,
-      passwordHash: 'not-used',
-    },
-    select: { id: true, email: true },
+  return insertTestUser(prisma, {
+    email,
+    name: 'Inactive Master Admin',
+    status: UserStatus.INACTIVE,
   });
-  return user;
 }
