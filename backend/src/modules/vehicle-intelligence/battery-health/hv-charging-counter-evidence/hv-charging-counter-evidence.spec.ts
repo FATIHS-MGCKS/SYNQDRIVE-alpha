@@ -52,19 +52,24 @@ function buildCapture() {
     findBatchByIdempotency: jest.fn(),
     persistBatch: jest.fn(),
   };
-  const prisma = {
-    vehicle: { findFirst: jest.fn() },
+  const tx = {
     $queryRaw: jest
       .fn()
       .mockResolvedValueOnce([{ locked: true }])
+      .mockResolvedValueOnce([])
       .mockResolvedValue([]),
+  };
+  const prisma = {
+    vehicle: { findFirst: jest.fn() },
+    $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
+    $queryRaw: tx.$queryRaw,
   };
   const capture = new HvChargingCounterEvidenceCaptureService(
     prisma as never,
     repository as never,
     intervalClient as never,
   );
-  return { capture, intervalClient, repository, prisma };
+  return { capture, intervalClient, repository, prisma, tx };
 }
 
 describe('hv-charging-counter-evidence (unit)', () => {
@@ -454,11 +459,11 @@ describe('hv-charging-counter-evidence (unit)', () => {
 
   it('skips provider fetch when cross-replica guard is busy', async () => {
     (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
-    const { capture, intervalClient, repository, prisma } = buildCapture();
+    const { capture, intervalClient, repository, prisma, tx } = buildCapture();
     repository.findLatestBatchForSegment.mockResolvedValue(null);
     prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
-    prisma.$queryRaw.mockReset();
-    prisma.$queryRaw.mockResolvedValueOnce([{ locked: false }]);
+    tx.$queryRaw.mockReset();
+    tx.$queryRaw.mockResolvedValueOnce([{ locked: false }]);
 
     const result = await capture.captureForSession({
       organizationId: ORG,

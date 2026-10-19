@@ -19,10 +19,7 @@ import {
 } from './hv-charging-counter-evidence.revalidation.policy.v1';
 import { evaluateHvChargingCounterQualityV1 } from './hv-charging-counter-evidence.counter-quality.v1';
 import { selectHvChargingCounterPilotSessionsV1 } from './hv-charging-counter-evidence.pilot-scope.v1';
-import {
-  releaseHvChargingCounterProviderRequestGuardV1,
-  tryAcquireHvChargingCounterProviderRequestGuardV1,
-} from './hv-charging-counter-evidence.provider-request-guard.v1';
+import { runWithHvChargingCounterProviderRequestGuardV1 } from './hv-charging-counter-evidence.provider-request-guard.v1';
 import { HvChargingCounterEvidenceRepository } from './hv-charging-counter-evidence.repository';
 import type { HvChargingCounterCaptureResultV1 } from './hv-charging-counter-evidence.types.v1';
 
@@ -153,23 +150,24 @@ export class HvChargingCounterEvidenceCaptureService {
     const queryWindowFrom = session.startAt;
     const queryWindowTo = session.endAt!;
 
-    const guardAcquired = await tryAcquireHvChargingCounterProviderRequestGuardV1(
-      this.prisma,
-      input.vehicleId,
-    );
-    if (!guardAcquired) {
-      return { skipped: true, skipReason: 'provider_request_guard_busy' };
-    }
-
     let fetchResult;
     try {
-      fetchResult = await this.intervalClient.fetchIntervalBuckets({
-        tokenId,
-        from: queryWindowFrom,
-        to: queryWindowTo,
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-      });
+      const guarded = await runWithHvChargingCounterProviderRequestGuardV1(
+        this.prisma,
+        input.vehicleId,
+        async () =>
+          this.intervalClient.fetchIntervalBuckets({
+            tokenId,
+            from: queryWindowFrom,
+            to: queryWindowTo,
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+          }),
+      );
+      if (guarded.status === 'busy') {
+        return { skipped: true, skipReason: 'provider_request_guard_busy' };
+      }
+      fetchResult = guarded.value;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (/rate|429|throttl|budget|reject/i.test(message)) {
@@ -179,8 +177,6 @@ export class HvChargingCounterEvidenceCaptureService {
         `HV charging counter interval fetch failed vehicle=${input.vehicleId} segment=${session.segmentFingerprint}: ${message}`,
       );
       return { skipped: true, skipReason: 'provider_error' };
-    } finally {
-      await releaseHvChargingCounterProviderRequestGuardV1(this.prisma, input.vehicleId);
     }
 
     if (fetchResult.status === 'no_vehicle_jwt') {

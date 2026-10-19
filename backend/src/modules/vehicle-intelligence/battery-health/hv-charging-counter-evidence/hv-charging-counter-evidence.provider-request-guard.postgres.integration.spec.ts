@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   releaseHvChargingCounterProviderRequestGuardV1,
+  runWithHvChargingCounterProviderRequestGuardV1,
   tryAcquireHvChargingCounterProviderRequestGuardV1,
 } from './hv-charging-counter-evidence.provider-request-guard.v1';
 
@@ -37,24 +38,56 @@ describePostgres('HvChargingCounter provider request guard (postgres)', () => {
     await prisma.$disconnect().catch(() => undefined);
   });
 
-  it('allows only one concurrent replica lock per vehicle', async () => {
+  it('unpinned pool acquire is not exclusive (documents pooling hazard)', async () => {
     const vehicleId = randomUUID();
     const first = await tryAcquireHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
     const second = await tryAcquireHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
     expect(first).toBe(true);
-    expect(second).toBe(false);
+    expect(second).toBe(true);
     await releaseHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
-    const third = await tryAcquireHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
-    expect(third).toBe(true);
     await releaseHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
   });
 
-  it('dual-replica simulation: second replica gets guard_busy outcome path', async () => {
+  it('runWith releases lock after guarded work completes', async () => {
     const vehicleId = randomUUID();
-    const replicaA = await tryAcquireHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
-    const replicaB = await tryAcquireHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
-    expect(replicaA).toBe(true);
-    expect(replicaB).toBe(false);
-    await releaseHvChargingCounterProviderRequestGuardV1(prismaService, vehicleId);
+    const first = await runWithHvChargingCounterProviderRequestGuardV1(
+      prismaService,
+      vehicleId,
+      async () => 'first',
+    );
+    const second = await runWithHvChargingCounterProviderRequestGuardV1(
+      prismaService,
+      vehicleId,
+      async () => 'second',
+    );
+    expect(first).toEqual({ status: 'ok', value: 'first' });
+    expect(second).toEqual({ status: 'ok', value: 'second' });
+  });
+
+  it('two independent Prisma pools: runWith pins connection during guarded work', async () => {
+    const vehicleId = randomUUID();
+    const prismaB = new PrismaClient();
+    const prismaBService = prismaB as unknown as PrismaService;
+
+    const holdMs = 300;
+    const first = runWithHvChargingCounterProviderRequestGuardV1(
+      prismaService,
+      vehicleId,
+      async () => {
+        await new Promise((resolve) => setTimeout(resolve, holdMs));
+        return 'replica-a';
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const second = await runWithHvChargingCounterProviderRequestGuardV1(
+      prismaBService,
+      vehicleId,
+      async () => 'replica-b',
+    );
+
+    expect(await first).toEqual({ status: 'ok', value: 'replica-a' });
+    expect(second).toEqual({ status: 'busy' });
+
+    await prismaB.$disconnect().catch(() => undefined);
   });
 });
