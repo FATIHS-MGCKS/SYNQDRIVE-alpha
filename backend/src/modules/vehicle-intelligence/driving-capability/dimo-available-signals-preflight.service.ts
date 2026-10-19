@@ -18,6 +18,7 @@ import {
   type DimoDataSummaryPayload,
 } from '../../dimo/queries/data-summary.query';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VsiP3aPerLinkCatalogWriterService } from '../vehicle-signal-intelligence/vsi-p3a-per-link-catalog-writer.service';
 import { VehicleDrivingCapabilityRepository } from './vehicle-driving-capability.repository';
 import {
   DRIVING_CAPABILITY_PROVIDER,
@@ -49,6 +50,7 @@ export class DimoAvailableSignalsPreflightService {
     private readonly repository: VehicleDrivingCapabilityRepository,
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
+    private readonly p3aPerLinkCatalogWriter: VsiP3aPerLinkCatalogWriterService,
   ) {}
 
   /**
@@ -231,6 +233,21 @@ export class DimoAvailableSignalsPreflightService {
       await this.repository.upsertProbe(input);
       written += 1;
     }
+
+    await this.p3aPerLinkCatalogWriter.persistFromAvailableSignalsPreflight({
+      organizationId,
+      vehicleId,
+      availableSignals,
+      fuelType: vehicle.fuelType,
+      checkedAt,
+      providerError,
+      preflightMetadata: {
+        preflightVersion: DIMO_CAPABILITY_PREFLIGHT_VERSION,
+        availableSignalCount: availableSignals.length,
+        refreshTrigger,
+        source: 'DIMO_AVAILABLE_SIGNALS',
+      },
+    });
 
     this.logger.log(
       `DIMO preflight org=${organizationId} vehicle=${vehicleId} probes=${written} ` +
