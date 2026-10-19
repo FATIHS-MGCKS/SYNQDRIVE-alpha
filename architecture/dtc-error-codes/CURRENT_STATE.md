@@ -24,6 +24,12 @@
 - Evidence: [`evidence/DTC02_P2_WEBHOOK_CAPABILITY.md`](evidence/DTC02_P2_WEBHOOK_CAPABILITY.md)
 - **No production activation** in this workstream; no live webhook reliability claim.
 
+## DTC-02 P5A mixed-mode routing (repository — default OFF)
+
+- Opt-in `DTC_01F_COHORT_MIXED_MODE_ENABLED`: pilot allowlist → `safety01a`; other ACTIVE → `legacy`; strict cohort unchanged when OFF.
+- Evidence: [`evidence/DTC02_P5A_MIXED_MODE_ROUTING.md`](evidence/DTC02_P5A_MIXED_MODE_ROUTING.md)
+- **No production activation** in this workstream.
+
 ## Runtime (Production @ `3a7cc0cc`)
 
 | Control | State |
