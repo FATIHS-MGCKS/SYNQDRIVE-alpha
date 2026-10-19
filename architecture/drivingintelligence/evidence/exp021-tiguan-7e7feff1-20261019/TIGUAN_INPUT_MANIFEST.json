@@ -1,0 +1,21 @@
+{
+  "schema": "EXP021_TIGUAN_7E7FEFF1_INPUT_MANIFEST_V1",
+  "productionSha": "aeb7234fbb76b4a80a3238e5860c6a140862a735",
+  "tripId": "7e7feff1-4203-4b8e-8fca-95b55a3f6f6a",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "gpsObservationCount": 145,
+  "acquisitionWindowUtc": {
+    "from": "2026-10-19T17:39:00Z",
+    "to": "2026-10-19T17:55:48Z"
+  },
+  "s4EvidenceSnapshotsOnProduction": 0,
+  "inputProvenance": {
+    "waypointsCsv": "/opt/cursor/artifacts/tiguan_waypoints_raw.csv",
+    "waypointsSha256": "2308791d4402dcb6366cde114df4448071cd61a9c838dd31cd68906a32c7db65",
+    "routeV2Geo": "/opt/cursor/artifacts/tiguan_matched_geometry.json",
+    "routeV2Diag": "/opt/cursor/artifacts/tiguan_route_diagnostics.json",
+    "note": "One ResearchGpsBucket per DIMO waypoint (irregular ~7s cadence). No per-second grid; no invented channels."
+  },
+  "productionMutations": "NONE"
+}

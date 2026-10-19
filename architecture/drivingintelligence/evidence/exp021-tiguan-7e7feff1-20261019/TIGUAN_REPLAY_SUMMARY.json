@@ -1,0 +1,18 @@
+{
+  "TRIP_ID": "7e7feff1-4203-4b8e-8fca-95b55a3f6f6a",
+  "GPS_POINTS": 145,
+  "ROUTE_V2_RESULT": "UNKNOWN conf=0.9712169999999999",
+  "S4_FORWARD_V2_RESULT": "ASSOCIATED=122 UNKNOWN=23",
+  "S4_DIRECTION_AWARE_P1_RESULT": "ASSOCIATED=144 diff_vs_forward=25",
+  "S4_ROUTE_AWARE_R41_RESULT": "ASSOCIATED=121 diff_vs_forward=5",
+  "ROADS_IDENTIFIED": "48 unique OSM ways (Forward V2 offline); named segments in CSV",
+  "TOTAL_DISTANCE_KM": "10.09 GPS raw; 10.0 trip; 10.25 Route V2",
+  "STOPS_DETECTED": 6,
+  "SPEED_DISCREPANCY": "WAYPOINT_70_AT_2026-10-19T17:53:14Z vs TRIP_MAX_52_AGGREGATE",
+  "UNRESOLVED_GPS_GAPS": 0,
+  "MAP_FILE": "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-7e7feff1-20261019/TIGUAN_7e7feff1_ROUTE_MAP.html",
+  "GEOJSON_FILE": "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-7e7feff1-20261019/TIGUAN_7e7feff1_ROUTE.geojson",
+  "REPORT_FILE": "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-7e7feff1-20261019/TIGUAN_7e7feff1_OFFLINE_REPLAY_REPORT.md",
+  "PRODUCTION_MUTATIONS": "NONE",
+  "FINAL_VERDICT": "OFFLINE_REPLAY_COMPLETE_NO_PRODUCTION_S4_EVIDENCE"
+}

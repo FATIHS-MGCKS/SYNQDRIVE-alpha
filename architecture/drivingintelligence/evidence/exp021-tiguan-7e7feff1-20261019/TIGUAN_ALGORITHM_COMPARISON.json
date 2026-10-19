@@ -1,0 +1,11 @@
+{
+  "bucketCount": 145,
+  "osmWayCount": 1520,
+  "forwardVsBacktrackDiffBuckets": 3,
+  "forwardVsStrictDiffBuckets": 0,
+  "forwardVsRouteAwareDiffBuckets": 5,
+  "forwardVsP1DiffBuckets": 25,
+  "routeAwareVsP1DiffBuckets": 30,
+  "forwardUnknownBuckets": 23,
+  "routeAwareUnknownBuckets": 24
+}

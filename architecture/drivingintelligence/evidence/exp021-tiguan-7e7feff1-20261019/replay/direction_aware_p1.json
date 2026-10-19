@@ -1,0 +1,2511 @@
+[
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:00Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": null,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:07Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:14Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:21Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:28Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:35Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:42Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:49Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:39:56Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:03Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:10Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1090338288,
+    "candidateWayIds": [
+      1090338288,
+      1090338289,
+      25932717
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:17Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 201.69359431414682,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932717,
+    "candidateWayIds": [
+      25932717
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:24Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 230.54157784235153,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932717,
+    "candidateWayIds": [
+      25932717,
+      125022767
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:31Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 231.04481068762283,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932717,
+    "candidateWayIds": [
+      25932717
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:38Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 210.6586362024432,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932717,
+    "candidateWayIds": [
+      802341546,
+      25932717
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:45Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 140.40265605294235,
+    "outcome": "CONFIRMED",
+    "osmWayId": 802341546,
+    "candidateWayIds": [
+      802341546,
+      1568217862,
+      802341544,
+      25932721
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:52Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 216.42966201507332,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932721,
+    "candidateWayIds": [
+      25932721,
+      1081842346
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:40:59Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 237.45732324712594,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932721,
+    "candidateWayIds": [
+      25932721
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:06Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 204.24107535201858,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932721,
+    "candidateWayIds": [
+      1539579974,
+      25932721,
+      25932712
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:13Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 147.7864676639275,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1539579974,
+    "candidateWayIds": [
+      1539579974
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:20Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 142.66544304619197,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1539579974,
+    "candidateWayIds": [
+      1539579974,
+      1539579973,
+      274620537,
+      1539579971
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:27Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 185.43131701205135,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932722,
+    "candidateWayIds": [
+      25932722,
+      1539579971,
+      1193172869,
+      1539579973
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:34Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 222.69315647942668,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 25932722,
+    "candidateWayIds": [
+      25932722,
+      1529754266
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:41Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 218.3744621049785,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932722,
+    "candidateWayIds": [
+      25932722
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:48Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 232.9813944965611,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25932722,
+    "candidateWayIds": [
+      25932722,
+      126284092
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:41:55Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 275.3021918402208,
+    "outcome": "CONFIRMED",
+    "osmWayId": 126284092,
+    "candidateWayIds": [
+      126284092,
+      436178049
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:02Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 283.76953841924484,
+    "outcome": "CONFIRMED",
+    "osmWayId": 126284092,
+    "candidateWayIds": [
+      126284092,
+      436178049,
+      436178054
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:09Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 282.17241158678945,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 126284092,
+    "candidateWayIds": [
+      25932718,
+      801014020,
+      126284092
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:16Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 236.41670138036278,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 801014020,
+    "candidateWayIds": [
+      32865984,
+      51985357,
+      59006669,
+      801014020
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:23Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 232.6802934053095,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 155879082,
+    "candidateWayIds": [
+      155878815,
+      155879082,
+      25071235,
+      155879173
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:30Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 162.6626035254917,
+    "outcome": "CONFIRMED",
+    "osmWayId": 155879173,
+    "candidateWayIds": [
+      155879173,
+      155878815,
+      155879082,
+      25071235
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:37Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 176.16929349557608,
+    "outcome": "CONFIRMED",
+    "osmWayId": 155879173,
+    "candidateWayIds": [
+      1107278062,
+      155879173,
+      1192980205
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:44Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 286.07083986818026,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1107278062,
+    "candidateWayIds": [
+      1192980205,
+      1107278062,
+      155879173,
+      376152897
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:51Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 341.02744554976795,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1192980205,
+    "candidateWayIds": [
+      1192980205,
+      376152897,
+      1510461881,
+      1107278062
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:42:58Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 123.88079010636682,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1192980205,
+    "candidateWayIds": [
+      1192980205,
+      1107278062,
+      376152897,
+      1510461881
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:05Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 30.20496279816848,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 376152897,
+    "candidateWayIds": [
+      155879173,
+      376152897,
+      25071235,
+      155878815
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:12Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 345.54068033667926,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      1510461881,
+      32865984
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:19Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 337.6486517322527,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      32865984
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:26Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 329.6296827306921,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      48572566,
+      48572565,
+      261952860
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:33Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 327.8041752505049,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      1107277026
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:40Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 327.8143179947512,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:47Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 327.0699396629133,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:43:54Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 327.44595858185056,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:01Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 332.5102317850161,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:08Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 343.0874560189067,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      90901003
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:15Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 342.46033953307074,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      38427478
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:22Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 330.7025571980823,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25071235,
+    "candidateWayIds": [
+      25071235,
+      440724667,
+      440233441
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:29Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 306.34914329258515,
+    "outcome": "CONFIRMED",
+    "osmWayId": 4056901,
+    "candidateWayIds": [
+      4056901,
+      352811128
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:36Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 300.36991213046747,
+    "outcome": "CONFIRMED",
+    "osmWayId": 4056901,
+    "candidateWayIds": [
+      4056901
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:43Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 299.60984740330446,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 4056901,
+    "candidateWayIds": [
+      4056901,
+      441104707
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:50Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 300.1590333287071,
+    "outcome": "CONFIRMED",
+    "osmWayId": 4056901,
+    "candidateWayIds": [
+      4056901
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:44:57Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 299.3853815194306,
+    "outcome": "CONFIRMED",
+    "osmWayId": 4056901,
+    "candidateWayIds": [
+      4056901,
+      441256840
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:04Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 289.0187699191336,
+    "outcome": "CONFIRMED",
+    "osmWayId": 59287950,
+    "candidateWayIds": [
+      59287950,
+      315031666,
+      25051300,
+      27136795
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:11Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 261.62966331354727,
+    "outcome": "CONFIRMED",
+    "osmWayId": 59287949,
+    "candidateWayIds": [
+      59287949
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:18Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 250.73073374577143,
+    "outcome": "CONFIRMED",
+    "osmWayId": 59287949,
+    "candidateWayIds": [
+      59287949
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:25Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 254.47630125838086,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 59287949,
+    "candidateWayIds": [
+      25071236,
+      59287949,
+      224886099,
+      323895061
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:32Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 266.39995657209397,
+    "outcome": "CONFIRMED",
+    "osmWayId": 59303130,
+    "candidateWayIds": [
+      59303130,
+      323895063,
+      323895061,
+      48572619
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:39Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 248.68706190104146,
+    "outcome": "CONFIRMED",
+    "osmWayId": 59303130,
+    "candidateWayIds": [
+      59303130,
+      399053736,
+      47187239,
+      47187238
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:46Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 302.0786602540103,
+    "outcome": "CONFIRMED",
+    "osmWayId": 399053736,
+    "candidateWayIds": [
+      399053736,
+      322857497,
+      47187239,
+      59303130
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:45:53Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 326.7525547902166,
+    "outcome": "CONFIRMED",
+    "osmWayId": 399053736,
+    "candidateWayIds": [
+      399053736,
+      322857497
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:00Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 324.42767041364607,
+    "outcome": "CONFIRMED",
+    "osmWayId": 80989613,
+    "candidateWayIds": [
+      80989613,
+      4328835,
+      399053736,
+      1068376460
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:07Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 324.94663013341363,
+    "outcome": "CONFIRMED",
+    "osmWayId": 80989613,
+    "candidateWayIds": [
+      80989613,
+      4328835
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:14Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 324.8755380833431,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 80989613,
+    "candidateWayIds": [
+      80989613,
+      48572617,
+      4328835
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:21Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 325.2023163462909,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 80989613,
+    "candidateWayIds": [
+      80989613,
+      442942812,
+      4328835
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:28Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 327.5492488384075,
+    "outcome": "CONFIRMED",
+    "osmWayId": 80989613,
+    "candidateWayIds": [
+      80989613,
+      149562162,
+      203785877,
+      4328835
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:35Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 326.50233656819967,
+    "outcome": "CONFIRMED",
+    "osmWayId": 80989613,
+    "candidateWayIds": [
+      80989613,
+      266607416,
+      149562162,
+      4328835
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:42Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 324.3724509741709,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 4973774,
+    "candidateWayIds": [
+      4973774,
+      77910066,
+      200943370,
+      80989613
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:49Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 323.8938472443818,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 4973774,
+    "candidateWayIds": [
+      4973774,
+      90859324,
+      252848354,
+      37393253
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:46:56Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 323.49205612780383,
+    "outcome": "CONFIRMED",
+    "osmWayId": 4973774,
+    "candidateWayIds": [
+      4973774,
+      37393253
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:03Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 324.4093873681798,
+    "outcome": "CONFIRMED",
+    "osmWayId": 37392195,
+    "candidateWayIds": [
+      37392195,
+      37393253
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:10Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 324.9668393068358,
+    "outcome": "CONFIRMED",
+    "osmWayId": 37392195,
+    "candidateWayIds": [
+      37392195,
+      37393253
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:17Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 327.40745341432444,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 37392195,
+    "candidateWayIds": [
+      25162815,
+      37392195,
+      37393253,
+      345776685
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:24Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 326.0584979396037,
+    "outcome": "CONFIRMED",
+    "osmWayId": 37392195,
+    "candidateWayIds": [
+      37392195,
+      345776685,
+      25162815,
+      37393253
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:31Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 36.15780242293829,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25162815,
+    "candidateWayIds": [
+      37392195,
+      345776685,
+      25162815,
+      37393253
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:38Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 325.6417978073798,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 37392195,
+    "candidateWayIds": [
+      37392195,
+      132310045,
+      146383074,
+      132310044
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:45Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 31.108887612605542,
+    "outcome": "CONFIRMED",
+    "osmWayId": 185440301,
+    "candidateWayIds": [
+      185440301,
+      345776685
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:52Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 39.124537349006914,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 185440301,
+    "candidateWayIds": [
+      25162816,
+      185440301
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:47:59Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 39.46198863389861,
+    "outcome": "CONFIRMED",
+    "osmWayId": 185440301,
+    "candidateWayIds": [
+      185440301
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:06Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 37.520140909959025,
+    "outcome": "CONFIRMED",
+    "osmWayId": 185440301,
+    "candidateWayIds": [
+      185440301
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:13Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 34.01249845774612,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1310839901,
+    "candidateWayIds": [
+      1310839901,
+      128447975,
+      185440301,
+      25573458
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:20Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 30.849797116882314,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1310839901,
+    "candidateWayIds": [
+      1310839901,
+      25162814,
+      128447974,
+      25069245
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:27Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 28.395542410332098,
+    "outcome": "CONFIRMED",
+    "osmWayId": 128447974,
+    "candidateWayIds": [
+      128447974
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:34Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 28.61255261072938,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 128447974,
+    "candidateWayIds": [
+      128447974,
+      1089840728
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:41Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 27.81288769470433,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 128447974,
+    "candidateWayIds": [
+      128447974,
+      833748945
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:48Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 27.951904880800555,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 128447974,
+    "candidateWayIds": [
+      128447974,
+      1025627904,
+      128550320,
+      1035402743
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:48:55Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 53.728466956751845,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 128447974,
+    "candidateWayIds": [
+      128550320,
+      128447974,
+      1025627904
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:02Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 7.653485575622938,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 128550320,
+    "candidateWayIds": [
+      128550320,
+      1022245185,
+      1388820113
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:09Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 16.76062105689141,
+    "outcome": "CONFIRMED",
+    "osmWayId": 800828023,
+    "candidateWayIds": [
+      800828023,
+      25051301
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:16Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 15.154718409754764,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 25933446,
+    "candidateWayIds": [
+      25933446,
+      453490346,
+      59287998,
+      800828023
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:23Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 18.912340813907235,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25933447,
+    "candidateWayIds": [
+      25933447
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:30Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 25.310447689803595,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 25933447,
+    "candidateWayIds": [
+      1218383640,
+      386844813,
+      25933447
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:37Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 33.2162908300956,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1218383640,
+    "candidateWayIds": [
+      1218383640,
+      386844813,
+      25933447,
+      1218383639
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:44Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 211.9830150511812,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1218383640,
+    "candidateWayIds": [
+      1218383640,
+      386844813,
+      25933447,
+      1218383639
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:51Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 49.5754511865872,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1218383640,
+    "candidateWayIds": [
+      1218383639,
+      134966646,
+      1218383640,
+      74414119
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:49:58Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 108.57336387899005,
+    "outcome": "CONFIRMED",
+    "osmWayId": 134966646,
+    "candidateWayIds": [
+      134966646,
+      1220629348
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:05Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 113.35657767919679,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1220629348,
+    "candidateWayIds": [
+      1220629348
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:12Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 113.19447497860017,
+    "outcome": "CONFIRMED",
+    "osmWayId": 300797707,
+    "candidateWayIds": [
+      300797707
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:19Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 111.10155573744862,
+    "outcome": "CONFIRMED",
+    "osmWayId": 300797707,
+    "candidateWayIds": [
+      300797707,
+      917588325
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:26Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 100.27446310975245,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 128672572,
+    "candidateWayIds": [
+      128672572,
+      1494469448,
+      25051302
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:33Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 85.1746883549115,
+    "outcome": "CONFIRMED",
+    "osmWayId": 128672572,
+    "candidateWayIds": [
+      128672572
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:40Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 71.34691709326512,
+    "outcome": "CONFIRMED",
+    "osmWayId": 128672572,
+    "candidateWayIds": [
+      128672572
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:47Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 70.29290368054728,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25933853,
+    "candidateWayIds": [
+      25933853
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:50:54Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 84.30930255713781,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25933853,
+    "candidateWayIds": [
+      25933853
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:01Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 107.26623305605995,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25933853,
+    "candidateWayIds": [
+      25933853
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:08Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 111.08029127539697,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25933853,
+    "candidateWayIds": [
+      25933853
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:15Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 105.80829312976812,
+    "outcome": "CONFIRMED",
+    "osmWayId": 25933853,
+    "candidateWayIds": [
+      25933853
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:22Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 100.29898042543192,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1120076745,
+    "candidateWayIds": [
+      1120076745,
+      193178023
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:29Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 99.66556834070656,
+    "outcome": "CONFIRMED",
+    "osmWayId": 386844815,
+    "candidateWayIds": [
+      386844815,
+      1494469426,
+      134405527,
+      1120076745
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:36Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 104.45348399246927,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 386844815,
+    "candidateWayIds": [
+      386844815,
+      82378430,
+      779969832
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:43Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 117.10792876756227,
+    "outcome": "CONFIRMED",
+    "osmWayId": 386844814,
+    "candidateWayIds": [
+      386844814,
+      773757362,
+      82378430,
+      37332134
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:50Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 127.63319276547713,
+    "outcome": "CONFIRMED",
+    "osmWayId": 82378426,
+    "candidateWayIds": [
+      82378426,
+      386844814
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:51:57Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 123.4810965845843,
+    "outcome": "CONFIRMED",
+    "osmWayId": 82378426,
+    "candidateWayIds": [
+      82378426
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:04Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 111.39649833097735,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 82378426,
+    "candidateWayIds": [
+      82378426,
+      37332136,
+      37434550
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:11Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 107.83818048942305,
+    "outcome": "CONFIRMED",
+    "osmWayId": 82378426,
+    "candidateWayIds": [
+      82378426
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:18Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 108.44017590279162,
+    "outcome": "CONFIRMED",
+    "osmWayId": 82378426,
+    "candidateWayIds": [
+      82378426
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:25Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 106.53052045483741,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 790233511,
+    "candidateWayIds": [
+      790233511,
+      382768976
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:32Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 71.45524686825144,
+    "outcome": "CONFIRMED",
+    "osmWayId": 37434537,
+    "candidateWayIds": [
+      37434537,
+      382768969,
+      382768972
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:39Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 52.252167846604266,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382768972,
+    "candidateWayIds": [
+      790233512,
+      382768972,
+      382768969,
+      382768968
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:46Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 124.98426767886588,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 790233513,
+    "candidateWayIds": [
+      382768973,
+      790233513
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:52:53Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 167.13961719886424,
+    "outcome": "CONFIRMED",
+    "osmWayId": 242501597,
+    "candidateWayIds": [
+      242501597,
+      242501596
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:00Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 177.18183806819945,
+    "outcome": "CONFIRMED",
+    "osmWayId": 34068718,
+    "candidateWayIds": [
+      34068718,
+      34883233,
+      800815306
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:07Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 178.04298202582072,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382768981,
+    "candidateWayIds": [
+      382768981
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:14Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 175.58622547730863,
+    "outcome": "CONFIRMED",
+    "osmWayId": 344301563,
+    "candidateWayIds": [
+      344301563,
+      1566283092
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:21Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 164.6131904639983,
+    "outcome": "CONFIRMED",
+    "osmWayId": 790233502,
+    "candidateWayIds": [
+      790233502,
+      5048137
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:28Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 153.56971225003667,
+    "outcome": "CONFIRMED",
+    "osmWayId": 5048137,
+    "candidateWayIds": [
+      5048137
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:35Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 153.57613075642496,
+    "outcome": "CONFIRMED",
+    "osmWayId": 5048137,
+    "candidateWayIds": [
+      5048137,
+      382929731,
+      4321532
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:42Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 169.1567262285772,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 4321532,
+    "candidateWayIds": [
+      382929730,
+      4321532,
+      382929731,
+      382929740
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:49Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 179.39604157992562,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382929730,
+    "candidateWayIds": [
+      382929730,
+      382929740
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:53:56Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 188.85936906671085,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382929730,
+    "candidateWayIds": [
+      382929730,
+      382929740,
+      401665362,
+      382929735
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:03Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 270.00000653347587,
+    "outcome": "CONFIRMED",
+    "osmWayId": 401665362,
+    "candidateWayIds": [
+      382929730,
+      382929740,
+      401665362,
+      382929735
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:10Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 62.87450776621631,
+    "outcome": "UNKNOWN",
+    "osmWayId": null,
+    "candidateWayIds": [
+      382929730,
+      382929740,
+      401665362,
+      382929735
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:17Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 0,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382929740,
+    "candidateWayIds": [
+      382929730,
+      382929740,
+      401665362,
+      382929735
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:24Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 186.71738452001875,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382929729,
+    "candidateWayIds": [
+      382929729,
+      382929734,
+      382929736,
+      382929728
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:31Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 196.87342205386238,
+    "outcome": "CONFIRMED",
+    "osmWayId": 382929729,
+    "candidateWayIds": [
+      382929729,
+      420841985,
+      49288477,
+      382929737
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:38Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 206.51969799934625,
+    "outcome": "AMBIGUOUS",
+    "osmWayId": 1241375056,
+    "candidateWayIds": [
+      1241375056,
+      420841987,
+      420841985,
+      1147399157
+    ],
+    "ambiguityReasons": [
+      "VITERBI_COMPETING_OR_HIGH_COST"
+    ],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:45Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 209.08433220961018,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1241375054,
+    "candidateWayIds": [
+      1241375054,
+      808828713
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:52Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 209.61555368123817,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1241375055,
+    "candidateWayIds": [
+      1241375055,
+      802697940,
+      49288478,
+      154784641
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:54:59Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 210.04235698390266,
+    "outcome": "CONFIRMED",
+    "osmWayId": 4286632,
+    "candidateWayIds": [
+      4286632,
+      126425968,
+      128199116,
+      1081842328
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:06Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 209.4993116688252,
+    "outcome": "CONFIRMED",
+    "osmWayId": 1123714007,
+    "candidateWayIds": [
+      1123714007,
+      244635597,
+      128199116
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:13Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 208.0762199843693,
+    "outcome": "CONFIRMED",
+    "osmWayId": 135453183,
+    "candidateWayIds": [
+      135453183,
+      1123714006
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:20Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 209.0039255611929,
+    "outcome": "CONFIRMED",
+    "osmWayId": 135453183,
+    "candidateWayIds": [
+      135453183,
+      62326614,
+      105886051,
+      1123714006
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:27Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 208.85342956489126,
+    "outcome": "CONFIRMED",
+    "osmWayId": 135453183,
+    "candidateWayIds": [
+      135453183,
+      274518396,
+      105886051
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:34Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 191.7444064498606,
+    "outcome": "CONFIRMED",
+    "osmWayId": 135453183,
+    "candidateWayIds": [
+      135453183,
+      59486197,
+      29182416,
+      105886051
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:41Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 181.35265028017986,
+    "outcome": "CONFIRMED",
+    "osmWayId": 135453183,
+    "candidateWayIds": [
+      135453183,
+      105886051
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  },
+  {
+    "bucketLabelUtc": "2026-10-19T17:55:48Z",
+    "gpsStatus": "PRESENT",
+    "headingDeg": 181.54170820000766,
+    "outcome": "CONFIRMED",
+    "osmWayId": 135453183,
+    "candidateWayIds": [
+      135453183,
+      105886051,
+      19882252,
+      26191668
+    ],
+    "ambiguityReasons": [],
+    "nearestConfirmedJunctionM": null,
+    "confirmedJunctionNodeId": null,
+    "trafficSignalNodeId": null,
+    "trafficSignalDistanceM": null
+  }
+]
