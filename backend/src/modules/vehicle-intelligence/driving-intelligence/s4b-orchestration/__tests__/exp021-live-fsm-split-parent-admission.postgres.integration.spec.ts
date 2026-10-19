@@ -155,9 +155,8 @@ interface LiveFsmSplitFixture extends S4aTenant {
       SELECT id, raw_detection_meta FROM vehicle_trips
       WHERE id::text = ANY(ARRAY[${f.parentTripId}, ${f.childTripId}]::text[])`;
     const keys = rows.map((r) => readTripDiBoundaryAdmissionV1(r.raw_detection_meta)?.revisionKey);
-    expect(keys[0]).toBeTruthy();
-    expect(keys[1]).toBeTruthy();
-    expect(keys[0]).not.toBe(keys[1]);
+    expect(keys.filter(Boolean)).toHaveLength(2);
+    expect(new Set(keys).size).toBe(2);
   });
 
   it('4 — concurrent settlement release is idempotent', async () => {
@@ -181,8 +180,11 @@ interface LiveFsmSplitFixture extends S4aTenant {
       f.vehicleId,
       f.parentTripId,
     );
-    const result = await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
-    expect(result.released).toBe(0);
+    await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    const parentMeta = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+      SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${f.parentTripId}`;
+    expect(readTripDiBoundaryAdmissionV1(parentMeta[0]?.raw_detection_meta)).toBeNull();
+    expect(await admission.tryReleaseForTripTransactional(f.parentTripId, 'LIVE_FSM_SETTLEMENT')).toBe(false);
   });
 
   it('6 — discovery creates at most one PRIMARY per admitted trip on repeated passes', async () => {
@@ -192,7 +194,8 @@ interface LiveFsmSplitFixture extends S4aTenant {
     const pass1 = await service.runDiscoveryPass({ limit: 50 });
     expect(pass1.created).toBeGreaterThanOrEqual(1);
     const pass2 = await service.runDiscoveryPass({ limit: 50 });
-    expect(pass2.duplicates + pass2.skipped).toBeGreaterThanOrEqual(pass1.created);
+    expect(pass2.created).toBe(0);
+    expect(pass2.duplicates + pass2.skipped).toBeGreaterThanOrEqual(1);
     const items = await admin.$queryRaw<Array<{ trip_id: string; status: string }>>`
       SELECT trip_id::text, status FROM di_v0_s4_work_items
       WHERE vehicle_id = ${f.vehicleId} AND run_purpose = 'PRIMARY' AND status <> 'SUPERSEDED'`;
