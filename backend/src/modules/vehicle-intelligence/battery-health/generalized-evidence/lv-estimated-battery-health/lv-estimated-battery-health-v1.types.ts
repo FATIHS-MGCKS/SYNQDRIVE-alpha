@@ -1,5 +1,6 @@
 import type { LvOperationalConditionAssessmentV1 } from '../lv-operational-condition/lv-operational-condition-v1.types';
 import type { LvOperationalConditionInputV1 } from '../lv-operational-condition/lv-operational-condition-v1.types';
+import type { LvEstimatedHealthDecisionTraceV1 } from './lv-estimated-battery-health-v1.decision-policy';
 
 export type LvEstimatedHealthStatusV1 = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
 
@@ -36,7 +37,11 @@ export type LvEstimatedHealthReasonCodeV1 =
   | 'HEALTH_CONFLICTING_SIGNALS'
   | 'HEALTH_N14_OPERATIONAL_RISK_NOT_HEALTH_PROXY'
   | 'HEALTH_PUBLICATION_NOT_ELIGIBLE'
-  | 'HEALTH_PROVISIONAL_INTERNAL_ONLY';
+  | 'HEALTH_PROVISIONAL_INTERNAL_ONLY'
+  | 'HEALTH_CORRELATED_EVIDENCE_NOT_CORROBORATION'
+  | 'HEALTH_REST_LOW_VOLTAGE_NOT_PROVEN_AGING'
+  | 'HEALTH_SUSTAINED_REST_DETERIORATION_CORROBORATED'
+  | 'HEALTH_LOAD_AND_REST_DETERIORATION_CORROBORATED';
 
 export type LvEstimatedHealthAssessmentEligibilityV1 =
   | 'NOT_ASSESSABLE'
@@ -84,4 +89,6 @@ export type LvEstimatedBatteryHealthAssessmentV1 = {
   n14OperationalRiskStatus: LvOperationalConditionAssessmentV1['operationalRiskStatus'];
   n14StartabilityStatus: LvOperationalConditionAssessmentV1['startabilityStatus'];
   customerPublicationEnabled: false;
+  /** Auditable shadow decision trace (episode bands, rule id, independent vs correlated families). */
+  decisionTrace: LvEstimatedHealthDecisionTraceV1;
 };

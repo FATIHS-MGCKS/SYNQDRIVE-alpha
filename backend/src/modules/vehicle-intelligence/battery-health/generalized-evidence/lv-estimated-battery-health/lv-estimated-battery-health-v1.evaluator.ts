@@ -15,6 +15,14 @@ import {
   LV_ESTIMATED_HEALTH_MIN_EPISODES_PROVISIONAL,
   LV_ESTIMATED_HEALTH_MIN_EPISODES_TREND,
 } from './lv-estimated-battery-health-v1.constants';
+import {
+  classifyEstimatedHealthStatusP1,
+  independentSupportingFamiliesP1,
+  LV_ESTIMATED_BATTERY_HEALTH_DECISION_POLICY_ID,
+  type HealthDecisionRuleIdV1,
+  type LvEstimatedHealthDecisionTraceEpisodeV1,
+  type RestEpisodeBandCounts,
+} from './lv-estimated-battery-health-v1.decision-policy';
 import type {
   LvEstimatedBatteryHealthAssessmentV1,
   LvEstimatedBatteryHealthInputV1,
@@ -156,12 +164,8 @@ export function evaluateLvEstimatedBatteryHealthV1(
 
   const trend = evaluateLongitudinalTrend(episodes);
   if (trend === 'DECLINE') {
-    supporting.push('LONGITUDINAL_STABILITY');
-    missing.splice(missing.indexOf('LONGITUDINAL_STABILITY'), 1);
     reasonCodes.push('HEALTH_LONGITUDINAL_DECLINE_SUSPECTED');
   } else if (trend === 'STABLE') {
-    supporting.push('LONGITUDINAL_STABILITY');
-    missing.splice(missing.indexOf('LONGITUDINAL_STABILITY'), 1);
     reasonCodes.push('HEALTH_LONGITUDINAL_STABLE');
   } else {
     reasonCodes.push('HEALTH_LONGITUDINAL_NOT_EVALUABLE');
@@ -173,22 +177,20 @@ export function evaluateLvEstimatedBatteryHealthV1(
   });
   const crankStale = isCrankEvidenceStale(input);
   let loadSignal: LvEstimatedHealthStatusV1 = 'UNKNOWN';
+  let loadAuthorizedForHealth = false;
   if (crankStale && input.conditionInput.crankEvidence) {
     reasonCodes.push('HEALTH_LOAD_CRANK_STALE');
     missing.push('LOAD_START_PERFORMANCE');
   } else if (startability.status === 'GREEN') {
-    supporting.push('LOAD_START_PERFORMANCE');
-    missing.splice(missing.indexOf('LOAD_START_PERFORMANCE'), 1);
+    loadAuthorizedForHealth = true;
     loadSignal = 'GREEN';
     reasonCodes.push('HEALTH_LOAD_CRANK_VALIDATED_GOOD');
   } else if (startability.status === 'YELLOW') {
-    supporting.push('LOAD_START_PERFORMANCE');
-    missing.splice(missing.indexOf('LOAD_START_PERFORMANCE'), 1);
+    loadAuthorizedForHealth = true;
     loadSignal = 'YELLOW';
     reasonCodes.push('HEALTH_LOAD_CRANK_VALIDATED_WEAK');
   } else if (startability.status === 'RED') {
-    supporting.push('LOAD_START_PERFORMANCE');
-    missing.splice(missing.indexOf('LOAD_START_PERFORMANCE'), 1);
+    loadAuthorizedForHealth = true;
     loadSignal = 'RED';
     reasonCodes.push('HEALTH_LOAD_CRANK_VALIDATED_CRITICAL');
   } else {
@@ -201,9 +203,26 @@ export function evaluateLvEstimatedBatteryHealthV1(
   if (highContamination) {
     reasonCodes.push('HEALTH_CHARGING_CONTAMINATION_HIGH');
     reasonCodes.push('HEALTH_CHARGING_CONTEXT_LIMITED');
-  } else if (episodes.length > 0) {
-    supporting.push('CHARGING_RECOVERY_CONTEXT');
-    missing.splice(missing.indexOf('CHARGING_RECOVERY_CONTEXT'), 1);
+  }
+
+  const sessionFeaturesEvaluable = input.conditionInput.sessionFeatures.filter(
+    (f) => f.slopeInterpretability === 'REST_SELF_DISCHARGE_TREND',
+  ).length;
+  const hasChargingRecoveryEvidence = sessionFeaturesEvaluable > 0;
+
+  const familySplit = independentSupportingFamiliesP1({
+    hasRestEpisodes: episodes.length > 0,
+    trend,
+    loadAuthorized: loadAuthorizedForHealth,
+    hasChargingRecoveryEvidence,
+  });
+  for (const fam of familySplit.independent) {
+    supporting.push(fam);
+    const idx = missing.indexOf(fam);
+    if (idx >= 0) missing.splice(idx, 1);
+  }
+  if (familySplit.correlatedExcluded.length > 0) {
+    reasonCodes.push('HEALTH_CORRELATED_EVIDENCE_NOT_CORROBORATION');
   }
 
   if (input.conditionInput.chemistry.normalizedType === 'UNKNOWN') {
@@ -249,56 +268,56 @@ export function evaluateLvEstimatedBatteryHealthV1(
     reasonCodes.push('HEALTH_PUBLICATION_NOT_ELIGIBLE');
   }
 
+  const chemistryKnown = input.conditionInput.chemistry.normalizedType !== 'UNKNOWN';
+  const specProvidedForRest =
+    specUsedForRestingThresholds({
+      batteryType: input.conditionInput.chemistry.normalizedType,
+      batteryVolt: input.conditionInput.chemistry.nominalVoltageV,
+      sourceConfidence: input.conditionInput.chemistry.sourceConfidence,
+    }) != null;
+
+  const traceEpisodes: LvEstimatedHealthDecisionTraceEpisodeV1[] = [];
+  for (const ep of episodes) {
+    const band = classifyEpisodeBand(input, ep.voltageV);
+    traceEpisodes.push({
+      restSessionId: ep.restSessionId,
+      sourceMeasurementId: ep.sourceMeasurementId,
+      observationId: ep.observationId,
+      voltageV: ep.voltageV,
+      voltageObservedAt: ep.voltageObservedAt,
+      band,
+    });
+  }
+  const observationTimes = traceEpisodes
+    .map((e) => e.voltageObservedAt)
+    .filter((t) => Number.isFinite(Date.parse(t)))
+    .sort();
+
   let estimatedHealthStatus: LvEstimatedHealthStatusV1 = 'UNKNOWN';
+  let finalRuleId: HealthDecisionRuleIdV1 | null = null;
 
-  if (input.conditionInput.chemistry.normalizedType === 'UNKNOWN') {
-    estimatedHealthStatus = 'UNKNOWN';
-  } else if (episodes.length < LV_ESTIMATED_HEALTH_MIN_EPISODES_PROVISIONAL) {
-    reasonCodes.push('HEALTH_INSUFFICIENT_INDEPENDENT_EPISODES');
-    if (episodes.length === 1) reasonCodes.push('HEALTH_SINGLE_EPISODE_ONLY');
-    estimatedHealthStatus = 'UNKNOWN';
-  } else {
-    const hasStrongDeterioration =
-      bandCounts.CRITICAL >= 2 ||
-      (bandCounts.CRITICAL >= 1 && bandCounts.WARNING >= 1) ||
-      (loadSignal === 'RED' && bandCounts.WARNING + bandCounts.CRITICAL >= 1);
+  if (episodes.length === 1) {
+    reasonCodes.push('HEALTH_SINGLE_EPISODE_ONLY');
+  }
 
-    const temporarilyDischarged =
-      bandCounts.CRITICAL === 1 &&
-      bandCounts.WARNING === 0 &&
-      bandCounts.GOOD + bandCounts.WATCH >= 1 &&
-      loadSignal !== 'RED';
+  const classification = classifyEstimatedHealthStatusP1({
+    bandCounts,
+    episodeCount: episodes.length,
+    trend,
+    loadSignal,
+    chemistryKnown,
+  });
+  estimatedHealthStatus = classification.status;
+  finalRuleId = classification.ruleId;
+  reasonCodes.push(...classification.extraReasonCodes);
 
-    if (hasStrongDeterioration) {
-      estimatedHealthStatus = 'RED';
-    } else if (temporarilyDischarged) {
-      estimatedHealthStatus = 'YELLOW';
-      reasonCodes.push('HEALTH_TEMPORARILY_DISCHARGED_NOT_AGING');
-    } else if (loadSignal === 'RED' || loadSignal === 'YELLOW') {
-      estimatedHealthStatus = loadSignal;
-      if (n14.operationalRiskStatus === 'GREEN') {
-        reasonCodes.push('HEALTH_LOAD_CONTRADICTS_REST_GREEN');
-      }
-    } else if (
-      bandCounts.CRITICAL > 0 ||
-      bandCounts.WARNING >= 2 ||
-      trend === 'DECLINE'
-    ) {
-      estimatedHealthStatus = 'YELLOW';
-    } else if (
-      bandCounts.GOOD + bandCounts.WATCH >= episodes.length - 1 &&
-      bandCounts.CRITICAL === 0 &&
-      bandCounts.WARNING <= 1 &&
-      (loadSignal === 'GREEN' || loadSignal === 'UNKNOWN') &&
-      (trend === 'STABLE' || trend === 'NOT_EVALUABLE')
-    ) {
-      estimatedHealthStatus = 'GREEN';
-    } else if (bandCounts.WATCH + bandCounts.WARNING > 0) {
-      estimatedHealthStatus = 'YELLOW';
-    } else {
-      estimatedHealthStatus = 'UNKNOWN';
-      reasonCodes.push('HEALTH_CONFLICTING_SIGNALS');
-    }
+  if (
+    loadSignal === 'YELLOW' &&
+    n14.operationalRiskStatus === 'GREEN' &&
+    estimatedHealthStatus === 'YELLOW' &&
+    finalRuleId === 'RULE_LOAD_WEAK_OR_CRITICAL'
+  ) {
+    reasonCodes.push('HEALTH_LOAD_CONTRADICTS_REST_GREEN');
   }
 
   if (
@@ -307,6 +326,7 @@ export function evaluateLvEstimatedBatteryHealthV1(
     loadSignal !== 'RED'
   ) {
     estimatedHealthStatus = 'YELLOW';
+    finalRuleId = 'RULE_N14_RED_DAMP_GREEN';
     reasonCodes.push('HEALTH_CONFLICTING_SIGNALS');
     limitations.push('N14 operational RED not auto-mapped to health RED without corroboration.');
   }
@@ -316,11 +336,11 @@ export function evaluateLvEstimatedBatteryHealthV1(
     input.conditionInput.inputCoverageIncomplete ||
     eligibleWithTemp.length === 0;
 
-  const estimateConfidence = deriveConfidence(episodes.length, supporting, hasDegraded);
-
-  const sessionFeaturesEvaluable = input.conditionInput.sessionFeatures.filter(
-    (f) => f.slopeInterpretability === 'REST_SELF_DISCHARGE_TREND',
-  ).length;
+  const estimateConfidence = deriveConfidence(
+    episodes.length,
+    familySplit.independent,
+    hasDegraded,
+  );
 
   const freshness =
     input.conditionInput.latestEligibleRestObservation?.voltageObservedAt ??
@@ -355,5 +375,23 @@ export function evaluateLvEstimatedBatteryHealthV1(
     n14OperationalRiskStatus: n14.operationalRiskStatus,
     n14StartabilityStatus: n14.startabilityStatus,
     customerPublicationEnabled: false,
+    decisionTrace: {
+      policyId: LV_ESTIMATED_BATTERY_HEALTH_DECISION_POLICY_ID,
+      observationTimeRange: {
+        earliestIso: observationTimes[0] ?? null,
+        latestIso: observationTimes[observationTimes.length - 1] ?? null,
+      },
+      qualifiedEpisodeCount: episodes.length,
+      episodes: traceEpisodes,
+      bandCounts: bandCounts as RestEpisodeBandCounts,
+      chemistry: input.conditionInput.chemistry.normalizedType,
+      specProvidedForRestThresholds: Boolean(specProvidedForRest),
+      longitudinalTrend: trend,
+      loadSignal,
+      crankStale,
+      independentFamilies: familySplit.independent,
+      correlatedFamiliesExcluded: familySplit.correlatedExcluded,
+      finalRuleId,
+    },
   };
 }

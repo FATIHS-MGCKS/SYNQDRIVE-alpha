@@ -308,6 +308,58 @@ describe('evaluateLvEstimatedBatteryHealthV1', () => {
     expect(result.assessmentEligibility).toBe('NOT_PUBLICATION_READY');
   });
 
+  it('P1: repeated critical rests without load corroboration → YELLOW not RED', () => {
+    const episodes = Array.from({ length: 12 }, (_, i) =>
+      restObs(
+        {
+          voltageV: i < 3 ? 12.02 : i < 11 ? 12.48 : 12.55,
+          restSessionId: `s-${i}`,
+          voltageObservedAt: `2026-09-${String(i + 1).padStart(2, '0')}T08:00:00.000Z`,
+        },
+        i,
+      ),
+    );
+    const result = evaluateLvEstimatedBatteryHealthV1(
+      healthInput({ conditionOverrides: { eligibleRestObservations: episodes } }),
+    );
+    expect(result.estimatedHealthStatus).toBe('YELLOW');
+    expect(result.decisionTrace.finalRuleId).toBe('RULE_REST_WARNING_OR_DECLINE');
+    expect(result.reasonCodes).toContain('HEALTH_REST_LOW_VOLTAGE_NOT_PROVEN_AGING');
+    expect(result.reasonCodes).toContain('HEALTH_CORRELATED_EVIDENCE_NOT_CORROBORATION');
+  });
+
+  it('P1: correlated families do not inflate confidence to HIGH from rest alone', () => {
+    const episodes = [
+      restObs({ voltageV: 12.52, restSessionId: 'a' }, 1),
+      restObs({ voltageV: 12.51, restSessionId: 'b' }, 2),
+      restObs({ voltageV: 12.5, restSessionId: 'c' }, 3),
+      restObs({ voltageV: 12.49, restSessionId: 'd' }, 4),
+    ];
+    const result = evaluateLvEstimatedBatteryHealthV1(
+      healthInput({ conditionOverrides: { eligibleRestObservations: episodes } }),
+    );
+    expect(result.decisionTrace.independentFamilies).toEqual(['RESTING_CONDITION']);
+    expect(result.estimateConfidence).not.toBe('HIGH');
+  });
+
+  it('P1: healthy majority with watch episodes → GREEN', () => {
+    const episodes = [
+      ...Array.from({ length: 19 }, (_, i) =>
+        restObs({ voltageV: 12.56, restSessionId: `g-${i}` }, i),
+      ),
+      ...Array.from({ length: 8 }, (_, i) =>
+        restObs({ voltageV: 12.52, restSessionId: `w-${i}` }, 20 + i),
+      ),
+      restObs({ voltageV: 12.18, restSessionId: 'warn-1' }, 28),
+      restObs({ voltageV: 12.16, restSessionId: 'warn-2' }, 29),
+    ];
+    const result = evaluateLvEstimatedBatteryHealthV1(
+      healthInput({ conditionOverrides: { eligibleRestObservations: episodes } }),
+    );
+    expect(result.estimatedHealthStatus).toBe('GREEN');
+    expect(result.decisionTrace.finalRuleId).toBe('RULE_REST_HEALTHY_MAJORITY');
+  });
+
   it('contradictory N14 RED vs health GREEN without load → damped to YELLOW', () => {
     const episodes = [
       restObs({ voltageV: 11.7, restSessionId: 'c1', actualRestAgeHours: 10 }, 1),
