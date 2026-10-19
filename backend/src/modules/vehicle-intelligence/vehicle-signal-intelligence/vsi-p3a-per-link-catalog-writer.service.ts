@@ -25,10 +25,11 @@ export class VsiP3aPerLinkCatalogWriterService {
   async persistFromAvailableSignalsPreflight(input: {
     organizationId: string;
     vehicleId: string;
+    dimoTokenId: number;
     availableSignals: readonly string[];
     fuelType: string | null | undefined;
     checkedAt: Date;
-    providerError: Record<string, unknown> | null;
+    catalogSnapshotCompleteness: VsiProviderCatalogSnapshotCompleteness;
     preflightMetadata: Record<string, unknown>;
   }): Promise<{ wrote: number; skippedReason?: string }> {
     if (!isVsiP3aPerLinkCatalogWriteEnabled()) {
@@ -38,6 +39,7 @@ export class VsiP3aPerLinkCatalogWriterService {
     const linkResolution = await resolveVerifiedDimoProviderSourceLinkForPreflight(this.prisma, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
+      dimoTokenId: input.dimoTokenId,
     });
     if (!linkResolution.ok) {
       this.logger.debug(
@@ -46,14 +48,10 @@ export class VsiP3aPerLinkCatalogWriterService {
       return { wrote: 0, skippedReason: linkResolution.reason };
     }
 
-    const completeness = input.providerError
-      ? VsiProviderCatalogSnapshotCompleteness.PROVIDER_ERROR
-      : VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG;
-
     const classifications = classifyVsiP3aCatalogAxes({
       availableSignals: input.availableSignals,
       fuelType: input.fuelType,
-      catalogSnapshotCompleteness: completeness,
+      catalogSnapshotCompleteness: input.catalogSnapshotCompleteness,
     });
 
     const wrote = await this.repository.upsertCatalogAxes({
@@ -61,7 +59,7 @@ export class VsiP3aPerLinkCatalogWriterService {
       vehicleId: input.vehicleId,
       link: linkResolution.context,
       checkedAt: input.checkedAt,
-      catalogSnapshotCompleteness: completeness,
+      catalogSnapshotCompleteness: input.catalogSnapshotCompleteness,
       provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
       classifications,
       metadata: input.preflightMetadata,

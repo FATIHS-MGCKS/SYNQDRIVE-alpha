@@ -15,19 +15,12 @@ import {
   VsiProviderCatalogAxisProvenance,
   VsiProviderCatalogSnapshotCompleteness,
 } from './vsi-p3a-catalog-axis.contract';
-import {
-  createLegacyDimoLinkFixture,
-  createLegacyReconcileOrg,
-} from '../../vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-reconciliation-postgres.fixture';
+import { createLegacyReconcileOrg } from '../../vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-reconciliation-postgres.fixture';
 import { VO_PG_DIMO_SOFTWARE_RAW_JSON } from '../../vehicle-onboarding/testing/dimo-mirror-postgres.fixture';
 import { VsiProviderCatalogStatus } from './vehicle-signal-evidence.contract';
+import { createP3aVerifiedRuptelaFixture } from './vsi-p3a-per-link-catalog.postgres.fixture';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
-
-const RUPTELA_RAW = {
-  aftermarketDevice: { id: 'R1-p3a-test' },
-  syntheticDevice: null,
-};
 
 async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
   const vehicles = await prisma.vehicle.findMany({
@@ -68,11 +61,11 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
 
   it('persists link-scoped LISTED for speed from complete availableSignals snapshot', async () => {
     const organizationId = await createLegacyReconcileOrg(prisma);
-    const fixture = await createLegacyDimoLinkFixture(prisma, {
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
       organizationId,
-      externalId: `0x${randomUUID().replace(/-/g, '')}`,
-      rawJson: RUPTELA_RAW,
-    });
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
 
     const checkedAt = new Date('2026-10-19T10:00:00.000Z');
     const availableSignals = [
@@ -85,10 +78,12 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
     const result = await writer.persistFromAvailableSignalsPreflight({
       organizationId,
       vehicleId: fixture.vehicleId,
+      dimoTokenId: fixture.tokenId,
       availableSignals,
       fuelType: 'GASOLINE',
       checkedAt,
-      providerError: null,
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
       preflightMetadata: { test: true },
     });
     expect(result.wrote).toBeGreaterThan(0);
@@ -106,13 +101,41 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
     await cleanupOrg(prisma, organizationId);
   });
 
+  it('does not persist NOT_LISTED when catalog snapshot is incomplete', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
+      organizationId,
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
+
+    await writer.persistFromAvailableSignalsPreflight({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      dimoTokenId: fixture.tokenId,
+      availableSignals: [],
+      fuelType: 'GASOLINE',
+      checkedAt: new Date(),
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.INCOMPLETE_PROVIDER_RESPONSE,
+      preflightMetadata: {},
+    });
+
+    const rows = await prisma.vsiProviderCatalogAxis.findMany({
+      where: { organizationId, vehicleId: fixture.vehicleId },
+    });
+    expect(rows.some((r) => r.declaredCatalogStatus === 'NOT_LISTED')).toBe(false);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
   it('rejects out-of-order older catalog checkedAt updates', async () => {
     const organizationId = await createLegacyReconcileOrg(prisma);
-    const fixture = await createLegacyDimoLinkFixture(prisma, {
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
       organizationId,
-      externalId: `0x${randomUUID().replace(/-/g, '')}`,
-      rawJson: RUPTELA_RAW,
-    });
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
 
     const newer = new Date('2026-10-20T10:00:00.000Z');
     const older = new Date('2026-10-19T10:00:00.000Z');
@@ -120,20 +143,24 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
     await writer.persistFromAvailableSignalsPreflight({
       organizationId,
       vehicleId: fixture.vehicleId,
+      dimoTokenId: fixture.tokenId,
       availableSignals: ['speed'],
       fuelType: 'GASOLINE',
       checkedAt: newer,
-      providerError: null,
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
       preflightMetadata: {},
     });
 
     await writer.persistFromAvailableSignalsPreflight({
       organizationId,
       vehicleId: fixture.vehicleId,
+      dimoTokenId: fixture.tokenId,
       availableSignals: [],
       fuelType: 'GASOLINE',
       checkedAt: older,
-      providerError: null,
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
       preflightMetadata: {},
     });
 
@@ -151,11 +178,11 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
 
   it('isolates multi active link declared catalog per link id', async () => {
     const organizationId = await createLegacyReconcileOrg(prisma);
-    const fixtureA = await createLegacyDimoLinkFixture(prisma, {
+    const fixtureA = await createP3aVerifiedRuptelaFixture(
+      prisma,
       organizationId,
-      externalId: `0x${randomUUID().replace(/-/g, '')}`,
-      rawJson: RUPTELA_RAW,
-    });
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
 
     await prisma.vehicleDataSourceLink.update({
       where: { id: fixtureA.linkId },
@@ -174,6 +201,7 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
         vehicleId: fixtureA.vehicleId,
         provider: 'DIMO',
         sourceType: 'DIMO',
+        sourceSubtype: 'P3A_TEST_SECOND_DIMO',
         dimoVehicleId: dimoB.id,
         isActive: true,
       },
@@ -193,8 +221,8 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
         providerSourceLinkId: fixtureA.linkId,
         providerIdentity: 'DIMO',
         verifiedModality: 'HARDWARE_DEVICE',
-        telemetrySourceFamily: null,
-        connectionIdentityContractVersion: null,
+        telemetrySourceFamily: 'RUPTELA_R1',
+        connectionIdentityContractVersion: 'vo-connection-identity-v1',
       },
       checkedAt: new Date(),
       catalogSnapshotCompleteness:
@@ -221,11 +249,11 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
   it('gate OFF keeps legacy resolver semantics', async () => {
     process.env.VSI_P3A_PER_LINK_CATALOG_RESOLVER_ENABLED = 'false';
     const organizationId = await createLegacyReconcileOrg(prisma);
-    const fixture = await createLegacyDimoLinkFixture(prisma, {
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
       organizationId,
-      externalId: `0x${randomUUID().replace(/-/g, '')}`,
-      rawJson: RUPTELA_RAW,
-    });
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
 
     await repository.upsertCatalogAxes({
       organizationId,
@@ -233,9 +261,9 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
       link: {
         providerSourceLinkId: fixture.linkId,
         providerIdentity: 'DIMO',
-        verifiedModality: null,
-        telemetrySourceFamily: null,
-        connectionIdentityContractVersion: null,
+        verifiedModality: 'HARDWARE_DEVICE',
+        telemetrySourceFamily: 'RUPTELA_R1',
+        connectionIdentityContractVersion: 'vo-connection-identity-v1',
       },
       checkedAt: new Date(),
       catalogSnapshotCompleteness:

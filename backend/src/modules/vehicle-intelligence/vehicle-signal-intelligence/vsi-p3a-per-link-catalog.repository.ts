@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import type { VsiP3aCatalogAxisClassification } from './vsi-p3a-catalog-axis.classifier';
 import {
@@ -36,6 +37,9 @@ function mapDeclaredStatus(status: VsiProviderCatalogStatus): 'LISTED' | 'NOT_LI
 export class VsiP3aPerLinkCatalogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Monotone upsert: never downgrade checked_at; equal timestamps remain idempotent.
+   */
   async upsertCatalogAxes(input: UpsertVsiP3aCatalogAxisInput): Promise<number> {
     let written = 0;
     for (const row of input.classifications) {
@@ -45,63 +49,66 @@ export class VsiP3aPerLinkCatalogRepository {
         ...row.metadata,
       } as Prisma.InputJsonValue;
 
-      const existing = await this.prisma.vsiProviderCatalogAxis.findUnique({
-        where: {
-          organizationId_vehicleId_providerSourceLinkId_providerNativeSignalName: {
-            organizationId: input.organizationId,
-            vehicleId: input.vehicleId,
-            providerSourceLinkId: input.link.providerSourceLinkId,
-            providerNativeSignalName: row.providerNativeSignalName,
-          },
-        },
-        select: { checkedAt: true },
-      });
-
-      if (existing && existing.checkedAt.getTime() > input.checkedAt.getTime()) {
-        continue;
+      const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
+        INSERT INTO vsi_provider_catalog_axes (
+          id,
+          organization_id,
+          vehicle_id,
+          provider_source_link_id,
+          provider_identity,
+          provider_native_signal_name,
+          canonical_signal_key,
+          declared_catalog_status,
+          catalog_snapshot_completeness,
+          provenance,
+          contract_version,
+          checked_at,
+          verified_modality,
+          telemetry_source_family,
+          connection_identity_contract_version,
+          metadata_json,
+          created_at,
+          updated_at
+        ) VALUES (
+          ${randomUUID()}::text,
+          ${input.organizationId},
+          ${input.vehicleId},
+          ${input.link.providerSourceLinkId},
+          ${input.link.providerIdentity},
+          ${row.providerNativeSignalName},
+          ${row.canonicalSignalKey},
+          ${declared}::"VsiProviderCatalogAxisDeclaredStatus",
+          ${input.catalogSnapshotCompleteness}::"VsiProviderCatalogSnapshotCompleteness",
+          ${input.provenance}::"VsiProviderCatalogAxisProvenance",
+          ${VSI_P3A_CATALOG_AXIS_CONTRACT_VERSION},
+          ${input.checkedAt},
+          ${input.link.verifiedModality},
+          ${input.link.telemetrySourceFamily},
+          ${input.link.connectionIdentityContractVersion},
+          ${metadataJson}::jsonb,
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT (organization_id, vehicle_id, provider_source_link_id, provider_native_signal_name)
+        DO UPDATE SET
+          provider_identity = EXCLUDED.provider_identity,
+          canonical_signal_key = EXCLUDED.canonical_signal_key,
+          declared_catalog_status = EXCLUDED.declared_catalog_status,
+          catalog_snapshot_completeness = EXCLUDED.catalog_snapshot_completeness,
+          provenance = EXCLUDED.provenance,
+          contract_version = EXCLUDED.contract_version,
+          checked_at = EXCLUDED.checked_at,
+          verified_modality = EXCLUDED.verified_modality,
+          telemetry_source_family = EXCLUDED.telemetry_source_family,
+          connection_identity_contract_version = EXCLUDED.connection_identity_contract_version,
+          metadata_json = EXCLUDED.metadata_json,
+          updated_at = NOW()
+        WHERE vsi_provider_catalog_axes.checked_at <= EXCLUDED.checked_at
+        RETURNING id
+      `;
+      if (inserted.length > 0) {
+        written += 1;
       }
-
-      await this.prisma.vsiProviderCatalogAxis.upsert({
-        where: {
-          organizationId_vehicleId_providerSourceLinkId_providerNativeSignalName: {
-            organizationId: input.organizationId,
-            vehicleId: input.vehicleId,
-            providerSourceLinkId: input.link.providerSourceLinkId,
-            providerNativeSignalName: row.providerNativeSignalName,
-          },
-        },
-        create: {
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          providerSourceLinkId: input.link.providerSourceLinkId,
-          providerIdentity: input.link.providerIdentity,
-          providerNativeSignalName: row.providerNativeSignalName,
-          canonicalSignalKey: row.canonicalSignalKey,
-          declaredCatalogStatus: declared,
-          catalogSnapshotCompleteness: input.catalogSnapshotCompleteness,
-          provenance: input.provenance,
-          contractVersion: VSI_P3A_CATALOG_AXIS_CONTRACT_VERSION,
-          checkedAt: input.checkedAt,
-          verifiedModality: input.link.verifiedModality,
-          telemetrySourceFamily: input.link.telemetrySourceFamily,
-          connectionIdentityContractVersion: input.link.connectionIdentityContractVersion,
-          metadataJson,
-        },
-        update: {
-          providerIdentity: input.link.providerIdentity,
-          canonicalSignalKey: row.canonicalSignalKey,
-          declaredCatalogStatus: declared,
-          catalogSnapshotCompleteness: input.catalogSnapshotCompleteness,
-          provenance: input.provenance,
-          contractVersion: VSI_P3A_CATALOG_AXIS_CONTRACT_VERSION,
-          checkedAt: input.checkedAt,
-          verifiedModality: input.link.verifiedModality,
-          telemetrySourceFamily: input.link.telemetrySourceFamily,
-          connectionIdentityContractVersion: input.link.connectionIdentityContractVersion,
-          metadataJson,
-        },
-      });
-      written += 1;
     }
     return written;
   }

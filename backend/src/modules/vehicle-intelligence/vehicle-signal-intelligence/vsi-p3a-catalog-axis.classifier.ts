@@ -4,20 +4,45 @@ import { VSI_P3A_MATERIALIZATION_CATALOG_KEYS } from './vsi-p3a-catalog-axis.con
 import { VsiProviderCatalogSnapshotCompleteness } from './vsi-p3a-catalog-axis.contract';
 import { VsiProviderCatalogStatus } from './vehicle-signal-evidence.contract';
 
-function isEvPowertrain(fuelType: string | null | undefined): boolean {
-  if (!fuelType) return false;
-  const normalized = fuelType.toUpperCase();
-  return normalized === 'ELECTRIC' || normalized === 'BEV' || normalized === 'EV' || normalized === 'PLUGIN_HYBRID';
+function normalizeFuelType(fuelType: string | null | undefined): string | null {
+  if (!fuelType) return null;
+  return fuelType.toUpperCase();
+}
+
+function isBatteryElectricOnly(fuelType: string | null | undefined): boolean {
+  const normalized = normalizeFuelType(fuelType);
+  if (!normalized) return false;
+  return normalized === 'ELECTRIC' || normalized === 'BEV' || normalized === 'EV';
+}
+
+function hasHighVoltagePackApplicability(fuelType: string | null | undefined): boolean {
+  if (isBatteryElectricOnly(fuelType)) return true;
+  const normalized = normalizeFuelType(fuelType);
+  if (!normalized) return false;
+  return normalized === 'PLUGIN_HYBRID' || normalized === 'HYBRID' || normalized === 'PHEV';
+}
+
+function hasIceFuelApplicability(fuelType: string | null | undefined): boolean {
+  const normalized = normalizeFuelType(fuelType);
+  if (!normalized) return false;
+  if (isBatteryElectricOnly(normalized)) return false;
+  return true;
 }
 
 function isApplicable(
   key: VsiP3aMaterializationCatalogKey,
   fuelType: string | null | undefined,
-): boolean {
+): boolean | 'UNKNOWN' {
   const def = getVsiCanonicalSignalDefinition(key);
-  const ev = isEvPowertrain(fuelType);
-  if (def.iceOnly && ev) return false;
-  if (def.evOnly && !ev) return false;
+  const normalized = normalizeFuelType(fuelType);
+  if (!normalized) return 'UNKNOWN';
+
+  if (def.evOnly) {
+    return hasHighVoltagePackApplicability(normalized);
+  }
+  if (def.iceOnly) {
+    return hasIceFuelApplicability(normalized);
+  }
   return true;
 }
 
@@ -54,7 +79,8 @@ export function classifyVsiP3aCatalogAxes(input: {
       };
     }
 
-    if (!isApplicable(key, input.fuelType)) {
+    const applicability = isApplicable(key, input.fuelType);
+    if (applicability === false) {
       return {
         canonicalSignalKey: key,
         providerNativeSignalName: native,
@@ -62,6 +88,17 @@ export function classifyVsiP3aCatalogAxes(input: {
         metadata: {
           reason: 'powertrain_not_applicable',
           listedInAvailableSignals: false,
+        },
+      };
+    }
+    if (applicability === 'UNKNOWN') {
+      return {
+        canonicalSignalKey: key,
+        providerNativeSignalName: native,
+        declaredCatalogStatus: VsiProviderCatalogStatus.UNKNOWN,
+        metadata: {
+          reason: 'powertrain_applicability_unknown',
+          listedInAvailableSignals: 'UNKNOWN',
         },
       };
     }

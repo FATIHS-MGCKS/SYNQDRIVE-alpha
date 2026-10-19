@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-19 (P3A per-link provider catalog axes — draft PR, gates default OFF) |
+| **Last updated** | 2026-10-19 (P3A safety hardening — catalog completeness, monotone SQL upsert, verified link binding) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -80,9 +80,11 @@
 
 ## Implemented (P3A — per-link catalog provenance, draft PR)
 
-- **Normalized store** — `vsi_provider_catalog_axes` keyed by `(organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName)`; monotonic `checkedAt` (out-of-order preflight snapshots do not downgrade newer evidence).
-- **Writer** — `VsiP3aPerLinkCatalogWriterService` invoked from existing `DimoAvailableSignalsPreflightService` after the same `availableSignals` GraphQL response (**no extra DIMO HTTP**). Gate `VSI_P3A_PER_LINK_CATALOG_WRITE_ENABLED` default **false**; skips when link identity is ambiguous (multi active DIMO link, scope mismatch).
-- **Classifier** — `classifyVsiP3aCatalogAxes` maps eight materialization catalog keys from complete `availableSignals` only; segment-detector metadata is **not** used for `speed` / odometer LISTED proof.
+- **Normalized store** — `vsi_provider_catalog_axes` keyed by `(organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName)`; monotonic `checkedAt` enforced in PostgreSQL (`ON CONFLICT … WHERE checked_at <= EXCLUDED.checked_at`); equal timestamps idempotent.
+- **Catalog completeness** — `parseDimoAvailableSignalsCatalogResponse` classifies GraphQL payloads; missing/malformed/partial `availableSignals` → `INCOMPLETE_PROVIDER_RESPONSE` or `PROVIDER_ERROR` (never `COMPLETE_PROVIDER_CATALOG` without proof). Valid empty `[]` only when `data.availableSignals` is a proven empty array.
+- **Writer** — `VsiP3aPerLinkCatalogWriterService` invoked from existing `DimoAvailableSignalsPreflightService` after the same `availableSignals` GraphQL response (**no extra DIMO HTTP**). Gate `VSI_P3A_PER_LINK_CATALOG_WRITE_ENABLED` default **false**; P3A persist errors are logged and do not fail driving-capability upserts.
+- **Verified link binding** — `resolveVerifiedDimoProviderSourceLinkForPreflight` requires v2 `connectionIdentity`, preflight `dimoTokenId` alignment, and legacy mirror evidence (Tesla `API_SYNTHETIC` / Ruptela `RUPTELA_R1` modality separation). Fail-closed without provenance.
+- **Classifier** — `classifyVsiP3aCatalogAxes` maps eight materialization catalog keys from **complete** `availableSignals` only; PHEV/Hybrid may classify both fuel and HV axes; segment-detector metadata is **not** used for `speed` / odometer LISTED proof.
 - **Resolver** — `VsiDeclaredCatalogResolver.resolveForMaterialization` prefers link-scoped rows when `VSI_P3A_PER_LINK_CATALOG_RESOLVER_ENABLED=true` (default **false**). Legacy vehicle-scoped preflight remains readable with `LEGACY_DECLARED_CATALOG_VEHICLE_SCOPED_NOT_LINK_VERIFIED`; NULL-link historical rows are never promoted to per-link verified LISTED/NOT_LISTED.
 - **No backfill** — existing `vehicle_driving_capabilities` / `vehicle_battery_capabilities` rows without link provenance are not migrated.
 
