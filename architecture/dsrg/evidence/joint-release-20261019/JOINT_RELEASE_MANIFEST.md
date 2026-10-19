@@ -8,11 +8,11 @@
 
 | Field | Value | Evidence |
 |--------|--------|----------|
-| **Target `origin/main`** | `cf20c49f6596589a56eae346b5550f0b662c46b6` | `git fetch origin main` → `git rev-parse origin/main` |
+| **Target `origin/main`** | `76b463c98e6f8a08ce3b0560deccbdd2a9ec3866` (#2085 merged) | `git fetch origin main` (2026-10-19 scope refresh) |
 | **Production `/opt/synqdrive/current`** | `c6d5ab99416bbff569f25741c27b4e24f46aaf8e` | SSH `git rev-parse HEAD` under `/opt/synqdrive/current` |
 | **Production release dir** | `/opt/synqdrive/releases/20261018230030_v4994` | SSH `readlink -f /opt/synqdrive/current` |
-| **Commits pending deploy** | **30** | `git log --oneline c6d5ab99..cf20c49f` |
-| **Deploy target SHA (planned)** | `cf20c49f6596589a56eae346b5550f0b662c46b6` | Same as current `main` tip at audit |
+| **Commits pending deploy** | **31** | `git log --oneline c6d5ab99..origin/main` |
+| **Deploy target SHA (planned)** | **`76b463c98`** (re-verify tip at GO) | Includes #2085 P1 shadow wiring — flags stay off |
 | **Replica health** | HTTP 200 both `:3001` and `:3002` | SSH `curl` health JSON `status: ok` |
 | **Deployment locks** | None observed | SSH `ls` `/opt/synqdrive/*.lock` |
 
@@ -45,7 +45,7 @@ Reference SHAs from planning (`c6d5ab99`, `cf20c49f`) **match** live resolution 
 | PR | Reason |
 |----|--------|
 | **#2077**, **#2081** | User directive: superseded/mixed drafts — **do not auto-promote** |
-| **#2085** | Open draft: P1 **production shadow wiring** — **not on `main`** |
+| **#2085** | **Merged** — in `main` @ `76b463c98`; deploy with **shadow flags OFF** |
 | All other open PRs | Not merged — excluded (`gh pr list --state open`) |
 
 ## Database / migrations (summary)

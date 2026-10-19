@@ -1,6 +1,6 @@
 # Exact-SHA deploy runbook (do not execute without owner GO)
 
-**Target SHA:** `cf20c49f6596589a56eae346b5550f0b662c46b6`  
+**Target SHA:** use **`git rev-parse origin/main`** at owner GO (audit: `76b463c98e6f8a08ce3b0560deccbdd2a9ec3866`)  
 **Canonical script:** `/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh`  
 **Runbook:** `architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md`
 

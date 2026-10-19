@@ -1,8 +1,10 @@
 # Giant release GO / NO-GO — read-only verdict
 
 **Date:** 2026-10-19  
-**Target:** `cf20c49f6596589a56eae346b5550f0b662c46b6`  
-**Production:** `c6d5ab99416bbff569f25741c27b4e24f46aaf8e`
+**Target (refresh at GO):** `76b463c98e6f8a08ce3b0560deccbdd2a9ec3866` (`main` after #2085)  
+**Prior pin:** `cf20c49f6596589a56eae346b5550f0b662c46b6` (R11 green; superseded as deploy SHA)  
+**Production:** `c6d5ab99416bbff569f25741c27b4e24f46aaf8e`  
+**Scope alignment:** `SCOPE_ALIGNMENT_FINAL_20261019.md`
 
 ---
 
@@ -23,15 +25,16 @@
 | Guard drift on current symlink | WARN | Manifest vs disk — fixed by promote |
 | Fresh backup at deploy | REQUIRED | `vps-deploy-release.sh` |
 | Owner deploy authorization | **NOT GIVEN** | This audit only |
-| **Backend R11 postgres+redis** @ `cf20c49f` | **PENDING** | `in_progress` at audit time |
+| **Backend R11** @ `cf20c49f` | **PASS** | `success` |
+| **CI @ `76b463c98` (post-#2085)** | **PENDING** | Checks **queued** at scope audit — re-attest before GO |
 
 ---
 
 ## Blockers
 
-1. **CI:** `Backend R11 postgres+redis integration` still **in_progress** on `cf20c49f` — refresh attestation before GO.
-2. **Process:** Explicit owner **`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`** (or VO5C break-glass path if armed) — **not issued** in this task.
-3. **Optional scope:** P1 production shadow (#2085) **not** in release — confirm acceptable.
+1. **CI:** Re-run attestation on **`76b463c98`** (post-#2085 merge) — was **queued** at scope audit.
+2. **Process:** Owner deploy GO **not issued**.
+3. **#2085:** **Merged** — included in deploy target; **no flag activation** on release.
 
 **Non-blockers (documented):**
 

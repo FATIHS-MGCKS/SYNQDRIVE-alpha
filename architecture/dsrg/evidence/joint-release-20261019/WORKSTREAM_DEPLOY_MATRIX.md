@@ -1,8 +1,9 @@
-# Workstream deploy matrix — `c6d5ab99` → `cf20c49f`
+# Workstream deploy matrix — `c6d5ab99` → `76b463c98` (current `main`)
 
 Production SHA: `c6d5ab99416bbff569f25741c27b4e24f46aaf8e`  
-Release target: `cf20c49f6596589a56eae346b5550f0b662c46b6`  
-Diff scope: **135 files**, ~147k insertions (mostly S4 research + fixtures).
+Release target (refresh at GO): **`76b463c98e6f8a08ce3b0560deccbdd2a9ec3866`** (`origin/main` after #2085 merge)  
+Prior audit SHA: `cf20c49f6596589a56eae346b5550f0b662c46b6` (superseded as deploy pin — re-attest CI on tip).  
+Diff scope prod→main: **31 commits**; bulk ~147k LOC S4 research + #2085 (+166 LOC worker shadow).
 
 ---
 
@@ -11,14 +12,25 @@ Diff scope: **135 files**, ~147k insertions (mostly S4 research + fixtures).
 | Field | Detail |
 |--------|--------|
 | **WORKSTREAM** | S4 / EXP021 research decoders + offline harnesses |
-| **MERGED_PRS** | #2082 (OSM node-id topology R1), #2084 (route-aware Viterbi R1 + P1 research libs); also commits eaa52ccf (backtrack R1), df0fef2c, 0ea34ff8 |
-| **CODE_DELTA** | `backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/*` (route-aware, backtrack, direction-aware P1, topology); **production** `viterbi-dp-costs.ts` / forward V2 path unchanged on `main` |
-| **MIGRATIONS** | None new in this delta (S4 research migrations already applied in prod ledger, e.g. `20261017183000_di_v0_s4_research_v1`) |
-| **CURRENT_PROD_STATUS** | Production S4 flags on; research env keys **absent** |
-| **DEPLOY_EFFECT** | **PASSIVE_CODE** — libraries and tests on disk; no automatic decoder swap |
-| **RUNTIME_FLAGS** | No new activation: `DI_V0_S4_RESEARCH_*` not in prod env; **#2085 P1 shadow wiring excluded** (open PR) |
-| **ACTIVATION_STATUS** | Research isolated; authoritative S4 unchanged |
-| **OWNER_APPROVAL_NEEDED** | **No** for passive deploy; **Yes** if later merging #2085 or enabling research/shadow flags |
+| **MERGED_PRS** | #2082, #2084, **#2085** (P1 shadow wiring); eaa52ccf, df0fef2c, 0ea34ff8 |
+| **CODE_DELTA** | `s4-research/*` + `road-matching-pipeline.ts` P1 shadow hook; **production** `viterbi-dp-costs.ts` / product S4 worker authority unchanged |
+| **MIGRATIONS** | None new in prod→main delta beyond existing S4 research (already in prod ledger) |
+| **CURRENT_PROD_STATUS** | Prod S4 on; **no** `DI_V0_S4_RESEARCH_*` in env |
+| **DEPLOY_EFFECT** | See S4 states **A/B/C/D** below |
+| **RUNTIME_FLAGS** | `DI_V0_S4_RESEARCH_DIRECTION_AWARE_EMISSION_P1_ENABLED` default **off**; requires full research stack + allowlists |
+| **ACTIVATION_STATUS** | **C=OFF** planned; **D=unchanged** |
+| **OWNER_APPROVAL_NEEDED** | **No** for deploy with flags off; **Yes** to enable P1 shadow or research worker |
+
+### S4 states (mandatory separation)
+
+| | Prod now | After deploy (flags unchanged) |
+|--|----------|--------------------------------|
+| **A. Code deployed** | Partial research libs | **Full** incl. #2085 wiring |
+| **B. Shadow decoder installed** | No P1 hook | **Yes** in research pipeline |
+| **C. Shadow decoder enabled** | No | **No** |
+| **D. Authoritative promoted** | Prod forward V2 | **No change** |
+
+**Route-aware R4.1:** **A** offline library only — not **B** in worker sync path.
 
 **Verification notes**
 
