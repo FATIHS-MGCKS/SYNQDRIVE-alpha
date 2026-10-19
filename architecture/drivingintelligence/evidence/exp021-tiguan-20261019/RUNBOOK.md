@@ -25,3 +25,12 @@ npx ts-node --transpile-only scripts/research/exp021-tiguan-failure-forensics.ha
 ```
 
 Outputs: `TIGUAN_FAILURE_FORENSICS_REPORT.md`, trace CSVs, `TIGUAN_FAILURE_MAP.html`, `TIGUAN_ROOT_CAUSE_REGISTER.json`.
+
+### E002 heading / emission R2
+
+```bash
+cd backend
+npx ts-node --transpile-only scripts/research/exp021-tiguan-e002-heading-r2.harness.ts
+```
+
+Outputs: `TIGUAN_E002_HEADING_PROVENANCE.csv`, `TIGUAN_E002_HEADING_EMISSION_R2_REPORT.md`, `TIGUAN_E002_ABLATION_METRICS.csv`.
