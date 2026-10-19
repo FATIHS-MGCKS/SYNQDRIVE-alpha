@@ -8,6 +8,8 @@ export * from './baseline-matching';
 export * from './viterbi-matching';
 export * from './viterbi-matching-backtrack';
 export * from './viterbi-dp-costs';
+export * from './emission-direction-aware-p1';
+export * from './viterbi-matching-direction-aware-p1';
 export * from './osm-adjacency-diagnosis';
 export * from './osm-node-id-topology';
 export * from './osm-rounded-only-audit';
