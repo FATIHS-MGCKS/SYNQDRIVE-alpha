@@ -222,6 +222,7 @@ import {
   computePersistedRouteDisplacementM,
   resolveFinalizeEndTime,
 } from './trip-finalize-quality.util';
+import { TripDiBoundaryAdmissionService } from './di-boundary-admission/trip-di-boundary-admission.service';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -340,6 +341,7 @@ export class TripDetectionOrchestrationService {
     private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly diBoundaryAdmission?: TripDiBoundaryAdmissionService,
   ) {
     this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 30_000;
     this.TRIP_CONTINUITY_CORE_WINDOW_MS = this.configService.get<number>('worker.tripContinuityCoreWindowMs') ?? 120_000;
@@ -4378,6 +4380,16 @@ export class TripDetectionOrchestrationService {
           this.logger.warn(
             `V2 finalize: shutdown evidence trip context capture failed for trip ${finalizedTripId}: ${e}`,
           );
+        }
+
+        if (this.diBoundaryAdmission) {
+          try {
+            await this.diBoundaryAdmission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(vehicleId);
+          } catch (e) {
+            this.logger.warn(
+              `V2 finalize: DI boundary admission LIVE_FSM settlement release failed for vehicle ${vehicleId}: ${e}`,
+            );
+          }
         }
       }
 

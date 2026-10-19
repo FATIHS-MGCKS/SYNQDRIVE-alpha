@@ -16,7 +16,7 @@ export interface TripDiBoundaryAdmissionV1 {
   contractVersion: number;
   revisionKey: string;
   releasedAtUtc: string;
-  releasedBy: 'RECONCILIATION' | 'OPERATOR';
+  releasedBy: 'RECONCILIATION' | 'OPERATOR' | 'LIVE_FSM_SETTLEMENT';
 }
 
 export type TripDiBoundaryAdmissionBlockCode =
@@ -75,7 +75,10 @@ export function readTripDiBoundaryAdmissionV1(raw: unknown): TripDiBoundaryAdmis
   if (contractVersion !== TRIP_DI_BOUNDARY_ADMISSION_CONTRACT_VERSION) return null;
   const revisionKey = typeof r.revisionKey === 'string' ? r.revisionKey : '';
   const releasedAtUtc = typeof r.releasedAtUtc === 'string' ? r.releasedAtUtc : '';
-  const releasedBy = r.releasedBy === 'RECONCILIATION' || r.releasedBy === 'OPERATOR' ? r.releasedBy : null;
+  const releasedBy =
+    r.releasedBy === 'RECONCILIATION' || r.releasedBy === 'OPERATOR' || r.releasedBy === 'LIVE_FSM_SETTLEMENT'
+      ? r.releasedBy
+      : null;
   if (!revisionKey || !releasedAtUtc || !releasedBy) return null;
   return { contractVersion, revisionKey, releasedAtUtc, releasedBy };
 }

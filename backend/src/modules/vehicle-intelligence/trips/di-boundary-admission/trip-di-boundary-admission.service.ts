@@ -7,7 +7,9 @@ import {
   canReleaseTripDiBoundaryAdmission,
   readTripDiBoundaryAdmissionV1,
   type TripDiBoundaryAdmissionScope,
+  type TripDiBoundaryAdmissionV1,
 } from './trip-di-boundary-admission';
+import { listLiveFsmSplitAdmissionCandidateTripIds } from './trip-di-boundary-admission-live-fsm-split.util';
 
 @Injectable()
 export class TripDiBoundaryAdmissionService {
@@ -52,6 +54,32 @@ export class TripDiBoundaryAdmissionService {
    * Release admission only for trips whose intra-trip boundary repair scan completed in the
    * same reconciliation run. Does not blanket-release all COMPLETED trips in the window.
    */
+  /**
+   * After vehicle RESTING settlement (live finalize) or reconciliation, release admission for
+   * narrowly scoped LIVE_FSM split parents/continuations still missing revision keys.
+   * Does not scan all trips missing admission metadata.
+   */
+  async releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(
+    vehicleId: string,
+  ): Promise<{ released: number; skipped: number; tripIds: string[] }> {
+    const tripIds = await listLiveFsmSplitAdmissionCandidateTripIds(this.prisma, vehicleId);
+    let released = 0;
+    let skipped = 0;
+    for (const tripId of tripIds) {
+      try {
+        const ok = await this.tryReleaseForTripTransactional(tripId, 'LIVE_FSM_SETTLEMENT');
+        if (ok) released += 1;
+        else skipped += 1;
+      } catch (err) {
+        skipped += 1;
+        this.logger.warn(
+          `DI boundary admission LIVE_FSM settlement release failed trip=${tripId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    return { released, skipped, tripIds };
+  }
+
   async releaseForBoundaryScannedTripIds(tripIds: readonly string[]): Promise<{ released: number; skipped: number }> {
     const unique = [...new Set(tripIds.filter((id) => id.length > 0))];
     let released = 0;
@@ -76,7 +104,7 @@ export class TripDiBoundaryAdmissionService {
    */
   async tryReleaseForTripTransactional(
     tripId: string,
-    releasedBy: 'RECONCILIATION' | 'OPERATOR' = 'RECONCILIATION',
+    releasedBy: TripDiBoundaryAdmissionV1['releasedBy'] = 'RECONCILIATION',
   ): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<
