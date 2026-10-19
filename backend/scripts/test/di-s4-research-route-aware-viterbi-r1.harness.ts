@@ -9,8 +9,7 @@ import {
   buildRoadContextFromOverpass,
   buildStrictNodeIdWayAdjacency,
   buildViterbiMatchesBacktrackR1,
-  buildViterbiMatchesRouteAwareR3,
-  auditNullStateChoicesOnTrace,
+  buildViterbiMatchesRouteAwareR4,
   resetRouteQueryRuntimeProfile,
   routeQueryRuntimeProfile,
   computeRouteAwareTransitionCost,
@@ -30,10 +29,13 @@ const evidenceDir = path.join(repoRoot, 'architecture/drivingintelligence/eviden
 const fixturePath = path.join(evidenceDir, 'fixtures/tesla-20261016/TESLA_POSITION_GRID.json');
 const osmPath = path.join(evidenceDir, 'LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json');
 const outDir =
+  process.env.S4_ROUTE_AWARE_R4_OUT ??
   process.env.S4_ROUTE_AWARE_R3_OUT ??
   process.env.S4_ROUTE_AWARE_R2_OUT ??
   process.env.S4_ROUTE_AWARE_R1_OUT ??
-  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r3';
+  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r4';
+
+const r3PinPath = '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r3/EXP021_S4_ROUTE_AWARE_VITERBI_R3.json';
 
 const PINNED_BASELINE = {
   A: { associated: 510, ambiguous: 244, unknown: 382, waySwitches: 110, graphConflictsRounded: 2, pathCost: 15814.145368888783 },
@@ -113,6 +115,9 @@ function main(): void {
     let costParts: Record<string, number> | null = null;
     let eTelemetry: import('../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/viterbi-matching-route-aware').RouteAwareReplayTelemetry | null =
       null;
+    let eNullDpAudit:
+      | import('../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/null-state-cost-audit').NullStateAuditRow[]
+      | null = null;
 
     if (variant === 'A') {
       rows = buildViterbiMatches(buckets, roadContext.ways, headings, DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG, {
@@ -152,7 +157,7 @@ function main(): void {
       pathCost = r.totalReportedPathCost;
     } else {
       resetRouteQueryRuntimeProfile();
-      const r = buildViterbiMatchesRouteAwareR3(
+      const r = buildViterbiMatchesRouteAwareR4(
         buckets,
         roadContext.ways,
         headings,
@@ -161,6 +166,7 @@ function main(): void {
       );
       rows = r.matches;
       pathCost = r.totalReportedPathCost;
+      eNullDpAudit = r.nullDpAuditRows;
       const p = r.segments.reduce(
         (acc, s) => {
           const c = s.transitionCostPartsSum;
@@ -238,6 +244,7 @@ function main(): void {
       unknownTopologyCases: unknownTopology,
       turnRestrictionUnknown,
       routeAwareTelemetry: eTelemetry,
+      nullDpAudit: eNullDpAudit,
       runtimeMs: ms,
       rows,
     };
@@ -299,26 +306,7 @@ function main(): void {
     return b.availability === 'PRESENT' && d.rows[i].osmWayId != null && e.rows[i].osmWayId == null;
   }).length;
 
-  const nullAudit = auditNullStateChoicesOnTrace(
-    buckets,
-    e.rows.map((r, i) => ({
-      bucketLabelUtc: r.bucketLabelUtc,
-      gpsStatus: buckets[i].availability,
-      headingDeg: headings[i] ?? null,
-      outcome: r.outcome,
-      osmWayId: r.osmWayId,
-      candidateWayIds: [],
-      ambiguityReasons: [],
-      nearestConfirmedJunctionM: null,
-      confirmedJunctionNodeId: null,
-      trafficSignalNodeId: null,
-      trafficSignalDistanceM: null,
-    })),
-    headings,
-    roadContext.ways,
-    directed,
-    DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
-  );
+  const nullAudit = variants.find((v) => v.variant === 'E')!.nullDpAudit ?? [];
   const nullAuditSummary = nullAudit.reduce(
     (acc, row) => {
       acc[row.classification] = (acc[row.classification] ?? 0) + 1;
@@ -327,8 +315,72 @@ function main(): void {
     {} as Record<string, number>,
   );
 
+  const changedBucketTraces = changedBuckets.map((cb) => {
+    const idx = buckets.findIndex((b) => b.bucketLabelUtc === cb.bucketLabelUtc);
+    const prevIdx = idx > 0 ? idx - 1 : -1;
+    let transition: Record<string, unknown> | null = null;
+    if (idx > 0 && buckets[prevIdx].availability === 'PRESENT' && buckets[idx].availability === 'PRESENT') {
+      const pw = e.rows[prevIdx].osmWayId;
+      const cw = e.rows[idx].osmWayId;
+      if (pw != null && cw != null) {
+        const parts = computeRouteAwareTransitionCost(
+          directed,
+          buckets[prevIdx],
+          buckets[idx],
+          waysById.get(pw)!,
+          waysById.get(cw)!,
+          DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+        );
+        transition = {
+          fromWayId: pw,
+          toWayId: cw,
+          status: parts.status,
+          routeDistanceM: parts.routeDistanceM,
+          totalTransitionCost: parts.total,
+          turnRestrictionUnknown: parts.turnRestrictionUnknown,
+        };
+      }
+    }
+    const b = buckets[idx];
+    return {
+      ...cb,
+      latitude: b.latitude,
+      longitude: b.longitude,
+      wayD: cb.wayD,
+      wayE: cb.wayE,
+      transition,
+    };
+  });
+
+  let r3Compare: Record<string, unknown> | null = null;
+  if (fs.existsSync(r3PinPath)) {
+    const r3 = JSON.parse(fs.readFileSync(r3PinPath, 'utf8')) as {
+      FIVE_WAY_REPLAY: Array<{ variant: string; waySwitches: number; labels: { UNKNOWN: number }; pathCost: number }>;
+      CHANGED_WAY_BUCKET_COUNT: number;
+      RUNTIME_COMPARISON: Record<string, number>;
+      ROUTE_QUERY_RUNTIME_PROFILE: { totalComputeMs: number; queryCount: number };
+    };
+    const r3e = r3.FIVE_WAY_REPLAY.find((x) => x.variant === 'E')!;
+    const r4e = variants.find((v) => v.variant === 'E')!;
+    r3Compare = {
+      waySwitches: { r3: r3e.waySwitches, r4: r4e.waySwitches },
+      unknownLabels: { r3: r3e.labels.UNKNOWN, r4: r4e.labels.UNKNOWN },
+      changedBuckets: { r3: r3.CHANGED_WAY_BUCKET_COUNT, r4: changedBuckets.length },
+      pathCostE: { r3: r3e.pathCost, r4: r4e.pathCost },
+      runtimeE: { r3: r3.RUNTIME_COMPARISON.E, r4: r4e.runtimeMs },
+      routingComputeMs: {
+        r3: r3.ROUTE_QUERY_RUNTIME_PROFILE.totalComputeMs,
+        r4: routeQueryRuntimeProfile.totalComputeMs,
+      },
+      routeQueryCache: {
+        hits: routeQueryRuntimeProfile.cacheHits,
+        misses: routeQueryRuntimeProfile.cacheMisses,
+      },
+    };
+  }
+
   const report = {
-    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R3',
+    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R4',
     tripId: grid.tripId,
     referenceMergeSha: '784c4b0cf3ae1e7e4534a458082ccef7ef539035',
     PHASE_0_SCOPE: {
@@ -383,11 +435,14 @@ function main(): void {
       rssMbAfter: memAfter.rss / 1_048_576,
     },
     ROUTE_QUERY_RUNTIME_PROFILE: routeQueryRuntimeProfile,
-    NULL_STATE_COST_AUDIT: {
+    NULL_STATE_DP_AUDIT: {
       rowCount: nullAudit.length,
       classificationSummary: nullAuditSummary,
-      sampleRows: nullAudit.slice(0, 50),
+      rows: nullAudit,
+      note: 'Cumulative segment DP costs; DP_NULL_LOCALLY_OPTIMAL does not assert a single root cause.',
     },
+    R3_VS_R4_COMPARE: r3Compare,
+    CHANGED_BUCKET_TRANSITION_TRACES: changedBucketTraces,
     INDEPENDENT_ACCURACY: 'NOT_ASSESSABLE',
     INDEPENDENT_VALIDATION_NOTES: [
       'Route-aware costs are not comparable to legacy scalar transition costs.',
@@ -401,9 +456,9 @@ function main(): void {
   };
 
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R3.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R4.json'), JSON.stringify(report, null, 2));
   fs.writeFileSync(
-    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R3_CHANGED_BUCKETS.geojson'),
+    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R4_CHANGED_BUCKETS.geojson'),
     JSON.stringify({ type: 'FeatureCollection', features: geoFeatures }, null, 2),
   );
   console.log(JSON.stringify(report, null, 2));

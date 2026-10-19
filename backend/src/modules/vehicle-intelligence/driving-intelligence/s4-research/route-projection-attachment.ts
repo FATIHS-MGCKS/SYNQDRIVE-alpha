@@ -6,6 +6,8 @@ export type SegmentAttachment = {
   nodeId: number;
   /** Cost in meters from projection point to this node along the segment. */
   linkCostM: number;
+  /** OSM way id traveled on when arriving at `nodeId` from the projection. */
+  incomingWayId: number;
 };
 
 function segmentOnewayRules(raw: RawOsmWay | undefined): {
@@ -34,10 +36,10 @@ export function departureAttachments(
   const rules = segmentOnewayRules(raw);
   const out: SegmentAttachment[] = [];
   if (proj.startNodeId != null && rules.reverse) {
-    out.push({ nodeId: proj.startNodeId, linkCostM: toStartM });
+    out.push({ nodeId: proj.startNodeId, linkCostM: toStartM, incomingWayId: proj.wayId });
   }
   if (proj.endNodeId != null && rules.forward) {
-    out.push({ nodeId: proj.endNodeId, linkCostM: toEndM });
+    out.push({ nodeId: proj.endNodeId, linkCostM: toEndM, incomingWayId: proj.wayId });
   }
   return out;
 }

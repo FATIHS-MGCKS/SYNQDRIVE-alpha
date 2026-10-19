@@ -6,7 +6,7 @@ import {
   parseTurnRestrictionRelations,
   type TurnRestrictionIndex,
 } from './osm-turn-restrictions';
-import { S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R3 } from './version';
+import { S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R4 } from './version';
 
 export type RouteTopologyStatus =
   | 'CONNECTED_AND_DIRECTION_ALLOWED'
@@ -148,7 +148,7 @@ export function buildDirectedCarRoutingGraph(
   }
 
   return {
-    algorithmId: S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R3,
+    algorithmId: S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R4,
     corridorWayIds,
     rawWaysById,
     nodeCoords: topo.nodeCoords,

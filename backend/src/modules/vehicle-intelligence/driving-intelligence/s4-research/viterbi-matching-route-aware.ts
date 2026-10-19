@@ -4,7 +4,8 @@ import { nearestWayCandidates } from './osm-parse';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
 import { emissionCostFromHits, tieBreakWayId, type WayHit } from './viterbi-dp-costs';
-import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R3 } from './version';
+import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R4 } from './version';
+import { classifyNullDpChoice, type NullStateAuditRow } from './null-state-cost-audit';
 import type { DirectedCarRoutingGraph } from './osm-directed-routing-graph';
 import {
   computeRouteAwareTransitionCost,
@@ -43,6 +44,7 @@ export type RouteAwareSegmentMeta = {
   bucketCount: number;
   tracebackEndCost: number;
   transitionCostPartsSum: RouteAwareTransitionCostParts;
+  nullDpAuditRows: NullStateAuditRow[];
 };
 
 export type RouteAwareReplayTelemetry = {
@@ -60,6 +62,7 @@ export type RouteAwareViterbiResult = {
   segments: RouteAwareSegmentMeta[];
   totalReportedPathCost: number;
   telemetry: RouteAwareReplayTelemetry;
+  nullDpAuditRows: NullStateAuditRow[];
 };
 
 function emptyTelemetry(): RouteAwareReplayTelemetry {
@@ -262,6 +265,57 @@ function decodeSegmentRouteAware(
     if (parts.turnRestrictionUnknown) partsSum.turnRestrictionUnknown = true;
   }
 
+  const nullDpAuditRows: NullStateAuditRow[] = [];
+  const nullPenalty = 100;
+  for (let t = 0; t < segmentBuckets.length; t++) {
+    const chosen = chosenWayIds[t];
+    if (chosen != null) continue;
+    const candidates = candidateLists[t];
+    const nullIdx = candidates.indexOf(null);
+    if (nullIdx < 0) continue;
+    const chosenNullCumulativeCost = layers[t][nullIdx]!.cell.cost;
+    let bestNonNullCumulativeCost: number | null = null;
+    let bestNonNullWayId: number | null = null;
+    let bestNonNullRouteStatus: string | null = null;
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const w = candidates[ci];
+      if (w == null) continue;
+      const c = layers[t][ci]!.cell.cost;
+      if (bestNonNullCumulativeCost == null || c < bestNonNullCumulativeCost) {
+        bestNonNullCumulativeCost = c;
+        bestNonNullWayId = w;
+        const prevPi = layers[t][ci]!.cell.prevIndex;
+        const prevWay = t > 0 && prevPi >= 0 ? layers[t - 1][prevPi]!.wayId : null;
+        if (t === 0 || prevWay == null) {
+          bestNonNullRouteStatus = 'SEGMENT_START';
+        } else {
+          const { parts } = transitionBetween(
+            graph,
+            waysById,
+            segmentBuckets[t - 1],
+            segmentBuckets[t],
+            prevWay,
+            w,
+            config,
+            routeConfig,
+          );
+          bestNonNullRouteStatus = parts?.status ?? null;
+        }
+      }
+    }
+    nullDpAuditRows.push(
+      classifyNullDpChoice({
+        bucketLabelUtc: segmentBuckets[t].bucketLabelUtc,
+        nullPenaltyCost: nullPenalty,
+        chosenNullCumulativeCost,
+        bestNonNullCumulativeCost,
+        bestNonNullWayId,
+        bestNonNullRouteStatus,
+        candidateCount: hitsPerStep[t]!.length,
+      }),
+    );
+  }
+
   const matches: BaselineBucketMatch[] = [];
   for (let i = 0; i < segmentBuckets.length; i++) {
     const b = segmentBuckets[i];
@@ -291,6 +345,7 @@ function decodeSegmentRouteAware(
       bucketCount: segmentBuckets.length,
       tracebackEndCost,
       transitionCostPartsSum: partsSum,
+      nullDpAuditRows,
     },
   };
 }
@@ -299,7 +354,7 @@ function decodeSegmentRouteAware(
  * Backtrack Viterbi with route-aware directed-graph transition costs (research only).
  * Emission model unchanged from FORWARD_V2 / BACKTRACK_R1.
  */
-export function buildViterbiMatchesRouteAwareR3(
+export function buildViterbiMatchesRouteAwareR4(
   buckets: ResearchGpsBucket[],
   ways: ResearchOsmWay[],
   headings: (number | null)[],
@@ -359,16 +414,20 @@ export function buildViterbiMatchesRouteAwareR3(
   flushSegment();
 
   const totalReportedPathCost = segments.reduce((s, m) => s + m.tracebackEndCost, 0);
+  const nullDpAuditRows = segments.flatMap((s) => s.nullDpAuditRows);
   return {
-    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R3,
+    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R4,
     matches: out,
     segments,
     totalReportedPathCost,
     telemetry,
+    nullDpAuditRows,
   };
 }
 
-/** @deprecated Use buildViterbiMatchesRouteAwareR3 */
-export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR3;
-/** @deprecated Use buildViterbiMatchesRouteAwareR3 */
-export const buildViterbiMatchesRouteAwareR2 = buildViterbiMatchesRouteAwareR3;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4 */
+export const buildViterbiMatchesRouteAwareR3 = buildViterbiMatchesRouteAwareR4;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4 */
+export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR4;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4 */
+export const buildViterbiMatchesRouteAwareR2 = buildViterbiMatchesRouteAwareR4;
