@@ -4,7 +4,7 @@ import { nearestWayCandidates } from './osm-parse';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
 import { emissionCostFromHits, tieBreakWayId, type WayHit } from './viterbi-dp-costs';
-import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R2 } from './version';
+import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R3 } from './version';
 import type { DirectedCarRoutingGraph } from './osm-directed-routing-graph';
 import {
   computeRouteAwareTransitionCost,
@@ -299,7 +299,7 @@ function decodeSegmentRouteAware(
  * Backtrack Viterbi with route-aware directed-graph transition costs (research only).
  * Emission model unchanged from FORWARD_V2 / BACKTRACK_R1.
  */
-export function buildViterbiMatchesRouteAwareR2(
+export function buildViterbiMatchesRouteAwareR3(
   buckets: ResearchGpsBucket[],
   ways: ResearchOsmWay[],
   headings: (number | null)[],
@@ -360,7 +360,7 @@ export function buildViterbiMatchesRouteAwareR2(
 
   const totalReportedPathCost = segments.reduce((s, m) => s + m.tracebackEndCost, 0);
   return {
-    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R2,
+    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R3,
     matches: out,
     segments,
     totalReportedPathCost,
@@ -368,5 +368,7 @@ export function buildViterbiMatchesRouteAwareR2(
   };
 }
 
-/** @deprecated Use buildViterbiMatchesRouteAwareR2 */
-export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR2;
+/** @deprecated Use buildViterbiMatchesRouteAwareR3 */
+export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR3;
+/** @deprecated Use buildViterbiMatchesRouteAwareR3 */
+export const buildViterbiMatchesRouteAwareR2 = buildViterbiMatchesRouteAwareR3;

@@ -1,5 +1,6 @@
 import { haversineMeters } from '../speed-qc/di-v0-speed-qc-geo';
 import type { DirectedCarRoutingGraph, RouteTopologyStatus } from './osm-directed-routing-graph';
+import type { DirectedRoutingEdge } from './osm-directed-routing-graph';
 import { junctionTurnRestrictionUnknown } from './osm-directed-routing-graph';
 import { isOnlyRestrictionJunction, isTurnForbidden } from './osm-turn-restrictions';
 import type { S4RouteAwareResearchConfig } from './route-aware-config';
@@ -19,14 +20,20 @@ export type RouteQueryResult = {
   computeMs: number;
 };
 
-type DijkstraState = {
+type SearchState = {
+  key: string;
   nodeId: number;
-  costM: number;
-  prevNode: number | null;
   incomingWayId: number | null;
+  costM: number;
+  prevKey: string | null;
+  incomingEdge: DirectedRoutingEdge | null;
   directionChanges: number;
   turnUnknown: boolean;
 };
+
+function stateKey(nodeId: number, incomingWayId: number | null): string {
+  return `${nodeId}:${incomingWayId ?? -1}`;
+}
 
 /** P1: distance from segment start / end nodes to projection. */
 export function partialSegmentLengthsM(
@@ -81,14 +88,40 @@ function routeKey(
 
 const cacheByGraph = new WeakMap<DirectedCarRoutingGraph, Map<string, RouteQueryResult>>();
 
+export const routeQueryRuntimeProfile = {
+  queryCount: 0,
+  totalComputeMs: 0,
+};
+
+export function resetRouteQueryRuntimeProfile(): void {
+  routeQueryRuntimeProfile.queryCount = 0;
+  routeQueryRuntimeProfile.totalComputeMs = 0;
+}
+
 export function clearRouteQueryCache(graph?: DirectedCarRoutingGraph): void {
   if (graph) cacheByGraph.delete(graph);
 }
 
-function compareState(a: DijkstraState, b: DijkstraState): number {
+function compareSearchState(a: SearchState, b: SearchState): number {
   if (a.costM !== b.costM) return a.costM - b.costM;
   if (a.nodeId !== b.nodeId) return a.nodeId - b.nodeId;
-  return (a.incomingWayId ?? 0) - (b.incomingWayId ?? 0);
+  return (a.incomingWayId ?? -1) - (b.incomingWayId ?? -1);
+}
+
+function sameSegmentDirectRoute(
+  from: WaySegmentProjection,
+  to: WaySegmentProjection,
+  fromSegLen: number,
+  rawFrom: { tags: Record<string, string> } | undefined,
+): { routeDistanceM: number; forbidden: boolean } {
+  const delta = to.fractionAlongSegment - from.fractionAlongSegment;
+  const routeDistanceM = Math.abs(fromSegLen * delta);
+  const ow = rawFrom?.tags.oneway;
+  const forbidden =
+    (ow === 'yes' && delta < 0) ||
+    (ow === '-1' && delta > 0) ||
+    (rawFrom?.tags.junction === 'roundabout' && delta < 0);
+  return { routeDistanceM, forbidden };
 }
 
 export function queryRouteBetweenProjections(
@@ -109,8 +142,17 @@ export function queryRouteBetweenProjections(
   const t0 = performance.now();
   const airDistanceM = airM(from, to);
 
+  const finish = (res: RouteQueryResult): RouteQueryResult => {
+    const computeMs = performance.now() - t0;
+    const out = { ...res, computeMs };
+    cache!.set(key, out);
+    routeQueryRuntimeProfile.queryCount += 1;
+    routeQueryRuntimeProfile.totalComputeMs += computeMs;
+    return out;
+  };
+
   if (from.startNodeId == null || from.endNodeId == null || to.startNodeId == null || to.endNodeId == null) {
-    const res: RouteQueryResult = {
+    return finish({
       status: 'TOPOLOGY_INCOMPLETE',
       airDistanceM,
       routeDistanceM: airDistanceM,
@@ -119,10 +161,8 @@ export function queryRouteBetweenProjections(
       turnRestrictionUnknown: false,
       nodePath: [],
       waySegments: [],
-      computeMs: performance.now() - t0,
-    };
-    cache.set(key, res);
-    return res;
+      computeMs: 0,
+    });
   }
 
   const rawFrom = graph.rawWaysById.get(from.wayId);
@@ -131,33 +171,25 @@ export function queryRouteBetweenProjections(
   const toSegLen = segmentLengthForProjection(graph, to);
 
   if (from.wayId === to.wayId && from.segmentIndex === to.segmentIndex) {
-    const delta = to.fractionAlongSegment - from.fractionAlongSegment;
-    const routeDistanceM = Math.abs(fromSegLen * delta);
-    const rules = rawFrom?.tags.oneway;
-    const forbidden =
-      (rules === 'yes' && delta < 0) ||
-      (rules === '-1' && delta > 0) ||
-      (rawFrom?.tags.junction === 'roundabout' && delta < 0);
-    const res: RouteQueryResult = {
-      status: forbidden ? 'DIRECTION_FORBIDDEN' : 'CONNECTED_AND_DIRECTION_ALLOWED',
+    const direct = sameSegmentDirectRoute(from, to, fromSegLen, rawFrom);
+    return finish({
+      status: direct.forbidden ? 'DIRECTION_FORBIDDEN' : 'CONNECTED_AND_DIRECTION_ALLOWED',
       airDistanceM,
-      routeDistanceM,
+      routeDistanceM: direct.routeDistanceM,
       directionChanges: 0,
       topologyUncertainty: false,
       turnRestrictionUnknown: false,
       nodePath: [from.startNodeId, from.endNodeId],
       waySegments: [{ wayId: from.wayId, segmentIndex: from.segmentIndex }],
-      computeMs: performance.now() - t0,
-    };
-    cache.set(key, res);
-    return res;
+      computeMs: 0,
+    });
   }
 
   const startAttachments = departureAttachments(from, rawFrom, fromSegLen);
   const goalNodeIds = [to.startNodeId, to.endNodeId];
 
   if (startAttachments.length === 0) {
-    const res: RouteQueryResult = {
+    return finish({
       status: 'DIRECTION_FORBIDDEN',
       airDistanceM,
       routeDistanceM: airDistanceM,
@@ -166,57 +198,57 @@ export function queryRouteBetweenProjections(
       turnRestrictionUnknown: false,
       nodePath: [],
       waySegments: [],
-      computeMs: performance.now() - t0,
-    };
-    cache.set(key, res);
-    return res;
+      computeMs: 0,
+    });
   }
 
-  const best = new Map<number, DijkstraState>();
-  const queue: DijkstraState[] = [];
+  const best = new Map<string, SearchState>();
+  const queue: SearchState[] = [];
 
   for (const s of startAttachments) {
-    const st: DijkstraState = {
+    const keyStart = stateKey(s.nodeId, null);
+    const st: SearchState = {
+      key: keyStart,
       nodeId: s.nodeId,
-      costM: s.linkCostM,
-      prevNode: null,
       incomingWayId: null,
+      costM: s.linkCostM,
+      prevKey: null,
+      incomingEdge: null,
       directionChanges: 0,
       turnUnknown: junctionTurnRestrictionUnknown(graph, s.nodeId),
     };
-    const prev = best.get(s.nodeId);
-    if (!prev || compareState(st, prev) < 0) {
-      best.set(s.nodeId, st);
+    const prev = best.get(keyStart);
+    if (!prev || compareSearchState(st, prev) < 0) {
+      best.set(keyStart, st);
       queue.push(st);
     }
   }
 
   let expansions = 0;
-  type GoalPick = { state: DijkstraState; tailM: number; totalM: number };
+  type GoalPick = { state: SearchState; tailM: number; totalM: number; goalNode: number };
   let bestGoal: GoalPick | null = null;
 
-  const considerGoal = (state: DijkstraState) => {
+  const considerGoal = (state: SearchState) => {
     for (const goalNode of goalNodeIds) {
+      if (state.nodeId !== goalNode) continue;
       const tail = arrivalTailCostM(to, rawTo, toSegLen, goalNode);
       if (tail == null) continue;
       const totalM = state.costM + tail;
       if (totalM > config.maxRouteDistanceM) continue;
       if (!bestGoal || totalM < bestGoal.totalM) {
-        bestGoal = { state, tailM: tail, totalM };
-      } else if (bestGoal && totalM === bestGoal.totalM) {
-        if (compareState(state, bestGoal.state) < 0) {
-          bestGoal = { state, tailM: tail, totalM };
-        }
+        bestGoal = { state, tailM: tail, totalM, goalNode };
+      } else if (totalM === bestGoal.totalM && compareSearchState(state, bestGoal.state) < 0) {
+        bestGoal = { state, tailM: tail, totalM, goalNode };
       }
     }
   };
 
   while (queue.length > 0 && expansions < config.maxRoutingExpansions) {
-    queue.sort(compareState);
+    queue.sort(compareSearchState);
     const cur = queue.shift()!;
     expansions += 1;
-    const known = best.get(cur.nodeId);
-    if (!known || compareState(known, cur) < 0) continue;
+    const known = best.get(cur.key);
+    if (!known || compareSearchState(known, cur) < 0) continue;
     if (cur.costM > config.maxRouteDistanceM) continue;
 
     considerGoal(cur);
@@ -234,31 +266,31 @@ export function queryRouteBetweenProjections(
         fromWay != null &&
         fromWay !== toWay &&
         (junctionTurnRestrictionUnknown(graph, via) || isOnlyRestrictionJunction(graph.turnRestrictionIndex, via));
-      const next: DijkstraState = {
+      const nextKey = stateKey(edge.toNodeId, edge.wayId);
+      const next: SearchState = {
+        key: nextKey,
         nodeId: edge.toNodeId,
-        costM: cur.costM + edge.distanceM,
-        prevNode: cur.nodeId,
         incomingWayId: edge.wayId,
+        costM: cur.costM + edge.distanceM,
+        prevKey: cur.key,
+        incomingEdge: edge,
         directionChanges: cur.directionChanges + (fromWay != null && fromWay !== toWay ? 1 : 0),
         turnUnknown: cur.turnUnknown || turnAtJunction,
       };
-      const prev = best.get(edge.toNodeId);
-      if (!prev || compareState(next, prev) < 0) {
-        best.set(edge.toNodeId, next);
+      const prev = best.get(nextKey);
+      if (!prev || compareSearchState(next, prev) < 0) {
+        best.set(nextKey, next);
         queue.push(next);
       }
     }
   }
 
-  // P4: evaluate all frontier goal arrivals (multi-target with tails)
   for (const state of best.values()) {
     considerGoal(state);
   }
 
-  const computeMs = performance.now() - t0;
-
   if (!bestGoal) {
-    const res: RouteQueryResult = {
+    return finish({
       status: 'ROUTE_NOT_FOUND_IN_EXTRACT',
       airDistanceM,
       routeDistanceM: airDistanceM,
@@ -267,31 +299,29 @@ export function queryRouteBetweenProjections(
       turnRestrictionUnknown: false,
       nodePath: [],
       waySegments: [],
-      computeMs,
-    };
-    cache.set(key, res);
-    return res;
+      computeMs: 0,
+    });
   }
 
   const goalPick: GoalPick = bestGoal;
   const found = goalPick.state;
-  const nodePath: number[] = [];
+  const nodePath: number[] = [found.nodeId];
   const waySegments: Array<{ wayId: number; segmentIndex: number }> = [];
-  let walkNode: number | null = found.nodeId;
-  while (walkNode != null) {
-    nodePath.unshift(walkNode);
-    const walk = best.get(walkNode);
-    if (walk?.prevNode != null) {
-      const edge = (graph.adjacency.get(walk.prevNode) ?? []).find((e) => e.toNodeId === walkNode);
-      if (edge) waySegments.unshift({ wayId: edge.wayId, segmentIndex: edge.segmentIndex });
-      walkNode = walk.prevNode;
-    } else {
-      walkNode = null;
+  let walk: SearchState | undefined = found;
+  while (walk?.prevKey != null) {
+    const prev = best.get(walk.prevKey);
+    if (!prev) break;
+    if (walk.incomingEdge) {
+      waySegments.unshift({ wayId: walk.incomingEdge.wayId, segmentIndex: walk.incomingEdge.segmentIndex });
     }
+    nodePath.unshift(prev.nodeId);
+    walk = prev;
   }
 
-  if (from.wayId !== to.wayId && waySegments.length === 0) {
-    const res: RouteQueryResult = {
+  const goalOnDestinationWay =
+    goalPick.goalNode === to.startNodeId || goalPick.goalNode === to.endNodeId;
+  if (from.wayId !== to.wayId && waySegments.length === 0 && !goalOnDestinationWay) {
+    return finish({
       status: 'ROUTE_NOT_FOUND_IN_EXTRACT',
       airDistanceM,
       routeDistanceM: airDistanceM,
@@ -300,13 +330,11 @@ export function queryRouteBetweenProjections(
       turnRestrictionUnknown: false,
       nodePath: [],
       waySegments: [],
-      computeMs,
-    };
-    cache.set(key, res);
-    return res;
+      computeMs: 0,
+    });
   }
 
-  const res: RouteQueryResult = {
+  return finish({
     status: found.turnUnknown ? 'TURN_RESTRICTION_UNKNOWN' : 'CONNECTED_AND_DIRECTION_ALLOWED',
     airDistanceM,
     routeDistanceM: goalPick.totalM,
@@ -315,8 +343,6 @@ export function queryRouteBetweenProjections(
     turnRestrictionUnknown: found.turnUnknown,
     nodePath,
     waySegments,
-    computeMs,
-  };
-  cache.set(key, res);
-  return res;
+    computeMs: 0,
+  });
 }

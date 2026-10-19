@@ -9,7 +9,10 @@ import {
   buildRoadContextFromOverpass,
   buildStrictNodeIdWayAdjacency,
   buildViterbiMatchesBacktrackR1,
-  buildViterbiMatchesRouteAwareR2,
+  buildViterbiMatchesRouteAwareR3,
+  auditNullStateChoicesOnTrace,
+  resetRouteQueryRuntimeProfile,
+  routeQueryRuntimeProfile,
   computeRouteAwareTransitionCost,
   verifyReportedPathCost,
   type ResearchGpsBucket,
@@ -27,9 +30,10 @@ const evidenceDir = path.join(repoRoot, 'architecture/drivingintelligence/eviden
 const fixturePath = path.join(evidenceDir, 'fixtures/tesla-20261016/TESLA_POSITION_GRID.json');
 const osmPath = path.join(evidenceDir, 'LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json');
 const outDir =
+  process.env.S4_ROUTE_AWARE_R3_OUT ??
   process.env.S4_ROUTE_AWARE_R2_OUT ??
   process.env.S4_ROUTE_AWARE_R1_OUT ??
-  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r2';
+  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r3';
 
 const PINNED_BASELINE = {
   A: { associated: 510, ambiguous: 244, unknown: 382, waySwitches: 110, graphConflictsRounded: 2, pathCost: 15814.145368888783 },
@@ -147,7 +151,8 @@ function main(): void {
       rows = r.matches;
       pathCost = r.totalReportedPathCost;
     } else {
-      const r = buildViterbiMatchesRouteAwareR2(
+      resetRouteQueryRuntimeProfile();
+      const r = buildViterbiMatchesRouteAwareR3(
         buckets,
         roadContext.ways,
         headings,
@@ -294,8 +299,36 @@ function main(): void {
     return b.availability === 'PRESENT' && d.rows[i].osmWayId != null && e.rows[i].osmWayId == null;
   }).length;
 
+  const nullAudit = auditNullStateChoicesOnTrace(
+    buckets,
+    e.rows.map((r, i) => ({
+      bucketLabelUtc: r.bucketLabelUtc,
+      gpsStatus: buckets[i].availability,
+      headingDeg: headings[i] ?? null,
+      outcome: r.outcome,
+      osmWayId: r.osmWayId,
+      candidateWayIds: [],
+      ambiguityReasons: [],
+      nearestConfirmedJunctionM: null,
+      confirmedJunctionNodeId: null,
+      trafficSignalNodeId: null,
+      trafficSignalDistanceM: null,
+    })),
+    headings,
+    roadContext.ways,
+    directed,
+    DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+  );
+  const nullAuditSummary = nullAudit.reduce(
+    (acc, row) => {
+      acc[row.classification] = (acc[row.classification] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
   const report = {
-    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R2',
+    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R3',
     tripId: grid.tripId,
     referenceMergeSha: '784c4b0cf3ae1e7e4534a458082ccef7ef539035',
     PHASE_0_SCOPE: {
@@ -349,6 +382,12 @@ function main(): void {
       heapUsedMbAfter: memAfter.heapUsed / 1_048_576,
       rssMbAfter: memAfter.rss / 1_048_576,
     },
+    ROUTE_QUERY_RUNTIME_PROFILE: routeQueryRuntimeProfile,
+    NULL_STATE_COST_AUDIT: {
+      rowCount: nullAudit.length,
+      classificationSummary: nullAuditSummary,
+      sampleRows: nullAudit.slice(0, 50),
+    },
     INDEPENDENT_ACCURACY: 'NOT_ASSESSABLE',
     INDEPENDENT_VALIDATION_NOTES: [
       'Route-aware costs are not comparable to legacy scalar transition costs.',
@@ -362,9 +401,9 @@ function main(): void {
   };
 
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R2.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R3.json'), JSON.stringify(report, null, 2));
   fs.writeFileSync(
-    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R2_CHANGED_BUCKETS.geojson'),
+    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R3_CHANGED_BUCKETS.geojson'),
     JSON.stringify({ type: 'FeatureCollection', features: geoFeatures }, null, 2),
   );
   console.log(JSON.stringify(report, null, 2));

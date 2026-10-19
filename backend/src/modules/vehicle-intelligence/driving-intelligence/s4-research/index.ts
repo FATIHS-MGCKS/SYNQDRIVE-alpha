@@ -19,6 +19,7 @@ export * from './route-segment-projection';
 export * from './route-query';
 export * from './route-aware-transition';
 export * from './viterbi-matching-route-aware';
+export * from './null-state-cost-audit';
 export * from './road-matching-pipeline';
 export * from './promotion-audit';
 export * from './gps-bucket-evidence';

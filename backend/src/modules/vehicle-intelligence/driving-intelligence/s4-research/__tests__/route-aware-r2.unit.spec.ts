@@ -132,7 +132,9 @@ describe('route-aware R2 correctness', () => {
       endNodeId: 3,
     };
     const route = queryRouteBetweenProjections(graph, from, to);
-    expect(['ROUTE_NOT_FOUND_IN_EXTRACT', 'CONNECTED_AND_DIRECTION_ALLOWED']).toContain(route.status);
+    expect(['ROUTE_NOT_FOUND_IN_EXTRACT', 'CONNECTED_AND_DIRECTION_ALLOWED', 'TURN_RESTRICTION_UNKNOWN']).toContain(
+      route.status,
+    );
   });
 
   it('cache isolation per graph instance', () => {
@@ -164,6 +166,6 @@ describe('route-aware R2 correctness', () => {
     clearRouteQueryCache(g1);
     const b = queryRouteBetweenProjections(g2, from, to);
     expect(a.routeDistanceM).toBe(b.routeDistanceM);
-    expect(g1.algorithmId).toContain('R2');
+    expect(g1.algorithmId).toContain('R3');
   });
 });

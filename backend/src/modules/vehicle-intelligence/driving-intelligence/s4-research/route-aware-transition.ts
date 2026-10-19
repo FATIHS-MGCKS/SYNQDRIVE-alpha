@@ -80,11 +80,13 @@ export function computeRouteAwareTransitionCost(
     };
   }
 
-  if (sameWayDirectionForbidden(rawPrev, fromProj, toProj)) {
+  const route = queryRouteBetweenProjections(graph, fromProj, toProj, routeConfig);
+
+  if (route.status === 'DIRECTION_FORBIDDEN') {
     const elapsedSec = bucketElapsedSec(prevBucket, curBucket);
     return {
-      routeDistanceM: 0,
-      airDistanceM: 0,
+      routeDistanceM: route.routeDistanceM,
+      airDistanceM: route.airDistanceM,
       elapsedSec,
       requiredAverageSpeedKmh: null,
       referenceSpeedKmh: curBucket.l3SpeedKmh ?? null,
@@ -98,8 +100,6 @@ export function computeRouteAwareTransitionCost(
       turnRestrictionUnknown: false,
     };
   }
-
-  const route = queryRouteBetweenProjections(graph, fromProj, toProj, routeConfig);
   const elapsedSec = bucketElapsedSec(prevBucket, curBucket);
   const requiredAverageSpeedKmh =
     elapsedSec != null && elapsedSec > 0 ? (route.routeDistanceM / elapsedSec) * 3.6 : null;
@@ -127,8 +127,7 @@ export function computeRouteAwareTransitionCost(
   const directionChangeCost = routeConfig.weightDirectionChange * route.directionChanges;
 
   let statusPenalty = 0;
-  if (route.status === 'DIRECTION_FORBIDDEN') statusPenalty = routeConfig.penaltyDirectionForbidden;
-  else if (route.status === 'ROUTE_NOT_FOUND_IN_EXTRACT') statusPenalty = routeConfig.penaltyRouteNotFound;
+  if (route.status === 'ROUTE_NOT_FOUND_IN_EXTRACT') statusPenalty = routeConfig.penaltyRouteNotFound;
   else if (route.status === 'TOPOLOGY_INCOMPLETE') statusPenalty = routeConfig.penaltyRouteNotFound;
 
   const total =
