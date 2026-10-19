@@ -28,7 +28,9 @@ export interface HvChargingCounterCaptureResultV1 {
     | 'provider_error'
     | 'no_dimo_token'
     | 'provider_empty_intervals'
-    | 'provider_invalid_response';
+    | 'provider_invalid_response'
+    | 'vehicle_not_allowlisted'
+    | 'allowlist_invalid';
   batchId?: string;
   observationSetFingerprint?: string;
   bucketsWritten?: number;

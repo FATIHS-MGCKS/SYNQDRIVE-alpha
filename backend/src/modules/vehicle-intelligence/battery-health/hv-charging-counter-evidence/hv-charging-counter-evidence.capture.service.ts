@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { isBatteryV2HvChargingCounterBucketCaptureEnabled } from '@config/battery-health-v2.config';
+import {
+  getBatteryV2HvChargingCounterVehicleAllowlistState,
+  isBatteryV2HvChargingCounterBucketCaptureEnabled,
+  isBatteryV2HvChargingCounterVehicleAllowlisted,
+} from '@config/battery-health-v2.config';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
 import type { HvChargeSessionPersistResult } from '../hv-charge-session/hv-charge-session.types';
 import { DimoChargingAddedEnergyIntervalClient } from './dimo-charging-added-energy-interval.client';
@@ -58,6 +62,14 @@ export class HvChargingCounterEvidenceCaptureService {
   }): Promise<HvChargingCounterCaptureResultV1> {
     if (!isBatteryV2HvChargingCounterBucketCaptureEnabled()) {
       return { skipped: true, skipReason: 'disabled' };
+    }
+
+    const allowlistState = getBatteryV2HvChargingCounterVehicleAllowlistState();
+    if (allowlistState.kind === 'deny_all' && allowlistState.reason === 'invalid_entries') {
+      return { skipped: true, skipReason: 'allowlist_invalid' };
+    }
+    if (!isBatteryV2HvChargingCounterVehicleAllowlisted(input.vehicleId)) {
+      return { skipped: true, skipReason: 'vehicle_not_allowlisted' };
     }
 
     const session = input.session;

@@ -10,11 +10,17 @@ jest.mock('@config/battery-health-v2.config', () => {
   return {
     ...actual,
     isBatteryV2HvChargingCounterBucketCaptureEnabled: jest.fn(),
+    isBatteryV2HvChargingCounterVehicleAllowlisted: jest.fn(),
+    getBatteryV2HvChargingCounterVehicleAllowlistState: jest.fn(),
     getBatteryV2HvChargingCounterRevalidationIntervalMs: jest.fn().mockReturnValue(6 * 60 * 60 * 1000),
   };
 });
 
-import { isBatteryV2HvChargingCounterBucketCaptureEnabled } from '@config/battery-health-v2.config';
+import {
+  getBatteryV2HvChargingCounterVehicleAllowlistState,
+  isBatteryV2HvChargingCounterBucketCaptureEnabled,
+  isBatteryV2HvChargingCounterVehicleAllowlisted,
+} from '@config/battery-health-v2.config';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
 const VEH = '22222222-2222-4222-8222-222222222222';
@@ -59,6 +65,13 @@ describe('hv-charging-counter-evidence (unit)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(false);
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockImplementation(
+      (vehicleId: string) => vehicleId === VEH,
+    );
+    (getBatteryV2HvChargingCounterVehicleAllowlistState as jest.Mock).mockReturnValue({
+      kind: 'allow_set',
+      vehicleIds: new Set([VEH]),
+    });
   });
 
   it('maps DIMO interval rows with MISSING buckets and NOT_RAW_NATIVE_SAMPLE provenance class constant', () => {
@@ -340,6 +353,94 @@ describe('hv-charging-counter-evidence (unit)', () => {
       evaluatedAt: t0Plus6h5m,
     });
     expect(second.skipReason).toBe('unchanged_within_revalidation_window');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('global flag ON with empty allowlist denies capture before repository access', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (getBatteryV2HvChargingCounterVehicleAllowlistState as jest.Mock).mockReturnValue({
+      kind: 'deny_all',
+      reason: 'missing_or_empty',
+    });
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockReturnValue(false);
+    const { capture, intervalClient, repository } = buildCapture();
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(),
+    });
+
+    expect(result).toEqual({ skipped: true, skipReason: 'vehicle_not_allowlisted' });
+    expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('allows Tesla vehicle when explicitly allowlisted', async () => {
+    const teslaId = '68868291-5478-42cd-b0c4-cc77b2a78e21';
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockImplementation(
+      (id: string) => id === teslaId,
+    );
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({
+      status: 'empty_interval_series',
+      rows: [],
+    });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: teslaId,
+      session: sessionRow({ vehicleId: teslaId }),
+    });
+
+    expect(result.skipReason).toBe('provider_empty_intervals');
+    expect(intervalClient.fetchIntervalBuckets).toHaveBeenCalled();
+    expect(repository.persistBatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-allowlisted vehicle without provider or persist', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockReturnValue(false);
+    const otherVehicle = '33333333-3333-4333-8333-333333333333';
+    const { capture, intervalClient, repository } = buildCapture();
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: otherVehicle,
+      session: sessionRow({ vehicleId: otherVehicle }),
+    });
+
+    expect(result).toEqual({ skipped: true, skipReason: 'vehicle_not_allowlisted' });
+    expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('invalid allowlist configuration fails closed with allowlist_invalid', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (getBatteryV2HvChargingCounterVehicleAllowlistState as jest.Mock).mockReturnValue({
+      kind: 'deny_all',
+      reason: 'invalid_entries',
+    });
+    const { capture, intervalClient, repository } = buildCapture();
+
+    const result = await capture.captureForPersistResults({
+      organizationId: ORG,
+      vehicleId: VEH,
+      results: [
+        {
+          session: sessionRow(),
+          created: false,
+          changed: false,
+          changeKind: 'no_op',
+        },
+      ],
+    });
+
+    expect(result[0]).toEqual({ skipped: true, skipReason: 'allowlist_invalid' });
+    expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
     expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
   });
 

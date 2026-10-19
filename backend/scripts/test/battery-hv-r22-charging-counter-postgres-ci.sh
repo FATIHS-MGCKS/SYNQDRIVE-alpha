@@ -29,6 +29,8 @@ npx jest \
   hv-charging-counter-evidence.revalidation.policy.v1.spec \
   hv-charging-counter-evidence.checkpoint.v1.spec \
   hv-charging-counter-evidence.provider-fetch.v1.spec \
+  hv-charging-counter-evidence.vehicle-allowlist.v1.spec \
+  hv-charging-counter-evidence.capability-eval.v1.spec \
   --runInBand
 
 log "PostgreSQL integration (charging counter evidence)"
