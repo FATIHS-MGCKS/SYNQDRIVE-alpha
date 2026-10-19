@@ -1,0 +1,7 @@
+variant,assessable,correct,incorrect,abstained,unassessable,accuracy_among_decided,conflict_rate_assessable,corrected_from_A_incorrect_to_E_match,abstained_A_assessable_now_E
+A,373,253,35,85,173,0.8785,0.0938,,
+B,373,253,35,85,173,0.8785,0.0938,,
+C,373,253,35,85,173,0.8785,0.0938,,
+D,373,253,35,85,173,0.8785,0.0938,,
+E,373,253,26,94,173,0.9068,0.0697,,
+E_vs_A,na,na,na,na,na,na,na,0,0+conflict_abstain:9

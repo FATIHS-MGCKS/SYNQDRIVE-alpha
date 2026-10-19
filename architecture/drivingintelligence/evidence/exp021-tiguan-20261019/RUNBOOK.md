@@ -16,3 +16,12 @@ export TIGUAN_SKIP_OSM_FETCH=1
 ```
 
 Pinned commit: `9f0693bef572a065e45f5dad91ef236ba4f2ccd9`.
+
+### Failure forensics R1
+
+```bash
+cd backend
+npx ts-node --transpile-only scripts/research/exp021-tiguan-failure-forensics.harness.ts
+```
+
+Outputs: `TIGUAN_FAILURE_FORENSICS_REPORT.md`, trace CSVs, `TIGUAN_FAILURE_MAP.html`, `TIGUAN_ROOT_CAUSE_REGISTER.json`.
