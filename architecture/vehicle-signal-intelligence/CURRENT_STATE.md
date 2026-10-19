@@ -80,7 +80,7 @@
 
 ## Implemented (P3A — per-link catalog provenance, draft PR)
 
-- **Normalized store** — `vsi_provider_catalog_axes` keyed by `(organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName)`; monotonic `checkedAt` enforced in PostgreSQL (`ON CONFLICT … WHERE checked_at <= EXCLUDED.checked_at`); equal timestamps idempotent.
+- **Normalized store** — `vsi_provider_catalog_axes` keyed by `(organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName)`; one preflight snapshot = one DB transaction (all axes commit or none); axes upserted in deterministic `providerNativeSignalName` order; monotonic `checkedAt` (`ON CONFLICT … WHERE checked_at < EXCLUDED.checked_at`); equal `checkedAt` idempotent when content fingerprint matches, conflicts logged when fingerprints diverge (no silent overwrite).
 - **Catalog completeness** — `parseDimoAvailableSignalsCatalogResponse` classifies GraphQL payloads; missing/malformed/partial `availableSignals` → `INCOMPLETE_PROVIDER_RESPONSE` or `PROVIDER_ERROR` (never `COMPLETE_PROVIDER_CATALOG` without proof). Valid empty `[]` only when `data.availableSignals` is a proven empty array.
 - **Writer** — `VsiP3aPerLinkCatalogWriterService` invoked from existing `DimoAvailableSignalsPreflightService` after the same `availableSignals` GraphQL response (**no extra DIMO HTTP**). Gate `VSI_P3A_PER_LINK_CATALOG_WRITE_ENABLED` default **false**; P3A persist errors are logged and do not fail driving-capability upserts.
 - **Verified link binding** — `resolveVerifiedDimoProviderSourceLinkForPreflight` requires v2 `connectionIdentity`, preflight `dimoTokenId` alignment, and legacy mirror evidence (Tesla `API_SYNTHETIC` / Ruptela `RUPTELA_R1` modality separation). Fail-closed without provenance.

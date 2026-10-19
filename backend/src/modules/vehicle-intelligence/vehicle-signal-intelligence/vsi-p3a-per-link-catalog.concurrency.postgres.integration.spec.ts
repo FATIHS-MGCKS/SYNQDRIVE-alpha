@@ -130,7 +130,7 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
         VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
       provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
       classifications,
-      metadata: { pass: 1 },
+      metadata: { pass: 'same' },
     });
     const second = await repository.upsertCatalogAxes({
       organizationId,
@@ -141,13 +141,159 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
         VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
       provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
       classifications,
-      metadata: { pass: 2 },
+      metadata: { pass: 'same' },
     });
-    expect(first).toBeGreaterThan(0);
-    expect(second).toBeGreaterThan(0);
+    expect(first.written).toBeGreaterThan(0);
+    expect(second.written).toBe(0);
+    expect(second.outcomes.every((o) => o === 'skipped_equal_timestamp_replay')).toBe(true);
 
     const speed = classifications.find((c) => c.canonicalSignalKey === 'vehicle_speed');
     expect(speed?.declaredCatalogStatus).toBe(VsiProviderCatalogStatus.LISTED);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('rejects equal checkedAt catalog content conflicts without overwriting', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
+      organizationId,
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
+    const checkedAt = new Date('2026-10-19T16:00:00.000Z');
+    const link = {
+      providerSourceLinkId: fixture.linkId,
+      providerIdentity: 'DIMO',
+      verifiedModality: 'HARDWARE_DEVICE',
+      telemetrySourceFamily: 'RUPTELA_R1',
+      connectionIdentityContractVersion: 'vo-connection-identity-v1',
+    };
+
+    await repository.upsertCatalogAxes({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      link,
+      checkedAt,
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+      provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
+      classifications: classifyVsiP3aCatalogAxes({
+        availableSignals: ['speed'],
+        fuelType: 'GASOLINE',
+        catalogSnapshotCompleteness:
+          VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+      }),
+      metadata: { lane: 'listed' },
+    });
+
+    const conflict = await repository.upsertCatalogAxes({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      link,
+      checkedAt,
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+      provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
+      classifications: classifyVsiP3aCatalogAxes({
+        availableSignals: [],
+        fuelType: 'GASOLINE',
+        catalogSnapshotCompleteness:
+          VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+      }),
+      metadata: { lane: 'empty' },
+    });
+    expect(conflict.equalTimestampConflicts.length).toBeGreaterThan(0);
+    expect(conflict.written).toBe(0);
+
+    const speedRow = await prisma.vsiProviderCatalogAxis.findFirst({
+      where: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerNativeSignalName: 'speed',
+      },
+    });
+    expect(speedRow?.declaredCatalogStatus).toBe('LISTED');
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('rolls back entire catalog batch when a later axis write fails', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
+      organizationId,
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
+    const link = {
+      providerSourceLinkId: fixture.linkId,
+      providerIdentity: 'DIMO',
+      verifiedModality: 'HARDWARE_DEVICE',
+      telemetrySourceFamily: 'RUPTELA_R1',
+      connectionIdentityContractVersion: 'vo-connection-identity-v1',
+    };
+    const base = classifyVsiP3aCatalogAxes({
+      availableSignals: ['speed'],
+      fuelType: 'GASOLINE',
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+    });
+
+    await expect(
+      repository.upsertCatalogAxes({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        link,
+        checkedAt: new Date('2026-10-19T17:00:00.000Z'),
+        catalogSnapshotCompleteness:
+          VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+        provenance: 'NOT_A_REAL_PROVENANCE' as VsiProviderCatalogAxisProvenance,
+        classifications: base,
+        metadata: {},
+      }),
+    ).rejects.toThrow();
+
+    const count = await prisma.vsiProviderCatalogAxis.count({
+      where: { organizationId, vehicleId: fixture.vehicleId },
+    });
+    expect(count).toBe(0);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('writes all catalog axes atomically for one preflight snapshot', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createP3aVerifiedRuptelaFixture(
+      prisma,
+      organizationId,
+      `0x${randomUUID().replace(/-/g, '')}`,
+    );
+    const result = await repository.upsertCatalogAxes({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      link: {
+        providerSourceLinkId: fixture.linkId,
+        providerIdentity: 'DIMO',
+        verifiedModality: 'HARDWARE_DEVICE',
+        telemetrySourceFamily: 'RUPTELA_R1',
+        connectionIdentityContractVersion: 'vo-connection-identity-v1',
+      },
+      checkedAt: new Date('2026-10-19T18:00:00.000Z'),
+      catalogSnapshotCompleteness:
+        VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+      provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
+      classifications: classifyVsiP3aCatalogAxes({
+        availableSignals: ['speed'],
+        fuelType: 'GASOLINE',
+        catalogSnapshotCompleteness:
+          VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+      }),
+      metadata: {},
+    });
+    expect(result.written).toBe(8);
+    const count = await prisma.vsiProviderCatalogAxis.count({
+      where: { organizationId, vehicleId: fixture.vehicleId },
+    });
+    expect(count).toBe(8);
 
     await cleanupOrg(prisma, organizationId);
   });

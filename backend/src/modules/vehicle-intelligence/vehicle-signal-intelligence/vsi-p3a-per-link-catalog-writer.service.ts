@@ -54,7 +54,7 @@ export class VsiP3aPerLinkCatalogWriterService {
       catalogSnapshotCompleteness: input.catalogSnapshotCompleteness,
     });
 
-    const wrote = await this.repository.upsertCatalogAxes({
+    const persistResult = await this.repository.upsertCatalogAxes({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       link: linkResolution.context,
@@ -65,6 +65,14 @@ export class VsiP3aPerLinkCatalogWriterService {
       metadata: input.preflightMetadata,
     });
 
-    return { wrote };
+    if (persistResult.equalTimestampConflicts.length > 0) {
+      this.logger.warn(
+        `P3A equal-timestamp catalog conflicts org=${input.organizationId} vehicle=${input.vehicleId} ` +
+          `link=${linkResolution.context.providerSourceLinkId} count=${persistResult.equalTimestampConflicts.length} ` +
+          `batch=${persistResult.catalogSnapshotBatchFingerprint}`,
+      );
+    }
+
+    return { wrote: persistResult.written };
   }
 }
