@@ -4,7 +4,7 @@ import { nearestWayCandidates } from './osm-parse';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
 import { emissionCostFromHits, tieBreakWayId, type WayHit } from './viterbi-dp-costs';
-import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R4 } from './version';
+import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R4_1 } from './version';
 import { classifyNullDpChoice, type NullStateAuditRow } from './null-state-cost-audit';
 import type { DirectedCarRoutingGraph } from './osm-directed-routing-graph';
 import {
@@ -354,7 +354,7 @@ function decodeSegmentRouteAware(
  * Backtrack Viterbi with route-aware directed-graph transition costs (research only).
  * Emission model unchanged from FORWARD_V2 / BACKTRACK_R1.
  */
-export function buildViterbiMatchesRouteAwareR4(
+export function buildViterbiMatchesRouteAwareR4_1(
   buckets: ResearchGpsBucket[],
   ways: ResearchOsmWay[],
   headings: (number | null)[],
@@ -416,7 +416,7 @@ export function buildViterbiMatchesRouteAwareR4(
   const totalReportedPathCost = segments.reduce((s, m) => s + m.tracebackEndCost, 0);
   const nullDpAuditRows = segments.flatMap((s) => s.nullDpAuditRows);
   return {
-    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R4,
+    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R4_1,
     matches: out,
     segments,
     totalReportedPathCost,
@@ -425,9 +425,11 @@ export function buildViterbiMatchesRouteAwareR4(
   };
 }
 
-/** @deprecated Use buildViterbiMatchesRouteAwareR4 */
-export const buildViterbiMatchesRouteAwareR3 = buildViterbiMatchesRouteAwareR4;
-/** @deprecated Use buildViterbiMatchesRouteAwareR4 */
-export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR4;
-/** @deprecated Use buildViterbiMatchesRouteAwareR4 */
-export const buildViterbiMatchesRouteAwareR2 = buildViterbiMatchesRouteAwareR4;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4_1 */
+export const buildViterbiMatchesRouteAwareR4 = buildViterbiMatchesRouteAwareR4_1;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4_1 */
+export const buildViterbiMatchesRouteAwareR3 = buildViterbiMatchesRouteAwareR4_1;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4_1 */
+export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR4_1;
+/** @deprecated Use buildViterbiMatchesRouteAwareR4_1 */
+export const buildViterbiMatchesRouteAwareR2 = buildViterbiMatchesRouteAwareR4_1;

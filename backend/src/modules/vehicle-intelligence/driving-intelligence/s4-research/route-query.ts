@@ -116,10 +116,6 @@ export function compareSearchState(a: SearchState, b: SearchState): number {
   return (a.incomingWayId ?? -1) - (b.incomingWayId ?? -1);
 }
 
-function searchStateRank(st: SearchState): number {
-  return st.costM * 1e6 + st.nodeId * 1e3 + (st.incomingWayId ?? -1);
-}
-
 function sameSegmentDirectRoute(
   from: WaySegmentProjection,
   to: WaySegmentProjection,
@@ -177,9 +173,7 @@ function runDijkstraBetweenProjections(
 
   const queueSort: SearchState[] = [];
   const queueHeap =
-    queueImpl === 'heap'
-      ? new RouteQueryMinHeap<SearchState>((st) => searchStateRank(st))
-      : null;
+    queueImpl === 'heap' ? new RouteQueryMinHeap<SearchState>(compareSearchState) : null;
 
   const enqueue = (st: SearchState) => {
     if (queueImpl === 'heap') queueHeap!.push(st);

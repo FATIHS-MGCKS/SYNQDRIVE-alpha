@@ -166,6 +166,6 @@ describe('route-aware R2 correctness', () => {
     clearRouteQueryCache(g1);
     const b = queryRouteBetweenProjections(g2, from, to);
     expect(a.routeDistanceM).toBe(b.routeDistanceM);
-    expect(g1.algorithmId).toContain('R4');
+    expect(g1.algorithmId).toContain('R4_1');
   });
 });

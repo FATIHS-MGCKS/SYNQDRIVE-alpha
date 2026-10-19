@@ -9,7 +9,7 @@ import {
   buildRoadContextFromOverpass,
   buildStrictNodeIdWayAdjacency,
   buildViterbiMatchesBacktrackR1,
-  buildViterbiMatchesRouteAwareR4,
+  buildViterbiMatchesRouteAwareR4_1,
   resetRouteQueryRuntimeProfile,
   routeQueryRuntimeProfile,
   computeRouteAwareTransitionCost,
@@ -29,12 +29,14 @@ const evidenceDir = path.join(repoRoot, 'architecture/drivingintelligence/eviden
 const fixturePath = path.join(evidenceDir, 'fixtures/tesla-20261016/TESLA_POSITION_GRID.json');
 const osmPath = path.join(evidenceDir, 'LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json');
 const outDir =
+  process.env.S4_ROUTE_AWARE_R4_1_OUT ??
   process.env.S4_ROUTE_AWARE_R4_OUT ??
   process.env.S4_ROUTE_AWARE_R3_OUT ??
   process.env.S4_ROUTE_AWARE_R2_OUT ??
   process.env.S4_ROUTE_AWARE_R1_OUT ??
-  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r4';
+  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r4.1';
 
+const r4PinPath = '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r4/EXP021_S4_ROUTE_AWARE_VITERBI_R4.json';
 const r3PinPath = '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r3/EXP021_S4_ROUTE_AWARE_VITERBI_R3.json';
 
 const PINNED_BASELINE = {
@@ -157,7 +159,7 @@ function main(): void {
       pathCost = r.totalReportedPathCost;
     } else {
       resetRouteQueryRuntimeProfile();
-      const r = buildViterbiMatchesRouteAwareR4(
+      const r = buildViterbiMatchesRouteAwareR4_1(
         buckets,
         roadContext.ways,
         headings,
@@ -352,35 +354,62 @@ function main(): void {
     };
   });
 
-  let r3Compare: Record<string, unknown> | null = null;
-  if (fs.existsSync(r3PinPath)) {
-    const r3 = JSON.parse(fs.readFileSync(r3PinPath, 'utf8')) as {
+  function loadComparePin(path: string): Record<string, unknown> | null {
+    if (!fs.existsSync(path)) return null;
+    const pin = JSON.parse(fs.readFileSync(path, 'utf8')) as {
       FIVE_WAY_REPLAY: Array<{ variant: string; waySwitches: number; labels: { UNKNOWN: number }; pathCost: number }>;
       CHANGED_WAY_BUCKET_COUNT: number;
       RUNTIME_COMPARISON: Record<string, number>;
-      ROUTE_QUERY_RUNTIME_PROFILE: { totalComputeMs: number; queryCount: number };
+      ROUTE_QUERY_RUNTIME_PROFILE: { totalComputeMs: number; queryCount: number; cacheHits?: number; cacheMisses?: number };
     };
-    const r3e = r3.FIVE_WAY_REPLAY.find((x) => x.variant === 'E')!;
-    const r4e = variants.find((v) => v.variant === 'E')!;
-    r3Compare = {
-      waySwitches: { r3: r3e.waySwitches, r4: r4e.waySwitches },
-      unknownLabels: { r3: r3e.labels.UNKNOWN, r4: r4e.labels.UNKNOWN },
-      changedBuckets: { r3: r3.CHANGED_WAY_BUCKET_COUNT, r4: changedBuckets.length },
-      pathCostE: { r3: r3e.pathCost, r4: r4e.pathCost },
-      runtimeE: { r3: r3.RUNTIME_COMPARISON.E, r4: r4e.runtimeMs },
-      routingComputeMs: {
-        r3: r3.ROUTE_QUERY_RUNTIME_PROFILE.totalComputeMs,
-        r4: routeQueryRuntimeProfile.totalComputeMs,
-      },
-      routeQueryCache: {
-        hits: routeQueryRuntimeProfile.cacheHits,
-        misses: routeQueryRuntimeProfile.cacheMisses,
-      },
+    const pe = pin.FIVE_WAY_REPLAY.find((x) => x.variant === 'E')!;
+    const eNow = variants.find((v) => v.variant === 'E')!;
+    return {
+      waySwitches: pe.waySwitches,
+      unknownLabels: pe.labels.UNKNOWN,
+      changedBuckets: pin.CHANGED_WAY_BUCKET_COUNT,
+      pathCostE: pe.pathCost,
+      runtimeE: pin.RUNTIME_COMPARISON.E,
+      routingComputeMs: pin.ROUTE_QUERY_RUNTIME_PROFILE.totalComputeMs,
+      cacheHits: pin.ROUTE_QUERY_RUNTIME_PROFILE.cacheHits,
+      cacheMisses: pin.ROUTE_QUERY_RUNTIME_PROFILE.cacheMisses,
     };
   }
 
+  const r4Pin = loadComparePin(r4PinPath);
+  const r3Pin = loadComparePin(r3PinPath);
+  const eNow = variants.find((v) => v.variant === 'E')!;
+  const r41Compare = {
+    priorR4: r4Pin,
+    priorR3: r3Pin,
+    r41: {
+      waySwitches: eNow.waySwitches,
+      unknownLabels: eNow.labels.UNKNOWN,
+      changedBuckets: changedBuckets.length,
+      pathCostE: eNow.pathCost,
+      runtimeE: eNow.runtimeMs,
+      routingComputeMs: routeQueryRuntimeProfile.totalComputeMs,
+      cacheHits: routeQueryRuntimeProfile.cacheHits,
+      cacheMisses: routeQueryRuntimeProfile.cacheMisses,
+    },
+    deltasVsR4:
+      r4Pin == null
+        ? null
+        : {
+            waySwitches: eNow.waySwitches - (r4Pin.waySwitches as number),
+            unknownLabels: eNow.labels.UNKNOWN - (r4Pin.unknownLabels as number),
+            changedBuckets: changedBuckets.length - (r4Pin.changedBuckets as number),
+            pathCostE: eNow.pathCost - (r4Pin.pathCostE as number),
+            runtimeE: eNow.runtimeMs - (r4Pin.runtimeE as number),
+            routingComputeMs:
+              routeQueryRuntimeProfile.totalComputeMs - (r4Pin.routingComputeMs as number),
+          },
+    heapOrderingNote:
+      'R4.1 replaces scalar searchStateRank with comparator-based MinHeap using compareSearchState.',
+  };
+
   const report = {
-    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R4',
+    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R4_1',
     tripId: grid.tripId,
     referenceMergeSha: '784c4b0cf3ae1e7e4534a458082ccef7ef539035',
     PHASE_0_SCOPE: {
@@ -441,7 +470,7 @@ function main(): void {
       rows: nullAudit,
       note: 'Cumulative segment DP costs; DP_NULL_LOCALLY_OPTIMAL does not assert a single root cause.',
     },
-    R3_VS_R4_COMPARE: r3Compare,
+    R4_VS_R4_1_COMPARE: r41Compare,
     CHANGED_BUCKET_TRANSITION_TRACES: changedBucketTraces,
     INDEPENDENT_ACCURACY: 'NOT_ASSESSABLE',
     INDEPENDENT_VALIDATION_NOTES: [
@@ -456,9 +485,9 @@ function main(): void {
   };
 
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R4.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R4_1.json'), JSON.stringify(report, null, 2));
   fs.writeFileSync(
-    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R4_CHANGED_BUCKETS.geojson'),
+    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R4_1_CHANGED_BUCKETS.geojson'),
     JSON.stringify({ type: 'FeatureCollection', features: geoFeatures }, null, 2),
   );
   console.log(JSON.stringify(report, null, 2));
