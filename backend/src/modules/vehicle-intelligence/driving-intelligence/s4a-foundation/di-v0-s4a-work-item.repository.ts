@@ -575,6 +575,8 @@ export class DiV0S4WorkItemRepository {
     const onlyId = input.workItemId ?? null;
     const limit = Math.max(1, Math.min(input.limit ?? 100, 1000));
     return this.inTx(tx, async (db) => {
+      // GLOBAL kill row before work-item locks (same order as T11/T12) — avoids deadlock with concurrent maintenance/drift.
+      const kill = await this.requireNotKilled(db, tid);
       const rows = await db.$queryRaw<Array<{ id: string; status: string }>>`
         SELECT id, status FROM di_v0_s4_work_items
         WHERE status = 'LEASED' AND lease_expires_at < clock_timestamp()
@@ -583,7 +585,6 @@ export class DiV0S4WorkItemRepository {
         ORDER BY lease_expires_at, id
         LIMIT ${limit}
         FOR UPDATE SKIP LOCKED`;
-      const kill = await this.requireNotKilled(db, tid);
       this.requireEnabled(tid, evaluateDiV0S4MaintenanceEnablement(this.config, kill));
       if (rows.length === 0) return reject(tid, 'NO_EXHAUSTED_WORK_ITEM');
       rows.forEach((r) => assertDiV0S4TransitionFrom(tid, r.status));

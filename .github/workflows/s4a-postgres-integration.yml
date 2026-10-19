@@ -146,8 +146,8 @@ jobs:
             echo "run_s4a=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # S4 unit Redis: runner-local redis-server (apt) — avoids public.ecr.aws pull rate limits
-  # that blocked job 117086044655 on workflow run 38934061796 (redis:7-alpine never started).
+  # S4 unit Redis: ci-start-redis.sh (redis:7 image with ECR→gcr→Docker Hub fallbacks).
+  # Host apt redis on ubuntu-latest can be 8.x — major=7 assertion must not use apt.
   s4-unit-tests:
     name: S4 unit test suites (S4A–S4F)
     runs-on: ubuntu-latest
@@ -158,23 +158,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install and start Redis 7 (runner-local, no ECR service container)
+      - name: Start Redis 7 (ci-start-redis.sh — pinned image, not host apt)
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y redis-server redis-tools
-          redis_major="$(
-            redis-server --version | sed -n 's/.* v=\([0-9]*\)\..*/\1/p'
-          )"
-          if [[ -z "$redis_major" || "$redis_major" != "7" ]]; then
-            echo "redis-server major version must be 7 (got: ${redis_major:-unknown})" >&2
-            redis-server --version >&2 || true
-            exit 1
-          fi
-          echo "redis-server major version: ${redis_major}"
-          sudo systemctl stop redis-server 2>/dev/null || true
-          redis-server --port 6379 --bind 127.0.0.1 --save "" --appendonly no --daemonize yes
-          pong="$(redis-cli -h 127.0.0.1 -p 6379 ping)"
+          bash backend/scripts/test/ci-start-redis.sh
+          pong="$(redis-cli -h 127.0.0.1 -p "${CI_REDIS_PORT:-6379}" ping)"
           if [[ "$pong" != "PONG" ]]; then
             echo "redis-cli ping expected PONG, got: ${pong}" >&2
             exit 1
