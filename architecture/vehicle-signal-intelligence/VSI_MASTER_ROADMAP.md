@@ -16,6 +16,7 @@
 | **P1** | Durable signal profiles | **MERGED** (#2034) | `vehicle_signal_capability_profiles` + materialization |
 | **P2** | Automatic onboarding & lifecycle reconciliation | **IN PR #2038** (hardening + CI) | Outbox claim lease, ordering guards, link-scoped lifecycle init, backfill continuation, disposable PG suite |
 | **P3** | Signal fingerprint & quality intelligence | **IN PR #2041** (correctness hardening) | Profile v2, empirical VLS extractors, bundle vs per-signal separation, latest-window bundle history, registry coverage matrix |
+| **P3A** | Per-link provider catalog provenance | **IN PR (draft)** | `vsi_provider_catalog_axes`, preflight writer hook (no extra DIMO HTTP), resolver gates default OFF |
 | **P4** | Capability resolver & validated fallback contracts | **MERGED** (#2045 @ `a0ce01f19`) | Read-only resolver engine, consumer requirements registry, internal API |
 | **P5** | APDS read-only profile & consumer-demand integration | **MERGED P5A (#2049)** · **P5B.1 offline in PR** · **P5-H1 history draft** | P5A adapter + correlation; P5B live gate OFF; P5B.1 offline replay; P5-H1 immutable revision capture (gate OFF) |
 | **P6** | Controlled polling optimization | Planned | Closed-loop APDS with human gates |

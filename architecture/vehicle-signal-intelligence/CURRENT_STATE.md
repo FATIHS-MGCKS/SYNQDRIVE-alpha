@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-17 (P5-H1 immutable profile revision history in draft PR) |
+| **Last updated** | 2026-10-19 (P3A safety hardening — catalog completeness, monotone SQL upsert, verified link binding) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -77,6 +77,16 @@
 - **Offline replay** — `VsiApdsP5b1OfflineReplayService` + ops CLI; `dryRun: true` only; bounded pagination over persisted APDS decisions.
 - **Evidence store design** — additive `vsi_apds_p5_correlation_evidence` migration; append-only revisions; write gate `VSI_P5B1_EVIDENCE_STORE_WRITE_ENABLED` default OFF (hard-blocked on production `NODE_ENV`).
 - **Evidence** — [`research/VSI_P5B1_OFFLINE_CORRELATION.md`](research/VSI_P5B1_OFFLINE_CORRELATION.md).
+
+## Implemented (P3A — per-link catalog provenance, draft PR)
+
+- **Normalized store** — `vsi_provider_catalog_axes` keyed by `(organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName)`; one preflight snapshot = one DB transaction (all axes commit or none); axes upserted in deterministic `providerNativeSignalName` order; monotonic `checkedAt` (`ON CONFLICT … WHERE checked_at < EXCLUDED.checked_at`); equal `checkedAt` idempotent when content fingerprint matches, conflicts logged when fingerprints diverge (no silent overwrite).
+- **Catalog completeness** — `parseDimoAvailableSignalsCatalogResponse` classifies GraphQL payloads; missing/malformed/partial `availableSignals` → `INCOMPLETE_PROVIDER_RESPONSE` or `PROVIDER_ERROR` (never `COMPLETE_PROVIDER_CATALOG` without proof). Valid empty `[]` only when `data.availableSignals` is a proven empty array.
+- **Writer** — `VsiP3aPerLinkCatalogWriterService` invoked from existing `DimoAvailableSignalsPreflightService` after the same `availableSignals` GraphQL response (**no extra DIMO HTTP**). Gate `VSI_P3A_PER_LINK_CATALOG_WRITE_ENABLED` default **false**; P3A persist errors are logged and do not fail driving-capability upserts.
+- **Verified link binding** — `resolveVerifiedDimoProviderSourceLinkForPreflight` requires v2 `connectionIdentity`, preflight `dimoTokenId` alignment, and legacy mirror evidence (Tesla `API_SYNTHETIC` / Ruptela `RUPTELA_R1` modality separation). Fail-closed without provenance.
+- **Classifier** — `classifyVsiP3aCatalogAxes` maps eight materialization catalog keys from **complete** `availableSignals` only; PHEV/Hybrid may classify both fuel and HV axes; segment-detector metadata is **not** used for `speed` / odometer LISTED proof.
+- **Resolver** — `VsiDeclaredCatalogResolver.resolveForMaterialization` prefers link-scoped rows when `VSI_P3A_PER_LINK_CATALOG_RESOLVER_ENABLED=true` (default **false**). Legacy vehicle-scoped preflight remains readable with `LEGACY_DECLARED_CATALOG_VEHICLE_SCOPED_NOT_LINK_VERIFIED`; NULL-link historical rows are never promoted to per-link verified LISTED/NOT_LISTED.
+- **No backfill** — existing `vehicle_driving_capabilities` / `vehicle_battery_capabilities` rows without link provenance are not migrated.
 
 ## Implemented (P5-H1 — immutable revision history, draft PR)
 
