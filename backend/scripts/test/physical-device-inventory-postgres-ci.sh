@@ -77,10 +77,15 @@ for mig in "${PDI_MIGRATION_P1A}" "${PDI_MIGRATION_HARDENING}" "${PDI_MIGRATION_
   fi
 done
 
-log "Running Physical Device Inventory PostgreSQL integration suite"
+log "Running Physical Device Inventory PostgreSQL integration suite (P1A/P1B + P1B.7 operator)"
 export PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION=1
 export PHYSICAL_DEVICE_INVENTORY_POSTGRES_REQUIRED=1
+PDI_POSTGRES_TEST_PATTERNS="physical-device-inventory.*postgres\\.integration|pdi-p1b7-manual-intake-operator.*postgres\\.integration"
 DATABASE_URL="${MIGRATION_DATABASE_URL}" \
-  npm run test:physical-device-inventory:postgres -- --verbose
+  npx jest \
+    --testPathPatterns="${PDI_POSTGRES_TEST_PATTERNS}" \
+    --runInBand \
+    --verbose \
+    --forceExit
 
 log "PostgreSQL certification complete"
