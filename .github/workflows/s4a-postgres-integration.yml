@@ -161,13 +161,8 @@ jobs:
       - name: Start Redis 7 (ci-start-redis.sh — pinned image, not host apt)
         run: |
           set -euo pipefail
+          # ci-start-redis.sh: image pull, PONG via docker exec, major=7 assertion (no host redis-cli).
           bash backend/scripts/test/ci-start-redis.sh
-          pong="$(redis-cli -h 127.0.0.1 -p "${CI_REDIS_PORT:-6379}" ping)"
-          if [[ "$pong" != "PONG" ]]; then
-            echo "redis-cli ping expected PONG, got: ${pong}" >&2
-            exit 1
-          fi
-          echo "Redis healthcheck: ${pong}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
