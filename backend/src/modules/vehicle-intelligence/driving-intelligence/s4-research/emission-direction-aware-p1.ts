@@ -13,7 +13,9 @@ export type WayTravelDirectionPolicy =
   | 'EXPLICIT_TWO_WAY'
   | 'IMPLICIT_ONEWAY_ROUNDABOUT'
   | 'IMPLICIT_ONEWAY_HIGHWAY_CLASS'
-  | 'DIRECTION_UNKNOWN_DEFAULT_BIDIRECTIONAL';
+  | 'DIRECTION_UNKNOWN_DEFAULT_BIDIRECTIONAL'
+  /** Explicit oneway tag present but not a safe bidirectional model (alternating, reversible, unknown). */
+  | 'ONEWAY_UNSUPPORTED_FORWARD_ONLY';
 
 export type DirectionAwareEmissionBreakdown = {
   algorithmId: typeof S4_RESEARCH_EMISSION_DIRECTION_AWARE_P1;
@@ -27,6 +29,8 @@ export type DirectionAwareEmissionBreakdown = {
 };
 
 const IMPLICIT_ONEWAY_HIGHWAYS = new Set(['motorway', 'motorway_link', 'trunk_link']);
+const KNOWN_ONEWAY_TAGS = new Set(['yes', 'no', '-1']);
+const VARIABLE_DIRECTION_ONEWAY_TAGS = new Set(['alternating', 'reversible']);
 
 function normalizeOnewayTag(way: ResearchOsmWay): string | null {
   const raw = way.oneway ?? way.tags.oneway ?? null;
@@ -46,6 +50,11 @@ export function resolveWayTravelDirectionPolicy(way: ResearchOsmWay): WayTravelD
   if (oneway === 'yes') return 'ONEWAY_FORWARD';
   if (oneway === '-1') return 'ONEWAY_REVERSE';
   if (oneway === 'no') return 'EXPLICIT_TWO_WAY';
+  if (oneway != null) {
+    if (VARIABLE_DIRECTION_ONEWAY_TAGS.has(oneway) || !KNOWN_ONEWAY_TAGS.has(oneway)) {
+      return 'ONEWAY_UNSUPPORTED_FORWARD_ONLY';
+    }
+  }
 
   const junction = way.tags.junction ?? '';
   if (junction === 'roundabout' || junction === 'circular') {
@@ -76,6 +85,7 @@ export function headingDeltaForTravelPolicy(
     case 'ONEWAY_FORWARD':
     case 'IMPLICIT_ONEWAY_ROUNDABOUT':
     case 'IMPLICIT_ONEWAY_HIGHWAY_CLASS':
+    case 'ONEWAY_UNSUPPORTED_FORWARD_ONLY':
       return { deltaDeg: dFwd, orientationUsed: 'FORWARD' };
     case 'ONEWAY_REVERSE':
       return { deltaDeg: dRev, orientationUsed: 'REVERSE' };

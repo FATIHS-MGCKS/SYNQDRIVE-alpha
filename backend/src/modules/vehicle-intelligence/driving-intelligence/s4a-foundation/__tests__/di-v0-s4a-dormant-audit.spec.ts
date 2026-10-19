@@ -25,6 +25,7 @@ const S4F_DIR = path.join(__dirname, '../../s4f-observability');
 const S4_RESEARCH_DIR = S4_RESEARCH_WORKER_DIR;
 const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
 const TRIPS_DI_BOUNDARY_ADMISSION_DIR = path.join(__dirname, '../../../trips/di-boundary-admission');
+const OFFLINE_RESEARCH_SCRIPTS_DIR = path.join(REPO_ROOT, 'backend/scripts/research');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -107,6 +108,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4_RESEARCH_DIR + path.sep) ||
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
           file.startsWith(TRIPS_DI_BOUNDARY_ADMISSION_DIR + path.sep) ||
+          file.startsWith(OFFLINE_RESEARCH_SCRIPTS_DIR + path.sep) ||
           file.endsWith('backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts') ||
           file.includes(`${path.sep}di-v0-s4-global-kill-init-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`) ||

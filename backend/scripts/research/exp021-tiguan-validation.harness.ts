@@ -27,6 +27,7 @@ import {
   buildViterbiMatchesRouteAwareR4_1,
   resetRouteQueryRuntimeProfile,
   type ResearchGpsBucket,
+  type ResearchOsmWay,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research';
 import { buildBaselineMatches } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/baseline-matching';
 import {
@@ -231,10 +232,10 @@ function assessVariant(
   return { agreement: 'UNKNOWN', outcome: 'REFERENCE_ROAD_ONLY', errorClass: 'NO_WAY_REFERENCE' };
 }
 
-function roadNameFromWay(waysById: Map<number, { name?: string | null }>, wayId: number | null): string {
+function roadNameFromWay(waysById: Map<number, ResearchOsmWay>, wayId: number | null): string {
   if (wayId == null) return '';
   const w = waysById.get(wayId);
-  return w?.name ?? '';
+  return w?.tags?.name ?? '';
 }
 
 async function main(): Promise<void> {

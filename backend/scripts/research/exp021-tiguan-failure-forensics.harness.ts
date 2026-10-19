@@ -17,6 +17,7 @@ import {
   buildViterbiMatchesBacktrackR1,
   buildViterbiMatchesRouteAwareR4_1,
   type ResearchGpsBucket,
+  type ResearchOsmWay,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research';
 import { buildBaselineMatches } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/baseline-matching';
 import {
@@ -118,7 +119,7 @@ function distToWay(
   lat: number,
   lon: number,
   wayId: number,
-  waysById: Map<number, { osmWayId: number; nodes: Array<{ lat: number; lon: number }> }>,
+  waysById: Map<number, ResearchOsmWay>,
   cfg: typeof DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
 ): number | null {
   const w = waysById.get(wayId);
@@ -207,7 +208,6 @@ function traceBucket(params: {
   };
 }
 
-type ResearchOsmWay = import('../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/contracts').ResearchOsmWay;
 
 function refWays(row: Record<string, string>): number[] {
   return parseWayIds(row.reference_osm_way_ids ?? row.osm_way_ids ?? '');

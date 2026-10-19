@@ -20,8 +20,8 @@
   "impossible_topology_transitions_baseline": 2,
   "impossible_topology_transitions_p1": 1,
   "runtime_ms": {
-    "baseline_viterbi": 4199.902928,
-    "p1_viterbi": 4155.413987999998
+    "baseline_viterbi": 4903.349501000001,
+    "p1_viterbi": 4521.022873
   },
   "note": "Label deltas are regression observability only — no road-ID ground truth on this trip."
 }

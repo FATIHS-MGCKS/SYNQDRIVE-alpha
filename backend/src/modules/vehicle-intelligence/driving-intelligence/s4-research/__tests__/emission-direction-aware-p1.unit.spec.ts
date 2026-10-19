@@ -156,6 +156,33 @@ describe('emission-direction-aware P1 (research)', () => {
     expect(d.headingCost).toBeGreaterThan(100);
   });
 
+  it('oneway=alternating — no reverse-bearing discount', () => {
+    const w = way(20, {}, 'alternating');
+    expect(resolveWayTravelDirectionPolicy(w)).toBe('ONEWAY_UNSUPPORTED_FORWARD_ONLY');
+    const hits = [hit(w, 1, 0)];
+    const d = emissionCostFromHitsDirectionAwareP1Detailed(180, 20, hits, cfg);
+    expect(d.orientationUsed).toBe('FORWARD');
+    expect(d.headingCost).toBeGreaterThan(100);
+  });
+
+  it('oneway=reversible — no reverse-bearing discount', () => {
+    const w = way(21, {}, 'reversible');
+    expect(resolveWayTravelDirectionPolicy(w)).toBe('ONEWAY_UNSUPPORTED_FORWARD_ONLY');
+    const hits = [hit(w, 1, 90)];
+    const d = emissionCostFromHitsDirectionAwareP1Detailed(270, 21, hits, cfg);
+    expect(d.orientationUsed).toBe('FORWARD');
+    expect(d.headingCost).toBeGreaterThan(100);
+  });
+
+  it('unsupported oneway value — forward-only heading compare', () => {
+    const w = way(22, {}, 'custom_unknown');
+    expect(resolveWayTravelDirectionPolicy(w)).toBe('ONEWAY_UNSUPPORTED_FORWARD_ONLY');
+    const hits = [hit(w, 1, 10)];
+    const d = emissionCostFromHitsDirectionAwareP1Detailed(190, 22, hits, cfg);
+    expect(d.orientationUsed).toBe('FORWARD');
+    expect(d.headingCost).toBeGreaterThan(100);
+  });
+
   it('underpass-style: bidirectional primary matches E002 bearing pattern (331 fwd / 153 gps)', () => {
     const w = way(5048137, { highway: 'primary', cutting: 'yes' });
     const hits = [hit(w, 0.5, 331.04)];
