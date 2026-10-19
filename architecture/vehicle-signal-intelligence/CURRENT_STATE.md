@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-17 (P5-H1 immutable profile revision history in draft PR) |
+| **Last updated** | 2026-10-19 (P3A per-link provider catalog axes — draft PR, gates default OFF) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -77,6 +77,14 @@
 - **Offline replay** — `VsiApdsP5b1OfflineReplayService` + ops CLI; `dryRun: true` only; bounded pagination over persisted APDS decisions.
 - **Evidence store design** — additive `vsi_apds_p5_correlation_evidence` migration; append-only revisions; write gate `VSI_P5B1_EVIDENCE_STORE_WRITE_ENABLED` default OFF (hard-blocked on production `NODE_ENV`).
 - **Evidence** — [`research/VSI_P5B1_OFFLINE_CORRELATION.md`](research/VSI_P5B1_OFFLINE_CORRELATION.md).
+
+## Implemented (P3A — per-link catalog provenance, draft PR)
+
+- **Normalized store** — `vsi_provider_catalog_axes` keyed by `(organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName)`; monotonic `checkedAt` (out-of-order preflight snapshots do not downgrade newer evidence).
+- **Writer** — `VsiP3aPerLinkCatalogWriterService` invoked from existing `DimoAvailableSignalsPreflightService` after the same `availableSignals` GraphQL response (**no extra DIMO HTTP**). Gate `VSI_P3A_PER_LINK_CATALOG_WRITE_ENABLED` default **false**; skips when link identity is ambiguous (multi active DIMO link, scope mismatch).
+- **Classifier** — `classifyVsiP3aCatalogAxes` maps eight materialization catalog keys from complete `availableSignals` only; segment-detector metadata is **not** used for `speed` / odometer LISTED proof.
+- **Resolver** — `VsiDeclaredCatalogResolver.resolveForMaterialization` prefers link-scoped rows when `VSI_P3A_PER_LINK_CATALOG_RESOLVER_ENABLED=true` (default **false**). Legacy vehicle-scoped preflight remains readable with `LEGACY_DECLARED_CATALOG_VEHICLE_SCOPED_NOT_LINK_VERIFIED`; NULL-link historical rows are never promoted to per-link verified LISTED/NOT_LISTED.
+- **No backfill** — existing `vehicle_driving_capabilities` / `vehicle_battery_capabilities` rows without link provenance are not migrated.
 
 ## Implemented (P5-H1 — immutable revision history, draft PR)
 

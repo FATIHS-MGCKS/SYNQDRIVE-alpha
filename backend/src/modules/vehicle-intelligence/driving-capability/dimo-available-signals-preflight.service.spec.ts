@@ -31,11 +31,18 @@ function makeDimoTelemetry() {
   } as any;
 }
 
+function makeP3aWriter() {
+  return {
+    persistFromAvailableSignalsPreflight: jest.fn().mockResolvedValue({ wrote: 0 }),
+  } as any;
+}
+
 describe('DimoAvailableSignalsPreflightService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let repository: ReturnType<typeof makeRepository>;
   let dimoAuth: ReturnType<typeof makeDimoAuth>;
   let dimoTelemetry: ReturnType<typeof makeDimoTelemetry>;
+  let p3aWriter: ReturnType<typeof makeP3aWriter>;
   let service: DimoAvailableSignalsPreflightService;
 
   beforeEach(() => {
@@ -43,11 +50,13 @@ describe('DimoAvailableSignalsPreflightService', () => {
     repository = makeRepository();
     dimoAuth = makeDimoAuth();
     dimoTelemetry = makeDimoTelemetry();
+    p3aWriter = makeP3aWriter();
     service = new DimoAvailableSignalsPreflightService(
       prisma,
       repository,
       dimoAuth,
       dimoTelemetry,
+      p3aWriter,
     );
   });
 
@@ -160,6 +169,7 @@ describe('DimoAvailableSignalsPreflightService', () => {
   });
 
   it('skips when vehicle has no DIMO token', async () => {
+    repository.findByVehicle.mockResolvedValue([]);
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'vehicle-local',
       hardwareType: 'SMART5',
