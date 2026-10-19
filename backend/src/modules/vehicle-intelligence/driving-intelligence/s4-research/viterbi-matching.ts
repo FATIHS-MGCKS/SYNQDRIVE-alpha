@@ -1,44 +1,9 @@
 import type { ResearchGpsBucket, ResearchOsmWay } from './contracts';
 import type { S4ResearchAlgorithmConfig } from './config';
-import { headingDeltaDeg } from './geo';
 import { buildWayAdjacency, nearestWayCandidates } from './osm-parse';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
-
-type WayHit = {
-  way: ResearchOsmWay;
-  distanceM: number;
-  segmentBearingDeg: number | null;
-};
-
-function emissionCostFromHits(
-  heading: number | null,
-  wayId: number,
-  hits: WayHit[],
-  config: S4ResearchAlgorithmConfig,
-): number {
-  const hit = hits.find((h) => h.way.osmWayId === wayId);
-  if (!hit) return 1e6;
-  let cost = hit.distanceM * 2;
-  if (heading != null && hit.segmentBearingDeg != null) {
-    const d = headingDeltaDeg(heading, hit.segmentBearingDeg);
-    if (d > config.bearingCompatDeg) cost += 50 + d;
-  }
-  return cost;
-}
-
-function transitionCost(
-  prevWay: number | null,
-  curWay: number | null,
-  adj: Map<number, Set<number>>,
-  speedKmh: number | null | undefined,
-): number {
-  if (prevWay == null || curWay == null) return prevWay === curWay ? 0 : 5;
-  if (prevWay === curWay) return 0;
-  if (adj.get(prevWay)?.has(curWay)) return 2;
-  if (speedKmh != null && speedKmh > 80) return 80;
-  return 40;
-}
+import { emissionCostFromHits, transitionCost, type WayHit } from './viterbi-dp-costs';
 
 /** Causal forward-only Viterbi (research-only; not for production authority). */
 export function buildViterbiMatches(
