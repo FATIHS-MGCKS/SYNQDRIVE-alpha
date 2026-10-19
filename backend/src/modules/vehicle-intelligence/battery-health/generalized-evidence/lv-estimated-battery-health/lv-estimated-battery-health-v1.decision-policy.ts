@@ -119,21 +119,9 @@ export function classifyEstimatedHealthStatusP1(
     };
   }
 
-  /** REST-only sustained weak pattern (no same-episode trend as corroboration). */
-  const sustainedCriticalWarningMix =
-    bandCounts.CRITICAL >= 2 && bandCounts.WARNING >= 2;
-
   const loadWeakWithCriticalRest =
     loadSignal === 'YELLOW' && bandCounts.CRITICAL >= 2 && bandCounts.WARNING >= 1;
 
-  if (sustainedCriticalWarningMix) {
-    extra.push('HEALTH_SUSTAINED_REST_DETERIORATION_CORROBORATED');
-    return {
-      status: 'RED',
-      ruleId: 'RULE_SUSTAINED_CRITICAL_WARNING_MIX',
-      extraReasonCodes: extra,
-    };
-  }
   if (loadWeakWithCriticalRest) {
     extra.push('HEALTH_LOAD_AND_REST_DETERIORATION_CORROBORATED');
     return {

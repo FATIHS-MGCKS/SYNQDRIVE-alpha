@@ -67,6 +67,19 @@ describe('lv-estimated-battery-health-v1.decision-policy P1', () => {
     expect(r.status).toBe('YELLOW');
   });
 
+  it('P3: repeated critical+warning REST without load stays YELLOW not RED (undercharge vs aging)', () => {
+    const r = classifyEstimatedHealthStatusP1({
+      bandCounts: { ...emptyBands, CRITICAL: 2, WARNING: 2, WATCH: 4, GOOD: 1 },
+      episodeCount: 9,
+      trend: 'STABLE',
+      loadSignal: 'UNKNOWN',
+      chemistryKnown: true,
+    });
+    expect(r.status).toBe('YELLOW');
+    expect(r.status).not.toBe('RED');
+    expect(r.ruleId).toBe('RULE_REST_WARNING_OR_DECLINE');
+  });
+
   it('never treats longitudinal trend as an independent supporting family', () => {
     const r = independentSupportingFamiliesP1({
       hasRestEpisodes: true,
