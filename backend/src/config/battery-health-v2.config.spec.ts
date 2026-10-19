@@ -39,6 +39,15 @@ describe('battery-health-v2.config defaults', () => {
     expect(isBatteryV2HvChargingCounterBucketCaptureEnabled()).toBe(false);
   });
 
+  it('keeps HV R22 pilot mode disabled by default', () => {
+    delete process.env.BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const {
+      parseHvChargingCounterPilotAdmissionStateV1,
+    } = require('../modules/vehicle-intelligence/battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.pilot-admission.v1');
+    expect(parseHvChargingCounterPilotAdmissionStateV1({})).toEqual({ kind: 'disabled' });
+  });
+
   it('denies all vehicles when R22 allowlist unset', () => {
     delete process.env.BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST;
     expect(

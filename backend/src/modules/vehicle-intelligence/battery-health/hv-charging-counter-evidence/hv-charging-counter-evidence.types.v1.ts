@@ -34,6 +34,9 @@ export interface HvChargingCounterCaptureResultV1 {
     | 'vehicle_not_allowlisted'
     | 'allowlist_invalid'
     | 'pilot_session_budget_exhausted'
+    | 'pilot_session_not_admitted'
+    | 'pilot_mode_invalid'
+    | 'pilot_provider_budget_exhausted'
     | 'provider_request_guard_busy';
   batchId?: string;
   observationSetFingerprint?: string;

@@ -1,5 +1,17 @@
 import { BatteryMeasurementQuality, type HvChargeSession } from '@prisma/client';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
+
+jest.mock('./hv-charging-counter-evidence.pilot-admission.v1', () => ({
+  getHvChargingCounterPilotAdmissionStateV1: jest.fn(() => ({ kind: 'disabled' })),
+}));
+
+jest.mock('./hv-charging-counter-evidence.pilot-provider-budget.persistence.v1', () => ({
+  tryReservePilotProviderRequestBudgetV1: jest.fn(),
+  finalizePilotProviderRequestBudgetV1: jest.fn().mockResolvedValue(undefined),
+}));
+
+import { getHvChargingCounterPilotAdmissionStateV1 } from './hv-charging-counter-evidence.pilot-admission.v1';
+import { tryReservePilotProviderRequestBudgetV1 } from './hv-charging-counter-evidence.pilot-provider-budget.persistence.v1';
 import { HvChargingCounterEvidenceCaptureService } from './hv-charging-counter-evidence.capture.service';
 import { computeHvChargingCounterObservationSetFingerprintV1 } from './hv-charging-counter-evidence.fingerprint.v1';
 import { mapDimoIntervalRowsToBucketInputsV1 } from './hv-charging-counter-evidence.mapper.v1';
@@ -75,6 +87,7 @@ function buildCapture() {
 describe('hv-charging-counter-evidence (unit)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getHvChargingCounterPilotAdmissionStateV1 as jest.Mock).mockReturnValue({ kind: 'disabled' });
     (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(false);
     (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockImplementation(
       (vehicleId: string) => vehicleId === VEH,
@@ -455,6 +468,32 @@ describe('hv-charging-counter-evidence (unit)', () => {
     expect(results).toHaveLength(2);
     expect(results.filter((r) => r.skipReason === 'pilot_session_budget_exhausted')).toHaveLength(1);
     expect(intervalClient.fetchIntervalBuckets.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('pilot mode denies re-query when durable budget is exhausted', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (getHvChargingCounterPilotAdmissionStateV1 as jest.Mock).mockReturnValue({
+      kind: 'active',
+      pilotEpoch: 'epoch-test',
+      sourceHvChargeSessionId: 's-pilot-1',
+    });
+    (tryReservePilotProviderRequestBudgetV1 as jest.Mock).mockResolvedValue({
+      status: 'exhausted',
+      lifecycleState: 'UNKNOWN_OUTCOME',
+    });
+
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow({ id: 's-pilot-1' }),
+    });
+
+    expect(result.skipReason).toBe('pilot_provider_budget_exhausted');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
   });
 
   it('skips provider fetch when cross-replica guard is busy', async () => {

@@ -64,6 +64,18 @@ export const BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS_ENV =
 export const BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST_ENV =
   'BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST';
 
+/** R22-P1B pilot mode — default OFF; requires capture flag + vehicle allowlist + epoch + session id. */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED';
+
+/** Owner-approved pilot epoch identifier (opaque string; new epoch = new owner approval). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_EPOCH_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_EPOCH';
+
+/** Exactly one admitted `hv_charge_sessions.id` for the active pilot epoch. */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_HV_CHARGE_SESSION_ID_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_HV_CHARGE_SESSION_ID';
+
 /** Prompt 50 flag — telemetry fallback charge sessions when segments unavailable (default OFF). */
 export const BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV =
   'BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED';
