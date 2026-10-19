@@ -28,6 +28,12 @@ Production: use `synqdrive_battery_v2_forensic_ro` via `/opt/synqdrive/shared/op
 - `CHARGING_RECOVERY_CONTEXT` only when evaluable `REST_SELF_DISCHARGE_TREND` session features exist.
 - Assessments include `decisionTrace` (episode ids, bands, `finalRuleId`, independent vs correlated families).
 
+### P2 RED corroboration safety (2026-10-19)
+
+- Removed `RULE_LONGITUDINAL_DECLINE_WITH_WEAK_REST` (same-episode trend cannot authorize RED).
+- `LONGITUDINAL_STABILITY` is never counted as an independent supporting family (DECLINE or STABLE).
+- REST-only RED without validated load requires `CRITICAL >= 2` **and** `WARNING >= 2` (`RULE_SUSTAINED_CRITICAL_WARNING_MIX`), not trend-gated.
+
 Pilot expectation after P1 (same episode counts as pre-P1 fleet eval):
 
 | Vehicle | N14 | N16 pre-P1 | N16 post-P1 (expected) | Rule |
