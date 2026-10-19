@@ -9,6 +9,8 @@ export * from './viterbi-matching';
 export * from './viterbi-matching-backtrack';
 export * from './viterbi-dp-costs';
 export * from './osm-adjacency-diagnosis';
+export * from './osm-node-id-topology';
+export * from './osm-rounded-only-audit';
 export * from './road-matching-pipeline';
 export * from './promotion-audit';
 export * from './gps-bucket-evidence';

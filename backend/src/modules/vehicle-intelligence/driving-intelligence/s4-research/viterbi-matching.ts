@@ -5,14 +5,20 @@ import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
 import { emissionCostFromHits, transitionCost, type WayHit } from './viterbi-dp-costs';
 
+export type ViterbiTopologyOptions = {
+  /** When set, overrides default rounded-coordinate adjacency (offline topology experiments). */
+  wayAdjacency?: Map<number, Set<number>>;
+};
+
 /** Causal forward-only Viterbi (research-only; not for production authority). */
 export function buildViterbiMatches(
   buckets: ResearchGpsBucket[],
   ways: ResearchOsmWay[],
   headings: (number | null)[],
   config: S4ResearchAlgorithmConfig,
+  topology?: ViterbiTopologyOptions,
 ): BaselineBucketMatch[] {
-  const adj = buildWayAdjacency(ways);
+  const adj = topology?.wayAdjacency ?? buildWayAdjacency(ways);
   const TOP_K = config.viterbiTopK;
   const out: BaselineBucketMatch[] = [];
   let prevDp: Array<{ cost: number; wayId: number | null }> = [{ cost: 0, wayId: null }];

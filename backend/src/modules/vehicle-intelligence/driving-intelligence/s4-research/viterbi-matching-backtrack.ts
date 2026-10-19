@@ -1,6 +1,7 @@
 import type { ResearchGpsBucket, ResearchOsmWay } from './contracts';
 import type { S4ResearchAlgorithmConfig } from './config';
 import { buildWayAdjacency, nearestWayCandidates } from './osm-parse';
+import type { ViterbiTopologyOptions } from './viterbi-matching';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
 import {
@@ -209,8 +210,9 @@ export function buildViterbiMatchesBacktrackR1(
   ways: ResearchOsmWay[],
   headings: (number | null)[],
   config: S4ResearchAlgorithmConfig,
+  topology?: ViterbiTopologyOptions,
 ): ViterbiBacktrackResult {
-  const adj = buildWayAdjacency(ways);
+  const adj = topology?.wayAdjacency ?? buildWayAdjacency(ways);
   const out: BaselineBucketMatch[] = [];
   const segments: ViterbiBacktrackSegmentMeta[] = [];
   let segBuckets: ResearchGpsBucket[] = [];
