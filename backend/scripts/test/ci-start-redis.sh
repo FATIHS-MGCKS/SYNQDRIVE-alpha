@@ -36,7 +36,15 @@ docker run -d --name "${CONTAINER_NAME}" \
 # Match workflow service health: redis-cli ping, 5s interval, 10 retries.
 for _ in $(seq 1 10); do
   if docker exec "${CONTAINER_NAME}" redis-cli ping 2>/dev/null | grep -q PONG; then
-    echo "CI redis: ready (${pulled}) port=${REDIS_PORT}"
+    redis_major="$(
+      docker exec "${CONTAINER_NAME}" redis-server --version 2>/dev/null | sed -n 's/.* v=\([0-9]*\)\..*/\1/p'
+    )"
+    if [[ -z "${redis_major}" || "${redis_major}" != "7" ]]; then
+      echo "CI redis: major version must be 7 (got: ${redis_major:-unknown})" >&2
+      docker exec "${CONTAINER_NAME}" redis-server --version >&2 || true
+      exit 1
+    fi
+    echo "CI redis: ready (${pulled}) port=${REDIS_PORT} major=${redis_major}"
     exit 0
   fi
   sleep 5
