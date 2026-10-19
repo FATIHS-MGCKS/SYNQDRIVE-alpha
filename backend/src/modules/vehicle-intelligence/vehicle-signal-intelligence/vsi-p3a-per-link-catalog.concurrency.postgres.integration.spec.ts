@@ -17,6 +17,80 @@ import { VsiProviderCatalogStatus } from './vehicle-signal-evidence.contract';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
+const P3A_CATALOG_AXIS_INSERT_SQL_NEEDLE = 'INSERT INTO vsi_provider_catalog_axes';
+const P3A_MID_BATCH_INJECTION = 'P3A_MID_BATCH_INJECTION';
+
+type CatalogAxisRowSnapshot = {
+  providerNativeSignalName: string;
+  declaredCatalogStatus: string;
+  checkedAt: string;
+  metadataJson: unknown;
+};
+
+async function snapshotCatalogAxesForVehicle(
+  prisma: PrismaClient,
+  organizationId: string,
+  vehicleId: string,
+): Promise<CatalogAxisRowSnapshot[]> {
+  const rows = await prisma.vsiProviderCatalogAxis.findMany({
+    where: { organizationId, vehicleId },
+    orderBy: { providerNativeSignalName: 'asc' },
+    select: {
+      providerNativeSignalName: true,
+      declaredCatalogStatus: true,
+      checkedAt: true,
+      metadataJson: true,
+    },
+  });
+  return rows.map((row) => ({
+    providerNativeSignalName: row.providerNativeSignalName,
+    declaredCatalogStatus: row.declaredCatalogStatus,
+    checkedAt: row.checkedAt.toISOString(),
+    metadataJson: row.metadataJson,
+  }));
+}
+
+function installMidBatchCatalogAxisWriteFailure(
+  prisma: PrismaClient,
+  failAfterSuccessfulCatalogWrites: number,
+): { restore: () => void; getCatalogAxisWriteAttempts: () => number } {
+  let catalogAxisWriteAttempts = 0;
+  const originalTransaction = prisma.$transaction.bind(prisma);
+  const spy = jest.spyOn(prisma, '$transaction').mockImplementation((arg: unknown, options?: unknown) => {
+    if (typeof arg !== 'function') {
+      return originalTransaction(arg as never, options as never);
+    }
+    return originalTransaction(async (tx) => {
+      const wrappedTx = new Proxy(tx, {
+        get(target, prop, receiver) {
+          if (prop === '$queryRaw') {
+            return async (...args: unknown[]) => {
+              const template = args[0];
+              const sqlHint = Array.isArray(template)
+                ? template.join('')
+                : String(template ?? '');
+              if (sqlHint.includes(P3A_CATALOG_AXIS_INSERT_SQL_NEEDLE)) {
+                catalogAxisWriteAttempts += 1;
+                if (catalogAxisWriteAttempts > failAfterSuccessfulCatalogWrites) {
+                  throw new Error(P3A_MID_BATCH_INJECTION);
+                }
+              }
+              return target.$queryRaw(...(args as Parameters<typeof target.$queryRaw>));
+            };
+          }
+          const value = Reflect.get(target, prop, receiver);
+          return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(target) : value;
+        },
+      });
+      return (arg as (client: typeof tx) => Promise<unknown>)(wrappedTx);
+    }, options as never);
+  });
+  return {
+    restore: () => spy.mockRestore(),
+    getCatalogAxisWriteAttempts: () => catalogAxisWriteAttempts,
+  };
+}
+
 async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
   const vehicles = await prisma.vehicle.findMany({
     where: { organizationId },
@@ -217,7 +291,7 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
     await cleanupOrg(prisma, organizationId);
   });
 
-  it('rolls back entire catalog batch when a later axis write fails', async () => {
+  it('rolls back the full P3A batch after two successful axis writes fail mid-transaction', async () => {
     const organizationId = await createLegacyReconcileOrg(prisma);
     const fixture = await createP3aVerifiedRuptelaFixture(
       prisma,
@@ -231,31 +305,81 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
       telemetrySourceFamily: 'RUPTELA_R1',
       connectionIdentityContractVersion: 'vo-connection-identity-v1',
     };
-    const base = classifyVsiP3aCatalogAxes({
-      availableSignals: ['speed'],
-      fuelType: 'GASOLINE',
+    const baselineCheckedAt = new Date('2026-10-19T16:30:00.000Z');
+    const failedBatchCheckedAt = new Date('2026-10-19T17:30:00.000Z');
+
+    const baseline = await repository.upsertCatalogAxes({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      link,
+      checkedAt: baselineCheckedAt,
       catalogSnapshotCompleteness:
         VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
-    });
-
-    await expect(
-      repository.upsertCatalogAxes({
-        organizationId,
-        vehicleId: fixture.vehicleId,
-        link,
-        checkedAt: new Date('2026-10-19T17:00:00.000Z'),
+      provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
+      classifications: classifyVsiP3aCatalogAxes({
+        availableSignals: ['speed'],
+        fuelType: 'GASOLINE',
         catalogSnapshotCompleteness:
           VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
-        provenance: 'NOT_A_REAL_PROVENANCE' as VsiProviderCatalogAxisProvenance,
-        classifications: base,
-        metadata: {},
       }),
-    ).rejects.toThrow();
+      metadata: { baselineMarker: 'pre-existing-v1' },
+    });
+    expect(baseline.written).toBe(8);
+
+    const beforeSnapshot = await snapshotCatalogAxesForVehicle(
+      prisma,
+      organizationId,
+      fixture.vehicleId,
+    );
+    expect(beforeSnapshot).toHaveLength(8);
+
+    const injection = installMidBatchCatalogAxisWriteFailure(prisma, 2);
+    try {
+      await expect(
+        repository.upsertCatalogAxes({
+          organizationId,
+          vehicleId: fixture.vehicleId,
+          link,
+          checkedAt: failedBatchCheckedAt,
+          catalogSnapshotCompleteness:
+            VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+          provenance: VsiProviderCatalogAxisProvenance.DIMO_AVAILABLE_SIGNALS_PREFLIGHT,
+          classifications: classifyVsiP3aCatalogAxes({
+            availableSignals: [],
+            fuelType: 'GASOLINE',
+            catalogSnapshotCompleteness:
+              VsiProviderCatalogSnapshotCompleteness.COMPLETE_PROVIDER_CATALOG,
+          }),
+          metadata: { baselineMarker: 'failed-batch-v2' },
+        }),
+      ).rejects.toThrow(P3A_MID_BATCH_INJECTION);
+    } finally {
+      injection.restore();
+    }
+
+    expect(injection.getCatalogAxisWriteAttempts()).toBe(3);
+
+    const afterSnapshot = await snapshotCatalogAxesForVehicle(
+      prisma,
+      organizationId,
+      fixture.vehicleId,
+    );
+    expect(afterSnapshot).toEqual(beforeSnapshot);
+    expect(
+      afterSnapshot.every((row) => row.checkedAt === baselineCheckedAt.toISOString()),
+    ).toBe(true);
+    expect(
+      afterSnapshot.some((row) =>
+        row.metadataJson &&
+        typeof row.metadataJson === 'object' &&
+        (row.metadataJson as { baselineMarker?: string }).baselineMarker === 'failed-batch-v2',
+      ),
+    ).toBe(false);
 
     const count = await prisma.vsiProviderCatalogAxis.count({
       where: { organizationId, vehicleId: fixture.vehicleId },
     });
-    expect(count).toBe(0);
+    expect(count).toBe(8);
 
     await cleanupOrg(prisma, organizationId);
   });
