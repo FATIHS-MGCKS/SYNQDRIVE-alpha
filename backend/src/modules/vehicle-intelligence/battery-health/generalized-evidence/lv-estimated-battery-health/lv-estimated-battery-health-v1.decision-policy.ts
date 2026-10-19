@@ -119,14 +119,12 @@ export function classifyEstimatedHealthStatusP1(
     };
   }
 
+  /** REST-only sustained weak pattern (no same-episode trend as corroboration). */
   const sustainedCriticalWarningMix =
-    bandCounts.CRITICAL >= 2 && bandCounts.WARNING >= 1 && trend === 'DECLINE';
+    bandCounts.CRITICAL >= 2 && bandCounts.WARNING >= 2;
 
   const loadWeakWithCriticalRest =
     loadSignal === 'YELLOW' && bandCounts.CRITICAL >= 2 && bandCounts.WARNING >= 1;
-
-  const longitudinalDeclineWithWeakRest =
-    trend === 'DECLINE' && bandCounts.CRITICAL + bandCounts.WARNING >= 2;
 
   if (sustainedCriticalWarningMix) {
     extra.push('HEALTH_SUSTAINED_REST_DETERIORATION_CORROBORATED');
@@ -141,14 +139,6 @@ export function classifyEstimatedHealthStatusP1(
     return {
       status: 'RED',
       ruleId: 'RULE_LOAD_WEAK_WITH_CRITICAL_REST',
-      extraReasonCodes: extra,
-    };
-  }
-  if (longitudinalDeclineWithWeakRest) {
-    extra.push('HEALTH_LONGITUDINAL_DECLINE_SUSPECTED');
-    return {
-      status: 'RED',
-      ruleId: 'RULE_LONGITUDINAL_DECLINE_WITH_WEAK_REST',
       extraReasonCodes: extra,
     };
   }
@@ -214,9 +204,7 @@ export function independentSupportingFamiliesP1(args: {
   if (args.hasRestEpisodes) {
     independent.push('RESTING_CONDITION');
   }
-  if (args.trend === 'DECLINE') {
-    independent.push('LONGITUDINAL_STABILITY');
-  } else if (args.trend === 'STABLE') {
+  if (args.trend === 'DECLINE' || args.trend === 'STABLE') {
     correlatedExcluded.push('LONGITUDINAL_STABILITY');
   }
   if (args.loadAuthorized) {

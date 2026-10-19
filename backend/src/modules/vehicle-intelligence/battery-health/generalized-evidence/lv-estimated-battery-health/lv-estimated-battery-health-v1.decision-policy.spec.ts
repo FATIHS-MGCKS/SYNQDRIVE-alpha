@@ -55,7 +55,7 @@ describe('lv-estimated-battery-health-v1.decision-policy P1', () => {
     expect(r.correlatedExcluded).toContain('CHARGING_RECOVERY_CONTEXT');
   });
 
-  it('RED on longitudinal decline with weak rest corroboration', () => {
+  it('does not RED on longitudinal decline alone (same REST episodes)', () => {
     const r = classifyEstimatedHealthStatusP1({
       bandCounts: { ...emptyBands, WARNING: 2, CRITICAL: 1, WATCH: 3 },
       episodeCount: 6,
@@ -63,7 +63,18 @@ describe('lv-estimated-battery-health-v1.decision-policy P1', () => {
       loadSignal: 'UNKNOWN',
       chemistryKnown: true,
     });
-    expect(r.status).toBe('RED');
-    expect(r.ruleId).toBe('RULE_LONGITUDINAL_DECLINE_WITH_WEAK_REST');
+    expect(r.status).not.toBe('RED');
+    expect(r.status).toBe('YELLOW');
+  });
+
+  it('never treats longitudinal trend as an independent supporting family', () => {
+    const r = independentSupportingFamiliesP1({
+      hasRestEpisodes: true,
+      trend: 'DECLINE',
+      loadAuthorized: false,
+      hasChargingRecoveryEvidence: false,
+    });
+    expect(r.independent).toEqual(['RESTING_CONDITION']);
+    expect(r.correlatedExcluded).toContain('LONGITUDINAL_STABILITY');
   });
 });
