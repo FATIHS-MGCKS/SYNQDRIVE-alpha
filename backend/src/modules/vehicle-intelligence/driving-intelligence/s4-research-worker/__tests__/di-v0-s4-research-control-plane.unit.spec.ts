@@ -4,6 +4,7 @@ import {
 } from '../../s4a-foundation/di-v0-s4a-control-plane';
 import {
   evaluateDiV0S4ResearchEnablement,
+  isDiV0S4ResearchDirectionAwareEmissionP1ShadowConfigured,
   parseDiV0S4ResearchControlPlaneConfig,
 } from '../di-v0-s4-research-control-plane';
 
@@ -19,6 +20,31 @@ describe('di-v0-s4-research control plane', () => {
     expect(cfg.researchEnabled).toBe(false);
     expect(cfg.workerEnabled).toBe(false);
     expect(cfg.roadMatchingV2Enabled).toBe(false);
+    expect(cfg.directionAwareEmissionP1ShadowEnabled).toBe(false);
+  });
+
+  it('P1 shadow requires explicit flag on top of road-matching V2', () => {
+    const base = parseDiV0S4ResearchControlPlaneConfig({
+      DI_V0_S4_RESEARCH_ENABLED: 'true',
+      DI_V0_S4_RESEARCH_WORKER_ENABLED: 'true',
+      DI_V0_S4_RESEARCH_ROAD_MATCHING_V2_ENABLED: 'true',
+      DI_V0_S4_RESEARCH_ORGANIZATION_ALLOWLIST: 'org-1',
+      DI_V0_S4_RESEARCH_VEHICLE_ALLOWLIST: 'veh-1',
+    });
+    expect(isDiV0S4ResearchDirectionAwareEmissionP1ShadowConfigured(base)).toBe(false);
+    const on = parseDiV0S4ResearchControlPlaneConfig({
+      ...Object.fromEntries(
+        Object.entries({
+          DI_V0_S4_RESEARCH_ENABLED: 'true',
+          DI_V0_S4_RESEARCH_WORKER_ENABLED: 'true',
+          DI_V0_S4_RESEARCH_ROAD_MATCHING_V2_ENABLED: 'true',
+          DI_V0_S4_RESEARCH_DIRECTION_AWARE_EMISSION_P1_ENABLED: 'true',
+        }),
+      ),
+      DI_V0_S4_RESEARCH_ORGANIZATION_ALLOWLIST: 'org-1',
+      DI_V0_S4_RESEARCH_VEHICLE_ALLOWLIST: 'veh-1',
+    });
+    expect(isDiV0S4ResearchDirectionAwareEmissionP1ShadowConfigured(on)).toBe(true);
   });
 
   it('fails closed when research flags off', () => {

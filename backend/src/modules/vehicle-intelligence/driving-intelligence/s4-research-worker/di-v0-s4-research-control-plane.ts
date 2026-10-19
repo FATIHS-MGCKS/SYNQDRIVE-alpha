@@ -12,6 +12,7 @@ export const DI_V0_S4_RESEARCH_ENV_FLAGS = {
   master: 'DI_V0_S4_RESEARCH_ENABLED',
   worker: 'DI_V0_S4_RESEARCH_WORKER_ENABLED',
   roadMatchingV2: 'DI_V0_S4_RESEARCH_ROAD_MATCHING_V2_ENABLED',
+  directionAwareEmissionP1Shadow: 'DI_V0_S4_RESEARCH_DIRECTION_AWARE_EMISSION_P1_ENABLED',
 } as const;
 
 export const DI_V0_S4_RESEARCH_ENV_ALLOWLISTS = {
@@ -23,6 +24,7 @@ export interface DiV0S4ResearchControlPlaneConfig {
   researchEnabled: boolean;
   workerEnabled: boolean;
   roadMatchingV2Enabled: boolean;
+  directionAwareEmissionP1ShadowEnabled: boolean;
   organizationAllowlist: ReadonlySet<string>;
   vehicleAllowlist: ReadonlySet<string>;
 }
@@ -34,6 +36,9 @@ export function parseDiV0S4ResearchControlPlaneConfig(
     researchEnabled: parseDiV0S4BooleanFlag(env[DI_V0_S4_RESEARCH_ENV_FLAGS.master]),
     workerEnabled: parseDiV0S4BooleanFlag(env[DI_V0_S4_RESEARCH_ENV_FLAGS.worker]),
     roadMatchingV2Enabled: parseDiV0S4BooleanFlag(env[DI_V0_S4_RESEARCH_ENV_FLAGS.roadMatchingV2]),
+    directionAwareEmissionP1ShadowEnabled: parseDiV0S4BooleanFlag(
+      env[DI_V0_S4_RESEARCH_ENV_FLAGS.directionAwareEmissionP1Shadow],
+    ),
     organizationAllowlist: parseDiV0S4Allowlist(env[DI_V0_S4_RESEARCH_ENV_ALLOWLISTS.organization]),
     vehicleAllowlist: parseDiV0S4Allowlist(env[DI_V0_S4_RESEARCH_ENV_ALLOWLISTS.vehicle]),
   };
@@ -41,6 +46,13 @@ export function parseDiV0S4ResearchControlPlaneConfig(
 
 export function isDiV0S4ResearchRoadMatchingConfigured(config: DiV0S4ResearchControlPlaneConfig): boolean {
   return config.researchEnabled && config.workerEnabled && config.roadMatchingV2Enabled;
+}
+
+/** P1 shadow decoder runs only when road-matching research is configured and the P1 flag is explicitly on. */
+export function isDiV0S4ResearchDirectionAwareEmissionP1ShadowConfigured(
+  config: DiV0S4ResearchControlPlaneConfig,
+): boolean {
+  return isDiV0S4ResearchRoadMatchingConfigured(config) && config.directionAwareEmissionP1ShadowEnabled;
 }
 
 /**
