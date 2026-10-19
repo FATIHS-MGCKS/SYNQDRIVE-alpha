@@ -52,7 +52,13 @@ function buildCapture() {
     findBatchByIdempotency: jest.fn(),
     persistBatch: jest.fn(),
   };
-  const prisma = { vehicle: { findFirst: jest.fn() } };
+  const prisma = {
+    vehicle: { findFirst: jest.fn() },
+    $queryRaw: jest
+      .fn()
+      .mockResolvedValueOnce([{ locked: true }])
+      .mockResolvedValue([]),
+  };
   const capture = new HvChargingCounterEvidenceCaptureService(
     prisma as never,
     repository as never,
@@ -415,6 +421,52 @@ describe('hv-charging-counter-evidence (unit)', () => {
 
     expect(result).toEqual({ skipped: true, skipReason: 'vehicle_not_allowlisted' });
     expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('defers extra sessions beyond pilot cap of one per reconcile', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient } = buildCapture();
+
+    const results = await capture.captureForPersistResults({
+      organizationId: ORG,
+      vehicleId: VEH,
+      results: [
+        {
+          session: sessionRow({ id: 's1' }),
+          created: false,
+          changed: false,
+          changeKind: 'no_op',
+        },
+        {
+          session: sessionRow({ id: 's2' }),
+          created: false,
+          changed: true,
+          changeKind: 'provider_refresh',
+        },
+      ],
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results.filter((r) => r.skipReason === 'pilot_session_budget_exhausted')).toHaveLength(1);
+    expect(intervalClient.fetchIntervalBuckets.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('skips provider fetch when cross-replica guard is busy', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    prisma.$queryRaw.mockReset();
+    prisma.$queryRaw.mockResolvedValueOnce([{ locked: false }]);
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(),
+    });
+
+    expect(result.skipReason).toBe('provider_request_guard_busy');
     expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
   });
 

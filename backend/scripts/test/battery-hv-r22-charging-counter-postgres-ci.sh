@@ -31,11 +31,15 @@ npx jest \
   hv-charging-counter-evidence.provider-fetch.v1.spec \
   hv-charging-counter-evidence.vehicle-allowlist.v1.spec \
   hv-charging-counter-evidence.capability-eval.v1.spec \
+  hv-charging-counter-evidence.pilot-scope.v1.spec \
+  hv-charging-counter-evidence.p1b-research-replay.spec \
+  hv-charging-counter-boundary-forensics.v1.spec \
   --runInBand
 
 log "PostgreSQL integration (charging counter evidence)"
 BATTERY_V2_HV_CHARGING_COUNTER_INTEGRATION=1 npx jest \
   hv-charging-counter-evidence.postgres.integration.spec \
+  hv-charging-counter-evidence.provider-request-guard.postgres.integration.spec \
   --runInBand
 
 log "battery-hv-r22-charging-counter-postgres-ci completed successfully"

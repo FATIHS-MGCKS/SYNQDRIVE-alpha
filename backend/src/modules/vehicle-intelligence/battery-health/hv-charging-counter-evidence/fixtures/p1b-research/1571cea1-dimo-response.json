@@ -1,0 +1,86 @@
+{
+  "sessionId": "1571cea1-fe3a-4885-a4a4-da218ba9cc42",
+  "segmentFingerprint": "dimo-recharge-186946-1790731649985",
+  "queryWindow": {
+    "from": "2026-09-30T01:22:29.985Z",
+    "to": "2026-09-30T01:58:34.443Z"
+  },
+  "sessionWindow": {
+    "from": "2026-09-30T01:27:29.985Z",
+    "to": "2026-09-30T01:53:34.443Z"
+  },
+  "httpStatus": 200,
+  "graphqlErrors": null,
+  "queriedAt": "2026-10-19T22:11:29.909Z",
+  "elapsedMs": 108,
+  "rowCount": 6,
+  "rows": [
+    {
+      "timestamp": "2026-09-30T01:25:29.985Z",
+      "addedKwhLast": 15.75999964773655,
+      "addedKwhMin": 15.75999964773655,
+      "addedKwhMax": 15.75999964773655,
+      "socPctLast": 90.47272727272727,
+      "packEnergyKwhLast": 49.99999888241291
+    },
+    {
+      "timestamp": "2026-09-30T01:27:29.985Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": 89.96363636363637,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-30T01:28:29.985Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": null,
+      "packEnergyKwhLast": 49.87999888509512
+    },
+    {
+      "timestamp": "2026-09-30T01:48:29.985Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": 90.98933431408605,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-30T01:51:29.985Z",
+      "addedKwhLast": 15.75999964773655,
+      "addedKwhMin": 15.75999964773655,
+      "addedKwhMax": 15.75999964773655,
+      "socPctLast": 90.98933431408605,
+      "packEnergyKwhLast": 49.87999888509512
+    },
+    {
+      "timestamp": "2026-09-30T01:53:29.985Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": 91.06289076866496,
+      "packEnergyKwhLast": null
+    }
+  ],
+  "forensics": {
+    "bucketCount": 6,
+    "numericLastCount": 2,
+    "nullLastCount": 4,
+    "positiveDeltas": 0,
+    "negativeDeltas": 0,
+    "zeroDeltas": 1,
+    "firstNumericInSession": 15.75999964773655,
+    "lastNumericInSession": 15.75999964773655,
+    "counterDeltaFirstLastInSession": 0,
+    "socFirstInSession": 89.96363636363637,
+    "socLastInSession": 91.06289076866496,
+    "packEnergyFirstInSession": 49.87999888509512,
+    "packEnergyLastInSession": 49.87999888509512,
+    "hvEnergyAddedKwh": 0,
+    "hvVsCounterDeltaDiff": 0,
+    "queryFrom": "2026-09-30T01:22:29.985Z",
+    "queryTo": "2026-09-30T01:58:34.443Z"
+  }
+}

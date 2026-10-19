@@ -1,0 +1,510 @@
+{
+  "sessionId": "1b0bae62-401b-4f48-b84a-c3a40c09c412",
+  "segmentFingerprint": "dimo-recharge-186946-1789757989599",
+  "queryWindow": {
+    "from": "2026-09-18T18:54:49.599Z",
+    "to": "2026-09-18T19:58:26.599Z"
+  },
+  "sessionWindow": {
+    "from": "2026-09-18T18:59:49.599Z",
+    "to": "2026-09-18T19:53:26.599Z"
+  },
+  "httpStatus": 200,
+  "graphqlErrors": null,
+  "queriedAt": "2026-10-19T22:11:28.253Z",
+  "elapsedMs": 191,
+  "rowCount": 59,
+  "rows": [
+    {
+      "timestamp": "2026-09-18T18:54:49.599Z",
+      "addedKwhLast": 3.63999991863966,
+      "addedKwhMin": 3.63999991863966,
+      "addedKwhMax": 3.63999991863966,
+      "socPctLast": 94.50589970501476,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T18:55:49.599Z",
+      "addedKwhLast": 3.7199999168515205,
+      "addedKwhMin": 3.7199999168515205,
+      "addedKwhMax": 3.7199999168515205,
+      "socPctLast": 94.65339233038348,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T18:56:49.599Z",
+      "addedKwhLast": 3.759999915957451,
+      "addedKwhMin": 3.759999915957451,
+      "addedKwhMax": 3.759999915957451,
+      "socPctLast": 94.72713864306785,
+      "packEnergyKwhLast": 51.73999884352088
+    },
+    {
+      "timestamp": "2026-09-18T18:57:49.599Z",
+      "addedKwhLast": 3.779999915510416,
+      "addedKwhMin": 3.779999915510416,
+      "addedKwhMax": 3.779999915510416,
+      "socPctLast": 94.76401179941003,
+      "packEnergyKwhLast": 51.73999884352088
+    },
+    {
+      "timestamp": "2026-09-18T18:58:49.599Z",
+      "addedKwhLast": 3.879999913275242,
+      "addedKwhMin": 3.879999913275242,
+      "addedKwhMax": 3.879999913275242,
+      "socPctLast": 94.94837758112095,
+      "packEnergyKwhLast": 51.759998843073845
+    },
+    {
+      "timestamp": "2026-09-18T18:59:49.599Z",
+      "addedKwhLast": 3.899999912828207,
+      "addedKwhMin": 3.899999912828207,
+      "addedKwhMax": 3.899999912828207,
+      "socPctLast": 94.98525073746312,
+      "packEnergyKwhLast": 51.879998840391636
+    },
+    {
+      "timestamp": "2026-09-18T19:00:49.599Z",
+      "addedKwhLast": 3.919999912381172,
+      "addedKwhMin": 3.919999912381172,
+      "addedKwhMax": 3.919999912381172,
+      "socPctLast": 95.02212389380531,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:01:49.599Z",
+      "addedKwhLast": 3.999999910593033,
+      "addedKwhMin": 3.999999910593033,
+      "addedKwhMax": 3.999999910593033,
+      "socPctLast": 95.16961651917404,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:02:49.599Z",
+      "addedKwhLast": 4.019999910145998,
+      "addedKwhMin": 4.019999910145998,
+      "addedKwhMax": 4.019999910145998,
+      "socPctLast": 95.20648967551622,
+      "packEnergyKwhLast": 51.99999883770943
+    },
+    {
+      "timestamp": "2026-09-18T19:03:49.599Z",
+      "addedKwhLast": 4.059999909251928,
+      "addedKwhMin": 4.059999909251928,
+      "addedKwhMax": 4.059999909251928,
+      "socPctLast": 95.28023598820059,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:04:49.599Z",
+      "addedKwhLast": 4.139999907463789,
+      "addedKwhMin": 4.139999907463789,
+      "addedKwhMax": 4.139999907463789,
+      "socPctLast": 95.42772861356931,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:05:49.599Z",
+      "addedKwhLast": 4.159999907016754,
+      "addedKwhMin": 4.159999907016754,
+      "addedKwhMax": 4.159999907016754,
+      "socPctLast": 95.46460176991151,
+      "packEnergyKwhLast": 52.11999883502722
+    },
+    {
+      "timestamp": "2026-09-18T19:06:49.599Z",
+      "addedKwhLast": 4.1999999061226845,
+      "addedKwhMin": 4.1999999061226845,
+      "addedKwhMax": 4.1999999061226845,
+      "socPctLast": 95.53834808259587,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:07:49.599Z",
+      "addedKwhLast": 4.279999904334545,
+      "addedKwhMin": 4.279999904334545,
+      "addedKwhMax": 4.279999904334545,
+      "socPctLast": 95.6858407079646,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:08:49.599Z",
+      "addedKwhLast": 4.29999990388751,
+      "addedKwhMin": 4.29999990388751,
+      "addedKwhMax": 4.29999990388751,
+      "socPctLast": 95.72271386430678,
+      "packEnergyKwhLast": 52.23999883234501
+    },
+    {
+      "timestamp": "2026-09-18T19:09:49.599Z",
+      "addedKwhLast": 4.359999902546406,
+      "addedKwhMin": 4.359999902546406,
+      "addedKwhMax": 4.359999902546406,
+      "socPctLast": 95.83333333333334,
+      "packEnergyKwhLast": 52.23999883234501
+    },
+    {
+      "timestamp": "2026-09-18T19:10:49.599Z",
+      "addedKwhLast": 4.419999901205301,
+      "addedKwhMin": 4.419999901205301,
+      "addedKwhMax": 4.419999901205301,
+      "socPctLast": 95.94395280235987,
+      "packEnergyKwhLast": 52.23999883234501
+    },
+    {
+      "timestamp": "2026-09-18T19:11:49.599Z",
+      "addedKwhLast": 4.4399999007582664,
+      "addedKwhMin": 4.4399999007582664,
+      "addedKwhMax": 4.4399999007582664,
+      "socPctLast": 95.98082595870207,
+      "packEnergyKwhLast": 52.379998829215765
+    },
+    {
+      "timestamp": "2026-09-18T19:12:49.599Z",
+      "addedKwhLast": 4.499999899417162,
+      "addedKwhMin": 4.499999899417162,
+      "addedKwhMax": 4.499999899417162,
+      "socPctLast": 96.09144542772862,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:13:49.599Z",
+      "addedKwhLast": 4.539999898523092,
+      "addedKwhMin": 4.539999898523092,
+      "addedKwhMax": 4.539999898523092,
+      "socPctLast": 96.16519174041298,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:14:49.599Z",
+      "addedKwhLast": 4.559999898076057,
+      "addedKwhMin": 4.559999898076057,
+      "addedKwhMax": 4.559999898076057,
+      "socPctLast": 96.20206489675516,
+      "packEnergyKwhLast": 52.499998826533556
+    },
+    {
+      "timestamp": "2026-09-18T19:15:49.599Z",
+      "addedKwhLast": 4.659999895840883,
+      "addedKwhMin": 4.659999895840883,
+      "addedKwhMax": 4.659999895840883,
+      "socPctLast": 96.38643067846607,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:16:49.599Z",
+      "addedKwhLast": 4.679999895393848,
+      "addedKwhMin": 4.679999895393848,
+      "addedKwhMax": 4.679999895393848,
+      "socPctLast": 96.42330383480827,
+      "packEnergyKwhLast": 52.61999882385135
+    },
+    {
+      "timestamp": "2026-09-18T19:17:49.599Z",
+      "addedKwhLast": 4.699999894946814,
+      "addedKwhMin": 4.699999894946814,
+      "addedKwhMax": 4.699999894946814,
+      "socPctLast": 96.46017699115043,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:18:49.599Z",
+      "addedKwhLast": 4.799999892711639,
+      "addedKwhMin": 4.799999892711639,
+      "addedKwhMax": 4.799999892711639,
+      "socPctLast": 96.64454277286136,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:19:49.599Z",
+      "addedKwhLast": 4.819999892264605,
+      "addedKwhMin": 4.819999892264605,
+      "addedKwhMax": 4.819999892264605,
+      "socPctLast": 96.68141592920354,
+      "packEnergyKwhLast": 52.7599988207221
+    },
+    {
+      "timestamp": "2026-09-18T19:20:49.599Z",
+      "addedKwhLast": 4.83999989181757,
+      "addedKwhMin": 4.83999989181757,
+      "addedKwhMax": 4.83999989181757,
+      "socPctLast": 96.71828908554573,
+      "packEnergyKwhLast": 52.73999882116914
+    },
+    {
+      "timestamp": "2026-09-18T19:21:49.599Z",
+      "addedKwhLast": 4.9399998895823956,
+      "addedKwhMin": 4.9399998895823956,
+      "addedKwhMax": 4.9399998895823956,
+      "socPctLast": 96.90265486725663,
+      "packEnergyKwhLast": 52.73999882116914
+    },
+    {
+      "timestamp": "2026-09-18T19:22:49.599Z",
+      "addedKwhLast": 4.959999889135361,
+      "addedKwhMin": 4.959999889135361,
+      "addedKwhMax": 4.959999889135361,
+      "socPctLast": 96.93952802359883,
+      "packEnergyKwhLast": 52.879998818039894
+    },
+    {
+      "timestamp": "2026-09-18T19:23:49.599Z",
+      "addedKwhLast": 4.999999888241291,
+      "addedKwhMin": 4.999999888241291,
+      "addedKwhMax": 4.999999888241291,
+      "socPctLast": 97.01327433628319,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:24:49.599Z",
+      "addedKwhLast": 5.0599998869001865,
+      "addedKwhMin": 5.0599998869001865,
+      "addedKwhMax": 5.0599998869001865,
+      "socPctLast": 97.12389380530973,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:25:49.599Z",
+      "addedKwhLast": 5.079999886453152,
+      "addedKwhMin": 5.079999886453152,
+      "addedKwhMax": 5.079999886453152,
+      "socPctLast": 97.16076696165192,
+      "packEnergyKwhLast": 52.999998815357685
+    },
+    {
+      "timestamp": "2026-09-18T19:26:49.599Z",
+      "addedKwhLast": 5.139999885112047,
+      "addedKwhMin": 5.139999885112047,
+      "addedKwhMax": 5.139999885112047,
+      "socPctLast": 97.27138643067846,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:27:49.599Z",
+      "addedKwhLast": 5.199999883770943,
+      "addedKwhMin": 5.199999883770943,
+      "addedKwhMax": 5.199999883770943,
+      "socPctLast": 97.38200589970502,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:28:49.599Z",
+      "addedKwhLast": 5.219999883323908,
+      "addedKwhMin": 5.219999883323908,
+      "addedKwhMax": 5.219999883323908,
+      "socPctLast": 97.4188790560472,
+      "packEnergyKwhLast": 53.119998812675476
+    },
+    {
+      "timestamp": "2026-09-18T19:29:49.599Z",
+      "addedKwhLast": 5.2999998815357685,
+      "addedKwhMin": 5.2999998815357685,
+      "addedKwhMax": 5.2999998815357685,
+      "socPctLast": 97.60236075248986,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:30:49.599Z",
+      "addedKwhLast": 5.359999880194664,
+      "addedKwhMin": 5.359999880194664,
+      "addedKwhMax": 5.359999880194664,
+      "socPctLast": 97.71302102545187,
+      "packEnergyKwhLast": 53.23999880999327
+    },
+    {
+      "timestamp": "2026-09-18T19:31:49.599Z",
+      "addedKwhLast": 5.4199998788535595,
+      "addedKwhMin": 5.4199998788535595,
+      "addedKwhMax": 5.4199998788535595,
+      "socPctLast": 97.85977859778598,
+      "packEnergyKwhLast": 53.23999880999327
+    },
+    {
+      "timestamp": "2026-09-18T19:32:49.599Z",
+      "addedKwhLast": 5.479999877512455,
+      "addedKwhMin": 5.479999877512455,
+      "addedKwhMax": 5.479999877512455,
+      "socPctLast": 98.00664451827242,
+      "packEnergyKwhLast": 53.25999880954623
+    },
+    {
+      "timestamp": "2026-09-18T19:33:49.599Z",
+      "addedKwhLast": 5.519999876618385,
+      "addedKwhMin": 5.519999876618385,
+      "addedKwhMax": 5.519999876618385,
+      "socPctLast": 98.11669128508123,
+      "packEnergyKwhLast": 53.37999880686402
+    },
+    {
+      "timestamp": "2026-09-18T19:34:49.599Z",
+      "addedKwhLast": 5.619999874383211,
+      "addedKwhMin": 5.619999874383211,
+      "addedKwhMax": 5.619999874383211,
+      "socPctLast": 98.33764314739564,
+      "packEnergyKwhLast": 53.499998804181814
+    },
+    {
+      "timestamp": "2026-09-18T19:35:49.599Z",
+      "addedKwhLast": 5.6599998734891415,
+      "addedKwhMin": 5.6599998734891415,
+      "addedKwhMax": 5.6599998734891415,
+      "socPctLast": 98.4478935698448,
+      "packEnergyKwhLast": 53.99999879300594
+    },
+    {
+      "timestamp": "2026-09-18T19:36:49.599Z",
+      "addedKwhLast": 5.759999871253967,
+      "addedKwhMin": 5.759999871253967,
+      "addedKwhMax": 5.759999871253967,
+      "socPctLast": 98.63266814486326,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:37:49.599Z",
+      "addedKwhLast": 5.879999868571758,
+      "addedKwhMin": 5.879999868571758,
+      "addedKwhMax": 5.879999868571758,
+      "socPctLast": 98.85439763488544,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:38:49.599Z",
+      "addedKwhLast": 5.979999866336584,
+      "addedKwhMin": 5.979999866336584,
+      "addedKwhMax": 5.979999866336584,
+      "socPctLast": 99,
+      "packEnergyKwhLast": 54.119998790323734
+    },
+    {
+      "timestamp": "2026-09-18T19:39:49.599Z",
+      "addedKwhLast": 6.099999863654375,
+      "addedKwhMin": 6.099999863654375,
+      "addedKwhMax": 6.099999863654375,
+      "socPctLast": null,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:40:49.599Z",
+      "addedKwhLast": 6.199999861419201,
+      "addedKwhMin": 6.199999861419201,
+      "addedKwhMax": 6.199999861419201,
+      "socPctLast": null,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:41:49.599Z",
+      "addedKwhLast": 6.299999859184027,
+      "addedKwhMin": 6.299999859184027,
+      "addedKwhMax": 6.299999859184027,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.239998787641525
+    },
+    {
+      "timestamp": "2026-09-18T19:42:49.599Z",
+      "addedKwhLast": 6.439999856054783,
+      "addedKwhMin": 6.439999856054783,
+      "addedKwhMax": 6.439999856054783,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.25999878719449
+    },
+    {
+      "timestamp": "2026-09-18T19:43:49.599Z",
+      "addedKwhLast": 6.499999854713678,
+      "addedKwhMin": 6.499999854713678,
+      "addedKwhMax": 6.499999854713678,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.25999878719449
+    },
+    {
+      "timestamp": "2026-09-18T19:44:49.599Z",
+      "addedKwhLast": 6.539999853819609,
+      "addedKwhMin": 6.539999853819609,
+      "addedKwhMax": 6.539999853819609,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.37999878451228
+    },
+    {
+      "timestamp": "2026-09-18T19:45:49.599Z",
+      "addedKwhLast": 6.5199998542666435,
+      "addedKwhMin": 6.5199998542666435,
+      "addedKwhMax": 6.5199998542666435,
+      "socPctLast": null,
+      "packEnergyKwhLast": null
+    },
+    {
+      "timestamp": "2026-09-18T19:46:49.599Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.49999878183007
+    },
+    {
+      "timestamp": "2026-09-18T19:48:49.599Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.61999877914786
+    },
+    {
+      "timestamp": "2026-09-18T19:52:49.599Z",
+      "addedKwhLast": 7.139999840408564,
+      "addedKwhMin": 7.139999840408564,
+      "addedKwhMax": 7.139999840408564,
+      "socPctLast": 100,
+      "packEnergyKwhLast": 54.739998776465654
+    },
+    {
+      "timestamp": "2026-09-18T19:53:49.599Z",
+      "addedKwhLast": 7.1199998408555984,
+      "addedKwhMin": 7.1199998408555984,
+      "addedKwhMax": 7.1199998408555984,
+      "socPctLast": 99.96347699050402,
+      "packEnergyKwhLast": 54.739998776465654
+    },
+    {
+      "timestamp": "2026-09-18T19:54:49.599Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.739998776465654
+    },
+    {
+      "timestamp": "2026-09-18T19:55:49.599Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.739998776465654
+    },
+    {
+      "timestamp": "2026-09-18T19:56:49.599Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null,
+      "socPctLast": null,
+      "packEnergyKwhLast": 54.61999877914786
+    }
+  ],
+  "forensics": {
+    "bucketCount": 59,
+    "numericLastCount": 54,
+    "nullLastCount": 5,
+    "positiveDeltas": 51,
+    "negativeDeltas": 2,
+    "zeroDeltas": 0,
+    "firstNumericInSession": 3.899999912828207,
+    "lastNumericInSession": 7.139999840408564,
+    "counterDeltaFirstLastInSession": 3.2399999275803566,
+    "socFirstInSession": 94.98525073746312,
+    "socLastInSession": 100,
+    "packEnergyFirstInSession": 51.879998840391636,
+    "packEnergyLastInSession": 54.739998776465654,
+    "hvEnergyAddedKwh": 3.239999927580357,
+    "hvVsCounterDeltaDiff": 4.440892098500626e-16,
+    "queryFrom": "2026-09-18T18:54:49.599Z",
+    "queryTo": "2026-09-18T19:58:26.599Z"
+  }
+}

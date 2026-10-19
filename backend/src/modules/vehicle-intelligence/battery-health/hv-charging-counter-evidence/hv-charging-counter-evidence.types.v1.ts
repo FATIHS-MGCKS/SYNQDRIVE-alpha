@@ -16,6 +16,8 @@ export interface HvChargingCounterDimoIntervalRowV1 {
   addedKwhMax?: number | null;
 }
 
+import type { HvChargingCounterQualityAssessmentV1 } from './hv-charging-counter-evidence.counter-quality.v1';
+
 export interface HvChargingCounterCaptureResultV1 {
   skipped: boolean;
   skipReason?:
@@ -30,9 +32,12 @@ export interface HvChargingCounterCaptureResultV1 {
     | 'provider_empty_intervals'
     | 'provider_invalid_response'
     | 'vehicle_not_allowlisted'
-    | 'allowlist_invalid';
+    | 'allowlist_invalid'
+    | 'pilot_session_budget_exhausted'
+    | 'provider_request_guard_busy';
   batchId?: string;
   observationSetFingerprint?: string;
   bucketsWritten?: number;
   revisionsCreated?: number;
+  counterQuality?: HvChargingCounterQualityAssessmentV1;
 }

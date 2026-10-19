@@ -17,6 +17,12 @@ import {
   decideHvChargingCounterProviderQueryV1,
   type HvChargingCounterRevalidationAnchorV1,
 } from './hv-charging-counter-evidence.revalidation.policy.v1';
+import { evaluateHvChargingCounterQualityV1 } from './hv-charging-counter-evidence.counter-quality.v1';
+import { selectHvChargingCounterPilotSessionsV1 } from './hv-charging-counter-evidence.pilot-scope.v1';
+import {
+  releaseHvChargingCounterProviderRequestGuardV1,
+  tryAcquireHvChargingCounterProviderRequestGuardV1,
+} from './hv-charging-counter-evidence.provider-request-guard.v1';
 import { HvChargingCounterEvidenceRepository } from './hv-charging-counter-evidence.repository';
 import type { HvChargingCounterCaptureResultV1 } from './hv-charging-counter-evidence.types.v1';
 
@@ -39,8 +45,10 @@ export class HvChargingCounterEvidenceCaptureService {
       return [];
     }
 
+    const { selected, deferredCount } = selectHvChargingCounterPilotSessionsV1(input.results);
     const outputs: HvChargingCounterCaptureResultV1[] = [];
-    for (const row of input.results) {
+
+    for (const row of selected) {
       outputs.push(
         await this.captureForSession({
           organizationId: input.organizationId,
@@ -50,6 +58,11 @@ export class HvChargingCounterEvidenceCaptureService {
         }),
       );
     }
+
+    for (let i = 0; i < deferredCount; i++) {
+      outputs.push({ skipped: true, skipReason: 'pilot_session_budget_exhausted' });
+    }
+
     return outputs;
   }
 
@@ -138,7 +151,15 @@ export class HvChargingCounterEvidenceCaptureService {
     }
 
     const queryWindowFrom = session.startAt;
-    const queryWindowTo = session.endAt;
+    const queryWindowTo = session.endAt!;
+
+    const guardAcquired = await tryAcquireHvChargingCounterProviderRequestGuardV1(
+      this.prisma,
+      input.vehicleId,
+    );
+    if (!guardAcquired) {
+      return { skipped: true, skipReason: 'provider_request_guard_busy' };
+    }
 
     let fetchResult;
     try {
@@ -158,6 +179,8 @@ export class HvChargingCounterEvidenceCaptureService {
         `HV charging counter interval fetch failed vehicle=${input.vehicleId} segment=${session.segmentFingerprint}: ${message}`,
       );
       return { skipped: true, skipReason: 'provider_error' };
+    } finally {
+      await releaseHvChargingCounterProviderRequestGuardV1(this.prisma, input.vehicleId);
     }
 
     if (fetchResult.status === 'no_vehicle_jwt') {
@@ -174,6 +197,14 @@ export class HvChargingCounterEvidenceCaptureService {
     if (buckets.length === 0) {
       return { skipped: true, skipReason: 'provider_empty_intervals' };
     }
+
+    const counterQuality = evaluateHvChargingCounterQualityV1({
+      sessionStartInclusive: session.startAt.toISOString(),
+      sessionEndInclusive: session.endAt!.toISOString(),
+      queryFromInclusive: queryWindowFrom.toISOString(),
+      queryToInclusive: queryWindowTo.toISOString(),
+      rows: fetchResult.rows,
+    });
 
     const observationSetFingerprint = computeHvChargingCounterObservationSetFingerprintV1(
       buckets,
@@ -222,6 +253,7 @@ export class HvChargingCounterEvidenceCaptureService {
       providerObservedAt: session.providerObservedAt,
       observationSetFingerprint,
       buckets,
+      counterQuality,
     });
 
     await this.repository.recordProviderRevalidationCheckpoint({
@@ -250,6 +282,7 @@ export class HvChargingCounterEvidenceCaptureService {
       observationSetFingerprint,
       bucketsWritten: buckets.length,
       revisionsCreated: persist.revisionsCreated,
+      counterQuality,
     };
   }
 }

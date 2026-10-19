@@ -19,6 +19,7 @@ import {
 import { upsertRevalidationCheckpointAtomicallyV1 } from './hv-charging-counter-evidence.checkpoint.persistence.v1';
 import { isReducedCoverageUnchangedValuesV1 } from './hv-charging-counter-evidence.coverage.v1';
 import { buildHvChargingCounterObservationProvenanceV1 } from './hv-charging-counter-evidence.mapper.v1';
+import type { HvChargingCounterQualityAssessmentV1 } from './hv-charging-counter-evidence.counter-quality.v1';
 import type { HvChargingCounterBucketInputV1 } from './hv-charging-counter-evidence.types.v1';
 
 export interface PersistCounterEvidenceBatchInput {
@@ -34,6 +35,7 @@ export interface PersistCounterEvidenceBatchInput {
   providerObservedAt: Date | null;
   observationSetFingerprint: string;
   buckets: HvChargingCounterBucketInputV1[];
+  counterQuality?: HvChargingCounterQualityAssessmentV1 | null;
 }
 
 export interface PersistCounterEvidenceBatchResult {
@@ -175,6 +177,9 @@ export class HvChargingCounterEvidenceRepository {
           missingBucketCount,
           dimoQueryKind: HV_CHARGING_COUNTER_DIMO_QUERY_KIND,
           idempotencyKey: batchIdempotencyKey,
+          counterQualityJson: input.counterQuality
+            ? (input.counterQuality as unknown as Prisma.InputJsonValue)
+            : Prisma.DbNull,
         },
       });
 

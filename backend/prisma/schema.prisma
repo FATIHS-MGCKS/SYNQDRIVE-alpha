@@ -9715,6 +9715,8 @@ model BatteryHvChargingCounterIngestionBatch {
   missingBucketCount         Int      @map("missing_bucket_count")
   dimoQueryKind              String   @map("dimo_query_kind")
   idempotencyKey             String   @map("idempotency_key")
+  /// R22-P1B — append-only counter quality assessment (does not alter bucket values).
+  counterQualityJson         Json?    @map("counter_quality_json")
   createdAt                  DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
