@@ -32,7 +32,7 @@ Production: use `synqdrive_battery_v2_forensic_ro` via `/opt/synqdrive/shared/op
 
 - Removed `RULE_LONGITUDINAL_DECLINE_WITH_WEAK_REST` (same-episode trend cannot authorize RED).
 - `LONGITUDINAL_STABILITY` is never counted as an independent supporting family (DECLINE or STABLE).
-- REST-only RED without validated load requires `CRITICAL >= 2` **and** `WARNING >= 2` (`RULE_SUSTAINED_CRITICAL_WARNING_MIX`), not trend-gated.
+- P3: **No REST-only RED** — estimated health RED requires validated load (`RULE_LOAD_CRITICAL_DETERIORATION` or `RULE_LOAD_WEAK_WITH_CRITICAL_REST`); repeated critical/warning rests without load remain YELLOW.
 
 Pilot expectation after P1 (same episode counts as pre-P1 fleet eval):
 
