@@ -12,15 +12,14 @@ import {
   seedS4aTenant,
   setKillState,
   s4aConfigFor,
-  s4aManifestFor,
   type S4aTenant,
-} from '../../../driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
-import { DiV0S4WorkItemRepository } from '../../../driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository';
-import { DiV0S4DiscoveryService } from '../../../driving-intelligence/s4b-orchestration/di-v0-s4b-discovery.service';
-import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../../../driving-intelligence/s4b-orchestration/di-v0-s4b-discovery-containment';
-import { buildDiV0S4RuntimePipelineManifest } from '../../../driving-intelligence/s4b-orchestration/di-v0-s4b-pipeline-manifest';
-import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
-import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
+} from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
+import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-item.repository';
+import { TripDiBoundaryAdmissionService } from '../../../trips/di-boundary-admission/trip-di-boundary-admission.service';
+import { readTripDiBoundaryAdmissionV1 } from '../../../trips/di-boundary-admission/trip-di-boundary-admission';
+import { DiV0S4DiscoveryService } from '../di-v0-s4b-discovery.service';
+import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../di-v0-s4b-discovery-containment';
+import { buildDiV0S4RuntimePipelineManifest } from '../di-v0-s4b-pipeline-manifest';
 
 assertS4aPostgresCiEnv();
 
@@ -57,9 +56,10 @@ interface LiveFsmSplitFixture extends S4aTenant {
 
     await admin.$executeRawUnsafe(
       `UPDATE vehicle_trips
-       SET end_detection_mode = 'MID_TRIP_GAP_SPLIT'::"EndDetectionMode",
-           raw_detection_meta = (COALESCE(raw_detection_meta, '{}'::jsonb) - 'diV0BoundaryAdmissionV1') || $1::jsonb
-       WHERE id = $2`,
+       SET end_detection_mode = $1,
+           raw_detection_meta = (COALESCE(raw_detection_meta, '{}'::jsonb) - 'diV0BoundaryAdmissionV1') || $2::jsonb
+       WHERE id = $3`,
+      'MID_TRIP_GAP_SPLIT',
       JSON.stringify({
         splitTriggeredBy: 'LIVE_FSM',
         splitReason: 'live_mid_trip_gap_split',
@@ -75,12 +75,13 @@ interface LiveFsmSplitFixture extends S4aTenant {
          start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score,
          end_detection_mode)
        VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
-         ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 3, 40, 30, 0, 90, 'COMPOSITE_INACTIVITY'::"EndDetectionMode")`,
+         ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 3, 40, 30, 0, 90, $6)`,
       childTripId,
       base.vehicleId,
       childStart.toISOString(),
       childEnd.toISOString(),
       `seg-${randomUUID()}`,
+      'COMPOSITE_INACTIVITY',
     );
     await admin.$executeRawUnsafe(
       `UPDATE vehicle_trips SET raw_detection_meta = $1::jsonb WHERE id = $2`,
