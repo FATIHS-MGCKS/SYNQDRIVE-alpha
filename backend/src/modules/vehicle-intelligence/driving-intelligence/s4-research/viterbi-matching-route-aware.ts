@@ -4,7 +4,7 @@ import { nearestWayCandidates } from './osm-parse';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
 import { emissionCostFromHits, tieBreakWayId, type WayHit } from './viterbi-dp-costs';
-import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R1 } from './version';
+import { S4_RESEARCH_ROUTE_AWARE_VITERBI_R2 } from './version';
 import type { DirectedCarRoutingGraph } from './osm-directed-routing-graph';
 import {
   computeRouteAwareTransitionCost,
@@ -45,12 +45,50 @@ export type RouteAwareSegmentMeta = {
   transitionCostPartsSum: RouteAwareTransitionCostParts;
 };
 
+export type RouteAwareReplayTelemetry = {
+  transitionEvaluations: number;
+  chosenTransitions: number;
+  chosenSameWay: number;
+  chosenDifferentWay: number;
+  rejectedByReason: Record<string, number>;
+  nullStateChoicesWithGpsPresent: number;
+};
+
 export type RouteAwareViterbiResult = {
   algorithmId: string;
   matches: BaselineBucketMatch[];
   segments: RouteAwareSegmentMeta[];
   totalReportedPathCost: number;
+  telemetry: RouteAwareReplayTelemetry;
 };
+
+function emptyTelemetry(): RouteAwareReplayTelemetry {
+  return {
+    transitionEvaluations: 0,
+    chosenTransitions: 0,
+    chosenSameWay: 0,
+    chosenDifferentWay: 0,
+    rejectedByReason: {},
+    nullStateChoicesWithGpsPresent: 0,
+  };
+}
+
+function bumpRejected(telemetry: RouteAwareReplayTelemetry, reason: string): void {
+  telemetry.rejectedByReason[reason] = (telemetry.rejectedByReason[reason] ?? 0) + 1;
+}
+
+function recordEvaluatedTransition(
+  telemetry: RouteAwareReplayTelemetry,
+  parts: RouteAwareTransitionCostParts | null,
+): void {
+  telemetry.transitionEvaluations += 1;
+  if (!parts) return;
+  if (parts.status === 'DIRECTION_FORBIDDEN') bumpRejected(telemetry, 'DIRECTION_FORBIDDEN');
+  else if (parts.status === 'TURN_RESTRICTION_UNKNOWN') bumpRejected(telemetry, 'TURN_RESTRICTION_UNKNOWN');
+  else if (parts.status === 'ROUTE_NOT_FOUND_IN_EXTRACT') bumpRejected(telemetry, 'ROUTE_NOT_FOUND_IN_EXTRACT');
+  else if (parts.status === 'TOPOLOGY_INCOMPLETE') bumpRejected(telemetry, 'TOPOLOGY_INCOMPLETE');
+  if (parts.timePlausibilityCost > 0) bumpRejected(telemetry, 'TIME_IMPLAUSIBLE');
+}
 
 function transitionBetween(
   graph: DirectedCarRoutingGraph,
@@ -101,6 +139,7 @@ function decodeSegmentRouteAware(
   graph: DirectedCarRoutingGraph,
   routeConfig: S4RouteAwareResearchConfig,
   segmentIndex: number,
+  telemetry: RouteAwareReplayTelemetry,
 ): { matches: BaselineBucketMatch[]; meta: RouteAwareSegmentMeta } {
   const waysById = new Map(ways.map((w) => [w.osmWayId, w]));
   const TOP_K = config.viterbiTopK;
@@ -146,9 +185,7 @@ function decodeSegmentRouteAware(
           config,
           routeConfig,
         );
-        if (parts && t > 0 && pi === 0 && ci === 0) {
-          // sample parts only for meta aggregation (full sum recomputed on traceback)
-        }
+        if (t > 0) recordEvaluatedTransition(telemetry, parts);
         const emit =
           wayId == null ? 100 : emissionCostFromHits(segmentHeadings[t], wayId, hits, config);
         const cand: LayerState = {
@@ -211,6 +248,9 @@ function decodeSegmentRouteAware(
       routeConfig,
     );
     if (!parts) continue;
+    telemetry.chosenTransitions += 1;
+    if (pw === cw) telemetry.chosenSameWay += 1;
+    else telemetry.chosenDifferentWay += 1;
     partsSum.routeDistanceM += parts.routeDistanceM;
     partsSum.airDistanceM += parts.airDistanceM;
     partsSum.routeDistanceCost += parts.routeDistanceCost;
@@ -227,6 +267,7 @@ function decodeSegmentRouteAware(
     const b = segmentBuckets[i];
     const hits = hitsPerStep[i]!;
     const chosenWayId = chosenWayIds[i]!;
+    if (chosenWayId == null) telemetry.nullStateChoicesWithGpsPresent += 1;
     const outcome = outcomeForChoice(chosenWayId, hits, config);
     matches.push({
       bucketLabelUtc: b.bucketLabelUtc,
@@ -258,7 +299,7 @@ function decodeSegmentRouteAware(
  * Backtrack Viterbi with route-aware directed-graph transition costs (research only).
  * Emission model unchanged from FORWARD_V2 / BACKTRACK_R1.
  */
-export function buildViterbiMatchesRouteAwareR1(
+export function buildViterbiMatchesRouteAwareR2(
   buckets: ResearchGpsBucket[],
   ways: ResearchOsmWay[],
   headings: (number | null)[],
@@ -266,7 +307,8 @@ export function buildViterbiMatchesRouteAwareR1(
   graph: DirectedCarRoutingGraph,
   routeConfig: S4RouteAwareResearchConfig = DEFAULT_S4_ROUTE_AWARE_RESEARCH_CONFIG,
 ): RouteAwareViterbiResult {
-  clearRouteQueryCache();
+  clearRouteQueryCache(graph);
+  const telemetry = emptyTelemetry();
   const out: BaselineBucketMatch[] = [];
   const segments: RouteAwareSegmentMeta[] = [];
   let segBuckets: ResearchGpsBucket[] = [];
@@ -283,6 +325,7 @@ export function buildViterbiMatchesRouteAwareR1(
       graph,
       routeConfig,
       segIndex,
+      telemetry,
     );
     out.push(...matches);
     segments.push(meta);
@@ -317,9 +360,13 @@ export function buildViterbiMatchesRouteAwareR1(
 
   const totalReportedPathCost = segments.reduce((s, m) => s + m.tracebackEndCost, 0);
   return {
-    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R1,
+    algorithmId: S4_RESEARCH_ROUTE_AWARE_VITERBI_R2,
     matches: out,
     segments,
     totalReportedPathCost,
+    telemetry,
   };
 }
+
+/** @deprecated Use buildViterbiMatchesRouteAwareR2 */
+export const buildViterbiMatchesRouteAwareR1 = buildViterbiMatchesRouteAwareR2;

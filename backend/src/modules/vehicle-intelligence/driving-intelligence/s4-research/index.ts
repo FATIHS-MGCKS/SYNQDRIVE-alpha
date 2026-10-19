@@ -13,6 +13,8 @@ export * from './osm-node-id-topology';
 export * from './osm-rounded-only-audit';
 export * from './route-aware-config';
 export * from './osm-directed-routing-graph';
+export * from './osm-turn-restrictions';
+export * from './route-projection-attachment';
 export * from './route-segment-projection';
 export * from './route-query';
 export * from './route-aware-transition';

@@ -9,7 +9,7 @@ import {
   buildRoadContextFromOverpass,
   buildStrictNodeIdWayAdjacency,
   buildViterbiMatchesBacktrackR1,
-  buildViterbiMatchesRouteAwareR1,
+  buildViterbiMatchesRouteAwareR2,
   computeRouteAwareTransitionCost,
   verifyReportedPathCost,
   type ResearchGpsBucket,
@@ -27,7 +27,9 @@ const evidenceDir = path.join(repoRoot, 'architecture/drivingintelligence/eviden
 const fixturePath = path.join(evidenceDir, 'fixtures/tesla-20261016/TESLA_POSITION_GRID.json');
 const osmPath = path.join(evidenceDir, 'LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json');
 const outDir =
-  process.env.S4_ROUTE_AWARE_R1_OUT ?? '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1';
+  process.env.S4_ROUTE_AWARE_R2_OUT ??
+  process.env.S4_ROUTE_AWARE_R1_OUT ??
+  '/opt/cursor/artifacts/exp021-s4-route-aware-viterbi-r1/r2';
 
 const PINNED_BASELINE = {
   A: { associated: 510, ambiguous: 244, unknown: 382, waySwitches: 110, graphConflictsRounded: 2, pathCost: 15814.145368888783 },
@@ -105,6 +107,8 @@ function main(): void {
     let rows: Array<{ bucketLabelUtc: string; osmWayId: number | null; outcome: string }> = [];
     let pathCost = 0;
     let costParts: Record<string, number> | null = null;
+    let eTelemetry: import('../../src/modules/vehicle-intelligence/driving-intelligence/s4-research/viterbi-matching-route-aware').RouteAwareReplayTelemetry | null =
+      null;
 
     if (variant === 'A') {
       rows = buildViterbiMatches(buckets, roadContext.ways, headings, DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG, {
@@ -143,7 +147,7 @@ function main(): void {
       rows = r.matches;
       pathCost = r.totalReportedPathCost;
     } else {
-      const r = buildViterbiMatchesRouteAwareR1(
+      const r = buildViterbiMatchesRouteAwareR2(
         buckets,
         roadContext.ways,
         headings,
@@ -171,6 +175,7 @@ function main(): void {
         },
       );
       costParts = p;
+      eTelemetry = r.telemetry;
     }
 
     const ms = performance.now() - t0;
@@ -227,6 +232,7 @@ function main(): void {
       implausibleTransitions,
       unknownTopologyCases: unknownTopology,
       turnRestrictionUnknown,
+      routeAwareTelemetry: eTelemetry,
       runtimeMs: ms,
       rows,
     };
@@ -268,8 +274,28 @@ function main(): void {
   }
 
   const memAfter = process.memoryUsage();
+  const unknownFromGpsGapD = d.rows.filter(
+    (r, i) => buckets[i].availability !== 'PRESENT' && r.outcome === 'UNKNOWN',
+  ).length;
+  const unknownFromGpsGapE = e.rows.filter(
+    (r, i) => buckets[i].availability !== 'PRESENT' && r.outcome === 'UNKNOWN',
+  ).length;
+  const unknownDecoderIncreasePresentGps = d.rows.filter((r, i) => {
+    const b = buckets[i];
+    return (
+      b.availability === 'PRESENT' &&
+      d.rows[i].osmWayId != null &&
+      e.rows[i].outcome === 'UNKNOWN' &&
+      (d.rows[i].outcome === 'CONFIRMED' || d.rows[i].outcome === 'AMBIGUOUS')
+    );
+  }).length;
+  const unknownDecoderIncreaseNullOnPresentGps = d.rows.filter((r, i) => {
+    const b = buckets[i];
+    return b.availability === 'PRESENT' && d.rows[i].osmWayId != null && e.rows[i].osmWayId == null;
+  }).length;
+
   const report = {
-    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R1',
+    schema: 'EXP021_S4_ROUTE_AWARE_VITERBI_R2',
     tripId: grid.tripId,
     referenceMergeSha: '784c4b0cf3ae1e7e4534a458082ccef7ef539035',
     PHASE_0_SCOPE: {
@@ -280,7 +306,22 @@ function main(): void {
     DIRECTED_GRAPH: {
       algorithmId: directed.algorithmId,
       turnRestrictionRelationsPresent: directed.turnRestrictionRelationsPresent,
+      turnRestrictionIndex: {
+        ...directed.turnRestrictionIndex,
+        forbiddenTurnKeysCount: directed.turnRestrictionIndex.forbiddenTurnKeys.size,
+        onlyRestrictionViaNodesCount: directed.turnRestrictionIndex.onlyRestrictionViaNodes.size,
+      },
       uncertainties: directed.uncertainties,
+    },
+    VARIANT_E_HONEST_METRICS: {
+      telemetry: variants.find((v) => v.variant === 'E')!.routeAwareTelemetry,
+      chosenTransitionsNote: 'Chosen path only; rejected counts are DP evaluation samples',
+      unknownBreakdown: {
+        gpsGapUnknownD: unknownFromGpsGapD,
+        gpsGapUnknownE: unknownFromGpsGapE,
+        decoderUnknownIncreaseOnPresentGps: unknownDecoderIncreasePresentGps,
+        decoderNullWayOnPresentGpsVsD: unknownDecoderIncreaseNullOnPresentGps,
+      },
     },
     FIVE_WAY_REPLAY: variants.map((v) => ({
       variant: v.variant,
@@ -321,9 +362,9 @@ function main(): void {
   };
 
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R1.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R2.json'), JSON.stringify(report, null, 2));
   fs.writeFileSync(
-    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_CHANGED_BUCKETS.geojson'),
+    path.join(outDir, 'EXP021_S4_ROUTE_AWARE_VITERBI_R2_CHANGED_BUCKETS.geojson'),
     JSON.stringify({ type: 'FeatureCollection', features: geoFeatures }, null, 2),
   );
   console.log(JSON.stringify(report, null, 2));

@@ -1,7 +1,12 @@
 import { haversineMeters } from '../speed-qc/di-v0-speed-qc-geo';
 import type { ResearchOsmWay } from './contracts';
 import { parseFrozenTopologyElements, type RawOsmWay } from './osm-parse';
-import { S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R1 } from './version';
+import {
+  isOnlyRestrictionJunction,
+  parseTurnRestrictionRelations,
+  type TurnRestrictionIndex,
+} from './osm-turn-restrictions';
+import { S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R2 } from './version';
 
 export type RouteTopologyStatus =
   | 'CONNECTED_AND_DIRECTION_ALLOWED'
@@ -25,6 +30,7 @@ export type DirectedCarRoutingGraph = {
   /** Outgoing drivable edges per OSM node id. */
   adjacency: Map<number, DirectedRoutingEdge[]>;
   turnRestrictionRelationsPresent: boolean;
+  turnRestrictionIndex: TurnRestrictionIndex;
   uncertainties: string[];
 };
 
@@ -68,15 +74,21 @@ function segmentLengthM(
   return haversineMeters(ca.lat, ca.lon, cb.lat, cb.lon);
 }
 
+function isRoundabout(tags: Record<string, string>): boolean {
+  return tags.junction === 'roundabout' || tags.highway === 'mini_roundabout';
+}
+
 function forwardAllowed(tags: Record<string, string>): boolean {
   const ow = tags.oneway;
   if (ow === '-1') return false;
+  if (isRoundabout(tags) && ow !== 'no' && ow !== '-1') return true;
   return true;
 }
 
 function reverseAllowed(tags: Record<string, string>): boolean {
   const ow = tags.oneway;
   if (ow === 'yes') return false;
+  if (isRoundabout(tags) && ow !== 'no' && ow !== '-1') return false;
   return true;
 }
 
@@ -93,16 +105,17 @@ export function buildDirectedCarRoutingGraph(
   const rawWays = topo.ways.filter((w) => corridorWayIds.has(w.osmId));
   const rawWaysById = new Map(rawWays.map((w) => [w.osmId, w]));
 
-  const turnRestrictionRelationsPresent = (overpassBody.elements ?? []).some(
-    (el) => String(el.type ?? '') === 'relation' && (el.tags as Record<string, string>)?.type === 'restriction',
-  );
+  const { index: turnRestrictionIndex } = parseTurnRestrictionRelations(overpassBody, corridorWayIds);
+  const turnRestrictionRelationsPresent = turnRestrictionIndex.relationsTotal > 0;
 
   const adjacency = new Map<number, DirectedRoutingEdge[]>();
   const uncertainties: string[] = [];
   if (!turnRestrictionRelationsPresent) {
     uncertainties.push('TURN_RESTRICTION_RELATIONS_NOT_IN_FROZEN_EXTRACT');
   } else {
-    uncertainties.push('TURN_RESTRICTION_RELATIONS_PRESENT_BUT_NOT_APPLIED_IN_R1_DECODER');
+    uncertainties.push(
+      `TURN_RESTRICTIONS_PARSED total=${turnRestrictionIndex.relationsTotal} forbiddenApplied=${turnRestrictionIndex.relationsAppliedAsForbidden} onlyUnknown=${turnRestrictionIndex.relationsOnlyStarMarkedUnknown} unsupported=${turnRestrictionIndex.relationsUnsupported}`,
+    );
   }
 
   for (const way of rawWays) {
@@ -135,12 +148,13 @@ export function buildDirectedCarRoutingGraph(
   }
 
   return {
-    algorithmId: S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R1,
+    algorithmId: S4_RESEARCH_DIRECTED_ROUTING_GRAPH_R2,
     corridorWayIds,
     rawWaysById,
     nodeCoords: topo.nodeCoords,
     adjacency,
     turnRestrictionRelationsPresent,
+    turnRestrictionIndex,
     uncertainties: [...new Set(uncertainties)],
   };
 }
@@ -150,7 +164,7 @@ export function junctionTurnRestrictionUnknown(
   graph: DirectedCarRoutingGraph,
   nodeId: number,
 ): boolean {
-  if (graph.turnRestrictionRelationsPresent) return false;
+  if (isOnlyRestrictionJunction(graph.turnRestrictionIndex, nodeId)) return true;
   const out = graph.adjacency.get(nodeId)?.length ?? 0;
   return out >= 3;
 }
