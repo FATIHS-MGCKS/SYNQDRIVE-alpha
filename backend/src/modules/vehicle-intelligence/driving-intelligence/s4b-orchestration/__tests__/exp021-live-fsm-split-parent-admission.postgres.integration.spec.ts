@@ -194,8 +194,7 @@ interface LiveFsmSplitFixture extends S4aTenant {
     const pass1 = await service.runDiscoveryPass({ limit: 50 });
     expect(pass1.created).toBeGreaterThanOrEqual(1);
     const pass2 = await service.runDiscoveryPass({ limit: 50 });
-    expect(pass2.created).toBe(0);
-    expect(pass2.duplicates + pass2.skipped).toBeGreaterThanOrEqual(1);
+    expect(pass2).toMatchObject({ candidates: 0, created: 0, duplicates: 0 });
     const items = await admin.$queryRaw<Array<{ trip_id: string; status: string }>>`
       SELECT trip_id::text, status FROM di_v0_s4_work_items
       WHERE vehicle_id = ${f.vehicleId} AND run_purpose = 'PRIMARY' AND status <> 'SUPERSEDED'`;
