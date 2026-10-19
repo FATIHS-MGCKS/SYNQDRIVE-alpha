@@ -1,0 +1,53 @@
+name: Physical Device Inventory PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/src/modules/physical-device-inventory/**'
+      - 'backend/scripts/ops/pdi-p1b7-manual-intake-operator.ts'
+      - 'backend/scripts/test/physical-device-inventory-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/physical-device-inventory-postgres-ci.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'cursor/pdi-p1b7-*'
+
+concurrency:
+  group: physical-device-inventory-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  pdi-postgres:
+    name: Physical Device Inventory PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (shared CI helper)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: pdi-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Physical Device Inventory PostgreSQL certification
+        working-directory: backend
+        run: bash scripts/test/physical-device-inventory-postgres-ci.sh
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
