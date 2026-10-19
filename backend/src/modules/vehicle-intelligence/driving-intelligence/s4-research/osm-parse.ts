@@ -395,3 +395,31 @@ export function graphReachable(adj: Map<number, Set<number>>, a: number | null, 
   if (a === b) return true;
   return adj.get(a)?.has(b) ?? false;
 }
+
+/** Multi-hop reachability on an undirected way adjacency graph (offline audit). */
+export function graphReachableMultiHop(
+  adj: Map<number, Set<number>>,
+  a: number | null,
+  b: number | null,
+  maxHops = 64,
+): boolean {
+  if (a == null || b == null) return false;
+  if (a === b) return true;
+  if (graphReachable(adj, a, b)) return true;
+  const seen = new Set<number>([a]);
+  let frontier = [a];
+  for (let hop = 0; hop < maxHops && frontier.length > 0; hop++) {
+    const next: number[] = [];
+    for (const u of frontier) {
+      for (const v of adj.get(u) ?? []) {
+        if (v === b) return true;
+        if (!seen.has(v)) {
+          seen.add(v);
+          next.push(v);
+        }
+      }
+    }
+    frontier = next;
+  }
+  return false;
+}

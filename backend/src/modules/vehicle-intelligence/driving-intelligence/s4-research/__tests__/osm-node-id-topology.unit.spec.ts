@@ -3,6 +3,7 @@ import {
   buildStrictNodeIdWayAdjacency,
   buildViterbiMatches,
   buildViterbiMatchesBacktrackR1,
+  verifyReportedPathCost,
   classifyDirectedTransition,
   headingsFromBaseline,
   buildBaselineMatches,
@@ -91,18 +92,82 @@ describe('osm node-id topology R1', () => {
     expect(graphReachableNodeId(strict.undirectedAdj, 100, 101)).toBe(true);
   });
 
-  it('3: same coordinate different node id — rounded-only edge', () => {
+  it('3: same rounded coordinate, disjoint node ids — rounded edge only', () => {
     const p = { lat: 51.3, lon: 9.5 };
+    const pRoundedTwin = { lat: 51.3000004, lon: 9.5000004 };
     const wA = rw(1, [p, { lat: 51.301, lon: 9.5 }]);
-    const wB = rw(2, [{ lat: 51.3000001, lon: 9.5000001 }, { lat: 51.301, lon: 9.5 }]);
+    const wB = rw(2, [pRoundedTwin, { lat: 51.301, lon: 9.5002 }]);
     const rounded = buildWayAdjacency([wA, wB]);
     const body = overpassFromWays([
       { id: 1, nodeIds: [10, 11], geom: [p, { lat: 51.301, lon: 9.5 }] },
-      { id: 2, nodeIds: [20, 11], geom: [{ lat: 51.3000001, lon: 9.5000001 }, { lat: 51.301, lon: 9.5 }] },
+      { id: 2, nodeIds: [20, 21], geom: [pRoundedTwin, { lat: 51.301, lon: 9.5002 }] },
     ]);
     const strict = buildStrictNodeIdWayAdjacency(body, [wA, wB], rounded);
     expect(rounded.get(1)?.has(2)).toBe(true);
-    expect(strict.undirectedAdj.get(1)?.has(2)).toBe(true); // shares node 11 in overpass
+    expect(strict.undirectedAdj.get(1)?.has(2)).toBe(false);
+    expect(strict.roundedOnlyEdgesRemoved).toBeGreaterThanOrEqual(1);
+  });
+
+  it('3b: phantom rounded edge on cheaper optimal path vs strict topology', () => {
+    const p = { lat: 51.3, lon: 9.5 };
+    const gps0 = { lat: 51.30008, lon: 9.5 };
+    const pTwin = { lat: 51.3000003, lon: 9.5000003 };
+    const endB = { lat: 51.3006, lon: 9.50015 };
+    const wA = rw(1, [p, { lat: 51.3004, lon: 9.5 }]);
+    const wB = rw(2, [pTwin, endB]);
+    const rounded = buildWayAdjacency([wA, wB]);
+    const body = overpassFromWays([
+      { id: 1, nodeIds: [10, 11], geom: [p, { lat: 51.3004, lon: 9.5 }] },
+      { id: 2, nodeIds: [20, 21], geom: [pTwin, endB] },
+    ]);
+    const strict = buildStrictNodeIdWayAdjacency(body, [wA, wB], rounded);
+    expect(rounded.get(1)?.has(2)).toBe(true);
+    expect(strict.undirectedAdj.get(1)?.has(2)).toBe(false);
+
+    const buckets = [
+      {
+        bucketLabelUtc: 't0',
+        availability: 'PRESENT' as const,
+        latitude: gps0.lat,
+        longitude: gps0.lon,
+        l3SpeedKmh: 30,
+      },
+      {
+        bucketLabelUtc: 't1',
+        availability: 'PRESENT' as const,
+        latitude: endB.lat,
+        longitude: endB.lon,
+        l3SpeedKmh: 30,
+      },
+    ];
+    const headings = [null, null];
+    const roundedRun = buildViterbiMatches(buckets, [wA, wB], headings, DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG, {
+      wayAdjacency: rounded,
+    });
+    const strictRun = buildViterbiMatches(buckets, [wA, wB], headings, DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG, {
+      wayAdjacency: strict.undirectedAdj,
+    });
+    expect(roundedRun[0].osmWayId).toBe(1);
+    expect(roundedRun[1].osmWayId).toBe(2);
+    expect(strictRun[1].osmWayId).toBe(2);
+    const roundedCost = verifyReportedPathCost(
+      buckets,
+      roundedRun.map((r) => r.osmWayId),
+      [wA, wB],
+      headings,
+      DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+      rounded,
+    );
+    const strictCost = verifyReportedPathCost(
+      buckets,
+      strictRun.map((r) => r.osmWayId),
+      [wA, wB],
+      headings,
+      DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+      strict.undirectedAdj,
+    );
+    expect(strictCost).toBeGreaterThan(roundedCost);
+    expect(strictCost - roundedCost).toBeGreaterThanOrEqual(30);
   });
 
   it('4: allowed oneway junction — directional status unknown not forbidden', () => {

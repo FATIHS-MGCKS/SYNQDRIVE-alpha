@@ -58,6 +58,13 @@ export type ViterbiBacktrackResult = {
   totalReportedPathCost: number;
 };
 
+export type PathCostVerification = {
+  totalCost: number;
+  emissionCostSum: number;
+  transitionCostSum: number;
+  topology: 'rounded_default' | 'injected_adjacency';
+};
+
 /** Recompute transition+emission sum for the emitted way-id sequence (audit). */
 export function verifyReportedPathCost(
   buckets: ResearchGpsBucket[],
@@ -65,9 +72,22 @@ export function verifyReportedPathCost(
   ways: ResearchOsmWay[],
   headings: (number | null)[],
   config: S4ResearchAlgorithmConfig,
+  wayAdjacency?: Map<number, Set<number>>,
 ): number {
-  const adj = buildWayAdjacency(ways);
-  let total = 0;
+  return verifyReportedPathCostDetailed(buckets, wayIds, ways, headings, config, wayAdjacency).totalCost;
+}
+
+export function verifyReportedPathCostDetailed(
+  buckets: ResearchGpsBucket[],
+  wayIds: Array<number | null>,
+  ways: ResearchOsmWay[],
+  headings: (number | null)[],
+  config: S4ResearchAlgorithmConfig,
+  wayAdjacency?: Map<number, Set<number>>,
+): PathCostVerification {
+  const adj = wayAdjacency ?? buildWayAdjacency(ways);
+  let emissionCostSum = 0;
+  let transitionCostSum = 0;
   let prevWay: number | null = null;
   for (let i = 0; i < buckets.length; i++) {
     const b = buckets[i];
@@ -85,10 +105,16 @@ export function verifyReportedPathCost(
     ).slice(0, config.viterbiTopK);
     const e = wayId == null ? 100 : emissionCostFromHits(headings[i], wayId, hits, config);
     const t = transitionCost(prevWay, wayId, adj, b.l3SpeedKmh);
-    total += t + e;
+    emissionCostSum += e;
+    transitionCostSum += t;
     prevWay = wayId;
   }
-  return total;
+  return {
+    totalCost: emissionCostSum + transitionCostSum,
+    emissionCostSum,
+    transitionCostSum,
+    topology: wayAdjacency ? 'injected_adjacency' : 'rounded_default',
+  };
 }
 
 function decodeSegment(
@@ -161,13 +187,14 @@ function decodeSegment(
     curIdx = entry.cell.prevIndex;
   }
 
-  const verified = verifyReportedPathCost(
+  const verified = verifyReportedPathCostDetailed(
     segmentBuckets,
     chosenWayIds,
     ways,
     segmentHeadings,
     config,
-  );
+    adj,
+  ).totalCost;
 
   const matches: BaselineBucketMatch[] = [];
   for (let i = 0; i < segmentBuckets.length; i++) {
