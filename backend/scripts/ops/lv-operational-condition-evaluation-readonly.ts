@@ -62,7 +62,7 @@ async function main(): Promise<void> {
   } satisfies Pick<LongitudinalProfileRevisionInspectionService, 'inspectRevision'>;
   const readModel = new LvMeasuredIntelligenceReadService(
     prisma as unknown as PrismaService,
-    d4InspectionStub as LongitudinalProfileRevisionInspectionService,
+    d4InspectionStub as unknown as LongitudinalProfileRevisionInspectionService,
   );
 
   try {
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
       const from = new Date(to.getTime() - 90 * 24 * 60 * 60 * 1000);
 
       const conditionInput = await buildLvOperationalConditionInputV1(
-        { prisma, readModel },
+        { prisma: prisma as unknown as PrismaService, readModel },
         {
           organizationId,
           vehicleId,
