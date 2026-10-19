@@ -150,6 +150,10 @@ export SYNQDRIVE_MIGRATION_RECOVERY_RESOLVE_AUTHORIZED=1
 unset SYNQDRIVE_MIGRATION_AUTHORITY
 pdb_guard_assert_migration_resolve_authority
 
+log "8a) backup capture verify + prisma-with-guard path gates"
+bash scripts/test/production-database-backup-capture-verify.gate.sh
+bash scripts/test/prisma-with-guard-path.gate.sh
+
 log "8) bootstrap manifest integrity + dry-run"
 MANIFEST="${ROOT}/scripts/ops/contracts/production-database-guard-bundle.manifest.sha256"
 [[ -f "$MANIFEST" ]] || fail "missing bundle manifest sha256"
