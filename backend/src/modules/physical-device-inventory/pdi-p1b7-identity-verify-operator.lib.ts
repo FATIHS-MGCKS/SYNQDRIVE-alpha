@@ -227,7 +227,10 @@ export async function runPdiP1b7IdentityVerifyPreflight(
       blockingReasons.push('ORG_ID_MISMATCH');
     }
     const expectedSerial = PDI_P1B7_AUTHORIZED_IDENTITY_VERIFY.serialNumber.toUpperCase();
-    if (identity.raw_serial && identity.raw_serial.toUpperCase() !== expectedSerial) {
+    const rawSerialNorm = identity.raw_serial?.trim() ?? '';
+    if (!rawSerialNorm) {
+      blockingReasons.push('DIMO_SERIAL_MISSING');
+    } else if (rawSerialNorm.toUpperCase() !== expectedSerial) {
       blockingReasons.push('DIMO_SERIAL_MISMATCH');
     }
     if (!identity.connection_serial) {

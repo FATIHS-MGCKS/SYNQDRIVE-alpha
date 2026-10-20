@@ -241,6 +241,26 @@ const ATTESTATION = 'Owner authorized PDI P1B.7 Gate C identity verify test';
     await seedPdiP1b7OperatorPreflightIdentity(prisma);
   });
 
+  it('dry-run fails when DIMO raw_json serial evidence is missing', async () => {
+    await prisma.$executeRaw`
+      UPDATE dimo_vehicles
+      SET raw_json = raw_json - 'aftermarketDevice'
+      WHERE token_id = ${PDI_P1B7_AUTHORIZED_IDENTITY_VERIFY.dimoToken}
+    `;
+    const outcome = await runOperator({
+      execute: false,
+      confirmFlag: false,
+      actorEmail: masterAdmin.email,
+      operatorAttestation: ATTESTATION,
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.exitCode).toBe(2);
+      expect(outcome.stderr).toMatch(/DIMO_SERIAL_MISSING|blocking reasons/i);
+    }
+    await seedPdiP1b7OperatorPreflightIdentity(prisma);
+  });
+
   it('rejects execute without confirmation flag', async () => {
     const outcome = await runOperator(
       {
