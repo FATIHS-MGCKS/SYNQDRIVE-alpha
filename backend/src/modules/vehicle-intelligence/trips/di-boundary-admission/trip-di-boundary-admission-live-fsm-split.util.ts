@@ -41,17 +41,102 @@ export function isLiveFsmSplitContinuationCandidate(
   return readTripDiBoundaryAdmissionV1(trip.rawDetectionMeta) == null;
 }
 
-/** Trip ids on a vehicle that may receive admission after RESTING settlement (not a blanket missing-meta sweep). */
-export async function listLiveFsmSplitAdmissionCandidateTripIds(
+type TripRow = {
+  trip_id: string;
+  vehicle_id: string;
+  trip_status: string;
+  end_detection_mode: string | null;
+  raw_detection_meta: unknown;
+};
+
+async function loadTripRow(
+  prisma: { $queryRaw: Prisma.TransactionClient['$queryRaw'] },
+  tripId: string,
+): Promise<TripRow | null> {
+  const rows = await prisma.$queryRaw<TripRow[]>`
+    SELECT t.id::text AS trip_id, t.vehicle_id::text AS vehicle_id, t.trip_status::text AS trip_status,
+           t.end_detection_mode::text AS end_detection_mode, t.raw_detection_meta
+    FROM vehicle_trips t WHERE t.id = ${tripId} LIMIT 1`;
+  return rows[0] ?? null;
+}
+
+/**
+ * Finalize hook: anchor trip plus at most one verified LIVE_FSM split counterpart on the same vehicle.
+ */
+export async function resolveVerifiedLiveFsmSplitSettlementTripIds(
+  prisma: { $queryRaw: Prisma.TransactionClient['$queryRaw'] },
+  anchorTripId: string,
+): Promise<string[]> {
+  const anchor = await loadTripRow(prisma, anchorTripId);
+  if (!anchor) return [];
+
+  const ids = new Set<string>();
+  const consider = (row: TripRow | null | undefined) => {
+    if (!row || row.vehicle_id !== anchor.vehicle_id) return;
+    if (
+      isLiveFsmSplitParentCandidate({
+        tripStatus: row.trip_status,
+        endDetectionMode: row.end_detection_mode,
+        rawDetectionMeta: row.raw_detection_meta,
+      }) ||
+      isLiveFsmSplitContinuationCandidate({
+        tripStatus: row.trip_status,
+        rawDetectionMeta: row.raw_detection_meta,
+      })
+    ) {
+      ids.add(row.trip_id);
+    }
+  };
+
+  consider(anchor);
+
+  const meta = anchor.raw_detection_meta;
+  const splitFrom =
+    meta != null && typeof meta === 'object' && !Array.isArray(meta)
+      ? (meta as Record<string, unknown>).splitFrom
+      : null;
+  if (typeof splitFrom === 'string' && splitFrom.length > 0) {
+    consider(await loadTripRow(prisma, splitFrom));
+  }
+
+  if (
+    anchor.end_detection_mode === 'MID_TRIP_GAP_SPLIT' &&
+    isLiveFsmSplitTriggeredMeta(anchor.raw_detection_meta)
+  ) {
+    const children = await prisma.$queryRaw<TripRow[]>`
+      SELECT t.id::text AS trip_id, t.vehicle_id::text AS vehicle_id, t.trip_status::text AS trip_status,
+             t.end_detection_mode::text AS end_detection_mode, t.raw_detection_meta
+      FROM vehicle_trips t
+      WHERE t.vehicle_id = ${anchor.vehicle_id}
+        AND (t.raw_detection_meta->>'splitFrom') = ${anchor.trip_id}
+        AND (t.raw_detection_meta->>'splitTriggeredBy') = ${LIVE_FSM_SPLIT_TRIGGER}
+      ORDER BY t.end_time ASC NULLS LAST, t.id ASC
+      LIMIT 1`;
+    consider(children[0]);
+  }
+
+  return [...ids];
+}
+
+/** Reconciliation hook: vehicle + window + activation horizon (no historical fleet sweep). */
+export async function listLiveFsmSplitAdmissionCandidateTripIdsInReconciliationWindow(
   prisma: { $queryRaw: Prisma.TransactionClient['$queryRaw'] },
   vehicleId: string,
+  windowFrom: Date,
+  windowTo: Date,
+  activationHorizonUtc: Date,
+  maxTrips: number,
 ): Promise<string[]> {
+  const effectiveFrom =
+    windowFrom.getTime() > activationHorizonUtc.getTime() ? windowFrom : activationHorizonUtc;
   const rows = await prisma.$queryRaw<Array<{ trip_id: string }>>`
     SELECT t.id::text AS trip_id
     FROM vehicle_trips t
     WHERE t.vehicle_id = ${vehicleId}
       AND t.trip_status::text = 'COMPLETED'
       AND t.end_time IS NOT NULL
+      AND t.end_time >= ${effectiveFrom}
+      AND t.end_time <= ${windowTo}
       AND (t.raw_detection_meta->'diV0BoundaryAdmissionV1'->>'revisionKey') IS NULL
       AND (
         (
@@ -63,7 +148,8 @@ export async function listLiveFsmSplitAdmissionCandidateTripIds(
           AND (t.raw_detection_meta->>'splitFrom') IS NOT NULL
         )
       )
-    ORDER BY t.end_time ASC, t.id ASC`;
+    ORDER BY t.end_time ASC, t.id ASC
+    LIMIT ${maxTrips}`;
   return rows.map((r) => r.trip_id);
 }
 
