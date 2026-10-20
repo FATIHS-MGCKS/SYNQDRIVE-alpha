@@ -290,7 +290,8 @@ interface LiveFsmSplitFixture extends S4aTenant {
       `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
          start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score,
          end_detection_mode, raw_detection_meta)
-       VALUES ($1, $2, 'COMPLETED', $3, $4, $5, $4, 52, 9, 3, 40, 30, 0, 90, 'MID_TRIP_GAP_SPLIT', $6::jsonb)`,
+       VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
+         ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 3, 40, 30, 0, 90, 'MID_TRIP_GAP_SPLIT', $6::jsonb)`,
       historicalParentId,
       f.vehicleId,
       historicalStart.toISOString(),
