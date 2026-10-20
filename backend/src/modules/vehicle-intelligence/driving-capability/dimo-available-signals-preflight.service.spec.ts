@@ -31,11 +31,18 @@ function makeDimoTelemetry() {
   } as any;
 }
 
+function makeP3aWriter() {
+  return {
+    persistFromAvailableSignalsPreflight: jest.fn().mockResolvedValue({ wrote: 0 }),
+  } as any;
+}
+
 describe('DimoAvailableSignalsPreflightService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let repository: ReturnType<typeof makeRepository>;
   let dimoAuth: ReturnType<typeof makeDimoAuth>;
   let dimoTelemetry: ReturnType<typeof makeDimoTelemetry>;
+  let p3aWriter: ReturnType<typeof makeP3aWriter>;
   let service: DimoAvailableSignalsPreflightService;
 
   beforeEach(() => {
@@ -43,11 +50,13 @@ describe('DimoAvailableSignalsPreflightService', () => {
     repository = makeRepository();
     dimoAuth = makeDimoAuth();
     dimoTelemetry = makeDimoTelemetry();
+    p3aWriter = makeP3aWriter();
     service = new DimoAvailableSignalsPreflightService(
       prisma,
       repository,
       dimoAuth,
       dimoTelemetry,
+      p3aWriter,
     );
   });
 
@@ -116,6 +125,12 @@ describe('DimoAvailableSignalsPreflightService', () => {
     expect(result.ran).toBe(true);
     expect(result.probesWritten).toBeGreaterThan(0);
     expect(result.capabilityVersion).toBe(DIMO_CAPABILITY_PREFLIGHT_VERSION);
+    expect(p3aWriter.persistFromAvailableSignalsPreflight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dimoTokenId: 192922,
+        catalogSnapshotCompleteness: 'COMPLETE_PROVIDER_CATALOG',
+      }),
+    );
     expect(repository.upsertProbe).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: 'org-1',
@@ -148,6 +163,11 @@ describe('DimoAvailableSignalsPreflightService', () => {
     const result = await service.runPreflight('org-1', 'vehicle-ice');
 
     expect(result.ran).toBe(true);
+    expect(p3aWriter.persistFromAvailableSignalsPreflight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        catalogSnapshotCompleteness: 'PROVIDER_ERROR',
+      }),
+    );
     expect(repository.upsertProbe).toHaveBeenCalledWith(
       expect.objectContaining({
         capabilityStatus: DrivingCapabilityStatus.DEGRADED,
@@ -159,7 +179,28 @@ describe('DimoAvailableSignalsPreflightService', () => {
     );
   });
 
+  it('does not fail preflight when P3A writer throws', async () => {
+    repository.findByVehicle.mockResolvedValue([]);
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'vehicle-ice',
+      hardwareType: 'LTE_R1',
+      fuelType: 'PETROL',
+      dimoVehicle: { tokenId: 1 },
+    });
+    dimoAuth.getVehicleJwt.mockResolvedValue('jwt');
+    dimoTelemetry.queryGraphQL
+      .mockResolvedValueOnce({ data: { availableSignals: ['speed'] } })
+      .mockResolvedValueOnce({ data: { dataSummary: null } });
+    repository.upsertProbe.mockResolvedValue({ id: 'cap-1' });
+    p3aWriter.persistFromAvailableSignalsPreflight.mockRejectedValue(new Error('p3a db down'));
+
+    const result = await service.runPreflight('org-1', 'vehicle-ice');
+    expect(result.ran).toBe(true);
+    expect(repository.upsertProbe).toHaveBeenCalled();
+  });
+
   it('skips when vehicle has no DIMO token', async () => {
+    repository.findByVehicle.mockResolvedValue([]);
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'vehicle-local',
       hardwareType: 'SMART5',

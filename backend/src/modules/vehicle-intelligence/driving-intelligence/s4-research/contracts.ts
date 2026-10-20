@@ -97,18 +97,35 @@ export type RoadMatchingWindowResult = {
   };
   graphTransitionConflicts: GraphTransitionConflict[];
   independentAccuracy: IndependentAccuracyStatus;
+  /**
+   * Optional non-authoritative shadow decoder outputs (never product/billing/trip truth).
+   * Present only when explicitly enabled via research control plane flags.
+   */
+  nonAuthoritativeShadowDecoders?: {
+    directionAwareEmissionP1?: {
+      algorithmId: string;
+      hypothesis: RoadHypothesisLabel;
+      osmWayId: number | null;
+      ambiguityReasons: string[];
+      evidenceClassification: 'COMPUTATIONAL_CANDIDATE_ONLY';
+      authoritativeForProduct: false;
+    };
+  };
 };
 
 export type RoadMatchingPipelineInput = {
   buckets: ResearchGpsBucket[];
   roadContext: ResearchRoadContext;
   config: S4ResearchAlgorithmConfig;
+  /** When true, runs direction-aware emission P1 Viterbi in parallel; does not alter forward V2 `viterbi` track. */
+  runDirectionAwareEmissionP1Shadow?: boolean;
 };
 
 export type RoadMatchingPipelineResult = {
   algorithmIds: {
     baseline: string;
     viterbi: string;
+    directionAwareEmissionP1Shadow?: string;
   };
   windows: RoadMatchingWindowResult[];
   summary: {
@@ -117,5 +134,13 @@ export type RoadMatchingPipelineResult = {
     bucketsChanged: number;
     graphTransitionConflicts: number;
     independentAccuracy: IndependentAccuracyStatus;
+    shadowDecoders?: {
+      directionAwareEmissionP1?: {
+        algorithmId: string;
+        labelCounts: Record<RoadHypothesisLabel, number>;
+        bucketsChangedVsForwardViterbi: number;
+        authoritativeForProduct: false;
+      };
+    };
   };
 };

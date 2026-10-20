@@ -1662,6 +1662,7 @@ model Organization {
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles                           VehicleSignalCapabilityProfile[]
   vehicleSignalCapabilityProfileRevisions                   VehicleSignalCapabilityProfileRevision[]
+  vsiProviderCatalogAxes                                    VsiProviderCatalogAxis[]
   vsiProfileLifecycleOutbox                                 VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
@@ -3050,6 +3051,7 @@ model Vehicle {
   vehicleProviderSourceObservationCounters VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles          VehicleSignalCapabilityProfile[]
   vehicleSignalCapabilityProfileRevisions  VehicleSignalCapabilityProfileRevision[]
+  vsiProviderCatalogAxes                   VsiProviderCatalogAxis[]
   vsiProfileLifecycleOutbox                VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
@@ -4566,6 +4568,51 @@ model VehicleSignalCapabilityProfileRevision {
   @@index([organizationId, vehicleId, providerSourceLinkId, recordedAt(sort: Desc)], map: "vehicle_signal_capability_profile_revisions_scope_recorded_idx")
   @@index([organizationId, vehicleId, providerSourceLinkId, evaluatedAt(sort: Desc)], map: "vehicle_signal_capability_profile_revisions_scope_evaluated_idx")
   @@map("vehicle_signal_capability_profile_revisions")
+}
+
+enum VsiProviderCatalogAxisDeclaredStatus {
+  LISTED
+  NOT_LISTED
+  UNKNOWN
+}
+
+enum VsiProviderCatalogSnapshotCompleteness {
+  COMPLETE_PROVIDER_CATALOG
+  INCOMPLETE_PROVIDER_RESPONSE
+  PROVIDER_ERROR
+}
+
+enum VsiProviderCatalogAxisProvenance {
+  DIMO_AVAILABLE_SIGNALS_PREFLIGHT
+}
+
+/// VSI P3A — per-link provider catalog axis evidence (availableSignals preflight).
+model VsiProviderCatalogAxis {
+  id                                String                              @id @default(uuid())
+  organizationId                    String                              @map("organization_id")
+  vehicleId                         String                              @map("vehicle_id")
+  providerSourceLinkId              String                              @map("provider_source_link_id")
+  providerIdentity                  String                              @map("provider_identity")
+  providerNativeSignalName          String                              @map("provider_native_signal_name")
+  canonicalSignalKey                String?                             @map("canonical_signal_key")
+  declaredCatalogStatus             VsiProviderCatalogAxisDeclaredStatus  @map("declared_catalog_status")
+  catalogSnapshotCompleteness       VsiProviderCatalogSnapshotCompleteness @map("catalog_snapshot_completeness")
+  provenance                        VsiProviderCatalogAxisProvenance      @map("provenance")
+  contractVersion                   String                              @map("contract_version")
+  checkedAt                         DateTime                            @map("checked_at") @db.Timestamptz(3)
+  verifiedModality                  String?                             @map("verified_modality")
+  telemetrySourceFamily             String?                             @map("telemetry_source_family")
+  connectionIdentityContractVersion String?                             @map("connection_identity_contract_version")
+  metadataJson                      Json                                @default("{}") @map("metadata_json")
+  createdAt                         DateTime                            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                         DateTime                            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName], map: "vsi_provider_catalog_axes_scope_native_key")
+  @@index([organizationId, vehicleId, providerSourceLinkId, checkedAt(sort: Desc)], map: "vsi_provider_catalog_axes_scope_checked_idx")
+  @@map("vsi_provider_catalog_axes")
 }
 
 enum VsiProfileLifecycleOutboxEventType {

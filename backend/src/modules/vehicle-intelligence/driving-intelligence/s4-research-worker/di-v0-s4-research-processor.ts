@@ -34,6 +34,7 @@ export type DiV0S4ResearchProcessInput = {
   shadowByBucket: ReadonlyMap<string, DiV0S4ResearchShadowBucketEvidence>;
   osmProvider: DiV0S4ResearchOsmProvider;
   pipelineDeadlineMs?: number;
+  runDirectionAwareEmissionP1Shadow?: boolean;
 };
 
 export type DiV0S4ResearchPersistableRun =
@@ -157,6 +158,7 @@ export async function processDiV0S4ResearchRoadMatchingV2(
       buckets,
       roadContext,
       config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+      runDirectionAwareEmissionP1Shadow: input.runDirectionAwareEmissionP1Shadow === true,
     },
     deadlineMs,
   );
@@ -169,6 +171,7 @@ export async function processDiV0S4ResearchRoadMatchingV2(
     osmSnapshotSha256: osm.osmSnapshotSha256,
     summaryJson: {
       ...pipeline.summary,
+      algorithmIds: pipeline.algorithmIds,
       geometryProjectionId: S4_RESEARCH_GEOMETRY_PROJECTION_ID,
       researchBundleVersion: DI_V0_S4_RESEARCH_BUNDLE_VERSION_V2,
       combinedInputIdentity: input.combinedInputIdentity,
