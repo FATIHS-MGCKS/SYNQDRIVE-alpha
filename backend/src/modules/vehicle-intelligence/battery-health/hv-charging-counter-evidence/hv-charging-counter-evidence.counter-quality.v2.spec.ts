@@ -158,6 +158,40 @@ describe('evaluateHvChargingCounterQualityV2', () => {
     expect(quality.boundaryClassifications).toContain('IN_SESSION_MONOTONIC');
   });
 
+  it('handles temporal edge cases: empty rows, out-of-window rows, duplicate timestamps', () => {
+    const rows = [
+      row('2026-10-12T13:05:00Z', 1),
+      row('2026-10-12T13:06:00Z', 2),
+      row('2026-10-12T13:06:00Z', 3),
+      row('2026-10-12T13:20:00Z', 9),
+    ];
+    const quality = evaluateHvChargingCounterQualityV2({
+      sessionStartInclusive: '2026-10-12T13:06:00Z',
+      sessionEndInclusive: '2026-10-12T13:20:00Z',
+      queryFromInclusive: '2026-10-12T13:06:00Z',
+      queryToInclusive: '2026-10-12T13:20:00Z',
+      rows,
+    });
+    expect(quality.returnedRowNumericCoverage.returnedRowCount).toBe(4);
+    expect(quality.temporalCoverage.observedMinuteGridSlots).toBe(2);
+    expect(quality.temporalCoverage.temporalCoverageRatio).toBeLessThanOrEqual(1);
+    expect(quality.temporalCoverage.longestTemporalGapMinutes).toBe(14);
+  });
+
+  it('returns neutral temporal metrics for empty provider responses', () => {
+    const quality = evaluateHvChargingCounterQualityV2({
+      sessionStartInclusive: '2026-10-12T13:06:55.314Z',
+      sessionEndInclusive: '2026-10-12T15:10:30.313Z',
+      queryFromInclusive: '2026-10-12T13:06:55.314Z',
+      queryToInclusive: '2026-10-12T15:10:30.313Z',
+      rows: [],
+    });
+    expect(quality.temporalCoverage.expectedMinuteGridSlots).toBe(124);
+    expect(quality.temporalCoverage.observedMinuteGridSlots).toBe(0);
+    expect(quality.temporalCoverage.missingMinuteGridSlots).toBe(124);
+    expect(quality.energyDerivationQuality).toBe('UNRELIABLE');
+  });
+
   it('replays sanitized P1D Tesla pilot sparse fixture (115 rows, 9 missing slots)', () => {
     const fixture = JSON.parse(
       readFileSync(

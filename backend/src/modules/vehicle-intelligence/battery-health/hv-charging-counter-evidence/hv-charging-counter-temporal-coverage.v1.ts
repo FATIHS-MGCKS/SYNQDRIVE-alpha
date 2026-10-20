@@ -86,13 +86,17 @@ export function analyzeHvChargingCounterTemporalCoverageV1(input: {
     (a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
   );
 
-  let observedMinuteGridSlots = 0;
+  const inWindowMs: number[] = [];
+  const inWindowTimestampSet = new Set<number>();
   for (const row of sorted) {
     const ms = parseMs(row.timestamp);
     if (ms == null) continue;
     if (ms < queryFromMs || ms > queryToMs) continue;
-    observedMinuteGridSlots++;
+    inWindowMs.push(ms);
+    inWindowTimestampSet.add(ms);
   }
+
+  const observedMinuteGridSlots = inWindowTimestampSet.size;
 
   const expectedMinuteGridSlots = expectedProviderMinuteSlots(
     queryFromMs,
@@ -106,9 +110,7 @@ export function analyzeHvChargingCounterTemporalCoverageV1(input: {
   let missingMinuteGapsBetweenReturnedRows = 0;
   let longestTemporalGapMinutes = 0;
   let prevMs: number | null = null;
-  for (const row of sorted) {
-    const ms = parseMs(row.timestamp);
-    if (ms == null) continue;
+  for (const ms of inWindowMs) {
     if (prevMs != null && ms > prevMs) {
       const gapMinutes = Math.round((ms - prevMs) / 60_000);
       if (gapMinutes > 1) {
@@ -119,15 +121,18 @@ export function analyzeHvChargingCounterTemporalCoverageV1(input: {
     prevMs = ms;
   }
 
+  const rawRatio =
+    expectedMinuteGridSlots > 0
+      ? observedMinuteGridSlots / expectedMinuteGridSlots
+      : null;
+
   return {
     schemaVersion: HV_R22_COUNTER_TEMPORAL_COVERAGE_SCHEMA_V1,
     expectedMinuteGridSlots,
     observedMinuteGridSlots,
     missingMinuteGridSlots,
     temporalCoverageRatio:
-      expectedMinuteGridSlots > 0
-        ? observedMinuteGridSlots / expectedMinuteGridSlots
-        : null,
+      rawRatio == null ? null : Math.min(1, rawRatio),
     longestTemporalGapMinutes,
     missingMinuteGapsBetweenReturnedRows,
   };
