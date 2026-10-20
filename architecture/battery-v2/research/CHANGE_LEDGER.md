@@ -6,6 +6,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-20 — HV R22 P1D temporal counter quality hardening (v2 contract)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `hv-r22-counter-quality-v1` `numericCoverage` counted returned provider rows only; `maxMonotonicRunLength` ignored multi-minute gaps; production pilot could show 115/115 numeric while nine query-window minute slots were absent |
+| **OBSERVATION** | P1C forensics: session-bound Tesla pilot batch `f2469a6d…` — 115 sparse numeric rows, nine missing minute-grid slots, 10-minute tail gap, unchanged `5.919999867677689` kWh first/last delta; `RELIABLE_FIRST_LAST_IN_SESSION` still valid on v1 boundary rules |
+| **CHANGE** | Add `hv-r22-counter-quality-v2` persisted JSON: `returnedRowNumericCoverage`, `temporalCoverage` (`hv-r22-counter-temporal-v1`), `monotonicityGapAware`, `temporalCompletenessQuality`; capture path writes v2; v1 evaluator unchanged for historical rows |
+| **WHY** | Separate returned-row numeric density from minute-grid temporal completeness without silently redefining v1 fields |
+| **VALIDATION** | `hv-charging-counter-evidence.counter-quality.v2.spec.ts`; sanitized `fixtures/p1d-research/p1d-tesla-pilot-sparse-115.json`; existing P1B replay still targets v1 |
+| **NON_EFFECTS** | No HV-H4 canonical `energy_added_kwh` mutation; no deploy/pilot/provider calls in P1D workstream |
+| **REMAINING_GAPS** | Policy for downgrading `RELIABLE_FIRST_LAST_IN_SESSION` when `temporalCompletenessQuality` is partial — deferred; independent dimension only in P1D |
+| **DECISION_STATUS** | PROPOSED (awaiting owner PR/deploy) |
+
+---
+
 ## 2026-10-18 — HV R22 P1 Nest DI boot hotfix (HvChargingCounterEvidenceModule ↔ Dimo cycle)
 
 | Field | Value |

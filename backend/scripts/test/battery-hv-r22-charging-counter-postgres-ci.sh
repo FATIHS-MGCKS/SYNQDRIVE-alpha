@@ -34,6 +34,7 @@ npx jest \
   hv-charging-counter-evidence.pilot-scope.v1.spec \
   hv-charging-counter-evidence.p1b-research-replay.spec \
   hv-charging-counter-boundary-forensics.v1.spec \
+  hv-charging-counter-evidence.counter-quality.v2.spec \
   hv-charging-counter-evidence.pilot-admission.v1.spec \
   --runInBand
 

@@ -16,7 +16,7 @@ export interface HvChargingCounterDimoIntervalRowV1 {
   addedKwhMax?: number | null;
 }
 
-import type { HvChargingCounterQualityAssessmentV1 } from './hv-charging-counter-evidence.counter-quality.v1';
+import type { HvChargingCounterQualityAssessmentV2 } from './hv-charging-counter-evidence.counter-quality.v2';
 
 export interface HvChargingCounterCaptureResultV1 {
   skipped: boolean;
@@ -42,5 +42,5 @@ export interface HvChargingCounterCaptureResultV1 {
   observationSetFingerprint?: string;
   bucketsWritten?: number;
   revisionsCreated?: number;
-  counterQuality?: HvChargingCounterQualityAssessmentV1;
+  counterQuality?: HvChargingCounterQualityAssessmentV2;
 }
