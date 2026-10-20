@@ -3999,3 +3999,19 @@ Append-only scientific record. Newest entries first.
 | **REMAINING_GAPS** | Combined interaction with deploy restarts (#1445) |
 | **EVIDENCE** | `BAT-V2-EVID-PR-1383-001`, `BAT-V2-EVID-ARCH-LIVENESS-001`, `BAT-V2-EVID-PROD-61715ECD-001` |
 | **AFFECTED_GRAPH** | `BAT-V2-DEC-1383-001`, `BAT-V2-JOB-LV-SESSION-OPEN-001`, `BAT-V2-LIVE-SESSION-RECON-001`, `BAT-V2-INV-TRIP-LIFECYCLE-ISO-001` |
+
+---
+
+## CL-2026-10-19 — HV R22 P0 Tesla pilot safety (allowlist + capability probe prep)
+
+| Field | Content |
+|-------|---------|
+| **DECISION** | `BAT-V2-DEC-R22-P0-ALLOWLIST-001` |
+| **DECISION_STATUS** | `PROPOSED` (local implementation; not deployed) |
+| **BEFORE** | R22 capture gated only by global `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED` |
+| **CHANGE** | Fail-closed `BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST`; owner-gated capability probe script + evaluator; blast-radius audit |
+| **WHY** | Limit blast radius to Tesla 186946; separate capability proof from capture activation |
+| **EXPECTED_EFFECT** | Capture ON without allowlist → zero provider calls; invalid allowlist → fail-closed |
+| **VALIDATION** | `hv-charging-counter-evidence.*.spec.ts`; `npm run build`; prisma validate |
+| **NON_EFFECTS** | HV H1–H4 recharge reconcile unchanged; no production flag changes |
+| **EVIDENCE** | `docs/runbooks/hv-r22-tesla-capability-probe.md`, `docs/audits/battery-v2-hv-r22-pilot-p0-blast-radius-2026-10-19.md` |
