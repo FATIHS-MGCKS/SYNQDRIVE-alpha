@@ -370,6 +370,41 @@ describeLive('PhysicalDeviceInventory P1B.1 (PostgreSQL)', () => {
     });
   });
 
+  it('rejects install idempotency replay when assignment is closed (effectiveTo set)', async () => {
+    const serial = `R1-CLOSED-${randomUUID().slice(0, 8)}`;
+    const org = await createOrg();
+    const vehicleId = await createActiveVehicle(org);
+    await attachActiveR1DimoProviderLink(org, vehicleId, serial);
+
+    const device = await intakeR1(serial, org);
+    await service.verifyIdentity(
+      device.id,
+      {
+        attestationKind: PhysicalDeviceIdentityAttestationKind.PROVIDER_DIMO_SERIAL_RECONCILIATION,
+        providerReconciliationVehicleId: vehicleId,
+        reviewerUserId: 'master-admin',
+      },
+      'master-admin',
+    );
+
+    const key = `idem-closed-${randomUUID()}`;
+    const dto = { vehicleId, installConfirmation: true as const, idempotencyKey: key };
+    await service.installOnVehicle(device.id, dto, 'master-admin');
+
+    await prisma.physicalDeviceAssignment.updateMany({
+      where: { idempotencyKey: key },
+      data: { effectiveTo: new Date() },
+    });
+    await prisma.physicalDevice.update({
+      where: { id: device.id },
+      data: { status: 'AVAILABLE' },
+    });
+
+    await expect(service.installOnVehicle(device.id, dto, 'master-admin')).rejects.toMatchObject({
+      response: { code: PHYSICAL_DEVICE_IDEMPOTENCY_PAYLOAD_MISMATCH },
+    });
+  });
+
   it('rejects install idempotency key reused on a different physical device', async () => {
     const serialA = `R1-IDEM-A-${randomUUID().slice(0, 8)}`;
     const serialB = `R1-IDEM-B-${randomUUID().slice(0, 8)}`;

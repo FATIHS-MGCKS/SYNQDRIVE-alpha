@@ -1,6 +1,14 @@
 import { UserPlatformRole, UserStatus } from '@prisma/client';
 import { resolveAuthorizedMasterAdminActor } from './pdi-p1b7-manual-intake-operator.lib';
 import {
+  PhysicalDeviceAssignmentKind,
+  PhysicalDeviceInventoryStatus,
+} from '@prisma/client';
+import {
+  assessInstallIdempotencyReplay,
+  buildInstallPayloadFingerprint,
+} from './physical-device-install.fingerprint';
+import {
   assertPdiP1b7InstallExecuteGates,
   buildPdiP1b7InstallDto,
   PDI_P1B7_AUTHORIZED_INSTALL,
@@ -62,6 +70,30 @@ describe('pdi-p1b7-install-operator.lib', () => {
       confirmFlag: true,
       operatorAttestation: 'Owner authorized PDI P1B.7 Gate D',
     });
+  });
+
+  it('rejects replay when assignment is not active (effectiveTo set)', () => {
+    const dto = buildPdiP1b7InstallDto();
+    const fingerprint = buildInstallPayloadFingerprint(
+      PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+      dto,
+    );
+    const verdict = assessInstallIdempotencyReplay({
+      requestedDeviceId: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+      requestedVehicleId: PDI_P1B7_AUTHORIZED_INSTALL.vehicleId,
+      expectedPayloadFingerprint: fingerprint,
+      assignment: {
+        id: 'a1',
+        physicalDeviceId: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+        assignmentKind: PhysicalDeviceAssignmentKind.INSTALL,
+        vehicleId: PDI_P1B7_AUTHORIZED_INSTALL.vehicleId,
+        effectiveTo: new Date(),
+        metadataJson: { payloadFingerprint: fingerprint },
+      },
+      deviceStatus: PhysicalDeviceInventoryStatus.INSTALLED,
+      activeInstallAssignmentIdsForDevice: [],
+    });
+    expect(verdict).toEqual({ valid: false, reason: 'IDEMPOTENCY_ASSIGNMENT_NOT_ACTIVE' });
   });
 
   it('rejects non-master-admin actor resolution', async () => {

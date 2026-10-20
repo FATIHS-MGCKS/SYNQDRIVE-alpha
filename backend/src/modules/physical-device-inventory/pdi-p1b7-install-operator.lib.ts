@@ -14,7 +14,12 @@ import {
 import type { AuditService } from '@modules/activity-log/audit.service';
 import type { PhysicalDeviceListItemDto } from './physical-device-inventory.types';
 import { InstallPhysicalDeviceDto } from './dto/install-physical-device.dto';
+import {
+  assessInstallIdempotencyReplay,
+  buildInstallPayloadFingerprint,
+} from './physical-device-install.fingerprint';
 import { isPhysicalDeviceInventoryP1b1WritesEnabled } from './physical-device-inventory.config';
+import type { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
 import { PDI_P1B7_AUTHORIZED_IDENTITY_VERIFY } from './pdi-p1b7-identity-verify-operator.lib';
 import {
   resolveAuthorizedMasterAdminActor,
@@ -84,6 +89,11 @@ export function buildPdiP1b7InstallDto(): InstallPhysicalDeviceDto {
   return dto;
 }
 
+export function buildAuthorizedPdiP1b7InstallPayloadFingerprint(): string {
+  const dto = buildPdiP1b7InstallDto();
+  return buildInstallPayloadFingerprint(PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId, dto);
+}
+
 export async function validatePdiP1b7InstallDto(dto: InstallPhysicalDeviceDto): Promise<void> {
   const errors = await validate(dto);
   if (errors.length > 0) {
@@ -143,6 +153,7 @@ export async function runPdiP1b7InstallPreflight(
           assignmentKind: true,
           idempotencyKey: true,
           physicalDeviceId: true,
+          effectiveTo: true,
         },
       },
     },
@@ -195,20 +206,27 @@ export async function runPdiP1b7InstallPreflight(
     const priorInstallByKey = await prisma.physicalDeviceAssignment.findUnique({
       where: { idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey },
       select: {
+        id: true,
         physicalDeviceId: true,
         assignmentKind: true,
         vehicleId: true,
+        effectiveTo: true,
+        metadataJson: true,
       },
     });
     if (priorInstallByKey) {
-      if (priorInstallByKey.physicalDeviceId !== device.id) {
-        blockingReasons.push('IDEMPOTENCY_KEY_DEVICE_MISMATCH');
-      } else if (priorInstallByKey.assignmentKind !== PhysicalDeviceAssignmentKind.INSTALL) {
-        blockingReasons.push('IDEMPOTENCY_KEY_ASSIGNMENT_KIND_MISMATCH');
-      } else if (priorInstallByKey.vehicleId !== PDI_P1B7_AUTHORIZED_INSTALL.vehicleId) {
-        blockingReasons.push('IDEMPOTENCY_KEY_VEHICLE_MISMATCH');
-      } else {
+      const replayAssessment = assessInstallIdempotencyReplay({
+        requestedDeviceId: device.id,
+        requestedVehicleId: PDI_P1B7_AUTHORIZED_INSTALL.vehicleId,
+        expectedPayloadFingerprint: buildAuthorizedPdiP1b7InstallPayloadFingerprint(),
+        assignment: priorInstallByKey,
+        deviceStatus: device.status,
+        activeInstallAssignmentIdsForDevice: activeInstallAssignments.map((a) => a.id),
+      });
+      if (replayAssessment.valid) {
         idempotentReplayReady = true;
+      } else {
+        blockingReasons.push(replayAssessment.reason);
       }
     }
 
@@ -229,10 +247,8 @@ export async function runPdiP1b7InstallPreflight(
       if (activeVehicleAssignments.length > 0 && activeInstallAssignments.length === 0) {
         blockingReasons.push('ACTIVE_VEHICLE_ASSIGNMENT_WITHOUT_INSTALL');
       }
-    } else if (device.status === PhysicalDeviceInventoryStatus.INSTALLED) {
-      // Expected replay state — do not treat as blocking.
-    } else if (device.status !== PhysicalDeviceInventoryStatus.AVAILABLE) {
-      blockingReasons.push(`STATUS_${device.status}`);
+    } else if (device.status !== PhysicalDeviceInventoryStatus.INSTALLED) {
+      blockingReasons.push('IDEMPOTENCY_DEVICE_STATUS_INCONSISTENT');
     }
   }
 
@@ -353,6 +369,54 @@ export async function runPdiP1b7InstallPreflight(
     gateCIdentityAuditPresent,
     idempotentReplayReady,
   };
+}
+
+export type PdiP1b7InstallDomainCommitReconciliation =
+  | {
+      status: 'COMMITTED';
+      idempotentReplay: boolean;
+      result: PhysicalDeviceListItemDto;
+    }
+  | { status: 'NOT_COMMITTED' }
+  | { status: 'RECONCILIATION_REQUIRED'; reasons: string[] };
+
+/**
+ * Read-only check after an installOnVehicle failure — never performs compensating writes.
+ */
+export async function reconcilePdiP1b7InstallDomainCommit(
+  prisma: PrismaClient,
+  inventory: PhysicalDeviceInventoryService,
+  actorUserId: string,
+): Promise<PdiP1b7InstallDomainCommitReconciliation> {
+  const dto = buildPdiP1b7InstallDto();
+  const deviceId = PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId;
+  const preflight = await runPdiP1b7InstallPreflight(prisma);
+  if (preflight.idempotentReplayReady) {
+    try {
+      const result = await inventory.installOnVehicle(deviceId, dto, actorUserId);
+      return { status: 'COMMITTED', idempotentReplay: true, result };
+    } catch {
+      return {
+        status: 'RECONCILIATION_REQUIRED',
+        reasons: ['IDEMPOTENT_REPLAY_PREFLIGHT_OK_BUT_INSTALL_FAILED'],
+      };
+    }
+  }
+
+  const assignment = await prisma.physicalDeviceAssignment.findUnique({
+    where: { idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey },
+    select: { id: true },
+  });
+  if (assignment) {
+    return {
+      status: 'RECONCILIATION_REQUIRED',
+      reasons: preflight.blockingReasons.length
+        ? preflight.blockingReasons
+        : ['INSTALL_IDEMPOTENCY_ROW_PRESENT_BUT_NOT_VALID_REPLAY'],
+    };
+  }
+
+  return { status: 'NOT_COMMITTED' };
 }
 
 /**

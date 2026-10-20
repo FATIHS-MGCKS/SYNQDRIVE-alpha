@@ -60,6 +60,9 @@ async function main(): Promise<void> {
     });
 
     if (!outcome.ok) {
+      if (outcome.stdout) {
+        console.log(outcome.stdout);
+      }
       console.error(outcome.stderr);
       process.exitCode = outcome.exitCode;
       return;

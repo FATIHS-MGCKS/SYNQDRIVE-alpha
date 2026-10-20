@@ -15,10 +15,7 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { MASTER_ADMIN_SMOKE_EMAIL } from '@modules/master-admin-smoke-lifecycle/master-admin-smoke-lifecycle.constants';
-import {
-  PDI_P1B7_AUTHORIZED_INSTALL,
-  recordPdiP1b7InstallActivityAudit,
-} from './pdi-p1b7-install-operator.lib';
+import { PDI_P1B7_AUTHORIZED_INSTALL } from './pdi-p1b7-install-operator.lib';
 import {
   createPdiP1b7InstallOperatorApplicationContext,
   runPdiP1b7InstallOperator,
@@ -30,9 +27,12 @@ import {
   createInactiveSmokeStyleMasterAdmin,
   createOperatorTestMasterAdmin,
   resetPdiP1b7GateDInstallState,
+  seedAuthorizedGateDIdempotencyAssignment,
   seedPdiP1b7InstallOperatorFixtures,
   seedPdiP1b7OperatorPreflightIdentity,
 } from './pdi-p1b7-operator-cli.fixture';
+import { buildInstallPayloadFingerprint } from './physical-device-install.fingerprint';
+import { buildPdiP1b7InstallDto } from './pdi-p1b7-install-operator.lib';
 import { PHYSICAL_DEVICE_IDEMPOTENCY_PAYLOAD_MISMATCH } from './physical-device-inventory.errors';
 
 const LIVE =
@@ -543,33 +543,234 @@ const ATTESTATION = 'Owner authorized PDI P1B.7 Gate D install test';
     }
   });
 
-  it('reports partial success when activity audit fails after domain commit', async () => {
-    const service = new PhysicalDeviceInventoryService(prisma as unknown as PrismaService);
-    const audit = new AuditService(prisma as unknown as PrismaService);
-    const recordSpy = jest.spyOn(audit, 'record').mockResolvedValue(null);
-    const device = await service.getDeviceDetail(PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId);
-    const activityLogId = await recordPdiP1b7InstallActivityAudit(audit, {
-      actorUserId: masterAdmin.id,
-      operatorAttestation: ATTESTATION,
-      result: {
-        id: device.id,
-        internalInventoryNumber: device.internalInventoryNumber,
-        manufacturer: device.manufacturer,
-        modelCode: device.modelCode,
-        serialNumberMasked: device.serialNumberMasked,
-        imeiMasked: device.imeiMasked,
-        ownerOrganizationId: device.ownerOrganizationId,
-        warehouseLocation: device.warehouseLocation,
-        status: device.status,
-        identityStatus: device.identityStatus,
-        recordedAt: device.recordedAt,
-        currentVehicleId: device.currentVehicleId,
-        installEligible: device.installEligible,
-      },
-      executeMode: true,
-      idempotentReplay: false,
+  describe('idempotent replay hardening', () => {
+    it('blocks when idempotency assignment has effectiveTo set', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id, {
+        effectiveTo: new Date(),
+        deviceStatus: PhysicalDeviceInventoryStatus.AVAILABLE,
+      });
+      const outcome = await runOperator({
+        execute: false,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      });
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.stderr).toMatch(/IDEMPOTENCY_ASSIGNMENT_NOT_ACTIVE|blocking reasons/i);
+      }
     });
-    expect(activityLogId).toBeNull();
-    recordSpy.mockRestore();
+
+    it('blocks when device status is AVAILABLE but idempotency row exists', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id, {
+        deviceStatus: PhysicalDeviceInventoryStatus.AVAILABLE,
+      });
+      const outcome = await runOperator({
+        execute: false,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      });
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.stderr).toMatch(
+          /IDEMPOTENCY_DEVICE_STATUS_INCONSISTENT|blocking reasons/i,
+        );
+      }
+    });
+
+    it('blocks when payload fingerprint is missing on idempotency assignment', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id, {
+        omitFingerprint: true,
+      });
+      const outcome = await runOperator({
+        execute: false,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      });
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.stderr).toMatch(/IDEMPOTENCY_FINGERPRINT_MISSING|blocking reasons/i);
+      }
+    });
+
+    it('blocks when payload fingerprint does not match authorized install DTO', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id, {
+        payloadFingerprint: 'deadbeef',
+      });
+      const outcome = await runOperator({
+        execute: false,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      });
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.stderr).toMatch(/IDEMPOTENCY_FINGERPRINT_MISMATCH|blocking reasons/i);
+      }
+    });
+
+    it('blocks when idempotency key is bound to another device', async () => {
+      const otherDeviceId = randomUUID();
+      await prisma.physicalDevice.create({
+        data: {
+          id: otherDeviceId,
+          internalInventoryNumber: `PDI-FKEY-${otherDeviceId.slice(0, 8)}`,
+          manufacturer: 'Ruptela',
+          modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
+          serialNumber: `R1-FKEY-${randomUUID().slice(0, 8)}`,
+          ownerOrganizationId: PDI_P1B7_AUTHORIZED_INSTALL.ownerOrganizationId,
+          warehouseLocation: 'WH',
+          status: PhysicalDeviceInventoryStatus.INSTALLED,
+          identityStatus: PhysicalDeviceIdentityStatus.VERIFIED,
+          recordedAt: new Date(),
+          intakeSource: 'MANUAL_MASTER_ADMIN',
+        },
+      });
+      const dto = buildPdiP1b7InstallDto();
+      const fp = buildInstallPayloadFingerprint(
+        PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+        dto,
+      );
+      await prisma.physicalDeviceAssignment.create({
+        data: {
+          physicalDeviceId: otherDeviceId,
+          organizationId: PDI_P1B7_AUTHORIZED_INSTALL.ownerOrganizationId,
+          vehicleId: PDI_P1B7_AUTHORIZED_INSTALL.vehicleId,
+          assignmentKind: PhysicalDeviceAssignmentKind.INSTALL,
+          effectiveFrom: new Date(),
+          idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey,
+          actorUserId: masterAdmin.id,
+          metadataJson: { payloadFingerprint: fp },
+        },
+      });
+
+      const outcome = await runOperator({
+        execute: false,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      });
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.stderr).toMatch(/IDEMPOTENCY_KEY_DEVICE_MISMATCH|blocking reasons/i);
+      }
+
+      await prisma.physicalDeviceAssignment.deleteMany({ where: { physicalDeviceId: otherDeviceId } });
+      await prisma.physicalDevice.deleteMany({ where: { id: otherDeviceId } });
+    });
+
+    it('blocks when idempotency assignment targets a different vehicle', async () => {
+      const otherVehicleId = randomUUID();
+      await prisma.vehicle.create({
+        data: {
+          id: otherVehicleId,
+          organizationId: PDI_P1B7_AUTHORIZED_INSTALL.ownerOrganizationId,
+          make: 'VW',
+          model: 'Other',
+          year: 2022,
+          fuelType: 'GASOLINE',
+          registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+        },
+      });
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id, {
+        vehicleId: otherVehicleId,
+      });
+      const outcome = await runOperator({
+        execute: false,
+        confirmFlag: false,
+        actorEmail: masterAdmin.email,
+        operatorAttestation: ATTESTATION,
+      });
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.stderr).toMatch(/IDEMPOTENCY_KEY_VEHICLE_MISMATCH|blocking reasons/i);
+      }
+      await prisma.vehicle.deleteMany({ where: { id: otherVehicleId } });
+    });
+
+    it('allows valid replay execute without duplicate INSTALL domain audit', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id);
+      const auditsBefore = await prisma.physicalDeviceInventoryAuditEvent.count({
+        where: {
+          physicalDeviceId: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+          eventKind: PhysicalDeviceInventoryAuditEventKind.INSTALL,
+        },
+      });
+      const outcome = await runOperator(
+        {
+          execute: true,
+          confirmFlag: true,
+          actorEmail: masterAdmin.email,
+          operatorAttestation: ATTESTATION,
+        },
+        { PDI_P1B7_INSTALL_OPERATOR_ENABLED: 'true' },
+      );
+      expect(outcome.ok).toBe(true);
+      if (outcome.ok) {
+        expect(outcome.exitCode).toBe(0);
+        expect(outcome.stdout).toMatch(/"idempotentReplay": true/);
+        expect(outcome.stdout).toMatch(/"domainCommitStatus": "COMMITTED"/);
+      }
+      const auditsAfter = await prisma.physicalDeviceInventoryAuditEvent.count({
+        where: {
+          physicalDeviceId: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+          eventKind: PhysicalDeviceInventoryAuditEventKind.INSTALL,
+        },
+      });
+      expect(auditsAfter).toBe(auditsBefore);
+    });
+  });
+
+  describe('activity audit after domain commit', () => {
+    it('returns exit 3 when audit.record returns null after successful install', async () => {
+      const auditSvc = app.get(AuditService);
+      const recordSpy = jest.spyOn(auditSvc, 'record').mockResolvedValue(null);
+      const outcome = await runOperator(
+        {
+          execute: true,
+          confirmFlag: true,
+          actorEmail: masterAdmin.email,
+          operatorAttestation: ATTESTATION,
+        },
+        { PDI_P1B7_INSTALL_OPERATOR_ENABLED: 'true' },
+      );
+      recordSpy.mockRestore();
+      expect(outcome.ok).toBe(true);
+      if (outcome.ok) {
+        expect(outcome.exitCode).toBe(3);
+        expect(outcome.stdout).toMatch(/"domainCommitStatus": "COMMITTED"/);
+        expect(outcome.stdout).toMatch(/"recorded": false/);
+      }
+      const device = await prisma.physicalDevice.findUniqueOrThrow({
+        where: { id: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId },
+      });
+      expect(device.status).toBe(PhysicalDeviceInventoryStatus.INSTALLED);
+    });
+
+    it('returns exit 3 when audit.record throws after successful install', async () => {
+      await resetPdiP1b7GateDInstallState(prisma);
+      const auditSvc = app.get(AuditService);
+      const recordSpy = jest
+        .spyOn(auditSvc, 'record')
+        .mockRejectedValue(new Error('activity audit transport failure'));
+      const outcome = await runOperator(
+        {
+          execute: true,
+          confirmFlag: true,
+          actorEmail: masterAdmin.email,
+          operatorAttestation: ATTESTATION,
+        },
+        { PDI_P1B7_INSTALL_OPERATOR_ENABLED: 'true' },
+      );
+      recordSpy.mockRestore();
+      expect(outcome.ok).toBe(true);
+      if (outcome.ok) {
+        expect(outcome.exitCode).toBe(3);
+        expect(outcome.stdout).toMatch(/"domainCommitStatus": "COMMITTED"/);
+        expect(outcome.stdout).toMatch(/activity audit transport failure/);
+      }
+    });
   });
 });

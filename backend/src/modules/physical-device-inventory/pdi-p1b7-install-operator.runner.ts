@@ -2,6 +2,7 @@ import type { INestApplicationContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { NestFactory } from '@nestjs/core';
 import type { PrismaClient } from '@prisma/client';
+import type { PhysicalDeviceListItemDto } from './physical-device-inventory.types';
 import { AppModule } from '../../app.module';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -10,6 +11,7 @@ import {
   assertPdiP1b7InstallExecuteGates,
   buildPdiP1b7InstallDto,
   PDI_P1B7_AUTHORIZED_INSTALL,
+  reconcilePdiP1b7InstallDomainCommit,
   recordPdiP1b7InstallActivityAudit,
   resolveAuthorizedMasterAdminActor,
   runPdiP1b7InstallPreflight,
@@ -25,6 +27,12 @@ export type PdiP1b7InstallOperatorRunInput = {
   operatorAttestation?: string;
 };
 
+export type PdiP1b7InstallDomainCommitStatus =
+  | 'NOT_ATTEMPTED'
+  | 'COMMITTED'
+  | 'NOT_COMMITTED'
+  | 'RECONCILIATION_REQUIRED';
+
 export type PdiP1b7InstallOperatorRunSuccess = {
   ok: true;
   exitCode: number;
@@ -36,6 +44,8 @@ export type PdiP1b7InstallOperatorRunFailure = {
   ok: false;
   exitCode: number;
   stderr: string;
+  report?: Record<string, unknown>;
+  stdout?: string;
 };
 
 export type PdiP1b7InstallOperatorRunOutcome =
@@ -61,6 +71,33 @@ export async function createPdiP1b7InstallOperatorApplicationContext(
   });
 }
 
+function buildExecuteReportBase(
+  report: Record<string, unknown>,
+  input: {
+    domainCommitStatus: PdiP1b7InstallDomainCommitStatus;
+    idempotentReplay: boolean;
+    result?: PhysicalDeviceListItemDto;
+    activityLogId: string | null;
+    activityAuditError?: string;
+  },
+): Record<string, unknown> {
+  return {
+    ...report,
+    domainCommitStatus: input.domainCommitStatus,
+    idempotentReplay: input.idempotentReplay,
+    result: input.result ? toSafeOperatorResultSummary(input.result) : undefined,
+    activityAudit: {
+      recorded: input.activityLogId != null,
+      activityLogId: input.activityLogId,
+      error: input.activityAuditError,
+      note:
+        input.domainCommitStatus === 'COMMITTED' && input.activityLogId == null
+          ? 'Install committed; Activity audit record failed (same fire-and-forget contract as HTTP controller — verify activity_logs manually)'
+          : undefined,
+    },
+  };
+}
+
 /**
  * Same control flow as scripts/ops/pdi-p1b7-install-operator.ts (Nest application context).
  */
@@ -79,11 +116,11 @@ export async function runPdiP1b7InstallOperator(
     return { ok: false, exitCode: 1, stderr: message };
   }
 
-  try {
-    const prisma = app.get(PrismaService);
-    const inventory = app.get(PhysicalDeviceInventoryService);
-    const audit = app.get(AuditService);
+  const prisma = app.get(PrismaService);
+  const inventory = app.get(PhysicalDeviceInventoryService);
+  const audit = app.get(AuditService);
 
+  try {
     const actor = await resolveAuthorizedMasterAdminActor(prisma, {
       actorUserId: input.actorUserId,
       actorEmail: input.actorEmail,
@@ -122,48 +159,102 @@ export async function runPdiP1b7InstallOperator(
           ok: false,
           exitCode: 2,
           stderr: `Dry-run preflight blocking reasons: ${preflight.blockingReasons.join(', ')}`,
+          report,
+          stdout,
         };
       }
       return { ok: true, exitCode: 0, report, stdout };
     }
 
     if (!preflight.ok) {
+      const stdout = JSON.stringify({ ...report, domainCommitStatus: 'NOT_ATTEMPTED' }, null, 2);
       return {
         ok: false,
         exitCode: 1,
         stderr: `Preflight failed: ${preflight.blockingReasons.join(', ')}`,
+        report,
+        stdout,
       };
     }
 
-    const idempotentReplay = preflight.idempotentReplayReady;
-    const result = await inventory.installOnVehicle(
-      PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
-      dto,
-      actor.id,
-    );
-    const activityLogId = await recordPdiP1b7InstallActivityAudit(audit, {
-      actorUserId: actor.id,
-      operatorAttestation: input.operatorAttestation!,
-      result,
-      executeMode: true,
-      idempotentReplay,
-    });
+    let idempotentReplay = preflight.idempotentReplayReady;
+    let domainCommitStatus: PdiP1b7InstallDomainCommitStatus = 'NOT_COMMITTED';
+    let installResult: PhysicalDeviceListItemDto | undefined;
 
-    const fullReport = {
-      ...report,
+    try {
+      installResult = await inventory.installOnVehicle(
+        PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
+        dto,
+        actor.id,
+      );
+      domainCommitStatus = 'COMMITTED';
+    } catch (installError) {
+      const installMessage =
+        installError instanceof Error ? installError.message : String(installError);
+      const reconciled = await reconcilePdiP1b7InstallDomainCommit(prisma, inventory, actor.id);
+      if (reconciled.status === 'COMMITTED') {
+        installResult = reconciled.result;
+        domainCommitStatus = 'COMMITTED';
+        idempotentReplay = reconciled.idempotentReplay;
+      } else if (reconciled.status === 'RECONCILIATION_REQUIRED') {
+        const failureReport = {
+          ...report,
+          domainCommitStatus: 'RECONCILIATION_REQUIRED',
+          reconciliation: reconciled,
+        };
+        const stdout = JSON.stringify(failureReport, null, 2);
+        return {
+          ok: false,
+          exitCode: 1,
+          stderr: `Install outcome unclear after error (${installMessage}); read-only reconciliation required — do not re-execute`,
+          report: failureReport,
+          stdout,
+        };
+      } else {
+        const failureReport = {
+          ...report,
+          domainCommitStatus: 'NOT_COMMITTED',
+          installError: installMessage,
+        };
+        const stdout = JSON.stringify(failureReport, null, 2);
+        return {
+          ok: false,
+          exitCode: 1,
+          stderr: installMessage,
+          report: failureReport,
+          stdout,
+        };
+      }
+    }
+
+    let activityLogId: string | null = null;
+    let activityAuditError: string | undefined;
+    try {
+      activityLogId = await recordPdiP1b7InstallActivityAudit(audit, {
+        actorUserId: actor.id,
+        operatorAttestation: input.operatorAttestation!,
+        result: installResult!,
+        executeMode: true,
+        idempotentReplay,
+      });
+    } catch (auditError) {
+      activityAuditError =
+        auditError instanceof Error ? auditError.message : String(auditError);
+      activityLogId = null;
+    }
+
+    const fullReport = buildExecuteReportBase(report, {
+      domainCommitStatus,
       idempotentReplay,
-      result: toSafeOperatorResultSummary(result),
-      activityAudit: {
-        recorded: activityLogId != null,
-        activityLogId,
-        note:
-          activityLogId == null
-            ? 'Install committed; Activity audit record failed (same fire-and-forget contract as HTTP controller — verify activity_logs manually)'
-            : undefined,
-      },
-    };
+      result: installResult,
+      activityLogId,
+      activityAuditError,
+    });
     const stdout = JSON.stringify(fullReport, null, 2);
-    const exitCode = activityLogId == null ? 3 : 0;
+    const exitCode =
+      domainCommitStatus === 'COMMITTED' && (activityLogId == null || activityAuditError)
+        ? 3
+        : 0;
     return { ok: true, exitCode, report: fullReport, stdout };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
