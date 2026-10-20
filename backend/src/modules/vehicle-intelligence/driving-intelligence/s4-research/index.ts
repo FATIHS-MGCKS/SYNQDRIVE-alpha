@@ -10,6 +10,8 @@ export * from './viterbi-matching-backtrack';
 export * from './viterbi-dp-costs';
 export * from './emission-direction-aware-p1';
 export * from './viterbi-matching-direction-aware-p1';
+export * from './direction-aware-p1-safety-gates.config';
+export * from './direction-aware-p1-safety-gates';
 export * from './osm-adjacency-diagnosis';
 export * from './osm-node-id-topology';
 export * from './osm-rounded-only-audit';
