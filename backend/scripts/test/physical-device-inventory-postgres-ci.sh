@@ -80,7 +80,7 @@ done
 log "Running Physical Device Inventory PostgreSQL integration suite (P1A/P1B + P1B.7 operator)"
 export PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION=1
 export PHYSICAL_DEVICE_INVENTORY_POSTGRES_REQUIRED=1
-PDI_POSTGRES_TEST_PATTERNS="physical-device-inventory.*postgres\\.integration|pdi-p1b7-manual-intake-operator.*postgres\\.integration"
+PDI_POSTGRES_TEST_PATTERNS="physical-device-inventory.*postgres\\.integration|pdi-p1b7-manual-intake-operator.*postgres\\.integration|pdi-p1b7-identity-verify-operator.*postgres\\.integration"
 DATABASE_URL="${MIGRATION_DATABASE_URL}" \
   npx jest \
     --testPathPatterns="${PDI_POSTGRES_TEST_PATTERNS}" \
