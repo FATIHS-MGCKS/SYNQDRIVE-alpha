@@ -1,5 +1,17 @@
 import { BatteryMeasurementQuality, type HvChargeSession } from '@prisma/client';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
+
+jest.mock('./hv-charging-counter-evidence.pilot-admission.v1', () => ({
+  getHvChargingCounterPilotAdmissionStateV1: jest.fn(() => ({ kind: 'disabled' })),
+}));
+
+jest.mock('./hv-charging-counter-evidence.pilot-provider-budget.persistence.v1', () => ({
+  tryReservePilotProviderRequestBudgetV1: jest.fn(),
+  finalizePilotProviderRequestBudgetV1: jest.fn().mockResolvedValue(undefined),
+}));
+
+import { getHvChargingCounterPilotAdmissionStateV1 } from './hv-charging-counter-evidence.pilot-admission.v1';
+import { tryReservePilotProviderRequestBudgetV1 } from './hv-charging-counter-evidence.pilot-provider-budget.persistence.v1';
 import { HvChargingCounterEvidenceCaptureService } from './hv-charging-counter-evidence.capture.service';
 import { computeHvChargingCounterObservationSetFingerprintV1 } from './hv-charging-counter-evidence.fingerprint.v1';
 import { mapDimoIntervalRowsToBucketInputsV1 } from './hv-charging-counter-evidence.mapper.v1';
@@ -10,11 +22,17 @@ jest.mock('@config/battery-health-v2.config', () => {
   return {
     ...actual,
     isBatteryV2HvChargingCounterBucketCaptureEnabled: jest.fn(),
+    isBatteryV2HvChargingCounterVehicleAllowlisted: jest.fn(),
+    getBatteryV2HvChargingCounterVehicleAllowlistState: jest.fn(),
     getBatteryV2HvChargingCounterRevalidationIntervalMs: jest.fn().mockReturnValue(6 * 60 * 60 * 1000),
   };
 });
 
-import { isBatteryV2HvChargingCounterBucketCaptureEnabled } from '@config/battery-health-v2.config';
+import {
+  getBatteryV2HvChargingCounterVehicleAllowlistState,
+  isBatteryV2HvChargingCounterBucketCaptureEnabled,
+  isBatteryV2HvChargingCounterVehicleAllowlisted,
+} from '@config/battery-health-v2.config';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
 const VEH = '22222222-2222-4222-8222-222222222222';
@@ -46,19 +64,38 @@ function buildCapture() {
     findBatchByIdempotency: jest.fn(),
     persistBatch: jest.fn(),
   };
-  const prisma = { vehicle: { findFirst: jest.fn() } };
+  const tx = {
+    $queryRaw: jest
+      .fn()
+      .mockResolvedValueOnce([{ locked: true }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([]),
+  };
+  const prisma = {
+    vehicle: { findFirst: jest.fn() },
+    $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
+    $queryRaw: tx.$queryRaw,
+  };
   const capture = new HvChargingCounterEvidenceCaptureService(
     prisma as never,
     repository as never,
     intervalClient as never,
   );
-  return { capture, intervalClient, repository, prisma };
+  return { capture, intervalClient, repository, prisma, tx };
 }
 
 describe('hv-charging-counter-evidence (unit)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getHvChargingCounterPilotAdmissionStateV1 as jest.Mock).mockReturnValue({ kind: 'disabled' });
     (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(false);
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockImplementation(
+      (vehicleId: string) => vehicleId === VEH,
+    );
+    (getBatteryV2HvChargingCounterVehicleAllowlistState as jest.Mock).mockReturnValue({
+      kind: 'allow_set',
+      vehicleIds: new Set([VEH]),
+    });
   });
 
   it('maps DIMO interval rows with MISSING buckets and NOT_RAW_NATIVE_SAMPLE provenance class constant', () => {
@@ -340,6 +377,166 @@ describe('hv-charging-counter-evidence (unit)', () => {
       evaluatedAt: t0Plus6h5m,
     });
     expect(second.skipReason).toBe('unchanged_within_revalidation_window');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('global flag ON with empty allowlist denies capture before repository access', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (getBatteryV2HvChargingCounterVehicleAllowlistState as jest.Mock).mockReturnValue({
+      kind: 'deny_all',
+      reason: 'missing_or_empty',
+    });
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockReturnValue(false);
+    const { capture, intervalClient, repository } = buildCapture();
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(),
+    });
+
+    expect(result).toEqual({ skipped: true, skipReason: 'vehicle_not_allowlisted' });
+    expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('allows Tesla vehicle when explicitly allowlisted', async () => {
+    const teslaId = '68868291-5478-42cd-b0c4-cc77b2a78e21';
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockImplementation(
+      (id: string) => id === teslaId,
+    );
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    intervalClient.fetchIntervalBuckets.mockResolvedValue({
+      status: 'empty_interval_series',
+      rows: [],
+    });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: teslaId,
+      session: sessionRow({ vehicleId: teslaId }),
+    });
+
+    expect(result.skipReason).toBe('provider_empty_intervals');
+    expect(intervalClient.fetchIntervalBuckets).toHaveBeenCalled();
+    expect(repository.persistBatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-allowlisted vehicle without provider or persist', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (isBatteryV2HvChargingCounterVehicleAllowlisted as jest.Mock).mockReturnValue(false);
+    const otherVehicle = '33333333-3333-4333-8333-333333333333';
+    const { capture, intervalClient, repository } = buildCapture();
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: otherVehicle,
+      session: sessionRow({ vehicleId: otherVehicle }),
+    });
+
+    expect(result).toEqual({ skipped: true, skipReason: 'vehicle_not_allowlisted' });
+    expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('defers extra sessions beyond pilot cap of one per reconcile', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient } = buildCapture();
+
+    const results = await capture.captureForPersistResults({
+      organizationId: ORG,
+      vehicleId: VEH,
+      results: [
+        {
+          session: sessionRow({ id: 's1' }),
+          created: false,
+          changed: false,
+          changeKind: 'no_op',
+        },
+        {
+          session: sessionRow({ id: 's2' }),
+          created: false,
+          changed: true,
+          changeKind: 'provider_refresh',
+        },
+      ],
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results.filter((r) => r.skipReason === 'pilot_session_budget_exhausted')).toHaveLength(1);
+    expect(intervalClient.fetchIntervalBuckets.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('pilot mode denies re-query when durable budget is exhausted', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (getHvChargingCounterPilotAdmissionStateV1 as jest.Mock).mockReturnValue({
+      kind: 'active',
+      pilotEpoch: 'epoch-test',
+      sourceHvChargeSessionId: 's-pilot-1',
+    });
+    (tryReservePilotProviderRequestBudgetV1 as jest.Mock).mockResolvedValue({
+      status: 'exhausted',
+      lifecycleState: 'UNKNOWN_OUTCOME',
+    });
+
+    const { capture, intervalClient, repository, prisma } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow({ id: 's-pilot-1' }),
+    });
+
+    expect(result.skipReason).toBe('pilot_provider_budget_exhausted');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('skips provider fetch when cross-replica guard is busy', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    const { capture, intervalClient, repository, prisma, tx } = buildCapture();
+    repository.findLatestBatchForSegment.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue({ dimoVehicle: { tokenId: 186946 } });
+    tx.$queryRaw.mockReset();
+    tx.$queryRaw.mockResolvedValueOnce([{ locked: false }]);
+
+    const result = await capture.captureForSession({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(),
+    });
+
+    expect(result.skipReason).toBe('provider_request_guard_busy');
+    expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
+  });
+
+  it('invalid allowlist configuration fails closed with allowlist_invalid', async () => {
+    (isBatteryV2HvChargingCounterBucketCaptureEnabled as jest.Mock).mockReturnValue(true);
+    (getBatteryV2HvChargingCounterVehicleAllowlistState as jest.Mock).mockReturnValue({
+      kind: 'deny_all',
+      reason: 'invalid_entries',
+    });
+    const { capture, intervalClient, repository } = buildCapture();
+
+    const result = await capture.captureForPersistResults({
+      organizationId: ORG,
+      vehicleId: VEH,
+      results: [
+        {
+          session: sessionRow(),
+          created: false,
+          changed: false,
+          changeKind: 'no_op',
+        },
+      ],
+    });
+
+    expect(result[0]).toEqual({ skipped: true, skipReason: 'allowlist_invalid' });
+    expect(repository.findLatestBatchForSegment).not.toHaveBeenCalled();
     expect(intervalClient.fetchIntervalBuckets).not.toHaveBeenCalled();
   });
 

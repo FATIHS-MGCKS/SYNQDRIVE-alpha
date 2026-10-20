@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { HV_CHARGING_COUNTER_AVAILABILITY } from './hv-charging-counter-evidence.constants.v1';
+import type { HvChargingCounterQualityAssessmentV1 } from './hv-charging-counter-evidence.counter-quality.v1';
 import type { HvChargingCounterBucketInputV1 } from './hv-charging-counter-evidence.types.v1';
 import { computeHvChargingCounterObservationSetFingerprintV1 } from './hv-charging-counter-evidence.fingerprint.v1';
 import { HvChargingCounterEvidenceRepository } from './hv-charging-counter-evidence.repository';
@@ -179,6 +180,74 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
 
     const provenance = revisions[0].provenance as { sampleClass?: string };
     expect(provenance.sampleClass).toBe('NOT_RAW_NATIVE_SAMPLE');
+  });
+
+  it('persists counter quality JSON without altering bucket values', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+    const segmentFingerprint = `quality-json-${suffix}`;
+    const bucketStart = new Date('2026-10-13T13:07:00.000Z');
+    const buckets = [
+      {
+        bucketStartAt: bucketStart,
+        bucketEndAt: new Date(bucketStart.getTime() + 60_000),
+        valueKwh: 0.02,
+        minKwh: 0.02,
+        maxKwh: 0.02,
+        availability: HV_CHARGING_COUNTER_AVAILABILITY.AVAILABLE,
+      },
+    ];
+    const fp = computeHvChargingCounterObservationSetFingerprintV1(buckets);
+    const counterQuality: HvChargingCounterQualityAssessmentV1 = {
+      schemaVersion: 'hv-r22-counter-quality-v1',
+      numericCoverage: {
+        bucketCount: 1,
+        numericLastCount: 1,
+        nullLastCount: 0,
+        numericCoverageRatio: 1,
+      },
+      monotonicity: {
+        positiveDeltas: 0,
+        negativeDeltas: 0,
+        zeroDeltas: 0,
+        maxMonotonicRunLength: 1,
+      },
+      boundaryClassifications: ['IN_SESSION_MONOTONIC'],
+      resetCandidates: 0,
+      boundaryUncertainty: false,
+      counterDeltaFirstLastInSessionKwh: 0.02,
+      energyDerivationQuality: 'RELIABLE_FIRST_LAST_IN_SESSION',
+      reliableSessionCounterDelta: true,
+    };
+
+    const written = await repository.persistBatch({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segmentFingerprint,
+      sourceHvChargeSessionId: null,
+      dimoTokenId: 186946,
+      queryWindowFrom: bucketStart,
+      queryWindowTo: new Date('2026-10-13T16:12:09.193Z'),
+      segmentStartAt: bucketStart,
+      segmentEndAt: new Date('2026-10-13T16:12:09.193Z'),
+      providerObservedAt: new Date('2026-10-13T16:12:09.193Z'),
+      observationSetFingerprint: fp,
+      buckets,
+      counterQuality,
+    });
+    expect(written.created).toBe(true);
+
+    const batch = await prisma.batteryHvChargingCounterIngestionBatch.findUnique({
+      where: { id: written.batchId },
+    });
+    expect(batch?.counterQualityJson).toMatchObject({
+      schemaVersion: 'hv-r22-counter-quality-v1',
+      reliableSessionCounterDelta: true,
+    });
+    const obs = await prisma.batteryHvChargingCounterObservation.findFirst({
+      where: { batchId: written.batchId },
+    });
+    expect(obs?.valueKwh).toBe(0.02);
   });
 
   it('concurrent identical batch writers collapse to one batch', async () => {

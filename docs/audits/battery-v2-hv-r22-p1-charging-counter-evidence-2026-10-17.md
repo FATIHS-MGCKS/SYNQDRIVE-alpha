@@ -14,6 +14,13 @@ Default-OFF durable storage for DIMO `powertrainTractionBatteryChargingAddedEner
 
 `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED` — default **false**.
 
+## P0 pilot safety (2026-10-19)
+
+- `BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST` — comma-separated vehicle UUIDs; missing/empty/invalid → **deny all** (fail-closed).
+- Capture requires **both** global flag ON and allowlisted `vehicleId`.
+- Capability probe runbook: `docs/runbooks/hv-r22-tesla-capability-probe.md`
+- Blast radius: `docs/audits/battery-v2-hv-r22-pilot-p0-blast-radius-2026-10-19.md`
+
 ## P1.1 — Correction revalidation policy
 
 DIMO does not expose an explicit interval-bucket revision signal. Corrected values are only discoverable by re-querying the segment window.
