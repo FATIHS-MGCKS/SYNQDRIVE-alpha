@@ -17,7 +17,7 @@ import {
   decideHvChargingCounterProviderQueryV1,
   type HvChargingCounterRevalidationAnchorV1,
 } from './hv-charging-counter-evidence.revalidation.policy.v1';
-import { evaluateHvChargingCounterQualityV1 } from './hv-charging-counter-evidence.counter-quality.v1';
+import { evaluateHvChargingCounterQualityV2 } from './hv-charging-counter-evidence.counter-quality.v2';
 import { getHvChargingCounterPilotAdmissionStateV1 } from './hv-charging-counter-evidence.pilot-admission.v1';
 import {
   finalizePilotProviderRequestBudgetV1,
@@ -301,7 +301,7 @@ export class HvChargingCounterEvidenceCaptureService {
       return { skipped: true, skipReason: 'provider_empty_intervals' };
     }
 
-    const counterQuality = evaluateHvChargingCounterQualityV1({
+    const counterQuality = evaluateHvChargingCounterQualityV2({
       sessionStartInclusive: session.startAt.toISOString(),
       sessionEndInclusive: session.endAt!.toISOString(),
       queryFromInclusive: queryWindowFrom.toISOString(),
