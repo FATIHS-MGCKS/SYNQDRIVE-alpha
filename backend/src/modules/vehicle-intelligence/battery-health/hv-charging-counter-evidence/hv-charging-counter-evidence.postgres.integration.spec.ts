@@ -187,6 +187,8 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
     const { org, vehicle } = await createTenantVehicle(prisma, suffix);
     const segmentFingerprint = `quality-json-${suffix}`;
     const bucketStart = new Date('2026-10-13T13:07:00.000Z');
+    const bucketSecond = new Date('2026-10-13T13:08:00.000Z');
+    const sessionEnd = new Date('2026-10-13T13:08:30.000Z');
     const buckets = [
       {
         bucketStartAt: bucketStart,
@@ -196,19 +198,33 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
         maxKwh: 0.02,
         availability: HV_CHARGING_COUNTER_AVAILABILITY.AVAILABLE,
       },
+      {
+        bucketStartAt: bucketSecond,
+        bucketEndAt: new Date(bucketSecond.getTime() + 60_000),
+        valueKwh: 0.05,
+        minKwh: 0.05,
+        maxKwh: 0.05,
+        availability: HV_CHARGING_COUNTER_AVAILABILITY.AVAILABLE,
+      },
     ];
     const fp = computeHvChargingCounterObservationSetFingerprintV1(buckets);
     const counterQuality = evaluateHvChargingCounterQualityV2({
       sessionStartInclusive: bucketStart.toISOString(),
-      sessionEndInclusive: new Date('2026-10-13T16:12:09.193Z').toISOString(),
+      sessionEndInclusive: sessionEnd.toISOString(),
       queryFromInclusive: bucketStart.toISOString(),
-      queryToInclusive: new Date('2026-10-13T16:12:09.193Z').toISOString(),
+      queryToInclusive: sessionEnd.toISOString(),
       rows: [
         {
           timestamp: bucketStart.toISOString(),
           addedKwhLast: 0.02,
           addedKwhMin: 0.02,
           addedKwhMax: 0.02,
+        },
+        {
+          timestamp: bucketSecond.toISOString(),
+          addedKwhLast: 0.05,
+          addedKwhMin: 0.05,
+          addedKwhMax: 0.05,
         },
       ],
     });
@@ -220,10 +236,10 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
       sourceHvChargeSessionId: null,
       dimoTokenId: 186946,
       queryWindowFrom: bucketStart,
-      queryWindowTo: new Date('2026-10-13T16:12:09.193Z'),
+      queryWindowTo: sessionEnd,
       segmentStartAt: bucketStart,
-      segmentEndAt: new Date('2026-10-13T16:12:09.193Z'),
-      providerObservedAt: new Date('2026-10-13T16:12:09.193Z'),
+      segmentEndAt: sessionEnd,
+      providerObservedAt: sessionEnd,
       observationSetFingerprint: fp,
       buckets,
       counterQuality,
@@ -238,6 +254,8 @@ describePostgres('HvChargingCounterEvidenceRepository (postgres)', () => {
       reliableSessionCounterDelta: true,
       temporalCoverage: {
         schemaVersion: 'hv-r22-counter-temporal-v1',
+        observedMinuteGridSlots: 2,
+        missingMinuteGridSlots: 0,
       },
     });
     const obs = await prisma.batteryHvChargingCounterObservation.findFirst({
