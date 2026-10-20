@@ -3,6 +3,7 @@ import {
   PhysicalDeviceAssignmentKind,
   PhysicalDeviceIdentityStatus,
   PhysicalDeviceIntakeSource,
+  PhysicalDeviceInventoryAuditEventKind,
   PhysicalDeviceInventoryStatus,
   PhysicalDeviceModelCode,
   PrismaClient,
@@ -17,6 +18,9 @@ import { VO_CONNECTION_IDENTITY_CONTRACT_VERSION } from '@modules/vehicle-onboar
 import { VO_SOURCE_LINK_CONNECTION_IDENTITY_VERSION } from '../vehicle-onboarding/connection-identity/source-link-connection-identity.metadata';
 import { PDI_P1B7_AUTHORIZED_INTAKE } from './pdi-p1b7-manual-intake-operator.lib';
 import { PDI_P1B7_AUTHORIZED_IDENTITY_VERIFY } from './pdi-p1b7-identity-verify-operator.lib';
+import { PDI_P1B7_AUTHORIZED_INSTALL } from './pdi-p1b7-install-operator.lib';
+import { buildIdentityVerificationPayloadFingerprint } from './physical-device-identity-verification.fingerprint';
+import { buildPdiP1b7IdentityVerifyDto } from './pdi-p1b7-identity-verify-operator.lib';
 
 export async function seedPdiP1b7OperatorPreflightIdentity(prisma: PrismaClient): Promise<void> {
   await prisma.organization.upsert({
@@ -261,4 +265,77 @@ export async function seedPdiP1b7IdentityVerifyOperatorFixtures(
   await seedPdiP1b7OperatorPreflightIdentity(prisma);
   await seedPdiP1b7GateCProviderLink(prisma);
   await seedPdiP1b7GateCPhysicalDevice(prisma, actorUserId);
+}
+
+export async function seedPdiP1b7GateCIdentityAudit(
+  prisma: PrismaClient,
+  actorUserId: string,
+): Promise<void> {
+  const deviceId = PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId;
+  const dto = buildPdiP1b7IdentityVerifyDto(actorUserId);
+  const payloadFingerprint = buildIdentityVerificationPayloadFingerprint(deviceId, dto);
+  await prisma.physicalDeviceInventoryAuditEvent.deleteMany({
+    where: {
+      physicalDeviceId: deviceId,
+      eventKind: PhysicalDeviceInventoryAuditEventKind.IDENTITY_VERIFICATION,
+      idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.gateCVerifyIdempotencyKey,
+    },
+  });
+  await prisma.physicalDeviceInventoryAuditEvent.create({
+    data: {
+      physicalDeviceId: deviceId,
+      eventKind: PhysicalDeviceInventoryAuditEventKind.IDENTITY_VERIFICATION,
+      actorUserId,
+      payloadFingerprint,
+      idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.gateCVerifyIdempotencyKey,
+      evidenceJson: {
+        provesPhysicalInstall: false,
+        attestationKind: dto.attestationKind,
+        providerReconciliationVehicleId: dto.providerReconciliationVehicleId,
+      },
+    },
+  });
+}
+
+export async function seedPdiP1b7GateDVerifiedDevice(prisma: PrismaClient): Promise<void> {
+  await prisma.physicalDevice.update({
+    where: { id: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId },
+    data: {
+      identityStatus: PhysicalDeviceIdentityStatus.VERIFIED,
+      status: PhysicalDeviceInventoryStatus.AVAILABLE,
+    },
+  });
+}
+
+export async function resetPdiP1b7GateDInstallState(prisma: PrismaClient): Promise<void> {
+  const deviceId = PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId;
+  await prisma.physicalDeviceInventoryAuditEvent.deleteMany({
+    where: {
+      physicalDeviceId: deviceId,
+      eventKind: PhysicalDeviceInventoryAuditEventKind.INSTALL,
+    },
+  });
+  await prisma.physicalDeviceAssignment.deleteMany({
+    where: {
+      physicalDeviceId: deviceId,
+      assignmentKind: PhysicalDeviceAssignmentKind.INSTALL,
+    },
+  });
+  await prisma.physicalDevice.update({
+    where: { id: deviceId },
+    data: {
+      status: PhysicalDeviceInventoryStatus.AVAILABLE,
+      identityStatus: PhysicalDeviceIdentityStatus.VERIFIED,
+    },
+  });
+}
+
+export async function seedPdiP1b7InstallOperatorFixtures(
+  prisma: PrismaClient,
+  actorUserId: string,
+): Promise<void> {
+  await seedPdiP1b7IdentityVerifyOperatorFixtures(prisma, actorUserId);
+  await seedPdiP1b7GateCIdentityAudit(prisma, actorUserId);
+  await seedPdiP1b7GateDVerifiedDevice(prisma);
+  await resetPdiP1b7GateDInstallState(prisma);
 }

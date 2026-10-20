@@ -325,6 +325,9 @@ export async function installPhysicalDeviceOnVehicleTx(
       },
     });
     if (existingAssignment?.physicalDevice) {
+      if (existingAssignment.physicalDeviceId !== deviceId) {
+        throw physicalDeviceIdempotencyPayloadMismatch();
+      }
       const stored = readAssignmentPayloadFingerprint(existingAssignment.metadataJson);
       if (stored && stored !== payloadFingerprint) {
         throw physicalDeviceIdempotencyPayloadMismatch();
