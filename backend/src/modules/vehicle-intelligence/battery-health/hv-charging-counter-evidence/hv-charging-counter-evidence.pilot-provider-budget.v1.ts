@@ -1,0 +1,23 @@
+/** Durable pilot provider request lifecycle (persisted; no automatic budget reset). */
+export const HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE = {
+  REQUEST_RESERVED: 'REQUEST_RESERVED',
+  REQUEST_STARTED: 'REQUEST_STARTED',
+  COMPLETED: 'COMPLETED',
+  UNKNOWN_OUTCOME: 'UNKNOWN_OUTCOME',
+} as const;
+
+export type HvChargingCounterPilotProviderLifecycleStateV1 =
+  (typeof HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE)[keyof typeof HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE];
+
+export const HV_CHARGING_COUNTER_PILOT_MAX_PROVIDER_ATTEMPTS_PER_EPOCH_V1 = 1;
+
+export function isTerminalPilotProviderLifecycleStateV1(
+  state: string,
+): boolean {
+  return (
+    state === HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE.COMPLETED ||
+    state === HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE.UNKNOWN_OUTCOME ||
+    state === HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE.REQUEST_STARTED ||
+    state === HV_CHARGING_COUNTER_PILOT_PROVIDER_LIFECYCLE.REQUEST_RESERVED
+  );
+}

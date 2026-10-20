@@ -1850,6 +1850,7 @@ model Organization {
   batteryHvChargingCounterIngestionBatches                  BatteryHvChargingCounterIngestionBatch[]
   batteryHvChargingCounterObservations                      BatteryHvChargingCounterObservation[]
   batteryHvChargingCounterRevalidationCheckpoints           BatteryHvChargingCounterRevalidationCheckpoint[]
+  batteryHvChargingCounterPilotProviderRequests              BatteryHvChargingCounterPilotProviderRequest[]
   hvCapacityObservations                                    HvCapacityObservation[]
   batteryV2JobDeadLetters                                   BatteryV2JobDeadLetter[]
   batteryRetentionAggregates                                BatteryRetentionAggregate[]
@@ -3082,6 +3083,7 @@ model Vehicle {
   batteryHvChargingCounterIngestionBatches BatteryHvChargingCounterIngestionBatch[]
   batteryHvChargingCounterObservations   BatteryHvChargingCounterObservation[]
   batteryHvChargingCounterRevalidationCheckpoints BatteryHvChargingCounterRevalidationCheckpoint[]
+  batteryHvChargingCounterPilotProviderRequests BatteryHvChargingCounterPilotProviderRequest[]
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
@@ -9762,6 +9764,8 @@ model BatteryHvChargingCounterIngestionBatch {
   missingBucketCount         Int      @map("missing_bucket_count")
   dimoQueryKind              String   @map("dimo_query_kind")
   idempotencyKey             String   @map("idempotency_key")
+  /// R22-P1B — append-only counter quality assessment (does not alter bucket values).
+  counterQualityJson         Json?    @map("counter_quality_json")
   createdAt                  DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -9830,6 +9834,27 @@ model BatteryHvChargingCounterRevalidationCheckpoint {
   @@id([organizationId, vehicleId, segmentFingerprint])
   @@index([organizationId, vehicleId], map: "battery_hv_cc_revalidation_checkpoint_vehicle_idx")
   @@map("battery_hv_charging_counter_revalidation_checkpoints")
+}
+
+/// R22-P1B — durable pilot DIMO provider request budget (one attempt per pilot epoch + HV session).
+model BatteryHvChargingCounterPilotProviderRequest {
+  organizationId          String   @map("organization_id")
+  vehicleId               String   @map("vehicle_id")
+  pilotEpoch              String   @map("pilot_epoch")
+  sourceHvChargeSessionId String   @map("source_hv_charge_session_id")
+  lifecycleState          String   @map("lifecycle_state")
+  reservedAt              DateTime @default(now()) @map("reserved_at")
+  requestStartedAt        DateTime? @map("request_started_at")
+  terminalAt              DateTime? @map("terminal_at")
+  outcomeDetail           String?  @map("outcome_detail")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, vehicleId, pilotEpoch, sourceHvChargeSessionId])
+  @@index([organizationId, vehicleId], map: "battery_hv_cc_pilot_provider_req_vehicle_idx")
+  @@map("battery_hv_charging_counter_pilot_provider_requests")
 }
 
 /// M3.3-HV-H4-A3.1 — append-only H4 charge session source evidence revision (no runtime writer).

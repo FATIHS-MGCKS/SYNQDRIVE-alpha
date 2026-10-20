@@ -1,0 +1,101 @@
+[
+  {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-01T00:26:04.458Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000002",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-02T00:53:37.000Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000003",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-03T02:03:34.999Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000004",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-04T01:53:37.000Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000005",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-05T04:45:00.999Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000006",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-06T00:31:02.703Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000007",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-07T03:05:38.999Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000008",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-08T02:57:51.999Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000009",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-09T02:19:36.000Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000010",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-10T01:36:09.358Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000011",
+    "source": "DIMO_RECHARGE_SEGMENT",
+    "isOngoing": false,
+    "endAt": "2030-06-11T05:17:50.488Z",
+    "metadata": {
+      "qualityStatus": "PARTIAL"
+    }
+  }
+]
