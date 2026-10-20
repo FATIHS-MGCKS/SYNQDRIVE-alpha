@@ -14,6 +14,6 @@ describe('Trip DI boundary admission Nest wiring', () => {
     );
     expect(moduleSrc).toContain('TripDiBoundaryAdmissionService');
     expect(orchestrationSrc).toContain('private readonly diBoundaryAdmission: TripDiBoundaryAdmissionService');
-    expect(orchestrationSrc).toContain('releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement');
+    expect(orchestrationSrc).toContain('releaseLiveFsmSplitSegmentsAfterFinalization');
   });
 });

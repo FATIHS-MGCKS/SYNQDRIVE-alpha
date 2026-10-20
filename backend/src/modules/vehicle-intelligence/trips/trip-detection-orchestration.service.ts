@@ -4436,7 +4436,11 @@ export class TripDetectionOrchestrationService {
 
         if (this.diBoundaryAdmission) {
           try {
-            await this.diBoundaryAdmission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(vehicleId);
+            await this.diBoundaryAdmission.releaseLiveFsmSplitSegmentsAfterFinalization(
+              organizationId,
+              vehicleId,
+              finalizedTripId,
+            );
           } catch (e) {
             this.logger.warn(
               `V2 finalize: DI boundary admission LIVE_FSM settlement release failed for vehicle ${vehicleId}: ${e}`,

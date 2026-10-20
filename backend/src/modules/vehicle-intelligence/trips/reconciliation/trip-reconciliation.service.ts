@@ -375,7 +375,13 @@ export class TripReconciliationService {
           }
         }
         try {
-          await this.diBoundaryAdmission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(vehicleId);
+          const organizationId = await this.resolveOrganizationId(vehicleId);
+          await this.diBoundaryAdmission.releaseLiveFsmSplitSegmentsInReconciliationWindow(
+            organizationId,
+            vehicleId,
+            from,
+            to,
+          );
         } catch (err: unknown) {
           this.logger.warn(
             `DI boundary admission LIVE_FSM split recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,

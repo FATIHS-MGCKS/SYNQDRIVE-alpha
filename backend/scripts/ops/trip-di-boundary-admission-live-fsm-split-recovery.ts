@@ -7,6 +7,9 @@
  *   --execute
  *   TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_AUTHORIZED=1
  *   --trip-id <uuid> --vehicle-id <uuid>  (both required; must match)
+ *
+ * Automatic finalize/reconciliation paths are separately scoped (S4 allowlist +
+ * TRIP_DI_BOUNDARY_ADMISSION_LIVE_FSM_AUTO_ACTIVATED_AT_UTC for reconciliation).
  */
 import { PrismaClient } from '@prisma/client';
 import { TripDiBoundaryAdmissionService } from '../../src/modules/vehicle-intelligence/trips/di-boundary-admission/trip-di-boundary-admission.service';

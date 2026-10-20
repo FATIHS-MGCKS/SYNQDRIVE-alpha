@@ -20,6 +20,7 @@ import { readTripDiBoundaryAdmissionV1 } from '../../../trips/di-boundary-admiss
 import { DiV0S4DiscoveryService } from '../di-v0-s4b-discovery.service';
 import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../di-v0-s4b-discovery-containment';
 import { buildDiV0S4RuntimePipelineManifest } from '../di-v0-s4b-pipeline-manifest';
+import { TRIP_DI_BOUNDARY_ADMISSION_LIVE_FSM_AUTO_ACTIVATED_AT_UTC_ENV } from '../../../trips/di-boundary-admission/trip-di-boundary-admission-live-fsm-auto.policy';
 
 assertS4aPostgresCiEnv();
 
@@ -114,6 +115,23 @@ interface LiveFsmSplitFixture extends S4aTenant {
     return fixture;
   }
 
+  function applyS4AutoAdmissionEnv(t: S4aTenant, activationIso = '2020-01-01T00:00:00.000Z') {
+    const cfg = s4aConfigFor([t]);
+    process.env.DI_V0_S4_MASTER_ENABLED = 'true';
+    process.env.DI_V0_S4_ORGANIZATION_ALLOWLIST = [...cfg.organizationAllowlist].join(',');
+    process.env.DI_V0_S4_VEHICLE_ALLOWLIST = [...cfg.vehicleAllowlist].join(',');
+    process.env[TRIP_DI_BOUNDARY_ADMISSION_LIVE_FSM_AUTO_ACTIVATED_AT_UTC_ENV] = activationIso;
+  }
+
+  async function releaseAfterFinalize(f: LiveFsmSplitFixture, finalizedTripId = f.childTripId) {
+    applyS4AutoAdmissionEnv(f);
+    return admission.releaseLiveFsmSplitSegmentsAfterFinalization(
+      f.organizationId,
+      f.vehicleId,
+      finalizedTripId,
+    );
+  }
+
   function discoveryFor(t: LiveFsmSplitFixture) {
     const config = s4aConfigFor([t]);
     const pipeline = buildDiV0S4RuntimePipelineManifest(config);
@@ -130,7 +148,12 @@ interface LiveFsmSplitFixture extends S4aTenant {
 
   it('1 — unstable ACTIVE_TRIP on parent blocks settlement release', async () => {
     const f = await seedLiveFsmSplitPair({ state: 'ACTIVE_TRIP' });
-    const result = await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    applyS4AutoAdmissionEnv(f);
+    const result = await admission.releaseLiveFsmSplitSegmentsAfterFinalization(
+      f.organizationId,
+      f.vehicleId,
+      f.childTripId,
+    );
     expect(result.released).toBe(0);
     const parentMeta = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
       SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${f.parentTripId}`;
@@ -139,7 +162,7 @@ interface LiveFsmSplitFixture extends S4aTenant {
 
   it('2 — RESTING stable vehicle releases parent and continuation admission', async () => {
     const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
-    const result = await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    const result = await releaseAfterFinalize(f);
     expect(result.released).toBeGreaterThanOrEqual(1);
     const parentMeta = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
       SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${f.parentTripId}`;
@@ -150,7 +173,7 @@ interface LiveFsmSplitFixture extends S4aTenant {
 
   it('3 — child admitted separately; parent/child get distinct revision keys', async () => {
     const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
-    await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    await releaseAfterFinalize(f);
     const rows = await admin.$queryRaw<Array<{ id: string; raw_detection_meta: unknown }>>`
       SELECT id, raw_detection_meta FROM vehicle_trips
       WHERE id::text = ANY(ARRAY[${f.parentTripId}, ${f.childTripId}]::text[])`;
@@ -162,8 +185,8 @@ interface LiveFsmSplitFixture extends S4aTenant {
   it('4 — concurrent settlement release is idempotent', async () => {
     const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
     const [a, b] = await Promise.all([
-      admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId),
-      admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId),
+      releaseAfterFinalize(f),
+      releaseAfterFinalize(f),
     ]);
     expect(a.released + b.released).toBeGreaterThanOrEqual(1);
     const parentMeta = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
@@ -180,7 +203,7 @@ interface LiveFsmSplitFixture extends S4aTenant {
       f.vehicleId,
       f.parentTripId,
     );
-    await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    await releaseAfterFinalize(f);
     const parentMeta = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
       SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${f.parentTripId}`;
     expect(readTripDiBoundaryAdmissionV1(parentMeta[0]?.raw_detection_meta)).toBeNull();
@@ -189,7 +212,7 @@ interface LiveFsmSplitFixture extends S4aTenant {
 
   it('6 — discovery creates at most one PRIMARY per admitted trip on repeated passes', async () => {
     const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
-    await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    await releaseAfterFinalize(f);
     const { service, config, pipeline, repo } = discoveryFor(f);
     const pass1 = await service.runDiscoveryPass({ limit: 50 });
     expect(pass1.created).toBeGreaterThanOrEqual(1);
@@ -227,7 +250,7 @@ interface LiveFsmSplitFixture extends S4aTenant {
 
   it('8 — boundary repair generation bump updates revision on next successful release', async () => {
     const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
-    await admission.releaseEligibleLiveFsmSplitSegmentsAfterVehicleSettlement(f.vehicleId);
+    await releaseAfterFinalize(f);
     const before = readTripDiBoundaryAdmissionV1(
       (
         await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
@@ -256,5 +279,72 @@ interface LiveFsmSplitFixture extends S4aTenant {
     expect(before).toBeTruthy();
     expect(after).toBeTruthy();
     expect(after).not.toBe(before);
+  });
+
+  it('does not auto-admit unrelated historical LIVE_FSM splits on the same vehicle', async () => {
+    const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
+    const historicalParentId = randomUUID();
+    const historicalEnd = new Date(f.startTime.getTime() - 30 * 86_400_000);
+    const historicalStart = new Date(historicalEnd.getTime() - 2 * 3_600_000);
+    await admin.$executeRawUnsafe(
+      `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
+         start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score,
+         end_detection_mode, raw_detection_meta)
+       VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
+         ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 3, 40, 30, 0, 90, 'MID_TRIP_GAP_SPLIT', $6::jsonb)`,
+      historicalParentId,
+      f.vehicleId,
+      historicalStart.toISOString(),
+      historicalEnd.toISOString(),
+      `seg-${randomUUID()}`,
+      JSON.stringify({ splitTriggeredBy: 'LIVE_FSM', splitReason: 'historical' }),
+    );
+
+    await releaseAfterFinalize(f, f.childTripId);
+
+    const historical = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+      SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${historicalParentId}`;
+    expect(readTripDiBoundaryAdmissionV1(historical[0]?.raw_detection_meta)).toBeNull();
+    const currentParent = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+      SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${f.parentTripId}`;
+    expect(readTripDiBoundaryAdmissionV1(currentParent[0]?.raw_detection_meta)).not.toBeNull();
+  });
+
+  it('reconciliation LIVE_FSM auto admission respects activation horizon and window', async () => {
+    const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
+    applyS4AutoAdmissionEnv(f, '2099-01-01T00:00:00.000Z');
+    const blocked = await admission.releaseLiveFsmSplitSegmentsInReconciliationWindow(
+      f.organizationId,
+      f.vehicleId,
+      new Date(f.endTime.getTime() - 86_400_000),
+      new Date(f.endTime.getTime() + 86_400_000),
+    );
+    expect(blocked.released).toBe(0);
+
+    applyS4AutoAdmissionEnv(f, '2020-01-01T00:00:00.000Z');
+    const admitted = await admission.releaseLiveFsmSplitSegmentsInReconciliationWindow(
+      f.organizationId,
+      f.vehicleId,
+      new Date(f.startTime.getTime() - 60_000),
+      new Date(f.endTime.getTime() + 86_400_000),
+    );
+    expect(admitted.released).toBeGreaterThanOrEqual(1);
+  });
+
+  it('non-allowlisted vehicle cannot receive automatic finalize admission', async () => {
+    const f = await seedLiveFsmSplitPair({ state: 'RESTING' });
+    process.env.DI_V0_S4_MASTER_ENABLED = 'true';
+    process.env.DI_V0_S4_ORGANIZATION_ALLOWLIST = f.organizationId;
+    process.env.DI_V0_S4_VEHICLE_ALLOWLIST = randomUUID();
+    process.env[TRIP_DI_BOUNDARY_ADMISSION_LIVE_FSM_AUTO_ACTIVATED_AT_UTC_ENV] = '2020-01-01T00:00:00.000Z';
+    const result = await admission.releaseLiveFsmSplitSegmentsAfterFinalization(
+      f.organizationId,
+      f.vehicleId,
+      f.childTripId,
+    );
+    expect(result).toMatchObject({ released: 0, skipped: 0, tripIds: [] });
+    const parentMeta = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+      SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${f.parentTripId}`;
+    expect(readTripDiBoundaryAdmissionV1(parentMeta[0]?.raw_detection_meta)).toBeNull();
   });
 });
