@@ -22,6 +22,46 @@ export const MOTION_FSM_PARAMS_V0_2_DEV = {
   lookaheadS: 5,
 } as const;
 
+/**
+ * Review-round candidate switches (EXP021 Fable review). All `false` reproduces Fable V0.2 exactly.
+ * Each switch is a separately evaluated candidate; see `MOTION_FSM_V0_3_CANDIDATE_OPTIONS`.
+ */
+export interface MotionFsmCandidateOptions {
+  /**
+   * K-A — stale low-speed context after motion evidence. Fable keeps `last_speed` from before a stop
+   * while positions without numeric speed already imply motion (displacement across gaps). The next
+   * ROW_ABSENT label then re-enters the stop path (`gap_after_low_speed_*`) and emits bogus 1-s
+   * STATIONARY runs while the vehicle moves. Fix: refresh last-speed context from implied displacement
+   * speed, reset stop observation on STARTING, and let STARTING survive short gaps like MOVING.
+   */
+  staleSpeedContextFix: boolean;
+  /** K-B — enforce declared-but-unused `startingMaxS`: STARTING resolves to MOVING after N labels. */
+  startingTimeout: boolean;
+  /**
+   * K-C — evidence-quality propagation: DIRECT only from a vehicle-speed sample or an OK-quality C4
+   * value; degraded C4 (SPARSE_SUPPORT / JITTER_SUSPECT / REPAIRED) yields INFERRED with a flag;
+   * sparse-vs-C4 contradictions and hysteresis-band creep are flagged. States are unchanged.
+   */
+  evidencePropagation: boolean;
+}
+
+export const MOTION_FSM_FABLE_V0_2_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
+  staleSpeedContextFix: false,
+  startingTimeout: false,
+  evidencePropagation: false,
+};
+
+export const MOTION_FSM_V0_3_CANDIDATE_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
+  staleSpeedContextFix: true,
+  startingTimeout: true,
+  evidencePropagation: true,
+};
+
+export function motionFsmVersionId(options: Readonly<MotionFsmCandidateOptions>): string {
+  const on = (Object.keys(options) as Array<keyof MotionFsmCandidateOptions>).filter((k) => options[k]);
+  return on.length === 0 ? MOTION_FSM_PARAMS_V0_2_DEV.version : `MOTION_FSM_V0_3_CAND_DEV[${on.join('+')}]`;
+}
+
 export type MotionFsmMode = 'CAUSAL' | 'RETROSPECTIVE';
 
 export type MotionFsmState =
@@ -42,6 +82,10 @@ export interface MotionFsmLabel {
   positionPresent: boolean;
   mode: MotionFsmMode;
   flags: string[];
+  /** Sparse vehicle-speed sample at this label (additive; null when none). */
+  sparseSpeedKmh: number | null;
+  /** Quality of the consumed C4 speed sample (additive; null when no numeric speed was used). */
+  speedQuality: MotionCoreSpeedQuality | null;
 }
 
 export interface MotionFsmStopEpisode {
@@ -56,6 +100,23 @@ export interface MotionFsmStopEpisode {
   evidenceQuality: MotionFsmEvidenceQuality;
   openEnd: boolean;
   labels: number;
+  /** Additive evidence breakdown (review round) — does not alter Fable fields above. */
+  directLabels: number;
+  inferredLabels: number;
+  indeterminateLabels: number;
+  /** Labels with a position row or a sparse vehicle-speed sample. */
+  observedLabels: number;
+  /** Labels inside the episode without any evidence (ROW_ABSENT and no sparse sample). */
+  gapLabels: number;
+  /** Last label in the episode with position or sparse evidence (null when none). */
+  lastEvidenceLabel: string | null;
+  /** Duration actually covered by evidence: lastEvidenceLabel − startLatest (s); never exceeds minDurationS. */
+  observedMinDurationS: number;
+  /** Labels with numeric speed in the hysteresis band (creep not excluded). */
+  hysteresisBandLabels: number;
+  /** How STATIONARY was first asserted: vehicle-speed sample, C4 OK, C4 degraded, or gap inference. */
+  firstStationarySource: 'SPARSE_VEHICLE_SPEED' | 'C4_OK' | 'C4_DEGRADED' | 'GAP_OR_POSITION_INFERENCE';
+  firstStationaryC4Quality: string | null;
 }
 
 export interface SparseVehicleSpeedSample {
@@ -92,6 +153,7 @@ function speedValueForFsm(s: MotionCoreSpeedSample | undefined): number | null {
 
 /**
  * Temporal motion FSM (Fable V0.2). Specification: exp021-motion-core-design/prototype/motion_fsm.py
+ * Thin wrapper over {@link runMotionFsm} with all candidate switches off (exact Fable behaviour).
  */
 export function runMotionFsmV02(
   buckets: MotionCorePositionBucket[],
@@ -100,7 +162,22 @@ export function runMotionFsmV02(
   sparseSpeed: SparseVehicleSpeedSample[] | null = null,
   params: typeof MOTION_FSM_PARAMS_V0_2_DEV = MOTION_FSM_PARAMS_V0_2_DEV,
 ): MotionFsmLabel[] {
+  return runMotionFsm(buckets, speedSamples, mode, sparseSpeed, params, MOTION_FSM_FABLE_V0_2_OPTIONS);
+}
+
+/**
+ * Temporal motion FSM with review-round candidate switches. `options` all false == Fable V0.2.
+ */
+export function runMotionFsm(
+  buckets: MotionCorePositionBucket[],
+  speedSamples: MotionCoreSpeedSample[],
+  mode: MotionFsmMode,
+  sparseSpeed: SparseVehicleSpeedSample[] | null = null,
+  params: typeof MOTION_FSM_PARAMS_V0_2_DEV = MOTION_FSM_PARAMS_V0_2_DEV,
+  options: Readonly<MotionFsmCandidateOptions> = MOTION_FSM_FABLE_V0_2_OPTIONS,
+): MotionFsmLabel[] {
   const p = params;
+  const opt = options;
   const ordered = orderMotionCoreGrid(buckets);
   const spBy = new Map(speedSamples.map((s) => [s.label, s]));
   const sparse = new Map((sparseSpeed ?? []).map((s) => [s.label, s.speedKmh]));
@@ -116,6 +193,8 @@ export function runMotionFsmV02(
   let gapLen = 0;
   let stopObs = 0;
   let startingLen = 0;
+  /** K-B: consecutive STARTING labels (candidate only). */
+  let startingRun = 0;
   const out: MotionFsmLabel[] = [];
 
   const lookaheadReappear = (i: number): [number, number] | null => {
@@ -241,6 +320,11 @@ export function runMotionFsmV02(
               reason = 'displacement_across_gap_implies_motion';
               quality = 'INFERRED';
               flags.push(`implied_mean_speed_kmh=${implied.toFixed(1)}`);
+              if (opt.staleSpeedContextFix) {
+                lastSpeed = implied;
+                lastSpeedLabel = lab;
+                stopObs = 0;
+              }
             } else {
               state = 'UNKNOWN';
               reason = 'displacement_across_gap_ambiguous';
@@ -259,6 +343,13 @@ export function runMotionFsmV02(
           } else {
             reason = 'position_only_keep_state';
             quality = 'INFERRED';
+          }
+          if (opt.staleSpeedContextFix) {
+            // 1-s displacement implies a mean speed; refresh the gap context instead of keeping the
+            // pre-stop low speed that would re-enter the stop path on the next ROW_ABSENT label.
+            lastSpeed = disp * 3.6;
+            lastSpeedLabel = lab;
+            stopObs = 0;
           }
         } else if (disp != null) {
           if (state === 'MOVING' || state === 'STARTING') {
@@ -346,7 +437,7 @@ export function runMotionFsmV02(
           reason = 'gap_after_low_speed_observing';
           quality = 'INFERRED';
         }
-      } else if (state === 'MOVING') {
+      } else if (state === 'MOVING' || (opt.staleSpeedContextFix && state === 'STARTING')) {
         if (gapLen <= p.gapShortMaxS) {
           reason = 'short_gap_while_cruising_keep_moving';
           quality = 'INFERRED';
@@ -372,7 +463,44 @@ export function runMotionFsmV02(
       }
     }
 
-    if (state === 'MOVING') {
+    if (state === 'STARTING') {
+      startingRun += 1;
+      if (opt.startingTimeout && startingRun >= p.startingMaxS) {
+        state = 'MOVING';
+        reason = 'starting_timeout_resolved_moving';
+        flags.push(`STARTING_TIMEOUT_AFTER_S=${startingRun}`);
+        startingRun = 0;
+      }
+    } else {
+      startingRun = 0;
+    }
+
+    if (opt.evidencePropagation) {
+      const sparseHere = sparse.has(lab) ? sparse.get(lab)! : null;
+      if (quality === 'DIRECT' && v != null && sparseHere == null && s!.quality !== 'OK') {
+        quality = 'INFERRED';
+        flags.push(`EVIDENCE_DOWNGRADED_C4_QUALITY=${s!.quality}`);
+      }
+      if (sparseHere != null && v != null) {
+        const contradiction =
+          (sparseHere <= p.stationaryBandMaxKmh && v >= p.movingBandMinKmh) ||
+          (sparseHere >= p.movingBandMinKmh && v < p.stationaryBandMaxKmh);
+        if (contradiction) {
+          quality = 'INFERRED';
+          flags.push(`SPARSE_C4_CONTRADICTION=${sparseHere.toFixed(1)}/${v.toFixed(1)}`);
+        }
+      }
+      if (
+        isStopSideState(state) &&
+        v != null &&
+        v >= p.stationaryBandMaxKmh &&
+        v < p.movingBandMinKmh
+      ) {
+        flags.push('HYSTERESIS_BAND_CREEP_POSSIBLE');
+      }
+    }
+
+    if (state === 'MOVING' || (opt.staleSpeedContextFix && state === 'STARTING')) {
       stopObs = 0;
     }
     if (i === ordered.length - 1) {
@@ -388,6 +516,8 @@ export function runMotionFsmV02(
       positionPresent: present,
       mode,
       flags,
+      sparseSpeedKmh: sparse.has(lab) ? sparse.get(lab)! : null,
+      speedQuality: v != null ? s!.quality : null,
     });
   }
 
@@ -399,8 +529,25 @@ export function extractMotionFsmStopEpisodes(
   trip: number,
   labels: MotionFsmLabel[],
   mode: MotionFsmMode,
+  params: typeof MOTION_FSM_PARAMS_V0_2_DEV = MOTION_FSM_PARAMS_V0_2_DEV,
 ): MotionFsmStopEpisode[] {
   const eps: MotionFsmStopEpisode[] = [];
+  const hasEvidence = (l: MotionFsmLabel): boolean =>
+    l.positionPresent || l.sparseSpeedKmh != null;
+  const firstStationarySourceOf = (
+    l: MotionFsmLabel,
+  ): MotionFsmStopEpisode['firstStationarySource'] => {
+    if (l.sparseSpeedKmh != null) {
+      return 'SPARSE_VEHICLE_SPEED';
+    }
+    if (l.speedQuality === 'OK') {
+      return 'C4_OK';
+    }
+    if (l.speedQuality != null) {
+      return 'C4_DEGRADED';
+    }
+    return 'GAP_OR_POSITION_INFERENCE';
+  };
   let i = 0;
   const n = labels.length;
   while (i < n) {
@@ -425,6 +572,21 @@ export function extractMotionFsmStopEpisodes(
         (labels[j]!.state === 'STATIONARY' &&
           j + 1 < n &&
           labels[j + 1]!.state === 'UNKNOWN');
+      const count = (q: MotionFsmEvidenceQuality): number =>
+        slice.filter((l) => l.evidenceQuality === q).length;
+      const observed = slice.filter(hasEvidence);
+      const lastEvidenceLabel = observed.length > 0 ? observed[observed.length - 1]!.label : null;
+      const minDurationS = Math.max(
+        0,
+        secSinceEpoch(labels[j]!.label) - secSinceEpoch(labels[i]!.label),
+      );
+      const observedMinDurationS =
+        lastEvidenceLabel == null
+          ? 0
+          : Math.min(
+              minDurationS,
+              Math.max(0, secSinceEpoch(lastEvidenceLabel) - secSinceEpoch(labels[i]!.label)),
+            );
       eps.push({
         trip,
         mode,
@@ -433,7 +595,7 @@ export function extractMotionFsmStopEpisodes(
         endEarliest: openEnd ? null : labels[j]!.label,
         endLatest:
           !openEnd && j + 1 < n ? labels[j + 1]!.label : null,
-        minDurationS: Math.max(0, secSinceEpoch(labels[j]!.label) - secSinceEpoch(labels[i]!.label)),
+        minDurationS,
         maxDurationS:
           !openEnd && j + 1 < n
             ? secSinceEpoch(labels[j + 1]!.label) - secSinceEpoch(labels[k]!.label)
@@ -441,6 +603,21 @@ export function extractMotionFsmStopEpisodes(
         evidenceQuality: q,
         openEnd,
         labels: j - k + 1,
+        directLabels: count('DIRECT'),
+        inferredLabels: count('INFERRED'),
+        indeterminateLabels: count('INDETERMINATE'),
+        observedLabels: observed.length,
+        gapLabels: slice.length - observed.length,
+        lastEvidenceLabel,
+        observedMinDurationS,
+        hysteresisBandLabels: slice.filter(
+          (l) =>
+            l.speedKmh != null &&
+            l.speedKmh >= params.stationaryBandMaxKmh &&
+            l.speedKmh < params.movingBandMinKmh,
+        ).length,
+        firstStationarySource: firstStationarySourceOf(labels[i]!),
+        firstStationaryC4Quality: labels[i]!.speedQuality,
       });
       i = j + 1;
     } else {
