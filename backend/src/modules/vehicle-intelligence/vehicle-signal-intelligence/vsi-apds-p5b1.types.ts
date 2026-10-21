@@ -44,6 +44,8 @@ export type VsiApdsP5b1SourceLinkAttributionV1 = {
 
 export type VsiApdsP5b1OfflineCorrelationRowV1 = {
   contractVersion: typeof VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION;
+  /** Present only for manifest-based offline research replays (not production API). */
+  persistedShadowDecisionId?: string;
   decisionIdentity: VsiApdsP5b1DecisionIdentityV1;
   originalApdsDecision: string;
   originalApdsReason: string;
