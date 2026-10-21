@@ -1,12 +1,13 @@
 import type { INestApplicationContext } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { NestFactory } from '@nestjs/core';
-import type { PrismaClient } from '@prisma/client';
 import type { PhysicalDeviceListItemDto } from './physical-device-inventory.types';
-import { AppModule } from '../../app.module';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
+export {
+  createPdiP1b7InstallOperatorApplicationContext,
+  PdiP1b7InstallOperatorBootstrapModule,
+  PDI_P1B7_INSTALL_OPERATOR_MINIMAL_PROVIDERS,
+} from './pdi-p1b7-install-operator.bootstrap';
 import {
   assertPdiP1b7InstallExecuteGates,
   buildPdiP1b7InstallDto,
@@ -53,25 +54,6 @@ export type PdiP1b7InstallOperatorRunFailure = {
 export type PdiP1b7InstallOperatorRunOutcome =
   | PdiP1b7InstallOperatorRunSuccess
   | PdiP1b7InstallOperatorRunFailure;
-
-export async function createPdiP1b7InstallOperatorApplicationContext(
-  options?: { prisma?: PrismaClient },
-): Promise<INestApplicationContext> {
-  if (options?.prisma) {
-    const moduleRef = await Test.createTestingModule({
-      providers: [PrismaService, PhysicalDeviceInventoryService, AuditService],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(options.prisma)
-      .compile();
-    return moduleRef;
-  }
-
-  const appModule = await AppModule.forRootAsync();
-  return NestFactory.createApplicationContext(appModule, {
-    logger: false,
-  });
-}
 
 function buildExecuteReportBase(
   report: Record<string, unknown>,

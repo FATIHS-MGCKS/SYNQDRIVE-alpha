@@ -18,6 +18,16 @@ This does **not** mint a JWT and does **not** expose a new HTTP route. HTTP Mast
 
 **Do not** set `PDI_P1B7_INSTALL_OPERATOR_ENABLED` in `backend.env` or any persistent config — enable only in the shell for a single deliberate execute attempt.
 
+## Bootstrap isolation (Gate D CLI)
+
+The operator CLI boots a **minimal Nest application context** (`PdiP1b7InstallOperatorBootstrapModule`) with only:
+
+- `PrismaService`
+- `PhysicalDeviceInventoryService`
+- `AuditService`
+
+It does **not** import `AppModule`, start HTTP, register `@nestjs/schedule` cron jobs, BullMQ workers, or scheduler leader election. Production dry-run therefore does not upsert DTC/trip/battery job schedulers as a side effect of CLI startup. Execute path semantics are unchanged; only bootstrap scope was narrowed.
+
 ## Service parity
 
 - `PhysicalDeviceInventoryService.installOnVehicle` (domain `INSTALL` audit inside service transaction; `providerBindingMutated: false`, `vehicleDataSourceLinksMutated: false`)
