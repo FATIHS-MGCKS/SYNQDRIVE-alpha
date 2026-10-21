@@ -23,6 +23,13 @@ describe('readiness profile registry (VO-4.1)', () => {
     );
   });
 
+  it('requires HV usable reference for BEV on RENTAL and FLEET profiles', () => {
+    const rental = resolveReadinessProfileForSelectedProduct(ProductSlug.RENTAL);
+    const fleet = resolveReadinessProfileForSelectedProduct(ProductSlug.FLEET);
+    expect(rental.hvBatteryByPowertrain.BEV).toBe('REQUIRED');
+    expect(fleet.hvBatteryByPowertrain.BEV).toBe('REQUIRED');
+  });
+
   it('fails closed for TAXI without fleet fallback', () => {
     expect(() => resolveReadinessProfileForSelectedProduct(ProductSlug.TAXI)).toThrow(
       VehicleOnboardingError,
