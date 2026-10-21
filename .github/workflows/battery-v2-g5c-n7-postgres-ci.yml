@@ -6,8 +6,6 @@ on:
       - 'backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-canonical-target-anchor*'
       - 'backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation*'
       - 'backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts'
-      - 'backend/src/modules/vehicle-intelligence/battery-health/lv-start-proxy/start-proxy-pilot-provider-budget*'
-      - 'backend/src/modules/vehicle-intelligence/battery-health/lv-start-proxy/start-proxy-pilot-forward-capture*'
       - 'backend/prisma/schema.prisma'
       - 'backend/prisma/migrations/**'
       - 'backend/scripts/test/battery-g5c-n7-postgres-ci.sh'
@@ -19,7 +17,6 @@ on:
     branches:
       - main
       - 'cursor/g5c-n7-*'
-      - 'cursor/g5c-n16-*'
       - 'cursor/battery-v2-*'
 
 concurrency:
