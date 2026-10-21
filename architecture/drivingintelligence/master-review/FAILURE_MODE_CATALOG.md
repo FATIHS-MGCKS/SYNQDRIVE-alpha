@@ -22,5 +22,6 @@
 | FM-018 | Sparse provider speed | False stop at waypoint 0 | B7.4 REPORTED | REPORTED | Do not override L3 |
 | FM-019 | CROSS_SOURCE_CONFLICT | R1 0–10 vs L3 26–52 | P2.1 trip | CONFIRMED | INTERVAL_ONLY |
 | FM-020 | Admission reconcile window | Shadow work item missing | EXP021 post-deploy doc | REPORTED | Ops runbook |
+| FM-021 | Tesla trip ID conflation | Wrong replay pin / GT story | REF-001 vs REF-002 | VERIFIED | Registry split |
 
 **Failure modes documented:** 20
