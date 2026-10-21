@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-21 — HV R22 P1I PR1 fail-closed policy decision
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `hv-charging-counter-evidence.policy-decision.v1.ts` + capture `policyDecision` on successful capture; no DB migration; v1/v2 unchanged |
+| **WHY** | Separate `shadowEvidenceAcceptable` vs `energyUseEligible` without redefining `reliableSessionCounterDelta` |
+| **VALIDATION** | `hv-charging-counter-evidence.policy-decision.v1.spec.ts`; R22 v2/capture/p1b replay regressions |
+| **NON_EFFECTS** | No HV-H4 mutation; no persistence of policy JSON yet; overlap `overlapAssessed:false` fail-closed for energy |
+| **DECISION_STATUS** | PR1 — fail-closed energy eligibility policy layer |
+
+---
+
 ## 2026-10-20 — HV R22 P1D temporal counter quality hardening (v2 contract)
 
 | Field | Value |
