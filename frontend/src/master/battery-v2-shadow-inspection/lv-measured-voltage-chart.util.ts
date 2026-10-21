@@ -78,7 +78,7 @@ export function groupChartPointsBySegment(points: LvVoltageChartPoint[]): LvVolt
     .map(([segmentId, segmentPoints]) => ({ segmentId, points: segmentPoints }));
 }
 
-export type LvVoltageChartRenderablePoint = LvVoltageChartPoint & { v: number | null };
+export type LvVoltageChartRenderablePoint = Omit<LvVoltageChartPoint, 'v'> & { v: number | null };
 
 /** Inserts null voltage rows so Recharts does not connect across long gaps. */
 export function chartPointsWithGapBreaks(

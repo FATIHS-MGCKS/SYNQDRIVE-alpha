@@ -99,6 +99,58 @@ describe('lv-measured-evidence-display.util', () => {
     expect(ep.evaluabilityLabelKey).toContain('none');
   });
 
+  it('production fixture semantics: transition, charging, rest candidate (historical)', () => {
+    const tiguan = buildLatestMeasuredEvidenceView(
+      baseData({
+        latestMeasured: measured({
+          voltageV: 13.031,
+          evidenceClass: 'ENGINE_OFF_TRANSITION',
+          operationalContext: 'DRIVING',
+          voltageObservedAt: '2026-10-20T08:00:00.000Z',
+        }),
+      }),
+    );
+    expect(tiguan?.usabilityLabelKey).toContain('transition');
+    expect(tiguan?.batteryHealthAssessmentKey).toContain('NotAssessed');
+
+    const audi = buildLatestMeasuredEvidenceView(
+      baseData({
+        provenance: {
+          openProviderObservabilityGapCount: 1,
+          deduplicationPolicy: 'ONE_ROW_PER_SOURCE_MEASUREMENT_ID',
+          historicalQueryMode: 'RECENT_DESC_LIMIT',
+          historicalMeasuredFrom: null,
+          historicalMeasuredTo: null,
+          historicalObservationsTruncated: false,
+          featureRowsTruncated: false,
+        },
+        latestMeasured: measured({
+          voltageV: 13.482,
+          evidenceClass: 'CHARGING_CONTAMINATED',
+          operationalContext: 'CHARGING',
+          isLvCharging: true,
+          voltageObservedAt: '2026-10-20T09:00:00.000Z',
+        }),
+      }),
+    );
+    expect(audi?.operationalContext).toBe('CHARGING');
+    expect(audi?.openProviderGaps).toBe(1);
+    expect(audi?.usabilityLabelKey).toContain('chargingContaminated');
+
+    const arteon = buildLatestMeasuredEvidenceView(
+      baseData({
+        latestMeasured: measured({
+          voltageV: 12.634,
+          evidenceClass: 'PARKED_REST_CANDIDATE',
+          operationalContext: 'REST',
+          voltageObservedAt: '2026-10-20T10:00:00.000Z',
+        }),
+      }),
+    );
+    expect(arteon?.usabilityLabelKey).toContain('restCandidate');
+    expect(arteon?.crankingStatusKey).toContain('unknown');
+  });
+
   it('episode with CONTEXT_LIMITED slope maps to slopeLimited', () => {
     const ep = buildEpisodeEvaluabilityView({
       restSessionId: 'r1',
