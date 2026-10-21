@@ -6,6 +6,30 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-21 — HV measurement quality MVP hardening (PR #2108)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Fail-closed SOH/cross-session: load persisted `HV_CAPACITY_SHADOW` assessment only; Q4 tied to `shadowGatePassed` + `sessionIds`; qualified vs exploratory capacity medians; vehicle score excludes Q1 history |
+| **WHY** | Prevent synthetic cross-session / SOH gate pass from MVP read API |
+| **VALIDATION** | `hv-measurement-quality.{aggregates,safety,policy}.spec.ts` |
+| **NON_EFFECTS** | No M3/M2 policy edits; no migrations; no DIMO |
+
+---
+
+## 2026-10-21 — HV measurement quality MVP (Q1–Q4, read API, fail-closed)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `hv-measurement-quality/*` policy + `GET organizations/:orgId/vehicles/:vehicleId/hv-measurement-quality`; reuses `assessHvChargeSessionQualityFromInput`, `evaluateHvM3SessionGate`, `computeHvSohGateAssessment` without M3 rule changes |
+| **WHY** | Transparent per-session data-quality index (0–100 uncalibrated) and Q1–Q4 levels for operators; Q4 only on consistent multi-session M3-pass cohort (CV ≤ 3 %); no SOH % public display |
+| **VALIDATION** | `hv-measurement-quality.policy.spec.ts` (fail-closed score cap, Q3/Q4 gates, contamination → Q1) |
+| **NON_EFFECTS** | No migrations; no DIMO polling; no M3 validation rule edits; no production deploy in workstream; `sohPercentPublicDisplayAllowed` always false in API |
+| **REMAINING_GAPS** | No customer UI; cross-session block in API is MVP synthesis from session rows — not a replacement for `HvCapacityCrossSessionAssessmentService` persistence |
+| **DECISION_STATUS** | PROPOSED (MVP API behind existing fleet-condition read permission) |
+
+---
+
 ## 2026-10-21 — HV R22 P1I PR1 fail-closed policy decision
 
 | Field | Value |
