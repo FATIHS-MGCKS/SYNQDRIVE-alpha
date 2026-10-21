@@ -16,5 +16,6 @@ Extends [`../decisions/DECISION_REGISTER.md`](../decisions/DECISION_REGISTER.md)
 | DI-MLR-DEC-010 | 2026-10-19 | Heading use in emission | Distance only | Direction-aware P1 shadow | Blind merge | #2085 | Tesla 135 way audit | NO accuracy claim | — | **REASSESS** | #2085 |
 | DI-MLR-DEC-011 | 2026-10-16 | EV GT campaign packaging | Single doc | Frozen baseline + forensic supplements | Mutate baseline | #2051 commits | bc0bbed… series | PR body wrong template | Title/body mismatch | **YES** (process) | #2051 OPEN |
 | DI-MLR-DEC-012 | 2026-09-03 | Alignment fit trust | MAE-only GT | Hard bounds gate | Video as auto-GT | DI-HYP-003 | RD003/004 | — | LL-013 | **YES** | audits |
+| DI-MLR-DEC-013 | 2026-10-21 | B6 safety gates on main? | Merge with #2092 | **Keep B6 off main** until explicit merge | Assume #2092 = B6 | `180c74da8` not ancestor of `0a16ffb5b` | git ancestry | #2092 merged other live-fsm commits | B6 on branch only | **YES** | #2092 vs `180c74da8` |
 
-**Count reconstructed:** 12 master ledger rows (+ full register in parent doc).
+**Count reconstructed:** 13 master ledger rows (+ full register in parent doc).

@@ -1,7 +1,11 @@
 # Algorithm Comparison Matrix
 
-**Base SHA:** `0a16ffb5b0add0bec30fefc4e55a41973428677b` (main).  
-**Epistemic:** CONFIRMED = code identifier exists on main; AMBIGUOUS = branch-only or naming drift; UNKNOWN = not found.
+**Base SHA:** `0a16ffb5b0add0bec30fefc4e55a41973428677b` (`origin/main`).  
+**Implementation status:** CONFIRMED = identifier on main @ base SHA; AMBIGUOUS = branch/open PR; UNKNOWN = not found.
+
+**Validation tier (per variant):** MEASURED | INDEPENDENTLY_VALIDATED | DRIVER_REPORTED | PROXY_ONLY | SIMULATED | NOT_VERIFIED — **CONFIRMED code ≠ higher accuracy.**
+
+## Summary matrix (authority)
 
 | ID | Variant | Code ID / version | Pin SHA (main) | Objective | Evidence used | Compute | GT independent | Env | Status |
 |----|---------|-------------------|----------------|-----------|---------------|---------|----------------|-----|--------|
@@ -37,3 +41,20 @@ Source: `exp021-tiguan-20261019/TIGUAN_A_B_C_D_E_COMPARISON.csv` — **REPORTED*
 | Impossible graph hop | C, G — F4-B flags |
 | Reverse on one-way | F, H |
 | Grade-separated crossover | All using 2D node adjacency |
+
+## Extended attributes
+
+| ID | Merge / pin commit (main) | Inputs | Output | Runtime | Coverage | Validation tier | Error classes | Production | Pros | Cons | Risks |
+|----|---------------------------|--------|--------|---------|----------|-----------------|---------------|------------|------|------|-------|
+| A | S4 shadow stack @ `0a16ffb5b` | Pinned S4D gzip, L3 read-only | Work item COMPLETED + road hypotheses | Async worker | Fleet allowlist gated | NOT_VERIFIED accuracy | FAILED, kill, budget | Deployed path REPORTED | Pinned replay | Ops complexity | False prod activation |
+| B | #2065 | 1 Hz buckets, OSM V2 | Per-bucket baseline hypothesis | Library O(n×k) | Tesla 1136 buckets | MEASURED counts only | AMBIGUOUS, UNKNOWN | Research | Simple | No global path | Service roads |
+| C | #2065 | + forward DP | Separate Viterbi stream | Library | Same fixture | MEASURED counts | +graph conflict | Research | Global consistency | UNKNOWN mass ↑ | Overfit fixture |
+| D | **#2081 OPEN** | C + backpointer | Decoded path | NOT on main | NOT_VERIFIED | SIMULATED branch | — | None | Optimal path retrieval | Not merged | Stale branch |
+| E | #2082 | Node-id adjacency | Topology R1 replay | Library | Tiguan four-way replay REPORTED | NOT_VERIFIED | False adjacency at rounded nodes | Research | Stricter graph | No layer/level | Grade sep |
+| F | #2084 family | Directed ways | Penalized transitions | Library | Frozen routes | NOT_VERIFIED | Reverse drive | Research | One-way plausibility | Penalty tuning | Wrong OSM dir |
+| G | #2084 | Route context | Route-aware Viterbi | Library | Offline harness | NOT_VERIFIED | Route mismatch | Research | Corridor constraint | Compute | Bad route input |
+| H | #2085 | Heading emission P1 | Shadow wiring + harness | Shadow REPORTED | Tesla+Tiguan | PROXY_ONLY audits | 135 way changes Tesla | Shadow | Heading signal use | NO_ACCURACY_CLAIM | Regression unknown |
+| I | `180c74da8` **not on main** | P1 policy CSV | Gate promotions | Harness only | 2-trip REPORTED | SIMULATED | improper_reverse=0 REPORTED | None | Safety guard | Not merged | Drift from P1 prod |
+| J | pins only | V1 geometry | Historical diff | Offline | 488/1136 diff | MEASURED label delta | Projection bug | None | Audit trail | Obsolete | Misleading if reused |
+
+Merge commits (VERIFIED via GitHub): #2065 `6311d8c375dc5652bd64212ca4ed208175dc8148` (source lineage PR B doc); #2082/#2084/#2085 — see [EVOLUTION_TIMELINE.md](./EVOLUTION_TIMELINE.md).

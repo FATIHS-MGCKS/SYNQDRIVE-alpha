@@ -6,6 +6,8 @@ SynqDrive Driving Intelligence enriches **completed** `VehicleTrip` rows (DIMO S
 
 ## Package contents
 
+- [review/REVIEW_PIN.md](./review/REVIEW_PIN.md) — shared pin for reviewers A/B/C
+- [MASTER_ARCHITECTURE_OVERVIEW.md](./MASTER_ARCHITECTURE_OVERVIEW.md)
 - [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) — pipeline + Mermaid
 - [ALGORITHM_COMPARISON_MATRIX.md](./ALGORITHM_COMPARISON_MATRIX.md)
 - [DECISION_LEDGER.md](./DECISION_LEDGER.md) + [FAILURE_MODE_CATALOG.md](./FAILURE_MODE_CATALOG.md)

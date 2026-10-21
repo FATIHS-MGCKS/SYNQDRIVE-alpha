@@ -26,8 +26,9 @@
 
 | ID | Vehicle | Trip UUID | Notes |
 |----|---------|-----------|-------|
-| TRIP_1 | `68868291-5478-42cd-b0c4-cc77b2a78e21` | `11f5a645-752e-4b8a-b20a-9f1fc3a6673e` | Shadow replay pins in agent runs |
-| TRIP_2 | same | `0f8d2f76-9b09-4aba-8c56-fa7e2ce1c5a8` | B3 maps |
+| TRIP_1 (Oct 20 campaign) | `68868291-5478-42cd-b0c4-cc77b2a78e21` | `11f5a645-752e-4b8a-b20a-9f1fc3a6673e` | **NOT on main** @ dossier SHA — see REF-002 |
+| TRIP_2 (Oct 20 campaign) | same | `0f8d2f76-9b09-4aba-8c56-fa7e2ce1c5a8` | REF-003 |
+| LDI-10D frozen trip (Oct 16) | same | `358d0158-b2a9-47ed-af26-33926c5770b4` | **IN_REPO** — REF-001; not the same as TRIP_1 |
 
 DIMO token **186946** — `S4_PRODUCTION_SHADOW_P1_INTEGRATION.md`.
 

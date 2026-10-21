@@ -4,6 +4,7 @@
 **Scope:** Documentation only — no product code, flags, migrations, or deploy changes on this branch.  
 **Base repository SHA:** `origin/main` @ `0a16ffb5b0add0bec30fefc4e55a41973428677b` (2026-10-20).  
 **Branch:** `cursor/di-master-architecture-research-20261021`  
+**Verified dossier commit:** see [GIT_INTEGRITY.md](./GIT_INTEGRITY.md) (`git rev-parse` on research branch — **never** use truncated placeholder SHAs).  
 **Canonical authority (unchanged):** [`../CURRENT_STATE.md`](../CURRENT_STATE.md), [`../evidence/EVIDENCE_INDEX.md`](../evidence/EVIDENCE_INDEX.md), [`../decisions/DECISION_REGISTER.md`](../decisions/DECISION_REGISTER.md).
 
 ## Epistemic labels (used throughout)
@@ -21,6 +22,12 @@
 
 | Document | Contents |
 |----------|----------|
+| [MASTER_ARCHITECTURE_OVERVIEW.md](./MASTER_ARCHITECTURE_OVERVIEW.md) | Single-page entry + terminology (S3A/S1/L3/S4) |
+| [GIT_INTEGRITY.md](./GIT_INTEGRITY.md) | Branch SHAs, invalid-SHA postmortem |
+| [DOSSIER_INVENTORY.md](./DOSSIER_INVENTORY.md) | Verified file/count audit |
+| [ARCHITECTURE_RECONCILIATION_REPORT.md](./ARCHITECTURE_RECONCILIATION_REPORT.md) | Doc vs code reconciliation |
+| [CONTRADICTIONS_AND_EVIDENCE_GAPS.md](./CONTRADICTIONS_AND_EVIDENCE_GAPS.md) | Open/resolved conflicts |
+| [L3_AUTHORITY_DECISION.md](./L3_AUTHORITY_DECISION.md) | L3 vs R1 authority (Task E) |
 | [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) | End-to-end pipeline, component contracts, Mermaid diagram |
 | [EVOLUTION_TIMELINE.md](./EVOLUTION_TIMELINE.md) | Git/PR-era chronology (EXP-019 → EXP-021, S4, LDI-10D) |
 | [L3_SPEED_RESEARCH.md](./L3_SPEED_RESEARCH.md) | L3, S1/S3A, Speed QC V1/V2, R1 containment, video tacho |
@@ -35,6 +42,7 @@
 | [EVIDENCE_INDEX.md](./EVIDENCE_INDEX.md) | Dossier-specific evidence routing |
 | [OPEN_QUESTIONS.md](./OPEN_QUESTIONS.md) | Unresolved technical disputes |
 | [INDEPENDENT_AGENT_REVIEW_BRIEF.md](./INDEPENDENT_AGENT_REVIEW_BRIEF.md) | Review package + ≥10 neutral questions |
+| [review/REVIEW_PIN.md](./review/REVIEW_PIN.md) | Pinned context for reviewers A/B/C |
 | [REPRODUCIBILITY_GUIDE.md](./REPRODUCIBILITY_GUIDE.md) | Offline commands and harness entry points |
 
 ## PRs explicitly reviewed for this dossier

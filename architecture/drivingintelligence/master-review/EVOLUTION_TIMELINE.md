@@ -50,7 +50,7 @@ Chronology is **REPORTED** from merge dates, `research/CHANGE_LEDGER.md`, and `W
 |----------------|-------|----------|
 | `cursor/exp021-ev-ground-truth-7d78` | Tesla GT, forensics | Partial docs may land via #2051 |
 | `cursor/s4-*-192d` | Viterbi, topology, backpointer | #2082, #2084 merged; #2081 backpointer **OPEN** |
-| `cursor/live-fsm-admission-scope-hardening-192d` | B6 safety gates | **NOT** verified on dossier base SHA |
+| `cursor/live-fsm-admission-scope-hardening-192d` | B6 safety gates (`180c74da8`) | Commit **exists on branch**; **NOT** on `origin/main` @ `0a16ffb5b` (#2092 merged other commits) |
 
 ## Commits reviewed (method)
 
