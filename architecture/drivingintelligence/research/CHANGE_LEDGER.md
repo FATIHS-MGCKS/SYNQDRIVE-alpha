@@ -2071,3 +2071,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Port EXP021 Python prototype step 0+1: reproducible frozen L3 on Tesla grids and timing-jitter leg signature diagnostics before C4 adaptive speed (step 2) |
 | VALIDATION | Jest `motion-core-step1` 11/11; Tesla trips `14c41c06…` / `7a9d6a28…` shadow mismatch 0 @ 0.05 km/h; jitter legs 5+3 match Python `jitter_suspect_legs` |
 | NON_EFFECTS | `evaluateL3AtCenter` and `compute-trip-intervals` runtime unchanged; no C4/FSM/events in production path; FSM/event synthetic scenarios S2/S3/S5/S10 not ported yet |
+
+### EXP-021 motion core — TypeScript step 2 (C4 adaptive L3) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `c4-adaptive-l3.ts`, `robust-path-slope.ts`, `motion-evaluation.ts`, `motion-core-step2.spec.ts`, harness `motion-core-ts-step2.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-step2/` |
+| WHY | Port C4 (L3-direct via replayed `evaluateL3AtCenter`, else C1 fallback) for reproducible Tesla comparison before FSM/events |
+| VALIDATION | Jest 18/18 motion-core-step; Python C4 parity TRIP_1 + S8; common support TRIP_1 MAE 1.963 n=62 vs published shadow; coverage 27.1%→65.5% display denominator |
+| NON_EFFECTS | No `compute-trip-intervals` wiring; offline/delayed-capable candidate only |
