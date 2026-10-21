@@ -8,13 +8,23 @@ import {
   selectEpisodeRepresentativesForOperationalRisk,
 } from '../lv-operational-condition/lv-operational-condition-observation.policy';
 import { evaluateLvOperationalConditionV1 } from '../lv-operational-condition/lv-operational-condition-v1.evaluator';
-import { evaluateStartabilityV1 } from '../lv-operational-condition/lv-operational-condition-startability.policy';
+import {
+  evaluateStartabilityV1,
+  hasValidatedStartabilityCrankEvidenceV1,
+} from '../lv-operational-condition/lv-operational-condition-startability.policy';
 import {
   LV_ESTIMATED_BATTERY_HEALTH_MODEL_VERSION,
+  LV_ESTIMATED_BATTERY_HEALTH_RESEARCH_POLICY_P2_ID,
+  LV_ESTIMATED_BATTERY_HEALTH_RESEARCH_POLICY_P3_ID,
   LV_ESTIMATED_HEALTH_CRANK_MAX_AGE_MS,
   LV_ESTIMATED_HEALTH_MIN_EPISODES_PROVISIONAL,
   LV_ESTIMATED_HEALTH_MIN_EPISODES_TREND,
 } from './lv-estimated-battery-health-v1.constants';
+import {
+  applyResearchPolicyAfterP1,
+  observationSpanDaysFromIsoRange,
+  type LvEstimatedBatteryHealthResearchPolicyVariant,
+} from './lv-estimated-battery-health-v1.research-policy';
 import {
   classifyEstimatedHealthStatusP1,
   independentSupportingFamiliesP1,
@@ -117,11 +127,35 @@ function deriveConfidence(
   return 'LOW';
 }
 
+function researchPolicyIdForVariant(
+  variant: LvEstimatedBatteryHealthResearchPolicyVariant,
+): string {
+  switch (variant) {
+    case 'P2_LOAD_REQUIRED_GREEN':
+      return LV_ESTIMATED_BATTERY_HEALTH_RESEARCH_POLICY_P2_ID;
+    case 'P3_CONSERVATIVE_GREEN':
+      return LV_ESTIMATED_BATTERY_HEALTH_RESEARCH_POLICY_P3_ID;
+    default:
+      return LV_ESTIMATED_BATTERY_HEALTH_DECISION_POLICY_ID;
+  }
+}
+
 /**
  * Pure shadow estimator for estimated 12V battery health (not SOH %, not N14 operational risk rename).
+ * Production/runtime default: P1 baseline only.
  */
 export function evaluateLvEstimatedBatteryHealthV1(
   input: LvEstimatedBatteryHealthInputV1,
+): LvEstimatedBatteryHealthAssessmentV1 {
+  return evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(input, 'P1_BASELINE');
+}
+
+/**
+ * Offline/research evaluator with explicit P1/P2/P3 policy variant. Not wired to Nest or publication.
+ */
+export function evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(
+  input: LvEstimatedBatteryHealthInputV1,
+  researchPolicyVariant: LvEstimatedBatteryHealthResearchPolicyVariant,
 ): LvEstimatedBatteryHealthAssessmentV1 {
   const n14 = evaluateLvOperationalConditionV1(input.conditionInput);
   const reasonCodes: LvEstimatedHealthReasonCodeV1[] = [
@@ -300,16 +334,48 @@ export function evaluateLvEstimatedBatteryHealthV1(
     reasonCodes.push('HEALTH_SINGLE_EPISODE_ONLY');
   }
 
-  const classification = classifyEstimatedHealthStatusP1({
+  const p1Classification = classifyEstimatedHealthStatusP1({
     bandCounts,
     episodeCount: episodes.length,
     trend,
     loadSignal,
     chemistryKnown,
   });
-  estimatedHealthStatus = classification.status;
-  finalRuleId = classification.ruleId;
-  reasonCodes.push(...classification.extraReasonCodes);
+
+  const temperatureWithProvenance = eligible.filter(
+    (o) => o.temperatureC != null && o.providerObservationAt != null,
+  );
+  const observationSpanDays = observationSpanDaysFromIsoRange(
+    observationTimes[0] ?? null,
+    observationTimes[observationTimes.length - 1] ?? null,
+  );
+  const loadProvenanceValidated = hasValidatedStartabilityCrankEvidenceV1(
+    input.conditionInput.crankEvidence,
+  );
+
+  const researchOverlay = applyResearchPolicyAfterP1(
+    researchPolicyVariant,
+    p1Classification,
+    {
+      bandCounts: bandCounts as RestEpisodeBandCounts,
+      episodeCount: episodes.length,
+      trend,
+      loadSignal,
+      crankStale,
+      loadAuthorizedForHealth,
+      loadProvenanceValidated,
+      observationSpanDays,
+      openProviderGaps: input.conditionInput.openProviderObservabilityGapCount,
+      inputCoverageIncomplete: input.conditionInput.inputCoverageIncomplete,
+      historicalObservationsTruncated: input.conditionInput.historicalObservationsTruncated,
+      temperatureObservationCount: eligibleWithTemp.length,
+      temperatureProvenanceValid: temperatureWithProvenance.length > 0,
+    },
+  );
+
+  estimatedHealthStatus = researchOverlay.status;
+  finalRuleId = researchOverlay.ruleId;
+  reasonCodes.push(...researchOverlay.extraReasonCodes);
 
   if (
     loadSignal === 'YELLOW' &&
@@ -376,7 +442,7 @@ export function evaluateLvEstimatedBatteryHealthV1(
     n14StartabilityStatus: n14.startabilityStatus,
     customerPublicationEnabled: false,
     decisionTrace: {
-      policyId: LV_ESTIMATED_BATTERY_HEALTH_DECISION_POLICY_ID,
+      policyId: researchPolicyIdForVariant(researchPolicyVariant),
       observationTimeRange: {
         earliestIso: observationTimes[0] ?? null,
         latestIso: observationTimes[observationTimes.length - 1] ?? null,
@@ -392,6 +458,8 @@ export function evaluateLvEstimatedBatteryHealthV1(
       independentFamilies: familySplit.independent,
       correlatedFamiliesExcluded: familySplit.correlatedExcluded,
       finalRuleId,
+      researchRuleId: researchOverlay.researchRuleId ?? null,
+      researchPolicyVariant,
     },
   };
 }
