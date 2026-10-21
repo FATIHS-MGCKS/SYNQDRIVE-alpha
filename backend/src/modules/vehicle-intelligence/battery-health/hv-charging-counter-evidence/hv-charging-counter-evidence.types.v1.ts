@@ -17,6 +17,7 @@ export interface HvChargingCounterDimoIntervalRowV1 {
 }
 
 import type { HvChargingCounterQualityAssessmentV2 } from './hv-charging-counter-evidence.counter-quality.v2';
+import type { HvR22PolicyDecisionV1 } from './hv-charging-counter-evidence.policy-decision.v1';
 
 export interface HvChargingCounterCaptureResultV1 {
   skipped: boolean;
@@ -43,4 +44,5 @@ export interface HvChargingCounterCaptureResultV1 {
   bucketsWritten?: number;
   revisionsCreated?: number;
   counterQuality?: HvChargingCounterQualityAssessmentV2;
+  policyDecision?: HvR22PolicyDecisionV1;
 }

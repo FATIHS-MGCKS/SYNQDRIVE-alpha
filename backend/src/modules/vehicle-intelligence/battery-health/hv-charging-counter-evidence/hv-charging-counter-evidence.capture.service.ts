@@ -18,6 +18,7 @@ import {
   type HvChargingCounterRevalidationAnchorV1,
 } from './hv-charging-counter-evidence.revalidation.policy.v1';
 import { evaluateHvChargingCounterQualityV2 } from './hv-charging-counter-evidence.counter-quality.v2';
+import { evaluateHvR22PolicyDecisionV1 } from './hv-charging-counter-evidence.policy-decision.v1';
 import { getHvChargingCounterPilotAdmissionStateV1 } from './hv-charging-counter-evidence.pilot-admission.v1';
 import {
   finalizePilotProviderRequestBudgetV1,
@@ -309,6 +310,12 @@ export class HvChargingCounterEvidenceCaptureService {
       rows: fetchResult.rows,
     });
 
+    const policyDecision = evaluateHvR22PolicyDecisionV1({
+      counterQuality,
+      overlapAssessed: false,
+      sessionBoundariesValid: true,
+    });
+
     const observationSetFingerprint = computeHvChargingCounterObservationSetFingerprintV1(
       buckets,
     );
@@ -390,6 +397,7 @@ export class HvChargingCounterEvidenceCaptureService {
       bucketsWritten: buckets.length,
       revisionsCreated: persist.revisionsCreated,
       counterQuality,
+      policyDecision,
     };
   }
 }
