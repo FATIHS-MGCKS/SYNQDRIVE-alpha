@@ -1,19 +1,15 @@
 import { useMemo } from 'react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { MasterPageSection } from '../shell';
 import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
+import { LvMeasuredVoltageChart } from './LvMeasuredVoltageChart';
+import {
+  countMeasurementGaps,
+  formatChartTimestamp,
+  mapMeasuredPointsToChartPoints,
+} from './lv-measured-voltage-chart.util';
 import type {
   LvMeasuredIntelligenceV1,
   LvMeasuredRestSessionEpisodeV1,
-  LvMeasuredVoltagePointV1,
 } from './lv-measured-intelligence.types';
 import { formatDurationMs, formatMillivolts, formatSlope } from './types';
 
@@ -47,19 +43,6 @@ function contextBadgeClass(ctx: string): string {
   }
 }
 
-function chartPoints(points: LvMeasuredVoltagePointV1[]) {
-  return [...points]
-    .sort((a, b) => new Date(a.voltageObservedAt).getTime() - new Date(b.voltageObservedAt).getTime())
-    .map((p) => ({
-      t: new Date(p.voltageObservedAt).getTime(),
-      label: new Date(p.voltageObservedAt).toLocaleString(),
-      v: p.voltageV,
-      context: p.operationalContext,
-      ladder: p.nominalLadderLabel,
-      restHours: p.actualRestAgeHours,
-    }));
-}
-
 function slopePresentation(ep: LvMeasuredRestSessionEpisodeV1) {
   const df = ep.derivedFeatures;
   if (!df) return { value: '—', limited: false, codes: [] as string[] };
@@ -76,7 +59,11 @@ export function LvMeasuredIntelligenceSection({
   onSelectRestSessionId,
   historyRange,
 }: Props) {
-  const vehicleTimeline = useMemo(() => chartPoints(data.historicalMeasured), [data.historicalMeasured]);
+  const vehicleTimeline = useMemo(
+    () => mapMeasuredPointsToChartPoints(data.historicalMeasured),
+    [data.historicalMeasured],
+  );
+  const vehicleGapCount = useMemo(() => countMeasurementGaps(vehicleTimeline), [vehicleTimeline]);
 
   const selectedEpisode = useMemo(
     () => data.restSessionEpisodes.find((e) => e.restSessionId === selectedRestSessionId) ?? null,
@@ -84,9 +71,10 @@ export function LvMeasuredIntelligenceSection({
   );
 
   const sessionTimeline = useMemo(
-    () => (selectedEpisode ? chartPoints(selectedEpisode.measuredPoints) : []),
+    () => (selectedEpisode ? mapMeasuredPointsToChartPoints(selectedEpisode.measuredPoints) : []),
     [selectedEpisode],
   );
+  const sessionGapCount = useMemo(() => countMeasurementGaps(sessionTimeline), [sessionTimeline]);
 
   const selectedSlope = selectedEpisode ? slopePresentation(selectedEpisode) : null;
 
@@ -152,6 +140,15 @@ export function LvMeasuredIntelligenceSection({
             ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.historyModeRange')
             : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.historyModeRecent')}
         </p>
+        {vehicleTimeline.length > 0 ? (
+          <p className="text-xs text-muted-foreground mt-1">
+            {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.historyWindowLabel', {
+              from: formatChartTimestamp(vehicleTimeline[0].t),
+              to: formatChartTimestamp(vehicleTimeline[vehicleTimeline.length - 1].t),
+              count: vehicleTimeline.length,
+            })}
+          </p>
+        ) : null}
       </MasterPageSection>
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.latestTitle')}>
@@ -197,40 +194,21 @@ export function LvMeasuredIntelligenceSection({
         )}
       </MasterPageSection>
 
-      {vehicleTimeline.length > 0 && (
-        <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.vehicleTimelineTitle')}>
-          <div className="h-56 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={vehicleTimeline} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis
-                  dataKey="t"
-                  type="number"
-                  domain={['dataMin', 'dataMax']}
-                  tickFormatter={(v) => new Date(v).toLocaleDateString()}
-                  tick={{ fontSize: 10 }}
-                />
-                <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} unit=" V" />
-                <Tooltip
-                  labelFormatter={(_, payload) =>
-                    payload?.[0]?.payload?.label ? String(payload[0].payload.label) : ''
-                  }
-                  formatter={(value) => [
-                    `${Number(value ?? 0).toFixed(3)} V`,
-                    resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.tooltip.measuredSeries'),
-                  ]}
-                />
-                <Line type="monotone" dataKey="v" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          {data.provenance.historicalObservationsTruncated && (
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">
-              {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.truncatedHistory')}
-            </p>
-          )}
-        </MasterPageSection>
-      )}
+      <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.vehicleTimelineTitle')}>
+        <LvMeasuredVoltageChart
+          points={vehicleTimeline}
+          xAxisMode="time"
+          stroke="hsl(var(--primary))"
+          gapCount={vehicleGapCount}
+        />
+        {data.provenance.historicalObservationsTruncated ? (
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">
+            {data.provenance.historicalQueryMode === 'DATE_RANGE_ASC'
+              ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.truncatedHistoryRange')
+              : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.truncatedHistory')}
+          </p>
+        ) : null}
+      </MasterPageSection>
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.episodeCompareTitle')}>
         <div className="space-y-2 md:hidden">
@@ -396,42 +374,14 @@ export function LvMeasuredIntelligenceSection({
               </div>
             </div>
           )}
-          {sessionTimeline.length > 0 ? (
-            <div className="h-48 w-full min-w-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sessionTimeline} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis
-                    dataKey="restHours"
-                    tick={{ fontSize: 10 }}
-                    label={{
-                      value: resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.chart.restHoursAxis'),
-                      position: 'insideBottom',
-                      offset: -2,
-                      fontSize: 10,
-                    }}
-                  />
-                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(value) => [
-                      `${Number(value ?? 0).toFixed(3)} V`,
-                      resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.tooltip.measuredSeries'),
-                    ]}
-                    labelFormatter={(_, items) => {
-                      const row = items?.[0]?.payload;
-                      if (!row) return '';
-                      return `Rest ${row.restHours?.toFixed?.(2) ?? '?'} h · ${row.ladder ?? '—'} · ${row.context}`;
-                    }}
-                  />
-                  <Line type="monotone" dataKey="v" stroke="#10b981" dot={{ r: 3 }} strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.noSessionPoints')}
-            </p>
-          )}
+          <LvMeasuredVoltageChart
+            points={sessionTimeline}
+            xAxisMode="restHours"
+            stroke="#10b981"
+            heightClassName="h-52 sm:h-56 md:h-64"
+            emptyMessageKey="master.batteryV2Shadow.lvMeasured.noSessionPoints"
+            gapCount={sessionGapCount}
+          />
         </MasterPageSection>
       )}
 

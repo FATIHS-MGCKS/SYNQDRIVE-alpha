@@ -7,6 +7,11 @@ import { MasterPageHeader, MasterPageSection } from '../shell';
 import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
 import { RetentionPointsTable } from './RetentionPointsTable';
 import { LvMeasuredIntelligenceSection } from './LvMeasuredIntelligenceSection';
+import {
+  defaultMeasuredHistoryFromDate,
+  parseDatetimeLocalInputValue,
+  toDatetimeLocalInputValue,
+} from './lv-measured-voltage-chart.util';
 import { fetchOrgVehiclesForBatteryV2Inspection } from './vehicle-selection';
 import type { LvMeasuredIntelligenceV1 } from './lv-measured-intelligence.types';
 import {
@@ -157,19 +162,13 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   const [inspection, setInspection] = useState<RestSessionFeatureShadowInspectionV1 | null>(null);
   const [lvMeasured, setLvMeasured] = useState<LvMeasuredIntelligenceV1 | null>(null);
   const [lvMeasuredLoading, setLvMeasuredLoading] = useState(false);
-  const [lvHistoryUseDateRange, setLvHistoryUseDateRange] = useState(true);
+  const [lvHistoryUseDateRange, setLvHistoryUseDateRange] = useState(false);
   const defaultHistoryTo = useMemo(() => new Date(), []);
-  const defaultHistoryFrom = useMemo(() => {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - 90);
-    return d;
-  }, []);
-  const toDatetimeLocalValue = (d: Date) => {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-  };
-  const [lvHistoryFromInput, setLvHistoryFromInput] = useState(() => toDatetimeLocalValue(defaultHistoryFrom));
-  const [lvHistoryToInput, setLvHistoryToInput] = useState(() => toDatetimeLocalValue(defaultHistoryTo));
+  const defaultHistoryFrom = useMemo(() => defaultMeasuredHistoryFromDate(defaultHistoryTo), [defaultHistoryTo]);
+  const [lvHistoryFromInput, setLvHistoryFromInput] = useState(() =>
+    toDatetimeLocalInputValue(defaultHistoryFrom),
+  );
+  const [lvHistoryToInput, setLvHistoryToInput] = useState(() => toDatetimeLocalInputValue(defaultHistoryTo));
   const [phase, setPhase] = useState<LoadPhase>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -250,8 +249,8 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
         lvHistoryUseDateRange
           ? {
               ...base,
-              measuredFrom: new Date(lvHistoryFromInput).toISOString(),
-              measuredTo: new Date(lvHistoryToInput).toISOString(),
+              measuredFrom: parseDatetimeLocalInputValue(lvHistoryFromInput).toISOString(),
+              measuredTo: parseDatetimeLocalInputValue(lvHistoryToInput).toISOString(),
             }
           : base,
       );

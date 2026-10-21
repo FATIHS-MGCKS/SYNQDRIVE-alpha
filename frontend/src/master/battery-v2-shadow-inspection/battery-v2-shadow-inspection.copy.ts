@@ -110,12 +110,23 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.lvMeasured.table.status': 'Status',
   'master.batteryV2Shadow.lvMeasured.table.measuredPts': 'MEASURED pts',
   'master.batteryV2Shadow.lvMeasured.historyRangeTitle': 'Historical MEASURED window',
-  'master.batteryV2Shadow.lvMeasured.historyFrom': 'From (UTC)',
-  'master.batteryV2Shadow.lvMeasured.historyTo': 'To (UTC)',
+  'master.batteryV2Shadow.lvMeasured.historyFrom': 'From (local time)',
+  'master.batteryV2Shadow.lvMeasured.historyTo': 'To (local time)',
   'master.batteryV2Shadow.lvMeasured.historyApply': 'Load range',
   'master.batteryV2Shadow.lvMeasured.historyRecentLimit': 'Recent limit',
-  'master.batteryV2Shadow.lvMeasured.historyModeRecent': 'Showing most recent points (server limit). Use date range for months of Ruptela history.',
-  'master.batteryV2Shadow.lvMeasured.historyModeRange': 'Date-range browse (ascending MEASURED, deduped).',
+  'master.batteryV2Shadow.lvMeasured.historyModeRecent':
+    'Default: newest MEASURED points first (server cap 500). Chart focuses on the returned window — not synthetic interpolation.',
+  'master.batteryV2Shadow.lvMeasured.historyModeRange':
+    'Custom local date range (ascending MEASURED, deduped). If the server limit is hit, the oldest points in the range are returned first — narrow the range or use Recent limit for the latest data.',
+  'master.batteryV2Shadow.lvMeasured.historyWindowLabel': 'Loaded window: {{from}} → {{to}} ({{count}} chart points)',
+  'master.batteryV2Shadow.lvMeasured.truncatedHistoryRange':
+    'Server observation limit reached inside this date range — chart may omit the newest measurements in the range. Use Recent limit or a shorter range.',
+  'master.batteryV2Shadow.lvMeasured.chart.empty': 'No MEASURED voltage points in the loaded window.',
+  'master.batteryV2Shadow.lvMeasured.chart.singlePoint':
+    'Only one MEASURED point in this window — shown as a marker (no interpolated curve).',
+  'master.batteryV2Shadow.lvMeasured.chart.gapBreaks':
+    '{{count}} measurement gap(s) — line is not drawn across long silent intervals.',
+  'master.batteryV2Shadow.lvMeasured.tooltip.context': 'Operational context',
   'master.batteryV2Shadow.lvMeasured.metric.observationSpan': 'C3 observation span',
   'master.batteryV2Shadow.lvMeasured.metric.validRestPoints': 'C3 valid rest pts',
   'master.batteryV2Shadow.lvMeasured.slope.contextLimited': 'CONTEXT_LIMITED slope (not a reliable resting self-discharge trend)',
