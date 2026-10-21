@@ -16,6 +16,7 @@ import { ReturnPhysicalDeviceToStockDto } from './dto/return-physical-device-to-
 import { MarkPhysicalDeviceDefectiveDto } from './dto/mark-physical-device-defective.dto';
 import { MarkPhysicalDeviceLostDto } from './dto/mark-physical-device-lost.dto';
 import { RetirePhysicalDeviceDto } from './dto/retire-physical-device.dto';
+import { assertPhysicalDeviceLifecycleActivityRecorded } from './physical-device-inventory-lifecycle-activity';
 
 @Controller('admin/physical-device-inventory')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -89,12 +90,14 @@ export class PhysicalDeviceInventoryController {
   ) {
     const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
     const result = await this.inventory.uninstallFromVehicle(deviceId, body, actorUserId);
-    void this.audit.record({
-      ...AuditService.contextFromRequest(req),
-      action: ActivityAction.UPDATE,
-      entity: ActivityEntity.ADMIN_OPERATION,
-      description: `Physical device uninstalled ${result.internalInventoryNumber}`,
+    await assertPhysicalDeviceLifecycleActivityRecorded(this.audit, {
+      lifecycleAction: 'UNINSTALL',
+      actorUserId,
+      result,
       changeSummary: `vehicleId=${body.vehicleId}`,
+      requestContext: AuditService.contextFromRequest(req),
+      route: 'POST admin/physical-device-inventory/devices/:deviceId/uninstall',
+      metaJson: { assignmentId: body.assignmentId, idempotencyKey: body.idempotencyKey ?? null },
     });
     return result;
   }
@@ -108,12 +111,14 @@ export class PhysicalDeviceInventoryController {
   ) {
     const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
     const result = await this.inventory.returnToStock(deviceId, body, actorUserId);
-    void this.audit.record({
-      ...AuditService.contextFromRequest(req),
-      action: ActivityAction.UPDATE,
-      entity: ActivityEntity.ADMIN_OPERATION,
-      description: `Physical device returned to stock ${result.internalInventoryNumber}`,
+    await assertPhysicalDeviceLifecycleActivityRecorded(this.audit, {
+      lifecycleAction: 'RETURN_TO_STOCK',
+      actorUserId,
+      result,
       changeSummary: `warehouse=${body.warehouseLocation}`,
+      requestContext: AuditService.contextFromRequest(req),
+      route: 'POST admin/physical-device-inventory/devices/:deviceId/return-to-stock',
+      metaJson: { idempotencyKey: body.idempotencyKey ?? null },
     });
     return result;
   }
