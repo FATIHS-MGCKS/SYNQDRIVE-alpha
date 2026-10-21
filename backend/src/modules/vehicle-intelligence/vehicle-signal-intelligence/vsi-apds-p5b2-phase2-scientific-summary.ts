@@ -147,15 +147,16 @@ export function buildPhase2ScientificAggregates(input: {
   let b2B4TwinPollGroups = 0;
   let b2B4TwinSamePollId = 0;
   for (const rows of oppGroups.values()) {
-    const policies = new Set(rows.map((r) => r.policyVersion));
-    const hasB2 = policies.has('P25_APD_B2_V1');
-    const hasB4 = policies.has('P25_APD_B4_V1');
-    if (hasB2 && hasB4 && rows.length >= 2) {
-      b2B4TwinPollGroups += 1;
-      const polls = new Set(rows.map((r) => r.realPollId).filter(Boolean));
-      if (polls.size === 1 && polls.size > 0) {
-        b2B4TwinSamePollId += 1;
-      }
+    const b2Row = rows.find((r) => r.policyVersion === 'P25_APD_B2_V1');
+    const b4Row = rows.find((r) => r.policyVersion === 'P25_APD_B4_V1');
+    if (!b2Row || !b4Row) {
+      continue;
+    }
+    b2B4TwinPollGroups += 1;
+    const pollB2 = b2Row.realPollId?.trim() ?? '';
+    const pollB4 = b4Row.realPollId?.trim() ?? '';
+    if (pollB2.length > 0 && pollB4.length > 0 && pollB2 === pollB4) {
+      b2B4TwinSamePollId += 1;
     }
   }
 

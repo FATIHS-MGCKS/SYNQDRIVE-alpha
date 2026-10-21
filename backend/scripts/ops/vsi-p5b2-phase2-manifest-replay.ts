@@ -15,7 +15,10 @@ import { VsiApdsP5ReadonlyService } from '../../src/modules/vehicle-intelligence
 import { VsiCapabilityResolverRepository } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import { VsiProfileRevisionHistoryRepository } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-revision-history.repository';
 import { parseVsiP5b2ReplayProfileMode } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b2-replay-profile-mode';
-import { loadAndValidateVsiApdsP5b2Phase2ManifestFromFile } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b2-phase2-manifest';
+import {
+  assertFrozenManifestSha256OverrideRejected,
+  loadAndValidateVsiApdsP5b2Phase2ManifestFromFile,
+} from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b2-phase2-manifest';
 import { VsiApdsP5b2Phase2ManifestReplayService } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b2-phase2-manifest-replay.service';
 import { VsiApdsP5b2Phase2ManifestError } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b2-phase2-manifest.errors';
 async function main() {
@@ -26,10 +29,8 @@ async function main() {
     process.env.VSI_P5B2_MANIFEST_PATH?.trim() ||
     resolve(__dirname, '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/fixtures/p5b2-phase2-proposed-manifest.json');
 
-  const expectedSha = process.env.VSI_P5B2_MANIFEST_SHA256?.trim();
-  const manifest = expectedSha
-    ? loadAndValidateVsiApdsP5b2Phase2ManifestFromFile(manifestPath, { expectedSha256: expectedSha })
-    : loadAndValidateVsiApdsP5b2Phase2ManifestFromFile(manifestPath);
+  assertFrozenManifestSha256OverrideRejected(process.env.VSI_P5B2_MANIFEST_SHA256);
+  const manifest = loadAndValidateVsiApdsP5b2Phase2ManifestFromFile(manifestPath);
 
   const prisma = new PrismaClient();
   const profiles = new VsiCapabilityResolverRepository(prisma as never);

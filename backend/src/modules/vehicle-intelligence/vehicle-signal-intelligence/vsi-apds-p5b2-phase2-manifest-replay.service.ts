@@ -10,7 +10,10 @@ import type { VsiApdsP5b1OfflineCorrelationRowV1 } from './vsi-apds-p5b1.types';
 import { VsiApdsP5b1OfflineReplayProfileMode } from './vsi-apds-p5b2.types';
 import { buildP5b2HistoricalScientificMetrics } from './vsi-apds-p5b2-metrics';
 import type { ValidatedVsiApdsP5b2Phase2ManifestV1 } from './vsi-apds-p5b2-phase2-manifest';
-import { assertManifestDecisionRowsMatchScope } from './vsi-apds-p5b2-phase2-manifest-scope';
+import {
+  assertManifestDecisionRowsMatchScope,
+  assertManifestPersistedMetadataParity,
+} from './vsi-apds-p5b2-phase2-manifest-scope';
 import {
   buildPhase2DecisionResearchRow,
   buildPhase2ScientificAggregates,
@@ -57,6 +60,7 @@ export class VsiApdsP5b2Phase2ManifestReplayService {
       decisionIds: manifest.orderedDecisionIds,
     });
     assertManifestDecisionRowsMatchScope(manifest, rows);
+    assertManifestPersistedMetadataParity(manifest, rows);
     return rows;
   }
 
@@ -69,6 +73,7 @@ export class VsiApdsP5b2Phase2ManifestReplayService {
     const decisionRows =
       input.decisionRows ?? (await this.loadManifestDecisions(input.manifest));
     assertManifestDecisionRowsMatchScope(input.manifest, decisionRows);
+    assertManifestPersistedMetadataParity(input.manifest, decisionRows);
 
     const replayRunId = randomUUID();
     const correlationRows: VsiApdsP5b1OfflineCorrelationRowV1[] = [];

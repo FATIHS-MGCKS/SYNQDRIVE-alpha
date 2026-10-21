@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  assertFrozenManifestSha256OverrideRejected,
   loadAndValidateVsiApdsP5b2Phase2ManifestFromFile,
   validateVsiApdsP5b2Phase2ManifestDocument,
 } from './vsi-apds-p5b2-phase2-manifest';
@@ -10,8 +11,14 @@ import {
   VSI_P5B2_PHASE2_MANIFEST_SHA256,
   VSI_P5B2_PHASE2_ORGANIZATION_ID,
 } from './vsi-apds-p5b2-phase2-manifest.contract';
-import { assertManifestDecisionRowsMatchScope } from './vsi-apds-p5b2-phase2-manifest-scope';
-import { buildPhase2ScientificAggregates } from './vsi-apds-p5b2-phase2-scientific-summary';
+import {
+  assertManifestDecisionRowsMatchScope,
+  assertManifestPersistedMetadataParity,
+} from './vsi-apds-p5b2-phase2-manifest-scope';
+import {
+  buildPhase2ScientificAggregates,
+  type VsiApdsP5b2Phase2DecisionResearchRowV1,
+} from './vsi-apds-p5b2-phase2-scientific-summary';
 
 const FIXTURE_PATH = resolve(
   __dirname,
@@ -33,12 +40,15 @@ describe('vsi-apds-p5b2 phase2 manifest', () => {
     expect(validated.organizationId).toBe(VSI_P5B2_PHASE2_ORGANIZATION_ID);
   });
 
-  it('rejects wrong SHA256', () => {
-    expect(() =>
-      loadAndValidateVsiApdsP5b2Phase2ManifestFromFile(FIXTURE_PATH, {
-        expectedSha256: '0'.repeat(64),
-      }),
-    ).toThrow(VsiApdsP5b2Phase2ManifestError);
+  it('rejects forbidden external SHA256 override', () => {
+    try {
+      assertFrozenManifestSha256OverrideRejected('0'.repeat(64));
+      throw new Error('expected throw');
+    } catch (e) {
+      expect((e as VsiApdsP5b2Phase2ManifestError).code).toBe(
+        'MANIFEST_SHA256_OVERRIDE_FORBIDDEN',
+      );
+    }
   });
 
   it('rejects duplicate UUID in uniqueDecisionIds', () => {
@@ -169,54 +179,96 @@ describe('vsi-apds-p5b2 phase2 manifest', () => {
     }
   });
 
-  it('aggregates B2/B4 twin poll dedup groups', () => {
+  function twinRows(pollB2: string | null, pollB4: string | null): VsiApdsP5b2Phase2DecisionResearchRowV1[] {
+    const base = {
+      vehicleId: 'v',
+      opportunityId: 'o',
+      decisionAt: '2026-10-18T00:00:00.000Z',
+      originalDecision: 'WOULD_POLL',
+      originalReason: 'r',
+      processingStatus: 'CORRELATED' as const,
+      providerSourceLinkId: 'link',
+      historicalRevisionAuthority: null,
+      historicalRevisionEvidence: null,
+      commitVisibilityStatus: 'NOT_APPLICABLE' as const,
+      consumerDemandAssessment: null,
+      correlationNotAssessable: false,
+      errorCode: null,
+      manifestStratum: null,
+      manifestMotionState: null,
+    };
+    return [
+      {
+        ...base,
+        persistedShadowDecisionId: 'a',
+        policyVersion: 'P25_APD_B2_V1',
+        realPollId: pollB2,
+      },
+      {
+        ...base,
+        persistedShadowDecisionId: 'b',
+        policyVersion: 'P25_APD_B4_V1',
+        realPollId: pollB4,
+      },
+    ];
+  }
+
+  it('B2/B4 same non-empty poll id counts as shared poll', () => {
     const agg = buildPhase2ScientificAggregates({
       elapsedMs: 1,
-      researchRows: [
-        {
-          persistedShadowDecisionId: 'a',
-          vehicleId: 'v',
-          opportunityId: 'o',
-          decisionAt: '2026-10-18T00:00:00.000Z',
-          policyVersion: 'P25_APD_B2_V1',
-          realPollId: 'poll-1',
-          originalDecision: 'WOULD_POLL',
-          originalReason: 'r',
-          processingStatus: 'CORRELATED',
-          providerSourceLinkId: 'link',
-          historicalRevisionAuthority: null,
-          historicalRevisionEvidence: null,
-          commitVisibilityStatus: 'NOT_APPLICABLE',
-          consumerDemandAssessment: null,
-          correlationNotAssessable: false,
-          errorCode: null,
-          manifestStratum: null,
-          manifestMotionState: null,
-        },
-        {
-          persistedShadowDecisionId: 'b',
-          vehicleId: 'v',
-          opportunityId: 'o',
-          decisionAt: '2026-10-18T00:00:00.000Z',
-          policyVersion: 'P25_APD_B4_V1',
-          realPollId: 'poll-1',
-          originalDecision: 'WOULD_POLL',
-          originalReason: 'r',
-          processingStatus: 'CORRELATED',
-          providerSourceLinkId: 'link',
-          historicalRevisionAuthority: null,
-          historicalRevisionEvidence: null,
-          commitVisibilityStatus: 'NOT_APPLICABLE',
-          consumerDemandAssessment: null,
-          correlationNotAssessable: false,
-          errorCode: null,
-          manifestStratum: null,
-          manifestMotionState: null,
-        },
-      ],
+      researchRows: twinRows('poll-1', 'poll-1'),
     });
     expect(agg.b2B4TwinPollGroups).toBe(1);
     expect(agg.b2B4TwinSamePollId).toBe(1);
-    expect(agg.distinctRealPollIds).toBe(1);
+  });
+
+  it('B2/B4 different poll ids do not count as shared poll', () => {
+    const agg = buildPhase2ScientificAggregates({
+      elapsedMs: 1,
+      researchRows: twinRows('poll-1', 'poll-2'),
+    });
+    expect(agg.b2B4TwinPollGroups).toBe(1);
+    expect(agg.b2B4TwinSamePollId).toBe(0);
+  });
+
+  it('B2/B4 missing one poll id does not count as shared poll', () => {
+    const agg = buildPhase2ScientificAggregates({
+      elapsedMs: 1,
+      researchRows: twinRows('poll-1', null),
+    });
+    expect(agg.b2B4TwinSamePollId).toBe(0);
+  });
+
+  it('B2/B4 both missing poll ids do not count as shared poll', () => {
+    const agg = buildPhase2ScientificAggregates({
+      elapsedMs: 1,
+      researchRows: twinRows(null, null),
+    });
+    expect(agg.b2B4TwinSamePollId).toBe(0);
+  });
+
+  it('rejects manifest vs persisted metadata mismatch', () => {
+    const validated = miniValidatedManifest('meta-test-id');
+    try {
+      assertManifestPersistedMetadataParity(validated, [
+        {
+          id: 'meta-test-id',
+          organizationId: validated.organizationId,
+          vehicleId: validated.allowedVehicleIds[0],
+          opportunityId: 'opp',
+          decisionAt: validated.decisionAtFrom,
+          activationEpochId: validated.activationEpochId,
+          policyVersion: 'P25_APD_B2_V1',
+          shadowExecutionVersion: null,
+          decision: 'WOULD_SKIP',
+          reason: 'DIFFERENT',
+          realPollId: null,
+          realPollStatus: null,
+        },
+      ]);
+      throw new Error('expected throw');
+    } catch (e) {
+      expect((e as VsiApdsP5b2Phase2ManifestError).code).toBe('MANIFEST_METADATA_MISMATCH');
+    }
   });
 });

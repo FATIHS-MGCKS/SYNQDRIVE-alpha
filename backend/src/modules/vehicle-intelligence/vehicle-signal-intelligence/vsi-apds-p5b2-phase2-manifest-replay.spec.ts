@@ -14,7 +14,32 @@ describe('vsi-apds-p5b2 phase2 manifest replay service', () => {
     decisionAtFrom: new Date('2026-10-17T19:07:24.212Z'),
     decisionAtTo: new Date('2026-10-21T12:04:24.059Z'),
     orderedDecisionIds: ['id-1', 'id-2'],
-    entriesById: new Map(),
+    entriesById: new Map([
+      [
+        'id-1',
+        {
+          id: 'id-1',
+          vehicleId: 'veh-1',
+          decisionAt: '2026-10-18T10:00:00.000Z',
+          policyVersion: 'P25_APD_B2_V1',
+          decision: 'WOULD_POLL',
+          reason: 'test',
+          stratum: 'TEST',
+        },
+      ],
+      [
+        'id-2',
+        {
+          id: 'id-2',
+          vehicleId: 'veh-1',
+          decisionAt: '2026-10-18T10:00:00.000Z',
+          policyVersion: 'P25_APD_B4_V1',
+          decision: 'WOULD_POLL',
+          reason: 'test',
+          stratum: 'TEST',
+        },
+      ],
+    ]),
   };
 
   const persistedRows = [

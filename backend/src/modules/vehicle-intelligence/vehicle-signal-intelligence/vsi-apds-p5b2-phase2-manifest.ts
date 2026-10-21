@@ -67,9 +67,7 @@ function parseManifestJson(raw: string): VsiApdsP5b2Phase2ManifestDocumentV1 {
 
 export function validateVsiApdsP5b2Phase2ManifestDocument(
   doc: VsiApdsP5b2Phase2ManifestDocumentV1,
-  input?: { expectedSha256?: string },
 ): ValidatedVsiApdsP5b2Phase2ManifestV1 {
-  const expectedSha = input?.expectedSha256 ?? VSI_P5B2_PHASE2_MANIFEST_SHA256;
 
   if (doc.org !== VSI_P5B2_PHASE2_ORGANIZATION_ID) {
     throw new VsiApdsP5b2Phase2ManifestError(
@@ -160,7 +158,7 @@ export function validateVsiApdsP5b2Phase2ManifestDocument(
   }
 
   return {
-    sha256: expectedSha,
+    sha256: VSI_P5B2_PHASE2_MANIFEST_SHA256,
     organizationId: VSI_P5B2_PHASE2_ORGANIZATION_ID,
     activationEpochId: VSI_P5B2_PHASE2_ACTIVATION_EPOCH_ID,
     allowedVehicleIds: VSI_P5B2_PHASE2_COHORT_VEHICLE_IDS,
@@ -173,21 +171,34 @@ export function validateVsiApdsP5b2Phase2ManifestDocument(
 
 export function loadAndValidateVsiApdsP5b2Phase2ManifestFromFile(
   manifestPath: string,
-  input?: { expectedSha256?: string },
 ): ValidatedVsiApdsP5b2Phase2ManifestV1 {
   const absolute = resolve(manifestPath);
   const bytes = readFileSync(absolute);
   const sha256 = createHash('sha256').update(bytes).digest('hex');
-  const expectedSha = input?.expectedSha256 ?? VSI_P5B2_PHASE2_MANIFEST_SHA256;
-  if (sha256 !== expectedSha) {
+  if (sha256 !== VSI_P5B2_PHASE2_MANIFEST_SHA256) {
     throw new VsiApdsP5b2Phase2ManifestError(
       'MANIFEST_SHA256_MISMATCH',
-      `Manifest SHA256 ${sha256} does not match expected ${expectedSha}`,
+      `Manifest SHA256 ${sha256} does not match frozen authority ${VSI_P5B2_PHASE2_MANIFEST_SHA256}`,
     );
   }
   const doc = parseManifestJson(bytes.toString('utf8'));
-  const validated = validateVsiApdsP5b2Phase2ManifestDocument(doc, { expectedSha256: sha256 });
-  return { ...validated, sha256 };
+  return validateVsiApdsP5b2Phase2ManifestDocument(doc);
+}
+
+/** Reject operator attempts to substitute a different manifest digest (fail-closed). */
+export function assertFrozenManifestSha256OverrideRejected(
+  operatorSuppliedSha256: string | undefined,
+): void {
+  const trimmed = operatorSuppliedSha256?.trim();
+  if (!trimmed) {
+    return;
+  }
+  if (trimmed !== VSI_P5B2_PHASE2_MANIFEST_SHA256) {
+    throw new VsiApdsP5b2Phase2ManifestError(
+      'MANIFEST_SHA256_OVERRIDE_FORBIDDEN',
+      'External manifest SHA256 overrides are forbidden; only the frozen Phase 2 digest is permitted',
+    );
+  }
 }
 
 export function loadDefaultPhase2ManifestFromBackendRoot(backendRoot: string): ValidatedVsiApdsP5b2Phase2ManifestV1 {
