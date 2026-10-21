@@ -6,6 +6,12 @@ import {
   VSI_APDS_P5B1_DEFAULT_BATCH_LIMIT,
   VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
 } from './vsi-apds-p5b1.contract';
+import type {
+  VsiApdsP5b1OfflineReplayProfileMode,
+  VsiApdsP5b2HistoricalRevisionEvidenceV1,
+  VsiApdsP5b2HistoricalScientificMetricsV1,
+} from './vsi-apds-p5b2.types';
+import type { VsiProfileRevisionAsOfAuthority } from './vsi-profile-revision-as-of.types';
 
 export type VsiApdsP5b1DecisionIdentityV1 = {
   organizationId: string;
@@ -49,6 +55,10 @@ export type VsiApdsP5b1OfflineCorrelationRowV1 = {
   errorCode: string | null;
   /** @deprecated Use processingStatus */
   skippedReason: string | null;
+  replayProfileMode?: VsiApdsP5b1OfflineReplayProfileMode;
+  historicalRevisionAuthority?: VsiProfileRevisionAsOfAuthority | null;
+  historicalRevisionLimitations?: string[];
+  historicalRevisionEvidence?: VsiApdsP5b2HistoricalRevisionEvidenceV1 | null;
 };
 
 export type VsiApdsP5b1OfflineReplayFilterV1 = {
@@ -133,6 +143,8 @@ export type VsiApdsP5b1OfflineReplayResultV1 = {
   nextCursor: { decisionAt: string; id: string } | null;
   evidenceStoreWriteAttempted: false;
   evidenceStoreRowsAppended: number;
+  replayProfileMode?: VsiApdsP5b1OfflineReplayProfileMode;
+  historicalScientificMetrics?: VsiApdsP5b2HistoricalScientificMetricsV1 | null;
 };
 
 export const VSI_APDS_P5B1_DEFAULT_LIMIT = VSI_APDS_P5B1_DEFAULT_BATCH_LIMIT;

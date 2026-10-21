@@ -18,6 +18,8 @@ import {
 import { computeSignalFreshnessAtEvaluation } from './vsi-capability-resolver.freshness';
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
+import { VsiApdsP5b1OfflineReplayProfileMode } from './vsi-apds-p5b2.types';
+import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
 
 const ATTRIBUTION_UNKNOWN = new Set([
   'LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK',
@@ -66,6 +68,12 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   persistedShadowDecision: VsiApdsPersistedShadowDecisionV1 | null;
   historicalLinkActiveAtDecision: boolean;
   correlationAnalysisMode?: VsiApdsCorrelationAnalysisMode;
+  replayProfileMode?: (typeof VsiApdsP5b1OfflineReplayProfileMode)[keyof typeof VsiApdsP5b1OfflineReplayProfileMode];
+  profileEvidenceOverride?: {
+    interpretation: VsiApdsProfileEvidenceInterpretation;
+    decisionTimeRetrospectiveAssessable: boolean;
+    limitations: string[];
+  };
 }): VsiApdsReadonlyCapabilityObservationV1 {
   const correlationAnalysisMode =
     input.correlationAnalysisMode ?? VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION;
@@ -75,17 +83,28 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     'POLL_SUCCESS_DOES_NOT_IMPLY_SIGNAL_EVIDENCE',
   ];
 
-  const failClosed =
-    !input.tenantMatch || !input.linkActive || input.linkSuperseded;
+  const historicalReplay =
+    input.replayProfileMode === VsiApdsP5b1OfflineReplayProfileMode.HISTORY_AS_OF;
+
+  const failClosed = historicalReplay
+    ? !input.tenantMatch || !input.historicalLinkActiveAtDecision
+    : !input.tenantMatch || !input.linkActive || input.linkSuperseded;
 
   if (!input.tenantMatch) {
     limitations.push('TENANT_SCOPE_MISMATCH');
   }
-  if (!input.linkActive) {
-    limitations.push('SOURCE_LINK_INACTIVE');
-  }
-  if (input.linkSuperseded) {
-    limitations.push('SOURCE_LINK_SUPERSEDED');
+  if (historicalReplay) {
+    if (!input.historicalLinkActiveAtDecision) {
+      limitations.push('HISTORICAL_SOURCE_LINK_INACTIVE_AT_DECISION');
+    }
+    limitations.push('HISTORY_AS_OF_OFFLINE_REPLAY');
+  } else {
+    if (!input.linkActive) {
+      limitations.push('SOURCE_LINK_INACTIVE');
+    }
+    if (input.linkSuperseded) {
+      limitations.push('SOURCE_LINK_SUPERSEDED');
+    }
   }
 
   const binding = validateVsiApdsShadowOpportunityBinding({
@@ -109,11 +128,18 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   });
   limitations.push(...binding.reasons.map((r) => `SHADOW_BINDING:${r}`));
 
-  const evidenceTime = classifyVsiApdsProfileEvidenceInterpretation({
-    profile: input.profile,
-    temporal: input.profileTemporal,
-    shadowDecisionAt: input.adapter.shadowDecisionAt,
-  });
+  const evidenceTime = input.profileEvidenceOverride
+    ? {
+        interpretation: input.profileEvidenceOverride.interpretation,
+        decisionTimeRetrospectiveAssessable:
+          input.profileEvidenceOverride.decisionTimeRetrospectiveAssessable,
+        limitations: [...input.profileEvidenceOverride.limitations],
+      }
+    : classifyVsiApdsProfileEvidenceInterpretation({
+        profile: input.profile,
+        temporal: input.profileTemporal,
+        shadowDecisionAt: input.adapter.shadowDecisionAt,
+      });
   limitations.push(...evidenceTime.limitations);
 
   if (
@@ -161,6 +187,11 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   const signals =
     profile && !failClosed ? mapSignals(profile, evaluationTimeMs) : [];
 
+  const limitedHistoricalResearchPreview =
+    historicalReplay &&
+    evidenceTime.interpretation ===
+      VsiApdsProfileEvidenceInterpretation.LIMITED_HISTORICAL_REVISION_EVIDENCE;
+
   const consumerDemand = buildVsiConsumerDemandVectorV1({
     profile,
     evaluationTimeMs,
@@ -168,6 +199,7 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     attributionUnknown,
     failClosed,
     decisionTimeRetrospectiveAssessable: evidenceTime.decisionTimeRetrospectiveAssessable,
+    limitedHistoricalResearchPreview,
   });
 
   return {

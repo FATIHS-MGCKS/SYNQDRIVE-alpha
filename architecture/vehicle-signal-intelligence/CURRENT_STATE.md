@@ -92,8 +92,17 @@
 
 - **History table** — `vehicle_signal_capability_profile_revisions` (append-only; one row per committed `profileRevision`).
 - **Atomic capture** — same transaction as mutable profile upsert / lifecycle limitation revision when `VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED=true` (default **false**).
-- **As-of contract** — `selectVsiProfileRevisionAsOf` (read-only); does **not** wire P5B.1 replay yet.
+- **As-of contract** — `selectVsiProfileRevisionAsOf` / `resolveRevisionAsOf` (read-only).
 - **Evidence** — [`research/VSI_P5H1_PROFILE_REVISION_HISTORY.md`](research/VSI_P5H1_PROFILE_REVISION_HISTORY.md).
+
+## Implemented (P5B.2 — historical as-of offline replay, draft PR)
+
+- **Mode** — `replayProfileMode=HISTORY_AS_OF` on `VsiApdsP5b1OfflineReplayService.runOfflineReplayBatch` (default `LEGACY_MUTABLE_PROFILE` unchanged).
+- **Data** — P5-H1 `resolveRevisionAsOf` + `mapVsiProfileRevisionToCapabilityContext`; no mutable profile read on historical path.
+- **Temporal claims** — `LIMITED_HISTORICAL_REVISION_EVIDENCE` when `PRIOR_REVISION_FOUND`; no inflation to `VERIFIED_DECISION_TIME_SNAPSHOT` without commit-visibility proof.
+- **Link semantics** — historical lifecycle at `decisionAt` (today-deactivated links not rejected via current `linkActive`).
+- **CLI** — `VSI_P5B2_REPLAY_PROFILE_MODE=HISTORY_AS_OF` for `vsi-p5b1-offline-correlation-replay.ts`.
+- **Status** — IMPLEMENTED / TESTED (unit + disposable PG); not MERGED / DEPLOYED / ACTIVATED.
 
 ## Explicit non-goals (this slice)
 

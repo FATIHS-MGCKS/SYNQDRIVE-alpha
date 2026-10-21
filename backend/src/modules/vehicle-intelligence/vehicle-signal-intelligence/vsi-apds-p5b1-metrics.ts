@@ -35,6 +35,10 @@ function isDomainApprovedAssessable(
   );
 }
 
+function isLimitedHistoricalResearchPreview(demand: VsiApdsRequirementDemandRowV1): boolean {
+  return demand.discrepancyReasons.includes('LIMITED_HISTORICAL_RESEARCH_PREVIEW');
+}
+
 export function buildP5b1OfflineCoverage(
   rows: readonly VsiApdsP5b1OfflineCorrelationRowV1[],
 ): VsiApdsP5b1OfflineReplayCoverageV1 {
@@ -121,7 +125,6 @@ export function buildP5b1ScientificProductMetrics(
       interpretation === VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT;
     const currentProfileOnly =
       interpretation === VsiApdsProfileEvidenceInterpretation.CURRENT_PROFILE_REVIEW;
-
     if (verifiedHistorical) {
       verifiedHistoricalDecisions += 1;
     } else if (currentProfileOnly) {
@@ -149,6 +152,9 @@ export function buildP5b1ScientificProductMetrics(
     }
 
     for (const demand of row.observation?.consumerDemand ?? []) {
+      if (isLimitedHistoricalResearchPreview(demand)) {
+        continue;
+      }
       if (demand.demandClassification === VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL) {
         pendingDemandTotal += 1;
         continue;

@@ -38,8 +38,13 @@ export function correlateApdsShadowWithVsiCapability(input: {
     observation.shadowBindingStatus === VsiApdsShadowBindingStatus.MATCHED &&
     pair.consistent;
 
+  const decisionTimeVerifiedProfile =
+    observation.profileEvidenceInterpretation ===
+    VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT;
+
   const matchedVehicleLink =
     verifiedBinding &&
+    decisionTimeVerifiedProfile &&
     observation.attributionStatus === 'RESOLVED' &&
     observation.evidenceLimitations.every(
       (l) =>
@@ -71,17 +76,30 @@ export function correlateApdsShadowWithVsiCapability(input: {
       investigationHints.push(`DESIGN_CONTRACT_ONLY:${row.requirementId}`);
       continue;
     }
+    const researchPreviewOnly = row.discrepancyReasons.includes(
+      'LIMITED_HISTORICAL_RESEARCH_PREVIEW',
+    );
+
     if (row.assessmentStatus === 'SATISFIED') {
-      if (matchedVehicleLink && verifiedBinding) {
+      if (matchedVehicleLink && verifiedBinding && !researchPreviewOnly) {
         matchingCapabilities.push(row.requirementId);
+      } else if (researchPreviewOnly) {
+        investigationHints.push(`LIMITED_HISTORICAL_RESEARCH_SATISFIED:${row.requirementId}`);
       } else {
         investigationHints.push(`NOT_VERIFIED_CORRELATION_SATISFIED:${row.requirementId}`);
       }
     } else if (row.assessmentStatus === 'INSUFFICIENT') {
-      missingCapabilities.push(row.requirementId);
-      observedVersusDemandedDifferences.push(
-        `${row.requirementId}:${row.discrepancyReasons.join(',')}`,
-      );
+      if (researchPreviewOnly) {
+        investigationHints.push(`LIMITED_HISTORICAL_RESEARCH_INSUFFICIENT:${row.requirementId}`);
+        observedVersusDemandedDifferences.push(
+          `${row.requirementId}:${row.discrepancyReasons.join(',')}`,
+        );
+      } else {
+        missingCapabilities.push(row.requirementId);
+        observedVersusDemandedDifferences.push(
+          `${row.requirementId}:${row.discrepancyReasons.join(',')}`,
+        );
+      }
     } else if (row.assessmentStatus === 'NOT_ASSESSABLE') {
       evidenceLimitations.push(`NOT_ASSESSABLE:${row.requirementId}`);
     } else {

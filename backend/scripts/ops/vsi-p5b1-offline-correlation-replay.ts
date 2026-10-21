@@ -15,6 +15,8 @@ import { VsiApdsP5b1DecisionRepository } from '../../src/modules/vehicle-intelli
 import { VsiApdsP5b1EvidenceWriter } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b1-evidence.writer';
 import { VsiApdsP5ReadonlyService } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5.service';
 import { VsiCapabilityResolverRepository } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-capability-resolver.repository';
+import { VsiProfileRevisionHistoryRepository } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-revision-history.repository';
+import { parseVsiP5b2ReplayProfileMode } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b2-replay-profile-mode';
 import { VsiApdsP5b1OperatorScopeError } from '../../src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-apds-p5b1-operator-scope';
 
 function parseIso(name: string, raw: string | undefined): Date {
@@ -40,11 +42,16 @@ async function main() {
 
   const prisma = new PrismaClient();
   const profiles = new VsiCapabilityResolverRepository(prisma as never);
+  const replayProfileMode = parseVsiP5b2ReplayProfileMode(
+    process.env.VSI_P5B2_REPLAY_PROFILE_MODE,
+  );
+
   const service = new VsiApdsP5b1OfflineReplayService(
     new VsiApdsP5b1DecisionRepository(prisma as never),
     profiles,
     new VsiApdsP5ReadonlyService(profiles),
     new VsiApdsP5b1EvidenceWriter(prisma as never),
+    new VsiProfileRevisionHistoryRepository(prisma as never),
   );
 
   const result = await service.runOfflineReplayBatch({
@@ -63,6 +70,7 @@ async function main() {
     },
     maxTotalDecisions,
     dryRun: true,
+    replayProfileMode,
   });
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

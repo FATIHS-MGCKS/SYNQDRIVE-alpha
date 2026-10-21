@@ -1,6 +1,7 @@
-import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 import type { VsiProfileRevisionHistoryRowV1 } from './vsi-profile-revision-history.types';
+import { mapVsiProfileRevisionToCapabilityContext } from './vsi-profile-revision-to-capability-context.mapper';
+import { isVsiProfileRevisionSignalsSnapshotWellFormed } from './vsi-profile-revision-signals-snapshot';
 import {
   assessVsiProfileRevisionSignalTemporalState,
   VsiProfileRevisionSignalTemporalState,
@@ -25,47 +26,7 @@ export type VsiProfileRevisionAsOfSelectionResult = {
   limitations: string[];
 };
 
-export function isVsiProfileRevisionSignalsSnapshotWellFormed(signalsSnapshot: unknown): boolean {
-  if (!Array.isArray(signalsSnapshot)) {
-    return false;
-  }
-  for (const raw of signalsSnapshot) {
-    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function revisionToProfileContext(row: VsiProfileRevisionHistoryRowV1): VsiCapabilityResolverProfileContext {
-  const signals = Array.isArray(row.signalsSnapshot) ? row.signalsSnapshot : [];
-  return {
-    profileContractVersion: row.profileContractVersion,
-    profileRevision: row.profileRevision,
-    contentFingerprint: row.contentFingerprint,
-    profileLimitations: row.profileLimitations,
-    signals: signals.map((raw) => {
-      const s = raw as {
-        canonicalSignalKey?: string;
-        declaredSupport?: string;
-        empiricalObservation?: string;
-        lastSourceTimestamp?: string | null;
-        lastValidObservationAt?: string | null;
-        freshnessClassification?: string;
-        limitations?: string[];
-      };
-      return {
-        canonicalSignalKey: s.canonicalSignalKey ?? 'UNKNOWN',
-        declaredSupport: s.declaredSupport ?? 'UNKNOWN',
-        empiricalObservation: s.empiricalObservation ?? 'UNKNOWN',
-        lastSourceTimestamp: s.lastSourceTimestamp ?? null,
-        lastValidObservationAt: s.lastValidObservationAt ?? null,
-        freshnessClassification: s.freshnessClassification ?? 'UNKNOWN',
-        limitations: Array.isArray(s.limitations) ? s.limitations : [],
-      };
-    }),
-  };
-}
+export { isVsiProfileRevisionSignalsSnapshotWellFormed } from './vsi-profile-revision-signals-snapshot';
 
 /**
  * `recorded_at` is the database insert timestamp (`clock_timestamp()` default).
@@ -164,7 +125,14 @@ export function selectVsiProfileRevisionAsOf(
     };
   }
 
-  const profile = revisionToProfileContext(selected);
+  const profile = mapVsiProfileRevisionToCapabilityContext(selected);
+  if (!profile) {
+    return {
+      authority: VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY,
+      selectedRevision: selected,
+      limitations: [...limitations, 'MALFORMED_SIGNALS_SNAPSHOT'],
+    };
+  }
   if (profile.profileContractVersion === VSI_PROFILE_CONTRACT_VERSION_V1) {
     limitations.push('LEGACY_PROFILE_V1');
   }

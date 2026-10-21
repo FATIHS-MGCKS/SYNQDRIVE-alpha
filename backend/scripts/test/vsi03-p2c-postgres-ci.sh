@@ -49,6 +49,7 @@ npx jest \
   vsi-apds-p5-binding.postgres.integration \
   vsi-apds-p5-historical-attribution.postgres.integration \
   vsi-apds-p5b1-offline-replay.postgres.integration \
+  vsi-apds-p5b2-historical-replay.postgres.integration \
   vsi-apds-p5b1-evidence.writer.postgres.integration \
   vsi-p3a-per-link-catalog.postgres.integration \
   vsi-p3a-per-link-catalog.concurrency.postgres.integration
