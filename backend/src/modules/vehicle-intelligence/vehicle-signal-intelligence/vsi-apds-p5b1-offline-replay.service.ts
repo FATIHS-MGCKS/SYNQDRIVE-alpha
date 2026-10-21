@@ -164,6 +164,14 @@ export class VsiApdsP5b1OfflineReplayService {
     };
   }
 
+  /** Manifest / research offline replay only — reuses correlateOneDecision without pagination filters. */
+  async correlatePersistedShadowDecisionForResearch(
+    decision: VsiApdsP5b1PersistedShadowDecisionRow,
+    replayProfileMode: (typeof VsiApdsP5b1OfflineReplayProfileMode)[keyof typeof VsiApdsP5b1OfflineReplayProfileMode],
+  ): Promise<VsiApdsP5b1OfflineCorrelationRowV1> {
+    return this.correlateOneDecision(decision, replayProfileMode);
+  }
+
   async persistEvidenceForRows(input: {
     replayRunId: string;
     rows: readonly VsiApdsP5b1OfflineCorrelationRowV1[];
