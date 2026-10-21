@@ -224,7 +224,7 @@ export function runMotionFsm(
     const lab = b.bucketLabelUtc;
     const stateAtTickStart: MotionFsmState = state;
     const s = spBy.get(lab);
-    let v = speedValueForFsm(s);
+    const v = speedValueForFsm(s);
     let present = pres.has(lab);
     const flags: string[] = [];
     let reason = '';
