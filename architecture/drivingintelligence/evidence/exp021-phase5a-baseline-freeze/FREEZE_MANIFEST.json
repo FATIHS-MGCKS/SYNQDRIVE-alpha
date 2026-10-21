@@ -1,0 +1,175 @@
+{
+  "schema": "EXP021_PHASE5A_BASELINE_FREEZE_V1",
+  "frozenAtUtc": "2026-10-21T12:19:00Z",
+  "purpose": "Reproducible freeze of research decoders M5, M7A, M7 before new reference data (Phase 5A). Not production deployment.",
+  "git": {
+    "researchBranch": "cursor/di-master-architecture-research-20261021",
+    "researchSha": "477ecad737294efbf18472cf8d903d447ca1e397",
+    "researchShaVerifiedAgainstOrigin": true,
+    "originMainShaAtFreeze": "c92da9b3a863fd4f72fa7c3be0a3d9e148270c4b",
+    "productionDeploySha": "NOT_QUERIED_READ_ONLY_PHASE"
+  },
+  "variants": {
+    "M5": {
+      "frozen": true,
+      "harnessModelId": "M5",
+      "composition": "BACKTRACK + P1 emission + ROUTE_AWARE R4.1 + GAP confidence",
+      "headingInput": "baselineHeadings (unguarded)",
+      "nullMemory": false,
+      "standstillGuardM": null,
+      "confidence": {
+        "kind": "GAP",
+        "competitorGapM": 5
+      }
+    },
+    "M7A": {
+      "frozen": true,
+      "harnessModelId": "M7A",
+      "composition": "M5 + heading guard + nullMemory + standstillGuardM=2 + GAP confidence",
+      "headingGuard": {
+        "minDisplacementM": 1.5,
+        "minSpeedKmh": 5
+      },
+      "nullMemory": true,
+      "standstillGuardM": 2,
+      "confidence": {
+        "kind": "GAP",
+        "competitorGapM": 5
+      }
+    },
+    "M7": {
+      "frozen": true,
+      "harnessModelId": "M7",
+      "composition": "M7A + MARGIN_AND_GAP confidence",
+      "marginTau": 10,
+      "confidence": {
+        "kind": "MARGIN_AND_GAP",
+        "pathMarginMin": 10,
+        "requiresChosenEqualsNearest": true,
+        "requiresLegacyGapConfirmed": true,
+        "competitorGapM": 5
+      },
+      "thresholdProvenance": "Chosen on Tiguan development set in Phase 2/3; NOT altered in Phase 4 or 5A"
+    }
+  },
+  "codeBindings": {
+    "s4ResearchModule": {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research",
+      "gitTreeArchiveSha256": "55080af81f6fd2f61b011a62df01404d3a86149e6c8fbf3d4f4d7669458da074",
+      "algorithmId": "S4_RESEARCH_ROAD_MATCHING_V2"
+    },
+    "researchHarness": {
+      "canonicalPath": "/opt/cursor/artifacts/exp021-scientific-audit-phase3/scripts/phase3_lib.ts",
+      "canonicalSha256": "d147dcb48852d886b15a150f68c19fcedf8583734264bc962cc0df1b91000316",
+      "snapshotPath": "scripts/phase3_lib.snapshot.ts",
+      "snapshotSha256": "d147dcb48852d886b15a150f68c19fcedf8583734264bc962cc0df1b91000316",
+      "runnerSnapshot": "scripts/run_phase3_benchmark.snapshot.ts"
+    },
+    "configDefaults": {
+      "DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG": {
+        "uncertaintyRadiusM": 25,
+        "signalSearchRadiusM": 35,
+        "bearingCompatDeg": 45,
+        "competitorGapM": 5,
+        "viterbiTopK": 4,
+        "junctionAttachMaxM": 45
+      },
+      "DEFAULT_S4_ROUTE_AWARE_RESEARCH_CONFIG": {
+        "maxRoutingExpansions": 12000,
+        "maxRouteDistanceM": 8000,
+        "l3MinTrustSpeedKmh": 8,
+        "l3SpeedSlackFactor": 1.85,
+        "fallbackMaxPlausibleSpeedKmh": 130
+      }
+    }
+  },
+  "dataBindings": {
+    "smokeDrive": {
+      "physId": "PHYS-TIGUAN-20261019",
+      "role": "DEVELOPMENT_SET",
+      "loader": "loadTiguan() in phase3_lib",
+      "positionGrid": {
+        "harnessPath": "/opt/cursor/artifacts/exp021-tiguan-validation/research-output/fixtures/TIGUAN_POSITION_GRID.json",
+        "repoPinnedPath": "architecture/drivingintelligence/evidence/exp021-tiguan-20261019/fixtures/TIGUAN_POSITION_GRID.json",
+        "sha256": "3a253b975f35ae02c3caa9a0bb894545447d3c6cdfccbe2a42ca23f6f7a95c09",
+        "l3Field": "pinnedProductionL3Kmh",
+        "l3Note": "all null in v1 \u2014 export harness omitted shadow join; see Phase 4 L3 report"
+      },
+      "osmSnapshot": {
+        "harnessPath": "/opt/cursor/artifacts/exp021-tiguan-validation/research-output/TIGUAN_OSM_FROZEN_SNAPSHOT.json",
+        "repoPinnedPath": "architecture/drivingintelligence/evidence/exp021-tiguan-20261019/TIGUAN_OSM_FROZEN_SNAPSHOT.json",
+        "sha256": "c141ec2f4713e9b4def75a8c1b709d1be53b35b14ade71b0ca3749b926c24959"
+      },
+      "gtTable": {
+        "path": "/opt/cursor/artifacts/exp021-tiguan-validation/research-output/TIGUAN_A_B_C_D_E_COMPARISON.csv",
+        "sha256": "4bedefd16870f2381ce35516f8c581957e548a223c6b8547ce1386b7b469efa4",
+        "evidenceClass": "VIDEO_SEGMENT_GT_DEVELOPMENT_SET_PROXY"
+      }
+    },
+    "tiguanL3V2Offline": {
+      "path": "/opt/cursor/artifacts/exp021-phase4-historical-gt/l3_recovery/TIGUAN_POSITION_GRID.v2-offline-l3.json",
+      "sha256": "4dab41ecd3d1cdb1e45685c429376e1a0f0c45d39497455a4a35199b435fdbac",
+      "status": "UNVALIDATED_OFFLINE_RECONSTRUCTION",
+      "replacesV1": false,
+      "mustNotUseAsBenchmarkDefault": true
+    },
+    "phase3ReferenceOutputs": {
+      "reproducibilityJson": "/opt/cursor/artifacts/exp021-scientific-audit-phase3/results/reproducibility.json",
+      "perBucketSha256Tiguan": {
+        "M5": "84e2ca581b22638f463d637197009db0eb5556a0efab2920d51100f5c385849d",
+        "M7A": "4201e931ac47734e4a68aa11e8735b264aee6d9e9055f1b6e6c3f94b37acf74f",
+        "M7": "1da4a19d86f8c402c8badacd714238fae72982870ef8c23c2d1dccd6da34c033"
+      }
+    }
+  },
+  "phase4Preservation": {
+    "directory": "/opt/cursor/artifacts/exp021-phase4-historical-gt",
+    "modifiedInPhase5A": false,
+    "integritySnapshotFile": "PHASE4_INTEGRITY_SNAPSHOT.txt",
+    "sampleSha256": {
+      "GROUND_TRUTH_LABEL_MANIFEST.json": "571c9ec7d66bf72bb380d93affe90298c6aaca3563058374dfb702fd27795e91",
+      "PHASE4_FINAL_SCIENTIFIC_REPORT.md": "d0b0fbd9d831f20224310263019328f0b2c1f565e0f3ecafc40a1878cd731490"
+    }
+  },
+  "offlineSmoke": {
+    "executedAtUtc": "2026-10-21T12:17:34.930Z",
+    "resultFile": "smoke/TIGUAN_SMOKE_REPLAY.json",
+    "drive": "TIGUAN_20261019",
+    "models": {
+      "M5": {
+        "match": true
+      },
+      "M7A": {
+        "match": true
+      },
+      "M7": {
+        "match": true
+      }
+    },
+    "verdict": "PASS_BIT_IDENTICAL_TO_PHASE3"
+  },
+  "dependencies": {
+    "completeForSmokeTriple": true,
+    "missingOrExternal": [
+      "Tiguan original MOVs (not required for smoke)",
+      "Tesla TRIP_1/TRIP_2 cloud payloads (required only for full Phase 3 benchmark)",
+      "Tesla LDI-10D MOVs on /tmp (Phase 4 GT only)",
+      "Production DB shadow for Tiguan L3 parity (deliberately not queried in Phase 4)"
+    ]
+  },
+  "durableBackup": {
+    "primaryArtifactRoot": "/opt/cursor/artifacts/exp021-phase5a-baseline-freeze",
+    "gitEvidencePointer": "architecture/drivingintelligence/evidence/exp021-phase5a-baseline-freeze/",
+    "cloudAgentVmOnlyRisk": "Large inputs under /opt/cursor/artifacts/ may not survive VM recycle unless copied to git or owner storage",
+    "status": "PARTIAL_GIT_POINTER_PLUS_LOCAL_ARTIFACTS"
+  },
+  "documents": [
+    "FREEZE_MANIFEST.json",
+    "FROZEN_VARIANTS.md",
+    "REPRODUCE.md",
+    "KNOWN_LIMITATIONS.md",
+    "SHA256SUMS",
+    "PHASE4_INTEGRITY_SNAPSHOT.txt",
+    "smoke/TIGUAN_SMOKE_REPLAY.json"
+  ]
+}

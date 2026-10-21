@@ -1,0 +1,24 @@
+{
+  "drive": "TIGUAN_20261019",
+  "at": "2026-10-21T12:17:34.930Z",
+  "models": {
+    "M5": {
+      "sha256": "84e2ca581b22638f463d637197009db0eb5556a0efab2920d51100f5c385849d",
+      "expected": "84e2ca581b22638f463d637197009db0eb5556a0efab2920d51100f5c385849d",
+      "match": true,
+      "confirmed": 928
+    },
+    "M7A": {
+      "sha256": "4201e931ac47734e4a68aa11e8735b264aee6d9e9055f1b6e6c3f94b37acf74f",
+      "expected": "4201e931ac47734e4a68aa11e8735b264aee6d9e9055f1b6e6c3f94b37acf74f",
+      "match": true,
+      "confirmed": 971
+    },
+    "M7": {
+      "sha256": "1da4a19d86f8c402c8badacd714238fae72982870ef8c23c2d1dccd6da34c033",
+      "expected": "1da4a19d86f8c402c8badacd714238fae72982870ef8c23c2d1dccd6da34c033",
+      "match": true,
+      "confirmed": 964
+    }
+  }
+}
