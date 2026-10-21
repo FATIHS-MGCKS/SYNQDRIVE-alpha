@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-21 — HV measurement quality MVP hardening (PR #2108)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Fail-closed SOH/cross-session: load persisted `HV_CAPACITY_SHADOW` assessment only; Q4 tied to `shadowGatePassed` + `sessionIds`; qualified vs exploratory capacity medians; vehicle score excludes Q1 history |
+| **WHY** | Prevent synthetic cross-session / SOH gate pass from MVP read API |
+| **VALIDATION** | `hv-measurement-quality.{aggregates,safety,policy}.spec.ts` |
+| **NON_EFFECTS** | No M3/M2 policy edits; no migrations; no DIMO |
+
+---
+
 ## 2026-10-21 — HV measurement quality MVP (Q1–Q4, read API, fail-closed)
 
 | Field | Value |

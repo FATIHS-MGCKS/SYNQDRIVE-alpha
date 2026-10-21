@@ -40,7 +40,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.2251',
     title: 'HV Battery — measurement quality MVP (Q1–Q4 read API)',
     summary: [
-      'GET organizations/:orgId/vehicles/:vehicleId/hv-measurement-quality — per charge session Q1–Q4, uncalibrated 0–100 score, M3 gate reuse, Q4 multi-session consistency cohort.',
+      'GET organizations/:orgId/vehicles/:vehicleId/hv-measurement-quality — per charge session Q1–Q4, uncalibrated 0–100 score, M3 gate reuse; Q4 only with persisted cross-session gate pass.',
+      'Fail-closed SOH context from persisted HV_CAPACITY_SHADOW assessment only; qualified vs exploratory capacity medians; vehicle score excludes Q1 history.',
       'Separates capacity confidence, reference confidence, and SOH publication readiness; never exposes SOH % when existing gates block; research Tesla SOC windows 20–80 / 30–90 / 15–85 as recommendations only.',
       'No schema migration, no DIMO calls, no M3 rule changes; fail-closed score cap when validation gate fails.',
     ],

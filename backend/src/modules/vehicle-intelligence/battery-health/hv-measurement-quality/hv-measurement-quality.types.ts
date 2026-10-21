@@ -97,11 +97,21 @@ export interface HvMeasurementQualityVehicleResult {
   vehicleId: string;
   organizationId: string;
   evaluatedAt: string;
+  /** @deprecated Use exploratoryMeasurementCount — explorative ≠ policy-validated. */
   validMeasurementCount: number;
+  validMeasurementCountSemantics: 'EXPLORATORY_NON_Q1';
+  exploratoryMeasurementCount: number;
+  policyValidatedMeasurementCount: number;
   validationGatePassCount: number;
+  qualifiedCapacityMedianKwh: number | null;
+  exploratoryCapacityMedianKwh: number | null;
+  persistedCrossSessionSessionCount: number;
+  persistedCrossSessionGatePassed: boolean;
   recommendedAdditionalMeasurements: number;
+  recommendedAdditionalMeasurementsDisclaimer: string;
   vehicleQualityLevel: HvMeasurementQualityLevel;
   qualityScore: number;
+  qualityLevelCounts: Record<'Q1' | 'Q2' | 'Q3' | 'Q4', number>;
   capacityConfidence: HvMeasurementCapacityConfidence;
   referenceConfidence: HvMeasurementReferenceConfidence;
   sohPublicationReadiness: HvMeasurementSohPublicationReadiness;

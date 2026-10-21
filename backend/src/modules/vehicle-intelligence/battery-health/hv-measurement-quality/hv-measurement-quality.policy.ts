@@ -12,8 +12,6 @@ import type { HvCapacityM3SessionInput } from '../hv-capacity-shadow/hv-capacity
 import { HV_SOH_GATE_MIN_QUALIFIED_SESSIONS } from '../hv-capacity-shadow/hv-soh-gate.types';
 import {
   HV_MEASUREMENT_QUALITY_LEVEL,
-  HV_MEASUREMENT_QUALITY_MAX_SESSION_CAPACITY_CV,
-  HV_MEASUREMENT_QUALITY_MIN_VALID_SESSIONS_FOR_Q4,
   HV_MEASUREMENT_QUALITY_SCORE_BAND,
   HV_MEASUREMENT_RESEARCH_SOC_CHARGE_WINDOWS,
   type HvMeasurementQualityLevel,
@@ -99,15 +97,6 @@ export function mapSessionToM3Input(
     boundaryStrength: quality.boundaryStrength,
     qualityStatus: mdString(md, 'qualityStatus'),
   };
-}
-
-function coefficientOfVariation(values: number[]): number | null {
-  if (values.length < 2) return null;
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  if (mean <= 0) return null;
-  const variance =
-    values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
-  return Math.sqrt(variance) / mean;
 }
 
 function isQ1Session(
@@ -230,19 +219,24 @@ export function evaluateHvMeasurementQualitySession(
 
 export function resolveQ4CohortSessionIds(
   sessions: HvMeasurementQualitySessionResult[],
+  persistedCrossSession: {
+    shadowGatePassed: boolean;
+    sessionIds: string[];
+  } | null,
 ): Set<string> {
-  const passed = sessions.filter(
-    (s) => s.m3GateEligible && s.m3EstimatedCapacityKwh != null,
-  );
-  if (passed.length < HV_MEASUREMENT_QUALITY_MIN_VALID_SESSIONS_FOR_Q4) {
+  if (!persistedCrossSession?.shadowGatePassed) {
     return new Set();
   }
-  const capacities = passed.map((s) => s.m3EstimatedCapacityKwh as number);
-  const cv = coefficientOfVariation(capacities);
-  if (cv == null || cv > HV_MEASUREMENT_QUALITY_MAX_SESSION_CAPACITY_CV) {
-    return new Set();
-  }
-  return new Set(passed.map((s) => s.sessionId));
+  const inCrossSession = new Set(persistedCrossSession.sessionIds);
+  const ids = sessions
+    .filter(
+      (s) =>
+        s.m3GateEligible &&
+        s.m3EstimatedCapacityKwh != null &&
+        inCrossSession.has(s.sessionId),
+    )
+    .map((s) => s.sessionId);
+  return new Set(ids);
 }
 
 export function evaluateResearchSocWindowCoverage(
@@ -279,6 +273,9 @@ export function resolveVehicleQualityLevel(
   return HV_MEASUREMENT_QUALITY_LEVEL.Q1;
 }
 
-export function recommendedAdditionalMeasurements(validationGatePassCount: number): number {
-  return Math.max(0, HV_SOH_GATE_MIN_QUALIFIED_SESSIONS - validationGatePassCount);
+export function recommendedAdditionalMeasurements(policyValidatedCount: number): number {
+  return Math.max(0, HV_SOH_GATE_MIN_QUALIFIED_SESSIONS - policyValidatedCount);
 }
+
+export const HV_MEASUREMENT_RECOMMENDED_ADDITIONAL_DISCLAIMER =
+  'Advisory count toward SOH gate minimum sessions only; not a guarantee of SOH publication readiness or cross-session gate pass.';
