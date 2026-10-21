@@ -18,7 +18,10 @@ import {
 import type { DiV0S4ParsedEvidenceContainer } from '../s4a-foundation/di-v0-s4a-evidence-container-parse';
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 import { DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-motion-core-shadow.bundle.version';
-import { adaptMotionCoreShadowEvidenceFromParsedContainer } from './di-v0-motion-core-shadow-evidence.adapter';
+import {
+  adaptMotionCoreShadowEvidenceFromParsedContainer,
+  type DiV0MotionCoreShadowEvidenceAdaptation,
+} from './di-v0-motion-core-shadow-evidence.adapter';
 import { buildMotionCoreShadowIntentKey } from './di-v0-motion-core-shadow-intent';
 import type {
   DiV0MotionCoreShadowPayloadV1,
@@ -54,9 +57,15 @@ function fingerprintPayload(payload: DiV0MotionCoreShadowPayloadV1): string {
  * Pure post-trip motion-core shadow computation (Fable review recommended stack).
  * Does not read or mutate production shadow intervals.
  */
-export function processDiV0MotionCoreShadowTrip(input: DiV0MotionCoreShadowProcessInput): DiV0MotionCoreShadowProcessResult {
-  const computedAt = input.computedAt ?? new Date();
-  const evidence = adaptMotionCoreShadowEvidenceFromParsedContainer(input.parsed, input.sourceFamily);
+export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
+  evidence: DiV0MotionCoreShadowEvidenceAdaptation,
+  meta: {
+    pinnedSnapshotHash: string;
+    combinedInputIdentity: string;
+    computedAt?: Date;
+  },
+): DiV0MotionCoreShadowProcessResult {
+  const computedAt = meta.computedAt ?? new Date();
   const c4 = computeC4AdaptiveL3(evidence.buckets);
   const sparseArg = evidence.sparseComparable ? evidence.sparseSpeed : null;
   const fsmLabels = runMotionFsm(
@@ -81,8 +90,8 @@ export function processDiV0MotionCoreShadowTrip(input: DiV0MotionCoreShadowProce
   );
 
   const intentKey = buildMotionCoreShadowIntentKey({
-    pinnedSnapshotHash: input.pinnedSnapshotHash,
-    combinedInputIdentity: input.combinedInputIdentity,
+    pinnedSnapshotHash: meta.pinnedSnapshotHash,
+    combinedInputIdentity: meta.combinedInputIdentity,
   });
 
   const fsmVersion = motionFsmVersionId(MOTION_FSM_V0_3_CANDIDATE_OPTIONS);
@@ -159,4 +168,13 @@ export function processDiV0MotionCoreShadowTrip(input: DiV0MotionCoreShadowProce
   };
 
   return { intentKey, payload, summary, payloadFingerprint };
+}
+
+export function processDiV0MotionCoreShadowTrip(input: DiV0MotionCoreShadowProcessInput): DiV0MotionCoreShadowProcessResult {
+  const evidence = adaptMotionCoreShadowEvidenceFromParsedContainer(input.parsed, input.sourceFamily);
+  return processDiV0MotionCoreShadowFromEvidenceAdaptation(evidence, {
+    pinnedSnapshotHash: input.pinnedSnapshotHash,
+    combinedInputIdentity: input.combinedInputIdentity,
+    computedAt: input.computedAt,
+  });
 }

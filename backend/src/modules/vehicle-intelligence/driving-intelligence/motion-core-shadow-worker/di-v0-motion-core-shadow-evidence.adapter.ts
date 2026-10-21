@@ -5,11 +5,12 @@ import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 import { buildDiV0TripSpeedQualityEvidenceFromParsedContainer } from '../trip-speed-quality/di-v0-trip-speed-quality-evidence';
 
 export type DiV0MotionCoreShadowSparseSamplePersisted = {
-  bucketLabelUtc: string;
+  /** 1 Hz aggregation grid alignment label (not a provider measurement timestamp). */
+  aggregationBucketLabelUtc: string;
   speedKmh: number;
-  /** Source signal time (R1 bucket label); not a live arrival/decision time. */
-  sourceTimestampUtc: string;
-  /** Ingest arrival latency is not reconstructed from pinned snapshots. */
+  /** Provider-native measurement instant when present in pinned R1 payload; otherwise unknown. */
+  measurementTimeUtc: string | null;
+  /** Ingest/arrival instant — never invented from bucket order or label time. */
   arrivalTimestampUtc: null;
   provenance: 'R1_OBD_PINNED_SNAPSHOT';
 };
@@ -46,9 +47,9 @@ export function adaptMotionCoreShadowEvidenceFromParsedContainer(
     if (row.speedKmh == null) continue;
     sparseSpeed.push({ label: row.bucketLabel, speedKmh: row.speedKmh });
     sparsePersisted.push({
-      bucketLabelUtc: row.bucketLabel,
+      aggregationBucketLabelUtc: row.bucketLabel,
       speedKmh: row.speedKmh,
-      sourceTimestampUtc: row.bucketLabel,
+      measurementTimeUtc: null,
       arrivalTimestampUtc: null,
       provenance: 'R1_OBD_PINNED_SNAPSHOT',
     });
