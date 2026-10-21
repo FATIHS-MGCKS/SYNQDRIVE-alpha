@@ -19,6 +19,12 @@ export type VsiApdsP5b1PersistedShadowDecisionRow = {
   reason: string;
 };
 
+/** Manifest replay only — includes post-poll correlation fields from persistence. */
+export type VsiApdsP5b1PersistedShadowDecisionManifestRow = VsiApdsP5b1PersistedShadowDecisionRow & {
+  realPollId: string | null;
+  realPollStatus: string | null;
+};
+
 @Injectable()
 export class VsiApdsP5b1DecisionRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -91,5 +97,56 @@ export class VsiApdsP5b1DecisionRepository {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
     return { rows: page, hasMore };
+  }
+
+  /**
+   * Offline research only: exact UUID allowlist, organization-scoped, no writes.
+   * Caller must validate scope (epoch, vehicles, window) after load.
+   */
+  async loadShadowDecisionsByIds(input: {
+    organizationId: string;
+    decisionIds: readonly string[];
+  }): Promise<VsiApdsP5b1PersistedShadowDecisionManifestRow[]> {
+    if (input.decisionIds.length === 0) {
+      return [];
+    }
+    const unique = [...new Set(input.decisionIds)];
+    if (unique.length !== input.decisionIds.length) {
+      throw new Error('P5B2_MANIFEST_DUPLICATE_DECISION_ID');
+    }
+
+    const rows = await this.prisma.apdShadowReconciliationDecision.findMany({
+      where: {
+        organizationId: input.organizationId,
+        id: { in: [...unique] },
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        opportunityId: true,
+        decisionAt: true,
+        activationEpochId: true,
+        policyVersion: true,
+        shadowExecutionVersion: true,
+        decision: true,
+        reason: true,
+        realPollId: true,
+        realPollStatus: true,
+      },
+    });
+
+    if (rows.length !== unique.length) {
+      throw new Error('P5B2_MANIFEST_DECISION_ID_NOT_FOUND');
+    }
+
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return input.decisionIds.map((id) => {
+      const row = byId.get(id);
+      if (!row) {
+        throw new Error('P5B2_MANIFEST_DECISION_ID_NOT_FOUND');
+      }
+      return row;
+    });
   }
 }
