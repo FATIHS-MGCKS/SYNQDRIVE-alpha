@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-measurement-quality-mvp-2026-10-21',
+    version: '4.9.2251',
+    title: 'HV Battery — measurement quality MVP (Q1–Q4 read API)',
+    summary: [
+      'GET organizations/:orgId/vehicles/:vehicleId/hv-measurement-quality — per charge session Q1–Q4, uncalibrated 0–100 score, M3 gate reuse, Q4 multi-session consistency cohort.',
+      'Separates capacity confidence, reference confidence, and SOH publication readiness; never exposes SOH % when existing gates block; research Tesla SOC windows 20–80 / 30–90 / 15–85 as recommendations only.',
+      'No schema migration, no DIMO calls, no M3 rule changes; fail-closed score cap when validation gate fails.',
+    ],
+    reason:
+      'Operator-transparent HV session data quality without a new SOH algorithm or reference auto-verification.',
+    previousBehavior:
+      'Session quality and M3/SOH gates only via data-analyse hv-capacity-shadow-evaluation and internal policies.',
+    details:
+      'backend/.../hv-measurement-quality/*, vehicle-intelligence.module.ts, architecture/battery-v2/research/CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-21T18:10:00.000Z',
+  },
+  {
     id: 'vsi-p5b2-historical-asof-offline-2026-10-21',
     version: '4.9.2250',
     title: 'VSI P5B.2 — historical as-of offline APDS correlation (opt-in HISTORY_AS_OF)',

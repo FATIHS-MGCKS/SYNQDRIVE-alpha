@@ -126,6 +126,8 @@ import {
   HvCapacityShadowEvaluationService,
   HvCapacityShadowEvaluationController,
 } from './battery-health/hv-capacity-shadow';
+import { HvMeasurementQualityController } from './battery-health/hv-measurement-quality/hv-measurement-quality.controller';
+import { HvMeasurementQualityService } from './battery-health/hv-measurement-quality/hv-measurement-quality.service';
 import {
   VehicleBatteryReferenceCapacityController,
   VehicleBatteryReferenceCapacityRepository,
@@ -340,7 +342,7 @@ import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, HvMeasurementQualityController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
   providers: [
     VsiCapabilityResolverRepository,
     VsiApdsP5ReadonlyService,
@@ -467,6 +469,7 @@ import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/
     HvCapacityCrossSessionAssessmentService,
     HvSohGateAssessmentService,
     HvCapacityShadowEvaluationService,
+    HvMeasurementQualityService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
@@ -718,6 +721,7 @@ import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/
     HvCapacityCrossSessionAssessmentService,
     HvSohGateAssessmentService,
     HvCapacityShadowEvaluationService,
+    HvMeasurementQualityService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,

@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-21 — HV measurement quality MVP (Q1–Q4, read API, fail-closed)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `hv-measurement-quality/*` policy + `GET organizations/:orgId/vehicles/:vehicleId/hv-measurement-quality`; reuses `assessHvChargeSessionQualityFromInput`, `evaluateHvM3SessionGate`, `computeHvSohGateAssessment` without M3 rule changes |
+| **WHY** | Transparent per-session data-quality index (0–100 uncalibrated) and Q1–Q4 levels for operators; Q4 only on consistent multi-session M3-pass cohort (CV ≤ 3 %); no SOH % public display |
+| **VALIDATION** | `hv-measurement-quality.policy.spec.ts` (fail-closed score cap, Q3/Q4 gates, contamination → Q1) |
+| **NON_EFFECTS** | No migrations; no DIMO polling; no M3 validation rule edits; no production deploy in workstream; `sohPercentPublicDisplayAllowed` always false in API |
+| **REMAINING_GAPS** | No customer UI; cross-session block in API is MVP synthesis from session rows — not a replacement for `HvCapacityCrossSessionAssessmentService` persistence |
+| **DECISION_STATUS** | PROPOSED (MVP API behind existing fleet-condition read permission) |
+
+---
+
 ## 2026-10-21 — HV R22 P1I PR1 fail-closed policy decision
 
 | Field | Value |
