@@ -110,7 +110,10 @@ export interface MotionFsmStopEpisode {
   gapLabels: number;
   /** Last label in the episode with position or sparse evidence (null when none). */
   lastEvidenceLabel: string | null;
-  /** Duration actually covered by evidence: lastEvidenceLabel − startLatest (s); never exceeds minDurationS. */
+  /**
+   * Span from startLatest to the last evidence label (s), bounded by minDurationS. Interior gaps are
+   * NOT subtracted — use `gapLabels` / `observedLabels` for coverage; this only bounds trailing propagation.
+   */
   observedMinDurationS: number;
   /** Labels with numeric speed in the hysteresis band (creep not excluded). */
   hysteresisBandLabels: number;
