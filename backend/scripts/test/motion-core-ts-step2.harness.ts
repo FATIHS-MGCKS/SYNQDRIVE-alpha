@@ -16,6 +16,7 @@ import {
   replayFrozenL3OnGrid,
   sampleByLabel,
   speedMetrics,
+  type MotionCoreSpeedSample,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/core';
 
 const OUT = process.env.MOTION_CORE_TS_STEP2_OUT ?? '/opt/cursor/artifacts/exp021-motion-core-ts-step2';
@@ -61,11 +62,11 @@ function primaryDisplay(videoTrip: number): Map<string, number> {
   return out;
 }
 
-function baselineSamples(grid: unknown[], shadow: Map<string, number | null>) {
+function baselineSamples(grid: unknown[], shadow: Map<string, number | null>): MotionCoreSpeedSample[] {
   return replayFrozenL3OnGrid(grid as never).map((r) => ({
     label: r.bucketLabelUtc,
     valueKmh: shadow.get(r.bucketLabelUtc) ?? null,
-    quality: shadow.get(r.bucketLabelUtc) != null ? 'OK' : 'NO_SUPPORT',
+    quality: shadow.get(r.bucketLabelUtc) != null ? ('OK' as const) : ('NO_SUPPORT' as const),
     supportLabels: [],
     supportSpanS: null,
     flags: [],
@@ -156,10 +157,10 @@ function main(): void {
     const exact = analyzeBaselineL3Exactness(replay, shadow, 0.05);
     const c4 = computeC4AdaptiveL3(grid as never);
     const b0Pub = baselineSamples(grid, shadow);
-    const b0Raw = replayFrozenL3OnGrid(grid as never).map((r) => ({
+    const b0Raw: MotionCoreSpeedSample[] = replayFrozenL3OnGrid(grid as never).map((r) => ({
       label: r.bucketLabelUtc,
       valueKmh: r.l3SpeedKmh,
-      quality: r.l3SpeedKmh != null ? 'OK' : 'NO_SUPPORT',
+      quality: r.l3SpeedKmh != null ? ('OK' as const) : ('NO_SUPPORT' as const),
       supportLabels: [],
       supportSpanS: null,
       flags: [],

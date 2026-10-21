@@ -15,6 +15,7 @@ import {
   reconcileShadowGating,
   replayFrozenL3OnGrid,
   runMotionFsmV02,
+  type ReferenceRow,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/core';
 
 const OUT = process.env.MOTION_CORE_TS_FSM_OUT ?? '/opt/cursor/artifacts/exp021-motion-core-ts-fsm';
@@ -144,8 +145,8 @@ function main() {
   }
 
   const zeroRuns = JSON.parse(fs.readFileSync(path.join(REF_PKG, 'ZERO_DISPLAY_RUNS.json'), 'utf8'));
-  const refs = JSON.parse(fs.readFileSync(path.join(REF_PKG, 'REFERENCE_ROWS.json'), 'utf8'));
-  const refById = new Map(refs.map((r: { sample_id: string }) => [r.sample_id, r]));
+  const refs = JSON.parse(fs.readFileSync(path.join(REF_PKG, 'REFERENCE_ROWS.json'), 'utf8')) as ReferenceRow[];
+  const refById = new Map<string, ReferenceRow>(refs.map((r) => [r.sample_id, r]));
 
   const zeroEval: unknown[] = [];
   for (const { key, videoTrip } of TRIPS) {
