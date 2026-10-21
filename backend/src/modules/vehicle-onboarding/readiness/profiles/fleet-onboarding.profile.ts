@@ -16,7 +16,7 @@ export const FLEET_ONBOARDING_PROFILE_V1: VehicleOnboardingReadinessProfileV1 = 
   brakeBaseline: 'DEFERRED_ALLOWED',
   hvBatteryByPowertrain: {
     ICE: 'NOT_APPLICABLE',
-    BEV: 'DEFERRED_ALLOWED',
+    BEV: 'REQUIRED',
     HYBRID: 'DEFERRED_ALLOWED',
     PLUGIN_HYBRID: 'DEFERRED_ALLOWED',
     OTHER: 'NOT_APPLICABLE',

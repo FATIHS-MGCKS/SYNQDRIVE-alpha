@@ -13,6 +13,35 @@ function parseOptionalFloat(value: string | undefined | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function isElectrifiedFuelType(fuelType: string | undefined | null): boolean {
+  const fuel = String(fuelType ?? '').trim().toLowerCase();
+  if (!fuel) return false;
+  return (
+    fuel.includes('electric') ||
+    fuel.includes('plugin') ||
+    fuel.includes('phev') ||
+    fuel === 'hybrid' ||
+    fuel.includes('hybrid')
+  );
+}
+
+/** HV traction capacity fields for Master DIMO register-from-dimo extraData (usable vs gross kept separate). */
+export function buildMasterHvCapacityExtraFields(
+  rv: RegisteredVehicle,
+): Record<string, number> {
+  if (!isElectrifiedFuelType(rv.fuelType)) return {};
+
+  const usable =
+    parseOptionalFloat(rv.hvBatteryUsableCapacityKwh) ??
+    parseOptionalFloat(rv.hvBatteryCapacityKwh);
+  const gross = parseOptionalFloat(rv.hvBatteryGrossCapacityKwh);
+
+  const out: Record<string, number> = {};
+  if (usable != null) out.hvBatteryUsableCapacityKwh = usable;
+  if (gross != null) out.hvBatteryGrossCapacityKwh = gross;
+  return out;
+}
+
 export function mapApiDimoToDimoVehicle(raw: Record<string, unknown>): DimoVehicle {
   const connectionStatus =
     raw.connectionStatus === 'Connected' || raw.connection_status === 'Connected'
@@ -59,6 +88,7 @@ export function buildVehicleExtraData(rv: RegisteredVehicle): Record<string, unk
     serviceIntervalManufacturerMonths: parseOptionalNumber(rv.serviceIntervalManufacturerMonths),
     oilChangeIntervalKm: parseOptionalNumber(rv.oilChangeIntervalKm),
     oilChangeIntervalMonths: parseOptionalNumber(rv.oilChangeIntervalMonths),
+    ...buildMasterHvCapacityExtraFields(rv),
   };
 }
 

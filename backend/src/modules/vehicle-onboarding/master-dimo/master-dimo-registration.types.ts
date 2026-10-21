@@ -25,7 +25,10 @@ export interface MasterDimoRegistrationInput {
     serviceIntervalManufacturerMonths?: number | null;
     oilChangeIntervalKm?: number | null;
     oilChangeIntervalMonths?: number | null;
+    /** Legacy Master alias for usable kWh (prefer hvBatteryUsableCapacityKwh). */
     hvBatteryCapacityKwh?: number | null;
+    hvBatteryUsableCapacityKwh?: number | null;
+    hvBatteryGrossCapacityKwh?: number | null;
   };
   manualSpecs?: {
     battery?: {

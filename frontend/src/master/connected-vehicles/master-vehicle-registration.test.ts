@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyManualBaselinesAfterCreate,
+  buildMasterHvCapacityExtraFields,
   buildVehicleExtraData,
   buildVehicleManualSpecs,
   mapApiDimoToDimoVehicle,
@@ -96,6 +97,10 @@ function minimalRv(overrides: Partial<RegisteredVehicle> = {}): RegisteredVehicl
 }
 
 describe('master-vehicle-registration payloads', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('maps DIMO API rows to DimoVehicle', () => {
     const mapped = mapApiDimoToDimoVehicle({
       id: 'd1',
@@ -116,6 +121,41 @@ describe('master-vehicle-registration payloads', () => {
     expect(extra.mileageKm).toBe(1500);
     expect(extra.hardwareType).toBe('LTE_R1');
     expect(extra.licensePlate).toBe('B-AB 123');
+  });
+
+  it('includes separated HV usable and gross fields for BEV extraData', () => {
+    const extra = buildVehicleExtraData(
+      minimalRv({
+        hvBatteryUsableCapacityKwh: '55.2',
+        hvBatteryGrossCapacityKwh: '57',
+      }),
+    );
+    expect(extra.hvBatteryUsableCapacityKwh).toBe(55.2);
+    expect(extra.hvBatteryGrossCapacityKwh).toBe(57);
+    expect(extra.hvBatteryCapacityKwh).toBeUndefined();
+  });
+
+  it('maps legacy hvBatteryCapacityKwh to usable-only extra field', () => {
+    const extra = buildVehicleExtraData(
+      minimalRv({ hvBatteryCapacityKwh: '57', hvBatteryUsableCapacityKwh: '' }),
+    );
+    expect(extra.hvBatteryUsableCapacityKwh).toBe(57);
+    expect(extra.hvBatteryGrossCapacityKwh).toBeUndefined();
+  });
+
+  it('omits HV capacity extra fields for ICE fuel types', () => {
+    const fields = buildMasterHvCapacityExtraFields(
+      minimalRv({ fuelType: 'Gasoline', hvBatteryUsableCapacityKwh: '60' }),
+    );
+    expect(fields).toEqual({});
+  });
+
+  it('does not promote gross-only to usable in extraData', () => {
+    const extra = buildVehicleExtraData(
+      minimalRv({ hvBatteryGrossCapacityKwh: '60', hvBatteryUsableCapacityKwh: '' }),
+    );
+    expect(extra.hvBatteryUsableCapacityKwh).toBeUndefined();
+    expect(extra.hvBatteryGrossCapacityKwh).toBe(60);
   });
 
   it('applyManualBaselinesAfterCreate calls tire, battery, and brake APIs', async () => {
@@ -145,6 +185,24 @@ describe('master-vehicle-registration payloads', () => {
     expect(result.vehicleId).toBe('veh-partial-1');
     expect(result.baselineFailures?.some((f) => f.area === 'tires')).toBe(true);
     expect(createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('persistMasterRegisteredVehicle forwards HV usable in registerFromDimo extraData', async () => {
+    registerFromDimoMock.mockResolvedValueOnce({ vehicle: { id: 'veh-hv-1' } });
+    await persistMasterRegisteredVehicle(
+      minimalRv({ hvBatteryUsableCapacityKwh: '55.2', hvBatteryGrossCapacityKwh: '57' }),
+      { dimoVehicleId: 'dimo-hv' },
+    );
+    expect(registerFromDimoMock).toHaveBeenCalledWith(
+      'org-1',
+      expect.objectContaining({
+        dimoVehicleId: 'dimo-hv',
+        extraData: expect.objectContaining({
+          hvBatteryUsableCapacityKwh: 55.2,
+          hvBatteryGrossCapacityKwh: 57,
+        }),
+      }),
+    );
   });
 
   it('persistMasterRegisteredVehicle propagates register-from-dimo full success', async () => {

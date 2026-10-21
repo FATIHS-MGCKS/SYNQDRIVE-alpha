@@ -19,7 +19,7 @@ import {
   buildAdminBaselineDraftFromMasterInput,
   buildTechnicalBaselineDraftFromMasterManualSpecs,
   masterManualSpecsNeedLegacyTireTreadPass,
-  tryHvBatteryFromExtra,
+  resolveHvBatteryCapacityFromMasterExtra,
 } from './master-dimo-registration.mapper';
 import {
   type MasterDimoRegistrationInput,
@@ -106,9 +106,16 @@ export class MasterDimoCanonicalRegistrationService {
     token = adminResult.case.concurrencyToken;
 
     const technicalDraft = buildTechnicalBaselineDraftFromMasterManualSpecs(input);
-    const hv = tryHvBatteryFromExtra(input.extraData);
-    if (hv) {
-      technicalDraft.hvBatteryReference = hv;
+    const hvResolution = resolveHvBatteryCapacityFromMasterExtra(input.extraData);
+    if (hvResolution.kind === 'invalid') {
+      throw new VehicleOnboardingError(
+        'UNSUPPORTED_MASTER_REGISTRATION_FIELDS',
+        'HV battery capacity fields are inconsistent',
+        { reason: hvResolution.reason },
+      );
+    }
+    if (hvResolution.kind === 'usable_reference') {
+      technicalDraft.hvBatteryReference = hvResolution.reference;
     }
 
     const technicalResult = await runVehicleOnboardingHttp(() =>

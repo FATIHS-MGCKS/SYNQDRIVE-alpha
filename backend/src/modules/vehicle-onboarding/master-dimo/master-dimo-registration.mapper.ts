@@ -191,15 +191,73 @@ export function hasLowVoltageBatteryManualSpec(input: MasterDimoRegistrationInpu
   );
 }
 
-/** Optional HV capacity when operator supplied kWh in extra (rare on Master form). */
+function parsePositiveKwhFromExtra(
+  extra: MasterDimoRegistrationInput['extraData'],
+  key: string,
+): number | null {
+  if (!extra || typeof extra !== 'object') return null;
+  const raw = (extra as Record<string, unknown>)[key as string];
+  if (raw == null || raw === '') return null;
+  const n = typeof raw === 'number' ? raw : Number(String(raw).replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+export const MASTER_HV_CAPACITY_RESOLUTION_REASONS = {
+  USABLE_EXCEEDS_GROSS: 'USABLE_EXCEEDS_GROSS',
+} as const;
+
+export type MasterHvCapacityResolution =
+  | { kind: 'none' }
+  | {
+      kind: 'usable_reference';
+      reference: NonNullable<VehicleTechnicalBaselineDraftV2['hvBatteryReference']>;
+    }
+  | {
+      kind: 'invalid';
+      reason: (typeof MASTER_HV_CAPACITY_RESOLUTION_REASONS)[keyof typeof MASTER_HV_CAPACITY_RESOLUTION_REASONS];
+    };
+
+/**
+ * Maps Master registration extraData to an onboarding HV reference draft (USABLE only).
+ * Gross kWh is accepted for operator context but never materialized as the SOH reference.
+ */
+export function resolveHvBatteryCapacityFromMasterExtra(
+  extra: MasterDimoRegistrationInput['extraData'],
+): MasterHvCapacityResolution {
+  const usableKwh =
+    parsePositiveKwhFromExtra(extra, 'hvBatteryUsableCapacityKwh') ??
+    parsePositiveKwhFromExtra(extra, 'hvBatteryCapacityKwh');
+  const grossKwh = parsePositiveKwhFromExtra(extra, 'hvBatteryGrossCapacityKwh');
+
+  if (usableKwh == null) {
+    return { kind: 'none' };
+  }
+  if (grossKwh != null && usableKwh > grossKwh) {
+    return {
+      kind: 'invalid',
+      reason: MASTER_HV_CAPACITY_RESOLUTION_REASONS.USABLE_EXCEEDS_GROSS,
+    };
+  }
+
+  return {
+    kind: 'usable_reference',
+    reference: {
+      capacityKwh: usableKwh,
+      capacityType: BatteryReferenceCapacityType.USABLE,
+      source: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
+      documentId: null,
+      serviceEventId: null,
+      notes: null,
+    },
+  };
+}
+
+/** @deprecated Prefer resolveHvBatteryCapacityFromMasterExtra — returns reference only. */
 export function tryHvBatteryFromExtra(
   extra: MasterDimoRegistrationInput['extraData'],
 ): VehicleTechnicalBaselineDraftV2['hvBatteryReference'] | null {
-  const capacityKwh = (extra as { hvBatteryCapacityKwh?: number })?.hvBatteryCapacityKwh;
-  if (capacityKwh == null || !Number.isFinite(capacityKwh)) return null;
-  return {
-    capacityKwh,
-    capacityType: BatteryReferenceCapacityType.USABLE,
-    source: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
-  };
+  const resolved = resolveHvBatteryCapacityFromMasterExtra(extra);
+  if (resolved.kind === 'usable_reference') return resolved.reference;
+  return null;
 }

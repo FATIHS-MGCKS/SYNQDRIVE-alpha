@@ -154,7 +154,7 @@ function sealInput(orgId: string, caseId: string, product: ProductSlug = Product
     expect(snap.decision).toBe('NOT_READY');
   });
 
-  it('D: BEV fleet deferred HV activates without placeholder battery row', async () => {
+  it('D: BEV fleet without HV reference is NOT_READY (aligned with rental)', async () => {
     const orgId = await createOrgWithProducts(prisma, [ProductSlug.FLEET]);
     const vin = `FLT${randomUUID().replace(/-/g, '').slice(0, 14)}`;
     const caseRow = await harness.caseService.openOrResumeManual(
@@ -178,19 +178,11 @@ function sealInput(orgId: string, caseId: string, product: ProductSlug = Product
         draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
-    const snap = await harness.readinessService.evaluateAndSealReadiness(
-      sealInput(orgId, caseRow.id, ProductSlug.FLEET),
-    );
-    expect(snap.decision).toBe('READY');
-    const activated = await activateForTest(harness, {
-      organizationId: orgId,
-      onboardingCaseId: caseRow.id,
-      actorUserId: null,
+    const snap = await harness.readinessService.evaluateReadiness({
+      ...sealInput(orgId, caseRow.id, ProductSlug.FLEET),
+      seal: false,
     });
-    const count = await prisma.vehicleBatteryReferenceCapacity.count({
-      where: { vehicleId: activated.vehicleId },
-    });
-    expect(count).toBe(0);
+    expect(snap.decision).toBe('NOT_READY');
   });
 
   it('E: brake reference draft creates VehicleBrakeReferenceSpec on activation', async () => {
