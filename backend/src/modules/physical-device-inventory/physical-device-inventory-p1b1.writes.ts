@@ -14,7 +14,11 @@ import {
   PhysicalDeviceIdentityAttestationKind,
   type VerifyPhysicalDeviceIdentityDto,
 } from './dto/verify-physical-device-identity.dto';
-import { buildInstallPayloadFingerprint } from './physical-device-install.fingerprint';
+import {
+  assessInstallIdempotencyReplay,
+  buildInstallPayloadFingerprint,
+  readInstallAssignmentPayloadFingerprint,
+} from './physical-device-install.fingerprint';
 import { buildIdentityVerificationPayloadFingerprint } from './physical-device-identity-verification.fingerprint';
 import { evaluateIdentityVerification } from './physical-device-identity-verification.engine';
 import { normalizePhysicalDeviceSerial } from './physical-device-identifier.normalize';
@@ -36,11 +40,7 @@ import type { PhysicalDeviceListItemDto } from './physical-device-inventory.type
 type Tx = Prisma.TransactionClient;
 
 function readAssignmentPayloadFingerprint(metadataJson: unknown): string | null {
-  if (!metadataJson || typeof metadataJson !== 'object' || Array.isArray(metadataJson)) {
-    return null;
-  }
-  const value = (metadataJson as Record<string, unknown>).payloadFingerprint;
-  return typeof value === 'string' ? value : null;
+  return readInstallAssignmentPayloadFingerprint(metadataJson);
 }
 
 export async function loadProviderReconciliationForVehicle(
@@ -325,8 +325,29 @@ export async function installPhysicalDeviceOnVehicleTx(
       },
     });
     if (existingAssignment?.physicalDevice) {
-      const stored = readAssignmentPayloadFingerprint(existingAssignment.metadataJson);
-      if (stored && stored !== payloadFingerprint) {
+      const activeInstallIds = existingAssignment.physicalDevice.assignments
+        .filter(
+          (a) =>
+            a.vehicleId != null &&
+            a.assignmentKind === PhysicalDeviceAssignmentKind.INSTALL,
+        )
+        .map((a) => a.id);
+      const replayAssessment = assessInstallIdempotencyReplay({
+        requestedDeviceId: deviceId,
+        requestedVehicleId: dto.vehicleId,
+        expectedPayloadFingerprint: payloadFingerprint,
+        assignment: {
+          id: existingAssignment.id,
+          physicalDeviceId: existingAssignment.physicalDeviceId,
+          assignmentKind: existingAssignment.assignmentKind,
+          vehicleId: existingAssignment.vehicleId,
+          effectiveTo: existingAssignment.effectiveTo,
+          metadataJson: existingAssignment.metadataJson,
+        },
+        deviceStatus: existingAssignment.physicalDevice.status,
+        activeInstallAssignmentIdsForDevice: activeInstallIds,
+      });
+      if (!replayAssessment.valid) {
         throw physicalDeviceIdempotencyPayloadMismatch();
       }
       return toListItem(existingAssignment.physicalDevice);
