@@ -7,7 +7,13 @@ import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import type { PrismaService } from '../../src/shared/database/prisma.service';
 import { buildLvEstimatedBatteryHealthInputV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-input.builder';
-import { evaluateLvEstimatedBatteryHealthV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-v1.evaluator';
+import {
+  evaluateLvEstimatedBatteryHealthV1,
+  evaluateLvEstimatedBatteryHealthV1WithResearchPolicy,
+} from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-v1.evaluator';
+import { computeResearchEvidenceCompleteness } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-v1.research-policy';
+import { hasValidatedStartabilityCrankEvidenceV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-startability.policy';
+import { isEligibleRestObservationForConditionV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-observation.policy';
 import { evaluateLvOperationalConditionV1 } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-operational-condition/lv-operational-condition-v1.evaluator';
 import { LV_ESTIMATED_HEALTH_DEFAULT_RESTORE_CUTOFF_ISO } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-v1.constants';
 import { LvMeasuredIntelligenceReadService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/lv-measured-intelligence/lv-measured-intelligence-read.service';
@@ -56,10 +62,13 @@ async function main(): Promise<void> {
     parseArgs('--restore-cutoff')[0] ??
     process.env.N16_RESTORE_CUTOFF_ISO ??
     LV_ESTIMATED_HEALTH_DEFAULT_RESTORE_CUTOFF_ISO;
+  const policyComparison =
+    parseArgs('--policy-comparison')[0] === 'true' ||
+    process.env.N16_POLICY_COMPARISON === '1';
 
   if (!organizationId || vehicleIds.length === 0) {
     console.error(
-      'Usage: lv-estimated-battery-health-evaluation-readonly.ts --organization-id=<uuid> --vehicle-id=<uuid>+',
+      'Usage: lv-estimated-battery-health-evaluation-readonly.ts --organization-id=<uuid> --vehicle-id=<uuid>+ [--policy-comparison=true]',
     );
     process.exit(1);
   }
@@ -124,7 +133,7 @@ async function main(): Promise<void> {
       const n14 = evaluateLvOperationalConditionV1(healthInput.conditionInput);
       const n16 = evaluateLvEstimatedBatteryHealthV1(healthInput);
 
-      (report.vehicles as unknown[]).push({
+      const row: Record<string, unknown> = {
         vehicleId,
         licensePlate: vehicle.licensePlate,
         geRowsLoaded: healthInput.conditionInput.eligibleRestObservations.length,
@@ -136,7 +145,82 @@ async function main(): Promise<void> {
           dataQuality: n14.dataQuality,
         },
         n16,
-      });
+      };
+
+      if (policyComparison) {
+        const n16b = evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(
+          healthInput,
+          'P2_LOAD_REQUIRED_GREEN',
+        );
+        const n16c = evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(
+          healthInput,
+          'P3_CONSERVATIVE_GREEN',
+        );
+        const eligible = healthInput.conditionInput.eligibleRestObservations.filter(
+          isEligibleRestObservationForConditionV1,
+        );
+        const eligibleWithTemp = eligible.filter((o) => o.temperatureC != null);
+        const tempProvenance = eligible.filter(
+          (o) => o.temperatureC != null && o.providerObservationAt != null,
+        );
+        const dt = n16.decisionTrace;
+        const researchCtx = {
+          bandCounts: dt.bandCounts,
+          episodeCount: dt.qualifiedEpisodeCount,
+          trend: dt.longitudinalTrend,
+          loadSignal: dt.loadSignal,
+          crankStale: dt.crankStale,
+          loadAuthorizedForHealth: n16.supportingSignalFamilies.includes('LOAD_START_PERFORMANCE'),
+          loadProvenanceValidated: hasValidatedStartabilityCrankEvidenceV1(
+            healthInput.conditionInput.crankEvidence,
+          ),
+          observationSpanDays:
+            dt.observationTimeRange.earliestIso && dt.observationTimeRange.latestIso
+              ? (Date.parse(dt.observationTimeRange.latestIso) -
+                  Date.parse(dt.observationTimeRange.earliestIso)) /
+                (24 * 60 * 60 * 1000)
+              : 0,
+          openProviderGaps: healthInput.conditionInput.openProviderObservabilityGapCount,
+          inputCoverageIncomplete: healthInput.conditionInput.inputCoverageIncomplete,
+          historicalObservationsTruncated:
+            healthInput.conditionInput.historicalObservationsTruncated,
+          temperatureObservationCount: eligibleWithTemp.length,
+          temperatureProvenanceValid: tempProvenance.length > 0,
+        };
+        row.policyComparison = {
+          disclaimer:
+            'Historical production replay — not empirical accuracy vs ground truth.',
+          policyA: {
+            status: n16.estimatedHealthStatus,
+            ruleId: dt.finalRuleId,
+            reasonCodes: n16.reasonCodes,
+          },
+          policyB: {
+            status: n16b.estimatedHealthStatus,
+            ruleId: n16b.decisionTrace.finalRuleId,
+            researchRuleId: n16b.decisionTrace.researchRuleId,
+            reasonCodes: n16b.reasonCodes,
+          },
+          policyC: {
+            status: n16c.estimatedHealthStatus,
+            ruleId: n16c.decisionTrace.finalRuleId,
+            researchRuleId: n16c.decisionTrace.researchRuleId,
+            reasonCodes: n16c.reasonCodes,
+          },
+          evidenceCompleteness: computeResearchEvidenceCompleteness(
+            researchCtx,
+            'P3_CONSERVATIVE_GREEN',
+          ),
+          missingLoadEvidence: researchCtx.loadSignal !== 'GREEN' || researchCtx.crankStale,
+          missingTemperatureEvidence: researchCtx.temperatureObservationCount === 0,
+          p3GreenBlockers: computeResearchEvidenceCompleteness(
+            researchCtx,
+            'P3_CONSERVATIVE_GREEN',
+          ).greenBlockers,
+        };
+      }
+
+      (report.vehicles as unknown[]).push(row);
     }
 
     console.log(JSON.stringify(report, null, 2));

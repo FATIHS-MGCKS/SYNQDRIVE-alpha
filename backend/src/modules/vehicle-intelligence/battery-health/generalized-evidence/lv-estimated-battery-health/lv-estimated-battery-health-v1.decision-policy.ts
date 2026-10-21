@@ -55,6 +55,9 @@ export type LvEstimatedHealthDecisionTraceV1 = {
   independentFamilies: LvEstimatedHealthSignalFamilyV1[];
   correlatedFamiliesExcluded: LvEstimatedHealthSignalFamilyV1[];
   finalRuleId: HealthDecisionRuleIdV1 | null;
+  /** Present only for offline research policy runs (P2/P3). */
+  researchRuleId?: string | null;
+  researchPolicyVariant?: 'P1_BASELINE' | 'P2_LOAD_REQUIRED_GREEN' | 'P3_CONSERVATIVE_GREEN';
 };
 
 export type ClassifyEstimatedHealthInput = {

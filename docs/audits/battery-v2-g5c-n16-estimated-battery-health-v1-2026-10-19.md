@@ -17,6 +17,10 @@ N16 consumes the same qualified REST episode machinery as N14 but applies a dist
 
 `backend/scripts/ops/lv-estimated-battery-health-evaluation-readonly.ts` — 120-day window, high observation limit, restore cutoff `2026-10-17T21:55:43Z`.
 
+Optional offline A/B/C replay: `--policy-comparison=true` (P1 baseline + research P2/P3 only; production default remains P1).
+
+Research policies (offline, not Nest-wired): `evaluateLvEstimatedBatteryHealthV1WithResearchPolicy` with `P2_LOAD_REQUIRED_GREEN` or `P3_CONSERVATIVE_GREEN` (`lv-estimated-battery-health-v1.research-policy.ts`).
+
 Production: use `synqdrive_battery_v2_forensic_ro` via `/opt/synqdrive/shared/ops/battery-v2-forensic-ro-psql.sh` wrapper pattern for `DATABASE_URL` (credentials on VPS only).
 
 ## P1 decision policy hardening (2026-10-19)
