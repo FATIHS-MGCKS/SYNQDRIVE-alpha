@@ -2080,3 +2080,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Port C4 (L3-direct via replayed `evaluateL3AtCenter`, else C1 fallback) for reproducible Tesla comparison before FSM/events |
 | VALIDATION | Jest 18/18 motion-core-step; Python C4 parity TRIP_1 + S8; common support TRIP_1 MAE 1.963 n=62 vs published shadow; coverage 27.1%→65.5% display denominator |
 | NON_EFFECTS | No `compute-trip-intervals` wiring; offline/delayed-capable candidate only |
+
+### EXP-021 motion core — TypeScript FSM V0.2 (Fable port) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-fsm.ts`, `shadow-gating-reconciliation.ts`, `motion-fsm-zero-run-eval.ts`, `motion-core-step3-fsm.spec.ts`, harness `motion-core-ts-fsm.harness.ts`; C4 TRIP_2 parity + shadow gating tests in step2; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-fsm/` |
+| WHY | Close C4 Python parity on both Tesla trips; port Fable `motion_fsm.py` V0.2 (CAUSAL/RETROSPECTIVE) without threshold tuning; reproduce 10/10 evaluable zero-display stop matching with DIMO sparse speed evidence |
+| VALIDATION | Jest `motion-core-step` 32/32; FSM Python parity TRIP_1+2 with sparse DIMO; `FSM_STEP_REPORT.json` causal/retro matched 10/10 |
+| NON_EFFECTS | No manoeuvre/event detector; no production FSM wiring; `compute-trip-intervals` unchanged |

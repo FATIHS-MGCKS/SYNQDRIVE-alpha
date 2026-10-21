@@ -26,3 +26,10 @@ export function c4FinalizationHorizonEndLabel(centerLabel: string, plusSeconds: 
 }
 
 export const MOTION_CORE_C4_AVAILABILITY_MODE = 'OFFLINE_DELAYED_CAPABLE_NOT_LIVE_CAUSAL';
+
+/**
+ * Jitter suspect on incoming leg (t−1) for center t can consult bucket availability at (t−1)+2 = t+1
+ * and neighbour leg speeds up to (t−1)+3 (leg endpoints t+2..t+3). Worst case for finalizing C4 at t
+ * when jitter fallback is possible: inclusive grid labels **t−2 … t+3** (stricter than C1-only t+2).
+ */
+export const MOTION_CORE_C4_JITTER_COUPLED_HORIZON_FORWARD_S = 3;

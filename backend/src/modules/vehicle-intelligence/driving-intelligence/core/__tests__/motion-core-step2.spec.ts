@@ -1,12 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 
 import {
   analyzeBaselineL3Exactness,
   computeC4AdaptiveL3,
+  isShadowSpeedGatedOut,
   labelsWhereC4DiffersFromFrozenL3,
   MOTION_CORE_C4_INPUT_HORIZON_FORWARD_S,
+  MOTION_CORE_C4_JITTER_COUPLED_HORIZON_FORWARD_S,
+  reconcileShadowGating,
   replayFrozenL3OnGrid,
   robustPathSlopeC1,
   sampleByLabel,
@@ -16,10 +18,10 @@ import {
   SyntheticSpeedProfile,
   syntheticLabel,
 } from './fixtures/motion-core-synthetic.fixture';
+import { PY_PROTO, pyC4Json } from './fixtures/motion-python-parity.fixture';
 
 const PHASE5C =
   process.env.EXP021_PHASE5C_ROOT ?? '/opt/cursor/artifacts/exp021-phase5c-tesla-reference-20261021';
-const PY_PROTO = '/opt/cursor/artifacts/exp021-motion-core-design/prototype';
 const NUM_TOL_KMH = 1e-6;
 
 function loadGrid(tripKey: string) {
@@ -28,27 +30,25 @@ function loadGrid(tripKey: string) {
   return JSON.parse(fs.readFileSync(p, 'utf8')).buckets;
 }
 
-function loadShadow(tripKey: string): Map<string, number | null> {
+function loadShadowRows(tripKey: string) {
   const p = path.join(PHASE5C, 'telemetry/production_export/shadow', `${tripKey}_shadow_intervals.jsonl`);
-  const m = new Map<string, number | null>();
+  const m = new Map<
+    string,
+    { estimatedSpeedKmh: number | null; motionState?: string; speedEvidenceState?: string }
+  >();
   if (!fs.existsSync(p)) return m;
   for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
     if (!line.trim()) continue;
-    const row = JSON.parse(line) as { intervalStart: string; estimatedSpeedKmh: number | null };
-    m.set(new Date(row.intervalStart).toISOString().replace(/\.\d{3}Z$/, 'Z'), row.estimatedSpeedKmh);
+    const row = JSON.parse(line) as {
+      intervalStart: string;
+      estimatedSpeedKmh: number | null;
+      motionState?: string;
+      speedEvidenceState?: string;
+    };
+    const lab = new Date(row.intervalStart).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    m.set(lab, row);
   }
   return m;
-}
-
-function pyC4Json(grid: unknown[]): unknown[] {
-  const tmpIn = '/tmp/mc-grid-in.json';
-  const tmpOut = '/tmp/mc-c4-out.json';
-  fs.writeFileSync(tmpIn, JSON.stringify(grid));
-  execSync(
-    `python3 -c "import json; from speed_candidates import c4_adaptive_l3; g=json.load(open('${tmpIn}')); o=[{'label':s.label,'value_kmh':s.value_kmh,'quality':s.quality,'support_labels':s.support_labels,'support_span_s':s.support_span_s,'flags':s.flags,'estimator':s.estimator} for s in c4_adaptive_l3(g)]; json.dump(o, open('${tmpOut}','w'))"`,
-    { cwd: PY_PROTO, stdio: 'pipe' },
-  );
-  return JSON.parse(fs.readFileSync(tmpOut, 'utf8')) as unknown[];
 }
 
 function assertParity(ts: ReturnType<typeof computeC4AdaptiveL3>, py: Array<Record<string, unknown>>) {
@@ -74,7 +74,8 @@ describe('EXP021 motion core step 2 (C4 adaptive L3)', () => {
     const grid = loadGrid('TRIP_1');
     if (!grid) return;
     const replay = replayFrozenL3OnGrid(grid);
-    const shadow = loadShadow('TRIP_1');
+    const shadowRows = loadShadowRows('TRIP_1');
+    const shadow = new Map([...shadowRows.entries()].map(([k, v]) => [k, v.estimatedSpeedKmh]));
     const report = analyzeBaselineL3Exactness(replay, shadow, 0.05);
     expect(report.mismatchesAboveTolerance).toBe(0);
     expect(report.maxAbsDeltaKmh).toBeLessThanOrEqual(0.05);
@@ -110,6 +111,28 @@ describe('EXP021 motion core step 2 (C4 adaptive L3)', () => {
     assertParity(computeC4AdaptiveL3(grid), py);
   });
 
+  it('C4 Python parity on Tesla TRIP_2 when artifacts present', () => {
+    const grid = loadGrid('TRIP_2');
+    if (!grid || !fs.existsSync(PY_PROTO)) return;
+    const py = pyC4Json(grid) as Array<Record<string, unknown>>;
+    assertParity(computeC4AdaptiveL3(grid), py);
+  });
+
+  it('shadow gating explains SHADOW_NULL_L3_ONLY on both Tesla trips', () => {
+    for (const tripKey of ['TRIP_1', 'TRIP_2'] as const) {
+      const grid = loadGrid(tripKey);
+      if (!grid) continue;
+      const replay = replayFrozenL3OnGrid(grid);
+      const c4 = computeC4AdaptiveL3(grid);
+      const shadowRows = loadShadowRows(tripKey);
+      const rec = reconcileShadowGating(replay, c4, shadowRows);
+      const gated = rec.rows.filter((r) => r.category === 'SHADOW_NULL_L3_ONLY');
+      expect(gated.length).toBeGreaterThan(0);
+      const explained = gated.filter((r) => isShadowSpeedGatedOut(r.shadowMotionState)).length;
+      expect(explained).toBe(gated.length);
+    }
+  });
+
   it('C4 differs from frozen L3 only on jitter-fallback labels (8 on combined trips)', () => {
     const g1 = loadGrid('TRIP_1');
     const g2 = loadGrid('TRIP_2');
@@ -122,6 +145,20 @@ describe('EXP021 motion core step 2 (C4 adaptive L3)', () => {
       const s = c4g1.get(lab) ?? c4g2.get(lab);
       expect(s?.flags.some((f) => f.includes('FALLBACK'))).toBe(true);
     }
+  });
+
+  it('truncated grid stable for C4 when jitter-coupled forward horizon respected', () => {
+    const prof = new SyntheticSpeedProfile([{ durationS: 60, vStartKmh: 45, vEndKmh: 45 }]);
+    const times = Array.from({ length: 61 }, (_, t) => t).filter((t) => t !== 28);
+    const full = makeSyntheticMotionGrid(prof, times, { noiseM: 0.2, slips: { 29: -1 } });
+    const frozenLabel = syntheticLabel(27);
+    const cutSec = 27 + MOTION_CORE_C4_JITTER_COUPLED_HORIZON_FORWARD_S;
+    const cutLabel = syntheticLabel(cutSec);
+    const truncated = full.filter((b) => b.bucketLabelUtc <= cutLabel);
+    const fullC4 = sampleByLabel(computeC4AdaptiveL3(full));
+    const truncC4 = sampleByLabel(computeC4AdaptiveL3(truncated));
+    expect(truncC4.get(frozenLabel)?.valueKmh).toBe(fullC4.get(frozenLabel)?.valueKmh);
+    expect(truncC4.get(frozenLabel)?.quality).toBe(fullC4.get(frozenLabel)?.quality);
   });
 
   it('truncated grid does not retroactively change finalized C4 when horizon respected', () => {
