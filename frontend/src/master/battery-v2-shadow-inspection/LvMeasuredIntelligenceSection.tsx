@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { MasterPageSection } from '../shell';
 import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
+import { LvMeasuredLatestEvidencePanel } from './LvMeasuredLatestEvidencePanel';
+import { LvMeasuredMobileEpisodeCard } from './LvMeasuredMobileEpisodeCard';
 import { LvMeasuredVoltageChart } from './LvMeasuredVoltageChart';
 import {
   countMeasurementGaps,
@@ -29,19 +31,6 @@ type Props = {
   onSelectRestSessionId: (restSessionId: string) => void;
   historyRange: HistoryRangeProps;
 };
-
-function contextBadgeClass(ctx: string): string {
-  switch (ctx) {
-    case 'REST':
-      return 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200';
-    case 'CHARGING':
-      return 'bg-sky-500/15 text-sky-900 dark:text-sky-200';
-    case 'DRIVING':
-      return 'bg-amber-500/15 text-amber-900 dark:text-amber-200';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
-}
 
 function slopePresentation(ep: LvMeasuredRestSessionEpisodeV1) {
   const df = ep.derivedFeatures;
@@ -152,46 +141,7 @@ export function LvMeasuredIntelligenceSection({
       </MasterPageSection>
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.latestTitle')}>
-        {data.latestMeasured ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">
-                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.measuredV')}
-              </p>
-              <p className="font-medium tabular-nums">{data.latestMeasured.voltageV.toFixed(3)} V</p>
-            </div>
-            <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">
-                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.providerTime')}
-              </p>
-              <p className="font-medium text-xs">
-                {data.latestMeasured.providerObservationAt
-                  ? new Date(data.latestMeasured.providerObservationAt).toLocaleString()
-                  : '—'}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">
-                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.context')}
-              </p>
-              <span
-                className={`inline-block rounded px-2 py-0.5 text-xs ${contextBadgeClass(data.latestMeasured.operationalContext)}`}
-              >
-                {data.latestMeasured.operationalContext}
-              </span>
-            </div>
-            <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">
-                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.openProviderGaps')}
-              </p>
-              <p className="font-medium tabular-nums">{data.provenance.openProviderObservabilityGapCount}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.noMeasurements')}
-          </p>
-        )}
+        <LvMeasuredLatestEvidencePanel data={data} />
       </MasterPageSection>
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.vehicleTimelineTitle')}>
@@ -212,41 +162,14 @@ export function LvMeasuredIntelligenceSection({
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.episodeCompareTitle')}>
         <div className="space-y-2 md:hidden">
-          {data.restSessionEpisodes.map((ep) => {
-            const slope = slopePresentation(ep);
-            const selected = ep.restSessionId === selectedRestSessionId;
-            return (
-              <button
-                key={ep.restSessionId}
-                type="button"
-                onClick={() => onSelectRestSessionId(ep.restSessionId)}
-                className={`w-full text-left rounded-xl border p-3 text-xs space-y-1.5 transition-colors ${
-                  selected ? 'border-primary bg-muted/50' : 'border-border/70 hover:bg-muted/30'
-                }`}
-              >
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium">{new Date(ep.openedAt).toLocaleString()}</span>
-                  <span className="text-muted-foreground">{ep.sessionStatus}</span>
-                </div>
-                <div className="text-muted-foreground">
-                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.table.measuredPts')}:{' '}
-                  {ep.measuredPoints.length} ·{' '}
-                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.mobileC3Span')}:{' '}
-                  {formatDurationMs(ep.derivedFeatures?.observationSpanMs)}
-                </div>
-                <div>
-                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.mobileDerivedSlope')}{' '}
-                  <span className="font-medium tabular-nums">{slope.value}</span>
-                  {slope.limited ? (
-                    <span className="block text-amber-800 dark:text-amber-200 mt-0.5">
-                      {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.slope.contextLimited')}
-                    </span>
-                  ) : null}
-                </div>
-                <span className="text-[11px] text-primary">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.selectEpisode')}</span>
-              </button>
-            );
-          })}
+          {data.restSessionEpisodes.map((ep) => (
+            <LvMeasuredMobileEpisodeCard
+              key={ep.restSessionId}
+              episode={ep}
+              selected={ep.restSessionId === selectedRestSessionId}
+              onSelect={() => onSelectRestSessionId(ep.restSessionId)}
+            />
+          ))}
         </div>
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs">
@@ -349,7 +272,11 @@ export function LvMeasuredIntelligenceSection({
                 <p className="text-[11px] text-muted-foreground">
                   {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.validRestPoints')}
                 </p>
-                <p className="font-medium tabular-nums">{selectedEpisode.derivedFeatures.numberOfValidRestPoints ?? '—'}</p>
+                <p className="font-medium tabular-nums text-xs">
+                  {selectedEpisode.derivedFeatures.numberOfValidRestPoints != null
+                    ? selectedEpisode.derivedFeatures.numberOfValidRestPoints
+                    : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.missing.validRestPoints')}
+                </p>
               </div>
               <div className="rounded-lg border border-border/60 p-2.5">
                 <p className="text-[11px] text-muted-foreground">
@@ -370,7 +297,10 @@ export function LvMeasuredIntelligenceSection({
                 <p className="text-[11px] text-muted-foreground">
                   {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.endReason')}
                 </p>
-                <p className="font-medium text-xs">{selectedEpisode.endReason ?? '—'}</p>
+                <p className="font-medium text-xs">
+                  {selectedEpisode.endReason ??
+                    resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.missing.endReason')}
+                </p>
               </div>
             </div>
           )}
@@ -387,7 +317,9 @@ export function LvMeasuredIntelligenceSection({
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.d4Title')}>
         <p className="text-xs text-muted-foreground mb-2">
-          {data.longitudinalD4.epistemicBand}: {data.longitudinalD4.note}
+          {data.longitudinalD4.latestRevisionId
+            ? `${data.longitudinalD4.epistemicBand}: ${data.longitudinalD4.note}`
+            : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.missing.d4Revision')}
           {data.longitudinalD4.sourceEvidenceAckCountOnLatest != null
             ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.d4AckCount', {
                 count: data.longitudinalD4.sourceEvidenceAckCountOnLatest,
