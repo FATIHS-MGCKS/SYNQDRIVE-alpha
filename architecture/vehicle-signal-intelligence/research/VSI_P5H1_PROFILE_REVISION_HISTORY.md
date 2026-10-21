@@ -23,7 +23,7 @@
 ## Non-goals (this phase)
 
 - No production backfill of missing pre-activation revisions.
-- No P5B.1 replay behavior change (still uses current profile row).
+- P5B.2 (separate draft PR) adds opt-in `HISTORY_AS_OF` offline replay; default P5B.1 path unchanged.
 - No new DIMO HTTP / polling / APDS shadow changes.
 
 ## Gate

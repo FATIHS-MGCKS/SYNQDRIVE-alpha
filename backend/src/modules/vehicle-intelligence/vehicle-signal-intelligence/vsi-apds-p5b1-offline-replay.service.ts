@@ -22,6 +22,11 @@ import {
 } from './vsi-apds-p5b1-operator-scope';
 import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
 import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
+import { VsiProfileRevisionHistoryRepository } from './vsi-profile-revision-history.repository';
+import {
+  VsiApdsP5b1OfflineReplayProfileMode,
+} from './vsi-apds-p5b2.types';
+import { buildP5b2HistoricalScientificMetrics } from './vsi-apds-p5b2-metrics';
 import type {
   VsiApdsP5b1OfflineCorrelationRowV1,
   VsiApdsP5b1OfflineReplayFilterV1,
@@ -37,6 +42,7 @@ export class VsiApdsP5b1OfflineReplayService {
     private readonly profiles: VsiCapabilityResolverRepository,
     private readonly p5: VsiApdsP5ReadonlyService,
     private readonly evidenceWriter: VsiApdsP5b1EvidenceWriter,
+    private readonly revisionHistory: VsiProfileRevisionHistoryRepository,
   ) {}
 
   async runOfflineReplayBatch(input: {
@@ -46,6 +52,7 @@ export class VsiApdsP5b1OfflineReplayService {
     decisionsProcessedSoFar?: number;
     dryRun?: boolean;
     replayRunId?: string;
+    replayProfileMode?: (typeof VsiApdsP5b1OfflineReplayProfileMode)[keyof typeof VsiApdsP5b1OfflineReplayProfileMode];
   }): Promise<VsiApdsP5b1OfflineReplayResultV1> {
     if (isVsiP5b1OfflineReplayDisabled()) {
       throw new Error('VSI_P5B1_OFFLINE_REPLAY_DISABLED');
@@ -67,6 +74,8 @@ export class VsiApdsP5b1OfflineReplayService {
     }
 
     const replayRunId = input.replayRunId ?? randomUUID();
+    const replayProfileMode =
+      input.replayProfileMode ?? VsiApdsP5b1OfflineReplayProfileMode.LEGACY_MUTABLE_PROFILE;
     const { rows: decisionRows, hasMore } = await this.decisions.loadShadowDecisionsPage({
       filter: {
         organizationId: scope.organizationId,
@@ -85,7 +94,7 @@ export class VsiApdsP5b1OfflineReplayService {
     const rows: VsiApdsP5b1OfflineCorrelationRowV1[] = [];
     for (const decision of decisionRows) {
       try {
-        rows.push(await this.correlateOneDecision(decision));
+        rows.push(await this.correlateOneDecision(decision, replayProfileMode));
       } catch {
         rows.push(this.correlationErrorRow(decision, 'CORRELATION_EXCEPTION'));
       }
@@ -121,6 +130,11 @@ export class VsiApdsP5b1OfflineReplayService {
           : null,
       evidenceStoreWriteAttempted: false,
       evidenceStoreRowsAppended: 0,
+      replayProfileMode,
+      historicalScientificMetrics:
+        replayProfileMode === VsiApdsP5b1OfflineReplayProfileMode.HISTORY_AS_OF
+          ? buildP5b2HistoricalScientificMetrics(rows)
+          : null,
     };
   }
 
@@ -202,6 +216,7 @@ export class VsiApdsP5b1OfflineReplayService {
   }
 
   private resolveProcessingStatus(input: {
+    replayProfileMode: (typeof VsiApdsP5b1OfflineReplayProfileMode)[keyof typeof VsiApdsP5b1OfflineReplayProfileMode];
     attributionStatus: VsiApdsP5b1OfflineCorrelationRowV1['sourceLinkAttribution']['status'];
     profileInterpretation: string | undefined;
     shadowBindingStatus: string | undefined;
@@ -209,6 +224,35 @@ export class VsiApdsP5b1OfflineReplayService {
   }): VsiApdsP5b1RowProcessingStatus {
     if (input.attributionStatus !== 'UNIQUE_ATTRIBUTED') {
       return 'SKIPPED_NO_ATTRIBUTABLE_LINK';
+    }
+    if (
+      input.replayProfileMode === VsiApdsP5b1OfflineReplayProfileMode.HISTORY_AS_OF
+    ) {
+      if (
+        input.profileInterpretation ===
+          VsiApdsProfileEvidenceInterpretation.HISTORICAL_PROFILE_UNAVAILABLE ||
+        input.profileInterpretation ===
+          VsiApdsProfileEvidenceInterpretation.CURRENT_PROFILE_REVIEW
+      ) {
+        return 'PROFILE_NOT_ASSESSABLE';
+      }
+      if (
+        input.profileInterpretation ===
+          VsiApdsProfileEvidenceInterpretation.LIMITED_HISTORICAL_REVISION_EVIDENCE ||
+        input.profileInterpretation ===
+          VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT
+      ) {
+        if (
+          input.profileInterpretation ===
+            VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT &&
+          input.matchedVehicleLink &&
+          input.shadowBindingStatus === VsiApdsShadowBindingStatus.MATCHED
+        ) {
+          return 'VERIFIED_CORRELATION';
+        }
+        return 'CORRELATED';
+      }
+      return 'PROFILE_NOT_ASSESSABLE';
     }
     if (
       input.profileInterpretation !==
@@ -227,6 +271,7 @@ export class VsiApdsP5b1OfflineReplayService {
 
   private async correlateOneDecision(
     decision: VsiApdsP5b1PersistedShadowDecisionRow,
+    replayProfileMode: (typeof VsiApdsP5b1OfflineReplayProfileMode)[keyof typeof VsiApdsP5b1OfflineReplayProfileMode],
   ): Promise<VsiApdsP5b1OfflineCorrelationRowV1> {
     const decisionIdentity = this.decisionIdentity(decision);
     const decisionAtMs = decision.decisionAt.getTime();
@@ -257,15 +302,41 @@ export class VsiApdsP5b1OfflineReplayService {
       };
     }
 
-    const observation = await this.p5.buildObservation({
-      organizationId: decision.organizationId,
-      vehicleId: decision.vehicleId,
-      providerSourceLinkId: attribution.providerSourceLinkId,
-      shadowOpportunityId: decision.opportunityId,
-      shadowDecisionAt: decision.decisionAt,
-      policyVersion: decision.policyVersion,
-      activationEpochId: decision.activationEpochId,
-    });
+    const attributionProven = attribution.status === 'UNIQUE_ATTRIBUTED';
+    let observation: Awaited<ReturnType<VsiApdsP5ReadonlyService['buildObservation']>>;
+    let historicalRevisionAuthority: VsiApdsP5b1OfflineCorrelationRowV1['historicalRevisionAuthority'];
+    let historicalRevisionLimitations: string[] | undefined;
+    let historicalRevisionEvidence: VsiApdsP5b1OfflineCorrelationRowV1['historicalRevisionEvidence'];
+
+    if (replayProfileMode === VsiApdsP5b1OfflineReplayProfileMode.HISTORY_AS_OF) {
+      const historical = await this.p5.buildHistoricalAsOfObservation(
+        {
+          organizationId: decision.organizationId,
+          vehicleId: decision.vehicleId,
+          providerSourceLinkId: attribution.providerSourceLinkId,
+          shadowOpportunityId: decision.opportunityId,
+          shadowDecisionAt: decision.decisionAt,
+          policyVersion: decision.policyVersion,
+          activationEpochId: decision.activationEpochId,
+          historicalLinkAttributionProven: attributionProven,
+        },
+        this.revisionHistory,
+      );
+      observation = historical.observation;
+      historicalRevisionAuthority = historical.revisionAsOf.authority;
+      historicalRevisionLimitations = [...historical.revisionAsOf.limitations];
+      historicalRevisionEvidence = historical.historicalRevisionEvidence;
+    } else {
+      observation = await this.p5.buildObservation({
+        organizationId: decision.organizationId,
+        vehicleId: decision.vehicleId,
+        providerSourceLinkId: attribution.providerSourceLinkId,
+        shadowOpportunityId: decision.opportunityId,
+        shadowDecisionAt: decision.decisionAt,
+        policyVersion: decision.policyVersion,
+        activationEpochId: decision.activationEpochId,
+      });
+    }
 
     const correlation = this.p5.correlateShadowDecision({
       decision: {
@@ -282,6 +353,7 @@ export class VsiApdsP5b1OfflineReplayService {
     });
 
     const processingStatus = this.resolveProcessingStatus({
+      replayProfileMode,
       attributionStatus: attribution.status,
       profileInterpretation: observation.profileEvidenceInterpretation,
       shadowBindingStatus: observation.shadowBindingStatus,
@@ -300,6 +372,10 @@ export class VsiApdsP5b1OfflineReplayService {
       processingStatus,
       errorCode: null,
       skippedReason: null,
+      replayProfileMode,
+      historicalRevisionAuthority,
+      historicalRevisionLimitations,
+      historicalRevisionEvidence,
     };
   }
 }

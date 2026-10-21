@@ -9,6 +9,7 @@ import { VsiApdsP5b1DecisionRepository } from './vsi-apds-p5b1-decision.reposito
 import { VsiApdsP5b1EvidenceWriter } from './vsi-apds-p5b1-evidence.writer';
 import { VsiApdsP5ReadonlyService } from './vsi-apds-p5.service';
 import { VsiCapabilityResolverRepository } from './vsi-capability-resolver.repository';
+import { VsiProfileRevisionHistoryRepository } from './vsi-profile-revision-history.repository';
 import { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 import { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
 import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
@@ -68,6 +69,7 @@ async function upsertVls(
     profiles,
     new VsiApdsP5ReadonlyService(profiles),
     new VsiApdsP5b1EvidenceWriter(prisma as never),
+    new VsiProfileRevisionHistoryRepository(prisma as never),
   );
 
   beforeAll(() => {

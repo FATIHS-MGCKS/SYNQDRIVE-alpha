@@ -4,8 +4,14 @@ import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 
 export const VsiApdsProfileEvidenceInterpretation = {
   VERIFIED_DECISION_TIME_SNAPSHOT: 'VERIFIED_DECISION_TIME_SNAPSHOT',
+  /** Mutable profile row — not decision-time authoritative for historical APDS decisions. */
   CURRENT_PROFILE_REVIEW: 'CURRENT_PROFILE_REVIEW',
   HISTORICAL_PROFILE_UNAVAILABLE: 'HISTORICAL_PROFILE_UNAVAILABLE',
+  /**
+   * P5-H1 revision selected for decision time with bounded temporal authority
+   * (commit visibility may remain unproven — not VERIFIED_DECISION_TIME_SNAPSHOT).
+   */
+  LIMITED_HISTORICAL_REVISION_EVIDENCE: 'LIMITED_HISTORICAL_REVISION_EVIDENCE',
 } as const;
 
 export type VsiApdsProfileEvidenceInterpretation =

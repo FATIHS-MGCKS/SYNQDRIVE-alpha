@@ -16,6 +16,7 @@
 ## Offline replay
 
 - Service: `VsiApdsP5b1OfflineReplayService.runOfflineReplayBatch` (`dryRun: true` only).
+- **P5B.2 (draft)** — optional `replayProfileMode: HISTORY_AS_OF` uses P5-H1 `resolveRevisionAsOf`; legacy default remains mutable-profile `LEGACY_MUTABLE_PROFILE` (`CURRENT_PROFILE_REVIEW` diagnostic). Env: `VSI_P5B2_REPLAY_PROFILE_MODE=HISTORY_AS_OF`.
 - CLI: `backend/scripts/ops/vsi-p5b1-offline-correlation-replay.ts` (requires `organizationId`, bounded `decisionAtFrom`/`decisionAtTo`, `batchLimit`, `maxTotalDecisions`).
 - Production SELECT audit template: [`evidence/VSI_P5B1_PRODUCTION_READONLY_AUDIT_TEMPLATE.md`](../evidence/VSI_P5B1_PRODUCTION_READONLY_AUDIT_TEMPLATE.md) (not executed in code PR).
 - No APDS worker, no DIMO HTTP, no profile rematerialization, no polling mutation.

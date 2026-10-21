@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-p5b2-historical-asof-offline-2026-10-21',
+    version: '4.9.2250',
+    title: 'VSI P5B.2 — historical as-of offline APDS correlation (opt-in HISTORY_AS_OF)',
+    summary: [
+      'P5B.1 offline replay accepts replayProfileMode HISTORY_AS_OF: P5-H1 resolveRevisionAsOf + immutable revision projection (default LEGACY_MUTABLE_PROFILE unchanged).',
+      'LIMITED_HISTORICAL_REVISION_EVIDENCE when PRIOR_REVISION_FOUND; no VERIFIED inflation without commit-visibility proof; historical link lifecycle at decisionAt.',
+      'Research scientific metrics on batch result; dryRun-only; no APDS worker, polling, evidence-store, or runtime flag changes.',
+    ],
+    reason:
+      'Enable read-only decision-time profile evidence for ~35k APDS shadow decisions without mutable-profile CURRENT_PROFILE_REVIEW bias.',
+    previousBehavior:
+      'P5B.1 offline replay always read mutable vehicle_signal_capability_profiles; historical decisions often PROFILE_NOT_ASSESSABLE.',
+    details:
+      'vsi-apds-p5b2-*, vsi-apds-p5b1-offline-replay.service.ts, VSI_P5B2_REPLAY_PROFILE_MODE, architecture/vehicle-signal-intelligence/research/VSI_P5B1_OFFLINE_CORRELATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-21T07:45:00.000Z',
+  },
+  {
     id: 'dtc02-p3-adaptive-shadow-2026-10-17',
     version: '4.9.2249',
     title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
