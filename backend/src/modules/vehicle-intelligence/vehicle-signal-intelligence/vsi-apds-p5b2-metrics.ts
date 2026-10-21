@@ -30,7 +30,10 @@ export function buildP5b2HistoricalScientificMetrics(
       priorRevisionFound += 1;
     } else if (authority === VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION) {
       noPriorRevision += 1;
-    } else if (authority === VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY) {
+    } else if (
+      authority === VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY ||
+      authority === VsiProfileRevisionAsOfAuthority.STALE_AT_DECISION
+    ) {
       temporalAuthorityUnproven += 1;
     }
 

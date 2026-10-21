@@ -69,6 +69,11 @@ export function buildVsiConsumerDemandVectorV1(input: {
   attributionUnknown: boolean;
   failClosed: boolean;
   decisionTimeRetrospectiveAssessable: boolean;
+  /**
+   * When true, evaluate requirements for offline research preview only (tagged;
+   * not decision-time-verified satisfaction).
+   */
+  limitedHistoricalResearchPreview?: boolean;
   requirements?: readonly (typeof VSI_CONSUMER_REQUIREMENTS_V1)[number][];
 }): VsiApdsRequirementDemandRowV1[] {
   const limitations = input.profileLimitations ?? input.profile?.profileLimitations ?? [];
@@ -138,7 +143,7 @@ export function buildVsiConsumerDemandVectorV1(input: {
         discrepancyReasons: ['UNSUPPORTED_PROFILE_CONTRACT_VERSION'],
       };
     }
-    if (!input.decisionTimeRetrospectiveAssessable) {
+    if (!input.decisionTimeRetrospectiveAssessable && !input.limitedHistoricalResearchPreview) {
       const baseReason =
         demandClassification === VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL ||
         demandClassification === VsiApdsDemandClassification.DESIGN_CONTRACT_ONLY
@@ -164,6 +169,9 @@ export function buildVsiConsumerDemandVectorV1(input: {
 
     const outcome = evaluateVsiConsumerRequirement(req, input.profile, input.evaluationTimeMs);
     const assessment = mapP4OutcomeToP5Assessment(outcome);
+    const researchPreviewTag = input.limitedHistoricalResearchPreview
+      ? 'LIMITED_HISTORICAL_RESEARCH_PREVIEW'
+      : null;
     if (
       assessment.assessmentStatus === 'SATISFIED' &&
       !isConsumerRequirementRuntimeApproved(req.domainApprovalStatus)
@@ -187,7 +195,9 @@ export function buildVsiConsumerDemandVectorV1(input: {
       domainApprovalStatus: req.domainApprovalStatus,
       demandClassification,
       assessmentStatus: assessment.assessmentStatus,
-      discrepancyReasons: assessment.discrepancyReasons,
+      discrepancyReasons: researchPreviewTag
+        ? [researchPreviewTag, ...assessment.discrepancyReasons]
+        : assessment.discrepancyReasons,
     };
   });
 }

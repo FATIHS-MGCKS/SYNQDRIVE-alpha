@@ -19,7 +19,7 @@ import { computeSignalFreshnessAtEvaluation } from './vsi-capability-resolver.fr
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 import { VsiApdsP5b1OfflineReplayProfileMode } from './vsi-apds-p5b2.types';
-import type { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
+import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
 
 const ATTRIBUTION_UNKNOWN = new Set([
   'LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK',
@@ -187,6 +187,11 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   const signals =
     profile && !failClosed ? mapSignals(profile, evaluationTimeMs) : [];
 
+  const limitedHistoricalResearchPreview =
+    historicalReplay &&
+    evidenceTime.interpretation ===
+      VsiApdsProfileEvidenceInterpretation.LIMITED_HISTORICAL_REVISION_EVIDENCE;
+
   const consumerDemand = buildVsiConsumerDemandVectorV1({
     profile,
     evaluationTimeMs,
@@ -194,6 +199,7 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     attributionUnknown,
     failClosed,
     decisionTimeRetrospectiveAssessable: evidenceTime.decisionTimeRetrospectiveAssessable,
+    limitedHistoricalResearchPreview,
   });
 
   return {

@@ -51,6 +51,14 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
     });
     const decisionAt = new Date('2026-10-12T06:00:00.000Z');
     const historicalEval = new Date('2026-10-11T10:00:00.000Z');
+    await prisma.vehicleDataSourceLink.update({
+      where: { id: fixture.linkId },
+      data: {
+        isActive: true,
+        activatedAt: new Date('2026-08-01T00:00:00.000Z'),
+        deactivatedAt: null,
+      },
+    });
     const lifecycleCtx = {
       version: 'vsi-profile-revision-link-context-v1',
       linkId: fixture.linkId,

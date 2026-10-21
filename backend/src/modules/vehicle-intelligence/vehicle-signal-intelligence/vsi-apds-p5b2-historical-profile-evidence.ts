@@ -80,14 +80,15 @@ export function classifyProfileEvidenceFromRevisionAsOf(input: {
       limitations.push('COMMIT_VISIBILITY_UNPROVEN_DOWNGRADE');
       return {
         interpretation: VsiApdsProfileEvidenceInterpretation.LIMITED_HISTORICAL_REVISION_EVIDENCE,
-        decisionTimeRetrospectiveAssessable: true,
+        decisionTimeRetrospectiveAssessable: false,
         limitations,
         historicalRevisionEvidence: { ...historicalRevisionEvidence, commitVisibilityProven: false },
       };
     case VsiProfileRevisionAsOfAuthority.PRIOR_REVISION_FOUND:
+      limitations.push('LIMITED_HISTORICAL_REVISION_NOT_DECISION_TIME_VERIFIED');
       return {
         interpretation: VsiApdsProfileEvidenceInterpretation.LIMITED_HISTORICAL_REVISION_EVIDENCE,
-        decisionTimeRetrospectiveAssessable: true,
+        decisionTimeRetrospectiveAssessable: false,
         limitations,
         historicalRevisionEvidence,
       };

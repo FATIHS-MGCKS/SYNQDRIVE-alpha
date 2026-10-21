@@ -1,6 +1,7 @@
 import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 import type { VsiProfileRevisionHistoryRowV1 } from './vsi-profile-revision-history.types';
 import { mapVsiProfileRevisionToCapabilityContext } from './vsi-profile-revision-to-capability-context.mapper';
+import { isVsiProfileRevisionSignalsSnapshotWellFormed } from './vsi-profile-revision-signals-snapshot';
 import {
   assessVsiProfileRevisionSignalTemporalState,
   VsiProfileRevisionSignalTemporalState,
@@ -25,17 +26,7 @@ export type VsiProfileRevisionAsOfSelectionResult = {
   limitations: string[];
 };
 
-export function isVsiProfileRevisionSignalsSnapshotWellFormed(signalsSnapshot: unknown): boolean {
-  if (!Array.isArray(signalsSnapshot)) {
-    return false;
-  }
-  for (const raw of signalsSnapshot) {
-    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
-      return false;
-    }
-  }
-  return true;
-}
+export { isVsiProfileRevisionSignalsSnapshotWellFormed } from './vsi-profile-revision-signals-snapshot';
 
 /**
  * `recorded_at` is the database insert timestamp (`clock_timestamp()` default).

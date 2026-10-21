@@ -1,6 +1,6 @@
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import type { VsiProfileRevisionHistoryRowV1 } from './vsi-profile-revision-history.types';
-import { isVsiProfileRevisionSignalsSnapshotWellFormed } from './vsi-profile-revision-as-of.resolver';
+import { isVsiProfileRevisionSignalsSnapshotWellFormed } from './vsi-profile-revision-signals-snapshot';
 
 /**
  * Pure projection: immutable P5-H1 revision row → VSI capability profile context.
