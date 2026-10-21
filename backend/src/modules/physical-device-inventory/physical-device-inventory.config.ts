@@ -13,3 +13,12 @@ export function isPhysicalDeviceInventoryP1b2WritesEnabled(): boolean {
   const raw = process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_WRITES_ENABLED;
   return raw === '1' || raw === 'true' || raw === 'TRUE';
 }
+
+/**
+ * Pilot-safe uninstall: INSTALLED → PENDING_RETURN only (no direct AVAILABLE on uninstall).
+ * Used for controlled production pilots and enforced by the P1B.2 uninstall operator CLI.
+ */
+export function isPhysicalDeviceInventoryP1b2PilotSafeUninstallEnabled(): boolean {
+  const raw = process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL;
+  return raw === '1' || raw === 'true' || raw === 'TRUE';
+}

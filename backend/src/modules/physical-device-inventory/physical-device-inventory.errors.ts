@@ -120,6 +120,10 @@ export const PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT =
   'PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT';
 export const PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT =
   'PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT';
+export const PHYSICAL_DEVICE_P1B2_PILOT_UNINSTALL_POLICY_VIOLATION =
+  'PHYSICAL_DEVICE_P1B2_PILOT_UNINSTALL_POLICY_VIOLATION';
+export const PHYSICAL_DEVICE_LIFECYCLE_COMMITTED_ACTIVITY_AUDIT_FAILURE =
+  'PHYSICAL_DEVICE_LIFECYCLE_COMMITTED_ACTIVITY_AUDIT_FAILURE';
 
 export function physicalDeviceP1b2WritesDisabled() {
   return new ForbiddenException({
@@ -185,5 +189,26 @@ export function physicalDeviceStatusAssignmentInconsistent(reasonCode: string) {
     code: PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT,
     message: 'Physical device status does not match assignment state',
     reasonCode,
+  });
+}
+
+export function physicalDeviceP1b2PilotUninstallPolicyViolation(reasonCode: string) {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_P1B2_PILOT_UNINSTALL_POLICY_VIOLATION,
+    message: 'Uninstall violates P1B.2 pilot-safe lifecycle policy',
+    reasonCode,
+  });
+}
+
+export function physicalDeviceLifecycleCommittedActivityAuditFailure(
+  lifecycleAction: string,
+  resultSummary: Record<string, unknown>,
+) {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_LIFECYCLE_COMMITTED_ACTIVITY_AUDIT_FAILURE,
+    message:
+      'Lifecycle domain change committed but activity audit could not be recorded — do not retry the lifecycle action; reconcile activity_logs manually',
+    lifecycleAction,
+    resultSummary,
   });
 }
