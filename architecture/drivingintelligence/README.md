@@ -102,6 +102,7 @@ ReferenceCapture runner (5s) → HF recovery V2 / block polling testbed
 |------|---------|
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | How Driving Intelligence works **right now** (incl. deploy semantics) |
 | [master-review/README.md](./master-review/README.md) | **Master architecture & research dossier** (2026-10-21; independent-agent package) |
+| [benchmarks/BENCHMARK_REGISTRY.md](./benchmarks/BENCHMARK_REGISTRY.md) | **EXP021 reference-drive & benchmark registry** (versioned manifests, suites) |
 | [WORKSTREAM_HISTORY.md](./WORKSTREAM_HISTORY.md) | Chronological technical narrative of the workstream |
 | [COVERAGE_MATRIX.md](./COVERAGE_MATRIX.md) | Topic completion matrix |
 | [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph + evolution diagram |

@@ -35,6 +35,7 @@
 | [ROAD_MATCHING_EVOLUTION.md](./ROAD_MATCHING_EVOLUTION.md) | S4 shadow, research library, topology, Viterbi, direction-aware |
 | [ALGORITHM_COMPARISON_MATRIX.md](./ALGORITHM_COMPARISON_MATRIX.md) | Variants A–J with SHA, status, comparability |
 | [REFERENCE_TRIP_REGISTRY.md](./REFERENCE_TRIP_REGISTRY.md) | Tesla, Tiguan, RD00x, video/tacho witnesses |
+| [../benchmarks/BENCHMARK_REGISTRY.md](../benchmarks/BENCHMARK_REGISTRY.md) | Versioned `BMK-*` manifests, suites, deduplicated physical drives |
 | [GROUND_TRUTH_AND_VALIDATION.md](./GROUND_TRUTH_AND_VALIDATION.md) | What counts as GT; independence rules |
 | [DECISION_LEDGER.md](./DECISION_LEDGER.md) | Master decision ledger (extends register, does not replace) |
 | [FAILURE_MODE_CATALOG.md](./FAILURE_MODE_CATALOG.md) | Known failure modes with evidence pointers |

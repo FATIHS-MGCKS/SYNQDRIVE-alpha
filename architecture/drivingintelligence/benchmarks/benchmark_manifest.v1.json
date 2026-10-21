@@ -1,0 +1,172 @@
+{
+  "schema": "SYNQDRIVE_DI_BENCHMARK_MANIFEST_V1",
+  "manifestVersion": 1,
+  "documentationBranch": "cursor/di-master-architecture-research-20261021",
+  "codePinSha": "0a16ffb5b0add0bec30fefc4e55a41973428677b",
+  "generatedAtUtc": "2026-10-21T06:30:00Z",
+  "physicalDriveCount": {
+    "coreExp021Distinct": 5,
+    "withHistoricalRdAndKs": 11,
+    "masterReviewRefRows": 12,
+    "note": "REF-001..012 are register rows; TC-1..TC-6 are not separate drives"
+  },
+  "physicalDrives": [
+    {
+      "physicalId": "PHYS-TESLA-20261016",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "dimoTokenId": 186946,
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "integrationFamily": "API_SYNTHETIC"
+    },
+    {
+      "physicalId": "PHYS-TESLA-20261020-A",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "dimoTokenId": 186946,
+      "tripId": "11f5a645-752e-4b8a-b20a-9f1fc3a6673e",
+      "artifactStatus": "NOT_IN_REPO_AT_CODE_PIN"
+    },
+    {
+      "physicalId": "PHYS-TESLA-20261020-B",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "dimoTokenId": 186946,
+      "tripId": "0f8d2f76-9b09-4aba-8c56-fa7e2ce1c5a8",
+      "artifactStatus": "NOT_IN_REPO_AT_CODE_PIN"
+    },
+    {
+      "physicalId": "PHYS-TIGUAN-20261019",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "dimoTokenId": 192922,
+      "tripId": "632dc9c5-a8d9-45ce-a269-abe89d22d677",
+      "utcStart": "2026-10-19T10:15:00Z",
+      "utcEnd": "2026-10-19T10:39:39.603Z"
+    },
+    {
+      "physicalId": "PHYS-AUDI-20261014",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "tripId": "d0af9cc7-ce0d-4e40-9854-2c1341e83bed",
+      "utcStart": "2026-10-14T05:37:00.000Z",
+      "utcEnd": "2026-10-14T06:01:40.000Z",
+      "bucketCount": 1480
+    }
+  ],
+  "benchmarks": [
+    {
+      "benchmarkId": "BMK-TESLA-LDI10D-20261016",
+      "physicalId": "PHYS-TESLA-20261016",
+      "suites": ["SPEED_BENCHMARK", "ROAD_MATCHING_BENCHMARK", "ROUTING_BENCHMARK", "GAP_RECOVERY_BENCHMARK", "CAUSALITY_BENCHMARK"],
+      "inputs": {
+        "positionGrid": {
+          "path": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/TESLA_POSITION_GRID.json",
+          "sha256": "5e198ee9b48a2af223423f1f0086989ff36fa31ff072235e3fc421f4310090b4",
+          "bucketCount": 1136
+        },
+        "videoTachoWitness": {
+          "path": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/VIDEO_TACHO_REFERENCE.json",
+          "sha256": "4fa007f94284f31d962d7f8c33cc870e99d9dd992025da9a38ca0c135af1689f",
+          "groundTruthTier": "PROXY_ONLY"
+        },
+        "s4Snapshot": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+        "positionPayloadSha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2"
+      },
+      "osm": {
+        "path": "architecture/drivingintelligence/evidence/ldi-10d/LDI10D_TESLA_OSM_FROZEN_SNAPSHOT.json",
+        "note": "Frozen for Tesla trip 358d0158"
+      },
+      "codePinSha": "0a16ffb5b0add0bec30fefc4e55a41973428677b",
+      "algorithmVersions": [
+        "S4_RESEARCH_BASELINE_BUCKET_V2",
+        "S4_RESEARCH_VITERBI_FORWARD_V2",
+        "S4_RESEARCH_LOCAL_EQUIRECTANGULAR_V2",
+        "DIRECTION_AWARE_EMISSION_P1"
+      ],
+      "reproducibility": "REPO_PINNED",
+      "missing": ["exp021-ev-ground-truth/pre-deploy manifest path broken on main"]
+    },
+    {
+      "benchmarkId": "BMK-TESLA-EXP021-20261020-TRIP1",
+      "physicalId": "PHYS-TESLA-20261020-A",
+      "suites": ["STOP_GO_BENCHMARK", "CAUSALITY_BENCHMARK", "GAP_RECOVERY_BENCHMARK"],
+      "driverReportedAnchors": ["TC-1", "TC-2", "TC-3", "TC-4", "TC-5", "TC-6"],
+      "researchPhases": ["B1", "B2", "B3", "B4", "B5", "B6", "B6.1", "B7.1", "B7.2", "B7.3", "B7.4"],
+      "artifactPaths": {
+        "cloud": "/opt/cursor/artifacts/exp021-tesla-b3 through b7-4",
+        "gitBranch": "cursor/exp021-ev-ground-truth-7d78",
+        "pr": 2051
+      },
+      "reproducibility": "NOT_REPRODUCIBLE_WITHOUT_EXPORT"
+    },
+    {
+      "benchmarkId": "BMK-TIGUAN-NAV-20261019",
+      "physicalId": "PHYS-TIGUAN-20261019",
+      "suites": ["ROAD_MATCHING_BENCHMARK", "ROUTING_BENCHMARK"],
+      "inputs": {
+        "positionGrid": {
+          "path": "architecture/drivingintelligence/evidence/exp021-tiguan-20261019/fixtures/TIGUAN_POSITION_GRID.json",
+          "sha256": "3a253b975f35ae02c3caa9a0bb894545447d3c6cdfccbe2a42ca23f6f7a95c09",
+          "bucketCount": 1480
+        },
+        "osmSnapshot": {
+          "path": "architecture/drivingintelligence/evidence/exp021-tiguan-20261019/TIGUAN_OSM_FROZEN_SNAPSHOT.json",
+          "sha256": "c141ec2f4713e9b4def75a8c1b709d1be53b35b14ade71b0ca3749b926c24959"
+        },
+        "s4Snapshot": "DI_V0_S4_EVIDENCE_V1:sha256:b14c6bba122a44d36faa245e7950341cc124ec4e5a2536a698c720393338088a",
+        "videoReferenceCompact": {
+          "path": "/opt/cursor/artifacts/exp021-tiguan-validation/compact",
+          "status": "NOT_IN_REPO"
+        }
+      },
+      "decoderVariants": ["A", "B", "C", "D", "E"],
+      "algorithmCommitSha": "9f0693bef572a065e45f5dad91ef236ba4f2ccd9",
+      "reproducibility": "REPO_PARTIAL"
+    },
+    {
+      "benchmarkId": "BMK-P21-R3-AUDI-20261014",
+      "physicalId": "PHYS-AUDI-20261014",
+      "suites": ["SPEED_BENCHMARK", "GAP_RECOVERY_BENCHMARK", "CAUSALITY_BENCHMARK"],
+      "inputs": {
+        "s4Snapshot": "DI_V0_S4_EVIDENCE_V1:sha256:06d5c1200e494bb8432c164c77cb90898a19c4b21a3ab72e54c4926a2fb1bed7"
+      },
+      "groundTruthTier": "NONE",
+      "measuredOutcomes": {
+        "intervals": 1480,
+        "noNumeric": 763,
+        "crossSourceConflict": 26
+      },
+      "reproducibility": "REQUIRES_DB_SNAPSHOT_EXPORT"
+    },
+    {
+      "benchmarkId": "BMK-TACHO-123-LEGACY",
+      "physicalId": null,
+      "suites": ["SPEED_BENCHMARK"],
+      "claimedMetrics": {
+        "n": 123,
+        "maeKmh": 3.13,
+        "p95Kmh": 8.41,
+        "maxKmh": 15.0,
+        "biasKmh": -2.1
+      },
+      "sourceDoc": "architecture/drivingintelligence/evidence/EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md",
+      "groundTruthTier": "NOT_VERIFIED",
+      "reproducibility": "NOT_REPRODUCIBLE_ON_MAIN"
+    }
+  ],
+  "identityEdges": [
+    {
+      "type": "NOT_SAME_TRIP",
+      "a": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "b": "11f5a645-752e-4b8a-b20a-9f1fc3a6673e",
+      "reason": "Different tripId; Oct 16 LDI-10D vs Oct 20 campaign"
+    },
+    {
+      "type": "NOT_SAME_TRIP",
+      "a": "632dc9c5-a8d9-45ce-a269-abe89d22d677",
+      "b": "d0af9cc7-ce0d-4e40-9854-2c1341e83bed",
+      "reason": "Different vehicle and trip; equal 1480 buckets coincidental"
+    },
+    {
+      "type": "SAME_VEHICLE_DIFFERENT_SESSION",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "sessions": ["RD001", "RD003", "BMK-TIGUAN-NAV-20261019"]
+    }
+  ]
+}

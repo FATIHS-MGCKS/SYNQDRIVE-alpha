@@ -1,6 +1,6 @@
 # Reference Trip & Ground Truth Register
 
-**12 rows (`REF-001` … `REF-012`)** — includes sessions and TC anchors, not all independent drives.
+**12 rows (`REF-001` … `REF-012`)** — register **rows**, not 12 independent physical drives. Canonical benchmark manifests: [`../benchmarks/BENCHMARK_REGISTRY.md`](../benchmarks/BENCHMARK_REGISTRY.md), [`../benchmarks/PHYSICAL_DRIVE_INDEX.md`](../benchmarks/PHYSICAL_DRIVE_INDEX.md).
 
 Validation tier legend: **MEASURED** | **INDEPENDENTLY_VALIDATED** | **DRIVER_REPORTED** | **PROXY_ONLY** | **SIMULATED** | **NOT_VERIFIED**
 
