@@ -17,6 +17,8 @@ export * from './kinematics/motion-evaluation';
 export * from './kinematics/shadow-gating-reconciliation';
 export * from './kinematics/motion-fsm';
 export * from './kinematics/motion-fsm-zero-run-eval';
+export * from './kinematics/motion-event.types';
+export * from './kinematics/motion-event-detector';
 export * from './claims/cross-source-relation';
 export * from './claims/claim-confidence';
 export * from './motion/motion-classifier';

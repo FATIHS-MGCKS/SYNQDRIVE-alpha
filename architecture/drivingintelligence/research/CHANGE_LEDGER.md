@@ -2089,3 +2089,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Close C4 Python parity on both Tesla trips; port Fable `motion_fsm.py` V0.2 (CAUSAL/RETROSPECTIVE) without threshold tuning; reproduce 10/10 evaluable zero-display stop matching with DIMO sparse speed evidence |
 | VALIDATION | Jest `motion-core-step` 32/32; FSM Python parity TRIP_1+2 with sparse DIMO; `FSM_STEP_REPORT.json` causal/retro matched 10/10 |
 | NON_EFFECTS | No manoeuvre/event detector; no production FSM wiring; `compute-trip-intervals` unchanged |
+
+### EXP-021 motion core — TypeScript event detector (Fable port) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-event-detector.ts`, `motion-event.types.ts`, `motion-core-step4-events.spec.ts`, harness `motion-core-ts-events.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-events/` |
+| WHY | Port neutral ACCELERATION/DECELERATION detector on C4 speed series; close offline chain C4→events without FSM coupling |
+| VALIDATION | Jest `motion-core-step` 38/38; Python parity TRIP_1+TRIP_2 C4 events; harness 8 C4 events, 7 display-manoeuvre overlaps (±3 s), B0 baseline 5 combined |
+| NON_EFFECTS | No production shadow export; no wear/braking semantics; `compute-trip-intervals` unchanged |

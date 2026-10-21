@@ -62,3 +62,40 @@ export function pyFsmJson(
   );
   return JSON.parse(fs.readFileSync(tmpOut, 'utf8')) as PyFsmLabel[];
 }
+
+export interface PyMotionEvent {
+  trip: number;
+  kind: string;
+  start_label: string;
+  end_label: string;
+  start_uncertainty_s: string;
+  end_uncertainty_s: string;
+  start_speed_kmh: number;
+  end_speed_kmh: number;
+  delta_kmh: number;
+  mean_accel_mps2: number;
+  peak_accel_1s_mps2: number;
+  peak_accel_2s_mps2: number | null;
+  duration_s: number;
+  steps: number;
+  coverage_ratio: number;
+  quality: string;
+  source: string;
+  algorithm_version: string;
+  flags: string[];
+}
+
+export function pyDetectEvents(
+  trip: number,
+  grid: unknown[],
+  source = 'C4_ADAPTIVE_L3',
+): PyMotionEvent[] {
+  const tmpG = '/tmp/mc-ev-grid.json';
+  const tmpOut = '/tmp/mc-ev-out.json';
+  fs.writeFileSync(tmpG, JSON.stringify(grid));
+  execSync(
+    `python3 -c "import json; from speed_candidates import c4_adaptive_l3; from event_detector import detect_events; g=json.load(open('${tmpG}')); ev=detect_events(${trip}, c4_adaptive_l3(g), '${source}'); import dataclasses; json.dump([dataclasses.asdict(e) for e in ev], open('${tmpOut}','w'))"`,
+    { cwd: PY_PROTO, stdio: 'pipe' },
+  );
+  return JSON.parse(fs.readFileSync(tmpOut, 'utf8')) as PyMotionEvent[];
+}
