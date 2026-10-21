@@ -4,7 +4,10 @@ import {
   isBatteryV2HvSohPublicationEnabled,
 } from '@config/battery-health-v2.config';
 import { PrismaService } from '@shared/database/prisma.service';
-import { ReferenceCapacityVerificationStatus } from '../battery-v2-domain';
+import {
+  BatteryReferenceCapacityType,
+  ReferenceCapacityVerificationStatus,
+} from '../battery-v2-domain';
 import { isAssessmentCompatibleCapacityType } from '../reference-capacity/vehicle-battery-reference-capacity.policy';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
 import { BatteryAssessmentRepository } from '../battery-assessment.repository';
@@ -183,7 +186,7 @@ export class HvMeasurementQualityService {
 function resolveReferenceConfidence(
   reference: {
     verificationStatus: ReferenceCapacityVerificationStatus;
-    capacityType: string;
+    capacityType: BatteryReferenceCapacityType;
   } | null,
 ): (typeof HV_MEASUREMENT_REFERENCE_CONFIDENCE)[keyof typeof HV_MEASUREMENT_REFERENCE_CONFIDENCE] {
   if (!reference) return HV_MEASUREMENT_REFERENCE_CONFIDENCE.NONE;
