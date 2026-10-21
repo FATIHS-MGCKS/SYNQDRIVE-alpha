@@ -22,6 +22,7 @@ import {
   PHYSICAL_DEVICE_LOSS_EVIDENCE_INSUFFICIENT,
   PHYSICAL_DEVICE_NOT_INSTALL_ELIGIBLE,
   PHYSICAL_DEVICE_NOT_UNINSTALL_ELIGIBLE,
+  PHYSICAL_DEVICE_P1B2_PILOT_UNINSTALL_POLICY_VIOLATION,
   PHYSICAL_DEVICE_P1B2_WRITES_DISABLED,
 } from './physical-device-inventory.errors';
 
@@ -37,6 +38,7 @@ describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
   let activeInstallAssignmentUniqueIndexPresent = false;
   const priorB1 = process.env.PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED;
   const priorB2 = process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_WRITES_ENABLED;
+  const priorPilot = process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL;
 
   async function ensurePartialUniqueIndex(
     indexName: string,
@@ -96,6 +98,7 @@ describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
   afterAll(async () => {
     process.env.PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED = priorB1;
     process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_WRITES_ENABLED = priorB2;
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL = priorPilot;
     await prisma.$disconnect();
   });
 
@@ -552,6 +555,53 @@ describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
     await expect(
       service.installOnVehicle(device.id, { vehicleId: vehicle, installConfirmation: true }, 'master-admin'),
     ).rejects.toMatchObject({ response: { code: PHYSICAL_DEVICE_NOT_INSTALL_ELIGIBLE } });
+  });
+
+  it('pilot-safe policy blocks INSTALLED to AVAILABLE on uninstall', async () => {
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL = '1';
+    const org = await createOrg();
+    const vehicle = await createActiveVehicle(org);
+    const { device, assignmentId } = await installOnVehicle(org, vehicle);
+    await expect(
+      service.uninstallFromVehicle(
+        device.id,
+        {
+          vehicleId: vehicle,
+          assignmentId,
+          physicalUninstallConfirmed: true,
+          uninstallReason: 'blocked',
+          deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
+          physicalReturnConfirmed: true,
+          warehouseLocation: 'WH-BLOCKED',
+        },
+        'master-admin',
+      ),
+    ).rejects.toMatchObject({
+      response: { code: PHYSICAL_DEVICE_P1B2_PILOT_UNINSTALL_POLICY_VIOLATION },
+    });
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL = priorPilot ?? '0';
+  });
+
+  it('pilot-safe policy allows INSTALLED to PENDING_RETURN', async () => {
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL = '1';
+    const org = await createOrg();
+    const vehicle = await createActiveVehicle(org);
+    const { device, assignmentId } = await installOnVehicle(org, vehicle);
+    const out = await service.uninstallFromVehicle(
+      device.id,
+      {
+        vehicleId: vehicle,
+        assignmentId,
+        physicalUninstallConfirmed: true,
+        uninstallReason: 'courier pending',
+        deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
+        physicalReturnConfirmed: false,
+        idempotencyKey: `pilot-pending-${randomUUID()}`,
+      },
+      'master-admin',
+    );
+    expect(out.status).toBe('PENDING_RETURN');
+    process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_PILOT_SAFE_UNINSTALL = priorPilot ?? '0';
   });
 
   it('retire requires explicit confirmation and no active install', async () => {

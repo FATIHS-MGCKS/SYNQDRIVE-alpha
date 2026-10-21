@@ -52,7 +52,7 @@ export function PhysicalDeviceDetailDialog({
   const [installConfirm, setInstallConfirm] = useState(false);
   const [uninstallReason, setUninstallReason] = useState('');
   const [uninstallConfirm, setUninstallConfirm] = useState(false);
-  const [uninstallReturn, setUninstallReturn] = useState(true);
+  const [uninstallReturn, setUninstallReturn] = useState(false);
   const [uninstallWarehouse, setUninstallWarehouse] = useState('');
   const [uninstallDefective, setUninstallDefective] = useState(false);
   const [defectDescription, setDefectDescription] = useState('');

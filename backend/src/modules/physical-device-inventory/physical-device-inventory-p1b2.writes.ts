@@ -28,6 +28,7 @@ import {
   assertOwnerOrganizationMatchesVehicle,
   requireActiveVehicleInstallAssignment,
 } from './physical-device-lifecycle.consistency';
+import { isPhysicalDeviceInventoryP1b2PilotSafeUninstallEnabled } from './physical-device-inventory.config';
 import {
   physicalDeviceActiveVehicleAssignment,
   physicalDeviceAssignmentMismatch,
@@ -36,6 +37,7 @@ import {
   physicalDeviceLossEvidenceInsufficient,
   physicalDeviceNotFound,
   physicalDeviceNotUninstallEligible,
+  physicalDeviceP1b2PilotUninstallPolicyViolation,
 } from './physical-device-inventory.errors';
 
 export { selectActiveVehicleInstallAssignment } from './physical-device-lifecycle.consistency';
@@ -111,6 +113,22 @@ async function replayLifecycleAudit(
   return toListItem(prior.physicalDevice);
 }
 
+export function assertP1b2PilotSafeUninstallPolicy(dto: UninstallPhysicalDeviceDto): void {
+  if (!isPhysicalDeviceInventoryP1b2PilotSafeUninstallEnabled()) {
+    return;
+  }
+  if (dto.physicalReturnConfirmed) {
+    throw physicalDeviceP1b2PilotUninstallPolicyViolation(
+      'PILOT_DIRECT_INSTALLED_TO_AVAILABLE_FORBIDDEN',
+    );
+  }
+  if (dto.deviceConditionAfterUninstall !== PhysicalDeviceUninstallCondition.FUNCTIONAL) {
+    throw physicalDeviceP1b2PilotUninstallPolicyViolation(
+      'PILOT_UNINSTALL_REQUIRES_FUNCTIONAL_PENDING_RETURN',
+    );
+  }
+}
+
 function assertOffVehicleLifecycleEligible(
   status: PhysicalDeviceInventoryStatus,
   assignments: Array<{
@@ -155,6 +173,7 @@ export async function uninstallPhysicalDeviceTx(
   if (dto.physicalReturnConfirmed) {
     assertNonEmptyText(dto.warehouseLocation, 'WAREHOUSE_REQUIRED_FOR_RETURN');
   }
+  assertP1b2PilotSafeUninstallPolicy(dto);
 
   try {
     return await prisma.$transaction(async (tx: Tx) => {
