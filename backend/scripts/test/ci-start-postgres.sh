@@ -6,7 +6,7 @@ set -euo pipefail
 CONTAINER_NAME="${CI_PG_CONTAINER:-ci-postgres}"
 PG_USER="${CI_PG_USER:-synqdrive}"
 PG_PASSWORD="${CI_PG_PASSWORD:-synqdrive}"
-PG_DB="${CI_PG_DB:-synqdrive}"
+PG_DB="${CI_PG_DB:-synqdrive_ci_ephemeral}"
 PG_PORT="${CI_PG_PORT:-5432}"
 
 images=(

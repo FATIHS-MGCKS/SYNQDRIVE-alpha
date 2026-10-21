@@ -1662,6 +1662,7 @@ model Organization {
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles                           VehicleSignalCapabilityProfile[]
   vehicleSignalCapabilityProfileRevisions                   VehicleSignalCapabilityProfileRevision[]
+  vsiProviderCatalogAxes                                    VsiProviderCatalogAxis[]
   vsiProfileLifecycleOutbox                                 VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
@@ -1846,6 +1847,10 @@ model Organization {
   vehicleBatteryReferenceCapacities                         VehicleBatteryReferenceCapacity[]
   vehicleBatteryReferenceCapacityChanges                    VehicleBatteryReferenceCapacityChange[]
   hvChargeSessions                                          HvChargeSession[]
+  batteryHvChargingCounterIngestionBatches                  BatteryHvChargingCounterIngestionBatch[]
+  batteryHvChargingCounterObservations                      BatteryHvChargingCounterObservation[]
+  batteryHvChargingCounterRevalidationCheckpoints           BatteryHvChargingCounterRevalidationCheckpoint[]
+  batteryHvChargingCounterPilotProviderRequests              BatteryHvChargingCounterPilotProviderRequest[]
   hvCapacityObservations                                    HvCapacityObservation[]
   batteryV2JobDeadLetters                                   BatteryV2JobDeadLetter[]
   batteryRetentionAggregates                                BatteryRetentionAggregate[]
@@ -3046,6 +3051,7 @@ model Vehicle {
   vehicleProviderSourceObservationCounters VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles          VehicleSignalCapabilityProfile[]
   vehicleSignalCapabilityProfileRevisions  VehicleSignalCapabilityProfileRevision[]
+  vsiProviderCatalogAxes                   VsiProviderCatalogAxis[]
   vsiProfileLifecycleOutbox                VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
@@ -3074,6 +3080,10 @@ model Vehicle {
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
   vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
   hvChargeSessions                       HvChargeSession[]
+  batteryHvChargingCounterIngestionBatches BatteryHvChargingCounterIngestionBatch[]
+  batteryHvChargingCounterObservations   BatteryHvChargingCounterObservation[]
+  batteryHvChargingCounterRevalidationCheckpoints BatteryHvChargingCounterRevalidationCheckpoint[]
+  batteryHvChargingCounterPilotProviderRequests BatteryHvChargingCounterPilotProviderRequest[]
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
@@ -4558,6 +4568,51 @@ model VehicleSignalCapabilityProfileRevision {
   @@index([organizationId, vehicleId, providerSourceLinkId, recordedAt(sort: Desc)], map: "vehicle_signal_capability_profile_revisions_scope_recorded_idx")
   @@index([organizationId, vehicleId, providerSourceLinkId, evaluatedAt(sort: Desc)], map: "vehicle_signal_capability_profile_revisions_scope_evaluated_idx")
   @@map("vehicle_signal_capability_profile_revisions")
+}
+
+enum VsiProviderCatalogAxisDeclaredStatus {
+  LISTED
+  NOT_LISTED
+  UNKNOWN
+}
+
+enum VsiProviderCatalogSnapshotCompleteness {
+  COMPLETE_PROVIDER_CATALOG
+  INCOMPLETE_PROVIDER_RESPONSE
+  PROVIDER_ERROR
+}
+
+enum VsiProviderCatalogAxisProvenance {
+  DIMO_AVAILABLE_SIGNALS_PREFLIGHT
+}
+
+/// VSI P3A — per-link provider catalog axis evidence (availableSignals preflight).
+model VsiProviderCatalogAxis {
+  id                                String                              @id @default(uuid())
+  organizationId                    String                              @map("organization_id")
+  vehicleId                         String                              @map("vehicle_id")
+  providerSourceLinkId              String                              @map("provider_source_link_id")
+  providerIdentity                  String                              @map("provider_identity")
+  providerNativeSignalName          String                              @map("provider_native_signal_name")
+  canonicalSignalKey                String?                             @map("canonical_signal_key")
+  declaredCatalogStatus             VsiProviderCatalogAxisDeclaredStatus  @map("declared_catalog_status")
+  catalogSnapshotCompleteness       VsiProviderCatalogSnapshotCompleteness @map("catalog_snapshot_completeness")
+  provenance                        VsiProviderCatalogAxisProvenance      @map("provenance")
+  contractVersion                   String                              @map("contract_version")
+  checkedAt                         DateTime                            @map("checked_at") @db.Timestamptz(3)
+  verifiedModality                  String?                             @map("verified_modality")
+  telemetrySourceFamily             String?                             @map("telemetry_source_family")
+  connectionIdentityContractVersion String?                             @map("connection_identity_contract_version")
+  metadataJson                      Json                                @default("{}") @map("metadata_json")
+  createdAt                         DateTime                            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                         DateTime                            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, providerSourceLinkId, providerNativeSignalName], map: "vsi_provider_catalog_axes_scope_native_key")
+  @@index([organizationId, vehicleId, providerSourceLinkId, checkedAt(sort: Desc)], map: "vsi_provider_catalog_axes_scope_checked_idx")
+  @@map("vsi_provider_catalog_axes")
 }
 
 enum VsiProfileLifecycleOutboxEventType {
@@ -9685,6 +9740,121 @@ model HvChargeSession {
   @@index([dimoSegmentId])
   @@index([measurementSessionId])
   @@map("hv_charge_sessions")
+}
+
+/// M3.3-HV-R22-P1 — versioned DIMO charging-added-energy interval bucket evidence (research-only).
+model BatteryHvChargingCounterIngestionBatch {
+  id                         String   @id @default(uuid())
+  organizationId             String   @map("organization_id")
+  vehicleId                  String   @map("vehicle_id")
+  segmentFingerprint         String   @map("segment_fingerprint")
+  sourceHvChargeSessionId    String?  @map("source_hv_charge_session_id")
+  dimoTokenId                Int?     @map("dimo_token_id")
+  evidenceContractVersion    String   @map("evidence_contract_version")
+  queryWindowFrom            DateTime @map("query_window_from")
+  queryWindowTo              DateTime @map("query_window_to")
+  segmentStartAt             DateTime @map("segment_start_at")
+  segmentEndAt               DateTime? @map("segment_end_at")
+  providerObservedAt         DateTime? @map("provider_observed_at")
+  observationSetFingerprint  String   @db.Char(64) @map("observation_set_fingerprint")
+  bucketWidth                String   @map("bucket_width")
+  aggregationMode            String   @map("aggregation_mode")
+  bucketCount                Int      @map("bucket_count")
+  availableBucketCount       Int      @map("available_bucket_count")
+  missingBucketCount         Int      @map("missing_bucket_count")
+  dimoQueryKind              String   @map("dimo_query_kind")
+  idempotencyKey             String   @map("idempotency_key")
+  /// R22-P1B — append-only counter quality assessment (does not alter bucket values).
+  counterQualityJson         Json?    @map("counter_quality_json")
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  observations BatteryHvChargingCounterObservation[]
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_hv_cc_batch_tenant_idempotency")
+  @@index([organizationId, vehicleId, segmentFingerprint, createdAt(sort: Desc)], map: "battery_hv_cc_batch_segment_idx")
+  @@map("battery_hv_charging_counter_ingestion_batches")
+}
+
+/// Append-only bucket observation with per-slot revision chain (R22-P1 sidecar).
+model BatteryHvChargingCounterObservation {
+  id                           String   @id @default(uuid())
+  organizationId               String   @map("organization_id")
+  vehicleId                    String   @map("vehicle_id")
+  segmentFingerprint           String   @map("segment_fingerprint")
+  batchId                      String   @map("batch_id")
+  bucketStartAt                DateTime @map("bucket_start_at")
+  bucketEndAt                  DateTime? @map("bucket_end_at")
+  bucketWidth                  String   @map("bucket_width")
+  aggregationMode              String   @map("aggregation_mode")
+  signalName                   String   @map("signal_name")
+  unit                         String   @default("kWh")
+  valueKwh                     Float?   @map("value_kwh")
+  minKwh                       Float?   @map("min_kwh")
+  maxKwh                       Float?   @map("max_kwh")
+  availability                 String
+  evidenceContractVersion      String   @map("evidence_contract_version")
+  providerSource               String   @default("DIMO") @map("provider_source")
+  providerTimestampUncertainty Boolean  @default(true) @map("provider_timestamp_uncertainty")
+  provenance                   Json
+  revisionNumber               Int      @map("revision_number")
+  supersedesObservationId      String?  @map("supersedes_observation_id")
+  idempotencyKey               String   @map("idempotency_key")
+  createdAt                    DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  batch        BatteryHvChargingCounterIngestionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  supersedes   BatteryHvChargingCounterObservation? @relation("BatteryHvChargingCounterObservationSupersede", fields: [supersedesObservationId], references: [id], onDelete: SetNull)
+  supersededBy BatteryHvChargingCounterObservation[] @relation("BatteryHvChargingCounterObservationSupersede")
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_hv_cc_obs_tenant_idempotency")
+  @@unique([organizationId, vehicleId, segmentFingerprint, bucketStartAt, revisionNumber], map: "battery_hv_cc_obs_slot_revision")
+  @@index([batchId], map: "battery_hv_cc_obs_batch_idx")
+  @@index([organizationId, vehicleId, segmentFingerprint, bucketStartAt], map: "battery_hv_cc_obs_segment_bucket_idx")
+  @@map("battery_hv_charging_counter_observations")
+}
+
+/// Provider revalidation anchor when duplicate batch prevents a new durable batch timestamp (R22-P1.1).
+model BatteryHvChargingCounterRevalidationCheckpoint {
+  organizationId                String   @map("organization_id")
+  vehicleId                     String   @map("vehicle_id")
+  segmentFingerprint            String   @map("segment_fingerprint")
+  segmentStartAt                DateTime @map("segment_start_at")
+  segmentEndAt                  DateTime? @map("segment_end_at")
+  providerObservedAt            DateTime? @map("provider_observed_at")
+  lastProviderQueryAt           DateTime @map("last_provider_query_at")
+  lastObservationSetFingerprint String?  @db.Char(64) @map("last_observation_set_fingerprint")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, vehicleId, segmentFingerprint])
+  @@index([organizationId, vehicleId], map: "battery_hv_cc_revalidation_checkpoint_vehicle_idx")
+  @@map("battery_hv_charging_counter_revalidation_checkpoints")
+}
+
+/// R22-P1B — durable pilot DIMO provider request budget (one attempt per pilot epoch + HV session).
+model BatteryHvChargingCounterPilotProviderRequest {
+  organizationId          String   @map("organization_id")
+  vehicleId               String   @map("vehicle_id")
+  pilotEpoch              String   @map("pilot_epoch")
+  sourceHvChargeSessionId String   @map("source_hv_charge_session_id")
+  lifecycleState          String   @map("lifecycle_state")
+  reservedAt              DateTime @default(now()) @map("reserved_at")
+  requestStartedAt        DateTime? @map("request_started_at")
+  terminalAt              DateTime? @map("terminal_at")
+  outcomeDetail           String?  @map("outcome_detail")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, vehicleId, pilotEpoch, sourceHvChargeSessionId])
+  @@index([organizationId, vehicleId], map: "battery_hv_cc_pilot_provider_req_vehicle_idx")
+  @@map("battery_hv_charging_counter_pilot_provider_requests")
 }
 
 /// M3.3-HV-H4-A3.1 — append-only H4 charge session source evidence revision (no runtime writer).

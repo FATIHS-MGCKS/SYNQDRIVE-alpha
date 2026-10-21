@@ -2,6 +2,8 @@ import { isDtc01aSafetyFoundationEnabled } from './dtc-01a.config';
 
 export const DTC_01F_COHORT_GATE_ENABLED_ENV = 'DTC_01F_COHORT_GATE_ENABLED';
 export const DTC_01F_COHORT_VEHICLE_ALLOWLIST_ENV = 'DTC_01F_COHORT_VEHICLE_ALLOWLIST';
+/** Opt-in only: pilot allowlist uses safety01a; other ACTIVE vehicles keep legacy poll/webhook. Default OFF. */
+export const DTC_01F_COHORT_MIXED_MODE_ENABLED_ENV = 'DTC_01F_COHORT_MIXED_MODE_ENABLED';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,6 +14,7 @@ export type Dtc01fCohortGateConfigState =
   | { mode: 'GLOBAL_OFF' }
   | { mode: 'OPEN' }
   | { mode: 'COHORT'; allowlist: ReadonlySet<string> }
+  | { mode: 'MIXED_COHORT'; allowlist: ReadonlySet<string> }
   | { mode: 'INVALID'; reason: string };
 
 export type Dtc01fPathAdmissionReason =
@@ -20,6 +23,7 @@ export type Dtc01fPathAdmissionReason =
   | 'COHORT_GATE_INVALID_CONFIG'
   | 'LIFECYCLE_EXCLUDED'
   | 'NOT_IN_COHORT_ALLOWLIST'
+  | 'COHORT_MIXED_NON_PILOT_LEGACY'
   | 'COHORT_ADMITTED';
 
 export type Dtc01fPathAdmission = {
@@ -29,6 +33,10 @@ export type Dtc01fPathAdmission = {
 
 export function isDtc01fCohortGateEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env[DTC_01F_COHORT_GATE_ENABLED_ENV]?.trim().toLowerCase() === 'true';
+}
+
+export function isDtc01fCohortMixedModeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env[DTC_01F_COHORT_MIXED_MODE_ENABLED_ENV]?.trim().toLowerCase() === 'true';
 }
 
 export function parseDtc01fCohortVehicleAllowlist(
@@ -68,13 +76,34 @@ export function resolveDtc01fCohortGateConfig(
   if (!parsed.ok) {
     return { mode: 'INVALID', reason: parsed.reason };
   }
+  if (isDtc01fCohortMixedModeEnabled(env)) {
+    return { mode: 'MIXED_COHORT', allowlist: parsed.allowlist };
+  }
   return { mode: 'COHORT', allowlist: parsed.allowlist };
+}
+
+function isCohortScopedMode(
+  config: Dtc01fCohortGateConfigState,
+): config is { mode: 'COHORT' | 'MIXED_COHORT'; allowlist: ReadonlySet<string> } {
+  return config.mode === 'COHORT' || config.mode === 'MIXED_COHORT';
+}
+
+function normalizedVehicleId(vehicleId: string): string {
+  return vehicleId.trim().toLowerCase();
+}
+
+function isVehicleInCohortAllowlist(
+  allowlist: ReadonlySet<string>,
+  vehicleId: string,
+): boolean {
+  return allowlist.has(normalizedVehicleId(vehicleId));
 }
 
 /**
  * When global DTC-01A is OFF → legacy path for all vehicles (poll/webhook).
  * When cohort gate OFF → all eligible vehicles use 01A path (global rollout; activation risk).
- * When cohort gate ON → only allowlisted, non-offboarded vehicles use 01A; no legacy fallback.
+ * When cohort gate ON (strict) → only allowlisted vehicles use 01A; no legacy fallback.
+ * When mixed-mode ON (requires cohort gate + allowlist) → allowlisted use 01A; other ACTIVE use legacy path admission (not 01A).
  * Invalid cohort config while gate ON → fail-closed (no DTC mutations on poll or webhook).
  */
 export function evaluateDtc01fSafetyPathAdmission(input: {
@@ -101,8 +130,13 @@ export function evaluateDtc01fSafetyPathAdmission(input: {
   if (input.registryLifecycle && EXCLUDED_LIFECYCLES.has(input.registryLifecycle)) {
     return { useDtc01aSafetyPath: false, reason: 'LIFECYCLE_EXCLUDED' };
   }
-  const vid = input.vehicleId.trim().toLowerCase();
-  if (!config.allowlist.has(vid)) {
+  if (!isCohortScopedMode(config)) {
+    return { useDtc01aSafetyPath: false, reason: 'COHORT_GATE_INVALID_CONFIG' };
+  }
+  if (!isVehicleInCohortAllowlist(config.allowlist, input.vehicleId)) {
+    if (config.mode === 'MIXED_COHORT') {
+      return { useDtc01aSafetyPath: false, reason: 'COHORT_MIXED_NON_PILOT_LEGACY' };
+    }
     return { useDtc01aSafetyPath: false, reason: 'NOT_IN_COHORT_ALLOWLIST' };
   }
   return { useDtc01aSafetyPath: true, reason: 'COHORT_ADMITTED' };
@@ -131,7 +165,7 @@ export type DtcPollJobAdmission =
 
 /**
  * Fan-out / worker admission for DIMO DTC poll jobs (pilot-safe).
- * OFFBOARDED/ARCHIVED never enqueued. Cohort ON → only allowlisted vehicles; no legacy fallback.
+ * OFFBOARDED/ARCHIVED never enqueued. Strict cohort ON → only allowlisted vehicles; mixed-mode routes others to legacy.
  */
 export type DtcWebhookAdmissionReason =
   | 'REGISTRY_LIFECYCLE_EXCLUDED'
@@ -151,7 +185,8 @@ function isRegistryLifecycleExcluded(registryLifecycle: string | null | undefine
 /**
  * Webhook DTC ingress admission — aligned with {@link evaluateDtcPollJobAdmission}.
  * Global OFF → legacy mutations for eligible lifecycles only.
- * Cohort ON → allowlisted safety01a only; non-cohort skips mutation (no legacy).
+ * Strict cohort ON → allowlisted safety01a only; non-cohort skips mutation (no legacy).
+ * Mixed cohort → allowlisted safety01a; other ACTIVE vehicles use legacy mutations.
  */
 export function evaluateDtcWebhookAdmission(input: {
   vehicleId: string;
@@ -174,17 +209,17 @@ export function evaluateDtcWebhookAdmission(input: {
     return { mutate: true, runtimePath: 'safety01a' };
   }
 
-  const admission = evaluateDtc01fSafetyPathAdmission(input);
-  if (!admission.useDtc01aSafetyPath) {
-    return {
-      mutate: false,
-      reason:
-        admission.reason === 'NOT_IN_COHORT_ALLOWLIST'
-          ? 'NOT_IN_COHORT_ALLOWLIST'
-          : 'REGISTRY_LIFECYCLE_EXCLUDED',
-    };
+  if (!isCohortScopedMode(config)) {
+    return { mutate: false, reason: 'COHORT_GATE_INVALID_CONFIG' };
   }
-  return { mutate: true, runtimePath: 'safety01a' };
+
+  if (isVehicleInCohortAllowlist(config.allowlist, input.vehicleId)) {
+    return { mutate: true, runtimePath: 'safety01a' };
+  }
+  if (config.mode === 'MIXED_COHORT') {
+    return { mutate: true, runtimePath: 'legacy' };
+  }
+  return { mutate: false, reason: 'NOT_IN_COHORT_ALLOWLIST' };
 }
 
 /** True when poll enqueue and webhook mutate decisions match for the same vehicle/config. */
@@ -225,18 +260,33 @@ export function evaluateDtcPollJobAdmission(input: {
     return { enqueue: true, runtimePath: 'safety01a' };
   }
 
-  const admission = evaluateDtc01fSafetyPathAdmission(input);
-  if (!admission.useDtc01aSafetyPath) {
-    return { enqueue: false, reason: 'NOT_IN_COHORT_ALLOWLIST' };
+  if (!isCohortScopedMode(config)) {
+    return { enqueue: false, reason: 'COHORT_GATE_INVALID_CONFIG' };
   }
-  return { enqueue: true, runtimePath: 'safety01a' };
+
+  if (isVehicleInCohortAllowlist(config.allowlist, input.vehicleId)) {
+    return { enqueue: true, runtimePath: 'safety01a' };
+  }
+  if (config.mode === 'MIXED_COHORT') {
+    return { enqueue: true, runtimePath: 'legacy' };
+  }
+  return { enqueue: false, reason: 'NOT_IN_COHORT_ALLOWLIST' };
 }
 
-export function logDtc01fCohortConfigOnBoot(logger: { error: (msg: string) => void }): void {
+export function logDtc01fCohortConfigOnBoot(logger: {
+  error: (msg: string) => void;
+  log?: (msg: string) => void;
+}): void {
   const config = resolveDtc01fCohortGateConfig();
   if (config.mode === 'INVALID') {
     logger.error(
       `DTC-01F cohort gate INVALID (${config.reason}): DTC poll fan-out and webhook DTC ingress fail-closed until config fixed (set identical env on all API replicas)`,
+    );
+    return;
+  }
+  if (config.mode === 'MIXED_COHORT' && logger.log) {
+    logger.log(
+      `DTC-01F mixed-mode routing ACTIVE: allowlisted vehicles use safety01a; other ACTIVE vehicles use legacy (replica env must match)`,
     );
   }
 }

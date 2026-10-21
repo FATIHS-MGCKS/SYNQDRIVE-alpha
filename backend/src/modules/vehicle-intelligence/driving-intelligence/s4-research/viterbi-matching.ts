@@ -1,44 +1,14 @@
 import type { ResearchGpsBucket, ResearchOsmWay } from './contracts';
 import type { S4ResearchAlgorithmConfig } from './config';
-import { headingDeltaDeg } from './geo';
 import { buildWayAdjacency, nearestWayCandidates } from './osm-parse';
 import type { BaselineBucketMatch } from './baseline-matching';
 import type { InternalMatchOutcome } from './labels';
+import { emissionCostFromHits, transitionCost, type WayHit } from './viterbi-dp-costs';
 
-type WayHit = {
-  way: ResearchOsmWay;
-  distanceM: number;
-  segmentBearingDeg: number | null;
+export type ViterbiTopologyOptions = {
+  /** When set, overrides default rounded-coordinate adjacency (offline topology experiments). */
+  wayAdjacency?: Map<number, Set<number>>;
 };
-
-function emissionCostFromHits(
-  heading: number | null,
-  wayId: number,
-  hits: WayHit[],
-  config: S4ResearchAlgorithmConfig,
-): number {
-  const hit = hits.find((h) => h.way.osmWayId === wayId);
-  if (!hit) return 1e6;
-  let cost = hit.distanceM * 2;
-  if (heading != null && hit.segmentBearingDeg != null) {
-    const d = headingDeltaDeg(heading, hit.segmentBearingDeg);
-    if (d > config.bearingCompatDeg) cost += 50 + d;
-  }
-  return cost;
-}
-
-function transitionCost(
-  prevWay: number | null,
-  curWay: number | null,
-  adj: Map<number, Set<number>>,
-  speedKmh: number | null | undefined,
-): number {
-  if (prevWay == null || curWay == null) return prevWay === curWay ? 0 : 5;
-  if (prevWay === curWay) return 0;
-  if (adj.get(prevWay)?.has(curWay)) return 2;
-  if (speedKmh != null && speedKmh > 80) return 80;
-  return 40;
-}
 
 /** Causal forward-only Viterbi (research-only; not for production authority). */
 export function buildViterbiMatches(
@@ -46,8 +16,9 @@ export function buildViterbiMatches(
   ways: ResearchOsmWay[],
   headings: (number | null)[],
   config: S4ResearchAlgorithmConfig,
+  topology?: ViterbiTopologyOptions,
 ): BaselineBucketMatch[] {
-  const adj = buildWayAdjacency(ways);
+  const adj = topology?.wayAdjacency ?? buildWayAdjacency(ways);
   const TOP_K = config.viterbiTopK;
   const out: BaselineBucketMatch[] = [];
   let prevDp: Array<{ cost: number; wayId: number | null }> = [{ cost: 0, wayId: null }];

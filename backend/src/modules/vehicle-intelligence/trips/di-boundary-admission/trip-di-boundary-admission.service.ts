@@ -7,7 +7,19 @@ import {
   canReleaseTripDiBoundaryAdmission,
   readTripDiBoundaryAdmissionV1,
   type TripDiBoundaryAdmissionScope,
+  type TripDiBoundaryAdmissionV1,
 } from './trip-di-boundary-admission';
+import {
+  evaluateLiveFsmSplitAdmissionEligibility,
+  listLiveFsmSplitAdmissionCandidateTripIdsInReconciliationWindow,
+  resolveVerifiedLiveFsmSplitSettlementTripIds,
+  type LiveFsmSplitAdmissionEligibility,
+} from './trip-di-boundary-admission-live-fsm-split.util';
+import {
+  isAutomaticLiveFsmAdmissionCohort,
+  LIVE_FSM_AUTO_RECONCILIATION_MAX_TRIPS_PER_VEHICLE,
+  readLiveFsmAutomaticAdmissionPolicyFromEnv,
+} from './trip-di-boundary-admission-live-fsm-auto.policy';
 
 @Injectable()
 export class TripDiBoundaryAdmissionService {
@@ -49,9 +61,105 @@ export class TripDiBoundaryAdmissionService {
   }
 
   /**
-   * Release admission only for trips whose intra-trip boundary repair scan completed in the
-   * same reconciliation run. Does not blanket-release all COMPLETED trips in the window.
+   * After RESTING finalization: admit only the finalized trip and its verified LIVE_FSM split pair.
    */
+  async releaseLiveFsmSplitSegmentsAfterFinalization(
+    organizationId: string,
+    vehicleId: string,
+    finalizedTripId: string,
+  ): Promise<{ released: number; skipped: number; tripIds: string[] }> {
+    const policy = readLiveFsmAutomaticAdmissionPolicyFromEnv();
+    if (
+      !isAutomaticLiveFsmAdmissionCohort(policy, {
+        organizationId,
+        vehicleId,
+        vehicleOrganizationId: organizationId,
+      })
+    ) {
+      return { released: 0, skipped: 0, tripIds: [] };
+    }
+    const tripIds = await resolveVerifiedLiveFsmSplitSettlementTripIds(this.prisma, finalizedTripId);
+    return this.releaseLiveFsmSettlementTripIds(tripIds);
+  }
+
+  /**
+   * After reconciliation: bounded window + explicit activation horizon; S4 allowlisted cohort only.
+   */
+  async releaseLiveFsmSplitSegmentsInReconciliationWindow(
+    organizationId: string,
+    vehicleId: string,
+    windowFrom: Date,
+    windowTo: Date,
+  ): Promise<{ released: number; skipped: number; tripIds: string[] }> {
+    const policy = readLiveFsmAutomaticAdmissionPolicyFromEnv();
+    if (
+      !isAutomaticLiveFsmAdmissionCohort(policy, {
+        organizationId,
+        vehicleId,
+        vehicleOrganizationId: organizationId,
+      })
+    ) {
+      return { released: 0, skipped: 0, tripIds: [] };
+    }
+    const horizon = policy.reconciliationActivationHorizonUtc;
+    if (horizon == null) {
+      return { released: 0, skipped: 0, tripIds: [] };
+    }
+    const tripIds = await listLiveFsmSplitAdmissionCandidateTripIdsInReconciliationWindow(
+      this.prisma,
+      vehicleId,
+      windowFrom,
+      windowTo,
+      horizon,
+      LIVE_FSM_AUTO_RECONCILIATION_MAX_TRIPS_PER_VEHICLE,
+    );
+    return this.releaseLiveFsmSettlementTripIds(tripIds);
+  }
+
+  private async releaseLiveFsmSettlementTripIds(
+    tripIds: readonly string[],
+  ): Promise<{ released: number; skipped: number; tripIds: string[] }> {
+    let released = 0;
+    let skipped = 0;
+    const unique = [...new Set(tripIds)];
+    for (const tripId of unique) {
+      try {
+        const ok = await this.tryReleaseForTripTransactional(tripId, 'LIVE_FSM_SETTLEMENT');
+        if (ok) released += 1;
+        else skipped += 1;
+      } catch (err) {
+        skipped += 1;
+        this.logger.warn(
+          `DI boundary admission LIVE_FSM settlement release failed trip=${tripId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    return { released, skipped, tripIds: unique };
+  }
+
+  evaluateLiveFsmSplitAdmissionEligibility(
+    tripId: string,
+    expectedVehicleId: string,
+  ): Promise<LiveFsmSplitAdmissionEligibility> {
+    return evaluateLiveFsmSplitAdmissionEligibility(this.prisma, tripId, expectedVehicleId);
+  }
+
+  /**
+   * Ops recovery: release admission for exactly one trip after canonical LIVE_FSM split eligibility checks.
+   * Still uses tryReleaseForTripTransactional (FSM / repair guards).
+   */
+  async tryReleaseLiveFsmSplitTripScoped(
+    tripId: string,
+    expectedVehicleId: string,
+  ): Promise<{ ok: boolean; eligibility: LiveFsmSplitAdmissionEligibility }> {
+    const eligibility = await this.evaluateLiveFsmSplitAdmissionEligibility(tripId, expectedVehicleId);
+    if (!eligibility.eligible) {
+      return { ok: false, eligibility };
+    }
+    const ok = await this.tryReleaseForTripTransactional(tripId, 'LIVE_FSM_SETTLEMENT');
+    return { ok, eligibility };
+  }
+
   async releaseForBoundaryScannedTripIds(tripIds: readonly string[]): Promise<{ released: number; skipped: number }> {
     const unique = [...new Set(tripIds.filter((id) => id.length > 0))];
     let released = 0;
@@ -76,7 +184,7 @@ export class TripDiBoundaryAdmissionService {
    */
   async tryReleaseForTripTransactional(
     tripId: string,
-    releasedBy: 'RECONCILIATION' | 'OPERATOR' = 'RECONCILIATION',
+    releasedBy: TripDiBoundaryAdmissionV1['releasedBy'] = 'RECONCILIATION',
   ): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<

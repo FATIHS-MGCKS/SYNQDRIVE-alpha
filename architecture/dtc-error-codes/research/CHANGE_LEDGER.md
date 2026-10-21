@@ -1,5 +1,20 @@
 # DTC / Error Codes — change ledger (append-only)
 
+## 2026-10-19 — DTC-02 P5A mixed-mode cohort routing (draft, default OFF)
+
+- **CHANGE:** `DTC_01F_COHORT_MIXED_MODE_ENABLED` + `MIXED_COHORT` config mode; poll/webhook admission routes non-pilot ACTIVE vehicles to legacy when enabled.
+- **INVARIANT:** Strict cohort (`mixed` OFF) unchanged; pilot remains fail-closed on 01A (no legacy fallback).
+- **TESTS:** Four-vehicle Production UUID matrix in `dtc-01f-cohort-gate.spec.ts`.
+- **EVIDENCE:** `evidence/DTC02_P5A_MIXED_MODE_ROUTING.md` (source-head recovery plan documented; no deploy).
+
+## 2026-10-18 — P1B.6 Nest DI boot hotfix (invalid VI export)
+
+- **OBSERVATION:** Production deploy to `e9524c5b` aborted at `SYNQDRIVE_BOOT_CHECK=1`; `/opt/synqdrive/current` remained `d43ff450`.
+- **ROOT CAUSE:** `VehicleIntelligenceModule` exported `Dtc02ObservabilityService` without provider registration (service owned by `Dtc02ObservabilityModule` only).
+- **CHANGE:** Re-export `Dtc02ObservabilityModule`; remove direct service export.
+- **CI:** `synqdrive-nest-boot-check-ci.sh` + `nest-boot-check` job on critical vehicle-detail / legal-documents gates; `dtc02-observability.nest-di.spec.ts`.
+- **VALIDATION:** Compiled boot check PASS; DTC observability + webhook unit suites PASS.
+
 ## 2026-10-17 — DTC-02 P4 safety & fallback certification (draft)
 
 - Certification matrix unit tests, source-trust reconciliation classifier, P4 PostgreSQL scenarios, BullMQ shadow isolation spec.

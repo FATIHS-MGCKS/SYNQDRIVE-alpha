@@ -1,0 +1,68 @@
+{
+  "contractVersion": "production-database-identity.v1",
+  "description": "Fail-closed expectations for SynqDrive production PostgreSQL identity. Numeric floors are sanity bounds, not business truth — pair with before/after deploy snapshots.",
+  "productionDatabaseName": "synqdrive",
+  "productionSchema": "public",
+  "allowedDeployHosts": ["localhost", "127.0.0.1", "::1"],
+  "forbiddenUrlSubstrings": [
+    "app.synqdrive.eu",
+    "srv1374778",
+    "hstgr.cloud",
+    "mein-vps.internal"
+  ],
+  "ephemeralDatabaseNamePatterns": [
+    "^synqdrive_recovery_verify_[0-9]{14}$",
+    "^synqdrive_s4a_ci",
+    "^synqdrive_staging_brake$",
+    "^rfrf_",
+    "^guard_test_",
+    "^test_",
+    "^synqdrive_ci_ephemeral"
+  ],
+  "reservedProductionNames": ["synqdrive"],
+  "requiredPublicTables": [
+    "_prisma_migrations",
+    "organizations",
+    "vehicles",
+    "vehicle_trips"
+  ],
+  "minPublicTableCount": 350,
+  "ledgerExpectations": {
+    "minSuccessfulDistinctMigrations": 100,
+    "maxRolledBackRowFraction": 0.15
+  },
+  "coreTableRowFloors": {
+    "_prisma_migrations": 50,
+    "organizations": 1,
+    "vehicles": 1
+  },
+  "backupContentGate": {
+    "minCompressedBytes": 1048576,
+    "requiredCopyTables": [
+      "_prisma_migrations",
+      "organizations",
+      "vehicles",
+      "vehicle_trips"
+    ],
+    "copyRowFloors": {
+      "_prisma_migrations": 50,
+      "organizations": 1,
+      "vehicles": 1,
+      "vehicle_trips": 1
+    },
+    "forbiddenEmptyCoreTables": ["organizations", "vehicles", "vehicle_trips"]
+  },
+  "destructivePrismaSubcommands": [
+    "migrate reset",
+    "migrate dev",
+    "db push --force-reset",
+    "db push --accept-data-loss"
+  ],
+  "allowedPrismaSubcommandsOnProduction": [
+    "migrate deploy",
+    "migrate resolve",
+    "migrate status",
+    "validate",
+    "generate"
+  ]
+}

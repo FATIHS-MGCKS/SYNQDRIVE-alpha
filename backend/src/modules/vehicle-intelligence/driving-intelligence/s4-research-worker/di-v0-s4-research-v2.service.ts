@@ -12,6 +12,7 @@ import { DiV0S4ResearchRunRepository } from './di-v0-s4-research-run.repository'
 import { DiV0S4ResearchS4ReadRepository } from './di-v0-s4-research-s4-read.repository';
 import {
   evaluateDiV0S4ResearchEnablement,
+  isDiV0S4ResearchDirectionAwareEmissionP1ShadowConfigured,
   parseDiV0S4ResearchControlPlaneConfig,
 } from './di-v0-s4-research-control-plane';
 import {
@@ -215,6 +216,9 @@ export class DiV0S4ResearchV2Service {
         shadowByBucket,
         osmProvider: this.osmProvider,
         pipelineDeadlineMs: processingBudgetMs,
+        runDirectionAwareEmissionP1Shadow: isDiV0S4ResearchDirectionAwareEmissionP1ShadowConfigured(
+          this.runtimeConfig.controlPlane,
+        ),
       });
     } catch (error) {
       const next = new Date(now.getTime() + DI_V0_S4_RESEARCH_V2_TUNING.baseRetryDelayMs);

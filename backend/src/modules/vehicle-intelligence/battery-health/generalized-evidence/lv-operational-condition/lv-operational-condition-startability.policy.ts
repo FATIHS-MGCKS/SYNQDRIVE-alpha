@@ -13,6 +13,15 @@ import type {
 
 const REST_WAKE = BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE;
 
+/** Max |storedDrop − (vPre − vMin)| for same-event crank provenance (rounding / provider noise). */
+const CRANK_DROP_VOLTAGE_TOLERANCE_V = 0.25;
+
+function isValidCrankEventTimestampIso(iso: string | null | undefined): boolean {
+  if (!iso?.trim()) return false;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms);
+}
+
 function mapCrankBandToStartability(
   band: BatteryHealthStatus,
 ): LvOperationalConditionStatusV1 {
@@ -48,16 +57,32 @@ export function hasValidatedStartabilityCrankEvidenceV1(
     return false;
   }
 
-  const drop =
-    crank.crankDropV != null && Number.isFinite(crank.crankDropV)
-      ? crank.crankDropV
-      : sanitized.vPreCrank - sanitized.vMinCrank;
-  if (!Number.isFinite(drop) || drop < 0 || drop > 6) {
+  const computedDrop = sanitized.vPreCrank - sanitized.vMinCrank;
+  if (!Number.isFinite(computedDrop) || computedDrop < 0 || computedDrop > 6) {
     return false;
   }
 
-  if (crank.crankAtIso == null && crank.crankObservationCount < 1) {
+  const tripId = crank.crankTripId?.trim();
+  if (!tripId) {
     return false;
+  }
+  if (!isValidCrankEventTimestampIso(crank.crankAtIso)) {
+    return false;
+  }
+  if (
+    !Number.isInteger(crank.crankObservationCount) ||
+    crank.crankObservationCount < 1
+  ) {
+    return false;
+  }
+
+  if (crank.crankDropV != null && Number.isFinite(crank.crankDropV)) {
+    if (crank.crankDropV < 0 || crank.crankDropV > 6) {
+      return false;
+    }
+    if (Math.abs(crank.crankDropV - computedDrop) > CRANK_DROP_VOLTAGE_TOLERANCE_V) {
+      return false;
+    }
   }
 
   return true;

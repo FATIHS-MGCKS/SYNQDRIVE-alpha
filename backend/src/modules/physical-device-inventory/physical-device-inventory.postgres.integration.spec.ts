@@ -143,6 +143,26 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
     expect(summary.byStatus.AVAILABLE).toBeGreaterThanOrEqual(2);
   });
 
+  it('does not persist device rows when owner organization is missing', async () => {
+    const serial = `R1-TXROLL-${randomUUID().slice(0, 8)}`;
+    const bogusOrg = randomUUID();
+    await expect(
+      service.manualIntake(
+        {
+          modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
+          serialNumber: serial,
+          warehouseLocation: 'WH-TX',
+          ownerOrganizationId: bogusOrg,
+        },
+        null,
+      ),
+    ).rejects.toBeTruthy();
+    const count = await prisma.physicalDevice.count({
+      where: { serialNumber: { equals: serial, mode: 'insensitive' } },
+    });
+    expect(count).toBe(0);
+  });
+
   it('records assignment foundation and durable audit rows on intake', async () => {
     const serial = `R1-ASN-${randomUUID().slice(0, 8)}`;
     const device = await service.manualIntake(

@@ -117,6 +117,30 @@ describe('s4-research synthetic', () => {
     expect(result.windows[0].baseline.hypothesis).toBe('UNKNOWN');
   });
 
+  it('P1 shadow decoder leaves forward V2 viterbi authoritative track unchanged', () => {
+    const ways = [straightWay(1, 51.3, 9.5, 12)];
+    const buckets = [0, 1, 2].map((i) => bucket(i, 51.3 + i * 0.0001, 9.5));
+    const base = runRoadMatchingPipeline({
+      buckets,
+      roadContext: { ways, signalNodes: [], confirmedJunctions: [] },
+      config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+    });
+    const withP1 = runRoadMatchingPipeline({
+      buckets,
+      roadContext: { ways, signalNodes: [], confirmedJunctions: [] },
+      config: DEFAULT_S4_RESEARCH_ALGORITHM_CONFIG,
+      runDirectionAwareEmissionP1Shadow: true,
+    });
+    expect(withP1.algorithmIds.directionAwareEmissionP1Shadow).toBeDefined();
+    expect(withP1.summary.shadowDecoders?.directionAwareEmissionP1?.authoritativeForProduct).toBe(false);
+    for (let i = 0; i < base.windows.length; i++) {
+      expect(withP1.windows[i].viterbi).toEqual(base.windows[i].viterbi);
+      expect(withP1.windows[i].nonAuthoritativeShadowDecoders?.directionAwareEmissionP1?.authoritativeForProduct).toBe(
+        false,
+      );
+    }
+  });
+
   it('reproduces identical output for identical input', () => {
     const ways = [straightWay(1, 51.3, 9.5, 12)];
     const buckets = [0, 1, 2].map((i) => bucket(i, 51.3 + i * 0.0001, 9.5));

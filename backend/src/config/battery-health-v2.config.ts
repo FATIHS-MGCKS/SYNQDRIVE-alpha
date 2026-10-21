@@ -1,4 +1,8 @@
 import { registerAs } from '@nestjs/config';
+import {
+  isVehicleAllowlistedInHvChargingCounterStateV1,
+  parseHvChargingCounterVehicleAllowlistV1,
+} from '../modules/vehicle-intelligence/battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.vehicle-allowlist.v1';
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === '') return defaultValue;
@@ -44,6 +48,33 @@ export const BATTERY_V2_PUBLICATION_ENABLED_ENV = 'BATTERY_V2_PUBLICATION_ENABLE
 /** Prompt 49 flag — HV recharge segment reconcile pipeline (default OFF). */
 export const BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV =
   'BATTERY_V2_HV_RECHARGE_SESSION_ENABLED';
+
+/** M3.3-HV-R22-P1 — DIMO charging-added-energy 1m interval bucket evidence (default OFF). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED';
+
+/** Minimum time between DIMO re-queries for the same unchanged native segment identity (ms). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS';
+
+/**
+ * M3.3-HV-R22-P0 — comma-separated vehicle UUID allowlist for charging-counter capture.
+ * Missing, empty, or invalid → deny all vehicles (fail-closed).
+ */
+export const BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST';
+
+/** R22-P1B pilot mode — default OFF; requires capture flag + vehicle allowlist + epoch + session id. */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED';
+
+/** Owner-approved pilot epoch identifier (opaque string; new epoch = new owner approval). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_EPOCH_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_EPOCH';
+
+/** Exactly one admitted `hv_charge_sessions.id` for the active pilot epoch. */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_HV_CHARGE_SESSION_ID_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_HV_CHARGE_SESSION_ID';
 
 /** Prompt 50 flag — telemetry fallback charge sessions when segments unavailable (default OFF). */
 export const BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV =
@@ -212,6 +243,40 @@ export function isBatteryV2HvRechargeSessionEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV], false);
 }
 
+export function isBatteryV2HvChargingCounterBucketCaptureEnabled(): boolean {
+  return parseBooleanEnv(
+    process.env[BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED_ENV],
+    false,
+  );
+}
+
+export function getBatteryV2HvChargingCounterVehicleAllowlistState() {
+  return parseHvChargingCounterVehicleAllowlistV1(
+    process.env[BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST_ENV],
+  );
+}
+
+export function isBatteryV2HvChargingCounterVehicleAllowlisted(vehicleId: string): boolean {
+  return isVehicleAllowlistedInHvChargingCounterStateV1(
+    getBatteryV2HvChargingCounterVehicleAllowlistState(),
+    vehicleId,
+  );
+}
+
+const DEFAULT_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+export function getBatteryV2HvChargingCounterRevalidationIntervalMs(): number {
+  const raw = process.env[BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS_ENV];
+  if (raw == null || raw === '') {
+    return DEFAULT_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS;
+  }
+  return parsed;
+}
+
 export function isBatteryV2HvFallbackChargeSessionEnabled(): boolean {
   return parseBooleanEnv(
     process.env[BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV],
@@ -342,6 +407,7 @@ export default registerAs('batteryHealthV2', () => ({
   restShadowEnabled: isBatteryV2RestShadowEnabled(),
   publicationEnabled: isBatteryV2PublicationEnabled(),
   hvRechargeSessionEnabled: isBatteryV2HvRechargeSessionEnabled(),
+  hvChargingCounterBucketCaptureEnabled: isBatteryV2HvChargingCounterBucketCaptureEnabled(),
   hvFallbackChargeSessionEnabled: isBatteryV2HvFallbackChargeSessionEnabled(),
   hvCapacityShadowEnabled: isBatteryV2HvCapacityShadowEnabled(),
   hvSohPublicationEnabled: isBatteryV2HvSohPublicationEnabled(),

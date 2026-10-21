@@ -127,6 +127,37 @@ describe('BatteryMeasurementRepository (mocked Prisma)', () => {
     expect(second.numericValue).toBe(12.41);
     expect(measurements.size).toBe(1);
   });
+
+  it('R22 gate-0: returns stale row when corrected value shares vehicleId+type+observedAt (blocks counter revisions in BatteryMeasurement)', async () => {
+    const observedAt = new Date('2026-10-16T13:15:02.931Z');
+    const type = BatteryMeasurementType.LIVE_HV_CURRENT_ENERGY;
+    const first = await repository.createIdempotent({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_A,
+      scope: BatteryEvidenceScope.HV,
+      type,
+      numericValue: 18.66,
+      unit: 'kWh',
+      quality: BatteryMeasurementQuality.SHADOW,
+      observedAt,
+      idempotencyKey: 'hv-counter-rev1',
+    });
+    const second = await repository.createIdempotent({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_A,
+      scope: BatteryEvidenceScope.HV,
+      type,
+      numericValue: 19,
+      unit: 'kWh',
+      quality: BatteryMeasurementQuality.SHADOW,
+      observedAt,
+      idempotencyKey: 'hv-counter-rev2-corrected',
+    });
+
+    expect(second.id).toBe(first.id);
+    expect(second.numericValue).toBe(18.66);
+    expect(measurements.size).toBe(1);
+  });
 });
 
 describe('BatteryMeasurementService (mocked Prisma)', () => {

@@ -364,12 +364,27 @@ export class TripReconciliationService {
         }
       }
 
-      if (this.diBoundaryAdmission && boundaryScannedTripIds.length > 0) {
+      if (this.diBoundaryAdmission) {
+        if (boundaryScannedTripIds.length > 0) {
+          try {
+            await this.diBoundaryAdmission.releaseForBoundaryScannedTripIds(boundaryScannedTripIds);
+          } catch (err: unknown) {
+            this.logger.warn(
+              `DI boundary admission release failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+            );
+          }
+        }
         try {
-          await this.diBoundaryAdmission.releaseForBoundaryScannedTripIds(boundaryScannedTripIds);
+          const organizationId = await this.resolveOrganizationId(vehicleId);
+          await this.diBoundaryAdmission.releaseLiveFsmSplitSegmentsInReconciliationWindow(
+            organizationId,
+            vehicleId,
+            from,
+            to,
+          );
         } catch (err: unknown) {
           this.logger.warn(
-            `DI boundary admission release failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+            `DI boundary admission LIVE_FSM split recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
           );
         }
       }

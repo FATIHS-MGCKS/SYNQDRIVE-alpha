@@ -6,11 +6,13 @@ import type {
 } from './contracts';
 import { buildBaselineMatches } from './baseline-matching';
 import { buildViterbiMatches, headingsFromBaseline } from './viterbi-matching';
+import { buildViterbiMatchesDirectionAwareEmissionP1 } from './viterbi-matching-direction-aware-p1';
 import { evidenceClassForHypothesis, toPublicHypothesis } from './labels';
 import { buildWayAdjacency, graphReachable, nearestWayCandidates } from './osm-parse';
 import {
   S4_RESEARCH_BASELINE_ALGORITHM_ID,
   S4_RESEARCH_VITERBI_ALGORITHM_ID,
+  S4_RESEARCH_VITERBI_DIRECTION_AWARE_EMISSION_P1,
 } from './version';
 import { filterWaysToGpsCorridor } from './osm-parse';
 
@@ -58,6 +60,9 @@ export function runRoadMatchingPipeline(input: RoadMatchingPipelineInput): RoadM
   const baselineInternal = buildBaselineMatches(input.buckets, roadContext, input.config);
   const headings = headingsFromBaseline(baselineInternal);
   const viterbiInternal = buildViterbiMatches(input.buckets, corridorWays, headings, input.config);
+  const p1ShadowInternal = input.runDirectionAwareEmissionP1Shadow
+    ? buildViterbiMatchesDirectionAwareEmissionP1(input.buckets, corridorWays, headings, input.config)
+    : null;
 
   const viterbiWayTrack = viterbiInternal.map((v) => ({
     bucketLabelUtc: v.bucketLabelUtc,
@@ -84,6 +89,8 @@ export function runRoadMatchingPipeline(input: RoadMatchingPipelineInput): RoadM
       topDist = hits[0]?.distanceM ?? null;
     }
     const conflict = conflictByBucket.get(b.bucketLabelUtc);
+    const p1 = p1ShadowInternal?.[i];
+    const p1Label = p1 ? toPublicHypothesis(p1.outcome) : null;
     return {
       bucketLabelUtc: b.bucketLabelUtc,
       gpsEvidenceState: b.availability,
@@ -113,6 +120,20 @@ export function runRoadMatchingPipeline(input: RoadMatchingPipelineInput): RoadM
       },
       graphTransitionConflicts: conflict ? [conflict] : [],
       independentAccuracy: 'NOT_ASSESSABLE' as const,
+      ...(p1 && p1Label
+        ? {
+            nonAuthoritativeShadowDecoders: {
+              directionAwareEmissionP1: {
+                algorithmId: S4_RESEARCH_VITERBI_DIRECTION_AWARE_EMISSION_P1,
+                hypothesis: p1Label,
+                osmWayId: p1.osmWayId,
+                ambiguityReasons: p1.ambiguityReasons,
+                evidenceClassification: 'COMPUTATIONAL_CANDIDATE_ONLY' as const,
+                authoritativeForProduct: false as const,
+              },
+            },
+          }
+        : {}),
     };
   });
 
@@ -128,10 +149,35 @@ export function runRoadMatchingPipeline(input: RoadMatchingPipelineInput): RoadM
     }
   }
 
+  let p1ShadowSummary: RoadMatchingPipelineResult['summary']['shadowDecoders'];
+  if (p1ShadowInternal) {
+    const p1Labels = p1ShadowInternal.map((r) => toPublicHypothesis(r.outcome));
+    let changedVsV2 = 0;
+    for (let i = 0; i < windows.length; i++) {
+      if (
+        windows[i].viterbi.hypothesis !== p1Labels[i] ||
+        windows[i].viterbi.osmWayId !== p1ShadowInternal[i]!.osmWayId
+      ) {
+        changedVsV2 += 1;
+      }
+    }
+    p1ShadowSummary = {
+      directionAwareEmissionP1: {
+        algorithmId: S4_RESEARCH_VITERBI_DIRECTION_AWARE_EMISSION_P1,
+        labelCounts: summarize(p1Labels),
+        bucketsChangedVsForwardViterbi: changedVsV2,
+        authoritativeForProduct: false,
+      },
+    };
+  }
+
   return {
     algorithmIds: {
       baseline: S4_RESEARCH_BASELINE_ALGORITHM_ID,
       viterbi: S4_RESEARCH_VITERBI_ALGORITHM_ID,
+      ...(p1ShadowInternal
+        ? { directionAwareEmissionP1Shadow: S4_RESEARCH_VITERBI_DIRECTION_AWARE_EMISSION_P1 }
+        : {}),
     },
     windows,
     summary: {
@@ -140,6 +186,7 @@ export function runRoadMatchingPipeline(input: RoadMatchingPipelineInput): RoadM
       bucketsChanged: changed,
       graphTransitionConflicts: allConflicts.length,
       independentAccuracy: 'NOT_ASSESSABLE',
+      ...(p1ShadowSummary ? { shadowDecoders: p1ShadowSummary } : {}),
     },
   };
 }

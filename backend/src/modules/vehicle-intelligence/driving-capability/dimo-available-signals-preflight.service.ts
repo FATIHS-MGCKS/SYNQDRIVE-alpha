@@ -18,6 +18,11 @@ import {
   type DimoDataSummaryPayload,
 } from '../../dimo/queries/data-summary.query';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  parseDimoAvailableSignalsCatalogResponse,
+  type DimoAvailableSignalsGraphQLResult,
+} from './dimo-available-signals-catalog-parse';
+import { VsiP3aPerLinkCatalogWriterService } from '../vehicle-signal-intelligence/vsi-p3a-per-link-catalog-writer.service';
 import { VehicleDrivingCapabilityRepository } from './vehicle-driving-capability.repository';
 import {
   DRIVING_CAPABILITY_PROVIDER,
@@ -49,6 +54,7 @@ export class DimoAvailableSignalsPreflightService {
     private readonly repository: VehicleDrivingCapabilityRepository,
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
+    private readonly p3aPerLinkCatalogWriter: VsiP3aPerLinkCatalogWriterService,
   ) {}
 
   /**
@@ -152,6 +158,7 @@ export class DimoAvailableSignalsPreflightService {
     let availableSignals: string[] = [];
     let dataSummary: DimoDataSummaryPayload | null = null;
     let providerError: Record<string, unknown> | null = null;
+    let signalsGraphQLResult: DimoAvailableSignalsGraphQLResult = null;
 
     try {
       const jwt = await this.dimoAuth.getVehicleJwt(tokenId);
@@ -172,6 +179,7 @@ export class DimoAvailableSignalsPreflightService {
             providerContext,
           ),
         ]);
+        signalsGraphQLResult = signalsResult;
         availableSignals = Array.isArray(signalsResult?.data?.availableSignals)
           ? (signalsResult.data.availableSignals as string[])
           : [];
@@ -230,6 +238,41 @@ export class DimoAvailableSignalsPreflightService {
       };
       await this.repository.upsertProbe(input);
       written += 1;
+    }
+
+    const catalogParse = parseDimoAvailableSignalsCatalogResponse({
+      signalsResult: signalsGraphQLResult,
+      providerError,
+    });
+
+    try {
+      const p3aResult = await this.p3aPerLinkCatalogWriter.persistFromAvailableSignalsPreflight({
+        organizationId,
+        vehicleId,
+        dimoTokenId: tokenId,
+        availableSignals: catalogParse.availableSignals,
+        fuelType: vehicle.fuelType,
+        checkedAt,
+        catalogSnapshotCompleteness: catalogParse.catalogSnapshotCompleteness,
+        preflightMetadata: {
+          preflightVersion: DIMO_CAPABILITY_PREFLIGHT_VERSION,
+          availableSignalCount: catalogParse.availableSignals.length,
+          refreshTrigger,
+          source: 'DIMO_AVAILABLE_SIGNALS',
+          catalogParseReason: catalogParse.catalogParseReason,
+          catalogSnapshotCompleteness: catalogParse.catalogSnapshotCompleteness,
+        },
+      });
+      if (p3aResult.skippedReason && p3aResult.skippedReason !== 'gate_off') {
+        this.logger.debug(
+          `P3A catalog persist skipped org=${organizationId} vehicle=${vehicleId} reason=${p3aResult.skippedReason}`,
+        );
+      }
+    } catch (p3aErr) {
+      const message = p3aErr instanceof Error ? p3aErr.message : String(p3aErr);
+      this.logger.error(
+        `P3A catalog persist failed org=${organizationId} vehicle=${vehicleId}: ${message}`,
+      );
     }
 
     this.logger.log(

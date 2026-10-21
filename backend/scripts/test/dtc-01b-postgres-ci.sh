@@ -10,7 +10,7 @@ PG_CONTAINER="${CI_PG_CONTAINER}"
 PG_USER="${CI_PG_USER:-synqdrive}"
 PG_PASSWORD="${CI_PG_PASSWORD:-synqdrive}"
 PG_PORT="${CI_PG_PORT:-5432}"
-BASE_DB="${CI_PG_BASE_DB:-synqdrive}"
+BASE_DB="${CI_PG_BASE_DB:-synqdrive_ci_ephemeral}"
 DISPOSABLE_DB="${DTC01B_DISPOSABLE_DB:-dtc01b_test_ci}"
 
 fail_closed_database_url() {

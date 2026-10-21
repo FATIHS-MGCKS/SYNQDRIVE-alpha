@@ -1,0 +1,21 @@
+{
+  "algorithmCommitSha": "9f0693bef572a065e45f5dad91ef236ba4f2ccd9",
+  "pr2082MergeSha": "784c4b0cf3ae1e7e4534a458082ccef7ef539035",
+  "pr2084ResearchHeadSha": "9f0693bef572a065e45f5dad91ef236ba4f2ccd9",
+  "variants": {
+    "A": "S4_RESEARCH_VITERBI_FORWARD_V2",
+    "B": "S4_RESEARCH_VITERBI_BACKTRACK_R1",
+    "C": "S4_RESEARCH_VITERBI_FORWARD_V2+S4_RESEARCH_STRICT_NODE_ID_TOPOLOGY_R1",
+    "D": "S4_RESEARCH_VITERBI_BACKTRACK_R1+S4_RESEARCH_STRICT_NODE_ID_TOPOLOGY_R1",
+    "E": "S4_RESEARCH_ROUTE_AWARE_VITERBI_R4_1"
+  },
+  "geometry": "S4_RESEARCH_LOCAL_EQUIRECTANGULAR_V2",
+  "config": {
+    "uncertaintyRadiusM": 25,
+    "signalSearchRadiusM": 35,
+    "bearingCompatDeg": 45,
+    "competitorGapM": 5,
+    "viterbiTopK": 4,
+    "junctionAttachMaxM": 45
+  }
+}

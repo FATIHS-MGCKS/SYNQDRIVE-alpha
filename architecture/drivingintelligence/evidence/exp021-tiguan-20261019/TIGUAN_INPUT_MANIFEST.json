@@ -1,0 +1,28 @@
+{
+  "compactPackageDir": "/opt/cursor/artifacts/exp021-tiguan-validation/compact",
+  "compactSha256Verified": true,
+  "evidenceGzipPath": "/opt/cursor/artifacts/exp021-tiguan-validation/raw/tiguan_evidence_payload.gz",
+  "evidenceGzipSha256": "a7818852d5b84eaa373f41f7e63335082a85bfd953e1c82071fd6cf4f827d43f",
+  "positionGridPath": "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/fixtures/TIGUAN_POSITION_GRID.json",
+  "positionGridSha256": "3a253b975f35ae02c3caa9a0bb894545447d3c6cdfccbe2a42ca23f6f7a95c09",
+  "positionPayloadSha256": "f0b3de33821bc71b36e55df7ffb67eb84aa52a2db9ecb6cf4245338a19c00b1d",
+  "osmSnapshotPath": "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/TIGUAN_OSM_FROZEN_SNAPSHOT.json",
+  "osmSnapshotSha256": "c141ec2f4713e9b4def75a8c1b709d1be53b35b14ade71b0ca3749b926c24959",
+  "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:b14c6bba122a44d36faa245e7950341cc124ec4e5a2536a698c720393338088a",
+  "tripId": "632dc9c5-a8d9-45ce-a269-abe89d22d677",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "dimoTokenId": 192922,
+  "algorithmCommitSha": "9f0693bef572a065e45f5dad91ef236ba4f2ccd9",
+  "geometryProjection": "S4_RESEARCH_LOCAL_EQUIRECTANGULAR_V2",
+  "gpsInputIdenticalAtoE": true,
+  "osmInputIdenticalAtoE": true,
+  "bucketCount": 1480,
+  "replayOutputs": [
+    "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/replay/variant_A_raw.json",
+    "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/replay/variant_B_raw.json",
+    "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/replay/variant_C_raw.json",
+    "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/replay/variant_D_raw.json",
+    "/workspace/architecture/drivingintelligence/evidence/exp021-tiguan-20261019/replay/variant_E_raw.json"
+  ]
+}

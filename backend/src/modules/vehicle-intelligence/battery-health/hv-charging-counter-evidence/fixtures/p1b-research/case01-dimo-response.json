@@ -1,0 +1,50 @@
+{
+  "caseId": "case01",
+  "sessionId": "10000000-0000-4000-8000-000000000001",
+  "sessionWindow": {
+    "from": "2030-06-01T00:00:00.000Z",
+    "to": "2030-06-01T00:26:04.458Z"
+  },
+  "queryWindow": {
+    "from": "2030-05-31T23:55:00.000Z",
+    "to": "2030-06-01T00:31:04.458Z"
+  },
+  "rows": [
+    {
+      "timestamp": "2030-05-31T23:58:00.000Z",
+      "addedKwhLast": 15.75999964773655,
+      "addedKwhMin": 15.75999964773655,
+      "addedKwhMax": 15.75999964773655
+    },
+    {
+      "timestamp": "2030-06-01T00:00:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-01T00:01:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-01T00:21:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-01T00:24:00.000Z",
+      "addedKwhLast": 15.75999964773655,
+      "addedKwhMin": 15.75999964773655,
+      "addedKwhMax": 15.75999964773655
+    },
+    {
+      "timestamp": "2030-06-01T00:26:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    }
+  ]
+}

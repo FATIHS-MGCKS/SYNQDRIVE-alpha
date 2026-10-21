@@ -29,4 +29,12 @@ describe('PhysicalDeviceInventoryController security', () => {
     ) as string;
     expect(intakeStepUp).toBe(STEP_UP_ACTION.MASTER_INTEGRATIONS);
   });
+
+  it('requires MASTER_INTEGRATIONS step-up for verify identity', () => {
+    const verifyStepUp = Reflect.getMetadata(
+      MASTER_ADMIN_MFA_ACTION_KEY,
+      PhysicalDeviceInventoryController.prototype.verifyIdentity,
+    ) as string;
+    expect(verifyStepUp).toBe(STEP_UP_ACTION.MASTER_INTEGRATIONS);
+  });
 });

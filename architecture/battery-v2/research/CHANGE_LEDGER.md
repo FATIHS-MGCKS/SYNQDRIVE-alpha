@@ -6,6 +6,35 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-20 — HV R22 P1D temporal counter quality hardening (v2 contract)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `hv-r22-counter-quality-v1` `numericCoverage` counted returned provider rows only; `maxMonotonicRunLength` ignored multi-minute gaps; production pilot could show 115/115 numeric while nine query-window minute slots were absent |
+| **OBSERVATION** | P1C forensics: session-bound Tesla pilot batch `f2469a6d…` — 115 sparse numeric rows, nine missing minute-grid slots, 10-minute tail gap, unchanged `5.919999867677689` kWh first/last delta; `RELIABLE_FIRST_LAST_IN_SESSION` still valid on v1 boundary rules |
+| **CHANGE** | Add `hv-r22-counter-quality-v2` persisted JSON: `returnedRowNumericCoverage`, `temporalCoverage` (`hv-r22-counter-temporal-v1`), `monotonicityGapAware`, `temporalCompletenessQuality`; capture path writes v2; v1 evaluator unchanged for historical rows |
+| **WHY** | Separate returned-row numeric density from minute-grid temporal completeness without silently redefining v1 fields |
+| **VALIDATION** | `hv-charging-counter-evidence.counter-quality.v2.spec.ts`; sanitized `fixtures/p1d-research/p1d-tesla-pilot-sparse-115.json`; existing P1B replay still targets v1 |
+| **NON_EFFECTS** | No HV-H4 canonical `energy_added_kwh` mutation; no deploy/pilot/provider calls in P1D workstream |
+| **REMAINING_GAPS** | Policy for downgrading `RELIABLE_FIRST_LAST_IN_SESSION` when `temporalCompletenessQuality` is partial — deferred; independent dimension only in P1D |
+| **DECISION_STATUS** | PROPOSED (awaiting owner PR/deploy) |
+
+---
+
+## 2026-10-18 — HV R22 P1 Nest DI boot hotfix (HvChargingCounterEvidenceModule ↔ Dimo cycle)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `HvChargingCounterEvidenceModule` used direct `DimoModule` import while `DimoModule` ↔ `VehicleIntelligenceModule` cycle already exists via `forwardRef` |
+| **OBSERVATION** | Main `f30be79f` Nest production boot check failed: `HvChargingCounterEvidenceModule imports[0] is undefined` |
+| **CHANGE** | `forwardRef(() => DimoModule)` in `hv-charging-counter-evidence.module.ts`; `hv-charging-counter-evidence.nest-di.spec.ts`; CI boot script path registration |
+| **WHY** | Smallest cycle-safe fix aligned with `VehicleOnboardingModule`, `BatteryV2JobsModule`, `MisuseCasesModule` |
+| **VALIDATION** | Nest DI spec; `synqdrive-nest-boot-check-ci.sh` |
+| **NON_EFFECTS** | No HV capture policy, DIMO GraphQL query, S4/DTC/Trip FSM, or feature-flag changes |
+| **EVIDENCE** | [HV_R22_P1_NEST_BOOT_HOTFIX.md](../evidence/HV_R22_P1_NEST_BOOT_HOTFIX.md) |
+
+---
+
 ## 2026-10-17 — G5C-N14 LV operational condition V1 (internal estimator, backend-only)
 
 | Field | Value |
@@ -3985,3 +4014,19 @@ Append-only scientific record. Newest entries first.
 | **REMAINING_GAPS** | Combined interaction with deploy restarts (#1445) |
 | **EVIDENCE** | `BAT-V2-EVID-PR-1383-001`, `BAT-V2-EVID-ARCH-LIVENESS-001`, `BAT-V2-EVID-PROD-61715ECD-001` |
 | **AFFECTED_GRAPH** | `BAT-V2-DEC-1383-001`, `BAT-V2-JOB-LV-SESSION-OPEN-001`, `BAT-V2-LIVE-SESSION-RECON-001`, `BAT-V2-INV-TRIP-LIFECYCLE-ISO-001` |
+
+---
+
+## CL-2026-10-19 — HV R22 P0 Tesla pilot safety (allowlist + capability probe prep)
+
+| Field | Content |
+|-------|---------|
+| **DECISION** | `BAT-V2-DEC-R22-P0-ALLOWLIST-001` |
+| **DECISION_STATUS** | `PROPOSED` (local implementation; not deployed) |
+| **BEFORE** | R22 capture gated only by global `BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED` |
+| **CHANGE** | Fail-closed `BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST`; owner-gated capability probe script + evaluator; blast-radius audit |
+| **WHY** | Limit blast radius to Tesla 186946; separate capability proof from capture activation |
+| **EXPECTED_EFFECT** | Capture ON without allowlist → zero provider calls; invalid allowlist → fail-closed |
+| **VALIDATION** | `hv-charging-counter-evidence.*.spec.ts`; `npm run build`; prisma validate |
+| **NON_EFFECTS** | HV H1–H4 recharge reconcile unchanged; no production flag changes |
+| **EVIDENCE** | `docs/runbooks/hv-r22-tesla-capability-probe.md`, `docs/audits/battery-v2-hv-r22-pilot-p0-blast-radius-2026-10-19.md` |
