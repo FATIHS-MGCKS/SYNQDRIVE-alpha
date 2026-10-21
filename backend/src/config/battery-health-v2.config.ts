@@ -3,6 +3,16 @@ import {
   isVehicleAllowlistedInHvChargingCounterStateV1,
   parseHvChargingCounterVehicleAllowlistV1,
 } from '../modules/vehicle-intelligence/battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.vehicle-allowlist.v1';
+import {
+  evaluateStartProxyPilotScopeV1,
+  resolveStartProxyPilotScopeConfigV1,
+  type StartProxyPilotScopeDecisionV1,
+} from '../modules/vehicle-intelligence/battery-health/lv-start-proxy/start-proxy-pilot-scope.v1';
+import {
+  isStartProxyPilotForwardCaptureActive,
+  resolveStartProxyPilotForwardCaptureConfigV1,
+  type StartProxyPilotForwardCaptureConfigV1,
+} from '../modules/vehicle-intelligence/battery-health/lv-start-proxy/start-proxy-pilot-forward-capture.v1';
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === '') return defaultValue;
@@ -24,6 +34,41 @@ export const BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV = 'BATTERY_V2_LEGACY_CRANK_A
 
 /** Prompt 3 flag — collect start-window points for future START_DIP_PROXY analysis. */
 export const BATTERY_V2_START_PROXY_ENV = 'BATTERY_V2_START_PROXY_ENABLED';
+
+/**
+ * G5C-N16 P4C — when true, ICE_START_PROXY requires a valid vehicle allowlist and forward cutoff.
+ * Default OFF — no pilot scope restrictions (legacy fleet-wide behavior when start proxy is enabled).
+ */
+export const BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED';
+
+/** Comma-separated vehicle UUID allowlist (required when pilot scope enabled; empty → deny all). */
+export const BATTERY_V2_START_PROXY_PILOT_VEHICLE_ALLOWLIST_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_VEHICLE_ALLOWLIST';
+
+/** ISO-8601 UTC instant — trips must start strictly after this time when pilot scope is enabled. */
+export const BATTERY_V2_START_PROXY_PILOT_FORWARD_CUTOFF_AT_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_FORWARD_CUTOFF_AT';
+
+/** G5C-N16 P4H-R7 — opaque pilot epoch (required when pilot scope enabled for provider I/O). */
+export const BATTERY_V2_START_PROXY_PILOT_EPOCH_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_EPOCH';
+
+/** Max total DIMO provider send attempts for the active pilot epoch (required with pilot scope). */
+export const BATTERY_V2_START_PROXY_PILOT_MAX_TOTAL_PROVIDER_REQUESTS_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_MAX_TOTAL_PROVIDER_REQUESTS';
+
+/** Max provider sends per trip during pilot (default 1). */
+export const BATTERY_V2_START_PROXY_PILOT_MAX_REQUESTS_PER_TRIP_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_MAX_REQUESTS_PER_TRIP';
+
+/** Kill-switch for pilot provider budget (counts as deny-all for provider I/O). */
+export const BATTERY_V2_START_PROXY_PILOT_REQUEST_BUDGET_KILL_SWITCH_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_REQUEST_BUDGET_KILL_SWITCH';
+
+/** Raw archive retention for pilot captures (days, default 90). */
+export const BATTERY_V2_START_PROXY_PILOT_RAW_RETENTION_DAYS_ENV =
+  'BATTERY_V2_START_PROXY_PILOT_RAW_RETENTION_DAYS';
 
 /** Prompt 3 flag — legacy HV ΔEnergy/ΔSOC pairwise capacity assessment (default OFF, Prompt 8/78). */
 export const BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV =
@@ -210,6 +255,51 @@ export function isStartWindowCollectionEnabled(): boolean {
 
 /** Alias used by API/UI — `BATTERY_V2_START_PROXY_ENABLED`. */
 export const isBatteryV2StartProxyEnabled = isStartWindowCollectionEnabled;
+
+export function isBatteryV2StartProxyPilotScopeEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED_ENV], false);
+}
+
+export function getBatteryV2StartProxyPilotScopeConfig() {
+  return resolveStartProxyPilotScopeConfigV1({
+    pilotScopeEnabled: isBatteryV2StartProxyPilotScopeEnabled(),
+    allowlistRaw: process.env[BATTERY_V2_START_PROXY_PILOT_VEHICLE_ALLOWLIST_ENV],
+    cutoffRaw: process.env[BATTERY_V2_START_PROXY_PILOT_FORWARD_CUTOFF_AT_ENV],
+  });
+}
+
+export function evaluateBatteryV2StartProxyPilotScope(input: {
+  vehicleId: string;
+  tripStartedAt: Date | null | undefined;
+}): StartProxyPilotScopeDecisionV1 {
+  return evaluateStartProxyPilotScopeV1(getBatteryV2StartProxyPilotScopeConfig(), input);
+}
+
+export function getBatteryV2StartProxyPilotForwardCaptureConfig(): StartProxyPilotForwardCaptureConfigV1 {
+  return resolveStartProxyPilotForwardCaptureConfigV1({
+    pilotScopeEnabled: isBatteryV2StartProxyPilotScopeEnabled(),
+    allowlistRaw: process.env[BATTERY_V2_START_PROXY_PILOT_VEHICLE_ALLOWLIST_ENV],
+    cutoffRaw: process.env[BATTERY_V2_START_PROXY_PILOT_FORWARD_CUTOFF_AT_ENV],
+    pilotEpoch: process.env[BATTERY_V2_START_PROXY_PILOT_EPOCH_ENV],
+    maxTotalProviderRequestsRaw:
+      process.env[BATTERY_V2_START_PROXY_PILOT_MAX_TOTAL_PROVIDER_REQUESTS_ENV],
+    maxRequestsPerTripRaw:
+      process.env[BATTERY_V2_START_PROXY_PILOT_MAX_REQUESTS_PER_TRIP_ENV],
+    rawRetentionDaysRaw: process.env[BATTERY_V2_START_PROXY_PILOT_RAW_RETENTION_DAYS_ENV],
+    killSwitchRaw: process.env[BATTERY_V2_START_PROXY_PILOT_REQUEST_BUDGET_KILL_SWITCH_ENV],
+  });
+}
+
+/** Pilot scope ON + valid epoch/budget config + kill-switch OFF. */
+export function isStartProxyPilotForwardCaptureRuntimeReady(): boolean {
+  return isStartProxyPilotForwardCaptureActive(
+    getBatteryV2StartProxyPilotForwardCaptureConfig(),
+  );
+}
+
+export function isStartProxyPilotForwardCaptureJobRetryDisabled(): boolean {
+  return isStartProxyPilotForwardCaptureRuntimeReady();
+}
 
 export function isLegacyHvPairwiseCapacityAssessmentEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV], false);
