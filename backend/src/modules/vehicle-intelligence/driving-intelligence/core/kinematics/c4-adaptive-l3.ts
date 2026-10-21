@@ -7,21 +7,10 @@ import {
   presentBucketMap,
   type MotionCorePositionBucket,
 } from './motion-core-grid';
-import {
-  ROBUST_PATH_SLOPE_FABLE_OPTIONS,
-  robustPathSlopeC1,
-  type RobustPathSlopeCandidateOptions,
-} from './robust-path-slope';
+import { robustPathSlopeC1 } from './robust-path-slope';
 import type { MotionCoreSpeedSample } from './speed-sample.types';
 
 export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_1_DEV';
-export const MOTION_CORE_SPEED_C4_K5_CANDIDATE_VERSION = 'MOTION_CORE_SPEED_C4_V0_2_CAND_DEV[excludeJitterLegPairs]';
-
-/** C4 candidate switches — forwarded to C1. All `false` reproduces Fable C4 exactly. */
-export type C4CandidateOptions = RobustPathSlopeCandidateOptions;
-export const C4_FABLE_OPTIONS: Readonly<C4CandidateOptions> = ROBUST_PATH_SLOPE_FABLE_OPTIONS;
-export const C4_K5_CANDIDATE_OPTIONS: Readonly<C4CandidateOptions> = { excludeJitterLegPairs: true, jitterClusterSpan: false };
-export const C4_K5B_CANDIDATE_OPTIONS: Readonly<C4CandidateOptions> = { excludeJitterLegPairs: true, jitterClusterSpan: true };
 
 function sampleMap(samples: MotionCoreSpeedSample[]): Map<string, MotionCoreSpeedSample> {
   return new Map(samples.map((s) => [s.label, s]));
@@ -32,13 +21,7 @@ function sampleMap(samples: MotionCoreSpeedSample[]): Map<string, MotionCoreSpee
  * carries the timing-jitter spike signature; otherwise C1 robust path slope fallback.
  * Unchanged L3-direct paths reuse the replayed production L3 numeric value (no duplicate haversine).
  */
-export function computeC4AdaptiveL3(
-  buckets: MotionCorePositionBucket[],
-  candidate: Readonly<C4CandidateOptions> = C4_FABLE_OPTIONS,
-): MotionCoreSpeedSample[] {
-  const estimator = candidate.excludeJitterLegPairs
-    ? MOTION_CORE_SPEED_C4_K5_CANDIDATE_VERSION
-    : MOTION_CORE_SPEED_C4_VERSION;
+export function computeC4AdaptiveL3(buckets: MotionCorePositionBucket[]): MotionCoreSpeedSample[] {
   const ordered = orderMotionCoreGrid(buckets);
   const outliers = detectPositionOutliers(ordered);
   const rejected = new Set([...outliers.keys()]);
@@ -50,7 +33,7 @@ export function computeC4AdaptiveL3(
   const l3ByLabel = new Map(
     replayFrozenL3OnGrid(ordered).map((r) => [r.bucketLabelUtc, r]),
   );
-  const c1 = sampleMap(robustPathSlopeC1(ordered, { rejectedLabels: rejected, candidate }));
+  const c1 = sampleMap(robustPathSlopeC1(ordered, { rejectedLabels: rejected }));
   const out: MotionCoreSpeedSample[] = [];
 
   for (const b of ordered) {
@@ -64,7 +47,7 @@ export function computeC4AdaptiveL3(
         supportLabels: [lab],
         supportSpanS: null,
         flags: ['POSITION_OUTLIER_CHORD_DEVIATION', JSON.stringify(detail)],
-        estimator,
+        estimator: MOTION_CORE_SPEED_C4_VERSION,
       });
       continue;
     }
@@ -101,7 +84,7 @@ export function computeC4AdaptiveL3(
         supportLabels: [lab],
         supportSpanS: null,
         flags: ['IDENTICAL_COORDINATES_STALE_FIX_SUSPECT'],
-        estimator,
+        estimator: MOTION_CORE_SPEED_C4_VERSION,
       });
       continue;
     }
@@ -115,7 +98,7 @@ export function computeC4AdaptiveL3(
         out.push({
           ...f,
           flags,
-          estimator,
+          estimator: MOTION_CORE_SPEED_C4_VERSION,
         });
         continue;
       }
@@ -126,7 +109,7 @@ export function computeC4AdaptiveL3(
         supportLabels: [prev!.bucketLabelUtc, lab, next!.bucketLabelUtc],
         supportSpanS: 2,
         flags: ['L3_DIRECT'],
-        estimator,
+        estimator: MOTION_CORE_SPEED_C4_VERSION,
       });
       continue;
     }
@@ -149,7 +132,7 @@ export function computeC4AdaptiveL3(
       supportLabels: f.supportLabels,
       supportSpanS: f.supportSpanS,
       flags,
-      estimator,
+      estimator: MOTION_CORE_SPEED_C4_VERSION,
     });
   }
   return out;
