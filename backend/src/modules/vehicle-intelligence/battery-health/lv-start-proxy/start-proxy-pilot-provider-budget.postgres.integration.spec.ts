@@ -119,4 +119,87 @@ describePostgres('start-proxy pilot provider budget (postgres)', () => {
     });
     expect(secondTrip).toMatchObject({ status: 'exhausted', reason: 'global_budget' });
   });
+
+  it('rolls back trip row when global cap race is lost (no orphan reservation)', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+    const epoch = `epoch-race-${suffix}`;
+    const fp = 'b'.repeat(64);
+    const reservedAt = new Date();
+
+    const prefill = await tryReserveStartProxyPilotProviderBudgetV1(service, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      pilotEpoch: epoch,
+      tripId: randomUUID(),
+      queryFingerprint: fp,
+      maxTotalAttempts: 1,
+      maxRequestsPerTrip: 1,
+      killSwitchActive: false,
+      reservedAt,
+    });
+    expect(prefill.status).toBe('reserved');
+
+    const loserTrip = randomUUID();
+    const loser = await tryReserveStartProxyPilotProviderBudgetV1(service, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      pilotEpoch: epoch,
+      tripId: loserTrip,
+      queryFingerprint: fp,
+      maxTotalAttempts: 1,
+      maxRequestsPerTrip: 1,
+      killSwitchActive: false,
+      reservedAt,
+    });
+    expect(loser).toMatchObject({ status: 'exhausted', reason: 'global_budget' });
+
+    const orphanRows = await prisma.$queryRaw<Array<{ trip_id: string }>>`
+      SELECT trip_id FROM battery_start_proxy_pilot_provider_requests
+      WHERE pilot_epoch = ${epoch} AND trip_id = ${loserTrip}
+    `;
+    expect(orphanRows).toHaveLength(0);
+
+    const globalRows = await prisma.$queryRaw<Array<{ total_attempts: number }>>`
+      SELECT total_attempts FROM battery_start_proxy_pilot_global_budget
+      WHERE pilot_epoch = ${epoch}
+    `;
+    expect(globalRows[0]?.total_attempts).toBe(1);
+  });
+
+  it('allows only one winner under concurrent reserve for maxTotalAttempts=1', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await createTenantVehicle(prisma, suffix);
+    const epoch = `epoch-conc-${suffix}`;
+    const fp = 'c'.repeat(64);
+    const reservedAt = new Date();
+
+    const outcomes = await Promise.all(
+      [randomUUID(), randomUUID()].map((tripId) =>
+        tryReserveStartProxyPilotProviderBudgetV1(service, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          pilotEpoch: epoch,
+          tripId,
+          queryFingerprint: fp,
+          maxTotalAttempts: 1,
+          maxRequestsPerTrip: 1,
+          killSwitchActive: false,
+          reservedAt,
+        }),
+      ),
+    );
+
+    const reserved = outcomes.filter((o) => o.status === 'reserved');
+    const exhausted = outcomes.filter((o) => o.status === 'exhausted');
+    expect(reserved).toHaveLength(1);
+    expect(exhausted).toHaveLength(1);
+    expect(exhausted[0]).toMatchObject({ reason: 'global_budget' });
+
+    const requestCount = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count FROM battery_start_proxy_pilot_provider_requests
+      WHERE pilot_epoch = ${epoch}
+    `;
+    expect(Number(requestCount[0]?.count ?? 0)).toBe(1);
+  });
 });

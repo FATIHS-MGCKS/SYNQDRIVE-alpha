@@ -19,6 +19,17 @@ export type StartProxyPilotBudgetReserveOutcomeV1 =
 
 type BudgetRow = { lifecycle_state: string };
 
+/** Thrown inside reserve transaction to roll back trip insert when global cap race is lost. */
+export class StartProxyPilotProviderBudgetReservationFailedV1 extends Error {
+  readonly reason: 'global_budget' | 'kill_switch';
+
+  constructor(reason: 'global_budget' | 'kill_switch') {
+    super(`start_proxy_pilot_budget_reservation_failed:${reason}`);
+    this.name = 'StartProxyPilotProviderBudgetReservationFailedV1';
+    this.reason = reason;
+  }
+}
+
 export async function tryReserveStartProxyPilotProviderBudgetV1(
   prisma: PrismaService,
   input: {
@@ -40,7 +51,8 @@ export async function tryReserveStartProxyPilotProviderBudgetV1(
     return { status: 'exhausted', reason: 'misconfigured' };
   }
 
-  return prisma.$transaction(async (tx) => {
+  try {
+    return await prisma.$transaction(async (tx) => {
     await tx.$executeRaw(Prisma.sql`
       INSERT INTO battery_start_proxy_pilot_global_budget (
         pilot_epoch, total_attempts, max_total_attempts, kill_switch_active, created_at, updated_at
@@ -68,9 +80,6 @@ export async function tryReserveStartProxyPilotProviderBudgetV1(
     if (!global || global.kill_switch_active) {
       return { status: 'exhausted', reason: 'kill_switch' };
     }
-    if (global.total_attempts >= global.max_total_attempts) {
-      return { status: 'exhausted', reason: 'global_budget' };
-    }
 
     const existingTrip = await tx.$queryRaw<BudgetRow[]>(Prisma.sql`
       SELECT lifecycle_state
@@ -81,12 +90,16 @@ export async function tryReserveStartProxyPilotProviderBudgetV1(
         AND trip_id = ${input.tripId}
       LIMIT 1
     `);
-    if (existingTrip.length > 0 && existingTrip.length >= input.maxRequestsPerTrip) {
+    if (existingTrip.length > 0) {
       return {
         status: 'exhausted',
         reason: 'per_trip_duplicate',
         lifecycleState: existingTrip[0]?.lifecycle_state as StartProxyPilotProviderLifecycleStateV1,
       };
+    }
+
+    if (global.total_attempts >= global.max_total_attempts) {
+      return { status: 'exhausted', reason: 'global_budget' };
     }
 
     const inserted = await tx.$queryRaw<BudgetRow[]>(Prisma.sql`
@@ -131,14 +144,20 @@ export async function tryReserveStartProxyPilotProviderBudgetV1(
     `);
 
     if (incremented !== 1) {
-      return { status: 'exhausted', reason: 'global_budget' };
+      throw new StartProxyPilotProviderBudgetReservationFailedV1('global_budget');
     }
 
     return {
       status: 'reserved',
       lifecycleState: START_PROXY_PILOT_PROVIDER_LIFECYCLE.REQUEST_STARTED,
     };
-  });
+    });
+  } catch (err: unknown) {
+    if (err instanceof StartProxyPilotProviderBudgetReservationFailedV1) {
+      return { status: 'exhausted', reason: err.reason };
+    }
+    throw err;
+  }
 }
 
 export async function finalizeStartProxyPilotProviderBudgetV1(
