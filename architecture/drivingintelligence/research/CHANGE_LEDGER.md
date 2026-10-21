@@ -2062,3 +2062,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | SOURCE | PR #2051 audit reference `6311d8c375dc5652bd64212ca4ed208175dc8148` — logic re-extracted; fixture-bound IDs/time/OSM pins remain in evidence/tests only |
 | VALIDATION | Tesla replay parity: baseline `{ASSOCIATED:264, AMBIGUOUS:512, UNKNOWN:360}`, Viterbi `{ASSOCIATED:300, AMBIGUOUS:357, UNKNOWN:479}`; F4-B promotions=36, impossible transitions ≥5, STILL_AMBIGUOUS preserved |
 | NON_EFFECTS | No Nest/scheduler/BullMQ/Prisma/DIMO/OSM network; no S4A–S4F/L3/S1/QC/score/UI changes; no deploy; `ROAD_ID_GROUND_TRUTH=NOT_ASSESSABLE` unchanged |
+
+### EXP-021 motion core — TypeScript step 1 (baseline L3 replay + leg consistency) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `core/kinematics/{motion-core-grid,leg-consistency,frozen-l3-replay}.ts` + `motion-core-step1.spec.ts`; offline harness `backend/scripts/test/motion-core-ts-step1.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-step1/` |
+| WHY | Port EXP021 Python prototype step 0+1: reproducible frozen L3 on Tesla grids and timing-jitter leg signature diagnostics before C4 adaptive speed (step 2) |
+| VALIDATION | Jest `motion-core-step1` 11/11; Tesla trips `14c41c06…` / `7a9d6a28…` shadow mismatch 0 @ 0.05 km/h; jitter legs 5+3 match Python `jitter_suspect_legs` |
+| NON_EFFECTS | `evaluateL3AtCenter` and `compute-trip-intervals` runtime unchanged; no C4/FSM/events in production path; FSM/event synthetic scenarios S2/S3/S5/S10 not ported yet |
