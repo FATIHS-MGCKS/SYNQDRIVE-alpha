@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
 import type { UseCommunicationConversationActionsResult } from '../../../lib/communication/hooks/useCommunicationConversationActions';
 import type { UseCommunicationReplyResult } from '../../../lib/communication/hooks/useCommunicationReply';

@@ -1,4 +1,4 @@
-import type { Locale } from '../../i18n/LanguageContext';
+import type { Locale } from '../../../i18n/LanguageContext';
 import type { NotificationLifecycleStatus, NotificationQueueModel } from './notificationQueueModel';
 
 export interface NotificationTimeContext {

@@ -1,0 +1,32 @@
+{
+  "evidenceId": "EXP-021-TGR-TRANSITION-FRAGMENTATION",
+  "gapId": "GAP-60S-SLOT1-TRANSITION-HF",
+  "refinedTaxonomyClass": "TRANSITION_WINDOW_PERSISTENT_EMPTY",
+  "canonicalWindow": {
+    "from": "2026-09-15T11:49:04.650Z",
+    "to": "2026-09-15T11:50:08.945Z"
+  },
+  "priorAuthority": {
+    "fullExactReplayBucketCount": 0,
+    "narrowOneSecondProbeBucketCount": 0,
+    "sourcePackage": "exp021-run1-gap-replay-2026-09-16"
+  },
+  "fragmentationExperiment": {
+    "30s": { "unionBucketIdentityCount": 0, "queryCount": 3 },
+    "15s": { "unionBucketIdentityCount": 0, "queryCount": 5 },
+    "10s": { "unionBucketIdentityCount": 0, "queryCount": 7 },
+    "5s": { "unionBucketIdentityCount": 0, "queryCount": 13 }
+  },
+  "TRANSITION_GAP_MICRO_FRAGMENTATION_RECOVERY": "NO",
+  "THIS_TRANSITION_WINDOW_RECOVERABILITY_NOT_DEMONSTRATED": "YES",
+  "ALL_TRANSITION_WINDOWS_ARE_UNRECOVERABLE": "NOT_INFERRED",
+  "transitionClassifierDesign": {
+    "TRANSITION_WINDOW": {
+      "GENERIC_TARGETED_RETRY_ALLOWED": "NO_NOT_YET_DEMONSTRATED",
+      "MICRO_FRAGMENTATION_RETRY_ALLOWED": "NO",
+      "OPTIONAL_ONE_SHOT_BOUNDARY_DIAGNOSTIC": "SHADOW_ONLY",
+      "PRODUCTION_RETRY_POLICY": "UNDETERMINED_PENDING_MORE_LIVE_EVIDENCE"
+    }
+  },
+  "sourceArtifact": "source/tgr-micro-window-results.json"
+}

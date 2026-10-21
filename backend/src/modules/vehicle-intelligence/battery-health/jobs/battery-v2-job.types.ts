@@ -6,6 +6,7 @@
 
 export const BATTERY_V2_JOB_TYPES = [
   'BATTERY_OBSERVATION_CLASSIFY',
+  'BATTERY_LV_REST_SESSION_OPEN',
   'BATTERY_REST_TARGET_EVALUATE',
   'BATTERY_START_PROXY_EXTRACT',
   'BATTERY_ASSESSMENT_RECOMPUTE',
@@ -50,9 +51,20 @@ export interface BatteryObservationClassifyPayload extends BatteryV2JobPayloadBa
   snapshotContext?: BatteryObservationSnapshotContext | null;
 }
 
+/**
+ * Opens the canonical LV_REST_WINDOW session for an authoritative finalized
+ * trip (Trip Detection → RESTING). Deliberately observation-independent:
+ * the payload carries only canonical trip identity + the trip end anchor.
+ */
+export interface BatteryLvRestSessionOpenPayload extends BatteryV2JobPayloadBase {
+  tripId: string;
+  /** Authoritative trip end anchor (ISO) — `vehicle_trips.end_time`. */
+  tripEndedAt: string;
+}
+
 export interface BatteryRestTargetEvaluatePayload extends BatteryV2JobPayloadBase {
-  /** Stable LV rest window idempotency key (`lv-rest:{vehicleId}:{anchorAtMs}`). */
-  restWindowId?: string | null;
+  /** Stable LV rest window idempotency key (`lv-rest:{vehicleId}:{anchorAtMs}`). Required at enqueue + consume. */
+  restWindowId: string;
   /** Optional rest-window anchor (ISO) — classification input, not PII. */
   restWindowStartedAt?: string | null;
   restTargetType?: 'REST_60M' | 'REST_6H' | 'REST_TARGET' | null;
@@ -94,6 +106,7 @@ export interface HvCapacityShadowRecomputePayload extends BatteryV2JobPayloadBas
 
 export type BatteryV2JobPayloadByType = {
   BATTERY_OBSERVATION_CLASSIFY: BatteryObservationClassifyPayload;
+  BATTERY_LV_REST_SESSION_OPEN: BatteryLvRestSessionOpenPayload;
   BATTERY_REST_TARGET_EVALUATE: BatteryRestTargetEvaluatePayload;
   BATTERY_START_PROXY_EXTRACT: BatteryStartProxyExtractPayload;
   BATTERY_ASSESSMENT_RECOMPUTE: BatteryAssessmentRecomputePayload;

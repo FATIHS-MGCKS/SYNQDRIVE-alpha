@@ -3,7 +3,7 @@
  * threshold derivation, quality inference, privacy decision, currency inference, or
  * period recomputation. Status/label/tone mapping preserves canonical meaning.
  */
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type {
   EvaluationsMetricStatus,
   EvaluationsMetricResponse,

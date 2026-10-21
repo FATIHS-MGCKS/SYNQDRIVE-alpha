@@ -13,6 +13,12 @@ import {
 } from './dashboardDrilldownRowDisplay';
 import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 import type { DashboardSlice, DashboardSliceId } from './runtime';
+import {
+  canonicalAvailability,
+  canonicalConnectivityRuntime,
+  canonicalOperationalVehicle,
+} from './runtime/dashboard-canonical-test-fixtures';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 const NOW = new Date('2026-06-24T10:00:00.000Z');
 const RUNTIME_SLICE_ORDER: DashboardSliceId[] = [
@@ -37,39 +43,27 @@ function minutesFromNowIso(minutes: number): string {
 }
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
-  return {
-    id: overrides.id ?? 'v1',
-    license: overrides.license ?? 'KS-FS 123',
-    make: overrides.make ?? 'VW',
-    model: overrides.model ?? 'Golf',
-    year: overrides.year ?? 2024,
-    station: overrides.station ?? 'Zentrale',
-    stationId: overrides.stationId ?? 'st-1',
-    fuelType: overrides.fuelType ?? 'Petrol',
-    status: overrides.status ?? 'Available',
-    cleaningStatus: overrides.cleaningStatus ?? 'Clean',
-    healthStatus: overrides.healthStatus ?? 'Good Health',
-    online: overrides.online ?? true,
-    lastSignal: overrides.lastSignal ?? hoursAgoIso(1),
-    badge: overrides.badge ?? 0,
-    odometer: overrides.odometer ?? 10000,
-    fuel: overrides.fuel ?? 72,
-    battery: overrides.battery ?? 100,
-    speed: overrides.speed ?? 0,
-    coolant: overrides.coolant ?? 90,
-    brakes: overrides.brakes ?? 90,
-    tires: overrides.tires ?? 90,
-    engineOil: overrides.engineOil ?? 90,
-    isElectric: overrides.isElectric ?? false,
-    hvBatteryCapacityKwh: overrides.hvBatteryCapacityKwh ?? null,
+  const status =
+    overrides.status === 'Available' || overrides.status === 'available'
+      ? VEHICLE_OPERATIONAL_STATUS.AVAILABLE
+      : overrides.status === 'Active Rented' || overrides.status === 'active_rented'
+        ? VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED
+        : overrides.status === 'Maintenance' || overrides.status === 'maintenance'
+          ? VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
+          : ((overrides.status as (typeof VEHICLE_OPERATIONAL_STATUS)[keyof typeof VEHICLE_OPERATIONAL_STATUS]) ??
+            VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+
+  return canonicalOperationalVehicle(status, {
     isFresh: overrides.isFresh ?? false,
     onlineStatus: overrides.onlineStatus ?? 'STANDBY',
+    lastSignal: overrides.lastSignal ?? hoursAgoIso(1),
     leasingRate: overrides.leasingRate ?? '',
     insuranceCost: overrides.insuranceCost ?? '',
     taxCost: overrides.taxCost ?? '',
     totalMonthlyCost: overrides.totalMonthlyCost ?? '',
     ...overrides,
-  };
+    status,
+  });
 }
 
 function insight(overrides: Partial<DashboardInsight> = {}): DashboardInsight {
@@ -483,6 +477,13 @@ describe('dashboard E2E regression audit', () => {
             onlineStatus: 'OFFLINE',
             isFresh: false,
             cleaningStatus: 'Needs Cleaning',
+            operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+            connectivityRuntime: canonicalConnectivityRuntime({
+              vehicleId: 'offline',
+              overallState: 'OFFLINE',
+              telemetryState: 'offline',
+              attentionState: 'WATCH',
+            }),
           }),
         ],
         now: NOW,
@@ -549,7 +550,18 @@ describe('dashboard E2E regression audit', () => {
         locale: 'en',
         fleetVehicles: [
           vehicle({ id: 'maint', status: 'Maintenance' }),
-          vehicle({ id: 'hard-offline', lastSignal: hoursAgoIso(50), onlineStatus: 'OFFLINE', isFresh: false }),
+          vehicle({
+            id: 'hard-offline',
+            lastSignal: hoursAgoIso(50),
+            onlineStatus: 'OFFLINE',
+            isFresh: false,
+            operationalAvailability: canonicalAvailability('UNAVAILABLE'),
+            connectivityRuntime: canonicalConnectivityRuntime({
+              vehicleId: 'hard-offline',
+              overallState: 'OFFLINE',
+              telemetryState: 'offline',
+            }),
+          }),
           vehicle({ id: 'battery', license: 'BAT' }),
         ],
         insights: [

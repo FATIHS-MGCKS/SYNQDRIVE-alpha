@@ -62,7 +62,10 @@ function runtimeHasPredictiveCoverage(
   const state = statesByVehicle.get(vehicleId);
   if (!state) return false;
   if (insight.type === 'SOFT_OFFLINE_TELEMETRY_CHECK') {
-    return state.telemetryState === 'soft_offline';
+    return (
+      state.criticalReasons.some((reason) => reason.source?.startsWith('canonical:connectivity:')) ||
+      state.warningReasons.some((reason) => reason.source?.startsWith('canonical:connectivity:'))
+    );
   }
   if (String(insight.type) === 'SERVICE_WINDOW') {
     return state.criticalReasons.some((reason) => reason.source?.includes('SERVICE_WINDOW'))

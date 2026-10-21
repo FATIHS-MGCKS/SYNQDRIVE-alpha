@@ -10,6 +10,9 @@
  * - State, reason codes, recommended actions, and technical evidence are separate.
  */
 import type { TelemetryFreshness } from '../../vehicle-state-interpreter';
+// Type-only import: erased at runtime, so the diagnostic module can keep
+// importing ProviderLinkState from here without a runtime import cycle.
+import type { ConnectivityDiagnostic } from './connectivity-diagnostic-state';
 
 export type { TelemetryFreshness };
 
@@ -114,6 +117,8 @@ export const ConnectivityReasonCode = {
   WEBHOOK_PROCESSING_FAILED: 'WEBHOOK_PROCESSING_FAILED',
   STATE_CONFLICT: 'STATE_CONFLICT',
   MANUAL_REVIEW_REQUIRED: 'MANUAL_REVIEW_REQUIRED',
+  /** Telemetry silent >48h without explicit unplug evidence — manual device check required. */
+  DEVICE_CHECK_REQUIRED: 'DEVICE_CHECK_REQUIRED',
 } as const;
 export type ConnectivityReasonCode =
   (typeof ConnectivityReasonCode)[keyof typeof ConnectivityReasonCode];
@@ -196,6 +201,14 @@ export interface VehicleConnectivityRuntimeState {
 
   /** Structured facts supporting the state — never user-facing copy. */
   evidence: VehicleConnectivityTechnicalEvidence;
+
+  /**
+   * Master-Admin-only diagnostic dimension separating provider reachability from
+   * vehicle observation freshness. Deliberately excluded from the tenant-facing
+   * {@link VehicleConnectivityRuntimeStateDto} — see
+   * `serializeVehicleConnectivityRuntimeState`.
+   */
+  diagnostic: ConnectivityDiagnostic;
 
   calculatedAt: string;
   stateVersion: number;

@@ -1,5 +1,5 @@
 import { Phone } from 'lucide-react';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { CommunicationApiDirection, CommunicationApiEventType } from '../../../lib/communication/types';
 import {
   callEventLabelKey,

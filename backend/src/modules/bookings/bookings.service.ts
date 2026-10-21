@@ -33,6 +33,7 @@ import {
 } from '@modules/pricing/pricing-quote.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
+import { assertVehicleRegistryActiveForOperationalAdmission } from '@modules/vehicles/registry/vehicle-registry-admission';
 import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 import {
   assertValidBookingWindow,
@@ -248,6 +249,14 @@ export class BookingsService {
       status: requestedStatus,
       notes,
     });
+    if (!isWizardDraft) {
+      await assertVehicleRegistryActiveForOperationalAdmission(
+        this.prisma,
+        orgId,
+        vehicleId,
+      );
+    }
+
     const enforcementMode = resolveEligibilityPolicyMode({
       targetStatus: requestedStatus,
       isWizardDraft,
@@ -1817,6 +1826,20 @@ export class BookingsService {
     const extrasChanged = anyData.extrasJson !== undefined;
     const nextNotes =
       anyData.notes !== undefined ? (anyData.notes as string | null) : existing.notes;
+
+    const nextIsCommittedBooking =
+      !isWizardDraftBooking({ status: nextStatus, notes: nextNotes }) &&
+      !terminalStatuses.includes(nextStatus);
+    if (
+      nextIsCommittedBooking &&
+      (vehicleOrDatesChanged || statusChanged || nextVehicleId !== existing.vehicleId)
+    ) {
+      await assertVehicleRegistryActiveForOperationalAdmission(
+        this.prisma,
+        orgId,
+        nextVehicleId,
+      );
+    }
 
     const enforcementContext = {
       organizationId: orgId,

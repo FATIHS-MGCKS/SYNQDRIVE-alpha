@@ -5,7 +5,9 @@ export type BatteryV2PipelineComponent =
   | 'enqueue'
   | 'processor'
   | 'reconciliation'
-  | 'publication';
+  | 'publication'
+  | 'publication-handoff'
+  | 'assessment-handoff';
 
 export type BatteryV2PipelineLogStatus =
   | 'completed'

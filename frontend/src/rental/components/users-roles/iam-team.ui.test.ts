@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { IAM_TABS, MFA_STATE_LABEL, RISK_LABEL, getInitials } from './iam-team.utils';
 
 const IAM_KEYS: TranslationKey[] = [

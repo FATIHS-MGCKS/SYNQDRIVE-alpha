@@ -29,6 +29,12 @@ describe('normalizeVehicleOperationalStatus', () => {
     expect(normalizeVehicleOperationalStatusKey('Blocked')).toBe(
       VEHICLE_OPERATIONAL_STATUS.BLOCKED,
     );
+    expect(normalizeVehicleOperationalStatusKey('Offboarded')).toBe(
+      VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+    );
+    expect(normalizeVehicleOperationalStatusKey('Archived')).toBe(
+      VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+    );
   });
 
   it('maps prisma tokens to canonical enums', () => {

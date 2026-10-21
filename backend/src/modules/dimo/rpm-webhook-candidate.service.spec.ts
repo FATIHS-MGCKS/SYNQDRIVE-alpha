@@ -84,13 +84,14 @@ describe('RpmWebhookCandidateService.ingestRpmThresholdEvent', () => {
 
     const contextEnrichment = {
       enrichAnchorContext: jest.fn().mockResolvedValue({
-        status: 'COMPLETED',
+        status: 'SUCCESS',
         anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
       }),
     };
 
     const service = new RpmWebhookCandidateService(
       prisma as never,
+      undefined,
       contextEnrichment as never,
     );
 

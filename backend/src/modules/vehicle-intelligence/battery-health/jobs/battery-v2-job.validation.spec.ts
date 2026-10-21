@@ -40,7 +40,13 @@ describe('battery-v2-job.validation', () => {
 
   describe('validateBatteryV2JobPayload — base fields', () => {
     it.each(
-      BATTERY_V2_JOB_TYPES.filter((t) => t !== 'BATTERY_START_PROXY_EXTRACT'),
+      BATTERY_V2_JOB_TYPES.filter(
+        (t) =>
+          t !== 'BATTERY_START_PROXY_EXTRACT' &&
+          t !== 'BATTERY_REST_TARGET_EVALUATE' &&
+          t !== 'BATTERY_LV_REST_SESSION_OPEN' &&
+          t !== 'BATTERY_PUBLICATION_UPDATE',
+      ),
     )('validates base payload for %s', (jobType) => {
       const payload = validateBatteryV2JobPayload(jobType, validBase());
       expect(payload.organizationId).toBe(ORG_ID);
@@ -109,21 +115,40 @@ describe('battery-v2-job.validation', () => {
   });
 
   describe('validateBatteryV2JobPayload — type-specific fields', () => {
-    it('validates restWindowStartedAt for BATTERY_REST_TARGET_EVALUATE', () => {
+    const restBase = (overrides: Record<string, unknown> = {}) =>
+      validBase({
+        idempotencyKey: `battery-rest:${VEHICLE_ID}:lv-rest:${VEHICLE_ID}:1721124000000:60m`,
+        restWindowId: `lv-rest:${VEHICLE_ID}:1721124000000`,
+        restTargetType: 'REST_60M',
+        ...overrides,
+      });
+
+    it('validates rest target payload with required restWindowId', () => {
       const payload = validateBatteryV2JobPayload(
         'BATTERY_REST_TARGET_EVALUATE',
-        validBase({ restWindowStartedAt: '2026-07-16T10:00:00.000Z' }),
+        restBase({ restWindowStartedAt: '2026-07-16T10:00:00.000Z' }),
       );
       expect(payload).toMatchObject({
+        restWindowId: `lv-rest:${VEHICLE_ID}:1721124000000`,
         restWindowStartedAt: '2026-07-16T10:00:00.000Z',
+        restTargetType: 'REST_60M',
       });
+    });
+
+    it('rejects REST target job without restWindowId', () => {
+      expect(() =>
+        validateBatteryV2JobPayload(
+          'BATTERY_REST_TARGET_EVALUATE',
+          restBase({ restWindowId: undefined }),
+        ),
+      ).toThrow(/restWindowId/);
     });
 
     it('rejects invalid restWindowStartedAt', () => {
       expect(() =>
         validateBatteryV2JobPayload(
           'BATTERY_REST_TARGET_EVALUATE',
-          validBase({ restWindowStartedAt: 'not-a-date' }),
+          restBase({ restWindowStartedAt: 'not-a-date' }),
         ),
       ).toThrow(/restWindowStartedAt/);
     });
@@ -156,6 +181,76 @@ describe('battery-v2-job.validation', () => {
           validBase({ tripId: 'x', tripStartedAt: '2026-07-16T12:00:00.000Z' }),
         ),
       ).toThrow(/tripId/);
+    });
+
+    it('validates tripId + tripEndedAt for BATTERY_LV_REST_SESSION_OPEN', () => {
+      const tripId = 'cltrip123456789012345678901';
+      const payload = validateBatteryV2JobPayload(
+        'BATTERY_LV_REST_SESSION_OPEN',
+        validBase({
+          idempotencyKey: `lv-rest-open:${VEHICLE_ID}:1721124000000`,
+          tripId,
+          tripEndedAt: '2026-07-16T12:00:00.000Z',
+        }),
+      );
+      expect(payload).toMatchObject({
+        tripId,
+        tripEndedAt: '2026-07-16T12:00:00.000Z',
+      });
+    });
+
+    it('rejects LV rest session open without tripEndedAt', () => {
+      expect(() =>
+        validateBatteryV2JobPayload(
+          'BATTERY_LV_REST_SESSION_OPEN',
+          validBase({
+            idempotencyKey: `lv-rest-open:${VEHICLE_ID}:1721124000000`,
+            tripId: 'cltrip123456789012345678901',
+          }),
+        ),
+      ).toThrow(/tripEndedAt/);
+    });
+
+    it('validates BATTERY_PUBLICATION_UPDATE payload', () => {
+      const assessmentId = '550e8400-e29b-41d4-a716-446655440001';
+      const payload = validateBatteryV2JobPayload(
+        'BATTERY_PUBLICATION_UPDATE',
+        validBase({
+          idempotencyKey: `pub:${assessmentId}:v1`,
+          assessmentId,
+          publicationVersion: 1,
+          sourceEntityId: assessmentId,
+        }),
+      );
+      expect(payload).toMatchObject({
+        assessmentId,
+        publicationVersion: 1,
+        sourceEntityId: assessmentId,
+      });
+    });
+
+    it.each([
+      ['missing assessmentId', { assessmentId: undefined, publicationVersion: 1 }],
+      ['null assessmentId', { assessmentId: null, publicationVersion: 1 }],
+      ['missing publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: undefined }],
+      ['string publicationVersion "1"', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '1' }],
+      ['string publicationVersion "01"', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '01' }],
+      ['string publicationVersion "1e0"', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '1e0' }],
+      ['semver publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: '1.0.0' }],
+      ['zero publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: 0 }],
+      ['negative publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: -1 }],
+      ['fractional publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: 1.5 }],
+      ['NaN publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: Number.NaN }],
+      ['null publicationVersion', { assessmentId: '550e8400-e29b-41d4-a716-446655440001', publicationVersion: null }],
+    ])('rejects invalid BATTERY_PUBLICATION_UPDATE: %s', (_label, overrides) => {
+      const payload = validBase({
+        idempotencyKey: 'pub:test:v1',
+        sourceEntityId: '550e8400-e29b-41d4-a716-446655440001',
+        ...overrides,
+      });
+      expect(() =>
+        validateBatteryV2JobPayload('BATTERY_PUBLICATION_UPDATE', payload),
+      ).toThrow(BatteryV2JobValidationError);
     });
   });
 

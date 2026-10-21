@@ -1,0 +1,141 @@
+# Battery V2 Knowledge Graph — Invariants (bootstrap seed)
+
+invariants:
+  - id: BAT-V2-INV-TRIP-BIND-001
+    kind: CONDITIONAL_INVARIANT
+    title: Canonical trip binding when authoritative finalized trip is known
+    epistemic_status: CONFIRMED
+    condition: >
+      When an authoritative finalized trip is supplied at session creation/arming time
+    statement: >
+      session.trip_id === trip.id AND session anchor === trip.endTime AND
+      idempotencyKey === lv-rest:{vehicleId}:{trip.endTime ms}
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-measurement-session.repository.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window.state-machine.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-PIPELINE-CLOSURE-001
+    notes: Bridge-only paths without authoritative trip are out of scope for this invariant.
+
+  - id: BAT-V2-INV-REST-WINDOW-ID-001
+    kind: CONFIRMED_INVARIANT
+    title: Deterministic LV rest window identity
+    epistemic_status: CONFIRMED
+    statement: >
+      Window idempotencyKey = lv-rest:{vehicleId}:{anchorMs} with DB unique (vehicleId, idempotencyKey).
+      Bull session-open job id = lv-rest-open:{vehicleId}:{anchorMs}.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-lv-rest-session.producer.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-LIVENESS-001
+
+  - id: BAT-V2-INV-NO-FABRICATE-001
+    kind: CONFIRMED_INVARIANT
+    title: No fabricated REST measurements on missing evidence
+    epistemic_status: CONFIRMED
+    statement: >
+      REST evaluation must not synthesize numeric measurements when required telemetry
+      is absent; MISSED / pending deferral instead.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/handlers/battery-rest-target-evaluate.handler.ts
+    evidence:
+      - BAT-V2-POL-NO-FABRICATE-001
+
+  - id: BAT-V2-INV-TRIP-LIFECYCLE-ISO-001
+    kind: CONFIRMED_INVARIANT
+    title: Battery enqueue failure does not roll back trip finalization
+    epistemic_status: CONFIRMED
+    statement: >
+      LV rest session open enqueue at trip finalization is try/catch warn-only
+      after COMPLETED trip and RESTING transition are persisted.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - BAT-V2-EVID-ARCH-LIVENESS-001
+
+  - id: BAT-V2-INV-ENQ-NOT-LIVE-001
+    kind: CONFIRMED_INVARIANT
+    title: ENQUEUED metadata is not queue liveness proof
+    epistemic_status: CONFIRMED
+    statement: >
+      Reconciliation must verify Bull job existence via hasLiveJob before skipping
+      orphaned ENQUEUED targets.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+    evidence:
+      - BAT-V2-LIVE-ORPHAN-ENQ-001
+      - BAT-V2-TEST-ORPHAN-ENQ-001
+
+  - id: BAT-V2-INV-NO-HIST-BACKFILL-001
+    kind: CONFIRMED_INVARIANT
+    title: No recurring historical trip-binding repair scan in reconciliation
+    epistemic_status: CONFIRMED
+    statement: >
+      reconcileAll() does not run repairLvRestWindowTripBindings or equivalent
+      historical backfill scan (post-#1445).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts
+    evidence:
+      - BAT-V2-DEC-1445-001
+
+  - id: BAT-V2-INV-ALL-SESSIONS-HAVE-TRIP-001
+    kind: DISPROVEN_OR_CONTRADICTED
+    title: All LV rest sessions always have a finalized trip binding
+    epistemic_status: HISTORICAL
+    statement: >
+      Universal claim disproven by bridge-only paths and historical mis-binding defects.
+    notes: Replaced by conditional BAT-V2-INV-TRIP-BIND-001.
+
+  - id: BAT-V2-INV-HV-NO-FABRICATE-SOH-001
+    kind: CONFIRMED_INVARIANT
+    title: No fabricated HV SOH from age/km heuristics
+    epistemic_status: CONFIRMED
+    statement: >
+      Without measured energy/capacity/provider basis, HV SOH must be unavailable —
+      never a fabricated numeric percentage from age/km heuristics.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-battery-health.service.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts
+    evidence:
+      - BAT-V2-POL-HV-NO-FABRICATE-SOH-001
+
+  - id: BAT-V2-INV-LV-NOT-SOH-001
+    kind: CONFIRMED_INVARIANT
+    title: LV estimated health is not workshop SOH
+    epistemic_status: CONFIRMED
+    statement: >
+      LV estimated health score is behavioral semantics; must not be labeled or
+      consumed as workshop SOH %.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/lv-assessment/lv-estimated-health-assessment.policy.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/battery-lv-semantics.ts
+    evidence:
+      - BAT-V2-ASSESS-LV-ESTIMATED-001
+
+  - id: BAT-V2-INV-NATIVE-RECHARGE-SUPERSEDES-FALLBACK-001
+    kind: CONFIRMED_INVARIANT
+    title: Native DIMO recharge segment supersedes overlapping fallback sessions
+    epistemic_status: CONFIRMED
+    statement: >
+      When native segment is persisted, overlapping telemetry-poll fallback sessions
+      are superseded in metadata; fallback rows remain historical evidence.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+    evidence:
+      - BAT-V2-EVID-CODE-HV-RECHARGE-SUPERSEDE-001
+      - BAT-V2-AUTH-HV-RECHARGE-NATIVE-001
+
+  - id: BAT-V2-INV-SHADOW-NO-AUTO-PUBLISH-001
+    kind: CONFIRMED_INVARIANT
+    title: Shadow assessments are not automatically customer-published
+    epistemic_status: CONFIRMED
+    statement: >
+      HV capacity shadow and SOH gate assessments default publicationEligible false (SOH gate: false
+      regardless of BATTERY_V2_HV_SOH_PUBLICATION_ENABLED); publication flags default OFF; no HV
+      BatteryPublication customer carrier identified.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-capacity-shadow/hv-capacity-shadow-evaluation.types.ts
+      - backend/src/config/battery-health-v2.config.ts
+    evidence:
+      - BAT-V2-PUB-HV-SOH-001
+      - BAT-V2-PUB-LV-001

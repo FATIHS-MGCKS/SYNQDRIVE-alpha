@@ -186,6 +186,7 @@ describe('sessionsOverlap', () => {
       new Date('2026-07-16T10:00:00.000Z'),
       new Date('2026-07-16T09:30:00.000Z'),
       new Date('2026-07-16T11:00:00.000Z'),
+      new Date('2026-07-16T12:00:00.000Z'),
     );
     expect(overlap).toBe(true);
   });

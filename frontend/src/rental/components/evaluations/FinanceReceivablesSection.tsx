@@ -5,8 +5,8 @@
  * zero). The section always shows its MTD scope, independent of the global analytics
  * period selector.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type { FinancialInsightsBundleDto } from '../../lib/finance-insights.types';
 import {

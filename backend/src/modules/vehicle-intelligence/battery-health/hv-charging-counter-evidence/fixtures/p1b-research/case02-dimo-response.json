@@ -1,0 +1,368 @@
+{
+  "caseId": "case02",
+  "sessionId": "10000000-0000-4000-8000-000000000002",
+  "sessionWindow": {
+    "from": "2030-06-02T00:00:00.000Z",
+    "to": "2030-06-02T00:53:37.000Z"
+  },
+  "queryWindow": {
+    "from": "2030-06-01T23:55:00.000Z",
+    "to": "2030-06-02T00:58:37.000Z"
+  },
+  "rows": [
+    {
+      "timestamp": "2030-06-01T23:55:00.000Z",
+      "addedKwhLast": 3.63999991863966,
+      "addedKwhMin": 3.63999991863966,
+      "addedKwhMax": 3.63999991863966
+    },
+    {
+      "timestamp": "2030-06-01T23:56:00.000Z",
+      "addedKwhLast": 3.7199999168515205,
+      "addedKwhMin": 3.7199999168515205,
+      "addedKwhMax": 3.7199999168515205
+    },
+    {
+      "timestamp": "2030-06-01T23:57:00.000Z",
+      "addedKwhLast": 3.759999915957451,
+      "addedKwhMin": 3.759999915957451,
+      "addedKwhMax": 3.759999915957451
+    },
+    {
+      "timestamp": "2030-06-01T23:58:00.000Z",
+      "addedKwhLast": 3.779999915510416,
+      "addedKwhMin": 3.779999915510416,
+      "addedKwhMax": 3.779999915510416
+    },
+    {
+      "timestamp": "2030-06-01T23:59:00.000Z",
+      "addedKwhLast": 3.879999913275242,
+      "addedKwhMin": 3.879999913275242,
+      "addedKwhMax": 3.879999913275242
+    },
+    {
+      "timestamp": "2030-06-02T00:00:00.000Z",
+      "addedKwhLast": 3.899999912828207,
+      "addedKwhMin": 3.899999912828207,
+      "addedKwhMax": 3.899999912828207
+    },
+    {
+      "timestamp": "2030-06-02T00:01:00.000Z",
+      "addedKwhLast": 3.919999912381172,
+      "addedKwhMin": 3.919999912381172,
+      "addedKwhMax": 3.919999912381172
+    },
+    {
+      "timestamp": "2030-06-02T00:02:00.000Z",
+      "addedKwhLast": 3.999999910593033,
+      "addedKwhMin": 3.999999910593033,
+      "addedKwhMax": 3.999999910593033
+    },
+    {
+      "timestamp": "2030-06-02T00:03:00.000Z",
+      "addedKwhLast": 4.019999910145998,
+      "addedKwhMin": 4.019999910145998,
+      "addedKwhMax": 4.019999910145998
+    },
+    {
+      "timestamp": "2030-06-02T00:04:00.000Z",
+      "addedKwhLast": 4.059999909251928,
+      "addedKwhMin": 4.059999909251928,
+      "addedKwhMax": 4.059999909251928
+    },
+    {
+      "timestamp": "2030-06-02T00:05:00.000Z",
+      "addedKwhLast": 4.139999907463789,
+      "addedKwhMin": 4.139999907463789,
+      "addedKwhMax": 4.139999907463789
+    },
+    {
+      "timestamp": "2030-06-02T00:06:00.000Z",
+      "addedKwhLast": 4.159999907016754,
+      "addedKwhMin": 4.159999907016754,
+      "addedKwhMax": 4.159999907016754
+    },
+    {
+      "timestamp": "2030-06-02T00:07:00.000Z",
+      "addedKwhLast": 4.1999999061226845,
+      "addedKwhMin": 4.1999999061226845,
+      "addedKwhMax": 4.1999999061226845
+    },
+    {
+      "timestamp": "2030-06-02T00:08:00.000Z",
+      "addedKwhLast": 4.279999904334545,
+      "addedKwhMin": 4.279999904334545,
+      "addedKwhMax": 4.279999904334545
+    },
+    {
+      "timestamp": "2030-06-02T00:09:00.000Z",
+      "addedKwhLast": 4.29999990388751,
+      "addedKwhMin": 4.29999990388751,
+      "addedKwhMax": 4.29999990388751
+    },
+    {
+      "timestamp": "2030-06-02T00:10:00.000Z",
+      "addedKwhLast": 4.359999902546406,
+      "addedKwhMin": 4.359999902546406,
+      "addedKwhMax": 4.359999902546406
+    },
+    {
+      "timestamp": "2030-06-02T00:11:00.000Z",
+      "addedKwhLast": 4.419999901205301,
+      "addedKwhMin": 4.419999901205301,
+      "addedKwhMax": 4.419999901205301
+    },
+    {
+      "timestamp": "2030-06-02T00:12:00.000Z",
+      "addedKwhLast": 4.4399999007582664,
+      "addedKwhMin": 4.4399999007582664,
+      "addedKwhMax": 4.4399999007582664
+    },
+    {
+      "timestamp": "2030-06-02T00:13:00.000Z",
+      "addedKwhLast": 4.499999899417162,
+      "addedKwhMin": 4.499999899417162,
+      "addedKwhMax": 4.499999899417162
+    },
+    {
+      "timestamp": "2030-06-02T00:14:00.000Z",
+      "addedKwhLast": 4.539999898523092,
+      "addedKwhMin": 4.539999898523092,
+      "addedKwhMax": 4.539999898523092
+    },
+    {
+      "timestamp": "2030-06-02T00:15:00.000Z",
+      "addedKwhLast": 4.559999898076057,
+      "addedKwhMin": 4.559999898076057,
+      "addedKwhMax": 4.559999898076057
+    },
+    {
+      "timestamp": "2030-06-02T00:16:00.000Z",
+      "addedKwhLast": 4.659999895840883,
+      "addedKwhMin": 4.659999895840883,
+      "addedKwhMax": 4.659999895840883
+    },
+    {
+      "timestamp": "2030-06-02T00:17:00.000Z",
+      "addedKwhLast": 4.679999895393848,
+      "addedKwhMin": 4.679999895393848,
+      "addedKwhMax": 4.679999895393848
+    },
+    {
+      "timestamp": "2030-06-02T00:18:00.000Z",
+      "addedKwhLast": 4.699999894946814,
+      "addedKwhMin": 4.699999894946814,
+      "addedKwhMax": 4.699999894946814
+    },
+    {
+      "timestamp": "2030-06-02T00:19:00.000Z",
+      "addedKwhLast": 4.799999892711639,
+      "addedKwhMin": 4.799999892711639,
+      "addedKwhMax": 4.799999892711639
+    },
+    {
+      "timestamp": "2030-06-02T00:20:00.000Z",
+      "addedKwhLast": 4.819999892264605,
+      "addedKwhMin": 4.819999892264605,
+      "addedKwhMax": 4.819999892264605
+    },
+    {
+      "timestamp": "2030-06-02T00:21:00.000Z",
+      "addedKwhLast": 4.83999989181757,
+      "addedKwhMin": 4.83999989181757,
+      "addedKwhMax": 4.83999989181757
+    },
+    {
+      "timestamp": "2030-06-02T00:22:00.000Z",
+      "addedKwhLast": 4.9399998895823956,
+      "addedKwhMin": 4.9399998895823956,
+      "addedKwhMax": 4.9399998895823956
+    },
+    {
+      "timestamp": "2030-06-02T00:23:00.000Z",
+      "addedKwhLast": 4.959999889135361,
+      "addedKwhMin": 4.959999889135361,
+      "addedKwhMax": 4.959999889135361
+    },
+    {
+      "timestamp": "2030-06-02T00:24:00.000Z",
+      "addedKwhLast": 4.999999888241291,
+      "addedKwhMin": 4.999999888241291,
+      "addedKwhMax": 4.999999888241291
+    },
+    {
+      "timestamp": "2030-06-02T00:25:00.000Z",
+      "addedKwhLast": 5.0599998869001865,
+      "addedKwhMin": 5.0599998869001865,
+      "addedKwhMax": 5.0599998869001865
+    },
+    {
+      "timestamp": "2030-06-02T00:26:00.000Z",
+      "addedKwhLast": 5.079999886453152,
+      "addedKwhMin": 5.079999886453152,
+      "addedKwhMax": 5.079999886453152
+    },
+    {
+      "timestamp": "2030-06-02T00:27:00.000Z",
+      "addedKwhLast": 5.139999885112047,
+      "addedKwhMin": 5.139999885112047,
+      "addedKwhMax": 5.139999885112047
+    },
+    {
+      "timestamp": "2030-06-02T00:28:00.000Z",
+      "addedKwhLast": 5.199999883770943,
+      "addedKwhMin": 5.199999883770943,
+      "addedKwhMax": 5.199999883770943
+    },
+    {
+      "timestamp": "2030-06-02T00:29:00.000Z",
+      "addedKwhLast": 5.219999883323908,
+      "addedKwhMin": 5.219999883323908,
+      "addedKwhMax": 5.219999883323908
+    },
+    {
+      "timestamp": "2030-06-02T00:30:00.000Z",
+      "addedKwhLast": 5.2999998815357685,
+      "addedKwhMin": 5.2999998815357685,
+      "addedKwhMax": 5.2999998815357685
+    },
+    {
+      "timestamp": "2030-06-02T00:31:00.000Z",
+      "addedKwhLast": 5.359999880194664,
+      "addedKwhMin": 5.359999880194664,
+      "addedKwhMax": 5.359999880194664
+    },
+    {
+      "timestamp": "2030-06-02T00:32:00.000Z",
+      "addedKwhLast": 5.4199998788535595,
+      "addedKwhMin": 5.4199998788535595,
+      "addedKwhMax": 5.4199998788535595
+    },
+    {
+      "timestamp": "2030-06-02T00:33:00.000Z",
+      "addedKwhLast": 5.479999877512455,
+      "addedKwhMin": 5.479999877512455,
+      "addedKwhMax": 5.479999877512455
+    },
+    {
+      "timestamp": "2030-06-02T00:34:00.000Z",
+      "addedKwhLast": 5.519999876618385,
+      "addedKwhMin": 5.519999876618385,
+      "addedKwhMax": 5.519999876618385
+    },
+    {
+      "timestamp": "2030-06-02T00:35:00.000Z",
+      "addedKwhLast": 5.619999874383211,
+      "addedKwhMin": 5.619999874383211,
+      "addedKwhMax": 5.619999874383211
+    },
+    {
+      "timestamp": "2030-06-02T00:36:00.000Z",
+      "addedKwhLast": 5.6599998734891415,
+      "addedKwhMin": 5.6599998734891415,
+      "addedKwhMax": 5.6599998734891415
+    },
+    {
+      "timestamp": "2030-06-02T00:37:00.000Z",
+      "addedKwhLast": 5.759999871253967,
+      "addedKwhMin": 5.759999871253967,
+      "addedKwhMax": 5.759999871253967
+    },
+    {
+      "timestamp": "2030-06-02T00:38:00.000Z",
+      "addedKwhLast": 5.879999868571758,
+      "addedKwhMin": 5.879999868571758,
+      "addedKwhMax": 5.879999868571758
+    },
+    {
+      "timestamp": "2030-06-02T00:39:00.000Z",
+      "addedKwhLast": 5.979999866336584,
+      "addedKwhMin": 5.979999866336584,
+      "addedKwhMax": 5.979999866336584
+    },
+    {
+      "timestamp": "2030-06-02T00:40:00.000Z",
+      "addedKwhLast": 6.099999863654375,
+      "addedKwhMin": 6.099999863654375,
+      "addedKwhMax": 6.099999863654375
+    },
+    {
+      "timestamp": "2030-06-02T00:41:00.000Z",
+      "addedKwhLast": 6.199999861419201,
+      "addedKwhMin": 6.199999861419201,
+      "addedKwhMax": 6.199999861419201
+    },
+    {
+      "timestamp": "2030-06-02T00:42:00.000Z",
+      "addedKwhLast": 6.299999859184027,
+      "addedKwhMin": 6.299999859184027,
+      "addedKwhMax": 6.299999859184027
+    },
+    {
+      "timestamp": "2030-06-02T00:43:00.000Z",
+      "addedKwhLast": 6.439999856054783,
+      "addedKwhMin": 6.439999856054783,
+      "addedKwhMax": 6.439999856054783
+    },
+    {
+      "timestamp": "2030-06-02T00:44:00.000Z",
+      "addedKwhLast": 6.499999854713678,
+      "addedKwhMin": 6.499999854713678,
+      "addedKwhMax": 6.499999854713678
+    },
+    {
+      "timestamp": "2030-06-02T00:45:00.000Z",
+      "addedKwhLast": 6.539999853819609,
+      "addedKwhMin": 6.539999853819609,
+      "addedKwhMax": 6.539999853819609
+    },
+    {
+      "timestamp": "2030-06-02T00:46:00.000Z",
+      "addedKwhLast": 6.5199998542666435,
+      "addedKwhMin": 6.5199998542666435,
+      "addedKwhMax": 6.5199998542666435
+    },
+    {
+      "timestamp": "2030-06-02T00:47:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-02T00:49:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-02T00:53:00.000Z",
+      "addedKwhLast": 7.139999840408564,
+      "addedKwhMin": 7.139999840408564,
+      "addedKwhMax": 7.139999840408564
+    },
+    {
+      "timestamp": "2030-06-02T00:54:00.000Z",
+      "addedKwhLast": 7.1199998408555984,
+      "addedKwhMin": 7.1199998408555984,
+      "addedKwhMax": 7.1199998408555984
+    },
+    {
+      "timestamp": "2030-06-02T00:55:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-02T00:56:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    },
+    {
+      "timestamp": "2030-06-02T00:57:00.000Z",
+      "addedKwhLast": null,
+      "addedKwhMin": null,
+      "addedKwhMax": null
+    }
+  ]
+}

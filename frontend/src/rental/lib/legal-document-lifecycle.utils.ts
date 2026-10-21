@@ -183,7 +183,7 @@ export function validateLifecycleForm(
 
 function labelForScope(
   value: string | undefined | null,
-  options: readonly { value: string; labelKey: import('../i18n/translations/en').TranslationKey }[],
+  options: readonly { value: string; labelKey: import('../../i18n/translations/en').TranslationKey }[],
   t: LegalDocumentsTranslate,
 ) {
   if (!value) return t('legalDocuments.common.emDash');

@@ -1,0 +1,244 @@
+{
+  "speed": {
+    "HF_HISTORICAL": {
+      "observationCount": 592,
+      "providerSampleAgeSeconds": {
+        "min": 2.964,
+        "max": 10.802,
+        "median": 6.354
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.183,
+        "max": 2.091,
+        "median": 0.225
+      },
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 371,
+      "providerSampleAgeSeconds": {
+        "min": 1.962,
+        "max": 4251.643,
+        "median": 5.789
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.188,
+        "max": 10.336,
+        "median": 0.26
+      },
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainCombustionEngineSpeed": {
+    "HF_HISTORICAL": {
+      "observationCount": 500,
+      "providerSampleAgeSeconds": {
+        "min": 2.964,
+        "max": 9.967,
+        "median": 6.41
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.183,
+        "max": 2.091,
+        "median": 0.226
+      },
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 371,
+      "providerSampleAgeSeconds": {
+        "min": 1.962,
+        "max": 4255.643,
+        "median": 6.56
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.188,
+        "max": 10.336,
+        "median": 0.26
+      },
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "obdThrottlePosition": {
+    "HF_HISTORICAL": {
+      "observationCount": 545,
+      "providerSampleAgeSeconds": {
+        "min": 2.964,
+        "max": 10.802,
+        "median": 6.354
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.183,
+        "max": 2.091,
+        "median": 0.226
+      },
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 371,
+      "providerSampleAgeSeconds": {
+        "min": 1.962,
+        "max": 4251.643,
+        "median": 6.009
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.188,
+        "max": 10.336,
+        "median": 0.26
+      },
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainCombustionEngineTPS": {
+    "HF_HISTORICAL": {
+      "observationCount": 554,
+      "providerSampleAgeSeconds": {
+        "min": 2.964,
+        "max": 10.802,
+        "median": 6.3629999999999995
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.183,
+        "max": 2.091,
+        "median": 0.226
+      },
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 371,
+      "providerSampleAgeSeconds": {
+        "min": 1.962,
+        "max": 4251.643,
+        "median": 5.956
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.188,
+        "max": 10.336,
+        "median": 0.26
+      },
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "obdEngineLoad": {
+    "HF_HISTORICAL": {
+      "observationCount": 592,
+      "providerSampleAgeSeconds": {
+        "min": 2.964,
+        "max": 10.802,
+        "median": 6.354
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.183,
+        "max": 2.091,
+        "median": 0.225
+      },
+      "configuredMaxInterpolationGapSeconds": 3,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 371,
+      "providerSampleAgeSeconds": {
+        "min": 1.962,
+        "max": 4251.643,
+        "median": 5.789
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.188,
+        "max": 10.336,
+        "median": 0.26
+      },
+      "configuredMaxInterpolationGapSeconds": 2,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainTransmissionActualGear": {
+    "HF_HISTORICAL": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 62,
+      "providerSampleAgeSeconds": {
+        "min": 3.008,
+        "max": 4222.641,
+        "median": 5.5985
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.189,
+        "max": 0.722,
+        "median": 0.2435
+      },
+      "configuredMaxInterpolationGapSeconds": 10,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    }
+  },
+  "powertrainTransmissionActualGearRatio": {
+    "HF_HISTORICAL": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "observationCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 62,
+      "providerSampleAgeSeconds": {
+        "min": 3.008,
+        "max": 4222.641,
+        "median": 5.5985
+      },
+      "requestStartToIngressSeconds": {
+        "min": 0.189,
+        "max": 0.722,
+        "median": 0.2435
+      },
+      "configuredMaxInterpolationGapSeconds": 10,
+      "LATEST_LIVE_EQUALS_FRESH_PHYSICAL_SAMPLE": "NO",
+      "freshnessEvaluatedBySurfaceName": "NO"
+    }
+  }
+}

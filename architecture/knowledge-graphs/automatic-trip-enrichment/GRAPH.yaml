@@ -1,0 +1,78 @@
+# KG-ATE — Automatic Trip Enrichment Knowledge Graph
+# Canonical authority for trip post-finalize enrichment orchestration.
+# Repository-native; maintained per governance/AGENT_PROTOCOL.md
+
+version: "1.0.0"
+workstream_id: KG-ATE
+title: Automatic Trip Enrichment
+status: CANONICAL
+created: "2026-09-01"
+main_sha_at_canonicalization: "4843a4ebc60f38237f9184d47b1da731e426b7b3"
+
+scope:
+  owns:
+    - Trip behavior enrichment orchestration after finalization
+    - Post-finalize enqueue and sync enrichment lifecycle
+    - Hardware-path routing (SMART5 HF vs LTE_R1 native)
+    - Route/safety enrichment stage within ATE pipeline
+    - Misuse aggregation trigger within ATE pipeline
+    - Driving-impact job enqueue (not scoring semantics)
+    - Trip reconciliation repair → enrichment chain
+    - Scheduler leader + reconciliation mutex usage for ATE liveness
+    - UI/manual fallback paths for enrichment backlog recovery
+  does_not_own:
+    - REFUEL / RECHARGE / energy-event semantics → KG-EED
+    - Driving Intelligence V2 scoring models → KG-Driving-Intelligence
+    - DIMO provider budget algorithm internals → KG-Scaling-Process
+    - Battery V2 HV charge session lifecycle → Battery V2 KG
+    - Trip FSM boundary detection authority → TripDecisionEngine (referenced)
+
+discovery_source:
+  path: architecture/knowledge-graphs/discovery/AUTOMATIC_TRIP_ENRICHMENT_DISCOVERY_2026-09-01.md
+  discovery_sha: c5dce7a9d
+  note: Discovery is hypothesis + reconstructed evidence; code at main_sha is primary.
+
+graph_files:
+  schema: graph/schema.yaml
+  nodes: graph/nodes.yaml
+  edges: graph/edges.yaml
+  invariants: graph/invariants.yaml
+
+governance:
+  agent_protocol: governance/AGENT_PROTOCOL.md
+  authority_boundaries: governance/AUTHORITY_BOUNDARIES.md
+  decisions: decisions/DECISIONS.md
+  evidence_registry: evidence/EVIDENCE_REGISTRY.md
+  open_questions: open-questions/OPEN_QUESTIONS.md
+  changelog: history/CHANGELOG.md
+
+validation:
+  script: scripts/validate-graph.mjs
+  command: node architecture/knowledge-graphs/automatic-trip-enrichment/scripts/validate-graph.mjs
+
+external_graph_refs:
+  - id: EXT-KG-EED
+    path: architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+    status: DISCOVERY_ONLY
+    relation: MAY_TRIGGER detectEnergyEvents from reconcile step 5
+  - id: EXT-KG-DI
+    path: docs/architecture/driving-intelligence-v2.md
+    status: EXTERNAL_AUTHORITY
+    relation: Parallel V2 init via TripPostFinalizeAnalysisProducer
+  - id: EXT-KG-SCALING
+    path: architecture/scaling-process/
+    status: CANONICAL
+    relation: Scheduler leader, reconciliation mutex, DIMO provider budget
+  - id: EXT-BAT-V2
+    path: architecture/battery-v2/
+    status: CANONICAL
+    relation: Orthogonal; no ATE ownership of HV charge sessions
+
+cross_graph_contract:
+  ate_may_trigger:
+    - EED.detectEnergyEvents (reconciliation step 5 only; semantics owned by EED)
+  ate_must_not_own:
+    - REFUEL duration semantics
+    - RECHARGE duration semantics
+    - fuelLevelRiseDurationSeconds semantics
+    - energy sibling reconciliation semantics

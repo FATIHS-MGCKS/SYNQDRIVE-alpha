@@ -27,7 +27,7 @@ import {
 } from '../../../components/ui/select';
 import { api, type LegalDocumentDto } from '../../../lib/api';
 import { getStoredUser } from '../../../lib/auth';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { LegalDocumentTypeConfig } from '../../lib/legal-document-types';
 import {
   LEGAL_UPLOAD_JURISDICTIONS,

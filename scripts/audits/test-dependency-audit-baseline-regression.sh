@@ -141,5 +141,11 @@ if [[ "$bad_exit" -ne 2 ]]; then
 fi
 echo "PASS exit=2 invalid JSON fail-closed"
 
+# A) identical audits => PASS (cases 1–2 above)
+# B) representation drift would fail comparator — see test-dependency-audit-graph-identity.sh
+
 echo "SECURITY_GATE_TESTS=9"
 echo "SECURITY_GATE_FALSE_ACCEPTANCES=0"
+
+echo "Running dependency graph identity harness..."
+bash "$ROOT/scripts/audits/test-dependency-audit-graph-identity.sh"

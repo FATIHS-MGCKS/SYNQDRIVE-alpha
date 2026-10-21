@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { CommunicationMemberPicker } from './CommunicationMemberPicker';
 
 describe('CommunicationMemberPicker', () => {

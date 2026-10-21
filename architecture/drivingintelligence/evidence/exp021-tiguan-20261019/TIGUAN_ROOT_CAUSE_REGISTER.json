@@ -1,0 +1,76 @@
+[
+  {
+    "id": "RC-C01",
+    "observation": "Decoder assigns Hebbelstraße way 25932713; Schwabstraße ways >50m from DIMO point in C01 window",
+    "evidence": [
+      "TIGUAN_C01_HEBBEL_SCHWAB_AUDIT.csv",
+      "dist_hebbel_m ~1-2m vs dist_schwab_min_m no hit"
+    ],
+    "missingEvidence": [
+      "Independent high-precision GPS; which parallel arm if GPS biased <5m"
+    ],
+    "stage": "CANDIDATE_GENERATION_GEOMETRY",
+    "confidence": "HIGH",
+    "reproducible": true,
+    "minimalFix": "Not required for C01 decoder path; optional map-matching label disambiguation in UI only"
+  },
+  {
+    "id": "RC-E002",
+    "observation": "UNDERPASS seconds: single nearby way 5048137 rejected by heading-emission (~178° mismatch); Viterbi chooses NULL",
+    "evidence": [
+      "TIGUAN_E002_B3_UNDERPASS_AUDIT.csv",
+      "baseline BEARING_MISMATCH_178deg"
+    ],
+    "missingEvidence": [
+      "Layer/bridge tagging completeness in OSM extract for underpass topology"
+    ],
+    "stage": "EMISSION_MODEL_HEADING",
+    "confidence": "HIGH",
+    "reproducible": true,
+    "minimalFix": "Soften or gate bearing penalty under bridge/low-speed B3; or widen candidate bearing tolerance in research config (not done here)"
+  },
+  {
+    "id": "RC-DIFF-B3",
+    "observation": "Route-Aware E picks 401665362 where Forward picks 382929735 during B3 standstill; same GPS, different directed routing cost",
+    "evidence": [
+      "TIGUAN_13_BUCKET_DECISION_TRACES.csv cluster B3_STANDSTILL_ROUTE_AWARE"
+    ],
+    "missingEvidence": [
+      "Reference single way ID for multi-carriageway B3 list"
+    ],
+    "stage": "ROUTE_AWARE_TRANSITION_DP",
+    "confidence": "MEDIUM",
+    "reproducible": true,
+    "minimalFix": "Review directed graph parity lane selection vs rounded adjacency under standstill"
+  },
+  {
+    "id": "RC-DIFF-GAP",
+    "observation": "Backtrack B/D selects parallel way 737508499 vs 737508498 for A/C/E at 3 post-gap seconds",
+    "evidence": [
+      "TIGUAN_13_BUCKET_DECISION_TRACES.csv",
+      "ab_diff YES"
+    ],
+    "missingEvidence": [
+      "Video reference way ID in GAP-adjacent seconds"
+    ],
+    "stage": "VITERBI_BACKTRACK_TIE_BREAK",
+    "confidence": "MEDIUM",
+    "reproducible": true,
+    "minimalFix": "Audit traceback tie-break when emission costs degenerate on parallel ways"
+  },
+  {
+    "id": "RC-UTC",
+    "observation": "Frozen export lacks provider measurement timestamps; only 1Hz bucket labels",
+    "evidence": [
+      "position snapshot parse",
+      "overlay vs DIMO distance distribution"
+    ],
+    "missingEvidence": [
+      "Raw DIMO provider row timestamps export"
+    ],
+    "stage": "INPUT_TIME_ALIGNMENT",
+    "confidence": "HIGH",
+    "reproducible": true,
+    "minimalFix": "Forensic export of provider labels separate from bucket grid"
+  }
+]

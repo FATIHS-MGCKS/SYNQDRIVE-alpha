@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationHumanActions } from '../../../lib/communication/communication-human-actions';
 import type { CommunicationOrgMember } from '../../../lib/communication/hooks/useCommunicationOrgMembers';
 import type { CommunicationConversationMutation } from '../../../lib/communication/hooks/useCommunicationConversationActions';

@@ -3,7 +3,7 @@ import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { ErrorState } from '../../../components/patterns/states';
 import { api, getErrorMessage } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useOrgScopedGenerationRef } from '../../hooks/useOrgScopedGeneration';
 import { CommunicationChannelStatusChip } from './communication-channel-status';

@@ -1,0 +1,6 @@
+variant,algorithm_id,reference_way_match,reference_way_conflict,not_comparable,decoder_or_ref_unknown,way_comparable_denominator,video_seconds_denominator
+A,S4_RESEARCH_VITERBI_FORWARD_V2,253,35,173,85,373,470
+B,S4_RESEARCH_VITERBI_BACKTRACK_R1,253,35,173,85,373,470
+C,S4_RESEARCH_STRICT_NODE_ID_TOPOLOGY_R1,253,35,173,85,373,470
+D,S4_RESEARCH_STRICT_NODE_ID_TOPOLOGY_R1,253,35,173,85,373,470
+E,S4_RESEARCH_ROUTE_AWARE_VITERBI_R4_1,253,26,173,94,373,470

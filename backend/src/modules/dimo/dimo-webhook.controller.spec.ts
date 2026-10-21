@@ -8,11 +8,17 @@ function makeController(overrides?: {
   deviceConnection?: Partial<DeviceConnectionMock>;
   deviceConnectionInbox?: Partial<DeviceConnectionInboxMock>;
   rpmWebhookCandidate?: Partial<RpmWebhookMock>;
+  snapshotWakeIntake?: Partial<SnapshotWakeIntakeMock>;
   verificationToken?: string;
+  dtcSnapshotApply?: DtcSnapshotApplyMock;
 }) {
   const prisma: PrismaServiceMock = {
-    vehicle: { findFirst: jest.fn().mockResolvedValue(null) },
+    vehicle: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
     vehicleLatestState: { updateMany: jest.fn() },
+    vehicleDtcEvent: { findMany: jest.fn().mockResolvedValue([]) },
     ...overrides?.prisma,
   };
   const deviceConnection: DeviceConnectionMock = {
@@ -36,7 +42,16 @@ function makeController(overrides?: {
     }),
     ...overrides?.rpmWebhookCandidate,
   };
-  const dtcService = { upsertDtc: jest.fn() };
+  const snapshotWakeIntake: SnapshotWakeIntakeMock = {
+    handleProviderWake: jest.fn().mockResolvedValue({ outcome: 'ENQUEUED' }),
+    ...overrides?.snapshotWakeIntake,
+  };
+  const dtcService = { upsertDtc: jest.fn(), clearDtc: jest.fn() };
+  const dtcSnapshotApply: DtcSnapshotApplyMock = {
+    applyBuiltProposal: jest.fn().mockResolvedValue({ decision: { outcome: 'APPLY_WEBHOOK_PARTIAL' } }),
+    recordRejectedFetchMetadata: jest.fn().mockResolvedValue(undefined),
+    ...overrides?.dtcSnapshotApply,
+  };
   const dimoConf = {
     webhookVerificationToken: overrides?.verificationToken ?? process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
   };
@@ -47,13 +62,31 @@ function makeController(overrides?: {
     deviceConnection as never,
     deviceConnectionInbox as never,
     rpmWebhookCandidate as never,
+    snapshotWakeIntake as never,
+    (overrides?.dtcSnapshotApply !== undefined ? dtcSnapshotApply : undefined) as never,
   );
-  return { controller, prisma, deviceConnection, deviceConnectionInbox, rpmWebhookCandidate, dtcService };
+  return {
+    controller,
+    prisma,
+    deviceConnection,
+    deviceConnectionInbox,
+    rpmWebhookCandidate,
+    snapshotWakeIntake,
+    dtcService,
+    dtcSnapshotApply,
+  };
 }
 
 type PrismaServiceMock = {
-  vehicle: { findFirst: jest.Mock };
+  vehicle: { findFirst: jest.Mock; findUnique?: jest.Mock };
   vehicleLatestState: { updateMany: jest.Mock };
+  vehicleDtcEvent?: { findMany: jest.Mock };
+  vehicleDataSourceLink?: { findFirst: jest.Mock };
+};
+
+type DtcSnapshotApplyMock = {
+  applyBuiltProposal: jest.Mock;
+  recordRejectedFetchMetadata: jest.Mock;
 };
 
 type DeviceConnectionMock = {
@@ -66,6 +99,10 @@ type DeviceConnectionInboxMock = {
 
 type RpmWebhookMock = {
   ingestRpmThresholdEvent: jest.Mock;
+};
+
+type SnapshotWakeIntakeMock = {
+  handleProviderWake: jest.Mock;
 };
 
 const mockRes = { type: jest.fn().mockReturnThis() } as never;
@@ -110,6 +147,138 @@ describe('DimoWebhookController — verification handshake', () => {
         mockRes,
       ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+});
+
+describe('DimoWebhookController — snapshot wake intake', () => {
+  const originalSecret = process.env.DIMO_WEBHOOK_SECRET;
+  const originalVerificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    process.env.DIMO_WEBHOOK_SECRET = originalSecret;
+    process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN = originalVerificationToken;
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.DIMO_WEBHOOK_SECRET;
+  });
+
+  it('forwards speed wake to intake and surfaces wakeOutcome', async () => {
+    const handleProviderWake = jest.fn().mockResolvedValue({ outcome: 'ENQUEUED' });
+    const { controller } = makeController({
+      snapshotWakeIntake: { handleProviderWake },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'veh-1',
+            organizationId: 'org-1',
+            hardwareType: 'LTE_R1',
+            fuelType: 'PETROL',
+          }),
+        },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        signal: { name: 'speed', value: 12, timestamp: '2026-09-07T14:00:20.000Z' },
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(handleProviderWake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokenId: 777,
+        signalName: 'speed',
+        value: 12,
+        timestamp: '2026-09-07T14:00:20.000Z',
+      }),
+    );
+    expect(result).toMatchObject({ status: 'processed', type: 'speed', wakeOutcome: 'ENQUEUED' });
+  });
+
+  it('forwards ignition ON wake to intake', async () => {
+    const handleProviderWake = jest.fn().mockResolvedValue({ outcome: 'COALESCED' });
+    const { controller } = makeController({
+      snapshotWakeIntake: { handleProviderWake },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'veh-1',
+            organizationId: 'org-1',
+            hardwareType: 'LTE_R1',
+            fuelType: 'PETROL',
+          }),
+        },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        signal: { name: 'isIgnitionOn', value: true, timestamp: '2026-09-07T14:00:20.000Z' },
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(handleProviderWake).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenId: 777, signalName: 'isIgnitionOn', value: true }),
+    );
+    expect(result).toMatchObject({ type: 'ignition', wakeOutcome: 'COALESCED' });
+  });
+
+  it('does not call snapshot wake intake for unrelated signals', async () => {
+    const handleProviderWake = jest.fn();
+    const { controller, rpmWebhookCandidate } = makeController({
+      snapshotWakeIntake: { handleProviderWake },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'v1',
+            organizationId: 'o1',
+            hardwareType: 'LTE_R1',
+            fuelType: 'PETROL',
+          }),
+        },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        metricName: 'vss.powertrainCombustionEngineSpeed',
+        signal: { name: 'powertrainCombustionEngineSpeed', value: 5200 },
+      },
+    };
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(handleProviderWake).not.toHaveBeenCalled();
+    expect(rpmWebhookCandidate.ingestRpmThresholdEvent).toHaveBeenCalled();
   });
 });
 
@@ -314,5 +483,283 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     );
 
     expect(result).toEqual({ status: 'rejected', reason: 'verification_not_configured' });
+  });
+});
+
+describe('DimoWebhookController — DTC obdDTCList cohort admission', () => {
+  const VID = 'c10351f8-b6a2-4258-947f-631aeaa6d359';
+  const originalEnv = {
+    node: process.env.NODE_ENV,
+    secret: process.env.DIMO_WEBHOOK_SECRET,
+    dtc01a: process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED,
+    cohort: process.env.DTC_01F_COHORT_GATE_ENABLED,
+    allowlist: process.env.DTC_01F_COHORT_VEHICLE_ALLOWLIST,
+  };
+
+  const dtcBody = {
+    type: 'dimo.trigger',
+    subject: 'did:erc721:137:0xabc:777',
+    data: {
+      signal: { name: 'obdDTCList', value: 'P0301', timestamp: '2026-10-15T12:00:00.000Z' },
+    },
+  };
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalEnv.node;
+    process.env.DIMO_WEBHOOK_SECRET = originalEnv.secret;
+    process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED = originalEnv.dtc01a;
+    process.env.DTC_01F_COHORT_GATE_ENABLED = originalEnv.cohort;
+    process.env.DTC_01F_COHORT_VEHICLE_ALLOWLIST = originalEnv.allowlist;
+  });
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.DIMO_WEBHOOK_SECRET;
+    delete process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED;
+    delete process.env.DTC_01F_COHORT_GATE_ENABLED;
+    delete process.env.DTC_01F_COHORT_VEHICLE_ALLOWLIST;
+  });
+
+  function vehicleRow(lifecycle = 'ACTIVE') {
+    return {
+      id: VID,
+      organizationId: 'org-1',
+      hardwareType: 'LTE_R1',
+      fuelType: 'PETROL',
+      registryLifecycle: lifecycle,
+    };
+  }
+
+  it('global flag off: legacy upsert for ACTIVE vehicle', async () => {
+    const row = vehicleRow('ACTIVE');
+    const { controller, dtcService, prisma, dtcSnapshotApply } = makeController({
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest.fn().mockResolvedValue({
+            organizationId: row.organizationId,
+            registryLifecycle: row.registryLifecycle,
+          }),
+        },
+        vehicleDtcEvent: { findMany: jest.fn().mockResolvedValue([]) },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(dtcBody)) } as never,
+      dtcBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(dtcService.upsertDtc).toHaveBeenCalled();
+    expect(prisma.vehicleLatestState.updateMany).toHaveBeenCalled();
+    expect(dtcSnapshotApply.applyBuiltProposal).not.toHaveBeenCalled();
+  });
+
+  it('global flag off: skips OFFBOARDED without legacy mutations', async () => {
+    const row = vehicleRow('OFFBOARDED');
+    const { controller, dtcService, prisma } = makeController({
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest.fn().mockResolvedValue({
+            organizationId: row.organizationId,
+            registryLifecycle: row.registryLifecycle,
+          }),
+        },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(dtcBody)) } as never,
+      dtcBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(dtcService.upsertDtc).not.toHaveBeenCalled();
+    expect(prisma.vehicleLatestState.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('cohort on: allowlisted vehicle uses safety apply path', async () => {
+    process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED = 'true';
+    process.env.DTC_01F_COHORT_GATE_ENABLED = 'true';
+    process.env.DTC_01F_COHORT_VEHICLE_ALLOWLIST = VID;
+
+    const row = vehicleRow('ACTIVE');
+    const applyBuiltProposal = jest.fn().mockResolvedValue({ decision: { outcome: 'APPLY_WEBHOOK_PARTIAL' } });
+    const { controller, dtcService, dtcSnapshotApply } = makeController({
+      dtcSnapshotApply: { applyBuiltProposal, recordRejectedFetchMetadata: jest.fn() },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest
+            .fn()
+            .mockResolvedValueOnce({
+              organizationId: row.organizationId,
+              registryLifecycle: row.registryLifecycle,
+            })
+            .mockResolvedValueOnce({
+              dimoVehicleId: 'dimo-1',
+              dimoVehicle: { tokenId: 777 },
+            }),
+        },
+        vehicleDataSourceLink: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'link-1',
+            isActive: true,
+            dimoVehicleId: 'dimo-1',
+          }),
+        },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(dtcBody)) } as never,
+      dtcBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(applyBuiltProposal).toHaveBeenCalled();
+    expect(dtcService.upsertDtc).not.toHaveBeenCalled();
+  });
+
+  it('cohort on: non-allowlisted skips DTC mutation (no legacy fallback)', async () => {
+    process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED = 'true';
+    process.env.DTC_01F_COHORT_GATE_ENABLED = 'true';
+    process.env.DTC_01F_COHORT_VEHICLE_ALLOWLIST = VID;
+
+    const otherId = 'a60c0749-a7cd-494e-b5b9-dea3c6b97d63';
+    const row = { ...vehicleRow('ACTIVE'), id: otherId };
+    const { controller, dtcService, dtcSnapshotApply } = makeController({
+      dtcSnapshotApply: {
+        applyBuiltProposal: jest.fn(),
+        recordRejectedFetchMetadata: jest.fn(),
+      },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest.fn().mockResolvedValue({
+            organizationId: row.organizationId,
+            registryLifecycle: row.registryLifecycle,
+          }),
+        },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(dtcBody)) } as never,
+      dtcBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(dtcService.upsertDtc).not.toHaveBeenCalled();
+    expect(dtcSnapshotApply.applyBuiltProposal).not.toHaveBeenCalled();
+  });
+
+  it('invalid cohort config skips webhook DTC mutations', async () => {
+    process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED = 'true';
+    process.env.DTC_01F_COHORT_GATE_ENABLED = 'true';
+    process.env.DTC_01F_COHORT_VEHICLE_ALLOWLIST = 'not-a-uuid';
+
+    const row = vehicleRow('ACTIVE');
+    const { controller, dtcService, dtcSnapshotApply } = makeController({
+      dtcSnapshotApply: {
+        applyBuiltProposal: jest.fn(),
+        recordRejectedFetchMetadata: jest.fn(),
+      },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest.fn().mockResolvedValue({
+            organizationId: row.organizationId,
+            registryLifecycle: row.registryLifecycle,
+          }),
+        },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(dtcBody)) } as never,
+      dtcBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(dtcService.upsertDtc).not.toHaveBeenCalled();
+    expect(dtcSnapshotApply.applyBuiltProposal).not.toHaveBeenCalled();
+  });
+
+  it('fail-closed when vehicle row missing on DTC handle', async () => {
+    const row = vehicleRow('ACTIVE');
+    const { controller, dtcService } = makeController({
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(dtcBody)) } as never,
+      dtcBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(dtcService.upsertDtc).not.toHaveBeenCalled();
+  });
+
+  it('safety path records rejected metadata for stale/missing webhook timestamp', async () => {
+    process.env.DTC_01A_SAFETY_FOUNDATION_ENABLED = 'true';
+
+    const row = vehicleRow('ACTIVE');
+    const staleBody = {
+      ...dtcBody,
+      data: { signal: { name: 'obdDTCList', value: 'P0301', timestamp: null } },
+    };
+    const recordRejectedFetchMetadata = jest.fn().mockResolvedValue(undefined);
+    const { controller, dtcService } = makeController({
+      dtcSnapshotApply: {
+        applyBuiltProposal: jest.fn(),
+        recordRejectedFetchMetadata,
+      },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue(row),
+          findUnique: jest
+            .fn()
+            .mockResolvedValueOnce({
+              organizationId: row.organizationId,
+              registryLifecycle: row.registryLifecycle,
+            })
+            .mockResolvedValueOnce({
+              dimoVehicleId: 'dimo-1',
+              dimoVehicle: { tokenId: 777 },
+            }),
+        },
+        vehicleDataSourceLink: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'link-1',
+            isActive: true,
+            dimoVehicleId: 'dimo-1',
+          }),
+        },
+      },
+    });
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(staleBody)) } as never,
+      staleBody,
+      undefined,
+      mockRes,
+    );
+
+    expect(dtcService.upsertDtc).not.toHaveBeenCalled();
+    expect(recordRejectedFetchMetadata).toHaveBeenCalled();
   });
 });

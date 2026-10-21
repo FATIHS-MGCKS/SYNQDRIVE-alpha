@@ -1,7 +1,7 @@
 import { AlertTriangle, Info } from 'lucide-react';
 import { DataCard, SectionHeader, StatusChip } from '../../../components/patterns';
 import type { LegalDocumentConfigAlert } from '../../lib/legal-documents-overview';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface Props {
   alerts: LegalDocumentConfigAlert[];

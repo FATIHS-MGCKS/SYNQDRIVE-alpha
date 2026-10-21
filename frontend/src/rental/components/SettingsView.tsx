@@ -27,7 +27,7 @@ import {
 import { AdministrationTabBar } from './settings/AdministrationTabBar';
 import { AdministrationTabPanel } from './settings/AdministrationTabPanel';
 import type { SettingsTab } from './settings/settingsTypes';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 function useDocumentDark(): boolean {
   return useSyncExternalStore(

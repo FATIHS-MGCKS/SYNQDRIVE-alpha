@@ -4,10 +4,19 @@ import { BatteryV2IdempotentExecutionService } from './battery-v2-idempotent-exe
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
+import { BatteryV2AssessDispatchReservationService } from './battery-v2-assess-dispatch-reservation.service';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
+import { BatteryShutdownEvidenceModule } from '../shutdown-evidence/shutdown-evidence.module';
+import { BatteryGeneralizedEvidenceModule } from '../generalized-evidence/generalized-evidence.module';
+import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
+import { ShutdownEvidenceCaptureService } from '../shutdown-evidence/shutdown-evidence-capture.service';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
+import { LvRestCanonicalTargetAnchorResolverService } from '../lv-rest-window/lv-rest-canonical-target-anchor.resolver.service';
+import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
+import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
 import { BatteryObservationClassifyHandler } from './handlers/battery-observation-classify.handler';
+import { BatteryLvRestSessionOpenHandler } from './handlers/battery-lv-rest-session-open.handler';
 import { BatteryRestTargetEvaluateHandler } from './handlers/battery-rest-target-evaluate.handler';
 import { BatteryStartProxyExtractHandler } from './handlers/battery-start-proxy-extract.handler';
 import { BatteryAssessmentRecomputeHandler } from './handlers/battery-assessment-recompute.handler';
@@ -30,6 +39,7 @@ import { DimoModule } from '../../../dimo/dimo.module';
 
 const BATTERY_V2_JOB_HANDLERS = [
   BatteryObservationClassifyHandler,
+  BatteryLvRestSessionOpenHandler,
   BatteryRestTargetEvaluateHandler,
   BatteryStartProxyExtractHandler,
   BatteryAssessmentRecomputeHandler,
@@ -43,18 +53,25 @@ const BATTERY_V2_JOB_HANDLERS = [
 @Module({
   imports: [
     BatteryV2JobsProducerModule,
+    BatteryShutdownEvidenceModule,
+    BatteryGeneralizedEvidenceModule,
     forwardRef(() => DimoModule),
     forwardRef(() => VehicleIntelligenceModule),
   ],
   providers: [
     ...BATTERY_V2_JOB_HANDLERS,
     BatteryV2VehicleLockService,
+    BatteryV2AssessDispatchReservationService,
     BatteryV2IdempotentExecutionService,
     BatteryV2JobDeadLetterService,
     BatteryV2JobObservabilityService,
     BatteryV2JobHandlerRegistry,
     BatteryV2SnapshotIngestionService,
+    LvLiveVoltageIngestionService,
     BatteryRestTargetEvaluationService,
+    LvRestCanonicalTargetAnchorResolverService,
+    LvRestAssessmentHandoffService,
+    LvPublicationHandoffService,
     BatteryStartProxyExtractService,
     BatteryAssessmentService,
     BatteryPublicationService,

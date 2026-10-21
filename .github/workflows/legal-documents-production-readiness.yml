@@ -8,6 +8,17 @@ on:
       - 'docs/testing/legal-documents-**'
       - 'docs/audits/legal-documents-**'
       - '.github/workflows/legal-documents-production-readiness.yml'
+      - 'backend/scripts/test/synqdrive-nest-boot-check-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/scripts/test/ci-start-redis.sh'
+      - 'scripts/audits/audit-dependencies.sh'
+      - 'scripts/audits/compare-dependency-audit-baseline.js'
+      - 'scripts/audits/dependency-lock-graph-identity.sh'
+      - 'scripts/audits/validate-npm-audit-json.js'
+      - 'scripts/audits/test-dependency-audit-baseline-regression.sh'
+      - 'scripts/audits/test-dependency-audit-graph-identity.sh'
+      - 'scripts/audits/fixtures/dependency-audit/**'
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -19,9 +30,10 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
   REDIS_URL: redis://127.0.0.1:6379
   LEGAL_DOCUMENTS_POSTGRES_INTEGRATION: '1'
+  JWT_SECRET: ci-synqdrive-nest-boot-check-jwt-secret-not-for-production
 
 jobs:
   install-lockfile:
@@ -108,22 +120,13 @@ jobs:
     name: Migration tests (PostgreSQL)
     needs: install-lockfile
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: legal-docs-migration-ci-postgres
+          CI_PG_DB: postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -155,31 +158,16 @@ jobs:
     name: Backend integration tests
     needs: install-lockfile
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start Redis (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-redis.sh
+        env:
+          CI_REDIS_CONTAINER: legal-docs-ci-redis
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: legal-docs-ci-postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -188,13 +176,19 @@ jobs:
       - run: npm ci && npx prisma generate && PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
       - run: npm run test:legal-documents:integration && npm run test:legal-documents:security
         working-directory: backend
+      - run: npm run test:dimo-provider-limiter:redis
+        working-directory: backend
+        env:
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          REDIS_DB: 15
       - run: npm run test:legal-documents:postgres
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
 
   frontend-component:
     name: Frontend component tests
@@ -278,6 +272,43 @@ jobs:
       - run: npm ci && npm run build
         working-directory: frontend
 
+  nest-boot-check:
+    name: Nest production boot check
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: synqdrive-nest-boot-check-legal-postgres
+      - name: Start Redis (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-redis.sh
+        env:
+          CI_REDIS_CONTAINER: synqdrive-nest-boot-check-legal-redis
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - name: Fail closed on missing CI-local database config
+        run: |
+          set -euo pipefail
+          case "${DATABASE_URL}" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - run: bash scripts/test/synqdrive-nest-boot-check-ci.sh
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+
   security-scan:
     name: Security / dependency scan
     needs: install-lockfile
@@ -312,6 +343,7 @@ jobs:
       - playwright-e2e
       - accessibility
       - production-build
+      - nest-boot-check
       - security-scan
     steps:
       - run: echo "All critical legal-documents CI gates passed."

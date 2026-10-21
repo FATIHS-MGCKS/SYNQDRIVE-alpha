@@ -1,0 +1,7 @@
+{
+  "IMG_2807_INDEPENDENT_STRONG": "YES",
+  "IMG_2810_INDEPENDENT_STRONG": "YES",
+  "IMG_2807_AND_IMG_2810_JOINTLY_POSSIBLE": "NO",
+  "MINIMUM_CHRONOLOGY_GAP_CONFLICT_SECONDS": -130.8,
+  "note": "Independent speed strength does not imply joint chronology feasibility; intervening clips IMG_2808/IMG_2809 included"
+}

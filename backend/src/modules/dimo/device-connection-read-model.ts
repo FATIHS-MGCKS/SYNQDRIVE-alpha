@@ -4,6 +4,21 @@ import {
   WebhookConfigurationStateEnum,
   type DeviceConnectionWebhookConfigurationView,
 } from './device-connection-webhook-configuration/device-connection-webhook-configuration.types';
+import {
+  deriveInterruptionKnowledge,
+  type InterruptionKnowledge,
+  type InterruptionKnowledgeReason,
+} from './interruption-knowledge';
+import {
+  derivePhysicalDeviceEvidence,
+  physicalDeviceStateToConnectionStatus,
+} from '../vehicles/connectivity/domain/physical-device-evidence';
+
+export type {
+  InterruptionKnowledge,
+  InterruptionKnowledgeReason,
+} from './interruption-knowledge';
+export { deriveInterruptionKnowledge } from './interruption-knowledge';
 
 /** Short plug webhooks after unplug are often contact flutter — ignore unless DIMO confirms reconnect. */
 export const DEVICE_CONNECTION_PLUG_IMPULSE_WINDOW_MS = 120_000;
@@ -206,6 +221,9 @@ export interface DeviceConnectionSummary {
   pluggedCount24h: number;
   pluggedCount7d: number;
   recentEvents: DeviceConnectionEventView[];
+  /** Epistemic interruption state — do not infer from `!openUnpluggedEpisode` alone. */
+  interruptionKnowledge: InterruptionKnowledge;
+  interruptionKnowledgeReason: InterruptionKnowledgeReason;
 }
 
 export interface BuildDeviceConnectionSummaryInput {
@@ -225,6 +243,13 @@ export interface BuildDeviceConnectionSummaryInput {
   persistedOpenEpisode?: PersistedOpenEpisodeInput | null;
   /** Trigger registry snapshot — must not be inferred from event history. */
   webhookConfiguration?: DeviceConnectionWebhookConfigurationView;
+  /** Last valid telemetry snapshot timestamp — positive connected evidence. */
+  latestValidSnapshotAt?: Date | null;
+  /**
+   * When true, absence of an OPEN episode may yield `known_none`.
+   * Production callers should pass false until webhook/episode processing is verified healthy.
+   */
+  episodeEvidenceReliable?: boolean;
 }
 
 export interface PersistedOpenEpisodeInput {
@@ -358,11 +383,21 @@ export function buildDeviceConnectionSummary(
     : !!lastUnplug &&
       (!lastPlug || lastUnplug.observedAt.getTime() > lastPlug.observedAt.getTime());
 
-  let currentDeviceConnectionStatus: DeviceConnectionStatus = 'unknown';
-  if (openUnpluggedEpisode) currentDeviceConnectionStatus = 'unplugged';
-  else if (lastPlug && (!lastUnplug || lastPlug.observedAt >= lastUnplug.observedAt)) {
-    currentDeviceConnectionStatus = 'plugged';
-  }
+  const latestUnplugAt =
+    lastUnplug?.observedAt ??
+    (persistedOpenEpisode != null ? persistedOpenEpisode.openedAt : null);
+
+  const physicalEvidence = derivePhysicalDeviceEvidence({
+    latestValidSnapshotAt: input.latestValidSnapshotAt ?? null,
+    latestAcceptedUnplugEventAt: latestUnplugAt,
+    latestAcceptedPlugEventAt: lastPlug?.observedAt ?? null,
+    physicalObdApplicable: isLteR1Hardware(hardwareType) && dimoLinked,
+    nowMs,
+  });
+
+  const currentDeviceConnectionStatus = physicalDeviceStateToConnectionStatus(
+    physicalEvidence.physicalDeviceState,
+  );
 
   const activeBooking = findActiveBookingNow(bookings, nowMs);
   const openSince = openUnpluggedEpisode
@@ -440,6 +475,15 @@ export function buildDeviceConnectionSummary(
       ? true
       : recentEvents.some((e) => e.rentalRelevant);
 
+  const interruption = deriveInterruptionKnowledge({
+    lteR1Capable: isLteR1Hardware(hardwareType),
+    dimoLinked,
+    usePersistedEpisodeScope: usePersistedEpisode,
+    episodeEvidenceReliable: input.episodeEvidenceReliable ?? false,
+    openUnpluggedEpisode,
+    physicalDeviceState: physicalEvidence.physicalDeviceState,
+  });
+
   return {
     lteR1Capable: isLteR1Hardware(hardwareType),
     dimoLinked,
@@ -460,6 +504,8 @@ export function buildDeviceConnectionSummary(
     pluggedCount24h,
     pluggedCount7d,
     recentEvents,
+    interruptionKnowledge: interruption.knowledge,
+    interruptionKnowledgeReason: interruption.reason,
   };
 }
 
@@ -534,6 +580,8 @@ export function buildFleetDeviceConnectionFields(
   openUnpluggedEpisode: boolean;
   openUnpluggedSince: string | null;
   openUnpluggedDurationMs: number | null;
+  interruptionKnowledge: InterruptionKnowledge;
+  interruptionKnowledgeReason: InterruptionKnowledgeReason;
   severity: DeviceConnectionSeverity | null;
   rentalRelevant: boolean;
   duringActiveBooking: boolean;
@@ -551,6 +599,8 @@ export function buildFleetDeviceConnectionFields(
     openUnpluggedEpisode: summary.openUnpluggedEpisode,
     openUnpluggedSince: summary.openUnpluggedSince,
     openUnpluggedDurationMs: summary.openUnpluggedDurationMs,
+    interruptionKnowledge: summary.interruptionKnowledge,
+    interruptionKnowledgeReason: summary.interruptionKnowledgeReason,
     severity: summary.severity,
     rentalRelevant: summary.rentalRelevant,
     duringActiveBooking:

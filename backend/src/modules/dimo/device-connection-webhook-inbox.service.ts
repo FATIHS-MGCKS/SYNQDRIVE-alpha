@@ -5,6 +5,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-webhook-inbox-enqueue.service';
 import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
 import {
   computeProviderEventId,
@@ -37,7 +38,7 @@ export class DeviceConnectionWebhookInboxService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly queue: DeviceConnectionWebhookQueueProducer,
+    private readonly enqueueService: DeviceConnectionWebhookInboxEnqueueService,
   ) {}
 
   async intakeDeviceConnectionWebhook(
@@ -73,7 +74,13 @@ export class DeviceConnectionWebhookInboxService {
         };
       }
 
-      await this.queue.enqueue(existing.id);
+      const outcome = await this.enqueueService.enqueueOrMarkRetryableFailed(
+        existing.id,
+        'requeue',
+      );
+      if (outcome === 'failed') {
+        throw new Error('enqueue_failed');
+      }
       return {
         outcome: 'queued',
         inboxId: existing.id,
@@ -96,7 +103,13 @@ export class DeviceConnectionWebhookInboxService {
       },
     });
 
-    await this.queue.enqueue(inboxRow.id);
+    const outcome = await this.enqueueService.enqueueOrMarkRetryableFailed(
+      inboxRow.id,
+      'intake',
+    );
+    if (outcome === 'failed') {
+      throw new Error('enqueue_failed');
+    }
 
     this.logger.log(
       `Queued device connection webhook inbox ${inboxRow.id} for tokenId=${input.tokenId} eventType=${eventType}`,

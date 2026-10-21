@@ -18,6 +18,7 @@ import {
   tripAssessmentToOverallRating,
   tripOverallRatingTone,
 } from './utils/trip-overall-status';
+import { resolveTripDisplayEndTime } from './utils/trip-end-time-display.util';
 import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
 import type { TripRentalContextView } from './utils/tripRentalContext';
 import { useAddress } from '../../../lib/useAddress';
@@ -97,6 +98,7 @@ export function TripEvidencePanel({
     stressScore != null
       ? getStressLabel(trip.stressLevel ?? getStressLevel(stressScore) ?? undefined)
       : '—';
+  const displayEnd = resolveTripDisplayEndTime(trip);
 
   return (
     <div className="h-full surface-premium p-3.5">
@@ -106,7 +108,7 @@ export function TripEvidencePanel({
         <EvidenceRow label={RENTAL_COPY.evidenceTime}>
           <span className="tabular-nums">
             {formatTripTime(trip.startTime)}
-            {trip.endTime ? ` – ${formatTripTime(trip.endTime)}` : ''}
+            {displayEnd ? ` – ${formatTripTime(displayEnd)}` : ''}
           </span>
         </EvidenceRow>
         <EvidenceRow label={RENTAL_COPY.evidenceDistance}>

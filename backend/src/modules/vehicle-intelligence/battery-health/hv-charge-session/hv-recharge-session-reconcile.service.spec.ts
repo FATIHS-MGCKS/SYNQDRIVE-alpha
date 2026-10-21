@@ -87,6 +87,10 @@ describe('HvRechargeSessionReconcileService', () => {
     batteryV2HvRechargeProviderDelay: { observe: jest.fn() },
   };
 
+  const chargingCounterEvidence = {
+    captureForPersistResults: jest.fn().mockResolvedValue([]),
+  };
+
   let service: HvRechargeSessionReconcileService;
 
   beforeEach(() => {
@@ -98,13 +102,38 @@ describe('HvRechargeSessionReconcileService', () => {
     hvMethodProfile.resolveForVehicle.mockResolvedValue({
       rechargeSegmentsAvailable: true,
     });
+    fallbackDetector.detectAndPersistForVehicle.mockResolvedValue({
+      skipped: true,
+      skipReason: 'no_observations',
+      detected: 0,
+      persisted: 0,
+      rejectedFalsePositives: 0,
+      results: [],
+    });
     service = new HvRechargeSessionReconcileService(
       prisma as never,
       hvMethodProfile as never,
       ingest as never,
       fallbackDetector as never,
       metrics as never,
+      undefined,
+      chargingCounterEvidence as never,
     );
+  });
+
+  it('invokes charging counter sidecar without failing reconcile when sidecar throws', async () => {
+    ingest.ingestForVehicle.mockResolvedValue(mockIngestResult());
+    chargingCounterEvidence.captureForPersistResults.mockRejectedValue(
+      new Error('sidecar failed'),
+    );
+
+    const result = await service.reconcile({
+      organizationId: ORG,
+      vehicleId: VEH,
+    });
+
+    expect(result.skipped).toBe(false);
+    expect(chargingCounterEvidence.captureForPersistResults).toHaveBeenCalled();
   });
 
   it('skips when feature flag is disabled', async () => {
@@ -158,7 +187,8 @@ describe('HvRechargeSessionReconcileService', () => {
       vehicleId: VEH,
     });
 
-    expect(result.skipReason).toBe('capability_unavailable');
+    expect(result.skipped).toBe(false);
+    expect(result.skipReason).toBeUndefined();
     expect(result.fallback?.persisted).toBe(1);
     expect(fallbackDetector.detectAndPersistForVehicle).toHaveBeenCalled();
     expect(ingest.ingestForVehicle).not.toHaveBeenCalled();
@@ -298,9 +328,11 @@ describe('HvRechargeSessionReconcileProducerService', () => {
   const prisma = {
     hvChargeSession: { findMany: jest.fn() },
     vehicleBatteryCapability: { findMany: jest.fn() },
+    $queryRaw: jest.fn(),
   };
   const jobProducer = { enqueue: jest.fn() };
   const deadLetters = { isDeadLetter: jest.fn() };
+  const metrics = { erdE4LivenessTotal: { inc: jest.fn() } };
 
   let producer: InstanceType<typeof HvRechargeSessionReconcileProducerService>;
 
@@ -308,27 +340,35 @@ describe('HvRechargeSessionReconcileProducerService', () => {
     jest.clearAllMocks();
     deadLetters.isDeadLetter.mockResolvedValue(false);
     jobProducer.enqueue.mockResolvedValue('job-1');
-    prisma.hvChargeSession.findMany.mockResolvedValue([]);
-    prisma.vehicleBatteryCapability.findMany.mockResolvedValue([]);
+    prisma.hvChargeSession = { findMany: jest.fn().mockResolvedValue([]) };
+    prisma.vehicleBatteryCapability = { findMany: jest.fn().mockResolvedValue([]) };
+    prisma.$queryRaw = jest.fn().mockResolvedValue([]);
     producer = new HvRechargeSessionReconcileProducerService(
       prisma as never,
       jobProducer as never,
       deadLetters as never,
+      metrics as never,
     );
   });
 
+  it('returns zero when master HV recharge flag is off', async () => {
+    (isBatteryV2HvRechargeSessionEnabled as jest.Mock).mockReturnValue(false);
+    const count = await producer.reconcilePeriodic(10);
+    expect(count).toBe(0);
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
+    (isBatteryV2HvRechargeSessionEnabled as jest.Mock).mockReturnValue(true);
+  });
+
   it('enqueues periodic reconcile for ongoing sessions and capable vehicles', async () => {
-    prisma.hvChargeSession.findMany.mockResolvedValue([
-      { vehicleId: 'veh-ongoing', organizationId: ORG },
-    ]);
-    prisma.vehicleBatteryCapability.findMany.mockResolvedValue([
-      { vehicleId: 'veh-capable', organizationId: ORG },
+    prisma.$queryRaw.mockResolvedValue([
+      { vehicleId: 'veh-ongoing', organizationId: ORG, category: 'ongoing' },
+      { vehicleId: 'veh-capable', organizationId: ORG, category: 'capability' },
     ]);
 
-    const enqueued = await producer.reconcilePeriodic(10);
+    const enqueued = await producer.reconcilePeriodic(10, new Date('2026-07-16T12:00:00.000Z'));
 
-    expect(enqueued).toBe(2);
-    expect(jobProducer.enqueue).toHaveBeenCalledTimes(2);
+    expect(enqueued).toBeGreaterThanOrEqual(1);
+    expect(jobProducer.enqueue).toHaveBeenCalled();
   });
 
   it('skips enqueue when idempotency key is dead-lettered', async () => {

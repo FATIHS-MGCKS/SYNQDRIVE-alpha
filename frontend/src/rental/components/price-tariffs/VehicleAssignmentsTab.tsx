@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import { useRentalOrg } from '../../RentalContext';
 import { useFleetVehicles } from '../../FleetContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
 import {
   catalogCurrency,

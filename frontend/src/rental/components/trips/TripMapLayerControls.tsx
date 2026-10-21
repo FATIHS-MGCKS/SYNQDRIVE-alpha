@@ -5,7 +5,6 @@ import type { TripMapLayerState } from './trips-map.types';
 
 interface TripMapLayerControlsProps {
   layers: TripMapLayerState;
-  hasMatchedGeometry: boolean;
   hasRoute: boolean;
   onToggle: (key: keyof TripMapLayerState) => void;
 }
@@ -26,23 +25,10 @@ const CHIPS: LayerChip[] = [
 
 export function TripMapLayerControls({
   layers,
-  hasMatchedGeometry,
   hasRoute,
   onToggle,
 }: TripMapLayerControlsProps) {
   if (!hasRoute) return null;
-
-  const allChips = hasMatchedGeometry
-    ? [
-        ...CHIPS,
-        {
-          key: 'showMatchedRoute' as const,
-          label: 'Abgeglichene Route',
-          icon: 'route',
-          activeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
-        },
-      ]
-    : CHIPS;
 
   return (
     <div className="pointer-events-none absolute bottom-[4.75rem] left-2.5 right-2.5 z-20 flex justify-center sm:bottom-[5.25rem] sm:left-11 sm:right-11">
@@ -53,7 +39,7 @@ export function TripMapLayerControls({
         className="pointer-events-auto w-full max-w-full sm:max-w-none"
       >
         <div className="liquid-glass-lens__layer-bar">
-          {allChips.map((chip) => {
+          {CHIPS.map((chip) => {
             const active = layers[chip.key];
             return (
               <button

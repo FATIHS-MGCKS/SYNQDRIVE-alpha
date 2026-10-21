@@ -8,7 +8,7 @@ import {
 } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
 import type { LegalDocumentDto } from '../../lib/api';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useLegalDocumentsOverview } from './legal-documents/useLegalDocumentsOverview';
 import { LegalDocumentsReadinessStrip } from './legal-documents/LegalDocumentsReadinessStrip';

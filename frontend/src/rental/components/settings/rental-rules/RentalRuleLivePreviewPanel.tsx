@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { api } from '../../../../lib/api';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { formatRuleValue, labelRuleField } from './rental-rules.utils';
 import type { RentalRulePublishScope } from './RentalRulePublishImpactPanel';
 

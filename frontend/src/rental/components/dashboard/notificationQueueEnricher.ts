@@ -1,7 +1,7 @@
-import type { TranslationKey } from '../../i18n/translations/en';
-import { en } from '../../i18n/translations/en';
-import { de } from '../../i18n/translations/de';
-import type { Locale } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { Locale } from '../../../i18n/LanguageContext';
 import type { ActionQueueItem } from './dashboardTypes';
 import type {
   NotificationActionType,

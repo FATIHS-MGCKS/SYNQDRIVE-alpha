@@ -1,0 +1,42 @@
+export const operatorTodayEn = {
+  'operator.today.stale.offlineTitle': 'Offline — cached data',
+  'operator.today.stale.staleTitle': 'Data may be outdated',
+  'operator.today.stale.offlineBody':
+    'The display is based on the last successful fetch. Actions will sync once you are back online.',
+  'operator.today.stale.staleBody':
+    'The last fetch failed. Showing the most recently loaded tasks.',
+  'operator.today.stale.refresh': 'Refresh',
+  'operator.today.noOrg.title': 'No organization',
+  'operator.today.noOrg.description': 'Sign in with a rental organization account.',
+  'operator.today.createBooking': 'Create booking',
+  'operator.today.error.fatalTitle': 'Today data unavailable',
+  'operator.today.error.bookingsTitle': 'Bookings unavailable',
+  'operator.today.empty.title': 'All quiet today',
+  'operator.today.empty.description':
+    'No urgent tasks, handovers, or blockers for today.',
+  'operator.today.empty.allOpenTasks': 'All open tasks ({count})',
+  'operator.today.header.title': 'Operational day overview',
+  'operator.today.header.subtitle': 'Prioritized by urgency — critical and overdue first.',
+  'operator.today.nav.allOpenWithCount': 'All open ({count})',
+  'operator.today.nav.allTasks': 'All tasks',
+  'operator.today.alerts.sectionTitle': 'Operational notices',
+  'operator.today.alert.severity.critical': 'Critical',
+  'operator.today.alert.severity.warning': 'Warning',
+  'operator.today.blocked.sectionTitle': 'Blocked vehicles',
+  'operator.today.blocked.badge': 'Blocked',
+  'operator.today.handover.now': 'Handovers now',
+  'operator.today.handover.today': 'Handovers today',
+  'operator.today.tablet.placeholder':
+    'Tasks and bookings open as full-screen sheets on this device.',
+  'operator.today.bucket.now.title': 'Required now',
+  'operator.today.bucket.now.subtitle':
+    'Overdue, critical, and immediately blocking tasks',
+  'operator.today.bucket.today.subtitle': 'Tasks due and activated today',
+  'operator.today.bucket.upcoming.title': 'Coming up',
+  'operator.today.bucket.upcoming.subtitle': 'Activates within the defined upcoming window',
+  'operator.today.bucket.planned.title': 'Planned',
+  'operator.today.bucket.planned.subtitle': 'Future reminders and tasks',
+  'operator.today.bucket.unassigned.title': 'Unassigned',
+  'operator.today.bucket.unassigned.subtitle': 'Team queue — tasks without an assignee',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} unavailable',
+} as const;

@@ -1,42 +1,75 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { RedisModule } from '@shared/redis/redis.module';
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
+import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
+import { LvRestWindowStateMachineService } from '../lv-rest-window/lv-rest-window.service';
+import { LvRestWindowSessionArmingService } from '../lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2AssessDispatchReservationService } from './battery-v2-assess-dispatch-reservation.service';
 import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
+import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
+import { BatteryShutdownEvidenceModule } from '../shutdown-evidence/shutdown-evidence.module';
+import { BatteryGeneralizedEvidenceModule } from '../generalized-evidence/generalized-evidence.module';
+import { ProviderObservabilityGapModule } from '../provider-observability-gap/provider-observability-gap.module';
+import { ShutdownEvidenceTripContextService } from '../shutdown-evidence/shutdown-evidence-trip-context.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
+import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
+import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
+import { LvRestCanonicalTargetAnchorResolverService } from '../lv-rest-window/lv-rest-canonical-target-anchor.resolver.service';
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 })],
+  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 }), RedisModule, BatteryShutdownEvidenceModule, BatteryGeneralizedEvidenceModule, ProviderObservabilityGapModule],
   providers: [
     BatteryPolicyProfileService,
+    BatteryMeasurementSessionRepository,
+    LvRestWindowStateMachineService,
+    LvRestWindowSessionArmingService,
     BatteryV2JobDeadLetterService,
+    BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
+    BatteryProviderLastStoredLiveVoltageResolver,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
+    BatteryV2LvRestSessionProducer,
     BatteryV2RestTargetProducer,
     HvRechargeSessionReconcileProducerService,
     BatteryCapabilityRefreshService,
     BatteryV2JobObservabilityService,
+    LvRestAssessmentHandoffService,
+    LvPublicationHandoffService,
     BatteryV2ReconciliationService,
+    LvRestCanonicalTargetAnchorResolverService,
+    ShutdownEvidenceTripContextService,
   ],
   exports: [
     BatteryV2JobDeadLetterService,
+    BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
+    BatteryProviderLastStoredLiveVoltageResolver,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
+    BatteryV2LvRestSessionProducer,
+    LvRestWindowStateMachineService,
+    LvRestWindowSessionArmingService,
+    LvRestCanonicalTargetAnchorResolverService,
     BatteryV2RestTargetProducer,
     HvRechargeSessionReconcileProducerService,
     BatteryCapabilityRefreshService,
     BatteryV2JobObservabilityService,
+    LvRestAssessmentHandoffService,
+    LvPublicationHandoffService,
     BatteryV2ReconciliationService,
+    ShutdownEvidenceTripContextService,
     BullModule,
   ],
 })

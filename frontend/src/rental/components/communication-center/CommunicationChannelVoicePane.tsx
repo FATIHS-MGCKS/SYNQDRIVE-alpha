@@ -1,7 +1,7 @@
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { ErrorState } from '../../../components/patterns/states';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useVoiceAgentSettings } from '../voice-assistant/useVoiceAgentSettings';
 import { CommunicationChannelStatusChip } from './communication-channel-status';

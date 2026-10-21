@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '@modules/dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import { DrivingEvidenceService } from '../driving-evidence/driving-evidence.service';
 import { DrivingIntelligenceV2Config } from '../driving-intelligence-v2/driving-intelligence-v2.config';
 import {
@@ -69,6 +70,11 @@ export class DimoTripSegmentValidationService {
       (trip.endTime ?? trip.startTime).getTime() + DIMO_SEGMENT_VALIDATION_WINDOW_BUFFER_MS,
     );
 
+    const providerContext = buildDimoProviderRequestContext(input.dimoTokenId!, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+    });
+
     const mechanismResults = await Promise.all(
       DIMO_TRIP_SEGMENT_VALIDATION_MECHANISMS.map(async (mechanism) => {
         const fetch = await this.dimoSegments.fetchTripSegmentsForMechanism(
@@ -76,6 +82,7 @@ export class DimoTripSegmentValidationService {
           windowFrom,
           windowTo,
           mechanism,
+          providerContext,
         );
         return compareMechanism(trip, fetch.segments, mechanism, fetch.providerError);
       }),

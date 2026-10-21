@@ -4,7 +4,6 @@ import {
   CommunicationDashboardWidget,
   ControlKpiStrip,
   DashboardAttentionStack,
-  DashboardControlHeader,
   DashboardContextHeader,
   DashboardDrilldownDrawer,
   DashboardTasksOverviewPanel,
@@ -130,27 +129,26 @@ export function DashboardView({
         <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '0ms' }}>
           <div ref={leftColumnRef} className={DASHBOARD_LAYOUT.controlLeftColumn}>
             <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
-              <DashboardControlHeader>
-                <div className="space-y-3 sm:space-y-3.5">
-                  <ControlKpiStrip
-                    dashboardRuntime={vm.dashboardRuntime}
-                    activeSliceId={vm.activeDashboardSliceId}
-                    onSelectSlice={vm.openSliceDrilldown}
-                    embedded
-                    locale={vm.locale}
-                    dataFreshness={vm.dataFreshness}
-                  />
-                  <FinanceKpiStrip
-                    businessPulseSlices={vm.businessPulseSlices}
-                    onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
-                    activeBusinessMetricId={vm.activeBusinessMetricId}
-                    locale={vm.locale}
-                    currency="EUR"
-                    loading={!vm.dataFreshness.invoicesLoaded}
-                    error={vm.dataFreshness.invoicesError}
-                  />
-                </div>
-              </DashboardControlHeader>
+              <div className={DASHBOARD_LAYOUT.operationsGrid}>
+                <ControlKpiStrip
+                  dashboardRuntime={vm.dashboardRuntime}
+                  activeSliceId={vm.activeDashboardSliceId}
+                  onSelectSlice={vm.openSliceDrilldown}
+                  embedded
+                  locale={vm.locale}
+                  dataFreshness={vm.dataFreshness}
+                  className={DASHBOARD_LAYOUT.operationsGridContents}
+                />
+                <FinanceKpiStrip
+                  businessPulseSlices={vm.businessPulseSlices}
+                  onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
+                  activeBusinessMetricId={vm.activeBusinessMetricId}
+                  locale={vm.locale}
+                  currency="EUR"
+                  loading={!vm.dataFreshness.invoicesLoaded}
+                  error={vm.dataFreshness.invoicesError}
+                />
+              </div>
             </div>
           </div>
           <div

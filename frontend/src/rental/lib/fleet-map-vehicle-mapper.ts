@@ -7,11 +7,69 @@ import type {
   VehicleOnlineStatus,
 } from '../data/vehicles';
 import {
+  isFleetHealthConditionState,
+  isHealthEvaluabilityState,
+  isPipelineAvailability,
+  type FleetHealthEvaluation,
+} from './fleet-health-evaluation/types';
+import {
+  isOperationalAvailabilityState,
+  type FleetOperationalAvailability,
+} from './operational-availability/types';
+import {
   normalizeVehicleOperationalStateDto,
   type VehicleBookingContext,
   type VehicleBookingReference,
   type VehicleOperationalState,
 } from './vehicle-operational-state';
+
+function mapHealthEvaluation(
+  raw: FleetMapVehicleResponse['healthEvaluation'],
+): FleetHealthEvaluation | undefined {
+  if (!raw) return undefined;
+  const evaluation: FleetHealthEvaluation = {
+    generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
+    healthEvidenceAt: raw.healthEvidenceAt ?? null,
+    anyModuleDataStale:
+      typeof raw.anyModuleDataStale === 'boolean' ? raw.anyModuleDataStale : null,
+    source: raw.source ?? 'p0.2_projection',
+  };
+  if (raw.condition !== undefined && isFleetHealthConditionState(raw.condition)) {
+    evaluation.condition = raw.condition;
+  }
+  if (raw.evaluability !== undefined && isHealthEvaluabilityState(raw.evaluability)) {
+    evaluation.evaluability = raw.evaluability;
+  }
+  if (raw.pipelineAvailability !== undefined && isPipelineAvailability(raw.pipelineAvailability)) {
+    evaluation.pipelineAvailability = raw.pipelineAvailability;
+  }
+  return evaluation;
+}
+
+function mapOperationalAvailability(
+  raw: FleetMapVehicleResponse['operationalAvailability'],
+): FleetOperationalAvailability | undefined {
+  if (!raw) return undefined;
+  const availability: FleetOperationalAvailability = {
+    generatedAt: raw.generatedAt ?? new Date(0).toISOString(),
+  };
+  if (raw.state !== undefined && isOperationalAvailabilityState(raw.state)) {
+    availability.state = raw.state;
+  }
+  if (raw.primaryReason !== undefined) {
+    availability.primaryReason = raw.primaryReason;
+  }
+  if (raw.reasonCodes !== undefined) {
+    availability.reasonCodes = Array.isArray(raw.reasonCodes) ? raw.reasonCodes : raw.reasonCodes;
+  }
+  if (raw.recommendedAction !== undefined) {
+    availability.recommendedAction = raw.recommendedAction;
+  }
+  if (raw.attention !== undefined) {
+    availability.attention = raw.attention;
+  }
+  return availability;
+}
 
 /** Fleet map row after canonical DTO mapping — extends rental vehicle read-model. */
 export interface FleetMapVehicleRow extends VehicleData {
@@ -307,6 +365,8 @@ export function mapFleetMapVehicleResponse(
     heading: toFiniteNumber(raw.heading) ?? null,
     lastSeenAt: raw.lastSeenAt ?? null,
     connectivityRuntime: raw.connectivityRuntime,
+    operationalAvailability: mapOperationalAvailability(raw.operationalAvailability),
+    healthEvaluation: mapHealthEvaluation(raw.healthEvaluation),
     ...legacyBooking,
     maintenanceReason: raw.maintenanceReason ?? null,
     maintenanceReasonCode: reasonCode,

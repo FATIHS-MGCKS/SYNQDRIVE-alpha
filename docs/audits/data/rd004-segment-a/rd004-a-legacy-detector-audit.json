@@ -1,0 +1,15 @@
+{
+  "events": [],
+  "counts": {
+    "LEGACY_HARD_ACCEL_EVENTS": 0,
+    "LEGACY_EXTREME_ACCEL_EVENTS": 0,
+    "LEGACY_HARD_BRAKING_EVENTS": 0,
+    "LEGACY_EXTREME_BRAKING_EVENTS": 0,
+    "LEGACY_LAUNCH_LIKE_EVENTS": 0,
+    "LEGACY_FULL_BRAKING_EVENTS": 0,
+    "LIKELY_FALSE_POSITIVE_EVENTS": 0
+  },
+  "cleanPointCount": 27,
+  "mode": "OFFLINE_READ_ONLY",
+  "note": "Current legacy hf-acceleration/hf-braking/hf-abuse detectors evaluated on preserved Segment-A HF data only"
+}

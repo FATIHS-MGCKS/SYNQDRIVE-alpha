@@ -1,12 +1,11 @@
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { buildTripsMapGeoJson } from '../../../lib/geospatial';
 import type { TripBehaviorEvent } from '../../../lib/api';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
-import type { TripEnrichment } from './trips-map.types';
 import {
   bearingBetween,
+  buildMeasuredSpeedLineFeatures,
   createDirectionMarker,
   createEndpointMarker,
   createEventMarkerElement,
@@ -19,7 +18,8 @@ export interface UseTripsRouteMapOptions {
   vehicleId?: string;
   selectedTrip: TripMapTripData | null;
   routePoints: TripMapRoutePoint[];
-  enrichment?: TripEnrichment;
+  routeSegments: [number, number][][];
+  hasUnknownGaps: boolean;
   behaviorEvents: TripBehaviorEvent[];
   layers: TripMapLayerState;
   onEventSelect: (state: TripMapPopoverState | null) => void;
@@ -27,12 +27,26 @@ export interface UseTripsRouteMapOptions {
   endpointLabels?: { start?: string | null; end?: string | null };
 }
 
+function buildSegmentLineFeatures(
+  segments: [number, number][][],
+  tripId: string,
+): GeoJSON.Feature<GeoJSON.LineString>[] {
+  return segments
+    .filter((segment) => segment.length >= 2)
+    .map((segment, index) => ({
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: segment },
+      properties: { tripId, segmentIndex: index },
+    }));
+}
+
 export function useTripsRouteMap({
   isDarkMode,
   vehicleId,
   selectedTrip,
   routePoints,
-  enrichment,
+  routeSegments,
+  hasUnknownGaps,
   behaviorEvents,
   layers,
   onEventSelect,
@@ -54,41 +68,54 @@ export function useTripsRouteMap({
     const empty = {
       lines: { type: 'FeatureCollection' as const, features: [] as GeoJSON.Feature<GeoJSON.LineString>[] },
     };
-    if (!routePoints.length || !selectedTrip || !vehicleId) return empty;
-    if (layers.showMatchedRoute && (enrichment?.matchedGeometry?.length ?? 0) > 1) {
+    if (!selectedTrip || !vehicleId) return empty;
+    if (routeSegments.length > 0) {
+      return {
+        lines: {
+          type: 'FeatureCollection' as const,
+          features: buildSegmentLineFeatures(routeSegments, selectedTrip.id),
+        },
+      };
+    }
+    if (routePoints.length >= 2) {
       return {
         lines: {
           type: 'FeatureCollection' as const,
           features: [{
             type: 'Feature' as const,
-            geometry: { type: 'LineString' as const, coordinates: enrichment!.matchedGeometry },
-            properties: { tripId: selectedTrip.id, matched: true },
+            geometry: {
+              type: 'LineString' as const,
+              coordinates: routePoints.map((point) => [point.longitude, point.latitude]),
+            },
+            properties: { tripId: selectedTrip.id, segmentIndex: 0 },
           }],
         },
       };
     }
-    return buildTripsMapGeoJson([{ tripId: selectedTrip.id, vehicleId, points: routePoints }]);
-  }, [routePoints, selectedTrip, vehicleId, enrichment, layers.showMatchedRoute]);
+    return empty;
+  }, [routePoints, routeSegments, selectedTrip, vehicleId]);
 
   const fitMapToRoute = useCallback((force = false) => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
     const geo = mapGeoJson();
-    const fitKey = `${selectedTrip?.id ?? 'none'}:${routePoints.length}`;
+    const fitKey = `${selectedTrip?.id ?? 'none'}:${routeSegments.length}:${routePoints.length}`;
     if (!force && lastRouteFitKeyRef.current === fitKey) return;
     lastRouteFitKeyRef.current = fitKey;
 
-    const coords = (geo.lines.features[0]?.geometry as GeoJSON.LineString | undefined)?.coordinates ?? [];
-    if (coords.length > 0) {
+    const allCoords = geo.lines.features.flatMap(
+      (feature) => (feature.geometry as GeoJSON.LineString).coordinates,
+    );
+    if (allCoords.length > 0) {
       const bounds = new mapboxgl.LngLatBounds();
-      coords.forEach((c) => bounds.extend(c as [number, number]));
+      allCoords.forEach((c) => bounds.extend(c as [number, number]));
       map.fitBounds(bounds, { padding: { top: 88, bottom: 96, left: 56, right: 56 }, maxZoom: 15 });
       return;
     }
     if (selectedTrip?.startLatitude != null && selectedTrip?.startLongitude != null) {
       map.flyTo({ center: [selectedTrip.startLongitude, selectedTrip.startLatitude], zoom: 13 });
     }
-  }, [mapGeoJson, mapLoaded, routePoints.length, selectedTrip?.id, selectedTrip?.startLatitude, selectedTrip?.startLongitude]);
+  }, [mapGeoJson, mapLoaded, routePoints.length, routeSegments.length, selectedTrip?.id, selectedTrip?.startLatitude, selectedTrip?.startLongitude]);
 
   const handleCenterRoute = useCallback(() => {
     lastRouteFitKeyRef.current = null;
@@ -251,19 +278,10 @@ export function useTripsRouteMap({
     if (hasLines) {
       routeSrc.setData(geo.lines);
       if (speedSrc && routePoints.length >= 2) {
-        const speedFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-        for (let i = 0; i < routePoints.length - 1; i++) {
-          const a = routePoints[i];
-          const b = routePoints[i + 1];
-          if (a.latitude && a.longitude && b.latitude && b.longitude) {
-            speedFeatures.push({
-              type: 'Feature',
-              geometry: { type: 'LineString', coordinates: [[a.longitude, a.latitude], [b.longitude, b.latitude]] },
-              properties: { speed: a.speedKmh ?? 0 },
-            });
-          }
-        }
-        speedSrc.setData({ type: 'FeatureCollection', features: speedFeatures });
+        speedSrc.setData({
+          type: 'FeatureCollection',
+          features: buildMeasuredSpeedLineFeatures(routePoints, hasUnknownGaps),
+        });
       }
       if (stopsSrc && routePoints.length >= 2) {
         const stopFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
@@ -296,7 +314,7 @@ export function useTripsRouteMap({
       speedSrc?.setData({ type: 'FeatureCollection', features: [] });
       stopsSrc?.setData({ type: 'FeatureCollection', features: [] });
     }
-  }, [mapGeoJson, routePoints, mapLoaded, selectedTrip?.id]);
+  }, [mapGeoJson, routePoints, hasUnknownGaps, mapLoaded, selectedTrip?.id]);
 
   useEffect(() => {
     fitMapToRoute(false);

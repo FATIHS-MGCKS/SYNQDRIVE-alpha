@@ -1,0 +1,7 @@
+*.generated.conf
+.nginx-master.pid
+r9-phase1.stripped.conf
+r9-phase1.nginx.conf
+r9-phase1.generated.site.conf
+dup.conf
+big-body.bin

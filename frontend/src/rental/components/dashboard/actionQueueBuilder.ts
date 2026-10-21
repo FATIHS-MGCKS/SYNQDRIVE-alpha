@@ -305,7 +305,7 @@ function issueCategory(domain: OperationalIssueDomain, issueType: string): Actio
   if (domain === 'station_operations') return 'operations';
   if (domain === 'task') return 'task';
   if (domain === 'vehicle_health' || domain === 'service_compliance' || domain === 'rental_readiness') return 'health';
-  if (domain === 'telemetry') return issueType === 'telemetry_offline' ? 'operations' : 'vehicle';
+  if (domain === 'telemetry') return 'health';
   return 'operations';
 }
 

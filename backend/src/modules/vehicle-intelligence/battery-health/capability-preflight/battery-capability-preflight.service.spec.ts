@@ -12,6 +12,8 @@ describe('BatteryCapabilityPreflightService', () => {
   };
   const dimoTelemetry = {
     fetchBatteryCapabilityPreflightSnapshot: jest.fn(),
+    fetchAvailableSignals: jest.fn(),
+    fetchLatestVehicleSnapshot: jest.fn(),
     probeRechargeSegments: jest.fn(),
   };
   const repository = {
@@ -96,6 +98,43 @@ describe('BatteryCapabilityPreflightService', () => {
     expect(dimoAuth.getVehicleJwt).toHaveBeenCalledWith(12345);
   });
 
+  it('falls back to snapshot query when dedicated preflight query fails', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-fallback',
+      organizationId: 'org-1',
+      dimoVehicle: { tokenId: 42 },
+    });
+    dimoTelemetry.fetchBatteryCapabilityPreflightSnapshot.mockResolvedValue({
+      availableSignals: null,
+      signalsLatest: null,
+      queryError: 'GraphQL field error on source',
+    });
+    dimoTelemetry.fetchAvailableSignals.mockResolvedValue([
+      'lowVoltageBatteryCurrentVoltage',
+    ]);
+    dimoTelemetry.fetchLatestVehicleSnapshot.mockResolvedValue({
+      signalsLatest: {
+        lastSeen: '2026-07-16T11:55:00.000Z',
+        lowVoltageBatteryCurrentVoltage: {
+          value: 12.4,
+          timestamp: '2026-07-16T11:54:00.000Z',
+        },
+      },
+    });
+    dimoTelemetry.probeRechargeSegments.mockResolvedValue({
+      segments: [],
+      queryError: null,
+    });
+
+    const result = await service.runForVehicle('org-1', 'veh-fallback');
+
+    expect(result?.queryError).toBeNull();
+    expect(
+      result?.signals.find((entry) => entry.signalKey === 'lv.voltage')?.preflightStatus,
+    ).toBe(BatteryCapabilityPreflightStatus.AVAILABLE_WITH_DATA);
+    expect(dimoTelemetry.fetchLatestVehicleSnapshot).toHaveBeenCalled();
+  });
+
   it('persists QUERY_ERROR for provider failures without NOT_LISTED', async () => {
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'veh-err',
@@ -107,6 +146,12 @@ describe('BatteryCapabilityPreflightService', () => {
       signalsLatest: null,
       queryError: 'DIMO GraphQL error: upstream timeout',
     });
+    dimoTelemetry.fetchAvailableSignals.mockRejectedValue(
+      new Error('availableSignals forbidden'),
+    );
+    dimoTelemetry.fetchLatestVehicleSnapshot.mockRejectedValue(
+      new Error('snapshot forbidden'),
+    );
     dimoTelemetry.probeRechargeSegments.mockResolvedValue({
       segments: [],
       queryError: 'segments forbidden',

@@ -1,11 +1,11 @@
 import type { MasterNavLocationState, MasterView } from './master-nav.types';
 
 const CANONICAL_VIEWS: MasterView[] = [
-  'dashboard', 'organizations', 'security-access', 'users', 'vehicles', 'prospects', 'billing',
+  'dashboard', 'organizations', 'security-access', 'users', 'vehicles', 'device-inventory', 'prospects', 'billing',
   'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'platform-integrations',
   'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
-  'architektur', 'changes', 'vehicle-logbook',
+  'architektur', 'changes', 'vehicle-logbook', 'battery-v2-shadow-inspection',
 ];
 
 const LEGACY_VIEWS: MasterView[] = [

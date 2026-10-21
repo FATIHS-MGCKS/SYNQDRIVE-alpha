@@ -1,6 +1,6 @@
 import { EmptyState, MetricCard, SkeletonMetricGrid } from '../../../components/patterns';
 import type { IamSecurityOverviewDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { MfaStateBadge, RiskBadge } from './IamBadges';
 import { formatDateTime } from './iam-team.utils';
 import type { IamMfaState } from '../../../lib/api';

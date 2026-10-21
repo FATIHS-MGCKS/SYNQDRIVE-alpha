@@ -23,8 +23,8 @@ import {
 import { MapboxMap } from '../../../components/MapboxMap';
 import type { FleetMapFeatureProperties } from '../../stores/useFleetMapStore';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   PageHeader,
   MetricCard,

@@ -1,0 +1,83 @@
+export const partsAccessoriesEn = {
+  'partsAccessories.subtitle': 'Find and order parts, tires, and accessories for your fleet vehicles.',
+  'partsAccessories.emptyValue': '—',
+
+  'partsAccessories.wizard.step.vehicle': 'Vehicle',
+  'partsAccessories.wizard.step.category': 'Category',
+  'partsAccessories.wizard.step.provider': 'Provider',
+  'partsAccessories.wizard.step.authorization': 'Authorization',
+  'partsAccessories.wizard.step.results': 'Results',
+  'partsAccessories.wizard.step.detail': 'Detail',
+
+  'partsAccessories.vehicle.title': 'Select a Vehicle',
+  'partsAccessories.vehicle.desc': "Choose the vehicle you'd like to find parts or accessories for.",
+  'partsAccessories.vehicle.searchPlaceholder': 'Search by plate, make, or model…',
+  'partsAccessories.vehicle.empty': 'No vehicles found',
+  'partsAccessories.vehicle.vinPrefix': 'VIN',
+
+  'partsAccessories.category.title': 'What are you looking for?',
+  'partsAccessories.category.desc': 'Select a product category to continue.',
+  'partsAccessories.category.TIRES.label': 'Tires',
+  'partsAccessories.category.TIRES.desc': 'Search for tires matching your vehicle specs',
+  'partsAccessories.category.PARTS.label': 'Parts',
+  'partsAccessories.category.PARTS.desc': 'OEM and aftermarket replacement parts',
+  'partsAccessories.category.ACCESSORIES.label': 'Accessories',
+  'partsAccessories.category.ACCESSORIES.desc': 'Interior, exterior, and performance add-ons',
+
+  'partsAccessories.provider.title': 'Choose a Provider',
+  'partsAccessories.provider.desc': 'Select where you want to search for {category}.',
+  'partsAccessories.provider.empty.title': 'No providers available',
+  'partsAccessories.provider.empty.desc': 'No enabled providers support {category}.',
+  'partsAccessories.provider.empty.fallbackCategory': 'this category',
+
+  'partsAccessories.auth.title': 'Data Authorization',
+  'partsAccessories.auth.desc': 'Review what data will be shared before continuing.',
+  'partsAccessories.auth.disclosureNotice': 'Data disclosure notice',
+  'partsAccessories.auth.purpose': 'Purpose',
+  'partsAccessories.auth.dataFields': 'Data Fields Shared',
+  'partsAccessories.auth.version': 'Version {version}',
+  'partsAccessories.auth.effective': 'Effective {date}',
+  'partsAccessories.auth.consent':
+    'I understand and authorize this data transfer to {provider} for the purpose of searching {category}.',
+  'partsAccessories.auth.confirmSearch': 'Confirm & Search',
+
+  'partsAccessories.results.title': 'Search Results',
+  'partsAccessories.results.summarySingular': '{count} result · {ms}ms',
+  'partsAccessories.results.summaryPlural': '{count} results · {ms}ms',
+  'partsAccessories.results.empty.title': 'No products found',
+  'partsAccessories.results.empty.desc': 'Try adjusting your vehicle or category selection.',
+  'partsAccessories.results.soldBy': 'Sold by {seller}',
+  'partsAccessories.results.netLabel': 'net',
+  'partsAccessories.results.loadMore': 'Load More',
+
+  'partsAccessories.sort.relevance': 'Relevance',
+  'partsAccessories.sort.priceAsc': 'Price: Low → High',
+  'partsAccessories.sort.priceDesc': 'Price: High → Low',
+
+  'partsAccessories.availability.in_stock': 'In Stock',
+  'partsAccessories.availability.limited': 'Limited',
+  'partsAccessories.availability.out_of_stock': 'Out of Stock',
+  'partsAccessories.availability.unknown': 'Unknown',
+
+  'partsAccessories.fitment.exact_fit': 'Exact Fit',
+  'partsAccessories.fitment.likely_fit': 'Likely Fit',
+  'partsAccessories.fitment.universal': 'Universal',
+
+  'partsAccessories.detail.priceInclTax': 'Price (incl. tax)',
+  'partsAccessories.detail.netPrice': 'Net price',
+  'partsAccessories.detail.fitmentNotes': 'Fitment Notes',
+  'partsAccessories.detail.description': 'Description',
+  'partsAccessories.detail.specifications': 'Specifications',
+  'partsAccessories.detail.providerNotice': 'Provider Notice',
+  'partsAccessories.detail.checkout': 'Continue to Checkout',
+  'partsAccessories.detail.noCheckout': 'No checkout link available for this product.',
+  'partsAccessories.detail.redirectNotice': "You will be redirected to {provider}'s website.",
+  'partsAccessories.detail.redirectFallbackProvider': 'the provider',
+
+  'partsAccessories.actions.continue': 'Continue',
+
+  'partsAccessories.error.loadProviders': 'Failed to load providers',
+  'partsAccessories.error.loadDisclosure': 'Failed to load disclosure',
+  'partsAccessories.error.searchFailed': 'Search failed',
+  'partsAccessories.error.authorizationFailed': 'Authorization failed',
+};

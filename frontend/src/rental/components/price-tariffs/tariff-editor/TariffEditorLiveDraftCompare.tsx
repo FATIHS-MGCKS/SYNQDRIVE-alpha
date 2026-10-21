@@ -1,5 +1,5 @@
 import type { TariffCompareField } from '../../../pricing/tariff-live-draft-compare';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { cn } from '../../../../components/ui/utils';
 
 interface TariffEditorLiveDraftCompareProps {

@@ -7,7 +7,7 @@
  * categories, no estimatedExposure, no predictive/forecast. Downtime is shown from
  * canonical utilization facts (durations/counts), never from telemetry.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type {
   EvaluationsCostModelSection,

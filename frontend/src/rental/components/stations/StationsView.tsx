@@ -17,8 +17,8 @@ import {
 import { toast } from 'sonner';
 import { api, type Station, type StationOverviewStats, type StationsStats } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   PageHeader,
   StatusChip,

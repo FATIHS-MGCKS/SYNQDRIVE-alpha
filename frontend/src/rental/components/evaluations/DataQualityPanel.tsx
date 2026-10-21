@@ -8,8 +8,8 @@
  * Lineage `sourceRef` is shown verbatim as an opaque technical reference — never joined
  * to a person/customer/invoice/vehicle and never reconstructed into a record id.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { Locale } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { Locale } from '../../../i18n/LanguageContext';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type {
   EvaluationsQualityReport,

@@ -50,7 +50,11 @@ export type TripHydrationTripInput = {
 export type CanonicalTripHydrationPrefetch = {
   impactByTripId: Map<
     string,
-    { drivingStressScore: number | null; sourceSummaryJson: Prisma.JsonValue | null }
+    {
+      drivingStressScore: number | null;
+      fullBrakingPer100Km: number | null;
+      sourceSummaryJson: Prisma.JsonValue | null;
+    }
   >;
   bookingsByVehicle: Map<string, BookingOverlapCandidate[]>;
   driverPoolByBookingId: Map<string, BookingDriverPoolContext>;

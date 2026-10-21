@@ -1,4 +1,9 @@
 import { registerAs } from '@nestjs/config';
+import {
+  resolveMaxSameTripQualifiedStopMsConfig,
+} from '../modules/vehicle-intelligence/trips/trip-qualified-stop-duration.config';
+
+const maxSameTripStopConfig = resolveMaxSameTripQualifiedStopMsConfig();
 
 export default registerAs('worker', () => ({
   snapshotIntervalMs: parseInt(process.env.WORKER_SNAPSHOT_INTERVAL_MS || '30000', 10),
@@ -47,6 +52,18 @@ export default registerAs('worker', () => ({
     10,
   ),
 
+  tripEndEmptyCoreBackoffBaseMs: parseInt(
+    process.env.TRIP_EMPTY_CORE_BACKOFF_BASE_MS || '30000',
+    10,
+  ),
+  tripEndEmptyCoreBackoffMaxMs: parseInt(
+    process.env.TRIP_EMPTY_CORE_BACKOFF_MAX_MS || '600000',
+    10,
+  ),
+  tripEndEmptyCoreBackoffJitterRatio: parseFloat(
+    process.env.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO || '0.15',
+  ),
+
   // ── Trip End: Retry interval between CUSUM validation attempts ──
   tripEndValidationRetryMs: parseInt(process.env.TRIP_END_VALIDATION_RETRY_MS || '60000', 10),
 
@@ -59,13 +76,15 @@ export default registerAs('worker', () => ({
   // ── Trip End: How far forward from possibleEndAt to fetch data for CUSUM ──
   tripEndSegmentLookaheadMs: parseInt(process.env.TRIP_END_SEGMENT_LOOKAHEAD_MS || '300000', 10),
 
-  // ── Trip Mid-Gap Split ──
-  // Minimum stationary silence inside an otherwise ACTIVE trip that triggers
-  // an automatic split into two trips. Covers the common case of a driver
-  // parking briefly (coffee run, pickup, short errand) with the engine off:
-  // DIMO then drops the connection, resumes on restart, and neither side
-  // emits an explicit ignition-off transition. Default 3 min.
-  tripMidGapSplitMs: parseInt(process.env.TRIP_MID_GAP_SPLIT_MS || '180000', 10),
+  // ── Qualified stop duration (Trip FSM mid-gap + merge/reopen) ──
+  // Max duration of a physically qualified stop/pause that remains ONE trip.
+  // Split when qualified gap duration is STRICTLY GREATER than this value (ms).
+  // Default 5 minutes. Legacy env TRIP_MID_GAP_SPLIT_MS maps to the same authority.
+  tripSameTripMaxQualifiedStopMs:
+    maxSameTripStopConfig.resolvedMaxSameTripQualifiedStopMs,
+  tripSameTripMaxQualifiedStopMsConfigSource: maxSameTripStopConfig.configSource,
+  /** @deprecated alias — identical to tripSameTripMaxQualifiedStopMs */
+  tripMidGapSplitMs: maxSameTripStopConfig.resolvedMaxSameTripQualifiedStopMs,
   // Maximum position drift (meters) between the last pre-gap waypoint and
   // the first post-gap waypoint for the gap to be considered a stationary
   // stop (i.e., the same parking spot). Larger drifts mean the vehicle kept
@@ -81,4 +100,112 @@ export default registerAs('worker', () => ({
     process.env.TRIP_MID_GAP_MIN_PRE_DURATION_MS || '60000',
     10,
   ),
+
+  // ── Trip FSM shadow observability (non-authoritative counterfactual / pause audit) ──
+  tripFsmShadowObservabilityEnabled: parseBoolEnv(
+    process.env.TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED,
+    false,
+  ),
+  tripFsmShadowVehicleIds: (process.env.TRIP_FSM_SHADOW_VEHICLE_IDS ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean),
+
+  // ── Repair suppression: containment-aware coverage rollout ──
+  // legacy  — binary overlap decides, exactly as before.
+  // shadow  — binary overlap still decides; the coverage verdict is computed
+  //           and audited alongside it so the two can be compared on real
+  //           traffic without touching trip persistence.
+  // enforce — the coverage verdict decides.
+  // Defaults to shadow: measuring first is the whole point of the mode.
+  tripRepairCoverageMode: normalizeCoverageMode(process.env.TRIP_REPAIR_COVERAGE_MODE),
+
+  // ── P1.2 FINAL-3: partial boundary extension repair ──
+  // Rollback without disabling all reconciliation: TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=false
+  tripPartialBoundaryRepairEnabled: parseTripPartialBoundaryRepairEnabled(
+    process.env.TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED,
+  ),
+
+  // Live POSSIBLE_START boundary lookback — derived from max poll interval + confirmation + buffer.
+  // Override only when evidence requires a different ceiling.
+  tripStartBoundaryMaxLookbackMs: parsePositiveIntEnv(
+    process.env.WORKER_TRIP_START_BOUNDARY_MAX_LOOKBACK_MS,
+    deriveDefaultTripStartBoundaryMaxLookbackMs(),
+  ),
+
+  // ── P1.2 FINAL-4: snapshot + reconciliation scale knobs ──
+  snapshotConcurrency: parseBoundedConcurrency(
+    process.env.WORKER_SNAPSHOT_CONCURRENCY,
+    5,
+  ),
+  snapshotMaxEnqueuePerTick: parseNonNegativeIntEnv(
+    process.env.WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK,
+    0,
+  ),
+  fastReconciliationRecencyMs: parsePositiveIntEnv(
+    process.env.WORKER_FAST_RECONCILIATION_RECENCY_MS,
+    60 * 60_000,
+  ),
+  fastReconciliationMaxVehiclesPerRun: parseNonNegativeIntEnv(
+    process.env.WORKER_FAST_RECONCILIATION_MAX_VEHICLES_PER_RUN,
+    0,
+  ),
 }));
+
+function parsePositiveIntEnv(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeIntEnv(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parseBoundedConcurrency(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, 200);
+}
+
+function parseBoolEnv(raw: string | undefined, fallback: boolean): boolean {
+  if (raw == null || raw.trim() === '') return fallback;
+  const v = raw.trim().toLowerCase();
+  if (v === 'true' || v === '1' || v === 'yes') return true;
+  if (v === 'false' || v === '0' || v === 'no') return false;
+  return fallback;
+}
+
+/** Default enabled for PR testing; disable in production until rollout review. */
+export function parseTripPartialBoundaryRepairEnabled(raw: string | undefined): boolean {
+  return parseBoolEnv(raw, true);
+}
+
+/**
+ * max(poll interval) + confirmation wait + safety buffer.
+ * Worst-case LONG_IDLE poll (30min) + 3min confirmation + 2min buffer ≈ 35min.
+ */
+export function deriveDefaultTripStartBoundaryMaxLookbackMs(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const tiers = [
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_ACTIVE_DRIVING_MS, 30_000),
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_RECENTLY_ACTIVE_MS, 60_000),
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_RESTING_STANDBY_MS, 5 * 60_000),
+    parsePositiveIntEnv(env.WORKER_SNAPSHOT_TIER_LONG_IDLE_MS, 30 * 60_000),
+  ];
+  const maxPollMs = Math.max(...tiers);
+  const confirmationMs = parsePositiveIntEnv(
+    env.WORKER_POSSIBLE_START_CONFIRM_MAX_WAIT_MS,
+    180_000,
+  );
+  const safetyBufferMs = 2 * 60_000;
+  return maxPollMs + confirmationMs + safetyBufferMs;
+}
+
+export type TripRepairCoverageMode = 'legacy' | 'shadow' | 'enforce';
+
+export function normalizeCoverageMode(raw: string | undefined): TripRepairCoverageMode {
+  const value = (raw ?? '').trim().toLowerCase();
+  return value === 'legacy' || value === 'enforce' ? value : 'shadow';
+}

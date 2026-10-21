@@ -140,7 +140,12 @@ describe('computeBrakeRecalculationInputFingerprint', () => {
 
 describe('buildBrakeRecalculationJobId', () => {
   it('uses vehicle id for burst coalescing and hour bucket for scheduler', () => {
-    expect(buildBrakeRecalculationJobId('v1')).toBe('brake-recalc:v1');
-    expect(buildBrakeRecalculationJobId('v1', 42)).toBe('brake-recalc:v1:42');
+    const burst = buildBrakeRecalculationJobId('v1');
+    const scheduled = buildBrakeRecalculationJobId('v1', 42);
+    expect(burst).not.toContain(':');
+    expect(scheduled).not.toContain(':');
+    expect(burst).toBe(buildBrakeRecalculationJobId('v1'));
+    expect(scheduled).toBe(buildBrakeRecalculationJobId('v1', 42));
+    expect(burst).not.toBe(scheduled);
   });
 });

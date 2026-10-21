@@ -1,0 +1,17 @@
+{
+  "methodology": "HARD_CLOCK_PRIOR_RUN",
+  "evidenceId": "DI-EV-0034B",
+  "outcome": "NO_STRONG_CANDIDATES",
+  "preservedAt": "DI-EV-0034C",
+  "note": "Immutable diagnostic snapshot of first real alignment run — not erased",
+  "artifactSha256": {
+    "alignment-summary.json": "c0b6861574f8b8d0823c93ab3b4a2e229eb0c6970e170def398d666856001432",
+    "per-clip-alignment-report.json": "b690637ff451f60aaadb107bb43bafd912dcc5d95afcc90a3db0cfadf43454bb",
+    "clip-alignments.json": "6e52adf9c932eba0096ce433fb67c4ddcc79eb1199070a3c49e3d7579ce941de",
+    "cross-clip-clock-model.json": "6c1cc3f61f033954c09b527b53e885b3b1e0b91ca90c0b6d5dbb62ceb07b1cbf",
+    "episode-analysis.json": "435d69e87a30819d141f0f7df7792bfff8179f3791c3c89e408b79447fdf329f",
+    "signal-surface-quality.json": "fdd67f147eed98a3b881c3cbafb4e2301c630fbd7b730174bd24154639a3a81a",
+    "stale-hold-analysis.json": "57e74ed2a82ba8d3c0d0691c218c5030d0ad7fe22eb598a8e4fa895089151a79"
+  },
+  "manifestSha256": "69ea761000787e731389a39acef6146085124c93359c4449a2d4b28635781641"
+}

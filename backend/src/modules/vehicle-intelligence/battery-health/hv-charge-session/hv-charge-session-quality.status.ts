@@ -36,6 +36,8 @@ export const HV_CHARGE_SESSION_QUALITY_REASONS = {
   stale_provider_data: 'stale_provider_data',
   invalid_soc_range: 'invalid_soc_range',
   missing_soc_data: 'missing_soc_data',
+  soc_extrema_proxy: 'soc_extrema_proxy',
+  energy_extrema_proxy: 'energy_extrema_proxy',
 } as const;
 
 export type HvChargeSessionQualityReasonCode =

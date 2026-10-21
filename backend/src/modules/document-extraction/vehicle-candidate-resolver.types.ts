@@ -50,7 +50,7 @@ export interface VehicleResolverHints {
 export interface VehicleCandidateSearchRecord {
   id: string;
   licensePlate: string | null;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
   vehicleName: string | null;

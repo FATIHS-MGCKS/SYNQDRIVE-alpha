@@ -1,5 +1,5 @@
 import { Info } from 'lucide-react';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
 import { useFleetHealthServiceFreshness } from './useFleetHealthServiceFreshness';
 import { fhs } from './fleet-health-service-shell';

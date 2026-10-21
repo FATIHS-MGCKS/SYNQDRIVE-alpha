@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DetailDrawer, SectionHeader, Timeline } from '../../../components/patterns';
 import { api, type IamTeamMemberDetailDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { CollapsiblePermissions } from './PermissionEditor';
 import { MfaStateBadge, RiskBadge } from './IamBadges';
 import { formatDateTime } from './iam-team.utils';

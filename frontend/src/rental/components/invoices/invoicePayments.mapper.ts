@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { formatAmount, formatDate } from './invoiceFormatters';
 import type {
   InvoicePaymentRecord,

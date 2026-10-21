@@ -5,8 +5,8 @@ import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { FleetReadinessAttentionPanel } from './FleetReadinessAttentionPanel';
 import type { DashboardViewModel } from '../dashboardTypes';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 
 vi.mock('../../../RentalContext', () => ({
   useRentalOrg: () => ({ orgId: 'org-1' }),

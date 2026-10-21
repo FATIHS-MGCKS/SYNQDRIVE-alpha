@@ -1,0 +1,31 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_004",
+  "sessionId": "f1e81e78-f96b-44ee-80c2-ca5270f21248",
+  "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+  "vehicle": "KS MX 2024 Mercedes-Benz C 63 AMG",
+  "segment": "B",
+  "sealedAt": "2026-09-04T11:02:59.967Z",
+  "derivedFromFullSessionSha256": "5938b9e9120864768dd91048fb06a182ef2b7f0772a9a2df2c75f17cb684d2e2",
+  "fullSessionSourcePath": "docs/audits/data/rd004-segment-a/source-observations.jsonl",
+  "queryEnvelope": {
+    "startUtc": "2026-09-04T03:46:00.000Z",
+    "endUtc": "2026-09-04T04:05:00.000Z"
+  },
+  "files": {
+    "source-observations.jsonl": {
+      "sha256": "bc5130387ec67cffd39053f76890712d422d3cf7e925b230548141d8a1311759",
+      "rowCount": 3137,
+      "bytes": 3208706
+    },
+    "source-legacy-preprocessed-speed-sidecar.jsonl": {
+      "sha256": "9fe7fce1c31b1dc8eeee31126042106fb206572c31eab64b057d71d8ff779124",
+      "rowCount": 66,
+      "bytes": 20794,
+      "note": "OFFLINE derivation at seal time; production hf-preprocessing unchanged"
+    }
+  },
+  "bundleSha256": "8a908fd234ad39c9ecf73bee9503b798f249b35b528f73cfb6db18dbfc19f97d",
+  "BUNDLE_SHA256_METHOD": "CANONICAL_MEMBER_HASH_MANIFEST",
+  "segmentAEvidenceUnchanged": true,
+  "segmentARawEvidenceMutated": false
+}

@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { CommunicationApiEventType } from '../../../lib/communication/types';
 import { lifecycleEventLabelKey } from '../../../lib/communication/timeline-presentation';
 import { formatCommunicationTimestamp } from '../../../lib/communication/format';

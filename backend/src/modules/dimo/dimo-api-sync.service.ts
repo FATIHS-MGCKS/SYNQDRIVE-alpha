@@ -4,6 +4,7 @@ import axios from 'axios';
 import { DimoAuthService } from './dimo-auth.service';
 import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoVehicleSyncService, DimoVehicleInput } from './dimo-vehicle-sync.service';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
 
 // GraphQL query: fetch all vehicles that have granted privileges to this developer license.
 // Uses DIMO Identity GraphQL API (public, no auth required).
@@ -97,6 +98,7 @@ export class DimoApiSyncService {
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly dimoVehicleSync: DimoVehicleSyncService,
     private readonly configService: ConfigService,
+    private readonly dimoRequestExecutor: DimoRequestExecutor,
   ) {}
 
   async fetchAndSyncFromDimoApi(): Promise<{ synced: number }> {
@@ -193,14 +195,19 @@ export class DimoApiSyncService {
         ? { clientId, after: cursor }
         : { clientId };
 
-      const response = await axios.post<GqlResponse>(
-        graphqlUrl,
-        { query: gqlQuery, variables },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 15000,
-        },
-      );
+      const response = await this.dimoRequestExecutor.execute({
+        category: 'IDENTITY',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.post<GqlResponse>(
+            graphqlUrl,
+            { query: gqlQuery, variables },
+            {
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 15000,
+            },
+          ),
+      });
 
       if (response.data.errors?.length) {
         const errMsg = response.data.errors

@@ -1,0 +1,92 @@
+name: Battery V2 — HV-H4 CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/battery-health/hv-h4/**'
+      - 'backend/src/modules/vehicle-intelligence/battery-health/retention/**'
+      - 'backend/src/config/battery-v2-retention.config.ts'
+      - 'backend/scripts/ops/battery-hv-h4-coverage-report.ts'
+      - 'backend/scripts/ops/battery-hv-h4-charge-throughput-report.ts'
+      - 'backend/scripts/ops/m3-3-hv-h4-a3-o2-r4-1-phase-a-preflight.ts'
+      - 'backend/scripts/test/battery-hv-h4-coverage-report-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'architecture/battery-v2/scripts/validate-h4-exposure-coverage-contracts.sh'
+      - 'architecture/battery-v2/CURRENT_STATE.md'
+      - 'architecture/battery-v2/graph/**'
+      - 'architecture/battery-v2/research/CHANGE_LEDGER.md'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/battery-v2-hv-h4-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: battery-v2-hv-h4-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+
+jobs:
+  hv-h4-unit-and-contracts:
+    name: HV-H4 unit + authority contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:battery:v2:hv-h4
+        working-directory: backend
+      - run: bash architecture/battery-v2/scripts/validate-h4-exposure-coverage-contracts.sh
+        working-directory: .
+      - run: bash architecture/battery-v2/scripts/validate-graph.sh
+        working-directory: .
+      - run: bash architecture/scripts/validate-module-registry.sh
+        working-directory: .
+
+  hv-h4-postgres:
+    name: HV-H4 coverage PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: battery-hv-h4-coverage-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed unless DATABASE_URL is localhost
+        run: |
+          set -euo pipefail
+          case "${DATABASE_URL}" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target localhost for HV-H4 postgres CI" >&2
+              exit 1
+              ;;
+          esac
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:battery:v2:hv-h4:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL: ${{ env.DATABASE_URL }}
+          M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED: '1'
+          M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE: '1'

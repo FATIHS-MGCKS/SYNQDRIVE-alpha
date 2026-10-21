@@ -1,0 +1,37 @@
+edges:
+  - from: I18N-EVID-CODE-LOCALES-001
+    relation: supports
+    to: I18N-DATA-LOCALES-001
+  - from: I18N-EVID-CODE-COVERAGE-001
+    relation: supports
+    to: I18N-DATA-EN-CANONICAL-001
+  - from: I18N-CONS-RENTAL-001
+    relation: downstream_of
+    to: I18N-ORCH-LANGUAGE-PROVIDER-001
+  - from: I18N-CONS-OPERATOR-001
+    relation: downstream_of
+    to: I18N-ORCH-LANGUAGE-PROVIDER-001
+  - from: I18N-CONS-MASTER-001
+    relation: downstream_of
+    to: I18N-ORCH-LANGUAGE-PROVIDER-001
+  - from: I18N-PIPE-RENTAL-INTEGRATION-001
+    relation: supersedes
+    to: I18N-SUPERSEDED-RENTAL-BRIDGE-001
+  - from: I18N-AUTH-GOVERNANCE-001
+    relation: governs
+    to: I18N-DATA-HARDCODED-INVENTORY-001
+  - from: I18N-AUTH-GOVERNANCE-001
+    relation: governs
+    to: I18N-DATA-EN-CANONICAL-001
+  - from: I18N-EVID-CODE-RUNTIME-001
+    relation: supports
+    to: I18N-ORCH-LANGUAGE-PROVIDER-001
+  - from: I18N-EVID-PROD-001
+    relation: supports
+    to: I18N-ORCH-LANGUAGE-PROVIDER-001
+  - from: I18N-DEC-BRIDGE-RETIRE-001
+    relation: decides
+    to: I18N-PIPE-RENTAL-INTEGRATION-001
+  - from: I18N-DEC-GOV-P23-001
+    relation: decides
+    to: I18N-AUTH-GOVERNANCE-001

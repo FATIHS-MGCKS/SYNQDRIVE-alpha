@@ -1,5 +1,5 @@
 import { DetailDrawer } from '../../../../components/patterns';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { RentalRulePublishImpactPanel } from './RentalRulePublishImpactPanel';
 import type { RentalRulesDraftScope } from './rental-rules-matrix.utils';
 

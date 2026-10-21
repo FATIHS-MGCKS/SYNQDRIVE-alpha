@@ -11,8 +11,8 @@ import {
 } from '../notifications/notification-lifecycle-test-helpers';
 import { projectFleetReadinessPresentationItems } from '../../../lib/notifications/fleet-readiness-attention-projection';
 import { minimalLifecycleActionQueueItem } from '../../../lib/notifications/fixtures/action-queue-item.fixture';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { ActionQueueItem, DashboardViewModel } from '../dashboardTypes';
 
 vi.mock('../../../RentalContext', () => ({

@@ -2,6 +2,7 @@ import { LiquidGlassLens } from '../../../components/surface';
 import { VehicleStressBadge } from '../VehicleStressPanel';
 import { resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripMapTripData } from './trips-map.types';
+import { resolveTripDisplayEndTime } from './utils/trip-end-time-display.util';
 import {
   countTripEvents,
   formatTripDistance,
@@ -17,7 +18,8 @@ interface TripMapSummaryOverlayProps {
 }
 
 export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayProps) {
-  const timeRange = `${formatTripTime(trip.startTime)} – ${trip.endTime ? formatTripTime(trip.endTime) : '…'}`;
+  const displayEnd = resolveTripDisplayEndTime(trip);
+  const timeRange = `${formatTripTime(trip.startTime)} – ${displayEnd ? formatTripTime(displayEnd) : '…'}`;
   const events = countTripEvents(trip);
   const assignment = tripAssignmentLabel(trip);
   const stressScore = resolveDrivingStressScore(trip);

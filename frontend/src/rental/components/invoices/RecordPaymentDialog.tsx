@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import { FormDialog } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { formatAmount } from './invoiceFormatters';
 import { outstandingAmountInputValue, paymentMethodOptions } from './invoicePayments.mapper';
 import { INVOICE_ACTION_BTN, INVOICE_DISABLED_BTN } from './invoiceTheme';

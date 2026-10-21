@@ -1,6 +1,6 @@
 import { Shield } from 'lucide-react';
 import { EmptyState } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { hasCommunicationPermission, hasVoiceAssistantAdminPermission } from '../../lib/communication-permissions';
 import { CommunicationCenterShell } from './CommunicationCenterShell';

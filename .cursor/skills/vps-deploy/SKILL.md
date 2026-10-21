@@ -1,70 +1,106 @@
 ---
 name: vps-deploy
 description: >-
-  Commit, push, and deploy SynqDrive to production VPS from Cursor (local or Cloud Agent).
-  Use when the user asks to deploy, commit and deploy, release to production, or VPS deploy.
+  Commit, push, and deploy SynqDrive to production on the single Hostinger VPS via direct SSH
+  to vps-deploy-release.sh. Use when the user asks to deploy, commit and deploy, release to
+  production, or VPS deploy. No separate staging VPS.
 ---
-# VPS production deploy
+# VPS production deploy (single VPS, direct SSH)
 
-## When to use
+**Canonical runbook:** [architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](../../../architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)
 
-User says: deploy, commit and deploy, release, production, VPS.
+## Operational standard (current)
 
-## Prerequisites (Cloud Agent only)
+User says: deploy, commit and deploy, release, production, VPS — **only after an explicit owner production-deploy instruction**.
+
+**Agents:** develop, test, and open PRs in the normal Cursor Cloud Agent environment. **Do not** run `cloud-agent-deploy.sh` or install the fixed VPS bootstrap unless the owner explicitly authorizes a bootstrap install workstream.
+
+## When to use this skill
+
+User says: deploy, commit and deploy, release, production, VPS deploy.
+
+If the user only wants **git push** or **CI**, do that — production deploy still requires a **human operator** on the VPS unless bootstrap status changes.
+
+## VO5C operator workflow (authoritative)
+
+```
+Owner production-deploy instruction in Cursor
+  → CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1
+  → exact SYNQDRIVE_REQUESTED_DEPLOY_SHA (git preflight or explicit env)
+  → CI gate (all critical jobs) success on that SHA
+  → SSH synqdrive-admin@srv1374778.hstgr.cloud (trusted host key)
+  → bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh
+  → DB backup, prisma migrate, rolling replicas A/B + verify
+  → P4B16 attestation
+  → public health check
+```
+
+**Agents:** run `cloud-agent-deploy.sh` with `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`. Do **not** set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`.
+
+**Optional (not routine):** VO5C pinned runner + VPS operator session + fixed Cloud Agent bootstrap — only when production enforcement is armed; see runbook § optional VO5C.
+
+## Prerequisites (Cloud Agent)
 
 [Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets.
 
-**Deploy without Tailscale (path A):**
+Path A (no Tailscale): `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud`, `CLOUD_AGENT_SSH_USER=synqdrive-admin`. `CLOUD_AGENT_SSH_PRIVATE_KEY` when no baked `~/.ssh/id_ed25519`. Verified host key in `known_hosts` before first production SSH.
 
-| Name | Type |
-|------|------|
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret |
-| `CLOUD_AGENT_VPS_HOST` | Environment Variable → `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable → `root` |
-
-Do **not** add `TAILSCALE_AUTH_KEY`.
-
-**With Tailscale (path B):** add `TAILSCALE_AUTH_KEY` (Runtime Secret) and set host to `mein-vps.internal`.
-
-See `AGENTS.md` for full checklist and Runtime Secret vs Environment Variable guidance.
+`gh` CLI auth (or equivalent) for CI gate checks on the deploy SHA.
 
 ## Workflow
 
-1. `git status` and `git diff` — do not commit `.env` or secrets.
-2. If changes exist: stage, commit (concise message), `git push origin main`.
+0. `bash .cursor/scripts/cloud-agent-ssh-preflight.sh`
+1. `git status` / `git diff` — no secrets in commits.
+2. Commit + `git push origin main` when deploying `main` tip.
 3. Deploy:
 
 ```bash
+CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 bash .cursor/scripts/cloud-agent-deploy.sh
+```
+
+Explicit SHA (e.g. approved release behind `main`):
+
+```bash
+CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 \
+CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 \
+CLOUD_AGENT_REQUESTED_DEPLOY_SHA=<40-char-sha> \
 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
-## What the deploy does
+Exit codes: `0` release + public health OK; `2` release OK but public health failed; `3` P4B16 partial success; `41` missing owner ack; `46` VPS deploy script missing.
 
-Remote script: `backend/scripts/ops/vps-deploy-release.sh` on the VPS.
+## Not supported for routine production
 
-- Pre-deploy PostgreSQL backup
-- Clone `main` from GitHub into `/opt/synqdrive/releases/<id>`
-- Symlink `backend.env`, `frontend.env`, uploads
-- `npm ci`, Prisma migrate, backend + frontend build
-- Switch `/opt/synqdrive/current`, PM2 restart
-- Health check on port 3001; script also checks `https://app.synqdrive.eu/api/v1/health`
+| Path | Status |
+|------|--------|
+| Shallow-fetch `vps-deploy-release.sh` from agent workspace to VPS | **Not used** — release runs on VPS |
+| `vps-deploy-connectivity-staging.sh` | **Fail-closed** unless `SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW=1` |
+| Mandatory VO5C operator session / Cloud Agent bootstrap | **Retired** for routine deploy (optional when enforcement armed) |
 
-## Local agent alternative
-
-If running on the developer machine with SSH key at `~/.ssh/id_ed25519`:
+## Rollback
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes root@srv1374778.hstgr.cloud \
-  "bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh"
+sudo bash /opt/synqdrive/current/backend/scripts/ops/vps-rollback-production-release.sh
 ```
 
-Cloud Agents must use `cloud-agent-deploy.sh` (dashboard SSH key; Tailscale optional).
+Exit `3` = replicas restored; P4B16 attestation incomplete (not unsafe physical rollback).
 
-## Failure modes
+## Multi-replica
 
-| Symptom | Fix |
-|---------|-----|
-| Git preflight: unpushed commits | `git push origin main` |
-| SSH auth failed | Check `CLOUD_AGENT_SSH_PRIVATE_KEY`; without Tailscale check Hostinger firewall (port 22) |
-| Health check exit 7 | Often timing; verify `app.synqdrive.eu/api/v1/health` manually |
-| Mapbox broken after deploy | Ensure VPS symlinks `frontend.env` (in deploy script) |
+| Replica | PM2 | Port |
+|---------|-----|------|
+| A | `synqdrive` | 3001 |
+| B | `synqdrive-b` | 3002 |
+
+## Status vocabulary
+
+| Term | Meaning |
+|------|---------|
+| IMPLEMENTED | Script/libs in repository |
+| DEPLOYED | Change promoted on VPS `/current` |
+| ACTIVATED | P4B16 / enforcement / gates actually exercised in production |
+| VALIDATED | Fresh production evidence (not claimed by docs-only PRs) |
+
+## Stop rule
+
+If pinned executor env, human authorization, or runner path is unavailable — **stop and report**. Do not invent alternate deploy paths.

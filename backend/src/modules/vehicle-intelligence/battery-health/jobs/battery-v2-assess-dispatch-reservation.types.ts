@@ -1,0 +1,35 @@
+export const ASSESS_DISPATCH_RESERVATION_STATUS = {
+  ACQUIRED: 'ACQUIRED',
+  SAME_IDENTITY_HELD: 'SAME_IDENTITY_HELD',
+  CONFLICT: 'CONFLICT',
+  AUTHORITY_UNAVAILABLE: 'AUTHORITY_UNAVAILABLE',
+} as const;
+
+export type AssessDispatchReservationAcquireStatus =
+  (typeof ASSESS_DISPATCH_RESERVATION_STATUS)[keyof typeof ASSESS_DISPATCH_RESERVATION_STATUS];
+
+export type AssessDispatchReservationAcquireResult =
+  | { status: typeof ASSESS_DISPATCH_RESERVATION_STATUS.ACQUIRED }
+  | { status: typeof ASSESS_DISPATCH_RESERVATION_STATUS.SAME_IDENTITY_HELD }
+  | { status: typeof ASSESS_DISPATCH_RESERVATION_STATUS.CONFLICT }
+  | {
+      status: typeof ASSESS_DISPATCH_RESERVATION_STATUS.AUTHORITY_UNAVAILABLE;
+      cause: Error;
+    };
+
+export const ASSESS_DISPATCH_RESERVATION_READ_STATUS = {
+  ABSENT: 'ABSENT',
+  HELD: 'HELD',
+  AUTHORITY_UNAVAILABLE: 'AUTHORITY_UNAVAILABLE',
+} as const;
+
+export type AssessDispatchReservationReadResult =
+  | { status: typeof ASSESS_DISPATCH_RESERVATION_READ_STATUS.ABSENT }
+  | {
+      status: typeof ASSESS_DISPATCH_RESERVATION_READ_STATUS.HELD;
+      idempotencyKey: string;
+    }
+  | {
+      status: typeof ASSESS_DISPATCH_RESERVATION_READ_STATUS.AUTHORITY_UNAVAILABLE;
+      cause: Error;
+    };

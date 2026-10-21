@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { AlertCircle, Bot, Loader2, Wrench } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   useCommunicationAiActivity,
   type CommunicationAiActivityFilterCategory,

@@ -1,5 +1,5 @@
 import { cn } from '../../../components/ui/utils';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { CommunicationApiChannel } from '../../../lib/communication/types';
 import type { MessageDirection } from '../../../lib/communication/timeline-presentation';
 import { formatCommunicationTimestamp } from '../../../lib/communication/format';

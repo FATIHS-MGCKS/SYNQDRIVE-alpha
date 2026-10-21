@@ -1,5 +1,5 @@
 import type { PublicDocumentExtraction } from './document-extraction.types';
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export type ClassificationConfidenceBand = 'high' | 'medium' | 'low' | 'unknown';
 

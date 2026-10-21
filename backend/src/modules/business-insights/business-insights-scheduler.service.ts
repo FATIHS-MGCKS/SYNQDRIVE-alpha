@@ -6,6 +6,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { BusinessInsightsService } from './business-insights.service';
 import { NotificationEvaluationService } from '@modules/notifications/runtime/notification-evaluation.service';
 import { EvaluationsObservabilityService } from '@modules/evaluations-observability/evaluations-observability.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /** Wall-clock cadence — survives PM2 restarts better than @Interval (which resets every deploy). */
 const INSIGHTS_CRON = '2,32 * * * *';
@@ -21,6 +22,7 @@ export class BusinessInsightsScheduler implements OnApplicationBootstrap {
     private readonly evaluationService: NotificationEvaluationService,
     @Inject(notificationEvaluationConfig.KEY)
     private readonly evalConfig: ConfigType<typeof notificationEvaluationConfig>,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
     @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {}
 
@@ -33,6 +35,7 @@ export class BusinessInsightsScheduler implements OnApplicationBootstrap {
 
   @Cron(INSIGHTS_CRON)
   async scheduledRunCron() {
+    if (!this.leaderGuard.shouldRun('business_insights')) return;
     await this.scheduledRun('scheduled_active');
   }
 

@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { sanitizeTemplateValue } from '../../../lib/notifications/template-placeholder';
 import type { ActionQueueItem } from '../dashboardTypes';
 import { createNotificationTranslator } from '../notificationQueueEnricher';

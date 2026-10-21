@@ -7,8 +7,14 @@ import type {
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
+import {
+  canonicalAvailability,
+  canonicalConnectivityRuntime,
+  canonicalOperationalVehicle,
+} from './dashboard-canonical-test-fixtures';
 import { buildDashboardRuntimeModel } from './dashboardSliceBuilder';
 import { buildVehicleRuntimeStates, deriveTelemetryState } from './vehicleRuntimeStateBuilder';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../../lib/vehicle-operational-state';
 
 const NOW = new Date('2026-06-23T12:00:00.000Z');
 
@@ -21,31 +27,19 @@ function minutesFromNowIso(minutes: number): string {
 }
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
-  return {
-    id: overrides.id ?? 'v1',
-    license: overrides.license ?? 'KS-FS 123',
-    make: overrides.make ?? 'VW',
-    model: overrides.model ?? 'Golf',
-    year: overrides.year ?? 2024,
-    station: overrides.station ?? 'Zentrale',
-    stationId: overrides.stationId ?? 'st-1',
-    fuelType: overrides.fuelType ?? 'Petrol',
-    status: overrides.status ?? 'Available',
-    cleaningStatus: overrides.cleaningStatus ?? 'Clean',
-    healthStatus: overrides.healthStatus ?? 'Good Health',
-    online: overrides.online ?? true,
-    lastSignal: overrides.lastSignal ?? hoursAgoIso(1),
-    badge: overrides.badge ?? 0,
-    odometer: overrides.odometer ?? 10000,
-    fuel: overrides.fuel ?? 72,
-    battery: overrides.battery ?? 100,
-    speed: overrides.speed ?? 0,
-    coolant: overrides.coolant ?? 90,
-    brakes: overrides.brakes ?? 90,
-    tires: overrides.tires ?? 90,
-    engineOil: overrides.engineOil ?? 90,
-    isElectric: overrides.isElectric ?? false,
-    hvBatteryCapacityKwh: overrides.hvBatteryCapacityKwh ?? null,
+  const status =
+    overrides.status === 'Available' || overrides.status === 'available'
+      ? VEHICLE_OPERATIONAL_STATUS.AVAILABLE
+      : overrides.status === 'Active Rented' || overrides.status === 'active_rented'
+        ? VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED
+        : overrides.status === 'Maintenance' || overrides.status === 'maintenance'
+          ? VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
+          : overrides.status === 'Reserved' || overrides.status === 'reserved'
+            ? VEHICLE_OPERATIONAL_STATUS.RESERVED
+            : ((overrides.status as (typeof VEHICLE_OPERATIONAL_STATUS)[keyof typeof VEHICLE_OPERATIONAL_STATUS]) ??
+              VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+
+  return canonicalOperationalVehicle(status, {
     isFresh: overrides.isFresh ?? false,
     onlineStatus: overrides.onlineStatus ?? 'STANDBY',
     leasingRate: overrides.leasingRate ?? '',
@@ -53,7 +47,8 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     taxCost: overrides.taxCost ?? '',
     totalMonthlyCost: overrides.totalMonthlyCost ?? '',
     ...overrides,
-  };
+    status,
+  });
 }
 
 function pickup(overrides: Partial<PickupTileItem> = {}): PickupTileItem {
@@ -343,7 +338,19 @@ describe('dashboard runtime model', () => {
 
   it('treats 3h without heartbeat as standby, not a warning or block', () => {
     const states = buildVehicleRuntimeStates({
-      fleetVehicles: [vehicle({ id: 'standby', lastSignal: hoursAgoIso(3), onlineStatus: 'STANDBY', isFresh: false })],
+      fleetVehicles: [
+        vehicle({
+          id: 'standby',
+          lastSignal: hoursAgoIso(3),
+          onlineStatus: 'STANDBY',
+          isFresh: false,
+          connectivityRuntime: canonicalConnectivityRuntime({
+            vehicleId: 'standby',
+            overallState: 'STANDBY',
+            telemetryState: 'standby',
+          }),
+        }),
+      ],
       now: NOW,
     });
 
@@ -353,13 +360,38 @@ describe('dashboard runtime model', () => {
     expect(state?.warningReasons.some((reason) => reason.category === 'telemetry')).toBe(false);
     expect(state?.criticalReasons).toHaveLength(0);
     expect(state?.isBlocked).toBe(false);
+    expect(state?.isReadyToRent).toBe(true);
   });
 
-  it('separates soft offline from hard offline defaults', () => {
+  it('maps canonical soft/hard offline telemetry without timestamp blocking', () => {
     const states = buildVehicleRuntimeStates({
       fleetVehicles: [
-        vehicle({ id: 'soft', lastSignal: hoursAgoIso(25), onlineStatus: 'OFFLINE', isFresh: false }),
-        vehicle({ id: 'hard', lastSignal: hoursAgoIso(49), onlineStatus: 'OFFLINE', isFresh: false }),
+        vehicle({
+          id: 'soft',
+          lastSignal: hoursAgoIso(25),
+          onlineStatus: 'OFFLINE',
+          isFresh: false,
+          operationalAvailability: canonicalAvailability('AVAILABLE'),
+          connectivityRuntime: canonicalConnectivityRuntime({
+            vehicleId: 'soft',
+            overallState: 'SOFT_OFFLINE',
+            telemetryState: 'signal_delayed',
+            attentionState: 'WATCH',
+          }),
+        }),
+        vehicle({
+          id: 'hard',
+          lastSignal: hoursAgoIso(49),
+          onlineStatus: 'OFFLINE',
+          isFresh: false,
+          operationalAvailability: canonicalAvailability('NEEDS_VERIFICATION'),
+          connectivityRuntime: canonicalConnectivityRuntime({
+            vehicleId: 'hard',
+            overallState: 'OFFLINE',
+            telemetryState: 'offline',
+            attentionState: 'WATCH',
+          }),
+        }),
       ],
       now: NOW,
     });
@@ -367,12 +399,11 @@ describe('dashboard runtime model', () => {
     const soft = states.find((state) => state.vehicleId === 'soft');
     const hard = states.find((state) => state.vehicleId === 'hard');
     expect(soft?.telemetryState).toBe('soft_offline');
-    expect(soft?.warningReasons.some((reason) => reason.category === 'telemetry')).toBe(true);
     expect(soft?.isBlocked).toBe(false);
+    expect(soft?.isReadyToRent).toBe(true);
     expect(hard?.telemetryState).toBe('offline');
-    expect(hard?.criticalReasons.some((reason) => reason.category === 'telemetry')).toBe(true);
-    expect(hard?.blockReasons.some((reason) => reason.category === 'telemetry')).toBe(true);
-    expect(hard?.isBlocked).toBe(true);
+    expect(hard?.isReadyToRent).toBe(false);
+    expect(hard?.isBlocked).toBe(false);
   });
 
   it('keeps active rented vehicles active when their return is overdue', () => {
@@ -576,8 +607,30 @@ describe('dashboard runtime model', () => {
       fleetVehicles: [
         vehicle({ id: 'maintenance', status: 'Maintenance' }),
         vehicle({ id: 'dirty', cleaningStatus: 'Needs Cleaning' }),
-        vehicle({ id: 'soft', lastSignal: hoursAgoIso(25), onlineStatus: 'OFFLINE', isFresh: false }),
-        vehicle({ id: 'standby', lastSignal: hoursAgoIso(3), onlineStatus: 'STANDBY', isFresh: false }),
+        vehicle({
+          id: 'soft',
+          lastSignal: hoursAgoIso(25),
+          onlineStatus: 'OFFLINE',
+          isFresh: false,
+          operationalAvailability: canonicalAvailability('AVAILABLE'),
+          connectivityRuntime: canonicalConnectivityRuntime({
+            vehicleId: 'soft',
+            overallState: 'SOFT_OFFLINE',
+            telemetryState: 'signal_delayed',
+            attentionState: 'WATCH',
+          }),
+        }),
+        vehicle({
+          id: 'standby',
+          lastSignal: hoursAgoIso(3),
+          onlineStatus: 'STANDBY',
+          isFresh: false,
+          connectivityRuntime: canonicalConnectivityRuntime({
+            vehicleId: 'standby',
+            overallState: 'STANDBY',
+            telemetryState: 'standby',
+          }),
+        }),
         vehicle({ id: 'warning-only' }),
       ],
       insights: [
@@ -932,11 +985,20 @@ describe('dashboard runtime model', () => {
 
   it('does not crash on missing optional inputs or unusable telemetry timestamps', () => {
     const state = buildVehicleRuntimeStates({
-      fleetVehicles: [vehicle({ id: 'missing-telemetry', lastSignal: '', signalAgeMs: undefined })],
+      fleetVehicles: [
+        vehicle({
+          id: 'missing-telemetry',
+          lastSignal: '',
+          signalAgeMs: undefined,
+          operationalAvailability: canonicalAvailability('UNKNOWN'),
+          connectivityRuntime: undefined,
+        }),
+      ],
       now: NOW,
     })[0];
 
     expect(state?.telemetryState).toBe('unknown');
-    expect(deriveTelemetryState(vehicle({ lastSignal: '' }), NOW)).toBe('unknown');
+    expect(deriveTelemetryState(vehicle({ lastSignal: '', connectivityRuntime: undefined }), NOW)).toBe('unknown');
+    expect(state?.isReadyToRent).toBe(false);
   });
 });

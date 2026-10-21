@@ -230,7 +230,7 @@ describe('operational issue taxonomy', () => {
     expect(issue.title).toBe('Service-Tracking nicht verfuegbar');
   });
 
-  it('keeps telemetry offline critical and soft offline as notice', () => {
+  it('does not fabricate telemetry issues from telemetryState without canonical attention', () => {
     const offline = normalizeOperationalIssues({
       vehicleRuntimeStates: [
         runtimeState({
@@ -248,10 +248,47 @@ describe('operational issue taxonomy', () => {
       ],
     });
 
-    expect(offline[0]?.issueType).toBe('telemetry_offline');
-    expect(offline[0]?.severity).toBe('critical');
-    expect(soft[0]?.issueType).toBe('telemetry_soft_offline');
-    expect(soft[0]?.severity).toBe('attention');
+    expect(offline).toHaveLength(0);
+    expect(soft).toHaveLength(0);
+  });
+
+  it('emits canonical connectivity issue when connectivityRuntime attention requires action', () => {
+    const issues = normalizeOperationalIssues({
+      vehiclesById: {
+        v1: {
+          id: 'v1',
+          license: 'B-1',
+          connectivityRuntime: {
+            vehicleId: 'v1',
+            organizationId: 'org-1',
+            overallState: 'OFFLINE',
+            providerLinkState: 'ACTIVE',
+            telemetryState: 'offline',
+            physicalDeviceState: 'PLUGGED_CONFIRMED',
+            dataCoverageState: 'GOOD',
+            attentionState: 'CRITICAL',
+            reasonCodes: ['TELEMETRY_STALE'],
+            recommendedAction: 'CHECK_DEVICE',
+            requiresAction: true,
+            lastTelemetryAt: '2026-08-26T12:00:00.000Z',
+            lastProviderObservedAt: '2026-08-26T12:00:00.000Z',
+            lastReceivedAt: '2026-08-26T12:00:00.000Z',
+            deviceBindingId: null,
+            activeEpisodeId: 'ep-1',
+            evidence: {},
+            calculatedAt: '2026-08-26T12:00:00.000Z',
+            stateVersion: 1,
+          },
+        },
+      },
+      vehicleRuntimeStates: [
+        runtimeState({
+          vehicleId: 'v1',
+          telemetryState: 'offline',
+        }),
+      ],
+    });
+    expect(issues.some((issue) => issue.domain === 'telemetry' && issue.severity === 'critical')).toBe(true);
   });
 });
 

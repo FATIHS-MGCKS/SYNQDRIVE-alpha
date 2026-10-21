@@ -10,7 +10,7 @@
  */
 import { useMemo, useState } from 'react';
 import { PageHeader } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { readPersistedDashboardStationId } from '../../lib/fleet-station-filter';
 import {

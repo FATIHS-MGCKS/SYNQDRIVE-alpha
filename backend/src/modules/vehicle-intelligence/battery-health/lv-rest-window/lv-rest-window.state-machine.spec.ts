@@ -6,7 +6,7 @@ import {
 } from '../battery-v2-domain';
 import { resolveBatteryPolicy } from '../../battery-policy-profile/battery-policy-profile.resolver';
 import { buildLvRestWindowPolicyContext } from './lv-rest-window.policy';
-import { reduceLvRestWindow } from './lv-rest-window.state-machine';
+import { reduceLvRestWindow, resolveLvRestWindowAnchorAt } from './lv-rest-window.state-machine';
 import type {
   LvRestWindowEvent,
   LvRestWindowPolicyContext,
@@ -71,6 +71,24 @@ function tripEndedEvent(
 }
 
 describe('lv-rest-window.state-machine', () => {
+  it('prefers tripEndAt over lastActivityAt for canonical anchor (production mis-binding)', () => {
+    const tripEnd = new Date('2026-08-30T12:05:53.000Z');
+    const lastActivity = new Date('2026-08-30T12:05:53.500Z');
+    const anchor = resolveLvRestWindowAnchorAt(
+      baseSignal({ tripEndAt: tripEnd, lastActivityAt: lastActivity }),
+    );
+    expect(anchor).toEqual(tripEnd);
+
+    const result = reduceLvRestWindow(
+      VEHICLE_ID,
+      null,
+      tripEndedEvent({ tripEndAt: tripEnd, lastActivityAt: lastActivity, tripId: 'trip-n' }),
+      icePolicy(),
+    );
+    expect(result.current?.anchorAt).toEqual(tripEnd);
+    expect(result.current?.tripId).toBe('trip-n');
+  });
+
   it('opens CANDIDATE on trip end with reliable anchor', () => {
     const result = reduceLvRestWindow(
       VEHICLE_ID,

@@ -2,7 +2,17 @@ import type {
   EnergyEventKind,
   EnergyEventConfidence,
   VehicleEnergyEvent,
+  VehicleEnergyEventFuelStationEnrichment,
+  VehicleEnergyEventChargingStationEnrichment,
 } from '@prisma/client';
+import {
+  type EnergyEventStationEnrichmentDto,
+  toStationEnrichmentDto,
+} from './energy-events-station-enrichment.dto';
+import {
+  type EnergyEventChargingStationEnrichmentDto,
+  toChargingStationEnrichmentDto,
+} from './energy-events-charging-station-enrichment.dto';
 
 // ── Canonical shapes for the Trips-Tab timeline ───────────────────────────
 // Kept intentionally distinct from `VehicleTrip` so the frontend can render a
@@ -12,11 +22,12 @@ import type {
 export interface EnergyEventDto {
   id: string;
   vehicleId: string;
-  dimoSegmentId: string;
+  dimoSegmentId: string | null;
   kind: EnergyEventKind;
   detectionMechanism: string;
   startTime: string;
   endTime: string;
+  /** Provider/source detection envelope duration (seconds). */
   durationSeconds: number;
   startLatitude: number | null;
   startLongitude: number | null;
@@ -29,14 +40,34 @@ export interface EnergyEventDto {
   odometerStartKm: number | null;
   odometerEndKm: number | null;
   confidence: EnergyEventConfidence;
+  /** REFUEL only: observed material fuel-level-rise start (not pump duration). */
+  fuelLevelRiseStart: string | null;
+  /** REFUEL only: observed material fuel-level-rise end (not pump duration). */
+  fuelLevelRiseEnd: string | null;
+  /** REFUEL only: observed fuel-level-rise duration in seconds; nullable. */
+  fuelLevelRiseDurationSeconds: number | null;
+  /**
+   * REFUEL only: persisted fuel-station enrichment (Phase E read projection).
+   * Omitted when no enrichment row exists or event is not REFUEL.
+   */
+  stationEnrichment?: EnergyEventStationEnrichmentDto;
+  /**
+   * RECHARGE only: persisted charging-station enrichment (E6.3 read projection).
+   */
+  chargingStationEnrichment?: EnergyEventChargingStationEnrichmentDto;
 }
+
+export type VehicleEnergyEventRow = VehicleEnergyEvent & {
+  fuelStationEnrichment?: VehicleEnergyEventFuelStationEnrichment | null;
+  chargingStationEnrichment?: VehicleEnergyEventChargingStationEnrichment | null;
+};
 
 export type TimelineItem =
   | ({ itemType: 'trip' } & Record<string, unknown>)
   | ({ itemType: 'energy-event' } & EnergyEventDto);
 
-export function toEnergyEventDto(row: VehicleEnergyEvent): EnergyEventDto {
-  return {
+export function toEnergyEventDto(row: VehicleEnergyEventRow): EnergyEventDto {
+  const dto: EnergyEventDto = {
     id: row.id,
     vehicleId: row.vehicleId,
     dimoSegmentId: row.dimoSegmentId,
@@ -56,5 +87,18 @@ export function toEnergyEventDto(row: VehicleEnergyEvent): EnergyEventDto {
     odometerStartKm: row.odometerStartKm,
     odometerEndKm: row.odometerEndKm,
     confidence: row.confidence,
+    fuelLevelRiseStart: row.fuelLevelRiseStart?.toISOString() ?? null,
+    fuelLevelRiseEnd: row.fuelLevelRiseEnd?.toISOString() ?? null,
+    fuelLevelRiseDurationSeconds: row.fuelLevelRiseDurationSeconds ?? null,
   };
+
+  if (row.kind === 'REFUEL' && row.fuelStationEnrichment) {
+    dto.stationEnrichment = toStationEnrichmentDto(row.fuelStationEnrichment);
+  }
+
+  if (row.kind === 'RECHARGE' && row.chargingStationEnrichment) {
+    dto.chargingStationEnrichment = toChargingStationEnrichmentDto(row.chargingStationEnrichment);
+  }
+
+  return dto;
 }

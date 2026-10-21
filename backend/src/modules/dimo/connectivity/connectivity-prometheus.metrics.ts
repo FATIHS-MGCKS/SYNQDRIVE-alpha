@@ -106,6 +106,24 @@ export function recordConnectivityProviderLinkState(
   metrics.connectivityProviderLinkStateTotal.inc(input);
 }
 
+/**
+ * Provider responding while the real vehicle observation is stale.
+ * Emitted on state transition only — never per poll.
+ */
+export function recordConnectivityProviderReachableObservationStale(
+  metrics: TripMetricsService,
+  input: { provider: string; telemetry_state: string },
+): void {
+  metrics.connectivityProviderReachableObservationStaleTotal.inc(input);
+}
+
+export function recordConnectivityProviderReachableObservationRecovered(
+  metrics: TripMetricsService,
+  input: { provider: string; telemetry_state: string },
+): void {
+  metrics.connectivityProviderReachableObservationRecoveredTotal.inc(input);
+}
+
 export function recordConnectivityDeviceState(
   metrics: TripMetricsService,
   input: { physical_device_state: string },
@@ -137,4 +155,39 @@ export function recordConnectivityReconciliationConflict(
   input: { classification: string },
 ): void {
   metrics.connectivityReconciliationConflictTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateTransitionApplied(
+  metrics: TripMetricsService,
+  input: { source: string; transition: string },
+): void {
+  metrics.connectivityPhysicalStateTransitionAppliedTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateEvidenceStale(
+  metrics: TripMetricsService,
+  input: { source: string },
+): void {
+  metrics.connectivityPhysicalStateEvidenceStaleTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateEvidenceConflict(
+  metrics: TripMetricsService,
+  input: { source: string },
+): void {
+  metrics.connectivityPhysicalStateEvidenceConflictTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateSelfHeal(
+  metrics: TripMetricsService,
+  input: { source: string; outcome: string },
+): void {
+  metrics.connectivityPhysicalStateSelfHealTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateDuplicateSuppressed(
+  metrics: TripMetricsService,
+  input: { source: string },
+): void {
+  metrics.connectivityPhysicalStateDuplicateTransitionSuppressedTotal.inc(input);
 }

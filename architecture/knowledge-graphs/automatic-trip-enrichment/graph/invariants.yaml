@@ -1,0 +1,111 @@
+# KG-ATE invariants — verified against main @ 4843a4ebc
+
+invariants:
+  - id: ATE-INV-AUTO-001
+    kind: CONFIRMED_INVARIANT
+    title: Enrichment must not require user opening trip
+    epistemic_status: CONFIRMED
+    statement: >
+      A COMPLETED trip must receive behavior enrichment via post-finalize enqueue
+      without UI interaction. UI fallback exists only for null-status backlog recovery.
+    evidence: [ATE-EV-0003, ATE-EV-0005, ATE-EV-0025, ATE-EV-0031]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+
+  - id: ATE-INV-IDEMPOTENCY-001
+    kind: CONFIRMED_INVARIANT
+    title: Reprocessing must not create duplicated enrichment output
+    epistemic_status: CONFIRMED
+    statement: >
+      Terminal behaviorEnrichmentStatus guards, deterministic BullMQ jobId
+      (hf-enrich-${tripId}), and transactional event replace prevent semantic duplicates.
+    evidence: [ATE-EV-0005, ATE-EV-0006]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+
+  - id: ATE-INV-ORG-SCOPE-001
+    kind: CONFIRMED_INVARIANT
+    title: Cross-organization enrichment leakage impossible
+    epistemic_status: CONFIRMED
+    statement: >
+      Enrichment resolves organizationId from vehicle; API routes resolve org via
+      authenticated context. No hardcoded org assumptions in orchestrator paths.
+    evidence: [ATE-EV-0005, ATE-EV-0023]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+
+  - id: ATE-INV-LEADER-001
+    kind: CONFIRMED_INVARIANT
+    title: Leader-gated schedulers must not intentionally duplicate scheduled work
+    epistemic_status: CONFIRMED
+    statement: >
+      Trip reconciliation and dimo snapshot schedulers call shouldRun before executing.
+      Non-leader replicas skip ticks without side effects.
+    evidence: [ATE-EV-0016, ATE-EV-0021]
+    source_paths:
+      - backend/src/workers/schedulers/trip-reconciliation.scheduler.ts
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+      - backend/src/shared/scheduler-leader/scheduler-leader-guard.service.ts
+
+  - id: ATE-INV-MUTEX-001
+    kind: CONFIRMED_INVARIANT
+    title: Vehicle reconciliation respects execution mutex
+    epistemic_status: CONFIRMED
+    statement: >
+      reconcileWindow executes inside ReconciliationExecutionMutex per vehicleId.
+      Contention yields skip status, not concurrent repair.
+    evidence: [ATE-EV-0017, ATE-EV-0010]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+      - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
+
+  - id: ATE-INV-PROVIDER-001
+    kind: CONFIRMED_INVARIANT
+    title: DIMO calls use canonical provider-governance path where required
+    epistemic_status: CONFIRMED
+    statement: >
+      Trip behavior enrichment processor and reconciliation DIMO fetches run under
+      runWithDimoRequestContext and provider gateway/budget infrastructure.
+    evidence: [ATE-EV-0014, ATE-EV-0022]
+    source_paths:
+      - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+
+  - id: ATE-INV-TRIP-LOSS-001
+    kind: CONDITIONAL_INVARIANT
+    title: Provider limit or mutex deferral must not silently delete trips
+    epistemic_status: CONFIRMED
+    statement: >
+      Mutex skip and provider deferral skip work for the tick; they do not delete
+      VehicleTrip rows. Formal proof of zero permanent loss under all deferral
+      patterns remains open (ATE-OQ-011).
+    evidence: [ATE-EV-0017, ATE-EV-0022]
+    source_paths:
+      - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
+    open_questions: [ATE-OQ-011]
+
+  - id: ATE-INV-EED-BOUNDARY-001
+    kind: CONFIRMED_INVARIANT
+    title: ATE may trigger EED but must not own energy-event semantics
+    epistemic_status: CONFIRMED
+    statement: >
+      reconcileWindow step 5 MAY_TRIGGER detectEnergyEvents. ATE graph must not
+      define REFUEL/RECHARGE duration, fuelLevelRiseDurationSeconds, or sibling
+      reconciliation semantics.
+    evidence: [ATE-EV-0011, ATE-EV-0034]
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ATE_EED_BOUNDARY_MAP_2026-09-01.md
+
+  - id: ATE-INV-DI-BOUNDARY-001
+    kind: CONFIRMED_INVARIANT
+    title: ATE orchestration must not redefine DI scoring semantics
+    epistemic_status: CONFIRMED
+    statement: >
+      ATE enqueues driving-impact jobs and initializes V2 runs but does not own
+      assessability policy, scoring models, or TDI computation rules.
+    evidence: [ATE-EV-0004, ATE-EV-0015, ATE-EV-0019]
+    source_paths:
+      - docs/architecture/driving-intelligence-v2.md

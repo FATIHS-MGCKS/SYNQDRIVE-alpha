@@ -345,7 +345,7 @@ export function buildJammingSnapshotNote(count: number): string | null {
 
 export interface FleetConnectivityVehicleInput {
   id: string;
-  vin: string;
+  vin: string | null;
   licensePlate: string | null;
   make: string;
   model: string;
@@ -443,6 +443,7 @@ export function buildFleetConnectivityRuntimeForInput(
             sourceSubtype: null,
             isActive: true,
             provider: 'DIMO',
+            dimoVehicleId: 'dimo-linked',
           },
         ]
       : [],

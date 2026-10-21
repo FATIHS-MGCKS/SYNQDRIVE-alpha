@@ -61,6 +61,7 @@ function makeDetailService(deps: {
     dataAuthorizations,
     dataAuthEnforcement,
     deviceConnectionQuery,
+    stub(),
     connectivityRuntimeProjection,
     stub(),
     stub(),

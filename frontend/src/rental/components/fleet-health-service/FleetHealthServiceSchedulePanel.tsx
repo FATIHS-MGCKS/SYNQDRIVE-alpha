@@ -1,7 +1,7 @@
 import type { ApiTask, Vendor } from '../../../lib/api';
 import { ServiceSchedulePanel } from '../service-center/ServiceSchedulePanel';
 import { DashboardSectionLabel } from '../dashboard/dashboardShell';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { fhs } from './fleet-health-service-shell';
 
 interface FleetHealthServiceSchedulePanelProps {

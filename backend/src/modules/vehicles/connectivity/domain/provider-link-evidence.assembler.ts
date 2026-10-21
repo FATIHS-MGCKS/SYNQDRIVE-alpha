@@ -22,6 +22,7 @@ export interface AssembleProviderLinkEvidenceParams {
     id: string;
     provider: string;
     isActive: boolean;
+    dimoVehicleId?: string | null;
     organizationId?: string | null;
   }>;
   providerConsents: Array<{
@@ -152,7 +153,9 @@ function resolveMapping(
   links: AssembleProviderLinkEvidenceParams['dataSourceLinks'],
   organizationId: string,
 ): ProviderMappingEvidence {
-  const activeDimo = links.filter((l) => l.isActive && l.provider === 'DIMO');
+  const activeDimo = links.filter(
+    (l) => l.isActive && l.provider === 'DIMO' && l.dimoVehicleId != null,
+  );
   const primary = activeDimo[0] ?? null;
   return {
     hasActiveMapping: activeDimo.length > 0,
@@ -181,8 +184,9 @@ export function assembleProviderLinkEvidence(
   const tokenId = params.dimoVehicle?.tokenId ?? null;
   const hasToken = tokenId != null && tokenId > 0;
   const bindingId =
-    params.dataSourceLinks.find((l) => l.isActive && l.provider === 'DIMO')?.id ??
-    null;
+    params.dataSourceLinks.find(
+      (l) => l.isActive && l.provider === 'DIMO' && l.dimoVehicleId != null,
+    )?.id ?? null;
 
   const consentRevoked = consent.status === ConsentLedgerStatus.REVOKED;
   const authRevoked =

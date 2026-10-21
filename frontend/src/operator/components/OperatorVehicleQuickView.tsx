@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { PriorityBadge, SkeletonRows, StatusChip } from '../../components/patterns';
 import { formatDamageType } from '../../rental/lib/damage.types';
-import { resolveFleetVehicleDisplayState } from '../../rental/lib/fleetVehicleDisplay';
+import { resolveCanonicalFleetVehicleDisplayState } from '../../rental/lib/fleetVehicleDisplay';
 import { VehicleOperationalStatusCallout } from '../../rental/components/fleet/VehicleOperationalStatusCallout';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
@@ -76,7 +76,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
 
   const vehicle = data.vehicle;
   const label = [vehicle.model, vehicle.license].filter(Boolean).join(' · ');
-  const fleetDisplay = resolveFleetVehicleDisplayState(vehicle, {
+  const fleetDisplay = resolveCanonicalFleetVehicleDisplayState(vehicle, {
     rentalHealth: data.health,
     locale: 'de',
   });

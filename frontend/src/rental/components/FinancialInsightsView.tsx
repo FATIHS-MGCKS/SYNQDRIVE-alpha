@@ -15,7 +15,7 @@ import { api } from '../../lib/api';
 import { PageHeader } from '../../components/patterns';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { stationFilterToDashboardId } from '../lib/fleet-station-filter';
 import { useFleetMapStore } from '../stores/useFleetMapStore';
 import { filterFleetByStation } from './dashboard/dashboardUtils';

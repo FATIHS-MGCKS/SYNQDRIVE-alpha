@@ -2,7 +2,7 @@ import { Layers, User, Calendar, Car, MapPin, UserCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EmptyState } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalEntityNavigation } from '../../context/RentalEntityNavigationContext';
 import type { CommunicationConversationDetail } from '../../../lib/communication/types';
 import { CommunicationContextSkeleton } from './skeletons/CommunicationContextSkeleton';

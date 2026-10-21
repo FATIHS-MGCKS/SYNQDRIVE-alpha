@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { HmSignalUsageService, HmSignalGroupKey } from '../../modules/high-mobility/high-mobility-signal-usage.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * HM Health Polling Scheduler
@@ -31,11 +32,13 @@ export class HmHealthPollingScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly signalUsageService: HmSignalUsageService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   /** Runs every 5 minutes — checks which groups need polling */
   @Interval(5 * 60 * 1000)
   async pollHmHealthSignals(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('hm_health_polling')) return;
     // Get all vehicles with active HM_HEALTH links
     const activeLinks = await this.prisma.vehicleDataSourceLink.findMany({
       where: {

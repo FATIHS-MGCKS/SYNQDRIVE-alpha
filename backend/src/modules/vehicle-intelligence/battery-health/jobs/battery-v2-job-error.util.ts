@@ -99,9 +99,26 @@ export function classifyBatteryV2JobError(err: unknown): {
     };
   }
 
+  if (
+    lower.includes('prisma') ||
+    lower.includes('connectorerror') ||
+    lower.includes('postgreserror') ||
+    lower.includes('queryerror')
+  ) {
+    const nonRetryablePersistence =
+      message.includes('54000') ||
+      lower.includes('index row size') ||
+      lower.includes('program_limit_exceeded');
+    return {
+      code: BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
+      retryable: !nonRetryablePersistence,
+      message: message || BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
+    };
+  }
+
   return {
     code: BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
     retryable: true,
-    message,
+    message: message || BATTERY_V2_JOB_ERROR_CODES.HANDLER_FAILED,
   };
 }

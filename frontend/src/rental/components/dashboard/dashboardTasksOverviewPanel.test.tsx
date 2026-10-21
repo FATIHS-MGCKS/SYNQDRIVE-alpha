@@ -8,8 +8,8 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DashboardTasksOverviewPanel } from './DashboardTasksOverviewPanel';
 import type { DashboardViewModel } from './dashboardTypes';
-import { en } from '../../i18n/translations/en';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { en } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 const mockOverview = vi.fn();
 const mockUseRentalOrg = vi.fn();

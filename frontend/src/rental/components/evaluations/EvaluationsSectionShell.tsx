@@ -6,8 +6,8 @@
  * false zero, never a legacy fallback.
  */
 import type { ReactNode } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type {
   EvaluationsAsyncResult,
   EvaluationsCanonicalResult,

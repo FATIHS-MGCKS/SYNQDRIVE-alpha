@@ -38,6 +38,7 @@ describe('device-connection-read-model', () => {
       ],
       bookings: [],
       trips: [],
+      latestValidSnapshotAt: null,
       webhookConfiguration: configuredUnplugWebhookConfiguration(),
     });
 
@@ -100,6 +101,7 @@ describe('device-connection-read-model', () => {
       ],
       bookings: [],
       trips: [],
+      latestValidSnapshotAt: new Date('2026-06-28T11:05:00.000Z'),
       webhookConfiguration: configuredUnplugWebhookConfiguration(),
     });
 
@@ -304,7 +306,7 @@ describe('device-connection-read-model', () => {
     expect(summary.unpluggedCount7d).toBe(0);
   });
 
-  it('explicit null persisted episode closes state even when events imply open unplug', () => {
+  it('explicit null persisted episode keeps physical unplug separate from interruption unknown (Test J)', () => {
     const summary = buildDeviceConnectionSummary({
       vehicleId: 'v-1',
       hardwareType: 'LTE_R1',
@@ -325,7 +327,44 @@ describe('device-connection-read-model', () => {
     });
 
     expect(summary.openUnpluggedEpisode).toBe(false);
-    expect(summary.currentDeviceConnectionStatus).toBe('unknown');
+    expect(summary.currentDeviceConnectionStatus).toBe('unplugged');
+    expect(summary.interruptionKnowledge).toBe('unknown');
+    expect(summary.interruptionKnowledgeReason).toBe('physical_evidence_without_episode');
+  });
+
+  it('marks interruption as known_none when episode scope is authoritative and no conflicting evidence', () => {
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [],
+      bookings: [],
+      trips: [],
+      persistedOpenEpisode: null,
+      episodeEvidenceReliable: true,
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
+    });
+
+    expect(summary.interruptionKnowledge).toBe('known_none');
+    expect(summary.interruptionKnowledgeReason).toBe('episode_authoritative_no_open');
+  });
+
+  it('defaults interruption to unknown when episode authority is not marked reliable', () => {
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [],
+      bookings: [],
+      trips: [],
+      persistedOpenEpisode: null,
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
+    });
+
+    expect(summary.interruptionKnowledge).toBe('unknown');
+    expect(summary.interruptionKnowledgeReason).toBe('episode_authority_unreliable');
   });
 
   it('derives legacy webhookConfigured from trigger registry — not event absence', () => {

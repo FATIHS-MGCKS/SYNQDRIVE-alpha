@@ -1,0 +1,152 @@
+# KG-ATE graph schema — aligned with Battery V2 pattern, ATE node classes
+
+version: "1.0"
+description: >
+  Canonical schema for Automatic Trip Enrichment knowledge graph.
+  Maintained incrementally per governance/AGENT_PROTOCOL.md.
+
+node_types:
+  - workstream
+  - component
+  - service
+  - queue
+  - job
+  - scheduler
+  - trigger
+  - state
+  - data_object
+  - decision
+  - evidence
+  - invariant
+  - failure_mode
+  - fallback
+  - external_authority
+  - open_question
+  - production_proof
+  - historical_event
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - historical_event
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CODE
+  - TEST
+  - CI
+  - PRODUCTION
+  - ARCHITECTURE_DOC
+  - HISTORICAL_PR
+  - INCIDENT
+  - NEGATIVE_RESULT
+  - MANUAL_OBSERVATION
+
+relation_types:
+  - TRIGGERS
+  - CONSUMES
+  - PRODUCES
+  - PERSISTS
+  - READS
+  - WRITES
+  - CALLS
+  - ENQUEUES
+  - PROCESSES
+  - GUARDED_BY
+  - LOCKED_BY
+  - BUDGETED_BY
+  - RETRIES_VIA
+  - DERIVES
+  - RECONCILES
+  - DISPLAYS
+  - DEPENDS_ON
+  - SUPERSEDES
+  - PROVEN_BY
+  - OWNED_BY
+  - MAY_TRIGGER
+  - MUST_NOT_INTERPRET_AS
+  - FALLBACK_TO
+  - SKIPS_ON
+  - PARALLEL_TO
+  - REFERENCES
+
+id_prefixes:
+  workstream: ATE-WORKSTREAM-
+  component: ATE-COMP-
+  service: ATE-SVC-
+  queue: ATE-QUE-
+  job: ATE-JOB-
+  scheduler: ATE-SCH-
+  trigger: ATE-TRIG-
+  state: ATE-ST-
+  data_object: ATE-DO-
+  decision: ATE-DEC-
+  evidence: ATE-EV-
+  invariant: ATE-INV-
+  failure_mode: ATE-FM-
+  fallback: ATE-FB-
+  external_authority: ATE-EXT-
+  open_question: ATE-OQ-
+  production_proof: ATE-PP-
+  historical_event: ATE-HE-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - verified_at
+    - evidence
+    - authority_class
+    - open_questions
+    - notes
+    - discovery_ref
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes
+
+authority_classes:
+  - ATE_OWNS
+  - ATE_REFERENCES_EXTERNAL
+  - SHARED_INFRASTRUCTURE
+  - OUT_OF_SCOPE

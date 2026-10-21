@@ -1,5 +1,5 @@
 import type { BookingPaymentRequestDto as ApiBookingPaymentRequestDto } from '../../../lib/api';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 export type BookingPaymentRequestDto = ApiBookingPaymentRequestDto;
 

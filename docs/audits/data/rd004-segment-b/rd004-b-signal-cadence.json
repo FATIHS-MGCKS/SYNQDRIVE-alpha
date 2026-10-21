@@ -1,0 +1,252 @@
+{
+  "speed": {
+    "HF_HISTORICAL": {
+      "field": "speed",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 66,
+      "firstProviderTimestamp": "2026-09-04T03:47:51.768Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:46.299Z",
+      "uniquePhysicalSampleCount": 66,
+      "duplicateCount": 0,
+      "staleHoldCount": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "ACQUISITION_ORDINAL_THEN_PROVIDER_TIMESTAMP",
+      "medianPhysicalCadenceSeconds": 10.559,
+      "p10PhysicalCadenceSeconds": 1,
+      "p90PhysicalCadenceSeconds": 34.706,
+      "maxGapSeconds": 105.306,
+      "status": "OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "speed",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 295,
+      "firstProviderTimestamp": "2026-09-04T03:47:53.000Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:47.000Z",
+      "uniquePhysicalSampleCount": 69,
+      "duplicateCount": 226,
+      "staleHoldCount": 40,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 11,
+      "p10PhysicalCadenceSeconds": 4,
+      "p90PhysicalCadenceSeconds": 21,
+      "maxGapSeconds": 105,
+      "status": "OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "speed",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainCombustionEngineSpeed": {
+    "HF_HISTORICAL": {
+      "field": "powertrainCombustionEngineSpeed",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 65,
+      "firstProviderTimestamp": "2026-09-04T03:47:52.768Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:46.299Z",
+      "uniquePhysicalSampleCount": 65,
+      "duplicateCount": 0,
+      "staleHoldCount": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 10.559,
+      "p10PhysicalCadenceSeconds": 1,
+      "p90PhysicalCadenceSeconds": 34.706,
+      "maxGapSeconds": 105.306,
+      "status": "OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "powertrainCombustionEngineSpeed",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 295,
+      "firstProviderTimestamp": "2026-09-04T03:47:53.000Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:47.000Z",
+      "uniquePhysicalSampleCount": 69,
+      "duplicateCount": 226,
+      "staleHoldCount": 40,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 11,
+      "p10PhysicalCadenceSeconds": 4,
+      "p90PhysicalCadenceSeconds": 21,
+      "maxGapSeconds": 105,
+      "status": "OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "powertrainCombustionEngineSpeed",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "obdThrottlePosition": {
+    "HF_HISTORICAL": {
+      "field": "obdThrottlePosition",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 65,
+      "firstProviderTimestamp": "2026-09-04T03:47:52.768Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:46.299Z",
+      "uniquePhysicalSampleCount": 65,
+      "duplicateCount": 0,
+      "staleHoldCount": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 10.559,
+      "p10PhysicalCadenceSeconds": 1,
+      "p90PhysicalCadenceSeconds": 34.706,
+      "maxGapSeconds": 105.306,
+      "status": "OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "obdThrottlePosition",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 295,
+      "firstProviderTimestamp": "2026-09-04T03:47:53.000Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:47.000Z",
+      "uniquePhysicalSampleCount": 69,
+      "duplicateCount": 226,
+      "staleHoldCount": 40,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 11,
+      "p10PhysicalCadenceSeconds": 4,
+      "p90PhysicalCadenceSeconds": 21,
+      "maxGapSeconds": 105,
+      "status": "OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "obdThrottlePosition",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainCombustionEngineTPS": {
+    "HF_HISTORICAL": {
+      "field": "powertrainCombustionEngineTPS",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 65,
+      "firstProviderTimestamp": "2026-09-04T03:47:51.768Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:10.863Z",
+      "uniquePhysicalSampleCount": 65,
+      "duplicateCount": 0,
+      "staleHoldCount": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 9.655,
+      "p10PhysicalCadenceSeconds": 1,
+      "p90PhysicalCadenceSeconds": 32.376,
+      "maxGapSeconds": 105.306,
+      "status": "OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "powertrainCombustionEngineTPS",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 295,
+      "firstProviderTimestamp": "2026-09-04T03:47:53.000Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:31.000Z",
+      "uniquePhysicalSampleCount": 68,
+      "duplicateCount": 227,
+      "staleHoldCount": 39,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 11,
+      "p10PhysicalCadenceSeconds": 4,
+      "p90PhysicalCadenceSeconds": 21,
+      "maxGapSeconds": 105,
+      "status": "OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "powertrainCombustionEngineTPS",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "obdEngineLoad": {
+    "HF_HISTORICAL": {
+      "field": "obdEngineLoad",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 66,
+      "firstProviderTimestamp": "2026-09-04T03:47:51.768Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:46.299Z",
+      "uniquePhysicalSampleCount": 66,
+      "duplicateCount": 0,
+      "staleHoldCount": 0,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 10.559,
+      "p10PhysicalCadenceSeconds": 1,
+      "p90PhysicalCadenceSeconds": 34.706,
+      "maxGapSeconds": 105.306,
+      "status": "OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "obdEngineLoad",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 295,
+      "firstProviderTimestamp": "2026-09-04T03:47:53.000Z",
+      "lastProviderTimestamp": "2026-09-04T04:03:47.000Z",
+      "uniquePhysicalSampleCount": 69,
+      "duplicateCount": 226,
+      "staleHoldCount": 40,
+      "outOfOrderCount": 0,
+      "outOfOrderMethod": "SIGNAL_METRICS_DEFAULT",
+      "medianPhysicalCadenceSeconds": 11,
+      "p10PhysicalCadenceSeconds": 4,
+      "p90PhysicalCadenceSeconds": 21,
+      "maxGapSeconds": 105,
+      "status": "OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "obdEngineLoad",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainTransmissionActualGear": {
+    "HF_HISTORICAL": {
+      "field": "powertrainTransmissionActualGear",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "powertrainTransmissionActualGear",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "powertrainTransmissionActualGear",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  },
+  "powertrainTransmissionActualGearRatio": {
+    "HF_HISTORICAL": {
+      "field": "powertrainTransmissionActualGearRatio",
+      "acquisitionSurface": "HF_HISTORICAL",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_LIVE": {
+      "field": "powertrainTransmissionActualGearRatio",
+      "acquisitionSurface": "LATEST_LIVE",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    },
+    "LATEST_SLOW": {
+      "field": "powertrainTransmissionActualGearRatio",
+      "acquisitionSurface": "LATEST_SLOW",
+      "rowCount": 0,
+      "status": "NOT_OBSERVED"
+    }
+  }
+}

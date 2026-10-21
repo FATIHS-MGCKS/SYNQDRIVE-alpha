@@ -17,6 +17,7 @@ import { TripSource } from '@prisma/client';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../src/modules/dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../src/modules/dimo/provider/dimo-provider-request-context.util';
 import { TripReconciliationService } from '../../src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 
 function parseArg(prefix: string): string | undefined {
@@ -62,6 +63,7 @@ async function main(): Promise<void> {
       where: { id: vehicleId },
       select: {
         id: true,
+        organizationId: true,
         licensePlate: true,
         vehicleName: true,
         dimoVehicle: { select: { tokenId: true } },
@@ -87,10 +89,20 @@ async function main(): Promise<void> {
       },
     });
 
+    const providerContext = buildDimoProviderRequestContext(
+      vehicle.dimoVehicle.tokenId,
+      {
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+      },
+    );
+
     const dimoRows = await segments.fetchTripSegments(
       vehicle.dimoVehicle.tokenId,
       from,
       to,
+      undefined,
+      providerContext,
     );
 
     console.log(

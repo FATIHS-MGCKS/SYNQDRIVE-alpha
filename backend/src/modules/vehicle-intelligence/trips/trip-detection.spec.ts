@@ -74,6 +74,7 @@ const snapshot = (
   odometerKm,
   fuelLevelAbsolute: null,
   evSoc: null,
+  sourceTimestamp: null,
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -259,6 +260,36 @@ describe('Fix C — ignition de-prioritized in end and resume detection', () => 
       pt(20, 5, true),
     ];
     expect(hasActivityResumed(points, 'ICE')).toBe(true);
+  });
+
+  it('hasActivityResumed: pre-boundary motion does NOT resume when resumeAfterAt is set', () => {
+    const endBoundary = new Date(Date.now() - 30_000);
+    const points = [
+      {
+        ...pt(92, 38, true),
+        timestamp: new Date(endBoundary.getTime() - 60_000).toISOString(),
+      },
+      {
+        ...pt(30, 0, false),
+        timestamp: new Date(endBoundary.getTime() + 5_000).toISOString(),
+      },
+    ];
+    expect(hasActivityResumed(points, 'ICE', endBoundary)).toBe(false);
+  });
+
+  it('hasActivityResumed: post-boundary motion resumes when resumeAfterAt is set', () => {
+    const endBoundary = new Date(Date.now() - 120_000);
+    const points = [
+      {
+        ...pt(180, 38, true),
+        timestamp: new Date(endBoundary.getTime() - 30_000).toISOString(),
+      },
+      {
+        ...pt(30, 12, true),
+        timestamp: new Date(endBoundary.getTime() + 60_000).toISOString(),
+      },
+    ];
+    expect(hasActivityResumed(points, 'ICE', endBoundary)).toBe(true);
   });
 
   it('hasActivityResumed: EV — speed alone is sufficient, no ignition required', () => {
@@ -957,6 +988,15 @@ describe('checkTripQuality', () => {
     expect(checkTripQuality(30_000, null, 0, null, now).shouldDiscard).toBe(true);
   });
 
+  it('keeps short trip with null distance when persisted route movement evidence is strong', () => {
+    const r = checkTripQuality(45_000, null, 15, null, now, {
+      hasMeaningfulPersistedRouteMovement: true,
+      movementAuthority: 'route_speed_motion',
+      cumulativeRouteMovementM: 120,
+    });
+    expect(r.shouldDiscard).toBe(false);
+  });
+
   it('discards trip with < 0.1 km and low consecutive active points', () => {
     const r = checkTripQuality(120_000, 0.05, 1, null, now);
     expect(r.shouldDiscard).toBe(true);
@@ -969,9 +1009,18 @@ describe('checkTripQuality', () => {
     expect(r.shouldMergeWithPrevious).toBe(true);
   });
 
+  it('merges with previous trip when gap is exactly 5 min', () => {
+    const prevEnd = new Date(now.getTime() - 5 * 60_000);
+    expect(checkTripQuality(120_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(
+      true,
+    );
+  });
+
   it('does NOT merge if gap > 5 min', () => {
     const prevEnd = new Date(now.getTime() - 10 * 60_000);
-    expect(checkTripQuality(300_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(false);
+    expect(checkTripQuality(300_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(
+      false,
+    );
   });
 
   it('accepts a normal quality trip', () => {

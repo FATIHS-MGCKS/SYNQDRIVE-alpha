@@ -1,0 +1,627 @@
+{
+  "SPEED_SAMPLE_SELECTION_TIME_ONLY": "YES",
+  "HOLDOUT_SPEED_SELECTION_TIME_ONLY": "YES",
+  "VALIDATED_OFFSET_MUST_BE_APPLIED_BEFORE_ACCURACY_SAMPLE_SELECTION": "YES",
+  "HOLDOUT_ANCHOR_COUNT": 17,
+  "HOLDOUT_COMPARABLE_SAMPLE_COUNT": 0,
+  "HOLDOUT_REJECTED_FOR_TIME_DISTANCE": 0,
+  "ABSOLUTE_SPEED_ACCURACY_VALIDATED": "NO",
+  "SPEED_MAE_KMH": null,
+  "SPEED_MEDIAN_ABS_ERROR_KMH": null,
+  "SPEED_P90_ABS_ERROR_KMH": null,
+  "SPEED_BIAS_KMH": null,
+  "SPEED_MAX_ABS_ERROR_KMH": null,
+  "LOW_SPEED_MAE_KMH": null,
+  "MEDIUM_SPEED_MAE_KMH": null,
+  "HIGH_SPEED_MAE_KMH": null,
+  "STABLE_STATE_SPEED_ACCURACY": {
+    "comparableCount": 0,
+    "maeKmh": null
+  },
+  "DYNAMIC_STATE_SPEED_ACCURACY": {
+    "comparableCount": 0,
+    "maeKmh": null
+  },
+  "temporalResidualBuckets": {
+    "within1s": 0,
+    "within2s": 0,
+    "within5s": 0,
+    "over5s": 0
+  },
+  "holdoutRows": [
+    {
+      "anchorId": "B01",
+      "videoRelativeSeconds": 60,
+      "videoSpeedKmh": 17,
+      "expectedProviderTimestamp": "2026-09-04T03:48:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B02",
+      "videoRelativeSeconds": 120,
+      "videoSpeedKmh": 57,
+      "expectedProviderTimestamp": "2026-09-04T03:49:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B03",
+      "videoRelativeSeconds": 210,
+      "videoSpeedKmh": 60,
+      "expectedProviderTimestamp": "2026-09-04T03:50:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B04",
+      "videoRelativeSeconds": 240,
+      "videoSpeedKmh": 94,
+      "expectedProviderTimestamp": "2026-09-04T03:51:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B05",
+      "videoRelativeSeconds": 270,
+      "videoSpeedKmh": 79,
+      "expectedProviderTimestamp": "2026-09-04T03:51:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B06",
+      "videoRelativeSeconds": 300,
+      "videoSpeedKmh": 61,
+      "expectedProviderTimestamp": "2026-09-04T03:52:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B07",
+      "videoRelativeSeconds": 390,
+      "videoSpeedKmh": 109,
+      "expectedProviderTimestamp": "2026-09-04T03:53:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B08",
+      "videoRelativeSeconds": 420,
+      "videoSpeedKmh": 98,
+      "expectedProviderTimestamp": "2026-09-04T03:54:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B09",
+      "videoRelativeSeconds": 450,
+      "videoSpeedKmh": 115,
+      "expectedProviderTimestamp": "2026-09-04T03:54:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B10",
+      "videoRelativeSeconds": 480,
+      "videoSpeedKmh": 116,
+      "expectedProviderTimestamp": "2026-09-04T03:55:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "STABLE_OR_LOW_SLOPE",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B11",
+      "videoRelativeSeconds": 510,
+      "videoSpeedKmh": 112,
+      "expectedProviderTimestamp": "2026-09-04T03:55:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "STABLE_OR_LOW_SLOPE",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B13",
+      "videoRelativeSeconds": 570,
+      "videoSpeedKmh": 96,
+      "expectedProviderTimestamp": "2026-09-04T03:56:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B14",
+      "videoRelativeSeconds": 600,
+      "videoSpeedKmh": 59,
+      "expectedProviderTimestamp": "2026-09-04T03:57:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B20",
+      "videoRelativeSeconds": 780,
+      "videoSpeedKmh": 16,
+      "expectedProviderTimestamp": "2026-09-04T04:00:02.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B21",
+      "videoRelativeSeconds": 810,
+      "videoSpeedKmh": 4,
+      "expectedProviderTimestamp": "2026-09-04T04:00:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B23",
+      "videoRelativeSeconds": 870,
+      "videoSpeedKmh": 77,
+      "expectedProviderTimestamp": "2026-09-04T04:01:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B24",
+      "videoRelativeSeconds": 930,
+      "videoSpeedKmh": 33,
+      "expectedProviderTimestamp": "2026-09-04T04:02:32.216Z",
+      "nearestProviderTimestamp": null,
+      "temporalResidualSeconds": null,
+      "providerSpeedKmh": null,
+      "speedErrorKmh": null,
+      "localPhysicalGapBefore": null,
+      "localPhysicalGapAfter": null,
+      "kinematicState": "DYNAMIC_TRANSITION",
+      "accuracyEligibility": "NO_COMPARABLE_PHYSICAL_SAMPLE",
+      "regime": "MEDIUM"
+    }
+  ],
+  "frozenOffsetSeconds": null,
+  "diagnosticHoldoutMaeKmhWhenOffsetNotValidated": null,
+  "note": "Holdout speed accuracy uses TIME-ONLY nearest telemetry after frozen offset; video speed never influences sample selection",
+  "diagnosticHoldoutFromSupportiveOffset": null,
+  "EXACT_OR_HIGH_CONFIDENCE_VIDEO_SPEED_ANCHORS_ACCEPTED": 16,
+  "exploratoryPrevious": {
+    "PREVIOUS_METHOD_SELECTION_BIASED": "YES",
+    "NOT_CANONICAL_VALIDATION_RESULT": "YES",
+    "EXPLORATORY_PREVIOUS_OFFSET_SECONDS": 14.299,
+    "EXPLORATORY_PREVIOUS_SPEED_MAE_KMH": 2.263,
+    "recomputedFromCurrentSpeedBiasedMatches": {
+      "medianOffsetSeconds": -3.586999999999989,
+      "maeKmh": 2.263157894736842
+    },
+    "note": "DI-EV-0035B speed-selected matching reused samples for offset and accuracy — selection bias / double dipping"
+  },
+  "rawAnchorDisplacement": {
+    "RAW_ANCHOR_DISPLACEMENT_MEDIAN": -3.586999999999989,
+    "RAW_ANCHOR_DISPLACEMENT_MAD": 11.066000000000031,
+    "RAW_ANCHOR_DISPLACEMENT_MIN": -24.593000000000018,
+    "RAW_ANCHOR_DISPLACEMENT_MAX": 33.68700000000001,
+    "perAnchorDisplacements": [
+      {
+        "anchorId": "B02",
+        "rawTimeDisplacementSeconds": -6.920000000000002,
+        "speedErrorKmh": -2
+      },
+      {
+        "anchorId": "B03",
+        "rawTimeDisplacementSeconds": -19.939999999999998,
+        "speedErrorKmh": 4
+      },
+      {
+        "anchorId": "B04",
+        "rawTimeDisplacementSeconds": -9.048000000000002,
+        "speedErrorKmh": -7
+      },
+      {
+        "anchorId": "B05",
+        "rawTimeDisplacementSeconds": 12.259999999999991,
+        "speedErrorKmh": 6
+      },
+      {
+        "anchorId": "B06",
+        "rawTimeDisplacementSeconds": -7.096000000000004,
+        "speedErrorKmh": 4
+      },
+      {
+        "anchorId": "B07",
+        "rawTimeDisplacementSeconds": -13.27800000000002,
+        "speedErrorKmh": 2
+      },
+      {
+        "anchorId": "B08",
+        "rawTimeDisplacementSeconds": -12.923000000000002,
+        "speedErrorKmh": 1
+      },
+      {
+        "anchorId": "B09",
+        "rawTimeDisplacementSeconds": -3.586999999999989,
+        "speedErrorKmh": -4
+      },
+      {
+        "anchorId": "B10",
+        "rawTimeDisplacementSeconds": 5.406999999999982,
+        "speedErrorKmh": -3
+      },
+      {
+        "anchorId": "B11",
+        "rawTimeDisplacementSeconds": -24.593000000000018,
+        "speedErrorKmh": 1
+      },
+      {
+        "anchorId": "B14",
+        "rawTimeDisplacementSeconds": 4.291000000000054,
+        "speedErrorKmh": 2
+      },
+      {
+        "anchorId": "B15",
+        "rawTimeDisplacementSeconds": 13.469000000000051,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B16",
+        "rawTimeDisplacementSeconds": -16.53099999999995,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B18",
+        "rawTimeDisplacementSeconds": 15.166000000000054,
+        "speedErrorKmh": 5
+      },
+      {
+        "anchorId": "B19",
+        "rawTimeDisplacementSeconds": 7.918999999999983,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B20",
+        "rawTimeDisplacementSeconds": 1.05499999999995,
+        "speedErrorKmh": -2
+      },
+      {
+        "anchorId": "B23",
+        "rawTimeDisplacementSeconds": 33.68700000000001,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B24",
+        "rawTimeDisplacementSeconds": -14.65300000000002,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B25",
+        "rawTimeDisplacementSeconds": 14.08299999999997,
+        "speedErrorKmh": 0
+      }
+    ],
+    "explanation": "Raw per-anchor displacements from speed-biased matching are diagnostic only — NOT clock authority because sample selection used video speed"
+  },
+  "evidenceSplit": {
+    "CLOCK_CALIBRATION_SET": [
+      {
+        "id": "B-T01",
+        "label": "first displayed 0 km/h after long deceleration (frame-verified)",
+        "episodeId": "B-E4",
+        "landmarkKind": "FIRST_ZERO_AFTER_LONG_DECEL",
+        "videoRelativeSeconds": 621.8,
+        "videoRelativeSecondsMin": null,
+        "videoRelativeSecondsMax": null,
+        "videoUtc": "2026-09-04T03:57:24.016Z",
+        "videoUtcMin": null,
+        "videoUtcMax": null,
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "observationKind": "TRANSITION_TIME_OBSERVATION",
+        "CLOCK_FIT_ELIGIBLE": "NO",
+        "ineligibleReason": "SPARSE_PROVIDER_TRANSITION_NOT_RESOLVED"
+      }
+    ],
+    "SPEED_ACCURACY_HOLDOUT_SET": [
+      {
+        "id": "B01",
+        "videoRelativeSeconds": 60,
+        "videoUtc": "2026-09-04T03:48:02.216Z",
+        "videoSpeedKmh": 17,
+        "videoGear": 2,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B02",
+        "videoRelativeSeconds": 120,
+        "videoUtc": "2026-09-04T03:49:02.216Z",
+        "videoSpeedKmh": 57,
+        "videoGear": 5,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B03",
+        "videoRelativeSeconds": 210,
+        "videoUtc": "2026-09-04T03:50:32.216Z",
+        "videoSpeedKmh": 60,
+        "videoGear": 6,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B04",
+        "videoRelativeSeconds": 240,
+        "videoUtc": "2026-09-04T03:51:02.216Z",
+        "videoSpeedKmh": 94,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B05",
+        "videoRelativeSeconds": 270,
+        "videoUtc": "2026-09-04T03:51:32.216Z",
+        "videoSpeedKmh": 79,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B06",
+        "videoRelativeSeconds": 300,
+        "videoUtc": "2026-09-04T03:52:02.216Z",
+        "videoSpeedKmh": 61,
+        "videoGear": 6,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B07",
+        "videoRelativeSeconds": 390,
+        "videoUtc": "2026-09-04T03:53:32.216Z",
+        "videoSpeedKmh": 109,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B08",
+        "videoRelativeSeconds": 420,
+        "videoUtc": "2026-09-04T03:54:02.216Z",
+        "videoSpeedKmh": 98,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B09",
+        "videoRelativeSeconds": 450,
+        "videoUtc": "2026-09-04T03:54:32.216Z",
+        "videoSpeedKmh": 115,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B10",
+        "videoRelativeSeconds": 480,
+        "videoUtc": "2026-09-04T03:55:02.216Z",
+        "videoSpeedKmh": 116,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B11",
+        "videoRelativeSeconds": 510,
+        "videoUtc": "2026-09-04T03:55:32.216Z",
+        "videoSpeedKmh": 112,
+        "videoGear": 7,
+        "videoAnchorConfidence": "MEDIUM",
+        "videoTimingAuthority": "APPROXIMATE",
+        "approximate": true,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR",
+        "note": "Dashboard readability approximate — recheck"
+      },
+      {
+        "id": "B13",
+        "videoRelativeSeconds": 570,
+        "videoUtc": "2026-09-04T03:56:32.216Z",
+        "videoSpeedKmh": 96,
+        "videoGear": 7,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B14",
+        "videoRelativeSeconds": 600,
+        "videoUtc": "2026-09-04T03:57:02.216Z",
+        "videoSpeedKmh": 59,
+        "videoGear": 4,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B20",
+        "videoRelativeSeconds": 780,
+        "videoUtc": "2026-09-04T04:00:02.216Z",
+        "videoSpeedKmh": 16,
+        "videoGear": 2,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B21",
+        "videoRelativeSeconds": 810,
+        "videoUtc": "2026-09-04T04:00:32.216Z",
+        "videoSpeedKmh": 4,
+        "videoGear": 2,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B23",
+        "videoRelativeSeconds": 870,
+        "videoUtc": "2026-09-04T04:01:32.216Z",
+        "videoSpeedKmh": 77,
+        "videoGear": 5,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      },
+      {
+        "id": "B24",
+        "videoRelativeSeconds": 930,
+        "videoUtc": "2026-09-04T04:02:32.216Z",
+        "videoSpeedKmh": 33,
+        "videoGear": 3,
+        "videoAnchorConfidence": "HIGH",
+        "videoTimingAuthority": "HIGH_CONFIDENCE",
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
+      }
+    ],
+    "CLOCK_CALIBRATION_ANCHOR_COUNT": 1,
+    "CLOCK_HOLDOUT_ANCHOR_COUNT": 17,
+    "CLOCK_CALIBRATION_HOLDOUT_SEPARATED": "YES",
+    "overlapRejected": []
+  },
+  "PREVIOUS_SPEED_ACCURACY_METHOD_SELECTION_BIASED": "YES",
+  "PREPROCESSING_DISTORTION_VS_TELEMETRY_RAW": "YES",
+  "HOLDOUT_FROZEN_OFFSET_SECONDS": null,
+  "HOLDOUT_OFFSET_SOURCE": "NONE",
+  "B1_DIAGNOSTIC_HOLDOUT_OFFSET_SECONDS": null
+}

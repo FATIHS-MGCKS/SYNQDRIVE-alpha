@@ -3,11 +3,14 @@
  */
 import type { VehicleConnectivityRuntimeState } from './domain/connectivity-domain.types';
 import { CONNECTIVITY_RUNTIME_STATE_VERSION } from './domain/connectivity-domain.types';
+import { classifyConnectivityDiagnostic } from './domain/connectivity-diagnostic-state';
 
 export function mockConnectivityRuntime(
   overrides: Partial<VehicleConnectivityRuntimeState> = {},
 ): VehicleConnectivityRuntimeState {
-  return {
+  const state: Omit<VehicleConnectivityRuntimeState, 'diagnostic'> & {
+    diagnostic?: VehicleConnectivityRuntimeState['diagnostic'];
+  } = {
     vehicleId: 'v-1',
     organizationId: 'org-1',
     providerLinkState: 'ACTIVE',
@@ -32,6 +35,21 @@ export function mockConnectivityRuntime(
     stateVersion: CONNECTIVITY_RUNTIME_STATE_VERSION,
     ...overrides,
   };
+
+  return { ...state, diagnostic: state.diagnostic ?? deriveFixtureDiagnostic(state) };
+}
+
+/** Keeps the fixture's diagnostic dimension consistent with its own timestamps. */
+function deriveFixtureDiagnostic(
+  state: Omit<VehicleConnectivityRuntimeState, 'diagnostic'>,
+): VehicleConnectivityRuntimeState['diagnostic'] {
+  return classifyConnectivityDiagnostic({
+    providerLinkState: state.providerLinkState,
+    telemetryState: state.telemetryState,
+    lastObservationAt: state.lastTelemetryAt,
+    lastProviderFetchAt: state.lastReceivedAt,
+    nowMs: Date.parse(state.calculatedAt),
+  });
 }
 
 export function mockConnectivityRuntimeMap(

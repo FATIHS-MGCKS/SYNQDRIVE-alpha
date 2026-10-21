@@ -1,7 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { BatteryHvDetailVm } from '../../lib/battery-hv-view-model';
 import {
   BatteryCollapsibleSection,

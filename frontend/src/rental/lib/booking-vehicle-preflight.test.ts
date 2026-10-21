@@ -38,6 +38,10 @@ function baseVehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     taxCost: '0',
     totalMonthlyCost: '0',
     onlineStatus: 'ONLINE',
+    operationalAvailability: {
+      state: 'AVAILABLE',
+      generatedAt: new Date().toISOString(),
+    },
     ...overrides,
   } as VehicleData;
 }
@@ -51,17 +55,34 @@ function health(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthRe
     blocking_reasons: [],
     modules: {} as VehicleHealthResponse['modules'],
     generated_at: new Date().toISOString(),
+    availability: 'ready',
     ...overrides,
   };
 }
 
 describe('booking-vehicle-preflight', () => {
-  it('blocks offline vehicles', () => {
-    const v = baseVehicle({ onlineStatus: 'OFFLINE', lastSignal: '2020-01-01T00:00:00.000Z' });
-    const result = resolveBookingVehiclePreflight(v, null, true, false);
+  it('does not block legacy offline timestamps when P0.2 AVAILABLE', () => {
+    const v = baseVehicle({
+      onlineStatus: 'OFFLINE',
+      lastSignal: '2020-01-01T00:00:00.000Z',
+      operationalAvailability: { state: 'AVAILABLE', generatedAt: new Date().toISOString() },
+    });
+    const h = health();
+    const result = resolveBookingVehiclePreflight(v, h, true, false);
+    expect(result.isSelectable).toBe(true);
+    expect(result.operationalGatePass).toBe(true);
+    expect(result.offline).toBe(false);
+    expect(result.hardBlockReason).toBeNull();
+    expect(isBookingVehicleHardBlocked(v, h, true, false)).toBe(false);
+  });
+
+  it('blocks NEEDS_VERIFICATION via operational gate', () => {
+    const v = baseVehicle({
+      operationalAvailability: { state: 'NEEDS_VERIFICATION', generatedAt: new Date().toISOString() },
+    });
+    const result = resolveBookingVehiclePreflight(v, health(), true, false);
     expect(result.isSelectable).toBe(false);
-    expect(result.hardBlockReason).toBe('offline');
-    expect(isBookingVehicleHardBlocked(v, null)).toBe(true);
+    expect(result.hardBlockReason).toBe('operational_gate');
   });
 
   it('blocks rental_blocked vehicles', () => {
@@ -97,18 +118,29 @@ describe('booking-vehicle-preflight', () => {
 
   it('flags no tariff as hard block while catalog loaded', () => {
     const v = baseVehicle();
-    const result = resolveBookingVehiclePreflight(v, null, false, false);
+    const h = health();
+    const result = resolveBookingVehiclePreflight(v, h, false, false);
     expect(result.isSelectable).toBe(false);
     expect(result.hardBlockReason).toBe('no_tariff');
     expect(result.blockingReason).toContain('Tarif');
-    expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
+    expect(isBookingVehicleHardBlocked(v, h, true, false)).toBe(false);
   });
 
   it('does not hard block tariff while catalog is still loading', () => {
     const v = baseVehicle();
-    const result = resolveBookingVehiclePreflight(v, null, false, true);
+    const result = resolveBookingVehiclePreflight(v, health(), false, true);
     expect(result.isSelectable).toBe(true);
     expect(result.noTariff).toBe(false);
+  });
+
+  it('health loading is pending — not selectable and not a rental-health failure', () => {
+    const v = baseVehicle();
+    const result = resolveBookingVehiclePreflight(v, null, true, false, { healthLoading: true, locale: 'en' });
+    expect(result.isSelectable).toBe(false);
+    expect(result.healthPending).toBe(true);
+    expect(result.pendingReason).toContain('Loading rental health');
+    expect(result.hardBlockReason).toBeNull();
+    expect(result.blockingReason).toBeNull();
   });
 
   it('resolves station id from homeStationId', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationSendableTemplate } from '../../../lib/communication/hooks/useCommunicationSendableTemplates';
 
 interface CommunicationTemplatePickerProps {

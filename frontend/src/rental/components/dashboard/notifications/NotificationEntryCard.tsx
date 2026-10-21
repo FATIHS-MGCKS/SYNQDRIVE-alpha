@@ -5,7 +5,7 @@ import { NotificationDetailPanel } from './NotificationDetailPanel';
 import { NotificationSummaryRow } from './NotificationSummaryRow';
 import { buildNotificationDetailViewModel } from './notification-task-bridge';
 import { buildNotificationSummaryFromItem } from './notification-summary-view-model';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 import { notificationEntrySurface } from './notificationCardSurface';
 
 export interface NotificationEntryCardProps {

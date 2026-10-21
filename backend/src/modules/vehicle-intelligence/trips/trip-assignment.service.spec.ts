@@ -13,6 +13,9 @@ function makeMockPrisma() {
     booking: {
       findFirst: jest.fn(),
     },
+    vehicle: {
+      findUnique: jest.fn(),
+    },
   } as any;
 }
 
@@ -137,6 +140,7 @@ describe('TripAssignmentService', () => {
       customer: { customerType: 'INDIVIDUAL' },
     });
     prisma.vehicleTrip.update.mockResolvedValue({});
+    prisma.vehicle.findUnique.mockResolvedValue({ organizationId: 'org-1' });
 
     await service.applyAssignmentToTrip('trip-4');
 

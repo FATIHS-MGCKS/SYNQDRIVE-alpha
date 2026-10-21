@@ -1,6 +1,15 @@
+import {
+  BATTERY_V2_PUBLICATION_ENABLED_ENV,
+  BATTERY_V2_REST_SHADOW_ENABLED_ENV,
+} from '@config/battery-health-v2.config';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
 
 describe('BatteryV2SnapshotIngestionService', () => {
+  const envBackup = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...envBackup };
+  });
   const basePayload = {
     organizationId: 'org-1',
     vehicleId: 'veh-1',
@@ -32,6 +41,15 @@ describe('BatteryV2SnapshotIngestionService', () => {
     const deadLetters = {
       isDeadLetter: jest.fn().mockResolvedValue(false),
     };
+    const lvLiveVoltage = {
+      persistFromObservationClassify: jest.fn().mockResolvedValue({ persisted: false }),
+    };
+    const lvRestBridge = {
+      processObservationCycle: jest.fn().mockResolvedValue(undefined),
+    };
+    const shutdownEvidenceCapture = {
+      captureFromObservationClassify: jest.fn().mockResolvedValue('skipped_flag_off'),
+    };
 
     const service = new BatteryV2SnapshotIngestionService(
       prisma as any,
@@ -42,12 +60,32 @@ describe('BatteryV2SnapshotIngestionService', () => {
       {} as any,
       jobProducer as any,
       deadLetters as any,
+      lvLiveVoltage as any,
+      lvRestBridge as any,
+      shutdownEvidenceCapture as any,
     );
 
-    return { service, batteryV2, jobProducer, deadLetters };
+    return {
+      service,
+      batteryV2,
+      jobProducer,
+      deadLetters,
+      lvLiveVoltage,
+      lvRestBridge,
+    };
   }
 
+  it('continues legacy onSnapshot when canonical bridge throws (fail-open)', async () => {
+    const { service, batteryV2, lvRestBridge } = buildService();
+    lvRestBridge.processObservationCycle.mockRejectedValue(new Error('fsm failed'));
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).toHaveBeenCalled();
+  });
+
   it('enqueues LV assessment recompute after rest capture (B-01)', async () => {
+    process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'false';
     const { service, jobProducer } = buildService();
 
     await service.ingestObservationClassify(basePayload as any);
@@ -62,6 +100,17 @@ describe('BatteryV2SnapshotIngestionService', () => {
     );
   });
 
+  it('does not enqueue legacy LV assessment when canonical shadow is on and publication is off', async () => {
+    process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
+    process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'false';
+    const { service, batteryV2, jobProducer } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).not.toHaveBeenCalled();
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
   it('skips assessment enqueue when rest was not captured', async () => {
     const { service, batteryV2, jobProducer } = buildService();
     batteryV2.onSnapshot.mockResolvedValue({ restCaptured: false });
@@ -69,5 +118,35 @@ describe('BatteryV2SnapshotIngestionService', () => {
     await service.ingestObservationClassify(basePayload as any);
 
     expect(jobProducer.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('invokes LIVE_VOLTAGE persistence on every observation classify', async () => {
+    const { service, lvLiveVoltage } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(lvLiveVoltage.persistFromObservationClassify).toHaveBeenCalledWith(
+      basePayload,
+    );
+  });
+
+  it('invokes canonical LV REST bridge on every observation classify (I)', async () => {
+    const { service, lvRestBridge } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(lvRestBridge.processObservationCycle).toHaveBeenCalledWith(
+      'org-1',
+      'veh-1',
+      basePayload.snapshotContext,
+    );
+  });
+
+  it('still runs legacy onSnapshot when LV voltage is present (I)', async () => {
+    const { service, batteryV2 } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).toHaveBeenCalled();
   });
 });

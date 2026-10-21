@@ -12,6 +12,10 @@ describe('InvoiceOverdueSchedulerService', () => {
     refreshOpenPaymentCheckTasks: jest.fn().mockResolvedValue(0),
   };
 
+  const leaderGuard = {
+    shouldRun: jest.fn().mockReturnValue(true),
+  };
+
   let service: InvoiceOverdueSchedulerService;
 
   beforeEach(() => {
@@ -19,6 +23,7 @@ describe('InvoiceOverdueSchedulerService', () => {
     service = new InvoiceOverdueSchedulerService(
       prisma as never,
       invoicePaymentTasks as never,
+      leaderGuard as never,
     );
   });
 

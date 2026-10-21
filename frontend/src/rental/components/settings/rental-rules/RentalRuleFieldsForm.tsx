@@ -17,7 +17,7 @@ import {
   resolveInheritedFieldValue,
 } from './rental-rule-field-state.util';
 import { extractRulePatchBaseline } from './rental-rules.utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 
 const inputClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none transition-colors focus:border-brand/50 focus:ring-2 focus:ring-brand/15 disabled:opacity-60';

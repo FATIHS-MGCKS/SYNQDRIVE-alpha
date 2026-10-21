@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationApiChannel, CommunicationEvent } from '../../../lib/communication/types';
 import {
   buildTimelineWithDateSeparators,

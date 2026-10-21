@@ -3,6 +3,7 @@
  * No database access — deterministic domain synthesis only.
  */
 import { classifyTelemetryFreshness } from '../../vehicle-state-interpreter';
+import { classifyConnectivityDiagnostic } from './connectivity-diagnostic-state';
 import { pickHighestPriorityOverallState } from './connectivity-domain.priority';
 import {
   AttentionState,
@@ -20,6 +21,9 @@ import {
   ProviderLinkReasonCode,
   type ProviderLinkStateResult,
 } from './provider-link-state.types';
+import {
+  derivePhysicalDeviceEvidence,
+} from './physical-device-evidence';
 
 // ─── Input vocabulary ─────────────────────────────────────────────────────────
 
@@ -68,6 +72,12 @@ export interface DeviceBindingInput {
   /** True when physical OBD plug/unplug semantics apply to this vehicle. */
   physicalObdCapable: boolean;
   bindingChangedSinceEpisode: boolean;
+  /**
+   * Authoritative "an active provider data source link exists" evidence.
+   * `deviceBindingId` alone is not proof: it falls back to the last known
+   * `providerBindingId`, which can reference a deactivated link.
+   */
+  hasActiveProviderBinding?: boolean | null;
 }
 
 export interface DeviceEpisodeInput {
@@ -121,6 +131,11 @@ export interface BuildVehicleConnectivityRuntimeStateInput {
   webhook: WebhookEvidenceInput;
   dataCoverage: DataCoverageInput;
   processingErrors: ProcessingErrorInput;
+  /**
+   * Whether the provider polling cohort currently includes this vehicle.
+   * Diagnostic-only input — never influences canonical freshness or states.
+   */
+  providerPollEligible?: boolean | null;
 }
 
 const COVERAGE_GOOD_MIN = 80;
@@ -186,6 +201,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
       episodeRelevant,
       physicalObdApplicable,
       reasonCodes,
+      nowMs,
     );
 
     if (recoveryConflict) {
@@ -205,7 +221,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
     const overallState = resolveOverallState({
       providerLinkState,
       telemetryState,
-      episodeRelevant,
+      physicalDeviceState,
       physicalObdApplicable,
       processingErrors: input.processingErrors,
       hasProviderLink: input.provider.link.hasProviderLink,
@@ -245,6 +261,18 @@ export class VehicleConnectivityRuntimeStateBuilder {
 
     const uniqueReasons = [...new Set(reasonCodes)];
 
+    // Diagnostic dimension consumes the already-derived canonical telemetryState;
+    // it never re-derives freshness and never feeds back into it.
+    const diagnostic = classifyConnectivityDiagnostic({
+      providerLinkState,
+      telemetryState,
+      lastObservationAt: input.telemetry.lastTelemetryAt,
+      lastProviderFetchAt: input.telemetry.lastReceivedAt,
+      providerPollEligible: input.providerPollEligible ?? null,
+      bindingActive: input.binding.hasActiveProviderBinding ?? null,
+      nowMs,
+    });
+
     return {
       vehicleId: input.vehicleId,
       organizationId: input.organizationId,
@@ -266,6 +294,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
       requiresAction,
       recommendedAction,
       evidence,
+      diagnostic,
       calculatedAt,
       stateVersion: CONNECTIVITY_RUNTIME_STATE_VERSION,
     };
@@ -327,61 +356,62 @@ function resolvePhysicalDeviceState(
   episodeRelevant: boolean,
   physicalObdApplicable: boolean,
   reasonCodes: ConnectivityReasonCode[],
+  nowMs: number,
 ): { physicalDeviceState: PhysicalDeviceState; recoveryConflict: boolean } {
-  if (!physicalObdApplicable) {
-    return {
-      physicalDeviceState: PhysicalDeviceState.NOT_APPLICABLE,
-      recoveryConflict: false,
-    };
+  const snapshotCandidates = [
+    input.telemetry.lastTelemetryAt,
+    input.snapshotPlug.observedAt,
+    input.episode.lastTelemetryRecoveryAt,
+  ]
+    .map((value) => parseIso(value))
+    .filter((value): value is Date => value != null);
+  const latestSnapshotAt =
+    snapshotCandidates.length > 0
+      ? new Date(Math.max(...snapshotCandidates.map((value) => value.getTime())))
+      : null;
+
+  const unplugAt = parseIso(input.episode.lastUnplugWebhookAt);
+  const explicitPlugAt = parseIso(input.episode.lastExplicitPlugWebhookAt);
+  const telemetryRecoveryAt = parseIso(input.episode.lastTelemetryRecoveryAt);
+
+  const evidence = derivePhysicalDeviceEvidence({
+    latestValidSnapshotAt: latestSnapshotAt,
+    latestAcceptedUnplugEventAt: unplugAt,
+    latestAcceptedPlugEventAt: explicitPlugAt,
+    physicalObdApplicable,
+    snapshotObdIsPluggedIn: input.snapshotPlug.obdIsPluggedIn,
+    nowMs,
+  });
+
+  const evidenceReasons = [...evidence.reasonCodes];
+  if (
+    telemetryRecoveryAt &&
+    unplugAt &&
+    telemetryRecoveryAt.getTime() > unplugAt.getTime() &&
+    evidence.physicalDeviceState === PhysicalDeviceState.PLUGGED_INFERRED &&
+    input.snapshotPlug.obdIsPluggedIn == null
+  ) {
+    const telemetryReasons = evidenceReasons.filter(
+      (code) => code !== ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT,
+    );
+    telemetryReasons.push(ConnectivityReasonCode.DEVICE_RECONNECTED_TELEMETRY);
+    reasonCodes.push(...telemetryReasons);
+  } else {
+    reasonCodes.push(...evidenceReasons);
   }
 
-  const { episode, snapshotPlug, webhook } = input;
-
   if (episodeRelevant) {
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_UNPLUG_WEBHOOK);
-
-    const snapshotShowsPlugged =
-      snapshotPlug.obdIsPluggedIn === true &&
-      snapshotPlug.sameBindingAsEpisode !== false;
-
-    if (snapshotShowsPlugged) {
+    if (
+      evidence.physicalDeviceState === PhysicalDeviceState.PLUGGED_INFERRED ||
+      evidence.physicalDeviceState === PhysicalDeviceState.PLUGGED_CONFIRMED
+    ) {
+      reasonCodes.push(ConnectivityReasonCode.STATE_CONFLICT);
       return {
-        physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
+        physicalDeviceState: evidence.physicalDeviceState,
         recoveryConflict: true,
       };
     }
 
-    return {
-      physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
-      recoveryConflict: false,
-    };
-  }
-
-  if (episode.lastExplicitPlugWebhookAt) {
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_EXPLICIT);
-    return {
-      physicalDeviceState: PhysicalDeviceState.PLUGGED_CONFIRMED,
-      recoveryConflict: false,
-    };
-  }
-
-  if (episode.lastTelemetryRecoveryAt) {
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_TELEMETRY);
-    return {
-      physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
-      recoveryConflict: false,
-    };
-  }
-
-  if (snapshotPlug.obdIsPluggedIn === true) {
-    reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
-    return {
-      physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
-      recoveryConflict: false,
-    };
-  }
-
-  if (snapshotPlug.obdIsPluggedIn === false) {
     reasonCodes.push(ConnectivityReasonCode.DEVICE_UNPLUG_WEBHOOK);
     return {
       physicalDeviceState: PhysicalDeviceState.UNPLUGGED_CONFIRMED,
@@ -389,12 +419,12 @@ function resolvePhysicalDeviceState(
     };
   }
 
-  if (webhook.processingFailed) {
+  if (input.webhook.processingFailed) {
     reasonCodes.push(ConnectivityReasonCode.WEBHOOK_PROCESSING_FAILED);
   }
 
   return {
-    physicalDeviceState: PhysicalDeviceState.UNKNOWN,
+    physicalDeviceState: evidence.physicalDeviceState,
     recoveryConflict: false,
   };
 }
@@ -430,7 +460,7 @@ function resolveDataCoverageState(
 function resolveOverallState(params: {
   providerLinkState: ProviderLinkState;
   telemetryState: ReturnType<typeof classifyTelemetryFreshness>;
-  episodeRelevant: boolean;
+  physicalDeviceState: PhysicalDeviceState;
   physicalObdApplicable: boolean;
   processingErrors: ProcessingErrorInput;
   hasProviderLink: boolean;
@@ -458,7 +488,10 @@ function resolveOverallState(params: {
     candidates.push(OverallConnectivityState.AUTHORIZATION_REQUIRED);
   }
 
-  if (params.episodeRelevant && params.physicalObdApplicable) {
+  if (
+    params.physicalObdApplicable &&
+    params.physicalDeviceState === PhysicalDeviceState.UNPLUGGED_CONFIRMED
+  ) {
     candidates.push(OverallConnectivityState.DEVICE_UNPLUGGED);
   }
 

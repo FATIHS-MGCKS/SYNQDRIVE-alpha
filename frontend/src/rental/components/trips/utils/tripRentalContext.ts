@@ -2,6 +2,7 @@ import type { BookingDetailDto } from '../../../../lib/api';
 import type { TripTimelineTrip } from '../trips.types';
 import { formatTripDistance } from './tripFormatters';
 import { hasAbuseSuspicion } from './tripStatus';
+import { resolveTripDisplayEndTime } from './trip-end-time-display.util';
 
 export type RentalAlignmentKind =
   | 'within_rental'
@@ -129,8 +130,9 @@ export function findBookingForTrip(
     };
   }
 
+  const tripEndAnchor = resolveTripDisplayEndTime(trip) ?? trip.startTime;
   const tripStart = parseIso(trip.startTime);
-  const tripEnd = parseIso(trip.endTime ?? trip.startTime);
+  const tripEnd = parseIso(tripEndAnchor);
   if (!tripStart || !tripEnd) return null;
 
   const candidates = bookings.filter((b) => {
@@ -182,8 +184,9 @@ export function deriveRentalAlignmentHints(
     return [];
   }
 
+  const tripEndAnchor = resolveTripDisplayEndTime(trip) ?? trip.startTime;
   const tripStart = parseIso(trip.startTime);
-  const tripEnd = parseIso(trip.endTime ?? trip.startTime);
+  const tripEnd = parseIso(tripEndAnchor);
   const rentalStart =
     parseIso(detail?.handover.pickup?.completedAt ?? null) ?? parseIso(booking.startDate);
   const rentalEnd =

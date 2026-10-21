@@ -2,7 +2,7 @@
  * E7C Recommendations / Actions section — server-driven presentation only.
  * Receives the E7 async response exclusively; no cross-section business derivation.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type { EvaluationsRecommendationsResponse } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
 import { EvaluationsSectionShell } from './EvaluationsSectionShell';

@@ -1,17 +1,30 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { DimoDeviceConnectionEventType } from '@prisma/client';
+import { DeviceConnectionPhysicalAuthorityMode, DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
 import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
 import {
   shouldIgnorePlugImpulseAfterUnplug,
   type DeviceConnectionConnectivityAnchor,
 } from './device-connection-read-model';
+import { buildBindingScopeFromToken } from './device-connection-physical-state/device-connection-physical-state.binding';
+import { buildWebhookStaleLegacyGateGtR1Proof } from './device-connection-physical-state/physical-state-gt-r1-proof';
+import { buildLegacyWebhookShadowDecision } from './device-connection-physical-state/physical-state-legacy-shadow-decision';
+import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state/device-connection-physical-state.types';
+import { isLegacyObdPersistenceExcludedByAuthority } from './device-connection-physical-state/physical-state-authority-cutover.types';
+import { PhysicalStateEvidenceWriterService } from './device-connection-physical-state/physical-state-evidence-writer.service';
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 
-export type DeviceConnectionIntakeOutcome = 'created' | 'duplicate' | 'ignored_by_policy';
+export type DeviceConnectionIntakeOutcome =
+  | 'created'
+  | 'duplicate'
+  | 'reconciled'
+  | 'historical_orphan'
+  | 'reconciliation_disabled'
+  | 'ignored_by_policy';
 
 export type DeviceConnectionDomainResult = {
   outcome: DeviceConnectionIntakeOutcome;
@@ -80,7 +93,10 @@ export class DeviceConnectionWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly episodeService: DeviceConnectionEpisodeService,
+    private readonly lifecyclePolicy: ConnectivityLifecycleRuntimePolicyService,
     @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
+    @Optional()
+    private readonly physicalEvidenceWriter?: PhysicalStateEvidenceWriterService,
   ) {}
 
   /** True when the webhook signal/metric is the OBD plug state. */
@@ -129,22 +145,139 @@ export class DeviceConnectionWebhookService {
     input: IngestDeviceConnectionInput,
   ): Promise<DeviceConnectionDomainResult> {
     const eventType = DeviceConnectionWebhookService.eventTypeForPlugState(input.pluggedIn);
-    const gate = await this.evaluateStateChangeGate(
+    const legacyContext = await this.evaluateLegacyWebhookShadowContext(
       input.vehicle.id,
+      input.tokenId,
       input.pluggedIn,
       input.observedAt,
     );
-    if (!gate.persist) {
+    const evidenceReferenceId = `webhook:${input.vehicle.id}:${input.observedAt.toISOString()}:${input.pluggedIn ? 'plug' : 'unplug'}`;
+
+    const scope = {
+      organizationId: input.vehicle.organizationId,
+      vehicleId: input.vehicle.id,
+      provider: 'DIMO',
+    };
+
+    const routePhysicalAuthority =
+      this.physicalEvidenceWriter != null &&
+      (await this.physicalEvidenceWriter.shouldRoutePhysicalAuthority(scope));
+
+    const writerCapable = this.physicalEvidenceWriter?.isWriterCapable() === true;
+
+    const writerResult =
+      routePhysicalAuthority || writerCapable
+        ? await this.physicalEvidenceWriter!.writeWebhookEvidence({
+            organizationId: input.vehicle.organizationId,
+            vehicleId: input.vehicle.id,
+            provider: 'DIMO',
+            tokenId: input.tokenId,
+            pluggedIn: input.pluggedIn,
+            observedAt: input.observedAt,
+            receivedAt: new Date(),
+            rawPayload: input.rawPayload,
+            evidenceReferenceId,
+            inboxId: input.inboxId,
+            legacyShadow: legacyContext.legacyShadow,
+            gtR1Proof: legacyContext.gtR1Proof,
+          })
+        : null;
+
+    if (writerResult?.policy?.physicalGateAuthoritative) {
+      return this.resolvePhysicalWebhookOutcome(writerResult, eventType);
+    }
+
+    if (writerResult?.policy?.statefulShadow) {
+      if (!writerResult.physicalAccepted) {
+        this.logger.debug(
+          `Physical-state STATEFUL_SHADOW rejected webhook for vehicle ${input.vehicle.id}: ${writerResult.physicalDecision}`,
+        );
+        return {
+          outcome: 'ignored_by_policy',
+          eventType,
+          policyReason:
+            writerResult.coordinatorResult &&
+            isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+              ? writerResult.coordinatorResult.reconcile.reason ?? 'physical_reject'
+              : 'physical_reject',
+        };
+      }
+
+      const canonicalEventId =
+        writerResult.coordinatorResult &&
+        isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+          ? writerResult.coordinatorResult.canonicalEventId
+          : null;
+      if (canonicalEventId) {
+        return {
+          outcome: 'created',
+          eventId: canonicalEventId,
+          eventType,
+        };
+      }
+
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason: 'physical_applied_without_event_history',
+      };
+    }
+
+    if (!legacyContext.gate.persist) {
       this.logger.debug(
-        `Device connection ignored by policy for vehicle ${input.vehicle.id}: ${gate.reason} pluggedIn=${input.pluggedIn}`,
+        `Device connection ignored by policy for vehicle ${input.vehicle.id}: ${legacyContext.gate.reason} pluggedIn=${input.pluggedIn}`,
       );
-      return { outcome: 'ignored_by_policy', eventType, policyReason: gate.reason };
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason: legacyContext.gate.reason,
+      };
     }
 
     return this.persistDeviceConnectionEvent({
       ...input,
       eventType,
     });
+  }
+
+  private resolvePhysicalWebhookOutcome(
+    writerResult: NonNullable<Awaited<ReturnType<PhysicalStateEvidenceWriterService['writeWebhookEvidence']>>>,
+    eventType: DimoDeviceConnectionEventType,
+  ): DeviceConnectionDomainResult {
+    if (!writerResult.physicalAccepted) {
+      this.logger.debug(
+        `Physical authority rejected webhook: ${writerResult.physicalDecision}`,
+      );
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason:
+          writerResult.coordinatorResult &&
+          isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+            ? writerResult.coordinatorResult.reconcile.reason ?? 'physical_reject'
+            : 'physical_reject',
+      };
+    }
+
+    const canonicalEventId =
+      writerResult.coordinatorResult &&
+      isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+        ? writerResult.coordinatorResult.canonicalEventId
+        : null;
+
+    if (canonicalEventId) {
+      return {
+        outcome: 'created',
+        eventId: canonicalEventId,
+        eventType,
+      };
+    }
+
+    return {
+      outcome: 'ignored_by_policy',
+      eventType,
+      policyReason: 'physical_applied_without_event_history',
+    };
   }
 
   /**
@@ -173,6 +306,61 @@ export class DeviceConnectionWebhookService {
     });
   }
 
+  private async evaluateLegacyWebhookShadowContext(
+    vehicleId: string,
+    tokenId: number,
+    incomingPluggedIn: boolean,
+    incomingObservedAt: Date,
+  ) {
+    const lastEvent = await this.prisma.dimoDeviceConnectionEvent.findFirst({
+      where: { vehicleId, provider: 'DIMO' },
+      orderBy: { observedAt: 'desc' },
+      select: { eventType: true, observedAt: true },
+    });
+    const gate = await this.evaluateStateChangeGateFromLastEvent(
+      incomingPluggedIn,
+      incomingObservedAt,
+      lastEvent,
+      vehicleId,
+    );
+    const binding = buildBindingScopeFromToken({
+      provider: 'DIMO',
+      tokenId,
+      deviceBindingId: null,
+    });
+    const legacyShadow = buildLegacyWebhookShadowDecision({
+      gate,
+      lastEvent,
+      incomingPluggedIn,
+      incomingObservedAt,
+      bindingKey: binding.bindingKey,
+    });
+
+    const projection = await this.prisma.deviceConnectionPhysicalState.findFirst({
+      where: {
+        vehicleId,
+        provider: 'DIMO',
+        bindingKey: binding.bindingKey,
+      },
+      select: {
+        effectiveState: true,
+        evidenceObservedAt: true,
+      },
+    });
+
+    const gtR1Proof = buildWebhookStaleLegacyGateGtR1Proof({
+      legacyAccepted: gate.persist,
+      legacyEffectivePlugState: legacyShadow.effectivePlugState,
+      incomingPluggedIn,
+      incomingObservedAt,
+      physicalProjectionState: projection?.effectiveState ?? null,
+      physicalProjectionEvidenceAt: projection?.evidenceObservedAt ?? null,
+      evidenceReferenceId: `webhook:${vehicleId}:${incomingObservedAt.toISOString()}:${incomingPluggedIn ? 'plug' : 'unplug'}`,
+    });
+
+    return { gate, lastEvent, legacyShadow, gtR1Proof, binding };
+  }
+
   private async evaluateStateChangeGate(
     vehicleId: string,
     incomingPluggedIn: boolean,
@@ -183,6 +371,20 @@ export class DeviceConnectionWebhookService {
       orderBy: { observedAt: 'desc' },
       select: { eventType: true, observedAt: true },
     });
+    return this.evaluateStateChangeGateFromLastEvent(
+      incomingPluggedIn,
+      incomingObservedAt,
+      lastEvent,
+      vehicleId,
+    );
+  }
+
+  private async evaluateStateChangeGateFromLastEvent(
+    incomingPluggedIn: boolean,
+    incomingObservedAt: Date,
+    lastEvent: { eventType: DimoDeviceConnectionEventType; observedAt: Date } | null,
+    vehicleId: string,
+  ): Promise<{ persist: boolean; reason?: string }> {
     const base = shouldPersistObdPlugStateChange(incomingPluggedIn, lastEvent?.eventType);
     if (!base.persist) return base;
 
@@ -222,12 +424,80 @@ export class DeviceConnectionWebhookService {
     };
   }
 
+  /**
+   * Completes episode lifecycle for a persisted event that still lacks processedAt.
+   * Safe to call on retry after partial failure (event row exists, lifecycle incomplete).
+   */
+  async reconcilePersistedEventLifecycle(eventId: string): Promise<DeviceConnectionDomainResult> {
+    const row = await this.prisma.dimoDeviceConnectionEvent.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        tokenId: true,
+        eventType: true,
+        observedAt: true,
+        receivedAt: true,
+        processedAt: true,
+      },
+    });
+    if (!row) {
+      throw new Error(`Device connection event ${eventId} not found`);
+    }
+    if (row.processedAt) {
+      return { outcome: 'duplicate', eventId: row.id, eventType: row.eventType };
+    }
+
+    const orphanEligibility = this.lifecyclePolicy.evaluateOrphanReconciliationEligibility({
+      receivedAt: row.receivedAt,
+      processedAt: row.processedAt,
+    });
+    const blocked = this.mapOrphanEligibilityToOutcome(
+      orphanEligibility,
+      row.id,
+      row.eventType,
+    );
+    if (blocked) return blocked;
+
+    return this.completePersistedEventLifecycle({
+      organizationId: row.organizationId,
+      vehicleId: row.vehicleId,
+      tokenId: row.tokenId,
+      eventId: row.id,
+      eventType: row.eventType,
+      observedAt: row.observedAt,
+      receivedAt: row.receivedAt,
+      inboxId: undefined,
+      logContext: 'reconcile',
+    });
+  }
+
   private async persistDeviceConnectionEvent(
     input: Omit<IngestDeviceConnectionInput, 'pluggedIn'> & {
       eventType: DimoDeviceConnectionEventType;
     },
   ): Promise<DeviceConnectionDomainResult> {
-    const { vehicle, tokenId, observedAt, rawPayload, eventType } = input;
+    const { vehicle, tokenId, observedAt, rawPayload, eventType, inboxId } = input;
+
+    const authorityMode = this.physicalEvidenceWriter
+      ? await this.physicalEvidenceWriter.readAuthorityModeForRouting({
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          provider: 'DIMO',
+        })
+      : DeviceConnectionPhysicalAuthorityMode.LEGACY;
+    if (isLegacyObdPersistenceExcludedByAuthority(authorityMode)) {
+      this.logger.error(
+        `Legacy OBD persistence blocked for vehicle ${vehicle.id}: persisted authority is PHYSICAL`,
+      );
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason: 'legacy_write_excluded_under_physical_authority',
+      };
+    }
+
     const receivedAt = new Date();
     const dedupBucket = DeviceConnectionWebhookService.dedupBucket(observedAt);
 
@@ -252,35 +522,128 @@ export class DeviceConnectionWebhookService {
         rawPayloadJson: rawPayload as object,
       },
       update: {},
-      select: { id: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        processedAt: true,
+        receivedAt: true,
+      },
     });
 
     const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
-    if (!isNew) {
+    // Newly persisted events always run normal lifecycle processing below.
+    // Runtime cutover policy gates only reconciliation of pre-existing incomplete events.
+    if (!isNew && row.processedAt) {
+      this.logger.debug(
+        `Device connection dedupe hit for event ${row.id} inboxId=${inboxId ?? 'n/a'} — lifecycle already complete`,
+      );
       return { outcome: 'duplicate', eventId: row.id, eventType };
     }
 
-    this.logger.log(
-      `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}`,
-    );
+    if (!isNew && !row.processedAt) {
+      const orphanEligibility = this.lifecyclePolicy.evaluateOrphanReconciliationEligibility({
+        receivedAt: row.receivedAt ?? receivedAt,
+        processedAt: row.processedAt,
+      });
+      const blocked = this.mapOrphanEligibilityToOutcome(
+        orphanEligibility,
+        row.id,
+        eventType,
+        inboxId,
+      );
+      if (blocked) return blocked;
 
-    const processedAt = new Date();
-    await this.syncEpisodeAfterPersistedEvent({
+      this.logger.warn(
+        `Reconciling partially processed device connection event ${row.id} inboxId=${inboxId ?? 'n/a'} — episode lifecycle incomplete`,
+      );
+    } else if (isNew) {
+      this.logger.log(
+        `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()} inboxId=${inboxId ?? 'n/a'}`,
+      );
+    }
+
+    return this.completePersistedEventLifecycle({
       organizationId: vehicle.organizationId,
       vehicleId: vehicle.id,
       tokenId,
       eventId: row.id,
       eventType,
       observedAt,
-      receivedAt,
+      receivedAt: row.receivedAt ?? receivedAt,
+      inboxId,
+      logContext: isNew ? 'created' : 'reconciled',
+    });
+  }
+
+  private async completePersistedEventLifecycle(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    eventId: string;
+    eventType: DimoDeviceConnectionEventType;
+    observedAt: Date;
+    receivedAt: Date;
+    inboxId?: string;
+    logContext: 'created' | 'reconciled' | 'reconcile';
+  }): Promise<DeviceConnectionDomainResult> {
+    const processedAt = new Date();
+    await this.syncEpisodeAfterPersistedEvent({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      tokenId: input.tokenId,
+      eventId: input.eventId,
+      eventType: input.eventType,
+      observedAt: input.observedAt,
+      receivedAt: input.receivedAt,
     });
 
     await this.prisma.dimoDeviceConnectionEvent.update({
-      where: { id: row.id },
+      where: { id: input.eventId },
       data: { processedAt },
     });
 
-    return { outcome: 'created', eventId: row.id, eventType };
+    this.logger.log({
+      msg: 'device_connection.lifecycle_complete',
+      eventId: input.eventId,
+      inboxId: input.inboxId ?? null,
+      outcome: input.logContext,
+      eventType: input.eventType,
+    });
+
+    if (input.logContext === 'reconciled' || input.logContext === 'reconcile') {
+      return { outcome: 'reconciled', eventId: input.eventId, eventType: input.eventType };
+    }
+    return { outcome: 'created', eventId: input.eventId, eventType: input.eventType };
+  }
+
+  private mapOrphanEligibilityToOutcome(
+    eligibility: ReturnType<ConnectivityLifecycleRuntimePolicyService['evaluateOrphanReconciliationEligibility']>,
+    eventId: string,
+    eventType: DimoDeviceConnectionEventType,
+    inboxId?: string,
+  ): DeviceConnectionDomainResult | null {
+    if (eligibility === 'eligible' || eligibility === 'already_complete') {
+      return null;
+    }
+
+    const outcome =
+      eligibility === 'historical_orphan' ? 'historical_orphan' : 'reconciliation_disabled';
+
+    this.logger.warn({
+      msg: 'device_connection.orphan_reconciliation_blocked',
+      eventId,
+      inboxId: inboxId ?? null,
+      eligibility,
+      eventType,
+    });
+
+    return {
+      outcome,
+      eventId,
+      eventType,
+      policyReason: eligibility,
+    };
   }
 
   private async syncEpisodeAfterPersistedEvent(input: {

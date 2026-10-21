@@ -1,0 +1,454 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
+  "sessionId": "06638509-6213-419b-9df4-3def6c024f41",
+  "vehicle": "WOB L  7503",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "tokenId": 192922,
+  "connectionProfile": "DIMO_LTE_R1",
+  "powertrainProfile": "ICE_GASOLINE",
+  "manifestVersion": "1.1.0",
+  "deployedSha": "3772d992d",
+  "sessionCreatedAt": "2026-09-01T19:00:42.405Z",
+  "sessionStartedAt": "2026-09-01T19:00:43.252Z",
+  "sessionStoppedAt": "2026-09-01T19:34:52.333Z",
+  "sessionCompletedAt": "2026-09-01T19:34:52.360Z",
+  "firstActualCaptureAt": "2026-09-01T19:12:27.239Z",
+  "lastActualCaptureAt": "2026-09-01T19:34:48.594Z",
+  "acquisitionStartGapSeconds": 703.987,
+  "actualCaptureDurationSeconds": 1341.355,
+  "sessionLifecycleDurationSeconds": 2049.108,
+  "finalStatus": "COMPLETED",
+  "cycleCount": 226,
+  "totalObservations": 3452,
+  "signalObservations": 3451,
+  "nativeEvents": 0,
+  "metadataObservations": 1,
+  "hfAggregateBucketObservationCount": 1333,
+  "uniquePhysicalSamples": {
+    "value": 1333,
+    "status": "DEPRECATED_INVALID_NAME",
+    "actualMeaning": "HF_AGGREGATE_BUCKET_OBSERVATIONS"
+  },
+  "mappedObservations": 2767,
+  "unmappedObservations": 684,
+  "surfaces": {
+    "LATEST_LIVE": 1130,
+    "HF_HISTORICAL": 1333,
+    "LATEST_SLOW": 988
+  },
+  "hfObservationCount": 1333,
+  "hfFields": {
+    "obdEngineLoad": 280,
+    "obdThrottlePosition": 265,
+    "powertrainCombustionEngineSpeed": 239,
+    "powertrainCombustionEngineTPS": 269,
+    "speed": 280
+  },
+  "videoGroundTruthAvailable": false,
+  "rawEvidenceExport": {
+    "path": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-001/observations-export.jsonl",
+    "rowCount": 3452,
+    "bytes": 3160077,
+    "sha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
+    "exportedAt": "2026-09-01T19:35:10.833Z",
+    "state": "SEALED_EXPORT_AVAILABLE",
+    "unchanged": true,
+    "purgeBlockedReferenceEvidence": true
+  },
+  "armIncident": {
+    "sessionStartedAt": "2026-09-01T19:00:43.252Z",
+    "firstSuccessfulAcquisitionAt": "2026-09-01T19:12:27.239Z",
+    "gapSeconds": 703.987,
+    "classification": "CONFIRMED_FROM_RUNTIME",
+    "rootCause": "Nest bootstrap timeout on ARM script; first BullMQ cycle lost/cancelled; runner recovered via manual re-enqueue at ~19:12:27Z",
+    "sessionWasRecordingDuringGap": true,
+    "observationsBeforeRecovery": 1,
+    "drivingBeforeFirstCapture": "UNKNOWN"
+  },
+  "preStop": {
+    "capturedAt": "2026-09-01T19:34:52.326Z",
+    "status": "RECORDING",
+    "cycleCount": 226,
+    "observationCount": 3452,
+    "pendingCycleJobId": "refcap-cycle_06638509-6213-419b-9df4-3def6c024f41_7c227_7cb4bf507a-f8e4-4832-b3b6-1164d60d5dcd",
+    "activeCycleJobId": null,
+    "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+    "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+    "sequenceMin": 1,
+    "sequenceMax": 3451,
+    "bullMqProbe": "0\n0\nWRONGTYPE Operation against a key holding the wrong kind of value\n\nbull:reference.capture.recording:refcap-cycle_06638509-6213-419b-9df4-3def6c024f41_7c227_7cb4bf507a-f8e4-4832-b3b6-1164d60d5dcd",
+    "acquisitionStateJson": {
+      "cycleCount": 226,
+      "lastCycleAt": "2026-09-01T19:34:49.195Z",
+      "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+      "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+      "lastSequenceNumber": 3451,
+      "lastFailureAt": null,
+      "lastFailureClass": null,
+      "activeCycleJobId": null,
+      "consecutiveTransientFailures": 0,
+      "seenEventFingerprintCount": 0,
+      "seenPhysicalSampleFingerprintSummary": {
+        "fingerprintCount": 0,
+        "uniqueFingerprintCount": 0,
+        "fingerprintSetSha256": null,
+        "rawExportSha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
+        "sealedExportReference": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-001/observations-export.jsonl"
+      },
+      "quarantinedProviderFields": []
+    }
+  },
+  "stopResult": {
+    "stoppedAt": "2026-09-01T19:34:52.364Z",
+    "finalStatus": "COMPLETED",
+    "expectedPath": [
+      "RECORDING",
+      "STOPPING",
+      "COMPLETED"
+    ]
+  },
+  "postStop": {
+    "t12s": {
+      "capturedAt": "2026-09-01T19:35:04.494Z",
+      "status": "COMPLETED",
+      "cycleCount": 226,
+      "observationCount": 3452,
+      "pendingCycleJobId": null,
+      "activeCycleJobId": null,
+      "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+      "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+      "sequenceMin": 1,
+      "sequenceMax": 3451,
+      "bullMqProbe": "0\n0\n0",
+      "acquisitionStateJson": {
+        "cycleCount": 226,
+        "lastCycleAt": "2026-09-01T19:34:49.195Z",
+        "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+        "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+        "lastSequenceNumber": 3451,
+        "lastFailureAt": null,
+        "lastFailureClass": null,
+        "activeCycleJobId": null,
+        "consecutiveTransientFailures": 0,
+        "seenEventFingerprintCount": 0,
+        "seenPhysicalSampleFingerprintSummary": {
+          "fingerprintCount": 0,
+          "uniqueFingerprintCount": 0,
+          "fingerprintSetSha256": null,
+          "rawExportSha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
+          "sealedExportReference": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-001/observations-export.jsonl"
+        },
+        "quarantinedProviderFields": []
+      }
+    },
+    "t18s": {
+      "capturedAt": "2026-09-01T19:35:10.580Z",
+      "status": "COMPLETED",
+      "cycleCount": 226,
+      "observationCount": 3452,
+      "pendingCycleJobId": null,
+      "activeCycleJobId": null,
+      "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+      "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+      "sequenceMin": 1,
+      "sequenceMax": 3451,
+      "bullMqProbe": "0\n0\n0",
+      "acquisitionStateJson": {
+        "cycleCount": 226,
+        "lastCycleAt": "2026-09-01T19:34:49.195Z",
+        "hfWatermarkAt": "2026-09-01T19:34:48.597Z",
+        "eventWatermarkAt": "2026-09-01T19:00:43.252Z",
+        "lastSequenceNumber": 3451,
+        "lastFailureAt": null,
+        "lastFailureClass": null,
+        "activeCycleJobId": null,
+        "consecutiveTransientFailures": 0,
+        "seenEventFingerprintCount": 0,
+        "seenPhysicalSampleFingerprintSummary": {
+          "fingerprintCount": 0,
+          "uniqueFingerprintCount": 0,
+          "fingerprintSetSha256": null,
+          "rawExportSha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
+          "sealedExportReference": "/opt/synqdrive/shared/reference-evidence/dimo-lte-r1-reference-drive-001/observations-export.jsonl"
+        },
+        "quarantinedProviderFields": []
+      }
+    }
+  },
+  "metricsMethodologyVersion": "2026-09-01-aggregation-semantics-corrected",
+  "RD001_METRICS_CORRECTION": "COMPLETE",
+  "coverageWindows": {
+    "SESSION_LIFECYCLE_WINDOW": {
+      "start": "2026-09-01T19:00:43.252Z",
+      "end": "2026-09-01T19:34:52.360Z",
+      "durationSeconds": 2049.108
+    },
+    "ACQUISITION_EXECUTION_WINDOW": {
+      "firstRequestStartedAt": "2026-09-01T19:12:27.239Z",
+      "lastSynqReceivedAt": "2026-09-01T19:34:48.594Z",
+      "durationSeconds": 1341.355
+    },
+    "PROVIDER_DATA_COVERAGE_WINDOW": {
+      "earliestProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "latestProviderTimestamp": "2026-09-01T19:14:03.000Z",
+      "durationSeconds": 752.748
+    },
+    "historicalBackfillBeforeFirstAcquisitionSeconds": 656.987
+  },
+  "surfaceCoverage": {
+    "LATEST_LIVE": {
+      "earliestProviderTimestamp": "2026-09-01T19:12:11.000Z",
+      "latestProviderTimestamp": "2026-09-01T19:14:03.000Z",
+      "firstRequestStartedAt": "2026-09-01T19:12:27.239Z",
+      "lastRequestStartedAt": "2026-09-01T19:34:48.346Z",
+      "firstSynqReceivedAt": "2026-09-01T19:12:27.496Z",
+      "lastSynqReceivedAt": "2026-09-01T19:34:48.594Z",
+      "observationCount": 1130
+    },
+    "HF_HISTORICAL": {
+      "earliestProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "latestProviderTimestamp": "2026-09-01T19:14:02.097Z",
+      "firstRequestStartedAt": "2026-09-01T19:12:27.500Z",
+      "lastRequestStartedAt": "2026-09-01T19:14:09.726Z",
+      "firstSynqReceivedAt": "2026-09-01T19:12:27.741Z",
+      "lastSynqReceivedAt": "2026-09-01T19:14:09.984Z",
+      "observationCount": 1333
+    },
+    "LATEST_SLOW": {
+      "earliestProviderTimestamp": "2026-09-01T19:12:26.000Z",
+      "latestProviderTimestamp": "2026-09-01T19:14:03.000Z",
+      "firstRequestStartedAt": "2026-09-01T19:12:28.466Z",
+      "lastRequestStartedAt": "2026-09-01T19:34:24.796Z",
+      "firstSynqReceivedAt": "2026-09-01T19:12:28.755Z",
+      "lastSynqReceivedAt": "2026-09-01T19:34:25.037Z",
+      "observationCount": 988
+    }
+  },
+  "fingerprintAudit": {
+    "note": "physicalSampleFingerprint is a persisted field name with semantic debt on HF_HISTORICAL: it fingerprints DIMO aggregate buckets (field + bucket-start timestamp + AVG), not proven raw LTE_R1 physical source samples.",
+    "observationTypeForHfHistorical": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "aggregateBucketFingerprintField": "physicalSampleFingerprint",
+    "futureRemediation": "aggregateBucketFingerprint distinct from rawPhysicalSampleFingerprint before physics calibration",
+    "fingerprintEligibleRows": 3451,
+    "fingerprintedRows": 1333,
+    "fingerprintCoverageRate": 0.38626485076789335,
+    "uniqueAggregateBucketFingerprintsAllSurfaces": 1333,
+    "uniqueAggregateBucketFingerprintsHfHistorical": 1333,
+    "duplicateFingerprintRetrievals": 0,
+    "bySurface": {
+      "LATEST_LIVE": {
+        "eligible": 1130,
+        "fingerprinted": 0,
+        "unique": 0
+      },
+      "HF_HISTORICAL": {
+        "eligible": 1333,
+        "fingerprinted": 1333,
+        "unique": 1333
+      },
+      "LATEST_SLOW": {
+        "eligible": 988,
+        "fingerprinted": 0,
+        "unique": 0
+      }
+    }
+  },
+  "signalDynamicsCounts": {
+    "DYNAMICALLY_INFORMATIVE": 18,
+    "NON_NUMERIC_CONTEXT": 3,
+    "STATIC_OR_CONTEXTUAL": 10
+  },
+  "brakeEvidence": {
+    "brakeDirectSignalAvailable": false,
+    "brakeProxyEvidenceAvailable": true,
+    "brakeNativeEventAvailable": false,
+    "brakeCaptureEligiblePreflight": false
+  },
+  "hfHistoricalSummary": {
+    "speed": {
+      "hfRows": 280,
+      "providerCadence": {
+        "sampleCount": 279,
+        "min": 1,
+        "p50": 2,
+        "p90": 3,
+        "p95": 4,
+        "p99": 20,
+        "max": 151,
+        "mean": 2.6947849462365596,
+        "stdDev": 9.243115932835103
+      },
+      "outOfOrder": {
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "negativeTimestampJumps": 0,
+        "largestBackwardsJumpSeconds": 0,
+        "acquisitionOrderedSampleCount": 280
+      },
+      "maxGapClassification": "PROVIDER_DATA_GAP"
+    },
+    "obdEngineLoad": {
+      "hfRows": 280,
+      "providerCadence": {
+        "sampleCount": 279,
+        "min": 1,
+        "p50": 2,
+        "p90": 3,
+        "p95": 4,
+        "p99": 20,
+        "max": 151,
+        "mean": 2.6947849462365596,
+        "stdDev": 9.243115932835103
+      },
+      "outOfOrder": {
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "negativeTimestampJumps": 0,
+        "largestBackwardsJumpSeconds": 0,
+        "acquisitionOrderedSampleCount": 280
+      },
+      "maxGapClassification": "PROVIDER_DATA_GAP"
+    },
+    "powertrainCombustionEngineSpeed": {
+      "hfRows": 239,
+      "providerCadence": {
+        "sampleCount": 238,
+        "min": 1,
+        "p50": 2,
+        "p90": 4,
+        "p95": 9,
+        "p99": 20,
+        "max": 151,
+        "mean": 3.1590126050420175,
+        "stdDev": 10.092825534919418
+      },
+      "outOfOrder": {
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "negativeTimestampJumps": 0,
+        "largestBackwardsJumpSeconds": 0,
+        "acquisitionOrderedSampleCount": 239
+      },
+      "maxGapClassification": "PROVIDER_DATA_GAP"
+    },
+    "powertrainCombustionEngineTPS": {
+      "hfRows": 269,
+      "providerCadence": {
+        "sampleCount": 268,
+        "min": 1,
+        "p50": 2,
+        "p90": 4,
+        "p95": 4.716,
+        "p99": 20,
+        "max": 151,
+        "mean": 2.8053917910447765,
+        "stdDev": 9.448425787645869
+      },
+      "outOfOrder": {
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "negativeTimestampJumps": 0,
+        "largestBackwardsJumpSeconds": 0,
+        "acquisitionOrderedSampleCount": 269
+      },
+      "maxGapClassification": "PROVIDER_DATA_GAP"
+    },
+    "obdThrottlePosition": {
+      "hfRows": 265,
+      "providerCadence": {
+        "sampleCount": 264,
+        "min": 1,
+        "p50": 2,
+        "p90": 4,
+        "p95": 4.716,
+        "p99": 20,
+        "max": 151,
+        "mean": 2.8478977272727275,
+        "stdDev": 9.52560414703059
+      },
+      "outOfOrder": {
+        "outOfOrderCount": 0,
+        "outOfOrderRate": 0,
+        "negativeTimestampJumps": 0,
+        "largestBackwardsJumpSeconds": 0,
+        "acquisitionOrderedSampleCount": 265
+      },
+      "maxGapClassification": "PROVIDER_DATA_GAP"
+    }
+  },
+  "outOfOrderPreviousResultInvalidated": true,
+  "dualReplicaSerialization": {
+    "verdict": "INFERENCE",
+    "reason": "cycleCount monotonic; activeCycleJobId null at rest; worker/process identity not recorded — true cross-replica contention not independently proven",
+    "missingEvidenceForConfirmation": [
+      "workerId",
+      "processId/replicaId",
+      "cycleJobId",
+      "cycleExecutionStartEnd"
+    ]
+  },
+  "nextRequiredPhase": "PHASE_3A.3.1_FAST_ARM_WORKFLOW",
+  "ARM_WORKFLOW_REMEDIATION_REQUIRED": true,
+  "coverageWindowDefinitions": {
+    "SESSION_LIFECYCLE_WINDOW": {
+      "start": "2026-09-01T19:00:43.252Z",
+      "end": "2026-09-01T19:34:52.360Z",
+      "durationSeconds": 2049.108
+    },
+    "ACQUISITION_EXECUTION_WINDOW": {
+      "firstRequestStartedAt": "2026-09-01T19:12:27.239Z",
+      "lastSynqReceivedAt": "2026-09-01T19:34:48.594Z",
+      "durationSeconds": 1341.355
+    },
+    "PROVIDER_DATA_COVERAGE_WINDOW": {
+      "earliestProviderTimestamp": "2026-09-01T19:01:30.252Z",
+      "latestProviderTimestamp": "2026-09-01T19:14:03.000Z",
+      "durationSeconds": 752.748
+    },
+    "ROW_PRODUCING_HF_REQUEST_WINDOW": {
+      "firstRequestStartedAt": "2026-09-01T19:12:27.500Z",
+      "lastRequestStartedAt": "2026-09-01T19:14:09.726Z",
+      "rowProducingRequestCount": 13,
+      "note": "Does not prove zero-row HF requests were absent after last row-producing request"
+    }
+  },
+  "hfCompletenessForensic": {
+    "phase": "3A.3 HF aggregate bucket completeness / late-arrival audit (normalized replay)",
+    "exactWindowReplayArtifact": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-exact-window-replay.json",
+    "invalidatedChunkedPosthocArtifact": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json",
+    "timestampCanonicalizationFixed": true,
+    "countingModel": "AGGREGATE_BUCKET_OBSERVATIONS_ACROSS_REQUEST_WINDOWS",
+    "HF_AGGREGATION_SEMANTICS": "CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE",
+    "225_POSTHOC_PHYSICAL_SAMPLE_CLAIM": "INVALIDATED_BY_AGGREGATION_GRID_MISMATCH",
+    "HF_LATE_ARRIVAL_WATERMARK_RISK": "CONFIRMED_FROM_CODE_RISK",
+    "HF_LATE_ARRIVAL_RUNTIME_SKIP": "CONFIRMED_FROM_RUNTIME",
+    "HF_LATE_ARRIVAL_AGGREGATE_BUCKET": "CONFIRMED_FROM_RUNTIME",
+    "RD001_HF_COMPLETENESS": "INCOMPLETE",
+    "lateArrivalDifferentialArtifact": "docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json",
+    "normalizedExactWindowReplay": {
+      "originalAggregateBuckets": 1333,
+      "replayAggregateBuckets": 1455,
+      "unchangedBucketObservations": 1333,
+      "newBucketObservations": 122,
+      "removedBucketObservations": 0,
+      "definitelyExcludedFieldBucketObservations": 39,
+      "definitelyExcludedUniqueBucketStartTimestamps": 8,
+      "bucketNotClosedAtOriginalResponseCount": 4,
+      "closedBucketNotAvailableCount": 118,
+      "providerAvailabilityLagLowerBoundSecondsClosedOnly": {
+        "min": 0.001,
+        "p50": 1.489,
+        "p95": 3.248,
+        "max": 4.035
+      },
+      "differentialContentsSha256": "9ca28ab377761262fe6300098993fe62e52349ae07d15e44db1c8d6fe7974a9f"
+    },
+    "RD001_UPSTREAM_DATA_STALL_AFTER_1914": "CONFIRMED_FROM_RUNTIME",
+    "UPSTREAM_DATA_STALL_ROOT_CAUSE": "UNKNOWN_REQUIRES_VALIDATION",
+    "HF_WATERMARK_REMEDIATION_REQUIRED": "YES",
+    "PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED": "YES",
+    "DEVICE_RAW_SAMPLE_CADENCE": "UNKNOWN"
+  },
+  "nextRequiredPhaseAlso": "HF_WATERMARK_LATE_ARRIVAL_REMEDIATION",
+  "RD001_AGGREGATION_SEMANTICS_CORRECTION": "COMPLETE"
+}

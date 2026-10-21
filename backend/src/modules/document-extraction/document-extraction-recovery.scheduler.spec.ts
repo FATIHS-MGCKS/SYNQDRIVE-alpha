@@ -35,6 +35,7 @@ describe('DocumentExtractionRecoveryScheduler', () => {
       extractionService as any,
       docConfig as any,
       { recordRecovery: jest.fn() } as any,
+      { shouldRun: jest.fn().mockReturnValue(true) } as any,
     );
     return { scheduler, prisma, extractionService };
   }

@@ -1,0 +1,77 @@
+name: Vehicle Onboarding VO-5B PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/src/modules/vehicle-onboarding/**'
+      - 'backend/src/modules/billing/**'
+      - 'backend/src/modules/bookings/**'
+      - 'backend/src/modules/vehicles/registry/**'
+      - 'backend/src/modules/vehicle-intelligence/trips/decision/**'
+      - 'backend/scripts/test/vo5b-*'
+      - 'backend/scripts/test/vo5b-ci-start-postgres.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/vehicle-onboarding-vo5b-postgres-ci.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'cursor/vehicle-onboarding-*'
+
+concurrency:
+  group: vehicle-onboarding-vo5b-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+
+jobs:
+  vo5b-postgres:
+    name: VO-5B registry billing PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/vo5b-ci-start-postgres.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed on non-ephemeral DATABASE_URL
+        run: |
+          set -euo pipefail
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - name: Vehicle onboarding PostgreSQL gates (VO5A–VO5C-P1, VO4.9)
+        working-directory: backend
+        run: |
+          npm ci
+          npx prisma generate
+          bash scripts/test/vo5b-vehicle-onboarding-postgres-ci.sh
+      - name: Booking and handover regression (VO5C-P1 registry admission)
+        working-directory: backend
+        run: |
+          npm run test:bookings
+          npm test -- bookings-handover.service.spec --no-coverage
+      - name: Trip registry admission unit (VO5C-P1)
+        working-directory: backend
+        run: npm test -- trip-decision.engine.registry-admission.spec --no-coverage
+      - name: Targeted offboard security and IAM endpoint enforcement
+        working-directory: backend
+        run: |
+          npm test -- vehicle-onboarding-offboard.controller.security --no-coverage
+          npm test -- iam-endpoint-enforcement-triage.security --no-coverage

@@ -10,7 +10,7 @@ LEGAL_PATTERN='legal-document|legal-documents|booking-document-(bundle|completen
 run_unit() {
   echo "==> Legal documents unit & harness tests"
   npm test -- \
-    --testPathPattern="$LEGAL_PATTERN" \
+    --testPathPatterns="$LEGAL_PATTERN" \
     --testPathIgnorePatterns='postgres\.invariants' \
     --passWithNoTests
 }

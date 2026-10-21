@@ -268,7 +268,11 @@ describe('BookingDocumentGenerationRecoveryScheduler', () => {
     const { BookingDocumentGenerationRecoveryScheduler } = await import(
       './booking-document-generation.recovery.scheduler'
     );
-    const scheduler = new BookingDocumentGenerationRecoveryScheduler(repo, dispatcher);
+    const scheduler = new BookingDocumentGenerationRecoveryScheduler(
+      repo,
+      dispatcher,
+      { shouldRun: jest.fn().mockReturnValue(true) } as any,
+    );
 
     await scheduler.recoverStaleProcessing();
 

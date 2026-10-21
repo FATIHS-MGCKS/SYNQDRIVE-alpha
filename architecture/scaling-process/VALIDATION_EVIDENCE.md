@@ -1,0 +1,345 @@
+# Scaling Process — Validation Evidence
+
+**TYPE:** EVIDENCE_INDEX  
+Map claims → evidence with confidence.
+
+Confidence: **HIGH** | **MEDIUM** | **LOW**
+
+---
+
+## P1.2 — Snapshot polling / trip loss
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Trip-loss safety gates | P1.2 | #1409 | `SNAPSHOT_POLLING_P1_2_*`, Jest suites | PASS | HIGH |
+| Partial boundary repair | P1.2 FINAL-3 | #1409 | architecture docs | Merged | HIGH |
+| Production cutover | P1.2 | — | post-merge audit | PASS | MEDIUM |
+
+---
+
+## P1.3 — DIMO global provider budget
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Global limit enforced | P1.3 | #1417 | unit + multi-instance tests | PASS | HIGH |
+| No double acquire | P1.3 | #1417 | executor specs | PASS | HIGH |
+| Fail-closed Redis | P1.3 | #1417 | service specs | PASS | HIGH |
+| Production soak budget | P1.8 | — | 24h audit metrics | 0 breaches | HIGH |
+| Multi-replica budget | P1.8.2 | — | coordination probe DB 0 | 45/50 max | HIGH |
+| N1000 provider ceiling | P1.3 | — | — | NOT VERIFIED | HIGH (that it's unverified) |
+
+---
+
+## P1.7 — Scheduler leader election
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Single leader steady | Staging | #1440 | leader probe | leaderCountMax=1 | HIGH |
+| Graceful failover | Staging | #1440 | VPS | 7.9s | HIGH |
+| Crash failover | Staging | #1440 | VPS | 10.3s | HIGH |
+| Production soak | P1.8 | #1469 | 24h audit | leader max=1 | HIGH |
+| Production failover | P1.8.2 | #1471 | controlled test | 32s | HIGH |
+| 42 schedulers guarded | P1.7 | #1430 | registry + arch test | PASS | HIGH |
+
+---
+
+## P1.4 — Reconciliation mutex
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Same-vehicle concurrency=1 | Staging | #1440 | coordination probe | PASS | HIGH |
+| No double execution soak | P1.8 | #1469 | audit | PASS | HIGH |
+| Production probe | P1.8.2 | #1471 | DB 0 probe | PASS | HIGH |
+
+---
+
+## Staging multi-replica
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Logical twin validation | Staging | #1438 | Jest gate 382 tests | CONDITIONAL_PASS | HIGH |
+| True process-level | Staging | #1440 | VPS 3010/3011 | CONDITIONALLY_CERTIFIED | HIGH |
+| Redis DB 15 not DB 0 | Staging | #1440 | doc limitation | Acknowledged | HIGH |
+
+---
+
+## P1.8 — 24h single-replica soak
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| 24h window complete | P1.8 | #1469 | retrospective audit | YES | HIGH |
+| GO_WITH_CONDITIONS | P1.8 | #1469 | machine block | YES | HIGH |
+| Trip pipeline | P1.8 | — | 11 COMPLETED | PASS | MEDIUM |
+| Route V2 | P1.8 | — | metrics | NO regression | MEDIUM |
+| Energy refuel | P1.8 | — | 0 new events | NEUTRAL | HIGH |
+
+---
+
+## P1.8.1 — Remediation
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Orphan 3010 removed | P1.8.1 | #1470 | VPS + harness fix | PASS | HIGH |
+| Battery.v2 forensics | P1.8.1 | #1470 | classification doc | PASS | HIGH |
+
+---
+
+## P1.8.2 — Controlled scale-to-2
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Scale executed | P1.8.2 | #1471 | VPS log | SCALE_TO_2_SUCCESS | HIGH |
+| Scheduler failover | P1.8.2 | #1471 | 32s test | PASS | HIGH |
+| nginx dual upstream | P1.8.2 | #1471 | config | PASS | HIGH |
+| Sustained N=2 after | Post | — | P1.8.3 introspection | **PASS** (restored) | HIGH |
+
+---
+
+## P1.8.2.1 — Deploy hardening
+
+| Claim | Phase | PR | Evidence | Result | Confidence |
+|-------|-------|-----|----------|--------|------------|
+| Rolling deploy implemented | P1.8.2.1 | #1472 | branch code | Implemented | HIGH |
+| Unit tests | P1.8.2.1 | #1472 | 7/7 util tests | PASS | HIGH |
+| Shell syntax + selftest | P1.8.2.1 | #1472 | `bash -n`, selftest | PASS | HIGH |
+| Rebase onto main | P1.8.2.1 | #1472 | merge gate 2026-09-01 | 2 conflicts resolved | HIGH |
+| Coordination regression suite | P1.8.2.1 | #1472 | 56 tests (leader/mutex/budget/gate) | PASS | HIGH |
+| Merged to main | P1.8.2.1 | #1472 | — | YES (d6884ce) | HIGH |
+| Production deploy test | P1.8.2.1 | #1472 | P1.8.3 | Rolling path exercised | MEDIUM |
+
+---
+
+## P1.8.3 — Post-merge verification
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| #1472 merged to main | P1.8.3 | d6884ce | git log | YES | HIGH |
+| Production N=2 restored | P1.8.3 | — | SSH audit 10:25Z | PASS | HIGH |
+| SHA match both replicas | P1.8.3 | — | d6884ce | PASS | HIGH |
+| Scheduler leader = 1 | P1.8.3 | — | readiness after 35s | PASS | HIGH |
+| nginx dual upstream live | P1.8.3 | — | config + ports | PASS | HIGH |
+| Rolling deploy exercised | P1.8.3 | — | deploy2.log | PASS_WITH_FINDINGS | MEDIUM |
+| Deploy auto-gate pass | P1.8.3 | — | leader timing abort | FAIL then recovered | MEDIUM |
+| INC-05 closed | P1.8.3 | — | N=2 coherent | CLOSED | HIGH |
+| Queue stability | P1.8.3 | — | failed counts unchanged | PASS | HIGH |
+| Trip/route/energy regression | P1.8.3 | — | no new failures | PASS | MEDIUM |
+
+---
+
+## P1.8.3.1 — Deploy leader-wait hardening
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Convergence state machine | P1.8.3.1 | — | `vps-multi-replica-deploy.util.mjs` | IMPLEMENTED | HIGH |
+| Cases A–H unit tests | P1.8.3.1 | — | 18/18 PASS | PASS | HIGH |
+| Shell integration | P1.8.3.1 | — | `vps-production-replica.lib.sh` | IMPLEMENTED | HIGH |
+| No blind fixed sleep | P1.8.3.1 | — | poll loop | YES | HIGH |
+| Split-brain immediate fail | P1.8.3.1 | — | CASE E/G tests | PASS | HIGH |
+| Production deploy exercise | P1.8.3.1 | — | attempt 3 deploy log | PASS (14s convergence) | HIGH |
+| INC-06 closed | P1.8.3.1 | — | production convergence trace | CLOSED | HIGH |
+| OQ-17 leader convergence | P1.8.3.1 | 3772d992d | attempt 3 trace | CLOSED | HIGH |
+| OQ-18 bootstrap false-abort | P1.8.3.1 | 3772d992d | attempts 1–2 ROLLBACK | RELEASE_OPS_DIR MITIGATED | HIGH |
+| OQ-18 cloud-agent exact-SHA bootstrap | P1.8.3.1 authority | PR #1490 merged | not prod observed post-merge | PENDING | MEDIUM |
+| DEC-016 exact-SHA provenance | P1.8.3.1 authority | PR #1490 | unit tests 7 cases | IMPLEMENTED | HIGH |
+
+---
+
+## P1.8.3.2 — N=2 retrospective stability audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| N=2 topology stable (snapshot) | P1.8.3.2 | — | SSH audit 14:26Z | SNAPSHOT_PASS | HIGH |
+| Scheduler singleton (snapshot) | P1.8.3.2 | — | `/api/v1/health/readiness` schedulerLeader | SNAPSHOT_PASS | HIGH |
+| Split brain post-stable | P1.8.3.2 | — | limited PM2 log grep | NO_SIGNAL_IN_LIMITED_SAMPLE | MEDIUM |
+| Queue depths (snapshot) | P1.8.3.2 | — | Redis BullMQ | PASS (idle at audit) | HIGH |
+| battery.v2 delta in window | P1.8.3.2 | — | failed ZSET scores | VERIFIED_ZERO_DELTA (64→64) | HIGH |
+| battery.v2 backlog reclassification | P1.8.3.2 | — | audit scope | NOT_RECLASSIFIED | HIGH |
+| Trip duplicates in window | P1.8.3.2 | — | SQL `vehicle_id,start_time` | VERIFIED_ZERO | HIGH |
+| Trip/route volume | P1.8.3.2 | — | 2 trips, 2 routes | LOW_VOLUME_NEUTRAL | MEDIUM |
+| DIMO in-flight at audit | P1.8.3.2 | — | Redis snapshot | 0 at audit | MEDIUM |
+| DIMO max in-flight (window) | P1.8.3.2 | — | — | UNAVAILABLE | HIGH |
+| Mutex overlap (window) | P1.8.3.2 | — | — | UNAVAILABLE | HIGH |
+| Mutex certification | P1.8.3.2 | — | snapshot only | PARTIAL | MEDIUM |
+| ATE multi-replica | P1.8.3.2 | — | zero jobs in window | UNEXERCISED / NEUTRAL | HIGH |
+| Observational notes (FIND-01..03) | P1.8.3.2 | — | audit Phase 18 | 3 notes; NEW_P3=0 | HIGH |
+| 24h soak certification | P1.8.3.2 | — | window 9532s | NOT_MET | HIGH |
+| Evidence precision | P1.8.3.2 | — | v2 correction pass | CORRECTED | HIGH |
+| N2 retrospective verdict | P1.8.3.2 | — | audit artifact | EARLY_PASS | HIGH |
+
+---
+
+## P1.8.3.3 — N=2 24h+ segmented retrospective audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Calendar observation >24h | P1.8.3.3 | — | horizon 158877s | YES | HIGH |
+| Longest continuous N=2 segment | P1.8.3.3 | — | PM2/deploy boundaries | 81024s NOT_MET | HIGH |
+| Operational 24h+ retrospective | P1.8.3.3 | — | segmented audit | PASS_WITH_FINDINGS | HIGH |
+| Continuous 24h soak | P1.8.3.3 | — | segment math | NOT_MET | HIGH |
+| Post-checkpoint deploy count | P1.8.3.3 | — | auth.log + releases | 3 PASS, 2 FAIL attempts | HIGH |
+| DEC-016 exact-SHA production | P1.8.3.3 | — | auth.log TMP bootstrap | NEEDS_PRECISION_REVIEW | MEDIUM |
+| OQ-18 stale-current fix | P1.8.3.3 | — | auth.log | LIKELY_PRODUCTION_VERIFIED | MEDIUM |
+| OQ-28 closure | P1.8.3.3 | — | segment <86400s | PARTIAL (not closed) | HIGH |
+| Trip duplicates (horizon) | P1.8.3.3 | — | SQL + trip_repairs | PROVEN; RECONCILIATION_DUPLICATE (INC-07) | HIGH |
+| battery.v2 net delta | P1.8.3.3 | — | Redis + dead letters | +36 net; ID math underdetermined (N∈[36,48]); taxonomy RESOLVED_PARTIAL; NO_PROVEN scaling relation | HIGH |
+| PM2 unexpected restarts | P1.8.3.3 | — | pm2.log + auth.log | Recovery from stopped; initial stop UNAVAILABLE; failed deploy RULED_OUT | HIGH |
+| Segment model corrected | P1.8.3.3 forensic | — | PM2 boundaries | 158815+62=158877 | HIGH |
+| Application / scale-readiness defect | P1.8.3.3 forensic v4 | — | INC-07 | APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN | HIGH |
+| Merge recommendation | P1.8.3.3 forensic v4 | — | authority closure | EXTERNAL_GITHUB_GATE | HIGH |
+
+---
+
+## CI / build evidence
+
+| Suite | Typical gate | Confidence |
+|-------|--------------|------------|
+| GitHub CI on scaling PRs | 25/25 workflows | HIGH |
+| P1.2 regression | 112+ tests | HIGH |
+| P1.3 + P1.7 + P1.4 gate | 36+ tests | HIGH |
+| `SYNQDRIVE_BOOT_CHECK=1` | VPS deploy | HIGH |
+
+---
+
+## Evidence gaps (explicit)
+
+1. No **continuous** 24h soak at N=2 (P1.8.3.3: longest segment 81024s; calendar ~44h with deploy segmentation)
+2. No provider ceiling verification at N≈1000
+3. Staging validation Redis DB ≠ production DB
+4. Deploy leader-wait **verified in production** (P1.8.3.1 attempt 3)
+5. Exact-SHA deploy: **FULLY_PRODUCTION_VALIDATED** (P1.8.3.5 INC-07 deploy — DEC-016 six-point chain direct)
+---
+
+## P1.8.3.4 — INC-07 trip reconciliation idempotency remediation
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|-------|
+| Deterministic INTRA_TRIP_GAP_SPLIT repair identity | P1.8.3.4 | — | `buildIntraTripGapSplitRepairAuditId` | IMPLEMENTED | HIGH |
+| Single-tx atomic claim+split+APPLIED | P1.8.3.4 | — | `applyIntraTripGapSplitRepairAtomically` | IMPLEMENTED | HIGH |
+| Session advisory lock removed | P1.8.3.4 | — | code audit | YES | HIGH |
+| Crash-safety (rollback before APPLIED) | P1.8.3.4 | — | unit + postgres integration spec | PASS (unit); PG in CI vehicle-detail job | HIGH |
+| APPLIED terminality (post-commit failure) | P1.8.3.4 | — | post-commit enqueue/read tests | PASS | HIGH |
+| Commit ambiguity preservation | P1.8.3.4 | — | ambiguous commit test | PASS | HIGH |
+| Serial / 4h replay idempotent | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| Unit concurrent twin | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| Postgres concurrent twin | P1.8.3.4 | — | postgres integration spec | PASS when `INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1` | HIGH |
+| Legacy random-UUID APPLIED compatibility | P1.8.3.4 | — | idempotency spec | PASS | HIGH |
+| MISSING_TRIP regression | P1.8.3.4 | — | trip-repair-coverage-audit | PASS | HIGH |
+| INC-07 production validation | P1.8.3.4 | — | — | PENDING | HIGH |
+
+---
+
+## P1.8.3.5 — INC-07 production deploy + validation baseline
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Exact INC-07 merge SHA deployed | P1.8.3.5 | #1525 `5b788a223` | cloud-agent deploy log | PASS | HIGH |
+| DEC-016 full invariant (6-point chain) | P1.8.3.5 | — | deploy provenance + SHA invariant log | VERIFIED_PRODUCTION | HIGH |
+| OQ-18 stale-current bootstrap | P1.8.3.5 | — | TMP exact-SHA bootstrap | CLOSED | HIGH |
+| N=2 rolling deploy + leader convergence | P1.8.3.5 | — | deploy log attempt 8 CONVERGED | PASS | HIGH |
+| INC-07 runtime fix in production | P1.8.3.5 | — | dist grep markers | PRESENT | HIGH |
+| Historical duplicate baseline frozen | P1.8.3.5 | — | pre/post SQL | 2 groups / 4 rows unchanged | HIGH |
+| Validation start timestamp | P1.8.3.5 | — | `INC07_VALIDATION_START_UTC` | `2026-09-03T21:19:07Z` | HIGH |
+| Natural warm-tier validation | P1.8.3.5 | — | — | IN_PROGRESS (0 cycles) | HIGH |
+
+---
+
+## P1.8.3.6 — INC-07 natural warm-tier retrospective
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Post-T0 audit window (~12.5h) | P1.8.3.6 / .6.1 | — | read-only SSH + SQL + logs | `44881s` | HIGH |
+| INC-07 fix present entire window | P1.8.3.6 | — | single pre-T0 deploy `5b788a223`, dist markers | YES | HIGH |
+| Deployment boundary in audit window | P1.8.3.6.1 | — | deploy `21:11:38Z` pre-T0 | 0 in-window / 1 pre-T0 | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6.1 | — | scheduler logs `01:18Z`, `05:18Z`, `09:18Z` | 3 cycles | HIGH |
+| Post-T0 INTRA_TRIP_GAP_SPLIT rows | P1.8.3.6.1 | — | `trip_repairs` SQL | 1 APPLIED | HIGH |
+| Post-T0 deterministic repair IDs | P1.8.3.6.1 | — | workspace detector | 1 verified | HIGH |
+| Natural same-repair replay / IDEMPOTENT_SKIP | P1.8.3.6.1 | — | logs + DB | 0 | HIGH |
+| New INC-07-equivalent duplicate groups | P1.8.3.6.1 | — | duplicate SQL | 0 | HIGH |
+| Historical duplicate baseline | P1.8.3.6 | — | duplicate SQL | 2 groups / 4 rows unchanged | HIGH |
+| APPLIED terminality regression | P1.8.3.6.1 | — | `trip_repairs` SQL | none | HIGH |
+| Max committed mutations per repair ID | P1.8.3.6.1 | — | trip mutation count | 1 (≤1 invariant) | HIGH |
+| INC-07 production evidence strength | P1.8.3.6.1 | — | classification matrix | MODERATE | HIGH |
+| INC-07 closure | P1.8.3.6.1 | — | Phase 17 rule | NOT CLOSED (replay pending) | HIGH |
+| OQ-30 | P1.8.3.6.1 | — | idempotency replay pending | PARTIAL | HIGH |
+| OQ-28 FULL_N=2 segment | P1.8.3.6.1 | — | SHA invariant `21:18:52Z` | `44896s` (<86400) | HIGH |
+
+---
+
+## P1.8.3.6.2 — INC-07 final ~2-day forensic audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Total INC-07 audit window (~50h) | P1.8.3.6.2 | — | read-only SSH + SQL + logs | `180034s` | HIGH |
+| INC-07 fix on all post-T0 production SHAs | P1.8.3.6.2 | — | release dist markers | YES | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6.2 | — | scheduler logs | 11 cycles | HIGH |
+| Post-T0 deterministic repairs | P1.8.3.6.2 | — | `trip_repairs` SQL | 8 APPLIED | HIGH |
+| Known repair `2074c845…` replay | P1.8.3.6.2 | — | logs + DB | 0 re-encounter | HIGH |
+| IDEMPOTENT_SKIP observability | P1.8.3.6.2 | — | PM2 out logs (DEBUG-level in code) | 0 retained | MEDIUM |
+| Max mutations per repair ID | P1.8.3.6.2 | — | `vehicle_trips` correlation | 1 (≤1) | HIGH |
+| New INC-07-equivalent duplicates | P1.8.3.6.2 | — | duplicate SQL | 0 | HIGH |
+| INC-07 evidence strength | P1.8.3.6.2 | — | classification | MODERATE | HIGH |
+| INC-07 closure | P1.8.3.6.2 | — | STRONG replay required | NOT CLOSED | HIGH |
+
+---
+
+## P1.8.3.7 — OQ-28 uninterrupted 24h FULL_N2 certification
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Calendar FULL_N2 elapsed | P1.8.3.7 | — | deploy boundaries | `180049s` (~50h) | HIGH |
+| Longest continuous FULL_N2 segment | P1.8.3.7 | — | segment reconstruction | `76832s` (<86400) | HIGH |
+| Qualifying 24h segment | P1.8.3.7 | — | OQ-28 rule | NOT_MET | HIGH |
+| Current segment start | P1.8.3.7 | — | Sep 5 deploy | `2026-09-05T09:05:28Z` | HIGH |
+| N2 health during longest segment | P1.8.3.7 | — | topology/queue/leader | no disqualifying defect | HIGH |
+| OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
+| N2 certification scope | P1.8.3.8 | — | explicit limits | N=2 topology only | HIGH |
+
+---
+
+## P1.8.3.8 — Final scaling closure audit (INC-07 + OQ-28)
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Total INC-07 audit window (~73.6h) | P1.8.3.8 | — | read-only SSH + SQL + logs | `264953s` | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.8 | — | scheduler logs | 16 cycles | HIGH |
+| Post-T0 deterministic repairs | P1.8.3.8 | — | `trip_repairs` SQL | 13 APPLIED | HIGH |
+| Natural replay structurally reachable | P1.8.3.8 | — | code path analysis | NO | HIGH |
+| Repairs structurally non-replayable | P1.8.3.8 | — | topology + code | 13/13 | HIGH |
+| Max mutations per repair ID | P1.8.3.8 | — | `trip_repairs` SQL | 1 (≤1) | HIGH |
+| New INC-07-equivalent duplicates | P1.8.3.8 | — | duplicate SQL | 0 | HIGH |
+| INC-07 evidence strength | P1.8.3.8 | — | CASE B classification | STRONG_BY_COMBINED_REACHABILITY_PROOF | HIGH |
+| INC-07 closure | P1.8.3.8 | — | CASE B criteria | CLOSED | HIGH |
+| OQ-30 closure | P1.8.3.8 | — | idempotency criteria | CLOSED | HIGH |
+| Sep 5 23:24Z deploy boundary | P1.8.3.8 | — | PM2 Nest start logs | CONFIRMED (missed in P1.8.3.6.2) | HIGH |
+| Longest FULL_N2 segment (OQ-28 window) | P1.8.3.8 | — | segment reconstruction | `72054s` (<86400) | HIGH |
+| OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
+
+---
+
+## P1.8.3.9 — OQ-28 final certification recheck
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Candidate calendar elapsed | P1.8.3.9 | — | wall clock | `101233s` (~28.1h) | HIGH |
+| First boundary after candidate start | P1.8.3.9 | — | PM2 bootstrap logs | `2026-09-07T04:19:48Z` | HIGH |
+| Longest FULL_N2 segment (OQ-28 window) | P1.8.3.9 | — | segment reconstruction | `48758s` (<86400) | HIGH |
+| Qualifying 24h segment | P1.8.3.9 | — | OQ-28 rule | NOT_MET | HIGH |
+| EXP-021D (`dce0ce75`) production impact | P1.8.3.9 | — | release SHA inventory | NONE | HIGH |
+| Current segment start | P1.8.3.9 | — | PM2 `created_at` | `2026-09-07T22:47:37Z` | HIGH |
+| OQ-28 closure | P1.8.3.9 | — | >=86400s rule | PARTIAL | HIGH |
+| N2 certification scope | P1.8.3.9 | — | explicit limits | N=2 topology only | HIGH |
+
+---
+
+## P1.8.3.10 — OQ-28 final 24h certification gate
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Certification calendar elapsed | P1.8.3.10 | — | wall clock to audit | `96874s` (~26.9h) | HIGH |
+| First pre-86400s break | P1.8.3.10 | — | PM2 bootstrap `05:01:28Z` | CONFIRMED | HIGH |
+| Qualifying segment seconds | P1.8.3.10 | — | segment reconstruction | `22431s` (<86400) | HIGH |
+| Pre-86400 break count | P1.8.3.10 | — | boundary table | 1 | HIGH |
+| GitHub activity at 22:46Z deploy | P1.8.3.10 | — | auth.log + PM2 | NO | HIGH |
+| OQ-28 closure | P1.8.3.10 | — | >=86400s rule | PARTIAL | HIGH |
+| Current segment start | P1.8.3.10 | — | PM2 `created_at` | `2026-09-08T17:40:39Z` | HIGH |
+

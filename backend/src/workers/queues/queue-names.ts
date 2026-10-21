@@ -1,5 +1,7 @@
 export const QUEUE_NAMES = {
   DIMO_SNAPSHOT: 'dimo.snapshot.poll',
+  /** Lightweight post-terminal wake successor dispatch — no provider fetch. */
+  SNAPSHOT_WAKE_HANDOFF: 'snapshot.wake.handoff',
   DIMO_VEHICLE_SYNC: 'dimo.vehicle.sync',
   DTC_POLL: 'dimo.dtc.poll',
   TIRE_RECALCULATION: 'dimo.tire.recalculation',
@@ -30,4 +32,14 @@ export const QUEUE_NAMES = {
   CONNECTIVITY_WEBHOOK_PROCESS: 'connectivity.webhook.process',
   /** ClickHouse telemetry mirror write retries (P1-PL1). */
   CLICKHOUSE_MIRROR_RETRY: 'clickhouse.mirror.retry',
+  /** REFUEL energy events — async OSM fuel-station location enrichment (Phase D). */
+  ENERGY_REFUEL_STATION_ENRICH: 'energy.refuel.station.enrich',
+  /** Canonical ERD RECHARGE — async OSM charging-station enrichment (E6.3). */
+  ENERGY_RECHARGE_STATION_ENRICH: 'energy.recharge.station.enrich',
+  /** DIMO LTE_R1 reference capture autonomous runner (Phase 3A.1). */
+  REFERENCE_CAPTURE: 'reference.capture.recording',
+  /** EXP-021 settlement shadow — forensic experiment-only delayed observations. */
+  REFERENCE_CAPTURE_SETTLEMENT_SHADOW: 'reference.capture.settlement-shadow',
+  /** EXP-021 live maturation shadow — isolated delayed age observations (PR-M2). */
+  REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW: 'reference.capture.exp021-maturation-shadow',
 } as const;

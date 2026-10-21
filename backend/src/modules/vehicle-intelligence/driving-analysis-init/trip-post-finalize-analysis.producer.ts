@@ -3,6 +3,7 @@ import { DrivingAnalysisInitService } from './driving-analysis-init.service';
 import type { TripAnalysisInitResult, TripAnalysisInitSource } from './driving-analysis-init.types';
 import { RentalDrivingAnalysisRecomputeTriggerService } from '../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../rental-driving-analysis/rental-driving-analysis.recompute.types';
+import { EventTripAssociationService } from '../trips/event-association/event-trip-association.service';
 
 /**
  * Post-finalize producer — awaited durable analysis init only after persisted COMPLETED trip.
@@ -17,6 +18,8 @@ export class TripPostFinalizeAnalysisProducer {
     @Optional()
     @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
     private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
+    @Optional()
+    private readonly tripAssociation?: EventTripAssociationService,
   ) {}
 
   async produceAfterPersistedCompletion(input: {
@@ -25,6 +28,11 @@ export class TripPostFinalizeAnalysisProducer {
     organizationId: string | null;
     source: TripAnalysisInitSource;
   }): Promise<TripAnalysisInitResult | null> {
+    // Runs before analysis init so downstream stages observe the converged
+    // association. Orphan events are attached to the now-canonical trip window;
+    // repeated runs are no-ops and existing associations are never overwritten.
+    await this.reconcileEventAssociations(input.tripId);
+
     if (!input.organizationId) {
       this.logger.warn(
         `Skip durable analysis init — missing organizationId for trip ${input.tripId}`,
@@ -75,6 +83,24 @@ export class TripPostFinalizeAnalysisProducer {
         jobs: [],
         queueErrors: [message],
       };
+    }
+  }
+
+  /**
+   * Best-effort: an association failure must never block trip finalization or
+   * analysis init. The bounded delayed sweep in TripReconciliationService picks
+   * up anything missed here.
+   */
+  private async reconcileEventAssociations(tripId: string): Promise<void> {
+    if (!this.tripAssociation) return;
+
+    try {
+      await this.tripAssociation.reconcileFinalizedTrip({ tripId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Event trip association reconciliation failed trip=${tripId}: ${message}`,
+      );
     }
   }
 }

@@ -4,7 +4,7 @@ import { cn } from '../../../../components/ui/utils';
 import { buildConversationContextLabel } from '../../../../lib/communication/context-label';
 import { formatCommunicationTimestamp } from '../../../../lib/communication/format';
 import type { CommunicationApiChannel, CommunicationConversationListItem } from '../../../../lib/communication/types';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import {
   resolveConversationPreview,
   resolveConversationTitle,

@@ -37,6 +37,7 @@ import { TripReconciliationService } from './reconciliation/trip-reconciliation.
 import { TripsService } from './trips.service';
 import { TripAnalysisCoordinatorService } from './trip-analysis-coordinator.service';
 import { MisuseCaseAggregatorService } from '../misuse-cases/misuse-case-aggregator.service';
+import { BoundaryRefreshLifecycleService } from './boundary-refresh-lifecycle.service';
 
 // ── Status constants ────────────────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ export class TripEnrichmentOrchestratorService {
     @Optional() private readonly tripsService?: TripsService,
     @Optional() private readonly analysisCoordinator?: TripAnalysisCoordinatorService,
     @Optional() private readonly misuseCaseAggregator?: MisuseCaseAggregatorService,
+    @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -405,6 +407,28 @@ export class TripEnrichmentOrchestratorService {
         await this.analysisCoordinator?.markStage(tripId, 'drivingImpact', 'skipped');
       }
     }
+  }
+
+  /**
+   * Re-run downstream enrichment after a canonical boundary extension.
+   *
+   * Behavior enrichment replaces events per tripId (deleteMany + insert).
+   * Driving impact upserts per tripId. Safe to force-refresh the full window.
+   */
+  async refreshEnrichmentAfterBoundaryRepair(
+    tripId: string,
+    vehicleId: string,
+    organizationId: string,
+  ): Promise<void> {
+    await this.boundaryRefreshLifecycle?.resetForBoundaryRefreshEnqueue(tripId);
+
+    // Route/waypoints: replace-by-trip via TripsService.enrichTrip (deleteMany + createMany).
+    await this.runRouteSafetyEnrichment(vehicleId, tripId);
+
+    await this.enqueueBehaviorEnrichment(tripId, vehicleId, organizationId, {
+      force: true,
+      delayMs: 0,
+    });
   }
 
   /**

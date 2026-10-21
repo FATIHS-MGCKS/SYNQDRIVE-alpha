@@ -4,7 +4,7 @@ import {
   NOTIFICATION_PRIMARY_TABS,
   type NotificationPrimaryTab,
 } from './notificationPanelTypes';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 
 const TAB_LABEL_KEYS: Record<NotificationPrimaryTab, string> = {
   all: 'notification.tab.all',

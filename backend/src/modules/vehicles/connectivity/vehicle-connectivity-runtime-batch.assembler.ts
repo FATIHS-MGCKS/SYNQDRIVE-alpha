@@ -25,12 +25,20 @@ import {
   VehicleConnectivityRuntimeStateBuilder,
   type BuildVehicleConnectivityRuntimeStateInput,
 } from './domain/vehicle-connectivity-runtime-state.builder';
+import { isRegistryLifecycleOperationallyBlocked } from '../synqdrive-dimo-access.util';
 
 export interface ConnectivityRuntimeVehicleRow {
   id: string;
   organizationId: string;
   hardwareType: string | null;
   fuelType: string | null;
+  /**
+   * Operational vehicle status. Optional because older callers do not select
+   * it; without it provider-poll eligibility stays `null` (undetermined)
+   * rather than being guessed.
+   */
+  status?: string | null;
+  registryLifecycle?: string | null;
   dimoVehicleId: string | null;
   dimoVehicle: {
     connectionStatus: string;
@@ -60,6 +68,7 @@ export interface ConnectivityRuntimeVehicleRow {
     sourceSubtype: string | null;
     isActive: boolean;
     provider: string;
+    dimoVehicleId?: string | null;
   }>;
   providerConsents: Array<{
     organizationId: string;
@@ -92,6 +101,40 @@ export interface ConnectivityRuntimeAssemblyResult {
   bindingChangedSinceEpisode: boolean;
 }
 
+/**
+ * Vehicle statuses the DIMO snapshot scheduler enqueues polls for.
+ * Mirrors `DimoSnapshotScheduler.enqueueSnapshotJobs` — a vehicle outside this
+ * set is never polled, so its `providerFetchedAt` freezes for benign reasons.
+ */
+const PROVIDER_POLLED_VEHICLE_STATUSES: ReadonlySet<string> = new Set([
+  'AVAILABLE',
+  'RENTED',
+]);
+
+/**
+ * Whether the provider polling cohort currently includes this vehicle.
+ *
+ * Returns `null` when the row carries no `status`, so the caller keeps the
+ * conservative behaviour instead of inferring eligibility it cannot prove.
+ * Diagnostic-only: never an input to canonical freshness.
+ */
+export function resolveProviderPollEligibility(
+  vehicle: Pick<
+    ConnectivityRuntimeVehicleRow,
+    'status' | 'registryLifecycle' | 'dimoVehicleId' | 'dimoVehicle'
+  >,
+): boolean | null {
+  if (isRegistryLifecycleOperationallyBlocked(vehicle.registryLifecycle)) {
+    return false;
+  }
+  if (vehicle.status == null) return null;
+  if (!PROVIDER_POLLED_VEHICLE_STATUSES.has(vehicle.status)) return false;
+  if (vehicle.dimoVehicleId == null) return false;
+  if (vehicle.dimoVehicle == null) return false;
+  if (vehicle.dimoVehicle.connectionStatus !== 'CONNECTED') return false;
+  return vehicle.dimoVehicle.tokenId != null;
+}
+
 export function assembleVehicleConnectivityRuntimeBundle(
   vehicle: ConnectivityRuntimeVehicleRow,
   orgAuthorization: OrgAuthorizationRow | null,
@@ -107,6 +150,7 @@ export function assembleVehicleConnectivityRuntimeBundle(
       id: link.id,
       provider: link.provider,
       isActive: link.isActive,
+      dimoVehicleId: link.dimoVehicleId ?? null,
       organizationId: vehicle.organizationId,
     })),
     providerConsents: vehicle.providerConsents,
@@ -121,8 +165,9 @@ export function assembleVehicleConnectivityRuntimeBundle(
       (episode) => episode.status === DeviceConnectionEpisodeStatus.OPEN,
     ) ?? null;
   const binding =
-    vehicle.dataSourceLinks.find((link) => link.isActive && link.provider === 'DIMO') ??
-    null;
+    vehicle.dataSourceLinks.find(
+      (link) => link.isActive && link.provider === 'DIMO' && link.dimoVehicleId != null,
+    ) ?? null;
   const bindingId = binding?.id ?? vehicle.latestState?.providerBindingId ?? null;
   const currentBinding = buildCanonicalDeviceBinding({
     provider: 'DIMO',
@@ -249,6 +294,7 @@ export function assembleVehicleConnectivityRuntimeBundle(
         : ConnectivitySourceType.NONE,
       physicalObdCapable: vehicle.hardwareType === 'LTE_R1',
       bindingChangedSinceEpisode,
+      hasActiveProviderBinding: binding != null,
     },
     episode: {
       activeEpisodeId: openEpisode?.id ?? null,
@@ -282,6 +328,7 @@ export function assembleVehicleConnectivityRuntimeBundle(
       integrationError: providerLink.state === 'ERROR',
       webhookProcessingFailed: false,
     },
+    providerPollEligible: resolveProviderPollEligibility(vehicle),
   };
 
   return {

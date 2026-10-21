@@ -264,6 +264,7 @@ export class BatteryObservationIntegrationHarness {
       prisma,
       batteryEvidence,
       { listForVehicle: jest.fn().mockResolvedValue([]) } as any,
+      { convergeDocumentApplyGroundTruth: jest.fn().mockResolvedValue([]) } as any,
     );
     const hvBatteryHealth = new HvBatteryHealthService(
       prisma,

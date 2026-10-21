@@ -1,0 +1,30 @@
+{
+  "STOP_TIMING_VALIDATED": "NO",
+  "STOP_TIMING_ERROR_SECONDS": null,
+  "STOP_TIMING_CLOCK_CORRECTED": "NO",
+  "STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET": "NO",
+  "STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE": "YES",
+  "EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR": "YES",
+  "OLD_T630_STOP_REFERENCE_INVALIDATED": "YES",
+  "FIRST_STOP_FRAME_VERIFIED_VIDEO_T": 621.8,
+  "FIRST_STOP_RAW_OBSERVATION_DISPLACEMENT_SECONDS": 21.669000000000096,
+  "FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY": "NO",
+  "FIRST_STOP_PROVIDER_ZERO_TIMESTAMP": "2026-09-04T03:57:45.685Z",
+  "FIRST_STOP_PROVIDER_ZERO_VIDEO_T_PROVISIONAL": 643.469,
+  "DECELERATION_TO_STOP_VALIDATED": "NO",
+  "STOP_LAUNCH_VALIDATED": "NO",
+  "validatedOffsetSecondsApplied": null,
+  "supportiveOffsetSecondsApplied": null,
+  "windows": [
+    {
+      "label": "B-E4_LONG_DECEL_TO_STOP",
+      "videoStopVideoRelativeSeconds": 621.8,
+      "hfFirstZeroProviderTimestamp": "2026-09-04T03:57:45.685Z",
+      "hfFirstZeroVideoRelativeSecondsProvisional": 643.469,
+      "timeErrorSeconds": null,
+      "sampleCount": 16,
+      "timelineUsed": "MASTER_T0_VIDEO_RELATIVE_NO_CLOCK_CORRECTION"
+    }
+  ],
+  "note": "B.3: event-derived sparse displacement cannot align the same event and report zero timing error — no independent clock model"
+}

@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { LegalDocumentLifecycleAction } from './legal-document-lifecycle.types';
 
 export const LEGAL_LIFECYCLE_ACTION_CONFIG: Record<

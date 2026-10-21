@@ -1,0 +1,903 @@
+{
+  "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_001",
+  "generatedAt": "2026-09-02T04:44:06.325Z",
+  "experiment": "HF_EXACT_WINDOW_AGGREGATE_BUCKET_REPLAY_NORMALIZED",
+  "timestampCanonicalizationFixed": true,
+  "priorUnnormalizedTotals": {
+    "originalAggregateBuckets": 1333,
+    "replayAggregateBuckets": 1455,
+    "unchangedBucketCount": 1318,
+    "newBucketCount": 137,
+    "removedBucketCount": 15,
+    "changedValueCount": 0
+  },
+  "problematicWindowAudit": {
+    "window": {
+      "hfWindowFrom": "2026-09-01T19:12:25.500Z",
+      "hfWindowTo": "2026-09-01T19:12:34.201Z",
+      "unchangedBucketCount": 0,
+      "removedBucketCount": 15,
+      "newBucketCount": 25
+    },
+    "priorUnnormalizedResult": {
+      "unchangedBucketCount": 0,
+      "removedBucketCount": 15,
+      "newBucketCount": 25
+    },
+    "correctedNormalizedResult": {
+      "unchangedBucketObservations": 15,
+      "removedBucketObservations": 0,
+      "newBucketObservations": 10,
+      "changedValueBucketObservations": 0
+    }
+  },
+  "semantics": {
+    "HF_AGGREGATION_SEMANTICS": "CONFIRMED_FROM_CODE_AND_PROVIDER_SOURCE",
+    "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+    "countingModel": "AGGREGATE_BUCKET_OBSERVATIONS_ACROSS_REQUEST_WINDOWS",
+    "dimoHistoricalSurface": "DIMO_AGGREGATED_HISTORICAL_1S",
+    "aggregator": "AVG",
+    "interval": "1s",
+    "bucketSemantics": "QUERY-FROM-ANCHORED AGGREGATION BUCKETS",
+    "bucketTimestampMeaning": "timestamp = start of interval",
+    "dimoProviderSourceAuthority": {
+      "primaryPublicRepo": "DIMO-Network/telemetry-api",
+      "primaryCommitSha": "98d88534857fec95a507a61331d5e357b86cfcc6",
+      "primaryFiles": [
+        "internal/service/ch/ch.go",
+        "internal/service/ch/queries.go"
+      ],
+      "bucketSemantics": "QUERY-FROM-ANCHORED AGGREGATION BUCKETS",
+      "bucketTimestampMeaning": "timestamp = start of interval",
+      "bucketOriginParameter": "aggArgs.FromTS passed to selectInterval(..., origin)",
+      "successorNote": "DIMO-Network/dq may proxy/serve production queries; telemetry-api ch/queries.go is the verified public ClickHouse aggregation implementation cited here."
+    },
+    "synqDriveSelection": "reference-capture-signal-schema.registry.ts buildHistoricalSelectionForField() => field(agg: AVG)",
+    "deviceRawSampleCadence": "UNKNOWN"
+  },
+  "sealedRawExport": {
+    "path": "/tmp/rd001-observations.jsonl",
+    "sha256": "f8e3097e28899d7a2cbdd269b266c16e5cf3eed69be810aba4e1247ec9a65bbd",
+    "unchanged": true
+  },
+  "rowProducingRequestCount": 13,
+  "perWindowReplay": [
+    {
+      "hfWindowFrom": "2026-09-01T19:00:43.252Z",
+      "hfWindowTo": "2026-09-01T19:12:27.500Z",
+      "requestStartedAt": "2026-09-01T19:12:27.500Z",
+      "requestCompletedAt": "2026-09-01T19:12:27.741Z",
+      "providerRowCount": 249,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 247,
+          "replayBucketObservations": 249,
+          "unchangedBucketObservations": 247,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 247,
+          "replayBucketObservations": 249,
+          "unchangedBucketObservations": 247,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 210,
+          "replayBucketObservations": 211,
+          "unchangedBucketObservations": 210,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 236,
+          "replayBucketObservations": 238,
+          "unchangedBucketObservations": 236,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 232,
+          "replayBucketObservations": 234,
+          "unchangedBucketObservations": 232,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 1172,
+      "replayBucketObservations": 1181,
+      "unchangedBucketObservations": 1172,
+      "newBucketObservations": 9,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:12:25.500Z",
+      "hfWindowTo": "2026-09-01T19:12:34.201Z",
+      "requestStartedAt": "2026-09-01T19:12:34.201Z",
+      "requestCompletedAt": "2026-09-01T19:12:34.501Z",
+      "providerRowCount": 5,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 25,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 10,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:12:32.201Z",
+      "hfWindowTo": "2026-09-01T19:12:40.261Z",
+      "requestStartedAt": "2026-09-01T19:12:40.261Z",
+      "requestCompletedAt": "2026-09-01T19:12:40.525Z",
+      "providerRowCount": 2,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 10,
+      "replayBucketObservations": 10,
+      "unchangedBucketObservations": 10,
+      "newBucketObservations": 0,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:02.238Z",
+      "hfWindowTo": "2026-09-01T19:13:10.276Z",
+      "requestStartedAt": "2026-09-01T19:13:10.276Z",
+      "requestCompletedAt": "2026-09-01T19:13:10.485Z",
+      "providerRowCount": 5,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 25,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 10,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:08.276Z",
+      "hfWindowTo": "2026-09-01T19:13:16.111Z",
+      "requestStartedAt": "2026-09-01T19:13:16.111Z",
+      "requestCompletedAt": "2026-09-01T19:13:16.311Z",
+      "providerRowCount": 3,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 3,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 3,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 3,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 3,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 3,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 10,
+      "replayBucketObservations": 15,
+      "unchangedBucketObservations": 10,
+      "newBucketObservations": 5,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:19.887Z",
+      "hfWindowTo": "2026-09-01T19:13:27.603Z",
+      "requestStartedAt": "2026-09-01T19:13:27.604Z",
+      "requestCompletedAt": "2026-09-01T19:13:27.803Z",
+      "providerRowCount": 6,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 29,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 14,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:25.603Z",
+      "hfWindowTo": "2026-09-01T19:13:33.309Z",
+      "requestStartedAt": "2026-09-01T19:13:33.309Z",
+      "requestCompletedAt": "2026-09-01T19:13:33.511Z",
+      "providerRowCount": 5,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 0,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 0,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 12,
+      "replayBucketObservations": 22,
+      "unchangedBucketObservations": 12,
+      "newBucketObservations": 10,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:31.309Z",
+      "hfWindowTo": "2026-09-01T19:13:39.309Z",
+      "requestStartedAt": "2026-09-01T19:13:39.309Z",
+      "requestCompletedAt": "2026-09-01T19:13:39.576Z",
+      "providerRowCount": 5,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 4,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 1,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 24,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 9,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:37.309Z",
+      "hfWindowTo": "2026-09-01T19:13:45.184Z",
+      "requestStartedAt": "2026-09-01T19:13:45.184Z",
+      "requestCompletedAt": "2026-09-01T19:13:45.399Z",
+      "providerRowCount": 5,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 4,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 5,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 2,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 14,
+      "replayBucketObservations": 24,
+      "unchangedBucketObservations": 14,
+      "newBucketObservations": 10,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:43.184Z",
+      "hfWindowTo": "2026-09-01T19:13:51.133Z",
+      "requestStartedAt": "2026-09-01T19:13:51.133Z",
+      "requestCompletedAt": "2026-09-01T19:13:51.329Z",
+      "providerRowCount": 6,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 30,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 15,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:49.133Z",
+      "hfWindowTo": "2026-09-01T19:13:57.165Z",
+      "requestStartedAt": "2026-09-01T19:13:57.165Z",
+      "requestCompletedAt": "2026-09-01T19:13:57.381Z",
+      "providerRowCount": 6,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 30,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 15,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:13:55.165Z",
+      "hfWindowTo": "2026-09-01T19:14:03.097Z",
+      "requestStartedAt": "2026-09-01T19:14:03.097Z",
+      "requestCompletedAt": "2026-09-01T19:14:03.316Z",
+      "providerRowCount": 6,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 3,
+          "replayBucketObservations": 6,
+          "unchangedBucketObservations": 3,
+          "newBucketObservations": 3,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 15,
+      "replayBucketObservations": 30,
+      "unchangedBucketObservations": 15,
+      "newBucketObservations": 15,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    {
+      "hfWindowFrom": "2026-09-01T19:14:01.097Z",
+      "hfWindowTo": "2026-09-01T19:14:09.726Z",
+      "requestStartedAt": "2026-09-01T19:14:09.726Z",
+      "requestCompletedAt": "2026-09-01T19:14:09.984Z",
+      "providerRowCount": 2,
+      "perField": {
+        "speed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdEngineLoad": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineSpeed": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "powertrainCombustionEngineTPS": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        },
+        "obdThrottlePosition": {
+          "originalBucketObservations": 2,
+          "replayBucketObservations": 2,
+          "unchangedBucketObservations": 2,
+          "newBucketObservations": 0,
+          "removedBucketObservations": 0,
+          "changedValueBucketObservations": 0
+        }
+      },
+      "originalBucketObservations": 10,
+      "replayBucketObservations": 10,
+      "unchangedBucketObservations": 10,
+      "newBucketObservations": 0,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    }
+  ],
+  "perFieldTotals": {
+    "speed": {
+      "originalBucketObservations": 280,
+      "replayBucketObservations": 305,
+      "unchangedBucketObservations": 280,
+      "newBucketObservations": 25,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    "obdEngineLoad": {
+      "originalBucketObservations": 280,
+      "replayBucketObservations": 305,
+      "unchangedBucketObservations": 280,
+      "newBucketObservations": 25,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    "powertrainCombustionEngineSpeed": {
+      "originalBucketObservations": 239,
+      "replayBucketObservations": 261,
+      "unchangedBucketObservations": 239,
+      "newBucketObservations": 22,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    "powertrainCombustionEngineTPS": {
+      "originalBucketObservations": 269,
+      "replayBucketObservations": 294,
+      "unchangedBucketObservations": 269,
+      "newBucketObservations": 25,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    },
+    "obdThrottlePosition": {
+      "originalBucketObservations": 265,
+      "replayBucketObservations": 290,
+      "unchangedBucketObservations": 265,
+      "newBucketObservations": 25,
+      "removedBucketObservations": 0,
+      "changedValueBucketObservations": 0
+    }
+  },
+  "aggregate": {
+    "aggregateBucketObservationsAcrossRequestWindows_original": 1333,
+    "aggregateBucketObservationsAcrossRequestWindows_replay": 1455,
+    "unchangedBucketObservations": 1333,
+    "newBucketObservations": 122,
+    "removedBucketObservations": 0,
+    "changedValueBucketObservations": 0
+  },
+  "watermarkCausality": {
+    "perField": {
+      "speed": {
+        "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 8,
+        "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 6,
+        "POTENTIALLY_REQUERYABLE": 11,
+        "NO_NEXT_WINDOW_EVIDENCE": 0
+      },
+      "obdEngineLoad": {
+        "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 8,
+        "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 6,
+        "POTENTIALLY_REQUERYABLE": 11,
+        "NO_NEXT_WINDOW_EVIDENCE": 0
+      },
+      "powertrainCombustionEngineSpeed": {
+        "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 7,
+        "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 6,
+        "POTENTIALLY_REQUERYABLE": 9,
+        "NO_NEXT_WINDOW_EVIDENCE": 0
+      },
+      "powertrainCombustionEngineTPS": {
+        "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 8,
+        "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 6,
+        "POTENTIALLY_REQUERYABLE": 11,
+        "NO_NEXT_WINDOW_EVIDENCE": 0
+      },
+      "obdThrottlePosition": {
+        "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 8,
+        "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 6,
+        "POTENTIALLY_REQUERYABLE": 11,
+        "NO_NEXT_WINDOW_EVIDENCE": 0
+      }
+    },
+    "total": {
+      "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 39,
+      "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 30,
+      "POTENTIALLY_REQUERYABLE": 53,
+      "NO_NEXT_WINDOW_EVIDENCE": 0
+    },
+    "definitelyExcludedFieldBucketObservations": 39,
+    "definitelyExcludedUniqueBucketStartTimestamps": 8,
+    "interpretation": "Late-available DIMO aggregate source intervals were permanently excluded from subsequent Reference Capture HF windows by the 2-second wall-clock watermark overlap."
+  },
+  "providerAvailabilityLagLowerBoundSeconds": {
+    "note": "Not network latency. Only CLOSED_BUCKET_NOT_AVAILABLE_AT_ORIGINAL_RESPONSE rows (bucketEnd <= requestCompletedAt).",
+    "newBucketObservationCount": 122,
+    "bucketNotClosedAtOriginalResponseCount": 4,
+    "closedBucketNotAvailableAtOriginalResponseCount": 118,
+    "closedBucketOnly": {
+      "count": 118,
+      "minSeconds": 0.001,
+      "p50Seconds": 1.489,
+      "p95Seconds": 3.248,
+      "maxSeconds": 4.035
+    }
+  },
+  "lateArrivalDifferentialArtifact": {
+    "path": "/workspace/docs/audits/data/dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json",
+    "differentialRowCount": 122,
+    "differentialContentsSha256": "9ca28ab377761262fe6300098993fe62e52349ae07d15e44db1c8d6fe7974a9f"
+  },
+  "verdict": {
+    "LATE_AGGREGATE_AVAILABILITY": "CONFIRMED_FROM_RUNTIME",
+    "HF_LATE_ARRIVAL_WATERMARK_RISK": "CONFIRMED_FROM_CODE_RISK",
+    "HF_LATE_ARRIVAL_RUNTIME_SKIP": "CONFIRMED_FROM_RUNTIME",
+    "HF_LATE_ARRIVAL_AGGREGATE_BUCKET": "CONFIRMED_FROM_RUNTIME",
+    "RD001_HF_COMPLETENESS": "INCOMPLETE",
+    "RD001_UPSTREAM_DATA_STALL_AFTER_1914": "CONFIRMED_FROM_RUNTIME",
+    "UPSTREAM_DATA_STALL_ROOT_CAUSE": "UNKNOWN_REQUIRES_VALIDATION",
+    "PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED": "YES",
+    "HF_WATERMARK_REMEDIATION_REQUIRED": "YES"
+  }
+}

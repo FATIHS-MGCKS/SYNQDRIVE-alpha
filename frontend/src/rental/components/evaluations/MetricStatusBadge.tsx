@@ -5,7 +5,7 @@
  * NOT_APPLICABLE) with transport states. Adapted from the historical #792 metric
  * state visual pattern, bound to canonical semantics.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsMetricStatus } from '../../lib/evaluations/evaluations-canonical.types';
 import { statusLabelKey, statusTone, toneClassName } from './evaluations-presentation';
 

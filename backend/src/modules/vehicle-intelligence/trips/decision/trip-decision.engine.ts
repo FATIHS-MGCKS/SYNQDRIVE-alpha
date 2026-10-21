@@ -1,6 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { TripStatus, TripSource } from '@prisma/client';
+import { TripStatus, TripSource, Prisma } from '@prisma/client';
+import {
+  isVehicleRegistryOperationalActive,
+  VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
+} from '@modules/vehicles/registry/vehicle-registry-admission';
 import type { VehicleTrip } from '@prisma/client';
 import type { DetectorFinding } from '../detectors/detector.interfaces';
 import { TRIP_OWNERSHIP } from '../TRIP_OWNERSHIP';
@@ -11,10 +15,27 @@ import type {
   RepairDecision,
   CreateTripParams,
   FinalizeMeta,
+  ReopenTripForMergeParams,
   SplitTripAtGapParams,
   SplitTripAtGapResult,
+  RepairTripBoundariesParams,
+  RepairTripBoundariesAuditParams,
 } from './decision.types';
+import { BoundaryRepairConcurrentMutationError } from './decision.types';
+import {
+  appendBoundaryRepairHistory,
+  buildBoundaryRefreshRecord,
+  buildBoundaryRepairGeneration,
+  emptyBoundaryRefreshStages,
+  readRawDetectionMeta,
+} from '../boundary-repair.state.util';
+import { BOUNDARY_REFRESH_STATE, REPAIR_STATUS } from '../reconciliation/reconciliation.types';
 import { END_DETECTION_MODES, START_DETECTION_MODES } from '../trip-detection.types';
+import {
+  buildStartEpisodeRecoveryMeta,
+  buildMergeReopenRecoveryMeta,
+  mergeLifecycleRecoveryMeta,
+} from '../trip-lifecycle-recovery-meta';
 
 /**
  * TripDecisionEngine
@@ -44,6 +65,11 @@ export class TripDecisionEngine {
   //  EVALUATION METHODS (pure business logic, no DB writes)
   // ═══════════════════════════════════════════════════════════════
 
+  /**
+   * PHASE A — START_CANDIDATE_WAKE only.
+   * Converts SnapshotEvidenceEvaluator findings into a RESTING → POSSIBLE_START decision.
+   * Start confirmation (PHASE B) uses validateTripStart / resolveAnalyticsAssistedStartDecision.
+   */
   evaluateStartCandidate(
     findings: DetectorFinding[],
     _context?: Record<string, unknown>,
@@ -51,11 +77,7 @@ export class TripDecisionEngine {
     const evidenceFinding = findings.find(
       (f) => f.detectorName === 'SnapshotEvidenceEvaluator',
     );
-    const confirmFinding = findings.find(
-      (f) => f.detectorName === 'StartConfirmationDetector',
-    );
 
-    // Snapshot evidence is mandatory for live start
     if (!evidenceFinding || evidenceFinding.verdict !== 'TRIGGERED') {
       return {
         shouldStart: false,
@@ -66,25 +88,14 @@ export class TripDecisionEngine {
       };
     }
 
-    // If confirmation finding exists, it must also be triggered
-    if (confirmFinding && confirmFinding.verdict !== 'TRIGGERED') {
-      return {
-        shouldStart: false,
-        confidence: 'LOW',
-        mode: (evidenceFinding.evidence?.mode as string) ?? 'composite',
-        reason: 'Start confirmation failed',
-        findings,
-      };
-    }
-
-    const confidence = confirmFinding?.confidence ?? evidenceFinding.confidence;
+    const confidence = evidenceFinding.confidence;
     const mode = (evidenceFinding.evidence?.mode as string) ?? 'composite';
 
     return {
       shouldStart: true,
       confidence,
       mode,
-      reason: `Evidence confirmed: ${(evidenceFinding.evidence?.reasons as string[])?.join(', ')}`,
+      reason: `Candidate evidence: ${(evidenceFinding.evidence?.reasons as string[])?.join(', ')}`,
       findings,
     };
   }
@@ -99,10 +110,16 @@ export class TripDecisionEngine {
 
     if (!continuityFinding) {
       return {
-        verdict: 'POSSIBLE_END',
-        endMode: 'NO_ACTIVITY_TIMEOUT',
-        endConfidence: 'LOW',
-        reason: 'No continuity finding available',
+        verdict: 'ACTIVE',
+        reason: 'continuity_finding_missing_fail_closed',
+        findings,
+      };
+    }
+
+    if (continuityFinding.verdict === 'INCONCLUSIVE') {
+      return {
+        verdict: 'ACTIVE',
+        reason: 'continuity_finding_inconclusive_fail_closed',
         findings,
       };
     }
@@ -118,11 +135,22 @@ export class TripDecisionEngine {
       };
     }
 
+    if (
+      continuityFinding.verdict === 'NOT_TRIGGERED' &&
+      rawVerdict === 'POSSIBLE_END'
+    ) {
+      return {
+        verdict: 'POSSIBLE_END',
+        endMode: (ev?.endMode as string) ?? 'COMPOSITE_INACTIVITY',
+        endConfidence: continuityFinding.confidence,
+        reason: `Continuity assessment: ${rawVerdict}`,
+        findings,
+      };
+    }
+
     return {
-      verdict: 'POSSIBLE_END',
-      endMode: (ev?.endMode as string) ?? 'COMPOSITE_INACTIVITY',
-      endConfidence: continuityFinding.confidence,
-      reason: `Continuity assessment: ${rawVerdict}`,
+      verdict: 'ACTIVE',
+      reason: 'continuity_finding_malformed_fail_closed',
       findings,
     };
   }
@@ -243,6 +271,31 @@ export class TripDecisionEngine {
    * for lifecycle purposes.
    */
   async createTrip(params: CreateTripParams): Promise<VehicleTrip> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: params.vehicleId },
+      select: { registryLifecycle: true },
+    });
+    if (!vehicle || !isVehicleRegistryOperationalActive(vehicle.registryLifecycle)) {
+      throw new BadRequestException({
+        code: VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
+        message: 'Cannot start a new trip for a vehicle that is not registry ACTIVE',
+        vehicleId: params.vehicleId,
+        registryLifecycle: vehicle?.registryLifecycle ?? null,
+      });
+    }
+
+    const lifecycleRecoveryMeta = params.lifecycleRecovery
+      ? {
+          startEpisode: buildStartEpisodeRecoveryMeta({
+            vehicleId: params.vehicleId,
+            candidateStartAt: params.lifecycleRecovery.candidateStartAt,
+            effectiveStartAt: params.lifecycleRecovery.effectiveStartAt,
+            dimoSegmentId:
+              params.lifecycleRecovery.dimoSegmentId ?? params.dimoSegmentId ?? null,
+          }),
+        }
+      : undefined;
+
     const trip = await this.prisma.vehicleTrip.create({
       data: {
         vehicleId: params.vehicleId,
@@ -258,6 +311,11 @@ export class TripDecisionEngine {
         qualityStatus: 'VERIFIED',
         behaviorSummaryStatus: 'PENDING',
         drivingImpactStatus: 'PENDING',
+        ...(lifecycleRecoveryMeta
+          ? {
+              rawDetectionMeta: mergeLifecycleRecoveryMeta(null, lifecycleRecoveryMeta) as any,
+            }
+          : {}),
       },
     });
 
@@ -298,10 +356,14 @@ export class TripDecisionEngine {
       },
     });
 
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip FINALIZED — id=${tripId} ` +
-        `end=${meta.endTime.toISOString()} mode=${meta.endDetectionMode}`,
-    );
+    try {
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip FINALIZED — id=${tripId} ` +
+          `end=${meta.endTime.toISOString()} mode=${meta.endDetectionMode}`,
+      );
+    } catch {
+      // Post-write diagnostics must not poison a successfully committed finalize.
+    }
 
     return trip;
   }
@@ -323,16 +385,42 @@ export class TripDecisionEngine {
       },
     });
 
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip DISCARDED — id=${tripId} reason=${reason}`,
-    );
+    try {
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip DISCARDED — id=${tripId} reason=${reason}`,
+      );
+    } catch {
+      // Post-write diagnostics must not poison a successfully committed discard.
+    }
   }
 
   /**
    * Reopens a previous COMPLETED trip by resetting its status to ONGOING.
    * Used for the short-gap merge case.
    */
-  async reopenTripForMerge(targetTripId: string): Promise<VehicleTrip> {
+  async reopenTripForMerge(
+    params: ReopenTripForMergeParams | string,
+  ): Promise<VehicleTrip> {
+    const targetTripId = typeof params === 'string' ? params : params.targetTripId;
+    const recoveryContext =
+      typeof params === 'string' ? undefined : params.lifecycleRecovery;
+
+    const existing = await this.prisma.vehicleTrip.findUnique({
+      where: { id: targetTripId },
+      select: { rawDetectionMeta: true },
+    });
+
+    const reopenedAt = new Date();
+    const lifecyclePatch = recoveryContext
+      ? {
+          mergeReopen: buildMergeReopenRecoveryMeta({
+            candidateStartAt: recoveryContext.candidateStartAt,
+            effectiveStartAt: recoveryContext.effectiveStartAt ?? null,
+            reopenedAt,
+          }),
+        }
+      : undefined;
+
     const trip = await this.prisma.vehicleTrip.update({
       where: { id: targetTripId },
       data: {
@@ -340,6 +428,14 @@ export class TripDecisionEngine {
         endTime: null,
         endLatitude: null,
         endLongitude: null,
+        ...(lifecyclePatch
+          ? {
+              rawDetectionMeta: mergeLifecycleRecoveryMeta(
+                existing?.rawDetectionMeta,
+                lifecyclePatch,
+              ) as any,
+            }
+          : {}),
       },
     });
 
@@ -384,8 +480,10 @@ export class TripDecisionEngine {
    */
   async splitTripAtGap(
     params: SplitTripAtGapParams,
+    tx?: Prisma.TransactionClient,
   ): Promise<SplitTripAtGapResult> {
-    const originalTrip = await this.prisma.vehicleTrip.findUnique({
+    const readClient = tx ?? this.prisma;
+    const originalTrip = await readClient.vehicleTrip.findUnique({
       where: { id: params.tripId },
       select: {
         id: true,
@@ -399,7 +497,7 @@ export class TripDecisionEngine {
       throw new Error(`splitTripAtGap: trip ${params.tripId} not found`);
     }
 
-    const vehicleRow = await this.prisma.vehicle.findUnique({
+    const vehicleRow = await readClient.vehicle.findUnique({
       where: { id: originalTrip.vehicleId },
       select: { organizationId: true },
     });
@@ -409,15 +507,13 @@ export class TripDecisionEngine {
     const firstDurationMinutes =
       firstDurationMs > 0 ? firstDurationMs / 60_000 : undefined;
 
-    // Best-effort first-trip distance: if caller knows it, honour it; otherwise
-    // keep what was recorded (the original trip was already tracking distance
-    // while ONGOING so the last write is the lower bound for segment 1).
     const firstDistanceKm =
       params.firstEndDistanceKm ?? originalTrip.distanceKm ?? undefined;
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      // ── 1. Finalize the existing trip as the first segment ────────────
-      await tx.vehicleTrip.update({
+    const runSplit = async (
+      writeClient: Prisma.TransactionClient,
+    ): Promise<SplitTripAtGapResult> => {
+      await writeClient.vehicleTrip.update({
         where: { id: params.tripId },
         data: {
           tripStatus: TripStatus.COMPLETED,
@@ -437,12 +533,14 @@ export class TripDecisionEngine {
             splitGapMs: params.gapMs,
             splitFirstEndAt: params.firstEndAt.toISOString(),
             splitSecondStartAt: params.secondStartAt.toISOString(),
+            ...(params.splitDriftM != null
+              ? { splitDriftM: params.splitDriftM }
+              : {}),
           } as any,
         },
       });
 
-      // ── 2. Create the continuation trip ───────────────────────────────
-      const secondTrip = await tx.vehicleTrip.create({
+      const secondTrip = await writeClient.vehicleTrip.create({
         data: {
           vehicleId: originalTrip.vehicleId,
           tripStatus: TripStatus.ONGOING,
@@ -469,8 +567,7 @@ export class TripDecisionEngine {
         },
       });
 
-      // ── 3. Re-parent waypoints that belong to segment 2 ───────────────
-      const movedWaypoints = await tx.vehicleTripWaypoint.updateMany({
+      const movedWaypoints = await writeClient.vehicleTripWaypoint.updateMany({
         where: {
           tripId: params.tripId,
           recordedAt: { gte: params.secondStartAt },
@@ -483,17 +580,25 @@ export class TripDecisionEngine {
         secondTripId: secondTrip.id,
         movedWaypoints: movedWaypoints.count,
       };
-    });
+    };
 
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip SPLIT ON GAP — ` +
-        `firstId=${result.firstTripId} secondId=${result.secondTripId} ` +
-        `firstEnd=${params.firstEndAt.toISOString()} ` +
-        `secondStart=${params.secondStartAt.toISOString()} ` +
-        `gap=${Math.round(params.gapMs / 1000)}s moved=${result.movedWaypoints} ` +
-        `trigger=${params.triggeredBy} reason=${params.reason} ` +
-        `vehicleId=${originalTrip.vehicleId} orgId=${vehicleRow?.organizationId ?? '—'}`,
-    );
+    const result = tx
+      ? await runSplit(tx)
+      : await this.prisma.$transaction(runSplit);
+
+    try {
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip SPLIT ON GAP — ` +
+          `firstId=${result.firstTripId} secondId=${result.secondTripId} ` +
+          `firstEnd=${params.firstEndAt.toISOString()} ` +
+          `secondStart=${params.secondStartAt.toISOString()} ` +
+          `gap=${Math.round(params.gapMs / 1000)}s moved=${result.movedWaypoints} ` +
+          `trigger=${params.triggeredBy} reason=${params.reason} ` +
+          `vehicleId=${originalTrip.vehicleId} orgId=${vehicleRow?.organizationId ?? '—'}`,
+      );
+    } catch {
+      // Post-commit diagnostics must not poison a successfully committed split.
+    }
 
     return result;
   }
@@ -505,8 +610,10 @@ export class TripDecisionEngine {
   async finalizeRepairedTrip(
     tripId: string,
     meta: FinalizeMeta,
+    tx?: Prisma.TransactionClient,
   ): Promise<VehicleTrip> {
-    const trip = await this.prisma.vehicleTrip.update({
+    const writeClient = tx ?? this.prisma;
+    const trip = await writeClient.vehicleTrip.update({
       where: { id: tripId },
       data: {
         tripStatus: TripStatus.COMPLETED,
@@ -534,5 +641,202 @@ export class TripDecisionEngine {
     );
 
     return trip;
+  }
+
+  /**
+   * Extends an existing canonical trip's start and/or end boundaries when
+   * authoritative provider evidence proves the same physical drive began
+   * earlier and/or ended later than the live estimate.
+   *
+   * Preserves tripId — assignments, rental links, and event associations stay
+   * attached. Idempotent: repeated calls with identical boundaries are no-ops.
+   */
+  async repairTripBoundaries(
+    params: RepairTripBoundariesParams,
+    audit?: RepairTripBoundariesAuditParams,
+  ): Promise<{ trip: VehicleTrip; applied: boolean }> {
+    return this.repairTripBoundariesWithAudit(params, audit);
+  }
+
+  /**
+   * Atomically commits VehicleTrip boundary mutation and TripRepair audit.
+   * Downstream refresh enqueue is intentionally outside this transaction.
+   */
+  async repairTripBoundariesWithAudit(
+    params: RepairTripBoundariesParams,
+    audit?: RepairTripBoundariesAuditParams,
+  ): Promise<{ trip: VehicleTrip; applied: boolean }> {
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.vehicleTrip.findUnique({
+        where: { id: params.tripId },
+        select: {
+          id: true,
+          vehicleId: true,
+          tripStatus: true,
+          startTime: true,
+          endTime: true,
+          dimoSegmentId: true,
+          rawDetectionMeta: true,
+        },
+      });
+
+      if (!existing) {
+        throw new Error(`repairTripBoundaries: trip ${params.tripId} not found`);
+      }
+      if (existing.vehicleId !== params.vehicleId) {
+        throw new Error(
+          `repairTripBoundaries: vehicle mismatch trip=${params.tripId} expected=${params.vehicleId}`,
+        );
+      }
+      if (existing.tripStatus === TripStatus.CANCELLED) {
+        throw new Error(
+          `repairTripBoundaries: refused — trip ${params.tripId} is CANCELLED`,
+        );
+      }
+
+      const newStartMs = params.newStartTime.getTime();
+      const newEndMs = params.newEndTime.getTime();
+      if (newEndMs <= newStartMs) {
+        throw new Error('repairTripBoundaries: new end must be after new start');
+      }
+
+      const oldStartMs = existing.startTime.getTime();
+      const oldEndMs = existing.endTime?.getTime() ?? params.oldEndTime.getTime();
+      const boundariesUnchanged =
+        newStartMs === oldStartMs &&
+        newEndMs === oldEndMs &&
+        (params.providerSegmentId == null ||
+          existing.dimoSegmentId === params.providerSegmentId);
+
+      if (boundariesUnchanged) {
+        this.logger.debug(
+          `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Boundary repair no-op — trip ${params.tripId} already at target boundaries`,
+        );
+        return { trip: existing as VehicleTrip, applied: false };
+      }
+
+      const durationMs = newEndMs - newStartMs;
+      const priorMeta = readRawDetectionMeta(existing.rawDetectionMeta);
+
+      const boundaryRepairAudit = {
+        repairType: 'PARTIAL_TRIP_BOUNDARY_EXTENSION',
+        auditId: audit?.auditId ?? null,
+        oldStartTime: params.oldStartTime.toISOString(),
+        newStartTime: params.newStartTime.toISOString(),
+        oldEndTime: params.oldEndTime.toISOString(),
+        newEndTime: params.newEndTime.toISOString(),
+        providerSegmentId: params.providerSegmentId,
+        providerMechanism: params.providerMechanism,
+        confidence: params.confidence,
+        reason: params.reason,
+        source: params.source,
+        coverageMetrics: params.coverageMetrics ?? null,
+        appliedAt: new Date().toISOString(),
+      };
+
+      const generation = buildBoundaryRepairGeneration({
+        auditId: audit?.auditId ?? params.tripId,
+        providerSegmentId: params.providerSegmentId,
+        newStartTime: params.newStartTime,
+        newEndTime: params.newEndTime,
+      });
+
+      const boundaryRefresh = buildBoundaryRefreshRecord(
+        BOUNDARY_REFRESH_STATE.PENDING,
+        null,
+        undefined,
+        { generation, stages: emptyBoundaryRefreshStages() },
+      );
+
+      const mutation = await tx.vehicleTrip.updateMany({
+        where: {
+          id: params.tripId,
+          startTime: existing.startTime,
+          endTime: existing.endTime,
+          tripStatus: { not: TripStatus.CANCELLED },
+        },
+        data: {
+          startTime: params.newStartTime,
+          endTime: params.newEndTime,
+          startLatitude: params.startLatitude ?? undefined,
+          startLongitude: params.startLongitude ?? undefined,
+          endLatitude: params.endLatitude ?? undefined,
+          endLongitude: params.endLongitude ?? undefined,
+          dimoSegmentId: params.providerSegmentId,
+          durationMinutes: durationMs > 0 ? durationMs / 60_000 : undefined,
+          distanceKm: params.distanceKm ?? undefined,
+          isRepaired: true,
+          qualityStatus: 'VERIFIED',
+          behaviorSummaryStatus: 'PENDING',
+          behaviorEnrichmentStatus: null,
+          drivingImpactStatus: 'PENDING',
+          drivingImpactComputedAt: null,
+          tripAnalysisStatus: 'PENDING',
+          rawDetectionMeta: {
+            ...priorMeta,
+            boundaryRepair: boundaryRepairAudit,
+            boundaryRepairHistory: appendBoundaryRepairHistory(
+              priorMeta,
+              boundaryRepairAudit,
+            ),
+            boundaryRefresh,
+          } as any,
+        },
+      });
+
+      if (mutation.count !== 1) {
+        throw new BoundaryRepairConcurrentMutationError(params.tripId);
+      }
+
+      const trip = await tx.vehicleTrip.findUnique({
+        where: { id: params.tripId },
+      });
+      if (!trip) {
+        throw new Error(`repairTripBoundaries: trip ${params.tripId} missing after update`);
+      }
+
+      if (audit) {
+        const auditEvidence = JSON.parse(
+          JSON.stringify({
+            ...audit.detectorEvidence,
+            boundaryRefreshState: BOUNDARY_REFRESH_STATE.PENDING,
+            boundaryRepairGeneration: generation,
+          }),
+        );
+        await tx.tripRepair.upsert({
+          where: { id: audit.auditId },
+          create: {
+            id: audit.auditId,
+            vehicleId: params.vehicleId,
+            tripId: params.tripId,
+            repairType: audit.repairType,
+            status: REPAIR_STATUS.BOUNDARY_APPLIED,
+            reason: audit.reason,
+            confidence: audit.confidence,
+            windowFrom: audit.windowFrom,
+            windowTo: audit.windowTo,
+            detectorEvidence: auditEvidence,
+            appliedAt: new Date(),
+          },
+          update: {
+            tripId: params.tripId,
+            status: REPAIR_STATUS.BOUNDARY_APPLIED,
+            reason: audit.reason,
+            confidence: audit.confidence,
+            detectorEvidence: auditEvidence,
+            appliedAt: new Date(),
+          },
+        });
+      }
+
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip BOUNDARY REPAIRED — id=${params.tripId} ` +
+          `start ${params.oldStartTime.toISOString()} → ${params.newStartTime.toISOString()} ` +
+          `end ${params.oldEndTime.toISOString()} → ${params.newEndTime.toISOString()} ` +
+          `provider=${params.providerSegmentId} mechanism=${params.providerMechanism}`,
+      );
+
+      return { trip, applied: true };
+    });
   }
 }

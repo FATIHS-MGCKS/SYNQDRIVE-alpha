@@ -1,0 +1,74 @@
+# DIMO Integration — Partial Module Authority
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` |
+| **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
+| **Authority directory** | `architecture/dimo-integration/` |
+| **Last updated** | 2026-10-12 |
+
+## Status banner
+
+This authority is **not complete** and **must not** be treated as `AUTHORITY_ACTIVE`.
+
+Bootstrap triggered by **R9 pre-merge governance correction** — substantive webhook/module changes on PR #1553 required DIMO Integration reconstruction per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md).
+
+| Phase | Status |
+|-------|--------|
+| **0 — Entry and scope** | **Complete** |
+| **1 — Repository current-state audit** | **Initial consolidated baseline** — in progress |
+| **2 — Production read-only audit** | **Verified baseline established** — R9 runtime on Production (ancestor of `8a1d9c658…` @ `20260925182907_v4994`); **R9 authorized provider cohort 5/5** speed+ignition (TDL-OQ-009 / DIM-EV-R9-CANARY-001 re-read); natural R9 **start** wake **PRODUCTION_OBSERVED / PARTIALLY_VALIDATED** (KS MS 661); fleet-wide wake-rate KPI **unknown** |
+| **3 — Reconciliation and classification** | **Pending / in progress** |
+| **4 — Authority construction** | **Partial** — bootstrap graph + R9 cross-module decision + canary evidence |
+| **5 — Validation and promotion gate** | **Pending** |
+
+## Scope
+
+**In scope (DIMO Integration):**
+
+- Provider authentication (`DimoAuthService`, JWT/token paths)
+- Provider gateway, admission, limiter, budget (`provider/`, `provider-budget/`)
+- Telemetry acquisition (`DimoTelemetryService`, GraphQL queries)
+- Segments (`DimoSegmentsService`, recharge segments client)
+- Triggers registration/bootstrap (`DimoTriggersService`, bootstrap services)
+- Webhooks (`DimoWebhookController`, payload verification, device-connection inbox)
+- Device connection episodes and connectivity lifecycle
+- Vehicle data-source link / DIMO vehicle binding
+- DIMO worker queue wiring (snapshot poll, vehicle sync, DTC, connectivity webhook process)
+
+**Out of scope (neighbor authorities):**
+
+| Neighbor | Owns |
+|----------|------|
+| [Trip Detection & Lifecycle](../trip-detection-lifecycle/) | Trip FSM, wake mailboxes, handoff, trip-start evidence semantics |
+| [Scaling Process](../scaling-process/) | Leader election, generic DIMO budget algorithm internals |
+| [Battery V2](../battery-v2/) | Battery health models consuming telemetry |
+| [Driving Intelligence](../drivingintelligence/) | Post-trip behavior — not provider gateway |
+| [KG-EED](../knowledge-graphs/energy-event-detection/) | REFUEL/RECHARGE event semantics |
+
+Flat `architecture/DIMO_*.md` files are **supporting evidence**, not routing authority.
+
+## Deep audit (AUDIT_FIRST)
+
+| Document | Role |
+|----------|------|
+| [audit/DEFECT_REGISTER.md](audit/DEFECT_REGISTER.md) | **Canonical** defect / risk / observability register (R4.0–R4.3 + A–F) |
+| [audit/DIMO_FULL_AUDIT_REPORT_2026-10-12.md](audit/DIMO_FULL_AUDIT_REPORT_2026-10-12.md) | Consolidated coverage, fix packs, open proofs |
+| [audit/COVERAGE_MATRIX.md](audit/COVERAGE_MATRIX.md) | DONE / PARTIAL / OPEN / BLOCKED per dimension |
+| [audit/DIMO_R45_AUDIT_CLOSURE.md](audit/DIMO_R45_AUDIT_CLOSURE.md) | R4.5 quality gate & conditional closure |
+| [audit/DIMO_R45_FINAL_SIGNOFF_GATE.md](audit/DIMO_R45_FINAL_SIGNOFF_GATE.md) | PR #1999 owner sign-off checklist |
+| [audit/PR_REFERENCE.md](audit/PR_REFERENCE.md) | Clean docs PR vs #1995 |
+
+## Operations runbooks
+
+| Document | Role |
+|----------|------|
+| [operations/WEBHOOK_OPERATIONS.md](operations/WEBHOOK_OPERATIONS.md) | Verified DIMO Vehicle Triggers API workflows (R9-proven); webhook recovery design |
+
+## Validation
+
+```bash
+bash architecture/scripts/validate-module-registry.sh
+bash architecture/dimo-integration/scripts/validate-graph.sh
+git diff --check
+```

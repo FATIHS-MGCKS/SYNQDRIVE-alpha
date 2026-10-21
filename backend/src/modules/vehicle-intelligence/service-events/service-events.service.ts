@@ -13,6 +13,7 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import { ServiceOverdueTaskService } from '../service-compliance/service-overdue-task.service';
+import { BatteryGroundTruthBackedSourceGuard } from '../battery-health/ground-truth/ground-truth-backed-source.guard';
 import { CreateVehicleServiceEventDto } from './dto/create-vehicle-service-event.dto';
 import { UpdateVehicleServiceEventDto } from './dto/update-vehicle-service-event.dto';
 import {
@@ -69,6 +70,7 @@ export class ServiceEventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly serviceOverdueTasks: ServiceOverdueTaskService,
+    private readonly groundTruthBackedSourceGuard: BatteryGroundTruthBackedSourceGuard,
   ) {}
 
   async findByVehicle(
@@ -239,10 +241,19 @@ export class ServiceEventsService {
     dto: CreateVehicleServiceEventDto,
     ctx: ServiceEventMutationContext = {},
   ): Promise<VehicleServiceEvent> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, organizationId: true },
+    });
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${vehicleId} not found`);
+    }
+
     const eventDate = new Date(dto.eventDate);
     const created = await this.prisma.vehicleServiceEvent.create({
       data: {
         vehicleId,
+        organizationId: vehicle.organizationId,
         eventType: dto.eventType,
         eventDate,
         odometerKm: dto.odometerKm ?? null,
@@ -275,6 +286,11 @@ export class ServiceEventsService {
       throw new NotFoundException(`Service event ${id} not found for vehicle ${vehicleId}`);
     }
 
+    await this.groundTruthBackedSourceGuard.assertServiceEventMutable(vehicleId, id, 'update', {
+      eventType: dto.eventType,
+      eventDate: dto.eventDate,
+    });
+
     const data: Record<string, unknown> = {};
     if (dto.eventType !== undefined) data.eventType = dto.eventType;
     if (dto.eventDate !== undefined) data.eventDate = new Date(dto.eventDate);
@@ -298,6 +314,7 @@ export class ServiceEventsService {
   }
 
   async remove(vehicleId: string, id: string): Promise<void> {
+    await this.groundTruthBackedSourceGuard.assertServiceEventMutable(vehicleId, id, 'delete');
     const result = await this.prisma.vehicleServiceEvent.deleteMany({
       where: { id, vehicleId },
     });

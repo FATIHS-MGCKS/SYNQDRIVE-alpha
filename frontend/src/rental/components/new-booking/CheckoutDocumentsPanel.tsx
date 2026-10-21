@@ -7,7 +7,7 @@ import { dedupeDocumentsByType } from '../../../lib/document-list.utils';
 import { bookingRef } from '../bookings/bookingUtils';
 import { isEmailSendableDocument } from '../../../lib/email-sendable';
 import { emailDocTypeLabel } from '../../../lib/email-i18n';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 
 const CHECKOUT_DOC_TYPES = [

@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { VehicleData } from '../../../data/vehicles';
+import { OPERATIONAL_AVAILABILITY_STATE } from '../../../lib/operational-availability/types';
 import {
   VEHICLE_DATA_QUALITY_STATE,
   VEHICLE_OPERATIONAL_STATUS,
 } from '../../../lib/vehicle-operational-state';
+import {
+  canonicalAvailability,
+  canonicalConnectivityRuntime,
+  canonicalOperationalVehicle,
+} from './dashboard-canonical-test-fixtures';
 import { buildVehicleRuntimeStates } from './vehicleRuntimeStateBuilder';
 import {
   deriveIsReadyForRenting,
@@ -22,47 +28,7 @@ function operationalVehicle(
   status: (typeof VEHICLE_OPERATIONAL_STATUS)[keyof typeof VEHICLE_OPERATIONAL_STATUS],
   extra: Partial<VehicleData> = {},
 ): VehicleData {
-  return {
-    id: extra.id ?? 'v1',
-    license: extra.license ?? 'M-AB 123',
-    model: 'Golf',
-    year: 2024,
-    station: 'Berlin',
-    fuelType: 'Petrol',
-    status,
-    cleaningStatus: 'Clean',
-    healthStatus: 'Good Health',
-    online: true,
-    lastSignal: NOW.toISOString(),
-    badge: 0,
-    odometer: 10000,
-    fuel: 72,
-    battery: 100,
-    speed: 0,
-    coolant: 90,
-    brakes: 90,
-    tires: 90,
-    engineOil: 90,
-    isElectric: false,
-    hvBatteryCapacityKwh: null,
-    leasingRate: '',
-    insuranceCost: '',
-    taxCost: '',
-    totalMonthlyCost: '',
-    operationalState: {
-      status,
-      reason: null,
-      source: 'fleet-read-model',
-      effectiveFrom: null,
-      effectiveUntil: null,
-      derivedAt: NOW.toISOString(),
-      dataQualityState: VEHICLE_DATA_QUALITY_STATE.RELIABLE,
-      dataQualityReasons: [],
-      isReliable: true,
-      ...extra.operationalState,
-    },
-    ...extra,
-  };
+  return canonicalOperationalVehicle(status, extra);
 }
 
 describe('deriveIsReadyForRenting', () => {
@@ -222,6 +188,7 @@ describe('deriveIsReadyForRenting', () => {
         isReliable: true,
       },
       operationalStatus: 'available',
+      operationalAvailability: OPERATIONAL_AVAILABILITY_STATE.AVAILABLE,
       cleaningStatus: 'Clean',
       blockLevel: 'none',
       reasons: [],
@@ -229,5 +196,43 @@ describe('deriveIsReadyForRenting', () => {
       nextBooking: null,
     });
     expect(ready).toBe(false);
+  });
+
+  it('canonical connectivity attention never blocks readiness when P0.2 AVAILABLE', () => {
+    const ready = deriveIsReadyForRenting({
+      operationalBlock: {
+        canonicalStatus: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+        backendDataQualityState: VEHICLE_DATA_QUALITY_STATE.RELIABLE,
+        isReliable: true,
+      },
+      operationalStatus: 'available',
+      operationalAvailability: OPERATIONAL_AVAILABILITY_STATE.AVAILABLE,
+      cleaningStatus: 'Clean',
+      blockLevel: 'none',
+      reasons: [
+        createRuntimeReason({
+          category: 'telemetry',
+          severity: 'critical',
+          title: 'Device unplugged',
+          source: 'canonical:connectivity:DEVICE_UNPLUGGED',
+          blocking: true,
+          preventsReady: false,
+        }),
+      ],
+      telemetryState: 'offline',
+      nextBooking: null,
+    });
+    expect(ready).toBe(true);
+    expect(
+      reasonBlocksReadyForRenting(
+        createRuntimeReason({
+          source: 'canonical:connectivity:DEVICE_UNPLUGGED',
+          category: 'telemetry',
+          severity: 'critical',
+          title: 'x',
+          blocking: true,
+        }),
+      ),
+    ).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { Skeleton } from '../../../components/ui/skeleton';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { CommunicationChannelsSection } from './communication-center.types';
 import { CommunicationChannelStatusChip } from './communication-channel-status';

@@ -1,0 +1,42 @@
+export const operatorTodayDe = {
+  'operator.today.stale.offlineTitle': 'Offline — zwischengespeicherte Daten',
+  'operator.today.stale.staleTitle': 'Daten möglicherweise veraltet',
+  'operator.today.stale.offlineBody':
+    'Die Anzeige basiert auf dem letzten erfolgreichen Abruf. Aktionen werden nach Verbindungsaufbau synchronisiert.',
+  'operator.today.stale.staleBody':
+    'Der letzte Abruf ist fehlgeschlagen. Angezeigt werden die zuletzt geladenen Aufgaben.',
+  'operator.today.stale.refresh': 'Aktualisieren',
+  'operator.today.noOrg.title': 'Keine Organisation',
+  'operator.today.noOrg.description': 'Melde dich mit einem Miet-Organisationskonto an.',
+  'operator.today.createBooking': 'Buchung aufnehmen',
+  'operator.today.error.fatalTitle': 'Heute-Daten nicht verfügbar',
+  'operator.today.error.bookingsTitle': 'Buchungen nicht verfügbar',
+  'operator.today.empty.title': 'Heute ist alles ruhig',
+  'operator.today.empty.description':
+    'Keine dringenden Aufgaben, Übergaben oder Blocker für den heutigen Tag.',
+  'operator.today.empty.allOpenTasks': 'Alle offenen Aufgaben ({count})',
+  'operator.today.header.title': 'Operativer Tagesüberblick',
+  'operator.today.header.subtitle': 'Priorisiert nach Dringlichkeit — kritisch und überfällig zuerst.',
+  'operator.today.nav.allOpenWithCount': 'Alle offenen ({count})',
+  'operator.today.nav.allTasks': 'Alle Aufgaben',
+  'operator.today.alerts.sectionTitle': 'Operative Hinweise',
+  'operator.today.alert.severity.critical': 'Kritisch',
+  'operator.today.alert.severity.warning': 'Warnung',
+  'operator.today.blocked.sectionTitle': 'Blockierte Fahrzeuge',
+  'operator.today.blocked.badge': 'Blockiert',
+  'operator.today.handover.now': 'Übergaben jetzt',
+  'operator.today.handover.today': 'Übergaben heute',
+  'operator.today.tablet.placeholder':
+    'Aufgaben und Buchungen öffnen sich als Vollbild-Sheets auf dem Gerät.',
+  'operator.today.bucket.now.title': 'Jetzt erforderlich',
+  'operator.today.bucket.now.subtitle':
+    'Überfällige, kritische und unmittelbar blockierende Aufgaben',
+  'operator.today.bucket.today.subtitle': 'Heute fällige und aktivierte Aufgaben',
+  'operator.today.bucket.upcoming.title': 'Demnächst',
+  'operator.today.bucket.upcoming.subtitle': 'Aktiviert sich im definierten kommenden Zeitfenster',
+  'operator.today.bucket.planned.title': 'Geplant',
+  'operator.today.bucket.planned.subtitle': 'Zukünftige Erinnerungen und Aufgaben',
+  'operator.today.bucket.unassigned.title': 'Unzugewiesen',
+  'operator.today.bucket.unassigned.subtitle': 'Team-Queue — Aufgaben ohne Bearbeiter',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} nicht verfügbar',
+} as const;

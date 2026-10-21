@@ -14,6 +14,7 @@ import {
   FuelType,
   VehicleType,
   VehicleStatus,
+  VehicleRegistryLifecycle,
   HealthStatus,
   CleaningStatus,
   EnrichmentJobType,
@@ -29,7 +30,12 @@ import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import { RedisService } from '@shared/redis/redis.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
+import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
+import {
+  legacyVehicleDeleteDisabledException,
+  legacyVehicleDestructionDisabledException,
+} from './legacy-vehicle-destruction.errors';
 import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import dimoConfig from '@config/dimo.config';
@@ -46,6 +52,10 @@ import {
   type FleetBookingContextRow,
   type FleetVehicleBookingSupplementDto,
 } from './operational/fleet-booking-context.util';
+import {
+  buildRegistryLifecycleFleetOperationalState,
+  resolveRegistryLifecycleFleetBlock,
+} from './registry/fleet-registry-lifecycle-status';
 import {
   buildFleetOperationalStateDto,
   type FleetVehicleOperationalStateDto,
@@ -74,12 +84,32 @@ import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-l
 import { BrakeRegistrationService } from '@modules/vehicle-intelligence/brakes/brake-registration.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
+import { MasterDimoCanonicalRegistrationService } from '@modules/vehicle-onboarding/master-dimo/master-dimo-canonical-registration.service';
+import { runVehicleOnboardingHttp } from '@modules/vehicle-onboarding/http/vehicle-onboarding-http.util';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
+import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
+import { VehicleOperationalProjectionService } from './operational/projection/vehicle-operational-projection.service';
+import {
+  createFleetOperationalAvailabilityUnknownFallback,
+  toFleetOperationalAvailabilityDto,
+  type FleetOperationalAvailabilityDto,
+} from './operational/fleet-operational-availability.dto';
+import {
+  createFleetHealthEvaluationUnknownFallback,
+  toFleetHealthEvaluationDto,
+  type FleetHealthEvaluationDto,
+} from './operational/fleet-health-evaluation.dto';
+import type { VehicleOperationalProjection } from './operational/projection/vehicle-operational-projection.types';
 import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle-connectivity-runtime-state.dto';
+import {
+  serializeConnectivityDiagnosticAdmin,
+  type ConnectivityDiagnosticAdminDto,
+} from './connectivity/connectivity-diagnostic.admin-dto';
+import type { VehicleConnectivityRuntimeState } from './connectivity/domain/connectivity-domain.types';
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
@@ -289,6 +319,10 @@ export interface FleetMapVehicleDto
   isElectric: boolean;
   /** Canonical connectivity runtime — shared truth across fleet surfaces. */
   connectivityRuntime?: VehicleConnectivityRuntimeStateDto;
+  /** P0.3 — operator-facing operational availability from P0.2 projection. */
+  operationalAvailability?: FleetOperationalAvailabilityDto;
+  /** P0.4 — Health condition + P0.2 evaluability for Fleet presentation. */
+  healthEvaluation?: FleetHealthEvaluationDto;
 }
 
 @Injectable()
@@ -308,10 +342,14 @@ export class VehiclesService {
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
+    private readonly dimoVehicleDataSourceLink: DimoVehicleDataSourceLinkService,
     private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
+    @Inject(forwardRef(() => VehicleOperationalProjectionService))
+    private readonly operationalProjection: VehicleOperationalProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly masterDimoCanonicalRegistration: MasterDimoCanonicalRegistrationService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
     @Optional()
@@ -1012,6 +1050,7 @@ export class VehiclesService {
     vehicle: {
       id?: string;
       status: VehicleStatus | string | null | undefined;
+      registryLifecycle?: VehicleRegistryLifecycle | string | null;
       licensePlate?: string | null;
       tankCapacityLiters?: number | null;
     };
@@ -1037,6 +1076,40 @@ export class VehiclesService {
   } {
     const { vehicle, state, bookingCtx, pickupOdoByBooking, bookingContextLoadFailed } =
       input;
+
+    const registryBlock = resolveRegistryLifecycleFleetBlock(
+      vehicle.registryLifecycle as VehicleRegistryLifecycle | null | undefined,
+    );
+    if (registryBlock) {
+      const operationalState = buildRegistryLifecycleFleetOperationalState({
+        block: registryBlock,
+      });
+      const maintenanceCtx: FleetVehicleMaintenanceContextDto =
+        vehicle.status === VehicleStatus.IN_SERVICE ||
+        vehicle.status === VehicleStatus.OUT_OF_SERVICE
+          ? this.deriveMaintenanceContext(vehicle.status)
+          : {
+              maintenanceReason: null,
+              maintenanceReasonCode: null,
+              maintenanceUrgency: null,
+            };
+      return {
+        status: registryBlock.displayStatus,
+        operationalState,
+        maintenanceCtx,
+        bookingDto: VehiclesService.EMPTY_BOOKING_CONTEXT,
+        liveKmDriven: null,
+        odometerKm:
+          typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
+            ? Math.floor(state.odometerKm)
+            : null,
+        fuelPercent: this.resolveFuelPercentOrNull(state, vehicle.tankCapacityLiters),
+        evSoc:
+          typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
+            ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
+            : null,
+      };
+    }
 
     if (bookingContextLoadFailed) {
       const operationalState = buildFleetOperationalStateDto({
@@ -1158,6 +1231,78 @@ export class VehiclesService {
       fuelPercent,
       evSoc,
     };
+  }
+
+  /**
+   * Batch fleet status context — shared booking load for legacy fleet + P0.2 shadow.
+   * Reuses booking-context batch loaders — no per-vehicle booking queries.
+   */
+  async deriveFleetStatusContextBatch(
+    organizationId: string,
+    vehicles: Array<{
+      id: string;
+      status: VehicleStatus;
+      registryLifecycle?: VehicleRegistryLifecycle | string | null;
+      licensePlate?: string | null;
+      tankCapacityLiters?: number | null;
+      latestState: {
+        odometerKm?: number | null;
+        evSoc?: number | null;
+        fuelLevelRelative?: number | null;
+        fuelLevelAbsolute?: number | null;
+        rawPayloadJson?: unknown;
+      } | null;
+    }>,
+  ): Promise<
+    Map<
+      string,
+      ReturnType<VehiclesService['deriveFleetStatusContext']>
+    >
+  > {
+    const vehicleIds = vehicles.map((v) => v.id);
+    const result = new Map<
+      string,
+      ReturnType<VehiclesService['deriveFleetStatusContext']>
+    >();
+    if (vehicleIds.length === 0) return result;
+
+    const bookingBundle = await this.buildBookingContextMap(organizationId, vehicleIds);
+    const activeBookingIds = Array.from(bookingBundle.map.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
+
+    for (const vehicle of vehicles) {
+      const fleetCtx = this.deriveFleetStatusContext({
+        vehicle,
+        state: vehicle.latestState,
+        bookingCtx: bookingBundle.map.get(vehicle.id) ?? null,
+        pickupOdoByBooking,
+        bookingContextLoadFailed: bookingBundle.loadFailed,
+      });
+      result.set(vehicle.id, fleetCtx);
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch fleet business/workflow context for P0.2 operational projection.
+   */
+  async deriveFleetBusinessContextBatch(
+    organizationId: string,
+    vehicles: Parameters<VehiclesService['deriveFleetStatusContextBatch']>[1],
+  ): Promise<Map<string, FleetVehicleOperationalStateDto>> {
+    const contexts = await this.deriveFleetStatusContextBatch(organizationId, vehicles);
+    return new Map(
+      Array.from(contexts.entries()).map(([vehicleId, fleetCtx]) => [
+        vehicleId,
+        fleetCtx.operationalState,
+      ]),
+    );
   }
 
   /**
@@ -1461,6 +1606,29 @@ export class VehiclesService {
       vehicleIdsForMap,
     );
 
+    const fleetProjectionGeneratedAt = new Date().toISOString();
+
+    let projectionsByVehicle = new Map<string, VehicleOperationalProjection>();
+    try {
+      const projections = await this.operationalProjection.getVehicleProjections({
+        organizationId,
+        vehicleIds: vehicleIdsForMap,
+      });
+      projectionsByVehicle = projections;
+    } catch (err) {
+      this.logger.warn({
+        msg: 'fleet_map.operational_projection_batch_failed',
+        organizationId,
+        vehicleCount: vehicleIdsForMap.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const fleetOperationalAvailabilityFallback =
+      createFleetOperationalAvailabilityUnknownFallback(fleetProjectionGeneratedAt);
+    const fleetHealthEvaluationFallback =
+      createFleetHealthEvaluationUnknownFallback(fleetProjectionGeneratedAt);
+
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
       const tripState = tripStateMap.get(vehicle.id) ?? null;
@@ -1543,6 +1711,12 @@ export class VehiclesService {
         connectivityRuntime: runtimeByVehicle.has(vehicle.id)
           ? serializeVehicleConnectivityRuntimeState(runtimeByVehicle.get(vehicle.id)!)
           : undefined,
+        operationalAvailability: projectionsByVehicle.has(vehicle.id)
+          ? toFleetOperationalAvailabilityDto(projectionsByVehicle.get(vehicle.id)!)
+          : fleetOperationalAvailabilityFallback,
+        healthEvaluation: projectionsByVehicle.has(vehicle.id)
+          ? toFleetHealthEvaluationDto(projectionsByVehicle.get(vehicle.id)!)
+          : fleetHealthEvaluationFallback,
       };
     });
 
@@ -1700,9 +1874,17 @@ export class VehiclesService {
         const jwt = await this.dimoAuth.getVehicleJwt(
           vehicle.dimoVehicle!.tokenId!,
         );
+        const liveContext = buildDimoProviderRequestContext(
+          vehicle.dimoVehicle!.tokenId!,
+          {
+            organizationId,
+            vehicleId,
+          },
+        );
         const raw = await this.dimoTelemetry.fetchLastSeenLocation(
           jwt,
           vehicle.dimoVehicle!.tokenId!,
+          liveContext,
         );
         const data = (raw as any)?.data ?? raw;
         const signals = Array.isArray(data?.signalsLatest)
@@ -1821,7 +2003,15 @@ export class VehiclesService {
 
     try {
       const jwt = await this.dimoAuth.getVehicleJwt(tokenId);
-      const raw = await this.dimoTelemetry.fetchLastSeenLocation(jwt, tokenId);
+      const liveContext = buildDimoProviderRequestContext(tokenId, {
+        organizationId,
+        vehicleId,
+      });
+      const raw = await this.dimoTelemetry.fetchLastSeenLocation(
+        jwt,
+        tokenId,
+        liveContext,
+      );
       const data = (raw as any)?.data ?? raw;
       const signals = Array.isArray(data?.signalsLatest)
         ? data.signalsLatest[0]
@@ -1988,72 +2178,27 @@ export class VehiclesService {
     });
   }
 
-  async delete(id: string, organizationId?: string): Promise<Vehicle> {
-    const where: Prisma.VehicleWhereUniqueInput = { id };
-    if (organizationId) {
-      await this.prisma.vehicle.findFirstOrThrow({
-        where: { id, ...this.withOrgScope(organizationId) },
-      });
-    } else {
-      await this.prisma.vehicle.findUniqueOrThrow({ where: { id } });
-    }
-    return this.prisma.vehicle.delete({ where });
+  /**
+   * VO5C-P2B3: physical vehicle DELETE retired — fail-closed.
+   */
+  async delete(_id: string, _organizationId?: string): Promise<never> {
+    this.logger.warn({
+      msg: 'legacy_vehicle_delete_blocked',
+      code: 'LEGACY_VEHICLE_DESTRUCTION_DISABLED',
+    });
+    throw legacyVehicleDeleteDisabledException();
   }
 
   /**
-   * Deregister reverses a SynqDrive registration.
-   * The Vehicle row (+ cascaded SynqDrive operational data) is removed.
-   * The underlying DimoVehicle identity is preserved (FK onDelete: SetNull)
-   * and reappears in "Non Registered Vehicles" for future re-registration.
+   * VO5C-P2B1: legacy Master Admin deregister retired — fail-closed.
+   * Use canonical vehicle onboarding offboard HTTP instead.
    */
-  async deregister(vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findUniqueOrThrow({
-      where: { id: vehicleId },
-      select: {
-        id: true,
-        vin: true,
-        make: true,
-        model: true,
-        year: true,
-        licensePlate: true,
-        organizationId: true,
-        dimoVehicleId: true,
-        status: true,
-      },
+  async deregister(_vehicleId: string): Promise<never> {
+    this.logger.warn({
+      msg: 'legacy_vehicle_deregistration_blocked',
+      code: 'LEGACY_VEHICLE_DESTRUCTION_DISABLED',
     });
-
-    await this.billingQuantity
-      ?.onVehicleRemoved({
-        organizationId: vehicle.organizationId,
-        vehicleId: vehicle.id,
-      })
-      .catch((error) => {
-        this.logger.warn({
-          msg: 'billing.quantity.vehicle_remove_hook_failed',
-          organizationId: vehicle.organizationId,
-          vehicleId: vehicle.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-
-    await this.prisma.vehicle.delete({ where: { id: vehicleId } });
-
-    this.logger.log(
-      `Vehicle deregistered: ${vehicle.make} ${vehicle.model} (${vehicle.vin}) — org=${vehicle.organizationId}, dimoVehicleId=${vehicle.dimoVehicleId ?? 'none'}`,
-    );
-
-    return {
-      success: true,
-      deregisteredVehicle: {
-        id: vehicle.id,
-        vin: vehicle.vin,
-        make: vehicle.make,
-        model: vehicle.model,
-        year: vehicle.year,
-        licensePlate: vehicle.licensePlate,
-        dimoVehicleId: vehicle.dimoVehicleId,
-      },
-    };
+    throw legacyVehicleDestructionDisabledException();
   }
 
   private parseFuelType(input: unknown, fallback: FuelType): FuelType {
@@ -2130,241 +2275,148 @@ export class VehiclesService {
     },
     createdByUserId?: string | null,
   ): Promise<RegisterFromDimoResult> {
-    const dimoVehicle = await this.prisma.dimoVehicle.findUniqueOrThrow({
-      where: { id: dimoVehicleId },
-    });
-
-    const defaultFuel: FuelType =
-      dimoVehicle.fuelType &&
-      DIMO_FUEL_TYPE_MAP[dimoVehicle.fuelType.toUpperCase()]
-        ? DIMO_FUEL_TYPE_MAP[dimoVehicle.fuelType.toUpperCase()]
-        : FuelType.OTHER;
-
-    const fuelFromExtra = extraData?.fuelType
-      ? this.parseFuelType(extraData.fuelType, defaultFuel)
-      : defaultFuel;
-
-    const { fuelType: _f, vehicleType: _vt, ...restExtra } = extraData ?? {};
-    const vehicleTypeParsed = this.parseVehicleType(extraData?.vehicleType);
-
-    const createData: Prisma.VehicleCreateInput = {
-      organization: { connect: { id: orgId } },
-      dimoVehicle: { connect: { id: dimoVehicleId } },
-      vin: dimoVehicle.vin || `DIMO-${dimoVehicle.externalId}`,
-      make: dimoVehicle.make || 'Unknown',
-      model: dimoVehicle.model || 'Unknown',
-      year: dimoVehicle.year || new Date().getFullYear(),
-      fuelType: fuelFromExtra,
-      ...(vehicleTypeParsed && { vehicleType: vehicleTypeParsed }),
-      ...(stationId && {
-        homeStation: { connect: { id: stationId } },
-        currentStation: { connect: { id: stationId } },
-      }),
-      ...restExtra,
-    };
-
-    let vehicle: Vehicle;
     try {
-      vehicle = await this.prisma.$transaction(async (tx) => {
-        await acquirePgAdvisoryXactLock(tx, vehicleDimoBindingLockKey(dimoVehicleId));
+      const result = await runVehicleOnboardingHttp(() =>
+        this.masterDimoCanonicalRegistration.register({
+          organizationId: orgId,
+          stationId,
+          dimoVehicleId,
+          extraData,
+          manualSpecs,
+          actorUserId: createdByUserId ?? null,
+        }),
+      );
 
-        const existingBinding = await tx.vehicle.findFirst({
-          where: { dimoVehicleId },
-          select: { id: true, organizationId: true },
-        });
-        if (existingBinding) {
-          throw new ConflictException({
-            code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
-            message: 'This DIMO vehicle is already linked to a fleet vehicle',
-            vehicleId: existingBinding.id,
-            organizationId: existingBinding.organizationId,
-          });
-        }
-
+      let postActivationEnrichment: RegisterFromDimoResult['postActivationEnrichment'];
+      if (
+        !result.idempotentReplay &&
+        manualSpecs?.tires &&
+        this.masterDimoCanonicalRegistration.masterManualSpecsNeedLegacyTireTreadPass({
+          organizationId: orgId,
+          stationId,
+          dimoVehicleId,
+          manualSpecs,
+          actorUserId: createdByUserId ?? null,
+        })
+      ) {
         try {
-          return await tx.vehicle.create({
-            data: {
-              ...createData,
-              ...(createdByUserId ? { createdByUserId } : {}),
-            },
-          });
-        } catch (error) {
-          if (
-            isPrismaUniqueViolation(error, ['dimo_vehicle_id'])
-            || isPrismaUniqueViolation(error, ['vin', 'organizationId'])
-          ) {
-            throw new ConflictException({
-              code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
-              message: 'This DIMO vehicle is already linked to a fleet vehicle',
-            });
-          }
-          throw error;
+          await this.applyRegisterFromDimoTireTreadEnrichment(
+            orgId,
+            result.vehicle.id,
+            manualSpecs.tires,
+          );
+        } catch (tireError) {
+          const message =
+            tireError instanceof Error ? tireError.message : 'Tire tread enrichment failed';
+          this.logger.warn(
+            `registerFromDimo tire tread enrichment failed vehicleId=${result.vehicle.id} orgId=${orgId}: ${message}`,
+          );
+          postActivationEnrichment = {
+            tireTread: { status: 'FAILED', message },
+          };
         }
+      }
+
+      this.capabilityLifecycle?.refreshOnNewIntegration(orgId, result.vehicle.id);
+      void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(
+        orgId,
+        result.vehicle.id,
+        BatteryCapabilityRefreshTrigger.VEHICLE_REGISTRATION,
+      );
+      void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
+
+      const vehicle = await this.prisma.vehicle.findUniqueOrThrow({
+        where: { id: result.vehicle.id },
       });
+      return {
+        vehicle,
+        brakeRegistration: result.brakeRegistration,
+        postActivationEnrichment,
+      };
     } catch (error) {
       if (error instanceof ConflictException) {
-        throw error;
-      }
-      if (isPrismaUniqueViolation(error, ['dimo_vehicle_id'])) {
-        throw new ConflictException({
-          code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
-          message: 'This DIMO vehicle is already linked to a fleet vehicle',
-        });
+        const body = error.getResponse();
+        if (
+          typeof body === 'object' &&
+          body &&
+          (body as { code?: string }).code === 'SOURCE_ALREADY_REGISTERED'
+        ) {
+          const details = (body as { details?: Record<string, unknown> }).details ?? {};
+          throw new ConflictException({
+            code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
+            message:
+              (body as { message?: string }).message ??
+              'This DIMO vehicle is already linked to a fleet vehicle',
+            vehicleId: details.vehicleId,
+            organizationId: details.organizationId,
+          });
+        }
+        if (
+          (body as { code?: string }).code === 'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH'
+        ) {
+          const mismatchDetails =
+            (body as { details?: Record<string, unknown> }).details ?? {};
+          throw new ConflictException({
+            code: 'DIMO_REGISTER_PAYLOAD_MISMATCH',
+            message:
+              (body as { message?: string }).message ??
+              'DIMO vehicle is already registered with a different payload',
+            vehicleId: mismatchDetails.vehicleId,
+            organizationId: mismatchDetails.organizationId,
+            useVehicleUpdateWorkflow: mismatchDetails.useVehicleUpdateWorkflow ?? true,
+          });
+        }
       }
       throw error;
     }
+  }
 
-    // Record DIMO provider consent grant (fire-and-forget — never blocks vehicle creation)
-    void this.providerConsent.recordDimoConsent({
-      vehicleId: vehicle.id,
-      organizationId: orgId,
-      dimoExternalId: dimoVehicle.externalId,
-      dimoTokenId: dimoVehicle.tokenId ?? null,
-      grantedByUserId: createdByUserId ?? null,
-      metadataJson: { registeredVin: vehicle.vin, dimoVehicleId },
+  private async applyRegisterFromDimoTireTreadEnrichment(
+    organizationId: string,
+    vehicleId: string,
+    tr: NonNullable<
+      Parameters<VehiclesService['registerFromDimo']>[4]
+    >['tires'],
+  ): Promise<void> {
+    if (!tr) return;
+    const result = await this.tireLifecycleService.upsertSetupAndMeasurement({
+      vehicleId,
+      organizationId,
+      frontDimension: tr.frontDimension ?? null,
+      rearDimension: tr.rearDimension ?? null,
+      brandModelFront: tr.brandModelFront ?? null,
+      brandModelRear: tr.brandModelRear ?? null,
+      tireSeason: tr.tireSeason ?? null,
+      loadIndexFront: tr.loadIndexFront ?? null,
+      speedIndexFront: tr.speedIndexFront ?? null,
+      loadIndexRear: tr.loadIndexRear ?? null,
+      speedIndexRear: tr.speedIndexRear ?? null,
+      dotCodeFront: tr.dotCodeFront ?? null,
+      dotCodeRear: tr.dotCodeRear ?? null,
+      treadFL: tr.treadFL ?? null,
+      treadFR: tr.treadFR ?? null,
+      treadBL: tr.treadBL ?? null,
+      treadBR: tr.treadBR ?? null,
+      tireCondition: tr.tireCondition ?? null,
+      source: 'manual_registration',
     });
 
-    this.capabilityLifecycle?.refreshOnNewIntegration(orgId, vehicle.id);
-    void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(
-      orgId,
-      vehicle.id,
-      BatteryCapabilityRefreshTrigger.VEHICLE_REGISTRATION,
-    );
-
-    if (manualSpecs?.battery) {
-      const b = manualSpecs.battery;
-      const hasAny =
-        (b.batteryType != null && String(b.batteryType).trim() !== '') ||
-        b.batteryAmpere != null ||
-        b.batteryVolt != null;
-      if (hasAny) {
-        await this.prisma.vehicleBatterySpec.create({
-          data: {
-            vehicleId: vehicle.id,
-            batteryType: b.batteryType?.trim() || null,
-            batteryAmpere: b.batteryAmpere ?? null,
-            batteryVolt: b.batteryVolt ?? null,
-            sourceType: BatterySourceType.MANUAL,
-            sourceConfidence: 1,
-          },
-        });
-      }
+    if (result.setup?.id && (tr.initialTreadFrontMm != null || tr.initialTreadRearMm != null)) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: result.setup.id },
+        data: {
+          initialTreadFrontMm: tr.initialTreadFrontMm ?? undefined,
+          initialTreadRearMm: tr.initialTreadRearMm ?? undefined,
+        },
+      });
     }
 
-    let brakeRegistration = this.brakeRegistrationService.noBrakePayloadResult();
-    if (manualSpecs?.brakes) {
-      const latestState = await this.prisma.vehicleLatestState.findUnique({
-        where: { vehicleId: vehicle.id },
-        select: { odometerKm: true },
+    if (tr.aiTireSpec && result.setup?.id) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: result.setup.id },
+        data: { aiTireSpec: tr.aiTireSpec as Prisma.InputJsonValue },
       });
-      brakeRegistration = await this.brakeRegistrationService.processRegistrationBrakes({
-        vehicleId: vehicle.id,
-        organizationId: orgId,
-        brakes: manualSpecs.brakes,
-        registrationMileageKm: vehicle.mileageKm,
-        latestStateOdometerKm: latestState?.odometerKm ?? null,
-      });
-      if (brakeRegistration.initializationError) {
-        this.logger.warn(
-          `Brake registration outcome for vehicle ${vehicle.id}: ${brakeRegistration.brakeBaselineStatus} — ${brakeRegistration.initializationError}`,
-        );
-      }
     }
-
-    if (manualSpecs?.tires) {
-      const tr = manualSpecs.tires;
-      const hasTireInput = [
-        tr.frontDimension,
-        tr.rearDimension,
-        tr.brandModelFront,
-        tr.brandModelRear,
-        tr.tireSeason,
-        tr.loadIndexFront,
-        tr.speedIndexFront,
-        tr.loadIndexRear,
-        tr.speedIndexRear,
-        tr.dotCodeFront,
-        tr.dotCodeRear,
-        tr.tireCondition,
-        tr.initialTreadFrontMm,
-        tr.initialTreadRearMm,
-        tr.treadFL,
-        tr.treadFR,
-        tr.treadBL,
-        tr.treadBR,
-      ].some((v) => v != null && String(v).trim() !== '');
-
-      if (hasTireInput) {
-        const result = await this.tireLifecycleService.upsertSetupAndMeasurement({
-          vehicleId: vehicle.id,
-          organizationId: orgId,
-          frontDimension: tr.frontDimension ?? null,
-          rearDimension: tr.rearDimension ?? null,
-          brandModelFront: tr.brandModelFront ?? null,
-          brandModelRear: tr.brandModelRear ?? null,
-          tireSeason: tr.tireSeason ?? null,
-          loadIndexFront: tr.loadIndexFront ?? null,
-          speedIndexFront: tr.speedIndexFront ?? null,
-          loadIndexRear: tr.loadIndexRear ?? null,
-          speedIndexRear: tr.speedIndexRear ?? null,
-          dotCodeFront: tr.dotCodeFront ?? null,
-          dotCodeRear: tr.dotCodeRear ?? null,
-          treadFL: tr.treadFL ?? null,
-          treadFR: tr.treadFR ?? null,
-          treadBL: tr.treadBL ?? null,
-          treadBR: tr.treadBR ?? null,
-          tireCondition: tr.tireCondition ?? null,
-          source: 'manual_registration',
-        });
-
-        if (
-          result.setup?.id &&
-          (tr.initialTreadFrontMm != null || tr.initialTreadRearMm != null)
-        ) {
-          await this.prisma.vehicleTireSetup.update({
-            where: { id: result.setup.id },
-            data: {
-              initialTreadFrontMm: tr.initialTreadFrontMm ?? undefined,
-              initialTreadRearMm: tr.initialTreadRearMm ?? undefined,
-            },
-          });
-        }
-
-        if (tr.aiTireSpec && result.setup?.id) {
-          await this.prisma.vehicleTireSetup.update({
-            where: { id: result.setup.id },
-            data: { aiTireSpec: tr.aiTireSpec as any },
-          });
-        }
-      }
-    }
-
-    await this.prisma.vehicleEnrichmentJob.create({
-      data: {
-        vehicle: { connect: { id: vehicle.id } },
-        jobType: EnrichmentJobType.BATTERY,
-        status: 'PENDING',
-      },
-    });
-
-    void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
-
-    void this.billingQuantity
-      ?.onVehicleProvisioned({
-        organizationId: orgId,
-        vehicleId: vehicle.id,
-        actorUserId: createdByUserId ?? null,
-      })
-      .catch((error) => {
-        this.logger.warn({
-          msg: 'billing.quantity.vehicle_provision_hook_failed',
-          organizationId: orgId,
-          vehicleId: vehicle.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-
-    return { vehicle, brakeRegistration };
   }
 
   async getFleetConnectivity(
@@ -2467,6 +2519,44 @@ export class VehiclesService {
     organizationId: string,
     vehicleId: string,
   ): Promise<FleetConnectivityDetailDto> {
+    const { detail } = await this.buildFleetConnectivityDetail(
+      organizationId,
+      vehicleId,
+    );
+    return detail;
+  }
+
+  /**
+   * Master-Admin-only. Tenant-facing detail plus the connectivity diagnostic
+   * dimension (provider reachability vs. vehicle observation freshness).
+   */
+  async getFleetConnectivityAdminDiagnostics(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<
+    FleetConnectivityDetailDto & {
+      connectivityDiagnostic: ConnectivityDiagnosticAdminDto;
+    }
+  > {
+    const { detail, runtime, providerSource } =
+      await this.buildFleetConnectivityDetail(organizationId, vehicleId);
+
+    return {
+      ...detail,
+      connectivityDiagnostic: serializeConnectivityDiagnosticAdmin(runtime, {
+        provider: providerSource,
+      }),
+    };
+  }
+
+  private async buildFleetConnectivityDetail(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<{
+    detail: FleetConnectivityDetailDto;
+    runtime: VehicleConnectivityRuntimeState;
+    providerSource: string | null;
+  }> {
     const nowMs = Date.now();
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
@@ -2505,7 +2595,13 @@ export class VehiclesService {
     }
 
     const mapped = mapFleetConnectivityVehicle(vehicle, nowMs, deviceConnection, runtime);
-    return mapFleetConnectivityDetail(mapped);
+    return {
+      detail: mapFleetConnectivityDetail(mapped),
+      runtime,
+      providerSource:
+        vehicle.latestState?.providerSource ??
+        (vehicle.dimoVehicleId != null ? 'DIMO' : null),
+    };
   }
 
   async getDeviceConnection(organizationId: string, vehicleId: string) {

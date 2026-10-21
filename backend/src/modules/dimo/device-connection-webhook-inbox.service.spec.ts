@@ -33,10 +33,12 @@ function mockPrismaInbox() {
 describe('DeviceConnectionWebhookInboxService — async intake', () => {
   it('persists RECEIVED and enqueues new events', async () => {
     const prisma = mockPrismaInbox();
-    const queue = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    const enqueueService = {
+      enqueueOrMarkRetryableFailed: jest.fn().mockResolvedValue('queued'),
+    };
     const service = new DeviceConnectionWebhookInboxService(
       { deviceConnectionWebhookInbox: { findUnique: prisma.findUnique, create: prisma.create } } as never,
-      queue as never,
+      enqueueService as never,
     );
 
     const result = await service.intakeDeviceConnectionWebhook({
@@ -48,7 +50,7 @@ describe('DeviceConnectionWebhookInboxService — async intake', () => {
 
     expect(result.outcome).toBe('queued');
     expect(result.processingStatus).toBe(DeviceConnectionWebhookProcessingStatus.RECEIVED);
-    expect(queue.enqueue).toHaveBeenCalledWith('inbox-1');
+    expect(enqueueService.enqueueOrMarkRetryableFailed).toHaveBeenCalledWith('inbox-1', 'intake');
   });
 
   it('re-enqueues non-terminal duplicate deliveries', async () => {
@@ -71,10 +73,12 @@ describe('DeviceConnectionWebhookInboxService — async intake', () => {
 
     const findUnique = jest.fn().mockResolvedValue(existingRow);
     const create = jest.fn();
-    const queue = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    const enqueueService = {
+      enqueueOrMarkRetryableFailed: jest.fn().mockResolvedValue('queued'),
+    };
     const service = new DeviceConnectionWebhookInboxService(
       { deviceConnectionWebhookInbox: { findUnique, create } } as never,
-      queue as never,
+      enqueueService as never,
     );
 
     const result = await service.intakeDeviceConnectionWebhook({
@@ -86,7 +90,7 @@ describe('DeviceConnectionWebhookInboxService — async intake', () => {
 
     expect(result.outcome).toBe('queued');
     expect(create).not.toHaveBeenCalled();
-    expect(queue.enqueue).toHaveBeenCalledWith('inbox-1');
+    expect(enqueueService.enqueueOrMarkRetryableFailed).toHaveBeenCalledWith('inbox-1', 'requeue');
   });
 
   it('returns terminal state without re-enqueue for PROCESSED rows', async () => {
@@ -110,10 +114,10 @@ describe('DeviceConnectionWebhookInboxService — async intake', () => {
       },
     });
 
-    const queue = { enqueue: jest.fn() };
+    const enqueueService = { enqueueOrMarkRetryableFailed: jest.fn() };
     const service = new DeviceConnectionWebhookInboxService(
       { deviceConnectionWebhookInbox: { findUnique: prisma.findUnique, create: prisma.create } } as never,
-      queue as never,
+      enqueueService as never,
     );
 
     const result = await service.intakeDeviceConnectionWebhook({
@@ -124,6 +128,33 @@ describe('DeviceConnectionWebhookInboxService — async intake', () => {
     });
 
     expect(result.outcome).toBe('already_processed');
-    expect(queue.enqueue).not.toHaveBeenCalled();
+    expect(enqueueService.enqueueOrMarkRetryableFailed).not.toHaveBeenCalled();
+  });
+
+  it('marks inbox retryable when enqueue fails at intake', async () => {
+    const prisma = mockPrismaInbox();
+    const enqueueService = {
+      enqueueOrMarkRetryableFailed: jest.fn().mockResolvedValue('failed'),
+    };
+    const service = new DeviceConnectionWebhookInboxService(
+      {
+        deviceConnectionWebhookInbox: {
+          findUnique: prisma.findUnique,
+          create: prisma.create,
+        },
+      } as never,
+      enqueueService as never,
+    );
+
+    await expect(
+      service.intakeDeviceConnectionWebhook({
+        tokenId: 1001,
+        pluggedIn: false,
+        observedAt: OBSERVED_AT,
+        rawPayload: { value: false },
+      }),
+    ).rejects.toThrow('enqueue_failed');
+
+    expect(enqueueService.enqueueOrMarkRetryableFailed).toHaveBeenCalledWith('inbox-1', 'intake');
   });
 });

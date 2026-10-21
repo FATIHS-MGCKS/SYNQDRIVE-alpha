@@ -34,6 +34,13 @@ import { BatteryShadowValidationService } from '../vehicle-intelligence/battery-
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
+import { BatteryV2LvMeasuredIntelligenceAdminService } from './battery-v2-lv-measured-intelligence.admin.service';
+import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
+import {
+  PLATFORM_PRUNE_DISABLED_CODE,
+  platformPruneDisabledException,
+} from './platform-prune.errors';
 
 @Controller('admin')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -54,6 +61,9 @@ export class PlatformAdminController {
     private readonly batteryCapabilityRepository: BatteryCapabilityPreflightRepository,
     private readonly batteryShadowValidation: BatteryShadowValidationService,
     private readonly platformOpsService: PlatformOpsService,
+    private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
+    private readonly batteryV2LvMeasuredIntelligence: BatteryV2LvMeasuredIntelligenceAdminService,
+    private readonly dimoR9WebhookHealthService: DimoR9WebhookHealthService,
   ) {}
 
   @Get('changelogs')
@@ -77,22 +87,17 @@ export class PlatformAdminController {
   @UseGuards(StepUpGuard)
   @RequireStepUp(STEP_UP_ACTION.BREAK_GLASS)
   async pruneMasterData(
-    @Req() req: any,
-    @Body() body: { confirm?: string },
+    @Req() _req: any,
+    @Body() _body: { confirm?: string },
   ) {
-    if (body?.confirm !== 'PRUNE_ALL_MASTER_DATA') {
-      throw new BadRequestException(
-        'Destructive prune requires body.confirm = PRUNE_ALL_MASTER_DATA',
-      );
-    }
     void this.audit.critical({
-      ...AuditService.contextFromRequest(req),
+      ...AuditService.contextFromRequest(_req),
       action: ActivityAction.PRUNE,
       entity: ActivityEntity.ADMIN_OPERATION,
-      description: 'Platform admin triggered pruneMasterData',
-      changeSummary: 'Destructive: master data pruned',
+      description: 'Platform prune blocked (legacy path disabled)',
+      changeSummary: `code=${PLATFORM_PRUNE_DISABLED_CODE}`,
     });
-    return this.platformAdminService.pruneMasterData();
+    throw platformPruneDisabledException();
   }
 
   @Get('dashboard')
@@ -176,6 +181,11 @@ export class PlatformAdminController {
     return this.platformOpsService.getAlerts();
   }
 
+  @Get('ops/driving-intelligence-s4')
+  async getOpsDrivingIntelligenceS4() {
+    return this.platformOpsService.getDrivingIntelligenceS4Status();
+  }
+
   @Get('ops/resilience')
   async getOpsResilience() {
     return this.platformOpsService.getResilience();
@@ -184,6 +194,13 @@ export class PlatformAdminController {
   @Get('ops/tools')
   async getOpsTools() {
     return this.platformOpsService.getTools();
+  }
+
+  @Get('ops/dimo-webhook-health')
+  async getDimoWebhookHealth(@Query('refresh') refresh?: string) {
+    return this.dimoR9WebhookHealthService.getHealth({
+      forceRefresh: refresh === '1' || refresh === 'true',
+    });
   }
 
   @Get('connectivity/platform-summary')
@@ -422,6 +439,113 @@ export class PlatformAdminController {
       ...result,
       message: `Backfill complete: ${result.enqueued} trips enqueued for enrichment`,
     };
+  }
+
+  // GET /admin/battery-v2/rest-sessions — read-only session index for C5B Master Admin UI.
+  @Get('battery-v2/rest-sessions')
+  async listBatteryV2RestSessions(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const result = await this.batteryV2RestSessionFeatureInspection.listRestSessions({
+      organizationId,
+      vehicleId,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin listed Battery V2 rest sessions (C5B)',
+      metaJson: { organizationId, vehicleId, sessionCount: result.sessions.length },
+    });
+    return result;
+  }
+
+  // GET /admin/battery-v2/rest-session-feature-inspection — atomic M3_3C_C5A_V1 snapshot.
+  @Get('battery-v2/rest-session-feature-inspection')
+  async getBatteryV2RestSessionFeatureInspection(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('restSessionId') restSessionId?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId || !restSessionId) {
+      throw new BadRequestException('organizationId, vehicleId, and restSessionId are required');
+    }
+    const inspection = await this.batteryV2RestSessionFeatureInspection.inspectRestSession({
+      organizationId,
+      vehicleId,
+      restSessionId,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      entityId: restSessionId,
+      description: 'Master Admin Battery V2 rest-session feature inspection (C5B/C5A)',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        restSessionId,
+        overallStatus: inspection.integrity.overallStatus,
+        inspectionContractVersion: inspection.inspectionContractVersion,
+      },
+    });
+    return inspection;
+  }
+
+  // GET /admin/battery-v2/lv-measured-intelligence — G5C-N13 bounded LV read model (Master Admin).
+  @Get('battery-v2/lv-measured-intelligence')
+  async getBatteryV2LvMeasuredIntelligence(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('sessionLimit') sessionLimit?: string,
+    @Query('observationLimit') observationLimit?: string,
+    @Query('measuredFrom') measuredFrom?: string,
+    @Query('measuredTo') measuredTo?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const parsedSessionLimit = sessionLimit ? Number(sessionLimit) : undefined;
+    const parsedObservationLimit = observationLimit ? Number(observationLimit) : undefined;
+    const parsedMeasuredFrom = measuredFrom ? new Date(measuredFrom) : undefined;
+    const parsedMeasuredTo = measuredTo ? new Date(measuredTo) : undefined;
+    if (parsedMeasuredFrom && Number.isNaN(parsedMeasuredFrom.getTime())) {
+      throw new BadRequestException('measuredFrom is not a valid ISO timestamp');
+    }
+    if (parsedMeasuredTo && Number.isNaN(parsedMeasuredTo.getTime())) {
+      throw new BadRequestException('measuredTo is not a valid ISO timestamp');
+    }
+    const result = await this.batteryV2LvMeasuredIntelligence.getVehicleMeasuredIntelligence({
+      organizationId,
+      vehicleId,
+      sessionLimit: Number.isFinite(parsedSessionLimit) ? parsedSessionLimit : undefined,
+      observationLimit: Number.isFinite(parsedObservationLimit) ? parsedObservationLimit : undefined,
+      measuredFrom: parsedMeasuredFrom,
+      measuredTo: parsedMeasuredTo,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin Battery V2 LV measured intelligence read (G5C-N13)',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        sessionCount: result.restSessionEpisodes.length,
+        historicalPointCount: result.historicalMeasured.length,
+      },
+    });
+    return result;
   }
 
   // GET /admin/battery-shadow-validation-report

@@ -3,7 +3,7 @@ import { cn } from '../../../components/ui/utils';
 import type { CommunicationApiChannel } from '../../../lib/communication/types';
 import { buildConversationContextLabel } from '../../../lib/communication/context-label';
 import { formatCommunicationTimestamp } from '../../../lib/communication/format';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationConversationListItem } from '../../../lib/communication/types';
 import { AssigneeAvatar } from '../tasks/task-display';
 import {

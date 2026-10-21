@@ -7,5 +7,6 @@ export * from './end-continuity.detector';
 export * from './change-point-end.detector';
 export * from './trip-quality.detector';
 export * from './trip-overlap.detector';
+export * from './trip-coverage.util';
 export * from './ignition-segment.detector';
 export * from './activity-window.detector';

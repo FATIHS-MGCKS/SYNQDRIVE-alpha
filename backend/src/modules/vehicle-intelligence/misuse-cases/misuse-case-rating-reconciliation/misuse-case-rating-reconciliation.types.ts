@@ -37,6 +37,11 @@ export type RatingReconciliationAuditEntry = {
   clusterCount: number;
   proxyOnly: boolean;
   hasHighValueEvidence: boolean;
+  /** Present only when temporally uncertain (R1 OBD) evidence was involved (EXP-021 C0.3). */
+  temporalContainment?: {
+    uncertainEvidenceCount: number;
+    temporallyUncertainOnly: boolean;
+  };
 };
 
 export type MisuseCaseRatingReconciliation = {
@@ -45,6 +50,8 @@ export type MisuseCaseRatingReconciliation = {
   shouldResolve: boolean;
   resolutionReason: string | null;
   proxyOnly: boolean;
+  /** All qualified evidence is temporally uncertain R1 OBD evidence (EXP-021 C0.3). */
+  temporallyUncertainOnly: boolean;
   clusterCount: number;
   coverageQuality: CoverageQuality;
   sourceStrengthMax: number;

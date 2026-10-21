@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 
 const MISLEADING_DIMO_AGENT_PATTERNS = [
   /DIMO Agent Connected/i,

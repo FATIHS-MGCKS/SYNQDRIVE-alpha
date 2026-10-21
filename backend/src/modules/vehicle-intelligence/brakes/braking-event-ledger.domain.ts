@@ -25,6 +25,41 @@ export const BRAKING_SOURCE_PRIORITY: Record<BrakingEventPrimarySource, number> 
   [BrakingEventPrimarySource.TRIP_AGGREGATION]: 5,
 };
 
+/**
+ * EXP-021 C0.3 — ledger incident whose FULL_BRAKING classification rests solely on
+ * the SynqDrive HF abuse reconstruction (winner primary source = HF abuse).
+ */
+export function isHfAbuseFullBrakingLedgerRow(row: {
+  canonicalType: BrakingEventCanonicalType;
+  primarySource: BrakingEventPrimarySource;
+}): boolean {
+  return (
+    row.canonicalType === BrakingEventCanonicalType.FULL_BRAKING &&
+    row.primarySource === BrakingEventPrimarySource.SYNQDRIVE_HF_ABUSE
+  );
+}
+
+/**
+ * EXP-021 C0.3 — read-time interpretation of a persisted ledger incident for a
+ * vehicle whose historical OBD record time is uncertain (Ruptela R1). Never
+ * mutates persistence.
+ *
+ * - HF-abuse-won FULL_BRAKING incident → excluded (null).
+ * - Provider/other-won incident upgraded to FULL_BRAKING by correlation with an HF
+ *   abuse candidate → provider evidence retained, counted as EXTREME_BRAKING (the
+ *   strongest native DIMO braking class; conservative upper bound).
+ * - Anything else → unchanged.
+ */
+export function interpretLedgerRowForUncertainObdTime<
+  T extends { canonicalType: BrakingEventCanonicalType; primarySource: BrakingEventPrimarySource },
+>(row: T): T | null {
+  if (isHfAbuseFullBrakingLedgerRow(row)) return null;
+  if (row.canonicalType === BrakingEventCanonicalType.FULL_BRAKING) {
+    return { ...row, canonicalType: BrakingEventCanonicalType.EXTREME_BRAKING };
+  }
+  return row;
+}
+
 /** Canonical severity rank for merge winner within the same incident bucket. */
 export const CANONICAL_TYPE_RANK: Record<BrakingEventCanonicalType, number> = {
   [BrakingEventCanonicalType.UNKNOWN_BRAKING_EVENT]: 0,

@@ -1,0 +1,2864 @@
+{
+  "capturedAt": "2026-09-15T12:29:47.766Z",
+  "classification": "COMPLETE_PHYSICAL_SHORT_AB_IMMUTABLE_FREEZE",
+  "identity": {
+    "PRODUCTION_SHA": "bd3fd78060034f628892d1b9da9cf6991e65606b",
+    "TARGET": "KS MX 2024",
+    "SESSION_ID": "cd33ad31-c46d-4d9c-a9ee-676e7d2acdca",
+    "ORCHESTRATOR_RUN_ID": "exp021-1789461287612",
+    "VEHICLE_ID": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+    "TOKEN_ID": 187336,
+    "ORGANIZATION_ID": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+    "CANONICAL_T0_AT": "2026-09-15T11:39:01.000Z",
+    "PLAN_ID": "candidate_short_ab_90_60",
+    "PLAN_VERSION": "EXP021_CANDIDATE_SHORT_AB_90_60",
+    "PHASE_ORDER": [
+      90000,
+      60000
+    ],
+    "CALIBRATION_SERIES_ID": "1132cab2-7eca-40e0-8d59-d6a0c0f901f2",
+    "SETTLEMENT_EXPERIMENT_ID": "exp-021-cd33ad31-2009fd67",
+    "SETTLEMENT_EXPERIMENT_STATUS": "COMPLETED",
+    "DISTINCT_FROM_SESSION_1645": "332c1549-622d-4535-afd9-867962003280"
+  },
+  "session": {
+    "SESSION_STATUS": "COMPLETED",
+    "SESSION_CREATED_AT": "2026-09-15T08:34:57.979Z",
+    "SESSION_STARTED_AT": "2026-09-15T11:30:05.555Z",
+    "SESSION_STOPPED_AT": "2026-09-15T11:59:16.058Z",
+    "SESSION_COMPLETED_AT": "2026-09-15T11:59:16.179Z",
+    "ORCHESTRATION_STATE": "COMPLETED",
+    "ACQUISITION_CYCLE_COUNT": 300,
+    "STOP_REASON": "FINAL_PHASE_WALL_CLOCK",
+    "physicalAuthority": {
+      "persistedAt": "2026-09-15T11:41:12.237Z",
+      "canonicalT0At": "2026-09-15T11:39:01.000Z",
+      "startConfirmedAt": "2026-09-15T11:41:12.237Z",
+      "orchestrationState": "DRIVING",
+      "physicalPhase60StartedAt": "2026-09-15T11:39:01.000Z",
+      "firstQualifyingMovementAt": "2026-09-15T11:39:01.000Z"
+    },
+    "orchestratorOwnership": {
+      "runId": "exp021-1789461287612",
+      "startedAt": "2026-09-15T08:34:59.009Z"
+    },
+    "activePhase": null,
+    "completedPhaseSummariesRaw": [
+      {
+        "phaseRole": "EXPERIMENTAL",
+        "durationMs": 611428,
+        "phaseEndedAt": "2026-09-15T11:49:12.428Z",
+        "phaseSequence": 1,
+        "newBucketCount": 165,
+        "phaseStartedAt": "2026-09-15T11:39:01.000Z",
+        "allRequestCount": 7,
+        "effectiveConfig": {
+          "tokenId": 187336,
+          "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+          "policyMode": "V2",
+          "effectiveAt": "2026-09-15T11:39:01.000Z",
+          "phaseSequence": 1,
+          "policyVersion": "HF_RECOVERY_V2_2026-09-04",
+          "recoveryOverlapMs": 6000,
+          "settlementDelayMs": 8000,
+          "calibrationPhaseId": "5fd75bc2-4756-43f2-9a57-4075bb5a7a8d",
+          "calibrationSeriesId": "1132cab2-7eca-40e0-8d59-d6a0c0f901f2",
+          "effectivePollIntervalMs": 90000
+        },
+        "scientificStatus": "VALID",
+        "calibrationPhaseId": "5fd75bc2-4756-43f2-9a57-4075bb5a7a8d",
+        "exp021RequestSlots": [
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472341000,
+            "offsetMs": 0,
+            "slotIndex": 0,
+            "issuedAtMs": 1789472478450,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472431000,
+            "offsetMs": 90000,
+            "slotIndex": 1,
+            "issuedAtMs": 1789472484625,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472521000,
+            "offsetMs": 180000,
+            "slotIndex": 2,
+            "issuedAtMs": 1789472525984,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472611000,
+            "offsetMs": 270000,
+            "slotIndex": 3,
+            "issuedAtMs": 1789472616476,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472701000,
+            "offsetMs": 360000,
+            "slotIndex": 4,
+            "issuedAtMs": 1789472703690,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472791000,
+            "offsetMs": 450000,
+            "slotIndex": 5,
+            "issuedAtMs": 1789472792443,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472881000,
+            "offsetMs": 540000,
+            "slotIndex": 6,
+            "issuedAtMs": 1789472887050,
+            "skipReason": null
+          }
+        ],
+        "providerErrorCount": 0,
+        "providerBucketCount": 33,
+        "revisionBucketCount": 0,
+        "duplicateBucketCount": 0,
+        "providerRequestCount": 7,
+        "providerSuccessCount": 7,
+        "transitionWindowCount": 0,
+        "calibrationPlanVersion": "EXP021_CANDIDATE_SHORT_AB_90_60",
+        "nativeMaxTemporalGapMs": 43000,
+        "nativeTemporalEvidence": {
+          "phaseEndedAt": "2026-09-15T11:49:12.428Z",
+          "canonicalT0At": "2026-09-15T11:39:01.000Z",
+          "phaseSequence": 1,
+          "schemaVersion": "EXP021_NATIVE_TEMPORAL_v1",
+          "phaseStartedAt": "2026-09-15T11:39:01.000Z",
+          "phaseProvenance": "PHYSICAL_T0",
+          "providerIdentity": "DIMO_HF_AGGREGATE_BUCKET",
+          "queryAttribution": "PHASE_NATIVE_FAST_LOOP_EXCLUDES_TRANSITION_AND_RECOVERY_SWEEP",
+          "calibrationPhaseId": "5fd75bc2-4756-43f2-9a57-4075bb5a7a8d",
+          "duplicateSemantics": "UNIQUE_BY_CANONICAL_ISO_MS_SORTED_ASCENDING",
+          "calibrationSeriesId": "1132cab2-7eca-40e0-8d59-d6a0c0f901f2",
+          "effectivePollIntervalMs": 90000,
+          "canonicalTimestampPrecision": "FIELD_PIPE_CANONICAL_ISO_MS",
+          "orderedNativeTemporalBucketStarts": [
+            "2026-09-15T11:41:04.471Z",
+            "2026-09-15T11:41:04.658Z",
+            "2026-09-15T11:41:24.644Z",
+            "2026-09-15T11:41:33.644Z",
+            "2026-09-15T11:41:38.644Z",
+            "2026-09-15T11:41:41.644Z",
+            "2026-09-15T11:41:43.644Z",
+            "2026-09-15T11:42:00.003Z",
+            "2026-09-15T11:42:09.003Z",
+            "2026-09-15T11:42:52.003Z",
+            "2026-09-15T11:42:53.003Z",
+            "2026-09-15T11:42:58.003Z",
+            "2026-09-15T11:43:01.003Z",
+            "2026-09-15T11:43:21.003Z",
+            "2026-09-15T11:43:45.504Z",
+            "2026-09-15T11:44:19.504Z",
+            "2026-09-15T11:44:21.504Z",
+            "2026-09-15T11:44:23.504Z",
+            "2026-09-15T11:44:24.504Z",
+            "2026-09-15T11:44:29.504Z",
+            "2026-09-15T11:45:11.707Z",
+            "2026-09-15T11:45:13.707Z",
+            "2026-09-15T11:45:27.707Z",
+            "2026-09-15T11:45:29.707Z",
+            "2026-09-15T11:45:40.707Z",
+            "2026-09-15T11:45:43.707Z",
+            "2026-09-15T11:46:05.707Z",
+            "2026-09-15T11:46:19.463Z",
+            "2026-09-15T11:46:19.707Z",
+            "2026-09-15T11:46:28.463Z",
+            "2026-09-15T11:46:43.463Z",
+            "2026-09-15T11:46:52.463Z",
+            "2026-09-15T11:46:57.463Z"
+          ]
+        },
+        "effectivePollIntervalMs": 90000,
+        "providerZeroResultCount": 0,
+        "validMovementDurationMs": 394944,
+        "recoveredLateBucketCount": 0,
+        "requestRatePerWallMinute": 0.6869165298285325,
+        "successRatePerWallMinute": 0.6869165298285325,
+        "recoverySweepRequestCount": 0,
+        "nativeP90TemporalCadenceMs": 24501,
+        "requestRatePerMovingMinute": 1.063441905687895,
+        "maxIntraResponseTemporalGapMs": 43000,
+        "nativeMedianTemporalCadenceMs": 8756,
+        "transitionProviderBucketCount": 0,
+        "uniqueTemporalBucketStartCount": 33,
+        "nativeUniqueTemporalBucketStartCount": 33
+      },
+      {
+        "phaseRole": "EXPERIMENTAL",
+        "durationMs": 603725,
+        "phaseEndedAt": "2026-09-15T11:59:16.153Z",
+        "phaseSequence": 2,
+        "newBucketCount": 264,
+        "phaseStartedAt": "2026-09-15T11:49:12.428Z",
+        "allRequestCount": 10,
+        "effectiveConfig": {
+          "tokenId": 187336,
+          "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+          "policyMode": "V2",
+          "effectiveAt": "2026-09-15T11:49:12.428Z",
+          "phaseSequence": 2,
+          "policyVersion": "HF_RECOVERY_V2_2026-09-04",
+          "recoveryOverlapMs": 6000,
+          "settlementDelayMs": 8000,
+          "calibrationPhaseId": "5a6cb687-46bd-4f1c-96d2-d40df84c024b",
+          "calibrationSeriesId": "1132cab2-7eca-40e0-8d59-d6a0c0f901f2",
+          "effectivePollIntervalMs": 60000
+        },
+        "scientificStatus": "VALID",
+        "calibrationPhaseId": "5a6cb687-46bd-4f1c-96d2-d40df84c024b",
+        "exp021RequestSlots": [
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789472952428,
+            "offsetMs": 0,
+            "slotIndex": 0,
+            "issuedAtMs": 1789472958630,
+            "skipReason": null
+          },
+          {
+            "status": "FAILURE",
+            "dueAtMs": 1789473012428,
+            "offsetMs": 60000,
+            "slotIndex": 1,
+            "issuedAtMs": 1789473016908,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473072428,
+            "offsetMs": 120000,
+            "slotIndex": 2,
+            "issuedAtMs": 1789473076346,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473132428,
+            "offsetMs": 180000,
+            "slotIndex": 3,
+            "issuedAtMs": 1789473135738,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473192428,
+            "offsetMs": 240000,
+            "slotIndex": 4,
+            "issuedAtMs": 1789473194282,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473252428,
+            "offsetMs": 300000,
+            "slotIndex": 5,
+            "issuedAtMs": 1789473253843,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473312428,
+            "offsetMs": 360000,
+            "slotIndex": 6,
+            "issuedAtMs": 1789473313496,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473372428,
+            "offsetMs": 420000,
+            "slotIndex": 7,
+            "issuedAtMs": 1789473377747,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473432428,
+            "offsetMs": 480000,
+            "slotIndex": 8,
+            "issuedAtMs": 1789473436468,
+            "skipReason": null
+          },
+          {
+            "status": "SUCCESS",
+            "dueAtMs": 1789473492428,
+            "offsetMs": 540000,
+            "slotIndex": 9,
+            "issuedAtMs": 1789473494871,
+            "skipReason": null
+          }
+        ],
+        "providerErrorCount": 0,
+        "providerBucketCount": 53,
+        "revisionBucketCount": 0,
+        "duplicateBucketCount": 0,
+        "providerRequestCount": 8,
+        "providerSuccessCount": 8,
+        "transitionWindowCount": 2,
+        "calibrationPlanVersion": "EXP021_CANDIDATE_SHORT_AB_90_60",
+        "nativeMaxTemporalGapMs": 31648,
+        "nativeTemporalEvidence": {
+          "phaseEndedAt": "2026-09-15T11:59:16.153Z",
+          "canonicalT0At": "2026-09-15T11:39:01.000Z",
+          "phaseSequence": 2,
+          "schemaVersion": "EXP021_NATIVE_TEMPORAL_v1",
+          "phaseStartedAt": "2026-09-15T11:49:12.428Z",
+          "phaseProvenance": "PHYSICAL_TRANSITION",
+          "providerIdentity": "DIMO_HF_AGGREGATE_BUCKET",
+          "queryAttribution": "PHASE_NATIVE_FAST_LOOP_EXCLUDES_TRANSITION_AND_RECOVERY_SWEEP",
+          "calibrationPhaseId": "5a6cb687-46bd-4f1c-96d2-d40df84c024b",
+          "duplicateSemantics": "UNIQUE_BY_CANONICAL_ISO_MS_SORTED_ASCENDING",
+          "calibrationSeriesId": "1132cab2-7eca-40e0-8d59-d6a0c0f901f2",
+          "effectivePollIntervalMs": 60000,
+          "canonicalTimestampPrecision": "FIELD_PIPE_CANONICAL_ISO_MS",
+          "orderedNativeTemporalBucketStarts": [
+            "2026-09-15T11:50:27.945Z",
+            "2026-09-15T11:50:33.945Z",
+            "2026-09-15T11:50:34.945Z",
+            "2026-09-15T11:50:36.945Z",
+            "2026-09-15T11:50:37.945Z",
+            "2026-09-15T11:50:40.945Z",
+            "2026-09-15T11:50:42.945Z",
+            "2026-09-15T11:50:45.945Z",
+            "2026-09-15T11:50:46.945Z",
+            "2026-09-15T11:51:03.366Z",
+            "2026-09-15T11:51:03.945Z",
+            "2026-09-15T11:51:12.366Z",
+            "2026-09-15T11:51:20.366Z",
+            "2026-09-15T11:51:39.366Z",
+            "2026-09-15T11:52:00.366Z",
+            "2026-09-15T11:52:20.758Z",
+            "2026-09-15T11:52:40.758Z",
+            "2026-09-15T11:53:00.298Z",
+            "2026-09-15T11:53:00.758Z",
+            "2026-09-15T11:53:21.298Z",
+            "2026-09-15T11:53:41.298Z",
+            "2026-09-15T11:53:57.298Z",
+            "2026-09-15T11:54:19.867Z",
+            "2026-09-15T11:54:20.867Z",
+            "2026-09-15T11:54:25.867Z",
+            "2026-09-15T11:54:28.867Z",
+            "2026-09-15T11:54:32.867Z",
+            "2026-09-15T11:54:34.867Z",
+            "2026-09-15T11:54:39.867Z",
+            "2026-09-15T11:54:41.867Z",
+            "2026-09-15T11:55:13.515Z",
+            "2026-09-15T11:55:20.515Z",
+            "2026-09-15T11:55:21.515Z",
+            "2026-09-15T11:55:22.515Z",
+            "2026-09-15T11:55:24.515Z",
+            "2026-09-15T11:55:27.515Z",
+            "2026-09-15T11:55:28.515Z",
+            "2026-09-15T11:55:31.515Z",
+            "2026-09-15T11:55:32.515Z",
+            "2026-09-15T11:55:35.515Z",
+            "2026-09-15T11:55:36.515Z",
+            "2026-09-15T11:55:38.515Z",
+            "2026-09-15T11:55:39.515Z",
+            "2026-09-15T11:55:41.515Z",
+            "2026-09-15T11:55:53.515Z",
+            "2026-09-15T11:55:54.515Z",
+            "2026-09-15T11:56:13.767Z",
+            "2026-09-15T11:56:34.767Z",
+            "2026-09-15T11:56:45.767Z",
+            "2026-09-15T11:57:05.487Z",
+            "2026-09-15T11:57:05.767Z",
+            "2026-09-15T11:57:25.487Z",
+            "2026-09-15T11:57:28.487Z"
+          ]
+        },
+        "effectivePollIntervalMs": 60000,
+        "providerZeroResultCount": 0,
+        "validMovementDurationMs": 395846,
+        "recoveredLateBucketCount": 0,
+        "requestRatePerWallMinute": 0.7950639778044639,
+        "successRatePerWallMinute": 0.7950639778044639,
+        "recoverySweepRequestCount": 0,
+        "nativeP90TemporalCadenceMs": 20392,
+        "requestRatePerMovingMinute": 1.212592775978537,
+        "maxIntraResponseTemporalGapMs": 21000,
+        "nativeMedianTemporalCadenceMs": 3000,
+        "transitionProviderBucketCount": 8,
+        "uniqueTemporalBucketStartCount": 53,
+        "nativeUniqueTemporalBucketStartCount": 53
+      }
+    ]
+  },
+  "phase90": {
+    "phaseId": "5fd75bc2-4756-43f2-9a57-4075bb5a7a8d",
+    "sequence": 1,
+    "startedAt": "2026-09-15T11:39:01.000Z",
+    "endedAt": "2026-09-15T11:49:12.428Z",
+    "wallDurationMs": 611428,
+    "validMovementDurationMs": 394944,
+    "uncertainMovementDurationMs": null,
+    "motionCoveragePercent": 65,
+    "scientificStatus": "VALID",
+    "providerRequestCount": 7,
+    "providerSuccessCount": 7,
+    "providerZeroResultCount": 0,
+    "providerErrorCount": 0,
+    "providerBucketCount": 33,
+    "newBucketCount": 165,
+    "duplicateBucketCount": 0,
+    "revisionBucketCount": 0,
+    "recoveredLateBucketCount": 0,
+    "nativeUniqueTemporalBucketCount": 33,
+    "nativeMaxTemporalGapMs": 43000,
+    "nativeMedianTemporalCadenceMs": 8756,
+    "nativeP90TemporalCadenceMs": 24501,
+    "maxIntraResponseTemporalGapMs": 43000,
+    "requestRatePerWallMinute": 0.6869165298285325,
+    "requestRatePerMovingMinute": 1.063441905687895,
+    "successRatePerWallMinute": 0.6869165298285325,
+    "slotCount": 7,
+    "slotSuccessCount": 0,
+    "slotZeroResultCount": 0,
+    "slotProviderErrorCount": 0,
+    "slotMissedCount": 0,
+    "slots": [
+      {
+        "slotIndex": 0,
+        "scheduledAt": "2026-09-15T11:39:01.000Z",
+        "actualRequestAt": "2026-09-15T11:41:18.450Z",
+        "requestCompletedAt": null,
+        "latenessMs": 137450,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 1,
+        "scheduledAt": "2026-09-15T11:40:31.000Z",
+        "actualRequestAt": "2026-09-15T11:41:24.625Z",
+        "requestCompletedAt": null,
+        "latenessMs": 53625,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 2,
+        "scheduledAt": "2026-09-15T11:42:01.000Z",
+        "actualRequestAt": "2026-09-15T11:42:05.984Z",
+        "requestCompletedAt": null,
+        "latenessMs": 4984,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 3,
+        "scheduledAt": "2026-09-15T11:43:31.000Z",
+        "actualRequestAt": "2026-09-15T11:43:36.476Z",
+        "requestCompletedAt": null,
+        "latenessMs": 5476,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 4,
+        "scheduledAt": "2026-09-15T11:45:01.000Z",
+        "actualRequestAt": "2026-09-15T11:45:03.690Z",
+        "requestCompletedAt": null,
+        "latenessMs": 2690,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 5,
+        "scheduledAt": "2026-09-15T11:46:31.000Z",
+        "actualRequestAt": "2026-09-15T11:46:32.443Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1443,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 6,
+        "scheduledAt": "2026-09-15T11:48:01.000Z",
+        "actualRequestAt": "2026-09-15T11:48:07.050Z",
+        "requestCompletedAt": null,
+        "latenessMs": 6050,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      }
+    ]
+  },
+  "phase60": {
+    "phaseId": "5a6cb687-46bd-4f1c-96d2-d40df84c024b",
+    "sequence": 2,
+    "startedAt": "2026-09-15T11:49:12.428Z",
+    "endedAt": "2026-09-15T11:59:16.153Z",
+    "wallDurationMs": 603725,
+    "validMovementDurationMs": 395846,
+    "uncertainMovementDurationMs": null,
+    "motionCoveragePercent": 66,
+    "scientificStatus": "VALID",
+    "providerRequestCount": 8,
+    "providerSuccessCount": 8,
+    "providerZeroResultCount": 0,
+    "providerErrorCount": 0,
+    "providerBucketCount": 53,
+    "newBucketCount": 264,
+    "duplicateBucketCount": 0,
+    "revisionBucketCount": 0,
+    "recoveredLateBucketCount": 0,
+    "nativeUniqueTemporalBucketCount": 53,
+    "nativeMaxTemporalGapMs": 31648,
+    "nativeMedianTemporalCadenceMs": 3000,
+    "nativeP90TemporalCadenceMs": 20392,
+    "maxIntraResponseTemporalGapMs": 21000,
+    "requestRatePerWallMinute": 0.7950639778044639,
+    "requestRatePerMovingMinute": 1.212592775978537,
+    "successRatePerWallMinute": 0.7950639778044639,
+    "slotCount": 10,
+    "slotSuccessCount": 0,
+    "slotZeroResultCount": 0,
+    "slotProviderErrorCount": 0,
+    "slotMissedCount": 0,
+    "slots": [
+      {
+        "slotIndex": 0,
+        "scheduledAt": "2026-09-15T11:49:12.428Z",
+        "actualRequestAt": "2026-09-15T11:49:18.630Z",
+        "requestCompletedAt": null,
+        "latenessMs": 6202,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 1,
+        "scheduledAt": "2026-09-15T11:50:12.428Z",
+        "actualRequestAt": "2026-09-15T11:50:16.908Z",
+        "requestCompletedAt": null,
+        "latenessMs": 4480,
+        "providerStatus": "FAILURE",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 2,
+        "scheduledAt": "2026-09-15T11:51:12.428Z",
+        "actualRequestAt": "2026-09-15T11:51:16.346Z",
+        "requestCompletedAt": null,
+        "latenessMs": 3918,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 3,
+        "scheduledAt": "2026-09-15T11:52:12.428Z",
+        "actualRequestAt": "2026-09-15T11:52:15.738Z",
+        "requestCompletedAt": null,
+        "latenessMs": 3310,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 4,
+        "scheduledAt": "2026-09-15T11:53:12.428Z",
+        "actualRequestAt": "2026-09-15T11:53:14.282Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1854,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 5,
+        "scheduledAt": "2026-09-15T11:54:12.428Z",
+        "actualRequestAt": "2026-09-15T11:54:13.843Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1415,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 6,
+        "scheduledAt": "2026-09-15T11:55:12.428Z",
+        "actualRequestAt": "2026-09-15T11:55:13.496Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1068,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 7,
+        "scheduledAt": "2026-09-15T11:56:12.428Z",
+        "actualRequestAt": "2026-09-15T11:56:17.747Z",
+        "requestCompletedAt": null,
+        "latenessMs": 5319,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 8,
+        "scheduledAt": "2026-09-15T11:57:12.428Z",
+        "actualRequestAt": "2026-09-15T11:57:16.468Z",
+        "requestCompletedAt": null,
+        "latenessMs": 4040,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 9,
+        "scheduledAt": "2026-09-15T11:58:12.428Z",
+        "actualRequestAt": "2026-09-15T11:58:14.871Z",
+        "requestCompletedAt": null,
+        "latenessMs": 2443,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      }
+    ]
+  },
+  "slotLedgers": {
+    "phase90": [
+      {
+        "slotIndex": 0,
+        "scheduledAt": "2026-09-15T11:39:01.000Z",
+        "actualRequestAt": "2026-09-15T11:41:18.450Z",
+        "requestCompletedAt": null,
+        "latenessMs": 137450,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 1,
+        "scheduledAt": "2026-09-15T11:40:31.000Z",
+        "actualRequestAt": "2026-09-15T11:41:24.625Z",
+        "requestCompletedAt": null,
+        "latenessMs": 53625,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 2,
+        "scheduledAt": "2026-09-15T11:42:01.000Z",
+        "actualRequestAt": "2026-09-15T11:42:05.984Z",
+        "requestCompletedAt": null,
+        "latenessMs": 4984,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 3,
+        "scheduledAt": "2026-09-15T11:43:31.000Z",
+        "actualRequestAt": "2026-09-15T11:43:36.476Z",
+        "requestCompletedAt": null,
+        "latenessMs": 5476,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 4,
+        "scheduledAt": "2026-09-15T11:45:01.000Z",
+        "actualRequestAt": "2026-09-15T11:45:03.690Z",
+        "requestCompletedAt": null,
+        "latenessMs": 2690,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 5,
+        "scheduledAt": "2026-09-15T11:46:31.000Z",
+        "actualRequestAt": "2026-09-15T11:46:32.443Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1443,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 6,
+        "scheduledAt": "2026-09-15T11:48:01.000Z",
+        "actualRequestAt": "2026-09-15T11:48:07.050Z",
+        "requestCompletedAt": null,
+        "latenessMs": 6050,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      }
+    ],
+    "phase60": [
+      {
+        "slotIndex": 0,
+        "scheduledAt": "2026-09-15T11:49:12.428Z",
+        "actualRequestAt": "2026-09-15T11:49:18.630Z",
+        "requestCompletedAt": null,
+        "latenessMs": 6202,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 1,
+        "scheduledAt": "2026-09-15T11:50:12.428Z",
+        "actualRequestAt": "2026-09-15T11:50:16.908Z",
+        "requestCompletedAt": null,
+        "latenessMs": 4480,
+        "providerStatus": "FAILURE",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 2,
+        "scheduledAt": "2026-09-15T11:51:12.428Z",
+        "actualRequestAt": "2026-09-15T11:51:16.346Z",
+        "requestCompletedAt": null,
+        "latenessMs": 3918,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 3,
+        "scheduledAt": "2026-09-15T11:52:12.428Z",
+        "actualRequestAt": "2026-09-15T11:52:15.738Z",
+        "requestCompletedAt": null,
+        "latenessMs": 3310,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 4,
+        "scheduledAt": "2026-09-15T11:53:12.428Z",
+        "actualRequestAt": "2026-09-15T11:53:14.282Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1854,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 5,
+        "scheduledAt": "2026-09-15T11:54:12.428Z",
+        "actualRequestAt": "2026-09-15T11:54:13.843Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1415,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 6,
+        "scheduledAt": "2026-09-15T11:55:12.428Z",
+        "actualRequestAt": "2026-09-15T11:55:13.496Z",
+        "requestCompletedAt": null,
+        "latenessMs": 1068,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 7,
+        "scheduledAt": "2026-09-15T11:56:12.428Z",
+        "actualRequestAt": "2026-09-15T11:56:17.747Z",
+        "requestCompletedAt": null,
+        "latenessMs": 5319,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 8,
+        "scheduledAt": "2026-09-15T11:57:12.428Z",
+        "actualRequestAt": "2026-09-15T11:57:16.468Z",
+        "requestCompletedAt": null,
+        "latenessMs": 4040,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      },
+      {
+        "slotIndex": 9,
+        "scheduledAt": "2026-09-15T11:58:12.428Z",
+        "actualRequestAt": "2026-09-15T11:58:14.871Z",
+        "requestCompletedAt": null,
+        "latenessMs": 2443,
+        "providerStatus": "SUCCESS",
+        "bucketCount": null,
+        "newBucketCount": null,
+        "duplicateBucketCount": null,
+        "revisionBucketCount": null,
+        "nativeTemporalBucketStarts": null,
+        "settlementEvidenceLinkage": null,
+        "skipReason": null
+      }
+    ]
+  },
+  "settlement90": {
+    "phaseLabel": "PHASE_90",
+    "expected": 19,
+    "present": 19,
+    "successCount": 18,
+    "zeroCount": 1,
+    "errorCount": 0,
+    "missingCount": 0,
+    "windows": [
+      {
+        "probeId": "SP-90-T0",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T1",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T10",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 59,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T11",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T12",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T13",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T14",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 48,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 48,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T15",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 18,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 32,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T16",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 5,
+        "zero": 1,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "PARTIAL_ZERO",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T17",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 54,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 54,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 54,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T18",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 28,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 28,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T2",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T3",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T4",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T5",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T6",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T7",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T8",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-90-T9",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      }
+    ]
+  },
+  "settlement60": {
+    "phaseLabel": "PHASE_60",
+    "expected": 19,
+    "present": 19,
+    "successCount": 16,
+    "zeroCount": 3,
+    "errorCount": 0,
+    "missingCount": 0,
+    "windows": [
+      {
+        "probeId": "SP-60-T0",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 5,
+        "zero": 1,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "PARTIAL_ZERO",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T1",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T10",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T11",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T12",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T13",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T14",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T15",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 43,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 43,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 43,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 43,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 43,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 43,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T16",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 13,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 13,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 13,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 13,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 13,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 13,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T17",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 0,
+        "zero": 6,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "ZERO_RESULT",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T18",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 0,
+        "zero": 6,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "ZERO_RESULT",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "ZERO_RESULT",
+            "rawRowCount": 0,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T2",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T3",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T4",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T5",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T6",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T7",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T8",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      },
+      {
+        "probeId": "SP-60-T9",
+        "observationCount": 6,
+        "expectedAges": 6,
+        "success": 6,
+        "zero": 0,
+        "error": 0,
+        "missing": 0,
+        "windowStatus": "SUCCESS",
+        "statuses": [
+          {
+            "scheduledAgeMs": 30000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 60000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 120000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 180000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 300000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          },
+          {
+            "scheduledAgeMs": 600000,
+            "providerRequestStatus": "SUCCESS",
+            "rawRowCount": 60,
+            "providerError": null
+          }
+        ]
+      }
+    ]
+  },
+  "scheduleRowCounts": {
+    "totalSchedules": 252,
+    "phase90Schedules": 114,
+    "phase60Schedules": 114
+  },
+  "observationRowCounts": {
+    "total": 240,
+    "phase90": 114,
+    "phase60": 114,
+    "pdi": 12
+  },
+  "physicalDriveInterval": {
+    "pdiObservationCount": 12,
+    "pdiProbes": [
+      "PDI-120",
+      "PDI-180",
+      "PDI-30",
+      "PDI-300",
+      "PDI-60",
+      "PDI-600",
+      "WT-120",
+      "WT-180",
+      "WT-30",
+      "WT-300",
+      "WT-60",
+      "WT-600"
+    ],
+    "endCandidateFromAcq": null
+  }
+}

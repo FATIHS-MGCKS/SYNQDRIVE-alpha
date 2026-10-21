@@ -16,11 +16,13 @@ import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/
 import { HvRechargeSessionReconcileTrigger } from '../hv-charge-session/hv-recharge-session-reconcile.trigger';
 import { buildHvRechargeVehicleReconcileIdempotencyKey } from '../hv-charge-session/hv-recharge-session-reconcile.policy';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import {
   buildAssessmentJobIdempotencyKey,
   buildBatteryRestTargetJobIdempotencyKey,
   buildCapabilityRefreshJobIdempotencyKey,
   buildHvCapacityJobIdempotencyKey,
+  buildLvRestSessionOpenJobIdempotencyKey,
   buildPublicationJobIdempotencyKey,
   buildStartProxyJobIdempotencyKey,
 } from './battery-v2-job-idempotency.policy';
@@ -92,7 +94,7 @@ function createCapturingProducer() {
       return Promise.resolve({ id: opts.jobId });
     }),
   };
-  const producer = new BatteryV2JobProducerService(queue as never, mockDeadLetters() as never);
+  const producer = createBatteryV2JobProducer(queue as never, mockDeadLetters() as never);
   return { producer, queue, captured };
 }
 
@@ -120,6 +122,13 @@ function directEnqueueInput(jobType: BatteryV2JobType, idempotencyKey: string) {
   };
 
   switch (jobType) {
+    case 'BATTERY_LV_REST_SESSION_OPEN':
+      return {
+        ...base,
+        tripId: TRIP,
+        tripEndedAt: FIXED_AT,
+        sourceEntityId: TRIP,
+      };
     case 'BATTERY_REST_TARGET_EVALUATE':
       return {
         ...base,
@@ -133,6 +142,19 @@ function directEnqueueInput(jobType: BatteryV2JobType, idempotencyKey: string) {
         tripId: TRIP,
         tripStartedAt: FIXED_AT,
         sourceEntityId: TRIP,
+      };
+    case 'BATTERY_ASSESSMENT_RECOMPUTE':
+      return {
+        ...base,
+        assessmentType: 'LV_HEALTH' as const,
+        inputVersion: 'meas-audit-1',
+        sourceEntityId: 'meas-audit-1',
+      };
+    case 'BATTERY_PUBLICATION_UPDATE':
+      return {
+        ...base,
+        assessmentId: ASSESSMENT,
+        publicationVersion: 1,
       };
     case 'HV_CAPABILITY_REFRESH':
       return {
@@ -161,6 +183,10 @@ function directEnqueueInput(jobType: BatteryV2JobType, idempotencyKey: string) {
 
 const JOB_TYPE_IDEMPOTENCY_KEYS: Record<BatteryV2JobType, string> = {
   BATTERY_OBSERVATION_CLASSIFY: 'hv-snap:2026-07-16T12:00:00.000Z:72',
+  BATTERY_LV_REST_SESSION_OPEN: buildLvRestSessionOpenJobIdempotencyKey({
+    vehicleId: VEH,
+    anchorAt: new Date(FIXED_AT),
+  }),
   BATTERY_REST_TARGET_EVALUATE: buildBatteryRestTargetJobIdempotencyKey({
     vehicleId: VEH,
     restWindowId: REST_WINDOW_ID,
@@ -251,7 +277,10 @@ describe('battery-v2 enqueue path audit', () => {
   describe('wrapper producers', () => {
     it('rest-target.scheduleTarget (delayed repeat-safe dedup)', async () => {
       const { producer, captured } = createCapturingProducer();
-      const restProducer = new BatteryV2RestTargetProducer(producer);
+      const restProducer = new BatteryV2RestTargetProducer(
+        producer,
+        { clearDeadLetter: jest.fn().mockResolvedValue(true) } as any,
+      );
       const idempotencyKey = buildBatteryRestTargetJobIdempotencyKey({
         vehicleId: VEH,
         restWindowId: REST_WINDOW_ID,
@@ -363,11 +392,15 @@ describe('battery-v2 enqueue path audit', () => {
     it('reconciliation scheduler delegates to service only', async () => {
       const reconciliation = { reconcileAll: jest.fn().mockResolvedValue({}) };
       const observability = { setDeadLetterBacklog: jest.fn() };
-      const deadLetters = { countBacklog: jest.fn().mockResolvedValue(0) };
+      const deadLetters = {
+        countBacklog: jest.fn().mockResolvedValue(0),
+        clearReplayableDeadLetters: jest.fn().mockResolvedValue(0),
+      };
       const scheduler = new BatteryV2ReconciliationScheduler(
         reconciliation as never,
         observability as never,
         deadLetters as never,
+        { shouldRun: jest.fn().mockReturnValue(true) } as never,
       );
 
       const config = await import('@config/battery-health-v2.config');
@@ -394,7 +427,7 @@ describe('battery-v2 enqueue path audit', () => {
         }),
         add: jest.fn().mockResolvedValue({ id: expectedJobId }),
       };
-      const producer = new BatteryV2JobProducerService(queue as never, mockDeadLetters() as never);
+      const producer = createBatteryV2JobProducer(queue as never, mockDeadLetters() as never);
       const input = directEnqueueInput('BATTERY_REST_TARGET_EVALUATE', idempotencyKey);
 
       const first = await producer.enqueue('BATTERY_REST_TARGET_EVALUATE', input as never);

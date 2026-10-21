@@ -15,6 +15,7 @@ function makeService(prisma: ReturnType<typeof makePrisma>) {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
   );
 }
 

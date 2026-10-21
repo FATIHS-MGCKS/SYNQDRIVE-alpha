@@ -1,0 +1,407 @@
+[
+  {
+    "clipId": "RD003_GT_CLIP_001",
+    "fileName": "IMG_2803.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 26,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 25,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:03:49.400Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:04:08.400Z",
+      "candidateStartResidualSeconds": 19,
+      "matchedGtCount": 8,
+      "coverageRatio": 0.32,
+      "MAE": 31.243708929194284,
+      "RMSE": 35.714344175610094,
+      "maxAbsError": 55,
+      "bestBasinStart": -30,
+      "bestBasinEnd": -30,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "INSUFFICIENT_GROUND_TRUTH",
+      "alignedClipStartUtc": null,
+      "candidateStartResidualSeconds": null,
+      "matchedGtCount": null,
+      "coverageRatio": null,
+      "MAE": null,
+      "RMSE": null,
+      "maxAbsError": null,
+      "bestBasinStart": null,
+      "bestBasinEnd": null,
+      "offsetUncertainty": null
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_002",
+    "fileName": "IMG_2804.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 9,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 8,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:06:00.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:06:23.100Z"
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:06:20.000Z",
+      "candidateStartResidualSeconds": 8.45,
+      "matchedGtCount": 5,
+      "coverageRatio": 0.625,
+      "MAE": 36.6725,
+      "RMSE": 39.22603645093396,
+      "maxAbsError": 55.164,
+      "bestBasinStart": 1.9499999999999993,
+      "bestBasinEnd": 1.9499999999999993,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:06:22.000Z",
+      "candidateStartResidualSeconds": 10.45,
+      "matchedGtCount": 4,
+      "coverageRatio": 0.5,
+      "MAE": 36.125,
+      "RMSE": 36.36017739230655,
+      "maxAbsError": 42.5,
+      "bestBasinStart": 10.45,
+      "bestBasinEnd": 10.45,
+      "offsetUncertainty": 0
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_003",
+    "fileName": "IMG_2805.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 21,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 20,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:08:37.300Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:08:07.800Z",
+      "candidateStartResidualSeconds": -29.5,
+      "matchedGtCount": 5,
+      "coverageRatio": 0.25,
+      "MAE": 32.532799999999995,
+      "RMSE": 33.27996865383139,
+      "maxAbsError": 39.69,
+      "bestBasinStart": -21,
+      "bestBasinEnd": -21,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:08:14.300Z",
+      "candidateStartResidualSeconds": -23,
+      "matchedGtCount": 2,
+      "coverageRatio": 0.1,
+      "MAE": 9.500000000000002,
+      "RMSE": 11.980818002123229,
+      "maxAbsError": 16.8,
+      "bestBasinStart": -16.5,
+      "bestBasinEnd": -16.5,
+      "offsetUncertainty": 0
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_004",
+    "fileName": "IMG_2806.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 18,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 17,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:09:50.200Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:10:10.700Z",
+      "candidateStartResidualSeconds": 20.5,
+      "matchedGtCount": 11,
+      "coverageRatio": 0.6470588235294118,
+      "MAE": 68.5227170158208,
+      "RMSE": 69.36395059721012,
+      "maxAbsError": 85.9,
+      "bestBasinStart": -2.5,
+      "bestBasinEnd": -2.5,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "INSUFFICIENT_GROUND_TRUTH",
+      "alignedClipStartUtc": null,
+      "candidateStartResidualSeconds": null,
+      "matchedGtCount": null,
+      "coverageRatio": null,
+      "MAE": null,
+      "RMSE": null,
+      "maxAbsError": null,
+      "bestBasinStart": null,
+      "bestBasinEnd": null,
+      "offsetUncertainty": null
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_005",
+    "fileName": "IMG_2807.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 18,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 16,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:12:10.300Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:11:42.300Z",
+      "candidateStartResidualSeconds": -28,
+      "matchedGtCount": 13,
+      "coverageRatio": 0.8125,
+      "MAE": 32.34697426796806,
+      "RMSE": 35.503349153031344,
+      "maxAbsError": 48,
+      "bestBasinStart": -12.5,
+      "bestBasinEnd": -12.5,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "INSUFFICIENT_GROUND_TRUTH",
+      "alignedClipStartUtc": null,
+      "candidateStartResidualSeconds": null,
+      "matchedGtCount": null,
+      "coverageRatio": null,
+      "MAE": null,
+      "RMSE": null,
+      "maxAbsError": null,
+      "bestBasinStart": null,
+      "bestBasinEnd": null,
+      "offsetUncertainty": null
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_006",
+    "fileName": "IMG_2808.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 44,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 43,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:21:00.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:21:14.000Z"
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:21:05.500Z",
+      "candidateStartResidualSeconds": -1.5,
+      "matchedGtCount": 24,
+      "coverageRatio": 0.5581395348837209,
+      "MAE": 28.485166015372045,
+      "RMSE": 32.692874436162604,
+      "maxAbsError": 57.393659942363115,
+      "bestBasinStart": -7,
+      "bestBasinEnd": -7,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:21:07.000Z",
+      "candidateStartResidualSeconds": 0,
+      "matchedGtCount": 8,
+      "coverageRatio": 0.18604651162790697,
+      "MAE": 33.25,
+      "RMSE": 36.53765181289022,
+      "maxAbsError": 60,
+      "bestBasinStart": -6,
+      "bestBasinEnd": -6,
+      "offsetUncertainty": 0
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_007",
+    "fileName": "IMG_2809.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 20,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 18,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": "2026-09-02T19:22:30.450Z",
+      "CANDIDATE_START_PRIOR_UTC_FROM": null,
+      "CANDIDATE_START_PRIOR_UTC_TO": null
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:22:53.450Z",
+      "candidateStartResidualSeconds": 23,
+      "matchedGtCount": 17,
+      "coverageRatio": 0.9444444444444444,
+      "MAE": 25.175163183383965,
+      "RMSE": 34.39698112875386,
+      "maxAbsError": 61,
+      "bestBasinStart": -22.5,
+      "bestBasinEnd": -22.5,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:22:00.950Z",
+      "candidateStartResidualSeconds": -29.5,
+      "matchedGtCount": 2,
+      "coverageRatio": 0.1111111111111111,
+      "MAE": 29.25,
+      "RMSE": 29.40344367586899,
+      "maxAbsError": 32.25,
+      "bestBasinStart": -29.5,
+      "bestBasinEnd": -29.5,
+      "offsetUncertainty": 0
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_008",
+    "fileName": "IMG_2810.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 13,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 10,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:23:00.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:23:38.600Z"
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:23:08.500Z",
+      "candidateStartResidualSeconds": -10.8,
+      "matchedGtCount": 10,
+      "coverageRatio": 1,
+      "MAE": 15.381499999999999,
+      "RMSE": 19.137209436069828,
+      "maxAbsError": 34.67,
+      "bestBasinStart": -10.8,
+      "bestBasinEnd": -10.8,
+      "offsetUncertainty": 0
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:23:13.000Z",
+      "candidateStartResidualSeconds": -6.300000000000001,
+      "matchedGtCount": 2,
+      "coverageRatio": 0.2,
+      "MAE": 40,
+      "RMSE": 50,
+      "maxAbsError": 70,
+      "bestBasinStart": -7.300000000000001,
+      "bestBasinEnd": -6.800000000000001,
+      "offsetUncertainty": 0.5
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  },
+  {
+    "clipId": "RD003_GT_CLIP_009",
+    "fileName": "IMG_2811.mp4",
+    "RAW_EXTERNAL_GT_COUNT": 29,
+    "ALIGNMENT_ELIGIBLE_GT_COUNT": 25,
+    "candidateTimePrior": {
+      "CANDIDATE_START_PRIOR_UTC": null,
+      "CANDIDATE_START_PRIOR_UTC_FROM": "2026-09-02T19:24:29.000Z",
+      "CANDIDATE_START_PRIOR_UTC_TO": "2026-09-02T19:24:32.000Z"
+    },
+    "HF_HISTORICAL": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:24:32.000Z",
+      "candidateStartResidualSeconds": 1.5,
+      "matchedGtCount": 17,
+      "coverageRatio": 0.68,
+      "MAE": 35.115133636629686,
+      "RMSE": 43.84710088882169,
+      "maxAbsError": 71.24,
+      "bestBasinStart": 0,
+      "bestBasinEnd": 1,
+      "offsetUncertainty": 1
+    },
+    "LATEST_LIVE": {
+      "status": "NOT_IDENTIFIABLE",
+      "alignedClipStartUtc": "2026-09-02T19:24:31.000Z",
+      "candidateStartResidualSeconds": 0.5,
+      "matchedGtCount": 4,
+      "coverageRatio": 0.16,
+      "MAE": 25,
+      "RMSE": 34.55430508634199,
+      "maxAbsError": 66,
+      "bestBasinStart": 0.5,
+      "bestBasinEnd": 0.5,
+      "offsetUncertainty": 0
+    },
+    "LATEST_SLOW": {
+      "status": "NOT_OBSERVED"
+    },
+    "preferredSpeedAlignmentSurface": null,
+    "overallAlignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+    "clockBoundaryResidual": null,
+    "clockBoundaryResidualStatus": "NO_OBSERVED_MINUTE_TRANSITION",
+    "clockModelBoundaryEligible": "NO"
+  }
+]

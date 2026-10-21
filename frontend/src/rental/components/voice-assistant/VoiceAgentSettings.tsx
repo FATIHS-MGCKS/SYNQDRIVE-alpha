@@ -3,7 +3,7 @@ import { ErrorState } from '../../../components/patterns/states';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { api, getErrorMessage } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { VoiceAssistantBuilder } from './VoiceAssistantBuilder';
 import { VoiceTelephonyWizard } from './VoiceTelephonyWizard';
 import { useVoiceAgentSettings } from './useVoiceAgentSettings';

@@ -23,7 +23,7 @@ import {
   violatesFourEyes,
 } from '../../../lib/legal-document-lifecycle.utils';
 import { formatLegalDocumentStatusI18n } from '../../../lib/legal-documents-i18n';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { LegalDocumentLifecycleImpactPanel } from './LegalDocumentLifecycleImpactPanel';
 import {
   FormErrorSummary,

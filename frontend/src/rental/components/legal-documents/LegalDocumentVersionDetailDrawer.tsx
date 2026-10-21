@@ -10,7 +10,7 @@ import {
   type LegalDocumentEventDto,
   type LegalDocumentUsageResponseDto,
 } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   formatLegalDocumentBytes,
   formatLegalDocumentDate,

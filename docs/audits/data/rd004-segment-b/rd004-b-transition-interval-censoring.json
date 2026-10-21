@@ -1,0 +1,46 @@
+{
+  "B_T01_FIRST_STOP": {
+    "videoTransition": {
+      "tSeconds": 621.8,
+      "utc": "2026-09-04T03:57:24.016Z",
+      "confidence": "FRAME_VERIFIED"
+    },
+    "providerResolution": {
+      "status": "SPARSE_STATE_SAMPLE",
+      "sparseObservationDisplacementSeconds": 21.669000000000096,
+      "clockAuthority": "NO",
+      "pairSemantics": {
+        "PAIR_LOCAL_DT_QUALIFIED": "YES",
+        "PAIR_PHYSICAL_CONTINUITY_VALIDATED": "NO",
+        "PAIR_VIDEO_CONSISTENCY": "CONTRADICTED_OR_UNRESOLVED",
+        "PAIR_43_TO_0_LOCAL_DT_SECONDS": 1,
+        "PAIR_43_TO_0_UPSTREAM_GAP_SECONDS": 28.745,
+        "derivedAccelerationMs2": -11.944444444444445,
+        "provider43Timestamp": "2026-09-04T03:57:44.685Z",
+        "provider0Timestamp": "2026-09-04T03:57:45.685Z",
+        "contextContinuity": "ISOLATED_BURST",
+        "physicalDerivativeConfidence": "LOW",
+        "videoConsistencyNote": "Video shows calm decel to 0 at t≈621.8; HF 43→0 in 1 s after ~28.7 s gap is not validated physical stop transition"
+      }
+    }
+  },
+  "B_T02_FIRST_LAUNCH": {
+    "videoTransition": {
+      "tMin": 673,
+      "tMax": 673.5,
+      "confidence": "BOUNDED_WINDOW"
+    },
+    "providerResolution": {
+      "status": "INTERVAL_CENSORED_BY_SPARSE_SAMPLING",
+      "observationWindowStart": "2026-09-04T03:57:45.685Z",
+      "observationWindowEnd": "2026-09-04T03:58:20.787Z",
+      "observationWindowSeconds": 35.102,
+      "clockFitEligible": "NO",
+      "rejectionReason": "PROVIDER_TRANSITION_INTERVAL_TOO_WIDE",
+      "offsetCompatibilityInterval": {
+        "minSeconds": -30.031,
+        "maxSeconds": 5.571
+      }
+    }
+  }
+}

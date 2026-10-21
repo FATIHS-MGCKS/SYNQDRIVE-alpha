@@ -1,6 +1,6 @@
 import { Inbox } from 'lucide-react';
 import { PageHeader } from '../../../components/patterns/page-header';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export function CommunicationCenterHeader() {
   const { t } = useLanguage();

@@ -1,7 +1,7 @@
 import { AlertTriangle, ChevronLeft, Eye, Inbox } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { useDocumentReviewInbox } from '../../hooks/useDocumentReviewInbox';
 import {
   archiveItemToSummary,

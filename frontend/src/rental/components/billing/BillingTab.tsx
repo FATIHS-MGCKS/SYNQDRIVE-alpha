@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '../../../components/patterns/page-header';
 import { Button } from '../../../components/ui/button';
 import { EmptyState, SkeletonCard } from '../../../components/patterns/states';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { getBillingStripeUiState } from './billing-stripe-ui';
 import { useBillingStripeActions } from './useBillingStripeActions';

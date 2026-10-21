@@ -8,25 +8,42 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-SPECIAL_MIGRATION="20260413230000_add_composite_indexes_batch_c"
-M252_MIGRATION="20260721270000_iam_role_assignment_drift_reconciliation"
-TAIL_MIGRATION="20260816110731_ci_r3b_production_history_tail_reconciliation"
-M252_TABLE="organization_role_assignment_drift_reconciliation_applications"
-
 # Ephemeral/bootstrap recovery is opt-in and must never run on Production deploy paths.
 export PRISMA_MIGRATE_EPHEMERAL_RECOVERY="${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-0}"
-
-LOG="$(mktemp /tmp/prisma-migrate-deploy-resilient.XXXXXX.log)"
-trap 'rm -f "$LOG"' EXIT
 
 ephemeral_recovery_allowed() {
   [[ "${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-}" == "1" ]]
 }
 
+# shellcheck source=../ops/lib/production-database-identity-guard.lib.sh
+source "${ROOT}/scripts/ops/lib/production-database-identity-guard.lib.sh"
+if ephemeral_recovery_allowed; then
+  export SYNQDRIVE_DATABASE_IDENTITY_PROFILE="${SYNQDRIVE_DATABASE_IDENTITY_PROFILE:-ephemeral}"
+  pdb_guard_assert_ephemeral_database_url "${DATABASE_URL:-}"
+else
+  export SYNQDRIVE_DATABASE_IDENTITY_PROFILE="${SYNQDRIVE_DATABASE_IDENTITY_PROFILE:-production_vps}"
+fi
+
+PRISMA_BIN=(node "${ROOT}/scripts/ops/lib/prisma-cli-guard.mjs")
+
+SPECIAL_MIGRATION="20260413230000_add_composite_indexes_batch_c"
+M252_MIGRATION="20260721270000_iam_role_assignment_drift_reconciliation"
+TAIL_MIGRATION="20260816110731_ci_r3b_production_history_tail_reconciliation"
+M252_TABLE="organization_role_assignment_drift_reconciliation_applications"
+
+LOG="$(mktemp /tmp/prisma-migrate-deploy-resilient.XXXXXX.log)"
+trap 'rm -f "$LOG"' EXIT
+
+prisma_schema_args() {
+  if [[ -n "${PRISMA_SCHEMA_PATH:-}" ]]; then
+    printf '%s' "--schema=${PRISMA_SCHEMA_PATH}"
+  fi
+}
+
 recover_special_composite_index() {
   echo "==> Special migration $SPECIAL_MIGRATION: applying via apply-composite-indexes.ts"
   npx ts-node scripts/apply-composite-indexes.ts
-  npx prisma migrate resolve --applied "$SPECIAL_MIGRATION"
+  "${PRISMA_BIN[@]}" migrate resolve $(prisma_schema_args) --applied "$SPECIAL_MIGRATION"
 }
 
 verify_m252_exact_parity() {
@@ -41,7 +58,7 @@ recover_m252_identifier_collision() {
   echo "==> Historical migration $M252_MIGRATION: applying ephemeral corrected semantic DDL"
   npx ts-node scripts/apply-m252-ephemeral-recovery.ts
   verify_m252_exact_parity
-  npx prisma migrate resolve --applied "$M252_MIGRATION"
+  npx prisma migrate resolve $(prisma_schema_args) --applied "$M252_MIGRATION"
 }
 
 recover_duplicate_tail_m252() {
@@ -51,7 +68,7 @@ recover_duplicate_tail_m252() {
   fi
   echo "==> Tail migration $TAIL_MIGRATION: verifying exact M252 semantic parity before resolve"
   verify_m252_exact_parity
-  npx prisma migrate resolve --applied "$TAIL_MIGRATION"
+  npx prisma migrate resolve $(prisma_schema_args) --applied "$TAIL_MIGRATION"
 }
 
 attempt=0
@@ -59,7 +76,7 @@ max_attempts=6
 while (( attempt < max_attempts )); do
   attempt=$((attempt + 1))
   set +e
-  npx prisma migrate deploy 2>&1 | tee "$LOG"
+  "${PRISMA_BIN[@]}" migrate deploy $(prisma_schema_args) 2>&1 | tee "$LOG"
   deploy_exit=${PIPESTATUS[0]}
   set -e
   if [[ "$deploy_exit" -eq 0 ]]; then

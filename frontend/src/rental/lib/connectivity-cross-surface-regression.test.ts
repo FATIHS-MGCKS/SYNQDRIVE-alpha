@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { FleetConnectivityStatus, FleetTelemetryFreshness, OverallConnectivityState, VehicleConnectivityRuntimeState } from '../../../lib/api';
-import { isVehicleOffline } from '../data/vehicles';
+import { isBookingOperationalGatePass } from './booking-vehicle-eligibility';
+import { shouldEmitCanonicalConnectivityNotification } from './notifications/notification-operational-attention';
 import { deriveFleetVisualState } from './fleetVisualState';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
 import {
@@ -19,7 +20,10 @@ import {
   TELEMETRY_STANDBY_MAX_MS,
   type TelemetryFreshness,
 } from './telemetryFreshness';
+import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
+import { resolveTelemetryFromUi } from './fleet-p1-3-display';
 import type { VehicleData } from '../data/vehicles';
+import type { FleetProjectionVehicle } from './fleet-vehicle-ui-projection';
 
 const NOW = new Date('2026-07-18T12:00:00.000Z').getTime();
 
@@ -53,6 +57,7 @@ function baseVehicle(lastSignal: string): VehicleData {
     lat: 52.5,
     lng: 13.4,
     signalAgeMs: NOW - Date.parse(lastSignal),
+    operationalAvailability: { state: 'AVAILABLE', generatedAt: new Date(NOW).toISOString() },
   };
 }
 
@@ -153,8 +158,14 @@ type SurfaceTelemetry = {
   freshness: TelemetryFreshness | FleetConnectivityStatus;
 };
 
-function resolveAcrossSurfaces(lastSignal: string): SurfaceTelemetry[] {
-  const vehicle = baseVehicle(lastSignal);
+function resolveAcrossSurfaces(
+  lastSignal: string,
+  runtimeOverrides?: Partial<VehicleConnectivityRuntimeState>,
+): SurfaceTelemetry[] {
+  const vehicle = {
+    ...baseVehicle(lastSignal),
+    ...(runtimeOverrides ? { connectivityRuntime: runtimeFixture(runtimeOverrides) } : {}),
+  };
   const canonical = resolveTelemetryFreshness(vehicle, { now: NOW }).freshness;
   const fleetMain = resolveFleetVehicleDisplayState(vehicle, { now: NOW }).telemetryStatus;
   const fleetApi = fleetConnectivityFromCanonical(lastSignal);
@@ -166,8 +177,14 @@ function resolveAcrossSurfaces(lastSignal: string): SurfaceTelemetry[] {
     { surface: 'dashboard', freshness: resolveTelemetryFreshness(vehicle, { now: NOW }).freshness },
     { surface: 'fleet_connectivity_api', freshness: fleetApi.telemetryFreshness },
     {
-      surface: 'notifications_offline_gate',
-      freshness: isVehicleOffline(vehicle) ? 'offline' : canonical,
+      surface: 'notifications_connectivity_gate',
+      freshness: shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime)
+        ? 'alert'
+        : 'none',
+    },
+    {
+      surface: 'booking_operational_gate',
+      freshness: isBookingOperationalGatePass(vehicle) ? 'pass' : 'fail',
     },
   ];
 }
@@ -238,19 +255,20 @@ describe('connectivity cross-surface regressions', () => {
       }
     });
 
-    it('offline ≥48h: all surfaces report offline', () => {
+    it('offline ≥48h: telemetry offline but booking gate follows P0.2 AVAILABLE', () => {
       const surfaces = resolveAcrossSurfaces(hoursAgo(50));
       expect(surfaces.find((s) => s.surface === 'canonical')?.freshness).toBe('offline');
       expect(surfaces.find((s) => s.surface === 'fleet_connectivity_api')?.freshness).toBe('offline');
-      expect(isVehicleOffline(baseVehicle(hoursAgo(50)))).toBe(true);
+      expect(surfaces.find((s) => s.surface === 'notifications_connectivity_gate')?.freshness).toBe('none');
+      expect(surfaces.find((s) => s.surface === 'booking_operational_gate')?.freshness).toBe('pass');
     });
 
-    it('no signal: canonical no_signal; fleet API offline; offline gate warns', () => {
+    it('no signal: canonical no_signal; notifications gate none without canonical attention', () => {
       const vehicle = { ...baseVehicle(''), lastSignal: '', signalAgeMs: Number.MAX_SAFE_INTEGER };
       const fresh = resolveTelemetryFreshness(vehicle, { now: NOW });
       expect(fresh.freshness).toBe('no_signal');
       expect(fleetConnectivityFromCanonical(null).telemetryFreshness).toBe('no_signal');
-      expect(isVehicleOffline(vehicle)).toBe(true);
+      expect(shouldEmitCanonicalConnectivityNotification(vehicle.connectivityRuntime)).toBe(false);
     });
   });
 
@@ -304,6 +322,67 @@ describe('connectivity cross-surface regressions', () => {
         dataCoverageState: 'UNKNOWN',
       });
       expect(runtime.overallState).not.toBe('TELEMETRY_ACTIVE');
+    });
+  });
+
+  describe('P1.4 — vehicle detail uses canonical runtime when present', () => {
+    function vehicleWithRuntime(
+      lastSignal: string,
+      runtimeOverrides: Partial<VehicleConnectivityRuntimeState> = {},
+    ): FleetProjectionVehicle {
+      return {
+        ...baseVehicle(lastSignal),
+        connectivityRuntime: runtimeFixture(runtimeOverrides),
+      };
+    }
+
+    function detailTelemetry(vehicle: FleetProjectionVehicle): TelemetryFreshness {
+      const ui = buildFleetVehicleUiProjection(vehicle, { locale: 'de' });
+      return resolveTelemetryFromUi(ui).telemetryStatus;
+    }
+
+    it('vehicle detail matches fleet main when canonical runtime is present', () => {
+      const vehicle = vehicleWithRuntime(minutesAgo(5), { telemetryState: 'live' });
+      const fleetMain = resolveFleetVehicleDisplayState(vehicle, {
+        now: NOW,
+        uiProjection: buildFleetVehicleUiProjection(vehicle, { locale: 'de' }),
+      }).telemetryStatus;
+      const detail = detailTelemetry(vehicle);
+      expect(detail).toBe('live');
+      expect(detail).toBe(fleetMain);
+    });
+
+    it('vehicle detail standby ignores legacy offline timestamps', () => {
+      const vehicle = vehicleWithRuntime(hoursAgo(30), {
+        overallState: 'STANDBY',
+        telemetryState: 'standby',
+      });
+      const legacy = resolveTelemetryFreshness(vehicle, { now: NOW }).freshness;
+      const detail = detailTelemetry(vehicle);
+      expect(legacy).toBe('signal_delayed');
+      expect(detail).toBe('standby');
+    });
+  });
+
+  describe('P1.8B — vehicle detail connectivity tab dimensions', () => {
+    it('offline telemetry + active provider + unknown device + no episode stay semantically separate', () => {
+      const runtime = runtimeFixture({
+        overallState: 'OFFLINE',
+        telemetryState: 'offline',
+        providerLinkState: 'ACTIVE',
+        physicalDeviceState: 'UNKNOWN',
+        activeEpisodeId: null,
+        attentionState: 'ACTION_REQUIRED',
+        recommendedAction: 'REVIEW_CONNECTIVITY',
+        requiresAction: true,
+      });
+
+      expect(runtime.telemetryState).toBe('offline');
+      expect(runtime.providerLinkState).toBe('ACTIVE');
+      expect(runtime.physicalDeviceState).toBe('UNKNOWN');
+      expect(runtime.activeEpisodeId).toBeNull();
+      expect(runtime.overallState).toBe('OFFLINE');
+      expect(runtime.providerLinkState).not.toBe(runtime.telemetryState);
     });
   });
 });

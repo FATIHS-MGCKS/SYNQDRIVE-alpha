@@ -13,6 +13,13 @@ export type HvChargeSessionSource =
   | typeof HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE
   | typeof HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK;
 
+/** Native DIMO authoritative recharge coordinates stored on HvChargeSession.metadata (E6.1). */
+export interface HvChargeSessionAuthoritativeLocation {
+  latitude: number;
+  longitude: number;
+  source: typeof HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE;
+}
+
 export type HvChargeSessionChangeKind =
   | 'created'
   | 'ongoing_updated'
@@ -24,8 +31,16 @@ export type HvChargeSessionChangeKind =
 export interface HvChargeSessionMetadata {
   providerSegmentFingerprint: string;
   durationSeconds: number | null;
+  durationProvenance?: string | null;
   lastReconciledAt: string;
   reconcileVersion: number;
+  isChargingObservedAny?: boolean | null;
+  isChargingObservedAll?: boolean | null;
+  cableConnectedObservedAny?: boolean | null;
+  cableConnectedObservedAll?: boolean | null;
+  socProvenance?: string | null;
+  currentEnergyProvenance?: string | null;
+  addedEnergyProvenance?: string | null;
   isChargingStart?: boolean | null;
   isChargingEnd?: boolean | null;
   cableConnectedStart?: boolean | null;
@@ -41,6 +56,8 @@ export interface HvChargeSessionMetadata {
   fallbackEndReason?: string | null;
   supersededBySegmentFingerprint?: string | null;
   supersededAt?: string | null;
+  erdMatchVersion?: string | null;
+  erdMatchReason?: string | null;
   qualityStatus?: HvChargeSessionQualityStatus | null;
   qualityReasonCodes?: HvChargeSessionQualityReasonCode[];
   capacityShadowEligible?: boolean;
@@ -51,6 +68,8 @@ export interface HvChargeSessionMetadata {
     at: string;
     kind: HvChargeSessionChangeKind;
   }>;
+  startLocation?: HvChargeSessionAuthoritativeLocation;
+  endLocation?: HvChargeSessionAuthoritativeLocation;
 }
 
 export interface HvChargeSessionDraft {

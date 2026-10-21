@@ -1,0 +1,235 @@
+# DIMO Integration — Knowledge Graph Nodes (bootstrap)
+
+nodes:
+  - id: DIM-DOM-INTEGRATION-001
+    type: domain
+    title: DIMO Integration domain
+    epistemic_status: CONFIRMED
+    summary: Provider auth, telemetry, segments, triggers, webhooks, device-connection, gateway.
+    source_paths:
+      - architecture/dimo-integration/README.md
+
+  - id: DIM-API-WEBHOOK-001
+    type: api
+    title: DIMO webhook endpoint
+    epistemic_status: CONFIRMED
+    summary: POST /webhooks/dimo — verification token, optional HMAC, trigger payload normalization.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - DIM-EVID-CODE-WEBHOOK-001
+
+  - id: DIM-AUTH-GATEWAY-001
+    type: authority
+    title: Provider gateway and admission
+    epistemic_status: CONFIRMED
+    summary: DimoProviderGateway, admission, limiter, budget consumption.
+    source_paths:
+      - backend/src/modules/dimo/provider/dimo-provider-gateway.service.ts
+
+  - id: DIM-PIPE-WAKE-DELEGATE-001
+    type: pipeline
+    title: R9 speed/ignition wake delegation
+    epistemic_status: CONFIRMED
+    summary: Webhook delegates to SnapshotWakeIntakeService; DIMO does not own trip FSM. Deployed on Production @ 0ba96e03…
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - DIM-EVID-R9-AUDIT-001
+      - DIM-EVID-PROD-R9-001
+      - DIM-EVID-R9-CANARY-001
+
+  - id: DIM-ORCH-TRIP-WAKE-001
+    type: orchestrator
+    title: SnapshotWakeIntakeService (neighbor)
+    epistemic_status: CONFIRMED
+    summary: Trip Detection owned wake intake — cross-module contract target.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-intake.service.ts
+
+  - id: DIM-EVID-CODE-WEBHOOK-001
+    type: evidence
+    title: Webhook controller source
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: DIMO webhook implementation including R9 delegation on main.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+
+  - id: DIM-EVID-R9-AUDIT-001
+    type: evidence
+    title: R9 implementation audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Supporting evidence for cross-module wake contract.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: DIM-EVID-PROD-005
+    type: evidence
+    title: R9 absent from pre-R9 Production build
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: HISTORICAL
+    summary: SnapshotWakeIntakeService not in deployed webhook controller @ 01541c2ab… — superseded.
+    source_paths:
+      - architecture/dimo-integration/evidence/PRODUCTION_BASELINE.md
+
+  - id: DIM-EVID-PROD-R9-001
+    type: evidence
+    title: R9 runtime deployed on Production
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: SnapshotWakeIntakeService present in deployed webhook controller @ 0ba96e03…
+    source_paths:
+      - architecture/dimo-integration/evidence/PRODUCTION_BASELINE.md
+      - architecture/dimo-integration/evidence/EVIDENCE_INDEX.md
+
+  - id: DIM-EVID-R9-CANARY-001
+    type: evidence
+    title: Five-vehicle R9 provider canary PASS
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: 5/5 speed+ignition subscriptions on authorized cohort; stableIds 9eeb7158afee, 5d611d470eab; historically excluded former-fleet asset not in cohort B.
+    source_paths:
+      - architecture/dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md
+
+  - id: DIM-DEC-R9-001
+    type: decision
+    title: Provider webhook to Trip wake delegation
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DIM-R9-001 cross-module boundary; runtime deployed; provider wiring validated.
+    source_paths:
+      - architecture/dimo-integration/decisions/DECISION_REGISTER.md
+    evidence:
+      - DIM-EVID-R9-AUDIT-001
+
+  - id: DIM-EVID-OQ006-BOUNDARY-001
+    type: evidence
+    title: OQ-006 segment vs FSM boundary audit (cross-ref TDL)
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: DIMO fetch-only; Trip Detection owns mutations; RESOLVED_WITH_BOUNDED_GAPS.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
+
+  - id: DIM-DEC-OQ006-001
+    type: decision
+    title: Segment provider transport vs trip boundary mutation ownership
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DimoSegmentsService does not mutate VehicleTrip; reconciliation gates apply.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence:
+      - DIM-EVID-OQ006-BOUNDARY-001
+
+  - id: DIM-GAP-001
+    type: gap
+    title: Segment reconciliation ownership
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — DIM-DEC-OQ006-001; provider transport vs TripDecisionEngine mutations.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
+
+  - id: DIM-GAP-002
+    type: gap
+    title: Provider trigger subscription inventory
+    epistemic_status: UNKNOWN
+    summary: R9 authorized cohort 5/5; scheduler DB 6 incl. stale mirror; re-read @ 8a1d9c658… via TDL-OQ-009.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-003
+    type: gap
+    title: DIMO env flag matrix
+    epistemic_status: UNKNOWN
+    summary: Production env not sampled.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-004
+    type: gap
+    title: Full provider gateway graph
+    epistemic_status: UNKNOWN
+    summary: Phase 4 partial.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-005
+    type: gap
+    title: Stale SynqDrive mirror for HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET
+    epistemic_status: CONFIRMED
+    summary: STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT=1; DB AVAILABLE/CONNECTED drift; excluded from R9 authorized cohort; cleanup deferred.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-006
+    type: gap
+    title: Natural R9 webhook wake end-to-end delivery
+    epistemic_status: INFERRED
+    summary: Natural R9 start wake PRODUCTION_OBSERVED (KS MS 661); fleet-wide KPI unknown; payload archive gaps remain.
+    source_paths:
+      - architecture/dimo-integration/evidence/KS_MS_661_R9_WAKE_2026-09-08.md
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-007
+    type: gap
+    title: Driving-events / event-summary fetch failures swallowed to empty results (no ingest attestation)
+    epistemic_status: CONFIRMED
+    summary: >
+      DimoSegmentsService fetchDrivingEventsChunkWithRetry returns [] after 3 failed retries and
+      fetchEventDataSummary returns [] on error, so a provider failure is indistinguishable from zero
+      events. Recorded cross-module by DI (EXP-021 C1D.10A, DI-GAP-S4-NATIVE-READINESS-001); no DIMO code
+      change. Closure (strict failure propagation + per-trip attestation) belongs to a separately
+      authorized native-ingest slice.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-CX-001
+    type: contradiction
+    title: DI boundary vs DIMO authority bootstrap delay
+    epistemic_status: CONFIRMED
+    summary: Mitigated by DIMO AUDIT_IN_PROGRESS bootstrap; segment gap remains.
+    source_paths:
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: DIM-HYP-001
+    type: hypothesis
+    title: Production receives speed/ignition webhooks for active R9 cohort
+    epistemic_status: INFERRED
+    summary: Provider wiring 5/5 validated; natural start wake observed historically; fleet-wide delivery KPI unknown.
+    source_paths:
+      - architecture/dimo-integration/research/OPEN_HYPOTHESES.md
+
+  - id: DIM-EVID-OQ009-CROSS-001
+    type: evidence
+    title: TDL-OQ-009 cross-ref subscription and cohort semantics
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: R9 authorized cohort 5/5 @ 8a1d9c658…; scheduler DB 6 with one stale former-fleet mirror; ingress contract aligned.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
+
+  - id: DIM-EVID-DI-S3B-R1-SCHEMA-001
+    type: evidence
+    title: DIMO telemetry schema facts for DI S3B R1 OBD fields (EXP-021 C1D.9)
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: >
+      Public telemetry GraphQL introspection + DIMO VSS 4.2 spec — speed/rpm/obdThrottlePosition/obdEngineLoad/
+      powertrainCombustionEngineECT/powertrainTransmissionCurrentGear/isIgnitionOn are nullable Float with
+      FloatAggregation (AVG, MED, MAX, MIN, RAND, FIRST, LAST); gear is a signed int8 index and ignition a
+      boolean, both unsafe under AVG. Consumed by the dormant DI S3B R1 adapter (query V0_3).
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md
+
+  - id: DIM-FAIL-GOV-001
+    type: failed_approach
+    title: Defer DIMO authority for R9 webhook changes
+    epistemic_status: HISTORICAL
+    summary: Rejected by governance correction.
+    source_paths:
+      - architecture/dimo-integration/research/FAILED_APPROACHES.md

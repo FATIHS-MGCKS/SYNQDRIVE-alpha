@@ -41,6 +41,7 @@ import { BillingSandboxCanonicalizationService } from './migration/billing-sandb
 import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
 import { BillingQuantityService } from './billing-quantity.service';
 import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.integration';
+import { BillingVehicleRegistryOffboardProjection } from './registry-lifecycle/billing-vehicle-registry-offboard.projection';
 import { BillingPeriodResolverService } from './billing-period-resolver.service';
 import { UsageSnapshotService } from './usage-snapshot.service';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
@@ -117,6 +118,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     SubscriptionPricePreviewService,
     BillingQuantityService,
     BillingQuantityVehicleIntegration,
+    BillingVehicleRegistryOffboardProjection,
     BillingPeriodResolverService,
     UsageSnapshotService,
     SubscriptionLifecycleService,
@@ -187,6 +189,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     SubscriptionPricePreviewService,
     BillingQuantityService,
     BillingQuantityVehicleIntegration,
+    BillingVehicleRegistryOffboardProjection,
     BillingPeriodResolverService,
     UsageSnapshotService,
     SubscriptionLifecycleService,

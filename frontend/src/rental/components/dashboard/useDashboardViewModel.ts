@@ -13,7 +13,7 @@ import {
   useDashboardInsights,
   useVehicleHealthAlerts,
 } from '../../DashboardInsightsContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';
@@ -588,8 +588,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         rentalBlockingServiceCases,
         now: dashboardNow,
         dueSoonMinutes: runtimeDueSoonMinutes,
-        telemetrySoftOfflineHours: 24,
-        telemetryHardOfflineHours: 48,
       }),
     [
       locale,

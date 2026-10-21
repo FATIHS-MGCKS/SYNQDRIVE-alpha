@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { DrivingAnalysisReconciliationService } from '@modules/vehicle-intelligence/driving-analysis-reconciliation/driving-analysis-reconciliation.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * Periodic driving analysis reconciliation (P20).
@@ -12,6 +13,7 @@ export class DrivingAnalysisReconciliationScheduler implements OnModuleInit {
   private running = false;
 
   constructor(
+    private readonly leaderGuard: SchedulerLeaderGuardService,
     @Optional()
     private readonly reconciliation?: DrivingAnalysisReconciliationService,
   ) {}
@@ -22,6 +24,7 @@ export class DrivingAnalysisReconciliationScheduler implements OnModuleInit {
 
   @Interval(600_000)
   async runReconciliation(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('driving_analysis_reconciliation')) return;
     if (!this.reconciliation || this.running) return;
     this.running = true;
     try {

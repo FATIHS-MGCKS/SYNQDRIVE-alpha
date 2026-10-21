@@ -5,10 +5,13 @@ import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useAddress } from '../../../lib/useAddress';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { getVehicleRowOperationalDisplay } from '../../lib/vehicle-row-operational-display';
+import { resolveRowOperationalAttentionBadge } from '../../lib/vehicle-row-operational-attention';
+import { VehicleHealthFindingIcons } from '../health/VehicleHealthFindingIcons';
 import type {
   FleetCommandRowSeverity,
   FleetVehicleContext,
@@ -57,15 +60,30 @@ export function FleetOperatorRow({
   isDarkMode = false,
 }: FleetOperatorRowProps) {
   const { vehicle: v, visual, health } = ctx;
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const display = resolveFleetVehicleDisplayState(v, {
     rentalHealth: health,
     visual,
     locale,
     compact: true,
+    uiProjection: ctx.uiProjection,
+    t,
   });
   const { healthDisplay, statusBadge, bookingSupplement, reasonBadge } = display;
   const rowHealth = healthDisplay;
+  const localeKey = locale === 'de' ? 'de' : 'en';
+  const rowOperationalDisplay = getVehicleRowOperationalDisplay(ctx.rowOperationalProjection, {
+    surface: 'fleet_command',
+    locale: localeKey,
+    t,
+  });
+  const workflowStatusBadge = rowOperationalDisplay.primaryRowStatus;
+  const activeHealthFindings = ctx.rowOperationalProjection.activeHealthFindings;
+  const operationalAttentionBadge = resolveRowOperationalAttentionBadge({
+    projection: ctx.rowOperationalProjection,
+    reasonBadge,
+    t,
+  });
 
   const dimmed = display.showTelemetryWarning && selectIsCurrentlyAvailable(v);
 
@@ -78,10 +96,10 @@ export function FleetOperatorRow({
 
   const hasEnergy = display.energy.percent != null;
   const hasOdometer = Boolean(display.odometerLabel);
-  const reasonTone: 'critical' | 'watch' | 'warning' | 'neutral' =
-    reasonBadge?.tone === 'critical'
+  const attentionTone: 'critical' | 'watch' | 'warning' | 'neutral' =
+    operationalAttentionBadge?.tone === 'critical'
       ? 'critical'
-      : reasonBadge?.tone === 'watch' || reasonBadge?.tone === 'warning'
+      : operationalAttentionBadge?.tone === 'watch' || operationalAttentionBadge?.tone === 'warning'
         ? 'watch'
         : 'neutral';
 
@@ -189,18 +207,26 @@ export function FleetOperatorRow({
           )}
         </div>
 
-        {/* Line 4 — optional reason chip alone (only when present) */}
-        {reasonBadge && (
-          <div className="mt-0.5 flex min-w-0 items-start">
-            <span
-              className={cn(
-                'inline-block max-w-full truncate rounded-full px-1.5 py-px text-[9.5px] font-medium leading-tight',
-                fleetCommandReasonChipClass(reasonTone),
-              )}
-              title={reasonBadge.text}
-            >
-              {reasonBadge.text}
-            </span>
+        {/* Line 4 — health finding icons + operational attention */}
+        {(activeHealthFindings.length > 0 || operationalAttentionBadge) && (
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+            <VehicleHealthFindingIcons
+              findings={activeHealthFindings}
+              locale={localeKey}
+              t={t}
+              size="sm"
+            />
+            {operationalAttentionBadge ? (
+              <span
+                className={cn(
+                  'inline-block max-w-full truncate rounded-full px-1.5 py-px text-[9.5px] font-medium leading-tight',
+                  fleetCommandReasonChipClass(attentionTone),
+                )}
+                title={operationalAttentionBadge.text}
+              >
+                {operationalAttentionBadge.text}
+              </span>
+            ) : null}
           </div>
         )}
       </div>
@@ -212,15 +238,20 @@ export function FleetOperatorRow({
             tone={rowHealth.tone}
             icon={<Icon name="heart" className="h-3 w-3" />}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+            title={rowHealth.tooltip ?? undefined}
           >
             {rowHealth.label}
           </StatusChip>
           <StatusChip
-            tone={statusBadge.tone}
+            tone={workflowStatusBadge.tone}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-            title={bookingSupplement?.detail ?? statusBadge.dataQualityHint ?? statusBadge.label}
+            title={
+              bookingSupplement?.detail ??
+              statusBadge.dataQualityHint ??
+              workflowStatusBadge.label
+            }
           >
-            {statusBadge.label}
+            {workflowStatusBadge.label}
           </StatusChip>
         </div>
         <button

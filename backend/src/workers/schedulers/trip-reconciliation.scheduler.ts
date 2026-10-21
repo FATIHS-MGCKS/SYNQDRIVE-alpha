@@ -1,7 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, Interval } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
+import {
+  applyFastReconciliationVehicleCap,
+  buildFastReconciliationWhere,
+  loadFastReconciliationCohortConfig,
+} from './snapshot-polling/fast-reconciliation-cohort';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * TripReconciliationScheduler
@@ -17,35 +24,49 @@ import { TripReconciliationService } from '../../modules/vehicle-intelligence/tr
 @Injectable()
 export class TripReconciliationScheduler {
   private readonly logger = new Logger(TripReconciliationScheduler.name);
+  private readonly fastCohortConfig = loadFastReconciliationCohortConfig();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
 
   // ─── FAST REPAIR (every 15 minutes) ───────────────────────────────────────
 
   @Interval(15 * 60_000)
   async fastRepair(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_reconciliation_fast')) return;
     const to = new Date();
     const from = new Date(to.getTime() - 45 * 60_000);
 
-    // Only vehicles with recent snapshot activity (active vehicles).
-    // providerFetchedAt reflects when we polled DIMO; lastSeenAt reflects DIMO's
-    // provider timestamp which can lag wall clock (esp. Tesla). We consider a
-    // vehicle "recently active" if either signal is within the last hour.
-    const recencyThreshold = new Date(to.getTime() - 60 * 60_000);
+    const recencyMs =
+      this.configService?.get<number>('worker.fastReconciliationRecencyMs') ??
+      this.fastCohortConfig.recencyMs;
+    const maxVehiclesPerRun =
+      this.configService?.get<number>('worker.fastReconciliationMaxVehiclesPerRun') ??
+      this.fastCohortConfig.maxVehiclesPerRun;
+
+    const recencyThreshold = new Date(to.getTime() - recencyMs);
     const recentActive = await this.prisma.vehicleLatestState.findMany({
-      where: {
-        OR: [
-          { lastSeenAt: { gte: recencyThreshold } },
-          { providerFetchedAt: { gte: recencyThreshold } },
-        ],
-      },
-      select: { vehicleId: true },
+      where: buildFastReconciliationWhere(recencyThreshold),
+      select: { vehicleId: true, lastSeenAt: true },
+      orderBy: { lastSeenAt: 'desc' },
     });
 
-    for (const { vehicleId } of recentActive) {
+    const vehicleIds = applyFastReconciliationVehicleCap(
+      recentActive.map((r) => r.vehicleId),
+      maxVehiclesPerRun,
+    );
+
+    if (vehicleIds.length < recentActive.length) {
+      this.logger.debug(
+        `Fast repair cohort capped: selected=${vehicleIds.length} eligible=${recentActive.length}`,
+      );
+    }
+
+    for (const vehicleId of vehicleIds) {
       try {
         const result = await this.reconciliation.reconcileWindow(
           vehicleId,
@@ -69,6 +90,7 @@ export class TripReconciliationScheduler {
 
   @Interval(4 * 3600_000)
   async warmRepair(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_reconciliation_warm')) return;
     this.logger.log('Warm reconciliation starting…');
     const to = new Date();
     const from = new Date(to.getTime() - 12 * 3600_000);
@@ -98,6 +120,7 @@ export class TripReconciliationScheduler {
 
   @Cron('0 3 * * *')
   async coldRepair(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_reconciliation_cold')) return;
     this.logger.log('Cold reconciliation starting…');
     const to = new Date();
     const from = new Date(to.getTime() - 7 * 24 * 3600_000);

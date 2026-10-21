@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MisuseCaseType } from '@prisma/client';
 import { DimoSegmentsService, type HighFrequencyReading } from '@modules/dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isEvPowertrain } from '../driving-signals/canonical-driving-signal-mapper.config';
 import {
@@ -77,13 +78,23 @@ export class ShadowDetectorEnrichmentService {
     let dimoIdlingProviderError: string | null = null;
 
     if (tokenId != null) {
+      const providerContext = buildDimoProviderRequestContext(tokenId, {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+      });
       const [rawHf, idlingResult] = await Promise.all([
-        this.segments.fetchHighFrequency(tokenId, input.startTime, endTime),
+        this.segments.fetchHighFrequency(
+          tokenId,
+          input.startTime,
+          endTime,
+          providerContext,
+        ),
         this.segments.fetchTripSegmentsForMechanism(
           tokenId,
           input.startTime,
           endTime,
           'idling',
+          providerContext,
         ),
       ]);
       hfSamples = rawHf.map(mapHfReadingToShadowSample);

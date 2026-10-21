@@ -1,6 +1,7 @@
 import { JobsOptions } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
 import notificationEvaluationConfig from '@config/notification-evaluation.config';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 import type { NotificationEvaluationTriggerClass } from './notification-evaluation.types';
 
 export const NOTIFICATION_EVALUATION_JOB_NAME = 'evaluate';
@@ -9,7 +10,10 @@ export function buildNotificationEvaluationJobId(
   organizationId: string,
   triggerClass: NotificationEvaluationTriggerClass,
 ): string {
-  return `notification-evaluation:${organizationId}:${triggerClass}`;
+  return sanitizeBullMqJobId({
+    namespace: 'notification-evaluation',
+    key: `${organizationId}:${triggerClass}`,
+  });
 }
 
 export function buildNotificationEvaluationJobOptions(

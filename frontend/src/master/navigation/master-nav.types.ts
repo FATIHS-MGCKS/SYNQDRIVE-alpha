@@ -7,6 +7,7 @@ export type MasterView =
   | 'security-access'
   | 'users'
   | 'vehicles'
+  | 'device-inventory'
   | 'prospects'
   | 'billing'
   | 'activity-log'
@@ -23,6 +24,7 @@ export type MasterView =
   | 'architektur'
   | 'changes'
   | 'vehicle-logbook'
+  | 'battery-v2-shadow-inspection'
   /** @deprecated URL redirect only */
   | 'hm-compatibility'
   /** @deprecated URL redirect only */

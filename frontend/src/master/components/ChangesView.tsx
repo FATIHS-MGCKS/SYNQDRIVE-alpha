@@ -36,6 +36,7490 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-p5b2-historical-asof-offline-2026-10-21',
+    version: '4.9.2250',
+    title: 'VSI P5B.2 — historical as-of offline APDS correlation (opt-in HISTORY_AS_OF)',
+    summary: [
+      'P5B.1 offline replay accepts replayProfileMode HISTORY_AS_OF: P5-H1 resolveRevisionAsOf + immutable revision projection (default LEGACY_MUTABLE_PROFILE unchanged).',
+      'LIMITED_HISTORICAL_REVISION_EVIDENCE when PRIOR_REVISION_FOUND; no VERIFIED inflation without commit-visibility proof; historical link lifecycle at decisionAt.',
+      'Research scientific metrics on batch result; dryRun-only; no APDS worker, polling, evidence-store, or runtime flag changes.',
+    ],
+    reason:
+      'Enable read-only decision-time profile evidence for ~35k APDS shadow decisions without mutable-profile CURRENT_PROFILE_REVIEW bias.',
+    previousBehavior:
+      'P5B.1 offline replay always read mutable vehicle_signal_capability_profiles; historical decisions often PROFILE_NOT_ASSESSABLE.',
+    details:
+      'vsi-apds-p5b2-*, vsi-apds-p5b1-offline-replay.service.ts, VSI_P5B2_REPLAY_PROFILE_MODE, architecture/vehicle-signal-intelligence/research/VSI_P5B1_OFFLINE_CORRELATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-21T07:45:00.000Z',
+  },
+  {
+    id: 'dtc02-p3-adaptive-shadow-2026-10-17',
+    version: '4.9.2249',
+    title: 'DTC-02 P3 — adaptive DTC poll planner shadow (default OFF)',
+    summary: [
+      'Pure planner proposes next DTC check from lifecycle, source-head/VLS freshness, webhook evidence quality, active DTCs, and provider error state.',
+      'Shadow batch runs on existing 3h fan-out only — no adaptive enqueue, no scheduler cadence change, no DIMO calls, no episode/head mutations.',
+      'Projected metrics synqdrive_dtc02_adaptive_*; per-vehicle allowlist; P4 required before real adaptive scheduling.',
+    ],
+    reason:
+      'Measure projected poll reduction and freshness tradeoffs safely before any adaptive cutover.',
+    previousBehavior:
+      'Only legacy 3h fan-out with DTC-02 observability; no adaptive plan comparison.',
+    details:
+      'dtc/adaptive/dtc-02-adaptive-*.ts, dimo-dtc.processor shadow hook, architecture/dtc-error-codes/evidence/DTC02_P3_ADAPTIVE_SHADOW.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T19:10:00.000Z',
+  },
+  {
+    id: 'dtc02-p2-webhook-capability-2026-10-17',
+    version: '4.9.2248',
+    title: 'DTC-02 P2 — webhook capability classification & poll/webhook parity (default OFF)',
+    summary: [
+      'Gated P2 webhook ingress (DTC_02_* env + allowlist, requires DTC-01A) with CONFIRMED_COMPLETE/PARTIAL/STALE/DUPLICATE/UNKNOWN classification from provider evidence.',
+      'Reuses DtcSnapshotApplyService and source-head watermarks; no false clears on partial/missing/unknown; synqdrive_dtc02_webhook_capability_total metric.',
+      'Legacy and 01A paths unchanged when DTC_02 flags OFF; no deploy or production activation in this PR.',
+    ],
+    reason:
+      'Harden webhook vs poll convergence and observability before any webhook-first pilot without changing legacy behavior under default flags.',
+    previousBehavior:
+      '01A webhook path built proposals directly without explicit capability classification or P2 metrics.',
+    details:
+      'dtc-02.config.ts, dtc-02-webhook-capability.ts, dimo-webhook.controller handleDtcEvent01aP2, architecture/dtc-error-codes/evidence/DTC02_P2_WEBHOOK_CAPABILITY.md',
+    affectsArchitecture: true,
+    module: 'DTC / Error Codes',
+    createdAt: '2026-10-17T17:00:00.000Z',
+  },
+  {
+    id: 'exp021-s4-research-pr-b-pure-library-2026-10-17',
+    version: '4.9.2248',
+    title: 'EXP021 S4 research PR B — pure road-matching library (no runtime wiring)',
+    summary: [
+      'driving-intelligence/s4-research: deterministic OSM parse, separate baseline + forward Viterbi hypotheses, F4-B promotion audit helpers.',
+      'Typed GPS/QC/L3 + versioned OSM inputs; ASSOCIATED is algorithmic only; independentRoadIdAccuracy NOT_ASSESSABLE.',
+      'Frozen LDI-10D Tesla/OSM fixtures for replay; npm run test:di:s4-research; no Nest/scheduler/DB/DIMO/OSM network changes.',
+    ],
+    reason:
+      'Prepare reusable offline road-matching for future S4 shadow evaluation without activating live S4A–S4F execution.',
+    previousBehavior:
+      'Road matching existed only on offline research branch (PR #2051 ops libs), not as an isolated pure library on main.',
+    details:
+      's4-research/*, di-s4-research-tesla-replay.harness.ts, architecture/drivingintelligence/evidence/ldi-10d fixtures',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T16:20:00.000Z',
+  },
+  {
+    id: 'vsi-p5h1-profile-revision-history-2026-10-17',
+    version: '4.9.2247',
+    title: 'VSI P5-H1 — immutable signal profile revision history (capture gate default OFF)',
+    summary: [
+      'Additive table vehicle_signal_capability_profile_revisions with atomic same-transaction capture on profile revision commits.',
+      'Feature gate VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED default false; no production backfill; P5B.1 offline replay behavior unchanged.',
+      'Read-only as-of resolver contract for future decision-time evidence; disposable PostgreSQL certification.',
+    ],
+    reason:
+      'Close P5B.1 R2 gap: mutable current profiles cannot prove decision-time APDS correlation without durable immutable revisions.',
+    previousBehavior:
+      'Only vehicle_signal_capability_profiles current row; no persisted revision history for shadow replay.',
+    details:
+      'vsi-profile-revision-history.*, vsi-profile-revision-as-of.resolver.ts, migration 20261017120000_vsi_profile_revision_history',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T07:30:00.000Z',
+  },
+  {
+    id: 'vsi-p5-apds-readonly-correlation-2026-10-16',
+    version: '4.9.2246',
+    title: 'VSI P5 — read-only APDS capability/demand correlation (P5B gate default OFF)',
+    summary: [
+      'P5A: vsi-apds-p5-readonly-v1 adapter, consumer demand vector from P4 registry, pure shadow correlation engine (not an APDS decision input).',
+      'P5B boundary: VSI_P5_APDS_CORRELATION_ENABLED independent of WORKER_APD_SHADOW_ENABLED — not wired into adaptive-polling-shadow in this PR.',
+      'No VSI write-back, no DIMO calls, no polling or shadow epoch changes; disposable PG + unit certification.',
+    ],
+    reason:
+      'Integrate signal profiles and consumer demand with APDS shadow decisions as observation-only analytics before P6 polling optimization.',
+    previousBehavior:
+      'APDS consumer adapter contract-only; no structured profile↔demand↔shadow correlation layer.',
+    details:
+      'vsi-apds-*.ts, VSI_P5_APDS_INTEGRATION.md; operational note: internal resolver double-prefix /api/v1/api/v1/internal/vsi/capability-resolver/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-16T07:20:00.000Z',
+  },
+  {
+    id: 'exp021-v2-product-read-path-2026-10-15',
+    version: '4.9.2245',
+    title: 'EXP021 — V2 GPS speed evaluation product read + trip detail panel (default OFF)',
+    summary: [
+      'GET /vehicles/:vehicleId/trips/:tripId/gps-speed-evaluation-v2 returns slim DiV0TripGpsSpeedEvaluationProductV1 from CURRENT V2 projection only (readCurrentOpsProjection + tenant/trip guards).',
+      'TripGpsSpeedEvaluationPanel in TripTimelineExpanded; separate gates DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED and VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED.',
+      'Null metrics stay “not available”; stationary intervals shown apart from numeric coverage; no V1-as-V2 or write/provider side effects.',
+    ],
+    reason:
+      'After merged P2 auto-projection (#2028), expose authorized trip-detail read/UI without enabling customer runtime or P2 writes.',
+    previousBehavior:
+      'V2 CURRENT rows ops-only; no customer API or trip detail surface for GPS speed QC.',
+    details:
+      'di-v0-trip-speed-quality-product-read.*, vehicle-intelligence.controller.ts, TripGpsSpeedEvaluationPanel.tsx, EXP021_V2_PRODUCT_READ_PATH.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-15T07:05:00.000Z',
+  },
+  {
+    id: 'exp021-p2-auto-projection-v2-2026-10-15',
+    version: '4.9.2244',
+    title: 'EXP021 — P2 auto V2 trip speed QC after S4 completion (dormant default)',
+    summary: [
+      'Durable outbox + leader-guarded scheduler enqueues eligible COMPLETED S4 PRIMARY work items and runs existing P2 projection with DI_V0_SPEED_QC_POLICY_V2.',
+      'Feature OFF unless DI_V0_P2_AUTO_PROJECTION_V2_ENABLED + required ENABLED_SINCE (forward-only scope); S4C executor completion path unchanged.',
+      'Read path for next API/UI: readCurrentOpsProjection(organizationId, tripId, DI_V0_SPEED_QC_POLICY_V2) and outbox status for backlog ops.',
+    ],
+    reason:
+      'After #2027 policy passthrough on main, automate persisted V2 evaluation post-S4 without a second calculator or customer runtime activation.',
+    previousBehavior:
+      'V2 projection required explicit ops persist/CLI; no durable post-S4 follow-up scheduler.',
+    details:
+      'di-v0-p2-auto-projection-v2.*, di-v0-p2-auto-projection-outbox.repository.ts, migration di_v0_trip_speed_quality_auto_projection_outbox_v1, EXP021_P2_AUTO_PROJECTION_V2.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-15T05:00:00.000Z',
+  },
+  {
+    id: 'exp021-p1-v2-runtime-integration-readiness-2026-10-14',
+    version: '4.9.2243',
+    title: 'EXP021 — P1 V2 QC policy runtime integration readiness (ops opt-in)',
+    summary: [
+      'Documents end-to-end path: pinned S4 snapshot → shadow intervals → P1 QC (qcPolicyVersion) → P2 projection; persist/read remain ops-only (module not in AppModule).',
+      'DiV0TripSpeedQualityProjectionService forwards optional qcPolicyVersion on project/read (default V1); preview CLI adds --qcPolicyVersion / DI_V0_P21_QC_POLICY_VERSION.',
+      'Production release a4c3b1fc1d observed pre-V2; customer UI/API unchanged — V2 requires deploy + explicit ops policy selection.',
+    ],
+    reason:
+      'After #2020/#2021/#2025 on main, close the gap between merged V2 semantics and callable persist/preview paths without flipping customer defaults.',
+    previousBehavior:
+      'P2 engine/preview accepted qcPolicyVersion but persist service and preview CLI always implied V1; V2 only in forensic compare scripts.',
+    details:
+      'di-v0-trip-speed-quality-projection.service.ts, di-v0-trip-speed-quality-preview-cli.scope.ts, architecture/drivingintelligence/evidence/EXP021_P1_V2_RUNTIME_INTEGRATION_READINESS.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-14T21:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-g5c-n13-p10-live-product-corrections-2026-10-17',
+    version: '4.9.2244',
+    title: 'Battery V2 G5C-N13-P10 — LV measured live corrections (slope quality + history browse)',
+    summary: [
+      'N13 read model labels CONTEXT_LIMITED C3 slopes (short observation span, two-point minimum, charging end, duplicate nominal rung) without recomputing stored C3 rows.',
+      'Bounded measuredFrom/measuredTo historical MEASURED browse (120-day max); Master Admin mobile REST episode cards and explicit DERIVED slope limitations.',
+    ],
+    reason:
+      'Production Ruptela C3 slopes near −14k/−24k mV/h are arithmetically correct but not interpretable resting trends; operators need transparent labeling and months of deduped voltage history.',
+    previousBehavior:
+      'Extreme slopes displayed like ordinary DERIVED trends; vehicle timeline capped at 300 recent points without date-range control.',
+    details:
+      'lv-measured-intelligence-slope-quality.policy.ts, LvMeasuredIntelligenceSection.tsx, GET lv-measured-intelligence measuredFrom/To, docs/audits/battery-v2-g5c-n13-p10-live-product-corrections-2026-10-17.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T07:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-g5c-n13-lv-measured-intelligence-v1-2026-10-16',
+    version: '4.9.2243',
+    title: 'Battery V2 G5C-N13 — LV measured intelligence V1 (Master Admin read model)',
+    summary: [
+      'Bounded LV_MEASURED_INTELLIGENCE_V1 read path over generalized-evidence voltages, REST sessions, canonical C3 features, and latest D3/D4 ack summary — deduped by sourceMeasurementId.',
+      'GET /admin/battery-v2/lv-measured-intelligence (MASTER_ADMIN); C5B UI voltage timelines and REST episode comparison with MEASURED vs DERIVED boundaries (no SOH %).',
+      'Read-only: no publication, E3, F6, REST_WAKE promotion, or new schedulers.',
+    ],
+    reason:
+      'Operators need vehicle-level visibility into natural R1 REST ladder measurements from stored shadow data without a competing scoring pipeline.',
+    previousBehavior:
+      'C5B exposed per-session C5A inspection only; no vehicle-level deduped LV timeline or episode comparison read model.',
+    details:
+      'lv-measured-intelligence/*, battery-v2-lv-measured-intelligence.admin.service.ts, LvMeasuredIntelligenceSection.tsx, CHANGE_LEDGER G5C-N13',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-16T17:30:00.000Z',
+  },
+  {
+    id: 'vo-sig-01-p1-connection-identity-2026-10-13',
+    version: '4.9.2242',
+    title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',
+    summary: [
+      'Separates proposed vs verified connection modality in onboarding snapshots; UNKNOWN/unverified telemetry modality blocks readiness (VO-RDY-CONN-001) and activation.',
+      'Activation revalidates DIMO/HM mirror evidence, requires RUPTELA_R1 serial for hardware paths, and asserts VehicleDataSourceLink provider parity post-link.',
+      'HM activation persists provider=HIGH_MOBILITY; dry-run repair helpers for prod UNKNOWN HM link + sold DIMO tokens 187336/190497 (offboard only).',
+    ],
+    reason:
+      'Provider/make inference was insufficient proof of software vs hardware connection; HM links could persist provider=UNKNOWN; device binding could not rely on JSON booleans alone.',
+    previousBehavior:
+      'Connection modality was implicit; Tesla make could imply software path; activation did not fail closed on unverified modality or missing device evidence.',
+    details:
+      'vehicle-onboarding/connection-identity/*, readiness VO-RDY-CONN-001, vehicle-onboarding-activation.service.ts, vehicle-connection-identity.unit.spec.ts (18)',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-13T08:30:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-r6-automatic-reconciliation-cohort-2026-10-13',
+    version: '4.9.2241',
+    title: 'M3.3 HV-H4 A3.5 R6 — automatic reconciliation cohort gate (default OFF)',
+    summary: [
+      'BATTERY_HV_H4_A3_RECONCILIATION_ENABLED=true alone no longer fleet-scans: BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON must be READY (explicit tenant/vehicle members).',
+      'Per-row BLOCKED_COHORT_UNAUTHORIZED and SKIPPED_SESSION_ONGOING; tick SKIPPED_COHORT_NOT_CONFIGURED when allowlist missing/invalid.',
+      'Existing leader election, Redis cursor, writer idempotency, and scientific projection unchanged; no production activation in this change.',
+    ],
+    reason:
+      'Prepare continuous natural HvChargeSession → canonical revision + durability ACK without fleet-wide evidence writes when reconciliation is enabled.',
+    previousBehavior:
+      'Reconciliation flag ON could process all completed HvChargeSession rows with no explicit production cohort allowlist.',
+    details:
+      'm3-3-hv-h4-a3-reconciliation-cohort.config.ts, reconciliation service/scheduler, architecture/battery-v2/research/M3_3_HV_H4_A3_R6_AUTOMATIC_RECONCILIATION_OPERATIONS.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-13T09:20:00.000Z',
+  },
+  {
+    id: 'dimo-r31-master-admin-r9-webhook-monitoring-2026-10-12',
+    version: '4.9.2240',
+    title: 'DIMO R3.1 — Master Admin read-only R9 webhook health',
+    summary: [
+      'Master Admin → Plattform & Betrieb → Diagnostik → DIMO Webhooks: Speed/Ignition definition status, failure counts, cohort parity, provider access, cache freshness.',
+      'GET /api/v1/admin/ops/dimo-webhook-health (optional ?refresh=1) — Master Admin + MFA guards; DIMO GET only via DimoAuthService and provider budget; Redis/in-memory cache + single-flight.',
+      'Evaluator aligned with r9-r25-circuit-monitor; cohort via DIMO_R9_AUTHORIZED_COHORT_TOKEN_IDS / DIMO_R9_EXCLUDED_TOKEN_IDS. Wake/trip FSM not end-to-end evaluated in UI.',
+    ],
+    reason:
+      'Replace ad-hoc ops scripts as the only R9 visibility path; native monitoring without Slack, email, or a second VPS service.',
+    previousBehavior: 'R9 health checks required backend/scripts/ops/r9-r25-circuit-monitor.mjs (CLI/cron) outside Master Admin.',
+    details:
+      'platform-admin/dimo-r9-webhook-health/*, PlatformOpsDiagnosticsTab dimo-webhooks, DimoWebhooksDiagnosticsPanel, i18n master.platformOps.dimoWebhooks.*',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-12T06:20:00.000Z',
+  },
+  {
+    id: 'exp021-s4p7-master-admin-s4-monitoring-2026-10-12',
+    version: '4.9.2240',
+    title: 'EXP021-S4P7 — Master Admin Driving Intelligence S4 diagnostics panel',
+    summary: [
+      'Master-admin API GET /admin/ops/driving-intelligence-s4 aggregates DB kill state, S4 flags, Prometheus rule health (15), DIMO budget per replica, scheduler leader, and Alertmanager DiV0S4 alerts.',
+      'Platform Ops → Diagnostics tab “Driving Intelligence S4” surfaces operational status (DISABLED/HEALTHY/WARNING/CRITICAL/UNKNOWN) without claiming HEALTHY on stale/missing Prometheus data.',
+      'Documents IamSeedAdminEnabledInProduction cause/impact/remediation read-only in-panel.',
+    ],
+    reason: 'Unattended S4 production safety requires a single Master Admin operational view without new monitoring infrastructure.',
+    previousBehavior: 'S4 rule health and operational gauges were only visible via raw Prometheus/Alertmanager; Platform Ops alarms lacked a dedicated DI S4 panel.',
+    details:
+      'platform-ops-di-s4.service.ts, PlatformOpsDiagnosticsTab.tsx, DrivingIntelligenceS4DiagnosticsPanel.tsx',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-12T05:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-g5c-n2-rest-session-opening-liveness-2026-10-11',
+    version: '4.9.2238',
+    title: 'Battery V2 G5C-N2 — finalized-trip REST session opening vs trip-phase telemetry',
+    summary: [
+      'Post-anchor latest_state that still shows movement or alternator-band LV no longer vetoes LV_REST_WINDOW CANDIDATE creation on finalized trips.',
+      'Full opening gates apply only when the observation credibly passes canOpenRestWindowCandidate; otherwise momentary context is stripped (same as pre-anchor stall).',
+      'REST_SNAPSHOT promotion and in-window measurement quality gates unchanged.',
+    ],
+    reason:
+      'Production post-T0 completed trips invoked BATTERY_LV_REST_SESSION_OPEN but returned not_eligible (speed_not_zero / charging_context) with zero new sessions.',
+    previousBehavior:
+      'Any source_timestamp at/after trip.endTime used full TRIP_ENDED opening gates, blocking sessions when trip detection finalized before telemetry reflected rest.',
+    details: 'lv-rest-window-session-arming.service.ts (+ spec G5C-N2 production shapes)',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-11T01:05:00.000Z',
+  },
+  {
+    id: 'battery-v2-g5b-customer-hv-telemetry-freshness-2026-10-10',
+    version: '4.9.2237',
+    title: 'Battery V2 G5B — customer HV telemetry freshness boundary',
+    summary: [
+      'All customer HV dynamic fields (energy, capacity, charging, temperature, cable, provider SOH in telemetry) gated on vehicle source-observation freshness.',
+      'Canonical summary + HV compat + currentTelemetry stay consistent; stale carrier values remain in canonical signal metadata only.',
+      'Verified HV reference capacity only for compat nominal; legacy diagnostic SOH/capacity redacted on customer legacy sections when not decision-capable.',
+    ],
+    reason: 'G5A documented gap: nested hv.telemetry could still present recently-fetched but stale-observation Tesla-class values as current.',
+    previousBehavior: 'SOC/range masked on stale observation; other hv.telemetry fields and charging state could still leak.',
+    details:
+      'battery-hv-customer-telemetry.presenter.ts, battery-customer-response.presenter.ts, canonical-battery-health.service.ts, battery-hv-battery-status.compat.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T22:30:00.000Z',
+  },
+  {
+    id: 'refuel-time-ux-correction-2026-10-10',
+    version: '4.9.2236',
+    title: 'REFUEL trip timeline — observed fuel-rise time vs DIMO detection envelope',
+    summary: [
+      'TripTimelineEnergyCard shows approximate fuel-level-rise start (not detection envelope) as primary REFUEL time.',
+      'Signal-rise interval + detection window moved to secondary/technical copy; RECHARGE presentation unchanged.',
+      'Timeline sort/day grouping anchors on fuelLevelRiseStart when valid; normalizeTimelineItems re-sorts canonical API order.',
+      'Backend product read: bounded OR query + post-filter on product timeline anchor (midnight-safe with local day filters).',
+    ],
+    reason: 'WOB L 7503 2026-10-09: envelope 19:32–21:09 misrepresented ~20:47 pump observation.',
+    previousBehavior: 'REFUEL cards used startTime/endTime envelope as the headline time range.',
+    details:
+      'trip-timeline-shared.tsx, trips-energy-i18n.ts, utils/refuelTimelineTime.ts, utils/tripTimeline.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T11:10:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-h3-canonical-signature-encoding-2026-10-09',
+    version: '4.9.2235',
+    title: 'M3.3 HV-H4 A3 P1B1-A1-H3 — canonical Ed25519 detached Base64 closure',
+    summary: [
+      'Governance signature parse requires padded canonical Base64 round-trip for 64-byte Ed25519 detached signatures.',
+      'keyId preserved exactly without silent trim; rejects unpadded and padding-bit alias encodings.',
+      'H2 timestamp binding and fail-closed independent authority unchanged.',
+    ],
+    reason: 'R4.2B-P1B1-A1-H3 — eliminate non-canonical Base64 acceptance in offline evidence verification.',
+    previousBehavior: 'Detached Base64 could decode with lenient aliases; keyId was trimmed on parse.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T00:05:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7ax3-trusted-dispatch-provenance-2026-10-09',
+    version: 'engineering',
+    title: 'EXP-021 S4F-7AX.3 — Gate-6 trusted dispatch provenance (engineering only)',
+    summary: [
+      'Privileged issuance register + MAC key binds dispatch nonce/digest to verified Ed25519 approval consumption.',
+      'live-open-authorized re-verifies human approval and trusted issuance record before any Prisma OPEN mutation.',
+      'Self-issued HMAC sidecar alone cannot satisfy live OPEN; 71 operator tests PASS.',
+      'No Production mutation, live OPEN, or issuance key provisioning.',
+    ],
+    reason:
+      'Dispatch per-token HMAC sidecars are generated at issuance and do not prove independent human approval on Production.',
+    previousBehavior:
+      'live-open-authorized consumed dispatch token MAC only; Ed25519 approval was not re-verified at OPEN boundary.',
+    details: 'architecture/drivingintelligence/evidence/EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-09T23:45:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-h2-evidence-parser-integrity-2026-10-09',
+    version: '4.9.2234',
+    title: 'M3.3 HV-H4 A3 P1B1-A1-H2 — evidence parser integrity & signed acceptance timestamp',
+    summary: [
+      'Fail-closed Ed25519 signature parsing across offline governance evidence verifiers.',
+      'Operator-risk attestation V2 binds acceptedAtUtc in signed payload; claims tampering rejected.',
+      'Independent authority verifier remains disabled; P1 gate NO_GO.',
+    ],
+    reason: 'R4.2B-P1B1-A1-H2 closure — malformed signatures cannot throw; acceptance time cryptographically bound.',
+    previousBehavior:
+      'Malformed signature fields could reach crypto paths; operator-risk acceptedAtUtc was claim-only.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-09T23:35:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-governance-evidence-foundation-2026-10-09',
+    version: '4.9.2233',
+    title: 'M3.3 HV-H4 A3 P1B1-A1 — offline governance evidence foundation (verification only)',
+    summary: [
+      'Ed25519 domain-separated attestations for ratification, operator risk, deployment probe, and Postgres target configuration.',
+      'Offline cryptographic verification helpers for diagnostics/tests only; production governance authority resolver stays disabled (H1).',
+      'Independent governance authority is not configured; Path B readiness is not granted from env bundles; P1_AUTHORIZATION=NO_GO.',
+      'Adversarial HV-H4 tests; no production SSH/DB, no real owner keys in CI.',
+    ],
+    reason: 'R4.2B-P1B1-A1 trusted evidence foundation under SINGLE_OPERATOR_V1 without production activation.',
+    previousBehavior:
+      'Governance claims could be structurally valid but independent authority was not provisioned; no deployment/Postgres evidence contracts.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-09T23:10:00.000Z',
+  },
+  {
+    id: 'p25-apds-9-3-durable-t0-foundation-2026-10-08',
+    version: '4.9.2232',
+    title: 'P2.5 APDS-9.3 — durable shadow activation epoch + T0 gate (engineering only)',
+    summary: [
+      'PostgreSQL apd_shadow_activation_epochs (PREPARED/ACTIVE/PAUSED/CLOSED); immutable DB-time T0 on authorized activation only.',
+      'Shadow writes require ACTIVE epoch + decisionAt >= T0; WORKER_APD_SHADOW_ENABLED alone does not create epochs.',
+      'Nullable activation_epoch_id on decisions preserves 366 legacy rows; cohort vehicle 187336 NOT_READY audit documented.',
+      'No Shadow activation, no deploy, no B2/B4 enforcement in this change.',
+    ],
+    reason: 'INITIAL_SHADOW_PREFLIGHT blocker NO_DURABLE_T0_AUTHORITY — production-safe epoch foundation before pilot T0.',
+    previousBehavior:
+      'Shadow flag + cohort allowed observe-only decisions without durable activation epoch or immutable T0 authority.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_3_DURABLE_T0_FOUNDATION_2026-10-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-10-08T01:30:00.000Z',
+  },
+  {
+    id: 'p25-apds-9-2-execution-baseline-v2-2026-10-07',
+    version: '4.9.2231',
+    title: 'P2.5 APDS-9.2 — APD shadow execution baseline V2 (engineering only)',
+    summary: [
+      'P25_APD_SHADOW_EXECUTION_V2: durable lastAllowed from successful real poll rows only; no pre-queue advance.',
+      'Enqueue outcome + DimoPollLog real_poll_id/status correlation; coalesced rows forensic-only.',
+      'Invalid Run 1 contained (shadow OFF); no Production deploy in this change.',
+    ],
+    reason:
+      'APDS-9.1 proved V1 shadow advanced lastAllowed before queue/coalesce and broke offline replay equivalence.',
+    previousBehavior:
+      'In-memory shadowLastAllowedMs advanced on WOULD_POLL at pre-poll; coalesced opportunities often lacked real_poll_completed_at.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_2_EXECUTION_BASELINE_V2_2026-10-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-07T14:50:00.000Z',
+  },
+  {
+    id: 'p25-apds-9-0-cohort-selector-2026-10-07',
+    version: '4.9.2230',
+    title: 'P2.5 APDS-9.0 — fail-closed APD shadow cohort selector (engineering only)',
+    summary: [
+      'WORKER_APD_SHADOW_COHORT_JSON (P25_APD_LTE_R1_COHORT_V1): exact organizationId+vehicleId allowlist; fail-closed when flag ON without valid cohort.',
+      'Scheduler + observePrePoll/observePostPoll defense-in-depth; tenant-safe shadow memory key org\\u0000vehicle.',
+      'Cohort excluded metrics + SHA-256 config fingerprint for replica parity; read-only Production preflight script.',
+    ],
+    reason:
+      'APDS-9 blocked: global WORKER_APD_SHADOW_ENABLED would shadow-evaluate full reconciliation fleet without LTE_R1 cohort gate.',
+    previousBehavior:
+      'isApdShadowEnabled() global boolean only; scheduler used isEnabled() for all due reconciliation candidates.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_0_COHORT_SELECTOR_2026-10-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-07T10:59:00.000Z',
+  },
+  {
+    id: 'p25-apds-2-7-shadow-observability-2026-10-03',
+    version: '4.9.2229',
+    title: 'P2.5 APDS-2…7 — dual shadow observability (flag OFF)',
+    summary: [
+      'WORKER_APD_SHADOW_ENABLED=false: observe-only B2/B4 pre/post poll forensics.',
+      'No enqueue/suppress/reschedule; fail-open wrapper preserves real polls.',
+      'Prisma apd_shadow_reconciliation_decisions + metrics + JS↔TS policy parity tests.',
+    ],
+    reason: 'Production-safe shadow validation before LTE_R1 activation (APDS-9).',
+    previousBehavior: 'No runtime shadow hook or durable forensic rows.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_2_7_SHADOW_OBSERVABILITY_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:50:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
+    version: '4.9.2220',
+    title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
+    summary: [
+      'Unified semantic idempotency replay for VEHICLE_OFFBOARDED (reason/org/vehicle/payload version) across all replay paths.',
+      'Fail-closed open org-assignment close; DIMO scheduler/processor registry ACTIVE gates; provider-link + HM canonical ingest gates; local consent revoke on offboard; outbox payload v2 actorUserId.',
+    ],
+    reason:
+      'VO-5A review found replay asymmetry, assignment updateMany risk, and OFFBOARDED vehicles still eligible for DIMO canonical telemetry.',
+    previousBehavior:
+      'Replay accepted mismatched reason; broad assignment updateMany; DIMO poll pipeline ignored registryLifecycle OFFBOARDED.',
+    details:
+      'vehicle-offboarding.service.ts; dimo-snapshot.scheduler.ts; dimo-snapshot.processor.ts; VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:45:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo5a-offboarding-foundation-2026-10-01',
+    version: '4.9.2219',
+    title: 'Vehicle Onboarding VO-5A — offboarding foundation audit (internal)',
+    summary: [
+      'Audited destructive VehiclesService.deregister (hard delete + billing pre-hook); classified must-deprecate-before-cutover.',
+      'Internal VehicleOffboardingService: ACTIVE→OFFBOARDED, org assignment close, provider link deactivation, VEHICLE_OFFBOARDED outbox — no HTTP, legacy deregister unchanged.',
+      'PostgreSQL proofs: history retention, idempotent/concurrent offboard, VO-4.10 candidate suppression for offboarded mirrors.',
+    ],
+    reason:
+      'Registry lifecycle requires non-destructive offboarding with transactional vehicle.offboarded facts before replacing Master Admin deregister.',
+    previousBehavior:
+      'Only legacy deregister deleted Vehicle rows and cascaded operational history; no governed OFFBOARDED registry path.',
+    details:
+      'backend/src/modules/vehicle-onboarding/services/vehicle-offboarding.service.ts; architecture/vehicle-onboarding/evidence/VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:15:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo410-candidate-discovery-2026-10-01',
+    version: '4.9.2218',
+    title: 'Vehicle Onboarding VO-4.10 — Master Admin provider candidate discovery (internal)',
+    summary: [
+      'GET /admin/vehicle-onboarding/organizations/:orgId/candidates — read-only DIMO + HIGH_MOBILITY projection from persisted mirrors (no provider network, no VehicleCandidate table).',
+      'Reuses VO-4.9 canonical suppression, source-claim disposition (AVAILABLE / RESUMABLE), and adoption authority mirror checks; cross-org holds omitted without tenant disclosure.',
+      'Legacy register-from-dimo / HM_ONLY / getNonRegisteredVehicles unchanged; adoptProviderSource remains transactional write authority.',
+    ],
+    reason:
+      'Master Admin onboarding UI needs a governed, tenant-safe candidate list without weakening VO-4.9 adoption or introducing activation cutover.',
+    previousBehavior:
+      'No unified VO candidate listing; discovery scattered across legacy DIMO/HM registration helpers.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO410_PROVIDER_CANDIDATE_DISCOVERY.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T19:45:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo3-2-source-adoption-seal-2026-09-30',
+    version: '4.9.2217',
+    title: 'Vehicle Onboarding VO-3.2 — secure source attach + Postgres activation seal (internal)',
+    summary: [
+      'Removed generic attachSourceRef(snapshot) bypass; attachDimoSource / attachHighMobilitySource enforce VehicleOnboardingSourceAdoptionAuthority before persistence.',
+      'PostgreSQL proofs: HM cross-org, global HM tenant vs platform, concurrent activation, wrong-org isolation, DIMO/HM rollback matrix, manual admin idempotency fingerprint.',
+      'DIMO platform mirror scope documented; tenant ownership not proven by dimo_vehicles row (cutover IAM prerequisite).',
+    ],
+    reason:
+      'VO-3.1 correctness left a structural adoption bypass and missing concurrency/isolation Postgres proofs before VO-4 readiness work.',
+    previousBehavior:
+      'Tests and callers could attach provider snapshots without mirror load + adoption checks; concurrent activation proof deferred.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_2_FINAL_RUNTIME_SEAL.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T05:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-production-alpha-g3-h1-safe-shadow-2026-10-10',
+    version: '4.9.2233',
+    title: 'Battery V2 production alpha G3-H1/H2 — safe shadow + HV compat fallback closure',
+    summary: [
+      'Legacy LV rest capture disabled whenever canonical REST shadow pipeline is on (publication no longer re-enables legacy ingestion).',
+      'Customer LV SOH and HV telemetry SOC gated by publication flag + legacy publication safety + observation freshness.',
+      'GET hv-battery-status: no legacy SOC/range/SOH/telemetry bypass when canonical observation is stale.',
+      'Flag-combination regression matrix and snapshot duplicate-enqueue guard tests.',
+    ],
+    reason:
+      'Production alpha G2 RCA: REST_SHADOW + PUBLICATION=false incorrectly dual-pathed legacy capture; stale Tesla SOC and stored LV SOH exposed as current customer truth.',
+    previousBehavior:
+      'Publication off with REST shadow on enabled legacy rest capture; userFacingSohPct mirrored publishedSohPct; stale sourceTimestamp SOC still shown when fetch was fresh.',
+    details:
+      'backend/src/config/battery-health-v2.config.ts; battery-v2-user-facing-lv.policy.ts; canonical-battery-health.service.ts; architecture/battery-v2/research/CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Battery V2',
+    createdAt: '2026-10-10T10:00:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo3-orchestrator-2026-09-30',
+    version: '4.9.2216',
+    title: 'Vehicle Onboarding VO-3 — provider-neutral orchestrator + atomic activation (internal)',
+    summary: [
+      'VehicleOnboardingModule: DIMO/HM/MANUAL source adapters, case open/resume, transactional activation (vehicle, org assignment, plate, links, consent, VEHICLE_ACTIVATED outbox).',
+      'Canonical path never writes synthetic DIMO VIN; production readiness fail-closed until VO-4.',
+      'No public cutover: registerFromDimo, HM_ONLY, and manual create remain legacy.',
+    ],
+    reason:
+      'VO-2 persistence required a runtime orchestration core before readiness engine (VO-4) and public registration cutover.',
+    previousBehavior:
+      'Only VO-2 schema/onboarding tables; registration still via legacy VehiclesService / HM registration paths.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_ORCHESTRATOR_ACTIVATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T00:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-h0-domain-separation-audit-2026-09-30',
+    version: '4.9.2215',
+    title: 'Battery V2 M3.3-H0 — domain separation audit + seal (PASS)',
+    summary: [
+      'Code-derived inventory: SHARED/LV_ONLY/HV_ONLY/UNKNOWN_SCOPE components; GT G2.2 replacement identity org+sourceEvent (scope on fact).',
+      'Cross-scope seal A–J PASS: D3/F5/E2/E3 LV-only; no HV→longitudinal path; ERD vs HV BI boundary documented.',
+      'Static validator validate-h0-domain-separation-contracts.sh; graph node BAT-V2-AUTH-H0-001; NEXT_PHASE → M3_3_HV_H1 + async G4.',
+    ],
+    reason:
+      'M3.3-H0 forward umbrella requires audited domain ownership before HV foundation engineering (not historical M3.3H customer UI).',
+    previousBehavior:
+      'LV/HV separation documented at roadmap level without full code consumer/query inventory or H0 seal checklist.',
+    details:
+      'architecture/battery-v2/research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T00:45:00.000Z',
+  },
+  {
+    id: 'battery-intelligence-post-g4-roadmap-audit-2026-09-29',
+    version: '4.9.2214',
+    title: 'Battery Intelligence — post-G4 LV/HV roadmap audit',
+    summary: [
+      'Top-level BATTERY_INTELLIGENCE_ARCHITECTURE.md: Shared Core vs LV vs HV domains; G4 async wait does not block LV/HV engineering.',
+      'Historical M3.3A–G status matrix (engineering vs production vs scientific validation); signal inventory with BATTERY_SCOPE.',
+      'GT maturity: CONFIRMED_GROUND_TRUTH_FACT for confirmed GT rows; GROUND_TRUTH_VALIDATED reserved for derived BI after G4.',
+      'M3.3-H0 umbrella (SHARED/LV/HV/CROSS-SCOPE-SEAL); G4 async with no H0 prerequisite; G4→F6 scientific dependency only.',
+      'NEXT_PHASE: M3_3_H0 ∥ M3_3G_G4_WAIT ∥ M3_3_LV_SIGNAL_OBS; distinct from historical M3.3H customer UI label.',
+    ],
+    reason:
+      'After G4 production GT infra (0 rows), reconstruct authoritative forward roadmap with explicit LV/HV separation.',
+    previousBehavior:
+      'Roadmap implied single battery model; NEXT_PHASE=M3_3G_G4 only; no consolidated LV/HV product architecture doc.',
+    details:
+      'architecture/battery-v2/BATTERY_INTELLIGENCE_ARCHITECTURE.md; architecture/battery-v2/research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T23:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g4-first-natural-validation-evidence-audit-2026-09-29',
+    version: '4.9.2213',
+    title: 'Battery V2 M3.3G G4 — first natural GT validation preparation audit',
+    summary: [
+      'Read-only production audit (TRANSACTION READ ONLY): pre-registered Q1–Q10 before data review; conservative G4 data-availability maturity states only.',
+      'Production PostgreSQL has no battery_ground_truth_events table at deploy 20260928175908 — TOTAL_GT_ROWS=0; NATURAL_GT_PROVEN=NO; G4_DECISION=WAIT_FOR_NATURAL_GT.',
+      'Enablement preflight: main is 43 commits / 213 files ahead (Battery + DI S4D + RFRF); 2 additive GT migrations; DEPLOYMENT_READINESS=READY_WITH_EXPLICIT_GATES; G3 MERGED/CI_VALIDATED/NOT_YET_PRODUCTION_DEPLOYED.',
+      'No runtime, deploy, synthetic GT, E3 activation, or F6 calibration; re-run G4 after authorized deploy and first natural CONFIRMED GT.',
+    ],
+    reason:
+      'G4 observes the first naturally occurring admissible Ground Truth to validate or falsify longitudinal pipeline assumptions — zero GT is a valid pass outcome.',
+    previousBehavior:
+      'G3.1.1 merged on main but production naturality and F5↔GT correlation on live DB were unmeasured.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G4_FIRST_NATURAL_VALIDATION_EVIDENCE_2026-09-29.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g3-1-f5-correctness-seal-2026-09-29',
+    version: '4.9.2212',
+    title: 'Battery V2 M3.3G G3.1 — F5 GT correlation correctness seal',
+    summary: [
+      'Segment-aware F5 continuity: revisions assigned to deterministic replacement epochs; intervention-crossing revisions excluded from repeatability; proof counters on correlation block.',
+      'F5 asOf uses isGroundTruthActiveAtAsOf (revocation/supersession by timestamp); G1/G2 present-tense authority unchanged.',
+      'NAT-008/NAT-009 report NONE|PRESENT + NOT_EVALUATED validation maturity; GT query bounded to primary-cohort org+vehicle pairs.',
+    ],
+    reason:
+      'Close independent review gaps on PR #1842 before merge — true segmentation, historical asOf stability, NAT semantic separation.',
+    previousBehavior:
+      'G3 V2 blocked pooling via metadata only while maturity metrics pooled by vehicle; present-tense GT active checks could shift past asOf reports after later lifecycle changes.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md §G3.1; f5-longitudinal-segmentation.policy.ts; ground-truth-historical-authority.util.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T20:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g3-f5-ground-truth-correlation-segmentation-2026-09-29',
+    version: '4.9.2211',
+    title: 'Battery V2 M3.3G G3 — F5 ground-truth correlation + LV segmentation',
+    summary: [
+      'F5 natural calibration report contract bumped to M3_3F_F5_NATURAL_CALIBRATION_REPORT_V2 with read-only Ground Truth linkage block (counts, segmentation epochs, PRE/INTERVENTION/POST temporal regions).',
+      'Correlates active CONFIRMED LV Ground Truth to primary f46_sustained D3 revisions using effectiveAt + first/lastIncludedAnchorAt — no numeric intervention envelope.',
+      'Replacement GT defines longitudinal segment boundaries in report interpretation only; workshop measurement GT links without segment boundary; CAL-007 remains non-causal.',
+    ],
+    reason:
+      'M3.3G G3 connects merged G1/G2 Ground Truth authority to bounded F5 natural calibration without D3 mutation or production GT writes.',
+    previousBehavior:
+      'F5 V1 reported groundTruth.linkageAvailable=false and replacementLabelsAvailable=false as frozen stubs.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md; f5-ground-truth-correlation.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T18:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g2-2-cross-scope-replacement-authority-2026-09-29',
+    version: '4.9.2210',
+    title: 'Battery V2 M3.3G G2.2 — one active replacement GT per source service event',
+    summary: [
+      'Active CONFIRMED BATTERY_REPLACEMENT identity is organization + source service event; battery scope is fact content, not a second concurrent truth key.',
+      'Partial unique index battery_ground_truth_one_active_replacement_per_source_event replaces scope-inclusive G2.1 index (same unmerged migration folder; GT_ROWS_CREATED_BY_MIGRATION=0).',
+      'findActiveReplacementBySourceEvent + evaluateAdmission/emission P2002 handling: same scope idempotent converge; cross scope typed REPLACEMENT_SCOPE_CONFLICT (no raw P2002).',
+      'Postgres G2H-K/L concurrent LV/HV and document↔manual cross-scope races; G2.1 same-scope convergence tests preserved.',
+    ],
+    reason:
+      'Concurrent LV + HV confirmation on the same BATTERY_REPLACEMENT service event could create two active GT rows under G2.1 scope unique key — violates G2 one-replacement-fact contract.',
+    previousBehavior:
+      'Unique on organization + source service event + battery scope allowed parallel LV and HV active replacements for one service event.',
+    details:
+      'PR #1840 G2.2; migration 20260929140000_battery_ground_truth_replacement_source_scope_unique amended; ground-truth-g2_2-cross-scope.postgres.integration.spec.ts; battery-ground-truth-postgres-ci.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T16:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g2-1-ordering-concurrency-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Battery V2 M3.3G G2.1 — document apply GT ordering + replacement concurrency',
+    summary: [
+      'Ground truth emits during CONFIRMED action-plan execution when authoritative confirmation context is passed from ApplyBatteryMeasurementDocumentActionExecutor (confirmedAt from plan, not measurement observedAt).',
+      'APPLIED/PARTIALLY_APPLIED remain eligible for GT retry convergence; READY_FOR_REVIEW and pre-confirm paths cannot emit GT.',
+      'Partial unique index enforces one active CONFIRMED BATTERY_REPLACEMENT per organization + source service event + battery scope; P2002 races converge to the same GT id.',
+      'Postgres G2H-A/B orchestration + G2H-F–I concurrency suites; manual confirm fixtures use real User FK rows.',
+    ],
+    reason:
+      'Close G2 defect where APPLIED-only gate skipped first-pass GT during real confirm→action ordering; harden concurrent manual/document replacement convergence before merge.',
+    previousBehavior:
+      'convergeDocumentApplyGroundTruth required APPLIED status while battery executor ran under CONFIRMED; concurrent confirms could insert duplicate active replacement GT rows.',
+    details:
+      'PR #1840; migration 20260929140000_battery_ground_truth_replacement_source_scope_unique (schema only, GT_ROWS_CREATED_BY_G2_1_MIGRATION=0); backend/scripts/test/battery-ground-truth-postgres-ci.sh (G2.1).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T03:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7m-runtime-config-attestation-2026-10-02',
+    version: '4.9.2218',
+    title: 'Driving Intelligence — EXP-021 S4F-7M in-process S4 runtime config attestation',
+    summary: [
+      'Nine-key SHA-256 fingerprint + PRESTATE/STAGED/OTHER exposed on authenticated GET /api/v1/metrics.',
+      'DiV0S4RuntimeModule registers read-only attestation at bootstrap (no timers/DB/Redis/provider).',
+      'S4F-7J Tiny staging wrapper uses per-replica metrics proof instead of /proc environ.',
+    ],
+    reason:
+      'Close S4F-7L false-negative runtime proof gap: dotenv-loaded S4 config is not visible in /proc environ.',
+    previousBehavior:
+      'Production Tiny staging wrapper proved runtime via filtered /proc/<pid>/environ.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7M_IN_PROCESS_RUNTIME_CONFIG_ATTESTATION_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T22:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7l-tiny-config-staging-attempt-2026-10-02',
+    version: '4.9.2217',
+    title: 'Driving Intelligence — EXP-021 S4F-7L Production Tiny 3-key staging attempt (rollback)',
+    summary: [
+      'Human-authorized DRY_RUN=0 staging: exact 3-key backend.env write + backup succeeded; Replica A PRIMARY_STAGING runtime proof failed.',
+      'Wrapper recovery restored pre-pin backend.env bytes and restarted A→B; GLOBAL KILLED and S4 zero-state preserved.',
+      'Staging authorization consumed; new engineering + human grant required before retry.',
+    ],
+    reason:
+      'Execute bounded Production config staging for KS MS 661 NOT_BEFORE + allowlists without Tiny activation.',
+    previousBehavior:
+      'Three staging keys absent from Production backend.env; dry-run only evidence (S4F-7K).',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T21:35:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7k-tiny-staging-dry-run-2026-10-02',
+    version: '4.9.2216',
+    title: 'Driving Intelligence — EXP-021 S4F-7K Production Tiny config staging dry run',
+    summary: [
+      'Read-only Production DRY_RUN=1 via cloud-agent-s4-tiny-staging.sh: guards PASS, intended 3-key env delta only, zero mutation/restart.',
+      'Frozen merge tool SHA 04017010 blocked on text vehicle_id SQL; remediation on evidence branch before config-only staging execution.',
+      'GLOBAL KILLED; S4 zero-state; Tiny activation still 5/6 (NOT_READY).',
+    ],
+    reason:
+      'Prove S4F-7J/J.1 wrapper safety on live Production before separately authorized config-only staging.',
+    previousBehavior:
+      'No live Production dry-run evidence for Tiny three-key staging wrapper.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T20:55:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7f-kill-init-wrapper-2026-10-02',
+    version: '4.9.2215',
+    title: 'Driving Intelligence — EXP-021 S4F-7F guarded Production GLOBAL kill initializer wrapper',
+    summary: [
+      'Production ops wrapper: ACK + exact SHA/release/env-hash + GLOBAL pre-state + topology + S4-off + budget/Redis + zero S4 persistence guards.',
+      'Invokes deployed-release di-v0-s4-initialize-global-kill-row.ts only (no main substitution); DRY_RUN=1 supported.',
+      'No Production DB/env/deploy in this slice; GLOBAL row remains MISSING until separate human execution.',
+    ],
+    reason:
+      'Close S4F-7E BLOCKER (PRODUCTION_EXECUTION_WRAPPER_REQUIRED) without deploying newer main to Production.',
+    previousBehavior:
+      'Raw ts-node kill initializer had no Production SHA/release/env/prestate/ACK guards.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T04:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7a-tiny-execution-prereqs-2026-10-01',
+    version: '4.9.2214',
+    title: 'Driving Intelligence — EXP-021 S4F-7A dormant S4 runtime wiring & no-backfill containment',
+    summary: [
+      'DiV0S4RuntimeModule composes S4B/S4E/S4F and registers one S4C executor; ALL_OFF remains dormant (no timers, no DIMO/DB writes).',
+      'PRIMARY discovery requires DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE on trip.end_time (fail-closed).',
+      'Operator-only GLOBAL kill-row initializer (KILLED default); not migration-seeded.',
+      'Frozen Tiny gates unchanged: 5/6, operator authorization NOT_SATISFIED.',
+    ],
+    reason:
+      'Engineering prerequisites after S4F-7 preflight: runtime registration + backlog containment before any dormant Production deploy or human authorization.',
+    previousBehavior:
+      'S4B–F defined but not Nest-registered; discovery could select historical backlog for KS MS 661 without a trip-end lower bound.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7A_TINY_EXECUTION_PREREQUISITES_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T22:15:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f5-1-release-delta-preflight-2026-10-01',
+    version: '4.9.2213',
+    title: 'Driving Intelligence — EXP-021 S4F-5.1 Production release delta preflight (VO2)',
+    summary: [
+      'Read-only: 29 commits / 330 files / 2 VO2 migrations NOT_APPLIED on Production.',
+      'VO2 data preflight pass (9 vehicles, 0 orphan orgs, 0 active-link duplicate groups, 0 table collisions).',
+      'DEPLOY_READINESS=PASS for SHA 8fa531b27… via vps-deploy-release.sh (not executed).',
+    ],
+    reason: 'Seal schema/data safety before promoting main containing Vehicle Onboarding VO2 migrations.',
+    previousBehavior: 'No frozen VO2 deploy delta audit on Production.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F5_1_RELEASE_DELTA_PREFLIGHT.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T03:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f5-production-preflight-2026-10-01',
+    version: '4.9.2212',
+    title: 'Driving Intelligence — EXP-021 S4F-5 Production preflight (DIMO global budget rollout)',
+    summary: [
+      'Read-only VPS preflight: dual-replica health OK; Redis PING OK; S4 flags safe; config key MISSING.',
+      'Production SHA 1dd42240… behind main 8fa531b27… — S4F-4 wrapper + live gauge not deployed.',
+      'PRODUCTION_ROLLOUT_PREREQUISITE=DEPLOY_REQUIRED before config-only S4F-4 wrapper.',
+    ],
+    reason: 'Seal Production readiness evidence for DIMO_GLOBAL_BUDGET_ENABLED=true without mutating Production.',
+    previousBehavior: 'No frozen S4F-5 preflight artifact or repeatable ops script.',
+    details:
+      'backend/scripts/ops/di-v0-s4f5-production-preflight.sh; architecture/drivingintelligence/evidence/EXP021_S4F5_PRODUCTION_PREFLIGHT.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T03:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f1-evidence-hardening-h1-h4-2026-09-30',
+    version: '4.9.2211',
+    title: 'Driving Intelligence — EXP-021 S4F-1 final evidence hardening (H1–H4)',
+    summary: [
+      'H1: transport-thrown budget/429 errors proven through S3A acquisition → S4C map → failRetryable (T07) with zero HTTP.',
+      'H2: scan watermark (`created_at <= clock_timestamp` at scan start) on beyond-horizon and work-item pagination.',
+      'H3: DiV0S4fReadDb query-only; dormant static audit covers all S4F production sources.',
+      'H4: operational aggregate index audit — no merge-critical blocker; no new migration.',
+    ],
+    reason: 'Close residual pre-merge proof gaps on draft PR #1853 without activating S4 runtime.',
+    previousBehavior: 'Classifier-only budget proofs; keyset without scan watermark; read DB type included $executeRaw exemption.',
+    details:
+      's4f-observability/di-v0-s4f-keyset-cursor.ts; EXP021_S4F1 evidence H1–H4; Postgres H2-A/B/C.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T03:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f1-observability-reconciliation-2026-09-30',
+    version: '4.9.2210',
+    title: 'Driving Intelligence — EXP-021 S4F-1 dormant observability & activation-readiness foundation',
+    summary: [
+      'Read-only bounded reconciliation + DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1 (work/lease/pipeline/evidence metrics).',
+      'Beyond 10d drift horizon: boundary mismatch count/report only (no T11, no DB mutation).',
+      'Fail-closed tiny-activation readiness evaluator; provider backpressure audit OPEN; location retention governance note.',
+    ],
+    reason: 'Prepare operator observability and activation gates without enabling S4 runtime or provider calls.',
+    previousBehavior: 'No S4F reconciliation or machine-readable activation-readiness export.',
+    details:
+      'backend/.../s4f-observability/*; architecture/drivingintelligence/evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md; design/s4f/S4F_LOCATION_RETENTION_GOVERNANCE_NOTE.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T02:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4e2-class-a-retirement-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Driving Intelligence — EXP-021 S4E-2 CLASS A pipeline retirement hardening (dormant)',
+    summary: [
+      'Authoritative `retirePipelineVersion`: registry ACTIVE→RETIRED and full retirable work-item supersession in one PostgreSQL transaction (closes DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001).',
+      'T11 `supersedeOnDrift` locks pipeline registry FOR UPDATE before work-item row (canonical order: registry → work items).',
+      'Postgres matrix S4E2-A01..A10 concurrent retirement vs T11/T10/T12; harness `retireRegistry` delegates to repository (no raw DML).',
+    ],
+    reason: 'Strong serialized durable invariant before S4E complete; refinement within existing pipeline retirement authority (no contract v2 amendment).',
+    previousBehavior: 'CLASS B: FOR SHARE registry read + operator DML could leave durable PENDING PRIMARY under RETIRED until a later T12 tick.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository.ts; s4e-drift-watcher/__tests__/di-v0-s4e-class-a-retirement.postgres.integration.spec.ts; architecture/drivingintelligence/evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g2-confirmed-gt-emission-2026-09-29',
+    version: '4.9.2208',
+    title: 'Battery V2 M3.3G G2 — confirmed capture + document GT emission',
+    summary: [
+      'BatteryGroundTruthEmissionService converges ground truth after confirmed document battery apply (CONFIRMED action execution or APPLIED retry) and via POST battery/ground-truth/confirm-replacement (fleet.write).',
+      'BATTERY_REPLACEMENT admission no longer requires numeric BatteryEvidence when scope is explicit on confirmed document or manual confirmation path.',
+      'Document apply retry converges missing GT idempotently; GT emission failure surfaces typed BadRequestException for recoverable retry; executor exposes groundTruthEventIds.',
+      'GT-backed service event material update/delete blocked pending explicit supersede/revoke workflow.',
+    ],
+    reason:
+      'Wire G1 scientific authority to confirmed operational capture without AI-pre-confirm emission, production deploy, or F5 correlation changes.',
+    previousBehavior:
+      'G1 GT table and admission existed but document apply and manual service history did not emit ground truth.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md; backend/scripts/test/battery-ground-truth-postgres-ci.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T02:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4b-discovery-claim-orchestration-2026-09-28',
+    version: '4.9.2207',
+    title: 'Driving Intelligence — EXP-021 S4B discovery + claim orchestration (dormant)',
+    summary: [
+      'S4B orchestration library: bounded PRIMARY discovery via T01 only, leader-guarded di_v0_s4_discovery, replica-local DB claim loop with T03 heartbeat and 240s work budget, executor registry (no S4C yet).',
+      'Canonical runtime pipeline manifest builder (calibrationBundleHash over numeric bundle content); env parsing isolated to di-v0-s4b-config.ts.',
+      'DiV0S4bOrchestrationModule defined but not registered in AppModule — Production remains KILLED with zero S4 rows.',
+    ],
+    reason: 'Start S4B engineering behind default-OFF control plane without provider acquisition or Production activation.',
+    previousBehavior: 'S4A repository only; no discovery scheduler or claim orchestration.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/*; architecture/drivingintelligence/evidence/EXP021_S4B_ENGINEERING_START.md; npm run test:di:s4b.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-2026-09-27',
+    version: '4.9.2206',
+    title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation',
+    summary: [
+      'Version-scoped durable source-evidence acknowledgement (`battery_longitudinal_source_evidence_acks`) is the D3 freshness authority; `BatteryLongitudinalProfileRevision.sourceEvidenceFingerprint` is non-authoritative creation provenance only.',
+      'Bounded keyset fleet inspection with durable cursor closes fixed-prefix starvation while remaining bounded — fair across the fleet and eventually live through cursor wrap; not a global oldest-outstanding guarantee.',
+      'PostgreSQL integration evidence covers lost-update, same-science/new-evidence settlement, INVALIDATED C3 staleness, out-of-order completion, scheduler/ops idempotency, and leader-turnover overlap convergence.',
+      'D3 materialization flag `BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED` remains default OFF; F4.1 does not production-activate D3 (no F_D3_T0, backfill, historical C3 replay, customer D3 endpoint, or E3 runtime).',
+    ],
+    reason:
+      'Establish safe, bounded, restart-/replica-safe D3 reconciliation before any explicit production activation gate.',
+    previousBehavior:
+      'D3 was internal/on-demand only and had no race-safe scheduled durable freshness reconciliation authority.',
+    details:
+      'Merged PR #1806; architecture/battery-v2/research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md; npm run test:battery:v2:longitudinal-reconciliation:postgres.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T18:15:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d9a-s3b-r1-v03-field-authority-2026-09-27',
+    version: '4.9.2205',
+    title: 'Driving Intelligence — EXP-021 C1D.9A DI V0 S3B R1 query V0_3 (provider field authority, currentGear removed)',
+    summary: [
+      'R1 query/adapter/snapshot bumped to V0_3: exactly five fields (speed, rpm, throttle, engine load, ECT), all agg: AVG, all PROVIDER_SCHEMA_VERIFIED.',
+      'Authority from C1D.9 read-only audit: DIMO telemetry GraphQL introspection + DIMO VSS 4.2 spec + read-only responses from 4 Ruptela R1 vehicles; units km/h, rpm, percent 0..100, percent 0..100, °C — no rescaling, no range thresholds.',
+      'powertrainTransmissionCurrentGear removed from query, normalizer and S1 type: signed gear index where AVG synthesizes non-existent or false-Neutral gears; not exposed by any audited R1 device. isIgnitionOn stays excluded.',
+      'Temporal authority unchanged (INTERVAL_ONLY, never overrides L3); combined input identity stays V0_2; V0_2 R1 identifiers superseded and never aliased.',
+    ],
+    reason: 'Close DI-GAP-S3B-R1-FIELD-AUTHORITY-001 for the five safe fields (PARTIALLY_CLOSED; residual gear) before any S4 R1 shadow orchestration.',
+    previousBehavior:
+      'Query V0_2 carried six REPO_CONTRACT_ONLY fields including powertrainTransmissionCurrentGear(agg: AVG); fractional gear values could reach normalized evidence.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; core/types.ts; architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md; DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T12:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d8b-s3b-contract-hardening-2026-09-27',
+    version: '4.9.2204',
+    title: 'Driving Intelligence — EXP-021 C1D.8B DI V0 S3B contract hardening (red-team closure)',
+    summary: [
+      'Native events: calibration fixed UNCALIBRATED / max L1 (no caller field); expected org/vehicle/trip/window/family/provider context enforced per record → CONTEXT_MISMATCH (audited).',
+      'Native eventId dedup: identical collapse, differing duplicates → CONFLICTING_DUPLICATE (L0, preserved); order-independent.',
+      'Source envelope: NO_EVENT only for a successful empty read; read failure → EVENT_SOURCE_FAILURE; readDiV0NativeEventSource defines the future S4 boundary.',
+      'Combined input identity V0_2 pins all three channels with explicit state (PRESENT / NO_EVENT / SOURCE_FAILURE / NOT_AVAILABLE).',
+      'R1 OBD: per-signal duplicate-bucket merge (CONFLICTING_DUPLICATE withheld, no first-row-wins/averaging); isIgnitionOn removed from query V0_2; field authority REPO_CONTRACT_ONLY; FULL-R1-002 golden-bound HOLD/RELEASE tests.',
+    ],
+    reason: 'Close C1D.8A red-team P1/P2 findings on PR #1805 fail-closed before any S4 caller.',
+    previousBehavior:
+      'Caller-set native VALIDATED escalated to L2; no native context binding; duplicate eventIds double-counted; empty ≡ NO_EVENT with no failure state; R1 duplicate buckets first-row-wins; isIgnitionOn(agg: AVG) queried.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/{native-event-evidence,r1-obd-acquisition,evidence-input}/*; architecture/drivingintelligence/evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md; DI-DEC-V0-S3B-CONTRACT-HARDENING-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T14:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d8-s3b-r1-obd-native-events-2026-09-27',
+    version: '4.9.2203',
+    title: 'Driving Intelligence — EXP-021 C1D.8 DI V0 S3B R1 OBD + native event evidence (dormant)',
+    summary: [
+      'Channel A: r1-obd-acquisition — DIMO HF OBD subset over strict 1 s grid; INTERVAL_ONLY; VALUE_PRESENT / SIGNAL_NULL / ROW_ABSENT per signal; no fixed time correction; RUPTELA_R1 only.',
+      'Channel B: native-event-evidence — normalizes ingested driving_events-shaped records; NATIVE_EVENT_OBSERVATION; UNCALIBRATED max claim L1; zero events = NO_EVENT.',
+      'Separate provenance channels; SHA-256 snapshot identities + combined input identity helper for future S2 worker pinning.',
+      'No runtime caller, worker, queue, DB write, fusion, or product accel/brake logic.',
+    ],
+    reason: 'Prepare normalized R1 historical OBD and native provider event evidence for future shadow orchestration without overriding S3A→S1 L3.',
+    previousBehavior: 'S1 accepted manual NormalizedR1ObdObservation / NativeEventObservation fixtures only; no acquisition libraries.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; native-event-evidence/*; evidence-input/di-v0-combined-input-identity.ts; architecture/drivingintelligence/evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d7-s3a-position-acquisition-2026-09-26',
+    version: '4.9.2201',
+    title: 'Driving Intelligence — EXP-021 C1D.7 DI V0 S3A position acquisition + normalization (dormant)',
+    summary: [
+      'New driving-intelligence/position-acquisition dormant library: DIMO signals(interval:"1s") currentLocationCoordinates(agg: AVG) over a strict [from, to) second grid.',
+      'PRESENT / SIGNAL_NULL / ROW_ABSENT kept distinct; row timestamp is a bucket label (BUCKET_BOUNDED, never EXACT_PROVEN); no interpolation, fill-forward or snapping.',
+      'Coordinate validation (0,0 valid), duplicate fail-safe, source family via canonical DIMO-identity resolver (never hardwareType), SHA-256 snapshot → S2 inputEvidenceVersion.',
+      'Typed redacted error model (403 explicit, empty = all ROW_ABSENT); no runtime caller, DB write, live provider call or customer effect.',
+    ],
+    reason: 'S1 core and S2 persistence need normalized position evidence with explicit availability and temporal semantics before any S3B worker.',
+    previousBehavior: 'No DI V0 input slice; inputEvidenceVersion had no producer.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/*; architecture/drivingintelligence/evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md; DI-DEC-V0-POSITION-ACQ-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T22:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d7b-s3a-doc-closure-golden-2026-09-27',
+    version: '4.9.2202',
+    title: 'Driving Intelligence — EXP-021 C1D.7B PR #1800 S3A doc closure + full-R1-002 golden',
+    summary: [
+      'Authority closure: C1G aggregation evidence (DI-GAP-S3A-AGG-001 PARTIALLY_CLOSED), provider historical mutability, pinned DI_NORMALIZED_INPUT_IDENTITY replay vs live re-query.',
+      'Committed C1-MOBILE-FULL-R1-002 compact provider-row golden + S3A/S1 structural regression tests; mutability identity contract tests.',
+      'No S3A runtime/query/aggregator/normalization change; draft PR #1800 remains dormant (no runtime caller).',
+    ],
+    reason: 'Close pre-merge red-team P1 documentation gap without changing S3A semantics.',
+    previousBehavior: 'AGG-001 documented as UNKNOWN; no full-trip S3A golden in repo; mutability/replay contract implicit only.',
+    details:
+      'architecture/drivingintelligence/*; position-acquisition/__tests__/fixtures/full-r1-002-golden.fixture.ts; new golden/mutability/S1 specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T07:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d5-v0-pure-shadow-core-2026-09-26',
+    version: '4.9.2200',
+    title: 'Driving Intelligence — EXP-021 C1D.5 DI V0 pure shadow core (S0/S1)',
+    summary: [
+      'New isolated driving-intelligence/core pure library: normalized evidence → DI V0 interval kinematic results.',
+      'Frozen L3 centred-path estimator (DI_KINEMATIC_ESTIMATE_V0_1) with calendar-second support t−1,t,t+1; hold/release/ROW_ABSENT abstention.',
+      'R1 OBD INTERVAL_ONLY corroboration only; uncalibrated native events typed, max claim L1; numeric L3 capped at L2.',
+      'No runtime caller, DB, queue, DIMO, flags, or customer API — merge review only.',
+    ],
+    reason:
+      'C1D.4 shadow implementation readiness requires a side-effect-free core before persistence and workers.',
+    previousBehavior: 'No DI V0 structural evaluator in repository; legacy HF detectors only.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/core/*; architecture/drivingintelligence/evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md; DI-DEC-V0-SHADOW-PURE-CORE-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T18:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3f-f3-natural-c3-closure-2026-09-27',
+    version: '4.9.2102',
+    title: 'Battery V2 M3.3F F3 — natural C3 validation OBSERVED (~21h read-only follow-up)',
+    summary: [
+      'Read-only production audit since F_C3_T0=2026-09-26T11:09:12Z: 15 natural append-only C3 rows (0 D3); earliest sample C5A integrity OK.',
+      'F3_COMPLETE=YES; F3_NATURAL_C3_VALIDATION=OBSERVED; F4_ALLOWED=YES — D3 activation prep only (not executed).',
+      'Preserves original 360s post-T0 zero-row activation window in F3 evidence doc; ~21h follow-up appended.',
+    ],
+    reason:
+      'Close M3.3F F3 natural calibration gate before any authorized F4 D3 materialization activation work.',
+    previousBehavior:
+      'F3 runtime activation PASS with F3_NATURAL_C3_VALIDATION=PENDING and F4_ALLOWED=NO after empty 360s window.',
+    details:
+      'architecture/battery-v2/research/M3_3F_F3_C3_SHADOW_ACTIVATION_2026-09-26.md (follow-up section); CURRENT_STATE.md; CHANGE_LEDGER.md CL-2026-09-27',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
+    version: '4.9.2101',
+    title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',
+    summary: [
+      'C0.4 CG-01: R1 historical OBD cannot support cold coolant + full throttle point-time conjunction.',
+      'COLD_ENGINE_FULL_THROTTLE added to R1 HF abuse containment set — future derivation suppressed; 326 persisted rows kept, omitted from customer event list.',
+      'Marker-aware read-time abuse counter adjustment for trips enriched under C0.3 v1 marker; misuse rules skip R1-only full-throttle evidence.',
+      'COLD_ENGINE_HIGH_RPM, Tesla/API_SYNTHETIC, and non-R1 families unchanged.',
+    ],
+    reason:
+      'Persisted R1 HF_DERIVED COLD_ENGINE_FULL_THROTTLE events exceeded KEC L1 ceiling at unified behaviour read strength while misuse was already capped.',
+    previousBehavior:
+      'R1 COLD_ENGINE_FULL_THROTTLE visible as SEVERE/WARNING abuse events; could open COLD_ENGINE_ABUSE misuse from full-throttle rows alone.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md; r1-temporal-containment.ts v2; no migration/backfill.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T21:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-c03-r1-temporal-containment-2026-09-24',
+    version: '4.9.2100',
+    title: 'Driving Intelligence — EXP-021 C0.3 R1 temporal-safety containment (draft, not deployed)',
+    summary: [
+      'Telemetry source family from DimoVehicle.rawJson (R1 serial "R1-" / API synthetic / UNKNOWN fail-closed); hardwareType not consulted (Tesla is LTE_R1).',
+      'R1: FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING no longer derived; re-enrichment never deletes historical contained rows.',
+      'Existing rows contained at read time: braking ledger summary, trip/rolling impact, brake wear + fingerprint, event list, trip counters/stats; R1 native context withholds anchor-relative values.',
+      'Misuse: R1 OBD-derived evidence tagged temporally uncertain — cannot establish or upgrade SEVERE+; REVIEW_REQUIRED preserved; fingerprints unchanged.',
+      'C0.3B: read-time presentation caps existing persisted SEVERE misuse rows; withholds R1 stress scores when persisted full-braking indicators exist (no fabricated correction).',
+    ],
+    reason:
+      'EXP-021 C0–C0.2: R1 historical OBD rows are grid-labelled and misdated (|offset| P50 14 s / P90 45 s); FULL_BRAKING 0/5 supported, ENGINE_SHUTDOWN 0/6 sustained.',
+    previousBehavior:
+      'R1 point-in-time abuse claims fed KPIs, brake wear, impact and SEVERE misuse; context API exposed "nearest sample 0 ms" values.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md; DI-DEC-R1-TEMPORAL-CONTAINMENT-001; telemetry-source-family.ts; r1-temporal-containment.ts; no migration/backfill/data mutation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T18:00:00.000Z',
+  },
+  {
+    id: 'tdl-qualified-stop-contract-v1-2026-09-24',
+    version: '4.9.2100',
+    title: 'Trip FSM — Qualified Stop Contract V1 (5 min same-trip boundary)',
+    summary: [
+      'Product contract: physically qualified stop/pause duration ≤300_000 ms stays ONE trip; strictly greater duration SPLIT.',
+      'Single authority: trip-qualified-stop-duration.policy.ts + worker.tripSameTripMaxQualifiedStopMs (default 300_000; legacy TRIP_MID_GAP_SPLIT_MS alias).',
+      'Live mid-gap, small_gap_merge/reopen, and reconciliation intra-gap repair share LTE_SAME_GT_SPLIT comparator; qualification gates unchanged.',
+      'KS FH 660E controls: 217 s same trip; 349.586 s split. PR #1750 finalize quality unchanged.',
+    ],
+    reason:
+      'Production effective split threshold was 180_000 ms with >= admission while merge used <300_000 — inconsistent with five-minute qualified parking semantics.',
+    previousBehavior:
+      'Live path split when gapMs >= 180_000; merge when gapMs < 300_000 (300_000 ms not merged).',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md; trip-qualified-stop-duration.*; trip-mid-gap-split.util.ts; worker.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:15:00.000Z',
+  },
+  {
+    id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
+    version: '4.9.2099',
+    title: 'Trip FSM — post-split short-trip finalize quality gate',
+    summary: [
+      'Production KS FH 660E 2026-09-24 Trip 2: real ~2 min post MID_TRIP_GAP_SPLIT drive cancelled with too_short_no_distance despite 15 persisted waypoints and null distanceKm.',
+      'Fix: analyzePersistedRouteMovement (route speed/segment + cumulative path ≥ odometerMinDeltaKm); resolveFinalizeEndTime uses latest credible route movement (not latest waypoint); quality movement evidence independent of canonical duration.',
+      'FINALIZATION_CHECK logs QUALITY_* forensics (non-authoritative).',
+      'Portable BASE/HEAD repro + processFinalize integration tests; no threshold/policy/deploy changes.',
+    ],
+    reason:
+      'Stale LMM before route catch-up made canonical finalize duration <60s while independent waypoint evidence proved a real short drive.',
+    previousBehavior:
+      'Finalize end chain preferred LMM over later waypoints; quality discard ignored waypoint/route evidence for too_short_no_distance.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md; trip-finalize-quality.util.ts; trip-evidence.helpers.ts; trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:45:00.000Z',
+  },
+  {
+    id: 'vdc-wob-long-stand-wake-plug-gt-evidence-2026-09-23',
+    version: '4.9.1997',
+    title: 'VDC — WOB L 7503 long-stand wake-associated PLUG GT evidence closure',
+    summary: [
+      'Canonical evidence: UNPLUG→parked replug (6982 s silence, 21 polls, 0 fresh OBD) then trip-start-associated provider PLUG at +56 s.',
+      'Webhook APPLIED physical first (146 ms HTTP→apply); snapshot PROVENANCE_REFRESH 188563 ms later; no ignition causality claim.',
+      'Cross-vehicle parked behavior heterogeneous vs KS MX 191 s; global PLUG rollout DEFERRED_TO_T7_REVIEW; VDC-DEC-010 wording hardened.',
+    ],
+    reason:
+      'Persist Production read-only GT without claiming trip/ignition universally causes provider OBD refresh or bounded parked replug SLA.',
+    previousBehavior:
+      'WOB_LONG_STAND_GT listed as WOB_PARKED_GT=PENDING in CURRENT_STATE; forensics only in agent transcripts.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md; CURRENT_STATE.md; EVIDENCE_INDEX.md; CHANGE_LEDGER.md; DECISION_REGISTER.md (VDC-DEC-010 evidence ref)',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-23T10:40:00.000Z',
+  },
+  {
+    id: 'vdc-ks-mx-parked-plug-gt-evidence-2026-09-22',
+    version: '4.9.1996',
+    title: 'VDC — KS MX 2024 parked PLUG GT scientific evidence closure',
+    summary: [
+      'Canonical evidence: parked UNPLUG→PLUG GT 2026-09-22 (token 187336); WEBHOOK physical APPLIED before SNAPSHOT_OBD PROVENANCE_REFRESH (1833 ms lead; 61 ms HTTP→apply).',
+      'Two-layer attribution: provider OBD visibility ~191 s after replug vs prior GT ~57148 s; CAUSAL_ATTRIBUTION_295X_TO_WEBHOOK_ALONE=NO.',
+      'Legacy episode resolvedAt = provider observation time; physical winner WEBHOOK; VDC-DEC-010 remains valid; global PLUG rollout deferred.',
+    ],
+    reason:
+      'Persist Production read-only GT forensics without over-crediting webhook for provider emission latency improvement.',
+    previousBehavior:
+      'KS MX canary activation documented as gated; parked replug GT results only in agent transcripts.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_KS_MX_PARKED_GT_2026-09-22.md; CURRENT_STATE.md; EVIDENCE_INDEX.md; CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-22T22:40:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c2-charge-opportunity-raw-2026-09-23',
+    version: '4.9.1997',
+    title: 'Battery V2 M3.3C C2.1 — Charge opportunity raw context (read-only)',
+    summary: [
+      'RestSessionChargeContextReader: tenant-scoped org+vehicle+restSessionId; zero writes; trip window from confirmed/candidate links only.',
+      'Pure policy M3_3C_C2_V1: qualified LV/alternator counts, provider-snapshot engine-running counts, aligned/partial running+alternator; classifier DRIVING_CHARGING diagnostic only.',
+      'chargeOpportunityClass=UNKNOWN; no coverage/V·ms proxy (DEFERRED_NO_BRIDGE_POLICY); no inferred trip window for unlinked sessions.',
+      'C2 source-contract doc + C0 addendum; unit tests A–O; ephemeral Postgres PG_A–G integration script.',
+    ],
+    reason:
+      'C2.0 forensics proved DRIVING_CHARGING unreachable — raw field contract before C3 feature persistence.',
+    previousBehavior:
+      'No charge-context reader or raw-feature policy; C0 still proposed GE DRIVING_CHARGING count as primary source.',
+    details:
+      'architecture/battery-v2/research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md, rest-session-charge-context.reader.ts, rest-session-charge-opportunity.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T06:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c5b-master-admin-shadow-ui-2026-09-23',
+    version: '4.9.2001',
+    title: 'Battery V2 M3.3C C5B — Master Admin shadow inspection UI',
+    summary: [
+      'GET /admin/battery-v2/rest-sessions + rest-session-feature-inspection (MASTER_ADMIN, read-only).',
+      'Master Admin view battery-v2-shadow-inspection renders atomic M3_3C_C5A_V1 (no frontend domain recompute).',
+      'Integrity states OK / INTEGRITY_PARTIAL / INTEGRITY_WARNING displayed explicitly; M3.3H customer UI unchanged.',
+    ],
+    reason: 'Internal engineering inspection over C5A without ops CLI or manual SQL.',
+    previousBehavior: 'C5A via ts-node ops CLI only.',
+    details:
+      'platform-admin.controller.ts, battery-v2-rest-session-feature-inspection.admin.service.ts, frontend/src/master/battery-v2-shadow-inspection/*',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T19:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c5a-shadow-observability-inspection-2026-09-23',
+    version: '4.9.2000',
+    title: 'Battery V2 M3.3C C5A — Shadow observability + read-only inspection',
+    summary: [
+      'Prometheus: synqdrive_battery_rest_session_feature_trigger_total/duration_seconds + row_created_total (bounded labels; single accounting in RestSessionFeatureShadowTriggerService).',
+      'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract; C5A.1 bounded latest-100 DB reads, digest coverage metadata (FULL/BOUNDED_LATEST_WINDOW), INTEGRITY_PARTIAL, canonical ≤4-row candidates; C5A.2 repeatable-read snapshot + canonical digest union + countAggregateConsistent.',
+      'Ops CLI battery:rest-feature:inspect — stdout JSON, production DATABASE_URL deny unless explicit readonly ack; zero writes.',
+      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI delivered separately (M3.3C C5B).',
+    ],
+    reason:
+      'Operational answers for C4 triggers and C3 persistence without health scoring or customer surfaces.',
+    previousBehavior:
+      'C4/C3 shadow path lacked metrics and operator inspection; C5 pending in CURRENT_STATE.',
+    details:
+      'architecture/battery-v2/research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md, rest-session-feature-shadow-inspection.service.ts, battery-rest-session-feature-shadow-inspect.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T11:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c4-shadow-lifecycle-wiring-2026-09-23',
+    version: '4.9.1999',
+    title: 'Battery V2 M3.3C C4 — Shadow lifecycle wiring (fail-open triggers)',
+    summary: [
+      'RestSessionFeatureShadowTriggerService orchestrates C3 after authoritative mutations only (valid rest link, session terminal, late trip association).',
+      'Double flag gate: C4 + C3 both require BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED; flag OFF → zero computeAndPersist.',
+      'SYNCHRONOUS_POST_MUTATION_FAIL_OPEN — C3 errors isolated; no ENGINE_OFF open trigger; no GE capture hook; no queue/scheduler.',
+      'Unit A–O; Postgres PG_A–L via test:battery:v2:rest-session-feature:shadow:postgres.',
+    ],
+    reason:
+      'Authorized C4 wiring registers C3 in Nest and connects lifecycle boundaries without production deploy or flag enable.',
+    previousBehavior:
+      'C3 service test-only instantiation; no post-mutation feature triggers on rest-session or late-association paths.',
+    details:
+      'architecture/battery-v2/research/M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md, rest-session-feature-shadow-trigger.service.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T10:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c3-feature-computation-2026-09-23',
+    version: '4.9.1998',
+    title: 'Battery V2 M3.3C C3 — Deterministic feature computation (shadow append-only)',
+    summary: [
+      'RestSessionFeatureComputationService: shadow flag checked before any DB access; Serializable txn + battery_rest_sessions FOR UPDATE.',
+      'RestSessionFeatureInputSnapshotV1 + canonical JSON + SHA-256 inputDigest; semanticRevision monotonic per version tuple.',
+      'Combines C1 retention outputs + C2 chargeOpportunityRaw; chargeOpportunityClass=UNKNOWN; no live Nest registration or capture hooks.',
+      'Unit tests A–S; Postgres PG_A–M via test:battery:v2:rest-session-feature:computation:postgres.',
+    ],
+    reason:
+      'C3 authorized combined persisted feature model behind default-OFF flag before C4 lifecycle wiring.',
+    previousBehavior:
+      'C2 read-only charge raw only; no feature row writer or digest/idempotency path.',
+    details:
+      'architecture/battery-v2/research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md, rest-session-feature-computation.service.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T08:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c1-rest-session-feature-foundation-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3C C1 — Rest session feature schema + pure retention policy',
+    summary: [
+      'Additive Prisma table battery_rest_session_features with append-only lifecycle enums and digest/revision unique constraints.',
+      'BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED default false — zero runtime writers in C1.',
+      'Pure rest-session retention policy: Theil-Sen slope, mV units, actualRestAgeMs authority, unit tests A–H.',
+      'Ephemeral PostgreSQL migration verification script; no assessment/publication/BatteryFeatures coupling.',
+    ],
+    reason:
+      'M3.3C C1 authorized foundation after preflight — schema and deterministic policy before C3 hooks.',
+    previousBehavior:
+      'No shadow rest-session feature persistence or retention curve computation module.',
+    details:
+      'architecture/battery-v2/research/M3_3_C1_REST_SESSION_FEATURE_FOUNDATION_2026-09-22.md, generalized-evidence/rest-session-features/*, migration 20260922203000_battery_rest_session_features',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T20:35:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c0-retention-charge-preflight-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3C.0 — Retention curve + charge opportunity preflight (authority sync)',
+    summary: [
+      'Y3D.1 transition doc: B1.2W §13 COMPLETE, M3_3C_REOPENING_GATE=YES (historical M3.3C=BLOCKED preserved in B1.2W evidence).',
+      'M3.3C preflight: versioned BatteryRestSessionFeature storage (recommended), Theil-Sen retention slope, canonical FEATURE_INPUT_DIGEST snapshot, charge opportunity raw features + UNKNOWN classification default.',
+      'Shadow-only isolation: no assessment/publication/BatteryFeatures authority; REST_60M/6H remain opportunistic legacy until M3.3G.',
+      'Production readiness snapshot: 7 rest sessions, 0 REST_WAKE_VOLTAGE, sparse ladder — Postgres-first validation matrix defined.',
+    ],
+    reason:
+      'M3.3C reopening after provider-gap §13 closure requires design authority before schema/runtime packages C1–C5.',
+    previousBehavior:
+      'CURRENT_STATE listed M3.3C BLOCKED; no session retention/charge feature entity or contracts.',
+    details:
+      'architecture/battery-v2/research/M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md, M3_3_B1_2Y3D_1_SECTION_13_CLOSURE_M3_3C_REOPENING_2026-09-22.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T20:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-2y3c1-stale-replay-reachability-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3 B1.2Y3C.1 — Snapshot producer STALE_REPLAY reachability',
+    summary: [
+      'Shared BatteryProviderLastStoredLiveVoltageResolver: canonical battery_measurements LIVE_VOLTAGE (observedAt, receivedAt, value, idempotencyKey) tenant-scoped.',
+      'BatteryV2SnapshotObservationProducer no longer uses legacy battery_health_snapshots for LV provider dedup — restores STALE_REPLAY + provider-gap entry on frozen provider timestamps.',
+      'LvLiveVoltageIngestionService uses the same resolver (single semantic source of truth).',
+      'Tests: stale replay, duplicate-before-threshold, legacy snapshot bootstrap, advancing provider ts, Postgres producer→gap integration.',
+    ],
+    reason:
+      'Y3C shadow acceptance incomplete: production polls classified DUPLICATE_OBSERVATION because snapshot path lacked receivedAt on lastStored.',
+    previousBehavior:
+      'Producer lastStored from battery_health_snapshots.recordedAt/voltageV only; STALE_REPLAY policy branch unreachable on SNAPSHOT polls.',
+    details:
+      'battery-provider-last-stored-live-voltage.resolver.ts, battery-v2-snapshot-observation.producer.ts, architecture/battery-v2/research/CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T16:05:00.000Z',
+  },
+  {
+    id: 'vdc-ks-mx-plug-isolated-canary-profile-2026-09-22',
+    version: '4.9.1995',
+    title: 'VDC — KS MX 2024 isolated OBD PLUG canary profile (topology A)',
+    summary: [
+      'Generalized gt-r1-plug-webhook-canary-isolated.mjs to allowlisted profiles WOB_L_7503 (192922) and KS_MX_2024 (187336).',
+      'Unique temp webhook display names; --canary=<PROFILE> + matching --confirm-canary; arbitrary token CLI rejected.',
+      'WOB and KS MX temp canaries may coexist; sibling verification on activate; profile-scoped teardown preserves other canaries.',
+    ],
+    reason:
+      'KS MX 2024 LTE_R1 long-stand parked replug GT needs independent isolated PLUG fast path without fleet-wide legacy PLUG enable.',
+    previousBehavior:
+      'Single WOB-only isolated canary; multiple temp PLUG defs treated as global conflict.',
+    details:
+      'backend/scripts/ops/gt-r1-plug-webhook-canary-isolated.{mjs,lib.mjs}; architecture/vehicle-device-connectivity/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-22T08:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-2y1-1-provider-gap-hardening-2026-09-22',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2Y1.1 — Provider observability gap runtime hardening (PR #1721)',
+    summary: [
+      'Pre-gap ENGINE_OFF guard classifies last-fresh bundle without STALE_REPLAY short-circuit; STALE_REPLAY required for new gap open.',
+      'Gap lifecycle failures logged + metrics; ingestion fail-open; duplicate generalized evidence still completes gap resolution on retry.',
+      'No synthetic firstFreshProviderAt; gap runtime requires generalized evidence flag; removed parallel OFF resolve in snapshot ingestion.',
+      'PostgreSQL integration: concurrent open/resolve + partial unique OPEN; npm run test:battery:v2:provider-gap:postgres.',
+      'BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED default OFF; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'Close B1.2W correctness/retry/test gaps before merge of provider observability gap lifecycle.',
+    previousBehavior:
+      'B1.2Y1 foundation could mis-open gap on pre-gap OFF, open on duplicate-before-threshold, silently drop gap errors, and skip resolution on generalized duplicate retry.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md, provider-observability-gap/*, generalized-evidence-capture.service.ts, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T10:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',
+    summary: [
+      'Read-only production forensics since M3_3_B1_T0=2026-09-21T18:08:19Z; no deploy or mutation.',
+      '0 ENGINE_OFF_TRANSITION and 0 rest sessions; POST_T0_TRIPS_WITH_SHUTDOWN_CONTEXT=2; 15 raw engineRunning=false LV not trustworthy shutdown.',
+      'Rows explicitly CHARGING/ACTIVE contaminated or DRIVING — NO_SILENT_ENGINE_OFF_DROP=YES.',
+      'ENGINE_OFF / REST_SESSION / PARKED / R1 gates PENDING; MULTI_REPLICA + PROVENANCE PASS.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'B1.2 acceptance for first natural shutdown anchor and rest session without requiring ~8h R1 ladder.',
+    previousBehavior:
+      'B1.1 generalized capture PASS; no trustworthy shutdown observed post-T0.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2_FIRST_NATURAL_SHUTDOWN_REST_SESSION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-1-natural-shadow-validation-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.1 — Natural shadow evidence validation (read-only)',
+    summary: [
+      'Read-only production forensics since M3_3_B1_T0=2026-09-21T18:08:19Z; no deploy or env mutation.',
+      '29 generalized evidence rows; 29/29 VALID LIVE_VOLTAGE measurements captured; 0 unexpected gaps or duplicate captures.',
+      'Classes: 1× DRIVING_NON_CHARGING; 14× ACTIVE_VEHICLE_CONTAMINATED; 14× CHARGING_CONTAMINATED; 0 rest-path classes.',
+      'Gates: GENERALIZED_CAPTURE / PROVENANCE / MULTI_REPLICA_SAFETY PASS; engine-off / session / parked / R1 LADDER PENDING natural events.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'Confirm B1 shadow chain health for generalized capture and safety invariants before any rest-ladder or M3.3C work.',
+    previousBehavior:
+      'B1 activation smoke only (1 driving row); rest-session validation explicitly pending.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_1_NATURAL_SHADOW_EVIDENCE_VALIDATION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-shadow-activation-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1 — Generalized evidence shadow activation (production)',
+    summary: [
+      'Runtime unchanged @ 105f2c5ff (B0 release); BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true via shared backend.env.',
+      'Canary: Replica A restart then Replica B; bounded mixed-flag interval; M3_3_B1_T0=2026-09-21T18:08:19Z.',
+      'Natural shadow write: 1× DRIVING_NON_CHARGING (DRIVING_TOTAL=1); 0 rest sessions; REST_WAKE auto-promotion remains off.',
+      'Validation split: B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED; B1_REST_EVIDENCE_VALIDATION=PENDING.',
+      'PR #1709 closed SUPERSEDED_BY_1710; B1 docs on main lineage — no deploy of docs-only main for activation.',
+    ],
+    reason:
+      'Shadow-only M3.3 capture on production without authoritative Battery or cadence-based REST_WAKE promotion.',
+    previousBehavior:
+      'B0: flag false; zero generalized evidence and rest-session rows.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:15:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b0-flag-off-production-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B0 — Production deploy (generalized evidence flag OFF)',
+    summary: [
+      'Deployed main @ 105f2c5ff release 20260921172342_v4994; both PM2 replicas on exact SHA.',
+      'M3.3A+M3.3B code live; additive schema present; BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED absent → effective FALSE.',
+      'Zero generalized-evidence and rest-session rows before and after 180s post-deploy smoke (flag OFF).',
+      'M3.3 Prometheus counters registered on /api/v1/metrics; REST_WAKE auto-promotion remains disabled in code.',
+      'B0_PASS — B1 requires explicit authorization; no backfill or flag enable.',
+      'Lineage: M3.3A schema applied at fe3dc6bf (descendant of #1710) before B0 target 105f2c5ff; MIGRATIONS_APPLIED=0_new expected.',
+    ],
+    reason:
+      'Controlled production cutover for M3.3 shadow infrastructure without enabling writes or REST_WAKE promotion.',
+    previousBehavior:
+      'Production @ fe3dc6bf without M3.3 application code; schema already migrated with zero shadow rows.',
+    details:
+      'architecture/battery-v2/research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T17:35:00.000Z',
+  },
+  {
+    id: 'vdc-plug-webhook-restoration-forensics-2026-09-21',
+    version: '4.9.1994',
+    title: 'VDC — OBD PLUG webhook restoration forensics + safe ops gate',
+    summary: [
+      'Production read-only DIMO registry: PLUG webhook disabled; UNPLUG enabled; WOB 192922 subscribed to UNPLUG only.',
+      'Global PLUG enable blast radius = all tokens already on PLUG subscription list (6), not WOB-only.',
+      'gt-r1-plug-webhook-restoration.mjs — READ_ONLY default; PUT enable requires --execute + exact PLUG UUID confirm.',
+    ],
+    reason:
+      'Parked LTE_R1 replug latency is unbounded on snapshot-only path; restore PLUG webhook as fast path during P2.5 shadow epoch.',
+    previousBehavior:
+      'PLUG provider definition disabled since 2026-07-08; KS MX replug observed only after morning SNAPSHOT_OBD.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_RESTORATION_FORENSICS_2026-09-21.md; backend/scripts/ops/gt-r1-plug-webhook-restoration.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-21T12:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3b-r1-cadence-forensics-2026-09-21',
+    version: '4.9.1151',
+    title: 'Battery V2 M3.3B — R1 natural cadence forensics + REST ladder qualification (shadow)',
+    summary: [
+      'M3.3B.2 strict forensics aligned with runtime ladder mapping; reproducible SQL in repo.',
+      'Periodic ~8h-scale parked LV observed; ladder-candidate n=35; P95|residual| ~2.85h research tolerance candidate.',
+      'REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false; PARKED_REST_CANDIDATE retained.',
+      'Metric: synqdrive_battery_cadence_ladder_research_unqualified_total (replaces unreachable out-of-tolerance).',
+      'B0 deploy merged M3.3A+M3.3B with flag OFF; B1 shadow does not require REST_WAKE auto-promotion.',
+    ],
+    reason:
+      'Empirical R1 cadence grounding before shadow ladder promotion — no health scoring or authoritative REST_60M/6H changes.',
+    previousBehavior:
+      'M3.3A: PARKED_REST_CANDIDATE only; tolerance RESEARCH_PENDING; metrics stubs; no production interval statistics.',
+    details:
+      'architecture/battery-v2/research/M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T15:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3a-generalized-evidence-2026-09-21',
+    version: '4.9.1150',
+    title: 'Battery V2 M3.3A — Generalized evidence + rest session foundation (shadow)',
+    summary: [
+      'Additive tables `battery_generalized_evidence_observations` + `battery_rest_sessions` — normalized LV evidence above immutable `battery_measurements`.',
+      'Flag `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` defaults false — no production writes until explicitly enabled.',
+      'Evidence classes include REST_WAKE_VOLTAGE (R1 ~8h semantic); REST_STABLE promotion disabled; actualRestAgeMs authority; tolerance RESEARCH_PENDING.',
+      'Rest sessions: PHYSICAL_SHUTDOWN anchor, open-ended ladder (no REST_8H columns); late COMPLETED-trip association read-only.',
+      'M3.2B provenance bundle reused; REST_60M/REST_6H unchanged opportunistic legacy; no health/publication/assessment wiring.',
+    ],
+    reason:
+      'M3.3 audit: separate raw LV persistence from trip-finalize-gated REST/shadow paths for R1 periodic wake architecture.',
+    previousBehavior:
+      'Only raw LIVE_VOLTAGE + trip-gated REST window / M3.2B shadow; no generalized rest ladder session model.',
+    details:
+      'architecture/battery-v2/research/M3_3A_GENERALIZED_BATTERY_EVIDENCE_REST_SESSION_ARCHITECTURE.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T12:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-hybrid-trust-alpha-activation-2026-09-28',
+    version: '4.9.4999',
+    title: 'RFRF — scoped hybrid trust Alpha fleet activation (EED-OQ-019)',
+    summary: [
+      'Versioned activation authority RFRF_HYBRID_TRUST_ACTIVATION_MODE (OFF | ALPHA_ALLOWLIST) with explicit org/vehicle UUID allowlists.',
+      'Effective promotion trust = hybrid semantic classification gated by scoped activation; ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE stays false.',
+      'Promotion-time revalidation: DB Vehicle org ownership, monotonic context trust combine, fail-closed allowlist parse, qualityMeta promotion audit (no raw allowlist secrets).',
+      'Isolated PG gate rfrf-hybrid-trust-activation-postgres-gate.sh (P1–P7); default OFF — production activation requires explicit env + allowlist.',
+    ],
+    reason:
+      'Enable real Production fallback promotion trust only for SynqDrive-owned Alpha fleet without global or org-specific hybrid algorithms.',
+    previousBehavior:
+      'Hybrid TRUSTED classification was computed but promotion effective trust remained UNKNOWN globally.',
+    details:
+      'raw-fuel-hybrid-trust-activation.authority.ts; EED-EV-0101; EED-INV-022; stage-4 activation gate',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T23:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-hybrid-absolute-signal-trust-2026-09-28',
+    version: '4.9.4998',
+    title: 'RFRF — hybrid absolute signal trust authority v2 (pre-merge hardening)',
+    summary: [
+      'Local relative pre/post plateau corroboration (v2); durable hybridAbsoluteSignalTrust provenance on READY refresh.',
+      'READY refresh policy requires current hybrid authority + provenance block; baseline provenance missing vs not-FRESH distinguished.',
+      'Isolated localhost PG gate + recovery/promotion pipeline proofs P1–P7; promotion gate still OFF.',
+      'WOB Event B fixture remains UNKNOWN (absolute-only samples).',
+    ],
+    reason:
+      'Promotion trust must be earned from corroborating evidence, not fuel type, admissibility, or READY alone.',
+    previousBehavior:
+      'resolveRawFuelSignalTrust always returned promotion UNKNOWN without structured corroboration assessment.',
+    details:
+      'raw-fuel-hybrid-absolute-signal-trust.authority.ts (v2); hybridAbsoluteSignalTrust evidence block; isolated rfrf-hybrid-trust-postgres-gate.sh; EED-EV-0100; EED-INV-021',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-ready-evidence-refresh-2026-09-28',
+    version: '4.9.4997',
+    title: 'RFRF — READY candidate evidence refresh before promotion',
+    summary: [
+      'Versioned READY refresh policy + evidenceMeta.readyEvidenceRefresh before convergence/promotion.',
+      'Bounded historical DIMO reload via existing recovery window; same-observation reconcile only.',
+      'Idempotent provider calls when refresh metadata current (UNKNOWN trust alone does not refetch forever).',
+      'Stage-4 PostgreSQL gate rfrf-ready-evidence-refresh-postgres-gate.sh; trust authority still OFF (EED-INV-020).',
+    ],
+    reason:
+      'Legacy READY_FOR_PERSIST rows could promote with stale detector/trust/baseline provenance without reloading DIMO evidence.',
+    previousBehavior:
+      'recoverReadyCandidate skipped historical sample fetch and reused first-maturity evidence/trust snapshots.',
+    details:
+      'raw-refuel-ready-evidence-refresh.policy.ts; EED-EV-0099; rfrf-ready-evidence-refresh-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T14:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-baseline-recency-guard-2026-09-28',
+    version: '4.9.4996',
+    title: 'RFRF — pre-fill baseline recency safety guard',
+    summary: [
+      'evaluateRawFuelPrePlateauRecency blocks stale pre plateaus (KS MX 2026-09-16 false deltas).',
+      'Long silent PRE→RISE bridges (>360s, zero intervening samples) fail closed as INSUFFICIENT_EVIDENCE — not FRESH via rise inference.',
+      'WOB 09-19 fixture aligned to read-only Production DIMO extract (fresh pre ~16:07:45Z, 210s before rise).',
+      'Promotion BLOCKED_BASELINE_RECENCY unless FRESH; trust remains OFF (EED-INV-019).',
+    ],
+    reason:
+      'READY fallback candidates could reuse hours-old pre-fill plateaus; trust enablement would promote false deltas without this firewall.',
+    previousBehavior:
+      'findPlateauFrom + scanPhysicalRiseNeighborhood allowed stale pre baselines when sparse PRE→RISE bridges tolerated long silence.',
+    details:
+      'raw-fuel-pre-plateau-baseline-recency.policy.ts; EED-EV-0098; rfrf-baseline-recency-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T02:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-oq015-stretched-end-convergence-2026-09-28',
+    version: '4.9.4995',
+    title: 'RFRF OQ-015 — stretched-end fallback↔native convergence',
+    summary: [
+      'classifyFallbackAgainstAuthoritativeNativeRefuel closes WOB 09-19 duplicate Product REFUEL risk without raising global G2 endTimeSec.',
+      'Pre-merge hardening: stretch requires maxSampleGapSeconds > F3 continuity (360s) + native physical envelope bracketing; post-plateau extension alone is not stretch proof.',
+      'OQ-015 PostgreSQL gate wired into Stage-4 CI (rfrf-oq015-stretched-end-postgres-gate.sh).',
+      'Trust authority unchanged (UNKNOWN); EED-INV-018 documents convergence firewall.',
+    ],
+    reason:
+      'Production forensic audit: READY fallback candidate DISTINCT_FROM_NATIVE solely on stretched end_time_mismatch vs authoritative native canonical row.',
+    previousBehavior:
+      'Strict classifyPhysicalRefuelSibling endTimeSec=60 blocked SAME_NATIVE for sparse-bridge refuels with delayed native segment end.',
+    details:
+      'raw-refuel-native-fallback-stretched-end.policy.ts; EED-EV-0097; architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T00:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-c-recovery-promotion-liveness-2026-09-21',
+    version: '4.9.1157',
+    title: 'RFRF F10.6.8-C — recovered READY promotion liveness + atomic SUCCESS_PROMOTED',
+    summary: [
+      'Durable recovery scheduler invokes canonical RawRefuelPromotionService after convergence when no SAME native.',
+      'C1: fallback VEE + PROMOTED + recoveryLastOutcome=SUCCESS_PROMOTED finalized in the same promotion transaction (no post-commit finishRecovery).',
+      'C2: EXPIRED lease and SUPERSEDED generation stale proofs; independent PrismaClient replica idempotency (one canonical VEE).',
+      'Stage 5 posture unchanged; Stage 6 / recovery-direct G2 handoff not started.',
+    ],
+    reason:
+      'READY candidates reachable only via recovery lacked guaranteed promotion liveness; post-commit crash window left recovery unfinished after PROMOTED.',
+    previousBehavior:
+      'recoverReadyCandidate finished PENDING_NATIVE_RECONCILIATION without promotion; SUCCESS_PROMOTED required a second recovery completion after promotion commit.',
+    details:
+      'raw-refuel-promotion.service.ts; raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts; migration 20260921140000_rfrf_f10_6_8_c_recovery_success_promoted; PR #1712',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:45:00.000Z',
+  },
+  {
+    id: 'exp021-pdi-m2-integration-repair-2026-09-19',
+    version: '4.9.1149',
+    title: 'EXP-021 — PDI → M2 maturation integration repair (prospective discovery)',
+    summary: [
+      'Cohort `--watch-cohort` uses `PROSPECTIVE_PDI_DISCOVERY`: late authoritative PDI (379–850s lag) no longer rejected as `freshness.stale`.',
+      'Enrollment cursor from max enrolled `canonicalWindowTo` per vehicle — unenrolled epoch PDIs survive operator restart.',
+      'Token-scoped CLI keeps `OPERATOR_IMMEDIATE` operational freshness guard.',
+      'Observability: `COHORT_PDI_DISCOVERY` structured diagnostics on prospective candidates.',
+      'No production deploy or backfill of the seven forensic drives in this change set.',
+    ],
+    reason:
+      'Production read-only audit: seven post–NOT_BEFORE trips with PDI and RC but zero M2 families (class 9 integration defect).',
+    previousBehavior:
+      'Wait/enroll path applied ~3–25s operational freshness to all discovery; settlement baseline max physical end poisoned restart cursor.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PDI_TO_M2_INTEGRATION_REPAIR_2026-09-19.md; reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib.ts',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-09-19T19:30:00.000Z',
+  },
+  {
+    id: 'exp021-cohort-study-enrollment-bootstrap-2026-09-19',
+    version: '4.9.1148',
+    title: 'EXP-021 — cohort study enrollment bootstrap (WOB enrollment_not_found closure)',
+    summary: [
+      'Idempotent `exp021_study_enrollments` bootstrap from authoritative canary cohort JSON (vehicle/org/DIMO token validated).',
+      'Ops CLI `npm run exp021:cohort:study-enrollment:bootstrap` (dry-run default; `--execute` for writes).',
+      'PostgreSQL proof: 3-vehicle bootstrap idempotency + concurrent convergence + arm chain without `enrollment_not_found`.',
+      'Production safety: live activation disabled; cohort operator stopped; failed WOB ledger left immutable.',
+    ],
+    reason:
+      'Post-fix WOB drive proved PR #1694 cohort expansion without study enrollment rows for KS MS 661 / WOB L 7503 — live chain stopped before study run / RC / PDI.',
+    previousBehavior:
+      'Only KS MX 2024 had `exp021_study_enrollments` authority; multi-vehicle cohort JSON alone did not provision enrollments.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md; backend reference-capture-exp021-cohort-study-enrollment-bootstrap.lib.ts',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-09-19T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-b5-lock-fencing-closure-2026-09-21',
+    version: '4.9.1156',
+    title: 'RFRF F10.6.8-B5 — canonical lock order + fresh lease fencing',
+    summary: [
+      'Recovery reconcile reordered to advisory → row → write (matches convergence).',
+      'Claim identity separated from mutationClock() at each DB boundary.',
+      'Completion requires active lease + generation CAS; stale finishRecovery propagates stale_claim.',
+      'B5 PostgreSQL proofs: post-reconcile lease expiry, READY crossed-lease, expired completion.',
+    ],
+    reason:
+      'B4 read-only review found lock inversion deadlock risk and snapshotted lease time authorizing stale mutations.',
+    previousBehavior:
+      'Recovery reconcile locked candidate row before vehicle advisory lock; fence.now could validate expired leases after blocking waits.',
+    details:
+      'raw-refuel-candidate-recovery-fencing.ts; raw-refuel-candidate-recovery-f10-6-8-b5.postgres.integration.spec.ts; PR #1705',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T07:25:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-a2-p21-pinning-regression-2026-09-20',
+    version: '4.9.1155',
+    title: 'RFRF F10.6.8-A.2 — P21 irreversible canonical pinning regression alignment',
+    summary: [
+      'F5-PR3 P21 updated for A.1 same-owner pinning after COMPLETED fallback enrichment.',
+      'Asserts single enrichment-eligible owner, no duplicate native enrichment, late-sibling audit preserved.',
+      'P21B PostgreSQL negative — canonical challenger remains fail closed.',
+      'A.1 pin guard: >1 post-settlement late sibling blocks pin (P24 multi-late ambiguity).',
+    ],
+    reason:
+      'Stage-3 rfrf-stage3-persistence-readiness P21 expected pre-A.1 INSUFFICIENT forever.',
+    previousBehavior:
+      'P21 treated irreversible late SAME as permanent INSUFFICIENT_EVIDENCE.',
+    details:
+      'raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T15:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-a1-irreversible-canonical-pinning-2026-09-20',
+    version: '4.9.1154',
+    title: 'RFRF F10.6.8-A.1 — irreversible canonical pinning closure',
+    summary: [
+      'Irreversible consumed canonical restored when current evidence selects the same owner (pinning, not re-canonicalization).',
+      'authority_recheck evaluates irreversible late-sibling rows once; canonical change → authority_recheck_hold without infinite spin.',
+      'Pinned FINAL_CANONICAL retains late_sibling_after_finalization audit; existing enqueue/enrichment preserved (no new job).',
+    ],
+    reason:
+      'WOB L 7503 prior consumed canonical equals current chooser — authority preservation, not owner transfer.',
+    previousBehavior:
+      'Irreversible late-sibling INSUFFICIENT rows were excluded from authority_recheck and could not self-heal despite stable same-owner evidence.',
+    details:
+      'evaluateIrreversibleCanonicalPinning; physical-refuel-f10-6-8-a1.spec.ts; PR #1702',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T12:55:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-a-recoverable-late-sibling-2026-09-20',
+    version: '4.9.1153',
+    title: 'RFRF F10.6.8-A — recoverable native late-sibling authority',
+    summary: [
+      'Durable prior-finalization memory from late-sibling conflict rows (canonicalEventId, enrichment enqueue, fuel enrichment) — not only mutable enrichmentEligible FINAL bits.',
+      'Intra-component prior-canonical late sibling skipped when prior owner was not irreversibly consumed; irreversible enqueue/COMPLETED enrichment stays fail closed.',
+      'Recovery reason authority_recheck selects safe INSUFFICIENT late-sibling rows; authority_recheck_hold stops infinite recovery spin when reopen is unsafe.',
+    ],
+    reason:
+      'WOB L 7503 post-recovery regression: recovery reloads in-clique canonical finals as external late siblings; prior-final facts vanished when rows were overwritten to INSUFFICIENT.',
+    previousBehavior:
+      'loadPriorFinalizationBridgeContext and recovery selectors ignored stuck late-sibling INSUFFICIENT groups; in-component canonical priors false-triggered late_sibling_after_finalization on every recovery tick.',
+    details:
+      'physical-refuel-prior-ownership.util.ts; physical-refuel-late-sibling-authority.util.ts; physical-refuel-recovery.repository.ts; physical-refuel-reconciliation.design.ts; physical-refuel-f10-6-8-a.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T09:10:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-b2-canonical-query-pending-closure-2026-09-19',
+    version: '4.9.1152',
+    title: 'RFRF F10.6.6-B.2 — canonical query reconciliation load + pending INSUFFICIENT',
+    summary: [
+      'Canonical product queries include refuelReconciliation from Prisma; WOB service path 3→1 verified via listCanonicalEnergyEvents and buildTripsTimeline.',
+      'Stage-4 pending authority treats INSUFFICIENT_EVIDENCE like SAME for V2 unreconciled/non-final (DISTINCT does not block).',
+      'Paged loadAuthoritativeNativeRefuelSiblings + RAW_LOAD_INCOMPLETE fail-closed tested on convergence/promotion paths.',
+      'Product projection hides dual-final and canonicalEventId mismatch conflicts (no arbitrary canonical row).',
+    ],
+    reason:
+      'B.1 canonical read omitted refuelReconciliation include; pending logic ignored INSUFFICIENT neighbors; loader/promotion tests were mostly fromLoaded-only.',
+    previousBehavior:
+      'queryEnergyEventRows only included fuelStationEnrichment; pending only on SAME_PHYSICAL_REFUEL; product conflict could pick one final arbitrarily.',
+    details:
+      'energy-events.service.ts; canonical-energy-events.projection.ts; authoritative-native-refuel-siblings.resolver.ts; v2-ownership-cutover.util.ts; B.2 specs',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T22:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-b1-race-bounded-load-product-read-2026-09-19',
+    version: '4.9.1151',
+    title: 'RFRF F10.6.6-B.1 — reconciliation race, bounded raw load, product-canonical reads',
+    summary: [
+      'V2-owned native REFUEL rows with null reconciliation are pending (isV2OwnedRefuelEvent + cutover), not legacy authority — closes post-persist reconciliation race vs RFRF scan.',
+      'Authoritative sibling loader pages raw native rows (MAX_RAW 512) instead of silent take=33; RAW_LOAD_INCOMPLETE fail-closed when raw bound exceeded.',
+      'Product reads: listCanonicalEnergyEvents + trips timeline / GET energy-events expose one physical refuel; listEnergyEventsRaw preserves forensic revisions.',
+      'Regression: V2 unreconciled race, raw overflow canonical, WOB 3→1 product projection, detectEnergyEvents ordering test.',
+    ],
+    reason:
+      'F10.6.6-B authoritative loader still treated null-recon as legacy, truncated raw rows at 33, and buildTripsTimeline listed every DIMO revision.',
+    previousBehavior:
+      'refuelReconciliation==null → legacyEvents; findMany take=33 on raw rows; listEnergyEvents fed trips timeline.',
+    details:
+      'authoritative-native-refuel-siblings.resolver.ts; canonical-energy-events.projection.ts; energy-events.service.ts; vehicle-intelligence.controller.ts; B.1 specs',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T21:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-b-native-canonical-authority-2026-09-19',
+    version: '4.9.1150',
+    title: 'RFRF F10.6.6-B — native physical-refuel canonical authority for Stage 4',
+    summary: [
+      'Stage-4 convergence loads authoritative native siblings via persisted Physical Refuel Reconciliation (enrichmentEligible + final), not every raw DIMO segment revision.',
+      'Three segment revisions of one physical refuel collapse to one authoritative native sibling for F5 evaluator input; raw rows retained.',
+      'Provisional reconciliation → native_physical_reconciliation_not_final (no convergence, no fallback selection).',
+      'Conflicting dual canonical authorities fail closed with physical_refuel_authority_conflict.',
+      'Legacy native rows without reconciliation remain matchable when not shadowed by finalized V2 canonical.',
+    ],
+    reason:
+      'F10.6.5 proved one physical refuel produced three native DIMO REFUEL VEEs; Stage-4 raw sibling load treated each revision as authoritative and fail-closed AMBIGUOUS.',
+    previousBehavior:
+      'buildAuthoritativeNativeRefuelSiblingWhere returned all native REFUEL rows in window; evaluateRawRefuelNativeFallbackConvergence saw multiple SAME siblings.',
+    details:
+      'authoritative-native-refuel-siblings.resolver.ts; raw-refuel-convergence.service.ts; authoritative-native-refuel-siblings.resolver.spec.ts',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T21:20:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-a1-candidate-liveness-persistence-2026-09-19',
+    version: '4.9.1149',
+    title: 'RFRF F10.6.6-A.1 — candidate liveness persistence micro-closure',
+    summary: [
+      'PostgreSQL regression: sparse-bridge episode → same-row maturation to READY_FOR_PERSIST + readiness READY (opt-in gate).',
+      'Runtime proof: strict-gap rejectedOrHeld does not invoke F2 persist; existing rows unchanged on detector-only rejection.',
+      'Documents observation-local vs persisted REJECTED policy for strict internal gaps.',
+      'F4-PR2 postgres gate includes raw-fuel-rise-liveness.postgres.integration.spec.ts.',
+    ],
+    reason:
+      'F10.6.6-A fixed F3/lifecycle semantics; A.1 closes the persist-path proof gap (same row rediscovery, rejectedOrHeld semantics, global max gap audit).',
+    previousBehavior:
+      'Liveness fix lacked end-to-end PostgreSQL same-row rescan test and explicit runtime rejectedOrHeld non-persist behavior.',
+    details:
+      'raw-fuel-rise-liveness.postgres.integration.spec.ts; raw-fuel-refuel-fallback-runtime.service.spec.ts; rfrf-f4-pr2-runtime-postgres-gate.sh',
+    affectsArchitecture: false,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T19:40:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-a-candidate-liveness-2026-09-19',
+    version: '4.9.1148',
+    title: 'RFRF F10.6.6-A — candidate liveness (semantic gaps + lifecycle refinement)',
+    summary: [
+      'F3 gap model: strict continuity only inside PRE/RISE/POST regions; PRE→RISE and RISE→POST provider bridges no longer fail lifecycle on global max gap.',
+      'Post-plateau search horizon uses riseMaxDurationMs (45m); inter-sample post gaps remain bounded by maxSampleGapMs.',
+      'Lifecycle: evidence-maturity refinement allows INSUFFICIENT→SETTLING/READY without reactivating terminal rows; rise-internal gap failures terminal REJECTED.',
+      'Regression fixture: sparse-bridge refuel episode (generalized WOB shape) + adversarial liveness suite.',
+      'No Production deploy, schema migration, Stage change, or native VEE idempotency changes in this PR.',
+    ],
+    reason:
+      'F10.6.5 proved production candidate liveness defect: bridge gaps poisoned global maxGap, delayed post search capped at 6m, and INSUFFICIENT→SETTLING persist threw.',
+    previousBehavior:
+      'Concatenated pre+rise+post max gap blocked READY; findLocalPostPlateauAfterRise stopped ~6m after peak; INSUFFICIENT could not refine to SETTLING on better evidence.',
+    details:
+      'raw-fuel-rise-gap-semantics.ts; raw-fuel-rise-state-machine.ts; raw-refuel-candidate-lifecycle.ts; raw-fuel-rise-liveness.spec.ts',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T18:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19',
+    version: '4.9.1147',
+    title: 'RFRF F10.6.0 — Stage-4 convergence readiness + transaction safety',
+    summary: [
+      'Stage 4: master+persist+convergence true; promotion/G2 false; cutover immutable; convergence links candidates to native VEE only.',
+      'Stage-4 ops fixtures + CI F5-PR1/F9/P20; Production read-only rebaseline 20260918232713_v4994 / 16000fce6… still Stage 3.',
+      'Live preflight PASS; Stage-4 dry-run zero mutation; wrong-source rollback from stage 4 blocked.',
+      'Observational readiness NO (0 candidates); PRODUCTION_REBASELINE_REQUIRED=YES vs EED-EV-0070.',
+      'Stage 4 not executed.',
+    ],
+    reason:
+      'Close Stage-4 transaction safety and non-vacuous convergence boundary before any Production convergence authority enablement.',
+    previousBehavior:
+      'Stage-3 Production proven (EED-EV-0070) without Stage-4 tooling closure on main.',
+    details:
+      'docs/audits/eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19.md; EED-EV-0071',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T00:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-t7-option-c-semantic-closure-2026-09-25',
+    version: '4.9.1148',
+    title: 'VDC RB-019 P2.5 — T+7 shadow Option C (domain-aware same-state admissibility)',
+    summary: [
+      'T7 closure: 1552/1552 raw unexplained = same-state PROVENANCE_REFRESH (P1A/P1B/P2/P3); zero true state disagreement.',
+      'NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH + proveNonIsomorphicSameStateProvenanceRefresh; STATE_TRANSITION remains strict.',
+      'Cutover metrics use CORRECTNESS_BLOCKING_UNEXPLAINED / UNPROVEN_SAME_STATE_REFRESH — not raw UNEXPLAINED count alone.',
+      'WOB sequence guard: same-state refresh must not suppress later APPLIED transition; T7 epoch stays pre-fix until post-deploy epoch.',
+    ],
+    reason:
+      'Narrow GT-R1/EXPECTED_FIX left 567 T7-safe rows blocking; Option C closes semantic domain without four unrelated EXPECTED_FIX scenarios.',
+    previousBehavior:
+      'Steady-state PROVENANCE_REFRESH vs legacy no_open_episode/no_state_change classified UNEXPLAINED blocking when not GT-R1 expected-fix.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_T7_SHADOW_COMPARATOR_SEMANTIC_CLOSURE_2026-09-25.md; VDC-DEC-014; PR #1697',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-25T11:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-post-bootstrap-provenance-gt-r1-2026-09-19',
+    version: '4.9.1147',
+    title: 'VDC RB-019 P2.5 — post-bootstrap PROVENANCE_REFRESH GT-R1 proof (branch candidate)',
+    summary: [
+      'GT-R1 scenario SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH for established PLUGGED + newer same-state SNAPSHOT_OBD + legacy no_open_episode + coordinator PROVENANCE_REFRESH.',
+      'Proven cases classify as EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); unproven remain UNEXPLAINED_OLD_REJECT_NEW_ACCEPT.',
+      'Shadow comparison domain helper distinguishes episode-resolution vs same-state provenance refresh; T+24h historical rows immutable.',
+      'Read-only audit script emits ACTUAL_STATE_REGRESSIONS and related metrics (deprecates misleading STATE_REGRESSION_COUNT label).',
+    ],
+    reason:
+      'T+24h shadow audit showed 107 legacy no_open_episode vs physical PROVENANCE_REFRESH rows with zero effective state change — GT-R1/bootstrap coverage gap, not a physical transition defect.',
+    previousBehavior:
+      'Only bootstrap/repair/unplug GT-R1 proofs; steady-state PROVENANCE_REFRESH vs no_open_episode stayed UNEXPLAINED blocking.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_POST_BOOTSTRAP_PROVENANCE_REFRESH_GT_R1_2026-09-19.md; physical-state-gt-r1-proof.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-19T11:20:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
+    version: '4.9.1146',
+    title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',
+    summary: [
+      'Production `backend.env`: RECONCILIATION + PROJECTION_WRITE + SHADOW_COMPARE ON for 4 authorized pilot scopes; AUTHORITY_CUTOVER and SIDE_EFFECTS remain OFF; authority LEGACY.',
+      'Canonical operational T0 `2026-09-18T09:33:25.000Z` → seven-day window end `2026-09-25T09:33:25.000Z`; invalid aborted T0 `2026-09-18T00:02:53.207Z` archived.',
+      'Rolling restart only (no application deploy); runtime SHA unchanged at `ca7bad8826871376a58efaa874f12992b88c4a04`.',
+      'Seven-day operational completion NOT_PROVEN; RFRF Stage 1 later survived restart with pilot T0 unchanged (EED-EV-0066).',
+    ],
+    reason:
+      'After freshness deploy, controlled pilot activation required a fresh epoch-bound shadow proof window without authority cutover or side effects.',
+    previousBehavior:
+      'P2.5 shadow compare OFF in Production after freshness deploy; failed T0 epoch invalid; no running seven-day clock.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md (controlled restart section); architecture/vehicle-device-connectivity/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T09:33:25.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-connectivity-freshness-production-2026-09-18',
+    version: '4.9.1145',
+    title: 'VDC RB-019 P2.5 — snapshot connectivity freshness binding (Production deploy)',
+    summary: [
+      'DimoSnapshotProcessor applies physical snapshot evidence only after VW-F-008 VLS monotonic guard + upsert.',
+      'Snapshot OBD eligibility: evidenceObservedAt must strictly advance stored VLS sourceTimestamp — cached replay cannot mutate projection.',
+      'GT-R1 UNPLUG proof: SNAPSHOT_UNPLUG_TRANSITION + SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT (legacy obd_false).',
+      'Production deploy `ca7bad8826871376a58efaa874f12992b88c4a04`; post-deploy Arteon stale cached OBD replay did not create false transitions.',
+      'Controlled STATEFUL_SHADOW pilot activated separately after deploy (see 4.9.1146 entry).',
+    ],
+    reason:
+      'Aborted P2.5 shadow restart applied stale cached obdIsPluggedIn before VLS stale guard, producing false PLUGGED→UNPLUGGED transition and UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on Arteon.',
+    previousBehavior:
+      'applyPhysicalSnapshotEvidence ran before VLS monotonic guard; equal-timestamp cached OBD replay could establish current connectivity transitions.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md; physical-state-snapshot-telemetry-eligibility.ts; dimo-snapshot.processor.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T09:03:22.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-4-0-stage2-transaction-safety-2026-09-18',
+    version: '4.9.1145',
+    title: 'RFRF F10.4.0 — Stage-2 transaction / recovery safety closure',
+    summary: [
+      'Generic rfrf_stage_transaction_run covers stages 1–6; recovery restores PRE_STAGE (Stage-2 failure → Stage 1, not Stage 0).',
+      'F10.4.0.3: mutation may-have-started boundary, verified replica stop, single authority evidence block, strict Linux signal tests.',
+      'F10.4.0.2: rollback fail-closed recovery-of-recovery, signal traps, production dry-run SHA gate, expanded rollback fixture injections.',
+      'Stage-2 enables master-only with cutover immutability; hardened --from-stage 2 rollback; 30+ fixture failure-injection tests.',
+      'Stage 2 not executed; Production remains Stage 1 at ca7bad…; F10.4.1 48s boundary audit required before authorization.',
+    ],
+    reason:
+      'Stages 2–6 previously used non-transactional enable path without recovery-to-previous-stage guarantees — unacceptable before master-detector activation.',
+    previousBehavior:
+      'Only Stage 1 used full transaction; Stages 2–6 were backup → mutate → restart without PRE/POST gates or PRE_STAGE recovery verification.',
+    details:
+      'docs/audits/eed-rfrf-f10-4-0-stage2-transaction-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage2-transaction-safety-tests.sh; EED-EV-0067',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
+    version: '4.9.1144',
+    title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',
+    summary: [
+      'Immediate EXP-021/VDC survival gate now fails closed on incomplete, skipped, errored, or sentinel evidence — no missing==missing or ERROR==ERROR pass paths.',
+      'PRE snapshot + completeness validation is a hard pre-mutation gate; POST snapshot + validation blocks COMMIT and triggers recovery when armed.',
+      'Twelve deterministic failure-injection tests; production simulation never emits SKIPPED; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.3.0.1 gate was directionally correct but could still pass when PRE/POST evidence was absent or carried ERROR/SKIPPED sentinels.',
+    previousBehavior:
+      'Cross-workstream state_get returned empty string for missing keys; equality checks could pass on ""=="" or ERROR==ERROR; DB snapshot could emit SKIPPED.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.2 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T09:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-1-transaction-closure-2026-09-18',
+    version: '4.9.1143',
+    title: 'RFRF F10.3.0.1 — Stage-1 transaction / recovery micro-closure',
+    summary: [
+      'Arms recovery before first backend.env mutation; ERR/TERM/INT/HUP fail-closed traps with idempotent single recovery handler.',
+      'Same-filesystem atomic rename for env upsert + restore; byte-identical backup checksum contract; PRE/POST EXP-021/VDC immediate survival gates.',
+      'Expanded failure-injection matrix (chmod/post-mutation/signal/cross-workstream drift); Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'Independent review of F10.3.0 found recovery armed too late, non-atomic restore, and cross-workstream snapshots without enforcement gates.',
+    previousBehavior:
+      'Recovery keyed off STAGE_MUTATION_APPLIED after chmod; cp-based restore; PRE/POST snapshots printed but not compared before PASS.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.1 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T08:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18',
+    version: '4.9.1142',
+    title: 'RFRF F10.3.0 — Stage-1 restart safety micro-closure',
+    summary: [
+      'Hardens Stage-1 enable controller before first production execution: verified SHA256 backup, automatic env restore + dual-replica restart on failure, live-required preflight gate.',
+      'Documents EXP-021/VDC post-restart survival contracts and explicit operator-supplied cutover (no implicit now).',
+      'Failure-injection fixture tests; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.2 PASS exposed that Stage-1 could leave shared env mutated with only one replica restarted — fail-closed automatic recovery required before authorization.',
+    previousBehavior:
+      'enable-stage mutated backend.env then rolling-restarted; no automatic restore/restart on failure; preflight used --check only.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T07:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-2-2-metrics-probe-micro-closure-2026-09-17',
+    version: '4.9.1141',
+    title: 'RFRF F10.2.2 — Metrics probe SIGPIPE/pipefail micro-closure',
+    summary: [
+      'Fixes rfrf_metrics_probe() false-negative under set -euo pipefail when Prometheus bodies are large: echo|grep -q SIGPIPE (141) despite metric present.',
+      'Adds rfrf_metrics_body_has_metric() — HELP/TYPE grep -Fq here-string plus line-prefix series scan; no producer|grep -q pipeline.',
+      'Large-payload regression + real probe fixture tests; F10.2 still blocked until post-merge tooling retry against unchanged production runtime 3a2707b.',
+    ],
+    reason:
+      'F10.2 cross-workstream preservation gate PASS on production 3a2707b but live preflight reported METRICS_*_RFRF=NO due to operational tooling bug, not missing runtime metrics.',
+    previousBehavior:
+      'rfrf_metrics_probe used echo "$body" | grep -q on multi-MB exposition payloads; grep -q early exit SIGPIPE upstream under pipefail.',
+    details:
+      'docs/audits/eed-rfrf-f10-2-1-preflight-dotenv-closure-2026-09-16.md (F10.2.2 section); backend/scripts/test/rfrf-f10-metrics-probe-regression.sh; EED-EV-0064 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T23:30:00.000Z',
+  },
+  {
+    id: 'exp021-ks-mx-2024-canary-operator-cli-2026-09-17',
+    version: '4.9.1140',
+    title: 'EXP-021 — KS MX 2024 canary single-family operator CLI',
+    summary: [
+      'Repository-native manual operator CLI to enroll exactly one KS MX 2024 maturation shadow window family — no HTTP API, no cron, no automatic fleet hook.',
+      'Default DRY RUN; `--execute` required for DB/BullMQ writes. `--wait-next-window` polls authoritative physical drive interval close from settlement-shadow experiment metadata.',
+      'Hard guards: token 187336, KS MX 2024 org/vehicle binding, both lanes enabled, allowlist exactly [187336], maxActiveFamilies=1, zero unfinished families.',
+      'Safety micro-closure: authoritative token equality enforced; activity resolved only after canonicalWindowTo from full geometry RC observation windows; execute requires exact persisted physicalEndAt; strict token parse; wait-mode refreshes DB each poll (startup snapshot only for baseline); stale windows skipped with lag diagnostics.',
+      'Freshness guard preserves dense 30s–60s ages; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` (M2 worker executes observations later).',
+    ],
+    reason:
+      'Production canary activation gate passed but automatic enrollment remains unwired — operator needs a bounded, fail-closed manual start path.',
+    previousBehavior:
+      'ReferenceCaptureExp021MaturationShadowEnrollmentService callable only from tests/integration — no operator-facing CLI.',
+    details:
+      'npm run exp021:maturation-shadow:canary:enroll; architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-canary-operator-cli-2026-09-17.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T14:00:00.000Z',
+  },
+  {
+    id: 'exp021-live-maturation-shadow-pr-m3-analytics-export-2026-09-17',
+    version: '4.9.1139',
+    title: 'EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export',
+    summary: [
+      'Read-only M3 analysis layer over immutable M1/M2 scientific rows — no schema changes, no provider calls, no M1/M2 mutation.',
+      'Bucket-locus reconstruction, availability interval censoring (actualAgeMs authority), cumulative maturation vs final shadow-observed union (observational denominator only).',
+      'Per-field maturation, payload revision separate from locus coverage, scheduler drift + provider error diagnostics, paired 60s/90s family export.',
+      'Deterministic JSON/CSV export CLI (`npm run exp021:maturation-shadow:m3:export`) with explicit org+vehicle scope.',
+      'PostgreSQL read-only fingerprint proof; 29 unit tests + CI jobs `exp021-maturation-shadow-m3` + postgres integration.',
+    ],
+    reason:
+      'Scientific maturation evidence requires observational analytics over shadow pilot data without converting evidence into production retry policy.',
+    previousBehavior:
+      'M1 persistence + M2 scheduler/worker only — no deterministic maturation analysis or export layer.',
+    details:
+      'PR #1676; architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-m3-2026-09-17.md; backend/src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-m3-*.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T10:50:00.000Z',
+  },
+  {
+    id: 'tdl-r12-ch-assist-skip-resume-revalidation-2026-09-17',
+    version: '4.9.1138',
+    title: 'R12 — CH assist skip resume revalidation (KS MX 2024 false-terminal safety)',
+    summary: [
+      'Production KS MX 2024 POST-#1648: EV2 clickhouse_end_assist_skip_cusum finalized stale CH end while physical resume existed but was not yet visible in first fetch.',
+      'Fix: authoritative post-boundary resume/movement revalidation immediately before CH skip terminal consumption; visible resume invalidates candidate; immature window defers END_VALIDATION without consuming #1627 attempt budget; persistent fetch uncertainty after immaturity bound hands off to existing CUSUM validation (bounded — no infinite KEEP_OPEN).',
+      'Immaturity bound reuses TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS (90s); original provider event-time end preserved on true final stop.',
+      'Postgres+BullMQ integration reproduces Production causal sequence RED on BASE / GREEN on HEAD (5 scenarios).',
+      'Forensic authority preserved in PR #1673 — this workstream is runtime implementation only; no Production mutation or historical repair.',
+    ],
+    reason:
+      'clickhouse_end_assist_skip_cusum terminal path lacked post-boundary resume revalidation, allowing false terminalization during ingestion/event-time race after CUSUM reopen + empty-core CH re-latch.',
+    previousBehavior:
+      'CH skip path finalized immediately when endDetectionMode=CLICKHOUSE_END_ASSIST and cusumSegmentEnd present — no distinction between immature absence of movement evidence and proven absence.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md; forensic PR #1673; trip-detection-orchestration.service.ts + trip-end-cycle-reset.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T06:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-bootstrap-gt-r1-proof-2026-09-17',
+    version: '4.9.1138',
+    title: 'VDC RB-019 P2.5 — bootstrap GT-R1 expected-fix proof closure',
+    summary: [
+      'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT proof for absent projection → PLUGGED SNAPSHOT_OBD bootstrap.',
+      'buildSnapshotGtR1Proof() resolver: repair (UNPLUGGED baseline) precedence, then bootstrap.',
+      'Wired from PhysicalStateSnapshotEvidenceOrchestrator real call-site; comparator receives proof object.',
+      'Reuses EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); negative proof matrix + BOOTSTRAP CASE A–D PG proofs.',
+      'Bootstrap expected-fix bound to actual ESTABLISHED transition (isProvenExpectedFixForPhysicalDecision); fail-closed vs stale pre-read.',
+      'Epoch-aware getOperationalCoverage({ windowStart }) + summarizeScopeWindow exclude pre-restart rows (PSG-TIME-0A/0B/0C); old prefix cannot fake 7-day window.',
+    ],
+    reason:
+      'Failed Production shadow pilot produced UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on first bootstrap because GT-R1 only covered UNPLUGGED-baseline repair, not absent projection establishment.',
+    previousBehavior:
+      'no_open_episode legacy reject + physical ESTABLISHED accept on empty projection classified UNEXPLAINED (correctness-blocking).',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_BOOTSTRAP_GT_R1_PROOF_2026-09-17.md; STATEFUL_SHADOW still OFF; five historical Production observations preserved.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-17T19:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16',
+    version: '4.9.1137',
+    title: 'VDC RB-019 P2.5 — STATEFUL_SHADOW pilot scope gate + scope-bound observability',
+    summary: [
+      'Fail-closed CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON allowlist (org + vehicle + normalized provider).',
+      'Pilot gate before ensureAuthorityRow and all physical durable writes on webhook + snapshot paths.',
+      'PHYSICAL authority bypasses pilot gate; non-pilot LEGACY scopes perform zero physical mutations when master ON.',
+      'Scope-bound shadow structured logs; low-cardinality pilot gate Prometheus counter (no org/vehicle labels).',
+      'Durable PostgreSQL shadow observations with dual clocks (comparison observedAt vs evidenceObservedAt); operational ≥7-day proof uses runtime comparison span only (PSG-TIME-1/2).',
+      'Leader-owned retention scheduler; persistence-failure metric/log without breaking legacy writer path; PSG-A..W unit + PG proof matrix.',
+    ],
+    reason:
+      'Global STATEFUL_SHADOW flags at deployed SHA would blast-radius all DIMO scopes; operational pilot proof requires scope-bound durable evidence.',
+    previousBehavior:
+      'Master + projection-write + shadow-compare applied to all eligible scopes; shadow logs/metrics lacked org/vehicle scope dimensions.',
+    details:
+      'docs/audits/vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16.md; STATEFUL_SHADOW_PILOT_ENABLEMENT_READY=NO; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-16T00:15:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p24-preseed-tooling-2026-09-14',
+    version: '4.9.1130',
+    title: 'VDC RB-019 Phase 2 P2.4 — physical-state pre-seed tooling (dark)',
+    summary: [
+      'PhysicalStatePreseedService: discover persisted webhook + VLS OBD evidence per binding scope.',
+      'Semantic winner = greatest evidenceObservedAt only; source type never overrides time.',
+      'Dry-run reports WOULD_ESTABLISH with zero episode/alert/outbox/authority side effects.',
+      'Apply path uses coordinator reconcile → ESTABLISHED only; transactional SKIP_NON_LEGACY_AUTHORITY pre-cutover guard.',
+      'Real TripMetricsService DI; PG proof P24-A..L (78/78 physical-state suite); flags OFF; authority LEGACY; P2.5 not started.',
+    ],
+    reason:
+      'P2.4 prepares missing physical projections before P2.5 authority cutover without enabling live writers or lifecycle side effects.',
+    previousBehavior:
+      'No operator/service path to establish missing device_connection_physical_states rows from persisted evidence.',
+    details:
+      'physical-state-preseed.service.ts, physical-state-preseed.planner.ts, physical-state-preseed-evidence.discovery.ts; evidence PHYSICAL_STATE_P24_PRESEED_2026-09-14.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T23:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-binding-identity-closure-2026-09-14',
+    version: '4.9.1128',
+    title: 'VDC RB-019 Phase 2 P2.3 — binding-identity micro-closure (legacy event token)',
+    summary: [
+      'resolveLegacyBindingKey: episode providerDeviceIdHash → persisted DIMO event tokenId → null; never from current physical token.',
+      'GT-R1 snapshot EXPECTED_FIX requires legacyBindingKey === physicalBindingScope.bindingKey (fail-closed on mismatch/null).',
+      'Comparator: explicit legacyBindingKey=null does not substitute physical binding; undefined retains compatibility fallback.',
+      'CASE A/B/C orchestrator PG regressions: old-token/new-token → BINDING_DIVERGENCE; same-token control → EXPECTED_FIX; unknown binding → fail-closed.',
+      '66/66 physical-state PostgreSQL integration tests PASS; P2.3 semantic correctness closure complete (dark, flags OFF).',
+    ],
+    reason:
+      'Final P2.3 correctness gap: no_open_episode GT-R1 proof could vacuously align when episode=null and legacy binding fell back to current physical binding.',
+    previousBehavior:
+      'Last legacy event loaded without tokenId; legacyBindingKey derived only from episode hash; comparator substituted bindingKey when legacyBindingKey was null.',
+    details:
+      'physical-state-legacy-shadow-decision.ts, physical-state-gt-r1-proof.ts, physical-state-shadow-comparator.ts, physical-state-snapshot-evidence-orchestrator.service.ts; evidence PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md; no deploy/flags.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T22:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-semantic-closure-2026-09-14',
+    version: '4.9.1127',
+    title: 'VDC RB-019 Phase 2 P2.3 — semantic closure (snapshot proof + real legacy binding)',
+    summary: [
+      'Snapshot GT-R1 proof admissibility: only no_open_episode with verified physical/source/binding preconditions.',
+      'Hard rejects (binding/security/synthetic/time) never establish EXPECTED_FIX.',
+      'Legacy snapshot shadow uses persisted episode binding + last event state (never physical candidate substitution).',
+      'PhysicalStateSnapshotEvidenceOrchestrator — production call graph shared with DimoSnapshotProcessor.',
+      'Real snapshot call-site PG suite (GT-R1, stale, conflict, binding divergence, master-off).',
+    ],
+    reason:
+      'Final P2.3 semantic gaps: narrow EXPECTED_FIX proof, real legacy binding capture, genuine snapshot processor call-site proof.',
+    previousBehavior:
+      'Snapshot proof inferred from legacyAccepted=false + UNPLUGGED projection; legacy bindingKey copied from current physical binding.',
+    details:
+      'physical-state-snapshot-evidence-orchestrator.service.ts; merged origin/main #1639 (EED F4) without rebase.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T20:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-correctness-hardening-2026-09-14',
+    version: '4.9.1126',
+    title: 'VDC RB-019 Phase 2 P2.3 — independent correctness hardening (PR #1640)',
+    summary: [
+      'MASTER OFF short-circuits before ensureAuthorityRow — zero authority/projection/transition/event/outbox writes.',
+      'Canonical GtR1ExpectedFixProof contract — legacy diagnostic reasons never establish EXPECTED_FIX alone.',
+      'LegacyShadowDecision captures real legacy effectivePlugState, evidenceObservedAt, bindingKey for shadow compare.',
+      'Real call-site GT-R1 PG proof: webhook + snapshot orchestration through proof builders to writer/comparator.',
+    ],
+    reason:
+      'Independent review blockers A–D: fail-closed master gate, independent GT-R1 proof, real legacy shadow evidence, call-site wiring proof.',
+    previousBehavior:
+      'resolveRuntimePolicy could INSERT authority row when master=false; legacy reason strings inferred EXPECTED_FIX; shadow synthesized legacy state from physical candidate.',
+    details:
+      'physical-state-gt-r1-proof.ts, physical-state-legacy-shadow-decision.ts, physical-state-evidence-writer.service.ts; flags still OFF; no deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T12:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-evidence-writers-2026-09-14',
+    version: '4.9.1125',
+    title: 'VDC RB-019 Phase 2 P2.3 — evidence writers + STATEFUL_SHADOW proof (dark)',
+    summary: [
+      'Unified OBD physical evidence extractor (snapshot + webhook + VLS payload; per-signal timestamp only).',
+      'Webhook + snapshot evidence writers via PhysicalStateEvidenceWriterService + coordinator path.',
+      'STATEFUL_SHADOW: LEGACY authority + projectionWrite + shadowCompare + sideEffects=false.',
+      'GT-R1 persisted PG proof: UNPLUG → snapshot PLUG → webhook UNPLUG; EXPECTED_FIX classification.',
+      'Snapshot writer runs before VLS monotonic guard; APPLIED-only webhook event history contract.',
+      'Writer metrics: evidence_writer_total, stateful_shadow_evaluation_total, gt_r1_expected_fix_total.',
+    ],
+    reason:
+      'P2.3 proves physical projection sequencing and shadow adjudication before P2.4 pre-seed and P2.5 authority cutover.',
+    previousBehavior:
+      'P2.2 compare-only shadow infra with no live webhook/snapshot writers; snapshot PLUG self-heal suppressed resolve_plug intent.',
+    details:
+      'Flags default OFF (master disabled). No production deploy. No PHYSICAL authority latch. No lifecycle side effects in STATEFUL_SHADOW.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T00:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p22-shadow-authority-infra-2026-09-13',
+    version: '4.9.1124',
+    title: 'VDC RB-019 Phase 2 P2.2 — shadow + authority infrastructure (dark)',
+    summary: [
+      'Authority state machine over P2.1 latch: LEGACY/PHYSICAL canonical gates; forward-only transition validator.',
+      'Effective runtime policy resolver: master + projection/shadow/cutover/side-effects sub-flags (all default OFF).',
+      'Compare-only shadow comparator + frozen adjudication taxonomy (GT-R1 EXPECTED_FIX class preserved).',
+      'Shadow Prometheus counters + structured logging (low-cardinality labels only).',
+      'No webhook/snapshot writers; no projection mutations; no authority cutover; flags OFF.',
+    ],
+    reason:
+      'P2.2 infrastructure per VDC-DEC-013: shadow comparison and authority-mode semantics before P2.3 writers and STATEFUL_SHADOW proof.',
+    previousBehavior:
+      'P2.1 latch/outbox/coordinator only; no authority state machine, shadow comparator, or effective flag resolver.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md; backend/src/config/connectivity-physical-state-runtime.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-13T22:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-1-signal-trust-closure-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4.1 — Signal trust × F3 detection boundary closure',
+    summary: [
+      'Cross-contract P1: F3 required promotion TRUSTED; runtime resolver returns UNKNOWN — KS MS 661 would fail with no_trusted_channel.',
+      'Option B: absoluteDetectionAdmissibility separate from promotion trust; F3 absolute primary uses ADMISSIBLE.',
+      'KS MS 661 observed +24 L absolute-only stages candidate; promotion remains fail-closed (F5 gate).',
+      'Test epistemics hardened: runtime-faithful vs physics contexts; F4.1 negative safety matrix.',
+      'No detectEnergyEvents wiring; F4-PR2 entry authorized; no schema/flag changes.',
+    ],
+    reason:
+      'Naive F4-PR2 runtime composition would hide the canonical production incident that motivated RFRF unless detection admissibility and promotion trust are separated.',
+    previousBehavior:
+      'F3 channel selector required absoluteSignalTrust=TRUSTED; test helper defaulted TRUSTED, hiding runtime gap.',
+    details:
+      'docs/audits/eed-rfrf-f4-1-signal-trust-detection-boundary-2026-09-13.md; EED-DEC-RFRF-007; EED-EV-0047.',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-13T10:45:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p21-durability-foundation-2026-09-13',
+    version: '4.9.1123',
+    title: 'VDC RB-019 Phase 2 P2.1 — durability + transaction foundation (dark)',
+    summary: [
+      'Prisma: device_connection_physical_authority_cutover + device_connection_physical_state_action_outbox.',
+      'reconcileInTransaction(tx) refactor; PhysicalStateReconcileCoordinator owns outer PostgreSQL transaction.',
+      'Outbox processor skeleton: FOR UPDATE SKIP LOCKED claim, lease, claim-token CAS fencing, retry, DLQ — no episode/alert execution.',
+      'Authority scope UNIQUE (organizationId, vehicleId, provider); default LEGACY; flags OFF; unwired.',
+      'PG integration tests: latch, outbox concurrency + stale-worker/reaper fencing, coordinator atomicity matrix, retry→DLQ lifecycle.',
+    ],
+    reason:
+      'P2.1 infrastructure per VDC-DEC-013: durable side-effect outbox + forward-only authority latch persistence before shadow/writer cutover.',
+    previousBehavior:
+      'Phase 1 repository owned nested transaction; no outbox or authority latch tables; no coordinator composition.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md; backend/src/modules/dimo/device-connection-physical-state/.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-13T08:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-phase2-cutover-scope-audit-2026-09-13',
+    version: '4.9.1121',
+    title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
+    summary: [
+      'Architecture-only audit (final hardening): authorityMode LEGACY/PHYSICAL with one-way cutover latch; POST_CUTOVER master=false never reverts to legacy gate.',
+      'P2.1 owns outbox + authority latch schema; P2.2 shadow/flag infra only; P2.3 writers + STATEFUL_SHADOW GT-R1 proof.',
+      'Authority scope frozen: UNIQUE (organizationId, vehicleId, provider); device replacement inherits authorityMode.',
+      'Snapshot APPLIED PLUG emits resolve_plug; DB-enforced episode/alert idempotency (no check-then-write).',
+      'Merge #1631 before P2.1 implementation; VDC-DEC-013; RB-019 Phase 2 SCOPED_NOT_IMPLEMENTED.',
+    ],
+    reason:
+      'Phase 1 dark foundation merged; Phase 2 requires explicit cutover sequencing to prevent GT-R1-class split authority, crash windows, and duplicate lifecycle effects.',
+    previousBehavior:
+      'Phase 1 implementation present with flag OFF; no documented Phase 2 subphase gates or transaction boundaries for runtime cutover.',
+    details:
+      'docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md; architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md VDC-DEC-013.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-13T06:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-1-1-micro-closure-2026-09-15',
+    version: '4.9.1139',
+    title: 'RFRF F10.1.1 — Mergeability + operational safety micro-closure',
+    summary: [
+      'Reconciles PR #1665 onto current main without duplicate F9 commits; preserves net F10 operational delta only.',
+      'Fixes fail-closed rollout gaps: Stage 1 proposed cutover, explicit deploy SHA, monitoring apply contract, live Prometheus gates, blast-radius enforcement, Stage 6 prerequisites.',
+      'Adds script-level fixture contract tests; no runtime/schema change; production not mutated.',
+    ],
+    reason:
+      'Independent review found PR #1665 merge-dirty and operational tooling gaps that could block safe staged production rollout.',
+    previousBehavior:
+      'F10.1 tooling existed but Stage 1 was unreachable, deploy SHA defaulted to stale F9 merge, monitoring apply could silently dry-run, and Prometheus verification was file-only.',
+    details:
+      'docs/audits/eed-rfrf-f10-1-operational-rollout-closure-2026-09-15.md (F10.1.1 section); backend/scripts/test/rfrf-f10-operational-script-contracts.sh; EED-EV-0063 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T22:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-1-operational-rollout-closure-2026-09-15',
+    version: '4.9.1138',
+    title: 'RFRF F10.1 — Operational production rollout closure',
+    summary: [
+      'Operator runbook + read-only preflight + staged enablement/rollback tooling for RFRF production rollout.',
+      'Blast-radius assessment gate before Stage 5; F8 alert verify/sync tooling; dual-replica Prometheus scrape config.',
+      'No runtime/schema change; production not mutated; Stage 5/6 blocked until observability topology complete.',
+    ],
+    reason:
+      'F10.0 audit BLOCKED production execution for missing runbook, enablement scripts, and loaded F8 alerts — F10.1 closes operational prerequisites only.',
+    previousBehavior:
+      'RFRF F1–F9 runtime proven in tests but no production-grade staged rollout control plane or operator runbook.',
+    details:
+      'docs/operations/rfrf-production-rollout-runbook-2026-09-15.md; docs/audits/eed-rfrf-f10-1-operational-rollout-closure-2026-09-15.md; EED-EV-0063',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T20:56:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f9-multi-replica-integration-closure-2026-09-15',
+    version: '4.9.1137',
+    title: 'RFRF F9 — Independent-replica integration closure',
+    summary: [
+      'Closes remaining multi-replica gap at RFRF promotion/convergence boundary with independent PrismaClient A/B and service stacks.',
+      'F9-P1..P6 + P10 real PG (+ Redis P6); explicit replica identity assertions; consolidated rfrf-f9-multi-replica-integration-gate.sh.',
+      'Reuses F7 multi-replica recovery 3/3, F5-PR2, F5-PR3.1, F6, F7, F8, G2 Jest, metrics — no runtime or schema change.',
+    ],
+    reason:
+      'F5-PR2 P3 proved concurrent promotion on one stack; production replicas use independent clients/pools — F9 proves DB advisory lock survives that boundary.',
+    previousBehavior:
+      'Multi-replica integration evidence existed for recovery/schedulers and single-stack promotion/handoff concurrency, not independent promotion/G2 client boundaries.',
+    details:
+      'docs/audits/eed-rfrf-f9-multi-replica-integration-closure-2026-09-15.md; EED-EV-0062; BASE_MAIN bcd64c0a2',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T17:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f8-operational-telemetry-alerting-2026-09-15',
+    version: '4.9.1136',
+    title: 'RFRF F8/F8.1/F8.2 — Operational telemetry + semantic closure',
+    summary: [
+      'PhysicalRefuelReconciliationMetricsService exports recovery backlog gauges on TripMetricsService.registry.',
+      'F8.1: scheduler publishes recovery_enabled at lifecycle + zero-success stale alert; actionable backlog parity for all six reasons.',
+      'F8.2: lost_enqueue actionable count uses PostgreSQL COUNT (isfinite/source/enrichment/authority) — no unbounded findMany.',
+      'Scheduler-owned run/last-success metrics; physical-refuel alert group in alerts.yml; F8/F8.1/F8.2 real PG gate.',
+      'No second metrics stack; RFRF G2 handoff counters preserved; no recovery science or schema changes.',
+    ],
+    reason:
+      'F7 closed durable recovery correctness; F8 closes the remaining operational visibility gap (backlog was log-only).',
+    previousBehavior:
+      'Recovery backlog and scheduler health were structured logs only — not exported to canonical Prometheus or alert rules.',
+    details:
+      'docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md; EED-EV-0061; BASE_MAIN ad8392d8c',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T13:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f7-recovery-completeness-2026-09-15',
+    version: '4.9.1135',
+    title: 'RFRF F7 — Recovery completeness + post-commit crash-window closure',
+    summary: [
+      'Canonical G2.1a scheduler already owns runRecoveryBatch(); F7 proves orphan_refuel closes post-commit handoff crash window.',
+      'F7.1 micro-closure: F4-PR3/PR2 + F3→F2 regressions PASS; real multi-replica PG+Redis 3/3; F7-P8 RECOVERY→COMPLETED→LATE NATIVE SAME.',
+      'Minimal scheduler tick error isolation; real PG F7-P1..P12 (18/18); no second recovery engine or schema change.',
+    ],
+    reason:
+      'F5-PR3 post-commit G2 handoff creates a real crash window after TRANSACTION A; F7 closes durable autonomous recovery without duplicating F5-PR3 recovery architecture.',
+    previousBehavior:
+      'Recovery runtime existed but F7 scope required conclusive production lifecycle proof and post-commit orphan recovery certification.',
+    details:
+      'docs/audits/eed-rfrf-f7-recovery-completeness-2026-09-15.md; EED-EV-0060; BASE_MAIN c310d752f',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T10:15:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-trust-root-closure-2026-09-15',
+    version: '4.9.1136',
+    title: 'VDC RB-019 P2.5 — Trust-root closure (required artifact scope + ops parity)',
+    summary: [
+      'All five cutover proof artifacts require exact scope binding (org/vehicle/provider).',
+      'Ed25519 keyring enforces asymmetricKeyType=ed25519; shared ops-lib canonical + manifest validation.',
+      'CLI/runtime canonical parity + PROV-AS/KR/CLI regression proofs.',
+    ],
+    reason:
+      'Independent review: optional artifact.scope and divergent ops canonicalization weakened provenance trust root.',
+    previousBehavior:
+      'artifact.scope optional; ops CLI used separate stableStringify without semantic pre-sign validation.',
+    details:
+      'docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-15T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',
+    version: '4.9.1134',
+    title: 'RFRF F6 — Canonical G2 rawDetectionMeta payload compatibility',
+    summary: [
+      'buildFallbackRawDetectionMeta single owner maps canonical fuelStart/fuelEnd liters+percent from RawRefuelCandidate evidence.',
+      'Promoted fallback VehicleEnergyEvent exposes same G2 row-mapper contract as native DIMO without G2 special-casing.',
+      'Real PG F6-P1..P10 (11/11); RFRF provenance preserved; no schema change; F5 handoff unchanged.',
+    ],
+    reason:
+      'F5-PR3 G2 handoff assumed fallback rows participate in identity via vehicleEnergyEventToRefuelRow — F6 closes persisted metadata gap.',
+    previousBehavior:
+      'Promotion draft wrote preFuel/postFuel RFRF keys only; G2 row mapper read fuelStart/fuelEnd canonical keys → null fuel transition on persisted fallback VEE.',
+    details:
+      'docs/audits/eed-rfrf-f6-g2-payload-compatibility-2026-09-15.md; EED-EV-0059; BASE_MAIN 4f21c0c16',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T00:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-authority-cutover-runtime-2026-09-14',
+    version: '4.9.1133',
+    title: 'VDC RB-019 P2.5 — Authority cutover runtime foundation',
+    summary: [
+      'PhysicalStateAuthorityCutoverService: forward-only LEGACY→PHYSICAL latch with advisory lock + FOR UPDATE.',
+      'Fail-closed cutover eligibility; mixed-replica build interlock; flags ≠ persisted authority.',
+      'Webhook + snapshot PHYSICAL routing; structural legacy OBD write exclusion; P25-A..R PG proof suite.',
+    ],
+    reason:
+      'Make scoped authority cutover possible under frozen P2.4/#1650 contracts without Production activation.',
+    previousBehavior:
+      'No runtime latch path; webhook lacked physicalGateAuthoritative routing; legacy writers could still run after hypothetical PHYSICAL latch.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_AUTHORITY_CUTOVER_RUNTIME_2026-09-14.md; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T23:50:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr3-g2-handoff-2026-09-14',
+    version: '4.9.1132',
+    title: 'RFRF F5-PR3 — Post-commit G2 handoff, recovery + late-native convergence',
+    summary: [
+      'RFRF_FALLBACK_G2_HANDOFF_AUTHORIZED strict conjunction with convergence + promotion authorities.',
+      'Post-commit RawRefuelG2HandoffService bridge into existing G2 PhysicalRefuelReconciliationRuntimeService only.',
+      'G2 participation policy + recovery orphan filter close fallback authority bypasses; 30/30 real PG gate P1–P29.',
+    ],
+    reason:
+      'First executable post-promotion boundary: committed fallback VEE enters canonical G2 without widening TRANSACTION A.',
+    previousBehavior:
+      'F5-PR2 atomic promotion only; zero G2/BullMQ reachability for fallback events; recovery could discover fallback orphans generically.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr3-g2-handoff-2026-09-14.md; EED-EV-0058 F5-PR3.1; BASE_MAIN 5bd1b266c',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T22:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr2-1-micro-closure-2026-09-14',
+    version: '4.9.1131',
+    title: 'RFRF F5-PR2.1 — Pre-merge micro-closure',
+    summary: [
+      'Promotion requires BOTH convergence and promotion execution authorities at RawRefuelPromotionService.',
+      'TRANSACTION A uses real SELECT FOR UPDATE on candidate row; promotionAttempted metric single owner.',
+      'Real PG P24–P29: authority conjunction, row-lock concurrency, thrown promotion isolation; 29/29 gate.',
+    ],
+    reason:
+      'Close independent pre-merge gaps A–E on PR #1647 without F5 redesign or F5-PR3 start.',
+    previousBehavior:
+      'Promotion execution flag alone could reach service paths; findUnique without row lock; double promotionAttempted metric; cutover-only failure isolation evidence.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr2-atomic-promotion-2026-09-14.md §9; EED-EV-0057; STARTING_HEAD d8ce3eda',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T18:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr2-atomic-promotion-2026-09-14',
+    version: '4.9.1130',
+    title: 'RFRF F5-PR2 — Atomic fallback promotion transaction',
+    summary: [
+      'TRANSACTION A: atomic fallback VehicleEnergyEvent + PROMOTED under pg_advisory_xact_lock64.',
+      'RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED separate from convergence/persist/master; cutover on physical evidence end.',
+      'Real PG gate 23/23 P1–P21 + KS MS 661 synthetic lifecycle; detectEnergyEvents runtime E2E; zero G2/BullMQ.',
+    ],
+    reason:
+      'First executable F5 promotion primitive: one eligible raw refuel → one fallback VEE → same candidate PROMOTED atomically.',
+    previousBehavior:
+      'F5-PR1 convergence only; canCreateFallbackVehicleEnergyEvent hard-coded false; PROMOTED unreachable.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr2-atomic-promotion-2026-09-14.md; EED-EV-0056; BASE_MAIN 84ef68944',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T16:50:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr1-2-main-sync-2026-09-14',
+    version: '4.9.1129',
+    title: 'RFRF F5-PR1.2 — Final main sync / #1642 DI survival',
+    summary: [
+      'Merged main #1642 Nest DI boot fix into PR #1643 without regressing F5 convergence wiring.',
+      'configLoader off injectable ctor surface; convergenceService DI-safe; withConfigLoader preserves both.',
+      'Post-sync gates: DI bootstrap + F5 PG 19/19 + full F4/F3/F2 regression matrix; PR merge-ready pending CI.',
+    ],
+    reason:
+      'Main advanced after F5-PR1.1; #1642 and PR #1643 both touched raw-fuel-refuel-fallback-runtime.service.ts causing merge conflict.',
+    previousBehavior:
+      'PR branch had function-typed configLoader on Nest ctor (DI boot blocker); main had #1642 fix without F5 convergence.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md §9; EED-EV-0055; POST_SYNC_HEAD 3b2db1156',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T15:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr1-1-micro-closure-2026-09-14',
+    version: '4.9.1127',
+    title: 'RFRF F5-PR1.1 — Pre-merge micro-closure',
+    summary: [
+      'Bounded native sibling MAX+1 sentinel overflow fail-closed (native_sibling_limit_exceeded).',
+      'Strict true-only F5 convergence authority reader; SKIPPED_NOT_AUTHORIZED metric single owner.',
+      'True automatic detectEnergyEvents F4→F5 real PG E2E; 19/19 PG gate; no schema change.',
+    ],
+    reason:
+      'Independent review found silent truncation, non-automatic runtime proof, permissive authority parsing, and metric double-counting before merge.',
+    previousBehavior:
+      'take:32 without overflow detection; manual convergence call in runtime wiring test; permissive 1/yes/on authority; duplicate SKIPPED_NOT_AUTHORIZED metric.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md §8; EED-EV-0054',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T10:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14',
+    version: '4.9.1126',
+    title: 'RFRF F5-PR1 — Authoritative pre-promotion convergence',
+    summary: [
+      'CONVERGED_NATIVE terminal lifecycle; G2 classifyPhysicalRefuelSibling authoritative wrapper.',
+      'RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED fail-closed reader; zero fallback VEE; PROMOTED unreachable.',
+      'Real PG matrix T4/T6/T8–T10 + replay/concurrent/source-filter; F5-PR2 not started.',
+    ],
+    reason:
+      'First executable F5 primitive: prove native SAME before promotion without creating fallback VehicleEnergyEvent.',
+    previousBehavior:
+      'F4 advisory overlap only; F5 convergence gate stub always false; no CONVERGED_NATIVE lifecycle.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md; EED-EV-0053; EED-DEC-RFRF-009 subset',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T12:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-0-convergence-architecture-2026-09-14',
+    version: '4.9.1125',
+    title: 'RFRF F5.0 — Convergence architecture + policy closure',
+    summary: [
+      'Closes three F5 entry blockers: NAMESPACED_SYNTHETIC dimoSegmentId; authoritative convergence matrix A–Q; late-native L1–L11 with sticky post-enrichment ownership.',
+      'F5.0a: exact-head SHA terminology; post-commit G2/BullMQ boundary; SOURCE_EVENT_KEY_SCOPE=VEHICLE_GLOBAL; SYNTHETIC_ID_COLLISION_BEHAVIOR=FAIL_CLOSED.',
+      'POLICY_DEFINED only — not IMPLEMENTED or PROVEN_BY_INTEGRATION_TEST; zero fallback VEE; F5_PR1 authorized after human merge.',
+    ],
+    reason:
+      'F4 complete; F5 promotion blocked until convergence/identity/late-native policies are implementation-grade.',
+    previousBehavior:
+      'F4 advisory overlap only; dimoSegmentId compatibility NOT_PROVEN; three KNOWN_P1_F5_ENTRY_BLOCKERS documented.',
+    details:
+      'docs/audits/eed-rfrf-f5-0-convergence-architecture-and-policy-2026-09-14.md; EED-EV-0052; EED-DEC-RFRF-008/009/010',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T02:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-pr4-final-closure-2026-09-14',
+    version: '4.9.1124',
+    title: 'RFRF F4-PR4 — Final F4 implementation closure audit',
+    summary: [
+      'Independent exact-main integration audit: F4-PR1 through F4-PR3.1 verified on main@22e0dd251.',
+      'Call-graph hard-stop before fallback VEE, PROMOTED, G2, BullMQ; native path non-regression proven.',
+      '212 unit + real PG gates PASS (50 PR3, 41 PR2, 6 F3-F2, F4-PR1 migration SQL); zero F4 P0/P1 blockers.',
+      'F4_IMPLEMENTATION_COMPLETE=YES; F5_START_AUTHORIZED=YES; F5 not started; production untouched.',
+    ],
+    reason:
+      'F4 phase boundary closure per EED-DEC-RFRF-006 — prove integrated F4 substrate before F5 convergence work.',
+    previousBehavior:
+      'F4 phases landed incrementally (PR1–PR3.1); no single independent exact-main closure audit existed.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr4-final-closure-2026-09-14.md; EED-EV-0051',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T01:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-pr3-1-semantic-micro-closure-2026-09-14',
+    version: '4.9.1123',
+    title: 'RFRF F4-PR3.1 — SAME+INSUFFICIENT advisory fail-closed micro-closure',
+    summary: [
+      'Fixed aggregate native-overlap advisory: exactly one SAME plus any INSUFFICIENT sibling now fails closed to INSUFFICIENT_EVIDENCE (not clean SAME).',
+      'Foreign-vehicle-only rows aggregate to NO_NATIVE_SIBLINGS after vehicle filter.',
+      'Unit matrix A–I + real PG scenarios S/T; promotion eligibility remains AMBIGUOUS fail-closed; zero fallback VEE; F5 not implemented.',
+      'Blocker taxonomy corrected: KNOWN_P1_F4_PR3_BLOCKERS=0; KNOWN_P1_F5_ENTRY_BLOCKERS=3.',
+    ],
+    reason:
+      'Independent review found insufficient fail-closed semantics when SAME and INSUFFICIENT native siblings coexist in F4 advisory aggregate.',
+    previousBehavior:
+      'classifyRawRefuelNativeOverlapAdvisory returned SAME when exactly one SAME sibling existed, ignoring coexisting INSUFFICIENT siblings.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr3-1-semantic-micro-closure-2026-09-14.md; EED-EV-0050; raw-refuel-native-overlap.advisory.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T00:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-pr3-ready-promotion-gate-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4-PR3 — Ready evaluator + promotion eligibility + F5 gate stub',
+    summary: [
+      'Pre-promotion control plane after F2 persist: runtime READY evaluator, orthogonal promotion eligibility, advisory native overlap.',
+      'Promotion draft mapping from persisted candidate; sourceEventKey = candidateIdentityKey stable across evidence maturation.',
+      'F5 convergence gate stub always false — zero fallback VehicleEnergyEvent; no PROMOTED; no G2/BullMQ.',
+      'Extended synqdrive_rfrf_* metrics; F3/F2 tolerance integration PASS; real PG gate 48/48 PASS.',
+    ],
+    reason:
+      'F4 Option B PR3 per EED-DEC-RFRF-006: pre-promotion substrate without promotion execution authority.',
+    previousBehavior:
+      'F4-PR2 stopped after F2 candidate persist; no runtime readiness/eligibility/overlap/draft evaluation.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr3-ready-promotion-gate-2026-09-13.md; EED-EV-0049; backend/scripts/test/rfrf-f4-pr3-ready-promotion-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T21:55:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4-PR2 — Dark raw-fuel runtime wiring in detectEnergyEvents',
+    summary: [
+      'Parallel fail-isolated raw branch after native DIMO path: capability → fuel fetch → F4.1 admissibility → F3 → F2 persist.',
+      'RawFuelRefuelFallbackRuntimeService + synqdrive_rfrf_* dark metrics; flags default OFF; persist never authorizes VEE.',
+      'Native path unchanged; window-level native suppression forbidden; native A + missed raw B coexistence proven.',
+      'Real PG gate 41/41 PASS (F4-PR2 matrix + F2 + F3→F2); KS MS 661 one candidate zero fallback VEE.',
+      'F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; F5 convergence NOT implemented.',
+    ],
+    reason:
+      'F4 Option B PR2 per EED-DEC-RFRF-006: make candidate staging runtime-reachable under test flags without promotion or production enablement.',
+    previousBehavior:
+      'detectEnergyEvents had no raw-fuel branch; F3/F2 reachable only via direct test harness.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13.md; EED-EV-0048; backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T13:20:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-pr1-foundation-2026-09-13',
+    version: '4.9.1121',
+    title: 'RFRF F4-PR1 — Schema, flags, capability/trust foundation',
+    summary: [
+      'VehicleEnergyEvent detectionSource + sourceEventKey substrate; PostgreSQL NULL-safe unique (vehicleId, sourceEventKey).',
+      'Source-identity CHECK constraint (vehicle_energy_events_source_identity_check) enforces canonical NULL/non-null pairings.',
+      'Fail-closed runtime flag reader (master/persist/cutover); persist never authorizes VEE promotion.',
+      'RawFuelCapabilityResolver (fuelType authority) + RawFuelSignalTrustResolver (absolute UNKNOWN; relative separate).',
+      'Isolated PG migration proof PASS; F2/F3 regression PASS; no detectEnergyEvents raw wiring.',
+    ],
+    reason:
+      'F4 Option B implementation PR1 per EED-DEC-RFRF-006 / PR #1628; foundation before dark runtime (F4-PR2).',
+    previousBehavior:
+      'No VEE source identity columns; RFRF flags compile-time constants only; no capability/trust resolvers.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr1-foundation-2026-09-13.md; EED-EV-0046; backend/scripts/ops/prove-rfrf-f4-pr1-migration-sql.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T06:00:00.000Z',
+  },
+  {
+    id: 'vdc-physical-state-foundation-phase1-2026-09-12',
+    version: '4.9.1120',
+    title: 'VDC Phase 1 — canonical physical device state reconciliation foundation (dark)',
+    summary: [
+      'Additive Prisma models: device_connection_physical_states + device_connection_physical_state_transitions (candidate_state on audit ledger) with TEXT org/vehicle ids.',
+      'Repository raw SQL uses TEXT identifiers (no ::uuid casts); resilient prisma migrate deploy CI gate + PostgreSQL integration suite.',
+      'Pure transition policy, advisory-lock serialization, deterministic newest-evidence concurrency proofs; CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED flag (default OFF).',
+      'GT-R1 regression fixtures: snapshot self-heal PLUG without episode; newer webhook UNPLUG accepted once.',
+      'Read-only fleet drift detector script; Prometheus metrics for applied/stale/conflict/self-heal/duplicate decisions.',
+      'VDC-DEC-012 + VDC-RB-019 authority; no live webhook/snapshot cutover in this PR.',
+    ],
+    reason:
+      'GT-R1 proved split authority: webhook dedupe from last dimo_device_connection_events while newer snapshot OBD evidence can show PLUGGED — blocking genuine UNPLUG webhooks.',
+    previousBehavior:
+      'Physical plug/unplug dedupe used last canonical webhook event only; snapshot obdIsPluggedIn could disagree without durable effective-state projection.',
+    details:
+      'backend/src/modules/dimo/device-connection-physical-state/*; migration 20260912200000_device_connection_physical_state; scripts/ops/vdc-physical-state-drift-detect.ts; architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md VDC-DEC-012.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T21:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-0-scope-hardening-2026-09-13',
+    version: '4.9.1119',
+    title: 'RFRF F4.0 — Final scope hardening before implementation',
+    summary: [
+      'Flag truth table: master owns scan; persist owns F2 staging only; never VEE promotion.',
+      'fuelCapability vs absoluteSignalTrust split; trust authority NOT_YET_AVAILABLE — fail closed.',
+      'RawRefuelPromotionEligibility orthogonal to F2 lifecycle; no F4 terminal REJECTED for F5 absence.',
+      'Native overlap advisory-only in F4; detectionSource NULL = legacy native; sourceEventKey canonical.',
+      'F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate; cutover enforcement deferred to F6+.',
+    ],
+    reason:
+      'Five contract ambiguities remained after initial F4 scope audit — must close before F4-PR1.',
+    previousBehavior:
+      'Overlapping F4/F5 language; capability/trust conflated; scheduler coverage stated as proven.',
+    details:
+      'docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md §25; EED-DEC-RFRF-006 expanded.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T01:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-scope-boundary-2026-09-13',
+    version: '4.9.1118',
+    title: 'RFRF F4 — Scope + runtime boundary (pre-implementation audit)',
+    summary: [
+      'Resolves F1/F2/F3 phase-boundary contradiction: F4 Option B (dark staging; promotion execution F5-gated).',
+      'detectEnergyEvents parallel path design; WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; no new scheduler.',
+      'Capability gate case 22 scope; duplicate safety matrix (10 scenarios); minimum F4 diagnostics.',
+      'EED-DEC-RFRF-006 + EED-EV-0045; no runtime code; flags remain default false.',
+    ],
+    reason:
+      'F3 merged (PR #1623); F4 authorized but requires rigorous scope closure before implementation.',
+    previousBehavior:
+      'Overlapping F4/F5 language risked unsafe VehicleEnergyEvent promotion before native/fallback convergence.',
+    details:
+      'docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md; EED-EV-0045; EED-DEC-RFRF-006.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T00:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f3-2-semantic-closure-2026-09-12',
+    version: '4.9.1117',
+    title: 'RFRF F3.2 — Final semantic closure (finality + channel fallback + real PG)',
+    summary: [
+      'provisionalPostContinuationGraceMs (10 min) separate from riseMaxDurationMs — finalized post creates event boundary.',
+      'Two refuels within 45 minutes now correctly yield 2 candidates when post is finalized.',
+      'TRUSTED absolute sparse samples fall back to relative primary channel.',
+      'Non-finite samples excluded per channel with explicit documented policy.',
+      'Real isolated PostgreSQL F3→F2 handoff 4/4 PASS; 21 negative behavioral cases.',
+    ],
+    reason:
+      'Independent review found two remaining P1 semantic gaps before PR #1623 main sync.',
+    previousBehavior:
+      '45m rise neighborhood could merge separate refuels; TRUSTED absolute blocked relative fallback.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md §14; backend/scripts/test/rfrf-f3-f2-handoff-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T23:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f3-1-detector-hardening-2026-09-12',
+    version: '4.9.1116',
+    title: 'RFRF F3.1 — Raw rise detector hardening',
+    summary: [
+      'Strict plateau final-median invariant for STABLE_PRE and STABLE_POST.',
+      'Persistent single-step provider rises supported; provider spacing ≠ physical duration.',
+      'Stepped-refuel coalescence absorbs temporary intermediate plateaus into one candidate.',
+      'Local post plateau authority; distant consumption cannot become post evidence.',
+      'rawRiseWithoutNativeSegmentTotal=null (F3 cannot know native DIMO segments).',
+      '50 unit tests + 4 F2 handoff PG proofs; PR #1623 draft.',
+    ],
+    reason:
+      'Independent review found three P1 correctness gaps in F3 detector before F4 runtime wiring.',
+    previousBehavior:
+      'Incremental plateau checks; 30s rise minimum blocked single-step updates; intermediate plateaus could split one refuel.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md §13; EED-EV-0044 updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T22:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f3-raw-rise-detector-2026-09-12',
+    version: '4.9.1115',
+    title: 'RFRF F3 — Raw fuel rise detector (STABLE_PRE→RISING→STABLE_POST)',
+    summary: [
+      'Pure deterministic detector converts normalized fuel telemetry to RawRefuelCandidateObservation[].',
+      'Local state machine — no global min/max authority; absolute/relative unit isolation enforced.',
+      'Primary channel authority: one physical candidate per rise; corroboration only on secondary channel.',
+      'KS MS 661 observed material rise detected (7→31 L, OBSERVED); synthetic READY_FOR_PERSIST.',
+      '27 unit tests + test-only F2 handoff PostgreSQL proof; no production wiring.',
+    ],
+    reason:
+      'F3 authorized after F2 merge; implements algorithm-only raw refuel detection before F4 runtime wiring.',
+    previousBehavior:
+      'No raw-rise detector; legacy refuel-fuel-rise.ts uses global min/max and mixed sampleValue() units.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md; EED-EV-0044; detectionVersion=rfrf-rise-v1.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T22:00:00.000Z',
+  },
+  {
+    id: 'tdl-r12-cusum-retry-budget-fix-2026-09-12',
+    version: '4.9.1118',
+    title: 'R12 — CUSUM END_VALIDATION retry-budget durability (POST-#1617 / WOB L 7503)',
+    summary: [
+      'Production WOB L 7503: 17× END_VALIDATION with persistedAttemptsAfterReset=0 — bounded max-attempt fallback unreachable.',
+      'Fix: preserve endValidationAttempts on CUSUM_STILL_ONGOING reopen when trusted stop boundary remains valid (#1617 preserved).',
+      'ACTIVITY_RESUMED and post-boundary movement still reset budget to 0; no CUSUM detector/threshold changes.',
+      'Deterministic Postgres+BullMQ BASE/HEAD proof: ≥4 EV on BASE vs 3 EV + max fallback terminal chain on HEAD.',
+      'Forensic authority: PR #1625. Physical acceptance remains FAIL until post-deploy Production drive.',
+    ],
+    reason:
+      'buildPossibleEndToActiveReset always zeroed endValidationAttempts on cusum_still_ongoing reopen, defeating TRIP_END_VALIDATION_MAX_ATTEMPTS=3 fallback contract.',
+    previousBehavior:
+      'Each CUSUM ongoing cycle completed attempt=1 but persistedAttemptsAfterReset=0 → infinite POSSIBLE_END/EV loop despite #1617 boundary preservation.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/WOB_L_7503_R12_RETRY_BUDGET_FIX_2026-09-12.md; references PR #1625; trip-end-cycle-reset.ts + orchestration CUSUM path.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T21:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
+    version: '4.9.1114',
+    title: 'RFRF F2.2a — Evidence-local rediscovery window + migration assertion hardening',
+    summary: [
+      'Rediscovery window anchors on evidence timestamps only; serviceNow is fallback when no evidence exists.',
+      'Delayed telemetry (24h/6d) no longer stretches DB lookup from evidence time to processing time.',
+      'F2 migration proof script uses hard post-schema assertions (indexes by name, FKs, pre-F2 sentinels).',
+      '25 unit + 19 PostgreSQL integration tests PASS; ambiguity policy unchanged.',
+    ],
+    reason:
+      'Independent F2.2a review found serviceNow incorrectly included in rediscovery anchor set and migration proof verification too soft.',
+    previousBehavior:
+      'F2.2: rediscovery window min/max included serviceNow, stretching lookup on late telemetry; migration proof printed values without hard fail.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.2a; EED-EV-0043; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T20:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-2-final-closure-2026-09-12',
+    version: '4.9.1113',
+    title: 'RFRF F2.2 — Final closure: migration proof, Nest DI, bounded rediscovery',
+    summary: [
+      'Corrected PostgreSQL epistemic labels: F2 migration SQL proof vs schema proof vs full historical chain (FAIL_PRE_EXISTING).',
+      'Actual F2 migration.sql executed on pre-F2 baseline via prove-rfrf-f2-migration-sql.sh.',
+      'Historical CONCURRENTLY migration defect documented (20260413230000_add_composite_indexes_batch_c).',
+      '@Injectable RawRefuelCandidateService with PrismaService-only Nest DI + provider resolution test.',
+      'Bounded 6-hour rediscovery window; SAME+INSUFFICIENT ambiguity fail-closed hold policy.',
+      '21/21 unit + 19/19 opt-in PostgreSQL integration tests PASS on isolated localhost:5433.',
+    ],
+    reason:
+      'Independent F2.2 review required migration SQL proof, Nest DI contract, bounded rediscovery, and ambiguity policy before PR #1620 merge authorization.',
+    previousBehavior:
+      'F2.1: unbounded vehicle-lifetime rediscovery scan; ambiguous SAME+INSUFFICIENT unresolved; REAL_POSTGRES_MIGRATION overclaimed; Nest DI unproven.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.2; docs/audits/prisma-migration-chain-concurrently-defect-2026-09-12.md; EED-EV-0043; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T18:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-1-hardening-2026-09-12',
+    version: '4.9.1112',
+    title: 'RFRF F2.1 — Candidate persistence hardening + real PostgreSQL proof',
+    summary: [
+      'Service-owned firstObservedAt/lastObservedAt via injectable clock; removed caller observedAt.',
+      'Org/vehicle integrity enforced inside transaction; fail-closed on mismatch.',
+      'Nullable candidateIdentityKey until sufficient evidence; INSUFFICIENT rows persistable.',
+      'Terminal PROMOTED/REJECTED rediscovery; multiple SAME ambiguity fail-closed.',
+      'Recursive fingerprint canonicalization from merged persisted evidence state.',
+      'Lifecycle terminal safety: invalid transitions throw; PROMOTED not caller-controlled.',
+      'VehicleEnergyEvent detection_source/source_event_key deferred to F4 (smaller F2 migration).',
+      '17/17 opt-in PostgreSQL integration tests PASS on isolated localhost:5433 database.',
+    ],
+    reason:
+      'Independent F2 review found correctness gaps in clock authority, integrity, insufficient persistence, terminal rediscovery, fingerprint, and real PG proof.',
+    previousBehavior:
+      'F2 initial implementation: caller observedAt, non-null identity key at insert, no terminal rediscovery, unsafe lifecycle bypass, fingerprint before merge.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.1; EED-EV-0043 updated; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T14:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-candidate-persistence-2026-09-12',
+    version: '4.9.1111',
+    title: 'RFRF F2 — RawRefuelCandidate persistence + semantic rediscovery',
+    summary: [
+      'Implements Option D staging: raw_refuel_candidates schema+migration + lifecycle states.',
+      'Semantic overlap matcher rediscovers candidates under per-vehicle pg_advisory_xact_lock64.',
+      'Immutable candidateIdentityKey; mutable evidenceRevisionFingerprint; firstObservedAt preserved.',
+      'Promotion contract design only — no VehicleEnergyEvent runtime; flags remain OFF.',
+      'Does NOT detect KS MS 661 or enable production fallback. F3 detector next.',
+      'Idempotency matrix A–L: unit tests PASS; Postgres integration opt-in (RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1).',
+    ],
+    reason:
+      'F1.1 authorized F2 to implement Option D candidate persistence before detector/runtime wiring.',
+    previousBehavior: 'No RawRefuelCandidate table; identity/rediscovery design-only (F1.1).',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md; EED-EV-0043; EED-DEC-RFRF-005 updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T14:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f1-1-hardening-2026-09-12',
+    version: '4.9.1109',
+    title: 'RFRF F1.1 — Architecture hardening + pre-F2 closure',
+    summary: [
+      'Corrects F1 window-level native suppression contradiction; per-candidate convergence required.',
+      'Separates candidateIdentityKey (stable) from evidenceRevisionFingerprint (mutable).',
+      'Recommends Option D RawRefuelCandidate lifecycle; supersedes Option C; closes EED-OQ-013 at design level.',
+      'dimoSegmentId consumer audit: SYNTHETIC_DIMO_SEGMENT_ID_COMPATIBLE=NOT_PROVEN.',
+      'KS MS 661 fixture split (observed vs synthetic); production IDs removed; threshold labels corrected.',
+      'F2_START_AUTHORIZED=YES; F2_IMPLEMENTATION_COMPLETE=NO; semantic candidate rediscovery under delayed telemetry.',
+    ],
+    reason:
+      'Independent F1 review found four material design/evidence issues blocking F2 implementation.',
+    previousBehavior: 'F1 proposed Option C identity and window-level fallback gating; mixed inferred fixture samples.',
+    details:
+      'docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md; EED-EV-0042; EED-DEC-RFRF-005; FST-EVID-RFRF-F1-1-2026-09-12-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f1-architecture-2026-09-12',
+    version: '4.9.1108',
+    title: 'RFRF F1 — Raw Fuel Refuel Fallback architecture discovery',
+    summary: [
+      'Design-only contract for SynqDrive raw-fuel REFUEL fallback parallel to DIMO native segments.',
+      'Current path requires native DIMO segment (YES); KS MS 661 +24L absolute rise missed.',
+      'Proposed STABLE_PRE→RISING→STABLE_POST detector; Option C identity (detectionSource+sourceEventKey).',
+      'G2 handoff via existing PhysicalRefuelReconciliationRuntime; OSM never hard gate.',
+      'KS MS 661 offline positive fixture created; F2–F10 implementation plan; flags default OFF.',
+    ],
+    reason:
+      'PR #1616 proved DIMO native RefuelDetector single point of failure; SynqDrive has no raw-signal fallback.',
+    previousBehavior: 'REFUEL creation only from DIMO segments(mechanism:refuel); raw fuel used for enrichment only.',
+    details:
+      'docs/audits/eed-rfrf-f1-architecture-2026-09-12.md; EED-EV-0041; EED-DEC-RFRF-001..004; FST-EVID-RFRF-F1-2026-09-12-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T11:30:00.000Z',
+  },
+  {
+    id: 'refuel-production-incident-ks-ms-661-2026-09-06',
+    version: '4.9.1107',
+    title: 'Production REFUEL incident forensics — KS MS 661 (Esso Kassel 2026-09-06)',
+    summary: [
+      'User refuel ~11:38 CEST not visible in UI after ~6 days (vehicle KS MS 661).',
+      'Direct DIMO probe: 0 native refuel segments (production + default config); absolute fuel 7L→31L; relative fuel NULL all day.',
+      'Esso Ysenburgstraße dwell ~31m corroborated; no VehicleEnergyEvent ever persisted; no SynqDrive raw-signal fallback.',
+      'Exact internal DIMO RefuelDetector mechanism not observable; LOSS_LAYER=DIMO_NATIVE_REFUEL_DETECTOR; P1 — not UI/API/G2 defect.',
+      'Read-only forensics only; no production mutation.',
+    ],
+    reason: 'Six-day invisible real refuel is a production incident requiring full pipeline forensics.',
+    previousBehavior: 'Assumed provider latency; WOB L 7503 forensics showed upstream pending pattern.',
+    details:
+      'docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md; EED-EV-0040; FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T05:20:00.000Z',
+  },
+  {
+    id: 'vdc-phase3-hardening-2026-09-12',
+    version: '4.9.1106',
+    title: 'VDC Phase 3 hardening — recovery fast-path & adaptive polling',
+    summary: [
+      'PLUG webhook = optional fast-path; FULL_CONNECTIVITY_RECOVERED must not depend on PLUG webhook (VDC-DEC-010).',
+      'VDC-RB-001 gated: equality short-circuit must preserve per-signal/device evidence; GT-R1 before rollout.',
+      'VDC-DEC-011 adaptive information-gain polling; VDC-RB-018 P1 backlog item.',
+      'VDC-Q-014 open for per-profile backoff calibration; do not hardcode 24h poll from LTE_R1 n=1.',
+      'No runtime or Production changes.',
+    ],
+    reason:
+      'Operator requirements: recovery without mandatory PLUG webhook; fixed standby polling not scalable.',
+    previousBehavior: 'Phase 3 reconciliation without explicit fast-path or adaptive polling decisions.',
+    details:
+      'architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md; reconciliation/REMEDIATION_BACKLOG.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T00:10:00.000Z',
+  },
+  {
+    id: 'vdc-phase3-reconciliation-2026-09-11',
+    version: '4.9.1105',
+    title: 'VDC Phase 3 — Reconciliation & classification',
+    summary: [
+      'Reconciled Phase 1 repository + Phase 2 Production evidence into canonical decision model.',
+      'Dispositioned VDC-CX-001..011 (4 RESOLVED_IN_ARCHITECTURE; 7 runtime-pending).',
+      'Created VDC-DEC-002..010: equality upsert design, provider auth vs mirror, evidence hierarchy, webhook taxonomy.',
+      'Prioritized remediation backlog VDC-RB-001..017 — no runtime implementation in Phase 3.',
+      'Registry remains AUDIT_IN_PROGRESS; AUTHORITY_ACTIVE promotion deferred.',
+      'No Production or connectivity-runtime behavior changes.',
+    ],
+    reason:
+      'Phase 3 gate: classify contradictions, gaps, and hypotheses before implementation workstreams.',
+    previousBehavior:
+      'Phase 2 forensics complete but contradictions lacked unified disposition and remediation ordering.',
+    details:
+      'architecture/vehicle-device-connectivity/reconciliation/PHASE3_RECONCILIATION.md; TARGET_SEMANTIC_MODEL.md; REMEDIATION_BACKLOG.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T00:05:00.000Z',
+  },
+  {
+    id: 'vdc-phase2-production-lte-r1-forensics-2026-09-11',
+    version: '4.9.1104',
+    title: 'VDC Phase 2 — LTE_R1 Production read-only forensics (KS MX 2024)',
+    summary: [
+      'Read-only Production audit for DIMO Ruptela LTE_R1 primary vehicle KS MX 2024 (token 187336).',
+      'Verified ~24 h strict source advances (86,563–86,581 s) during post-trip standby; 6 h cadence not observed.',
+      'Poll SUCCESS : strict source advance ratio ~343:1 over 3.75 d stationary window.',
+      '24 h threshold: 163–181 s potential classification windows per cycle; Sep cycles: 0 SNAPSHOT in exact windows, 0 persisted alerts, runtime evaluation not proven.',
+      'IO174 not exposed in signalsLatest ingest; GT-R1-UNPLUG-001 ground-truth protocol prepared (not executed).',
+      'No Production or connectivity-runtime behavior changes; no thresholds, services, databases, or provider configuration were mutated.',
+    ],
+    reason:
+      'Phase 2 gate: establish empirical Production truth for Vehicle & Device Connectivity before Phase 3 reconciliation.',
+    previousBehavior:
+      'Phase 1 repository audit only; Production baseline and LTE_R1 standby behavior unverified.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md; LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md; backend/scripts/ops/vdc-phase2-lte-r1-production-forensic.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-11T23:20:00.000Z',
+  },
+  {
+    id: 'exp-021-candidate-short-ab-90-60-2026-09-12',
+    version: '4.9.1106',
+    title: 'EXP-021 — CANDIDATE_SHORT_AB_90_60 dedicated 90→60 plan (WOB L 7503 next run)',
+    summary: [
+      'New plan EXP021_CANDIDATE_SHORT_AB_90_60: 90→60 only, equal 10 min wall phases, 20 min nominal / 22 min max.',
+      'Exact V3 90s/60s semantics — omits 120s anchor per frozen PR #1618 forensic authority.',
+      '7/10 slots; 19/19 FIXED_INTERVAL settlement windows; 228 observations.',
+      'Durable plan authority at arm; restart recovery; lifecycle regression tests.',
+      'Next physical target: WOB L 7503 (not KS MS 661). Not deployed — PR only.',
+    ],
+    reason:
+      'Frozen PR #1618 requires corrected 90 vs 60 short A/B as minimum remaining experiment — not another full 120→90→60 drive.',
+    previousBehavior:
+      'Only CANDIDATE_BRACKET_V3 (120→90→60) registered for sweet-spot bracket; no dedicated short A/B plan.',
+    details:
+      'reference-capture-exp021-calibration-plan.lib.ts; reference-capture-exp021-candidate-short-ab-90-60.spec.ts; EXP_021_CANDIDATE_SHORT_AB_90_60_PROSPECTIVE_DESIGN_2026-09-12.md. Select via EXP021_CALIBRATION_PLAN=CANDIDATE_SHORT_AB_90_60.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T19:30:00.000Z',
+  },
+  {
+    id: 'exp-021-settlement-lifecycle-precedence-2026-09-12',
+    version: '4.9.1105',
+    title: 'EXP-021 — Settlement lifecycle single canonical plan precedence (PR #1621)',
+    summary: [
+      'syncCompletedPhasesFromSession loads experiment metadata before plan resolution.',
+      'One canonical calibrationPlan per sync: series → metadata → env; shared across prospective + completed validation.',
+      'Regression: series absent + metadata V3 + env V2 resolves V3 (19/19 windows, 10 min nominal).',
+      'Vehicle Detail backend typecheck OOM documented as infra/flaky (rerun).',
+    ],
+    reason:
+      'Lifecycle path still resolved plan from series/env before metadata — completed-phase validation could use UPPER_BOUND_V2 while prospective sync used metadata V3.',
+    previousBehavior:
+      'resolveExp021CalibrationPlanForSeries(series) before experiment metadata; duplicate plan resolution inside syncProspectiveProbesForActivePhase.',
+    details:
+      'reference-capture-settlement-shadow.service.ts; reference-capture-settlement-shadow-runtime.spec.ts; vehicle-detail-production-readiness.yml.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T15:00:00.000Z',
+  },
+  {
+    id: 'exp-021-durable-plan-correction-2026-09-12',
+    version: '4.9.1104',
+    title: 'EXP-021 — Durable plan authority + V3 slot/settlement/scientific-status correction',
+    summary: [
+      'Persist calibrationPlanId/calibrationPlanVersion on hfCalibrationSeries at physical arm.',
+      'buildInitialPhaseCounters and settlement shadow use durable plan — not transient process.env.',
+      'Fix EXPECTED_SLOTS_NEVER_CREATED (V3: 5/7/10 slots) and settlement 19/19/19 windows.',
+      'scientificStatus=null when movement unknown; recompute on late movement patch (120s VALID regression).',
+      'Frozen PR #1618 V3 evidence unchanged; deploy required before next physical run.',
+    ],
+    reason:
+      'KS MS 661 CANDIDATE_BRACKET_V3 run (2026-09-12) proved transient plan fallback caused mixed provenance, wrong slot/settlement geometry, and stale DEGRADED_LOW_MOVEMENT.',
+    previousBehavior:
+      'resolveExp021CalibrationPlan() from env at each call site; unknown movement coerced to 0; late movement patch did not recompute scientificStatus.',
+    details:
+      'reference-capture-exp021-calibration-plan.lib.ts; reference-capture-hf-calibration-phase.policy.ts; reference-capture-session.repository.ts; reference-capture-settlement-shadow.service.ts; reference-capture-exp021-durable-plan-correction.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T12:50:00.000Z',
+  },
+  {
+    id: 'exp-021-candidate-bracket-v3-prospective-2026-09-11',
+    version: '4.9.1103',
+    title: 'EXP-021 — CANDIDATE_BRACKET_V3 prospective sweet-spot plan (120→90→60)',
+    summary: [
+      'New plan EXP021_CANDIDATE_BRACKET_V3: 120→90→60, equal 10 min wall phases, 30 min nominal / 32 min max.',
+      '90s added to HF_POLL_CALIBRATION_CANDIDATES_MS; 22 deterministic request slots (5/7/10).',
+      'Settlement: 57 full-phase overlapping windows × 6 ages = 342 observations.',
+      'Read-only reconstruction-quality analyzer scaffold; map-matching adapter documented.',
+      'UPPER_BOUND_V2 and LOWER_BOUND_V1 historical plans unchanged; default env remains UPPER_BOUND_V2.',
+    ],
+    reason:
+      '180s accumulated adverse evidence; next physical run should compare 120/90/60 sweet spot under equal wall time.',
+    previousBehavior:
+      'Prospective default plan UPPER_BOUND_V2 (180→120→60→30 CONTROL); no 90s candidate; no equal-duration bracket.',
+    details:
+      'reference-capture-exp021-calibration-plan.lib.ts; reference-capture-exp021-candidate-bracket-v3.spec.ts; reference-capture-exp021-reconstruction-quality-analyzer.ts; EXP_021_CANDIDATE_BRACKET_V3_PROSPECTIVE_DESIGN_2026-09-11.md. Select via EXP021_CALIBRATION_PLAN=CANDIDATE_BRACKET_V3.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-11T22:30:00.000Z',
+  },
+  {
+    id: 'exp-021-native-temporal-persistence-micro-pass-2026-09-10',
+    version: '4.9.1101',
+    title: 'EXP-021 — Native temporal bucket persistence for post-run gap reconstruction',
+    summary: [
+      'Persists ordered nativeTemporalEvidence (EXP021_NATIVE_TEMPORAL_v1) in completedPhaseSummaries.',
+      'Post-run gap ledger reconstruction without live hfCalibrationActiveCounters.',
+      'Native↔settlement join with bucketValueSnapshots on next run.',
+      'KS MS 661 frozen run cannot be backfilled — prospective only.',
+    ],
+    reason:
+      'Completion run requires durable per-gap native evidence joined with settlement value snapshots.',
+    previousBehavior:
+      'nativeUniqueTemporalBucketStarts lived only in ephemeral active counters; not in sealed phase summaries.',
+    details:
+      'reference-capture-native-temporal-evidence.lib.ts; exp021-native-gap-reconstruction; exp021-native-settlement-join.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-10T22:45:00.000Z',
+  },
+  {
+    id: 'exp-021-gap-settlement-value-revision-instrumentation-2026-09-10',
+    version: '4.9.1100',
+    title: 'EXP-021 — Gap→settlement correlation + value revision instrumentation',
+    summary: [
+      'Evidence freeze for KS MS 661 physical run `945edc40-…` — historical observations immutable.',
+      'Forward persistence: bucketValueSnapshots, valueContentHash (metadata-free), valueRevisedBucketIdentities.',
+      'Deterministic gap→settlement matrix analyzer + cross-age probe report generator.',
+      'Retroactive: bucket identity maturation provable; per-gap timestamp matrix and value revision NOT on frozen run.',
+      'Corrects prior responseHash drift ≠ value revision inference.',
+    ],
+    reason:
+      'Answer gap→settlement and value-revision questions rigorously before EXP-021 completion run without another physical drive.',
+    previousBehavior:
+      'Settlement shadow stored uniqueBucketIdentities only; responseHash included query age and schedule drift; VALUE_REVISION_DETECTION not implemented.',
+    details:
+      'Evidence: EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json, EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md. Trip FSM untouched.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-10T22:00:00.000Z',
+  },
+  {
+    id: 'exp-021-pr1598-final-red-team-2026-09-10',
+    version: '4.9.1099',
+    title: 'EXP-021 PR #1598 — final red-team T0 recovery + orchestrator survivability',
+    summary: [
+      'Immutable persisted canonical T0 — activatePhysicalPhaseAtT0 derives T0 from DB authority only.',
+      'RECOVER_T0_PHASE_ACTIVATION on attach when T0 exists without physical phase; no second movement detection.',
+      'Orchestrator iteration survivability: transient_provider + recoverable_orchestration keep supervisor alive; unknown → integrity_fatal.',
+      'reanchorPhysicalCalibrationPhaseAtT0 validates PRE_ROLL only; PHYSICAL_T0 fork blocked.',
+      'Postgres T0 recovery integration harness added (CI_AUTHORITY when isolated PG available).',
+    ],
+    reason:
+      'Final pre-merge red-team pass on PR #1598 — close T0 fork and orchestrator exit risks before physical rerun.',
+    previousBehavior:
+      'Caller-supplied canonicalT0Ms could diverge from persisted authority; recoverable errors could exit supervisor loop; unknown errors defaulted recoverable.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PR1598_FINAL_RED_TEAM_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-ks-ms-661-t0-phase-settlement-hardening-2026-09-10',
+    version: '4.9.1098',
+    title: 'EXP-021 — KS MS 661 T0 / phase / settlement hardening (draft)',
+    summary: [
+      'Production forensic: session 8374c2fc — duplicate 60→60 fatal at movement; 12/12 PRE-T0 settlement probes; no PDI; WHOLE_TRIP 6/6 late.',
+      'Durable canonical T0 persisted before phase activation; PRE_ROLL phase provenance separated from PHYSICAL_T0/TRANSITION.',
+      'reanchorPhysicalCalibrationPhaseAtT0 seals stationary pre-arm and starts physical phase 60 at T0.',
+      'Settlement shadow gated on physical provenance; orchestration errors degrade (RC continues) vs integrity fail-closed.',
+    ],
+    reason:
+      'Next physical EXP-021 run must survive long pre-roll, stale telemetry, and delayed Trip FSM without losing T0 or crediting stationary time.',
+    previousBehavior:
+      'switchHfCalibrationPhase(60000) at movement threw when stationary phase 60 already effective; T0 logged after fallible switch; PRE_ROLL settlement probes matured before drive.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-post-1594-1595-rebase-integration-2026-09-10',
+    version: '4.9.1097',
+    title: 'EXP-021 — Post-#1594/#1595 rebase integration audit (PR #1593)',
+    summary: [
+      'Rebased PR #1593 onto main @ 7203b5bd (includes #1594 Trip FSM R12 + #1595 TDL evidence) — 0 conflicts.',
+      'Cross-module audit: PDI schedules independent of Trip FSM completion; canonical WHOLE_TRIP requires tripStatus COMPLETED (not endTime alone).',
+      'No Reference Capture writes to Trip FSM or VehicleTrip status; R12 AUD-002/003/004 unit tests unchanged green.',
+      '609 reference-capture tests PASS; Trip FSM R11/R12 unit suites PASS; backend build + DI validators + module registry + i18n gate PASS.',
+    ],
+    reason:
+      'Prove EXP-021 integration safety after #1594 fail-closed Trip FSM hardening and #1595 evidence authority landed on main.',
+    previousBehavior:
+      'PR #1593 based on pre-#1594 main; integration with R12 contracts unverified.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-fourth-pass-scientific-consistency-2026-09-10',
+    version: '4.9.1096',
+    title: 'EXP-021 — Fourth-pass scientific consistency micro-pass (PR #1593)',
+    summary: [
+      'Cross-age maturation: PDI/WHOLE_TRIP compare prior observations by candidate+interval or canonical interval — not age-specific probeId.',
+      'PDI candidate lifecycle: PROVISIONAL → CONFIRMED or INVALIDATED_END_CANDIDATE; observationJson/responseHash remain immutable.',
+      'Pre-deploy movement gate dedupes distinct provider speed timestamps inside sliding confirmation window; sustained PARKED resets progress; separated/expired movements cannot false-start.',
+      'UNKNOWN auto-stop requires strong parked evidence (≥2 distinct fresh timestamps) — single zero-speed sample insufficient.',
+    ],
+    reason:
+      'Close four independent-repo consistency defects so the same historical interval is comparable across settlement ages.',
+    previousBehavior:
+      'Maturation grouped by probeId+age; candidates could remain PROVISIONAL; pre-deploy counted polls; one PARKED sample + UNKNOWN could auto-stop.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Fourth-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-third-pass-micro-correction-2026-09-10',
+    version: '4.9.1095',
+    title: 'EXP-021 — Third-pass micro-correction before merge (PR #1593)',
+    summary: [
+      'PDI provenance: schedule.createdAt vs requestStartedAt separated; prospectiveAtCreation from schedule creation only.',
+      'False-candidate invalidation updates experiment pdiCandidates overlay — completed observationJson/responseHash immutable.',
+      'Start detector: recompute first evidence after prune; deploy-convergence reset; wake-and-go startRecording without parked wait.',
+      'Physical drive interval persisted for canonical VehicleTrip overlap ranking; phase seal no synthetic MOVING credit.',
+    ],
+    reason:
+      'Close remaining deterministic evidence-integrity and operator wake-and-go gaps before merge of PR #1593.',
+    previousBehavior:
+      'PDI prospective inferred from request time; observationJson mutated on invalidation; parked required before recording; session envelope used for trip binding.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Third-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-second-pass-deterministic-logic-2026-09-10',
+    version: '4.9.1094',
+    title: 'EXP-021 — Second-pass deterministic logic correction (PR #1593)',
+    summary: [
+      'Independent second-pass review: fixed PDI prospective timing (boundary at first parked sample, schedule before +30), final-phase validity, phase transition at effective boundary, urban start sliding window, ignition-off end detector.',
+      'False end-candidate provenance: completed PDI observations marked INVALIDATED_END_CANDIDATE; cross-candidate bucket comparison isolated.',
+      'Canonical WHOLE_TRIP vs PDI counts separated (phase discriminator); VehicleTrip binding ranked by overlap with AMBIGUOUS_SPLIT guard.',
+      'buildExp021RuntimeConfig() after env load; fail-closed movement interval accounting; stationary cert requires 12 phase-60 schedules; full-run simulation test.',
+    ],
+    reason:
+      'Correct overclaimed first-pass authority flags and remove deterministic self-inflicted invalidation before merge of PR #1593.',
+    previousBehavior:
+      'PDI +30 at ~T0+150s; final 10s phase always invalid at drive end; phase tracker advanced before HF effective; start reset on brief stop; UNKNOWN cleared end candidate.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Second-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-final-pre-physical-red-team-2026-09-10',
+    version: '4.9.1093',
+    title: 'EXP-021 — Final pre-physical red-team scientific hardening',
+    summary: [
+      'Red-team audit of full EXP-021 path before next physical drive: orchestrator SHA/motion/lock/phase validity, whole-trip timing, VehicleTrip resolver, stationary cert, settlement races.',
+      'Removed stale TARGET_SHA default; motion authority uses speed/currentSpeed only (never gear); distinct fresh samples for physical start; movement-based phase validity.',
+      'Added PHYSICAL_DRIVE_INTERVAL_SHADOW channel for true post-drive +30…+600 ages at drive-end candidate (independent of 600s stopRecording delay).',
+      'Provider ERROR observations persisted; enqueue/abort race hardened; atomic observation eligibility; experiment status fail-closed ACTIVE only.',
+      'Stationary cert proves real phase-60 EFFECTIVE + persisted schedules; optional --e2e-shadow-smoke for full BullMQ→DIMO→DB path.',
+    ],
+    reason:
+      'Maximize probability next physical EXP-021 run produces scientifically usable 4-phase / 48-observation evidence.',
+    previousBehavior:
+      'Multiple self-inflicted invalidation modes (stale SHA, false prospective whole-trip ages, gear-as-speed, ERROR observation loss, wall-clock phases while parked).',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-settlement-shadow-abort-lifecycle-2026-09-09',
+    version: '4.9.1092',
+    title: 'EXP-021 — Settlement-shadow abort lifecycle micro-hardening',
+    summary: [
+      'Forensic gap: `abortSession` left ACTIVE settlement-shadow experiments and pending BullMQ jobs on ABORTED RC sessions (2 dry-run orphans after PR #1582 recert).',
+      'Canonical fix: `cancelExperimentForAbortedSession` wired from `abortSession` — experiment → CANCELLED, unobserved schedules → SKIPPED, queued jobs removed, completed observations preserved.',
+      'Guards on execute + recovery skip CANCELLED experiments; normal `stopRecording` post-stop +30/+60 shadow continuation unchanged.',
+      'Durability hardening: cleanup not feature-gated; atomic interactive transaction; ABORTED+ACTIVE reconciliation scheduler; cleanup failure surfaced; worker race guards.',
+      '11+ focused abort-lifecycle tests; stationary cert requires zero active settlement experiments after dry-run abort.',
+    ],
+    reason:
+      'Close lifecycle defect before next EXP-021 physical run — abort must not leave invalid shadow state.',
+    previousBehavior:
+      'RC abort terminalized session only; settlement-shadow experiment could remain ACTIVE with pending/delayed jobs.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_ABORT_LIFECYCLE_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T22:40:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-2b-phase-c-shadow-activation-2026-09-08',
+    version: '4.9.1091',
+    title: 'Battery V2 M3.2B Phase C — Production shadow flag ON (controlled activation)',
+    summary: [
+      'Production env only: `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED=true` with controlled rolling restart on unchanged SHA `0ba96e03` — no code redeploy.',
+      'Established immutable `M3_2B_PHASE_C_T0=2026-09-07T22:47:14Z` for natural shadow evidence evaluation boundary.',
+      'Both replicas bootstrap-equivalent flag effective true; scheduler converged to 1 leader; PM2/health/R9 PASS.',
+      '0 shadow rows immediately post-activation (expected — no natural shutdown yet); authoritative Battery V2 paths unchanged.',
+      'M3.2C remains forbidden until natural post-T0 shutdown evidence is captured and forensically reviewed.',
+    ],
+    reason:
+      'Phase B proved flag-off deploy safety; Phase C activates the shadow acquisition layer for natural event-conditioned evidence without changing authoritative Battery V2 semantics.',
+    previousBehavior:
+      'Shadow flag absent in production env (effective false); zero shadow table writes.',
+    details:
+      'architecture/battery-v2/research/M3_2B_PHASE_C_SHADOW_ACTIVATION_2026-09-08.md, CURRENT_STATE.md, CHANGE_LEDGER.md. Production mutation: /opt/synqdrive/shared/backend.env only.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T00:00:00.000Z',
+  },
+  {
+    id: 'r9-five-vehicle-dimo-canary-2026-09-07',
+    version: '4.9.1091',
+    title: 'R9 Five-Vehicle DIMO Provider Canary — Speed + Ignition Wake Triggers',
+    summary: [
+      'Authorized Production provider mutation for exactly five privileged vehicles (186946, 187336, 187361, 187784, 192922).',
+      'Created SynqDrive R9 Speed Wake (vss.speed > 3, 30s cooldown, stableId 9eeb7158afee) and SynqDrive R9 Ignition Wake (vss.isIgnitionOn == 1, 30s cooldown, stableId 5d611d470eab).',
+      'Post-GET verification: subscribed_speed=5, subscribed_ignition=5, subscribed_both=5, missing_both=0 within active cohort.',
+      'tokenId 190497 excluded — FORMER_FLEET_VEHICLE; prior 403 expected; re-grant remediation rejected. Stale SynqDrive mirrors (AVAILABLE/CONNECTED/consent/link) remain an OPEN data-integrity gap.',
+      'Legacy OBD/RPM webhooks unchanged. DIMO_TRIGGER_BOOTSTRAP_ENABLED NOT enabled. No Production DB/Redis/runtime mutations.',
+      'Natural R9 wake delivery NOT claimed — NEXT_GATE NATURAL_R9_WAKE_OBSERVATION.',
+    ],
+    reason:
+      'Six-vehicle bootstrap ROLLED_BACK on obsolete cohort assumption; owner clarified active privileged cohort is five vehicles only.',
+    previousBehavior:
+      'Zero R9 speed/ignition trigger definitions; 0/6 provider subscription coverage after ROLLED_BACK six-vehicle attempt.',
+    details:
+      'architecture/dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md, architecture/trip-detection-lifecycle/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md, backend/scripts/ops/r9-five-vehicle-canary-bootstrap.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T22:35:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-2b-shutdown-evidence-shadow-2026-09-07',
+    version: '4.9.1090',
+    title: 'Battery V2 M3.2B — Shadow shutdown evidence acquisition & per-field provenance',
+    summary: [
+      'Shadow-only `BatteryShutdownEvidenceObservation` + `BatteryTripShutdownContext` tables capture per-field timestamps, skew, and pessimistic evidence classes around natural ICE trip shutdown.',
+      'Feature flag `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` defaults false — zero production writes when off; no assessment, publication, REST quality, or health score impact.',
+      'Hooks: LIVE_VOLTAGE classify observation capture (T−10m…T+15m window) + immutable trip-finalized context snapshot with explicit `atomicClaim: false`.',
+      'Evidence classes: ACTIVE_ALTERNATOR, ACTIVE_NON_CHARGING, SHUTDOWN_TRANSITION, POST_ENGINE_OFF_PRE_SLEEP, UNKNOWN_STATE, STALE_OR_SKEWED_STATE; confidence HIGH/MEDIUM/LOW/INSUFFICIENT only.',
+      'Idempotent keys suppress duplicate rows across pollers/reconciliation/replay. Prometheus counters for observation/context creation and post-engine-off candidates.',
+      'Provenance hardening: no fabricated provider LV timestamps; null speed cannot qualify POST_ENGINE_OFF; alignment excludes ingest/unknown clocks; time-local post-trip observation fields only.',
+      'M3.2C hybrid implementation blocked until natural shadow evidence collected (`M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO`).',
+    ],
+    reason:
+      'M3.2A proved LV context fields are not atomic and 0/13 confirmed post-engine-off pre-sleep samples — need measurable shadow provenance before hybrid model decision.',
+    previousBehavior:
+      'No shadow layer for shutdown timestamp skew or per-field age at trip end; REST context binding unchanged and non-atomic.',
+    details:
+      'backend/src/modules/vehicle-intelligence/battery-health/shutdown-evidence/*, prisma migration 20260907153000_battery_shutdown_evidence_shadow, battery-v2-snapshot-ingestion.service.ts, trip-detection-orchestration.service.ts. architecture/battery-v2/research/M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T06:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r10-motor-off-pause-finalize-2026-09-08',
+    version: '4.9.1090',
+    title: 'Trip FSM R10 — Motor-off pause resume anchor + stale finalize guards',
+    summary: [
+      'hasActivityResumed / EndContinuityDetector anchor to possibleEndAt — pre-stop motion must not trigger activity_resumed.',
+      'endCycleToken (= possibleEndEnteredAt) on END_VALIDATION/FINALIZE jobs; stale jobs abort via evaluateEndCycleJobAdmission.',
+      'Legacy tokenless FINALIZE: requestedAt vs possibleEndEnteredAt (never silent token assignment); pre-write admission before finalizeTrip.',
+      'enqueueEndCycleTripTrackingJob recycles waiting finalize slot — fixes skipped re-enqueue after cycle A (Production-plausible root cause @ 05:17:36).',
+      'Postgres integration test (gated locally; required in trip-fsm-production-readiness CI): scheduleFinalize → queue → consumer → persisted COMPLETED + RESTING.',
+      'Merged to origin/main via PR #1574 (merge 2d86dfdd…); not deployed to Production; natural-drive validation still open; Trip Detection authority remains AUDIT_IN_PROGRESS (TDL-DEC-R10-001/002 PROPOSED).',
+    ],
+    reason:
+      'KS MX 2026-09-08: false resume during motor-off gap; true end not persisted despite scheduleFinalize @ 05:17:36 (stale waiting job + missing end-boundary anchor).',
+    previousBehavior:
+      '90s fetch without resumeAfterAt; scheduleFinalize skipped when prior fin job waiting; no end-cycle token; incorrect movement-after-end guard would block legitimate finalize.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md (TDL-EVID-R10-KS-MX-001), decisions/DECISION_REGISTER.md (TDL-DEC-R10-001/002), trip-fsm-motor-off-pause-r10.spec.ts, trip-finalize-end-cycle.postgres.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T05:55:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r9h-handoff-orphan-recovery-2026-09-07',
+    version: '4.9.1089',
+    title: 'Trip FSM R9H — Successor Handoff Orphan Recovery',
+    summary: [
+      'Leader-gated SnapshotWakeHandoffRecoveryScheduler SCANs durable successor Redis keys and re-arms missing BullMQ handoff jobs.',
+      'At most one SCAN per tick; scanCursor assigned to Redis nextCursor on fetch; pendingBatchKeys carries batch tail (no starvation or cursor replay).',
+      'Bounded 50 keys/tick; per-key error isolation; stable wake-handoff-{vehicleId} jobId; idempotent enqueueHandoffJob; no provider fetch.',
+      'Pending wake persist failure in requestSnapshot returns PERSIST_FAILED (not QUEUE_FAILED) with metric label.',
+    ],
+    reason:
+      'R9G QUEUE_FAILED after successor persist left durable mailboxes without executable consumers — recovery closes the delivery/liveness gap without LONG_IDLE dependency.',
+    previousBehavior:
+      'Successor Redis persisted but handoffQueue.add failure returned QUEUE_FAILED with no automatic consumer re-arm.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9h--successor-handoff-orphan-recovery-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T05:20:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r9g-coalesce-delivery-seal-2026-09-07',
+    version: '4.9.1088',
+    title: 'Trip FSM R9G — Coalesce Delivery + Scheduler Recovery Seal',
+    summary: [
+      'ACTIVE/UNKNOWN coalesce no longer returns COALESCED when successor/handoff consumer scheduling fails — propagates PERSIST_FAILED/QUEUE_FAILED with wake metrics.',
+      'scheduleDurableSuccessor persist failures return PERSIST_FAILED (not QUEUE_FAILED).',
+      'RECOVERED_TERMINAL propagated through requestSnapshot; scheduler recovered counter wired.',
+    ],
+    reason:
+      'Pre-merge seal — coalesce consumer scheduling failures must surface PERSIST_FAILED/QUEUE_FAILED; bounded handoff recovery (R9H) re-arms orphaned successors.',
+    previousBehavior:
+      'ensureCoalescedWakeConsumer failures still returned COALESCED; scheduleDurableSuccessor mapped persist failures to QUEUE_FAILED; scheduler recovered telemetry stayed zero.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T04:10:30.000Z',
+  },
+  {
+    id: 'trip-fsm-r9f-unknown-retry-completeness-2026-09-07',
+    version: '4.9.1087',
+    title: 'Trip FSM R9F — UNKNOWN Continuation Retry Completeness',
+    summary: [
+      'UNKNOWN continuation schedules bounded retry handoff on all surfaces (afterSnapshot, reconcile, scheduleDurableSuccessor, gen-1 stale ACK).',
+      'Explicit HANDOFF_SCHEDULED / QUEUE_FAILED / PERSIST_FAILED outcomes for retry scheduling.',
+    ],
+    reason: 'R9F seal — UNKNOWN wakes outside dispatchSuccessorHandoff had no bounded execution path.',
+    previousBehavior: 'UNKNOWN pending preserved without scheduling retry handoff.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9f--unknown-continuation-retry-completeness-seal-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9e-continuation-unknown-cas-2026-09-07',
+    version: '4.9.1086',
+    title: 'Trip FSM R9E — UNKNOWN Defer + Obsolete CAS Retirement',
+    summary: [
+      'UNKNOWN handoff dispatch defers via DelayedError without false completion.',
+      'Exact-version bounded pending/successor retirement with reload/reclassify on CAS miss.',
+    ],
+    reason: 'R9E seal — stale obsolete classification could delete newer valid wakes.',
+    previousBehavior: 'ACK latest pending/successor under stale obsolete classification.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9d-wake-delivery-liveness-2026-09-07',
+    version: '4.9.1085',
+    title: 'Trip FSM R9D — Wake Delivery Liveness + BullMQ Integration Gate',
+    summary: [
+      'ACTIVE coalesce schedules durable successor consumer when handoff enqueue succeeds; R9H recovery re-arms orphaned successors; continuation authority RESTING+eligible.',
+      'Strict durable Redis reads; real BullMQ+Redis integration test gate (4/4).',
+    ],
+    reason: 'R9D seal — coalesce against ACTIVE could strand wakes; missing integration evidence.',
+    previousBehavior: 'Coalesce could return success without post-terminal consumer; READ_ERROR conflated with missing.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9c-bullmq-delay-gen1-terminal-2026-09-07',
+    version: '4.9.1084',
+    title: 'Trip FSM R9C — BullMQ DelayedError + Generation-1 Terminal',
+    summary: [
+      'Handoff processor throws DelayedError after moveToDelayed (BullMQ 5.x completion protocol).',
+      'Generation-1 probe terminal bound; fresh-no-candidate probe ordering fix.',
+      'Stale successor ACK rearm; waiting vs delayed changeDelay separation.',
+    ],
+    reason: 'R9C seal — handoff false completion and generation-1 requeue loops.',
+    previousBehavior: 'Handoff returned normally after moveToDelayed; gen-1 could repeat provider polls.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9b-atomic-wake-mailbox-2026-09-07',
+    version: '4.9.1083',
+    title: 'Trip FSM R9B — Atomic Wake Mailbox / Handoff Rearm',
+    summary: [
+      'Fix handoff queue self-coalescing: defer via moveToDelayed instead of enqueue while current wake-handoff job is ACTIVE.',
+      'Durable-first provider wake: atomic Redis pending merge before canonical coalesce/enqueue.',
+      'Versioned successor mailbox with compare-and-clear; reconcileOutstandingPendingWake for newer mid-run wakes.',
+      'Fresh trusted provider wake with no POSSIBLE_START schedules exactly one generation-1 probe.',
+    ],
+    reason:
+      'R9B intermediate closure — R9A liveness/atomicity races (handoff self-coalesce, post-coalesce race, write/write mailbox, successor stale-delete, fresh no-candidate probe gap).',
+    previousBehavior:
+      'Handoff worker completed without re-arm when canonical snapshot still active; pending wake persisted after coalesce attempt.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9b--atomic-wake-mailbox--handoff-rearm-closure-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9a-durable-wake-handoff-2026-09-07',
+    version: '4.9.1082',
+    title: 'Trip FSM R9A — Durable Wake Handoff / Bounded Probe Closure',
+    summary: [
+      'Fix same-job-id successor self-coalescing: post-terminal Redis successor mailbox + lightweight handoff queue dispatches canonical snapshot after ACTIVE job completes.',
+      'Replace destructive pending-wake GET→DEL with versioned durable mailbox and compare-and-ACK semantics.',
+      'Introduce effectiveWakeOrigin so SCHEDULED jobs merged with provider wakes use provider-wake probe semantics.',
+      'Provider fetch failure probes only when FSM is RESTING; scheduler tier occupancy metrics use effectiveTier with zero-cohort reset.',
+    ],
+    reason:
+      'R9A technical closure — wake-liveness races blocked R9 merge; harden durability/idempotency without changing tier cadence, thresholds, or CUSUM semantics.',
+    previousBehavior:
+      'afterSnapshotJob requestSnapshot coalesced with self while ACTIVE; pending wake deleted before work; tier gauges counted rawTier.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9a--durable-wake-handoff--bounded-probe-closure-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9-adaptive-polling-wake-2026-09-07',
+    version: '4.9.1081',
+    title: 'Trip FSM R9 — Adaptive Snapshot Wake / Provider Trigger Path',
+    summary: [
+      'DIMO speed/ignition Vehicle Triggers wake RESTING vehicles into canonical snapshot fetch without waiting for LONG_IDLE tier.',
+      'SnapshotWakeCoordinatorService shares enqueue/coalescing between scheduler and webhook; single jobId snapshot-{vehicleId}.',
+      'Trusted post-complete provider wake can bypass 120s complete cooldown when wake EVENT_TIME and full snapshot catch up.',
+      'Bounded WAKE_PROBE (max generation 1) uses RECENTLY_ACTIVE tier delay when snapshot lags wake or monotonic guard skips.',
+      'Wake metrics + tier occupancy gauges; startWake forensics on POSSIBLE_START evidence.',
+    ],
+    reason:
+      'R9 P6 remediation — close P4-F04 idle-tier discovery latency and P4-F05 post-complete cooldown blind spot without retuning tier cadence.',
+    previousBehavior:
+      'Speed/ignition webhooks ACK-only; LONG_IDLE 30m polling primary discovery path; 120s complete cooldown blocked all scheduled start scoring.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r8-observability-forensics-2026-09-06',
+    version: '4.9.1080',
+    title: 'Trip FSM R8 — Observability & Forensic Metadata Contract',
+    summary: [
+      'New recognition/candidate/boundary timing histograms separate worker recognition from EVENT_TIME boundaries.',
+      'synqdrive_trip_duration_seconds replaces mislabeled finalize latency semantics; legacy metrics deprecated in HELP.',
+      'tripFsmForensics R8_V1 durable block; mergeFinalize preserves lifecycleRecovery/R5/R6 metadata on FINALIZE.',
+      'End coordinates resolved at/before canonical endTime; stale provisional coords cleared when no boundary waypoint.',
+      'TrackingRun resultState defaults to stateAtRun; API exposes canonicalEndTime/provisionalLastObservedAt/endTimeSemantics.',
+    ],
+    reason:
+      'R8 P6 remediation — close INV-10/13/15; truthful recognition latency for R9 adaptive polling calibration.',
+    previousBehavior:
+      'Finalize latency measured trip duration; movement latency measured boundary delta; ONGOING endTime ambiguous; NULL tracking run result states.',
+    details:
+      'docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T19:45:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r7a-terminal-commit-ambiguity-2026-09-06',
+    version: '4.9.1079',
+    title: 'Trip FSM R7A — Terminal Mutation Commit-Ambiguity Closure',
+    summary: [
+      'TerminalLifecycleIntent NONE/COMPLETE/CANCEL tracked before finalizeTrip/discardTrip; commit only after promise resolves.',
+      'Rejected terminal mutation promise triggers durable PostgreSQL reread — NOT_TERMINAL / TERMINAL_EXPECTED / AMBIGUOUS.',
+      'TERMINAL_EXPECTED and AMBIGUOUS schedule immediate scheduleFinalize recovery; NOT_TERMINAL preserves pre-commit semantics.',
+      'finalizeTrip/discardTrip post-write logger non-poisoning (R6A pattern).',
+      'Stable FINALIZE successor proof while primary ACTIVE (trip-fin-{vehicle}-{trip}__succ).',
+    ],
+    reason:
+      'R7A closure — terminal DB write may commit before logger/promise rejection; promise rejection != rollback proof.',
+    previousBehavior:
+      'Rejected finalizeTrip/discardTrip left terminalLifecycleCommit NONE and skipped immediate recovery even when trip was already COMPLETED/CANCELLED.',
+    details:
+      'docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md § R7A; trip-terminal-lifecycle-commit.util.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T15:30:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r7-terminal-resting-recovery-2026-09-06',
+    version: '4.9.1078',
+    title: 'Trip FSM R7 — Terminal RESTING Recovery Hardening',
+    summary: [
+      'TerminalLifecycleCommit NONE/COMPLETED/CANCELLED tracks durable finalize/discard success before RESTING.',
+      'Any post-terminal pre-RESTING failure schedules immediate scheduleFinalize recovery wake (stable FINALIZE queue).',
+      'Post-RESTING ancillary failures do not enqueue unnecessary terminal recovery.',
+      'Recovery FINALIZE short-circuits via existing R2 RECOVERABLE_END_ORPHAN → RESET_TO_RESTING; no second finalizeTrip.',
+      '120s TripTrackingRecoveryScheduler remains second-line fallback (P5-F05 / INV-08).',
+    ],
+    reason:
+      'R7 P6 remediation — COMPLETED/CANCELLED terminal commit without RESTING must not leave FSM stranded until periodic scheduler.',
+    previousBehavior:
+      'FINALIZE catch logged error only; terminal orphan relied on 120s scheduler for RECOVERABLE_END_ORPHAN recovery.',
+    details:
+      'docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md; trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T14:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r6b-strict-not-committed-proof-2026-09-06',
+    version: '4.9.1077',
+    title: 'Trip FSM R6B — Strict NOT_COMMITTED Proof Closure',
+    summary: [
+      'NOT_COMMITTED now requires trip1 ONGOING AND trip1 is the sole vehicle ONGOING row AND no linked continuation.',
+      'Unrelated second ONGOING trip or originalTrip missing from ongoing set → AMBIGUOUS fail-closed.',
+      'Prevents old-trip fallthrough when duplicate/unrelated ONGOING lifecycle rows exist.',
+      'COMMITTED_LINKED proof, DecisionEngine logger containment, drift/reconciliation unchanged.',
+    ],
+    reason:
+      'R6B closure — absence of splitFrom alone was insufficient; unrelated ONGOING rows must not grant rollback proof.',
+    previousBehavior:
+      'trip1 ONGOING + no splitFrom link returned NOT_COMMITTED even when another unrelated ONGOING trip existed for the vehicle.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md § R6B; trip-mid-gap-split-commit.util.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T13:30:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r6a-split-commit-ambiguity-2026-09-06',
+    version: '4.9.1076',
+    title: 'Trip FSM R6A — Live Split Commit-Ambiguity Closure',
+    summary: [
+      'Durable live split classifier: NOT_COMMITTED / COMMITTED_LINKED / AMBIGUOUS — promise rejection no longer proves rollback.',
+      'PRE_COMMIT splitTripAtGap() catch re-reads PostgreSQL before old-trip fallthrough; only proven NOT_COMMITTED may continue on trip1.',
+      'COMMITTED_LINKED and AMBIGUOUS fail closed: no vehicleTrip.update on trip1, schedule ACTIVE_TICK recovery wake.',
+      'Reuses R2 RECOVERABLE_SPLIT_REPOINT proof (+ expected secondStartAt) for committed-but-rejected split promises.',
+      'TripDecisionEngine post-transaction logger wrapped so diagnostic failure cannot poison committed split result.',
+    ],
+    reason:
+      'R6A closure — splitTripAtGap() may commit then reject; local PRE_COMMIT phase must not fall through to stale trip1 ACTIVE_TICK writes.',
+    previousBehavior:
+      'Rejected splitTripAtGap() with local PRE_COMMIT assumed rollback and fell through to normal ACTIVE_TICK on trip1 even when DB already had trip1 COMPLETED + trip2 ONGOING.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md § R6A; trip-mid-gap-split-commit.util.ts + trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T13:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r6-mid-gap-split-safety-2026-09-06',
+    version: '4.9.1075',
+    title: 'Trip FSM R6 — Mid-Gap Split Safety',
+    summary: [
+      'Live mid-gap drift contract: WITHIN_THRESHOLD / EXCEEDS_THRESHOLD / UNKNOWN — null/missing GPS no longer allows split (P5-F09).',
+      'UNKNOWN drift fail-closed; reconciliation remains later safety net with persisted waypoint evidence.',
+      'MidGapSplitCommitPhase PRE_COMMIT vs POST_COMMIT boundary after splitTripAtGap().',
+      'Post-commit failures abort ACTIVE_TICK without old-trip fallthrough; schedule successor tick for R2 recovery (P5-F04).',
+      'RECOVERABLE_SPLIT_REPOINT / splitFrom proof preserved for FSM repoint after split commit.',
+      'Rejected/applied split forensics in ACTIVE_TICK resultSummary; splitDriftM persisted on live trip1 rawDetectionMeta.',
+    ],
+    reason:
+      'P6 remediation package R6 — INV-09 mid-gap split must fail safe without position evidence and never continue old-trip processing after lifecycle split commit.',
+    previousBehavior:
+      'drift == null allowed live split; any split-block exception fell through to remaining ACTIVE_TICK using completed trip1 local tripId.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md; trip-mid-gap-split.util.ts + trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T12:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r5b-validation-attempt-isolation-2026-09-06',
+    version: '4.9.1074',
+    title: 'Trip FSM R5B — Validation Attempt Forensic Isolation',
+    summary: [
+      'Separates same-end-episode provenance from attempt-local validation runtime state.',
+      'clearEndValidationAttemptLocalEvidence() clears scheduled/started/completed/failure fields between attempts without ACTIVE reopen.',
+      'Failed attempts no longer inherit stale completedAt or completedEndValidationAttempt from prior successful cycles.',
+      'extractR5EndForensicsForPersistence uses authoritative endValidationAttempts for completedAttemptCount.',
+      'Temporal regression: Attempt1 INCONCLUSIVE → Attempt2 detector failure keeps completedAt absent.',
+    ],
+    reason:
+      'R5B closure — impossible forensic combinations when retrying END_VALIDATION within the same POSSIBLE_END episode.',
+    previousBehavior:
+      'buildEndValidationFailureEvidence spread priorSummary including stale completedAt from previous attempt.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md § R5B; trip-end-cycle-reset.ts + trip-end-validation-r5b.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T11:40:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r5a-end-evidence-closure-2026-09-06',
+    version: '4.9.1073',
+    title: 'Trip FSM R5A — End Evidence Semantics Closure',
+    summary: [
+      'Production DetectorRegistry error sentinels (evidence.error) no longer consume endValidationAttempts — only completed CUSUM cycles count (P5-F11 closure).',
+      'Explicit ChangePointEndDetector outcome classifier: VALID_DECISION vs DETECTOR_EXECUTION_FAILURE vs DETECTOR_MISSING.',
+      'Empty-core VLS gate uses ACTIVE/INACTIVE/UNKNOWN tri-state with provider sourceTimestamp freshness (120s bound) — all-null or missing speed stays KEEP_OPEN (P5-F13 closure).',
+      'Distinct validationStartedAt vs validationCompletedAt clocks; no completedAt on fetch/detector failure.',
+      'Same-episode provenance preserved across retries; strip only on POSSIBLE_END→ACTIVE reopen.',
+      'R5 end-cycle forensics persisted into VehicleTrip.rawDetectionMeta on finalize before RESTING clears FSM evidence.',
+    ],
+    reason:
+      'R5A closure — production registry failure semantics, explicit VLS corroboration, truthful forensic persistence.',
+    previousBehavior:
+      'Registry INCONCLUSIVE+error consumed attempts; isCurrentTelemetryInactive coerced null speed to inactive; same now used for started/completedAt; strip on completion destroyed episode provenance; finalize dropped R5 forensics.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md § R5A; trip-end-validation-classifier.ts + trip-empty-core-end-gate.ts updates.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T11:30:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r5-end-validation-semantics-2026-09-06',
+    version: '4.9.1072',
+    title: 'Trip FSM R5 — End Validation Semantics',
+    summary: [
+      'Shared POSSIBLE_END → ACTIVE reset clears end-cycle metadata including endDetectionMode/confidence and CUSUM fields (P5-F03).',
+      'endValidationAttempts now counts completed CUSUM cycles only — scheduling/fetch/detector errors do not consume attempts (P5-F11).',
+      'Successful empty core requires VLS inactivity + no performance activity + no route motion corroboration — not inactivity anchor alone (P5-F13).',
+      'Max-attempt fallback uses LOW confidence + max_completed_cusum_attempts forensics — not CUSUM_VALIDATED (P5-F10 partial).',
+      'Resume fetch errors block max-attempt fallback; hard 30min timeout remains separate last-resort path.',
+      'Forensic timestamps: endValidationScheduledAt / StartedAt / CompletedAt with completedEndValidationAttempt.',
+    ],
+    reason:
+      'P6 remediation package R5 — INV-12 completed-cycle attempt accounting + INV-15 end-cycle forensic accuracy.',
+    previousBehavior:
+      'PEC incremented attempts when scheduling END_VALIDATION; CUSUM ongoing reopen left stale end metadata; empty core [] alone could enter POSSIBLE_END.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md; trip-end-cycle-reset.ts + trip-empty-core-end-gate.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T10:55:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r4-start-detection-consistency-2026-09-06',
+    version: '4.9.1071',
+    title: 'Trip FSM R4 — Start Detection Consistency',
+    summary: [
+      'Explicit two-phase start contract: START_CANDIDATE_WAKE vs START_CONFIRMATION with split policy modules.',
+      'Shared signal thresholds separated from candidate increments and confirmation evidence weights (P4-F01).',
+      'Candidate motion bands aligned to speedMotionKmh floor — sub-0.5 km/h speed alone no longer sets movement.',
+      'LIVE_START policy materially consumes provider EVENT_TIME freshness — STALE/MISSING/INVALID block POSSIBLE_START (P4-F03).',
+      'No DB updatedAt silent fallback for provider freshness truth; R1 future-skew validation reused.',
+      'ClickHouse remains confirmation corroboration only — cannot start from RESTING (P4-F08 preserved).',
+      'Forensic evidence summaries include candidate/confirmation phase, policy profile, freshness state.',
+      'R4A: R1 future-skew freshness age normalization; explicit INVALID skip reason; full candidate profile policy table; orchestration LIVE_START safety tests.',
+      'R1 clocks, R2 recovery, R3 queue liveness, end detection, CUSUM, thresholds unchanged.',
+    ],
+    reason:
+      'P6 remediation package R4 — INV-11 profile explainability + freshness-gated live start candidates.',
+    previousBehavior:
+      'PROFILE_THRESHOLDS mixed confirmation weights with candidate scoring; LIVE_START ignored freshness; candidate weak speed used 0 < speed ≤ speedActive.',
+    details:
+      'docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md; trip-start-detection-policy.ts + trip-evidence.helpers.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T22:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r3-start-liveness-ordering-2026-09-06',
+    version: '4.9.1070',
+    title: 'Trip FSM R3 — Start Liveness Ordering',
+    summary: [
+      'POSSIBLE_START execution failures rethrow to BullMQ — no more silent SUCCESS on infrastructure errors.',
+      'Bounded fast retry for POSSIBLE_START only: 4 attempts, exponential 5s backoff (orchestration + recovery scheduler).',
+      'R1 confirmation clocks preserved across retries — possibleStartEnteredAt not reset on failure.',
+      'Primary ACTIVE_TICK scheduled before Battery start proxy; Battery failure contained after liveness established.',
+      'ACTIVE-state POSSIBLE_START replay ensures missing ACTIVE_TICK handoff without lifecycle mutation.',
+      'R3A: durable __succ successor slot for ACTIVE self-reschedule (30s NOT_CONFIRMED follow-up); recovery FAILED jobId recycled for later 120s wakes.',
+      'R3B: handoff successors defer via BullMQ moveToDelayed + DelayedError when predecessor worker lock still held — no silent consumption.',
+      'R3C: handoff successors also defer until predecessor BullMQ job settles (ACTIVE/WAITING/DELAYED/etc.) — preserves two-slot generation ping-pong.',
+      'R2 early lifecycle recovery preserved at processPossibleStart entry.',
+      'No threshold, polling, CUSUM, end policy, mid-gap, or R1/R2 semantic changes.',
+    ],
+    reason:
+      'P6 remediation package R3 — P4-F11 execution failure visibility + fast retry; P4-F12 primary tracking liveness before Battery ancillary.',
+    previousBehavior:
+      'processPossibleStart caught exceptions and returned normally (BullMQ SUCCESS); Battery proxy awaited before ACTIVE_TICK.',
+    details:
+      'docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md; trip-tracking-queue.util.ts + processPossibleStart ordering.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T20:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r2-lifecycle-invariants-2026-09-06',
+    version: '4.9.1069',
+    title: 'Trip FSM R2 — Lifecycle Commit & Orphan Recovery Invariants',
+    summary: [
+      'Pure lifecycle invariant planner separates healthy, recoverable, and fail-closed conflict states.',
+      'R2A: durable startEpisode/mergeReopen fingerprints in rawDetectionMeta; refined-boundary orphan recovery from DB alone.',
+      'R2A/R2B: ADOPT_ONGOING possibleStartAt by classification — start orphan uses trip.startTime; merge orphan uses mergeReopen.effectiveStartAt (never original trip start).',
+      'R2B: recoverable scheduler rows enqueue only — excluded from same-pass onStuckTrip/onAnomalyDetected; healthy stale retains reconciliation.',
+      'Start orphan: adopt proven ONGOING trip before duplicate createTrip on POSSIBLE_START replay.',
+      'Merge orphan: adopt reopened trip via durable mergeReopen meta (no in-memory mergeTargetTripId).',
+      'End orphan: RESET_TO_RESTING when activeTripId is already COMPLETED/CANCELLED — no re-finalize.',
+      'Split repoint: shared buildMidGapSplitActiveFsmExtras for live split + recovery repoint.',
+      'Scheduler enqueues workers only under lock; fail-closed conflicts skip enqueue and reconciliation.',
+      'Metrics: ongoing_fsm_divergence_total, completed_fsm_divergence_total, lifecycle recovery/conflict counters.',
+      'No threshold, polling, R1 clock, CUSUM, mid-gap policy, or deploy changes.',
+    ],
+    reason:
+      'P6 remediation package R2 — detect/repair canonical trip lifecycle vs FSM divergence (P4-F06, P3-F06, P5-F05; P4-F10 partially via app enforcement).',
+    previousBehavior:
+      'createTrip/finalizeTrip and FSM transitionState committed separately; crash between steps left orphans and recovery could duplicate lifecycle writes.',
+    details:
+      'docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md; trip-lifecycle-invariant.ts + trip-lifecycle-recovery.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T18:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r1-event-time-authority-2026-09-06',
+    version: '4.9.1068',
+    title: 'Trip FSM R1 — Event-Time Authority & Boundary Field Contract',
+    summary: [
+      'Split FSM worker-entry clocks from event-time boundary fields: possibleStartEnteredAt / possibleEndEnteredAt.',
+      'POSSIBLE_START confirmation timeout uses worker entry time; boundary fetch uses possibleStartAt event time.',
+      'Snapshot lastSeenAt flows as SnapshotEvidenceSignals.sourceTimestamp into trip start candidate.',
+      'lastMeaningfulMovementAt written from provider core/odometer/CH event timestamps — not worker now.',
+      'POSSIBLE_END stability/dwell gates use possibleEndEnteredAt; CUSUM/inactivity windows use possibleEndAt.',
+      'Additive nullable migration only; legacy null enteredAt rows supported with deterministic fallback.',
+      'No threshold, polling, scoring, or deploy changes.',
+    ],
+    reason:
+      'P6 remediation package R1 — eliminate mixed worker/event-time semantics on physical trip boundary fields (P4-F02, P5-F02, P5-F14, P5-F15).',
+    previousBehavior:
+      'possibleStartAt/possibleEndAt and lastMeaningfulMovementAt often stored worker now; PE stability measured against physical boundary age.',
+    details:
+      'docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md; migration 20260906120000_trip_fsm_clock_split_entered_at.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T12:00:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021-audi-rerun-readiness-hardening-2026-09-09',
+    version: '4.9.1096',
+    title: 'EXP-021 Audi — re-run readiness hardening + V2 canary + stationary cert',
+    summary: [
+      'Stuck session 0aa0dd4f-… terminalized ABORTED (10,671 obs preserved).',
+      'HF V2 canary enabled for token 187361 only (not fleet-wide).',
+      'Orchestrator hardened: pre-recording V2 gate, Redis lock, fatal session cleanup.',
+      'Stationary production cert PASS: phase 60 REQUESTED, prospective probes schedulable.',
+      'READY_FOR_NEXT_EXP021_PHYSICAL_RUN=NO until hardened orchestrator deployed.',
+    ],
+    reason: 'Close degraded autonomous EXP-021 failure chain and certify stationary pre-drive readiness.',
+    previousBehavior: 'Audi token LEGACY; orchestrator could startRecording then fail phase activation.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_RERUN_READINESS_HARDENING_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T21:45:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021-audi-autonomous-post-run-forensic-2026-09-09',
+    version: '4.9.1095',
+    title: 'EXP-021 Audi — autonomous post-run forensic closeout (DEGRADED)',
+    summary: [
+      'Autonomous orchestrator executed: auto-start YES; deploy converged before RC session.',
+      'Cadence/settlement INVALID: HF V2 policy blocker for token 187361 — 0/48 fixed observations.',
+      'Session 0aa0dd4f-… stuck RECORDING; CALIBRATION_SERIES_ID=null; no stop/complete.',
+      'Live RC PARTIAL: 5,606 obs default LEGACY polling; max speed gap 125.76s during drive.',
+      'R12 PARTIAL: gap split e62c964d→bd55f98d; POSSIBLE_END not terminalized.',
+      'WHOLE_TRIP_PRE_ROLL_CONFOUND_PRESENT=YES; settlement maturation NOT ASSESSABLE on Audi.',
+      'PRODUCTION_POLICY_CHANGE_AUTHORIZED=NO.',
+    ],
+    reason: 'Post +600s settlement maturation window forensic closeout after autonomous EXP-021 Audi drive.',
+    previousBehavior: 'Autonomous orchestrator armed; awaiting cadence phases and settlement shadow probes.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_AUTONOMOUS_POST_RUN_FORENSIC_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T20:40:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021-audi-cross-vehicle-supplemental-2026-09-08',
+    version: '4.9.1074',
+    title: 'EXP-021 — Audi KS MS 661 cross-vehicle supplemental pre-arm',
+    summary: [
+      'EXP021_CROSS_VEHICLE_SUPPLEMENTAL=YES — Audi A4 KS MS 661 (token 187361), cadence 60→30→20→10.',
+      'VEHICLE_CONFOUND_PRESENT=YES — not same-vehicle counterbalance vs EXP-019 KS MX 2024.',
+      'New RC session 619284b3-… READY; KS MX session fb553442-… left unstarted (different vehicle).',
+      'Fresh-trip gate PASS: Audi Trip FSM RESTING, last trip COMPLETED.',
+      'BLOCKER: LIVE_TELEMETRY_READY=NO — DIMO provider age ~9.8h; VEHICLE_WAKE_REQUIRED=YES.',
+      'startRecording NOT called — awaiting operator START EXP-021 NOW after wake + re-qualify.',
+    ],
+    reason: 'Cross-vehicle supplemental settlement-shadow run; scientific classification preserves vehicle confound.',
+    previousBehavior: 'Morning pre-arm targeted KS MX 2024; operator switched to Audi for tonight.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T19:15:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021-audi-redrive-prearm-2026-09-09',
+    version: '4.9.1094',
+    title: 'EXP-021 Audi — final pre-drive re-arm (new session)',
+    summary: [
+      'New RC session 3cc8465a-… READY for KS MS 661; old 619284b3-… ABORTED not reused.',
+      'Fresh-trip gate PASS: prior trip e324ee8c-… COMPLETED; Trip FSM RESTING.',
+      'BLOCKER: LIVE_TELEMETRY_READY=NO — DIMO provider age ~8.5h; VEHICLE_WAKE_REQUIRED=YES.',
+      'Settlement integrity PASS: PR #1570 hardened code on prod; 8 probes × 6 ages = 48 schedulable.',
+      'startRecording NOT called — awaiting operator START EXP-021 NOW after wake + re-qualify.',
+    ],
+    reason: 'Operator re-armed EXP-021 Audi cross-vehicle supplemental after prior non-RC physical drive.',
+    previousBehavior: 'Prior Audi session ABORTED; physical drive occurred outside Reference Capture.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md §13',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T04:35:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021-audi-post-drive-no-rc-capture-2026-09-08',
+    version: '4.9.1075',
+    title: 'EXP-021 Audi — physical drive outside Reference Capture',
+    summary: [
+      'START_COMMAND_RECEIVED=NO — START EXP-021 NOW never received; startRecording NOT called.',
+      'EXP021_AUDI_PHYSICAL_RUN_EXECUTED=NO; EXP021_AUDI_DRIVE_CAPTURED=NO.',
+      'Operational trip e324ee8c-… 19:36–19:59 UTC on Trip FSM; no settlement shadow experiment.',
+      'Unused READY session 619284b3-… canonically ABORTED; 1 SESSION_METADATA observation preserved.',
+      'No retrospective EXP-021 drive evidence fabricated; preflight evidence retained.',
+    ],
+    reason: 'Operator completed physical Audi drive before Reference Capture start command.',
+    previousBehavior: 'Session READY after post-wake go gate; awaiting START EXP-021 NOW.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md §11–12',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T20:10:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021-pre-drive-integrity-gate-2026-09-08',
+    version: '4.9.1073',
+    title: 'EXP-021 — Pre-drive integrity gate hardened (PR #1570)',
+    summary: [
+      'DEPLOYED_BASELINE_FAIL: fixed-interval schedules at phase COMPLETION only — probe A/B +30/+60 not on-time.',
+      'FIRST_DRAFT_FIX gap: probe A prospective only; probe B still ~45s/+15s late at +30/+60.',
+      'FINAL_PRE_MERGE_FIX: prospective probe B via nominal 300s offset at phase EFFECTIVE; both probes schedulable before deadlines.',
+      'Runtime hook proven: ReferenceCaptureProcessor.processCycle (~5s) invokes syncCompletedPhasesFromSession during RECORDING.',
+      'Whole-trip partial recovery: experiments with 1–5 WHOLE_TRIP schedules now idempotently recover to 6 ages.',
+      '21 settlement-shadow focused tests PASS; physical drive NOT started; READY_TO_DRIVE=NO.',
+    ],
+    reason: 'Scientific integrity requires all 48 fixed-interval observations (+30/+60 for both probes) schedulable before execution deadlines.',
+    previousBehavior: 'Settlement shadow schedules deferred until phase completion; probe B geometry unknown until phase end.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PRE_DRIVE_INTEGRITY_GATE_2026-09-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T04:40:00.000Z',
+  },
+  {
+    id: 'dimo-exp-021d-stale-session-cleanup-preflight-2026-09-07',
+    version: '4.9.1071',
+    title: 'EXP-021D — Stale RC session cleanup + settlement shadow go gate',
+    summary: [
+      'Aborted pre-EXP-019 orphan session 66f09794-… (RECORDING stuck on 10s only) via canonical releaseCycleLock + abortSession; 4459 observations preserved.',
+      'EXP-019 canonical session remains 2508b697-… COMPLETED — stale session is NOT EXP-019.',
+      'Live DIMO telemetry qualification PASS (provider age ~15s); DB VehicleLatestState still stale — do not qualify on CONNECTED alone.',
+      'REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED=true after clean-state gates; rolling 2-replica PM2 restart; queues empty; no experiment auto-started.',
+      'EXP021_PREFLIGHT_PASS=YES; NEXT_SEQUENCE=60→30→20→10; READY_FOR_EXP021_PHYSICAL_DRIVE=YES — operator must startRecording.',
+      'PRODUCTION_HF_PATH_CHANGED=NO; detectors/scoring/tire/brake unchanged.',
+    ],
+    reason: 'EXP-021C deployed shadow tooling with flag OFF; EXP-021D clears blocker orphan + enables shadow + final preflight before physical drive.',
+    previousBehavior: 'Stale RECORDING session blocked preflight; settlement shadow disabled; telemetry appeared stale via DB snapshot.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021D_STALE_SESSION_CLEANUP_AND_PREFLIGHT_2026-09-07.md; backend/scripts/ops/reference-capture-exp-021d-*.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T19:50:00.000Z',
+  },
+  {
+    id: 'dimo-exp-019-live-hf-calibration-ks-mx-2024-2026-09-07',
+    version: '4.9.1070',
+    title: 'EXP-019 — Live HF block-polling calibration (KS MX 2024)',
+    summary: [
+      'First scientific live multi-cadence Reference Capture run: 10→20→30→60 in one session.',
+      'sessionId 2508b697-f101-4155-a0d3-8436e46bb779; all phases SUFFICIENT; COMPLETED via stopRecording.',
+      'Settlement replay: T+25 (05:25Z provisional) + true T+30 (05:31:57Z) — identical; max gaps persist at 20s/30s/60s.',
+      'Rate-normalized: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min (55–84% reduction vs 10s).',
+      'NO cadence conclusion (N=1); HF_30S_BLOCK_POLLING_VALIDATED=NO; VIDEO_GT_VERIFIED=YES (5 gap + 8 control windows).',
+      'Bias-control pass: gap-conditioned GT vs video-first controls — CLEAR_DIFFERENCE; cadence CRITICAL labels withdrawn.',
+      'EXP-020 window geometry: W060–W300 identical union; P1 whole-trip optimal; P50 first-obs age ~27s vs 8s live delay.',
+      'EXP-021 design + EXP-021A tooling: settlement shadow (8×60s probes × 6 ages) + counterbalanced 60→10; BullMQ persisted scheduler; VehicleTrip end authority; default OFF.',
+      'HF_SOLE_HIGH_FIDELITY_AUTHORITY=NO in gaps; HF_USEFUL_AS_PARTIAL_AUTHORITY=YES.',
+      'Production HF authority restored to LEGACY post-run.',
+    ],
+    reason: 'EXP-016 RETRY after DI-DEF-019 Gate 2 unblocked live calibration path.',
+    previousBehavior: 'Live calibration blocked (EXP-016); only Gate 2 stationary lifecycle validated.',
+    details: 'architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md; EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T05:05:00.000Z',
+  },
+  {
+    id: 'dimo-di-def-019-gate2-production-dress-rehearsal-2026-09-06',
+    version: '4.9.1069',
+    title: 'DI-DEF-019 GATE 2 — production stationary dress rehearsal PASS',
+    summary: [
+      'Post PR #1550 deploy (SHA 01541c2ab): stationary production rehearsal on KS MX 2024 / token 187336.',
+      'Session 1: 10→20→30→60 REQUESTED→EFFECTIVE via real runner + STOP → COMPLETED.',
+      'Session 2: 10s EFFECTIVE + canonical abortSession → ABORTED.',
+      'Temporary single-token V2 canary; baseline restored — PRODUCTION_HF_AUTHORITY=LEGACY.',
+      'NOT scientific cadence proof — HF_30S_BLOCK_POLLING_VALIDATED=NO.',
+      'DI-DEF-019 → FIXED_PRODUCTION_VALIDATED.',
+    ],
+    reason:
+      'Gate 2 proves DI-DEF-019 lockSessionRow fix on real production runtime before physical 10/20/30/60 drive.',
+    previousBehavior:
+      'DI-DEF-019 FIXED_CODE_TESTED only; production STOP/ABORT paths not re-validated after merge.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md; EXP-018 executed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T22:15:00.000Z',
+  },
+  {
+    id: 'dimo-di-def-019-lock-session-row-sql-2026-09-06',
+    version: '4.9.1068',
+    title: 'DI-DEF-019 — lockSessionRow PostgreSQL table name fix (live cal blocker)',
+    summary: [
+      'Live 10/20/30/60 HF calibration blocked on production: FOR UPDATE raw SQL used Prisma model name ReferenceCaptureSession.',
+      'Fix: reference_capture_sessions + organization_id snake_case columns (text IDs, no ::uuid cast).',
+      'GATE 1: real PostgreSQL integration suite (10 tests) — lockSessionRow, FOR UPDATE blocking, 10→60 phases, STOP/ABORT, rollback, two-replica.',
+      'GATE 2: production stationary dress rehearsal PASS — STOP + ABORT on KS MX 2024.',
+      'Blocked attempt evidence: architecture/drivingintelligence/evidence/reference-capture/LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md',
+      'Status: FIXED_PRODUCTION_VALIDATED.',
+    ],
+    reason:
+      'DI_HF_LIVE_BLOCK_POLLING_10_20_30_60 hit 42P01 on first switchHfCalibrationPhase; stop/abort finalization also affected.',
+    previousBehavior:
+      'lockSessionRow queried "ReferenceCaptureSession" — passes mocked tests, fails PostgreSQL.',
+    details:
+      'reference-capture-session.repository.ts lockSessionRow; reference-capture-lock-session.postgres.integration.spec.ts; research/DEFECT_LEDGER.md DI-DEF-019 FIXED_PRODUCTION_VALIDATED.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T19:45:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1d-phase-atomicity-canary-hardening-2026-09-05',
+    version: '4.9.1067',
+    title: 'DI-EV-0035C.1d — Phase Transition Atomicity + Canary Authority Hardening',
+    summary: [
+      'Forensic audit proved pre-C.1d lost-update race: cycle release could overwrite operator phase switch.',
+      'Control-plane vs data-plane split: pending phase at cycle boundary; FOR UPDATE + buildCycleReleaseAcquisitionState.',
+      'V2/canary fail-closed gate on phase API; REQUESTED vs EFFECTIVE activation semantics.',
+      'Durable completedPhaseSummaries frozen at boundary; effectiveConfig snapshot on activation.',
+      '12 concurrency tests; 103 reference-capture HF tests PASS. Production HF untouched.',
+    ],
+    reason:
+      'C.1c architecture correct but unsafe for live canary without atomic phase switching and authority verification.',
+    previousBehavior:
+      'Immediate phase switch via mergeAcquisitionState; releaseCycleLockAndUpdateState could overwrite newer calibration state.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §C.1d; reference-capture-hf-calibration-phase.policy.ts; reference-capture-session.repository.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T00:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1c-single-drive-multi-cadence-calibration-2026-09-04',
+    version: '4.9.1066',
+    title: 'DI-EV-0035C.1c — Single-Drive Multi-Cadence Flight Recorder Calibration',
+    summary: [
+      'Forensic audit: HF_HISTORICAL_POLL_INTERVAL_MS was process-config only pre-C.1c.',
+      'Session-scoped hfCalibrationSeries override: switch 10/20/30/60s phases without restart.',
+      'POST hf-calibration/phases API for in-session cadence changes (Reference Capture only).',
+      'Durable phase identity in provenance: seriesId, phaseId, sequence, transition windows.',
+      'Phase transitions preserve HF watermarks; TRANSITION_WINDOW classification for boundary queries.',
+      'Superseded rigid ≥20–30 min per phase duration; one physical drive may contain all phases.',
+      'Production HF path, score, detectors, tire/brake models unchanged.',
+    ],
+    reason:
+      'Canonical calibration model: one physical trip may contain multiple HF poll-cadence phases inside one Reference Capture session — not one trip per cadence.',
+    previousBehavior:
+      'Poll cadence only from process env; implied separate long drives per phase; no session phase identity.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §C.1c; reference-capture-hf-calibration-phase.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T00:10:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1b-flight-recorder-canary-contract-2026-09-04',
+    version: '4.9.1065',
+    title: 'DI-EV-0035C.1b — Dynamic Flight Recorder Canary Vehicle Selection Contract',
+    summary: [
+      'Verified Reference Capture HF V2 runtime is vehicle-agnostic (no hardcoded plate/token).',
+      'Replaced fixed “KS MX 2024 canary” wording with Flight Recorder dynamic selection contract.',
+      'Documented operator pre-run procedure: select available vehicle, resolve tokenId, set allowlist.',
+      'Same vehicle preferred across 10/20/30/60s phases; cross-vehicle changes must be recorded.',
+      'KS MX 2024 / tokenId 187336 preserved as NON_CANONICAL_EXAMPLE only.',
+      'C.1a fail-closed canary semantics preserved; no production HF path changes.',
+    ],
+    reason:
+      'C.1 documentation incorrectly implied KS MX 2024 is the permanent Reference Capture canary; actual procedure is operator-selected vehicle per experiment.',
+    previousBehavior:
+      'Evidence named KS MX 2024 / 187336 as the canary experiment vehicle contract.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §8 + §C.1b; driving-intelligence-hf-recovery-runtime-implementation-2026-09.md.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:55:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1a-hf-pre-canary-hardening-2026-09-04',
+    version: '4.9.1064',
+    title: 'DI-EV-0035C.1a — HF Block Polling Pre-Canary Correctness Hardening',
+    summary: [
+      'Fixed canary fail-open: empty V2 canary allowlist now fails closed to LEGACY for all tokens.',
+      'Corrected bucket age observability: oldest age >= newest age at observation time.',
+      'Fixed epoch-aligned stagger deadline primitive to use tokenId phase offset.',
+      'Extended HF provenance for canary metric reconstruction (latency, gaps, dup/rev/recovered).',
+      'Exhaustive unit tests for canary semantics, bucket ages, stagger deadlines, metrics audit.',
+      'Production HF path, score, detectors, tire/brake models unchanged.',
+    ],
+    reason:
+      'Forensic review of DI-EV-0035C.1 found pre-canary correctness defects that could mis-scope V2 or corrupt observability before live Reference Capture calibration.',
+    previousBehavior:
+      'Empty canary allowlist could enable global V2; bucket ages reversed; stagger offset unused in deadline primitive.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §DI-EV-0035C.1a; reference-capture-hf-recovery-v2.policy.ts; reference-capture-hf-block-polling.policy.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:45:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1-hf-block-polling-scalability-2026-09-04',
+    version: '4.9.1063',
+    title: 'DI-EV-0035C.1 — HF Historical Block Polling Scalability Testbed',
+    summary: [
+      'Audited Reference Capture HF request cadence: runner 5s, HF provider request every cycle (legacy).',
+      'Added HF_HISTORICAL_POLL_INTERVAL_MS (V2-only, default provisional 30000ms, NOT validated).',
+      'Preserves 1s DIMO historical aggregation; slower API polling only.',
+      'Block-density observability: buckets/request, temporal density, requests/vehicle/hour.',
+      'Deterministic fleet request-load model + tokenId-based stagger design (planning only).',
+      'Flight Recorder dynamic canary experiment contract for 10/20/30/60s calibration phases.',
+      'Production HF path (dimo-segments → trip-behavior-enrichment) unchanged.',
+    ],
+    reason:
+      'Before designing production HF architecture, use Reference Capture to test whether block polling (e.g. 30s) preserves ~1s bucket density with far fewer DIMO requests.',
+    previousBehavior:
+      'HF_HISTORICAL fired every runner cycle (~5s); no separate poll cadence; no block-density metrics.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md; reference-capture-hf-block-polling.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:15:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c-hf-recovery-runtime-2026-09-04',
+    version: '4.9.1062',
+    title: 'DI-EV-0035C — Production HF Historical Recovery Runtime (Reference Capture)',
+    summary: [
+      'Feature-gated HF Recovery V2 on reference-capture HF_HISTORICAL path (default OFF).',
+      'Settled horizon (provisional 8s settlement) + configurable recovery overlap (provisional 6s) — PARAMETERS_VALIDATED=NO.',
+      'Separate DATA / QUERY COVERAGE / RECOVERY cursor watermarks; coverage advances only after durable flush.',
+      'Zero-result HF query provenance ring (max 500) for exact-window replay.',
+      'Periodic deep recovery sweep (default OFF) + structured hf_acquisition_cycle observability.',
+      'Canary token allowlist via HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS (no hardcoded 187336).',
+      'Live availability calibration foundation (OFF by default). Production DI HF path unchanged.',
+    ],
+    reason:
+      'RD004-B proved provider late arrival + 2s overlap insufficient; implement approved runtime architecture for reference capture before live calibration.',
+    previousBehavior:
+      'Legacy 2s overlap; queryTo at requestStartedAt; no durable zero-result provenance; no recovery sweep; single overlap constant.',
+    details:
+      'docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md; architecture/DI_EV_0035C_HF_RECOVERY_RUNTIME_IMPLEMENTATION_2026-09-04.md; reference-capture-hf-recovery-v2.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T19:55:00.000Z',
+  },
+  {
+    id: 'refuel-g22-production-post-cutover-t60-2026-09-04',
+    version: '4.9.1062b',
+    title: 'G2.2 physical-refuel V2 production post-cutover T+60 audit',
+    summary: [
+      'Independent read-only production audit ~T+122m after G2.2 cutover (no mutation, no synthetic REFUEL).',
+      'Both replicas healthy on deploy SHA 43c9ae6c; V2 + recovery flags true; cutover timestamp matches.',
+      'Zero post-cutover REFUEL events, reconciliation rows, and physical-refuel errors since activation.',
+      'Recovery backlog scans healthy on both replicas; BullMQ queue clean (failed=0); no legacy bypass or segment-start authority.',
+      'PRODUCTION_RUNTIME_STABILITY=PASS; PRODUCTION_REFUEL_V2_OBSERVED=NO — business path pending natural REFUEL.',
+    ],
+    reason: 'Mandatory G2.2 post-cutover operational evidence gate without replay or synthetic production events.',
+    previousBehavior:
+      'Cutover audit at T+0 confirmed deploy and flag activation; no independent T+60 stability verification yet.',
+    details:
+      'docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md; FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001; EED-EV-0039.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:45:00.000Z',
+  },
+  {
+    id: 'refuel-g22-production-cutover-2026-09-04',
+    version: '4.9.1061',
+    title: 'G2.2 physical-refuel V2 direct production cutover',
+    summary: [
+      'G2.1d final integration gate PASS on isolated VPS PG16+Redis7 (13 integration tests, 0 skip).',
+      'PR #1531 merged; production migration + deploy with PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=false.',
+      'Direct production activation (no shadow): V2 flag + cutover timestamp via rolling multi-replica restart.',
+      'Kill switch: PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=false. No mass historical reprocess.',
+      'PROVEN_IN_PRODUCTION pending natural post-cutover REFUEL observation (KS MX 2024 watch).',
+    ],
+    reason: 'G2.1d-FINAL integration gate authorized direct G2.2 production cutover (no shadow mode).',
+    previousBehavior:
+      'V2 reconciliation code deployed but disabled; integration gate blocked on harness DB name mismatch.',
+    details:
+      'docs/audits/refuel-g22-production-cutover-2026-09-04.md; FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001; EED-EV-0038.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:35:00.000Z',
+  },
+  {
+    id: 'refuel-g21d-final-pre-shadow-integration-2026-09-04',
+    version: '4.9.1060',
+    title: 'G2.1d physical-refuel final pre-shadow integration gate',
+    summary: [
+      'Synced PR #1531 with main; preserved RD004-B + physical-refuel Changes/Architecture entries.',
+      'Isolated Postgres migration chain (334 migrations) including G2.1a–G2.1d schema.',
+      'Real PG advisory-lock integration: same-vehicle serialization + multi-replica SR4.',
+      'Real Redis/BullMQ integration: waiting/delayed/crash-window dedupe, failed-job recovery, terminal guards.',
+      'Full same-vehicle multi-replica recovery E2E: one logical BullMQ job, PG lock serializes.',
+      'Post-sync regression 206/206 unit tests pass; build + Prisma + FST/EED validators pass.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF; PR stays DRAFT.',
+    ],
+    reason: 'G2.1d-FINAL integration + evidence gate before G2.2 shadow authorization.',
+    previousBehavior:
+      'PR behind main and conflicting; BullMQ/Postgres integration only unit-mocked; no multi-replica E2E on final SHA.',
+    details:
+      'docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md; FST-EVID-G21D-FINAL-PRE-SHADOW-INTEGRATION-2026-09-04-001; EED-EV-0037.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:30:00.000Z',
+  },
+  {
+    id: 'refuel-g21d-final-recovery-execution-closure-2026-09-04',
+    version: '4.9.1058',
+    title: 'G2.1d physical-refuel final recovery execution closure',
+    summary: [
+      'Stale PENDING/stale PROCESSING enrichment survives enqueue-plan construction and reaches producer recovery end-to-end.',
+      'Physical-refuel recovery scheduler is Redis-independent — every replica may scan; PG vehicle advisory lock serializes.',
+      'coordinateRetryCount increments exactly once per failed retryable attempt via persistCoordinateHold only.',
+      'Bounded route evidence stabilization: ROUTE_EVIDENCE_STABILIZING inside horizon; NO_DWELL_FOUND_FOR_STABLE_EVIDENCE after.',
+      'BullMQ failed deterministic jobs: remove + re-add when DB lifecycle permits; active/waiting deduped.',
+      'Per-vehicle error isolation in runRecoveryBatch; stale PROCESSING reset to PENDING before re-enqueue.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF.',
+    ],
+    reason: 'Close G2.1c independent review execution/liveness boundaries before G2.2 shadow authorization.',
+    previousBehavior: 'stale_enrichment discovered but never enqueued; recovery depended on Redis leader election; coordinate retry double-count; sparse route evidence terminalized prematurely; failed BullMQ jobs not recovered.',
+    details:
+      'docs/audits/refuel-g21d-final-recovery-execution-closure-2026-09-04.md; FST-EVID-G21D-FINAL-RECOVERY-EXECUTION-CLOSURE-2026-09-04-001; EED-EV-0036.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b61-rd004-hf-recovery-policy-semantic-hygiene-2026-09-04',
+    version: '4.9.1059',
+    title: 'DI-EV-0035B.6.1 — RD004-B HF Recovery Policy Semantic Hygiene Closeout',
+    summary: [
+      'Removed misleading closedLateBucketProtectedBySettlementDelay() API entirely.',
+      'Renamed recoverable overlap counts to temporalCoverageCandidateCount / temporallyExcludedCount.',
+      'LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY=NO (epistemic invariant, not numeric predicate).',
+      'Combined grid: TEMPORAL_QUERY_COVERAGE_ONLY; actualRecoveryCount=null.',
+      '83 focused RD004-B tests; B.6 conclusions preserved; no production changes.',
+    ],
+    reason:
+      'B.6 fixed lower-bound semantics; B.6.1 removes remaining misleading API/naming so future agents cannot reinterpret temporal coverage as proven availability.',
+    previousBehavior:
+      'Deprecated closedLateBucketProtectedBySettlementDelay still returned isLowerBoundConsistentWithCandidateDelay; overlap fields used estimatedRecoverable* naming.',
+    details:
+      'Module reference-capture-rd004-b-hf-recovery-policy.ts; regenerated simulation/design/contract artifacts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:45:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b6-rd004-hf-recovery-lower-bound-correction-2026-09-04',
+    version: '4.9.1056',
+    title: 'DI-EV-0035B.6 — RD004-B HF Recovery Policy Lower-Bound Semantics Correction',
+    summary: [
+      'B.5 superseded: availabilityLagLowerBoundSeconds is LOWER_BOUND only — does not prove provider availability.',
+      'Invalidated "8s protects 50/50" (B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID=NO).',
+      'Separated SETTLEMENT_HORIZON_DEFERRAL from PROVIDER_AVAILABILITY_RECOVERY.',
+      'Architecture remains SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP; provisional 8s/6s (PARAMETERS_VALIDATED=NO).',
+      'Live availability calibration contract + configurable runtime fix contract; 80+ focused tests; no production changes.',
+    ],
+    reason:
+      'Human/code review found B.5 treated lower-bound lag ≤ settlement delay as availability proof — statistically invalid before analysis merge.',
+    previousBehavior:
+      'B.5 derived productionSettlementTarget = ceil(maxLagLowerBound)+2 and claimed 8s settlement protects 50/50 closed late buckets.',
+    details:
+      'Module `reference-capture-rd004-b-hf-recovery-policy.ts` (B.6 semantics); regenerated artifacts with corrected deferral vs availability separation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b5-rd004-hf-recovery-policy-design-2026-09-04',
+    version: '4.9.1055',
+    title: 'DI-EV-0035B.5 — RD004-B HF Recovery Policy Design + Counterfactual Simulation',
+    summary: [
+      'B.4 evidence preserved: PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP.',
+      'Counterfactual 7×7 grid: settlement delay (0–10s) × recovery overlap (2–20s).',
+      'Recommended design: 8s settled horizon + 6s overlap + periodic deep recovery sweep.',
+      'OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND=YES; aggregate buckets ≠ unique ECU samples.',
+      'Runtime fix contract for next PR; 75 focused tests; no production changes.',
+    ],
+    reason:
+      'B.4 proved 2s overlap insufficient and characterized the defect; B.5 must close RD004 acquisition design without implementing production fix.',
+    previousBehavior:
+      'Production HF capture queries live edge with 2s overlap only; no settlement horizon or recovery sweep.',
+    details:
+      'Module `reference-capture-rd004-b-hf-recovery-policy.ts`; artifacts `rd004-b-hf-recovery-policy-simulation.json`, `rd004-b-hf-recovery-policy-design.json`, `rd004-b-hf-runtime-fix-contract.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b4-rd004-exact-window-hf-replay-watermark-audit-2026-09-04',
+    version: '4.9.1054',
+    title: 'DI-EV-0035B.4 — RD004-B Exact-Window HF Replay + Late-Arrival / Watermark Loss Proof',
+    summary: [
+      'Invalidate B.3 cross-origin 108-vs-66 bucket identity comparison (QUERY_FROM_ANCHORED semantics).',
+      'Reconstruct 75 original HF query windows; exact-origin DIMO replay (same from/to, 1s speed).',
+      '104 original vs 157 replay buckets; 53 late-arrival; 0 missing-now; 0 value revisions.',
+      '26 late buckets DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK; P50 lag 2.129 s > 2 s overlap.',
+      'HF_CAPTURE_ROOT_CAUSE=PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP.',
+      'B.3 transition corrections preserved; 70 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Human review found B.3 broad requery compared incompatible query-origin bucket grids — exact-window replay required for canonical late-arrival and watermark recovery proof.',
+    previousBehavior:
+      'B.3 concluded CAPTURE_PIPELINE_SAMPLE_LOSS from 108 vs 66 cross-origin timestamp floor comparison (intersection 11).',
+    details:
+      'Modules `reference-capture-rd004-b-hf-exact-window-replay.ts`, updated `reference-capture-rd004-b-hf-capture-completeness.ts`; artifacts `rd004-b-hf-exact-window-replay.json`, `rd004-b-hf-late-arrival-analysis.json`, `rd004-b-hf-watermark-recovery-analysis.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T22:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b3-rd004-segment-b-evidence-correctness-hf-audit-2026-09-04',
+    version: '4.9.1053',
+    title: 'DI-EV-0035B.3 — RD004-B Transition Evidence Correctness + HF Capture Completeness Audit',
+    summary: [
+      'Fix launch predecessor bug: immediate sorted[i-1] neighbor; true gap 35.102 s (not ~629 s).',
+      'Launch interval-censored; +5.x s removed as clock evidence; FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE=NO.',
+      '43→0 in 1 s after 28.7 s gap: PAIR_PHYSICAL_CONTINUITY_VALIDATED=NO; context ISOLATED_BURST.',
+      'Stop displacement ~+21.7 s reclassified sparse observation only; STOP_TIMING_ERROR_SECONDS=null.',
+      'Legacy CLK landmarks forced CLOCK_FIT_ELIGIBLE=NO; CLOCK_FIT_PROVIDER_MATCH_COUNT=0.',
+      'HF live requery 108 vs sealed 66 buckets — B.4 supersedes cross-origin loss proof (diagnostic only).',
+      '50 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Human/code review found remaining transition/clock semantics errors and required proof whether RD004 HF sparsity is upstream or capture-pipeline sample loss.',
+    previousBehavior:
+      'B.2 reported +5.x s launch clock displacement, supportive offset range, and stop timing with event-derived offset (timeErrorSeconds=0).',
+    details:
+      'Modules `reference-capture-rd004-b-segment-b.ts`, `reference-capture-rd004-b-hf-capture-completeness.ts`; new `rd004-b-hf-capture-completeness-diagnostic.json`, `rd004-b-transition-interval-censoring.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b2-rd004-segment-b-video-timeline-clock-reassessment-2026-09-04',
+    version: '4.9.1052',
+    title: 'DI-EV-0035B.2 — RD004-B Frame-Accurate Master Video Timeline + Transition Clock Reassessment',
+    summary: [
+      'Audio-correlated 9-clip master timeline (5→3→1→9→8→7→4→2→6); overlap 16.775 s; duration 1000.498365 s.',
+      'Improved Time.is T0: 2026-09-04T03:47:02.216667Z from frame-level second boundary.',
+      'First stop transition corrected to t≈621.8 s (B-T01); t=630 reclassified SUSTAINED_STOP_STATE only.',
+      'Launch bounded window [673.0, 673.5] s (B-T02); second stop not frame-exact.',
+      'Corrected stop displacement ~+21.7 s (SPARSE_STATE_SAMPLE); launch ~+5.3 s — inconsistent; offset NOT validated.',
+      'A/B ~22 s displacement repeat observed but not cross-validated; B.1 holdout/time-only preserved.',
+      '36 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Independent frame-level video review found t=630 was a zero-speed state snapshot, not the physical stop transition; master clip stitching required audio-correlated evidence.',
+    previousBehavior:
+      'B.1 used t=630 as stop context and supportive ~+13.5 s offset candidate; rounded 1000 s video timeline.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts` B.2; new `rd004-b-video-master-timeline.json`; artifacts regenerated under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b1-rd004-segment-b-calibration-closeout-2026-09-04',
+    version: '4.9.1051',
+    title: 'DI-EV-0035B.1 — RD004-B Independent Clock Calibration + Holdout Speed Accuracy Closeout',
+    summary: [
+      'Invalidates DI-EV-0035B canonical offset (~14.3 s) and MAE (~2.3 km/h) as selection-biased; preserves as exploratory non-canonical.',
+      'Separates CLOCK_CALIBRATION_SET (4 transition landmarks) from SPEED_ACCURACY_HOLDOUT_SET (17 cruise anchors).',
+      'Holdout speed accuracy: time-only nearest HF sample after frozen offset; video speed never influences selection.',
+      'Supportive offset candidate ~+13.5 s; PROVIDER_TIMESTAMP_OFFSET_VALIDATED=NO (insufficient transition landmarks).',
+      'Holdout: 5 comparable anchors, diagnostic MAE ~13.8 km/h; headline SPEED_MAE_KMH=null.',
+      '22 focused tests; raw Segment A/B bytes unchanged; no production changes.',
+    ],
+    reason: 'Human review found speed-selected samples were reused for both clock offset and speed accuracy (double dipping).',
+    previousBehavior: 'DI-EV-0035B reported PROVIDER_TIMESTAMP_OFFSET_VALIDATED=YES and ABSOLUTE_SPEED_ACCURACY_VALIDATED=YES with MAE ~2.3 km/h.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts` B.1 pipeline; artifacts regenerated under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T16:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b-rd004-segment-b-validation-2026-09-04',
+    version: '4.9.1050',
+    title: 'DI-EV-0035B — RD004-B Segment B Video ↔ Telemetry Validation',
+    summary: [
+      'Segment B (~16:40 post-refuel): 66 HF speed samples, median cadence ~10.6 s (sparser than Segment A).',
+      '25 independent dashboard video anchors (B01–B25); 18 HIGH-confidence accepted.',
+      'First validated provider offset in RD004: ~+14.3 s (3 independent clock landmarks, MAD ~0.6 s).',
+      'Absolute speed accuracy validated: MAE ~2.3 km/h (stratified low/medium/high reported).',
+      'Drift NOT validated; gear/reverse telemetry NOT observed; 0 legacy harsh events.',
+      'Preserves all DI-EV-0035A.2 methodology invariants; Segment A evidence unchanged.',
+    ],
+    reason: 'RD004 Segment B provides high-confidence video anchors needed to validate offset and speed accuracy after Segment A closeout.',
+    previousBehavior: 'Only Segment A analyzed; provider offset null; no absolute speed validation.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts`; seal + analyze CLIs; artifacts under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T14:00:00.000Z',
+  },
+  {
+    id: 'refuel-g21c-final-recovery-semantics-closure-2026-09-04',
+    version: '4.9.1057',
+    title: 'G2.1c physical-refuel final recovery semantics closure',
+    summary: [
+      'Semantic recovery no longer gated on Redis/workers — settlement, orphan, and finality progress DB-only.',
+      'Route fetch preserves SUCCESS/UNAVAILABLE/FAILED — provider failures are retryable, not false NO_DWELL.',
+      'Coordinate retry: exponential backoff on missing token; terminal holds excluded from hot-loop.',
+      'Evidence fingerprint invalidation reopens terminal coordinate holds when fuel-rise/route inputs change.',
+      'Unified V2 cutover authority via runtime → producer v2OwnershipCutoverAt; eventObservedAt required.',
+      'V2 stale PENDING/PROCESSING enrichment recovery under physical-refuel recovery scheduler.',
+      'Typed enqueue outcomes: enqueued | deduped | deferred_queue_unavailable | terminal_skip.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF.',
+    ],
+    reason: 'Close G2.1b independent review recovery/retry/authority gaps before G2.2 shadow rollout.',
+    previousBehavior: 'Recovery skipped when Redis unavailable; provider errors collapsed to NO_DWELL; terminal holds reselected every tick; V2 stale enrichment not recovered.',
+    details:
+      'docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md; FST-EVID-G21C-FINAL-RECOVERY-SEMANTICS-CLOSURE-2026-09-04-001; EED-EV-0035.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
+    id: 'refuel-g21b-cross-cutover-recovery-hardening-2026-09-04',
+    version: '4.9.1056',
+    title: 'G2.1b physical-refuel cross-cutover + recovery hardening',
+    summary: [
+      'V2 candidate set restricted to post-cutover observations; legacy rows bridge-only as prior-final evidence.',
+      'Semantic reconciliation no longer requires DIMO token; coordinate phase holds with COORDINATE_HOLD_MISSING_DIMO_TOKEN.',
+      'V2 enqueue uses observation-time cutover (createdAt), not provider startTime — fixes clock-domain deadlock.',
+      'Orphan recovery bounded: max(cutover, lookback) .. asOf.',
+      'Coordinate retry backoff via nextCoordinateRetryAt; fair recovery quotas prevent fleet starvation.',
+      'PostgreSQL advisory-lock concurrency proven on isolated test database.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF.',
+    ],
+    reason: 'Close G2.1a independent review cross-boundary defects before G2.2 shadow rollout.',
+    previousBehavior: 'Legacy events could enter V2 candidate set; token required for semantic reconcile; orphan query lost upper bound; coordinate holds hot-looped.',
+    details:
+      'docs/audits/refuel-g21b-cross-cutover-recovery-hardening-2026-09-04.md; FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001; EED-EV-0034.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
+    id: 'refuel-g21a-runtime-safety-liveness-closure-2026-09-04',
+    version: '4.9.1055',
+    title: 'G2.1a physical-refuel runtime safety + liveness closure',
+    summary: [
+      'Closes independent G2.1 review blockers before G2.2 shadow rollout.',
+      'Legacy fuel-station recovery cannot bypass G2 finality when V2 flag ON.',
+      'Durable recovery: settlement due, orphan refuels, lost enqueue (nextReconciliationAt + G2 recovery scheduler).',
+      'Matrix/history scope fix: prior finals outside candidate window use bridge context, no undefined pair access.',
+      'V2 coordinate fail-closed: no segment-start fallback when physical-refuel V2 active.',
+      'Pre-G2 enriched legacy bridge for late-sibling protection; createdAt index alignment.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF; no production activation.',
+    ],
+    reason: 'Independent runtime review FAIL on G2.1; close all P0/P1 safety/liveness defects before shadow rollout.',
+    previousBehavior: 'G2.1 wiring only on persist; legacy recovery could enqueue SETTLING/PROVISIONAL; segment-start coordinate fallback.',
+    details:
+      'docs/audits/refuel-g21a-runtime-safety-liveness-closure-2026-09-04.md; FST-EVID-G21A-RUNTIME-SAFETY-LIVENESS-CLOSURE-2026-09-04-001; EED-EV-0033.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
+    id: 'refuel-g21-runtime-wiring-2026-09-04',
+    version: '4.9.1054',
+    title: 'G2.1 physical-refuel runtime wiring (feature-flagged, default OFF)',
+    summary: [
+      'Runtime wiring implemented behind PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED (default false).',
+      'REFUEL persist → vehicle-scoped advisory lock → bounded candidate load → G1 reconcile → persist finality → post-commit enrichment gate.',
+      'Enrichment only after COMMIT when FINAL_CANONICAL or FINAL_DISTINCT; V2 forecourt coordinate wired at enqueue.',
+      'Schema: VehicleEnergyEventRefuelReconciliation + migration (not run in production).',
+      'Production activation pending G2.2 shadow rollout.',
+    ],
+    reason: 'G2_IMPLEMENTATION_AUTHORIZED after G1.2d PASS; wire proven G1 design into runtime without production activation.',
+    previousBehavior: 'Immediate post-persist enrichment enqueue; legacy sibling row deletion.',
+    details:
+      'docs/audits/refuel-g21-runtime-wiring-2026-09-04.md; FST-EVID-G21-RUNTIME-WIRING-2026-09-04-001; EED-EV-0032.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T22:00:00.000Z',
+  },
+  {
+    id: 'refuel-g12d-late-sibling-hardening-2026-09-04',
+    version: '4.9.1053',
+    title: 'G1.2d late-sibling finalization hardening (2026-09-04)',
+    summary: [
+      'Fixes G12C-LATE-SIBLING-INSUFFICIENT-SINGLETON-FINALIZE: late sibling conflict now actively gates enrichment.',
+      'Singleton/external late INSUFFICIENT or SAME rows vs prior FINAL_* cannot reach FINAL_DISTINCT with enrichment.',
+      'Six-case test matrix; G1.2c invariants preserved; EED-EV-0026 title clarified.',
+      'G2 design-ready; no production wiring.',
+    ],
+    reason: 'Corrective turn after independent Pre-G2 review blocker.',
+    previousBehavior: 'lateSiblingConflict was informational only unless prior-finalized id shared same component.',
+    details:
+      'docs/audits/refuel-g12d-late-sibling-hardening-2026-09-04.md; FST-EVID-G12D-*; EED-EV-0031.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:00:00.000Z',
+  },
+  {
+    id: 'refuel-g12c-finality-ambiguity-closure-2026-09-04',
+    version: '4.9.1052',
+    title: 'G1.2c finality + ambiguity closure — SETTLING, observation time (2026-09-04)',
+    summary: [
+      'SETTLING is real: multi-row SAME groups stay non-enrichment-eligible until observation-time settlement window closes.',
+      'Settlement clock authority = SYNQDRIVE firstObservedAt (no provider endTime fallback).',
+      'Pairwise identity matrix + fail-closed non-transitive component analysis (UUID order not epistemic).',
+      'Late sibling after finalization → recovery conflict; mixed-vehicle batch rejected.',
+      '64 targeted tests PASS; G2_IMPLEMENTATION_READY=YES; PRODUCTION_DEPLOYMENT_READY=NO.',
+    ],
+    reason: 'Close four G1.2b semantic gaps before G2 runtime wiring.',
+    previousBehavior: 'G1.2b: FINAL_CANONICAL on group.length>1; greedy partition; event.endTime fallback for firstSeen.',
+    details:
+      'docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md; physical-refuel-identity-component.design.ts; FST-EVID-G12C-*; EED-EV-0030.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:00:00.000Z',
+  },
+  {
+    id: 'refuel-g12b-runtime-boundary-hardening-2026-09-04',
+    version: '4.9.1051',
+    title: 'G1.2b runtime boundary hardening — lookback, finality, lock, grouping (2026-09-04)',
+    summary: [
+      'Fuel-rise onset is sole lookback anchor; provider segment start is diagnostic only (Event B alone still selects forecourt).',
+      'Settlement/finality model: PROVISIONAL singleton ≠ enrichment-safe; FINAL_CANONICAL gates enqueue.',
+      'Vehicle-scoped coarse reconciliation lock replaces bucketed scope keys.',
+      'Dimensionally-safe canonical comparator; fail-closed clique multi-sibling grouping.',
+      '51 tests PASS; G2_IMPLEMENTATION_READY=YES; PRODUCTION_DEPLOYMENT_READY=NO.',
+    ],
+    reason: 'Close five G1.2 review defects before G2 runtime wiring.',
+    previousBehavior: 'G1.2 algorithmic closure with eventStart lookback cutoff, immediate singleton enrichment, bucketed locks.',
+    details:
+      'docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md; physical-refuel-settlement.design.ts; FST-EVID-G12B-*; EED-EV-0029.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T16:00:00.000Z',
+  },
+  {
+    id: 'refuel-g12-algorithmic-closure-2026-09-04',
+    version: '4.9.1050',
+    title: 'G1.2 algorithmic closure — dwell selector + identity hardening (2026-09-04)',
+    summary: [
+      'Pure coordinate selector (physical_refuel_forecourt_dwell_medoid_v2) derives Esso forecourt stop from telemetry only — no station ground truth in algorithm input.',
+      'Tri-state physical-refuel identity matcher: SAME / DISTINCT / INSUFFICIENT_EVIDENCE; symmetric canonical selection; fail-closed.',
+      'Arrival-order design tests prove one physical refuel → one canonical → one enrichment eligibility.',
+      'ALGORITHMIC_CLOSURE=YES; IMPLEMENTATION_READY=YES; PRODUCTION_DEPLOYMENT_READY=NO (G2 runtime pending).',
+    ],
+    reason: 'Specification-grade executable prototype before G2 runtime integration.',
+    previousBehavior: 'G1.1 forensic evidence + prototype matcher with binary match semantics.',
+    details:
+      'docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md; physical-refuel-coordinate.selector.ts; physical-refuel-identity.matcher.ts; EED-EV-0028.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T14:00:00.000Z',
+  },
+  {
+    id: 'refuel-g11-hf-evidence-closure-2026-09-04',
+    version: '4.9.1048',
+    title: 'G1.1 HF evidence closure — KS MX REFUEL physical stop (2026-09-04)',
+    summary: [
+      'Production HF/route telemetry retrieved read-only: CH speed-only (274 rows); DIMO 7s route (207 GPS) + 30s fuel (41 samples).',
+      'Physical Esso forecourt dwell confirmed: 0 km/h cluster 05:44–05:47 local, ~11 m from Esso Ysenburgstraße 22.',
+      'Timing corrected: rise start +45s/+2m13s vs owner departure ~05:47; not a single “5–6 min lag”. FUEL_TIMING_CAUSE=MIXED.',
+      'V2 coordinate policy selected: forecourt dwell medoid → resolver MATCHED score 78 (vs NOT_FOUND at segment starts).',
+      'Two-stage physical-refuel identity design + matcher dry-run PASS; enrichment must run after reconcile (G2).',
+    ],
+    reason: 'Close evidentiary blocker for duplicate REFUEL + wrong coordinate incident before G2 implementation.',
+    previousBehavior: 'IMPLEMENTATION_READY=NO pending HF dwell confirmation; imprecise fuel-signal lag language.',
+    details:
+      'docs/audits/refuel-g11-hf-evidence-closure-2026-09-04.md; FST-EVID-G11-HF-CLOSURE-2026-09-04-001; EED-EV-0027; EED-DEC-PHYSICAL-REFUEL-IDENTITY-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T12:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035a2-rd004-segment-a-semantics-closeout-2026-09-04',
+    version: '4.9.1049',
+    title: 'DI-EV-0035A.2 — RD004-A Semantics Closeout (H displacement + true peak attenuation)',
+    summary: [
+      'Landmark H ~+22.2 s stored as PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS only (NOT_A_CLOCK_OFFSET_ESTIMATE).',
+      'VIDEO_TO_PROVIDER_OFFSET_SECONDS=null; CLOCK_FIT_ELIGIBLE_LANDMARKS=[]; VIDEO_PROVIDER_ALIGNMENT_CLASS=INSUFFICIENT_EVIDENCE.',
+      'VIDEO_ABSOLUTE_TIME_ANCHORED=YES preserved (Time.is); provider offset and drift remain unknown.',
+      'TRUE_LOCAL_PEAK_ATTENUATION_KMH from independent raw/smoothed maxima (~10 km/h, 6 events); separate from same-timestamp delta (~18.33 km/h).',
+      'Preserves all valid A.1 evidence: 38 HF samples, 0 legacy harsh events, raw bytes unchanged.',
+    ],
+    reason: 'A.1 still exposed approximate landmark H as provider offset and conflated same-timestamp delta with true peak attenuation.',
+    previousBehavior: 'DI-EV-0035A.1 set VIDEO_TO_PROVIDER_OFFSET_SECONDS≈+22.2 s from H; TRUE_LOCAL_PEAK_ATTENUATION used same-timestamp proxy.',
+    details:
+      '31 tests; invariants APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET and TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY; Segment B pending.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T12:00:00.000Z',
+  },
+  {
+    id: 'refuel-physical-event-forensics-2026-09-04',
+    version: '4.9.1047',
+    title: 'REFUEL physical event + fuel-station coordinate forensics (2026-09-04)',
+    summary: [
+      'First natural post-cutover REFUEL (KS MX 2024) forensically reconstructed: two persisted REFUEL rows for one Esso fill.',
+      'Root cause A: DIMO overlapping segments + coalesce thresholds + duration-biased sibling reconcile + 20% fuel-% guard.',
+      'Root cause B: V1 enrichment uses segment-start GPS (721–1038m from Esso); resolver NOT_FOUND despite OSM presence.',
+      'Design: PHYSICAL_REFUEL_IDENTITY fingerprint + physical-stop coordinate authority V2; enrichment after reconcile.',
+    ],
+    reason: 'Forensic + design phase for duplicate REFUEL and wrong station coordinate defects.',
+    previousBehavior: 'Assumed segment start = refuel location; sibling reconcile handled KS MX Aug28 only.',
+    details:
+      'docs/audits/refuel-physical-event-coordinate-forensics-2026-09-04.md; FST-EVID-INCIDENT-REFUEL-2026-09-04-001; EED-EV-0026.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T09:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035a1-rd004-segment-a-methodology-closeout-2026-09-04',
+    version: '4.9.1048',
+    title: 'DI-EV-0035A.1 — RD004-A Methodology Correctness Closeout',
+    summary: [
+      'Fixes circular landmark clock-alignment (telemetry-derived expectedVideoT → artificial 0 s offset).',
+      'Invalidates −128.6 s drift estimate; DRIFT_VALIDATED=NO with null numeric output.',
+      'Removes invalid 127.6 s preprocessing timing; uses same local event window only.',
+      'Fixes unsorted percentile bug (acceleration median now ~−0.28 m/s², not max).',
+      'Gear NOT_OBSERVED (0 HF samples); reverse telemetry NO; bundle SHA canonical multi-file.',
+      'Preserves valid evidence: 38 HF speed samples, ~4.7 s median cadence, 0 legacy harsh events.',
+    ],
+    reason: 'Human review found methodology bugs in DI-EV-0035A before PR #1529 becomes canonical evidence.',
+    previousBehavior: 'DI-EV-0035A reported STABLE 0 s offset, −128.6 s drift, GEAR PARTIAL, invalid preprocessing shift.',
+    details:
+      '23 methodology tests; repo-relative paths; CLOCK_FIT_ELIGIBLE only from independent video times; Segment B pending.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T09:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035a-rd004-segment-a-alignment-2026-09-04',
+    version: '4.9.1047',
+    title: 'DI-EV-0035A — RD004-A Segment A Video ↔ Telemetry Alignment',
+    summary: [
+      'First evidence-grade RD004 comparison: video Segment A (~6:11) vs sealed HF telemetry for KS MX 2024 C63.',
+      '38 HF_HISTORICAL speed samples (median cadence ~4.7 s); providerTimestamp authority; surfaces not merged.',
+      'Provisional zero-offset projection: mid-segment landmarks align ~0 s; absolute speed NOT validated (no frame OCR).',
+      'Offline legacy detector audit on calm baseline: 0 hard/extreme accel/brake/launch events.',
+      'Reverse video observed but NOT supported in HF gear/ratio for early window.',
+      'SEGMENT_B_PENDING=YES; RD004_WHOLE_DRIVE_COMPLETE=NO; production unchanged.',
+    ],
+    reason: 'RD004 controlled validation drive Segment A requires measured video ↔ telemetry alignment before Segment B and any calibration.',
+    previousBehavior: 'RD004 capture sealed (DI-EV-0034F) but no Segment-A alignment artifacts.',
+    details:
+      'Module `reference-capture-rd004-a-segment-a.ts`; CLI `reference-capture-drive-004-a-segment-a-analyze.ts`; artifacts under `docs/audits/data/rd004-segment-a/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T08:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0034f2-integrity-closeout-2026-09-03',
+    version: '4.9.1046',
+    title: 'DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout',
+    summary: [
+      'Corrects specific kinetic energy formula to 0.5*(vEnd²-vStart²); removes ½Δv² mislabel.',
+      'Removes repetition from physical episode severity; keeps severity event-local.',
+      'Driver behavior dimensions use explicit reconstruction/attribution confidence requirements.',
+      'Quality gate provider-age policy made surface-aware (HF_HISTORICAL generic age penalty=NO).',
+      'Export manifest: per-file SHA256 map, separate bundleSha256, repo-relative RD003 authority path.',
+      'Migration status: F/F.1/F.2 COMPLETE, RD004 NEXT. Production unchanged.',
+    ],
+    reason: 'Final design/documentation consistency before RD004 controlled validation.',
+    previousBehavior: 'F.1 retained ½Δv² energy proxy wording, ambiguous behavior confidenceRequired, bundle hash reused per file.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts F.2; regenerated driving-intelligence-v2-design/ artifacts with export-manifest integrity.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T18:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0034f1-consistency-closeout-2026-09-03',
+    version: '4.9.1045',
+    title: 'DI-EV-0034F.1 — Canonical Architecture Consistency Closeout',
+    summary: [
+      'Splits driving state into orthogonal layers (kinematic, direction, powertrain, transition markers).',
+      'Separates physical severity from reconstruction confidence; adds attribution confidence layer.',
+      'Preserves V2 native-event PROVIDER_CLASSIFIED authority vs HF kinematic reconstruction scope.',
+      'Defines episode overlap policy — one primary kinematic episode per physical interval.',
+      'Separate positive/decel trip stats; mass-independent energy proxy; surface-aware provider age.',
+      'RD004 adds preprocessing filter-response validation; fleet comparison requires comparable cohort.',
+      'Legacy scorer classified KEEP_LEGACY_UNTIL_V2_CUTOVER — production unchanged.',
+    ],
+    reason: 'Human review found design consistency issues before specification becomes canonical.',
+    previousBehavior: 'F.0 used flat state list, mixed severity/confidence, ambiguous thermal/energy semantics.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts F.1 closeout; regenerated driving-intelligence-v2-design/ artifacts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T18:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0034f-canonical-design-2026-09-03',
+    version: '4.9.1044',
+    title: 'DI-EV-0034F — Canonical Driving Intelligence V2 Design',
+    summary: [
+      'Designs episode reconstruction pipeline: normalize → quality gate → kinematics → states → episodes → confidence → trip features.',
+      'Audits current production detectors/score; maps KEEP / KEEP_WITH_GATE / REPLACE_WITH_EPISODE_MODEL.',
+      'Signal authority grounded in RD003: providerTimestamp physical time; HF speed primary; jerk episode-context only.',
+      'Semantic distinctions: deceleration≠braking; engine load≠mass; gear state≠shift timing.',
+      'Trip feature vector with exposure normalization; behavior dimensions before opaque score; RD004 validation contract.',
+      'Production Driving Score, detectors, tire/brake runtime unchanged.',
+    ],
+    reason: 'RD003 established signal trust; this phase designs how to turn imperfect signals into professional driving intelligence.',
+    previousBehavior: 'DI-EV-0034E usability matrix only; no canonical episode/trip-feature architecture.',
+    details:
+      'driving-intelligence-v2-canonical-design.ts; docs/audits/data/driving-intelligence-v2-design/ (14 JSON artifacts).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T14:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-signal-quality-closeout-2026-09-03',
+    version: '4.9.1043',
+    title: 'DI-EV-0034E.1 — RD003 Signal Quality Correctness Closeout',
+    summary: [
+      'Corrects alignment-fit MAE vs independent accuracy terminology; adds holdout validation.',
+      'Fixes negative-control cruise-window scoring for IMG_2804/IMG_2809.',
+      'Renames acceleration/jerk distribution metrics; PROVISIONAL_CANDIDATE_MAX_GAP only.',
+      'LATEST_LIVE_DIRECT_VIDEO_VALIDATION=INSUFFICIENT_EVIDENCE; freshness from metrics not surface name.',
+      'Per-signal session coverage, lag/event powertrain diagnostics, evidence-traced ratings.',
+    ],
+    reason: 'Human review found interpretation defects that must be fixed before DI-EV-0034F design.',
+    previousBehavior: 'E.0 reported ~8.46 km/h as typical error; negative controls used full-clip errors; FULL_SESSION hardcoded.',
+    details:
+      'reference-capture-rd003-signal-quality.ts E.1 closeout; regenerated rd003-signal-quality/ artifacts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T12:00:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-signal-quality-interpretation-2026-09-03',
+    version: '4.9.1042',
+    title: 'DI-EV-0034E — RD003 Signal Quality Interpretation + Usability Matrix',
+    summary: [
+      'Adds RD003 signal-by-signal quality audit across HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW.',
+      'Tier A/B/C evidence: direct video validation, aligned event correlation, state context.',
+      'Speed HF typical MAE ~8.5 km/h on qualified STRONG_CANDIDATE basins; providerTimestamp is physical authority.',
+      'synqReceivedAt classified delivery-only; ingress not supported for physical events.',
+      'Derived acceleration/jerk analyzed with provisional gap policies; jerk episode-context only.',
+      'Use-case eligibility matrix (A/B/C/D) and proposed signal authority model — no Driving Score changes.',
+    ],
+    reason: 'Answer what DIMO/SynqDrive signals can be trusted before DI-EV-0034F driving-intelligence design.',
+    previousBehavior: 'Alignment methodology complete (0034D.2); signal usability for reconstruction not yet formalized.',
+    details:
+      'reference-capture-rd003-signal-quality.ts; reference-capture-drive-003-signal-quality.ts; docs/audits/data/rd003-signal-quality/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T11:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-discovery-v2-static-minute-d2-2026-09-03',
+    version: '4.9.1041',
+    title: 'DI-EV-0034D.2 — Static-Minute Clock Geometry + Joint Alignment Closeout',
+    summary: [
+      'Corrected static-minute feasible intercept interval to I ∈ [S + d − 60(L+1), S − 60L] (was wrong upper-bound geometry).',
+      'STATIC_MINUTE_FEASIBLE_CLOCK_INTERCEPT_INTERVAL with documented inclusive bounds and uncertainty widening.',
+      'AMBIGUOUS static clips preserve STATIC_CLOCK_CANDIDATE_INTERVAL_SET per qualified basin until joint inference.',
+      'RELATIVE_CLOCK_INTERCEPT_CENTER=null when unresolved; BEST_RETAINED_COMBINATION_* diagnostic fields separated.',
+      'Regenerated all eight global-fingerprint-discovery-v2/ artifacts; D.1 static/joint counters superseded.',
+      'Mandatory regression: S=1000, L=10, d=30 → exactly [370, 400]; width ≈ 60−d before uncertainty.',
+    ],
+    reason: 'Human review found static-minute interval geometry blocked authoritative joint DP interpretation.',
+    previousBehavior:
+      'computeStaticMinuteInterceptInterval used [S−60L, S+d−60L] producing [400,430] for the canonical synthetic case; AMBIGUOUS static clips collapsed to one diagnostic basin interval.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; global-fingerprint-discovery-v2/ artifacts regenerated; D.1 joint/static results marked superseded.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T10:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-discovery-v2-closeout-2026-09-03',
+    version: '4.9.1040',
+    title: 'DI-EV-0034D.1 — RD003 Discovery V2 Correctness + Evidence Closeout',
+    summary: [
+      'Regenerated all eight global-fingerprint-discovery-v2/ artifacts from current runtime code.',
+      'Added V2 summary parity regression: committed discovery-v2-summary.json must match fresh deterministic run.',
+      'AMBIGUOUS clips now preserve CLOCK_CANDIDATE_SET (no forced single clock authority).',
+      'Relative clock model searches intercept combinations; large spreads → UNRESOLVED_AMBIGUOUS_CANDIDATE_ASSIGNMENT (not WEAK).',
+      'Joint DP enforces static-minute intercept intervals with rejection counters.',
+      'Explicit pairwiseBoundaryMinuteResidual / pairwiseClockInterceptResidual helpers.',
+      'PROVIDER_TIME_ALIGNMENT_SUPPORTED_CLIPS=2; HF_SPEED_ALIGNMENT_V2_CONCLUSION=AMBIGUOUS.',
+    ],
+    reason: 'Close four methodological/evidence defects before DI-EV-0034E signal-quality interpretation.',
+    previousBehavior:
+      'Stale summary artifact drift; AMBIGUOUS clips collapsed to rank-1 clock anchor; static-minute intervals unused in joint DP; ambiguous pairwise clock helper.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; global-fingerprint-discovery-v2/ artifacts regenerated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T10:00:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-fingerprint-discovery-v2-2026-09-03',
+    version: '4.9.1039',
+    title: 'DI-EV-0034D — RD003 Global Discovery V2 + Joint Clock-Consistent Alignment',
+    summary: [
+      'Added GLOBAL_FINGERPRINT_DISCOVERY_V2 with corrected seed selection: QUALITY_SEEDS + COVERAGE_SEEDS + PARETO_SEEDS.',
+      'Coverage=1.0 / MAE=50 junk basins can no longer suppress coverage-qualified lower-MAE candidates.',
+      'Relative clock-intercept model (timezone-independent); qualified transition clips only for clock authority.',
+      'True circular mean for modulo-60 phase; full clock residual preserves whole-minute + phase components.',
+      'Joint chronology DP over retained basins; non-exhaustive failure renamed NO_CONSISTENT_PATH_IN_RETAINED_BASINS.',
+      'Independent ingress discovery on synqReceivedAt timeline; INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS from ingress results.',
+      'IMG_2807 + IMG_2810 independent STRONG basins detected as jointly incompatible (~−130.8 s chronology gap).',
+      'Preserved DI-EV-0034B hard-clock-prior-run/ and DI-EV-0034C global-fingerprint-discovery/ unchanged.',
+      'ZERO_PHASE_HARD_CLOCK_BOUND_CONCLUSION=HARD_SECOND_PHASE_PRIOR_FALSIFIED; GROUND_TRUTH_VALIDATED=NO.',
+    ],
+    reason:
+      'Correct DI-EV-0034C methodological defects (coverage-first ranking, clock authority, ingress proxy) before signal-quality interpretation.',
+    previousBehavior:
+      'DI-EV-0034C coverage-first compareCandidateQuality could suppress superior lower-coverage basins; NOT_IDENTIFIABLE basins could reject clock phase; ingress support counted from provider MAE proxy.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery-v2.ts; reference-capture-drive-003-video-gt-global-discovery-v2.ts; docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery-v2/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T09:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-global-fingerprint-discovery-2026-09-03',
+    version: '4.9.1038',
+    title: 'DI-EV-0034C — RD003 Clock-Prior Falsification + Global Fingerprint Discovery',
+    summary: [
+      'Added GLOBAL_FINGERPRINT_DISCOVERY mode: full-session speed fingerprint search without hard clock-prior bounds.',
+      'Preserved DI-EV-0034B HARD_CLOCK_PRIOR_RUN artifacts in hard-clock-prior-run/ with SHA manifest.',
+      'Coarse 0.5s + fine 0.1s search; top 5 distinct temporal basins per clip/surface.',
+      'CLOCK_PRIOR_FALSIFIED: materially better HF basins found outside prior windows (e.g. IMG_2810 ~19:23:59.5Z, MAE ~4.17).',
+      'Modulo-60 vehicle-clock boundary phase model under CEST hypothesis; chronology path analysis separate from basin scores.',
+      'Fixed clock boundary status: MINUTE_TRANSITION_OBSERVED_ALIGNMENT_NOT_QUALIFIED vs NO_OBSERVED_MINUTE_TRANSITION.',
+      'providerTimestamp vs synqReceivedAt diagnostic timelines remain separate.',
+      'GROUND_TRUTH_VALIDATED=NO; REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Distinguish clock-prior failure from telemetry/video shape incompatibility without modifying external GT.',
+    previousBehavior: 'DI-EV-0034B hard-clock-prior run produced no STRONG_CANDIDATE; boundary status could misreport missing transitions.',
+    details:
+      'reference-capture-rd003-video-gt-global-discovery.ts; reference-capture-drive-003-video-gt-global-discovery.ts; docs/audits/data/rd003-video-gt-alignment/global-fingerprint-discovery/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T08:40:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-external-gt-ingestion-2026-09-03',
+    version: '4.9.1037',
+    title: 'DI-EV-0034B — RD003 Sparse External Video Ground Truth Ingestion + First Real Alignment',
+    summary: [
+      'First real externally reviewed sparse video GT ingested for all nine RD003 clips (198 observations, 182 alignment-eligible SPEED points).',
+      'Source: EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW; no interpolation or 30 Hz fabrication.',
+      'Deterministic observation IDs (RD003_GT_001_SPEED_000, etc.); EXTERNAL_GT_SHA256=ea0d78ee….',
+      'Accepted DI-EV-0034A v1.2 workbench executed against DI-EV-0033 canonical telemetry without algorithm redesign.',
+      'REAL_EXTERNAL_GT_INGESTED=YES; REAL_ALIGNMENT_EXECUTED=YES; VIDEO_ALIGNMENT_STATUS=REAL_CANDIDATE_ALIGNMENTS_AVAILABLE.',
+      'GROUND_TRUTH_VALIDATED=NO; failed/ambiguous per-clip outcomes preserved as valid scientific results.',
+      'IMG_2810 S2→S3 and IMG_2811 reverse direction remain separate video GT — not telemetry proof.',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Ingest owner-reviewed sparse instrument-cluster observations and produce first real candidate video/telemetry alignments without declaring final Ground Truth validation.',
+    previousBehavior: 'External GT schema held metadata only; observations[] empty pending ingestion.',
+    details:
+      'reference-capture-rd003-video-gt-external-observations.ts; reference-capture-rd003-video-gt-alignment-episodes.ts; reference-capture-drive-003-video-gt-ingest-external.ts; docs/audits/data/rd003-video-ground-truth-observations.json; docs/audits/data/rd003-video-gt-alignment/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T07:50:00.000Z',
+  },
+  {
+    id: 'p1-8-3-10-oq28-certification-gate-2026-09-09',
+    version: '4.9.1033',
+    title: 'P1.8.3.10 — OQ-28 continuity recheck (24h gate)',
+    summary: [
+      'Narrow read-only certification gate from 2026-09-07T22:47:37Z through 2026-09-08T22:47:37Z threshold.',
+      'OQ-28 PARTIAL: segment broke at 2026-09-08T05:01:28Z after 22431s (<86400). PM2 cold restart; pm2-pre-deploy dump at 05:01:20Z.',
+      'Sep 8 17:40Z deploy to 68495041 (#1577 R10) broke subsequent segment. GitHub activity at 22:46Z did NOT cause production deploy.',
+      'Current segment from 2026-09-08T17:40:39Z. N2=EARLY. No production mutations.',
+    ],
+    reason: 'P1.8.3.10 final OQ-28 24h FULL_N2 certification gate — did Production maintain uninterrupted >=86400s from canonical candidate start?',
+    previousBehavior: 'P1.8.3.9: next candidate 2026-09-07T22:47:37Z; checkpoint 2026-09-08T22:47:37Z pending.',
+    details:
+      'architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md; architecture/scaling-process/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T01:50:00.000Z',
+  },
+  {
+    id: 'p1-8-3-9-oq28-final-certification-recheck-2026-09-08',
+    version: '4.9.1032',
+    title: 'P1.8.3.9 — OQ-28 continuity recheck (PARTIAL)',
+    summary: [
+      'Read-only production forensics from candidate 2026-09-06T22:12:34Z through 2026-09-08T02:19:47Z.',
+      'OQ-28 PARTIAL: longest continuous FULL_N2 segment 48758s (<86400). First break 2026-09-07T04:19:48Z PM2 restart.',
+      'Sep 7 rolling deploys (4bef6046, ccc2324d, 0ba96e03) produced 9 boundaries; EXP-021D (dce0ce75) NOT deployed.',
+      'Current segment from 2026-09-07T22:47:37Z on SHA 0ba96e03. N2=EARLY. No production mutations.',
+    ],
+    reason: 'P1.8.3.9 final OQ-28 certification recheck — determine whether uninterrupted >=86400s FULL_N2 segment completed.',
+    previousBehavior: 'P1.8.3.8: OQ-28 PARTIAL; current segment from 2026-09-06T22:12:34Z; checkpoint 2026-09-07T22:12:34Z not yet evaluated.',
+    details:
+      'architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md; architecture/scaling-process/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T02:30:00.000Z',
+  },
+  {
+    id: 'p1-8-3-8-2-dec016-oq18-authority-reconciliation-2026-09-07',
+    version: '4.9.1031',
+    title: 'P1.8.3.8.2 — DEC-016 / OQ-18 authority consistency reconciliation',
+    summary: [
+      'Authority-only pass: reconcile CURRENT_STATE narrative, graph EXACT_SHA_DEPLOY_PROVENANCE node, and knowledge graph with P1.8.3.5 production proof.',
+      'DEC-016 = FULLY_PRODUCTION_VALIDATED; six-link invariant = VERIFIED_PRODUCTION; OQ-18 = CLOSED.',
+      'Removed stale PARTIALLY_PRODUCTION_VALIDATED / NEEDS_PRECISION_REVIEW / LIKELY_PRODUCTION_VERIFIED from current authority.',
+      'Added validate-dec016-oq18-authority-consistency.mjs guardrail. No production or runtime changes.',
+    ],
+    reason: 'P1.8.3.8.2 final authority sync — eliminate stale P1.8.3.3 DEC-016/OQ-18 current-state contradictions.',
+    previousBehavior: 'Machine block VERIFIED_PRODUCTION but narrative/graph still showed NEEDS_PRECISION_REVIEW / PARTIALLY_PRODUCTION_VALIDATED.',
+    details:
+      'architecture/scaling-process/CURRENT_STATE.md; architecture/scaling-process/graph/nodes.yaml; architecture/scaling-process/SCALING_PROCESS_KNOWLEDGE_GRAPH.md; architecture/scaling-process/MULTI_REPLICA_DEPLOYMENT.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T01:15:00.000Z',
+  },
+  {
+    id: 'p1-8-3-8-1-authority-reconciliation-2026-09-06',
+    version: '4.9.1030',
+    title: 'P1.8.3.8.1 — Scaling authority reconciliation pass',
+    summary: [
+      'Authority-only pass: reconcile CURRENT_STATE, graph/nodes.yaml, and knowledge graph with P1.8.3.8 final verdict.',
+      'INC-07 narrative updated CLOSED (CASE B); graph INC_07 node CLOSED; removed contradictory current INC-07 lines.',
+      'Scoped FULL_N2 metrics: N2_ALL_TIME_LONGEST_CONTINUOUS_SEGMENT_SECONDS=76832; OQ28_CANDIDATE_WINDOW_LONGEST_SEGMENT_SECONDS=72054.',
+      'No production forensics re-run. INC-07/OQ-28/OQ-30 technical conclusions unchanged.',
+    ],
+    reason: 'P1.8.3.8.1 final authority reconciliation — eliminate stale P1.8.3.6.2 current-state contradictions.',
+    previousBehavior: 'Machine block CLOSED but narrative/graph still showed FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS / MODERATE.',
+    details:
+      'architecture/scaling-process/CURRENT_STATE.md; architecture/scaling-process/graph/nodes.yaml; architecture/scaling-process/SCALING_PROCESS_KNOWLEDGE_GRAPH.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T23:50:00.000Z',
+  },
+  {
+    id: 'p1-8-3-8-final-scaling-closure-audit-2026-09-06',
+    version: '4.9.1029',
+    title: 'P1.8.3.8 — Final scaling closure audit (INC-07 replay reachability + OQ-28)',
+    summary: [
+      'Read-only ~73.6h forensic audit since INC-07 validation start (2026-09-03T21:19:07Z).',
+      'INC-07 CLOSED (CASE B): structural non-reachability after successful split + 13 APPLIED repairs, 16 warm cycles, 0 new duplicates.',
+      'OQ-30 CLOSED. Natural IDEMPOTENT_SKIP not obtainable post-success (DEBUG-level; gap topology excludes re-discovery).',
+      'OQ-28 PARTIAL: longest segment 72054s (<86400); Sep 5 23:24Z deploy boundary corrected; current segment from 2026-09-06T22:12:34Z.',
+      'N2=EARLY (OQ-28 not closed). No production mutations executed.',
+    ],
+    reason: 'P1.8.3.8 final scaling closure: INC-07 replay-reachability analysis + OQ-28 uninterrupted 24h FULL_N2 certification.',
+    previousBehavior: 'P1.8.3.6.2: INC-07 MODERATE/open; OQ-28 PARTIAL (76832s longest); missed Sep 5 23:24Z boundary.',
+    details:
+      'architecture/P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md; architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T22:55:00.000Z',
+  },
+  {
+    id: 'p1-8-3-7-oq-28-uninterrupted-24h-full-n2-certification-2026-09-06',
+    version: '4.9.1028',
+    title: 'P1.8.3.7 — OQ-28 uninterrupted 24h FULL_N2 certification audit',
+    summary: [
+      'Read-only FULL_N2 forensic audit; updated by P1.8.3.8 with corrected Sep 5 23:24Z deploy boundary.',
+      'Five segmented FULL_N2 intervals from OQ-28 candidate start 2026-09-05T09:05:28Z.',
+      'Longest continuous segment 72054s (20.02h) — below 86400s threshold.',
+      'Current segment from 2026-09-06T22:12:34Z. Next 24h checkpoint 2026-09-07T22:12:34Z.',
+      'OQ-28 remains PARTIAL. N2=EARLY. Scope: N=2 production topology only.',
+    ],
+    reason: 'P1.8.3.6.2 companion audit: determine whether uninterrupted 24h FULL_N2 certification is proven.',
+    previousBehavior: 'OQ-28 PARTIAL with P1.8.3.3 longest segment 81024s; checkpoint recalculated to 2026-09-04T21:18:52Z after P1.8.3.6.1.',
+    details:
+      'architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T23:19:52.000Z',
+  },
+  {
+    id: 'p1-8-3-6-inc-07-natural-warm-tier-retrospective-2026-09-04',
+    version: '4.9.1027',
+    title: 'P1.8.3.6 — INC-07 natural warm-tier retrospective audit',
+    summary: [
+      'P1.8.3.8 final ~73.6h read-only audit since validation start (2026-09-03T21:19:07Z).',
+      '16 post-T0 warm-tier cycles; 13 INTRA_TRIP_GAP_SPLIT APPLIED repairs; max 1 mutation per repair.',
+      'Structural non-reachability proof: successful gap split excludes re-discovery (CASE B closure).',
+      'INC-07 CLOSED. OQ-30 CLOSED. OQ-28 PARTIAL (72054s longest segment; see P1.8.3.7/8).',
+    ],
+    reason: 'P1.8.3.6.2 final extension: ~2-day INC-07 replay closure attempt + coordinated OQ-28 audit.',
+    previousBehavior: 'P1.8.3.6.1: 3 warm cycles, 1 repair, MODERATE evidence, replay pending at 13:18Z.',
+    details:
+      'architecture/P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T23:19:52.000Z',
+  },
+  {
+    id: 'p1-8-3-5-inc-07-production-validation-baseline-2026-09-03',
+    version: '4.9.1026',
+    title: 'P1.8.3.5 — INC-07 production deploy + validation baseline',
+    summary: [
+      'Deployed exact PR #1525 merge SHA 5b788a223 to N=2 production via canonical exact-SHA rolling path.',
+      'DEC-016 full six-point provenance chain directly verified; OQ-18 CLOSED (explicit machine-readable status).',
+      'INC-07 runtime fix confirmed in production dist (deterministic repair ID, atomic tx, APPLIED terminality).',
+      'Historical duplicate baseline frozen: 2 groups / 4 rows unchanged. Validation start 2026-09-03T21:19:07Z.',
+      'Final authority pass: scheduler role snapshot vs leader-count invariant; corrected deterministic repair-ID detector for retrospective ops.',
+      'INC-07 NOT CLOSED — natural warm-tier evidence pending (≥2 cycles). N2=EARLY. OQ-28=PARTIAL.',
+    ],
+    reason: 'Controlled production deployment of merged INC-07 remediation with read-only forensic baseline for retrospective validation.',
+    previousBehavior: 'Production ran pre-fix SHA 0e0f092 without deterministic INTRA_TRIP_GAP_SPLIT idempotency.',
+    details:
+      'architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md; backend/scripts/ops/inc07-production-validation-baseline.sh; backend/scripts/ops/inc07-deterministic-repair-id-detector.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T21:19:07.000Z',
+  },
+  {
+    id: 'p1-8-3-4-inc-07-trip-reconciliation-idempotency-2026-09-03',
+    version: '4.9.1025',
+    title: 'P1.8.3.4 — INC-07 INTRA_TRIP_GAP_SPLIT reconciliation idempotency remediation',
+    summary: [
+      'Deterministic repair identity: buildIntraTripGapSplitRepairAuditId(vehicleId, gapFirstEndAt, gapSecondStartAt) — same pattern as MISSING_TRIP buildRepairAuditId.',
+      'Claim-before-mutate: TripRepair PK claim in transaction + legacy APPLIED window lookup; session advisory lock around split/finalize.',
+      'Repeated warm-tier execution → IDEMPOTENT_SKIP (no duplicate repaired trips, no downstream Route/enrichment jobs).',
+      'INC-07 fix IMPLEMENTED / TEST-VALIDATED locally; NOT production-validated; INC-07 NOT CLOSED.',
+      'Historical duplicate rows untouched. No UNIQUE(vehicle_id, start_time). Redis mutex retained (concurrency only). DEC-017.',
+    ],
+    reason: 'P1.8.3.3 proved warm-tier INTRA_TRIP_GAP_SPLIT re-application creates duplicate REPAIRED trips ~4h apart; MISSING_TRIP already had deterministic idempotency.',
+    previousBehavior: 'INTRA_TRIP_GAP_SPLIT used random trip_repairs UUID; warm-tier re-run could create equivalent repaired trips again.',
+    details:
+      'architecture/P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md; trip-reconciliation.intra-trip-gap-split-idempotency.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T14:45:00.000Z',
+  },
+  {
+    id: 'p1-8-3-3-n2-24h-segmented-audit-2026-09-03',
+    version: '4.9.1024',
+    title: 'P1.8.3.3 — N=2 24h+ segmented production retrospective audit (forensic authority v4)',
+    summary: [
+      'Forensic authority closure v4 (read-only SSH + code-path analysis) on PR #1521.',
+      'Corrected segment model: FULL_N2=158815s + excluded gaps=62s = 158877s calendar; splits at PM2 10:35/10:36 unexpected restarts.',
+      'INC-07 (P2 OPEN): duplicate REPAIRED trips from warm-tier INTRA_TRIP_GAP_SPLIT re-run. APPLICATION_DEFECT + SCALING_READINESS_DEFECT; N2_MULTI_REPLICA_CAUSED=NO_PROVEN.',
+      'Battery +36 net delta; ID math underdetermined (N∈[36,48]); taxonomy RESOLVED_PARTIAL; POSSIBLE scaling relation UNRESOLVED; OQ-21 existing workstream.',
+      'PM2: recovery from stopped proven; initial stop UNAVAILABLE; failed deploys RULED_OUT (~382ms, no PM2 touch). NEW_P2=1 (INC-07 only); PRE_EXISTING_P3=1.',
+    ],
+    reason: 'Close the natural >24h calendar checkpoint with deploy-aware segment analysis; do not conflate calendar time with continuous soak.',
+    previousBehavior: 'P1.8.3.2 covered only ~2h39m snapshot window; OQ-18/DEC-016 pending routine deploy observation.',
+    details:
+      'architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T07:55:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-video-gt-alignment-workbench-2026-09-03',
+    version: '4.9.1036',
+    title: 'DI-EV-0034A — RD003 External Video/Telemetry Alignment Workbench',
+    summary: [
+      'Deterministic offline workbench correlating nine segmented video clips against DI-EV-0033 telemetry.',
+      'External GT schema: rd003-video-ground-truth-observations.json (metadata + empty observations pending ingestion).',
+      'Multi-clock model preserved (video instrument, provider, synq ingress, request windows, HF windows).',
+      'Per-surface speed alignment (HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW if observed); SPEED_ALIGNMENT_SURFACE_PRESELECTED=NO.',
+      'Symmetric candidate-range search around derived midpoint; coverage gate (MIN_STRONG_CANDIDATE_COVERAGE=0.60); basin-aware ambiguity.',
+      'VIDEO_CLOCK_BOUNDARY_RESIDUAL_SECONDS cross-clip model — candidate-start residuals not used as clock offsets.',
+      'Surface-aware interpolation gaps; derived comparison points retain source-row provenance.',
+      'WORKBENCH_READY=YES; VIDEO_ALIGNMENT_STATUS=AWAITING_EXTERNAL_GT_INGESTION; GROUND_TRUTH_VALIDATED=NO.',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO; DRIVING_SCORE_CHANGED=NO.',
+    ],
+    reason:
+      'Provide tooling for external analysis authority to ingest validated video observations and correlate against immutable DI-EV-0033 telemetry without fabricating video content.',
+    previousBehavior: 'No structured external GT ingestion or alignment workbench existed.',
+    details:
+      'reference-capture-rd003-video-gt-alignment.ts; reference-capture-drive-003-video-gt-align.ts; docs/audits/data/rd003-video-gt-alignment/.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T06:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-video-gt-semantics-closeout-2026-09-03',
+    version: '4.9.1035.1',
+    title: 'DI-EV-0033 — sealed-source authority + multi-clock semantics closeout',
+    summary: [
+      'Summary uses authoritativeSealedSourcePath=/opt/.../observations.jsonl (not workspace temp path).',
+      'ANALYSIS_INPUT_SHA_MATCHES_SEALED_AUTHORITY=YES; workspace materialization kept out of committed summary.',
+      'ROW_SELECTION_BASIS=SEALED_RD003_SESSION_OBSERVATIONS_BY_ACQUISITION; providerTimestamp not session-filtered.',
+      'PROVIDER_TIMESTAMP_MAY_PREDATE_SESSION_START=YES (stale/latest cached samples retained).',
+      'VIDEO_TO_TELEMETRY_CLOCK_MODEL_STATUS=PENDING_MULTI_CLOCK_CORRELATION.',
+      'LATEST_LIVE≠FRESH_PHYSICAL_SAMPLE; canonical JSONL SHA unchanged (69209a6d…).',
+    ],
+    reason: 'Correct provenance/path semantics and make multi-clock row-selection model explicit for DI-EV-0034.',
+    previousBehavior: 'Committed summary mislabeled /workspace/tmp/... as sealedSourcePath authority.',
+    details:
+      'docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source-summary.json v1.1; reference-capture-rd003-video-gt-export.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T05:35:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-video-gt-correlation-export-2026-09-03',
+    version: '4.9.1035',
+    title: 'Reference Drive #003 — Video-GT correlation telemetry source export (DI-EV-0033)',
+    summary: [
+      'Full-session lossless filtered export: 5010 SIGNAL_POINT rows across 11 correlation fields.',
+      'All acquisition surfaces preserved: HF_HISTORICAL 2783, LATEST_LIVE 1855, LATEST_SLOW 372.',
+      'NO interpolation, resampling, smoothing, or video-clock pre-filtering.',
+      'Vehicle-clock-to-telemetry offset is unknown — export spans full session for external correlation.',
+      'Canonical JSONL SHA-256: 69209a6d9e488d51c3aaf3b55dee5584ce622dc072a191b81e7061597cdda87a.',
+      'VIDEO_ALIGNMENT_STATUS=PENDING_CORRELATION; GROUND_TRUTH_VALIDATED=NO.',
+      'DI-EV-0032 unchanged (pre-alignment segmented-video GT index).',
+      'REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason:
+      'Prepare canonical telemetry correlation source for external video alignment against nine segmented RD003 instrument-cluster clips.',
+    previousBehavior: 'No dedicated correlation export; video candidate clock regions undocumented in machine-readable form.',
+    details:
+      'docs/audits/data/dimo-lte-r1-reference-drive-003-video-gt-correlation-source.jsonl; DI-EV-0033; backend/scripts/ops/reference-capture-drive-003-video-gt-telemetry-export.ts (read-only).',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-03T04:30:00.000Z',
+  },
+  {
+    id: 'dimo-rd003-telemetry-forensics-2026-09-02',
+    version: '4.9.1034',
+    title: 'Reference Drive #003 — Telemetry forensics v2 (segmented video GT model)',
+    summary: [
+      'RD003 session 0fa040aa-… COMPLETED: 371 cycles, 6250 SIGNAL_POINT + 1 SESSION_METADATA.',
+      'HF_HISTORICAL 2783 aggregate-bucket rows (AGGREGATE_BUCKET_V2); NO_DUPLICATE_AGGREGATE_BUCKET_IDENTITIES_OBSERVED=YES.',
+      'HF_IDEMPOTENCY_RUNTIME_VALIDATED=NOT_EXERCISED (no duplicate/retry path exercised in sealed export).',
+      'REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ=NO (HF aggregate-bucket Δt P50 ~2s; RAW_PHYSICAL_SAMPLE_CADENCE=NOT_PROVEN).',
+      'HF watermark + query-window proofs use acquisition-order per-field execution (not lexical sort).',
+      'VIDEO_GT=PARTIAL_SEGMENTED — multiple ~1 min clips, NOT one continuous ~37 min video.',
+      'VEHICLE_LOAD_ASSESSABILITY=RECONSTRUCTABLE_MEDIUM_CONFIDENCE; longitudinal accel cadence-gated.',
+      'SESSION_START_TO_FIRST_SIGNAL_INGRESS_MS=254; FAST_GO_TO_FIRST_CYCLE_MS=1222.',
+      'DI-EV-0027–0032 amended in place; REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason: 'Methodology correction pass: segmented video GT model, HF proof fixes, physics semantics, distinct timing metrics.',
+    previousBehavior: 'Continuous video assumption; lexical-sort watermark proof; Vehicle Load marked DIRECTLY_OBSERVED.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-003-capture-report-2026-09-02.md; DI-EV-0027–0032; backend/scripts/ops/reference-capture-drive-003-reanalyze.ts (read-only).',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T19:52:00.000Z',
+  },
+  {
+    id: 'dimo-rd002-motion-hf-canary-2026-09-02',
+    version: '4.9.1033',
+    title: 'Reference Drive #002 — Motion HF canary (KS MX 2024)',
+    summary: [
+      'RD002 session e095d273-… COMPLETED: 351 cycles, 3526 SIGNAL_POINT + 1 SESSION_METADATA.',
+      'HF_HISTORICAL 355 aggregate-bucket rows (AGGREGATE_BUCKET_V2); 0 duplicate fingerprints.',
+      'Major finding: REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ=NO (HF Δt P50 13.5s, MAX 249.6s).',
+      'POLLING_FREQUENCY≠PROVIDER_SAMPLE_FREQUENCY (LATEST_LIVE ~5.9s poll vs ~15s provider updates).',
+      'FAST GO 1949ms; C63 29/29 fields observed; VIDEO_GROUND_TRUTH=NOT_PLANNED_BY_PROTOCOL.',
+      'DI-EV-0026 repurposed to C63 signal differential (no separate GT artifact for RD002).',
+      'Offline read-only reanalyze tooling only — REFERENCE_CAPTURE_RUNTIME_CHANGED=NO.',
+    ],
+    reason: 'Evidence-governance correction pass: preserve RD002 facts, fix DI-EV-0026, document HF cadence finding.',
+    previousBehavior: 'DI-EV-0026 incorrectly used as Ground Truth index; HF 1Hz implication under-documented.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md; DI-EV-0023–0026; backend/scripts/ops/reference-capture-drive-002-reanalyze.ts (read-only).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T13:20:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-canonical-redeploy-smoke-2026-09-02',
+    version: '4.9.1032',
+    title: 'Phase 3A.3 — Canonical VPS redeploy + post-deploy stationary smoke',
+    summary: [
+      'Canonical production deploy verified at f00a49394 (main post #1509); DEC-016 SHA invariant on both replicas.',
+      'PRE_DEPLOY_SHA bf1be9b6b superseded; runner fix now from canonical release (not hot-patch).',
+      'Post-deploy smoke session cc30f049-…: PRE-ARM 2356ms, FAST GO READY_TO_DRIVE in 1515ms.',
+      '7 autonomous cycles, 87 SIGNAL_POINT, AGGREGATE_BUCKET_V2, clean STOP; BullMQ queues empty.',
+      'DEPLOY_AUTH_ROOT_CAUSE: private repo HTTPS clone without VPS credentials; ephemeral gh token used.',
+      'POST_DEPLOY_STATIONARY_SMOKE=PASS; CANONICAL_VPS_REDEPLOY_VERIFIED=YES; motion HF canary next.',
+    ],
+    reason: 'Remove hot-patch deploy ambiguity after PR #1509 merge; verify canonical runtime on production.',
+    previousBehavior: 'Production on bf1be9b6b with hot-patched runner fix; canonical redeploy NOT VERIFIED.',
+    details: 'docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md (DI-EV-0022 amended).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T12:10:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-production-canary-2026-09-02',
+    version: '4.9.1031',
+    title: 'Phase 3A.3 — Combined production cutover + stationary canary',
+    summary: [
+      'Pre-migration safety gate passed; migration 20260902103000_reference_capture_physical_sample_unique applied.',
+      'Production deploy bf1be9b6b (3A.3.1 + 3A.3.2 code); unique index refcap_obs_session_physical_fp_uq valid.',
+      'Runner STARTING/RECORDING race fixed on main (82f3d9c5c); hot-patched on VPS — canonical redeploy outstanding.',
+      'PRE-ARM + HTTP FAST GO production canary on WOB L 7503: READY_TO_DRIVE in 1321ms (≤15s).',
+      '6 autonomous cycles, 82 SIGNAL_POINT observations, AGGREGATE_BUCKET_V2, clean STOP.',
+      'HF_HISTORICAL=0 (stationary/stale telemetry) — 3A.3.2 motion HF canary still required.',
+      'PHASE_3A3_1_PRODUCTION_VALIDATED=YES; PHASE_3A3_2_PRODUCTION_VALIDATED=NO; RD002 blocked.',
+    ],
+    reason: 'Authorized combined 3A.3 production cutover after safety gate; validate FAST GO and migration under live runtime.',
+    previousBehavior: 'Production on pre-3A.3 SHA; migration not applied; FAST GO untested in production.',
+    details: 'docs/audits/dimo-phase-3a3-production-canary-2026-09-02.md; DI-EV-0022.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T10:45:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a32-hf-watermark-aggregate-identity-2026-09-02',
+    version: '4.9.1030',
+    title: 'Phase 3A.3.2 — HF watermark + aggregate bucket identity remediation',
+    summary: [
+      'Per-field committed HF data watermarks (hfWatermarkByField); separate query coverage cursors (hfQueryCoverageByField).',
+      'Durable physical idempotency: PostgreSQL unique (session_id, physical_sample_fingerprint) + appendManyIdempotent skipDuplicates.',
+      'Watermark advances only from durably represented bucket identities after flushIdempotent().',
+      'V2 aggregate bucket fingerprint: field + canonical bucket ts + executed interval + aggregation (no value).',
+      'HF_PHYSICAL_IDENTITY_VERSION: AGGREGATE_BUCKET_V2 (new sessions); LEGACY_VALUE_V1 for active legacy sessions.',
+      'Query coverage advances to ACTUAL_QUERY_TO (requestStartedAt) only — not HTTP response boundary.',
+      'Previously active then silent fields: query FROM is coverage-driven, not stale data watermark.',
+      'Auto-flush durables included in same-cycle DATA watermark via enqueueAndMaybeFlush fingerprints.',
+      'Provider revision idempotency via revisionIdentity on providerEventFingerprint.',
+      'Legacy V1 hash forensic-only; active legacy sessions fail closed — new sessions V2 only.',
+      'PRODUCTION_PRE_MIGRATION_DUPLICATE_AUDIT required before deploy.',
+      'Crash/partial-batch/state-commit-failure retry tests; RD001 39-exclusion regression preserved.',
+      'PHASE_3A3_2_CODE_READY=YES; migration applied 2026-09-02; motion HF production canary pending before RD002.',
+    ],
+    reason:
+      'RD001 proved wall-clock HF watermark excluded 39 late buckets; correction pass closes durable idempotency gap and unbounded silent-field query window.',
+    previousBehavior:
+      'In-memory fingerprint dedup only; silent HF fields pinned query FROM to session start; value-inclusive fingerprint; hfWatermarkAt = requestStartedAt.',
+    details:
+      'docs/audits/dimo-phase-3a32-hf-watermark-aggregate-identity-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A32_HF_WATERMARK_AGGREGATE_IDENTITY_2026-09-02.md; DI-EV-0021.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T12:00:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02',
+    version: '4.9.1029',
+    title: 'Phase 3A.3.1 — FAST PRE-ARM / GO workflow remediation',
+    summary: [
+      'Split monolithic ARM into PRE-ARM (Nest bootstrap → READY) and FAST GO (production HTTP only).',
+      'PRE-ARM: reference-capture-lte-r1-prearm.ts leaves session READY without runner/recording.',
+      'FAST GO: reference-capture-lte-r1-fast-go.ts via authenticated POST .../start; 15s hard cap (max 15s, RD002 freeze).',
+      'Ambiguous POST /start timeout → bounded reconciliation (abort + verify); never silent return.',
+      'AMBIGUOUS_START_SESSION_FENCING: READY sessions fenced/aborted after ambiguous START to block delayed CAS.',
+      'STATE_MACHINE_COMPENSATION_OWNERSHIP: start failure rollback STARTING→READY via CAS only; cannot resurrect ABORTED.',
+      'SIGNAL_POINT-only persistence gate; PROBE_RESULT/SEGMENT/NATIVE_EVENT are diagnostics only.',
+      'Configurable prearm freshness REFERENCE_CAPTURE_PREARM_MAX_AGE_MS (default 15 min).',
+      'PHASE_3A3_1_PRODUCTION_VALIDATED=YES (DI-EV-0022 FAST GO 1321ms); 3A.3.2 motion HF pending.',
+    ],
+    reason: 'RD001 703.987s operator wait — ARM workflow reliability defect; production FAST GO validated DI-EV-0022.',
+    previousBehavior: 'Single ARM script bootstrapped full Nest and blocked operator for minutes before trustworthy GO.',
+    details:
+      'docs/audits/dimo-phase-3a31-fast-prearm-go-remediation-2026-09-02.md; architecture/DIMO_LTE_R1_PHASE_3A31_FAST_PREARM_GO_2026-09-02.md; DI-EV-0020.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T00:00:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-reference-drive-001-evidence-closure-2026-09-02',
+    version: '4.9.1028',
+    title: 'Phase 3A.3 — RD001 evidence closure micro-pass',
+    summary: [
+      'Deprecated uniquePhysicalSamples in session summary; canonical hfAggregateBucketObservationCount=1333.',
+      'Corrected availability-lag lower bound: 4 open buckets excluded; closed-only min=0.001s P50=1.489s (no negative lag).',
+      'Frozen 122-row HF_AGGREGATE_BUCKET_OBSERVATION differential artifact with watermark + closure per row.',
+      '39 field×bucket DEFINITELY_EXCLUDED vs 8 unique bucket-start timestamps explicitly reported.',
+      'Master Plan RD002 gate unified: 3A.3.1 FAST GO + 3A.3.2 watermark/fingerprint remediation + canary before RD002.',
+    ],
+    reason: 'Evidence closure on PR #1502 before merge; sealed raw export unchanged.',
+    previousBehavior: 'Stale physical-sample terminology; negative lag min; aggregate-only watermark counts; ambiguous RD002 gate.',
+    details:
+      'dimo-lte-r1-reference-drive-001-hf-late-arrival-differential.json; reference-capture-hf-aggregate-bucket-analysis.ts; DI-EV-0016 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T04:45:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-reference-drive-001-exact-window-replay-normalized-2026-09-02',
+    version: '4.9.1027',
+    title: 'Phase 3A.3 — RD001 exact-window replay normalization + watermark causality',
+    summary: [
+      'Timestamp canonicalization fixed for aggregate bucket identity (…25.500Z ≡ …25.5Z); prior 15 “removed” buckets were serialization artifacts.',
+      'Normalized exact-window replay (13 windows): unchanged=1333, new=122, removed=0; problematic ARM window corrected from unchanged=0/removed=15 to unchanged=15/new=10.',
+      'Watermark causality: 39 NEW buckets DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK — HF_LATE_ARRIVAL_RUNTIME_SKIP=CONFIRMED_FROM_RUNTIME.',
+      'Provider availability lag lower bound P50≈1.49s (not network latency); DIMO authority corrected to telemetry-api @ 98d8853.',
+      '151s gap matrix wording fixed (PROVIDER_DATA_GAP; ARM attribution INVALIDATED); DEVICE_RAW_SAMPLE_CADENCE=UNKNOWN preserved.',
+    ],
+    reason: 'Final RD001 exact-window replay normalization on PR #1502; sealed raw export unchanged.',
+    previousBehavior: 'Replay compared raw RFC3339 strings; dq-only authority citation; HF_LATE_ARRIVAL_RUNTIME_SKIP unproven.',
+    details:
+      'reference-capture-hf-aggregate-bucket-analysis.ts; reference-capture-drive-001-hf-exact-window-replay.ts; architecture/DIMO_LTE_R1_RD001_HF_AGGREGATION_SEMANTICS_2026-09-01.md; DI-EV-0016 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T04:00:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-reference-drive-001-aggregation-semantics-2026-09-01',
+    version: '4.9.1026',
+    title: 'Phase 3A.3 — RD001 HF aggregation semantics correction',
+    summary: [
+      'DIMO signals(interval:"1s", agg:AVG) confirmed as 1s aggregation buckets anchored to query from — not raw LTE_R1 physical samples.',
+      'Prior 225 post-hoc-only physical sample claim INVALIDATED_BY_AGGREGATION_GRID_MISMATCH (300s chunk grid mismatch).',
+      'Exact-window replay of 13 original HF requests: 137 new aggregate buckets, 15 removed, 0 changed values — HF_LATE_ARRIVAL_AGGREGATE_BUCKET=CONFIRMED_FROM_RUNTIME.',
+      '151s gap reclassified PROVIDER_DATA_GAP inside single aggregation response; upstream data stall after ~19:14 CONFIRMED_FROM_RUNTIME.',
+      'physicalSampleFingerprint documented as aggregate bucket semantic debt; PHYSICAL_SAMPLE_FINGERPRINT_REMEDIATION_REQUIRED=YES.',
+    ],
+    reason: 'Aggregation semantics correction on PR #1502 before merge; sealed raw export unchanged.',
+    previousBehavior: 'HF forensic treated signals() rows as physical samples; chunked post-hoc compare used mismatched bucket grids.',
+    details:
+      'architecture/DIMO_LTE_R1_RD001_HF_AGGREGATION_SEMANTICS_2026-09-01.md; reference-capture-drive-001-hf-exact-window-replay.ts; DI-EV-0016–0019 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-02T03:20:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-reference-drive-001-hf-completeness-forensic-2026-09-01',
+    version: '4.9.1025',
+    title: 'Phase 3A.3 — Reference Drive #001 HF completeness / late-arrival forensic audit',
+    summary: [
+      'Post-hoc full-window DIMO HF query vs sealed RD001: 1333 sealed vs 1397 post-hoc physical samples; 225 post-hoc-only in active HF window.',
+      'HF watermark confirmed wall-clock (`hfWatermarkAt = now` even on zero rows) — CONFIRMED_FROM_CODE_RISK.',
+      'No HF provider data after ~19:15 in post-hoc query; LATEST provider timestamps frozen at ~19:14:03 while polling continued to 19:34:48.',
+      '151s gap reclassified BOUNDARY_GAP (ARM recovery inside bulk HF window). Session summary fingerprint bloat removed.',
+      'HF_WATERMARK_REMEDIATION_REQUIRED=YES blocking RD002; Phase 3A.3.1 FAST GO still required.',
+    ],
+    reason: 'Forensic audit of why HF rows stopped at ~19:14 while capture continued; evidence correction on PR #1502.',
+    previousBehavior: '151s gap labeled PROVIDER_GAP; HF completeness unverified; session summary contained thousands of duplicate fingerprint strings.',
+    details:
+      'reference-capture-drive-001-hf-posthoc-forensic.ts; dimo-lte-r1-reference-drive-001-hf-posthoc-forensic.json; DI-EV-0016–0019 updated in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T22:10:00.000Z',
+  },
+  {
+    version: '4.9.1024',
+    title: 'Phase 3A.3 — Reference Drive #001 metrics methodology correction',
+    summary: [
+      'Corrected RD001 signal-quality analysis: out-of-order detection uses acquisition order (sequenceNumber), not providerTimestamp sort.',
+      'Provider cadence uses deduplicated unique provider timestamps; per-surface metrics (HF_HISTORICAL, LATEST_LIVE, LATEST_SLOW) separated.',
+      'Renamed latency metrics: providerSampleAgeAtIngressMs (not network ingress); added httpRequestDurationMs and synqResponseBoundaryMs.',
+      'Quantified HF historical backfill (~657 s pre-first-acquisition); fingerprint semantics clarified (HF-only, 38.6% coverage).',
+      'Signal dynamics classification: 18 DYNAMICALLY_INFORMATIVE, 10 STATIC_OR_CONTEXTUAL, 3 NON_NUMERIC_CONTEXT — not "all 31 useful".',
+      'Brake eligibility fix: acceleratorPedal/pressure substrings no longer imply brake capture. Next: Phase 3A.3.1 FAST ARM workflow.',
+    ],
+    reason: 'Methodology correction pass on PR #1502 before merge; sealed raw export unchanged.',
+    previousBehavior: 'Combined-surface metrics with invalid out-of-order detection and misleading ingress/cadence labels.',
+    details:
+      'reference-capture-signal-metrics.ts; reference-capture-drive-001-reanalyze.ts; DI-EV-0016–0018 corrected in place.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T20:30:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a3-reference-drive-001-capture-2026-09-01',
+    version: '4.9.1020',
+    title: 'Phase 3A.3 — Reference Drive #001 capture + STOP audit (telemetry only, no video GT)',
+    summary: [
+      'First real-motion LTE_R1 reference drive on VW Tiguan WOB L 7503: session `06638509-6213-419b-9df4-3def6c024f41`, `DIMO_LTE_R1_REFERENCE_DRIVE_001`.',
+      'Production STOP path verified (`RECORDING→STOPPING→COMPLETED`); 226 cycles, 3452 observations; HF_HISTORICAL ACTIVE (1333 rows vs 0 in 3A.2 stationary canary).',
+      'Sealed raw export on VPS (`PURGE_BLOCKED_REFERENCE_EVIDENCE`); machine-readable session summary + signal-quality metrics in `docs/audits/data/`.',
+      'VIDEO_GROUND_TRUTH_NOT_AVAILABLE — ARM workflow ~704 s acquisition-start gap prevented instrument-cluster video. RD002 required for video GT.',
+      'ARM_WORKFLOW_REMEDIATION_REQUIRED documented; no scoring/model changes.',
+    ],
+    reason: 'Phase 3A.3 — evidence freeze and telemetry audit for canonical Reference Drive #001 per DI governance.',
+    previousBehavior: 'Phase 3A.2 stationary canary only; no real-motion reference drive evidence.',
+    details:
+      'docs/audits/dimo-lte-r1-reference-drive-001-capture-report-2026-09-01.md; DI-EV-0016–0019; backend/scripts/ops/reference-capture-drive-001-stop-audit.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T19:35:00.000Z',
+  },
+  {
+    id: 'p1-8-3-2-n2-retrospective-audit-2026-09-01',
+    version: '4.9.1023',
+    title: 'P1.8.3.2 — N=2 retrospective production stability audit (EARLY_PASS)',
+    summary: [
+      'Read-only retrospective audit of production N=2 during ~2h39m continuous window after P1.8.3.1 attempt 3 PASS.',
+      'Topology: 2 replicas on SHA `3772d992d`, nginx dual-upstream healthy; scheduler snapshot A=FOLLOWER / B=LEADER; no split-brain signal observed in the limited log sample.',
+      'Queues stable; battery.v2 failed=64 unchanged (0 delta, backlog not reclassified); 2 new trips + 2 route artifacts; no duplicate-work signals.',
+      'ATE workers enabled but zero workload observed — UNEXERCISED for multi-replica certification. FIND-01..03 are observational notes (NEW_P3=0).',
+      'Verdict EARLY_PASS — HEALTHY_EARLY snapshot signal; INSUFFICIENT_WINDOW for retrospective coordination metrics. Evidence precision corrected (v3 final closure). OQ-18 / DEC-016 prod validation still pending.',
+    ],
+    reason: 'Establish first post-P1.8.3.1 N=2 stability evidence without live soak or production mutation.',
+    previousBehavior: 'P1.8.3.1 validated deploy gate; sustained N=2 runtime stability not yet retrospectively audited.',
+    details:
+      'architecture/P1_8_3_2_N2_RETROSPECTIVE_STABILITY_AUDIT_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T14:26:00.000Z',
+  },
+  {
+    id: 'p1-8-3-1-production-validation-2026-09-01',
+    version: '4.9.1022',
+    title: 'P1.8.3.1 — Production validation: scheduler convergence gate + INC-06 CLOSED',
+    summary: [
+      'First authoritative production validation of P1.8.3.1 deploy leader-convergence gate on SHA `3772d992d`.',
+      'Attempt 3: 6× transient `leaderCount=0` tolerated → converged to `leaderCount=1` in 14s → deploy PASS. No split brain.',
+      'INC-06 CLOSED. Attempts 1–2 rolled back (OQ-18 bootstrap); attempt 3 PASS. Authority pass: OQ IDs canonicalized, rollback semantics corrected, DEC-016 exact-SHA provenance implemented.',
+      'Post-deploy: N=2 SHA-coherent, nginx dual-upstream live, queues stable, no pipeline regression.',
+    ],
+    reason: 'Close INC-06 with production evidence that bounded convergence gate works without weakening split-brain detection.',
+    previousBehavior: 'P1.8.3.1 merged but not production-validated; deploy from stale current still used old verify path.',
+    details:
+      'architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_PRODUCTION_VALIDATION_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T11:50:00.000Z',
+  },
+  {
+    id: 'p1-8-3-1-deploy-leader-wait-hardening-2026-09-01',
+    version: '4.9.1021',
+    title: 'P1.8.3.1 — Deploy scheduler leader convergence gate (INC-06 remediation)',
+    summary: [
+      'Bounded scheduler leader convergence gate in multi-replica deploy lifecycle: `leaderCount=0` transient retry, `>1` immediate FAIL_SPLIT_BRAIN, 2 stable observations of `leaderCount=1` required.',
+      'Parameters: poll=2000ms, timeout=44000ms (formula-based, not blind sleep). Pure state machine + CLI (`vps-scheduler-leader-convergence-wait.mjs`) + shell integration.',
+      'Unit tests Cases A–H: 18/18 PASS. No production deploy executed.',
+      'INC-06 status: IMPLEMENTED_PENDING_PRODUCTION_VALIDATION.',
+    ],
+    reason: 'P1.8.3 deploy false-aborted on scheduler leader=0 at T+15s before election converged at T+35s; preserve INV-01 without weakening split-brain detection.',
+    previousBehavior: 'Single snapshot leader check immediately after replica health; no retry on transient zero leaders.',
+    details:
+      'architecture/P1_8_3_1_DEPLOY_LEADER_WAIT_HARDENING_2026-09-01.md; backend/scripts/ops/vps-multi-replica-deploy.util.mjs; vps-scheduler-leader-convergence-wait.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T12:00:00.000Z',
+  },
+  {
+    id: 'p1-8-3-post-merge-multi-replica-verification-2026-09-01',
+    version: '4.9.1020',
+    title: 'P1.8.3 — Post-merge multi-replica deploy verification + Scaling Process update',
+    summary: [
+      'First production exercise of merged #1472 multi-replica deploy path: restored N=2 (`synqdrive` :3001 LEADER + `synqdrive-b` :3002 FOLLOWER) on SHA `d6884ce`.',
+      'INC-05 CLOSED. Deploy auto-gate false-aborted on scheduler leader timing (0 leaders at T+15s); production healthy at T+35s (INC-06 P2 finding).',
+      'Updated `architecture/scaling-process/` CURRENT_STATE, envelopes, incidents, validation evidence; added `graph/nodes.yaml`.',
+      'Drift recurrence risk LOW for topology; deploy leader-wait hardening recommended (P1.8.3.1).',
+    ],
+    reason: 'Verify #1472 closes INC-05 and update canonical Scaling Process authority with live production evidence.',
+    previousBehavior: 'Production N=1 drift; #1472 merged but not yet deployed; scaling docs stale.',
+    details:
+      'architecture/P1_8_3_POST_MERGE_MULTI_REPLICA_VERIFICATION_2026-09-01.md; architecture/scaling-process/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T10:30:00.000Z',
+  },
+  {
+    id: 'p1-8-2-1-multi-replica-deploy-lifecycle-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8.2.1 — Multi-replica deployment lifecycle hardening',
+    summary: [
+      '`vps-deploy-release.sh` now performs rolling restart of `synqdrive` (3001) and `synqdrive-b` (3002) via `pm2.production-ecosystem.config.cjs` with per-replica health/readiness verification.',
+      'Mixed-SHA protection: deploy fails + auto-rollback if secondary not restarted, health fails, scheduler leader ≠ 1, or nginx dual-upstream missing.',
+      'New `vps-rollback-production-release.sh` restores coherent same-SHA two-replica topology from captured deploy state.',
+      'Unit tests for deploy invariants (`vps-multi-replica-deploy.util.test.mjs`). No production deploy executed in this task.',
+    ],
+    reason: 'P1.8.2 left Replica B stale on future deploys — two-replica production must be a first-class deploy invariant.',
+    previousBehavior: 'Deploy restarted only `synqdrive`; health check polled 3001 only; no multi-replica rollback.',
+    details:
+      'architecture/P1_8_2_1_MULTI_REPLICA_DEPLOYMENT_LIFECYCLE_HARDENING_2026-08-31.md; lib/vps-production-replica.lib.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T20:15:00.000Z',
+  },
+  {
+    id: 'scaling-process-knowledge-graph-bootstrap-2026-09-01',
+    version: '4.9.1017',
+    title: 'Scaling Process — canonical knowledge graph & architecture authority bootstrap',
+    summary: [
+      'Established `architecture/scaling-process/` as living authority for horizontal scaling: topology, P1.2–P1.8.2.1 phases, coordination layers (scheduler leader, DIMO budget, reconciliation mutex), BullMQ model, deploy lifecycle, incidents, scaling envelopes, decision log, validation evidence.',
+      'Read-only production snapshot 2026-09-01: effective N=1 (`synqdrive-b` absent) while nginx retains dual-upstream — documents INC-05 / validates need for P1.8.2.1 (#1472).',
+      'No runtime changes. Agent maintenance policy requires future scaling work to update this authority.',
+    ],
+    reason: 'Enable independent agents to understand scaling architecture without reconstructing full PR history.',
+    previousBehavior: 'Scaling knowledge scattered across P1_* memos, ChangesView, and phase reports without unified graph.',
+    details:
+      'architecture/scaling-process/; SCALING_PROCESS_BOOTSTRAP_FINAL_RESPONSE_2026-09-01.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T09:15:00.000Z',
+  },
+  {
+    id: 'fuel-station-enrichment-phase-f-ui-2026-09-01',
+    version: '4.9.1019',
+    title: 'Fuel Station Enrichment Phase F — trip timeline UI integration',
+    summary: [
+      'Extended existing `TripTimelineEnergyCard` to present persisted `stationEnrichment` on REFUEL events from the trips-timeline payload.',
+      'Deterministic trust-aware presentation: confirmed station identity (MATCHED+trusted), possible/ambiguous/resolving states, coordinate fallback preserved.',
+      'Detection `confidence` pill unchanged; station match confidence never conflated. i18n across all rental locales.',
+      'Zero extra HTTP requests — reads Phase E nested DTO only. No resolver/worker/detection changes.',
+    ],
+    reason: 'Phase F — make post-cutover tank events operationally useful in Fahrverlauf without a parallel timeline.',
+    previousBehavior: 'REFUEL cards showed detection metrics and raw coordinates only; enrichment API field was ignored.',
+    details:
+      'architecture/FUEL_STATION_ENRICHMENT_UI_PHASE_F_2026-09-01.md; trips-fuel-station-enrichment.ts, trip-timeline-shared.tsx.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-01T03:35:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a2-production-preflight-canary-2026-08-31',
+    version: '4.9.1017',
+    title: 'Phase 3A.2 — Production deploy + runtime preflight + controlled LTE_R1 canary',
+    summary: [
+      'Deployed Phase 3A.1 (#1468) to production with deploy fixes: WorkersModule DI export (`b88da0c9a`) and DIMO dataSummary schema field names (`d6cbcd842`).',
+      'Migrations applied; `reference_capture_sessions` + `reference_capture_observations` live. `REFERENCE_CAPTURE_ENABLED=true` enabled after health check.',
+      'Stationary controlled canary on VW Tiguan LTE_R1: 5 autonomous BullMQ cycles, 52 observations (33 mapped / 18 unmapped), timestamp contract 52/52 pass, clean STOP.',
+      'Surfaces: LATEST_LIVE + LATEST_SLOW DATA_CAPTURED; HF_HISTORICAL + NATIVE_EVENT_INCREMENTAL SUPPORTED_NO_DATA (stationary). Production topology preserved (single PM2 fork).',
+      'Verdict: Phase 3A.2 DONE · REFERENCE_DRIVE_READY=YES. Instrumented reference drive explicitly NOT executed.',
+    ],
+    reason: 'Validate Flight Recorder foundation in production before instrumented reference drive.',
+    previousBehavior: 'Phase 3A.1 merged but not deployed; no production runtime evidence.',
+    details: 'docs/audits/dimo-phase-3a2-production-preflight-canary-2026-08-31.md; session e8613cc7-223b-4436-8f30-0f8002ff8919',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T21:30:00.000Z',
+  },
+  {
+    id: 'dimo-phase-3a1-flight-recorder-foundation-2026-08-31',
+    version: '4.9.1017',
+    title: 'Phase 3A.1 — DIMO LTE_R1 Flight Recorder foundation + pre-recorder preflight',
+    summary: [
+      'Isolated reference-capture module under `vehicle-intelligence/reference-capture/` gated by `REFERENCE_CAPTURE_ENABLED` (default false).',
+      'Postgres tables `reference_capture_sessions` + `reference_capture_observations` with envelope v1.0.0 (nullable canonicalKey, DIMO:: rawIdentity for unmapped fields).',
+      'Dynamic broad per-vehicle discovery from `availableSignals` + `signalsLatest`; broad native events via unfiltered DIMO `events` query.',
+      'Session lifecycle CREATED→PREFLIGHT→READY→RECORDING→COMPLETED; `queryGraphQLWithIngressTiming` captures synqReceivedAt at HTTP ingress (RP-039).',
+      'PRE_RECORDER_BLOCKER resolved: RP-010 batch/backpressure, RP-040 wire contract, RP-044 mass binding, RP-045 180d retention policy.',
+    ],
+    reason: 'First implementation phase of Driving Intelligence Reconstruction Phase 3A — measurement/evidence infrastructure before reference drive.',
+    previousBehavior: 'Phase 2F.1 manifest frozen; no Flight Recorder code or persistence.',
+    details: 'architecture/DIMO_LTE_R1_FLIGHT_RECORDER_REFERENCE_CAPTURE_2026-08-31.md; docs/audits/dimo-phase-3a1-flight-recorder-foundation-2026-08-31.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T22:00:00.000Z',
+  },
+  {
+    id: 'fuel-station-enrichment-phase-e-api-2026-08-31',
+    version: '4.9.1018',
+    title: 'Fuel Station Enrichment Phase E — read-only API exposure on Energy Events',
+    summary: [
+      'Extended existing `GET /vehicles/:id/energy-events` and `trips-timeline` Energy Event DTO with optional `stationEnrichment` nested projection.',
+      'Single Prisma `findMany` include on `fuelStationEnrichment` — no N+1, no resolver/PostGIS on HTTP path.',
+      '`trusted` reuses Phase D `isTrustedFuelStationAssignment` (MATCHED + HIGH/MEDIUM). Detection `confidence` remains separate from `matchConfidence`.',
+      'Read-only — no worker/resolver/detection changes; no backfill; no frontend (Phase F).',
+    ],
+    reason: 'Phase E — expose persisted fuel-station enrichment to API consumers via existing Fahrverlauf timeline path.',
+    previousBehavior: 'Energy Event API returned detection fields only; enrichment rows existed in DB but were not exposed.',
+    details:
+      'architecture/FUEL_STATION_ENRICHMENT_API_EXPOSURE_PHASE_E_2026-08-31.md; backend energy-events-station-enrichment.dto.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T20:15:00.000Z',
+  },
+  {
+    id: 'p1-8-2-controlled-production-scale-to-2-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8.2 — Controlled production scale-to-2 + multi-replica validation',
+    summary: [
+      'Production scaled PM2 fork ×1 → ×2: `synqdrive` port 3001 + `synqdrive-b` port 3002, same SHA `bfcf9ddb7`, shared Postgres/Redis DB 0.',
+      'nginx dual upstream (`synqdrive_backend` 3001+3002); singleton scheduler leader verified (9×5s ticks); controlled failover 32s (A stop → B leader → A restart).',
+      'Coordination probe on Redis DB 0: mutex same-vehicle concurrency=1, DIMO global ceiling 50/45 observed, no limit breach. Queues stable; battery.v2 failed=65 unchanged.',
+      'Verdict SCALE_TO_2_SUCCESS. Next: P1.8.3 post-scale retrospective audit.',
+    ],
+    reason: 'P1.8.2 gate — execute authorized controlled scale with active validation (not soak).',
+    previousBehavior: 'Production replica=1 only; nginx single upstream 3001; scale deferred until P1.8.2 pre-scale deploy PASS.',
+    details:
+      'architecture/P1_8_2_CONTROLLED_PRODUCTION_SCALE_TO_2_2026-08-31.md; VPS log p182-scale-to-2-20260831194121.log.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T19:45:00.000Z',
+  },
+  {
+    id: 'p1-8-1-pre-scale-remediation-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8.1 Pre-Scale Remediation — orphan validation cleanup + battery.v2 forensics',
+    summary: [
+      'Orphan Node on port 3010 (Redis DB 15) traced to Phase C detached restart in `two-replica-process-validation-probe.mjs`; production orphan removed; harness trap now kills tracked PIDs + port listeners.',
+      '67 `battery.v2` failed jobs classified: 43 legacy `missing restWindowId`, 18 REST pending false-failures (7 in soak), 2 lock contention, 4 Prisma — soak failures were not primarily LOCK_CONTENTION.',
+      'REST pending liveness fix already on main (#1445); production deploy at replica=1 required before scale-to-2. No queue purge / no scale in this task.',
+    ],
+    reason: 'P1.8 GO_WITH_CONDITIONS gate — resolve P2 findings before controlled PM2 scale-to-2.',
+    previousBehavior: 'Validation harness could leave detached NestJS on 3010; deployed SHA threw on retryable REST pending → BullMQ FAILED.',
+    details: 'architecture/P1_8_1_PRE_SCALE_REMEDIATION_2026-08-31.md; harness: validation-process-tracked-pids.util.mjs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T18:15:00.000Z',
+  },
+  {
+    id: 'p1-8-24h-single-replica-soak-audit-2026-08-31',
+    version: '4.9.1017',
+    title: 'P1.8 — 24h single-replica soak retrospective audit + scale-to-2 gate',
+    summary: [
+      'Retrospective production audit for soak window 2026-08-30T14:58:42Z → 2026-08-31T14:58:42Z on SHA 3874360e0 (PM2 fork ×1, Redis DB 0).',
+      'Verdict GO_WITH_CONDITIONS: stable 27h runtime, no post-soak PM2 restarts, scheduler leader singleton, mutex/DIMO budget healthy, no route/energy/trip-loss regression.',
+      'Pre-soak Prometheus duplicate-metric incident (85c3cd8e0) remediated; 0 recurrences during soak. Recommend CI SYNQDRIVE_BOOT_CHECK=1 gate.',
+      'Conditions: terminate orphan validation Node :3010 (Redis DB 15); review battery.v2 failed backlog (67). SCALE_TO_2 not executed.',
+    ],
+    reason: 'P1.8 gate — evidence-based scale-to-2 decision from logs, PM2, Prometheus, Redis, Postgres; no production mutations.',
+    previousBehavior: 'P1.3-S6 left soak running; scale-to-2 deferred pending 24h evidence.',
+    details:
+      'architecture/P1_8_24H_SINGLE_REPLICA_SOAK_RETROSPECTIVE_AUDIT_2026-08-31.md. ArchitekturView P1.8 entry.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T18:05:00.000Z',
+  },
+  {
+    id: 'fuel-station-enrichment-phase-d-2026-08-31',
+    version: '4.9.1016',
+    title: 'Fuel Station Enrichment Persistence + Worker V1 (Phase D)',
+    summary: [
+      'Prisma `VehicleEnergyEventFuelStationEnrichment` (1:1, ON DELETE CASCADE) with separate processing vs resolution status.',
+      'BullMQ queue `energy.refuel.station.enrich` + post-persist hook in `EnergyEventsService.upsertSegment()` (REFUEL only, best-effort).',
+      'Trust policy: `MATCHED` + HIGH/MEDIUM only; coordinate V1 = `startLatitude`/`startLongitude`.',
+      'Feature flags: `FUEL_STATION_ENRICHMENT_ENABLED` (default false), cutover + bounded recovery. No API/frontend changes.',
+    ],
+    reason: 'Phase D — async orchestration layer after calibrated resolver; deploy schema/code separately from production enablement.',
+    previousBehavior: 'Resolver V1 read-only; no enrichment persistence or worker.',
+    details: 'architecture/FUEL_STATION_ENRICHMENT_PERSISTENCE_WORKER_V1_2026-08-31.md; audit PB-19.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-31T21:30:00.000Z',
+  },
+  {
+    id: 'fuel-station-resolver-v1-phase-c-2026-08-30',
+    version: '4.9.1015',
+    title: 'Fuel Station Resolver V1 (Phase C — calibrated)',
+    summary: [
+      '`FuelStationLocationResolverService` resolves WGS84 coordinates against `osm.fuel_stations` with geometry-aware scoring, ambiguity model, and conservative dedupe.',
+      'Calibration gate (PB-18): 28 stations, 672 offset probes, 92% strict / 94.5% physical precision on live OSM data.',
+      'Probe CLI: `npm run fuel-station:resolve`; calibration: `npm run fuel-station:calibrate`. 44 tests (33 unit + 11 Postgres).',
+      'Contract: `MATCHED` requires score ≥55 with defined confidence; Energy Event firewall unchanged.',
+    ],
+    reason: 'Phase C — prove station-match quality independently before enrichment persistence.',
+    previousBehavior: 'OSM dataset live but no application resolver.',
+    details: 'architecture/FUEL_STATION_RESOLVER_V1_2026-08-30.md; audit PB-17/PB-18.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T20:10:00.000Z',
+  },
+  {
+    id: 'osm-fuel-stations-dataset-b7-b12-2026-08-30',
+    version: '4.9.1014',
+    title: 'OSM fuel-station PostGIS reference dataset (B7–B12)',
+    summary: [
+      'Isolated `osm` schema + Geofabrik DE → osmium fuel-only filter → pyosmium lean import → validation gates → atomic promotion.',
+      'Production dataset `geofabrik-germany-20260830`: 18,195 stations; GiST indexes verified; nearest-station spatial queries use `fuel_stations_centroid_gist`.',
+      'Ops: `backend/scripts/ops/osm-fuel-stations/osm-fuel-stations-refresh.sh`, runbook `docs/runbooks/osm-fuel-stations-import.md`.',
+      'Energy Event firewall: no RefuelDetector, scoreConfidence, persist gates, API, or frontend changes.',
+    ],
+    reason:
+      'Phase B dataset layer only — geographic reference data for a future FuelStationResolver; audit docs/audits/fuel-station-osm-postgis-location-enrichment-audit-2026-08.md.',
+    previousBehavior: 'PostGIS enabled (B0/B1) but no `osm.fuel_stations` dataset.',
+    details:
+      'architecture/OSM_FUEL_STATIONS_DATASET_2026-08-30.md; audit PB-16. Dev Docker Postgres → postgis/postgis:16-3.4-alpine.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T18:47:00.000Z',
+  },
+  {
+    id: 'battery-v2-stage1-pipeline-defect-closure-2026-08-30',
+    version: '4.9.1014',
+    title: 'Battery V2 Stage 1 — pipeline defect closure (liveness, trip binding, REST temporal)',
+    summary: [
+      'Reconciliation directly arms missing LV_REST_WINDOW sessions; transient DLQ cleared per-entity on recovery enqueue only (no bulk pre-clear).',
+      'PENDING_EVALUATION defers to reconciliation cadence via isLvRestTargetAwaitingReconciliationReschedule — not stuck by isLvRestTargetAlreadyScheduled.',
+      'Orphaned ENQUEUED (no Bull job, no DLQ): reconciliation checks hasLiveJob(idempotencyKey) and transitions to PENDING_EVALUATION + recovery reschedule.',
+      'Session canonical identity at creation: trip_id + anchor = trip.endTime; mutation boundary verifies authoritative COMPLETED trip. No recurring historical backfill.',
+      '#1383/#1393 policies preserved; shadow only.',
+    ],
+    reason:
+      'Natural production traffic after #1383/#1393 exposed liveness hole after deploy, cross-trip trip_id mis-binding, and REST_60M/6H stuck ENQUEUED with PROVIDER_UNAVAILABLE dead letters.',
+    previousBehavior:
+      'Reconciliation enqueue-only recovery; DLQ permanently blocked re-enqueue; REST handler threw on retryable evaluation; ENQUEUED metadata blocked reschedule; FSM anchor could follow lastActivityAt ahead of trip.endTime.',
+    details:
+      'backend: reconciliation, handlers, producers, FSM, bridge, repository, scheduler (+ specs). architecture/BATTERY_V2_STAGE1_PIPELINE_DEFECT_CLOSURE_2026-08-30.md. No schema/flag/deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T16:45:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-3-s4-reconciliation-2-2026-08-30',
+    version: '4.9.1013',
+    title: 'P1.3-S4 reconciliation #2 — #1440 VPS validation + full S4/P1.3/P1.7/P1.4 stack',
+    summary: [
+      'Merged origin/main (#1440 TRUE process-level VPS validation) into PR #1429 without dropping S4 guarantees.',
+      'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Changelog merge only in ChangesView; runtime tree auto-merged (trip-reconciliation, ArchitekturView, VPS harness).',
+      'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty after main advanced with #1440 — semantic merge preserves both sides.',
+    previousBehavior:
+      'PR frozen at f1344cb07; main had VPS process-level validation records not on branch.',
+    details:
+      'Merge commit reconciles ChangesView + retains architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_*.md from main.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T12:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-3-s4-main-reconciliation-2026-08-30',
+    version: '4.9.1010',
+    title: 'P1.3-S4 main reconciliation — stacked gateway + global provider budget',
+    summary: [
+      'Merged origin/main (#1417 global budget, #1430 scheduler leader) into PR #1429 without dropping S4 guarantees.',
+      'DimoTelemetryService: DimoProviderGateway (canary/shadow) → DimoRequestExecutor (Redis lease semaphore) → HTTP.',
+      'DimoModule restores S4 gateway providers alongside DimoProviderBudgetModule.',
+      'Repository-wide provider call-site audit re-run post-merge; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty — semantic merge preserves P1-001 context propagation and main global budget.',
+    previousBehavior:
+      'Conflicting stacks: S4 branch gateway-only vs main executor-only telemetry wiring.',
+    details:
+      'See architecture/P1_3_S4_MAIN_RECONCILIATION_2026-08-30.md. Production default remains shadow; global enforce OFF.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T12:00:00.000Z',
+  },
+  {
+    id: 'staging-true-process-validation-p13-p17-p14-2026-08-30',
+    version: '4.9.1010',
+    title: 'TRUE process-level multi-replica validation — P1.3 + P1.7 + P1.4 (VPS)',
+    summary: [
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=YES — two real NestJS PIDs on VPS ports 3010/3011 sharing Postgres + Redis DB 15.',
+      'P1.7: leaderCountMax=1, graceful failover 7863ms, crash+restart failover 10257ms, splitBrain=NO.',
+      'P1.4: same-vehicle mutex concurrency=1 via forked OS processes; unrelated vehicles parallel.',
+      'P1.3: global DIMO lease ceiling 10/13 workers — limit not breached (simplified Lua probe).',
+      'CONDITIONALLY_CERTIFIED — Redis DB 15 isolation; N1000/provider ceiling NOT verified; prod PM2 unchanged.',
+      'Harness: backend/scripts/ops/vps-two-replica-process-validation.sh + coordination/leader probes.',
+    ],
+    reason:
+      'Close TRUE_PROCESS_LEVEL_MULTI_REPLICA gap after PR #1438 logical twin validation.',
+    previousBehavior:
+      'PR #1438 CONDITIONAL_PASS with logical twin replicas only (TRUE_PROCESS_LEVEL_MULTI_REPLICA=NO).',
+    details:
+      'architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_P1_3_P1_7_P1_4_2026-08-30.md; architecture/STAGING_TRUE_MULTI_REPLICA_VALIDATION_FINAL_RESPONSE_2026-08-30.md; backend/scripts/ops/vps-two-replica-process-validation.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-3-s4-final-main-reconciliation-2026-08-30',
+    version: '4.9.1012',
+    title: 'P1.3-S4 final main reconciliation — P1.4 mutex + multi-replica gate + S4 stack',
+    summary: [
+      'Merged latest origin/main (#1435 P1.4 reconciliation mutex, #1438 staging multi-replica gate) into PR #1429.',
+      'TripReconciliationService: mutex → runWithDimoRequestContext → DIMO with canonical org/vehicle/token context.',
+      'Preserved stacked DimoProviderGateway → DimoRequestExecutor → HTTP; scheduler leader + mutex + budget coexist.',
+      'Post-merge provider call-site audit re-run; CATEGORY_C must remain zero.',
+    ],
+    reason:
+      'PR #1429 mergeable_state=dirty after main advanced — semantic merge preserves S4, P1.3, P1.7, P1.4, and #1438 validation.',
+    previousBehavior:
+      'PR reconciled only through 9a1f7e3b; P1.4 mutex and staging gate missing on branch.',
+    details:
+      'trip-reconciliation.service.ts auto-merged with mutex + requestContext. See reconciliation commit message.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T11:15:00.000Z',
+  },
+  {
+    id: 'dimo-provider-p1-001-final-remediation-2026-08-30',
+    version: '4.9.1009',
+    title: 'P1.3-S4 P1-001 final remediation — complete registered-vehicle context propagation',
+    summary: [
+      'Repository-wide audit: 49 provider call sites; zero registered-vehicle paths missing org/vehicle context.',
+      'Fixed trip enrichment, behavior enrichment, LTE_R1 braking intake, shadow detector, event-context, misuse reconcile, segment validation, battery proxy, live GPS.',
+      'Architectural guard: dimo-provider-call-site-audit.spec.ts fails CI on new category-C regressions.',
+      'Canary cross-path consistency regression tests for org/vehicle/percent canary.',
+    ],
+    reason:
+      'Independent re-review found P1-001 still NOT_FIXED — first remediation missed enrichment subsystem callers.',
+    previousBehavior:
+      'Percent/vehicle/org canary inconsistent on trip enrichment and related registered-vehicle DIMO paths.',
+    details:
+      'See architecture/P1_3_S4_P1_001_CALL_SITE_AUDIT.md. P1-002 cooldown lifecycle unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:00:00.000Z',
+  },
+  {
+    id: 'staging-multi-replica-validation-p13-p17-p14-2026-08-30',
+    version: '4.9.1009',
+    title: 'Staging multi-replica validation gate — P1.3 + P1.7 + P1.4',
+    summary: [
+      'CONDITIONAL_PASS: 382 local integration tests across scheduler leader, reconciliation mutex, DIMO budget, P1.2 trip-loss, Route V2.',
+      'Cross-system gate spec: staging-multi-replica-p13-p17-p14.gate.spec.ts (leader→mutex→budget).',
+      'TRUE_PROCESS_LEVEL_MULTI_REPLICA=NO — Docker unavailable; logical twin replicas only.',
+      'DUPLICATE_SINGLETON_TICKS=0, DOUBLE_RECONCILIATION_EXECUTION=0, DIMO_LIMIT_BREACHED=NO.',
+      'N1000_CERTIFICATION remains CONDITIONAL — VPS 2-replica soak still required.',
+    ],
+    reason:
+      'Validate merged P1.3/P1.7/P1.4 coordination before staging scale-to-2.',
+    previousBehavior:
+      'Individual stage proofs existed; no combined cross-system validation artifact.',
+    details:
+      'architecture/STAGING_MULTI_REPLICA_VALIDATION_P1_3_P1_7_P1_4_2026-08-30.md; backend/src/shared/staging-multi-replica/*.gate.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:36:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-review-remediation-2026-08-30',
+    version: '4.9.1008',
+    title: 'P1.3-S4 independent review remediation — requestContext + cooldown gauge',
+    summary: [
+      'P1-001: canonical buildDimoProviderRequestContext() threaded through all DIMO telemetry/segments gateway paths.',
+      'Production callers updated: snapshot, DTC, energy events, trip reconciliation/orchestration, capability preflight, recharge.',
+      'P1-002: cooldown_active gauge syncs on limiter begin(); recordCooldownCleared() on expiry; repeated 429 extends cooldown.',
+      'Regression: dimo-provider-request-context-propagation.spec.ts + dimo-provider-cooldown-lifecycle.spec.ts (13 tests).',
+    ],
+    reason:
+      'Independent production-readiness review (PR #1429) found P1-001 context gaps and P1-002 stuck cooldown gauge.',
+    previousBehavior:
+      'Percent/vehicle canary only reliable on snapshot path; cooldown_active stayed 1 after first 429.',
+    details:
+      'SHA 772757147. Production default remains shadow. No global enforce. See architecture/P1_3_WORKFLOW_HANDOFF_DE_2026-08-30.md §15.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T09:20:00.000Z',
+  },
+  {
+    id: 'reconciliation-execution-mutex-p1-4-2026-08-30',
+    version: '4.9.1008',
+    title: 'P1.4 — Reconciliation execution mutex / multi-replica safety',
+    summary: [
+      'Redis per-vehicle reconciliation execution mutex via ReconciliationExecutionMutexService.',
+      'Key: synqdrive:reconciliation:lock:{organizationId}:{vehicleId}:trip — serializes trip boundary repair mutations.',
+      'TripReconciliationService.reconcileWindow + onStuckTrip converge through mutex; fail-closed on Redis outage.',
+      'Contention policy SKIPPED_LOCKED — next scheduled tier catches up; no retry storm.',
+      'Token-safe acquire/renew/release using RedisDistributedLockService (P1.7 primitives).',
+      'BullMQ workers remain multi-replica; P1.7 scheduler leader unchanged.',
+      'Metrics: synqdrive_reconciliation_mutex_* (bounded labels).',
+    ],
+    reason:
+      'P1.4 — prevent duplicate concurrent trip reconciliation across replicas after P1.7 scheduler leader election.',
+    previousBehavior:
+      'P1.7 prevented duplicate scheduler ticks only; manual/API/event paths could overlap on same vehicle.',
+    details:
+      'backend: shared/reconciliation-execution-mutex/*, TripReconciliationService integration. architecture/P1_4_RECONCILIATION_EXECUTION_MUTEX_*.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T10:15:00.000Z',
+  },
+  {
+    id: 'dimo-global-provider-budget-p1-3-2026-08-29',
+    version: '4.9.1007',
+    title: 'P1.3 — Global DIMO provider budget (Redis lease semaphore)',
+    summary: [
+      'Redis-backed global DIMO provider budget via DimoProviderBudgetService + DimoRequestExecutor.',
+      'All DIMO HTTP paths wrapped: telemetry GraphQL, auth/token exchange, identity sync, triggers REST.',
+      'Lease-based semaphore (ZSET + Lua): atomic acquire/release, TTL crash recovery, multi-replica safe.',
+      'FAIL CLOSED on Redis outage — jobs retry, no provider flood.',
+      '429 Retry-After parsing + provider cooldown; bounded exponential backoff for 5xx/timeouts.',
+      'Category priorities: ACTIVE_TRIP > LIVE_SNAPSHOT > RECONCILIATION > enrichment > HEALTH > IDENTITY.',
+      'Queue backpressure: snapshot enqueue defer when waiting backlog ≥ 500.',
+      'Metrics: synqdrive_dimo_global_in_flight, acquire_wait, 429_total, queue_oldest_job_age.',
+      'N≈1000: CONDITIONALLY_CERTIFIED — architecture proven; provider ceiling still unverified.',
+    ],
+    reason:
+      'P1.3 — make provider concurrency safe as fleet approaches N≈1000 with globally shared budget.',
+    previousBehavior:
+      'P1.2 bounded process-local BullMQ concurrency only; no cross-replica provider coordination.',
+    details:
+      'backend: provider-budget/*, dimo-telemetry/auth/api-sync/triggers integration, queue backpressure. architecture/DIMO_GLOBAL_PROVIDER_BUDGET_P1_3_2026-08-29.md + RUNBOOK.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T17:30:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-readiness-closure-2026-08-30',
+    version: '4.9.1011',
+    title: 'P1.3-S4 readiness closure — percent/vehicle canary, observability, chaos proofs',
+    summary: [
+      'Expanded deterministic canary: org allowlist + vehicle allowlist + stable FNV-1a percent hash by vehicleId.',
+      'New envs: DIMO_PROVIDER_ENFORCE_CANARY_ENABLED/PERCENT/ORG_IDS/VEHICLE_IDS (legacy org alias preserved).',
+      'Structured JSON logs: canary_selected, admission timeout, 429/403, cooldown, redis fail-open (throttled).',
+      'Prometheus: would_reject, enforce_deny, canary_requests, canary_enforced, cooldown_remaining gauges.',
+      'GO/NO-GO gates with concrete thresholds + staged rollout runbook (Stages 0–4, doc only).',
+      'Chaos matrix: 429/5xx/timeout storms, Redis fail-open/reconnect, admission timeout, replica safety.',
+      'Production default remains shadow — global enforce NOT enabled.',
+      'PERMANENT_TRIP_LOSS=NO; 159 unit tests green.',
+    ],
+    reason:
+      'P1.3-S4 readiness gate — complete production canary/enforcement readiness without enabling global enforce.',
+    previousBehavior:
+      'P1.3-S4 initial merge (#1428) had org-only canary and partial observability.',
+    details:
+      'backend: dimo-provider-rollout.util.ts, canary-hash, limiter-log, metrics, chaos spec. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T23:55:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s4-production-canary-2026-08-30',
+    version: '4.9.1006',
+    title: 'P1.3-S4 — DIMO provider production canary, rate smoothing & rollout safety',
+    summary: [
+      'Token-bucket rate smoothing (default) replaces per-second boundary bursts — same 20/s+burst5 budget.',
+      'Org-scoped canary enforce via DIMO_PROVIDER_CANARY_ENFORCE_ORG_IDS — deterministic, no random sampling.',
+      'Rollout states: OFF / SHADOW / CANARY_ENFORCE / GLOBAL_ENFORCE derived from existing DIMO_PROVIDER_LIMITER_MODE.',
+      'organizationId threaded from snapshot processor → telemetry → gateway for canary decisions.',
+      'Enhanced metrics: rollout_state, canary_match, token bucket tokens, admitted requests.',
+      'Config-only kill switch: GLOBAL_ENFORCE or CANARY → SHADOW without migration.',
+      'Production default remains shadow — global enforce NOT enabled.',
+      'PERMANENT_TRIP_LOSS=NO; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S4 — make DIMO provider enforcement safe to canary in production without global throttle activation.',
+    previousBehavior:
+      'P1.3-S3 enforce required global mode=enforce; per-second rate counter caused boundary bursts.',
+    details:
+      'backend: token bucket Lua, dimo-provider-rollout.util.ts, gateway canary resolution, metrics. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S4_PRODUCTION_CANARY_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T23:10:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s3-priority-backpressure-2026-08-30',
+    version: '4.9.1005',
+    title: 'P1.3-S3 — Priority-aware DIMO provider enforcement / backpressure',
+    summary: [
+      'Canonical P0–P4 provider priority taxonomy with centralized category→priority mapping.',
+      'DimoProviderAdmissionService: bounded backpressure in enforce mode only; shadow remains non-blocking default.',
+      'Priority-aware in-flight admission: reserved high-priority slots protect P0/P1 live traffic under contention.',
+      'Central HTTP 429 Retry-After → Redis provider cooldown shared across replicas.',
+      'DimoProviderAdmissionTimeoutError when max wait exceeded — existing schedulers own retry/defer (no duplicate loops).',
+      'Prometheus: admission wait, backpressure, cooldown, priority-labeled requests.',
+      'Real Redis CI proofs: live-vs-background, shared cooldown, enforce wait→grant.',
+      'PERMANENT_TRIP_LOSS=NO; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S3 — first real enforcement layer behind DimoProviderGateway with safe defaults (shadow) before production enforce rollout.',
+    previousBehavior:
+      'P1.3-S2 shadow limiter recorded would-reject without blocking; no priority lanes or Retry-After cooldown.',
+    details:
+      'backend: dimo-provider-admission.*, dimo-provider-priority.model.ts, limiter/gateway/metrics extensions. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S3_PRIORITY_BACKPRESSURE_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T22:40:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s2-redis-shadow-limiter-2026-08-29',
+    version: '4.9.1004',
+    title: 'P1.3-S2 — Redis-backed DIMO provider limiter (shadow mode)',
+    summary: [
+      'Redis-backed global DIMO provider limiter behind DimoProviderGateway — SHADOW mode default.',
+      'Hybrid model: per-second rate counter (internal 20/s + burst 5) + in-flight ZSET leases (max 40, 45s TTL).',
+      'Shadow evaluates ALLOW / WOULD_WAIT / WOULD_REJECT without blocking provider traffic; enforce only when DIMO_PROVIDER_LIMITER_MODE=enforce.',
+      'Redis failure fail-open — telemetry continues; synqdrive_dimo_provider_limiter_redis_errors_total.',
+      'Prometheus: requests, in-flight, shadow decisions, rate budget usage, 403/429/5xx/timeout, duration histogram.',
+      'Operation categories + P0–P3 priority classes prepared for S3 backpressure.',
+      'Gateway coverage guard preserved; trip/snapshot/reconciliation semantics unchanged.',
+    ],
+    reason:
+      'P1.3-S2 — introduce process-independent provider coordination infrastructure in non-behavioral shadow mode before S3 enforcement.',
+    previousBehavior:
+      'P1.3-S1 gateway pass-through only; no global rate or in-flight coordination across replicas.',
+    details:
+      'backend: dimo-provider-limiter.*, dimo-provider-metrics.service.ts, dimo-provider-http-classifier.ts, gateway integration. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S2_REDIS_SHADOW_LIMITER_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T20:35:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-s1-gateway-2026-08-29',
+    version: '4.9.1003',
+    title: 'P1.3-S1 — Canonical DIMO provider gateway foundation (pass-through)',
+    summary: [
+      'Introduced DimoProviderGateway as canonical telemetry HTTP control point — S1 pass-through only.',
+      'DimoTelemetryService.queryGraphQL routes through gateway; postGraphQL preserves 15s timeout + GQL error semantics.',
+      'fetchVehicleSummary/fetchVehicleVin wrapped in gateway with legacy 10s timeout and error semantics preserved.',
+      'Static guard: every this.client.post in dimoTelemetryService matches providerGateway.execute count.',
+      'NO limiter, NO Redis, NO backpressure, NO retry/error/JWT/queue/concurrency changes.',
+      'P1.2 trip-loss gates FINAL-3/31/32, FINAL-5/6, dimo-snapshot tests PASS.',
+    ],
+    reason:
+      'P1.3-S1 — establish canonical outbound DIMO telemetry gateway before global limiter (S2).',
+    previousBehavior:
+      'DimoTelemetryService called axios.post directly; fetchVehicleSummary/VIN bypassed queryGraphQL.',
+    details:
+      'backend: provider/dimo-provider-gateway.*, dimo-telemetry.service.ts, dimo-telemetry*.spec.ts. architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_S1_GATEWAY_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T19:10:00.000Z',
+  },
+  {
+    id: 'dimo-provider-concurrency-p1-3-phase0-audit-2026-08-29',
+    version: '4.9.1002',
+    title: 'P1.3 PHASE 0 — Global DIMO provider concurrency audit (design only)',
+    summary: [
+      'Phase 0 audit complete — NO implementation, NO deploy, NO env changes.',
+      'DIMO MCP unavailable; authoritative rate limits from DIMO FAQ: Hobbyist 10/s, Core 25/s per API service per client host.',
+      'No authoritative DIMO concurrency (in-flight) quota found.',
+      'Current global DIMO limiter: NO — process-local BullMQ concurrency only.',
+      'One-replica hot-path theoretical max ~24 concurrent telemetry HTTP (8 snapshot + 15 ACTIVE_TICK + reconcile).',
+      'Multi-replica multiplies in-flight: 4 replicas → ~96 hot-path HTTP without global coordination.',
+      'Production 403 case (tokenId 190497): persistent non-retryable telemetry denial; connectivity degradation gap documented.',
+      'Recommendation: Redis hybrid limiter (semaphore + token bucket) via canonical DimoProviderGateway.',
+      'P1.3 implementation slices P1.3-S1..S8 defined; N≈1000 not certifiable until P1.3 lands.',
+    ],
+    reason:
+      'P1.3 Phase 0 — establish authoritative evidence and architecture for global DIMO provider concurrency control before implementation.',
+    previousBehavior:
+      'P1.2 closed for N≤100 without global DIMO semaphore; FINAL-5/6 documented provider limit unknowns and process-local fan-out bounds.',
+    details:
+      'architecture/DIMO_PROVIDER_CONCURRENCY_P1_3_PHASE0_AUDIT_2026-08-29.md. ArchitekturView SnapshotPollingWorker note updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T18:30:00.000Z',
+  },
+  {
+    id: 'snapshot-polling-p1-2-post-merge-production-cutover-2026-08-29',
+    version: '4.9.1001',
+    title: 'P1.2 POST-MERGE — Production cutover PASS (PR #1409 merged + deployed)',
+    summary: [
+      'PR #1409 merged to main (d221e766) and deployed to production release 20260829171441_v4994.',
+      'Production topology reconfirmed: single PM2 fork synqdrive, Redis localhost, PostgreSQL operational.',
+      'Env updated pre-deploy: WORKER_SNAPSHOT_CONCURRENCY=8, TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=true, WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true.',
+      'Startup fleet envelope OK: connected=6, snapshotConcurrency=8 (within certified N≤100).',
+      'Queues stable post-deploy; no sustained backlog growth; activity-tier polling active (DimoPollLog + scheduler ticks).',
+      'Verdict: P1.2 PRODUCTION CUTOVER PASS WITH OBSERVATIONS — follow-up on isolated DIMO 403 for one vehicle.',
+      'P1.2 closed for current production envelope; N≈1000 remains P1.3.',
+    ],
+    reason:
+      'Post-merge production verification and cutover for P1.2 activity-tier snapshot polling + canonical partial-trip boundary repair.',
+    previousBehavior:
+      'Production on ea65d8b without P1.2 env tuning (WORKER_SNAPSHOT_CONCURRENCY=5, feature flags unset).',
+    details:
+      'architecture/SNAPSHOT_POLLING_P1_2_POST_MERGE_PRODUCTION_CUTOVER_2026-08-29.md. Deploy via cloud-agent-deploy.sh → vps-deploy-release.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T17:25:00.000Z',
+  },
+  {
+    id: 'snapshot-polling-p1-2-final6-current-prod-release-gate-2026-08-29',
+    version: '4.9.1000',
+    title: 'P1.2 FINAL-6 — Current-production release gate (SAFE TO MERGE current prod)',
+    summary: [
+      'FINAL-6 separates current-production safety from N≈1000 certification.',
+      'CURRENT PRODUCTION: SAFE TO MERGE PR #1409 — single PM2 fork, trip-loss invariants PASS, certified envelope N≤100.',
+      'N≈1000 TARGET: NOT CERTIFIED — P1.3 global DIMO semaphore still required.',
+      'Topology: CURRENT_PROD_REPLICAS=1; CAN_TWO_SCHEDULERS_DURING_DEPLOY=NO (pm2 restart + boot check exits before listen).',
+      'Load table N=10..250: default c=5 stable through N=50; N=100 marginal; recommend WORKER_SNAPSHOT_CONCURRENCY=8 for N≤100.',
+      'Process-local DIMO fan-out bound: 21 concurrent HTTP slots at defaults (not provider-certified).',
+      'Startup fleet-envelope WARN once per boot when fleet exceeds N=100 or concurrency under-provisioned.',
+      'Rollback flags tested: LEGACY_FIXED_CADENCE + PARTIAL_BOUNDARY_REPAIR_ENABLED=false do not orphan trips.',
+    ],
+    reason:
+      'PR #1409 FINAL-6 — certify release safety for actual current production topology independently of N≈1000 scale gate.',
+    previousBehavior:
+      'FINAL-5 mixed current-prod and N≈1000 into one DO NOT MERGE verdict.',
+    details:
+      'backend: current-prod-fleet-envelope.ts, p12-final6-current-prod-release-gate.spec.ts, dimo-snapshot.scheduler fleet WARN. architecture/SNAPSHOT_POLLING_P1_2_FINAL6_CURRENT_PROD_RELEASE_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T16:20:00.000Z',
+  },
+  {
+    id: 'snapshot-polling-p1-2-final5-production-scale-gate-2026-08-29',
+    version: '4.9.999',
+    title: 'P1.2 FINAL-5 — Production scale gate for PR #1409 (DO NOT MERGE)',
+    summary: [
+      'FINAL-5 verdict: DO NOT MERGE PR #1409 for N≈1000 production scale.',
+      'PROVIDER LIMIT UNKNOWN — no authoritative DIMO telemetry rate/concurrency quota in repo or config.',
+      'S1 N=1000: ~377 snapshot enqueues/min; default c=5 capacity ~37.5/min → ~339/min backlog growth.',
+      'Required snapshot concurrency: 51 (P50 8s), 95 (P95 15s), 189 (30s slow) — not certifiable without provider proof.',
+      'Single PM2 replica (synqdrive): leader election not required now; global DIMO semaphore required before N=1000.',
+      'Process-local max concurrent DIMO HTTP: 21 (defaults) to 801 (max env 200+200) — not globally coordinated.',
+      'Trip-loss invariants 1–10 PASS post FINAL-3; backlog degrades freshness, reconciliation repairs.',
+      'PostgreSQL boundary proof CI 5/5; Redis jobId dedup proof not executed.',
+      'Observability gaps: DIMO in-flight, 429/min, queue depth — mandatory before N=1000.',
+    ],
+    reason:
+      'PR #1409 FINAL-5 gate — certify operational safety at production scale without guessing provider limits.',
+    previousBehavior:
+      'FINAL-4 wired concurrency env and fast cohort but did not produce full workload matrices or merge certification.',
+    details:
+      'backend: p12-final5-workload-model.ts, p12-final5-production-scale-gate.spec.ts. architecture/SNAPSHOT_POLLING_P1_2_FINAL5_PRODUCTION_SCALE_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T15:50:00.000Z',
+  },
+  {
+    id: 'snapshot-polling-p1-2-final2-partial-trip-safety-gate-2026-08-29',
+    version: '4.9.998',
+    title: 'P1.2 FINAL-2 — Partial-trip / delayed-start safety gate (DO NOT MERGE)',
+    summary: [
+      'FINAL-2 verdict: DO NOT MERGE — delayed-start truncation + fragmented reconciliation blockers.',
+      'LONG_IDLE 30min poll + 5min start lookback → live trips lose up to ~29min physical prefix (A2/A3 executable tests).',
+      'RESTING 5min poll + confirmation delay → up to ~5min prefix truncation (A1).',
+      'Default shadow reconciliation suppresses full DIMO repair when suffix live trip overlaps — original start not recovered.',
+      'Enforce mode creates prefix + suffix canonical trips (fragments one physical drive).',
+      'P1.2 ~377 jobs/min at N=1000 is throughput-negative with concurrency=5 (capacity ~20–40/min).',
+      'Fast reconciliation cohort corrected: providerFetchedAt refresh makes ~100% of fleet fast-eligible, not 15–25%.',
+      '27 new executable safety-gate tests. Minimum safe path: cap LONG_IDLE cadence OR implement boundary-extend repair.',
+    ],
+    reason:
+      'PR #1409 FINAL-2 gate — prove P1.2 cannot silently truncate or fragment canonical trips when first observation is delayed by tier polling.',
+    previousBehavior:
+      'Prior gate addressed permanent total loss; did not test delayed-start partial trips or one-drive-one-canonical invariant.',
+    details:
+      'backend: start-boundary-window.util.ts, *safety-gate.spec.ts, fast-reconciliation-cohort.spec.ts, snapshot-throughput-capacity.spec.ts. architecture/SNAPSHOT_POLLING_P1_2_FINAL2_PARTIAL_TRIP_SAFETY_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T11:35:00.000Z',
+  },
+  {
+    id: 'snapshot-polling-p1-2-trip-loss-safety-gate-2026-08-29',
+    version: '4.9.997',
+    title: 'P1.2 FINAL — Trip-loss safety gate (promotion cadence fix + audit)',
+    summary: [
+      'Fixed promotion bypass: `requiresImmediateSnapshotPollOnPromotion()` now requires strict tier promotion via `isFasterSnapshotPollingTier()` — persistent RECENTLY_ACTIVE/ACTIVE_DRIVING activity no longer bypasses cadence every 30s tick.',
+      'Deterministic timeline tests for RECENTLY_ACTIVE (60s) and ACTIVE_DRIVING (30s) promotion then steady-state cadence.',
+      'Trip-loss safety gate audit (sections A–I): bootstrap sources, worst-case matrix C1–C7, reconciliation cohort independence, connectionStatus writers, vehicle status contract, repair enrichment chain, rollback procedure.',
+      'New tests: trip-reconciliation.scheduler.spec.ts (warm/cold token-only cohort), trip-repair-enrichment-chain.spec.ts (post-finalize + behavior enrichment).',
+      'Verdict: SAFE TO MERGE P1.2. P1.3+ untouched.',
+    ],
+    reason:
+      'PR #1409 final gate — prove P1.2 activity-tier polling cannot introduce permanent missed trips or unacceptable blind spots before merge.',
+    previousBehavior:
+      'Promotion bypass fired on every scheduler tick while activity signals persisted, even when effective tier was unchanged — could over-poll RECENTLY_ACTIVE vehicles.',
+    details:
+      'backend: derive-snapshot-polling-tier.ts, snapshot-polling-tier.types.ts, derive-snapshot-polling-tier.spec.ts, trip-reconciliation.scheduler.spec.ts, trip-repair-enrichment-chain.spec.ts. architecture/SNAPSHOT_POLLING_P1_2_TRIP_LOSS_SAFETY_GATE_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T11:05:00.000Z',
+  },
+  {
+    id: 'snapshot-activity-tier-polling-p1-2-2026-08-29',
+    version: '4.9.996',
+    title: 'P1.2 — Activity-tier DIMO snapshot polling (scalability)',
+    summary: [
+      'Replaced naive O(N) fleet-wide 30s snapshot enqueue with canonical activity-tier scheduling while preserving ACTIVE_DRIVING 30s cadence.',
+      'Tiers: ACTIVE_DRIVING (FSM active trip), RECENTLY_ACTIVE (live telemetry / movement), RESTING_STANDBY (<24h), LONG_IDLE (>24h). OFFLINE/HARD_OFFLINE are eligibility labels only — scheduler remains CONNECTED+token cohort; recovery owned by DimoVehicleSync/webhooks/episode reconciliation.',
+      'Promotion bypass: one-shot per tier transition (`isFasterSnapshotPollingTier`) — faster-tier activity signals enqueue immediately when promoting; steady-state cadence respected on unchanged tier.',
+      'Polling memory pruned each tick to current cohort; hysteresis state lost on restart is safe.',
+      'Single canonical `deriveSnapshotPollingTier()` reuses `classifyTelemetryFreshness`, VLS `sourceTimestamp`, trip FSM, and DIMO connection status — no competing freshness model.',
+      'Demotion hysteresis (default 90s hold) prevents tier flapping; `providerFetchedAt` gates due vehicles per tier interval.',
+      'Deterministic org round-robin interleaving before enqueue; `jobId=snapshot-{vehicleId}` dedup unchanged.',
+      'Rollback: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=true` restores pre-P1.2 behavior without DB migration.',
+      'Mixed-fleet simulation (5/15/60/20): N=1000 drops from ~2000 to ~377 jobs/min modeled steady-state.',
+    ],
+    reason:
+      'P1.1 audit: O(N) 30s polling produces ~2N snapshot jobs/min at N=1000 vs ~100/min consumer capacity (c=5). Activity-tier polling reduces demand before P1.3 provider semaphore.',
+    previousBehavior:
+      'Every DIMO-connected AVAILABLE/RENTED vehicle enqueued on every 30s scheduler tick regardless of activity.',
+    details:
+      'backend: workers/schedulers/snapshot-polling/*, dimo-snapshot.scheduler.ts. Env: WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED, WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE, WORKER_SNAPSHOT_TIER_*_MS. architecture/SNAPSHOT_ACTIVITY_TIER_POLLING_P1_2_2026-08-29.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T09:30:00.000Z',
+  },
+  {
+    id: 'energy-events-p13-s5-refuel-semantics-2026-08-30',
+    version: '4.9.996',
+    title: 'P1.3-S5 — REFUEL detection window vs fuel-level-rise semantics',
+    summary: [
+      'Additive nullable columns: fuelLevelRiseStart/End/DurationSeconds on vehicle_energy_events.',
+      'durationSeconds unchanged (DIMO detection envelope); RECHARGE semantics preserved.',
+      'deriveRefuelFuelLevelRise() from 30s fuel telemetry; conservative null when insufficient evidence.',
+      'REFUEL sibling reconciliation removes superseded overlapping singleton segments on detect.',
+      'TripTimelineEnergyCard: REFUEL shows signal-change minutes + detection window; no envelope-as-pump label.',
+    ],
+    reason:
+      'Production forensic KS MX 2024 Aug-28: 4818s DIMO envelope vs ~280s observed fuel-level rise; UI showed misleading 80 min.',
+    previousBehavior:
+      'REFUEL UI used Math.round(durationSeconds/60) as implicit refuel duration; overlapping DIMO singleton siblings could coexist.',
+    details:
+      'backend: refuel-fuel-rise.ts, refuel-sibling-reconciliation.ts, energy-events.service.ts, migration 20260830140000. frontend: trip-timeline-shared.tsx, trips-energy-i18n.ts. architecture/P1_3_S5_ENERGY_REFUEL_SEMANTICS_2026-08-30.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-30T13:30:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-option-b-m1-mutation-executed-2026-08-29',
+    version: '4.9.995',
+    title: 'Energy Events E3A Option B — M1 canonicalization executed (closed-set CREATE + 16-ID DELETE)',
+    summary: [
+      'Operator-authorized Option B mutation executed in one atomic transaction after JIT pre-mutation invariant + backup verification.',
+      'CREATE: one canonical Jul-16 consolidated recharge M1 row (HIGH confidence, ~7.2 h, +23.60% SOC, +11.88 kWh).',
+      'DELETE: exactly 16 explicit operator-authorized legacy sliding-window singleton IDs from the reviewed closed-set manifest — no runtime overlap discovery, no automatic pruneAuthority.',
+      'Preserved: excluded overlap tail (ends 3 min after M1), Jul-17 R1, Jul-18 R2, all unrelated refuel/recharge events.',
+      'Pre-mutation row count 134 → post-mutation 119 (= 134 + 1 − 16). Scoped + table digests captured before write; secured backup artifact retained off-repo.',
+      'Post-mutation forensic closure: WOULD_CREATE=0, WOULD_UPDATE=0, ALREADY_IDENTICAL=4, gateBlockers=[], MANUAL_REVIEW_UNRESOLVED=0. Second dry-run idempotent — no repeat CREATE/UPDATE/DELETE.',
+      'automatic pruneAuthority remained false throughout; deletion authority was operator closed-set only.',
+    ],
+    reason:
+      'Post-deploy read-only validation confirmed SAFE FOR EXPLICIT M1 MUTATION; operator explicitly authorized the reviewed closed-set CREATE + 16-ID DELETE only.',
+    previousBehavior:
+      'Jul-16 physical recharge represented as 16 redundant legacy singleton fragments; M1 absent; gate blocked on MANUAL_REVIEW_UNRESOLVED:1.',
+    details:
+      'backend: scripts/ops/energy-events-operator-mutation-execute.ts (secured VPS execution). Private manifest/backup on operational storage only — no production row UUIDs committed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-29T01:08:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-m1-operator-disposition-prep-2026-08-28',
+    version: '4.9.994',
+    title: 'Energy Events — M1 Option B closed-set operator disposition manifest (preparation only)',
+    summary: [
+      'Operator direction: APPROVE_FOR_BACKFILL for Jul-16 consolidated recharge M1 + explicit closed-set prune of 16 legacy sliding-window singleton rows.',
+      'New `energy-events-operator-mutation-manifest.ts` derives the manifest, fingerprint invariants, expected post-state, and pre-mutation backup artifact. Prune list is ID-based and closed-set — no runtime overlap discovery during mutation.',
+      'Production read-only proof: 16 temporally-contained legacy rows overlap M1; 1 overlap tail (ends 3 min after M1) excluded; Jul-17 R1 and Jul-18 R2 independent sessions preserved. `assessOverlapPopulation` proves redundancy but `pruneAuthority` remains false.',
+      'Expected post-mutation row count: 133 + 1 − 16 = 118. No production mutation executed this turn.',
+    ],
+    reason:
+      'Outage gate `MANUAL_REVIEW_UNRESOLVED:1` requires operator-authorized disposition for M1; automatic prune from overlap alone is architecturally forbidden.',
+    previousBehavior:
+      'No closed-set operator manifest existed; legacy subsegment reconciliation could not proceed without durable coalesce provenance.',
+    details:
+      'backend: energy-events-operator-mutation-manifest.ts, scripts/ops/energy-events-operator-disposition-prepare.ts. 170 energy-events tests pass.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T22:40:00.000Z',
+  },
+  {
+    id: 'trip-coverage-aware-overlap-2026-08-28',
+    version: '4.9.991',
+    title: 'Containment-aware overlap suppression + repair audit ordering (shadow mode)',
+    summary: [
+      'TripOverlapDetector no longer treats "a trip touches this window" as proof the drive is covered. It now clips intersecting canonical trips to the proposal, unions them, and measures coverage_ratio, prefix/suffix/interior missing seconds, longest uncovered span and covering trip count. A trip\u2019s duration outside the proposal is never credited.',
+      'Five explicit verdicts replace the binary one: FULLY_COVERED, SUBSTANTIALLY_COVERED, PARTIALLY_COVERED, NOT_COVERED, AMBIGUOUS. Only the first two suppress on coverage grounds; AMBIGUOUS also suppresses, because an intersecting ONGOING trip has a moving end_time and is a reason to wait rather than to write a second trip over the same time.',
+      'Thresholds derived from the 1455 candidates in the 90-day replay, not chosen: SUBSTANTIAL_COVERAGE_RATIO 0.90, MAX_IGNORABLE_UNCOVERED_SPAN 180s (= TRIP_MID_GAP_SPLIT_MS), FULL_COVERAGE_SLACK 60s. The 300s floor applies only to spans carved out of a partially covered proposal — an entirely uncovered proposal is returned whole however short, so coverage can never suppress what binary overlap accepts.',
+      'That invariant is checked rather than asserted: over all 10071 candidates the current collector produces in 90 days, 470 are accepted by binary overlap and 0 of those are blocked by coverage.',
+      'Audit ordering fixed: trip_repairs rows are now written for every evaluated proposal before the suppression decision is acted on, with new status SUPPRESSED. Previously suppression returned ahead of the insert, so the most common outcome was the one with no diagnostic trace. Audit ids are deterministic (sha256 of vehicle+type+window), so re-evaluation by the fast/warm/cold tiers updates one row instead of appending a tick log — measured 6.9 updates per insert.',
+      'TRIP_REPAIR_COVERAGE_MODE gates the rollout: legacy | shadow | enforce, defaulting to shadow, with any unrecognised value normalising to shadow. In shadow the production decision stays byte-identical to today and only the audit gains the comparison. In enforce an accepted proposal is persisted as its uncovered spans, never the whole envelope.',
+      'Replay on the same 90-day dataset: coverage-aware suppression alone recovers 46.77 h of the 63.72 h uncovered (baseline 0.30 h), 51 of 65 drives, with 0 proposals overlapping a real canonical trip and 0 false merges introduced by the coverage rule itself.',
+      'Four of five RPM sentinels become recoverable by this PR alone; the fifth is a 4min58s drive that legacy pairing scores LOW on duration, so it stays blocked by the confidence gate that PR C addresses.',
+      'A no_suppression control run establishes that the 15 false positives and 23 false merges visible under enforce originate in the untouched pairing and confidence stages, not in coverage — removing suppression entirely makes them 7x and 10x worse. This is why enforce stays off until those PRs land.',
+      'No migration: trip_repairs.status is a free-form string column, detector_evidence is already Json. Only the Prisma schema comment changed.',
+      'PRODUCTION_MUTATIONS = NONE, BACKFILL_STARTED = NO, COVERAGE_MODE_PRODUCTION = SHADOW.',
+    ],
+    reason:
+      'Binary overlap suppression was the first blocking stage for 26 of 65 uncovered drives (20.00 h), and because it fires before the audit write it also erased the evidence of its own decisions. It gates every later detector improvement: a better pairing rule cannot be measured while its output is discarded one stage downstream.',
+    previousBehavior:
+      'Any canonical trip within ±5 minutes of a proposed repair window — including a 6-minute trip wholly inside a 107-minute drive — marked the drive as already represented, and the proposal was discarded without a trip_repairs row.',
+    details:
+      'New: detectors/trip-coverage.util.ts (pure interval algebra, shared verbatim with the offline replay harness so the two cannot drift). Changed: detectors/trip-overlap.detector.ts, reconciliation/trip-reconciliation.service.ts, reconciliation/reconciliation.types.ts, config/worker.config.ts, prisma/schema.prisma (comment only), scripts/analysis/trip-detection-replay/*. Query shape is unchanged apart from LIMIT 1 becoming LIMIT 201 and is deliberately left unordered — adding ORDER BY start_time makes the planner prefer a non-selective index (1249 buffers / 8.6 ms vs 405 buffers / 1.9 ms on production). Canonical intervals per proposal measured on production: avg 5.48, p95 12, max 18, hard cap 200. 55 regression tests. architecture/TRIP_COVERAGE_AWARE_OVERLAP_2026-08-28.md documents the model, thresholds, replay evidence, performance and rollout.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T21:00:00.000Z',
+  },
+  {
+    id: 'energy-events-canonical-storage-precision-equality-2026-08-28',
+    version: '4.9.993',
+    title: 'Energy Events — canonical measurements compared at storage precision (E3A WOULD_UPDATE closed)',
+    summary: [
+      'Root cause: the database driver serializes doubles with at most 16 significant decimal digits, so a measurement needing 17 digits is stored as a neighbouring double. Bitwise comparison of stored vs freshly detected values never converged.',
+      '`isMateriallyIdentical` now compares numeric measurements — and numbers nested in `rawDetectionMeta` — at 15 significant digits, far finer than any SOC, energy, fuel, odometer or GPS resolution.',
+      'Read-only ops probe `energy-events-storage-precision-probe.ts` proves the truncation through a driver parameter round-trip (`2.2399999499320984` arrives as `2.239999949932098`).',
+      'Recovery forensics now report every representation difference instead of swallowing metadata drift, classify storage-precision drift as non-semantic on both columns and metadata, and flag any verdict the reported diffs cannot account for.',
+      'New `assessOverlapPopulation` proves an overlapping persisted population is internally inconsistent (pairwise overlap, aggregate gain above the candidate) while granting prune authority only when coalesce provenance names every overlapping row.',
+      'Production read-only re-validation: `WOULD_UPDATE` 3 → 0, `ALREADY_IDENTICAL` 0 → 3, table digest unchanged (zero writes). `MANUAL_REVIEW_UNRESOLVED:1` deliberately preserved — one Jul-16 recharge session still needs operator disposition.',
+    ],
+    reason:
+      'Three E3A recovery rows were re-written on every detection run and never converged, so the outage gate could not close and each run churned production data.',
+    previousBehavior:
+      'Stored and detected measurements were compared bitwise, so a value that lost its 17th significant digit on write was permanently classified `WOULD_UPDATE`; the forensic diff hid the drift and reported an unexplainable verdict.',
+    details:
+      'backend: energy-events.pipeline.ts (canonical measurement precision), energy-events-recovery-forensics.ts (diff attribution + overlap population), scripts/ops/energy-events-storage-precision-probe.ts, scripts/ops/energy-events-forensic-closure.ts. 166 energy-events tests pass.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T20:55:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-controlled-write-backfill-partial-2026-08-28',
+    version: '4.9.992',
+    title: 'Energy Events E3A — controlled write-backfill executor (partial production recovery)',
+    summary: [
+      'Added secured ops executor `energy-events-recovery-write-backfill.ts` + recovery module for approved historical writes only.',
+      'Production secured apply: 3 approved CREATEs present (baseline 130 → peak 133; current 132 after 1 proven legacy prune across completion attempts).',
+      'Completion fix on PR #1395: shared `pruneStaleCoalescedSubSegments`, reconcile on `NO_OP_ALREADY_PRESENT`, proven-stale write-set filtering, post-write gate rebuild, 121 energy-events tests.',
+      'Post-fix completion runs on secured VPS: `FETCH_FAILED` eliminated after DIMO load reduction; validation still reports `WOULD_UPDATE=3` and `MANUAL_REVIEW_UNRESOLVED:1`.',
+      'Remaining: canonical Jul-16 recharge window does not currently emit `legacySubsegmentsWouldReplace` in FULL dry-run (coalesce authorization empty); refuel meta + recharge soc/meta UPDATEs still pending material identity.',
+      'Outage recovery NOT CLOSED — hold PR #1395 until `WOULD_CREATE=0`, `WOULD_UPDATE=0`, `gateBlockers=[]`, and mandatory idempotency re-run pass.',
+    ],
+    reason:
+      'E3A gate was READY FOR CONTROLLED WRITE BACKFILL; executor and first production pass were required before closing the outage.',
+    previousBehavior:
+      'Dry-run only (`dbWritesPerformed=false`); no secured historical write path for the approved 4-candidate set.',
+    details:
+      'backend: energy-events-recovery-write-backfill.ts, scripts/ops/energy-events-recovery-write-backfill.ts. Secured infra only; no private plan/identifiers committed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T17:45:00.000Z',
+  },
+  {
+    id: 'trip-start-isolation-hardening-2026-08-28',
+    version: '4.9.990',
+    title: 'Trip-start isolation hardening — device-connection outbox drain can no longer block live trip detection (PR A0)',
+    summary: [
+      'DimoSnapshotProcessor.process() awaited resolutionOutboxProcessor.processPendingBatch() unguarded, ahead of evaluateTripStart(). Every other non-trip subsystem on that path (episode snapshot resolution, sustained-telemetry recovery, ClickHouse mirror, Battery V2) was already isolated — the outbox drain was the last unguarded call.',
+      'Same failure class as the July 2026 Battery V2 incident, which stalled live trip detection fleet-wide for three days. That incident was fixed at the one call site rather than as a class, so this one survived.',
+      'The drain is the only caller of processPendingBatch() in the system — no scheduler drains this outbox — so its retry/recovery semantics are carried by the outbox rows themselves (nextRetryAt, PROCESSING claim, dead-letter after maxAttempts). Catching at the call site loses nothing: the next snapshot poll re-drains.',
+      'Row-level failures never reach the call site; executeClaimedRow already catches them and marks retry or dead-letter. Only infrastructure faults (outbox table unreachable, claim/complete write failure) propagate, which is exactly the class that must not take trip detection down with it.',
+      'BullMQ UnrecoverableError — the codebase-wide non-retryable marker used by battery-v2.processor — is deliberately re-thrown, so the existing fatal taxonomy is preserved.',
+      'No reordering, no parallelism, no behavioral change when the outbox drain succeeds. Six regression tests cover success, throw-with-trip-detection-continuing, trip-start failure visibility, no duplicate evaluation, actionable log context, and fatal propagation. Three of the six fail against the pre-fix processor.',
+      'PRODUCTION_MUTATIONS = NONE.',
+    ],
+    reason:
+      'A non-trip subsystem must never be able to prevent trip detection. The hardening design measured the cost of the previous instance of this defect; leaving an identical unguarded await in place while adding detector improvements would have risked repeating it.',
+    previousBehavior:
+      'Any throw from the resolution outbox drain aborted the snapshot job before evaluateTripStart(), so a fault confined to device-connection bookkeeping silently suppressed live trip starts for every vehicle on the queue.',
+    details:
+      'backend/src/workers/processors/dimo-snapshot.processor.ts gains a narrow failure boundary; backend/src/workers/processors/dimo-snapshot.trip-start-isolation.spec.ts is the permanent regression suite.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T20:10:00.000Z',
+  },
+  {
+    id: 'trip-detection-hardening-design-2026-08-28',
+    version: '4.9.989',
+    title: 'Trip Detection Hardening — design + read-only replay plan (R1–R8, nothing implemented)',
+    summary: [
+      'Verdict B: multiple structural defects, controlled hardening required. A full detector redesign is not warranted — an offline replay recovers 61.9 of 63.7 uncovered driving hours using only evidence the system already collects.',
+      'Correction to the forensic audit: TripOverlapDetector would have suppressed all four distinct RPM sentinel windows as duplicates even with pairing and confidence fixed. Every window has an adjacent trip inside the ±5min tolerance, or a short trip wholly inside it. Overlap is the first blocker for 26 of 65 gaps, and it fires before the trip_repairs audit row is written — which is why four of the five sentinels have no proposal record.',
+      'Coverage re-derived independently: 65 drives / 63.72 h uncovered across 6 vehicles in 90 days, of which 12.30 h fall in August, after the live-detection fix. Truncation dominates: 61 of 65 gaps have partial coverage, only 4 are full misses.',
+      'The prior 49 drives / 42.7 h does not reproduce, and the cause is coverage arithmetic, not data: the earlier figure credited a trip\u2019s entire duration as coverage of a drive it merely overlapped. Same population (365 drives / 179.6 h vs 367 / 179.8 h), corrected union-and-clip math gives 66 drives / 48.9 h; adding motion evidence and the EV gives 65 / 63.7 h.',
+      'Failure classification by first blocking stage: fixed-window pairing 25 drives / 39.92 h, overlap suppression 26 drives / 20.00 h, scheduler phase 13 drives / 3.50 h, unattributed 1 drive / 0.30 h. After containment-aware overlap lands, 27 drives / 20.30 h become recoverable with no further change.',
+      'Read-only replay over 90 days of production evidence: current algorithm creates 5 trips and suppresses 9720 candidates as duplicates, recovering 0.30 h. Proposed algorithm creates 89 trips recovering 61.88 h, with 0 false merges, 0 proposals overlapping an existing trip, 0 healthy drives touched and 2 false positives. All 5 RPM sentinels recovered vs 0 today.',
+      'Detection becomes phase-independent: 61.82–61.88 h across scheduler tick phases 0/3/6/9/12 min, against a 0.30–0.95 h swing today. No cadence change is recommended — cadence is the first blocker for only 3.50 h of 63.72 h, and increasing frequency would mask defect B rather than fix it.',
+      'Designs R1 bounded look-forward pairing (stateless, ON edge as identity), R2 fragment coalescing with five explicit invariants including splitting at internal stops, R3 deterministic additive confidence with a hard movement gate (the 298s case scores HIGH; 20min of engine-on parking is REJECTed), R4 union fusion so a weak source can only widen a stronger one, R5 coverage invariant, R6 scheduler safety, R7 idempotency/concurrency, R8 bounded backfill.',
+      'Coverage invariant defined as the missing health primitive: coverage_ratio, prefix/suffix/interior missing seconds, longest uncovered span, with WARNING / REPAIR ELIGIBLE / CRITICAL thresholds. Its critical rule — zero fleet-wide finalizations while movement evidence exists — would have caught the July outage within 6 hours instead of 3 days.',
+      'Live-path hazard still open on main: DimoSnapshotProcessor.process() awaits resolutionOutboxProcessor.processPendingBatch() unguarded at line 219, ahead of evaluateTripStart. Same shape as the July 2026 trigger, which was fixed at the Battery V2 call site rather than as a class.',
+      'Recommended first PR: containment-aware overlap plus repair audit ordering, behind TRIP_REPAIR_COVERAGE_MODE defaulting to shadow. It unlocks 20.3 h alone and is a precondition for measuring any later change.',
+      'PRODUCTION_MUTATIONS = NONE, IMPLEMENTATION_STARTED = NO, BACKFILL_STARTED = NO, READY_FOR_IMPLEMENTATION = YES.',
+    ],
+    reason:
+      'The forensic audit established that real driving is missing from canonical trips but stopped at diagnosis. Implementation could not start without knowing which defect blocks first, what a corrected algorithm would actually recover, and in what order changes become observable.',
+    previousBehavior:
+      'Trip repair paired ON/OFF transitions only inside the query window, scored confidence from duration alone with a hard 300s cliff, ran motion detection for ICE only when ignition produced nothing, let a DIMO segment short-circuit ClickHouse, and treated any trip within ±5 minutes — including CANCELLED rows — as proof a drive was covered. No metric compared driving evidence against canonical trip time.',
+    details:
+      'Design and read-only validation only — no application code changed. architecture/TRIP_DETECTION_HARDENING_DESIGN_2026-08-28.md documents the re-derived lifecycle, the reproduced gap dataset, the failure category table, R1–R8, the coverage invariant, replay results, scale analysis for 1000+ vehicles, the five-PR slicing plan, the 20-row regression matrix and the acceptance gates. backend/scripts/analysis/trip-detection-replay/ holds the offline harness: baseline.ts mirrors current production semantics, proposed.ts is the executable specification.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T19:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-ice-rest-opening-policy-2026-08-28',
+    version: '4.9.988',
+    title: 'Battery V2 Stage 1 — ICE rest-window opening policy hardening',
+    summary: [
+      'Opening gate: ignition-off + speed at rest now outrank transitional OBD engine_load when deciding whether to open an LV_REST_WINDOW candidate.',
+      'New isEngineOffForRestWindowOpening() used by canOpenRestWindowCandidate and isValidRestSnapshot; downstream isEngineOffForRest() unchanged for REST_60M/6H measurement quality.',
+      'Fixes production trip 61715ecd shape (ignition off, speed 0, engine_load 10.196 at anchor) without weakening charging/wake/active-trip gates or #1383 liveness/idempotency.',
+    ],
+    reason:
+      'Adversarial audit proved residual engine_load at key-off blocked session opening despite authoritative ignition-off evidence; not a stale-timestamp artifact.',
+    previousBehavior:
+      'engineRunning = engine_load > 5 rejected opening even when ignitionOn === false and the vehicle was stationary at trip end.',
+    details:
+      'backend: lv-rest-window.policy.ts (+ spec), lv-rest-window-session-arming.service.spec.ts. architecture/BATTERY_V2_ICE_REST_OPENING_POLICY_2026-08-28.md. No flag/schema/deploy changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T17:30:00.000Z',
+  },
+  {
+    id: 'event-trip-association-stage2-historical-repair-2026-08-28',
+    version: '4.9.987',
+    title: 'Event ↔ Trip Association Stage 2 — historical RPM candidate repair (production)',
+    summary: [
+      'One-off authorized repair of the historical rpm_webhook_candidates backlog; Stage 1 runtime reconciliation cannot fix it because it never overwrites a non-null trip_id.',
+      'Classification decisions came from the deployed EventTripAssociationService itself (compiled service instantiated against production Prisma), not from a SQL re-implementation.',
+      'Each candidate was resolved twice before becoming eligible; an unstable result would have been skipped. No candidate was unstable.',
+      'Applied 7 row repairs in one transaction: 5 NULL backfills and 2 wrong-association corrections. Zero non-null → NULL mutations.',
+      'Both wrong links pointed at CANCELLED trip ba613969 (end_time NULL, started 6 days before the events); corrected to COMPLETED trip 8f88b0de which contains both.',
+      'Forensic candidate 941382ca linked to canonical trip 61715ecd via FINALIZED_WINDOW_MATCH.',
+      'Write guards: concurrency check vs dry-run value, in-transaction resolver re-derivation, target must be non-CANCELLED + same vehicle + contain observed_at, UPDATE guarded by PK and expected old trip_id, affected_rows must equal exactly 1.',
+      'Before 5 NULL_RESOLVABLE / 5 NULL_UNRESOLVABLE / 2 WRONG / 0 AMBIGUOUS / 0 CORRECT → after 0 / 5 / 0 / 0 / 7.',
+      'Post-write: 12 rows, 12 distinct ids, 0 links to CANCELLED, 0 orphan FKs, all links contain the event; observed_at/observed_value/threshold/created_at/status byte-identical for all 12 rows.',
+      'Idempotency re-run yields PROPOSED_MUTATIONS = 0. Row-level rollback record generated before any write. No restart required; API 200 throughout.',
+    ],
+    reason:
+      'Stage 1 made the resolver correct going forward but deliberately left history untouched; two candidates still pointed at a stale CANCELLED trip that never contained their events.',
+    previousBehavior:
+      'Legacy predicate `end_time IS NULL OR end_time >= observed_at` with `ORDER BY start_time DESC LIMIT 1` let a CANCELLED trip with an open end outrank the real trip; 5 further candidates stayed orphaned at NULL.',
+    details:
+      'Production data repair only — no application code changed. architecture/EVENT_TRIP_ASSOCIATION_STAGE2_EXECUTION_RECORD_2026-08-28.md documents baseline, mutation set, guards, verification, rollback, read-path and driver-score impact.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T16:45:00.000Z',
+  },
+  {
+    id: 'event-trip-association-stage1-resolver-hardening-2026-08-28',
+    version: '4.9.986',
+    title: 'Event ↔ Trip Association Stage 1 — canonical resolver + reconciliation (PR #1385)',
+    summary: [
+      'New canonical EventTripAssociationService owns event → trip resolution for RPM webhook candidates.',
+      'Precedence, first tier yielding exactly one trip wins: ACTIVE_TRIP_MATCH (vehicle_trip_detection_states.active_trip_id), ONGOING_TRIP_MATCH (upper boundary OPEN), FINALIZED_WINDOW_MATCH (COMPLETED containment).',
+      'Root cause fixed: while a trip is ONGOING the tracking FSM rewrites end_time = now every ~30s, so end_time is a rolling cursor, not a boundary. Treating it as a boundary orphaned events landing between ticks.',
+      'CANCELLED trips are filtered out before any tier runs; more than one plausible trip yields AMBIGUOUS_TRIPS with a null trip_id rather than a guess.',
+      'Two convergence paths, both idempotent and neither overwriting a non-null trip_id: post-finalization reconciliation via TripPostFinalizeAnalysisProducer, and a bounded delayed sweep as step 6 of TripReconciliationService.reconcileWindow.',
+      'Idempotency from `trip_id IS NULL` in both the scan filter and the updateMany predicate; delayed sweep skips candidates younger than 60s so it cannot race intake.',
+      'New composite index rpm_webhook_candidates(vehicle_id, observed_at) bounds reconciliation scans to the window.',
+      'Observability: synqdrive_event_trip_associations_total{stage,reason} plus a structured EVENT_TRIP_ASSOCIATION log on non-routine outcomes.',
+      '22 new regression tests (A–J matrix) plus an end-to-end intake regression asserting the trip_id actually written to the candidate row.',
+    ],
+    reason:
+      'Production candidate 941382ca (RPM 5213) was orphaned because the live trip’s rolling end_time was 9 seconds stale at intake; a stale CANCELLED row could additionally outrank the real trip.',
+    previousBehavior:
+      'RpmWebhookCandidateService applied one predicate to every trip state: `start_time <= observed_at AND (end_time IS NULL OR end_time >= observed_at) ORDER BY start_time DESC LIMIT 1`.',
+    details:
+      'backend: trips/event-association/{domain,service,module,types}.ts, rpm-webhook-candidate.service.ts, trip-post-finalize-analysis.producer.ts, trip-reconciliation.service.ts, trip-metrics.service.ts, dimo.module.ts, vehicle-intelligence.module.ts, prisma migration 20260828120000_rpm_candidate_event_trip_reconciliation_index.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T15:09:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-recovery-plan-authority-hardening-2026-08-28',
+    version: '4.9.985',
+    title: 'Energy Events E3A — recovery-plan manual-review authority hardening',
+    summary: [
+      'Removed coarse bucket fingerprints as authoritative event identity for human dispositions — fingerprints remain reporting/grouping only.',
+      'Human-reviewed decisions are explicit recovery-plan input (`dimoSegmentId` + mechanism), not hardcoded August-2026 defaults in `runEnergyEventsRecoveryDryRun()`.',
+      'Fail-closed matching: 0 matches → UNMATCHED_REVIEWED_DISPOSITION; >1 → AMBIGUOUS_MANUAL_REVIEW_MATCH; both block gate.',
+      'Explicit empty `reviewedDispositions` applies no overrides; omitting `recoveryPlan` leaves NEEDS candidates unchanged.',
+      'Ops evidence script: `suggestedDisposition` advisory only — E2 detector remains canonical; analyst aid does not feed writes.',
+      'Private E3A plan built on secured infra via `ENERGY_EVENTS_RECOVERY_PLAN_PATH`; synthetic fixtures for repository tests only.',
+      'Observed secured FULL DB-backed validation on the hardened code: plan applied 2/2 exact single matches, 0 unmatched, 0 ambiguous, 13 derived-EXCLUDE rows untouched, 0 unexpected changes.',
+      'Observed gate: manual review 15 total / 15 EXCLUDE / 0 NEEDS, 3 WOULD_CREATE, 1 WOULD_UPDATE, 2 WOULD_SKIP, FETCH_FAILED 0, gateBlockers [], READY FOR CONTROLLED WRITE BACKFILL.',
+      'Zero-write proof: vehicle_energy_events row count and table digest byte-identical before/after the run.',
+    ],
+    reason:
+      'Bucket fingerprints are privacy-safe but not unique — one human decision must not fan out to every candidate sharing the same coarse signature.',
+    previousBehavior:
+      '`applyManualReviewOverrides()` matched bucket fingerprints with global E3A defaults even when `overrides=[]`.',
+    details:
+      'backend: energy-events-recovery-plan.ts, energy-events-recovery-manual-review-reporting.ts, energy-events-recovery-runner.ts, scripts/ops/energy-events-build-e3a-recovery-plan.ts. Removed energy-events-recovery-manual-review-overrides.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T14:45:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-manual-review-resolution-gate-2026-08-28',
+    version: '4.9.984',
+    title: 'Energy Events E3A — resolve final 2 manual-review refuel candidates (gate READY)',
+    summary: [
+      'Secured production DIMO telemetry inspection (bounded ±30 min, read-only) resolved the last 2 ICE_A Jul-2026 under_15m refuel NEEDS_FURTHER_EVIDENCE entries.',
+      'Case A (MEDIUM, fuel_signal_contradiction + movement): EXCLUDE — continuous driving, irreconcilable absolute/relative fuel signals, no stationary refuel interval.',
+      'Case B (LOW, movement only): EXCLUDE — DIMO segment padding inflated odometer spread; unsustained micro fuel bump during driving.',
+      'Privacy-safe fingerprint overrides in energy-events-recovery-manual-review-overrides.ts; private ops evidence script never committed.',
+      'FULL DB dry-run re-run: manual review 15 total / 15 EXCLUDE / 0 NEEDS; gate READY FOR CONTROLLED WRITE BACKFILL; counts unchanged (3 CREATE, 1 UPDATE, 2 SKIP); dbWritesPerformed=false.',
+      'No historical writes; E2 detector thresholds unchanged; E3B not started.',
+    ],
+    reason:
+      'E3A merge left 2 refuel manual-review blockers; write-back gate required zero unresolved NEEDS_FURTHER_EVIDENCE before controlled write phase.',
+    previousBehavior:
+      'Gate READY AFTER MANUAL REVIEW OF 2 EVENTS (MANUAL_REVIEW_UNRESOLVED:2); both ICE_A under_15m Jul refuels stayed NEEDS_FURTHER_EVIDENCE.',
+    details:
+      'backend: energy-events-recovery-manual-review-overrides.ts, energy-events-recovery-runner.ts, scripts/ops/energy-events-manual-review-evidence.ts, scripts/ops/energy-events-standalone-dimo-fetch.ts (bounded fetch). Artifact: energy-events-recovery-full-sanitized-summary-2026-08.json updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T14:30:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-powertrain-accounting-merge-gate-2026-08-28',
+    version: '4.9.983',
+    title: 'Energy Events E3A — canonical powertrain applicability + real request accounting',
+    summary: [
+      'FULL capability resolution now separates canonical applicability (`resolveFleetPowertrainClass`: ICE/EV/PHEV/UNKNOWN) from provider signal availability.',
+      'ICE no longer becomes BOTH because DIMO `availableSignals` or a stale battery-capability row lists traction SOC; EV no longer becomes BOTH from a stray fuel signal.',
+      'PHEV preserved as first-class class — never flattened into ICE; fuel + recharge both applicable with capability evidence.',
+      'UNKNOWN powertrain without sufficient runtime capability evidence fails closed → `CAPABILITY_UNKNOWN` → FULL gate NOT READY.',
+      'One run-level DIMO accounting authority: capability probe + token exchange traffic is no longer discarded; TOTAL `telemetryGraphqlRequests` includes `availableSignals` probes.',
+      'Sanitizer aliases cover all energy classes (no BOTH → UNKNOWN fallthrough) and canonical roles are event-specific, not vehicle-slot-wide.',
+      'Root cause of ICE recharge capability: stale/overbroad `VehicleBatteryCapability` rows for `dimo.segments.recharge` — the preflight records endpoint listing, not powertrain applicability. DIMO `availableSignals` contributed zero ICE recharge claims and `fuelType` was correct on every vehicle.',
+      'Battery-capability listed-status check now delegates to the canonical `isCapabilityMeasurementEnabled()` authority instead of restating the enum, so recovery cannot fork the status taxonomy.',
+      'Re-ran FULL DB-backed read-only preview: mechanism traffic 396 → 220 (no recharge queries on ICE), TOTAL telemetry 225 incl. 5 capability probes, tokenExchange 6, retries 0 — all recovery counts unchanged (18 refuel / 3 recharge / 3 CREATE / 1 UPDATE / 2 SKIP / 15 MANUAL_REVIEW = 13 EXCLUDE + 2 NEEDS), zero writes.',
+      'Rebased onto current main (Connectivity Diagnostic Hardening) — no PR #1373 ancestry. Zero historical writes; E2 detector config unchanged.',
+    ],
+    reason:
+      'FULL clean run classified reachable ICE vehicles as BOTH, contradicting the canonical fleet powertrain capability matrix, and reported mechanism-only traffic as total DIMO traffic.',
+    previousBehavior:
+      'Capability resolution OR-ed provider signal listings into applicability, so any SOC listing made recharge applicable on ICE; `probeAvailableSignalsForTokenIds` created throwaway accounting and token exchange counts were lost.',
+    details:
+      'backend: energy-events-recovery-capability.ts (applicability matrix), energy-events-recovery-accounting.ts (run-level authority), energy-events-recovery-artifact-sanitize.ts (class aliases + event roles), energy-events-recovery-runner.ts, energy-events-recovery.types.ts, scripts/ops/energy-events-standalone-dimo-fetch.ts, scripts/ops/energy-events-recovery-dry-run.ts. Reuses `resolveFleetPowertrainClass` — no competing powertrain taxonomy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T13:00:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-clean-replacement-pr-2026-08-28',
+    version: '4.9.982',
+    title: 'Energy Events E3A — clean replacement PR (privacy-safe cutover)',
+    summary: [
+      'Clean branch from current main — no ancestry from PR #1373 GPS-bearing history.',
+      'Removed production fleet reverse-mapping from sanitizer, constants, docs, and E3A tests.',
+      'Aliases assigned at runtime by inventory order; synthetic QUICK-mode fixtures only in git.',
+      'Privacy regression test scans committed artifacts and architecture doc structure.',
+      'Runtime/canonical FULL capability discovery replaces circular event-history inference; `CAPABILITY_UNKNOWN` fails the FULL gate closed.',
+      'Preserves full E3A behavior: plausibility, gates, 13 EXCLUDE / 2 NEEDS, zero writes.',
+    ],
+    reason:
+      'PR #1373 final code accepted but branch history and repo content exposed production identifiers.',
+    previousBehavior:
+      'Sanitizer hardcoded tokenId→alias maps; docs listed plates/tokenIds/VPS hostnames; tests used production fleet IDs; FULL capability was inferred from existing energy events.',
+    details:
+      'backend: energy-events-recovery-artifact-sanitize.ts, energy-events-recovery-capability.ts, energy-events-recovery-fleet-inference.ts, energy-events-recovery.test-fixtures.ts, privacy regression spec. Artifacts remain sanitized aggregate only.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T12:00:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-artifact-privacy-merge-gate-2026-08-28',
+    version: '4.9.981',
+    title: 'Energy Events E3A — artifact privacy + merge gate (PR #1373)',
+    summary: [
+      'Removed raw FULL DB preview artifact from git; committed sanitized aggregate summary only.',
+      'Vehicle aliases (ICE_A/B/C, EV_A, CANONICAL_REFUEL_CASE) + coarse buckets; no plates/tokenIds/UUIDs/exact odometer.',
+      'Manual-review gate: EXCLUDE_FROM_BACKFILL counts as resolved; only NEEDS_FURTHER_EVIDENCE blocks (2 unresolved).',
+      'Raw FULL reports retained on secured VPS/private storage only; `.gitignore` blocks future raw commits.',
+      'Squash merge recommended so prior GPS-bearing branch commits do not become main ancestors. 73 focused energy-events tests.',
+    ],
+    reason:
+      'Production recovery FULL report contained operational identifiers unsuitable for repository artifacts.',
+    previousBehavior:
+      'Committed `energy-events-recovery-full-db-preview-2026-08.json` with plates, tokenIds, UUIDs, and exact telemetry; gate counted all 15 manual reviews as unresolved.',
+    details:
+      'backend: energy-events-recovery-artifact-sanitize.ts, energy-events-recovery-manual-review.ts, energy-events-recovery-runner.ts, energy-events-recovery-dry-run.ts. Artifacts: energy-events-recovery-full-sanitized-summary-2026-08.json + sanitized quick evidence.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T11:30:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-refuel-plausibility-hardening-2026-08-28',
+    version: '4.9.980',
+    title: 'Energy Events E3A — refuel movement/duration plausibility hardening',
+    summary: [
+      'Calibrated recovery plausibility from 18 FULL prod refuel detections; canonical refuel case (+16 L, ~6 km) remains eligible.',
+      'New flags: `refuel_high_odometer_movement` (≥50 km + ≥10 L), `refuel_elevated_movement_during_refuel` (≥20 km + ≥40 km/h + ≥10 L).',
+      'Moving-vehicle false refuels (122–205 km) no longer remain WOULD_CREATE; disposition EXCLUDE_FROM_BACKFILL.',
+      'EV recharge sub-segment overlap: subsumed existing rows no longer block WOULD_UPDATE parent session.',
+      'Recovery-only; production persist path unchanged pending validation. 53 focused tests.',
+    ],
+    reason:
+      'FULL DB dry-run showed DIMO RefuelDetector sparse-signal rebounds classified as refuel during sustained driving.',
+    previousBehavior:
+      'Odometer movement flagged only when delta >5 km AND liters <10 L; large false positives with 55 L / 170 km remained WOULD_CREATE.',
+    details:
+      'backend: energy-events-refuel-plausibility.ts, energy-events-plausibility.ts, energy-events-recovery-reconcile.ts, energy-events-recovery-manual-review.ts. Sanitized FULL summary artifact re-generated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T11:00:00.000Z',
+  },
+  {
+    id: 'connectivity-diagnostic-hardening-2026-08-28',
+    version: '4.9.977',
+    title: 'Connectivity Diagnostic Hardening — Provider erreichbar vs. Fahrzeugdaten veraltet',
+    summary: [
+      'Neue Master-Admin-Diagnosedimension `ConnectivityDiagnosticState`: `PROVIDER_REACHABLE_DATA_FRESH` / `_STALE`, `PROVIDER_UNREACHABLE`, `AUTH_OR_BINDING_ERROR`, `UNKNOWN` — abgeleitet aus bestehenden autoritativen Feldern.',
+      'Trennt Provider-Erreichbarkeit (`provider_fetched_at` → `lastReceivedAt`) von echter Fahrzeugbeobachtung (`source_timestamp` → `lastTelemetryAt`). Kanonische Freshness bleibt unverändert.',
+      'Kritischer Fall `PROVIDER_REACHABLE_DATA_STALE`: Provider antwortet (~30s Poll), aber `source_timestamp` ist ≥ 24h eingefroren — Signatur des Vorfalls KS MX 2024 (deaktivierte DIMO-SIM, ~27h).',
+      'Schwellwerte wiederverwendet (15 min / 24h / 48h) — keine zweite Freshness-Policy. `standby` gilt nicht als stale (DIMO-Heartbeat 1–4h); `no_signal` → `UNKNOWN` statt erfundener Staleness.',
+      'Master-Admin-Panel in „Technische Diagnostik" (Connected Vehicles Drawer): letzte Provider-Abfrage vs. letzte Fahrzeugbeobachtung, Beobachtungsstatus, Bindung, Consent, Verbindungsstatus. Rohdaten hinter Disclosure.',
+      'Fleet-/Org-DTO unverändert — Diagnosedimension bewusst aus `VehicleConnectivityRuntimeStateDto` ausgeschlossen (Regressionstest).',
+      'Observability: zwei Counter mit Low-Cardinality-Labels, nur bei Zustandsübergang (Transition-Tracker) — kein 30s-Log-Rauschen.',
+      'Adversarial Pre-Merge-Review: `PROVIDER_UNREACHABLE` wird nicht mehr behauptet, wenn das Fahrzeug gar nicht abgefragt wird — `resolveProviderPollEligibility` spiegelt den Scheduler-Filter (AVAILABLE/RENTED + CONNECTED + tokenId); außerhalb der Kohorte → `UNKNOWN` (`Abfrage-Planung` im Panel).',
+      'Review-Fix Clock-Skew: Zeitstempel > 60 s in der Zukunft gelten als unbrauchbar (`null`) statt auf Alter 0 geklemmt — ein korrupter Zukunfts-Zeitstempel kann nicht mehr als „gerade beobachtet" erscheinen.',
+      'Review-Fix Bindungs-Semantik: `bindingState` nutzt autoritative Active-Link-Evidenz statt aus einem potenziell veralteten `providerBindingId` auf ACTIVE zu schließen; sonst `UNKNOWN`.',
+      'Review-Fix Recovery-Metrik: `_recovered_total` zählt nur den echten Übergang nach `PROVIDER_REACHABLE_DATA_FRESH` — Präzedenzwechsel zu UNREACHABLE / AUTH_ERROR / UNKNOWN inflationieren Recovery nicht mehr.',
+      'Review-Fix Autorisierung: fehlender `organizationId`-Query-Parameter wird abgelehnt (Prisma hätte `undefined` verworfen → ungescopte Fahrzeugsuche).',
+      'Tracker-Eviction auf LRU umgestellt und ausdrücklich als demand-driven Best-Effort dokumentiert (kein Scheduler wertet die Diagnosedimension aus) — kein neuer Polling-Loop.',
+      '92 Tests (79 Backend, 13 Frontend) inkl. Endpoint-Level-Tenant-Isolation, Autorisierungskette, Klassifikator-Grenzmatrix (24h/48h/>7d, Zukunft, unparsebar) und Metrik-Kardinalität.',
+    ],
+    reason:
+      'Diagnoselücke aus der Produktionsuntersuchung: erfolgreiches DIMO-Polling verdeckte ein Fahrzeug, das keine neue Telemetrie mehr lieferte. `provider_fetched_at` als Fahrzeug-Freshness zu verwenden wäre falsch.',
+    previousBehavior:
+      'Nur `telemetryState` verfügbar — korrekt stale, aber ohne Unterscheidung zwischen „Provider nicht erreichbar", „Auth/Bindung defekt" und „Provider erreichbar, Gerät sendet nicht".',
+    details:
+      'backend: connectivity/domain/connectivity-diagnostic-state.ts (Klassifikator), connectivity-domain.types.ts (`diagnostic`), vehicle-connectivity-runtime-state.builder.ts, connectivity-diagnostic.admin-dto.ts, vehicles.service.ts (`getFleetConnectivityAdminDiagnostics`, geteilter Detail-Builder = eine Projektion), vehicles-operational.service.ts, dimo/connectivity/connectivity-diagnostic-transition.tracker.ts, connectivity-observability.service.ts, connectivity-prometheus.metrics.ts, observability/trip-metrics.service.ts, dimo.module.ts. frontend: lib/api.ts, master/connected-vehicles/connectivity-diagnostic.presentation.ts, ConnectivityDiagnosticPanel.tsx, ConnectedVehicleDetailDrawer.tsx. architecture/CONNECTIVITY_DIAGNOSTIC_HARDENING_2026-08-28.md. Unverändert: Battery V2, Trip Detection FSM, DIMO-Polling-Kadenz, soft-offline/offline-Grenzen.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T10:30:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-production-dry-run-gate-2026-08-28',
+    version: '4.9.979',
+    title: 'Energy Events E3A — production dry-run gate hardening (PR #1373)',
+    summary: [
+      'Conservative same-ID dedup: MANUAL_REVIEW_REQUIRED wins across windows; `same_id_material_payload_mismatch` on divergent payloads.',
+      'FULL mode requires per-vehicle `dbVehicleMapped`; synthetic dry-run IDs never write targets.',
+      'Expanded `isMateriallyIdentical` to match production upsert (coords, odometer, rawDetectionMeta).',
+      'Standalone DIMO fetch isolates per-mechanism network failures; QUICK windows bounded ≤24h.',
+      'Separate artifacts: `energy-events-recovery-quick-evidence-2026-08.json` + `energy-events-recovery-full-db-preview-2026-08.json`; GPS stripped from committed artifacts.',
+    ],
+    reason:
+      'E3A final production-dry-run gate: close recovery correctness gaps before first real DB-backed FULL read-only preview.',
+    previousBehavior:
+      'Same-ID dedup could downgrade MANUAL_REVIEW; FULL mode could use synthetic vehicle IDs; material identity compared partial fields; multi-week QUICK windows.',
+    details:
+      'backend: energy-events-recovery-reconcile.ts, energy-events-recovery-read.repository.ts, energy-events.pipeline.ts, energy-events-standalone-dimo-fetch.ts, energy-events-recovery.constants.ts, energy-events-recovery-runner.ts. 47 focused tests. docs/architecture/ENERGY_EVENTS_E3A_OBSERVABILITY_RECOVERY_DRY_RUN_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T09:55:00.000Z',
+  },
+  {
+    id: 'energy-events-e3a-observability-recovery-dry-run-2026-08-28',
+    version: '4.9.978',
+    title: 'Energy Events E3A — observability + read-only historical recovery dry-run',
+    summary: [
+      'Prometheus metrics for energy-event detection via existing TripMetrics registry (`detector_config_version=e2-2026-08`).',
+      'Read-only Jul→Aug outage dry-run: 24h bounded windows, production E2 detector config, zero VehicleEnergyEvent writes.',
+      'Safety: E1 mechanism isolation in dry-run, fail-closed FULL-mode DB comparison gate, mechanism-aware request accounting (220 telemetry requests), cross-window dedup, mutation-guarded read repository.',
+      'Fleet inventory covers one DIMO_ACCESS_FAILED vehicle; canonical refuel case and EV recharge sessions verified via runtime aliases only.',
+      'Artifact `artifacts/energy-events-recovery-dry-run-2026-08.json`; FULL mode requires DATABASE_URL or gate stays NOT READY.',
+    ],
+    reason:
+      'E3A per audit: Jul outage had no strong operational alarm; need deterministic recovery preview before any historical write-back.',
+    previousBehavior:
+      'No Prometheus energy-event metrics; no bounded-window recovery preview; pipeline observability limited to debug logs.',
+    details:
+      'backend: energy-events.pipeline.ts, energy-events-metrics.service.ts, energy-events-recovery-*.ts, scripts/ops/energy-events-recovery-dry-run.ts. docs/architecture/ENERGY_EVENTS_E3A_OBSERVABILITY_RECOVERY_DRY_RUN_2026-08.md. E1/E2 detector config unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T08:55:00.000Z',
+  },
+  {
+    id: 'energy-events-e2-detector-calibration-2026-08-28',
+    version: '4.9.976',
+    title: 'Energy Events E2 — DIMO refuel/recharge detector calibration',
+    summary: [
+      'Centralized detector config in `dimo-energy-detector.config.ts` (version `e2-2026-08`).',
+      'Production refuel: `config: { minIncreasePercent: 5 }` — live sweep default/2/3/5/7/10%; detects KS MX 2024 23-Aug refuel (13%→42%).',
+      'Production recharge: DIMO default detector (omit config) — Tesla 8 segments Jun 2026 re-validated live.',
+      'Fleet fuel inventory: KS MX + Arteon Class A (both signals); Audi Class C (absolute only); liters persist gate unchanged.',
+      '47 focused tests; full threshold matrix + fleet inventory artifacts; no historical backfill.',
+    ],
+    reason:
+      'E2 per audit: default DIMO refuel detector missed real refuels (KS MX canonical case) even after E1 transport repair.',
+    previousBehavior:
+      'Refuel/recharge queries omitted DIMO `config`; KS MX 23-Aug refuel returned zero segments with default detector.',
+    details:
+      'backend: dimo-energy-detector.config.ts, calibrate-energy-event-detectors.ts (default/2/3/5/7/10), e2-fleet-fuel-signal-inventory.ts, energy-events.service.spec persist gate A–E. docs/architecture/ENERGY_EVENTS_E2_DETECTOR_CALIBRATION_2026-08.md. E1 isolation/prune preserved.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-28T01:20:00.000Z',
+  },
+  {
+    id: 'energy-events-e1-restoration-2026-08-27',
+    version: '4.9.975',
+    title: 'Energy Events E1 — restore refuel/recharge detection transport + safe prune',
+    summary: [
+      'Fixed fleet-wide energy-event outage since 2026-07-17: recharge GraphQL query from commit 79e381069 used unsupported `id`, `limit`, `after` → HTTP 422.',
+      'Decoupled refuel/recharge fetches — one mechanism failing no longer discards the other.',
+      'Safe prune: no deletion on fetch failure or empty detection; only raw sub-segment rows explicitly listed in `coalescedFromSegmentIds` of a successfully persisted multi-segment coalesced event may be pruned — absence from the current detector response is never prune evidence.',
+      'Added schema fixture validator + EnergyEventsService regression tests.',
+      'Live DIMO validation: refuel + recharge return HTTP 200 for tokenIds 187336, 186946.',
+    ],
+    reason:
+      'P0 production-correctness repair per audit docs/audits/trip-enrichment-driver-score-energy-events-audit-2026-08.md.',
+    previousBehavior:
+      'Recharge 422 aborted shared fetch; EnergyEventsService returned empty; prune-on-empty could delete existing events once fetch was fixed.',
+    details:
+      'backend: dimo-recharge-segments.query/client/graphql, dimo-segments.service fetch isolation, energy-events.service safe prune, validate-dimo-segments-query, ks-mx-2024-refuel.fixture. docs/architecture/ENERGY_EVENTS_E1_RESTORATION_2026-08-27.md. KS MX 2024 refuel sensitivity still requires E2 minIncreasePercent tuning.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T23:45:00.000Z',
+  },
+  {
+    id: 'vehicle-cross-surface-stage-5-final-closure-2026-08-27',
+    version: '4.9.974',
+    title: 'Cross-Surface Vehicle State/Health — Stage 5 final closure + bounded legacy cleanup',
+    summary: [
+      'Final authority matrix certified: Fleet Command / Ready-to-Rent / Vehicle Detail all use P0.1 business, P0.2 availability, P1.5 readiness, P0.4 health aggregate, shared `activeHealthFindings[]`, canonical attention — no tenant-facing legacy authority.',
+      'Removed proven-dead first-finding collapse: `pickModuleReason` + `moduleReasonText` + the `rental_health:<module>` branch of `buildReasonBadge` (reachable only on the test-only no-`uiProjection` path).',
+      'Retained bounded: `buildReasonBadge` blocking/workflow/generic branches (legacy fallback), `resolveReasonBadgeFromUi` (canonical, filtered by attention resolver), Active Rentals drawer reasonBadge (workflow surface).',
+      'New `vehicle-cross-surface-stage5-final.test.ts` — M1–M25 canonical fixture matrix across fleet + detail projections, S1–S4 no-duplicate-health-text gates, D1–D5 attention≠health≠readiness contradiction gates.',
+      'Certified: no N+1 (batched health + embedded `dashboard_warning_lights` passthrough), backend passthrough safe/read-only, i18n keys complete (en+de, en-fallback locales), a11y (aria labels, overflow label, DTC count).',
+    ],
+    reason:
+      'Stages 2A–4 are accepted; Stage 5 certifies production readiness of the complete cross-surface contract and removes only superseded first-finding code.',
+    previousBehavior:
+      '`pickModuleReason` still collapsed rental-health modules into one arbitrary first-finding text on the legacy no-projection path; no single certification suite asserted all three surfaces against one fixture matrix.',
+    details:
+      'frontend: fleetVehicleDisplay.ts (first-finding removal), fleetVehicleDisplay.test.ts (legacy-path expectations), vehicle-cross-surface-stage5-final.test.ts (new). architecture + audit docs Stage 5 closure. No P0/P1 semantic changes, no backend changes, no UI redesign.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T20:15:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-row-alignment-stage-4-2026-08-27',
+    version: '4.9.973',
+    title: 'Vehicle Detail Row Alignment — Stage 4 shared semantic contract',
+    summary: [
+      'Vehicle Detail header uses `resolveVehicleDetailCanonicalHealthDisplay()` — same P0.4 aggregate authority as Fleet rows.',
+      'Optional `VehicleDetailHeaderFindingIcons` from `buildVehicleDetailRowOperationalProjection().activeHealthFindings`.',
+      'Consolidated telltale icon registry: Panel/QuickView/DetailDrawer → `DashboardTelltaleIcon` + `resolveDashboardTelltaleIconSrc()`.',
+      'Telltale semantic hardening: unknown keys → Lucide `alert-triangle` generic fallback; **UNKNOWN TELLTALE → CEL forbidden**.',
+      'Rich surfaces unchanged: VehicleHealthBox, HealthErrorsView, HealthVehicleDetailPanel retain module APIs.',
+      'Tests: V1–V16 alignment, T1–T12 telltale registry, KS MX cross-surface matrix.',
+    ],
+    reason:
+      'Stage 3B aligned Fleet/Ready-to-Rent compact rows; Stage 4 aligns Vehicle Detail to the same canonical truth without flattening the richer UI.',
+    previousBehavior:
+      'Vehicle Detail header used P0.4 when present but findings/telltale icons used duplicate local registries; no shared projection on detail surfaces.',
+    details:
+      'frontend: vehicle-detail-row-projection.ts(+test), VehicleDetailHeaderBadges.tsx, VehicleDetailHeader.tsx, DashboardWarningLights*.tsx, DashboardTelltaleIcon.tsx, dashboard-telltale-icon-registry.test.ts. architecture + audit Stage 4. No P0/P1/backend changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T19:20:00.000Z',
+  },
+  {
+    id: 'vehicle-health-finding-domain-hardening-stage-3b-2026-08-27',
+    version: '4.9.972',
+    title: 'Vehicle Health Finding Consumer — Stage 3B machine-readable domain hardening',
+    summary: [
+      'Removed `HEALTH_REASON_TEXT_PATTERN` regex classification on rendered reason text.',
+      'Extended `FleetReasonBadge` with machine-readable `domain` + `code` fields.',
+      'New `fleet-reason-badge-domain.ts` classifies health vs operational vs workflow from typed codes.',
+      'Health reason suppression uses `domain === health` + active findings — language-independent.',
+      'L1–L10 tests prove multilingual label independence; B1–B16 consumer regressions pass.',
+    ],
+    reason:
+      'Stage 3B cutover initially used EN/DE regex on rendered labels — violates Stage 2A invariant and breaks multilingual UI.',
+    previousBehavior:
+      'shouldSuppressHealthReasonBadgeText matched health keywords in localized reasonBadge.text via regex.',
+    details:
+      'frontend: fleet-reason-badge-domain.ts(+test), FleetReasonBadge contract, fleetVehicleDisplay.ts, fleet-p1-3-display.ts, vehicle-row-operational-attention.ts. architecture + audit Stage 3B hardening. No P0/P1 semantic changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:35:00.000Z',
+  },
+  {
+    id: 'vehicle-health-finding-consumer-cutover-stage-3b-2026-08-27',
+    version: '4.9.971',
+    title: 'Vehicle Health Finding Icons — Stage 3B Fleet + Ready-to-Rent consumer cutover',
+    summary: [
+      'Fleet Command (`FleetOperatorRow`) and Ready-to-Rent (`CompactFleetDrawerVehicleRow`) render `VehicleHealthFindingIcons` from `rowOperationalProjection.activeHealthFindings[]`.',
+      'Operational attention (auth, device unplugged, integration error, connectivity verification) preserved via `resolveRowOperationalAttentionBadge()` — separate from health icons.',
+      'Rental-health batch now passthroughs `dashboard_warning_lights` (server already fetched); `composeFleetDashboardWarningLightsAccessor` avoids per-row N+1.',
+      'Single health reason text (“Reifen beobachten” / first-finding-wins) suppressed when icons are authoritative; aggregate health + business/readiness badges unchanged.',
+      'Tests: B1–B16 consumer matrix, KS MX 2024 multi-finding, cross-surface fixture matrix.',
+    ],
+    reason:
+      'Stage 3A established shared icon contract; Stage 3B performs visible cutover on the two compact row surfaces identified in Stage 1 audit.',
+    previousBehavior:
+      'Fleet Command and Ready-to-Rent showed at most one textual health reason chip; multiple concurrent findings collapsed to first-finding-wins.',
+    details:
+      'frontend: FleetOperatorRow.tsx, CompactFleetDrawerVehicleRow.tsx, vehicle-row-health-consumer.ts, vehicle-row-operational-attention.ts, fleet-operator-panel.ts, vehicle-row-health-consumer-cutover.test.ts. backend: rental-health dashboard_warning_lights passthrough. architecture + audit Stage 3B. Vehicle Detail unchanged (Stage 4).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:30:00.000Z',
+  },
+  {
+    id: 'vehicle-health-finding-icons-stage-3a-2026-08-27',
+    version: '4.9.970',
+    title: 'Vehicle Health Finding Icons — Stage 3A shared icon contract',
+    summary: [
+      'New `vehicle-health-finding-presentation.ts` resolves `activeHealthFindings[]` → icon asset, severity tone, localized tooltip (machine-readable authority).',
+      'New `VehicleHealthFindingIcons` compact strip component with domain aggregation, telltale dedupe, overflow +N, and accessibility labels.',
+      'Centralized `resolveDashboardTelltaleIconSrc()` in dashboard-warning-lights-display.ts (reuses existing telltale SVG registry).',
+      'Vehicle Detail health assets reused: motor-filter/brake/car-battery (health modules), cel.svg (DTC), per-telltale SVGs (dashboard warnings).',
+      'No Fleet Command / Ready-to-Rent / Vehicle Detail consumer cutover in this stage.',
+    ],
+    reason:
+      'Stage 2A established multi-finding contract; Stage 3A adds one shared visual vocabulary before replacing single reason chips in Stage 3B.',
+    previousBehavior:
+      'Compact rows showed at most one reason chip via first-finding-wins; no shared icon resolver for activeHealthFindings[].',
+    details:
+      'frontend: vehicle-health-finding-presentation.ts(+test), VehicleHealthFindingIcons.tsx, dashboard-warning-lights-display.ts (resolveDashboardTelltaleIconSrc), i18n fleet.healthFinding.* keys. architecture + audit Stage 3A. Visible Fleet/Ready-to-Rent UI unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T18:10:00.000Z',
+  },
+  {
+    id: 'vehicle-row-operational-display-stage-2b-2026-08-27',
+    version: '4.9.969',
+    title: 'Vehicle Row Operational Display — Stage 2B availability/readiness semantic cutover',
+    summary: [
+      'New `getVehicleRowOperationalDisplay()` maps `VehicleRowOperationalProjection` to surface-aware labels (business / operational / readiness) with explicit i18n keys.',
+      'Fleet Command: tab **Avail.** renamed to **Frei/Free** (P0.1 business workflow authority unchanged); row primary badge shows business state, not P0.2 “Verfügbar”.',
+      'Ready-to-Rent drilldown: primary row badge reflects P1.5 readiness — never green “Verfügbar” when `isReadyToRent === false`.',
+      'Tests: invariants A1–A8, six production-shaped vehicle matrix; Fleet Command + projection regression suites pass.',
+    ],
+    reason:
+      'Stage 1 audit proved Fleet “Avail.”, Ready-to-Rent grouping, and green row badges used different semantic dimensions with overlapping labels.',
+    previousBehavior:
+      'Fleet Command tab counted P0.1 business-available but rows showed P0.2 availability badge; Ready-to-Rent “Nicht bereit” rows could still show green “Verfügbar”.',
+    details:
+      'frontend: vehicle-row-operational-display.ts(+test), FleetCommandPanel.tsx, FleetOperatorRow.tsx, CompactFleetDrawerVehicleRow.tsx, i18n fleet.businessState.* / fleet.command.tab.* / fleet.rowProjection.readiness.blocked. architecture + audit Stage 2B closure. No backend/P0/P1/readiness derivation/health-icon changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T17:45:00.000Z',
+  },
+  {
+    id: 'vehicle-row-operational-projection-stage-2a-2026-08-27',
+    version: '4.9.968',
+    title: 'Vehicle Row Operational Projection — Stage 2A shared frontend contract',
+    summary: [
+      'New `VehicleRowOperationalProjection` adapter preserves separate business, P0.2 availability, P1.5 readiness, connectivity, P0.4 health, and full `activeHealthFindings[]` (no first-finding-wins).',
+      '`buildFleetVehicleContexts` exposes `rowOperationalProjection` alongside existing `uiProjection`; Fleet Command passes P1.5 readiness when dashboard runtime is present.',
+      'Visible Fleet / Ready-to-Rent / Vehicle Detail row UI unchanged in this stage.',
+      'Contract tests: fixtures A–F, invariants C1–C10, six production-shaped vehicles including KS MX 2024 multi-finding preservation.',
+    ],
+    reason:
+      'Stage 1 audit (PR #1347) proved cross-surface inconsistencies are frontend contract fragmentation — establish shared projection before UI cutover.',
+    previousBehavior:
+      'Compact rows used single `reasonBadge` / `pickModuleReason` while Vehicle Detail showed all module findings.',
+    details:
+      'frontend: vehicle-row-operational-projection.ts(+test), fleet-operator-panel.ts, FleetCommandView.tsx, i18n de/en rowFinding keys. architecture: VEHICLE_ROW_OPERATIONAL_PROJECTION_CONTRACT_2026-08.md. audit: vehicle-cross-surface-state-health-consumer-consistency-audit-2026-08.md §Stage 2A. No backend/P0/P1 semantic changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T17:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-live-voltage-canonical-laststored-2026-08-26',
+    version: '4.9.967',
+    title: 'Battery V2 — canonical LIVE_VOLTAGE lastStored uses BatteryMeasurement only',
+    summary: [
+      'LvLiveVoltageIngestionService.resolveLastStoredObservation no longer falls back to battery_health_snapshots.',
+      'Legacy snapshots cannot suppress the first canonical LIVE_VOLTAGE bootstrap on legacy-heavy fleets.',
+      'Idempotency remains DB-backed via createIdempotent + P2002; REST_60M/6H consume canonical LIVE_VOLTAGE.',
+    ],
+    reason:
+      'Adversarial pre-merge gate: legacy snapshot matching incoming observation classified DUPLICATE_OBSERVATION before any canonical row existed.',
+    previousBehavior:
+      'lastStored compared against battery_health_snapshots when no canonical LIVE_VOLTAGE measurement existed.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T20:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-production-cutover-stage1-2026-08-26',
+    version: '4.9.966',
+    title: 'Battery V2 — Stage 1 production cutover (canonical processing, publication gated)',
+    summary: [
+      'Fail-open canonical LV REST bridge; legacy onSnapshot continues if FSM throws.',
+      'LvLiveVoltageIngestionService persists canonical LIVE_VOLTAGE from classified snapshots.',
+      'Capability preflight falls back to LatestVehicleSnapshot when dedicated query fails.',
+      'isLvRestShadowModeActive = REST pipeline on AND publication off.',
+      'Legacy rest capture gated; disabled automatically when publication authority active.',
+      'Stage 1 prod flags: REST_SHADOW=true, PUBLICATION=false, READINESS=false.',
+      'Publication/readiness blocked until post-deploy LIVE_VOLTAGE evidence validated.',
+    ],
+    reason:
+      'Shadow validation complete; canonical pipeline must run in production without dual-authority publication.',
+    previousBehavior:
+      'REST_SHADOW meant shadow-only measurements always; bridge failure blocked legacy path.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-lv-rest-fsm-wiring-phase1-2026-08-26',
+    version: '4.9.965',
+    title: 'Battery V2 — canonical LV REST FSM wired to observation classify (Phase 1)',
+    summary: [
+      'LvRestWindowIngestionBridgeService connects ingestObservationClassify to LvRestWindowStateMachineService.',
+      'Internal TRIP_ENDED synthesized from read-only vehicle_trip_detection_states (RESTING + lastActivityAt).',
+      'Event order: invalidate → TRIP_ENDED → REST_SNAPSHOT; gated by BATTERY_V2_REST_SHADOW_ENABLED.',
+      'Legacy BatteryV2Service.onSnapshot unchanged (battery_features); no Trip Detection changes.',
+      'LIVE_VOLTAGE remediation explicitly deferred to Phase 2.',
+    ],
+    reason:
+      'Production had zero LV_REST_WINDOW sessions because processEvent had no production call sites.',
+    previousBehavior:
+      'BATTERY_OBSERVATION_CLASSIFY only ran legacy onSnapshot; canonical FSM was implemented but unwired.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:30:00.000Z',
+  },
+  {
+    id: 'dimo-consent-ledger-backfill-phase2-2026-08-26',
+    version: '4.9.964',
+    title: 'DIMO consent ledger backfill — Phase 2 production apply (KS trio)',
+    summary: [
+      'Deployed main 7d92e687 (PR #1307 Phase 1.2) to production release 20260826152600_v4994.',
+      'Atomic apply runId dimo-consent-backfill-prod-2026-08-26-phase2: createdConsents=3, wiredConsentIds=3, mutatedVehicles=3.',
+      'KS FH 660E, KS MS 661, KS MX 2024: providerLinkState REAUTH_REQUIRED → ACTIVE; P0.2 NEEDS_VERIFICATION → AVAILABLE.',
+      'Telemetry source_timestamp unchanged; org auth unchanged; 0 connectivity episodes created; idempotency dry-run NOOP=3.',
+      'HMÜ/WOB vehicles untouched. Repair closed.',
+    ],
+    reason:
+      'Operator-approved production repair for missing per-vehicle DIMO consent rows on the KS trio after Phase 1/1.1/1.2 hardening.',
+    previousBehavior:
+      'KS trio: active DIMO links + live telemetry but zero vehicle_provider_consents → REAUTH_REQUIRED / NEEDS_VERIFICATION.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:45:00.000Z',
+  },
+  {
+    id: 'dimo-consent-ledger-backfill-phase1-2-2026-08-26',
+    version: '4.9.963',
+    title: 'DIMO consent ledger backfill — Phase 1.2 transactional consistency hardening',
+    summary: [
+      'Authoritative apply gate moved inside DB transaction: tx-local fleet identity + target re-reads before any write.',
+      'All mutation targets validated before first CREATE/WIRE; stale pre-transaction snapshots no longer authorize writes.',
+      'NOOP + WIRE_CONSENT_ID apply path wires existing ACTIVE consent without creating duplicate rows.',
+      'Explicit apply counters: createdConsents, wiredConsentIds, mutatedVehicles, noopVehicles.',
+      'Post-write cardinality verification for ACTIVE consent count, link count, and FK wiring inside transaction.',
+      '7 concurrency regression tests added (18 total). Production re-dry-run PASS (NO --apply).',
+    ],
+    reason:
+      'Independent review found TOCTOU gap between pre-transaction preflight and mutation, plus silent skip of existing-consent wire-only plans.',
+    previousBehavior:
+      'Apply used pre-transaction snapshots for write authorization; WIRE-only plans were excluded from apply mutation set.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:15:00.000Z',
+  },
+  {
+    id: 'dimo-consent-ledger-backfill-phase1-1-2026-08-26',
+    version: '4.9.962',
+    title: 'DIMO consent ledger backfill — Phase 1.1 apply-path hardening',
+    summary: [
+      'Fixed tautological org identity check: vehicle.organizationId must match requested org scope.',
+      'Apply-time full identity revalidation inside transaction before CREATE (link, token, dimoVehicleId, consent cardinality).',
+      'Exactly-one active DIMO link invariant; zero ACTIVE consents before CREATE; unexpected link.consentId → CONFLICT.',
+      'Atomic 3-target apply: preflight all targets, single DB transaction for CREATE+WIRE, rollback on any failure (partialWritePossible=false).',
+      '14 focused regression tests; production re-dry-run with --shadow (NO --apply).',
+    ],
+    reason:
+      'Phase 1 forensic accepted but APPLY not yet authorized. Harden apply path before operator approval with atomic all-or-nothing semantics for KS trio repair.',
+    previousBehavior:
+      'Apply path lacked meaningful cross-org assertion, per-vehicle transactions, and apply-time identity revalidation against dry-run plan.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T15:00:00.000Z',
+  },
+  {
+    id: 'dimo-consent-ledger-backfill-phase1-2026-08-26',
+    version: '4.9.961',
+    title: 'DIMO per-vehicle consent ledger backfill — Phase 1 dry-run (KS trio)',
+    summary: [
+      'Read-only production forensic + dry-run for missing vehicle_provider_consents on KS FH 660E, KS MS 661, KS MX 2024.',
+      'Canonical contract traced via VehicleProviderConsentService.recordDimoConsent(); HMÜ C 215 used as reference.',
+      'Dry-run plans exactly 3 CREATE + 3 link.consentId WIRE; HMÜ + WOB vehicles NOOP; 0 CONFLICT.',
+      'Shadow counterfactual: providerLinkState REAUTH_REQUIRED → ACTIVE; P0.2 NEEDS_VERIFICATION → AVAILABLE; telemetry unchanged.',
+      'Ops script: backend/scripts/ops/backfill-dimo-vehicle-provider-consents.ts (--dry-run default, --apply gated).',
+      'Audit: docs/audits/dimo-vehicle-provider-consent-backfill-phase1-2026-08.md — APPLY READY YES, production mutations NONE.',
+    ],
+    reason:
+      'DIMO VehicleDataSourceLink backfill succeeded for all six org vehicles, but three KS vehicles never received per-vehicle consent rows at registration. ProviderLinkStateBuilder correctly surfaces CONSENT_MISSING despite live telemetry.',
+    previousBehavior:
+      'KS FH/MS/MX: active DIMO link + CONNECTED telemetry + ACTIVE org auth, but providerLinkState=REAUTH_REQUIRED and P0.2 NEEDS_VERIFICATION.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Connectivity',
+    createdAt: '2026-08-26T14:35:00.000Z',
+  },
+  {
+    id: 'bullmq-v5-job-id-global-hardening-2026-08-26',
+    version: '4.9.960',
+    title: 'Global BullMQ v5 custom jobId hardening',
+    summary: [
+      'Repository-wide migration: all executable BullMQ producers now route custom jobId through sanitizeBullMqJobId().',
+      'Fixed colon-capable producers: DTC poll fan-out, voice webhook, notification evaluation/delivery, payment email, task automation outbox, brake recalc, DTC knowledge enrichment.',
+      'Connectivity producer unchanged (connectivity-webhook__{inboxId}); regression tests preserved.',
+      'Added bullmq-job-id.producers.audit.spec.ts static scan + per-producer unit tests.',
+    ],
+    reason: 'Post-connectivity closure hygiene — eliminate recurring Production [Scheduler] Custom Id cannot contain : errors from non-connectivity queues.',
+    previousBehavior: 'Multiple producers used colon-delimited jobId templates (e.g. dtc-poll:{vehicleId}:{bucket}, notification-evaluation:{orgId}:{class}) rejected by BullMQ v5.',
+    details: 'architecture/BULLMQ_JOB_ID_COMPATIBILITY_2026-08.md; backend/src/shared/queue/bullmq-job-id.sanitizer.ts',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-08-26T13:30:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-1-canonical-frontend-contract-2026-08-26',
+    version: '4.9.960',
+    title: 'P1.1 — Canonical frontend operational-state contract',
+    summary: [
+      'New `CanonicalVehicleOperationalView` + `mapFleetMapToCanonicalVehicleOperationalView()` under `operational-projection/`.',
+      'Normalizes fleet-map P0.1/P0.3/P0.4 slices with explicit per-field provenance (`present` vs `absent`).',
+      'No legacy onlineStatus/timestamp derivation; businessState absent until backend exposes it on fleet-map.',
+      'Optional fleet-connectivity detail enrichment with provenance `fleet_connectivity.detail`.',
+      '21 focused Vitest cases; no visible UI consumer cutover.',
+    ],
+    reason: 'P1.1 — establish one canonical frontend contract on top of proven P0.1–P0.4 backend without changing production UI behavior.',
+    previousBehavior: 'Operational truth fragmented across fleet-map mapper, presentation modules, dashboard runtime, and legacy telemetry heuristics.',
+    details: 'docs/audits/vehicle-operational-state-frontend-consumer-ui-projection-audit-2026-08.md (§P); frontend/src/rental/lib/operational-projection/*; architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_CONTRACT_P1_1_2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T16:45:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-final-closure-2026-08-27',
+    version: '4.9.967',
+    title: 'P1 FINAL — Legacy authority cleanup & frontend architecture closure',
+    summary: [
+      'Repo-wide legacy authority audit completed; tenant surfaces classified A–E.',
+      'Migrated StatInlineDetail Available popup from isVehicleOffline to P1.5 canonical readiness.',
+      'Station filter HUD ready count uses isStationFilterHudOperationallyReady (P0.2 + business AVAILABLE), not marker visual.isReady.',
+      'Dashboard Available popup uses isDashboardPopupReadyForRent (full P1.5 deriveIsReadyForRenting authority).',
+      'Dashboard handover readiness/reason + drawer/quick-view fleet chips use resolveCanonicalFleetVehicleDisplayState (B=0 live calls without uiProjection).',
+      'Removed dead code: telemetryStateToIssueDraft, isFleetSignalOutdated.',
+      'isVehicleOffline retained @deprecated for legacy deriveFleetVisualState fallback only.',
+      'Added vehicle-operational-state-p1-final-closure.test.ts + handover contradiction tests.',
+      '434+ P1 regression tests PASS; architecture closure document published.',
+    ],
+    reason: 'P1 FINAL — certify that no tenant-facing operational decision uses legacy frontend heuristics.',
+    previousBehavior: 'StatInlineDetail, station filter HUD, and handover chips still used legacy timestamp/healthStatus fallback paths.',
+    details: 'architecture/VEHICLE_OPERATIONAL_STATE_FRONTEND_ARCHITECTURE_CLOSURE_2026-08.md; audit §P1 FINAL; fleetVehicleDisplay.ts; dashboardDrilldownRowDisplay.ts; dashboard-operational-readiness.ts; StatInlineDetail.tsx; fleet-operator-panel.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-27T14:15:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-7-notifications-2026-08-26',
+    version: '4.9.966',
+    title: 'P1.7 — Notifications / operational alerts canonical cutover',
+    summary: [
+      'Tenant notification connectivity eligibility now uses connectivityRuntime.attentionState — not isVehicleOffline/timestamps.',
+      'notification-operational-attention.ts adapter maps attention to severity and builds stable connectivity identity.',
+      'Removed derived-fleet-soft-offline-telemetry client card; SOFT_OFFLINE_TELEMETRY_CHECK uses canonical attention only.',
+      'telemetryState alone no longer creates notification issues; P1.2 primaryReason/recommendedAction for copy.',
+      'Health evaluability guards prevent NOT_EVALUABLE mechanical-critical fabrication.',
+      '24 P1.7 tests + regressions PASS; build PASS.',
+    ],
+    reason: 'P1.7 — cut tenant notification presentation to canonical operational-state architecture.',
+    previousBehavior: 'Client derived offline notifications from resolveTelemetryFreshness, telemetryState, and fleet telemetry aggregation.',
+    details: 'notification-operational-attention.ts, normalizeOperationalIssues.ts, deriveOperationalInsights.ts, derivePredictiveOperationsInsights.ts; architecture/VEHICLE_OPERATIONAL_STATE_NOTIFICATIONS_CUTOVER_P1_7_2026-08.md; audit §V',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T21:00:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-6-booking-eligibility-2026-08-26',
+    version: '4.9.965',
+    title: 'P1.6 — Booking / rental eligibility canonical cutover',
+    summary: [
+      'Booking picker operational gate now uses P0.2 operationalAvailability only — no isVehicleOffline/timestamp machine.',
+      'New booking-vehicle-eligibility.ts adapter separates operational, business, booking-window, health, tariff, and rental-rule domains.',
+      'resolveBookingVehiclePreflight delegates to adapter; hardBlockReason operational_gate replaces offline.',
+      'Real booking-window integration via bookingsForVehicleInRange; edit self-conflict exclusion; fleet health map wired on create/edit.',
+      'healthLoading => explicit healthPending (fail-closed for candidates); allowHealthBypass only for unchanged edit vehicle.',
+      'MAINTENANCE hard business block; ACTIVE_RENTED/RESERVED future-window caution; booking.eligibility.* i18n.',
+      '26 P1.6 + 22 integration + 9 preflight tests; P1.1–P1.5 regression PASS; build PASS.',
+    ],
+    reason: 'P1.6 — cut booking vehicle eligibility to canonical operational state while preserving booking-window semantics.',
+    previousBehavior: 'Booking picker hard-blocked via isVehicleOffline (48h telemetry); ignored operationalAvailability NEEDS_VERIFICATION.',
+    details: 'booking-vehicle-eligibility.ts, booking-vehicle-preflight.ts, BookingsView.tsx; architecture/VEHICLE_OPERATIONAL_STATE_BOOKING_CUTOVER_P1_6_2026-08.md; audit §U',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T20:00:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-5-dashboard-readiness-2026-08-26',
+    version: '4.9.964',
+    title: 'P1.5 — Dashboard / Fleet Readiness canonical cutover',
+    summary: [
+      'Dashboard Ready to Rent now requires business AVAILABLE + operationalAvailability AVAILABLE (P0.2).',
+      'Telemetry state derived from connectivityRuntime only; timestamp/onlineStatus readiness machine removed.',
+      'Blocked/Maintenance excludes auth/device/NEEDS_VERIFICATION; Critical Alerts use canonical attention.',
+      'New dashboard-operational-readiness.ts adapter; vehicleRuntimeStateBuilder thinned to canonical path.',
+      '28 P1.5 tests + 193 dashboard runtime bundle; P1.1–P1.4 regression PASS; build PASS.',
+    ],
+    reason: 'P1.5 — cut Dashboard Fleet Readiness KPIs to canonical operational state without redesigning layout.',
+    previousBehavior: 'Dashboard used resolveTelemetryFreshness/48h offline to block Ready to Rent; ignored operationalAvailability.',
+    details: 'dashboard-operational-readiness.ts, rentalReadiness.ts, vehicleRuntimeStateBuilder.ts, dashboardSliceBuilder.ts; architecture/VEHICLE_OPERATIONAL_STATE_DASHBOARD_CUTOVER_P1_5_2026-08.md; audit §T',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T19:30:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-4-vehicle-detail-cutover-2026-08-26',
+    version: '4.9.963',
+    title: 'P1.4 — Vehicle Detail header / connectivity cutover',
+    summary: [
+      'VehicleConnectionBadge, VehicleHealthChip, VehicleDetailHeader readiness chip cut over to P1.2 projection.',
+      'Canonical path: fleet-map VehicleData → buildFleetVehicleUiProjection() → vehicle-detail-operational-display.',
+      'Removed resolveTelemetryFreshness/onlineStatus operational authority from Vehicle Detail header.',
+      'OverviewLiveMapCard tracking badge uses canonical connectivity labels when runtime present.',
+      'Health header uses P0.4 evaluability (no false Gut); informational last-data via formatLastTelemetry only.',
+      '21 P1.4 tests + 183 regression bundle; vehicle-detail suite 185/185; build PASS.',
+    ],
+    reason: 'P1.4 — align Vehicle Detail header with Fleet list/map canonical operational state.',
+    previousBehavior: 'Vehicle detail connection badge used useVehicleLiveMapStore + resolveTelemetryFreshness (24h legacy); health chip used rental-health Gut fallback.',
+    details: 'vehicle-detail-operational-display.ts, VehicleDetailHeaderBadges.tsx, VehicleDetailHeader.tsx, OverviewLiveMapCard.tsx; architecture/VEHICLE_OPERATIONAL_STATE_VEHICLE_DETAIL_CUTOVER_P1_4_2026-08.md; audit §S',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T18:45:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-3-fleet-cutover-2026-08-26',
+    version: '4.9.962',
+    title: 'P1.3 — Fleet list / map consumer cutover',
+    summary: [
+      'FleetOperatorRow, FleetMapVehicleStatusHud, map markers cut over to P1.2 VehicleOperationalUiProjection.',
+      'Canonical path: VehicleData → fleet-map DTO → P1.1 → mapVehicleOperationalUiProjection() → consumers.',
+      'Map marker precedence from connectivity/availability (standby does not downgrade AVAILABLE).',
+      'Fleet Command tabs remain business-workflow; attention offline uses connectivityRuntime not isVehicleOffline().',
+      'Removed false Gut health fallback on Fleet path when healthEvaluation absent.',
+      '19 P1.3 tests + 223 regression bundle; build PASS.',
+    ],
+    reason: 'P1.3 — first visible consumer cutover for Fleet list + map surfaces only.',
+    previousBehavior: 'Fleet map tone used client timestamp heuristics (isVehicleOffline/resolveTelemetryFreshness); health could show Gut without canonical evaluability.',
+    details: 'frontend/src/rental/lib/fleet-vehicle-ui-projection.ts, fleet-visual-from-projection.ts, fleet-p1-3-display.ts; architecture/VEHICLE_OPERATIONAL_STATE_FLEET_CONSUMER_CUTOVER_P1_3_2026-08.md; audit §R',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T18:00:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p1-2-ui-projection-facade-2026-08-26',
+    version: '4.9.961',
+    title: 'P1.2 — Shared vehicle operational UI projection facade',
+    summary: [
+      'New mapVehicleOperationalUiProjection() facade over CanonicalVehicleOperationalView.',
+      'Wraps P0.3 availability, P0.4 health, fleet-connectivity presentation — no consumer cutover.',
+      'Extended primaryReason i18n to 9 P0.2 codes (DE/EN) + safe unknown fallback.',
+      'Audience-aware presentation (org_admin, master_admin, worker) — presentation only.',
+      'Provenance fix: AvailabilityUiPresentation/HealthUiPresentation use UiPresentationSlice for semantic sub-fields (no absent→null/[]/NONE/unknown fabrication).',
+      'TechnicalDetailProjection provenance: master_admin technicalDetail uses UiPresentationSlice per field (no absent→null/[] coercion).',
+      '96 operational-projection tests (29 P1.1 + 67 P1.2); visible UI unchanged.',
+    ],
+    reason: 'P1.2 — establish one canonical presentation facade before P1.3+ consumer cutover.',
+    previousBehavior: 'Presentation split across operational-availability/, fleet-health-evaluation/, fleet-connectivity.presentation.ts with incomplete primaryReason coverage.',
+    details: 'frontend/src/rental/lib/operational-projection/ui/*; architecture/VEHICLE_OPERATIONAL_STATE_UI_PROJECTION_P1_2_2026-08.md; docs/audits/vehicle-operational-state-frontend-consumer-ui-projection-audit-2026-08.md §Q',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T17:15:00.000Z',
+  },
+  {
+    id: 'fleet-health-evaluability-p0-4-2026-08-25',
+    version: '4.9.959',
+    title: 'P0.4 — Fleet Health evaluability consumer migration',
+    summary: [
+      'Fleet-map DTO exposes `healthEvaluation` (condition + P0.2 evaluability) from the same batch projection as P0.3.',
+      'Fleet list Health badge uses `mapFleetHealthPresentation()` — stale/unknown health never shows Gut.',
+      'Legacy `healthStatus` / rental-health fallback preserved for non-Fleet surfaces.',
+      'DE/EN + 8 governed locales; tooltips for partial/not-evaluable/unknown.',
+      'Reference vehicles: long-offline must not show false Gut when evaluability is conservative.',
+    ],
+    reason: 'P0.4 — separate Health condition from Health evaluability on operator Fleet surfaces; consume canonical P0.2 healthEvaluability.',
+    previousBehavior: 'Fleet Health chip showed Gut from legacy healthStatus or stale rental-health overall_state without evaluability gate.',
+    details: 'docs/audits/fleet-health-evaluability-p0-4-2026-08.md; fleet-health-evaluation.dto.ts; fleet-health-evaluation/presentation.ts; FleetOperatorRow',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T13:20:00.000Z',
+  },
+  {
+    id: 'fleet-operational-availability-p0-3-2026-08-25',
+    version: '4.9.958',
+    title: 'P0.3 — Fleet operational availability consumer migration',
+    summary: [
+      'Fleet-map DTO exposes P0.2 `operationalAvailability` via batch `getVehicleProjections()` (no N+1).',
+      'Fleet list + map HUD badge uses operational availability — not business `status` alone.',
+      'Business workflow fields (`status`, `operationalState`) preserved; filters/KPIs unchanged.',
+      'DE/EN + governed locales; failure → UNKNOWN never green AVAILABLE.',
+      'Reference: WOB L 7503/9755 → Prüfung erforderlich; HMÜ C 215 → Status unbekannt.',
+    ],
+    reason: 'P0.3 — migrate operator-facing Fleet availability badge to canonical P0.2 operationalAvailability without conflating connectivity/health/booking.',
+    previousBehavior: 'Fleet “Verfügbar” badge followed business operationalState only; long-offline AVAILABLE vehicles showed green.',
+    details: 'docs/audits/fleet-operational-availability-p0-3-2026-08.md; fleet-operational-availability.dto.ts; operational-availability/presentation.ts; FleetOperatorRow; FleetMapVehicleStatusHud',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T12:00:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-projection-p0-2-design-2026-08-25',
+    version: '4.9.957',
+    title: 'P0.2 — VehicleOperationalProjection design + contract slice',
+    summary: [
+      'Canonical multi-dimensional operator projection consuming P0.1 connectivity runtime (no re-derivation).',
+      'Separates businessState, operationalAvailability, healthEvaluability, attention, operatorSummary.',
+      'Health evaluability: health-domain authority; connectivity downgrade-only (never upgrades to EVALUABLE).',
+      'Reference fixtures: HMÜ C 215 (health UNKNOWN), WOB L 7503/9755 + synthetic cases A–H/H1–H8.',
+      'Batch builder with shared generatedAt; no consumer UI migration.',
+    ],
+    reason: 'P0.2 domain design — unify operator-facing operational interpretation without collapsing connectivity/health/business domains.',
+    previousBehavior: 'Fleet availability, health, connectivity, and dashboard readiness derived independently per surface.',
+    details: 'docs/audits/vehicle-operational-projection-p0-2-design-2026-08.md; backend/src/modules/vehicles/operational/projection/*',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T10:00:00.000Z',
+  },
+  {
+    id: 'connectivity-wob-9755-obd-semantics-2026-08-25',
+    version: '4.9.956',
+    title: 'WOB L 9755 forensics — obdIsPluggedIn=false is not physical recovery evidence',
+    summary: [
+      'Production forensics: Jul 18 snapshot fresh at observation (lastSeenAt=sourceTimestamp) but obdIsPluggedIn=false with speed=22 km/h; providerFetchedAt is re-fetch only.',
+      'Domain: derivePhysicalDeviceEvidence respects snapshotObdIsPluggedIn — false → UNKNOWN + DEVICE_CHECK_REQUIRED (tests S1–S6).',
+      'DimoConnectivityLifecycleDiModule is canonical production submodule imported by DimoModule; DI regression uses same graph.',
+      'Reference matrix corrected: WOB L 9755 = COMMUNICATION_RECOVERY_ONLY, not historical unplug recovered.',
+    ],
+    reason: 'Final pre-P0.2 corrective pass — prove snapshot semantics before projection work; eliminate duplicate Nest DI provider graph.',
+    previousBehavior: 'Any fresh snapshot counted as positive_snapshot regardless of obdIsPluggedIn; DimoModule duplicated connectivity lifecycle providers.',
+    details: 'docs/audits/connectivity-long-offline-reference-matrix-2026-08.md §C/M; physical-device-evidence.ts; dimo-connectivity-lifecycle-di.module.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T09:30:00.000Z',
+  },
+  {
+    id: 'connectivity-pre-p02-hardening-2026-08-25',
+    version: '4.9.955',
+    title: 'Connectivity pre-P0.2 hardening — cutover correction, DI regression, long-offline matrix',
+    summary: [
+      'Production cutover corrected to 2026-08-25T08:04:17.000Z (first successful repaired-pipeline activation); gap query 0 rows.',
+      'Nest DI bootstrap regression: dimo-module.bootstrap.spec.ts + DimoConnectivityLifecycleDiModule.',
+      'Long-offline forensic matrix: WOB L 9755 + WOB L 7503 (>30d silence, DEVICE_CHECK_REQUIRED); HMÜ C 215 comparison.',
+      'Gate remains CONDITIONAL; P0.2 domain design YES / implementation NO.',
+    ],
+    reason: 'Final pre-P0.2 hardening before projection work — correct cutover semantics, prevent DI regression, document reference evidence classes.',
+    previousBehavior: 'Cutover predated successful activation; no DI regression test for exported-but-unregistered provider defect.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md §R–S; docs/audits/connectivity-long-offline-reference-matrix-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T09:05:00.000Z',
+  },
+  {
+    id: 'connectivity-hmue-c-215-forensic-2026-08-25',
+    version: '4.9.954',
+    title: 'HMÜ C 215 — historical unplug forensic verification (read-only)',
+    summary: [
+      'Production forensic audit: July 20 canonical unplug + Aug inbox signals; no episode; snapshot recovery +15m.',
+      'P0.1 runtime: PLUGGED_INFERRED, overall UNKNOWN — not DEVICE_UNPLUGGED.',
+      '7d API window hides historical unplug from Vehicle Detail device-connection query.',
+      'Gate remains CONDITIONAL; P0.2 NO-GO.',
+    ],
+    reason: 'Document real historical reference case for P0.1 evidence ordering before P0.2 UI alignment.',
+    previousBehavior: null,
+    details: 'docs/audits/connectivity-hmue-c-215-forensic-verification-2026-08.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T08:40:00.000Z',
+  },
+  {
+    id: 'connectivity-resolution-outbox-eventtype-map-2026-08-26',
+    version: '4.9.955',
+    title: 'Connectivity resolution outbox — Prisma eventType column mapping fix',
+    summary: [
+      'Root cause: Prisma schema missing @map("event_type") on DeviceConnectionEpisodeResolutionOutbox.eventType.',
+      'Production DDL already had event_type (migration 20260719130000); Prisma client queried non-existent eventType column.',
+      'Live KS MX driving recovery proved snapshot processing invoked but outbox create failed on every cycle.',
+      'Fix is schema-only — no Production DDL migration required.',
+    ],
+    reason: 'Unblock snapshot-based episode auto-RESOLVE after BullMQ enqueue repair.',
+    previousBehavior: 'DimoSnapshotProcessor skipped telemetry recovery with Prisma P2022 on outbox create.',
+    details: 'backend/prisma/schema.prisma DeviceConnectionEpisodeResolutionOutbox.eventType @map',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-26T12:20:00.000Z',
+  },
+  {
+    id: 'connectivity-bullmq-jobid-enqueue-fix-2026-08-25',
+    version: '4.9.954',
+    title: 'Connectivity BullMQ enqueue fix — colon-safe job IDs',
+    summary: [
+      'Root cause proven: BullMQ v5 rejects custom jobId containing ":" (exception: Custom Id cannot contain :).',
+      'DeviceConnectionWebhookQueueProducer buildJobId() now uses __ delimiters (connectivity-webhook__{inboxId}).',
+      'Production deploy 655f9dbe: KS MX 2024 natural scheduler retry processed 2 stuck inbox rows at 22:22:30Z.',
+      'Unplug → canonical event → OPEN episode proven; snapshot-based RESOLVE not observed on delayed recovery evidence.',
+      'Gate CONDITIONAL; second physical test required for full lifecycle acceptance.',
+    ],
+    reason: 'P0 production blocker — restore canonical inbox → BullMQ → worker pipeline after live unplug test enqueue_failed.',
+    previousBehavior: 'connectivity-webhook:{inboxId} job IDs caused enqueue_failed on every intake and scheduler retry; worker never reached.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md §U',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T22:35:00.000Z',
+  },
+  {
+    id: 'connectivity-production-processing-gate-deploy-2026-08-25',
+    version: '4.9.953',
+    title: 'Connectivity Production Processing Gate — production deploy + live verification',
+    summary: [
+      'Deployed PR #1267 (+ hotfix 2022e586) to production release 20260825075756_v4994.',
+      'Cutover CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER=2026-08-25T07:48:30.000Z set before deploy; startup log confirmed.',
+      'Historical safety PASS: July 8/11/20 events and July 28/Aug 8 inbox untouched after scheduler ticks.',
+      'Worker/queue healthy: PM2 online, BullMQ connectivity.webhook.process empty, no crash loop.',
+      'Gate CONDITIONAL / P0.2 NO-GO: live post-cutover unplug→OPEN→RESOLVE not yet observed on natural traffic.',
+    ],
+    reason: 'Controlled production rollout of connectivity processing gate with evidence-safe verification.',
+    previousBehavior: 'Gate FAIL pre-deploy; historical orphans and stuck inbox rows present.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md §M Production Deployment Verification',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T08:08:00.000Z',
+  },
+  {
+    id: 'connectivity-production-processing-gate-2026-08-25',
+    version: '4.9.952',
+    title: 'Connectivity Production Processing Gate — webhook inbox / BullMQ / episode lifecycle repair',
+    summary: [
+      'Root cause proven: July 20 IDEMPOTENCY_RETRY_DEFECT; July 28/Aug 8 inbox UNCLAIMED_PROCESSING_GAP (subcause unproven).',
+      'Fix: reconcile partial events on retry (current-era only); explicit cutover CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER default 2026-08-25T00:00:00Z.',
+      'Shared enqueue service: intake + scheduler failures persist RETRYABLE_FAILED; scheduler batch per-row isolation.',
+      'Cutover hardening: production requires explicit CONNECTIVITY_LIFECYCLE_RECONCILE_AFTER (fail-closed); domain-boundary historical_orphan enforcement.',
+      'Tests A–N7; gate FAIL / P0.2 NO-GO until post-deploy verification.',
+    ],
+    reason: 'Close production processing gate before P0.2 — prove and repair DIMO webhook → episode OPEN/RESOLVE pipeline without historical backfill.',
+    previousBehavior: 'Duplicate upsert skipped lifecycle; scheduler reconciled all processed_at null rows; scheduler enqueue failures could leave RECEIVED silently.',
+    details: 'docs/audits/connectivity-production-processing-gate-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-25T00:55:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-p01-provenance-2026-08-24',
+    version: '4.9.951',
+    title: 'Vehicle Operational State P0.1 — provenance & episode lifecycle verification',
+    summary: [
+      'Production episode empty root cause reclassified MIXED: HISTORICAL_ONLY (July 8/11) + CURRENT_PROCESSING_DEFECT (July 20) + DEPLOYMENT_OR_WORKER_GAP (inbox July 28/Aug 8).',
+      'Canonical physical-device evidence ordering: latest snapshot vs unplug event wins; DEVICE_CHECK_REQUIRED when offline without unplug evidence.',
+      'interruptionKnowledge corrected: not_applicable, episode_scope_not_queried; fixed usePersistedEpisodeScope inversion; physical vs episode state separated.',
+      'Normative provenance contract + Fleet Connectivity canonical diagnostics surface + Vehicle Detail deep-link navigation contract.',
+      'Regression tests A–J; P0.2 = NO-GO until production pipeline defects remediated.',
+    ],
+    reason: 'Establish canonical provenance boundaries and correct epistemic semantics before P0.2; evidence-backed production investigation without data mutation.',
+    previousBehavior: 'openUnpluggedEpisode=false implied known_none; hasUnplugEvents boolean could override newer snapshots; HISTORICAL_ONLY masked current processing defects.',
+    details: 'docs/audits/vehicle-operational-state-p01-provenance-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-24T22:30:00.000Z',
+  },
+  {
     id: 'communication-center-c13-6-final-production-cutover-proof-2026-08-24',
     version: '4.9.950',
     title: 'Communication Center C13.6 — final production cutover proof',
@@ -6899,6 +14383,317 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-07-17T11:00:00.000Z',
+  },
+  {
+    id: 'erd-e3-fallback-convergence-2026-09-24',
+    version: '4.9.900',
+    title: 'ERD E3 — telemetry fallback hardening + native/fallback convergence',
+    summary: [
+      'Native-first fallback activation: capability ≠ episode; provisional TELEMETRY_POLL_FALLBACK when telemetry qualifies and no SAME native row.',
+      'Physical matcher SAME/AMBIGUOUS/DIFFERENT with deterministic evaluatedAt overlap; fail-closed supersession (no mass temporal supersede).',
+      'Atomic late-native convergence: advisory lock + single TX supersede fallback + upsert native HvChargeSession.',
+      'E3 observability: synqdrive_erd_e3_convergence_total{reason}; postgres gate ERD_E3_POSTGRES_INTEGRATION=1.',
+    ],
+    reason: 'ERD E3 workstream — provider-delay + LTE telemetry fallback without E5 VEE cutover or production flags.',
+    previousBehavior:
+      'Fallback skipped when rechargeSegmentsAvailable; temporal overlap superseded all overlapping fallback rows outside one transaction.',
+    details:
+      'erd-physical-episode-matcher.ts, hv-charge-session-native-fallback-convergence.service.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E3-FALLBACK-CONVERGENCE-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T12:00:00.000Z',
+  },
+  {
+    id: 'erd-e3-1-authority-lock-2026-09-24',
+    version: '4.9.901',
+    title: 'ERD E3.1 — shared ERD vehicle authority lock + fallback identity races',
+    summary: [
+      'Single pg_advisory_xact_lock per vehicle for native convergence and fallback provisional writes; lock → re-read → decide → write.',
+      'Persisted fallback fingerprint/start anchor immutable; matcher-based replay reuse (fail-closed on ambiguous anchors).',
+      'Postgres gate: independent PrismaClient A/B races, replay, rollback proofs (ERD_E3_POSTGRES_INTEGRATION=1).',
+    ],
+    reason: 'E3.1 closes split-brain between unlocked native no-supersede path and unlocked fallback writes.',
+    previousBehavior:
+      'Native without supersede used persistDraftOutsideTx; fallback used unlocked persistSessionDraft — concurrent native+fallback could leave active native + active fallback for one episode.',
+    details:
+      'erd-hv-charge-session-authority.lock.ts, hv-charge-session-native-fallback-convergence.service.ts, hv-fallback-charge-session-anchor.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T13:00:00.000Z',
+  },
+  {
+    id: 'erd-e4-reconciliation-liveness-2026-09-24',
+    version: '4.9.902',
+    title: 'ERD E4 — durable reconciliation / recovery liveness',
+    summary: [
+      'Canonical ERD reconcile eligibility shared with E3 fallback activation (SOC + corroborating signals, not is_charging-only periodic selector).',
+      'Explicit periodic idempotency buckets; rotating fair batch selection without new recovery table.',
+      'Master HV flag off skips periodic enqueue; synqdrive_erd_e4_liveness_total observability; CI gate step 6.',
+    ],
+    reason: 'Close liveness gaps for telemetry-only fallback profiles and deterministic periodic recovery after DLQ/restart.',
+    previousBehavior:
+      'Periodic fallback targets used hv.is_charging capability only; PERIODIC idempotency could derive bucket from implicit Date.now().',
+    details:
+      'hv-erd-reconcile-eligibility.policy.ts, hv-recharge-reconcile-target.query.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:30:00.000Z',
+  },
+  {
+    id: 'erd-e4-1-signal-fairness-closure-2026-09-24',
+    version: '4.9.903',
+    title: 'ERD E4.1 — eligibility signal authority + true bounded no-starvation',
+    summary: [
+      'Canonical HV signal keys shared across registry, HvMethodProfile, E3 fallback, and E4 eligibility (charging_power corroborates; current_power does not).',
+      'Partition rotation fairness via periodIndex mod 12 with PostgreSQL-bounded selection — removes hash(periodBucket) slice and pre-fairness maxScan truncation.',
+      'Postgres gate proves 109+ vehicle fleet coverage, charging_power vs current_power, and restart-stable deterministic selection.',
+    ],
+    reason: 'Close E4 signal drift vs E3 and false periodic fairness that could permanently starve eligible vehicles.',
+    previousBehavior:
+      'E4 listed hv.current_power as fallback corroboration; fairness used hash(periodBucket)%12 on a truncated candidate prefix (batch×12).',
+    details:
+      'hv-erd-capability-signal-keys.ts, hv-recharge-reconcile-target.query.ts, hv-recharge-periodic-target.policy.ts, evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T16:00:00.000Z',
+  },
+  {
+    id: 'erd-e4-2-bullmq-redis-liveness-2026-09-24',
+    version: '4.9.904',
+    title: 'ERD E4.2 — real BullMQ + Redis liveness proof',
+    summary: [
+      'Real BullMQ Queue/Worker/QueueEvents on Redis for HV_RECHARGE_SESSION_RECONCILE periodic idempotency, next-bucket recovery, lost-job rediscovery, and retry transitions.',
+      'Boundary-repair CI step 7/7 runs bullmq redis integration (redis-memory-server); step 6 remains PostgreSQL-only.',
+    ],
+    reason: 'Close evidence gap: ERD_E4_POSTGRES_REDIS_INTEGRATION did not exercise Redis.',
+    previousBehavior:
+      'No Redis in boundary-repair CI; duplicate/recovery semantics documented but not proven against real BullMQ state.',
+    details:
+      'erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts, scripts/test/erd-e4-bullmq-redis-ci.sh, .github/workflows/vehicle-detail-production-readiness.yml',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:05:00.000Z',
+  },
+  {
+    id: 'erd-e5-1-canonical-vee-recharge-foundation-2026-09-24',
+    version: '4.9.905',
+    title: 'ERD E5.1 — canonical VEE RECHARGE projection foundation',
+    summary: [
+      'Schema: nullable canonicalChargeSessionId → HvChargeSession (unique, onDelete SetNull); dimoSegmentId nullable for telemetry-only ERD projections.',
+      'Provenance: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION + extended vehicle_energy_events_source_identity_check (RFRF pairings preserved).',
+      'E5.1a: split enum ADD VALUE migration from CHECK/FK migration (PostgreSQL commit boundary); fresh migrate deploy + PG-A…PG-K reproven.',
+      'Pure policies: projection eligibility (fail-closed), identity v1 sourceEventKey, non-persisting field mapper; documented E3 shared advisory-lock contract for E5.2+.',
+      'PostgreSQL gate PG-A…PG-K (boundary-repair step 8/8). No runtime projector, no cutover, legacy DIMO→VEE writer unchanged.',
+    ],
+    reason:
+      'E5.0 preflight PASS — establish DB + policy substrate before E5.2 idempotent projector wiring.',
+    previousBehavior:
+      'VehicleEnergyEvent RECHARGE required dimoSegmentId; no FK to HvChargeSession; no ERD-specific detectionSource.',
+    details:
+      'backend/prisma/migrations/20260924180000_erd_e5_1_recharge_projection_enum_value + 20260924181000_erd_e5_1_recharge_projection_foundation; erd-recharge-projection/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T20:15:00.000Z',
+  },
+  {
+    id: 'erd-e5-2-canonical-vee-recharge-projector-idempotency-2026-09-25',
+    version: '4.9.907',
+    title: 'ERD E5.2 — canonical VEE RECHARGE projector idempotency',
+    summary: [
+      'Persisting projector `projectCanonicalRecharge()` under shared E3 vehicle advisory lock with locked session re-read.',
+      'Bounded outcomes: CREATED, RECONCILED, NO_OP, NOT_PROJECTABLE, HANDOFF_REQUIRED, LEGACY_DIMO_COLLISION, IDENTITY_CONFLICT.',
+      'Same-authority reconciliation allowlist; immutable sourceEventKey + VEE row id; HANDOFF_REQUIRED defers to E5.3.',
+      'PostgreSQL T1–T20 + independent PrismaClient race + rollback proofs (boundary-repair step 9/9). Not Nest-wired; no automatic runtime triggers.',
+    ],
+    reason:
+      'E5.1 foundation merged — prove one HvChargeSession maps to at most one canonical VEE RECHARGE before cutover wiring.',
+    previousBehavior:
+      'E5.1 mapper/eligibility only; no persisting canonical ERD recharge projector.',
+    details:
+      'erd-recharge-projection/erd-canonical-recharge-projector.ts; erd-e5-2-recharge-projector.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-2-CANONICAL-VEE-RECHARGE-PROJECTOR-IDEMPOTENCY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T00:00:00.000Z',
+  },
+  {
+    id: 'erd-e6-3-charging-location-enrichment-runtime-2026-09-26',
+    version: '4.9.915',
+    title: 'ERD E6.3 — charging location enrichment runtime',
+    summary: [
+      'Canonical ERD RECHARGE `VehicleEnergyEvent` rows can hold a separate durable `VehicleEnergyEventChargingStationEnrichment` row (independent from REFUEL fuel-station enrichment).',
+      'Uses E6.1 canonical coordinates + E6.2 charging-station resolver; async BullMQ queue `energy.recharge.station.enrich` with recovery for missed/stale work; fingerprint/idempotency prevents duplicate logical enrichment.',
+      'Read API exposes nested `chargingStationEnrichment` on energy events; post-projection enqueue is fail-open relative to canonical RECHARGE projection.',
+      'Acceptance: PostgreSQL P matrix + P-ERROR/cutover/fingerprint cases; real Redis/BullMQ Q1–Q10; recovery R1–R12; E6.1 P1–P15 + E6.2 PG1–PG15 regression (boundary steps 14–18/18); 42/42 required checks green before merge PR #1791.',
+      'Feature flags remain OFF — no Production dataset import, no Production flag activation, no historical backfill; not live in Production.',
+    ],
+    reason:
+      'E6.2 merged — reference resolver exists; E6.3 durably attaches resolver outcomes to canonical RECHARGE product rows without changing E5.6 write authority or REFUEL semantics.',
+    previousBehavior:
+      'No charging-station enrichment persistence, queue worker, recovery, or API projection on canonical RECHARGE events (E6.2 resolver only).',
+    details:
+      'backend/src/modules/vehicle-intelligence/charging-stations/enrichment/*; migration `20260926120000_vehicle_energy_event_charging_station_enrichment`; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md; EED-EV-0089; merged PR #1791 (merge SHA b73aca3d9)',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T13:30:00.000Z',
+  },
+  {
+    id: 'erd-e6-2-charging-station-reference-resolver-2026-09-25',
+    version: '4.9.914',
+    title: 'ERD E6.2 — charging station reference dataset and resolver',
+    summary: [
+      'Independent OSM charging-station domain: Geofabrik import (node/way/relation), `amenity=charging_station` only; fuel/device_charging_station/motorcar=no excluded.',
+      '`charging-station-resolver-v1`: geometry-first PostGIS match, station-level authority, fail-open ambiguity; metadata cannot override distance; no external runtime lookup.',
+      'Importer/validation I1–I14 + refresh safety (invalid geometry + failed validation preserves last-good); Required CI PostGIS; boundary-repair step 15/18 PG1–PG15 PASS (merged PR #1781).',
+      'No Production charging dataset import; no Recharge event enrichment or customer-facing charging resolution runtime (E6.3 next stage).',
+    ],
+    reason:
+      'E6.1 merged — native recharge coordinates exist on canonical VEE; E6.2 adds reference OSM station dataset + resolver without wiring enrichment.',
+    previousBehavior:
+      'No independent charging-station OSM tables or resolver; fuel-station OSM pipeline remained the only station reference domain.',
+    details:
+      'backend/scripts/ops/osm-charging-stations/*; backend/src/modules/vehicle-intelligence/charging-stations/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-2-CHARGING-STATION-REFERENCE-RESOLVER-2026-09-25.md; EED-EV-0088',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T07:00:00.000Z',
+  },
+  {
+    id: 'erd-e6-1-recharge-location-provenance-2026-09-25',
+    version: '4.9.913',
+    title: 'ERD E6.1 — canonical recharge location provenance',
+    summary: [
+      'Preserves native DIMO recharge segment start/end coordinates on HvChargeSession.metadata with strict pair validation.',
+      'Projects trusted native locations into canonical ERD VehicleEnergyEvent.RECHARGE (mutable coordinate fields + rawDetectionMeta provenance).',
+      'Fallback telemetry sessions remain location-null; no fuel-station OSM resolver or charger matching.',
+      'PostgreSQL + unit gates (boundary-repair step 14/18); no schema migration; no backfill.',
+    ],
+    reason:
+      'E5.6 merged — canonical product recharge rows must carry authoritative native location evidence before E6.2 charging-station resolution.',
+    previousBehavior:
+      'DIMO segment coordinates were dropped at HvChargeSession ingest; ERD projection hard-coded null latitude/longitude on VEE.',
+    details:
+      'erd-recharge-location-provenance/*; hv-charge-session.mapper.ts; hv-charge-session.merge.ts; erd-recharge-projection-mapper.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-1-CANONICAL-RECHARGE-LOCATION-PROVENANCE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T12:00:00.000Z',
+  },
+  {
+    id: 'erd-e5-6-write-authority-cutover-2026-09-25',
+    version: '4.9.912',
+    title: 'ERD E5.6 — recharge write-authority cutover gate',
+    summary: [
+      'Single write-authority resolver (`ERD_RECHARGE_WRITE_CUTOVER_AUTHORIZED` + `ERD_RECHARGE_WRITE_CUTOVER_AT`) with physical evidence end boundary.',
+      'Legacy DIMO RECHARGE upsert gate + canonical-row protection; canonical projection runtime after HV session reconcile (isolated from E3 transaction).',
+      'CANONICAL authority requires Battery HV session + fallback + reconciliation + E5.5 read dedupe; default OFF — no Production activation.',
+      'PostgreSQL + unit gates (boundary-repair step 13/13); no schema migration; no historical backfill.',
+    ],
+    reason:
+      'E5.5 merged — code must enforce exactly one product writer per post-cutover recharge episode without weakening E5.2 collision protection or mutating historical rows.',
+    previousBehavior:
+      'Legacy DIMO writer always persisted RECHARGE VEE; projectCanonicalRecharge was test-only with no automatic runtime cutover.',
+    details:
+      'erd-recharge-write-authority/*; energy-events.service.ts; hv-recharge-session-reconcile.service.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-6-WRITE-AUTHORITY-CUTOVER-GATE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T11:00:00.000Z',
+  },
+  {
+    id: 'erd-e5-5-product-read-dedupe-2026-09-25',
+    version: '4.9.911',
+    title: 'ERD E5.5 — canonical recharge product-read dedupe',
+    summary: [
+      'Product-facing read dedupe for coexisting legacy DIMO RECHARGE VEE and canonical ERD projection rows (strict identity v1: exact DIMO + coalesced lineage only).',
+      'Fail-open on ambiguity, partial coalesced coverage, fallback-null-DIMO, and malformed projection rows; REFUEL canonicalization unchanged.',
+      'Flag `ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED` default OFF; independent of E5.4 shadow parity; raw/forensic reads unchanged.',
+      'PostgreSQL + unit gate (boundary-repair step 12/12); no schema migration; not write cutover (E5.6).',
+    ],
+    reason:
+      'E5.4 merged — one physical recharge should appear once in product reads when duplicate identity is strongly proven, without mutating DB rows or activating canonical writer.',
+    previousBehavior:
+      'listCanonicalEnergyEvents passed all RECHARGE rows through; legacy and canonical ERD duplicates could both appear in Trips timeline.',
+    details:
+      'erd-recharge-product-read-dedupe/*; canonical-energy-events.projection.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-5-PRODUCT-READ-DEDUPE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T09:35:00.000Z',
+  },
+  {
+    id: 'erd-e5-4-topology-energy-adr-2026-09-27',
+    version: '4.9.996',
+    title: 'ERD E5.4 — shadow parity topology + recharge energy semantics ADR',
+    summary: [
+      'Architecture-only dual ADR: physical-episode shadow parity (EED-DEC-ERD-002) and Option C recharge energy contract (EED-DEC-ERD-003).',
+      'Production closure: 6/6 exact pairs; 70 legacy rows = 6 physical clusters + 64 contained fragments; pre-fix comparator LEGACY_ONLY inflation (denominator 70, rate 0 not authoritative).',
+      'Reuse MULTIPLE_LEGACY_ONE_CANONICAL for fragment siblings; settled denominator excludes multiplicity diagnostics; lock energyDeltaKwh stored delta + additive chargingEnergyAddedKwh (future schema).',
+      'No runtime code, Prisma migration, Production mutation, or shadow enablement in this change.',
+    ],
+    reason:
+      'Close E5.4 measurement semantics before comparator topology + canonical stored-energy mapper implementation and cutover gating.',
+    previousBehavior:
+      'Shadow aggregator treated each legacy row as independent settled opportunity; energy mismatch interpreted as mapping defect rather than dual DIMO signal semantics.',
+    details:
+      'decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md; decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md; evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T07:30:00.000Z',
+  },
+  {
+    id: 'erd-e5-4-null-safe-legacy-cohort-2026-09-26',
+    version: '4.9.995',
+    title: 'ERD E5.4 — NULL-safe legacy recharge cohort Prisma query',
+    summary: [
+      'Remove redundant NOT detectionSource filter from buildLegacyDirectDimoRechargeWhere that dropped detection_source IS NULL legacy rows under SQL three-valued logic.',
+      'Positive whitelist unchanged (NULL | DIMO_NATIVE); isLegacyDirectDimoRechargeRow unchanged; no tolerance or pairing semantic changes.',
+      'PostgreSQL regressions R1–R4 plus full E5.4 S1–S28 matrix.',
+    ],
+    reason:
+      'Production shadow dry-run could not load legacy DIMO RECHARGE rows (LEGACY_EPISODE_COUNT=0) despite valid NULL detection_source episodes.',
+    previousBehavior:
+      'Prisma legacy cohort query returned zero rows for common Production legacy RECHARGE rows with detection_source NULL.',
+    details:
+      'legacy-recharge-cohort.policy.ts; erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T22:15:00.000Z',
+  },
+  {
+    id: 'erd-e5-4-recharge-shadow-parity-2026-09-25',
+    version: '4.9.910',
+    title: 'ERD E5.4 — canonical vs legacy recharge shadow parity',
+    summary: [
+      'Bidirectional parity evaluator: legacy `LEGACY_DIRECT_DIMO_RECHARGE` cohort vs eligible `HvChargeSession` → pure E5.1 projection drafts (no `projectCanonicalRecharge()`).',
+      'Pairing hierarchy P1 exact DIMO, P2 coalesced lineage, P3 unique window; explicit cardinality classes for legacy coalescing vs multiple canonical sessions.',
+      'Diagnostic persistence `ErdRechargeProjectionShadowObservation` with deterministic comparison fingerprint idempotency; PENDING_SETTLEMENT finality for fallback-only lateness.',
+      'Flag `ERD_RECHARGE_SHADOW_PARITY_ENABLED` default OFF; fail-open post-`detectEnergyEvents` hook; bounded Prometheus metrics; PostgreSQL S1–S28 (boundary step 11/11).',
+    ],
+    reason:
+      'E5.3 merged — measure legacy DIMO recharge vs canonical ERD drafts before E5.5 product read dedupe or cutover; observation-only, no product mutation.',
+    previousBehavior:
+      'No structured shadow parity between direct DIMO recharge VEE rows and canonical HvChargeSession projection drafts.',
+    details:
+      'erd-recharge-shadow-parity/*; erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T08:30:00.000Z',
+  },
+  {
+    id: 'erd-e5-3-late-native-handoff-2026-09-25',
+    version: '4.9.908',
+    title: 'ERD E5.3 — late-native canonical VEE handoff',
+    summary: [
+      'E3 persisted supersession evidence → authoritative fallback predecessor resolver (no independent physical matcher).',
+      'Same VEE row: `canonicalChargeSessionId` F→N; immutable F-anchored sourceEventKey; native evidence reconciled with original anchor.',
+      'Post-handoff idempotency via anchor-rebuilt identity (not native mint key); HANDOFF_COMPLETED + bounded fail-closed outcomes.',
+      'Real E3 `persistRechargeSegment` + explicit projector PostgreSQL proof; multi-client race + handoff rollback/retry (boundary step 10/10). Not runtime-wired.',
+    ],
+    reason:
+      'E5.2 proved idempotent projection; E5.3 closes late-native SAME episode without duplicating product rows or rewriting projection identity.',
+    previousBehavior:
+      'Native projection after fallback VEE returned HANDOFF_REQUIRED; no atomic reassignment of canonicalChargeSessionId on same VEE.',
+    details:
+      'erd-late-native-predecessor.resolver.ts; erd-late-native-handoff.policy.ts; erd-e5-3-late-native-handoff.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-3-LATE-NATIVE-HANDOFF-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T06:00:00.000Z',
   },
   {
     id: 'hv-charge-session-persist-v49548-2026-07-17',

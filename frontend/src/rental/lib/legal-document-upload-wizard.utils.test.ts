@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { LEGAL_DOCUMENT_TYPE } from './legal-document-types';
 import { EMPTY_LEGAL_UPLOAD_WIZARD_FORM } from './legal-document-upload-wizard.types';
 import {

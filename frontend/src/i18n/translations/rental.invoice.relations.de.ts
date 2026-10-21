@@ -1,0 +1,15 @@
+export const rentalInvoiceRelationsDe = {
+  'rental.invoice.relations.section.title': 'Zuordnung',
+  'rental.invoice.relations.label.template': 'Vorlage',
+  'rental.invoice.relations.fallback.archived': 'Relation archiviert',
+  'rental.invoice.relations.fallback.deleted': 'Relation gelöscht',
+  'rental.invoice.relations.fallback.unavailable': 'Daten nicht verfügbar',
+  'rental.invoice.relations.permission.customer': 'Keine Berechtigung für Kundendetails',
+  'rental.invoice.relations.permission.booking': 'Keine Berechtigung für Buchungsdetails',
+  'rental.invoice.relations.permission.vehicle': 'Keine Berechtigung für Fahrzeugdetails',
+  'rental.invoice.relations.permission.generic': 'Keine Berechtigung',
+  'rental.invoice.relations.period.unknown': 'Zeitraum unbekannt',
+  'rental.invoice.relations.period.until': 'bis {date}',
+  'rental.invoice.relations.period.from': 'ab {date}',
+  'rental.invoice.relations.period.range': '{start} – {end}',
+} as const;

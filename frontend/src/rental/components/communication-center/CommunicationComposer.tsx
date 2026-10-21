@@ -1,7 +1,7 @@
 import { useCallback, useRef, type ReactNode } from 'react';
 import { Paperclip, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   COMMUNICATION_REPLY_TEXT_MAX_LENGTH,
   type CommunicationComposerState,

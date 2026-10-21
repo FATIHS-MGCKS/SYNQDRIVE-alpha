@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PageHeader } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { IAM_TABS, type IamTabId } from './iam-team.utils';
 import { useIamTeam } from './useIamTeam';
 import { TeamTab } from './TeamTab';

@@ -1,0 +1,188 @@
+# Tankstellenerkennung Knowledge Graph — Schema
+
+version: "1.1"
+description: >
+  Schema for Tankstellenerkennung living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - data
+  - index
+  - pipeline
+  - orchestrator
+  - query
+  - resolver
+  - score
+  - ambiguity
+  - confidence
+  - dedupe
+  - event
+  - state
+  - policy
+  - queue
+  - worker
+  - recovery
+  - authority
+  - persist
+  - api
+  - dto
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+  - CALIBRATION_RUN
+
+# Node evidence: arrays may reference only these types (see validate-graph.mjs)
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - upstream_of
+  - downstream_of
+  - queries
+  - scores
+  - dedupes
+  - decides
+  - invokes
+  - uses
+  - input_to
+  - returns_to
+  - persists
+  - enqueues
+  - processes
+  - recovers
+  - governs
+  - projects_to
+  - presents
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - protected_by
+  - does_not_solve
+  - gates
+  - validates
+  - derives_from
+  - enables
+
+relation_semantics_doc: architecture/tankstellenerkennung/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: FST-DOM-
+  data: FST-DATA-
+  index: FST-IDX-
+  pipeline: FST-PIPE-
+  orchestrator: FST-ORCH-
+  query: FST-QUERY-
+  resolver: FST-RES-
+  score: FST-SCORE-
+  ambiguity: FST-AMB-
+  confidence: FST-CONF-
+  dedupe: FST-DEDUPE-
+  event: FST-EVT-
+  state: FST-STATE-
+  policy: FST-POL-
+  queue: FST-QUEUE-
+  worker: FST-WORK-
+  recovery: FST-REC-
+  authority: FST-AUTH-
+  persist: FST-PERSIST-
+  api: FST-API-
+  dto: FST-DTO-
+  consumer: FST-CONS-
+  decision: FST-DEC-
+  evidence: FST-EVID-
+  test_evidence: FST-TEST-
+  hypothesis: FST-HYP-
+  invariant: FST-INV-
+  gap: FST-GAP-
+  contradiction: FST-CONTRA-
+  failed_approach: FST-FAIL-
+  rejected_approach: FST-REJECT-
+  superseded_approach: FST-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - source_locator
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - superseded_by
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes

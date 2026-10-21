@@ -1,5 +1,5 @@
 import type { ApiTask } from '../../../../lib/api';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { mapTaskCategory, mapTaskPriority, type TaskListPriority } from '../../../lib/task-list.utils';
 import { isServiceMaintenanceTask } from '../../../lib/service-task-semantics';
 import { deriveTaskIsOverdue } from '../../../lib/task-display.utils';

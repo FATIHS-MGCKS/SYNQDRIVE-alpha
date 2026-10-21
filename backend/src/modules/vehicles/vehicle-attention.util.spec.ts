@@ -52,6 +52,21 @@ describe('vehicle-attention.util', () => {
     expect(deriveIntegrationConnectivity('d1', 'DISCONNECTED', false)).toBe('disconnected');
     expect(deriveIntegrationConnectivity(null, 'CONNECTED', false)).toBe('none');
     expect(deriveIntegrationConnectivity('d1', 'CONNECTED', true)).toBe('error');
+    expect(
+      deriveIntegrationConnectivity('d1', 'CONNECTED', false, {
+        registryLifecycle: 'OFFBOARDED',
+      }),
+    ).toBe('disconnected');
+  });
+
+  it('suppresses pipeline attention when SynqDrive DIMO access is inactive', () => {
+    const attention = buildVehicleAttention({
+      ...baseInput,
+      integrationConnectivity: 'disconnected',
+      synqDriveDimoDataAccessActive: false,
+      lastPollStatus: 'FAILURE',
+    });
+    expect(attention.reasons.some((r) => r.code === 'INGESTION_ERROR')).toBe(false);
   });
 
   it('maps attention labels and drilldown sections', () => {

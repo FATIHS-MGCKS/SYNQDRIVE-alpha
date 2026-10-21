@@ -1,0 +1,579 @@
+{
+  "generatedAtUtc": "2026-09-14T14:30:42.441Z",
+  "freezeVersion": "EXP-021-KS-MX-2024-DEEP-90S-FORENSIC-v2",
+  "correctionNote": "Full ~116.6 min pre-abort active phase; abort completedPhaseSummary is artifact only",
+  "authoritativeTimestamps": {
+    "PHYSICAL_T0": "2026-09-14T11:43:53.000Z",
+    "NOMINAL_END": "2026-09-14T11:53:53.000Z",
+    "TRIP_PHYSICAL_END": "2026-09-14T12:04:15.000Z",
+    "FORENSIC_FREEZE_AT": "2026-09-14T13:40:26.693Z",
+    "CONTROLLED_STOP_AT": "2026-09-14T13:43:11.614Z",
+    "ACTUAL_WALL_DURATION_AT_FREEZE_MS": 6993693,
+    "ABORT_COMPLETED_PHASE_SUMMARY_MS": 7158588,
+    "ABORT_SUMMARY_IS_VALID_SEAL": false
+  },
+  "windows": {
+    "A_nominal": {
+      "start": "2026-09-14T11:43:53.000Z",
+      "end": "2026-09-14T11:53:53.000Z",
+      "durationMs": 600000,
+      "label": "Nominal protocol window"
+    },
+    "B_movingOverrun": {
+      "start": "2026-09-14T11:53:53.000Z",
+      "end": "2026-09-14T12:04:15.000Z",
+      "durationMs": 622000,
+      "label": "Moving overrun"
+    },
+    "C_postTripTail": {
+      "start": "2026-09-14T12:04:15.000Z",
+      "end": "2026-09-14T13:40:26.693Z",
+      "durationMs": 5771693,
+      "label": "Post-trip active tail (pre-abort)"
+    },
+    "D_abortArtifact": {
+      "start": "2026-09-14T13:40:26.693Z",
+      "end": "2026-09-14T13:43:11.614Z",
+      "durationMs": 164921,
+      "label": "Abort/terminalization artifact only"
+    }
+  },
+  "nativeHfBuckets": {
+    "count": 25,
+    "first": "2026-09-14T11:46:32.544Z",
+    "last": "2026-09-14T11:52:46.201Z",
+    "byWindow": {
+      "A_nominal": 25,
+      "B_movingOverrun": 0,
+      "C_postTripTail": 0
+    },
+    "distinctFromRcObservations": "NATIVE_HF_BUCKETS are temporal bucket starts from 7 HF slot successes only; NOT the same as reference_capture_observations rows",
+    "PERCENTILE_METHOD": "NEAREST_RANK",
+    "interBucketPercentiles": {
+      "p50": 15000,
+      "p75": 20000,
+      "p90": 21000,
+      "p95": 37868,
+      "p99": 40918,
+      "max": 40918
+    }
+  },
+  "referenceCaptureObservations": {
+    "totalPreserved": 11413,
+    "firstAt": "2026-09-14T11:40:13.333Z",
+    "lastAt": "2026-09-14T13:43:11.191Z",
+    "disjointPartition": {
+      "preT0": 365,
+      "A_nominal": 1058,
+      "B_movingOverrun": 938,
+      "C_postTripTail": 8792,
+      "D_abortArtifact": 260,
+      "sumEqualsTotal": true,
+      "inclusionRules": {
+        "preT0": "[first observation, PHYSICAL_T0)",
+        "A": "[PHYSICAL_T0, NOMINAL_END)",
+        "B": "[NOMINAL_END, TRIP_PHYSICAL_END)",
+        "C": "[TRIP_PHYSICAL_END, FORENSIC_FREEZE)",
+        "D": "[FORENSIC_FREEZE, CONTROLLED_ABORT] inclusive",
+        "note": "PRE_T0 + A + B + C + D = TOTAL"
+      }
+    },
+    "byWindow": {
+      "preT0": 365,
+      "A_nominal": 1058,
+      "B_movingOverrun": 938,
+      "C_postTripTail": 8792,
+      "D_abortArtifact": 260
+    },
+    "byKindByWindow": {
+      "preT0": {
+        "SESSION_METADATA": 1,
+        "SIGNAL_POINT": 364
+      },
+      "A_nominal": {
+        "SIGNAL_POINT": 1058
+      },
+      "B_movingOverrun": {
+        "SIGNAL_POINT": 938
+      },
+      "C_postTripTail": {
+        "SIGNAL_POINT": 8792
+      },
+      "D_abortArtifact": {
+        "SIGNAL_POINT": 260
+      }
+    }
+  },
+  "settlementShadow": {
+    "totalObservations": 114,
+    "byExecutionWindow": [
+      {
+        "window_key": "A_nominal",
+        "phase": "90s",
+        "provider_request_status": "SUCCESS",
+        "cnt": 67
+      },
+      {
+        "window_key": "B_movingOverrun",
+        "phase": "90s",
+        "provider_request_status": "SUCCESS",
+        "cnt": 47
+      }
+    ],
+    "lastExecutedAt": "2026-09-14T12:03:53.325Z",
+    "continuedDuringTail": false,
+    "timelineSample": [
+      {
+        "probeId": "SP-90-T9",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T11:59:23.000Z",
+        "executedAt": "2026-09-14T11:59:23.257Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T10",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T11:59:53.000Z",
+        "executedAt": "2026-09-14T11:59:53.299Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T11",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:00:23.000Z",
+        "executedAt": "2026-09-14T12:00:23.426Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T12",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:00:53.000Z",
+        "executedAt": "2026-09-14T12:00:53.465Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T13",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:01:23.000Z",
+        "executedAt": "2026-09-14T12:01:23.344Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T14",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:01:53.000Z",
+        "executedAt": "2026-09-14T12:01:53.315Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T15",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:02:23.000Z",
+        "executedAt": "2026-09-14T12:02:23.448Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T16",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:02:53.000Z",
+        "executedAt": "2026-09-14T12:02:53.274Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T17",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:03:23.000Z",
+        "executedAt": "2026-09-14T12:03:23.355Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T18",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:03:53.000Z",
+        "executedAt": "2026-09-14T12:03:53.325Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      }
+    ]
+  },
+  "preAbortSessionState": {
+    "cycleCount": 1215,
+    "lastCycleAt": "2026-09-14T13:40:24.035Z",
+    "validMovementDurationMs": null,
+    "nativeBucketCount": 25,
+    "hfSlotsTerminal": 7,
+    "hfSlotSuccess": 5,
+    "hfSlotFailure": 2
+  },
+  "postAbortArtifact": {
+    "completedPhaseSummary": {
+      "wallDurationMs": 7158588,
+      "durationMs": 7158588,
+      "scientificStatus": null,
+      "nativeBucketCount": 25,
+      "IS_VALID_PHASE_SEAL": false,
+      "note": "Abort at 13:43:11 created summary with ~119.3 min duration — NOT valid 10-min seal; use pre-abort freeze for timeline authority"
+    },
+    "sessionFinalStatus": "ABORTED"
+  },
+  "extendedTimeSlices": {
+    "other": {
+      "rcObservations": 365,
+      "byKind": {
+        "SESSION_METADATA": 1,
+        "SIGNAL_POINT": 364
+      },
+      "BY_KIND_COUNTS": "ASSESSED",
+      "nativeHfBuckets": 0,
+      "TRIP_STATE_CLASS": "PRE_ROLL_RECORDING",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W1": {
+      "rcObservations": 487,
+      "byKind": {
+        "SIGNAL_POINT": 487
+      },
+      "nativeHfBuckets": 6,
+      "TRIP_STATE_CLASS": "ACTIVE_TRIP",
+      "PHYSICAL_MOVEMENT_CLASS": "CONFIRMED_MOVEMENT_PRESENT"
+    },
+    "W2": {
+      "rcObservations": 571,
+      "byKind": {
+        "SIGNAL_POINT": 571
+      },
+      "nativeHfBuckets": 19,
+      "TRIP_STATE_CLASS": "ACTIVE_TRIP",
+      "PHYSICAL_MOVEMENT_CLASS": "CONFIRMED_MOVEMENT_PRESENT"
+    },
+    "W3": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "ACTIVE_TRIP",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W4": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "ACTIVE_TRIP",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W5": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "ACTIVE_TRIP",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W6": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "POST_TRIP_RESTING_COMPLETED",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W7": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "POST_TRIP_RESTING_COMPLETED",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W8": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "POST_TRIP_RESTING_COMPLETED",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W9": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "POST_TRIP_RESTING_COMPLETED",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "W10": {
+      "nativeHfBuckets": 0,
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
+      "TRIP_STATE_CLASS": "POST_TRIP_RESTING_COMPLETED",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    }
+  },
+  "tenCriticalQuestions": {
+    "Q1_observationsContinuedDuringTail": {
+      "answer": "YES",
+      "C_postTripTail_count": 8792
+    },
+    "Q2_observationPartition": {
+      "RC_PRE_T0": 365,
+      "A_nominal": 1058,
+      "B_movingOverrun": 938,
+      "C_postTripTail": 8792,
+      "D_abortArtifact": 260,
+      "total": 11413,
+      "arithmetic": "PRE_T0+A+B+C+D=11413"
+    },
+    "Q3_validMovementStopped": {
+      "VALID_MOVEMENT_DURATION_BEHAVIOR": "NOT_ASSESSED",
+      "reason": "movement-duration tracker did not produce a canonical duration; validMovementDurationMs remained null throughout",
+      "validMovementDurationMs": null
+    },
+    "Q4_providerRequestsAfterSlots": {
+      "answer": "NO additional HF deterministic slot requests after slot 6 (~11:52:53Z)",
+      "hfSlotsTotal": 7,
+      "nativeBucketsAfterSlot6": 0,
+      "rcCyclesContinued": "YES — acquisition runner cycles continued (not HF slot polls)"
+    },
+    "Q5_settlementDuringTail": {
+      "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO",
+      "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+      "lastSettlementAt": "2026-09-14T12:03:53.325Z",
+      "tripPhysicalEnd": "2026-09-14T12:04:15.000Z",
+      "detail": "All 114 observations terminal SUCCESS by 12:03:53Z; trip end 12:04:15Z; zero settlement rows executed in Window C"
+    },
+    "Q6_tripFsmWhileExp021Active": {
+      "tripStatus": "COMPLETED",
+      "tripEnd": "2026-09-14T12:04:15.000Z",
+      "tripFsmAtTail": "RESTING/COMPLETED from ~12:06:47Z while RC RECORDING until 13:43:11Z",
+      "answer": "YES — Trip FSM RESTING/COMPLETED while EXP-021 phase incorrectly remained active"
+    },
+    "Q7_orphanedPhaseAnomalies": {
+      "falseMovement": "NOT_ASSESSED",
+      "falseTripReopening": "NO",
+      "POST_TRIP_NEW_HF_SLOT_EXECUTION": 0,
+      "POST_TRIP_NATIVE_HF_BUCKETS": 0,
+      "TRIP_STATE_CLASS": "POST_TRIP_RESTING_COMPLETED",
+      "PHYSICAL_MOVEMENT_CLASS": "NOT_ASSESSED"
+    },
+    "Q8_nativeVsRcObservations": {
+      "NATIVE_HF_BUCKETS": 25,
+      "RC_OBSERVATIONS_PRESERVED": 11413,
+      "areDistinct": true,
+      "ratio": "25 native bucket starts vs 11413 RC observation rows"
+    },
+    "Q9_reconciliation25vs11413": {
+      "nativeBuckets": 25,
+      "rcObservations": 11413,
+      "explanation": "25 = unique native temporal bucket starts from 5 successful HF historical polls (slots 1,3,4,5,6). 11,413 = all reference capture rows from ~1215 acquisition cycles (SIGNAL_POINT + NATIVE_EVENT per ~3s cycle over ~119 min recording). HF slots stopped after slot 6; RC broad capture continued.",
+      "cyclesPreFreeze": 1215,
+      "avgObsPerCycle": 9
+    },
+    "Q10_classificationPreserved": {
+      "VALID_90_VS_60_COMPARISON": "NO",
+      "VALID_FOR_CADENCE_SELECTION": "NO"
+    }
+  },
+  "classification": {
+    "RUN_CLASSIFICATION": "INCOMPLETE_SHORT_AB_PARTIAL_OPERATIONAL_EVIDENCE",
+    "VALID_90_STANDALONE_EVIDENCE": "YES",
+    "VALID_90_VS_60_COMPARISON": "NO",
+    "VALID_FOR_CADENCE_SELECTION": "NO"
+  },
+  "consistencyArtifactVersion": "EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4",
+  "consistency": {
+    "generatedAtUtc": "2026-09-14T16:52:30.730Z",
+    "freezeVersion": "EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4",
+    "PERCENTILE_METHOD": "NEAREST_RANK",
+    "productionSha": "d1501d171c1cc6dc4b83b2720e3a96549ef24185",
+    "metricCorrections": [],
+    "rcObservationPartition": {
+      "inclusionRules": {
+        "preT0": "[first observation, PHYSICAL_T0)",
+        "A": "[PHYSICAL_T0, NOMINAL_END)",
+        "B": "[NOMINAL_END, TRIP_PHYSICAL_END)",
+        "C": "[TRIP_PHYSICAL_END, FORENSIC_FREEZE)",
+        "D": "[FORENSIC_FREEZE, CONTROLLED_ABORT] inclusive",
+        "note": "PRE_T0 + A + B + C + D = TOTAL"
+      },
+      "RC_TOTAL_PERSISTED": 11413,
+      "RC_PRE_T0": 365,
+      "RC_A": 1058,
+      "RC_B": 938,
+      "RC_C": 8792,
+      "RC_D": 260,
+      "RC_PARTITION_ARITHMETIC_VALID": true,
+      "byKindTotal": {
+        "SESSION_METADATA": 1,
+        "SIGNAL_POINT": 11412
+      },
+      "note": "PRE_T0+A+B+C+D=TOTAL. Prior error conflated PRE_T0 into A (1423=365+1058)."
+    },
+    "providerCounts": {
+      "TOTAL_REQUESTS": 7,
+      "TOTAL_SUCCESS": 5,
+      "TOTAL_FAILURE": 2,
+      "SUCCESS_RATE_EXACT": "71.428571%",
+      "W1": {
+        "requests": 4,
+        "success": 2,
+        "failure": 2
+      },
+      "W2": {
+        "requests": 3,
+        "success": 3,
+        "failure": 0
+      }
+    },
+    "nativeHfBuckets": {
+      "count": 25,
+      "INTER_BUCKET_INTERVAL_COUNT": 24,
+      "PERCENTILE_METHOD": "NEAREST_RANK",
+      "interBucketPercentiles": {
+        "p50": 15000,
+        "p75": 20000,
+        "p90": 21000,
+        "p95": 37868,
+        "p99": 40918,
+        "max": 40918
+      },
+      "interBucketOnly": {
+        "INTER_BUCKET_GAPS_GTE_10": 17,
+        "INTER_BUCKET_GAPS_GTE_20": 7,
+        "INTER_BUCKET_GAPS_GTE_30": 2,
+        "INTER_BUCKET_GAPS_GTE_60": 0,
+        "INTER_BUCKET_MAX": 40918
+      },
+      "windowEdgeGaps": {
+        "START_EDGE_GAP_MS": 159544,
+        "END_EDGE_GAP_MS": 66799
+      },
+      "fullWindowCoverage": {
+        "FULL_WINDOW_MAX_UNOBSERVED_GAP_MS": 159544,
+        "FULL_WINDOW_GAPS_GTE_10": 19,
+        "FULL_WINDOW_GAPS_GTE_20": 9,
+        "FULL_WINDOW_GAPS_GTE_30": 4,
+        "FULL_WINDOW_GAPS_GTE_60": 2
+      },
+      "fullPreFreeze": {
+        "count": 25,
+        "HF_CONTINUITY_AFTER_NOMINAL_WINDOW": "NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED",
+        "note": "Bucket inventory only — no nominal-window edge metrics"
+      },
+      "GAP_LIST_HAS_DUPLICATES": false
+    },
+    "postNominalHf": {
+      "POST_10_MIN_HF_DETERMINISTIC_REQUESTS": 0,
+      "POST_10_MIN_NATIVE_HF_BUCKETS": 0,
+      "POST_10_MIN_RC_CAPTURE_CONTINUED": "YES",
+      "POST_10_MIN_RC_SOURCE": "RC_ACQUISITION_RUNNER_CYCLE",
+      "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+      "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO"
+    },
+    "movement": {
+      "CANONICAL_VALID_MOVEMENT_DURATION": null,
+      "VALID_MOVEMENT_DURATION_BEHAVIOR": "NOT_ASSESSED",
+      "T0_TO_TRIP_END_WALL_DURATION_MS": 1222000,
+      "POST_TRIP_FALSE_MOVEMENT": "NOT_ASSESSED"
+    },
+    "settlement": {
+      "NOMINAL_SETTLEMENT_WINDOWS": 19,
+      "SETTLEMENT_AGES": 6,
+      "SETTLEMENT_EXPECTED_ROWS": 114,
+      "SETTLEMENT_ACTUAL_ROWS": 114,
+      "SUCCESS": 114,
+      "SETTLEMENT_STRUCTURAL_COMPLETENESS": "PASS",
+      "VALUE_REVISIONS": "NOT_ASSESSED",
+      "GAP_RECONSTRUCTABILITY": "NOT_PROVEN",
+      "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO",
+      "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+      "lastSettlementAt": "2026-09-14T12:03:53.325Z",
+      "tripPhysicalEnd": "2026-09-14T12:04:15.000Z"
+    },
+    "scientificClassification": {
+      "VALID_T0_EVIDENCE": "YES",
+      "VALID_90_OPERATIONAL_EVIDENCE": "YES",
+      "VALID_90_SCIENTIFIC_EVIDENCE": "PARTIAL",
+      "VALID_90_VS_60_COMPARISON": "NO",
+      "VALID_FOR_PRODUCTION_CADENCE_SELECTION": "NO",
+      "1621_SLOT_FIX_PHYSICAL_ACCEPTANCE": "PASS",
+      "1621_SETTLEMENT_GEOMETRY_PHYSICAL_ACCEPTANCE": "PASS"
+    },
+    "recorderRepair": {
+      "RECORDER_FAILURE_CLASS": "OWNERSHIP_GAP",
+      "90_TO_60_BLOCKED_BY_TELEMETRY": "NO",
+      "RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN": "NO",
+      "CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH": "YES",
+      "CANONICAL_NEXT_RUN_PATH": "AUTONOMOUS_ORCHESTRATOR_SOLE_OWNER",
+      "SUPPORTED_COMPLETE_LIFECYCLE_OWNER": "reference-capture-exp-021-autonomous-orchestrator.ts"
+    },
+    "slots": [
+      {
+        "slotIndex": 0,
+        "scheduledOffsetFromT0": 0,
+        "scheduledAt": "2026-09-14T11:43:53.000Z",
+        "issuedAt": "2026-09-14T11:46:32.519Z",
+        "issueLagMs": 159519,
+        "status": "FAILURE",
+        "failureRootCause": "ZERO_RESULT",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 0
+      },
+      {
+        "slotIndex": 1,
+        "scheduledOffsetFromT0": 90000,
+        "scheduledAt": "2026-09-14T11:45:23.000Z",
+        "issuedAt": "2026-09-14T11:46:38.489Z",
+        "issueLagMs": 75489,
+        "status": "SUCCESS",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 5
+      },
+      {
+        "slotIndex": 2,
+        "scheduledOffsetFromT0": 180000,
+        "scheduledAt": "2026-09-14T11:46:53.000Z",
+        "issuedAt": "2026-09-14T11:46:56.384Z",
+        "issueLagMs": 3384,
+        "status": "FAILURE",
+        "failureRootCause": "ZERO_RESULT",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 0
+      },
+      {
+        "slotIndex": 3,
+        "scheduledOffsetFromT0": 270000,
+        "scheduledAt": "2026-09-14T11:48:23.000Z",
+        "issuedAt": "2026-09-14T11:48:24.310Z",
+        "issueLagMs": 1310,
+        "status": "SUCCESS",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 5
+      },
+      {
+        "slotIndex": 4,
+        "scheduledOffsetFromT0": 360000,
+        "scheduledAt": "2026-09-14T11:49:53.000Z",
+        "issuedAt": "2026-09-14T11:49:57.205Z",
+        "issueLagMs": 4205,
+        "status": "SUCCESS",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 5
+      },
+      {
+        "slotIndex": 5,
+        "scheduledOffsetFromT0": 450000,
+        "scheduledAt": "2026-09-14T11:51:23.000Z",
+        "issuedAt": "2026-09-14T11:51:26.175Z",
+        "issueLagMs": 3175,
+        "status": "SUCCESS",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 5
+      },
+      {
+        "slotIndex": 6,
+        "scheduledOffsetFromT0": 540000,
+        "scheduledAt": "2026-09-14T11:52:23.000Z",
+        "issuedAt": "2026-09-14T11:52:53.753Z",
+        "issueLagMs": 30753,
+        "status": "SUCCESS",
+        "durabilityClass": "UNPROVEN",
+        "nativeBucketCount": 5
+      }
+    ]
+  }
+}

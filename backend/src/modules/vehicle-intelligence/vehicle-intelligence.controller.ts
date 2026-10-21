@@ -49,9 +49,14 @@ import {
   UpdateDamageDto,
 } from './damages/dto';
 import { BatteryHealthService } from './battery-health/battery-health.service';
+import { BatteryGroundTruthEmissionService } from './battery-health/ground-truth/ground-truth-emission.service';
+import { ConfirmBatteryReplacementGroundTruthDto } from './battery-health/ground-truth/dto/confirm-battery-replacement-ground-truth.dto';
+import { ManualGroundTruthConfirmationConflictError } from './battery-health/ground-truth/ground-truth-emission.errors';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
+import { presentBatteryV2CustomerHealthPayload } from './battery-health/battery-v2-customer-health.read';
+import { presentHvBatteryStatusCompatResponse } from './battery-health/battery-hv-battery-status.compat';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
@@ -118,7 +123,10 @@ import {
   DRIVING_EVENT_CATEGORY_MAP,
 } from './trips/unified-behavior-read-model';
 import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
+import { resolveTelemetrySourceFamily } from './telemetry-source-family';
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
+import { DiV0TripSpeedQualityProductReadService } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.service';
+import { isDiV0TripSpeedQualityV2ProductReadEnabled } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.config';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, VehicleIntelligencePermissionGuard)
@@ -150,6 +158,7 @@ export class VehicleIntelligenceController {
     private readonly tripReconciliation: TripReconciliationService,
     private readonly damagesService: DamagesService,
     private readonly batteryHealthService: BatteryHealthService,
+    private readonly batteryGroundTruthEmission: BatteryGroundTruthEmissionService,
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryV2Service: BatteryV2Service,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
@@ -174,6 +183,7 @@ export class VehicleIntelligenceController {
     private readonly drivingAssessmentQuality: DrivingAssessmentDeviceQualityService,
     private readonly drivingImpactService: DrivingImpactService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
+    private readonly tripSpeedQualityProductRead: DiV0TripSpeedQualityProductReadService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -933,6 +943,36 @@ export class VehicleIntelligenceController {
     return { ok: true };
   }
 
+  @Post('battery/ground-truth/confirm-replacement')
+  async confirmBatteryReplacementGroundTruth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: ConfirmBatteryReplacementGroundTruthDto,
+    @Req() req: { user?: { id?: string; organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      throw new BadRequestException('Authenticated user required for ground-truth confirmation');
+    }
+    try {
+      return await this.batteryGroundTruthEmission.confirmManualBatteryReplacement({
+        organizationId,
+        vehicleId,
+        serviceEventId: body.serviceEventId,
+        batteryScope: body.batteryScope,
+        actorUserId,
+      });
+    } catch (error) {
+      if (error instanceof ManualGroundTruthConfirmationConflictError) {
+        throw new BadRequestException({
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
   // --- Enrichment Jobs ---
   @Get('enrichment-jobs')
   async getEnrichmentJobs(
@@ -1120,7 +1160,7 @@ export class VehicleIntelligenceController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.energyEventsService.listEnergyEvents(vehicleId, {
+    return this.energyEventsService.listCanonicalEnergyEvents(vehicleId, {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     });
@@ -1367,6 +1407,7 @@ export class VehicleIntelligenceController {
         behaviorEnrichmentStatus: true,
         tripAnalysisStatus: true,
         tripStatus: true,
+        vehicle: { select: { dimoVehicle: { select: { rawJson: true } } } },
       },
     });
     const behaviorReady = trip?.behaviorEnrichmentStatus === 'COMPLETED';
@@ -1423,6 +1464,7 @@ export class VehicleIntelligenceController {
       behaviorEvents,
       drivingEvents,
       tripId,
+      telemetrySourceFamily: resolveTelemetrySourceFamily(trip?.vehicle?.dimoVehicle?.rawJson),
     });
 
     return {
@@ -1450,6 +1492,26 @@ export class VehicleIntelligenceController {
       vehicleId,
       tripId,
     );
+  }
+
+  @Get('trips/:tripId/gps-speed-evaluation-v2')
+  async getTripGpsSpeedEvaluationV2(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    if (!isDiV0TripSpeedQualityV2ProductReadEnabled()) {
+      throw new NotFoundException({
+        code: 'DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_DISABLED',
+        message: 'GPS speed evaluation V2 product read is not enabled',
+      });
+    }
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const trip = await this.tripsService.findById(organizationId, tripId);
+    if (!trip || trip.vehicleId !== vehicleId) {
+      throw new NotFoundException('Trip not found');
+    }
+    return this.tripSpeedQualityProductRead.readForTrip(organizationId, vehicleId, tripId);
   }
 
   @Get('trips/:tripId/rpm-candidates')
@@ -1620,38 +1682,7 @@ export class VehicleIntelligenceController {
       lv: summary.lv,
       hv: summary.hv,
       currentTelemetry: summary.currentTelemetry,
-      v2: v2
-        ? {
-            estimatedSocPct: v2.estimatedSocPct,
-            /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
-            estimatedSohPct: v2.estimatedSohPct,
-            estimatedLvHealthScore: v2.estimatedSohPct,
-            confidence: v2.confidence,
-            badge: v2.badge,
-            scoredAt: v2.scoredAt,
-            publishedSohPct: v2.publishedSohPct,
-            publicationState: v2.publicationState,
-            maturityConfidence: v2.maturityConfidence,
-            signalConfidence: v2.signalConfidence ?? v2.confidence,
-            restFeatures: {
-              vOff60m: v2.vOff60m,
-              vOff6h: v2.vOff6h,
-              deltaVRest: v2.deltaVRest,
-              restWindowStartedAt: v2.restWindowStartedAt,
-              rest60mCapturedAt: v2.rest60mCapturedAt,
-              rest6hCapturedAt: v2.rest6hCapturedAt,
-            },
-            crankFeatures: presentLegacyCrankFeatures({
-              vPreCrank: v2.vPreCrank,
-              vMinCrank: v2.vMinCrank,
-              crankDrop: v2.crankDrop,
-              vRecovery5s: v2.vRecovery5s,
-              vRecovery30s: v2.vRecovery30s,
-              crankAt: v2.crankAt,
-              crankTripId: v2.crankTripId,
-            }),
-          }
-        : null,
+      v2: v2 ? presentBatteryV2CustomerHealthPayload(v2) : null,
     };
   }
 
@@ -1665,51 +1696,37 @@ export class VehicleIntelligenceController {
       }),
     ]);
 
-    const crankPresentation = v2
-      ? presentLegacyCrankFeatures({
-          vPreCrank: v2.vPreCrank,
-          vMinCrank: v2.vMinCrank,
-          crankDrop: v2.crankDrop,
-          vRecovery5s: v2.vRecovery5s,
-          vRecovery30s: v2.vRecovery30s,
-          crankAt: v2.crankAt,
-          crankTripId: v2.crankTripId,
-        })
-      : null;
+    const payload = v2 ? presentBatteryV2CustomerHealthPayload(v2) : null;
+    const crankPresentation = payload?.crankFeatures ?? null;
 
     return {
       latestVoltage: latestState?.lvBatteryVoltage ?? null,
-      estimatedSocPct: v2?.estimatedSocPct ?? null,
-      /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
-      estimatedSohPct: v2?.estimatedSohPct ?? null,
-      estimatedLvHealthScore: v2?.estimatedSohPct ?? null,
-      confidence: v2?.confidence ?? 'insufficient_data',
-      badge: v2?.badge ?? 'unknown',
-      scoredAt: v2?.scoredAt ?? null,
+      estimatedSocPct: payload?.estimatedSocPct ?? null,
+      /** @deprecated Prefer estimatedLvHealthScore — gated customer LV score, not HV SOH */
+      estimatedSohPct: payload?.estimatedSohPct ?? null,
+      estimatedLvHealthScore: payload?.estimatedLvHealthScore ?? null,
+      userFacingSohPct: payload?.userFacingSohPct ?? null,
+      legacyPublicationSafety: payload?.legacyPublicationSafety ?? null,
+      confidence: payload?.confidence ?? 'insufficient_data',
+      badge: payload?.badge ?? 'unknown',
+      scoredAt: payload?.scoredAt ?? null,
       dataAvailability: {
-        hasRestData: v2?.vOff60m != null || v2?.vOff6h != null,
+        hasRestData:
+          payload?.restFeatures.vOff60m != null ||
+          payload?.restFeatures.vOff6h != null,
         hasCrankData: crankPresentation?.diagnosticCrankDrop != null,
-        hasRecoveryData: v2?.vRecovery5s != null,
+        hasRecoveryData: v2?.crank.vRecovery5s != null,
       },
-      rest: v2
-        ? {
-            vOff60m: v2.vOff60m,
-            vOff6h: v2.vOff6h,
-            deltaVRest: v2.deltaVRest,
-            restWindowStartedAt: v2.restWindowStartedAt,
-            rest60mCapturedAt: v2.rest60mCapturedAt,
-            rest6hCapturedAt: v2.rest6hCapturedAt,
-          }
-        : null,
+      rest: payload?.restFeatures ?? null,
       crank: crankPresentation
         ? {
             ...crankPresentation,
-            vPreCrank: v2!.vPreCrank,
-            vMinCrank: v2!.vMinCrank,
-            vRecovery5s: v2!.vRecovery5s,
-            vRecovery30s: v2!.vRecovery30s,
-            crankAt: v2!.crankAt,
-            tripId: v2!.crankTripId,
+            vPreCrank: v2!.crank.vPreCrank,
+            vMinCrank: v2!.crank.vMinCrank,
+            vRecovery5s: v2!.crank.vRecovery5s,
+            vRecovery30s: v2!.crank.vRecovery30s,
+            crankAt: v2!.crank.crankAt,
+            tripId: v2!.crank.crankTripId,
           }
         : null,
     };
@@ -1869,34 +1886,7 @@ export class VehicleIntelligenceController {
       .getHvBatteryStatus(vehicleId)
       .catch(() => null);
 
-    const hv = summary.hv;
-    const canonicalHv = summary.canonical?.hv ?? null;
-
-    return {
-      _compat: true,
-      _canonical: 'Prefer battery-health-summary.canonical.hv for new consumers.',
-      isEv: true,
-      nominalCapacityKwh:
-        canonicalHv?.referenceCapacity?.capacityKwh ??
-        legacy?.nominalCapacityKwh ??
-        hv?.telemetry?.grossCapacityKwh ??
-        null,
-      currentSocPercent: hv?.telemetry?.socPercent ?? legacy?.currentSocPercent ?? null,
-      estimatedRangeKm: hv?.telemetry?.rangeKm ?? legacy?.estimatedRangeKm ?? null,
-      sohPercent: hv?.sohPct ?? legacy?.sohPercent ?? null,
-      publishedSohPercent: hv?.sohPct ?? legacy?.publishedSohPercent ?? null,
-      sohMethod: hv?.method ?? legacy?.sohMethod ?? 'canonical',
-      sohSourceType: hv?.sohSource ?? legacy?.sohSourceType ?? null,
-      publicationState: hv?.publicationState ?? legacy?.publicationState ?? null,
-      maturityConfidence: hv?.confidence ?? legacy?.maturityConfidence ?? null,
-      snapshotCount: hv?.snapshotCount ?? legacy?.snapshotCount ?? 0,
-      telemetry: hv?.telemetry ?? legacy?.telemetry ?? null,
-      lastRecordedAt: hv?.freshness?.observedAt ?? legacy?.lastRecordedAt ?? null,
-      canonical: canonicalHv,
-      canonicalSummary: hv,
-      currentTelemetry: summary.currentTelemetry ?? null,
-      legacy: legacy ?? undefined,
-    };
+    return presentHvBatteryStatusCompatResponse(summary, legacy);
   }
 
   /** Canonical Health-tab summary — RentalHealthV1 is operational status truth. */

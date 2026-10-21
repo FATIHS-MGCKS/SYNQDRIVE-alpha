@@ -1,7 +1,7 @@
 import { ClipboardCheck, RefreshCw, SearchCheck, Upload } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { PageHeader, StatusChip } from '../../../../components/patterns';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { RentalRulesHeaderMeta } from './rental-rules-matrix.utils';
 
 interface RentalRulesPageHeaderProps {

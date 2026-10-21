@@ -8,6 +8,33 @@ import {
   buildBatteryCapabilityPreflightQuery,
   buildRechargeSegmentsProbeQuery,
 } from './queries/battery-capability-preflight.query';
+import { DimoProviderGateway } from './provider/dimo-provider-gateway.service';
+import { DimoProviderOperation } from './provider/dimo-provider-gateway.types';
+import type { DimoProviderRequestContext } from './provider/dimo-provider-gateway.types';
+import { buildDimoProviderRequestContext } from './provider/dimo-provider-request-context.util';
+import { DimoRequestExecutor } from './provider-budget/dimo-request-executor.service';
+import type { DimoProviderCategory } from './provider-budget/dimo-provider-category.types';
+import { getDimoRequestContext } from './provider-budget/dimo-request-context';
+
+export type { DimoProviderRequestContext };
+
+export interface DimoGraphQLHttpTiming {
+  acquisitionRequestedAt: Date;
+  httpRequestStartedAt: Date;
+  httpResponseReceivedAt: Date;
+  processingCompletedAt: Date;
+  /** Earliest defensible SynqDrive receipt of provider HTTP response (RP-039). */
+  synqReceivedAt: Date;
+}
+
+export interface DimoGraphQLIngressTimingResult {
+  result: any;
+  timing: DimoGraphQLHttpTiming;
+  /** Alias fields for backward compatibility */
+  requestStartedAt: Date;
+  requestCompletedAt: Date;
+  synqReceivedAt: Date;
+}
 
 export interface BatteryCapabilityPreflightSnapshot {
   availableSignals: string[] | null;
@@ -39,7 +66,11 @@ export class DimoTelemetryService {
   private readonly logger = new Logger(DimoTelemetryService.name);
   private readonly client: AxiosInstance;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly dimoRequestExecutor: DimoRequestExecutor,
+    private readonly providerGateway: DimoProviderGateway,
+  ) {
     const telemetryApiUrl =
       this.configService.get<string>('dimo.telemetryApiUrl') ??
       'https://telemetry-api.dimo.zone/query';
@@ -56,22 +87,30 @@ export class DimoTelemetryService {
   async fetchLatestVehicleSnapshot(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<unknown> {
-    // Route through queryGraphQL so DIMO GraphQL `errors` are logged and, when
-    // no `data` is returned, surfaced as an exception. Previously these errors
-    // were silently swallowed, causing the snapshot processor to treat a failed
-    // fetch as a no-op and leaving gaps in our live trip detection FSM.
     const query = buildLatestSnapshotQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      undefined,
+      buildDimoProviderRequestContext(tokenId, requestContext),
+    );
     return result?.data ?? result;
   }
 
   async fetchAvailableSignals(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<string[]> {
     const query = buildAvailableSignalsQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      undefined,
+      buildDimoProviderRequestContext(tokenId, requestContext),
+    );
     const list = result?.data?.availableSignals;
     return Array.isArray(list)
       ? list.filter((entry): entry is string => typeof entry === 'string')
@@ -81,10 +120,12 @@ export class DimoTelemetryService {
   async fetchBatteryCapabilityPreflightSnapshot(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<BatteryCapabilityPreflightSnapshot> {
     const query = buildBatteryCapabilityPreflightQuery(tokenId);
+    const context = buildDimoProviderRequestContext(tokenId, requestContext);
     try {
-      const result = await this.queryGraphQL(vehicleJwt, query);
+      const result = await this.queryGraphQL(vehicleJwt, query, undefined, context);
       const available = result?.data?.availableSignals;
       const availableSignals = Array.isArray(available)
         ? available.filter((entry): entry is string => typeof entry === 'string')
@@ -123,14 +164,16 @@ export class DimoTelemetryService {
     tokenId: number,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<RechargeSegmentsProbeSnapshot> {
     const query = buildRechargeSegmentsProbeQuery(
       tokenId,
       from.toISOString(),
       to.toISOString(),
     );
+    const context = buildDimoProviderRequestContext(tokenId, requestContext);
     try {
-      const result = await this.queryGraphQL(vehicleJwt, query);
+      const result = await this.queryGraphQL(vehicleJwt, query, undefined, context);
       const segments = Array.isArray(result?.data?.segments)
         ? (result.data.segments as RechargeSegmentProbeRow[])
         : [];
@@ -156,9 +199,15 @@ export class DimoTelemetryService {
   async fetchLastSeenLocation(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<unknown> {
     const query = buildLastSeenLocationQuery(tokenId);
-    const result = await this.queryGraphQL(vehicleJwt, query);
+    const result = await this.queryGraphQL(
+      vehicleJwt,
+      query,
+      undefined,
+      buildDimoProviderRequestContext(tokenId, requestContext),
+    );
     return result?.data ?? result;
   }
 
@@ -166,17 +215,79 @@ export class DimoTelemetryService {
     vehicleJwt: string,
     query: string,
     variables?: Record<string, any>,
+    requestContext?: DimoProviderRequestContext,
+    category?: DimoProviderCategory,
   ): Promise<any> {
+    const tokenId =
+      requestContext?.tokenId ??
+      (typeof variables?.tokenId === 'number' ? variables.tokenId : undefined);
+    const ctx = getDimoRequestContext();
+    const resolvedCategory = category ?? ctx.category;
+
+    return this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: resolvedCategory,
+          priority: ctx.priority,
+          execute: () => this.postGraphQL(vehicleJwt, query, variables),
+        }),
+    });
+  }
+
+  /**
+   * GraphQL query with explicit ingress timing captured at the Axios HTTP boundary (RP-039).
+   */
+  async queryGraphQLWithIngressTiming(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+    requestContext?: DimoProviderRequestContext,
+    category?: DimoProviderCategory,
+  ): Promise<DimoGraphQLIngressTimingResult> {
+    const acquisitionRequestedAt = new Date();
+    const tokenId =
+      requestContext?.tokenId ??
+      (typeof variables?.tokenId === 'number' ? variables.tokenId : undefined);
+    const ctx = getDimoRequestContext();
+    const resolvedCategory = category ?? ctx.category;
+
+    const posted = await this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_GRAPHQL,
+      requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: resolvedCategory,
+          priority: ctx.priority,
+          execute: () => this.postGraphQLWithHttpTiming(vehicleJwt, query, variables, acquisitionRequestedAt),
+        }),
+    });
+
+    return {
+      result: posted.data,
+      timing: posted.timing,
+      requestStartedAt: acquisitionRequestedAt,
+      requestCompletedAt: posted.timing.processingCompletedAt,
+      synqReceivedAt: posted.timing.synqReceivedAt,
+    };
+  }
+
+  private async postGraphQLWithHttpTiming(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+    acquisitionRequestedAt: Date = new Date(),
+  ): Promise<{ data: any; timing: DimoGraphQLHttpTiming }> {
     const body: Record<string, unknown> = { query };
     if (variables) body.variables = variables;
-    // Keep this tighter than the BullMQ lockDuration on the snapshot worker
-    // (60s) so that a single hung DIMO round-trip can never outlive the
-    // worker lock and cause a "job stalled" failure that later blocks the
-    // per-vehicle jobId.
+
+    const httpRequestStartedAt = new Date();
     const response = await this.client.post('', body, {
       headers: { Authorization: `Bearer ${vehicleJwt}` },
       timeout: 15000,
     });
+    const httpResponseReceivedAt = new Date();
 
     const gqlErrors = response.data?.errors;
     if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
@@ -190,17 +301,32 @@ export class DimoTelemetryService {
       }
     }
 
-    return response.data;
+    const processingCompletedAt = new Date();
+    return {
+      data: response.data,
+      timing: {
+        acquisitionRequestedAt,
+        httpRequestStartedAt,
+        httpResponseReceivedAt,
+        processingCompletedAt,
+        synqReceivedAt: httpResponseReceivedAt,
+      },
+    };
   }
 
-  /**
-   * Fetch a lightweight summary of key vehicle signals for list-view display.
-   * Returns odometer (km), battery SoC (%), fuel level (%), last signal
-   * timestamp, powertrain type, and current speed.
-   */
+  private async postGraphQL(
+    vehicleJwt: string,
+    query: string,
+    variables?: Record<string, any>,
+  ): Promise<any> {
+    const posted = await this.postGraphQLWithHttpTiming(vehicleJwt, query, variables);
+    return posted.data;
+  }
+
   async fetchVehicleSummary(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<VehicleSummary> {
     const query = `
       query VehicleSummary {
@@ -215,11 +341,20 @@ export class DimoTelemetryService {
       }
     `.trim();
 
-    const response = await this.client.post(
-      '',
-      { query },
-      { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-    );
+    const response = await this.providerGateway.execute({
+      operation: DimoProviderOperation.TELEMETRY_VEHICLE_SUMMARY,
+      requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+      invoke: () =>
+        this.dimoRequestExecutor.execute({
+          category: 'IDENTITY',
+          execute: () =>
+            this.client.post(
+              '',
+              { query },
+              { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+            ),
+        }),
+    });
 
     const signals = response.data?.data?.signalsLatest as
       | Record<string, unknown>
@@ -251,14 +386,10 @@ export class DimoTelemetryService {
     };
   }
 
-  /**
-   * Fetch VIN from the VIN Verifiable Credential (attestation).
-   * Requires VEHICLE_VIN_CREDENTIAL privilege in the vehicle JWT.
-   * Returns null if not available or if the privilege is missing.
-   */
   async fetchVehicleVin(
     vehicleJwt: string,
     tokenId: number,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<string | null> {
     const query = `
       query VehicleVin {
@@ -269,11 +400,20 @@ export class DimoTelemetryService {
     `.trim();
 
     try {
-      const response = await this.client.post(
-        '',
-        { query },
-        { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-      );
+      const response = await this.providerGateway.execute({
+        operation: DimoProviderOperation.TELEMETRY_VEHICLE_VIN,
+        requestContext: buildDimoProviderRequestContext(tokenId, requestContext),
+        invoke: () =>
+          this.dimoRequestExecutor.execute({
+            category: 'IDENTITY',
+            execute: () =>
+              this.client.post(
+                '',
+                { query },
+                { headers: { Authorization: `Bearer ${vehicleJwt}` } },
+              ),
+          }),
+      });
       const vin = response.data?.data?.vinVCLatest?.vin as string | undefined;
       return vin ?? null;
     } catch {

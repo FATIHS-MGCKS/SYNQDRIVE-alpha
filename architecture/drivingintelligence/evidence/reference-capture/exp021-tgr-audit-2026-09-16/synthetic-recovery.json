@@ -1,0 +1,28 @@
+{
+  "evidenceId": "EXP-021-TGR-SYNTHETIC-LOCAL-RECOVERY",
+  "mode": "SYNTHETIC_IN_MEMORY_ONLY",
+  "dbMutated": false,
+  "controlWindow": "PC-HF60-NATIVE-SLOT2",
+  "purpose": "Test whether local micro-queries can reacquire known historical bucket identities; does NOT prove provider maturation",
+  "STRICT_EXACT_IDENTITY_RECOVERY_COUNT": "3/9",
+  "STRICT_EXACT_IDENTITY_RECOVERY_PERCENT": 33.3,
+  "genericRecoverySuccessRate": "NOT_CLAIMED",
+  "LOCAL_DATA_PRESENT_WITH_SUBSECOND_BUCKET_START_SHIFT": "YES",
+  "subsecondShiftExample": {
+    "targetTimestamp": "2026-09-15T11:50:27.945Z",
+    "providerNeighborTimestamp": "2026-09-15T11:50:27.445Z",
+    "note": "Data present at neighbor identity within same local window; strict exact identity match failed"
+  },
+  "PERSISTENCE_IDENTITY_TOLERANCE_CHANGE_REQUIRED": "NO",
+  "GAP_DETECTION_MATCHING_TOLERANCE_REQUIRES_DESIGN": "YES",
+  "toleranceScope": "Detection/reasoning only unless separately proven safe for persistence",
+  "simulatedMissingRegions": [
+    "2026-09-15T11:50:27.945Z",
+    "2026-09-15T11:50:40.945Z",
+    "2026-09-15T11:51:03.945Z"
+  ],
+  "localWindowSizesMs": [5000, 10000, 15000],
+  "attempts": 9,
+  "recoveredKnownBucketsStrict": 3,
+  "sourceArtifact": "source/tgr-micro-window-results.json"
+}

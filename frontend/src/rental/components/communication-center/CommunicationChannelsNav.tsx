@@ -1,5 +1,5 @@
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationChannelsSection } from './communication-center.types';
 import {
   canAccessCommunicationChannelsSection,

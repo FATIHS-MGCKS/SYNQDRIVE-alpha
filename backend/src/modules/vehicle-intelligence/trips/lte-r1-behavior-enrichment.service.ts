@@ -44,6 +44,7 @@ import {
 import { VehicleDrivingCapabilityResolverService } from '../driving-capability/vehicle-driving-capability-resolver.service';
 import { DRIVING_CAPABILITY_PROVIDER } from '../driving-capability/vehicle-driving-capability.types';
 import { DimoBrakingEventIntakeService } from '../brakes/dimo-braking-event-intake.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import {
   assessDimoBrakingCapability,
@@ -164,8 +165,15 @@ export class LteR1BehaviorEnrichmentService {
     const vehicleId = trip.vehicleId;
     const organizationId = trip.vehicle.organizationId;
     const hardwareType = trip.vehicle.hardwareType ?? 'LTE_R1';
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
 
-    const eventDataSummary = await this.brakingIntake.fetchEventDataSummary(tokenId);
+    const eventDataSummary = await this.brakingIntake.fetchEventDataSummary(
+      tokenId,
+      providerContext,
+    );
     const capability = assessDimoBrakingCapability({
       hardwareType,
       provider: 'DIMO',
@@ -183,6 +191,7 @@ export class LteR1BehaviorEnrichmentService {
       tokenId,
       trip.startTime,
       trip.endTime,
+      providerContext,
     );
     this.logger.debug(`LTE_R1 enrich trip ${tripId}: ${nativeSamples.length} DIMO event samples`);
 
@@ -197,7 +206,13 @@ export class LteR1BehaviorEnrichmentService {
     });
 
     // ── 2. Fetch HF data for engine context enrichment ───────────────────────
-    const hfContext = await this.buildHfContextMap(tokenId, trip.startTime, trip.endTime, tripId);
+    const hfContext = await this.buildHfContextMap(
+      tokenId,
+      trip.startTime,
+      trip.endTime,
+      tripId,
+      providerContext,
+    );
 
     // ── 3. Map to normalized driving events ─────────────────────────────────
     const normalized = this.mapToNormalizedEvents(
@@ -412,13 +427,19 @@ export class LteR1BehaviorEnrichmentService {
     from: Date,
     to: Date,
     tripId: string,
+    requestContext?: ReturnType<typeof buildDimoProviderRequestContext>,
   ): Promise<Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }>> {
     const map = new Map<
       number,
       { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }
     >();
     try {
-      const rawHf = await this.segments.fetchHighFrequency(tokenId, from, to);
+      const rawHf = await this.segments.fetchHighFrequency(
+        tokenId,
+        from,
+        to,
+        requestContext,
+      );
       if (rawHf.length >= 5) {
         const cleaned: CleanHfPoint[] = preprocessHighFrequency(rawHf);
         for (const p of cleaned) {

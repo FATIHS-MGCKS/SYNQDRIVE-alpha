@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { VsiProfileLifecycleEnqueueService } from '../vehicle-signal-intelligence/vsi-profile-lifecycle-enqueue.service';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { UpsertVehicleDrivingCapabilityInput } from './vehicle-driving-capability.types';
@@ -10,7 +11,11 @@ import { buildLifecycleMetadata } from './vehicle-driving-capability-lifecycle.t
 
 @Injectable()
 export class VehicleDrivingCapabilityRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly vsiProfileLifecycleEnqueue?: VsiProfileLifecycleEnqueueService,
+  ) {}
 
   async assertVehicleInOrg(organizationId: string, vehicleId: string): Promise<void> {
     const vehicle = await this.prisma.vehicle.findFirst({
@@ -75,7 +80,7 @@ export class VehicleDrivingCapabilityRepository {
 
     const metadata = lifecycleMetadata as Prisma.InputJsonValue | undefined;
 
-    return this.prisma.vehicleDrivingCapability.upsert({
+    const row = await this.prisma.vehicleDrivingCapability.upsert({
       where: {
         organizationId_vehicleId_providerSource_capabilityKey: {
           organizationId: input.organizationId,
@@ -116,5 +121,15 @@ export class VehicleDrivingCapabilityRepository {
         capabilityVersion: input.capabilityVersion,
       },
     });
+
+    await this.vsiProfileLifecycleEnqueue?.enqueueDeclaredCatalogAdvanced({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      providerSourceLinkId: null,
+      occurredAt: checkedAt,
+      catalogCheckedAt: checkedAt,
+    });
+
+    return row;
   }
 }

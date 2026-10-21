@@ -24,6 +24,16 @@ function buildWindowId(vehicleId: string, anchorAt: Date): string {
   return buildLvRestWindowIdempotencyKey(vehicleId, anchorAt);
 }
 
+/**
+ * Canonical rest-window anchor: authoritative trip.endTime when supplied,
+ * otherwise detection lastActivityAt (bridge-only legacy path).
+ */
+export function resolveLvRestWindowAnchorAt(
+  signal: LvRestWindowEvent['signal'],
+): Date {
+  return signal.tripEndAt ?? signal.lastActivityAt!;
+}
+
 function cloneRecord(record: LvRestWindowRecord): LvRestWindowRecord {
   return { ...record };
 }
@@ -123,7 +133,7 @@ export function reduceLvRestWindow(
         };
       }
 
-      const anchorAt = event.signal.lastActivityAt!;
+      const anchorAt = resolveLvRestWindowAnchorAt(event.signal);
       const windowId = buildWindowId(vehicleId, anchorAt);
 
       if (

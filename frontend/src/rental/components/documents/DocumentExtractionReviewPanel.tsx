@@ -12,7 +12,7 @@ import {
 import { DocumentEntityReview } from './DocumentEntityReview';
 import { DocumentSchemaFieldReview } from './DocumentSchemaFieldReview';
 import { DocumentActionPlanReview } from './DocumentActionPlanReview';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { VehicleLabelLookup } from '../../lib/document-entity-review';
 
 function plausClass(status: PlausibilityStatus): string {

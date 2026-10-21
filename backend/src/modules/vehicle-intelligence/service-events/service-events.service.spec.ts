@@ -34,8 +34,15 @@ describe('ServiceEventsService.createFromDocumentExtraction', () => {
       },
     };
 
-    const svc = new ServiceEventsService(prisma as any, serviceOverdueTasks as any);
-    return { svc, prisma };
+    const groundTruthBackedSourceGuard = {
+      assertServiceEventMutable: jest.fn().mockResolvedValue(undefined),
+    };
+    const svc = new ServiceEventsService(
+      prisma as any,
+      serviceOverdueTasks as any,
+      groundTruthBackedSourceGuard as any,
+    );
+    return { svc, prisma, groundTruthBackedSourceGuard };
   }
 
   beforeEach(() => {
@@ -115,6 +122,56 @@ describe('ServiceEventsService.createFromDocumentExtraction', () => {
   });
 });
 
+describe('ServiceEventsService.create', () => {
+  function createHarness() {
+    const prisma = {
+      vehicle: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      vehicleServiceEvent: {
+        create: jest.fn(),
+        findFirst: jest.fn(),
+        count: jest.fn(),
+      },
+    };
+    const svc = new ServiceEventsService(
+      prisma as any,
+      {
+        onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined),
+      } as any,
+      { assertServiceEventMutable: jest.fn().mockResolvedValue(undefined) } as any,
+    );
+    return { svc, prisma };
+  }
+
+  it('populates organizationId from vehicle and rejects missing vehicle', async () => {
+    const { svc, prisma } = createHarness();
+    prisma.vehicle.findUnique.mockResolvedValue({
+      id: 'veh-1',
+      organizationId: 'org-vehicle',
+    });
+    prisma.vehicleServiceEvent.create.mockResolvedValue({ id: 'evt-1' });
+    prisma.vehicleServiceEvent.findFirst.mockResolvedValue(null);
+    prisma.vehicle.update.mockResolvedValue({});
+
+    await svc.create(
+      'veh-1',
+      { eventType: 'BATTERY_REPLACEMENT', eventDate: '2026-01-15' },
+      { userId: 'user-1' },
+    );
+
+    expect(prisma.vehicleServiceEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          vehicleId: 'veh-1',
+          organizationId: 'org-vehicle',
+        }),
+      }),
+    );
+  });
+});
+
 describe('ServiceEventsService.applyComplianceVehicleUpdateFromExtraction', () => {
   const complianceInput = {
     organizationId: 'org-1',
@@ -140,7 +197,11 @@ describe('ServiceEventsService.applyComplianceVehicleUpdateFromExtraction', () =
         update: jest.fn(),
       },
     };
-    const svc = new ServiceEventsService(prisma as any, { onServiceHistoryChanged: jest.fn() } as any);
+    const svc = new ServiceEventsService(
+      prisma as any,
+      { onServiceHistoryChanged: jest.fn() } as any,
+      { assertServiceEventMutable: jest.fn().mockResolvedValue(undefined) } as any,
+    );
     return { svc, prisma };
   }
 

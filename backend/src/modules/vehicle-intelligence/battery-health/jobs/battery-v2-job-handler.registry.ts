@@ -6,6 +6,7 @@ import {
 } from './battery-v2-job.types';
 import type { BatteryV2JobHandler } from './battery-v2-job.handler';
 import { BatteryObservationClassifyHandler } from './handlers/battery-observation-classify.handler';
+import { BatteryLvRestSessionOpenHandler } from './handlers/battery-lv-rest-session-open.handler';
 import { BatteryRestTargetEvaluateHandler } from './handlers/battery-rest-target-evaluate.handler';
 import { BatteryStartProxyExtractHandler } from './handlers/battery-start-proxy-extract.handler';
 import { BatteryAssessmentRecomputeHandler } from './handlers/battery-assessment-recompute.handler';
@@ -21,6 +22,7 @@ export class BatteryV2JobHandlerRegistry {
 
   constructor(
     observationClassify: BatteryObservationClassifyHandler,
+    lvRestSessionOpen: BatteryLvRestSessionOpenHandler,
     restTargetEvaluate: BatteryRestTargetEvaluateHandler,
     startProxyExtract: BatteryStartProxyExtractHandler,
     assessmentRecompute: BatteryAssessmentRecomputeHandler,
@@ -31,6 +33,7 @@ export class BatteryV2JobHandlerRegistry {
   ) {
     const handlers: BatteryV2JobHandler[] = [
       observationClassify,
+      lvRestSessionOpen,
       restTargetEvaluate,
       startProxyExtract,
       assessmentRecompute,

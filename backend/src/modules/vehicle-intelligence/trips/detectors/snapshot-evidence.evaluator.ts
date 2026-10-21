@@ -39,11 +39,14 @@ export class SnapshotEvidenceEvaluator implements TripDetector {
       verdict: result.triggered ? 'TRIGGERED' : 'NOT_TRIGGERED',
       confidence: result.confidence,
       evidence: {
+        candidatePhase: result.candidatePhase,
+        candidatePolicyProfile: result.candidatePolicyProfile,
         strong: result.strong,
         weak: result.weak,
         hasMovement: result.hasMovement,
         reasons: result.reasons,
         mode: result.mode,
+        candidateTrigger: result.candidatePolicy.trigger,
       },
       timestamp: new Date(),
     };

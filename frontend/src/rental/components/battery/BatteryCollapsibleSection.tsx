@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 export interface BatteryCollapsibleSectionProps {
   title: string;

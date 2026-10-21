@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { CommunicationConversationListItem } from '../../../lib/communication/types';
 import { isPreviewSemanticToken, previewTokenI18nKey } from '../../../lib/communication/preview';
 

@@ -1,0 +1,27 @@
+{
+  "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+  "independentAccuracy": "NOT_ASSESSABLE",
+  "baseline": {
+    "ASSOCIATED": 510,
+    "AMBIGUOUS": 244,
+    "UNKNOWN": 382
+  },
+  "p1_direction_aware": {
+    "ASSOCIATED": 589,
+    "AMBIGUOUS": 266,
+    "UNKNOWN": 281
+  },
+  "label_flips": 101,
+  "way_id_changes": 135,
+  "way_switches_baseline": 172,
+  "way_switches_p1": 183,
+  "new_associated_buckets": 79,
+  "new_unknown_buckets": 0,
+  "impossible_topology_transitions_baseline": 2,
+  "impossible_topology_transitions_p1": 1,
+  "runtime_ms": {
+    "baseline_viterbi": 4903.349501000001,
+    "p1_viterbi": 4521.022873
+  },
+  "note": "Label deltas are regression observability only — no road-ID ground truth on this trip."
+}

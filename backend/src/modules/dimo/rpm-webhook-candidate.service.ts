@@ -17,6 +17,8 @@ import {
   type EngineContextVehicleInput,
 } from '../vehicle-intelligence/event-context/engine-context.guards';
 import type { EventContextStatus } from '../vehicle-intelligence/event-context/event-context-assessment.types';
+import { EventTripAssociationService } from '../vehicle-intelligence/trips/event-association/event-trip-association.service';
+import { EVENT_TRIP_ASSOCIATION_REASONS } from '../vehicle-intelligence/trips/event-association/event-trip-association.types';
 
 /** Aligns with DIMO console cooldown (10s) for dedup buckets. */
 export const RPM_WEBHOOK_DEDUP_WINDOW_MS = 10_000;
@@ -48,6 +50,7 @@ export class RpmWebhookCandidateService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Optional() private readonly tripAssociation?: EventTripAssociationService,
     @Optional() private readonly contextEnrichment?: EventContextEnrichmentService,
   ) {}
 
@@ -112,7 +115,13 @@ export class RpmWebhookCandidateService {
         `RPM webhook candidate for vehicle ${input.vehicle.id}: ${input.observedValue} rpm (threshold ${threshold})`,
       );
 
-      const status = await this.enrichCandidateBestEffort(row.id, input.tokenId, input.observedAt);
+      const status = await this.enrichCandidateBestEffort(
+        row.id,
+        input.tokenId,
+        input.observedAt,
+        input.vehicle.organizationId,
+        input.vehicle.id,
+      );
       return { outcome: 'created', candidateId: row.id, status };
     } catch (err: unknown) {
       this.logger.warn(
@@ -128,6 +137,8 @@ export class RpmWebhookCandidateService {
     candidateId: string,
     tokenId: number,
     observedAt: Date,
+    organizationId: string,
+    vehicleId: string,
   ): Promise<RpmWebhookCandidateStatus> {
     if (!this.contextEnrichment) {
       return RpmWebhookCandidateStatus.RECEIVED;
@@ -138,6 +149,8 @@ export class RpmWebhookCandidateService {
         anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
         anchorTimestamp: observedAt,
         tokenId,
+        organizationId,
+        vehicleId,
         engineSignalsApplicable: true,
       });
 
@@ -179,16 +192,38 @@ export class RpmWebhookCandidateService {
     }
   }
 
+  /**
+   * Delegates to the canonical Event → Trip resolver.
+   *
+   * A null result is never permanent: post-finalization reconciliation and the
+   * bounded delayed sweep converge the association later. There is deliberately
+   * no local fallback — the previous inline query treated the rolling
+   * `end_time` of an ONGOING trip as a finalized upper boundary and orphaned
+   * events that landed between two ~30s tracking ticks.
+   */
   private async resolveTripId(vehicleId: string, at: Date): Promise<string | null> {
-    const trip = await this.prisma.vehicleTrip.findFirst({
-      where: {
-        vehicleId,
-        startTime: { lte: at },
-        OR: [{ endTime: null }, { endTime: { gte: at } }],
-      },
-      orderBy: { startTime: 'desc' },
-      select: { id: true },
+    if (!this.tripAssociation) {
+      this.logger.warn(
+        `Event trip association unavailable — candidate for vehicle ${vehicleId} left unresolved for reconciliation`,
+      );
+      return null;
+    }
+
+    const decision = await this.tripAssociation.resolveForEvent({
+      vehicleId,
+      observedAt: at,
+      stage: 'intake',
     });
-    return trip?.id ?? null;
+
+    if (decision.tripId == null && decision.reason !== EVENT_TRIP_ASSOCIATION_REASONS.NO_TRIP_YET) {
+      this.logger.log(
+        `EVENT_TRIP_ASSOCIATION stage=intake vehicle=${vehicleId} resolved=none reason=${decision.reason}` +
+          (decision.ambiguousTripIds?.length
+            ? ` ambiguous=${decision.ambiguousTripIds.length}`
+            : ''),
+      );
+    }
+
+    return decision.tripId;
   }
 }

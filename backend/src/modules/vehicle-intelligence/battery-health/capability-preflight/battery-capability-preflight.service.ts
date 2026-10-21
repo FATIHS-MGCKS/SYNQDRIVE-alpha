@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
+import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import {
   assessBatteryCapabilityPreflight,
   assessRechargeSegmentsCapability,
@@ -54,9 +55,14 @@ export class BatteryCapabilityPreflightService {
 
     const tokenId = vehicle.dimoVehicle.tokenId;
     const checkedAt = new Date();
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
     let queryError: string | null = null;
     let availableSignals: string[] | null = null;
     let signalsLatest: Record<string, unknown> | null = null;
+    let usedSnapshotFallback = false;
 
     try {
       const vehicleJwt = await this.dimoAuth.getVehicleJwt(tokenId);
@@ -64,11 +70,32 @@ export class BatteryCapabilityPreflightService {
         await this.dimoTelemetry.fetchBatteryCapabilityPreflightSnapshot(
           vehicleJwt,
           tokenId,
+          providerContext,
         );
       availableSignals = snapshot.availableSignals;
       signalsLatest = snapshot.signalsLatest;
       if (snapshot.queryError) {
         queryError = snapshot.queryError;
+      }
+
+      if (queryError || !signalsLatest) {
+        const fallback = await this.fetchCapabilitySnapshotFallback(
+          vehicleJwt,
+          tokenId,
+          providerContext,
+        );
+        if (fallback.signalsLatest) {
+          signalsLatest = fallback.signalsLatest;
+          availableSignals = fallback.availableSignals ?? availableSignals;
+          usedSnapshotFallback = true;
+          if (!fallback.queryError) {
+            queryError = null;
+          } else if (!queryError) {
+            queryError = fallback.queryError;
+          }
+        } else if (!queryError && fallback.queryError) {
+          queryError = fallback.queryError;
+        }
       }
     } catch (error) {
       queryError =
@@ -76,6 +103,29 @@ export class BatteryCapabilityPreflightService {
       this.logger.warn(
         `Capability preflight query failed vehicle=${vehicleId}: ${queryError}`,
       );
+
+      try {
+        const vehicleJwt = await this.dimoAuth.getVehicleJwt(tokenId);
+        const fallback = await this.fetchCapabilitySnapshotFallback(
+          vehicleJwt,
+          tokenId,
+          providerContext,
+        );
+        if (fallback.signalsLatest) {
+          signalsLatest = fallback.signalsLatest;
+          availableSignals = fallback.availableSignals ?? null;
+          usedSnapshotFallback = true;
+          if (!fallback.queryError) {
+            queryError = null;
+          }
+        }
+      } catch (fallbackError) {
+        this.logger.warn(
+          `Capability snapshot fallback failed vehicle=${vehicleId}: ${
+            fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          }`,
+        );
+      }
     }
 
     const assessedSignals = assessBatteryCapabilityPreflight({
@@ -83,9 +133,14 @@ export class BatteryCapabilityPreflightService {
       signalsLatest,
       queryError,
       checkedAt,
+      metadata: usedSnapshotFallback ? { snapshotFallback: true } : undefined,
     });
 
-    const rechargeProbe = await this.probeRechargeSegments(tokenId, checkedAt);
+    const rechargeProbe = await this.probeRechargeSegments(
+      tokenId,
+      checkedAt,
+      providerContext,
+    );
     assessedSignals.push(assessRechargeSegmentsCapability(rechargeProbe, checkedAt));
 
     await this.repository.upsertMany(
@@ -118,9 +173,58 @@ export class BatteryCapabilityPreflightService {
     };
   }
 
+  private async fetchCapabilitySnapshotFallback(
+    vehicleJwt: string,
+    tokenId: number,
+    requestContext?: ReturnType<typeof buildDimoProviderRequestContext>,
+  ): Promise<{
+    availableSignals: string[] | null;
+    signalsLatest: Record<string, unknown> | null;
+    queryError?: string | null;
+  }> {
+    try {
+      const availableSignals = await this.dimoTelemetry.fetchAvailableSignals(
+        vehicleJwt,
+        tokenId,
+        requestContext,
+      );
+      const raw = await this.dimoTelemetry.fetchLatestVehicleSnapshot(
+        vehicleJwt,
+        tokenId,
+        requestContext,
+      );
+      const record =
+        raw && typeof raw === 'object' && !Array.isArray(raw)
+          ? (raw as Record<string, unknown>)
+          : null;
+      const signalsLatest = (record?.signalsLatest ?? record) as
+        | Record<string, unknown>
+        | null;
+
+      return {
+        availableSignals,
+        signalsLatest:
+          signalsLatest && typeof signalsLatest === 'object'
+            ? signalsLatest
+            : null,
+        queryError: null,
+      };
+    } catch (error) {
+      return {
+        availableSignals: null,
+        signalsLatest: null,
+        queryError:
+          error instanceof Error
+            ? error.message
+            : 'DIMO snapshot capability fallback failed',
+      };
+    }
+  }
+
   private async probeRechargeSegments(
     tokenId: number,
     checkedAt: Date,
+    requestContext?: ReturnType<typeof buildDimoProviderRequestContext>,
   ): Promise<{
     segmentCount: number;
     queryError?: string;
@@ -139,6 +243,7 @@ export class BatteryCapabilityPreflightService {
         tokenId,
         from,
         to,
+        requestContext,
       );
 
       const timestamps = probe.segments

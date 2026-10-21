@@ -1,7 +1,10 @@
 import {
+  isBatteryV2HvChargingCounterBucketCaptureEnabled,
+  isBatteryV2HvChargingCounterVehicleAllowlisted,
   isBatteryV2HvFallbackChargeSessionEnabled,
   isLegacyCrankAssessmentEnabled,
   isBatteryV2ReadinessEnabled,
+  isBatteryV2RestSessionFeaturesShadowEnabled,
 } from './battery-health-v2.config';
 
 describe('battery-health-v2.config defaults', () => {
@@ -24,5 +27,33 @@ describe('battery-health-v2.config defaults', () => {
   it('keeps readiness disabled by default', () => {
     delete process.env.BATTERY_V2_READINESS_ENABLED;
     expect(isBatteryV2ReadinessEnabled()).toBe(false);
+  });
+
+  it('keeps M3.3C rest-session feature shadow disabled by default', () => {
+    delete process.env.BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED;
+    expect(isBatteryV2RestSessionFeaturesShadowEnabled()).toBe(false);
+  });
+
+  it('keeps HV R22 charging counter capture disabled by default', () => {
+    delete process.env.BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED;
+    expect(isBatteryV2HvChargingCounterBucketCaptureEnabled()).toBe(false);
+  });
+
+  it('keeps HV R22 pilot mode disabled by default', () => {
+    delete process.env.BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const {
+      parseHvChargingCounterPilotAdmissionStateV1,
+    } = require('../modules/vehicle-intelligence/battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.pilot-admission.v1');
+    expect(parseHvChargingCounterPilotAdmissionStateV1({})).toEqual({ kind: 'disabled' });
+  });
+
+  it('denies all vehicles when R22 allowlist unset', () => {
+    delete process.env.BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST;
+    expect(
+      isBatteryV2HvChargingCounterVehicleAllowlisted(
+        '68868291-5478-42cd-b0c4-cc77b2a78e21',
+      ),
+    ).toBe(false);
   });
 });

@@ -1,0 +1,27 @@
+{
+  "REVERSE_VIDEO_OBSERVED": "YES",
+  "REVERSE_VIDEO_TIME_HIGH_CONFIDENCE": "YES",
+  "REVERSE_TELEMETRY_SUPPORTED": "NO",
+  "GEAR_STATE_OBSERVED": "NO",
+  "GEAR_STATE_VIDEO_AGREEMENT": "NO",
+  "gearHfObservations": 0,
+  "gearRatioHfObservations": 0,
+  "reverseWindowHfSpeedSamples": 2,
+  "reverseAnchorMatch": {
+    "anchorId": "B25",
+    "status": "MATCHED",
+    "videoRelativeSeconds": 990,
+    "videoSpeedKmh": 0,
+    "videoAnchorConfidence": "HIGH",
+    "providerTimestamp": "2026-09-04T04:03:46.299Z",
+    "providerSpeedKmh": 0,
+    "telemetryVideoRelativeSeconds": 1004.083,
+    "rawTimeDisplacementSeconds": 14.08299999999997,
+    "speedErrorKmh": 0,
+    "candidateOffsetSeconds": 14.08299999999997,
+    "matchConfidence": "HIGH",
+    "localShapeAgreement": "GOOD",
+    "cadenceContextSeconds": 35.436
+  },
+  "note": "Unsigned speed cannot validate reverse; video R at t≈990s is high-confidence ground truth"
+}

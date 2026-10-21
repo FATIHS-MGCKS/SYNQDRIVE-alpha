@@ -46,8 +46,8 @@ import { segmentFromHealthState } from '../../lib/health-segment-display';
 import { buildBatteryLvSummaryVm } from '../../lib/battery-lv-view-model';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { formatVolts } from '../../lib/battery-ui-formatters';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   brakeOverviewLabel,
   brakeRemainingKmLabel,

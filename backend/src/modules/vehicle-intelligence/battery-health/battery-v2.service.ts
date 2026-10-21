@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TripDetectionState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 import { BatteryHealthService } from './battery-health.service';
 import {
   stabilize,
@@ -19,7 +20,12 @@ import {
 import {
   isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
+  isBatteryV2LegacyRestCaptureEnabled,
 } from '../../../config/battery-health-v2.config';
+import {
+  buildBatteryV2CustomerHealthReadModel,
+  type BatteryV2CustomerHealthReadModel,
+} from './battery-v2-customer-health.read';
 import {
   isLeadAcidCurveApplicable,
   resolveLvBatteryChemistry,
@@ -97,6 +103,9 @@ export class BatteryV2Service {
     lvBatteryVoltage: number | null,
     observedAt: Date | null = null,
   ): Promise<BatteryV2SnapshotCaptureResult> {
+    if (!isBatteryV2LegacyRestCaptureEnabled()) {
+      return { restCaptured: false };
+    }
     if (!isPlausibleVoltage(lvBatteryVoltage)) {
       return { restCaptured: false };
     }
@@ -250,7 +259,21 @@ export class BatteryV2Service {
     const from = new Date(tripStartAt.getTime() - 30_000);
     const to = new Date(tripStartAt.getTime() + 120_000);
 
-    const points = await this.segments.fetchCrankWindow(dimoTokenId, from, to);
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    const providerContext = buildDimoProviderRequestContext(dimoTokenId, {
+      organizationId: vehicle?.organizationId,
+      vehicleId,
+    });
+
+    const points = await this.segments.fetchCrankWindow(
+      dimoTokenId,
+      from,
+      to,
+      providerContext,
+    );
     if (points.length === 0) {
       this.logger.debug(
         `No crank window data for vehicle=${vehicleId} — skipping`,
@@ -576,19 +599,12 @@ export class BatteryV2Service {
   //  PUBLIC READ
   // ══════════════════════════════════════════════════════════
 
-  async getV2Health(vehicleId: string) {
+  async getV2Health(vehicleId: string): Promise<BatteryV2CustomerHealthReadModel | null> {
     const f = await this.prisma.batteryFeatures.findUnique({
       where: { vehicleId },
     });
     if (!f) return null;
 
-    return {
-      ...f,
-      // User-facing SOH: published when available, null during calibration
-      userFacingSohPct: f.publishedSohPct,
-      publicationState: f.publicationState,
-      maturityConfidence: f.maturityConfidence,
-      signalConfidence: f.confidence,
-    };
+    return buildBatteryV2CustomerHealthReadModel(this.prisma, f);
   }
 }

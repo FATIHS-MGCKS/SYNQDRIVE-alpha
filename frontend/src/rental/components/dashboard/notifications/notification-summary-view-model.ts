@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { ActionQueueGroupItem, ActionQueueItem } from '../dashboardTypes';
 import type { NotificationDomain, NotificationLifecycleStatus, NotificationSeverity } from '../notificationQueueModel';
 import {

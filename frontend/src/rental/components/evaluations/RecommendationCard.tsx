@@ -1,7 +1,7 @@
 /**
  * E7C single recommendation card — server order preserved, copy keys only.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { E7Recommendation } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
 import {
   categoryLabelKey,

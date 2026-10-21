@@ -9,12 +9,33 @@ export const TRIP_TRACKING_TRIGGERS = {
 export type TripTrackingTrigger =
   (typeof TRIP_TRACKING_TRIGGERS)[keyof typeof TRIP_TRACKING_TRIGGERS];
 
+export const TRIP_TRACKING_HANDOFF_KINDS = {
+  STABLE_SUCCESSOR: 'stable_successor',
+} as const;
+
+export type TripTrackingHandoffKind =
+  (typeof TRIP_TRACKING_HANDOFF_KINDS)[keyof typeof TRIP_TRACKING_HANDOFF_KINDS];
+
+/** R7 — local FINALIZE terminal lifecycle commit tracking (no schema). */
+export type TerminalLifecycleCommit = 'NONE' | 'COMPLETED' | 'CANCELLED';
+
+/** R7A — mutation intent immediately before finalizeTrip/discardTrip call. */
+export type TerminalLifecycleIntent = 'NONE' | 'COMPLETE' | 'CANCEL';
+
 export interface TripTrackingJobData {
   vehicleId: string;
   organizationId: string | null;
   dimoTokenId: number;
   trigger: TripTrackingTrigger;
   requestedAt: string;
+  /** R3B: explicit durable successor scheduled while primary jobId is ACTIVE. */
+  handoffKind?: TripTrackingHandoffKind;
+  handoffPrimaryJobId?: string;
+  /**
+   * R10: correlates END_VALIDATION / FINALIZE jobs to one POSSIBLE_END episode
+   * (`possibleEndEnteredAt` ISO). Cleared on resume; stale jobs must not commit.
+   */
+  endCycleToken?: string;
 }
 
 export const START_DETECTION_MODES = {
@@ -68,6 +89,8 @@ export interface SnapshotEvidenceSignals {
   odometerKm: number | null;
   fuelLevelAbsolute: number | null;
   evSoc: number | null;
+  /** Provider snapshot source timestamp (EVENT_TIME). Not VLS.updatedAt. */
+  sourceTimestamp: Date | null;
 }
 
 export interface TripStartEvaluation {

@@ -8,6 +8,7 @@ import {
   TRIP_OVERALL_RATING_LABEL,
   tripOverallRatingTone,
 } from './utils/trip-overall-status';
+import { resolveTripDisplayEndTime } from './utils/trip-end-time-display.util';
 
 interface TripMetricRowProps {
   trip: TripTimelineTrip;
@@ -20,7 +21,8 @@ export function TripMetricRow({
   dayTripNumber,
   behaviorEvents = [],
 }: TripMetricRowProps) {
-  const timeRange = `${formatTripTime(trip.startTime)} – ${trip.endTime ? formatTripTime(trip.endTime) : '…'}`;
+  const displayEnd = resolveTripDisplayEndTime(trip);
+  const timeRange = `${formatTripTime(trip.startTime)} – ${displayEnd ? formatTripTime(displayEnd) : '…'}`;
   const overallRating = deriveTripOverallRating(trip, behaviorEvents);
   const deviceAlert = hasTripDeviceConnectionAlert(trip);
 

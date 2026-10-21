@@ -3,7 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { VehicleStatus } from '@prisma/client';
+import { VehicleRegistryLifecycle, VehicleStatus } from '@prisma/client';
 import { BookingsHandoverService } from './bookings-handover.service';
 
 const actor = {
@@ -85,6 +85,7 @@ function createHarness(options: {
   existingReturn?: { id: string } | null;
   booking?: ReturnType<typeof bookingRow> | null;
   vehicleStatus?: VehicleStatus;
+  registryLifecycle?: VehicleRegistryLifecycle;
   otherActiveBookings?: number;
   pickupOdometer?: number | null;
 } = {}) {
@@ -146,6 +147,12 @@ function createHarness(options: {
     },
     booking: {
       findFirst: jest.fn().mockResolvedValue(options.booking === null ? null : bookingRow(options.booking ?? {})),
+    },
+    vehicle: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: vehicleId,
+        registryLifecycle: options.registryLifecycle ?? 'ACTIVE',
+      }),
     },
     $transaction: jest.fn(async (cb: (client: typeof tx) => Promise<unknown>) => cb(tx)),
   };
@@ -262,6 +269,21 @@ describe('BookingsHandoverService', () => {
     const { svc } = createHarness({ existingPickup: protocolRow(), booking: bookingRow({ status: 'CONFIRMED' }) });
     await expect(svc.createHandover(orgId, bookingId, 'PICKUP', basePayload, actor)).rejects.toMatchObject({
       response: expect.objectContaining({ code: 'HANDOVER_ALREADY_EXISTS' }),
+    });
+  });
+
+  it('rejects pickup when vehicle registry is OFFBOARDED', async () => {
+    const { svc, tx } = createHarness({ registryLifecycle: 'OFFBOARDED' });
+    await expect(svc.createHandover(orgId, bookingId, 'PICKUP', basePayload, actor)).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'VEHICLE_REGISTRY_NOT_OPERATIONAL' }),
+    });
+    expect(tx.vehicle.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects pickup when vehicle registry is ARCHIVED', async () => {
+    const { svc } = createHarness({ registryLifecycle: 'ARCHIVED' });
+    await expect(svc.createHandover(orgId, bookingId, 'PICKUP', basePayload, actor)).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'VEHICLE_REGISTRY_NOT_OPERATIONAL' }),
     });
   });
 

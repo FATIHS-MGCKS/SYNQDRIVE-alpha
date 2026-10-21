@@ -7,6 +7,7 @@ import {
   collectDefaultMetrics,
 } from 'prom-client';
 import { RuntimeStatusRegistry } from './runtime-status.registry';
+import { bindPhysicalStateMetricSink } from '@modules/dimo/device-connection-physical-state/device-connection-physical-state.observability';
 
 /**
  * TripMetricsService
@@ -35,8 +36,17 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripStartsConfirmed: Counter<string>;
   readonly tripFinalized: Counter<string>;
   readonly tripDiscarded: Counter<string>;
+  readonly ongoingFsmDivergence: Counter<string>;
+  readonly completedFsmDivergence: Counter<string>;
+  readonly tripLifecycleInvariantRecovery: Counter<string>;
+  readonly tripLifecycleInvariantConflict: Counter<string>;
   readonly enrichmentFailed: Counter<string>;
   readonly repairActions: Counter<string>;
+  /** Trip reconciliation durable repair claims — low-cardinality repair_type only. */
+  readonly tripReconciliationRepairApply: Counter<string>;
+  readonly tripReconciliationRepairIdempotentSkip: Counter<string>;
+  readonly tripReconciliationRepairClaimConflict: Counter<string>;
+  readonly tripReconciliationRepairRecovery: Counter<string>;
   readonly emptySnapshots: Counter<string>;
   readonly staleSnapshots: Counter<string>;
   readonly duplicateCandidates: Counter<string>;
@@ -49,10 +59,28 @@ export class TripMetricsService implements OnModuleInit {
   readonly hfEventsDetectedTotal: Counter<string>;
   readonly tripEvidencePaths: Counter<string>;
   readonly tripAssignmentResolutions: Counter<string>;
+  readonly eventTripAssociations: Counter<string>;
   readonly tripScoreDrift: Counter<string>;
   readonly tripCounterAnomalies: Counter<string>;
   readonly clickHouseMigrationFailures: Counter<string>;
   readonly dimoSnapshotPollTotal: Counter<string>;
+  readonly apdShadowEnabled: Gauge<string>;
+  readonly apdShadowDecisionsTotal: Counter<string>;
+  readonly apdShadowWouldPollTotal: Counter<string>;
+  readonly apdShadowWouldSkipTotal: Counter<string>;
+  readonly apdShadowForcedFallbackTotal: Counter<string>;
+  readonly apdShadowInformativeRealPollTotal: Counter<string>;
+  readonly apdShadowSkippedInformativePollTotal: Counter<string>;
+  readonly apdShadowProfileInvalidatedTotal: Counter<string>;
+  readonly apdShadowProfileRecoveredTotal: Counter<string>;
+  readonly apdShadowFailureTotal: Counter<string>;
+  readonly apdShadowCohortExcludedTotal: Counter<string>;
+  readonly apdShadowEpochExcludedTotal: Counter<string>;
+  readonly apdShadowCohortMemberCount: Gauge<string>;
+  readonly snapshotWakeTotal: Counter<string>;
+  readonly snapshotWakeProbeTotal: Counter<string>;
+  readonly snapshotPollingTierVehicles: Gauge<string>;
+  readonly snapshotFastTierRatio: Gauge<string>;
   readonly hvSnapshotDuplicatesDiscarded: Counter<string>;
   readonly metricsEndpointRequests: Counter<string>;
 
@@ -133,6 +161,20 @@ export class TripMetricsService implements OnModuleInit {
   readonly drivingAnalysisRunsTotal: Counter<string>;
   readonly drivingHealthImpactPublished: Counter<string>;
 
+  /** Trip Route V2 R3 matching — low-cardinality only. */
+  readonly tripRouteV2MatchAttempted: Counter<string>;
+  readonly tripRouteV2MatchSucceeded: Counter<string>;
+  readonly tripRouteV2MatchFallbackFiltered: Counter<string>;
+  readonly tripRouteV2MatchRetryableFailure: Counter<string>;
+  readonly tripRouteV2MatchQualityRejected: Counter<string>;
+  readonly tripRouteV2MatchChunkCount: Histogram<string>;
+  readonly tripRouteV2MatchFailedChunkCount: Histogram<string>;
+  readonly tripRouteV2MatchCoverage: Histogram<string>;
+  readonly tripRouteV2MatchConfidence: Histogram<string>;
+  readonly tripRouteV2MatchDurationMs: Histogram<string>;
+  readonly tripRouteV2CanonicalReadTotal: Counter<string>;
+  readonly tripRouteV2CanonicalSegmentCount: Histogram<string>;
+
   /** Battery V2 — low-cardinality labels only (Prompt 68). */
   readonly batteryProviderObservationTotal: Counter<string>;
   readonly batteryProviderDuplicateTotal: Counter<string>;
@@ -153,8 +195,53 @@ export class TripMetricsService implements OnModuleInit {
   readonly hvCapacitySessionsQualifiedTotal: Counter<string>;
   readonly batteryAssessmentsTotal: Counter<string>;
   readonly batteryPublicationsTotal: Counter<string>;
+  readonly batteryShutdownEvidenceObservationCreatedTotal: Counter<string>;
+  readonly batteryShutdownEvidenceDuplicateSuppressedTotal: Counter<string>;
+  readonly batteryShutdownContextCreatedTotal: Counter<string>;
+  readonly batteryShutdownContextMissingStateTotal: Counter<string>;
+  readonly batteryShutdownPostEngineOffCandidateTotal: Counter<string>;
+  readonly batteryShutdownPostEngineOffConfirmedTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceCreatedTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceDuplicateTotal: Counter<string>;
+  readonly batteryRestSessionOpenedTotal: Counter<string>;
+  readonly batteryRestSessionUpdatedTotal: Counter<string>;
+  readonly batteryRestSessionEndedTotal: Counter<string>;
+  readonly batteryRestSessionInvalidatedTotal: Counter<string>;
+  readonly batteryLateTripAssociationTotal: Counter<string>;
+  readonly batteryRestObservationTotal: Counter<string>;
+  readonly batteryValidRestObservationTotal: Counter<string>;
+  readonly batteryRestWakeQualifiedTotal: Counter<string>;
+  readonly batteryCadenceLadderResearchUnqualifiedTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceStateAmbiguousTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceStaleReplayTotal: Counter<string>;
+  readonly batteryRestSessionFeatureTriggerTotal: Counter<'reason' | 'outcome'>;
+  readonly batteryRestSessionFeatureTriggerDurationSeconds: Histogram<'reason' | 'outcome'>;
+  readonly batteryRestSessionFeatureRowCreatedTotal: Counter<'phase' | 'trust'>;
+  readonly batteryLongitudinalProfileMaterializationAttemptsTotal: Counter<'outcome'>;
+  readonly batteryLongitudinalProfileMaterializationDurationSeconds: Histogram<'outcome'>;
+  readonly batteryLongitudinalReconciliationTicksTotal: Counter<'result'>;
+  readonly batteryLongitudinalReconciliationCandidates: Histogram<string>;
+  readonly batteryLongitudinalReconciliationProcessedTotal: Counter<'outcome'>;
+  readonly batteryLongitudinalReconciliationAckTotal: Counter<'outcome'>;
+  readonly batteryLongitudinalReconciliationDurationSeconds: Histogram<'result'>;
+  readonly batteryLongitudinalReconciliationLastSuccessTimestamp: Gauge<string>;
+  readonly batteryLongitudinalMaterializationFlagEnabled: Gauge<string>;
+  readonly batteryLongitudinalReconciliationInvariantFailuresTotal: Counter<'type'>;
+  readonly batteryHvH4A3ReconciliationFlagEnabled: Gauge<string>;
+  readonly batteryHvH4A3ReconciliationSchedulerTicksTotal: Counter<'result'>;
+  readonly batteryHvH4A3ReconciliationSchedulerDurationSeconds: Histogram<'result'>;
+  readonly batteryHvH4A3ReconciliationInspectedTotal: Counter<string>;
+  readonly batteryHvH4A3ReconciliationCreatedTotal: Counter<string>;
+  readonly batteryHvH4A3ReconciliationExistingTotal: Counter<string>;
+  readonly batteryLongitudinalProfileIntegrityInspectionTotal: Counter<'disposition'>;
+  readonly batteryLongitudinalProfileSelfIntegrityFailureTotal: Counter<string>;
+  readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
+  readonly batteryProviderObservabilityGapExtendedTotal: Counter<string>;
+  readonly batteryProviderObservabilityGapFailureTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
+  readonly erdE3ConvergenceTotal: Counter<string>;
+  readonly erdE4LivenessTotal: Counter<string>;
   readonly batteryV2PublicationAgeHours: Histogram<string>;
   readonly batteryCapabilitySignalsTotal: Counter<string>;
   readonly hvCapacityMethodConflictTotal: Counter<string>;
@@ -194,12 +281,28 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityStateConflictTotal: Counter<string>;
   readonly connectivityRuntimeStateTotal: Counter<string>;
   readonly connectivityTelemetryStateTotal: Counter<string>;
+  readonly connectivityProviderReachableObservationStaleTotal: Counter<string>;
+  readonly connectivityProviderReachableObservationRecoveredTotal: Counter<string>;
   readonly connectivityProviderLinkStateTotal: Counter<string>;
   readonly connectivityDeviceStateTotal: Counter<string>;
   readonly connectivityAlertTotal: Counter<string>;
   readonly connectivityAlertResolvedTotal: Counter<string>;
   readonly connectivityCoverageRatio: Gauge<string>;
   readonly connectivityReconciliationConflictTotal: Counter<string>;
+  readonly connectivityPhysicalStateTransitionAppliedTotal: Counter<string>;
+  readonly connectivityPhysicalStateEvidenceStaleTotal: Counter<string>;
+  readonly connectivityPhysicalStateEvidenceConflictTotal: Counter<string>;
+  readonly connectivityPhysicalStateSelfHealTotal: Counter<string>;
+  readonly connectivityPhysicalStateDuplicateTransitionSuppressedTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowEvaluationTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowClassificationTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowCorrectnessBlockerTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowPilotScopeGateTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowObservationPersistenceFailureTotal: Counter<string>;
+  readonly connectivityPhysicalStateEvidenceWriterTotal: Counter<string>;
+  readonly connectivityPhysicalStateStatefulShadowEvaluationTotal: Counter<string>;
+  readonly connectivityPhysicalStateGtR1ExpectedFixTotal: Counter<string>;
+  readonly connectivityPhysicalStatePreseedTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -233,9 +336,24 @@ export class TripMetricsService implements OnModuleInit {
   //  HISTOGRAMS
   // ═══════════════════════════════════════════════════════════════
 
+  /** @deprecated Mislabeled trip duration — use tripDuration. Kept for backward compatibility. */
   readonly tripFinalizeLatency: Histogram<string>;
-  /** Seconds from last meaningful movement to trip finalization. */
+  /** @deprecated Boundary delta, often ~0 — use tripEndRecognitionLatency. Kept for compatibility. */
   readonly tripEndLatencyFromMovement: Histogram<string>;
+  readonly tripStartCandidateLatency: Histogram<string>;
+  readonly tripStartRecognitionLatency: Histogram<string>;
+  readonly snapshotWakeToFetchSeconds: Histogram<string>;
+  readonly tripStartBoundaryAdjustment: Histogram<string>;
+  readonly tripStartBoundaryAdmissionShadowComparisons: Counter<string>;
+  readonly tripStartBoundaryAdmissionShadowErrors: Counter<string>;
+  readonly tripStartBoundaryAdmissionShadowDeltaSeconds: Histogram<string>;
+  readonly tripStartBoundaryAdmissionShadowRouteFetchAttempts: Counter<string>;
+  readonly tripStartBoundaryAdmissionShadowRouteFetchErrors: Counter<string>;
+  readonly tripEndCandidateLatency: Histogram<string>;
+  readonly tripEndRecognitionLatency: Histogram<string>;
+  readonly tripEndBoundaryAdjustment: Histogram<string>;
+  readonly tripDuration: Histogram<string>;
+  readonly tripTimingSampleRejected: Counter<string>;
   readonly detectorLatency: Histogram<string>;
   readonly queueLag: Histogram<string>;
   readonly clickHouseQueryDuration: Histogram<string>;
@@ -278,6 +396,32 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.ongoingFsmDivergence = new Counter({
+      name: 'synqdrive_ongoing_fsm_divergence_total',
+      help: 'Detected ONGOING trip vs FSM start divergence episodes',
+      registers: [this.registry],
+    });
+
+    this.completedFsmDivergence = new Counter({
+      name: 'synqdrive_completed_fsm_divergence_total',
+      help: 'Detected COMPLETED/CANCELLED trip vs active FSM divergence episodes',
+      registers: [this.registry],
+    });
+
+    this.tripLifecycleInvariantRecovery = new Counter({
+      name: 'synqdrive_trip_lifecycle_invariant_recovery_total',
+      help: 'Successful lifecycle invariant recoveries',
+      labelNames: ['type'],
+      registers: [this.registry],
+    });
+
+    this.tripLifecycleInvariantConflict = new Counter({
+      name: 'synqdrive_trip_lifecycle_invariant_conflict_total',
+      help: 'Lifecycle invariant conflicts requiring manual review',
+      labelNames: ['type'],
+      registers: [this.registry],
+    });
+
     this.enrichmentFailed = new Counter({
       name: 'synqdrive_enrichment_failed_total',
       help: 'Total behavior enrichment failures',
@@ -289,6 +433,34 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_repair_actions_total',
       help: 'Total repair actions taken by the reconciliation layer',
       labelNames: ['type', 'result'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairApply = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_apply_total',
+      help: 'Trip reconciliation repairs that committed a new mutation',
+      labelNames: ['repair_type'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairIdempotentSkip = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_idempotent_skip_total',
+      help: 'Trip reconciliation repairs skipped because the semantic repair already exists',
+      labelNames: ['repair_type'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairClaimConflict = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_claim_conflict_total',
+      help: 'Trip reconciliation repair claim races resolved without duplicate mutation',
+      labelNames: ['repair_type'],
+      registers: [this.registry],
+    });
+
+    this.tripReconciliationRepairRecovery = new Counter({
+      name: 'synqdrive_trip_reconciliation_repair_recovery_total',
+      help: 'Trip reconciliation repairs retried after a prior REJECTED or crash-interrupted attempt',
+      labelNames: ['repair_type'],
       registers: [this.registry],
     });
 
@@ -372,6 +544,13 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.eventTripAssociations = new Counter({
+      name: 'synqdrive_event_trip_associations_total',
+      help: 'Event to trip association decisions by pipeline stage and reason',
+      labelNames: ['stage', 'reason'],
+      registers: [this.registry],
+    });
+
     this.tripScoreDrift = new Counter({
       name: 'synqdrive_trip_score_drift_total',
       help: 'Total observed drift between legacy VehicleTrip score and canonical style score',
@@ -396,6 +575,130 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_dimo_snapshot_poll_total',
       help: 'Total DIMO snapshot poll worker outcomes',
       labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowEnabled = new Gauge({
+      name: 'synqdrive_apd_shadow_enabled',
+      help: '1 when WORKER_APD_SHADOW_ENABLED observes reconciliation polls',
+      registers: [this.registry],
+    });
+
+    this.apdShadowDecisionsTotal = new Counter({
+      name: 'synqdrive_apd_shadow_decisions_total',
+      help: 'APD shadow pre-poll decisions',
+      labelNames: ['policy', 'decision', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowWouldPollTotal = new Counter({
+      name: 'synqdrive_apd_shadow_would_poll_total',
+      help: 'APD shadow WOULD_POLL decisions',
+      labelNames: ['policy'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowWouldSkipTotal = new Counter({
+      name: 'synqdrive_apd_shadow_would_skip_total',
+      help: 'APD shadow WOULD_SKIP decisions',
+      labelNames: ['policy'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowForcedFallbackTotal = new Counter({
+      name: 'synqdrive_apd_shadow_forced_fallback_total',
+      help: 'APD shadow forced/conservative decisions',
+      labelNames: ['policy', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowInformativeRealPollTotal = new Counter({
+      name: 'synqdrive_apd_shadow_informative_real_poll_total',
+      help: 'Real polls that advanced at least one source signal',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowSkippedInformativePollTotal = new Counter({
+      name: 'synqdrive_apd_shadow_skipped_informative_poll_total',
+      help: 'Shadow WOULD_SKIP but real poll was informative',
+      labelNames: ['policy', 'source'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowProfileInvalidatedTotal = new Counter({
+      name: 'synqdrive_apd_shadow_profile_invalidated_total',
+      help: 'APD profile invalidations',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowProfileRecoveredTotal = new Counter({
+      name: 'synqdrive_apd_shadow_profile_recovered_total',
+      help: 'APD profile recoveries after invalidation',
+      registers: [this.registry],
+    });
+
+    this.apdShadowFailureTotal = new Counter({
+      name: 'synqdrive_apd_shadow_failure_total',
+      help: 'APD shadow pipeline failures (non-blocking)',
+      labelNames: ['stage'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowCohortExcludedTotal = new Counter({
+      name: 'synqdrive_apd_shadow_cohort_excluded_total',
+      help: 'APD shadow opportunities excluded by cohort gate (bounded reasons only)',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowEpochExcludedTotal = new Counter({
+      name: 'synqdrive_apd_shadow_epoch_excluded_total',
+      help: 'APD shadow opportunities excluded by durable activation epoch gate',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowCohortMemberCount = new Gauge({
+      name: 'synqdrive_apd_shadow_cohort_member_count',
+      help: 'Configured APD shadow cohort member count when cohort config is READY',
+      registers: [this.registry],
+    });
+
+    this.snapshotWakeTotal = new Counter({
+      name: 'synqdrive_trip_snapshot_wake_total',
+      help: 'DIMO provider snapshot wake intake outcomes',
+      labelNames: ['source', 'reason', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.snapshotWakeProbeTotal = new Counter({
+      name: 'synqdrive_trip_snapshot_wake_probe_total',
+      help: 'Bounded wake probe scheduling outcomes',
+      labelNames: ['reason', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.snapshotWakeToFetchSeconds = new Histogram({
+      name: 'synqdrive_trip_snapshot_wake_to_fetch_seconds',
+      help:
+        'Seconds from provider wake EVENT_TIME to canonical snapshot providerFetchedAt WORKER_TIME',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600],
+      registers: [this.registry],
+    });
+
+    this.snapshotPollingTierVehicles = new Gauge({
+      name: 'synqdrive_snapshot_polling_tier_vehicles',
+      help: 'Connected snapshot-eligible vehicles by effective polling tier',
+      labelNames: ['tier'],
+      registers: [this.registry],
+    });
+
+    this.snapshotFastTierRatio = new Gauge({
+      name: 'synqdrive_snapshot_fast_tier_ratio',
+      help:
+        'Share of connected snapshot cohort in ACTIVE_DRIVING + RECENTLY_ACTIVE tiers',
       registers: [this.registry],
     });
 
@@ -673,7 +976,8 @@ export class TripMetricsService implements OnModuleInit {
 
     this.tripFinalizeLatency = new Histogram({
       name: 'synqdrive_trip_finalize_latency_seconds',
-      help: 'Time from trip start to finalization in seconds',
+      help:
+        'DEPRECATED: trip duration (startTime→endTime), not worker recognition latency. Use synqdrive_trip_duration_seconds.',
       buckets: [60, 300, 900, 1800, 3600, 7200, 18000],
       labelNames: ['profile'],
       registers: [this.registry],
@@ -681,9 +985,121 @@ export class TripMetricsService implements OnModuleInit {
 
     this.tripEndLatencyFromMovement = new Histogram({
       name: 'synqdrive_trip_end_latency_from_movement_seconds',
-      help: 'Time from last meaningful movement to trip finalization in seconds',
+      help:
+        'DEPRECATED: canonical end boundary delta vs movement anchor, not worker recognition latency. Use synqdrive_trip_end_recognition_latency_seconds.',
       buckets: [30, 60, 120, 180, 300, 600, 900, 1800],
       labelNames: ['profile', 'end_source'],
+      registers: [this.registry],
+    });
+
+    this.tripStartCandidateLatency = new Histogram({
+      name: 'synqdrive_trip_start_candidate_latency_seconds',
+      help:
+        'Seconds from start candidate EVENT_TIME to POSSIBLE_START worker recognition (enteredAt−candidateAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'clock_source'],
+      registers: [this.registry],
+    });
+
+    this.tripStartRecognitionLatency = new Histogram({
+      name: 'synqdrive_trip_start_recognition_latency_seconds',
+      help:
+        'Seconds from canonical start EVENT_TIME to ACTIVE_TRIP worker recognition (recognizedAt−effectiveStartAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'mode', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdjustment = new Histogram({
+      name: 'synqdrive_trip_start_boundary_adjustment_seconds',
+      help:
+        'Absolute seconds between initial start candidate and confirmed canonical start boundary.',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
+      labelNames: ['profile', 'source', 'direction', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowComparisons = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_comparisons_total',
+      help:
+        'P1B evidence-backed start boundary shadow comparisons at trip start confirmation (non-authoritative).',
+      labelNames: [
+        'integration_modality',
+        'decision',
+        'legacy_source',
+        'evidence_coverage',
+      ],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowErrors = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_errors_total',
+      help: 'P1B start boundary shadow execution failures (non-blocking).',
+      labelNames: ['phase'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowDeltaSeconds = new Histogram({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_delta_seconds',
+      help:
+        'Absolute seconds between legacy canonical start and P1A shadow-proposed start at confirmation.',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
+      labelNames: ['integration_modality', 'decision', 'legacy_source'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowRouteFetchAttempts = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_route_fetch_attempts_total',
+      help:
+        'P1B shadow-only additional route enrichment provider call attempts (before provider I/O).',
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdmissionShadowRouteFetchErrors = new Counter({
+      name: 'synqdrive_trip_start_boundary_admission_shadow_route_fetch_errors_total',
+      help: 'P1B shadow-only additional route enrichment provider call failures.',
+      registers: [this.registry],
+    });
+
+    this.tripEndCandidateLatency = new Histogram({
+      name: 'synqdrive_trip_end_candidate_latency_seconds',
+      help:
+        'Seconds from end candidate EVENT_TIME to POSSIBLE_END worker recognition (enteredAt−candidateAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'evidence_path', 'clock_source'],
+      registers: [this.registry],
+    });
+
+    this.tripEndRecognitionLatency = new Histogram({
+      name: 'synqdrive_trip_end_recognition_latency_seconds',
+      help:
+        'Seconds from canonical end EVENT_TIME to COMPLETED worker recognition (recognizedAt−canonicalEndAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'commit_confirmation'],
+      registers: [this.registry],
+    });
+
+    this.tripEndBoundaryAdjustment = new Histogram({
+      name: 'synqdrive_trip_end_boundary_adjustment_seconds',
+      help:
+        'Absolute seconds between end candidate and canonical end boundary (boundary accuracy, not recognition).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
+      labelNames: ['profile', 'end_source', 'direction'],
+      registers: [this.registry],
+    });
+
+    this.tripDuration = new Histogram({
+      name: 'synqdrive_trip_duration_seconds',
+      help: 'Canonical trip duration from startTime to endTime in seconds.',
+      buckets: [60, 300, 900, 1800, 3600, 7200, 18000, 43200],
+      labelNames: ['profile'],
+      registers: [this.registry],
+    });
+
+    this.tripTimingSampleRejected = new Counter({
+      name: 'synqdrive_trip_timing_sample_rejected_total',
+      help: 'Rejected trip timing histogram samples (invalid anchor, negative delta, invalid timestamp).',
+      labelNames: ['metric', 'reason'],
       registers: [this.registry],
     });
 
@@ -1091,6 +1507,85 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.tripRouteV2MatchAttempted = new Counter({
+      name: 'synqdrive_trip_route_v2_match_attempted_total',
+      help: 'Trip Route V2 chunked map-matching attempts',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchSucceeded = new Counter({
+      name: 'synqdrive_trip_route_v2_match_succeeded_total',
+      help: 'Trip Route V2 MATCHED artifact outcomes',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchFallbackFiltered = new Counter({
+      name: 'synqdrive_trip_route_v2_match_fallback_filtered_total',
+      help: 'Trip Route V2 matching fell back to FILTERED',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchRetryableFailure = new Counter({
+      name: 'synqdrive_trip_route_v2_match_retryable_failure_total',
+      help: 'Trip Route V2 retryable Mapbox matching failures',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchQualityRejected = new Counter({
+      name: 'synqdrive_trip_route_v2_match_quality_rejected_total',
+      help: 'Trip Route V2 deterministic quality gate rejections',
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchChunkCount = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_chunk_count',
+      help: 'Trip Route V2 Mapbox chunk count per trip',
+      buckets: [1, 2, 5, 10, 20, 50, 100, 200],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchFailedChunkCount = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_failed_chunk_count',
+      help: 'Trip Route V2 failed chunk count per trip',
+      buckets: [0, 1, 2, 5, 10, 20],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchCoverage = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_coverage',
+      help: 'Trip Route V2 match coverage ratio (0..1)',
+      buckets: [0.5, 0.7, 0.85, 0.9, 0.95, 1],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchConfidence = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_confidence',
+      help: 'Trip Route V2 weighted match confidence (0..1)',
+      buckets: [0.3, 0.5, 0.7, 0.85, 0.95, 1],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2MatchDurationMs = new Histogram({
+      name: 'synqdrive_trip_route_v2_match_duration_ms',
+      help: 'Trip Route V2 matching pipeline duration in milliseconds',
+      buckets: [100, 500, 1000, 2500, 5000, 15000, 30000, 60000],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2CanonicalReadTotal = new Counter({
+      name: 'synqdrive_trip_route_v2_canonical_read_total',
+      help: 'Canonical trip route read-model responses by processing state and quality',
+      labelNames: ['processing_state', 'route_quality', 'ready'],
+      registers: [this.registry],
+    });
+
+    this.tripRouteV2CanonicalSegmentCount = new Histogram({
+      name: 'synqdrive_trip_route_v2_canonical_segment_count',
+      help: 'Segment count returned by canonical trip route reads',
+      buckets: [1, 2, 3, 5, 10, 20],
+      registers: [this.registry],
+    });
+
     this.batteryProviderObservationTotal = new Counter({
       name: 'synqdrive_battery_provider_observation_total',
       help: 'Battery provider observation classification outcomes',
@@ -1273,6 +1768,287 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.batteryShutdownEvidenceObservationCreatedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_evidence_observation_created_total',
+      help: 'M3.2B shadow shutdown evidence observations persisted',
+      labelNames: ['evidence_class', 'confidence_class', 'state_alignment_class'],
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownEvidenceDuplicateSuppressedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_evidence_duplicate_suppressed_total',
+      help: 'M3.2B shadow shutdown evidence idempotent duplicates suppressed',
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownContextCreatedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_context_created_total',
+      help: 'M3.2B trip shutdown context snapshots persisted',
+      labelNames: ['state_alignment_class', 'state_completeness'],
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownContextMissingStateTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_context_missing_state_total',
+      help: 'M3.2B trip shutdown context captured with missing VLS state',
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownPostEngineOffCandidateTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_post_engine_off_candidate_total',
+      help: 'M3.2B shadow observations classified as shutdown-transition candidates near trip end',
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownPostEngineOffConfirmedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_post_engine_off_confirmed_total',
+      help: 'M3.2B shadow observations meeting strict post-engine-off pre-sleep contract',
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceCreatedTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_created_total',
+      help: 'M3.3 shadow generalized battery evidence observations persisted',
+      labelNames: ['evidence_class'],
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceDuplicateTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_duplicate_total',
+      help: 'M3.3 shadow generalized evidence idempotent duplicates suppressed',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionOpenedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_opened_total',
+      help: 'M3.3 shadow rest sessions opened',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionUpdatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_updated_total',
+      help: 'M3.3 shadow rest sessions updated with rest observations',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionEndedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_ended_total',
+      help: 'M3.3 shadow rest sessions ended (timeout or natural close)',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionInvalidatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_invalidated_total',
+      help: 'M3.3 shadow rest sessions invalidated by vehicle activity',
+      registers: [this.registry],
+    });
+
+    this.batteryLateTripAssociationTotal = new Counter({
+      name: 'synqdrive_battery_late_trip_association_total',
+      help: 'M3.3 shadow late trip associations linked to rest sessions',
+      registers: [this.registry],
+    });
+
+    this.batteryRestObservationTotal = new Counter({
+      name: 'synqdrive_battery_rest_observation_total',
+      help: 'M3.3 shadow rest ladder observations captured',
+      registers: [this.registry],
+    });
+
+    this.batteryValidRestObservationTotal = new Counter({
+      name: 'synqdrive_battery_valid_rest_observation_total',
+      help: 'M3.3 shadow rest observations passing alignment validity gate',
+      registers: [this.registry],
+    });
+
+    this.batteryRestWakeQualifiedTotal = new Counter({
+      name: 'synqdrive_battery_rest_wake_qualified_total',
+      help: 'M3.3 shadow observations cadence-qualified for REST_WAKE_VOLTAGE',
+      registers: [this.registry],
+    });
+
+    this.batteryCadenceLadderResearchUnqualifiedTotal = new Counter({
+      name: 'synqdrive_battery_cadence_ladder_research_unqualified_total',
+      help:
+        'M3.3 shadow ladder candidates (nominal index>=1) not REST_WAKE promoted — research tolerance not validated or exceeds candidate band',
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceStateAmbiguousTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_state_ambiguous_total',
+      help: 'M3.3 shadow generalized evidence classified as state ambiguous',
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceStaleReplayTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_stale_replay_total',
+      help: 'M3.3 shadow generalized evidence classified as stale replay',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionFeatureTriggerTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_feature_trigger_total',
+      help: 'M3.3C C5A shadow rest-session feature C4 trigger outcomes',
+      labelNames: ['reason', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionFeatureTriggerDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_rest_session_feature_trigger_duration_seconds',
+      help: 'M3.3C C5A shadow rest-session feature trigger duration (C4→C3)',
+      labelNames: ['reason', 'outcome'],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionFeatureRowCreatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_feature_row_created_total',
+      help: 'M3.3C C5A append-only rest-session feature rows created by C3',
+      labelNames: ['phase', 'trust'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileMaterializationAttemptsTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_profile_materialization_attempts_total',
+      help: 'M3.3F D3 gated materialization attempts by scientific outcome (flag OFF skips entirely)',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileMaterializationDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_longitudinal_profile_materialization_duration_seconds',
+      help: 'M3.3F D3 gated materialization duration by outcome',
+      labelNames: ['outcome'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationTicksTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_ticks_total',
+      help: 'M3.3F F4.1 bounded D3 reconciliation scheduler tick decisions (low-cardinality result only)',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationCandidates = new Histogram({
+      name: 'synqdrive_battery_longitudinal_reconciliation_candidates',
+      help: 'M3.3F F4.1 candidate vehicles considered per completed reconciliation tick',
+      buckets: [0, 1, 2, 3, 4, 5, 10],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationProcessedTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_processed_total',
+      help: 'M3.3F F4.1 per-candidate reconciliation processing outcomes',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationAckTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_ack_total',
+      help: 'M3.3F F4.1 authoritative D3 source-evidence acknowledgement append outcomes (all materialization paths including authorized internal ops; freshness-authority scope)',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_longitudinal_reconciliation_duration_seconds',
+      help: 'M3.3F F4.1 reconciliation scheduler tick duration by result',
+      labelNames: ['result'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationLastSuccessTimestamp = new Gauge({
+      name: 'synqdrive_battery_longitudinal_reconciliation_last_success_timestamp',
+      help: 'Unix seconds of last completed D3 reconciliation scheduler tick on this process',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalMaterializationFlagEnabled = new Gauge({
+      name: 'synqdrive_battery_longitudinal_materialization_flag_enabled',
+      help: 'M3.3F F4.3 effective D3 materialization flag on this process (0=OFF, 1=ON); updated each reconciliation scheduler tick before leader guard',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationInvariantFailuresTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_invariant_failures_total',
+      help: 'M3.3F F4.3 typed reconciliation safety invariant violations (fail-closed)',
+      labelNames: ['type'],
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationFlagEnabled = new Gauge({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_flag_enabled',
+      help: 'M3.3-HV-H4-A3.5 reconciliation flag on this process (0=OFF, 1=ON)',
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationSchedulerTicksTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_scheduler_ticks_total',
+      help: 'M3.3-HV-H4-A3.5 bounded reconciliation scheduler tick decisions',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationSchedulerDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_scheduler_duration_seconds',
+      help: 'M3.3-HV-H4-A3.5 reconciliation scheduler tick duration by result',
+      labelNames: ['result'],
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationInspectedTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_inspected_total',
+      help: 'M3.3-HV-H4-A3.5 live HvChargeSession rows inspected per tick',
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationCreatedTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_created_total',
+      help: 'M3.3-HV-H4-A3.5 new durable revisions created by reconciliation',
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationExistingTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_existing_total',
+      help: 'M3.3-HV-H4-A3.5 rows already durable at current fingerprint',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileIntegrityInspectionTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_profile_integrity_inspection_total',
+      help: 'M3.3D D4 integrity inspection disposition (helpers only in F1 — no automatic runtime)',
+      labelNames: ['disposition'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileSelfIntegrityFailureTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_profile_self_integrity_failure_total',
+      help: 'M3.3D D4 revision self-integrity failures (helpers only in F1)',
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservabilityGapOpenedTotal = new Counter({
+      name: 'synqdrive_battery_provider_observability_gap_opened_total',
+      help: 'M3.3 B1.2Y provider observability gaps opened',
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservabilityGapExtendedTotal = new Counter({
+      name: 'synqdrive_battery_provider_observability_gap_extended_total',
+      help: 'M3.3 B1.2Y provider observability gaps extended (stale poll)',
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservabilityGapFailureTotal = new Counter({
+      name: 'synqdrive_battery_provider_observability_gap_failure_total',
+      help: 'M3.3 B1.2Y provider observability gap lifecycle failures',
+      labelNames: ['operation', 'reason'],
+      registers: [this.registry],
+    });
+
     this.batteryV2HvRechargeReconcileErrors = new Counter({
       name: 'synqdrive_battery_v2_hv_recharge_reconcile_errors_total',
       help: 'HV recharge reconcile provider errors',
@@ -1285,6 +2061,20 @@ export class TripMetricsService implements OnModuleInit {
       help: 'Delay between latest provider segment end and reconcile time',
       labelNames: ['trigger'],
       buckets: [60, 300, 900, 1800, 3600, 7200, 21600, 86400],
+      registers: [this.registry],
+    });
+
+    this.erdE3ConvergenceTotal = new Counter({
+      name: 'synqdrive_erd_e3_convergence_total',
+      help: 'ERD E3 fallback detection and native/fallback convergence outcomes',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.erdE4LivenessTotal = new Counter({
+      name: 'synqdrive_erd_e4_liveness_total',
+      help: 'ERD E4 reconciliation scheduling and recovery liveness outcomes',
+      labelNames: ['reason'],
       registers: [this.registry],
     });
 
@@ -1524,6 +2314,25 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.connectivityProviderReachableObservationStaleTotal = new Counter({
+      name: 'synqdrive_connectivity_provider_reachable_observation_stale_total',
+      help:
+        'Transitions into provider-reachable / vehicle-observation-stale ' +
+        '(provider responding while source_timestamp is stale)',
+      labelNames: ['provider', 'telemetry_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityProviderReachableObservationRecoveredTotal = new Counter({
+      name: 'synqdrive_connectivity_provider_reachable_observation_recovered_total',
+      help:
+        'Transitions from provider-reachable / vehicle-observation-stale back ' +
+        'to fresh observation (precedence changes to unreachable / auth error / ' +
+        'unknown are deliberately excluded)',
+      labelNames: ['provider', 'telemetry_state'],
+      registers: [this.registry],
+    });
+
     this.connectivityDeviceStateTotal = new Counter({
       name: 'synqdrive_connectivity_device_state_total',
       help: 'Connectivity physical device states calculated',
@@ -1558,6 +2367,125 @@ export class TripMetricsService implements OnModuleInit {
       labelNames: ['classification'],
       registers: [this.registry],
     });
+
+    this.connectivityPhysicalStateTransitionAppliedTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_transition_applied_total',
+      help: 'Canonical physical device state transitions applied',
+      labelNames: ['source', 'transition'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateEvidenceStaleTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_evidence_stale_total',
+      help: 'Stale physical device state evidence rejected',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateEvidenceConflictTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_evidence_conflict_total',
+      help: 'Conflicting physical device state evidence at equal timestamps',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateSelfHealTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_self_heal_total',
+      help: 'Physical device state projection self-heal or provenance refresh events',
+      labelNames: ['source', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateDuplicateTransitionSuppressedTotal = new Counter({
+      name: 'synqdrive_connectivity_duplicate_transition_suppressed_total',
+      help: 'Duplicate physical device state evidence suppressed',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowEvaluationTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_evaluation_total',
+      help: 'Physical-state shadow comparisons evaluated (compare-only)',
+      labelNames: [
+        'classification',
+        'authority_mode',
+        'provider',
+        'legacy_decision',
+        'physical_decision',
+        'correctness_blocking',
+      ],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowClassificationTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_classification_total',
+      help: 'Physical-state shadow adjudication classifications',
+      labelNames: [
+        'classification',
+        'authority_mode',
+        'provider',
+        'legacy_decision',
+        'physical_decision',
+        'correctness_blocking',
+      ],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowCorrectnessBlockerTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_correctness_blocker_total',
+      help: 'Physical-state shadow correctness-blocking divergences',
+      labelNames: [
+        'classification',
+        'authority_mode',
+        'provider',
+        'legacy_decision',
+        'physical_decision',
+        'correctness_blocking',
+      ],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowPilotScopeGateTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_pilot_scope_gate_total',
+      help: 'STATEFUL_SHADOW pilot scope gate decisions (low-cardinality)',
+      labelNames: ['allowed', 'reason', 'provider'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowObservationPersistenceFailureTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_observation_persistence_failure_total',
+      help: 'Shadow pilot observation durable persistence failures (compare-only evidence loss)',
+      labelNames: ['provider'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateEvidenceWriterTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_evidence_writer_total',
+      help: 'Physical-state evidence writer reconcile results by source and decision',
+      labelNames: ['source', 'decision', 'mode'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateStatefulShadowEvaluationTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_stateful_shadow_evaluation_total',
+      help: 'STATEFUL_SHADOW mode evidence evaluations',
+      labelNames: ['mode'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateGtR1ExpectedFixTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_gt_r1_expected_fix_total',
+      help: 'GT-R1 EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT shadow classifications',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStatePreseedTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_preseed_total',
+      help: 'Physical-state pre-seed planner/apply outcomes',
+      labelNames: ['result', 'provider', 'dry_run'],
+      registers: [this.registry],
+    });
   }
 
   async onModuleInit(): Promise<void> {
@@ -1566,9 +2494,42 @@ export class TripMetricsService implements OnModuleInit {
     );
     this.hfMirrorEnabled.set(process.env.HF_MIRROR_ENABLED === 'true' ? 1 : 0);
     this.clickHouseSchemaStatus.set(0);
+    bindPhysicalStateMetricSink(this);
   }
 
   /** Returns the Prometheus metrics text for the /metrics endpoint. */
+  setSnapshotPollingTierOccupancy(
+    tierCounts: Map<string, number>,
+  ): void {
+    try {
+      const allTiers = [
+        'ACTIVE_DRIVING',
+        'RECENTLY_ACTIVE',
+        'RESTING_STANDBY',
+        'LONG_IDLE',
+        'OFFLINE',
+        'HARD_OFFLINE',
+      ];
+      let total = 0;
+      let fast = 0;
+      for (const tier of allTiers) {
+        const count = tierCounts.get(tier) ?? 0;
+        this.snapshotPollingTierVehicles.set({ tier }, count);
+        total += count;
+        if (tier === 'ACTIVE_DRIVING' || tier === 'RECENTLY_ACTIVE') {
+          fast += count;
+        }
+      }
+      if (total > 0) {
+        this.snapshotFastTierRatio.set(fast / total);
+      } else {
+        this.snapshotFastTierRatio.set(0);
+      }
+    } catch {
+      // non-blocking observability
+    }
+  }
+
   async getMetrics(): Promise<string> {
     return this.registry.metrics();
   }

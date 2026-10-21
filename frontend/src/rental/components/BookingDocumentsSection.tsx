@@ -20,7 +20,7 @@ import {
 import { isEmailSendableDocument } from '../../lib/email-sendable';
 import { emailDocTypeLabel, outboundEmailStatusLabel } from '../../lib/email-i18n';
 import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 
 interface BookingDocumentsSectionProps {

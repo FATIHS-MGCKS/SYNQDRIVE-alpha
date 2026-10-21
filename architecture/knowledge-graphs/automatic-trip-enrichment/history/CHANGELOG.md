@@ -1,0 +1,111 @@
+# KG-ATE Changelog
+
+## 2026-09-01 — Phase 2A canonicalization (initial baseline)
+
+**Main SHA:** `4843a4ebc60f38237f9184d47b1da731e426b7b3`  
+**Agent:** KG-ATE canonicalization gate Phase 2A  
+**Scope:** Automatic Trip Enrichment only (NOT EED)
+
+### Created
+
+- `architecture/knowledge-graphs/automatic-trip-enrichment/` full structure
+- Canonical graph: 86 nodes (52 operational + 34 evidence), 9 invariants, 12 decisions
+- Validation script: `scripts/validate-graph.mjs`
+- Governance: `AGENT_PROTOCOL.md`, `AUTHORITY_BOUNDARIES.md`
+
+### Discovery → canonical audit
+
+| Metric | Value |
+|--------|------:|
+| DISCOVERY_COMPONENT_COUNT | 48 |
+| CANONICAL_COMPONENT_COUNT | 52 |
+| MERGED_OR_RECLASSIFIED | 38 |
+| DROPPED | 10 |
+| NET_NEW_CANONICAL | 14 |
+
+#### Merge / reclassify (examples)
+
+| Discovery ref | Canonical ID | Action |
+|---------------|--------------|--------|
+| ATE-N01..N20 | ATE-SVC-*, ATE-TRIG-*, ATE-FB-* | Renamed to stable ATE-* IDs; split infra from flow |
+| ATE-N15 | ATE-EXT-001 | Reclassified SHARED_INFRASTRUCTURE |
+| ATE-N16 | ATE-EXT-002 | Reclassified SHARED_INFRASTRUCTURE |
+| B3 schedulers (5) | ATE-SCH-001..005 | Explicit scheduler nodes |
+| B5 DIMO deps (7) | ATE-EXT-003..005 | Consolidated to external authorities |
+| ATE-DEC-001..012 | ATE-DEC-001..012 + DEC-013/014 | Added EED/DI boundary decisions |
+
+#### Dropped (not silent — reasons)
+
+| Discovery item | Reason |
+|----------------|--------|
+| Generic "BullMQ platform" node | Absorbed into queue/job nodes; generic semantics OUT_OF_SCOPE |
+| Duplicate `enqueueDrivingImpact` as separate component | Merged into ATE-SVC-003 orchestrator |
+| `BoundaryRefreshLifecycleService` (mentioned in imports) | Not on ATE critical path; OUT_OF_SCOPE unless wired to enrichment |
+| `TripMetricsService` standalone | Merged into ATE-COMP-004 observability component |
+| `canEnqueueQueue` util | Implementation detail; covered by ATE-FM-006 |
+| `DimoPollLog` writes | Observability side-effect; covered by orchestrator evidence |
+| `RentalDrivingAnalysisRecomputeTrigger` | Rental/DI concern; referenced only via ATE-SVC-002 |
+| `platform-admin` as separate flow node | Canonicalized as ATE-TRIG-004 |
+| Discovery "check impl" leader placeholders | Replaced with verified leader keys (NEG-001) |
+| `dimo.trip-tracking` queue as ATE-owned | FSM tracking; ATE_REFERENCES_EXTERNAL (trip detection) |
+
+### Open questions
+
+- 6 resolved/reclassified (see `open-questions/OPEN_QUESTIONS.md`)
+- 6 remaining open
+
+### Validation
+
+- `node architecture/knowledge-graphs/automatic-trip-enrichment/scripts/validate-graph.mjs` — PASS at creation
+
+## 2026-09-01 — Phase 2A.1 independent authority review
+
+**Reviewer:** Independent adversarial gate (not implementation agent)  
+**Verdict:** APPROVE_WITH_DOCUMENTED_OPEN_QUESTIONS  
+**Review artifact:** `architecture/KG_ATE_INDEPENDENT_AUTHORITY_REVIEW_2026-09-01.md`
+
+### Corrections applied
+
+- Fixed false `enqueueRepairEnrichment` ownership on orchestrator node
+- Added boundary refresh path, dual TDI handler, failure modes FM-007–009
+- Added DEC-013/014 nodes, OQ-013, evidence EV-0035–0038
+- Fixed ENQUEUES edge target; softened UI timeline ownership to AMBIGUOUS
+
+### Graph counts after review
+
+| Metric | Value |
+|--------|------:|
+| Nodes | 121 |
+| Edges | 70 |
+| Decisions | 14 |
+| Evidence | 38 |
+| Open questions (remaining) | 7 |
+| Invariants | 9 |
+
+## 2026-09-24 — EXP-021 C0.3 R1 temporal-safety containment (IMPLEMENTATION_CHANGE)
+
+**Base SHA:** `3067fad1aad509c29b2c83a6f3f0b16135da7a63` · **Branch:** `cursor/exp021-c03-r1-temporal-containment-7d78` · draft PR #1755 (not merged, not deployed)  
+**Owner of semantics:** Driving Intelligence (`DI-DEC-R1-TEMPORAL-CONTAINMENT-001`); ATE carries the write-path gate only.
+
+### Changed
+
+- `ATE-SVC-004` TripBehaviorEnrichmentService: both paths resolve the telemetry source family from `DimoVehicle.rawJson` (not `hardwareType`). For R1, `FULL_BRAKING` / `POSSIBLE_IMPACT` / `ENGINE_SHUTDOWN_WHILE_DRIVING` are dropped after detection (bounded log); the `tripBehaviorEvent.deleteMany` replace scope excludes contained ABUSE rows so historical rows are never deleted; `behaviorSummaryJson.r1TemporalContainment` marker written.
+- Evidence `ATE-EV-0039` (CODE+TEST).
+
+### Unchanged
+
+- Orchestrator entry, hardware routing, queue/job topology, stage order, retry semantics, energy semantics (EED), LTE_R1 native event ingestion.
+
+### Uncertainty
+
+- OBSERVED_EFFECT UNKNOWN (not deployed). Re-enrichment of historical R1 trips (if later triggered) rewrites trip counters without contained types while preserving the rows (marker prevents double subtraction in DI read paths).
+
+### Validation
+
+- `node architecture/knowledge-graphs/automatic-trip-enrichment/scripts/validate-graph.mjs`
+
+## 2026-09-24 — EXP-021 C0.5 CG-01 (cross-module note, draft)
+
+- **Trigger:** C0.4 contract gap CG-01 — R1 `COLD_ENGINE_FULL_THROTTLE` point-time conjunction not defensible.
+- **ATE effect:** Orchestrator unchanged. DI enrichment extends R1 contained HF abuse types; replace-scope shape unchanged (additional `eventType` in `NOT` list).
+- **Evidence:** `architecture/drivingintelligence/evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md`

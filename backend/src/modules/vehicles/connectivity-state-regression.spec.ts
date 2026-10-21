@@ -419,6 +419,7 @@ describe('connectivity state regressions (H–K)', () => {
         stub(),
         stub(),
         deviceConnectionQuery,
+        stub(),
         connectivityRuntimeProjection,
         stub(),
         stub(),

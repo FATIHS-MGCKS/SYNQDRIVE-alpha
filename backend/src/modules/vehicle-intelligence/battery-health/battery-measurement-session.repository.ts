@@ -9,6 +9,7 @@ import {
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
   Prisma,
+  TripStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -86,7 +87,7 @@ export class BatteryMeasurementSessionRepository {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        return this.prisma.batteryMeasurementSession.findUniqueOrThrow({
+        const existing = await this.prisma.batteryMeasurementSession.findUniqueOrThrow({
           where: {
             vehicleId_idempotencyKey: {
               vehicleId: input.vehicleId,
@@ -94,9 +95,70 @@ export class BatteryMeasurementSessionRepository {
             },
           },
         });
+        return this.repairCanonicalTripBindingIfNeeded(existing, input);
       }
       throw error;
     }
+  }
+
+  /**
+   * When idempotent create races, ensure session.trip_id matches the authoritative
+   * trip that owns the anchor (trip.endTime === session anchor).
+   */
+  async repairCanonicalTripBindingIfNeeded(
+    session: Pick<
+      BatteryMeasurementSession,
+      'id' | 'organizationId' | 'vehicleId' | 'tripId' | 'startedAt'
+    >,
+    input: Pick<
+      CreateBatteryMeasurementSessionInput,
+      'organizationId' | 'tripId' | 'startedAt' | 'sourceEntityId' | 'sourceEntityType'
+    >,
+  ): Promise<BatteryMeasurementSession> {
+    if (!input.tripId) {
+      return session as BatteryMeasurementSession;
+    }
+    if (input.organizationId !== session.organizationId) {
+      return session as BatteryMeasurementSession;
+    }
+    const anchorMs = input.startedAt.getTime();
+    const sessionAnchorMs = session.startedAt.getTime();
+    const anchorMatches = Math.abs(sessionAnchorMs - anchorMs) < 1_000;
+    if (!anchorMatches) {
+      return session as BatteryMeasurementSession;
+    }
+    if (session.tripId === input.tripId) {
+      return session as BatteryMeasurementSession;
+    }
+
+    const authoritativeTrip = await this.prisma.vehicleTrip.findFirst({
+      where: {
+        id: input.tripId,
+        vehicleId: session.vehicleId,
+        tripStatus: TripStatus.COMPLETED,
+        endTime: { not: null },
+        vehicle: { organizationId: input.organizationId },
+      },
+      select: { id: true, endTime: true },
+    });
+    if (
+      !authoritativeTrip?.endTime ||
+      Math.abs(authoritativeTrip.endTime.getTime() - sessionAnchorMs) >= 1_000
+    ) {
+      return session as BatteryMeasurementSession;
+    }
+
+    return this.prisma.batteryMeasurementSession.update({
+      where: {
+        id: session.id,
+        organizationId: input.organizationId,
+      },
+      data: {
+        tripId: authoritativeTrip.id,
+        sourceEntityType: input.sourceEntityType ?? 'trip',
+        sourceEntityId: authoritativeTrip.id,
+      },
+    });
   }
 
   findByIdForOrganization(

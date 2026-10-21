@@ -1,6 +1,6 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { DelayedError, Job, Queue } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -10,10 +10,21 @@ import {
   TRIP_TRACKING_TRIGGERS,
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { TripTrackingHandoffLockContentionError } from '../../modules/vehicle-intelligence/trips/trip-tracking-lock-contention';
+import {
+  TripTrackingHandoffPredecessorNotSettledError,
+  assertHandoffPredecessorSettled,
+} from '../../modules/vehicle-intelligence/trips/trip-tracking-handoff-settlement';
+import type { TripTrackingQueueLike } from '../../modules/vehicle-intelligence/trips/trip-tracking-queue.util';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
-@Processor(QUEUE_NAMES.TRIP_TRACKING)
+import { readWorkerConcurrency } from '@config/worker-concurrency.util';
+import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
+
+@Processor(QUEUE_NAMES.TRIP_TRACKING, {
+  concurrency: readWorkerConcurrency('WORKER_TRIP_TRACKING_CONCURRENCY', 5),
+})
 @Injectable()
 export class TripTrackingProcessor extends WorkerHost {
   private readonly logger = new Logger(TripTrackingProcessor.name);
@@ -21,17 +32,38 @@ export class TripTrackingProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orchestration: TripDetectionOrchestrationService,
+    @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
+    private readonly trackingQueue: Queue<TripTrackingJobData>,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
     super();
   }
 
   async process(job: Job<TripTrackingJobData>): Promise<void> {
+    const { trigger } = job.data;
+    const priority =
+      trigger === TRIP_TRACKING_TRIGGERS.ACTIVE_TICK ||
+      trigger === TRIP_TRACKING_TRIGGERS.FINALIZE
+        ? 'CRITICAL'
+        : 'HIGH';
+
+    return runWithDimoRequestContext(
+      { category: 'ACTIVE_TRIP', priority },
+      () => this.processTripTrackingJob(job),
+    );
+  }
+
+  private async processTripTrackingJob(job: Job<TripTrackingJobData>): Promise<void> {
     const { vehicleId, trigger } = job.data;
     const startedAt = new Date();
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.TRIP_TRACKING, job);
 
     try {
+      await assertHandoffPredecessorSettled(
+        job.data,
+        this.trackingQueue as TripTrackingQueueLike,
+      );
+
       switch (trigger) {
         case TRIP_TRACKING_TRIGGERS.POSSIBLE_START:
           await this.orchestration.processPossibleStart(job.data);
@@ -77,6 +109,18 @@ export class TripTrackingProcessor extends WorkerHost {
         },
       });
     } catch (err) {
+      if (
+        err instanceof TripTrackingHandoffLockContentionError ||
+        err instanceof TripTrackingHandoffPredecessorNotSettledError
+      ) {
+        const token = job.token;
+        if (!token) {
+          throw err;
+        }
+        await job.moveToDelayed(Date.now() + err.delayMs, token);
+        throw new DelayedError(err.message);
+      }
+
       const finishedAt = new Date();
       const errorMessage =
         err instanceof Error ? err.message : String(err);

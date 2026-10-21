@@ -1,6 +1,6 @@
 import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail, Wallet, Inbox } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useStationsV2FeatureFlags } from '../hooks/useStationsV2FeatureFlags';
 import type { FleetTab, FleetTabInput } from './fleet-health-service/fleet-health-service.types';

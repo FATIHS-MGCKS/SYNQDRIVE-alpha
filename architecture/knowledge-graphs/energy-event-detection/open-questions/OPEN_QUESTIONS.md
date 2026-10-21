@@ -1,0 +1,59 @@
+# KG-EED Open Questions — Classification (Phase 2B.1)
+
+All 12 discovery open questions classified. **Separate current-state facts from future architecture questions.**
+
+## Current-state facts (CONFIRMED — not open questions)
+
+| Fact | Node | Evidence |
+|------|------|----------|
+| No dedicated BullMQ energy scheduler today | `EED-ST-001` | EED-EV-0001 |
+| Detect runs at reconciliation step 5 (when service injected) | `EED-ST-001`, `EED-FB-001` | EED-EV-0001 |
+| Manual POST detect and ops scripts exist as alternate triggers | `EED-RETRY-001`, `EED-JOB-001` | EED-EV-0012 |
+
+## Open question table
+
+| ID | Question | Classification | Status | Blocks authority? | Production safety? |
+|----|----------|----------------|--------|-------------------|------------------|
+| EED-OQ-001 | Should EED get dedicated BullMQ scheduler? | **OPEN** | Future architecture only; current state in EED-ST-001 | NO | LOW |
+| EED-OQ-002 | Safe automated backfill for NULL fuelLevelRise rows? | **RESOLVED** (policy) | EED-DEC-009: no fleet backfill | NO | NO |
+| EED-OQ-003 | Persist recharge charging flags on VehicleEnergyEvent? | **OPEN** | Fetched in normalizer; not persisted | NO | LOW |
+| EED-OQ-004 | Link RECHARGE to HvChargeSession? | **RESOLVED** (design) | EED-DEC-ERD-001 Model A: HvChargeSession = physical authority; VEE RECHARGE = product projection (E5); no runtime link in E1 | NO | NO |
+| EED-OQ-005 | detectorVersion DB column? | **OPEN** | Version in logs/meta only | NO | LOW |
+| EED-OQ-006 | Plausibility flags on production rows? | **PARTIALLY_RESOLVED** | Recovery tooling only today | NO | LOW |
+| EED-OQ-007 | Fleet overlapping sibling remediation policy? | **OPEN** | Sept04 incident proves gap; design in forensics audit | NO | HIGH |
+| EED-OQ-008 | Should UI call POST detect? | **OPEN** | API exists; UI does not expose | NO | LOW |
+| EED-OQ-009 | Fuel station enrichment vs EED semantics? | **OPEN** | Separate module; EED consumes projection | NO | LOW |
+| EED-OQ-010 | ClickHouse fuel sample mirror? | **OUT_OF_SCOPE** | Analytics authority | NO | NO |
+| EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
+| EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
+| EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.2: `RawRefuelCandidate.id` + semantic rediscovery + G2 matcher; `IMPLEMENTATION_PROOF_PENDING` F2/F5 | NO | HIGH |
+| EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | Peak-anchored post plateau insufficient (KS MS 661 2026-09-30); **ROBUST_SETTLED_POST_REFUEL_LEVEL** design (ADR 2026-09-30); offline replay **EED-EV-0103**; **EED-EV-0104** + **R4A EED-EV-0109** six-event accounting (N=6, 3 vehicles, WOB **3/6** per addendum); separate symbolic **`maxPeakToSettledContinuityGapMs`** (uncalibrated); WOB 2026-09-19 delayed-observation split; **CALIBRATION_INSUFFICIENT**; **numeric Production caps still open**; **EED-EV-0110** (WOB 2026-10-09) closes **product time UX** only — **not** calibration population / caps | NO | HIGH |
+| EED-OQ-015 | Stretched-end native↔fallback convergence identity? | **RESOLVED** (design+code) | EED-EV-0097; bounded fallback classifier; canonical matcher strict | NO | HIGH |
+| EED-OQ-017 | Stale pre-fill baseline authority for RFRF promotion? | **RESOLVED** (design+code) | EED-EV-0098; baseline recency guard; promotion BLOCKED_BASELINE_RECENCY | NO | HIGH |
+| EED-OQ-018 | READY candidate stale evidence/trust refresh gap? | **RESOLVED** (design+code) | EED-EV-0099; versioned READY refresh before promotion; trust still UNKNOWN | NO | HIGH |
+| EED-OQ-019 | RFRF scoped hybrid trust activation + durable vehicle calibration? | **PARTIALLY_RESOLVED** | EED-EV-0100–0102 Hybrid activation complete; **Alpha Option C** blocks ABSOLUTE_ONLY auto-promotion (capability ADR 2026-09-30); first natural refuel captured (KS MS 661 2026-09-30); F3 maturity gap in EED-EV-0103/0104 settled-post design; **durable calibration store + Production numeric caps open** (not solved by EED-EV-0104 evidence); **EED-EV-0110** adds WOB 2026-10-09 **product** validation — does not establish durable per-vehicle calibration store | NO | HIGH |
+
+## Deferred (reference only)
+
+| Topic | Classification |
+|-------|----------------|
+| KG-ATE FM-007 | **DEFERRED** — not EED authority |
+| KG-ATE multi-replica | **DEFERRED** — indirect cadence only |
+
+## Summary (corrected in 2B.1 review)
+
+| Metric | Count |
+|--------|------:|
+| Total discovery questions | 12 |
+| RESOLVED (policy) | 1 (OQ-002) |
+| RESOLVED (design) | 1 (OQ-013) |
+| PARTIALLY_RESOLVED | 1 (OQ-006) |
+| OPEN | 8 |
+| OUT_OF_SCOPE | 2 |
+| Current-state facts extracted | 3 (scheduler coupling — not counted as open) |
+
+**OPEN_QUESTIONS_RESOLVED:** 2  
+**OPEN_QUESTIONS_PARTIALLY_RESOLVED:** 1  
+**OPEN_QUESTIONS_REMAINING:** 10 (8 OPEN + 2 OUT_OF_SCOPE)
+
+Graph nodes EED-OQ-001 … EED-OQ-012 retained for traceability.

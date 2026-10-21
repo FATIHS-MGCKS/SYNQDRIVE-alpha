@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { VehicleData } from '../../data/vehicles';
 import { api, type BookingDocumentBundleView } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';

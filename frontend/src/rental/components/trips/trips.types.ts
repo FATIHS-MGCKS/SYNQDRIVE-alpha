@@ -17,6 +17,14 @@ export interface TripTimelineTrip {
   tripStatus: 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   startTime: string;
   endTime?: string | null;
+  /** R8 — canonical EVENT_TIME boundary when COMPLETED. */
+  canonicalEndTime?: string | null;
+  /** R8 — provisional worker observation when ONGOING. */
+  provisionalLastObservedAt?: string | null;
+  endTimeSemantics?:
+    | 'CANONICAL_EVENT_BOUNDARY'
+    | 'PROVISIONAL_WORKER_OBSERVATION'
+    | 'CANCELLED';
   startLatitude?: number;
   startLongitude?: number;
   endLatitude?: number;

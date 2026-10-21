@@ -1,6 +1,6 @@
 import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { ConnectStatusDto } from '../../types/payments-connect.types';
 import { Icon } from '../ui/Icon';

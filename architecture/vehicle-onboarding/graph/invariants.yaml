@@ -1,0 +1,167 @@
+# Vehicle Onboarding — Graph Invariants
+
+invariants:
+  - id: VO-INV-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Canonical vehicle PK is Vehicle.id
+    statement: Canonical tenant-operational vehicle identity is Vehicle.id not DimoVehicle.id
+    source_paths:
+      - backend/prisma/schema.prisma
+      - architecture/vehicle-onboarding/CURRENT_STATE.md
+
+  - id: VO-INV-002
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Global unique dimo_vehicle_id on Vehicle
+    statement: At most one Vehicle may reference a given non-null dimoVehicleId globally
+    source_paths:
+      - backend/prisma/migrations/20260726140000_vehicles_dimo_vehicle_id_partial_unique/migration.sql
+
+  - id: VO-INV-IDENTITY-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: One physical vehicle per org active canonical
+    statement: Multiple providers must not create multiple ACTIVE canonical Vehicles for the same verified physical vehicle in one organization without explicit merge
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-IDENTITY-002
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Provider IDs are not canonical Vehicle identity
+    statement: DIMO externalId tokenId and HM references are mappings only; Vehicle.id remains canonical
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-VIN-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: No synthetic VIN in verified VIN field
+    statement: Synthetic internal identifiers such as DIMO-externalId must not be stored as verified real-world VIN
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+      - backend/src/modules/vehicles/vehicles.service.ts
+
+  - id: VO-INV-TENANT-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Cross-tenant VIN match is non-disclosing
+    statement: Cross-tenant physical identity collision detection must not expose another tenant operational data
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-ASSIGN-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Organization assignment history preserved
+    statement: Organization assignment changes must preserve temporal history and event-time attribution
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-PROVIDER-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Provider disconnect not vehicle delete
+    statement: Provider disconnection or link deactivation must not imply canonical Vehicle deletion
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-LIFECYCLE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Registry lifecycle separate from rental status
+    statement: Vehicle Registry lifecycle states are separate from VehicleStatus rental operational states
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+      - backend/prisma/schema.prisma
+
+  - id: VO-INV-OFFBOARD-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Normal offboard preserves history
+    statement: Normal vehicle offboarding must preserve historical operational evidence under correct org attribution
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-HEALTH-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Onboarding does not write health conclusions
+    statement: Onboarding technical baseline must not duplicate Vehicle Health conclusions
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-BATTERY-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Onboarding does not write battery health
+    statement: Onboarding battery specification must not duplicate Battery Intelligence health authority
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-READINESS-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Unknown optional capability non-blocking
+    statement: Unknown optional capability must not block unrelated vehicle operations when readiness profile allows
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-ACTIVATION-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Activation idempotent
+    statement: Activation must be idempotent under retried commands with the same idempotency key
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-CANDIDATE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Offboarded mirrors not passive candidates
+    statement: Historical offboarding must not cause a known physical vehicle to silently re-enter normal candidate discovery when provider link is inactive
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-TRANSFER-ISOLATION-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Org transfer fail-closed
+    statement: Vehicle organization transfer is forbidden unless historical tenant-owned facts remain scoped to event-time organization
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-DIMO-CUTOVER-AUTH-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: DIMO platform mirror tenant assignment requires IAM
+    statement: A DIMO platform developer-license mirror row does not prove tenant ownership; public cutover must authorize the actor before assigning that mirror to organizationId
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO3_2_FINAL_RUNTIME_SEAL.md
+
+  - id: VO-INV-ACTIVATION-EVENT-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Durable lifecycle facts with state change
+    statement: Committed registry activation or offboarding transition must include a durable idempotently consumable lifecycle fact in the same database transaction as the state change
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-TIRE-REQUIRED-GATE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Required tire baseline blocked without reference authority
+    statement: Readiness profiles with tireBaseline REQUIRED must fail closed until a safe canonical tire reference authority exists; current Rental/Fleet profiles remain DEFERRED_ALLOWED
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO45_TECHNICAL_BASELINE_MATERIALIZATION.md
+      - backend/src/modules/vehicle-onboarding/readiness/readiness-rule-engine.ts
+
+  - id: VO-INV-BASELINE-MATERIALIZATION-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Required technical baseline PASS implies materialized reference
+    statement: When VO-4 readiness marks a technical baseline rule REQUIRED with PASS, canonical activation must materialize the corresponding downstream reference authority in the same transaction or roll back entirely
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO45_TECHNICAL_BASELINE_MATERIALIZATION.md
+      - backend/src/modules/vehicle-onboarding/services/technical-baseline-materialization.ts

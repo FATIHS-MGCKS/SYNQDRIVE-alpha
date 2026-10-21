@@ -1,0 +1,91 @@
+{
+  "evidenceId": "EXP-021-RUN1-GAP-REPLAY-COMPARISON",
+  "aggregateMetrics": {
+    "TOTAL_DIAGNOSTIC_ZERO_WINDOWS": 5,
+    "TRANSITION_HF_PERSISTENT_EMPTY_WINDOWS": 1,
+    "SETTLEMENT_EARLY_AGE_ZERO_WINDOWS": 2,
+    "STRUCTURAL_TERMINAL_TAIL_WINDOWS": 2,
+    "TOTAL_OBJECTIVELY_IDENTIFIED_MISSING_BUCKET_TIMESTAMPS": 0,
+    "TOTAL_STILL_MISSING_BUCKETS": "NOT_DERIVABLE"
+  },
+  "taxonomyDistinction": {
+    "TRANSITION_WINDOW_PERSISTENT_EMPTY": "HF transition window zero at Run 1 and again at present-day exact replay; recoverability NOT_DEMONSTRATED",
+    "SETTLEMENT_EARLY_AGE_ZERO": "Settlement probe zero at scheduledAgeMs=30000 but same query window succeeded at later ages during Run 1; recoverability LATER_IN_RUN_DATA_OBSERVED — not persistent empty",
+    "STRUCTURAL_TERMINAL_TAIL": "Session geometry; mandatory maturation horizon falls after session end; recoverability NOT_APPLICABLE_STRUCTURAL — not a recoverable missing-data gap",
+    "OBJECTIVELY_MISSING_BUCKET_TIMESTAMP": "A specific bucket timestamp expected inside an otherwise-populated window but absent from provider response; requires per-bucket authority not present in frozen Run 1 evidence"
+  },
+  "maturationHypothesisByClass": {
+    "TRANSITION_HF_LATE_MATURATION_HYPOTHESIS": "WEAKENED",
+    "SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED": "YES"
+  },
+  "persistentEmptyScope": {
+    "TRANSITION_HF_PERSISTENT_EMPTY_SUPPORTED": "YES",
+    "note": "No global PERSISTENT_EMPTY_WINDOW_SUPPORTED; settlement early-age zeros are EARLY_AGE_ZERO_WITH_LATER_IN_RUN_SUCCESS"
+  },
+  "gaps": [
+    {
+      "gapId": "GAP-60S-SLOT1-TRANSITION-HF",
+      "refinedTaxonomyClass": "TRANSITION_WINDOW_PERSISTENT_EMPTY",
+      "recoverability": "NOT_DEMONSTRATED",
+      "replayClassification": "EXACT_REPLAY_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "transitionHfPersistentEmptyAtReplay": true,
+      "earlyAgeZeroWithLaterInRunSuccess": false,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE"
+    },
+    {
+      "gapId": "GAP-SP-60-T0-30S-SETTLEMENT",
+      "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+      "recoverability": "LATER_IN_RUN_DATA_OBSERVED",
+      "replayClassification": "EXACT_REPLAY_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "transitionHfPersistentEmptyAtReplay": false,
+      "earlyAgeZeroWithLaterInRunSuccess": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Zero at 30s age; succeeded at 60s–600s ages during Run 1 (see settlement-maturation.json)"
+    },
+    {
+      "gapId": "GAP-SP-90-T16-30S-SETTLEMENT",
+      "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+      "recoverability": "LATER_IN_RUN_DATA_OBSERVED",
+      "replayClassification": "EXACT_REPLAY_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "transitionHfPersistentEmptyAtReplay": false,
+      "earlyAgeZeroWithLaterInRunSuccess": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Zero at 30s age; succeeded at 60s–600s ages during Run 1 (see settlement-maturation.json)"
+    },
+    {
+      "gapId": "GAP-SP-60-T17-30S-SETTLEMENT",
+      "refinedTaxonomyClass": "STRUCTURAL_TERMINAL_TAIL",
+      "recoverability": "NOT_APPLICABLE_STRUCTURAL",
+      "replayClassification": "EXACT_REPLAY_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "transitionHfPersistentEmptyAtReplay": false,
+      "earlyAgeZeroWithLaterInRunSuccess": false,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Session geometry; mandatory +600s maturation horizon falls after session end — not missing buckets"
+    },
+    {
+      "gapId": "GAP-SP-60-T18-30S-SETTLEMENT",
+      "refinedTaxonomyClass": "STRUCTURAL_TERMINAL_TAIL",
+      "recoverability": "NOT_APPLICABLE_STRUCTURAL",
+      "replayClassification": "EXACT_REPLAY_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "transitionHfPersistentEmptyAtReplay": false,
+      "earlyAgeZeroWithLaterInRunSuccess": false,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Session geometry; mandatory +600s maturation horizon falls after session end — not missing buckets"
+    }
+  ]
+}

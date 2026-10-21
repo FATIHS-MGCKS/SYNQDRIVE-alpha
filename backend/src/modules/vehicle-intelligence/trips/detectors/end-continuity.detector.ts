@@ -32,7 +32,11 @@ export class EndContinuityDetector implements TripDetector {
       };
     }
 
-    const resumed = hasActivityResumed(coreDataPoints, profile);
+    const resumed = hasActivityResumed(
+      coreDataPoints,
+      profile,
+      ctx.possibleEndAt ?? null,
+    );
 
     return {
       detectorName: this.name,
@@ -42,6 +46,7 @@ export class EndContinuityDetector implements TripDetector {
         resumed,
         pointCount: coreDataPoints.length,
         profile,
+        resumeAfterAt: ctx.possibleEndAt?.toISOString() ?? null,
       },
       timestamp: new Date(),
     };

@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { de } from '../i18n/translations/de';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
 
 vi.mock('../i18n/LanguageContext', () => ({

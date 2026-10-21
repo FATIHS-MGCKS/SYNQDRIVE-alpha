@@ -15,6 +15,7 @@ import {
   withIncrementedRecoveryCount,
 } from '@modules/document-extraction/document-extraction-recovery.util';
 import { DocumentExtractionObservabilityService } from '@modules/document-extraction/document-extraction-observability.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * Conservative recovery scheduler for document.extraction jobs.
@@ -32,6 +33,7 @@ export class DocumentExtractionRecoveryScheduler implements OnModuleInit, OnModu
     @Inject(documentExtractionConfig.KEY)
     private readonly config: ConfigType<typeof documentExtractionConfig>,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   onModuleInit(): void {
@@ -50,6 +52,7 @@ export class DocumentExtractionRecoveryScheduler implements OnModuleInit, OnModu
   }
 
   async recoverStaleExtractions(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('document_extraction_recovery')) return;
     if (!this.config.queueEnabled) return;
     if (!canEnqueueQueue(this.logger, 'document-extraction-recovery')) return;
     if (this.recoveryInProgress) return;

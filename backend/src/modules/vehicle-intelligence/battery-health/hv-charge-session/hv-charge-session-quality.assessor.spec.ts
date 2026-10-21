@@ -58,14 +58,15 @@ describe('assessHvChargeSessionQualityFromDimoSegment (Tesla audit)', () => {
     expect(assessment.capacityValidationEligible).toBe(false);
   });
 
-  it('classifies audit session 4 as QUALIFIED for capacity shadow and validation', () => {
+  it('classifies audit session 4 as PARTIAL under SOC extrema proxy (E2)', () => {
     const segment = segmentFour();
     const assessment = assessHvChargeSessionQualityFromDimoSegment(segment);
 
-    expect(assessment.status).toBe(HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED);
-    expect(assessment.measurementQuality).toBe(BatteryMeasurementQuality.VALID);
+    expect(assessment.status).toBe(HV_CHARGE_SESSION_QUALITY_STATUS.PARTIAL);
+    expect(assessment.measurementQuality).toBe(BatteryMeasurementQuality.SHADOW);
     expect(assessment.capacityShadowEligible).toBe(true);
-    expect(assessment.capacityValidationEligible).toBe(true);
+    expect(assessment.capacityValidationEligible).toBe(false);
+    expect(assessment.reasonCodes).toContain('soc_extrema_proxy');
     expect(segment.soc.delta).toBeGreaterThanOrEqual(20);
   });
 

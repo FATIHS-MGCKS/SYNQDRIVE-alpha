@@ -1,0 +1,68 @@
+{
+  "case01": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case02": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case03": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case04": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case05": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case06": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case07": {
+    "energyDerivationQuality": "RELIABLE_FIRST_LAST_IN_SESSION",
+    "reliableSessionCounterDelta": true,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case08": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case09": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case10": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  },
+  "case11": {
+    "energyDerivationQuality": "CONTEXT_ONLY_NUMERIC",
+    "reliableSessionCounterDelta": false,
+    "physical": "VALID_CLOSED_NATIVE_RECHARGE",
+    "h4Eligible": false
+  }
+}

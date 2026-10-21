@@ -1,0 +1,190 @@
+# Driving Intelligence Knowledge Graph — Schema
+
+version: "1.0"
+description: >
+  Schema for Driving Intelligence living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+  Governance model after architecture/tankstellenerkennung/graph/schema.yaml.
+
+node_types:
+  - domain
+  - external_provider
+  - signal
+  - acquisition
+  - scheduler
+  - queue
+  - worker
+  - service
+  - algorithm
+  - derived_metric
+  - event
+  - score
+  - persistence
+  - database
+  - table
+  - cache
+  - trip_boundary
+  - api
+  - ui
+  - adjacent_system
+  - invariant
+  - feature_flag
+  - observability
+  - evidence
+  - test_evidence
+  - decision
+  - gap
+  - contradiction
+  - hypothesis
+  - policy
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - hypothesis
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - REFERENCE_DRIVE
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+  - CALIBRATION_RUN
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - provides
+  - consumes
+  - writes
+  - reads
+  - triggers
+  - enqueues
+  - processes
+  - derives
+  - aggregates
+  - projects
+  - depends_on
+  - associates_with
+  - falls_back_to
+  - retries
+  - locks
+  - validates
+  - gates
+  - exposes
+  - renders
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - upstream_of
+  - downstream_of
+  - governs
+  - input_to
+  - uses
+  - invokes
+  - persists
+  - recovers
+
+relation_semantics_doc: architecture/drivingintelligence/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: DI-DOM-
+  external_provider: DI-EXT-
+  signal: DI-SIG-
+  acquisition: DI-ACQ-
+  scheduler: DI-SCHED-
+  queue: DI-QUEUE-
+  worker: DI-WORK-
+  service: DI-SVC-
+  algorithm: DI-ALGO-
+  derived_metric: DI-MET-
+  event: DI-EVT-
+  score: DI-SCORE-
+  persistence: DI-PERSIST-
+  database: DI-DB-
+  table: DI-TBL-
+  cache: DI-CACHE-
+  trip_boundary: DI-TRIP-
+  api: DI-API-
+  ui: DI-UI-
+  adjacent_system: DI-ADJ-
+  invariant: DI-INV-
+  feature_flag: DI-FLAG-
+  observability: DI-OBS-
+  evidence: DI-EVID-
+  test_evidence: DI-TEST-
+  decision: DI-DEC-
+  gap: DI-GAP-
+  contradiction: DI-CONTRA-
+  hypothesis: DI-HYP-
+  policy: DI-POL-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - source_locator
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - superseded_by
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - id
+    - from
+    - relation
+    - to
+  optional:
+    - notes
+    - sync
+    - data_passed

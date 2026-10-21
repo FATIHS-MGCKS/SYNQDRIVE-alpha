@@ -4,6 +4,7 @@ import {
   VEHICLE_DATA_QUALITY_STATE,
   VEHICLE_OPERATIONAL_STATUS,
 } from '../../../lib/vehicle-operational-state';
+import { canonicalOperationalVehicle } from './dashboard-canonical-test-fixtures';
 import {
   buildVehicleRuntimeStates,
   resolveVehicleRuntimeOperationalBlock,
@@ -22,59 +23,18 @@ const BOOKING_REF = {
 };
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
-  return {
-    id: overrides.id ?? 'v1',
-    license: overrides.license ?? 'M-AB 123',
-    make: overrides.make ?? 'VW',
-    model: overrides.model ?? 'Golf',
-    year: overrides.year ?? 2024,
-    station: overrides.station ?? 'Berlin',
-    stationId: overrides.stationId ?? 'st-1',
-    fuelType: overrides.fuelType ?? 'Petrol',
-    status: overrides.status ?? VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
-    cleaningStatus: overrides.cleaningStatus ?? 'Clean',
-    healthStatus: overrides.healthStatus ?? 'Good Health',
-    online: overrides.online ?? true,
-    lastSignal: overrides.lastSignal ?? NOW.toISOString(),
-    badge: overrides.badge ?? 0,
-    odometer: overrides.odometer ?? 10000,
-    fuel: overrides.fuel ?? 72,
-    battery: overrides.battery ?? 100,
-    speed: overrides.speed ?? 0,
-    coolant: overrides.coolant ?? 90,
-    brakes: overrides.brakes ?? 90,
-    tires: overrides.tires ?? 90,
-    engineOil: overrides.engineOil ?? 90,
-    isElectric: overrides.isElectric ?? false,
-    hvBatteryCapacityKwh: overrides.hvBatteryCapacityKwh ?? null,
-    leasingRate: '',
-    insuranceCost: '',
-    taxCost: '',
-    totalMonthlyCost: '',
-    ...overrides,
-  };
+  return canonicalOperationalVehicle(
+    (overrides.status as (typeof VEHICLE_OPERATIONAL_STATUS)[keyof typeof VEHICLE_OPERATIONAL_STATUS]) ??
+      VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    overrides,
+  );
 }
 
 function operationalVehicle(
   status: (typeof VEHICLE_OPERATIONAL_STATUS)[keyof typeof VEHICLE_OPERATIONAL_STATUS],
   extra: Partial<VehicleData> = {},
 ): VehicleData {
-  return vehicle({
-    status,
-    operationalState: {
-      status,
-      reason: extra.operationalState?.reason ?? null,
-      source: 'fleet-read-model',
-      effectiveFrom: null,
-      effectiveUntil: null,
-      derivedAt: NOW.toISOString(),
-      dataQualityState: VEHICLE_DATA_QUALITY_STATE.RELIABLE,
-      dataQualityReasons: [],
-      isReliable: true,
-      ...extra.operationalState,
-    },
-    ...extra,
-  });
+  return canonicalOperationalVehicle(status, extra);
 }
 
 describe('resolveVehicleRuntimeOperationalBlock', () => {

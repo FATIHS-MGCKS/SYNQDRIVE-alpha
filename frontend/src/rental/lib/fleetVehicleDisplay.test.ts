@@ -8,9 +8,14 @@ import type {
 import {
   fleetEnergyTone,
   fleetOperationalSortScore,
-  isFleetSignalOutdated,
+  resolveCanonicalFleetVehicleDisplayState,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
+import {
+  canonicalAvailability,
+  canonicalConnectivityRuntime,
+  canonicalOperationalVehicle,
+} from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 
 function mod(state: RentalHealthState, reason = ''): RentalHealthModule {
@@ -259,7 +264,10 @@ describe('health vs rental display separation', () => {
     expect(d.healthDisplay.status).toBe('critical');
     expect(d.rentalDisplay.status).toBe('ready');
     expect(d.rentalDisplay.label).toBe('Ready · Action needed');
-    expect(d.reasonBadge?.text).toBe('Service overdue');
+    // Stage 5: per-module first-finding text removed — legacy path yields generic
+    // health badge; module detail is carried by activeHealthFindings[].
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.domain).toBe('health');
   });
 
   it('warning tires alone → Warning health but rental stays Ready (not Not Ready)', () => {
@@ -280,10 +288,11 @@ describe('health vs rental display separation', () => {
     });
     expect(d.healthDisplay.status).toBe('warning');
     expect(d.rentalDisplay.status).toBe('ready');
-    expect(d.reasonBadge?.text).toBe('Monitor tires');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.domain).toBe('health');
   });
 
-  it('error_codes reason counts active fault codes', () => {
+  it('error_codes module no longer collapses to a first-finding count text', () => {
     const d = resolveFleetVehicleDisplayState(vehicle(), {
       locale: 'en',
       rentalHealth: health({
@@ -299,10 +308,12 @@ describe('health vs rental display separation', () => {
         },
       }),
     });
-    expect(d.reasonBadge?.text).toBe('2 active fault codes');
+    // DTC count semantics live in activeHealthFindings[] (H/T suites), not reasonBadge.
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.domain).toBe('health');
   });
 
-  it('skips generic blocking reasons and falls back to a concrete module reason', () => {
+  it('skips generic blocking reasons and falls back to generic health badge', () => {
     const d = resolveFleetVehicleDisplayState(vehicle(), {
       locale: 'en',
       rentalHealth: health({
@@ -320,10 +331,11 @@ describe('health vs rental display separation', () => {
         },
       }),
     });
-    expect(d.reasonBadge?.text).toBe('Service overdue');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.text.toLowerCase()).not.toContain('critical vehicle health');
   });
 
-  it('shows a concrete tire monitor reason instead of generic warning health status', () => {
+  it('never surfaces raw module reason text as a first-finding chip', () => {
     const d = resolveFleetVehicleDisplayState(vehicle({ healthStatus: 'Warning' }), {
       locale: 'de',
       rentalHealth: health({
@@ -339,8 +351,9 @@ describe('health vs rental display separation', () => {
         },
       }),
     });
-    expect(d.reasonBadge?.text).toBe('Reifen beobachten');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
     expect(d.reasonBadge?.text).not.toBe('Warning health status');
+    expect(d.reasonBadge?.text).not.toBe('Reifen beobachten');
   });
 
   it('Active Rented → rental Active; Reserved → rental Reserved', () => {
@@ -497,7 +510,8 @@ describe('health vs rental display separation', () => {
     });
     expect(d.healthDisplay.label).toBe('Warnung');
     expect(d.rentalDisplay.label).toBe('Bereit');
-    expect(d.reasonBadge?.text).toBe('Reifen beobachten');
+    expect(d.reasonBadge?.code).toBe('HEALTH_GENERIC');
+    expect(d.reasonBadge?.text).toBe('Health prüfen');
   });
 });
 
@@ -507,18 +521,6 @@ describe('fleetEnergyTone', () => {
     expect(fleetEnergyTone(45)).toBe('yellow');
     expect(fleetEnergyTone(10)).toBe('red');
     expect(fleetEnergyTone(null)).toBe('neutral');
-  });
-});
-
-describe('isFleetSignalOutdated', () => {
-  it('is false for live/standby and true only from signal_delayed (>=24h)', () => {
-    // standby (a few hours) is normal → not outdated
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(1), signalAgeMs: undefined })).toBe(false);
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(8), signalAgeMs: undefined })).toBe(false);
-    // soft offline (24–48h) → outdated
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(30), signalAgeMs: undefined })).toBe(true);
-    // offline (>=48h) → outdated
-    expect(isFleetSignalOutdated({ lastSignal: hoursAgoIso(50), signalAgeMs: undefined })).toBe(true);
   });
 });
 
@@ -583,5 +585,41 @@ describe('fleetOperationalSortScore', () => {
     );
     expect(d.statusBadge.tone).toBe('neutral');
     expect(d.statusBadge.dataQualityHint).toBeTruthy();
+  });
+});
+
+describe('canonical domain separation (marker attention != rental block)', () => {
+  it('DEVICE_UNPLUGGED + P0.2 AVAILABLE keeps rentalDisplay ready and health good', () => {
+    const v = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: canonicalConnectivityRuntime({
+        overallState: 'DEVICE_UNPLUGGED',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+        attentionState: 'ACTION_REQUIRED',
+      }),
+      operationalAvailability: canonicalAvailability('AVAILABLE'),
+      healthEvaluation: {
+        condition: 'good',
+        evaluability: 'EVALUABLE',
+        pipelineAvailability: 'ready',
+        generatedAt: '2026-08-26T12:00:00.000Z',
+        healthEvidenceAt: '2026-08-26T12:00:00.000Z',
+        anyModuleDataStale: false,
+        source: 'p0.2_projection',
+      },
+    });
+    const d = resolveCanonicalFleetVehicleDisplayState(v, { locale: 'en' });
+    expect(d.rentalDisplay.status).toBe('ready');
+    expect(d.primaryStatus).toBe('ready');
+    expect(d.healthDisplay.status).toBe('good');
+  });
+
+  it('P0.2 UNAVAILABLE marks rentalDisplay blocked without marker-only attention', () => {
+    const v = canonicalOperationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, {
+      connectivityRuntime: canonicalConnectivityRuntime(),
+      operationalAvailability: canonicalAvailability('UNAVAILABLE'),
+    });
+    const d = resolveCanonicalFleetVehicleDisplayState(v, { locale: 'en' });
+    expect(d.rentalDisplay.status).toBe('blocked');
+    expect(d.primaryStatus).toBe('blocked');
   });
 });

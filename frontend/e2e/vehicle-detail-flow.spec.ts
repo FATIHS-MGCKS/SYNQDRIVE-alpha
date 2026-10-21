@@ -206,20 +206,24 @@ test.describe('Vehicle Detail — flows (mocked API)', () => {
   });
 
   test('20 — device connection loading, error, and empty states', async ({ page }) => {
+    const connectivityCard = page.getByRole('region', {
+      name: /Vehicle connectivity|Fahrzeug-Konnektivität/i,
+    });
+
     await openVehicleDetailRental(page, { profile: 'device-loading' });
     await openVehicleFromFleet(page, 'VD-DEV');
     await expect(page.locator('.animate-pulse.h-28').first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Konnektivität')).toBeVisible({ timeout: 15_000 });
+    await expect(connectivityCard).toBeVisible({ timeout: 15_000 });
 
     await openVehicleDetailRental(page);
     await openVehicleFromFleet(page, 'VD-DERR');
     await waitForTelemetryPolls(1);
-    await expect(page.getByText('Konnektivität')).toHaveCount(0);
+    await expect(connectivityCard).toHaveCount(0);
 
     await openVehicleDetailRental(page);
     await openVehicleFromFleet(page, 'VD-DEMP');
     await waitForTelemetryPolls(1);
-    await expect(page.getByText('Konnektivität')).toHaveCount(0);
+    await expect(connectivityCard).toHaveCount(0);
   });
 
   test('21 — Mapbox provider error keeps safe loading fallback', async ({ page }) => {

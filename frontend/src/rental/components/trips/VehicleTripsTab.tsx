@@ -38,10 +38,15 @@ export function TripsView(props: TripsViewProps) {
             vehicleId={vehicleId}
             selectedTrip={tab.selectedTrip}
             routePoints={tab.routePoints}
+            routeSegments={tab.routeSegments}
+            routeQuality={tab.routeQuality}
+            processingState={tab.processingState}
+            continuityStatus={tab.continuityStatus}
+            matchConfidence={tab.matchConfidence}
+            matchCoverage={tab.matchCoverage}
+            routeProcessedAt={tab.routeProcessedAt}
             routeLoading={tab.routeLoading}
             routeError={tab.routeError}
-            enrichment={tab.selectedTrip ? tab.enrichments[tab.selectedTrip.id] : undefined}
-            enrichingTrip={Boolean(tab.selectedTrip && tab.enrichingId === tab.selectedTrip.id)}
             behaviorEvents={tab.selectedTrip ? (tab.behaviorEvents[tab.selectedTrip.id] ?? []) : []}
             behaviorLoading={Boolean(tab.selectedTrip && tab.behaviorLoadingId === tab.selectedTrip.id)}
             syncing={tab.syncing}
@@ -71,8 +76,6 @@ export function TripsView(props: TripsViewProps) {
             routePointsCount={tab.routePointsCount}
             routeLoading={tab.routeLoading}
             routeError={tab.routeError}
-            enrichments={tab.enrichments}
-            enrichingId={tab.enrichingId}
             behaviorEvents={tab.behaviorEvents}
             behaviorLoadingId={tab.behaviorLoadingId}
             selectedBehaviorEventId={tab.selectedBehaviorEventId}

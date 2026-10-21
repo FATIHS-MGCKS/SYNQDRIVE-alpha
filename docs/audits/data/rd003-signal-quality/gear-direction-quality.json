@@ -1,0 +1,37 @@
+{
+  "evidenceTier": "TIER_C_STATE_CONTEXT",
+  "GEAR_STATE_OBSERVABILITY": "YES",
+  "GEAR_CHANGE_TIMING_OBSERVABILITY": "NO",
+  "GEAR_STATE_USEFUL": "YES",
+  "PRECISE_SHIFT_TIMING_USEFUL": "NO",
+  "RPM_SHIFT_SIGNATURE_DETECTABILITY": "PARTIAL",
+  "IMG_2810_VIDEO_SHIFT_LANDMARK": {
+    "videoTimeSeconds": 9.55,
+    "value": "S2→S3",
+    "telemetryPreShiftState": "CONTEXT_ONLY",
+    "telemetryPostShiftState": "CONTEXT_ONLY",
+    "telemetryShiftTime": "NOT_SUPPORTED"
+  },
+  "IMG_2811_DIRECTION": {
+    "videoDirectionGt": "AVAILABLE",
+    "directionFromUnsignedSpeedAlone": "NOT_IDENTIFIABLE",
+    "gearComplementForDirection": "PARTIAL"
+  },
+  "DIRECTION_RECONSTRUCTION_CAPABILITY": "PARTIAL",
+  "powertrainTransmissionActualGear": {
+    "HF_HISTORICAL": {
+      "observationCount": 0,
+      "dynamics": "UNKNOWN"
+    },
+    "LATEST_SLOW": {
+      "observationCount": 62,
+      "dynamics": "DYNAMICALLY_INFORMATIVE"
+    }
+  },
+  "powertrainTransmissionActualGearRatio": {
+    "LATEST_SLOW": {
+      "observationCount": 62
+    }
+  },
+  "UNSIGNED_SPEED_CANNOT_INFER_DIRECTION": "YES"
+}

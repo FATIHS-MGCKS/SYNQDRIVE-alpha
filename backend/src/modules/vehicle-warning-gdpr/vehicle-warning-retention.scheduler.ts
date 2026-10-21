@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 const DEFAULT_RETENTION_DAYS = {
   resolvedNotifications: 180,
@@ -32,10 +33,14 @@ export interface VehicleWarningRetentionReport {
 export class VehicleWarningRetentionScheduler {
   private readonly logger = new Logger(VehicleWarningRetentionScheduler.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
+  ) {}
 
   @Cron('0 4 * * *')
   async scheduledRun(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('vehicle_warning_retention')) return;
     if (process.env.VEHICLE_WARNING_RETENTION_ENABLED !== 'true') {
       this.logger.debug(
         'Vehicle warning retention skipped (VEHICLE_WARNING_RETENTION_ENABLED!=true)',

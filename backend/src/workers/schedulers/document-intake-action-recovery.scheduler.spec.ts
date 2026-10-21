@@ -13,6 +13,7 @@ describe('DocumentIntakeActionRecoveryScheduler', () => {
     actionRecoveryBatchSize: 5,
   };
   const observability = { recordActionRecoveryRun: jest.fn() };
+  const leaderGuard = { shouldRun: jest.fn().mockReturnValue(true) };
 
   it('delegates to recovery service when enabled', async () => {
     const recoveryService = {
@@ -24,6 +25,7 @@ describe('DocumentIntakeActionRecoveryScheduler', () => {
       recoveryService as any,
       docConfig as any,
       observability as any,
+      leaderGuard as any,
     );
 
     await scheduler.recoverStaleActionApplies();
@@ -40,7 +42,7 @@ describe('DocumentIntakeActionRecoveryScheduler', () => {
     const scheduler = new DocumentIntakeActionRecoveryScheduler(recoveryService as any, {
       ...docConfig,
       actionRecoveryEnabled: false,
-    } as any, observability as any);
+    } as any, observability as any, leaderGuard as any);
 
     await scheduler.recoverStaleActionApplies();
     expect(recoveryService.recoverStuckApplyingCandidates).not.toHaveBeenCalled();

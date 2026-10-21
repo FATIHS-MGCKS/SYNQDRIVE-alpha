@@ -1,7 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import type { WhatsAppConfig } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { AI_MODE_META, isSandboxEnvironment } from './whatsapp.ops';
 
 interface WhatsAppSettingsPanelProps {

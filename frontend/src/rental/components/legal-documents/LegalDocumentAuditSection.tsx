@@ -1,6 +1,6 @@
 import { DataCard, SectionHeader, StatusChip, Timeline } from '../../../components/patterns';
 import type { LegalDocumentEventDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   formatLegalDocumentDate,
   legalDocumentTypeTitle,

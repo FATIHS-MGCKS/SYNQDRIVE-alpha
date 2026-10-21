@@ -1,5 +1,7 @@
 import { getToken, clearAuth } from './auth';
 import { getStepUpToken } from './mfa';
+import { buildVehiclesOperationalListQuery } from './vehicles-operational-list-query';
+import { classifyOffboardHttpFailure } from './vehicle-offboard-api-error';
 import { buildFinanceInsightsPath } from '../rental/lib/finance-insights.types';
 import {
   buildFleetRentalHealthQueryString,
@@ -288,6 +290,8 @@ export interface VehicleHealthResponse {
     code: 'PIPELINE_UNAVAILABLE';
     message: string;
   };
+  /** Read-only passthrough from rental-health evaluation — no extra frontend fetch. */
+  dashboard_warning_lights?: DashboardWarningLightsResponse;
 }
 
 export interface FleetRentalHealthQuery {
@@ -784,11 +788,18 @@ export interface RequestResult<T> {
   readonly status: number;
   readonly data?: T;
   readonly errorMessage?: string;
+  readonly errorBody?: { code?: string; message?: string; details?: unknown };
 }
+
+export type RequestResultMeta = {
+  /** Hub-owned MFA dialogs must not also trigger the global step-up listener. */
+  suppressStepUpDispatch?: boolean;
+};
 
 export async function requestResult<T>(
   path: string,
   options?: RequestInit,
+  meta?: RequestResultMeta,
 ): Promise<RequestResult<T>> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -815,10 +826,28 @@ export async function requestResult<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    const normalized =
+      body && typeof body === 'object'
+        ? (body as { code?: string; message?: string; details?: unknown })
+        : {};
+    if (
+      !meta?.suppressStepUpDispatch &&
+      res.status === 403 &&
+      normalized &&
+      typeof normalized === 'object' &&
+      (normalized as { code?: string }).code === 'STEP_UP_REQUIRED'
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('synqdrive:step-up-required', {
+          detail: normalized as { code?: string; action?: string },
+        }),
+      );
+    }
     return {
       ok: false,
       status: res.status,
       errorMessage: formatHttpErrorMessage(body, res.status, path),
+      errorBody: normalized,
     };
   }
 
@@ -1906,6 +1935,45 @@ export type TripAssignmentSubjectType = 'DRIVER' | 'BOOKING_CUSTOMER';
 export type EnergyEventKind = 'REFUEL' | 'RECHARGE';
 export type EnergyEventConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
+export type FuelStationEnrichmentProcessingStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type FuelStationEnrichmentResolutionStatus =
+  | 'MATCHED'
+  | 'AMBIGUOUS'
+  | 'NOT_FOUND'
+  | 'NO_COORDINATES'
+  | 'INVALID_COORDINATES'
+  | 'ERROR';
+
+export type FuelStationMatchConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface EnergyEventStation {
+  osmType: string | null;
+  osmId: string | null;
+  name: string | null;
+  brand: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distanceMeters: number | null;
+}
+
+export interface EnergyEventStationEnrichment {
+  processingStatus: FuelStationEnrichmentProcessingStatus;
+  resolutionStatus: FuelStationEnrichmentResolutionStatus | null;
+  trusted: boolean;
+  matchConfidence: FuelStationMatchConfidence | null;
+  score: number | null;
+  station?: EnergyEventStation;
+  resolverVersion: string | null;
+  osmDatasetVersion: string | null;
+  resolvedAt: string | null;
+}
+
 export interface EnergyEvent {
   id: string;
   vehicleId: string;
@@ -1926,6 +1994,14 @@ export interface EnergyEvent {
   odometerStartKm: number | null;
   odometerEndKm: number | null;
   confidence: EnergyEventConfidence;
+  /** REFUEL only: observed fuel-level-rise start (ISO); not pump duration. */
+  fuelLevelRiseStart: string | null;
+  /** REFUEL only: observed fuel-level-rise end (ISO); not pump duration. */
+  fuelLevelRiseEnd: string | null;
+  /** REFUEL only: observed fuel-level-rise duration in seconds; nullable. */
+  fuelLevelRiseDurationSeconds: number | null;
+  /** REFUEL only: persisted fuel-station enrichment (Phase E API). */
+  stationEnrichment?: EnergyEventStationEnrichment;
 }
 
 export type TripTimelineItem =
@@ -3484,6 +3560,91 @@ export const api = {
     orgStats: () => get<any>('/admin/stats/organizations'),
     revenueStats: () => get<any>('/admin/stats/revenue'),
     prune: () => post<{ message: string }>('/admin/prune', {}),
+    physicalDeviceInventory: {
+      summary: () =>
+        get<import('./physical-device-inventory.types').PhysicalDeviceStockSummaryDto>(
+          '/admin/physical-device-inventory/summary',
+        ),
+      listDevices: (params?: import('./physical-device-inventory.types').ListPhysicalDevicesQuery) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.status) q.set('status', params.status);
+        if (params?.modelCode) q.set('modelCode', params.modelCode);
+        if (params?.warehouseLocation) q.set('warehouseLocation', params.warehouseLocation);
+        if (params?.ownerOrganizationId) q.set('ownerOrganizationId', params.ownerOrganizationId);
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.offset != null) q.set('offset', String(params.offset));
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('./physical-device-inventory.types').PhysicalDeviceListResponseDto>(
+          `/admin/physical-device-inventory/devices${suffix}`,
+        );
+      },
+      manualIntake: (body: import('./physical-device-inventory.types').ManualIntakePhysicalDeviceRequest) =>
+        post<import('./physical-device-inventory.types').ManualIntakePhysicalDeviceResponse>(
+          '/admin/physical-device-inventory/devices/manual-intake',
+          body,
+        ),
+      getDevice: (deviceId: string) =>
+        get<import('./physical-device-inventory.types').PhysicalDeviceDetailDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}`,
+        ),
+      verifyIdentity: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').VerifyPhysicalDeviceIdentityRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/verify-identity`,
+          body,
+        ),
+      installOnVehicle: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').InstallPhysicalDeviceRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/install`,
+          body,
+        ),
+      uninstallFromVehicle: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').UninstallPhysicalDeviceRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/uninstall`,
+          body,
+        ),
+      returnToStock: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').ReturnPhysicalDeviceToStockRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/return-to-stock`,
+          body,
+        ),
+      markDefective: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').MarkPhysicalDeviceDefectiveRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/mark-defective`,
+          body,
+        ),
+      markLost: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').MarkPhysicalDeviceLostRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/mark-lost`,
+          body,
+        ),
+      retire: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').RetirePhysicalDeviceRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/retire`,
+          body,
+        ),
+    },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>
         get<any>('/admin/monitoring/summary' + buildQuery(params)),
@@ -3524,8 +3685,18 @@ export const api = {
       schedulers: () => get<any>('/admin/ops/schedulers'),
       infrastructure: () => get<any>('/admin/ops/infrastructure-summary'),
       alerts: () => get<any>('/admin/ops/alerts'),
+      drivingIntelligenceS4: () =>
+        get<import('../master/platform-ops/types').PlatformOpsDiS4StatusDto>(
+          '/admin/ops/driving-intelligence-s4',
+        ),
       resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
       tools: () => get<any>('/admin/ops/tools'),
+      dimoWebhookHealth: (params?: { refresh?: boolean }) => {
+        const q = params?.refresh ? '?refresh=1' : '';
+        return get<import('../master/platform-ops/dimo-webhook-health.types').DimoR9WebhookHealthDto>(
+          `/admin/ops/dimo-webhook-health${q}`,
+        );
+      },
     },
     communication: {
       operationalHealth: (organizationId?: string) => {
@@ -3699,6 +3870,48 @@ export const api = {
         );
       },
     },
+    batteryV2: {
+      listRestSessions: (params: { organizationId: string; vehicleId: string; limit?: number }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        if (params.limit != null) q.set('limit', String(params.limit));
+        return get<{ sessions: import('../master/battery-v2-shadow-inspection/types').BatteryV2RestSessionListItemV1[] }>(
+          `/admin/battery-v2/rest-sessions?${q.toString()}`,
+        );
+      },
+      inspectRestSessionFeature: (params: {
+        organizationId: string;
+        vehicleId: string;
+        restSessionId: string;
+      }) => {
+        const q = new URLSearchParams(params);
+        return get<import('../master/battery-v2-shadow-inspection/types').RestSessionFeatureShadowInspectionV1>(
+          `/admin/battery-v2/rest-session-feature-inspection?${q.toString()}`,
+        );
+      },
+      getLvMeasuredIntelligence: (params: {
+        organizationId: string;
+        vehicleId: string;
+        sessionLimit?: number;
+        observationLimit?: number;
+        measuredFrom?: string;
+        measuredTo?: string;
+      }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        if (params.sessionLimit != null) q.set('sessionLimit', String(params.sessionLimit));
+        if (params.observationLimit != null) q.set('observationLimit', String(params.observationLimit));
+        if (params.measuredFrom) q.set('measuredFrom', params.measuredFrom);
+        if (params.measuredTo) q.set('measuredTo', params.measuredTo);
+        return get<import('../master/battery-v2-shadow-inspection/lv-measured-intelligence.types').LvMeasuredIntelligenceV1>(
+          `/admin/battery-v2/lv-measured-intelligence?${q.toString()}`,
+        );
+      },
+    },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),
       enable: (vehicleId: string, data: { durationHours?: number; enabledBy?: string; notes?: string }) =>
@@ -3862,20 +4075,18 @@ export const api = {
     operationalAttentionQueue: (limit = 8) =>
       get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),
     operationalList: (params?: Record<string, string | number | undefined>) => {
-      const search = new URLSearchParams();
-      for (const [key, val] of Object.entries(params ?? {})) {
-        if (val !== undefined && val !== '' && val !== 'all') search.set(key, String(val));
-      }
-      const qs = search.toString();
+      const qs = buildVehiclesOperationalListQuery(params);
       return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
-        `/admin/vehicles/operational${qs ? `?${qs}` : ''}`,
+        `/admin/vehicles/operational${qs}`,
       );
     },
     operationalDetail: (vehicleId: string) => get<any>(`/admin/vehicles/${vehicleId}/operational`),
     operationalUnregisteredDetail: (dimoVehicleId: string) =>
       get<any>(`/admin/vehicles/unregistered/${dimoVehicleId}/operational`),
     operationalDiagnostics: (vehicleId: string, organizationId: string) =>
-      get<any>(`/admin/vehicles/${vehicleId}/operational/diagnostics?organizationId=${encodeURIComponent(organizationId)}`),
+      get<ConnectivityAdminDiagnosticsResponse>(
+        `/admin/vehicles/${vehicleId}/operational/diagnostics?organizationId=${encodeURIComponent(organizationId)}`,
+      ),
     importPreflight: (organizationId: string, dimoVehicleId: string) =>
       get<any>(
         `/admin/vehicles/import-preflight?organizationId=${encodeURIComponent(organizationId)}&dimoVehicleId=${encodeURIComponent(dimoVehicleId)}`,
@@ -4020,7 +4231,6 @@ export const api = {
         ),
     },
     registerFromDimo: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles/register-from-dimo`, data),
-    deregister: (vehicleId: string) => post<{ success: boolean; deregisteredVehicle: any }>(`/admin/vehicles/${vehicleId}/deregister`, {}),
     updateOperationalStatus: (
       orgId: string,
       vehicleId: string,
@@ -4103,6 +4313,37 @@ export const api = {
         del<{ success: boolean }>(
           `/admin/vehicles/${vehicleId}/exterior-images/${view}`,
         ),
+    },
+  },
+  vehicleOnboarding: {
+    offboardVehicle: async (
+      organizationId: string,
+      vehicleId: string,
+      body: {
+        reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
+        idempotencyKey: string;
+        note?: string;
+      },
+    ) => {
+      const path = `/admin/vehicle-onboarding/organizations/${organizationId}/vehicles/${vehicleId}/offboard`;
+      const result = await requestResult<{
+        vehicleId: string;
+        organizationId: string;
+        registryLifecycle: 'OFFBOARDED';
+        offboardedAt: string;
+        reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
+        idempotentReplay: boolean;
+        warnings: string[];
+      }>(path, { method: 'POST', body: JSON.stringify(body) }, { suppressStepUpDispatch: true });
+      if (!result.ok) {
+        throw classifyOffboardHttpFailure(
+          result.status,
+          result.errorBody?.code,
+          result.errorMessage ?? 'Offboard request failed',
+          result.errorBody?.details,
+        );
+      }
+      return result.data!;
     },
   },
   dimo: {
@@ -6994,6 +7235,16 @@ export const api = {
     drivingAssessmentQuality: (vehicleId: string) =>
       get<DrivingAssessmentQualityResponse>(`/vehicles/${vehicleId}/driving-assessment-quality`),
     battery: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery`),
+    createBatterySpec: (
+      vehicleId: string,
+      data: {
+        batteryType?: string | null;
+        batteryAmpere?: number | null;
+        batteryVolt?: number | null;
+        sourceType?: string;
+        sourceConfidence?: number;
+      },
+    ) => post<any>(`/vehicles/${vehicleId}/battery`, data),
     tires: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/tires`),
     tireWearAnalysis: (vehicleId: string) => get<TireWearAnalysis | null>(`/vehicles/${vehicleId}/tires/wear-analysis`),
     tireHealthSummary: (vehicleId: string) => get<TireHealthSummaryResponse | null>(`/vehicles/${vehicleId}/tires/summary`),
@@ -7114,7 +7365,8 @@ export const api = {
       from: params.from,
       to: params.to,
     })),
-    tripRoute: (vehicleId: string, tripId: string) => get<any[]>(`/vehicles/${vehicleId}/trips/${tripId}/route`),
+    tripRoute: (vehicleId: string, tripId: string) =>
+      get<CanonicalTripRouteResponse>(`/vehicles/${vehicleId}/trips/${tripId}/route`),
     /** @deprecated Use reconcileTrips instead */
     syncTrips: (vehicleId: string, _params?: { from?: string; to?: string }) =>
       post<any>(`/vehicles/${vehicleId}/trips/reconcile`, {}),
@@ -7138,6 +7390,10 @@ export const api = {
     tripRpmCandidates: (vehicleId: string, tripId: string) =>
       get<TripRpmCandidatesResponse>(
         `/vehicles/${vehicleId}/trips/${tripId}/rpm-candidates`,
+      ),
+    tripGpsSpeedEvaluationV2: (vehicleId: string, tripId: string) =>
+      get<TripGpsSpeedEvaluationProductV1>(
+        `/vehicles/${vehicleId}/trips/${tripId}/gps-speed-evaluation-v2`,
       ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
@@ -9540,6 +9796,62 @@ export interface SpeedingSection {
   coordinates: [number, number][];
 }
 
+export type RouteProcessingState =
+  | 'READY'
+  | 'PROCESSING'
+  | 'RETRYING'
+  | 'FAILED'
+  | 'UNAVAILABLE';
+
+export type RouteContinuityStatus = 'COMPLETE' | 'GAPS_PRESENT' | 'INSUFFICIENT_DATA';
+
+export type CanonicalRouteQuality = 'MATCHED' | 'FILTERED' | 'RAW';
+
+export interface CanonicalTripRouteSpeedPoint {
+  latitude: number;
+  longitude: number;
+  speedKmh: number | null;
+  timestamp: string;
+}
+
+export interface CanonicalTripRouteResponse {
+  tripId: string;
+  vehicleId: string;
+  routeQuality: CanonicalRouteQuality | null;
+  geometry: {
+    type: 'MultiLineString';
+    coordinates: [number, number][][];
+  } | null;
+  source: {
+    provider: string | null;
+    algorithmVersion: string | null;
+    processedAt: string | null;
+  };
+  quality: {
+    matchConfidence: number | null;
+    matchCoverage: number | null;
+  };
+  counts: {
+    sourcePointCount: number;
+    filteredPointCount: number;
+    matchedPointCount: number | null;
+  };
+  continuity: {
+    status: RouteContinuityStatus;
+    hasUnknownGaps: boolean;
+    gapCount: number;
+  };
+  status: {
+    processingState: RouteProcessingState;
+    ready: boolean;
+    retryableFailure: boolean;
+    failureReason: string | null;
+  };
+  speedPoints: CanonicalTripRouteSpeedPoint[];
+  /** @deprecated Not serialized — use speedPoints (measured telemetry, not route geometry). */
+  points?: CanonicalTripRouteSpeedPoint[];
+}
+
 export interface TripEnrichment {
   citySharePercent: number;
   highwaySharePercent: number;
@@ -9838,6 +10150,29 @@ export interface FleetMapVehicleResponse {
   bookingContext?: VehicleBookingContext | null;
   /** Canonical connectivity runtime from backend builder. */
   connectivityRuntime?: VehicleConnectivityRuntimeState;
+  /** P0.3 — operator-facing operational availability from P0.2 projection. */
+  operationalAvailability?: FleetOperationalAvailabilityResponse;
+  /** P0.4 — Health condition + P0.2 evaluability from projection. */
+  healthEvaluation?: FleetHealthEvaluationResponse;
+}
+
+export interface FleetHealthEvaluationResponse {
+  condition: 'good' | 'warning' | 'critical' | 'unknown';
+  evaluability: 'EVALUABLE' | 'PARTIALLY_EVALUABLE' | 'NOT_EVALUABLE' | 'UNKNOWN';
+  pipelineAvailability: 'ready' | 'partial' | 'unavailable' | null;
+  generatedAt: string;
+  healthEvidenceAt: string | null;
+  anyModuleDataStale: boolean | null;
+  source: string;
+}
+
+export interface FleetOperationalAvailabilityResponse {
+  state: 'AVAILABLE' | 'NEEDS_VERIFICATION' | 'UNKNOWN' | 'UNAVAILABLE';
+  primaryReason: string | null;
+  reasonCodes: string[];
+  recommendedAction: string;
+  attention: string;
+  generatedAt: string;
 }
 
 export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
@@ -9897,6 +10232,8 @@ export interface FleetDeviceConnectionDto {
   openUnpluggedEpisode: boolean;
   openUnpluggedSince: string | null;
   openUnpluggedDurationMs: number | null;
+  interruptionKnowledge?: 'known_none' | 'active' | 'unknown' | 'not_applicable';
+  interruptionKnowledgeReason?: string;
   severity: DeviceConnectionSeverity | null;
   rentalRelevant: boolean;
   duringActiveBooking: boolean;
@@ -9955,6 +10292,9 @@ export interface DeviceConnectionSummary {
   pluggedCount24h: number;
   pluggedCount7d: number;
   recentEvents: DeviceConnectionEventView[];
+  /** Epistemic interruption state — additive; do not infer from `!openUnpluggedEpisode` alone. */
+  interruptionKnowledge?: 'known_none' | 'active' | 'unknown' | 'not_applicable';
+  interruptionKnowledgeReason?: string;
   rawEvents?: unknown[];
   connectivityRuntime?: VehicleConnectivityRuntimeState;
 }
@@ -9999,6 +10339,39 @@ export interface RpmCandidateView {
 export interface TripRpmCandidatesResponse {
   candidates: RpmCandidateView[];
   count: number;
+}
+
+export type TripGpsSpeedEvaluationAvailability =
+  | 'READY'
+  | 'PENDING'
+  | 'UNAVAILABLE'
+  | 'NOT_ASSESSABLE';
+
+export interface TripGpsSpeedEvaluationProductV1 {
+  contractVersion: string;
+  qcPolicyVersion: 'DI_V0_SPEED_QC_POLICY_V2';
+  availability: TripGpsSpeedEvaluationAvailability;
+  assessabilityLevel: 'FULL' | 'PARTIAL' | 'INSUFFICIENT' | 'UNASSESSABLE' | null;
+  limitedAssessability: boolean;
+  coverage: {
+    totalIntervalCount: number;
+    numericCoveragePercent: number | null;
+    trustedNumericCoveragePercent: number | null;
+    trustedLimitedCoveragePercent: number | null;
+    trustedNumericIntervalCount: number;
+    trustedLimitedStationaryIntervalCount: number;
+  } | null;
+  speed: {
+    maxKmh: number | null;
+    maxScope: 'TRUSTED_NUMERIC_INTERVALS' | 'TRUSTED_LIMITED_ONLY' | 'UNAVAILABLE';
+    maxAssessability: string;
+    meanKmh: number | null;
+    meanScope: 'TRUSTED_NUMERIC_INTERVALS_ONLY';
+  } | null;
+  motion: {
+    stationarySupportedIntervalCount: number;
+    movingEstimatedIntervalCount: number;
+  } | null;
 }
 
 export interface VehicleRpmWebhookSummary {
@@ -10413,6 +10786,53 @@ export interface FleetConnectivityDetail extends FleetConnectivityListItem {
   webhook: FleetConnectivityWebhookSummary;
   odometerKm: number | null;
   hasLocation: boolean;
+}
+
+/**
+ * Connectivity diagnostic dimension — Master Admin only.
+ *
+ * Separates provider API reachability from real vehicle observation freshness.
+ * A provider can be reachable while the vehicle observation is stale (device or
+ * SIM not transmitting), which canonical `telemetryState` alone cannot express.
+ *
+ * Served only by `/admin/vehicles/:vehicleId/operational/diagnostics`. Never
+ * present on tenant-facing connectivity payloads.
+ */
+export type ConnectivityDiagnosticState =
+  | 'PROVIDER_REACHABLE_DATA_FRESH'
+  | 'PROVIDER_REACHABLE_DATA_STALE'
+  | 'PROVIDER_UNREACHABLE'
+  | 'AUTH_OR_BINDING_ERROR'
+  | 'UNKNOWN';
+
+export type ConnectivityTriState = 'ACTIVE' | 'INACTIVE' | 'UNKNOWN';
+
+export interface ConnectivityDiagnosticAdmin {
+  provider: string | null;
+  diagnosticState: ConnectivityDiagnosticState;
+  providerApiReachable: boolean | null;
+  /** Provider response receipt time — never vehicle freshness. */
+  lastProviderFetchAt: string | null;
+  lastProviderFetchAgeMs: number | null;
+  /** Real vehicle observation time — drives canonical freshness. */
+  lastVehicleObservationAt: string | null;
+  lastVehicleObservationAgeMs: number | null;
+  observationState: FleetTelemetryFreshness;
+  bindingState: ConnectivityTriState;
+  consentState: ConnectivityTriState;
+  connectionStatus: string | null;
+  /**
+   * Whether the provider polling cohort currently includes this vehicle.
+   * `false` explains a stale provider fetch without blaming the provider.
+   */
+  providerPollScheduled: boolean | null;
+  deviceBindingRef: string | null;
+  providerErrorCategory: ConnectivityReasonCode | null;
+  calculatedAt: string;
+}
+
+export interface ConnectivityAdminDiagnosticsResponse extends FleetConnectivityDetail {
+  connectivityDiagnostic: ConnectivityDiagnosticAdmin;
 }
 
 /** Canonical fleet connectivity KPI summary (API v2). */

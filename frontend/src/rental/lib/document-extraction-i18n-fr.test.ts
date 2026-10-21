@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fr } from '../i18n/translations/fr';
-import { en } from '../i18n/translations/en';
+import { fr } from '../../i18n/translations/fr';
+import { en } from '../../i18n/translations/en';
 
 const DOC_UPLOAD_FLOW_KEYS = [
   'docUpload.flow.queued',

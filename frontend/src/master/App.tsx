@@ -6,6 +6,7 @@ import { MasterDashboardView } from './components/MasterDashboardView';
 import { OrganizationsView } from './components/OrganizationsView';
 import { OrganizationDetailView } from './components/OrganizationDetailView';
 import { ConnectedVehiclesHub } from './connected-vehicles/ConnectedVehiclesHub';
+import { PhysicalDeviceInventoryHub } from './physical-device-inventory/PhysicalDeviceInventoryHub';
 import { BillingControlCenter } from './components/billing/BillingControlCenter';
 import { SupportView } from './components/SupportView';
 import { PlatformIntegrationsHub } from './platform-integrations/PlatformIntegrationsHub';
@@ -17,6 +18,7 @@ import { VoiceAssistantAdminView } from './components/VoiceAssistantAdminView';
 import { ArchitekturView } from './components/ArchitekturView';
 import { ChangesView } from './components/ChangesView';
 import VehicleLogbookView from './components/VehicleLogbookView';
+import BatteryV2ShadowInspectionView from './battery-v2-shadow-inspection/BatteryV2ShadowInspectionView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
 import { PlatformOpsHub } from './platform-ops/PlatformOpsHub';
 import { migratePlatformHealthParams, syncPlatformOpsUrl } from './platform-ops/platform-ops-url';
@@ -454,6 +456,12 @@ export default function App() {
           </PageContainer>
         )}
 
+        {currentView === 'device-inventory' && (
+          <PageContainer variant="wide">
+            <PhysicalDeviceInventoryHub organizations={organizations} />
+          </PageContainer>
+        )}
+
         {currentView === 'billing' && (
           <PageContainer variant="wide">
             <BillingControlCenter
@@ -547,6 +555,15 @@ export default function App() {
         {currentView === 'vehicle-logbook' && (
           <PageContainer variant="standard">
             <VehicleLogbookView isDarkMode={isDarkMode} />
+          </PageContainer>
+        )}
+
+        {currentView === 'battery-v2-shadow-inspection' && (
+          <PageContainer variant="wide">
+            <BatteryV2ShadowInspectionView
+              isDarkMode={isDarkMode}
+              organizations={organizations.map((o) => ({ id: o.id, companyName: o.company_name }))}
+            />
           </PageContainer>
         )}
 

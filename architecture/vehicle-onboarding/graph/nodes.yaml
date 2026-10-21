@@ -1,0 +1,301 @@
+# Vehicle Onboarding — Knowledge Graph Nodes (bootstrap VO-0B)
+
+nodes:
+  - id: VO-DOM-001
+    type: domain
+    title: Vehicle Onboarding / Vehicle Registry
+    epistemic_status: CONFIRMED
+    summary: Governed path from provider discovery to canonical tenant Vehicle; AUDIT_IN_PROGRESS.
+    source_paths:
+      - architecture/vehicle-onboarding/README.md
+
+  - id: VO-DATA-VEHICLE-001
+    type: data
+    title: Canonical Vehicle (vehicles)
+    epistemic_status: CONFIRMED
+    summary: Tenant-operational PK Vehicle.id; org-scoped VIN unique.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: VO-DATA-DIMO-MIRROR-001
+    type: data
+    title: DimoVehicle mirror
+    epistemic_status: CONFIRMED
+    summary: DIMO Identity sync; non-registered = no Vehicle.dimoVehicleId reference.
+    source_paths:
+      - backend/src/modules/dimo/dimo-vehicle-sync.service.ts
+
+  - id: VO-DATA-HM-MIRROR-001
+    type: data
+    title: HighMobilityVehicle provider state
+    epistemic_status: CONFIRMED
+    summary: Clearance, HM_ONLY and DIMO_PLUS_HM modes; substantial runtime.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/high-mobility/
+
+  - id: VO-API-REGISTER-DIMO-001
+    type: api
+    title: register-from-dimo
+    epistemic_status: CONFIRMED
+    summary: Primary DIMO registration gate with advisory lock and data-source link.
+    source_paths:
+      - backend/src/modules/vehicles/vehicles.controller.ts
+      - backend/src/modules/vehicles/vehicles.service.ts
+
+  - id: VO-DEC-0B-001
+    type: decision
+    title: VO-0B governance bootstrap
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Documentation-only authority bootstrap at anchor SHA.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-0B-001
+
+  - id: VO-EVID-0B-001
+    type: evidence
+    title: VO-0B sealed current state
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: CURRENT_STATE and registry bootstrap at VO-0B.
+    source_paths:
+      - architecture/vehicle-onboarding/CURRENT_STATE.md
+      - architecture/vehicle-onboarding/AUDIT_MANIFEST.md
+
+  - id: VO-GAP-001
+    type: gap
+    title: No unified onboarding authority
+    epistemic_status: CONFIRMED
+    summary: Fragmented across vehicles, dimo, high-mobility modules.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-002
+    type: gap
+    title: DIMO externalId VIN fallback
+    epistemic_status: CONFIRMED
+    summary: "registerFromDimo uses DIMO-{externalId} when mirror VIN missing."
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-003
+    type: gap
+    title: Organization assignment history
+    epistemic_status: CONFIRMED
+    summary: Vehicle.organizationId only; no org assignment history table.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-004
+    type: gap
+    title: License plate history
+    epistemic_status: CONFIRMED
+    summary: Single licensePlate column; no history.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-005
+    type: gap
+    title: Provider mapping history
+    epistemic_status: CONFIRMED
+    summary: Partial deactivation on links; dimoVehicleId not versioned.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-006
+    type: gap
+    title: Deregister hard delete semantics
+    epistemic_status: CONFIRMED
+    summary: deregister deletes Vehicle row and cascades operational data.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-007
+    type: gap
+    title: Onboarding lifecycle authority
+    epistemic_status: CONFIRMED
+    summary: Multiple enums; no readiness authority.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-008
+    type: gap
+    title: Split registration paths
+    epistemic_status: CONFIRMED
+    summary: DIMO, HM_ONLY, manual create without unified contract.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-009
+    type: gap
+    title: Cross-path physical vehicle collision
+    epistemic_status: INFERRED
+    summary: No global physical-vehicle resolver across HM and DIMO.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-010
+    type: gap
+    title: Smart5 auto classification
+    epistemic_status: CONFIRMED
+    summary: hardwareType manual; non-R1 aftermarket serial UNKNOWN family.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-011
+    type: gap
+    title: Tesla synthetic vs hardwareType
+    epistemic_status: CONFIRMED
+    summary: Cross-ref VDC-GAP-013; Tesla often registered LTE_R1.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-012
+    type: gap
+    title: Connectivity truth fragmentation
+    epistemic_status: CONFIRMED
+    summary: Mirror, VLS, resolvers, Master UI disagree.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-013
+    type: gap
+    title: Non-resumable partial onboarding
+    epistemic_status: CONFIRMED
+    summary: No persisted onboarding session state.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-014
+    type: gap
+    title: Implicit candidate model
+    epistemic_status: CONFIRMED
+    summary: Non-registered is query not governed candidate entity.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-GAP-015
+    type: gap
+    title: Async capability vs readiness contract
+    epistemic_status: CONFIRMED
+    summary: Capability refresh post-register; no explicit readiness gate.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VO-CX-001
+    type: contradiction
+    title: Master UI connectivity vs canonical freshness
+    epistemic_status: CONFIRMED
+    summary: Relates VO-GAP-012; see UI deep audit.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VO-CX-002
+    type: contradiction
+    title: hardwareType vs rawJson telemetry family
+    epistemic_status: CONFIRMED
+    summary: Cross-ref VDC-GAP-013; not duplicated in VO authority.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VO-CX-003
+    type: contradiction
+    title: Deregister delete vs mirror retention narrative
+    epistemic_status: CONFIRMED
+    summary: Hard delete Vehicle; DimoVehicle retained.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VO-DEC-1-001
+    type: decision
+    title: VO-1 canonical onboarding contract
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: TARGET_ARCHITECTURE; OnboardingCase; registry lifecycle; provider-neutral snapshot.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+    evidence:
+      - VO-EVID-1-001
+
+  - id: VO-EVID-1-001
+    type: evidence
+    title: VO-1 target architecture package
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: TARGET_ARCHITECTURE and VO1 question resolutions at main 265168d3.
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+      - architecture/vehicle-onboarding/research/VO1_QUESTION_RESOLUTIONS.md
+
+  - id: VO-STATE-REGISTRY-001
+    type: state
+    title: Registry lifecycle states
+    epistemic_status: INFERRED
+    summary: Vehicle ACTIVE OFFBOARDED ARCHIVED only; onboarding on OnboardingCase.
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-EVID-2-001
+    type: evidence
+    title: VO-2 persistence schema and migration
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Prisma VO-2 migration 20260930130000; no orchestration switch.
+    source_paths:
+      - backend/prisma/migrations/20260930130000_vehicle_onboarding_vo2_persistence/migration.sql
+      - architecture/vehicle-onboarding/evidence/VO2_LINK_HISTORY_AUDIT.md
+
+  - id: VO-DEC-2-001
+    type: decision
+    title: VO-2 persistence foundation
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: OnboardingCase, registry lifecycle, VIN semantics, org/plate history, lifecycle outbox.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2-001
+
+  - id: VO-EVID-2-002
+    type: evidence
+    title: VO-2.1 persistence integrity and legacy upgrade proof
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Migration 20260930140000; global idempotency; link partial unique; legacy-upgrade CI.
+    source_paths:
+      - backend/prisma/migrations/20260930140000_vehicle_onboarding_vo2_1_integrity/migration.sql
+      - architecture/vehicle-onboarding/evidence/VO2_1_PERSISTENCE_INTEGRITY.md
+
+  - id: VO-DEC-2-002
+    type: decision
+    title: VO-2.1 persistence integrity seal
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: DB constraints, JSON versions, org FK, link history fix, non-vacuous Postgres proof.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2-002
+
+  - id: VO-DEC-1-002
+    type: decision
+    title: VO-1.1 consistency seal
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: No pre-activation Vehicle; candidate suppression; transfer fail-closed; outbox facts.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+    evidence:
+      - VO-EVID-1-001
+
+  - id: VO-PERSIST-CASE-001
+    type: persist
+    title: OnboardingCase (target)
+    epistemic_status: INFERRED
+    summary: Durable onboarding session; not implemented VO-1.
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md

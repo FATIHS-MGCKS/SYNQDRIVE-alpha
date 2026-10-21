@@ -3,7 +3,7 @@ import {
   resolveActionPreviewStatusLabel,
   resolveActionRequirementLabel,
 } from '../../lib/document-action-plan-preview';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 function statusClass(status: string): string {
   if (status === 'BLOCKED') {

@@ -10,8 +10,8 @@ import {
 } from './notification-lifecycle-test-helpers';
 import { minimalLifecycleActionQueueItem } from '../../../lib/notifications/fixtures/action-queue-item.fixture';
 import { enrichNotificationGroupingList } from '../../../lib/notifications/enrich-notification-grouping';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { ActionQueueItem, DashboardViewModel } from '../dashboardTypes';
 
 vi.mock('../../../i18n/LanguageContext', () => ({

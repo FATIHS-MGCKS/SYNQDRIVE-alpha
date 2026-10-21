@@ -9,7 +9,7 @@ import {
   CommandList,
 } from '../../../components/ui/command';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type {
   CommunicationOrgMember,
   CommunicationOrgMembersLoadError,

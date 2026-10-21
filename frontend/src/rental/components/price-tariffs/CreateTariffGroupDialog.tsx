@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../../components/ui/dialog';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { PriceTariffCatalog, PriceTariffGroup } from '../../pricing/pricingTypes';
 import {
   cloneVersionPayloadForNewGroup,

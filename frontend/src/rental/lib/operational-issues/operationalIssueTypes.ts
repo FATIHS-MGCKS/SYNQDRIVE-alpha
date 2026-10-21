@@ -219,6 +219,8 @@ export interface VehicleHealthAlertModuleLike {
   reason?: string;
   dataStale?: boolean;
   lastUpdatedAt?: string | null;
+  moduleState?: string;
+  evidenceType?: string;
 }
 
 export interface VehicleHealthAlertLike {

@@ -1,7 +1,7 @@
 import { StatusChip } from '../../../components/patterns';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { ErrorState } from '../../../components/patterns/states';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { resolveSmsSettingsStatus } from './communication-settings-status';
 import { useSmsSettings } from './useSmsSettings';

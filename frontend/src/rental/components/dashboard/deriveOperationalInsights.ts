@@ -81,38 +81,7 @@ export function deriveOperationalInsights(input: {
   const pendingPickups = input.pickupItems.filter((p) => !p.done && p.bookingId);
   const pendingReturns = input.returnItems.filter((r) => !r.done && r.bookingId);
 
-  const softOfflineCount = input.dashboardRuntime?.vehicleStates.filter(
-    (state) => state.telemetryState === 'soft_offline',
-  ).length ?? input.telemetry.softOfflineCount ?? input.telemetry.staleCount;
-  const offlineCount = input.dashboardRuntime?.vehicleStates.filter(
-    (state) => state.telemetryState === 'offline',
-  ).length ?? input.telemetry.offlineCount;
-  const affectedTelemetryTotal = softOfflineCount + offlineCount;
-  const liveishCount = input.dashboardRuntime
-    ? input.dashboardRuntime.vehicleStates.filter(
-        (state) => state.telemetryState === 'live' || state.telemetryState === 'standby',
-      ).length
-    : input.telemetry.freshCount;
-  if (
-    input.telemetry.hasReliableTimestamps &&
-    input.vehicles.length >= 3 &&
-    affectedTelemetryTotal >= 3 &&
-    affectedTelemetryTotal > liveishCount
-  ) {
-    items.push({
-      id: 'derived-fleet-soft-offline-telemetry',
-      source: 'derived-operations',
-      severity: offlineCount > 0 || affectedTelemetryTotal > liveishCount * 2 ? 'warning' : 'attention',
-      category: 'operations',
-      title: de ? 'Viele Fahrzeuge mit Soft-Offline/Offline-Signal' : 'Many vehicles with soft-offline/offline signal',
-      reason: de
-        ? `${affectedTelemetryTotal} von ${input.telemetry.totalInScope} Fahrzeugen sind Soft Offline oder Offline`
-        : `${affectedTelemetryTotal} of ${input.telemetry.totalInScope} vehicles are soft offline or offline`,
-      timeSortMs: now,
-      cta: 'open-rental',
-      isOverdue: false,
-    });
-  }
+  // P1.7: fleet connectivity notifications are canonical/backend — no client telemetry aggregation card.
 
   const overdueHandovers =
     pendingPickups.filter((p) => p.isOverdue).length +

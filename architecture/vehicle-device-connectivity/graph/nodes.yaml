@@ -1,0 +1,606 @@
+# Vehicle & Device Connectivity — Knowledge Graph Nodes (bootstrap)
+
+nodes:
+  - id: VDC-DOM-CONNECTIVITY-001
+    type: domain
+    title: Vehicle & Device Connectivity domain
+    epistemic_status: CONFIRMED
+    summary: Provider-neutral connectivity lifecycle, freshness, standby/disconnect semantics, and projection.
+    source_paths:
+      - architecture/vehicle-device-connectivity/README.md
+
+  - id: VDC-AUTH-SEMANTICS-001
+    type: authority
+    title: Connectivity semantics authority (bootstrap)
+    epistemic_status: INFERRED
+    summary: Owns interpretation of connected/standby/suspect/disconnected; not provider API wiring.
+    source_paths:
+      - architecture/vehicle-device-connectivity/AGENT_CONTRACT.md
+
+  - id: VDC-STATE-FRESHNESS-001
+    type: state
+    title: Source freshness state
+    epistemic_status: CONFIRMED
+    summary: sourceTimestamp/lastSeen vs providerFetchedAt vs poll time — monotonic guard in DIMO snapshot processor.
+    source_paths:
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+      - backend/src/modules/dimo/vls-monotonic-merge.util.ts
+
+  - id: VDC-RES-FRESHNESS-001
+    type: resolver
+    title: Telemetry freshness resolver
+    epistemic_status: CONFIRMED
+    summary: Canonical freshness buckets including standby window.
+    source_paths:
+      - backend/src/modules/vehicles/telemetry-freshness.resolver.ts
+      - backend/src/modules/vehicles/vehicle-state-interpreter.ts
+
+  - id: VDC-ORCH-RUNTIME-001
+    type: orchestrator
+    title: Vehicle connectivity runtime state builder
+    epistemic_status: CONFIRMED
+    summary: Assembles provider-neutral connectivity runtime projection for fleet surfaces.
+    source_paths:
+      - backend/src/modules/vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder.ts
+
+  - id: VDC-PROF-LTE-R1-001
+    type: profile
+    title: DIMO Ruptela LTE_R1 hardware profile
+    epistemic_status: INFERRED
+    summary: First research target; standby/sleep behavior under active audit.
+    source_paths:
+      - architecture/vehicle-device-connectivity/providers/dimo/LTE_R1.md
+
+  - id: VDC-EVID-LTE-R1-PENDING-001
+    type: evidence
+    title: KS MX 2024 LTE_R1 forensics — pending reconstruction
+    source_type: PRODUCTION_OBSERVATION_PENDING_RECONSTRUCTION
+    epistemic_status: INFERRED
+    summary: Placeholder for read-only Production forensics; numbers not canonical until Phase 2.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/LTE_R1_KS_MX_2024_PENDING_RECONSTRUCTION.md
+
+  - id: VDC-HYP-001
+    type: hypothesis
+    title: ~24h stationary source update
+    epistemic_status: INFERRED
+    summary: LTE_R1 may emit periodic source updates ~24h while parked — PRODUCTION_VALIDATED single-vehicle (Phase 2).
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-002
+    type: hypothesis
+    title: IO174 not exposed via signalsLatest
+    epistemic_status: INFERRED
+    summary: Device timer wake may exist upstream without IO174 in SynqDrive DIMO ingest path.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-003
+    type: hypothesis
+    title: Poll frequency independent of R1 source rate
+    epistemic_status: INFERRED
+    summary: SynqDrive scheduler polls more often than R1 produces new source timestamps.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-004
+    type: hypothesis
+    title: Per-signal timestamp heterogeneity
+    epistemic_status: INFERRED
+    summary: Individual signal timestamps may lag lastSeen on standby wakes.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-005
+    type: hypothesis
+    title: Long silence is not disconnect
+    epistemic_status: INFERRED
+    summary: Healthy sleeping LTE_R1 may be silent many hours without being disconnected.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-006
+    type: hypothesis
+    title: Distinct fault states required
+    epistemic_status: INFERRED
+    summary: Device unplugged, sleeping, provider outage, permission failure, and CAN silence need separate states.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-007
+    type: hypothesis
+    title: FULL_CONNECTIVITY_RECOVERED requires strict source advance
+    epistemic_status: INFERRED
+    summary: Poll or equality upsert must not imply full recovery without incoming greater than existing sourceTimestamp; VDC-CX-010.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-GAP-001
+    type: gap
+    title: No unified connectivity authority before bootstrap
+    epistemic_status: CONFIRMED
+    summary: Logic spread across vehicles/, dimo/, AI modules without single semantic owner.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-002
+    type: gap
+    title: Production baseline not established
+    epistemic_status: CONFIRMED
+    summary: RESOLVED Phase 2 — VERIFIED_READ_ONLY Production baseline established.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
+
+  - id: VDC-GAP-003
+    type: gap
+    title: Historical per-wake raw payload retention
+    epistemic_status: UNKNOWN
+    summary: VLS holds latest raw payload only; limits IO174 and per-signal forensics.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-004
+    type: gap
+    title: LTE_R1 standby interval ground truth
+    epistemic_status: UNKNOWN
+    summary: ~24h hypothesis pending independent Production reconstruction.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-005
+    type: gap
+    title: IO174 visibility
+    epistemic_status: UNKNOWN
+    summary: Ruptela sleep timer IO not exposed in signalsLatest ingest path.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-006
+    type: gap
+    title: HM connectivity profile
+    epistemic_status: UNKNOWN
+    summary: High Mobility profile audit not started.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-007
+    type: gap
+    title: Connectivity vs trip-wake correlation
+    epistemic_status: INFERRED
+    summary: Snapshot wake owned by Trip Detection; VDC correlation rules undocumented.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-EVID-PROD-BASELINE-001
+    type: evidence
+    title: Production baseline gate document
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: UNKNOWN
+    summary: Phase 2 Production audit not performed in bootstrap.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
+
+  - id: VDC-DEC-BOOTSTRAP-001
+    type: decision
+    title: Bootstrap Vehicle & Device Connectivity authority scope
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Provider-neutral connectivity semantics module established; remains AUDIT_IN_PROGRESS.
+    source_paths:
+      - architecture/vehicle-device-connectivity/README.md
+    evidence:
+      - VDC-EVID-PROD-BASELINE-001
+
+  - id: VDC-CX-001
+    type: contradiction
+    title: Connectivity alert implementation under DIMO module
+    epistemic_status: CONTRADICTED
+    summary: Proposed VDC ownership of alert semantics vs current code in dimo/connectivity-alert.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-002
+    type: contradiction
+    title: Webhook failure type naming mismatch
+    epistemic_status: CONTRADICTED
+    summary: WEBHOOK_PROCESSING_FAILED vs WEBHOOK_FAILURE across types, service, and runtime builder.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-003
+    type: contradiction
+    title: Unused connectivity alert dedupe key helper
+    epistemic_status: CONTRADICTED
+    summary: buildConnectivityAlertDedupeKey unused; fingerprints used instead.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-004
+    type: contradiction
+    title: Admin DIMO debug thresholds vs canonical 48h soft offline
+    epistemic_status: CONTRADICTED
+    summary: dimo.controller.ts offline at 24h vs signal_delayed until 48h in interpreter.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-005
+    type: contradiction
+    title: Stale snapshot metric threshold vs live freshness
+    epistemic_status: CONTRADICTED
+    summary: Processor Prometheus 5 min stale counter vs 15 min live classification.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-006
+    type: contradiction
+    title: Episode evidence reliability default false
+    epistemic_status: CONTRADICTED
+    summary: buildDeviceConnectionSummary defaults episodeEvidenceReliable false.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-007
+    type: contradiction
+    title: Physical episode vs physical evidence without episode
+    epistemic_status: CONTRADICTED
+    summary: interruption-knowledge warns open episode absence does not disprove unplug.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-008
+    type: contradiction
+    title: Webhook failure mapped from provider link ERROR
+    epistemic_status: CONTRADICTED
+    summary: syncConnectivityAlerts conflates provider link ERROR with webhook processing failure.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-009
+    type: contradiction
+    title: Diagnostic transition tracker not authoritative
+    epistemic_status: CONTRADICTED
+    summary: Process-local diagnostic tracker; multi-replica double-count risk.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-010
+    type: contradiction
+    title: Equal sourceTimestamp accepted as full VLS upsert
+    epistemic_status: CONTRADICTED
+    summary: Monotonic guard rejects only incoming less than existing; equality runs full upsert without source advance proof.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+      - architecture/vehicle-device-connectivity/signals/SIGNAL_AUTHORITY.md
+
+  - id: VDC-CX-011
+    type: contradiction
+    title: DIMO CONNECTED vs runtime providerLinkState UNKNOWN
+    epistemic_status: CONTRADICTED
+    summary: Production KS MX 2024 shows DIMO connectionStatus CONNECTED while runtime providerLinkState is UNKNOWN.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+      - architecture/vehicle-device-connectivity/evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md
+
+  - id: VDC-GAP-008
+    type: gap
+    title: Legacy 3-state onlineStatus vs 5-state freshness
+    epistemic_status: CONFIRMED
+    summary: onlineStatus OFFLINE at 24h while telemetryFreshness signal_delayed until 48h.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-009
+    type: gap
+    title: HM not in canonical connectivity runtime
+    epistemic_status: CONFIRMED
+    summary: VehicleConnectivityRuntimeStateBuilder DIMO-centric; HM vehicles lack runtime projection.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-010
+    type: gap
+    title: Dual telemetry resolution paths
+    epistemic_status: CONFIRMED
+    summary: Fleet assembler full evidence vs operational resolveRowTelemetry reduced timestamps.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-011
+    type: gap
+    title: Episode and webhook table retention
+    epistemic_status: CONFIRMED
+    summary: device_connection_* tables unbounded unlike dimo_poll_logs 30d retention.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-012
+    type: gap
+    title: Frontend dual connectivity derivation paths
+    epistemic_status: CONFIRMED
+    summary: connectivityRuntime authoritative on P1 surfaces; legacy client classifier remains.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-013
+    type: gap
+    title: Telemetry integration identity vs vehicles.hardware_type
+    epistemic_status: CONFIRMED
+    summary: >
+      hardware_type has no API-synthetic value (Tesla = LTE_R1); device identity is in dimo_vehicles.raw_json.
+      DI EXP-021 C0.3 uses it for R1 temporal containment only; provider-neutral integration identity undecided.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+      - backend/src/modules/vehicle-intelligence/telemetry-source-family.ts
+
+  - id: VDC-EVID-REPO-PHASE1-001
+    type: evidence
+    title: Phase 1 repository current-state audit
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Full repository connectivity audit 2026-09-11; Production claims excluded.
+    source_paths:
+      - architecture/vehicle-device-connectivity/CURRENT_STATE.md
+      - architecture/vehicle-device-connectivity/evidence/REPOSITORY_INVENTORY.md
+
+  - id: VDC-PIPE-SNAPSHOT-001
+    type: pipeline
+    title: DIMO snapshot poll pipeline
+    epistemic_status: CONFIRMED
+    summary: dimo.snapshot.poll queue, processor, monotonic guard, VLS upsert, ClickHouse mirror.
+    source_paths:
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+
+  - id: VDC-POL-ALERT-001
+    type: policy
+    title: Connectivity alert policy
+    epistemic_status: CONFIRMED
+    summary: Pure policy functions for device and telemetry alerts; colocated under dimo module.
+    source_paths:
+      - backend/src/modules/dimo/connectivity-alert/connectivity-alert.policy.ts
+
+  - id: VDC-PERSIST-VLS-001
+    type: persist
+    title: vehicle_latest_states persistence
+    epistemic_status: CONFIRMED
+    summary: Latest observation row; source_timestamp vs provider_fetched_at split.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: VDC-PERSIST-CH-001
+    type: persist
+    title: ClickHouse telemetry_snapshots
+    epistemic_status: CONFIRMED
+    summary: Historical snapshots with recorded_at dedupe and 180d TTL.
+    source_paths:
+      - backend/src/modules/clickhouse/clickhouse-telemetry.service.ts
+
+  - id: VDC-API-FLEET-001
+    type: api
+    title: Fleet connectivity API
+    epistemic_status: CONFIRMED
+    summary: GET fleet-connectivity list and detail with connectivityRuntime projection.
+    source_paths:
+      - backend/src/modules/vehicles/vehicles.controller.ts
+
+  - id: VDC-CONS-FE-001
+    type: consumer
+    title: Rental operational projection consumer
+    epistemic_status: CONFIRMED
+    summary: Frontend map-fleet-map-to-canonical and vehicle detail presentation consume connectivityRuntime.
+    source_paths:
+      - frontend/src/rental/lib/operational-projection/map-fleet-map-to-canonical.ts
+
+  - id: VDC-EVID-PHASE2-001
+    type: evidence
+    title: Phase 2 Production LTE_R1 forensics
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: KS MX 2024 read-only Production audit 2026-09-11.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md
+      - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
+
+  - id: VDC-DEC-002
+    type: decision
+    title: Equal sourceTimestamp metadata-only canonical behavior
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VDC-CX-010 — equality updates metadata only; skip full upsert side effects.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-003
+    type: decision
+    title: Provider authorization vs mirror connection semantics
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VDC-CX-011 — separate authorization confidence from adapter mirror health.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-004
+    type: decision
+    title: Canonical multi-dimensional evidence hierarchy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Seven independent evidence dimensions; no flattened boolean.
+    source_paths:
+      - architecture/vehicle-device-connectivity/lifecycle/EVIDENCE_HIERARCHY.md
+
+  - id: VDC-DEC-005
+    type: decision
+    title: Freshness threshold taxonomy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Domain vs UI vs observability vs legacy classification; 15m/24h/48h unchanged.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-006
+    type: decision
+    title: Webhook and event-processing failure taxonomy
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Separate provider link, delivery, processing, enqueue, canonicalization delay.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-007
+    type: decision
+    title: Episode evidence reliability semantics
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Default false conservative; no-episode invariant; GT for UX.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-008
+    type: decision
+    title: Diagnostic observability non-authoritative guarantee
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: 5m metric and process-local tracker are best-effort only.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-009
+    type: decision
+    title: Connectivity alert semantic ownership
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VDC owns policy; provider modules own delivery adapters.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-010
+    type: decision
+    title: Recovery evidence vocabulary
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Precise unplug/replug/resume/recovered layers; PLUG webhook optional fast-path; strict advance for full recovery.
+    source_paths:
+      - architecture/vehicle-device-connectivity/reconciliation/TARGET_SEMANTIC_MODEL.md
+
+  - id: VDC-DEC-011
+    type: decision
+    title: Adaptive information-gain provider polling
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Polling cadence follows information gain not wall-clock; VDC-RB-018; not fixed 5min standby canonical.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-device-connectivity/operations/POLLING_AND_SCHEDULERS.md
+
+  - id: VDC-DEC-012
+    type: decision
+    title: Durable effective physical-device-state projection
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Provider-neutral effective OBD plug authority; webhook history is evidence not dedupe authority; flag OFF Phase 1.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - backend/src/modules/dimo/device-connection-physical-state/
+
+  - id: VDC-EVID-GT-R1-EXECUTION-001
+    type: evidence
+    title: GT-R1-UNPLUG-001 physical execution
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: KS MX 2024 unplug/replug; webhook no_state_change after snapshot replug.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/GT_R1_UNPLUG_EXECUTION_2026-09-12.md
+
+  - id: VDC-EVID-PHYSICAL-STATE-FOUNDATION-001
+    type: evidence
+    title: Physical-state reconciliation Phase 1 foundation
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Merged dark foundation; POSTGRES_VALIDATED / FINAL_CI_VALIDATED (PR #1626).
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_FOUNDATION_2026-09-12.md
+      - backend/src/modules/dimo/device-connection-physical-state/
+
+  - id: VDC-DEC-013
+    type: decision
+    title: RB-019 Phase 2 runtime cutover sequencing
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Shadow, pre-seed, authority gate, new action outbox; forward-only authority; scoped not implemented.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md
+
+  - id: VDC-EVID-RB019-PHASE2-SCOPE-001
+    type: evidence
+    title: RB-019 Phase 2 cutover scope audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: INFERRED
+    summary: SCOPED_NOT_IMPLEMENTED — architecture/readiness audit only; not implementation proof.
+    source_paths:
+      - docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md
+
+  - id: VDC-EVID-RB019-P21-DURABILITY-001
+    type: evidence
+    title: RB-019 Phase 2 P2.1 durability foundation
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Outbox + authority latch schema, coordinator outer tx, claim-token CAS fencing; flags OFF; dark.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md
+      - backend/src/modules/dimo/device-connection-physical-state/
+
+  - id: VDC-EVID-RB019-P22-SHADOW-001
+    type: evidence
+    title: RB-019 Phase 2 P2.2 shadow + authority infrastructure
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Authority state machine, effective flag resolver, compare-only shadow comparator, adjudication taxonomy, metrics; no writers; flags OFF.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-shadow-comparator.ts
+      - backend/src/config/connectivity-physical-state-runtime.config.ts
+
+  - id: VDC-EVID-RB019-P23-WRITERS-001
+    type: evidence
+    title: RB-019 Phase 2 P2.3 evidence writers + STATEFUL_SHADOW proof
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Unified OBD extractor; webhook + snapshot writers; STATEFUL_SHADOW orchestration; GT-R1 PG proof; legacy binding identity micro-closure (resolveLegacyBindingKey, explicit-null comparator, CASE A/B/C PG); semantic correctness closure complete; flags OFF; pre-cutover.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-evidence-writer.service.ts
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+
+  - id: VDC-EVID-RB019-P24-PRESEED-001
+    type: evidence
+    title: RB-019 Phase 2 P2.4 physical-state pre-seed tooling
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Pre-seed discovery + time-wins planner + dry-run/apply via coordinator; ESTABLISHED-only; transactional SKIP_NON_LEGACY_AUTHORITY guard; real metrics DI; PG P24-A..L (78/78); flags OFF; authority LEGACY.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P24_PRESEED_2026-09-14.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.service.ts
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.planner.ts
+
+  - id: VDC-EVID-RB019-P25-CUTOVER-RUNTIME-001
+    type: evidence
+    title: RB-019 Phase 2 P2.5 authority cutover runtime foundation
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Authority latch service + eligibility gates + mixed-replica interlock; webhook/snapshot PHYSICAL routing; legacy OBD write exclusion; P25-A..R PG suite; flags OFF; cutover activation NOT_PROVEN.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_AUTHORITY_CUTOVER_RUNTIME_2026-09-14.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-authority-cutover.service.ts
+      - backend/src/modules/dimo/device-connection-physical-state/device-connection-physical-authority-cutover.repository.ts
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+
+  - id: VDC-EVID-RB019-P25-ACTIVATION-READINESS-001
+    type: evidence
+    title: RB-019 Phase 2 P2.5 cutover activation readiness audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Real-data pre-seed dry-run PASS (4 Production scopes); final target/pilot activation proof NOT_PROVEN; UNEXPLAINED/mixed-replica/provenance NOT_PROVEN or FAIL; dry runbook + forward-only incident plan; no cutover executed.
+    source_paths:
+      - docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md

@@ -1,4 +1,8 @@
 import { registerAs } from '@nestjs/config';
+import {
+  isVehicleAllowlistedInHvChargingCounterStateV1,
+  parseHvChargingCounterVehicleAllowlistV1,
+} from '../modules/vehicle-intelligence/battery-health/hv-charging-counter-evidence/hv-charging-counter-evidence.vehicle-allowlist.v1';
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === '') return defaultValue;
@@ -25,8 +29,18 @@ export const BATTERY_V2_START_PROXY_ENV = 'BATTERY_V2_START_PROXY_ENABLED';
 export const BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV =
   'BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED';
 
-/** Prompt 35 flag — REST_60M/REST_6H shadow capture only (default OFF). */
+/**
+ * Canonical LV REST pipeline (FSM sessions, REST target jobs).
+ * Historically named REST_SHADOW — when true, canonical ingestion runs.
+ * Measurement shadow semantics are gated separately via publication flag.
+ */
 export const BATTERY_V2_REST_SHADOW_ENABLED_ENV = 'BATTERY_V2_REST_SHADOW_ENABLED';
+
+/** Reconciliation scheduler (default ON). */
+export const BATTERY_V2_RECONCILIATION_ENABLED_ENV = 'BATTERY_V2_RECONCILIATION_ENABLED';
+
+/** Optional DLQ replay during reconciliation ticks (default OFF). */
+export const BATTERY_V2_DLQ_REPLAY_ENABLED_ENV = 'BATTERY_V2_DLQ_REPLAY_ENABLED';
 
 /** Prompt 44 flag — LV Battery Health V2 publication pipeline (default OFF). */
 export const BATTERY_V2_PUBLICATION_ENABLED_ENV = 'BATTERY_V2_PUBLICATION_ENABLED';
@@ -34,6 +48,33 @@ export const BATTERY_V2_PUBLICATION_ENABLED_ENV = 'BATTERY_V2_PUBLICATION_ENABLE
 /** Prompt 49 flag — HV recharge segment reconcile pipeline (default OFF). */
 export const BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV =
   'BATTERY_V2_HV_RECHARGE_SESSION_ENABLED';
+
+/** M3.3-HV-R22-P1 — DIMO charging-added-energy 1m interval bucket evidence (default OFF). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED';
+
+/** Minimum time between DIMO re-queries for the same unchanged native segment identity (ms). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS';
+
+/**
+ * M3.3-HV-R22-P0 — comma-separated vehicle UUID allowlist for charging-counter capture.
+ * Missing, empty, or invalid → deny all vehicles (fail-closed).
+ */
+export const BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST';
+
+/** R22-P1B pilot mode — default OFF; requires capture flag + vehicle allowlist + epoch + session id. */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_MODE_ENABLED';
+
+/** Owner-approved pilot epoch identifier (opaque string; new epoch = new owner approval). */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_EPOCH_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_EPOCH';
+
+/** Exactly one admitted `hv_charge_sessions.id` for the active pilot epoch. */
+export const BATTERY_V2_HV_CHARGING_COUNTER_PILOT_HV_CHARGE_SESSION_ID_ENV =
+  'BATTERY_V2_HV_CHARGING_COUNTER_PILOT_HV_CHARGE_SESSION_ID';
 
 /** Prompt 50 flag — telemetry fallback charge sessions when segments unavailable (default OFF). */
 export const BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV =
@@ -49,6 +90,40 @@ export const BATTERY_V2_HV_SOH_PUBLICATION_ENABLED_ENV =
 
 /** Prompt 65 flag — binding battery rental readiness policy (default OFF). */
 export const BATTERY_V2_READINESS_ENABLED_ENV = 'BATTERY_V2_READINESS_ENABLED';
+
+/**
+ * M3.2B — shadow shutdown evidence acquisition around trip end (default OFF).
+ * Captures per-field timestamp provenance for forensic observability only.
+ */
+export const BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED_ENV =
+  'BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED';
+
+/**
+ * M3.3A — generalized battery evidence + rest session layer (default OFF).
+ * Isolated from authoritative assessment/publication.
+ */
+export const BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV =
+  'BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED';
+
+/**
+ * M3.3 B1.2Y — explicit PROVIDER_OBSERVABILITY_GAP lifecycle (default OFF).
+ * Safe to deploy merged code without changing production behavior until enabled.
+ */
+export const BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV =
+  'BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED';
+
+/**
+ * M3.3C — shadow rest-session retention/charge features (default OFF).
+ * C1: config foundation only — no runtime writers yet.
+ */
+export const BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED_ENV =
+  'BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED';
+
+/**
+ * M3.3F — longitudinal profile D3 materialization (default OFF; separate from C3 shadow flag).
+ */
+export const BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED_ENV =
+  'BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED';
 
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
@@ -122,7 +197,7 @@ export function getBatteryCapabilityDegradedGraceMs(): number {
 }
 
 export function isBatteryV2ReconciliationEnabled(): boolean {
-  return parseBooleanEnv(process.env.BATTERY_V2_RECONCILIATION_ENABLED, true);
+  return parseBooleanEnv(process.env[BATTERY_V2_RECONCILIATION_ENABLED_ENV], true);
 }
 
 export function isLegacyCrankAssessmentEnabled(): boolean {
@@ -144,12 +219,62 @@ export function isBatteryV2RestShadowEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV], false);
 }
 
+/** Alias: canonical LV REST FSM + REST target scheduling enabled. */
+export const isBatteryV2CanonicalRestPipelineEnabled = isBatteryV2RestShadowEnabled;
+
+/**
+ * Legacy `battery_features` rest capture (60m/6h) + legacy assessment enqueue.
+ * Disabled whenever the canonical REST pipeline is active (single ingestion authority).
+ * Customer publication (`BATTERY_V2_PUBLICATION_ENABLED`) is independent of ingestion.
+ */
+export function isBatteryV2LegacyRestCaptureEnabled(): boolean {
+  return !isBatteryV2RestShadowEnabled();
+}
+
+export function isBatteryV2DlqReplayEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_DLQ_REPLAY_ENABLED_ENV], false);
+}
+
 export function isBatteryV2PublicationEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV], false);
 }
 
 export function isBatteryV2HvRechargeSessionEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV], false);
+}
+
+export function isBatteryV2HvChargingCounterBucketCaptureEnabled(): boolean {
+  return parseBooleanEnv(
+    process.env[BATTERY_V2_HV_CHARGING_COUNTER_BUCKET_CAPTURE_ENABLED_ENV],
+    false,
+  );
+}
+
+export function getBatteryV2HvChargingCounterVehicleAllowlistState() {
+  return parseHvChargingCounterVehicleAllowlistV1(
+    process.env[BATTERY_V2_HV_CHARGING_COUNTER_VEHICLE_ALLOWLIST_ENV],
+  );
+}
+
+export function isBatteryV2HvChargingCounterVehicleAllowlisted(vehicleId: string): boolean {
+  return isVehicleAllowlistedInHvChargingCounterStateV1(
+    getBatteryV2HvChargingCounterVehicleAllowlistState(),
+    vehicleId,
+  );
+}
+
+const DEFAULT_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+export function getBatteryV2HvChargingCounterRevalidationIntervalMs(): number {
+  const raw = process.env[BATTERY_V2_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS_ENV];
+  if (raw == null || raw === '') {
+    return DEFAULT_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_HV_CHARGING_COUNTER_REVALIDATION_INTERVAL_MS;
+  }
+  return parsed;
 }
 
 export function isBatteryV2HvFallbackChargeSessionEnabled(): boolean {
@@ -169,6 +294,40 @@ export function isBatteryV2HvSohPublicationEnabled(): boolean {
 
 export function isBatteryV2ReadinessEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_READINESS_ENABLED_ENV], false);
+}
+
+export function isBatteryV2ShutdownEvidenceShadowEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED_ENV], false);
+}
+
+export function isBatteryV2GeneralizedEvidenceEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV], false);
+}
+
+export function isBatteryV2ProviderObservabilityGapEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV], false);
+}
+
+/** Gap lifecycle requires generalized evidence for authoritative GAP→OFF resolution (B1.2W). */
+export function isBatteryV2ProviderObservabilityGapRuntimeReady(): boolean {
+  return (
+    isBatteryV2ProviderObservabilityGapEnabled() &&
+    isBatteryV2GeneralizedEvidenceEnabled()
+  );
+}
+
+export function isBatteryV2RestSessionFeaturesShadowEnabled(): boolean {
+  return parseBooleanEnv(
+    process.env[BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED_ENV],
+    false,
+  );
+}
+
+export function isBatteryV2LongitudinalProfileMaterializationEnabled(): boolean {
+  return parseBooleanEnv(
+    process.env[BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED_ENV],
+    false,
+  );
 }
 
 /** Delay before REST_60M target evaluation after rest window anchor. */
@@ -243,11 +402,20 @@ export default registerAs('batteryHealthV2', () => ({
   capabilityDegradedGraceMs: getBatteryCapabilityDegradedGraceMs(),
   rest60mDelayMs: getBatteryRest60mDelayMs(),
   rest6hDelayMs: getBatteryRest6hDelayMs(),
+  canonicalRestPipelineEnabled: isBatteryV2CanonicalRestPipelineEnabled(),
+  legacyRestCaptureEnabled: isBatteryV2LegacyRestCaptureEnabled(),
   restShadowEnabled: isBatteryV2RestShadowEnabled(),
   publicationEnabled: isBatteryV2PublicationEnabled(),
   hvRechargeSessionEnabled: isBatteryV2HvRechargeSessionEnabled(),
+  hvChargingCounterBucketCaptureEnabled: isBatteryV2HvChargingCounterBucketCaptureEnabled(),
   hvFallbackChargeSessionEnabled: isBatteryV2HvFallbackChargeSessionEnabled(),
   hvCapacityShadowEnabled: isBatteryV2HvCapacityShadowEnabled(),
   hvSohPublicationEnabled: isBatteryV2HvSohPublicationEnabled(),
   readinessEnabled: isBatteryV2ReadinessEnabled(),
+  shutdownEvidenceShadowEnabled: isBatteryV2ShutdownEvidenceShadowEnabled(),
+  generalizedEvidenceEnabled: isBatteryV2GeneralizedEvidenceEnabled(),
+  providerObservabilityGapEnabled: isBatteryV2ProviderObservabilityGapEnabled(),
+  restSessionFeaturesShadowEnabled: isBatteryV2RestSessionFeaturesShadowEnabled(),
+  longitudinalProfileMaterializationEnabled:
+    isBatteryV2LongitudinalProfileMaterializationEnabled(),
 }));

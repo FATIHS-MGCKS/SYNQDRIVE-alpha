@@ -1,5 +1,5 @@
 import type { IamMfaState, IamRiskClassification } from '../../../lib/api';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 export const IAM_TABS = [
   { id: 'team' as const, labelKey: 'iam.tab.team' as TranslationKey },

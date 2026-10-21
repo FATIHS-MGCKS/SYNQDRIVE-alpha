@@ -10,7 +10,12 @@ export type FleetTabFilterContext = {
   vehicle: VehicleData;
 };
 
-/** Canonical Fleet Command status tabs — mutually exclusive buckets (except All). */
+/** Canonical Fleet Command status tabs — mutually exclusive buckets (except All).
+ *
+ * Semantic domain: **business workflow** (`operationalState.status`).
+ * Tabs do NOT filter by connectivity freshness, telemetry age, or P0.2 availability.
+ * Connectivity/offline membership is not derived from `isVehicleOffline()` or timestamps.
+ */
 export const FLEET_COMMAND_TABS = [
   'All',
   'Available',

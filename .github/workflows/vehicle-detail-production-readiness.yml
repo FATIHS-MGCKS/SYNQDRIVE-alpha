@@ -8,6 +8,10 @@ on:
       - 'docs/audits/vehicle-detail-**'
       - 'docs/testing/vehicle-detail-**'
       - '.github/workflows/vehicle-detail-production-readiness.yml'
+      - 'backend/scripts/test/synqdrive-nest-boot-check-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/scripts/test/ci-start-redis.sh'
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -19,6 +23,10 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: 6379
+  JWT_SECRET: ci-synqdrive-nest-boot-check-jwt-secret-not-for-production
 
 jobs:
   install-lockfile:
@@ -76,7 +84,7 @@ jobs:
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
-      - run: npm ci && npx tsc --noEmit -p tsconfig.json
+      - run: npm ci && NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit -p tsconfig.json
         working-directory: backend
       - run: npm ci && npx tsc -b
         working-directory: frontend
@@ -112,6 +120,66 @@ jobs:
         working-directory: backend
       - run: npm run test:vehicle-detail:security
         working-directory: backend
+
+  backend-boundary-postgres:
+    name: Backend boundary repair PostgreSQL tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive_ci_ephemeral
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Enable PostGIS extension (Required CI spatial contract)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          export PGPASSWORD=synqdrive
+          for i in $(seq 1 30); do
+            if psql -h 127.0.0.1 -U synqdrive -d synqdrive_ci_ephemeral -c 'SELECT 1' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          psql -h 127.0.0.1 -U synqdrive -d synqdrive_ci_ephemeral -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
+          psql -h 127.0.0.1 -U synqdrive -d synqdrive_ci_ephemeral -v ON_ERROR_STOP=1 -c 'SELECT PostGIS_Version();'
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+      - name: OSM charging importer tests (pyosmium required)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pyosmium python3-psycopg2
+          python3 -c "import osmium; import psycopg2"
+          export CHARGING_OSM_TESTS_REQUIRED=1
+          export CHARGING_REFRESH_SAFETY_INTEGRATION=1
+          bash scripts/ops/osm-charging-stations/run-tests.sh
+          python3 scripts/ops/osm-charging-stations/tests/test_charging_refresh_safety.py
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+      - run: npm run test:boundary-repair:postgres
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+          BOUNDARY_REPAIR_POSTGRES_INTEGRATION: '1'
 
   frontend-component:
     name: Frontend component tests
@@ -192,8 +260,48 @@ jobs:
             frontend/package-lock.json
       - run: npm ci && npx prisma generate && npm run build
         working-directory: backend
+      - run: npm run test:physical-state:runtime-assets
+        working-directory: backend
       - run: npm ci && npm run build
         working-directory: frontend
+
+  nest-boot-check:
+    name: Nest production boot check
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: synqdrive-nest-boot-check-postgres
+      - name: Start Redis (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-redis.sh
+        env:
+          CI_REDIS_CONTAINER: synqdrive-nest-boot-check-redis
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - name: Fail closed on missing CI-local database config
+        run: |
+          set -euo pipefail
+          case "${DATABASE_URL}" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - run: bash scripts/test/synqdrive-nest-boot-check-ci.sh
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_HOST: ${{ env.REDIS_HOST }}
+          REDIS_PORT: ${{ env.REDIS_PORT }}
 
   security-scan:
     name: Security / dependency scan
@@ -221,10 +329,12 @@ jobs:
       - typecheck
       - backend-unit
       - backend-security
+      - backend-boundary-postgres
       - frontend-component
       - playwright-e2e
       - accessibility
       - production-build
+      - nest-boot-check
       - security-scan
     steps:
       - run: echo "All critical vehicle-detail CI gates passed."

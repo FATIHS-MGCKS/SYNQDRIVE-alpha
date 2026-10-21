@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ClipboardList, History, LayoutGrid, Wrench } from 'lucide-react';
 import type { Vendor } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   hasServiceCenterContextFilters,
   serviceCenterNavToAdvancedFilters,

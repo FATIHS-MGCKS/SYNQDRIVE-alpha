@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { BookingDocumentGenerationDispatcherService } from './booking-document-generation.dispatcher.service';
 import { BookingDocumentGenerationRepository } from './booking-document-generation.repository';
 import { BOOKING_DOCUMENT_GENERATION_STATUS } from './booking-document-generation.constants';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class BookingDocumentGenerationRecoveryScheduler {
@@ -11,10 +12,12 @@ export class BookingDocumentGenerationRecoveryScheduler {
   constructor(
     private readonly repository: BookingDocumentGenerationRepository,
     private readonly dispatcher: BookingDocumentGenerationDispatcherService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
   async recoverPendingJobs(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('booking_document_generation_recovery_minute')) return;
     const jobs = await this.repository.findRetryableJobs(25);
     for (const job of jobs) {
       try {
@@ -37,6 +40,7 @@ export class BookingDocumentGenerationRecoveryScheduler {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async recoverStaleProcessing(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('booking_document_generation_recovery_five_minute')) return;
     const staleBefore = new Date(Date.now() - 10 * 60 * 1000);
     const stale = await this.repository.findStaleProcessingJobs(staleBefore, 25);
     for (const job of stale) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import type { ConnectivityAdminDiagnosticsResponse } from '../../lib/api';
 import type {
   PaginatedVehiclesOperationalResponse,
   VehicleOperationalDetailDto,
@@ -7,6 +8,12 @@ import type {
   VehiclesOperationalQuery,
 } from './types';
 import { readCvListStateFromUrl, urlToCvQuery, writeCvListStateToUrl, queryToCvUrlState } from './cv.utils';
+
+export const CONNECTED_VEHICLES_REFRESH_EVENT = 'synqdrive:connected-vehicles-refresh';
+
+export function emitConnectedVehiclesRefresh(): void {
+  window.dispatchEvent(new CustomEvent(CONNECTED_VEHICLES_REFRESH_EVENT));
+}
 
 export function useConnectedVehiclesOverview() {
   const [overview, setOverview] = useState<VehiclesOperationalOverviewDto | null>(null);
@@ -71,12 +78,19 @@ export function useConnectedVehiclesList() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  useEffect(() => {
+    const onRefresh = () => void load();
+    window.addEventListener(CONNECTED_VEHICLES_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(CONNECTED_VEHICLES_REFRESH_EVENT, onRefresh);
+  }, [load]);
+
   return { data, loading, error, query, setQuery, refresh: load };
 }
 
 export function useConnectedVehicleDetail(vehicleId: string | null, dimoVehicleId: string | null) {
   const [detail, setDetail] = useState<VehicleOperationalDetailDto | null>(null);
-  const [diagnostics, setDiagnostics] = useState<unknown | null>(null);
+  const [diagnostics, setDiagnostics] =
+    useState<ConnectivityAdminDiagnosticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

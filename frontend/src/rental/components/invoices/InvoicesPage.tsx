@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { PageHeader } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';

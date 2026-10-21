@@ -58,6 +58,20 @@ export interface CreateTripParams {
   startDetectionMode?: string;
   startConfidence?: 'LOW' | 'MEDIUM' | 'HIGH';
   tripSource?: TripSource;
+  /** R2A durable start-episode fingerprint for orphan recovery. */
+  lifecycleRecovery?: {
+    candidateStartAt: Date;
+    effectiveStartAt: Date;
+    dimoSegmentId?: string | null;
+  };
+}
+
+export interface ReopenTripForMergeParams {
+  targetTripId: string;
+  lifecycleRecovery?: {
+    candidateStartAt: Date;
+    effectiveStartAt?: Date | null;
+  };
 }
 
 export interface FinalizeMeta {
@@ -97,10 +111,54 @@ export interface SplitTripAtGapParams {
   detectionProfile?: string;
   reason: string;
   triggeredBy: 'LIVE_FSM' | 'RECONCILIATION';
+  /** GPS drift metres between pre/post gap positions when known. */
+  splitDriftM?: number | null;
 }
 
 export interface SplitTripAtGapResult {
   firstTripId: string;
   secondTripId: string;
   movedWaypoints: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PARTIAL BOUNDARY EXTENSION (canonical delayed-start repair)
+// ═══════════════════════════════════════════════════════════════
+
+export interface RepairTripBoundariesParams {
+  tripId: string;
+  vehicleId: string;
+  organizationId: string | null;
+  providerSegmentId: string;
+  providerMechanism: string;
+  oldStartTime: Date;
+  oldEndTime: Date;
+  newStartTime: Date;
+  newEndTime: Date;
+  startLatitude?: number | null;
+  startLongitude?: number | null;
+  endLatitude?: number | null;
+  endLongitude?: number | null;
+  distanceKm?: number | null;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  reason: string;
+  source: string;
+  coverageMetrics?: Record<string, unknown>;
+}
+
+export interface RepairTripBoundariesAuditParams {
+  auditId: string;
+  repairType: string;
+  windowFrom: Date;
+  windowTo: Date;
+  confidence: string;
+  reason: string;
+  detectorEvidence: Record<string, unknown>;
+}
+
+export class BoundaryRepairConcurrentMutationError extends Error {
+  constructor(tripId: string) {
+    super(`Concurrent boundary repair mutation detected for trip ${tripId}`);
+    this.name = 'BoundaryRepairConcurrentMutationError';
+  }
 }

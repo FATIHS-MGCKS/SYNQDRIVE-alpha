@@ -4,6 +4,7 @@ import {
   isTripDetailsLimited,
   parseBehaviorSummaryJson,
 } from './trip-analysis-status';
+import { projectTripEndTimeFields } from './trip-end-time-projection.util';
 import type { TripAssessment } from './trip-assessment.types';
 import type { TripAttribution } from './trip-attribution.types';
 
@@ -52,9 +53,11 @@ export function mapTripForVehicleApi(
   const behaviorSummary = parseBehaviorSummaryJson(trip.behaviorSummaryJson);
   const assessability = deriveAnalysisAssessability(trip);
   const analysisFields = buildTripAnalysisApiFields(trip as any);
+  const endTimeProjection = projectTripEndTimeFields(trip);
 
   return {
     ...rest,
+    ...endTimeProjection,
     behaviorEnrichmentStatus,
     drivingScore:
       summary?.scores?.drivingStressScore ?? trip.drivingScore ?? null,

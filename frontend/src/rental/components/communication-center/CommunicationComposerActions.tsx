@@ -17,9 +17,9 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationQuickActionAvailability } from '../../../lib/communication/types';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 interface CommunicationQuickActionsProps {
   actions: CommunicationQuickActionAvailability[];

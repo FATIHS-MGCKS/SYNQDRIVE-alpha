@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildPublicationJobIdempotencyKey } from './jobs/battery-v2-job-idempotency.policy';
+import type { LvPublicationTrackObservability } from './lv-assessment/lv-publication-authority-epoch.policy';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
 import {
   buildLvPublicationReasonPayload,
@@ -58,14 +59,37 @@ function parseReasonPayload(
   }
 }
 
+function resolveAssessmentTrackFromPayload(
+  payload: Record<string, unknown> | null,
+  assessmentId: string | null,
+): LvPublicationTrackObservability {
+  const track = payload?.assessmentTrack;
+  if (track === 'TELEMETRY' || track === 'WORKSHOP_OVERRIDE') {
+    return track;
+  }
+  if (assessmentId) {
+    return 'UNKNOWN';
+  }
+  return 'UNKNOWN';
+}
+
 function toPreviousState(row: BatteryPublication): LvPublicationPreviousState | null {
   const payload = parseReasonPayload(row.reason);
   const maturity =
     (payload?.maturity as LvPublicationMaturity | undefined) ?? 'PROVISIONAL';
   if (maturity === 'SUPERSEDED') return null;
 
+  const assessmentId =
+    typeof row.assessmentId === 'string' && row.assessmentId
+      ? row.assessmentId
+      : typeof payload?.assessmentId === 'string'
+        ? payload.assessmentId
+        : null;
+
   return {
     publicationId: row.id,
+    assessmentId,
+    assessmentTrack: resolveAssessmentTrackFromPayload(payload, assessmentId),
     publishedEstimatedHealth:
       typeof payload?.publishedEstimatedHealth === 'number'
         ? payload.publishedEstimatedHealth
@@ -99,7 +123,7 @@ export class BatteryPublicationRepository {
     });
   }
 
-  async findLatestActiveLvPublication(input: {
+  async findLatestRetainedLvPublication(input: {
     organizationId: string;
     vehicleId: string;
   }): Promise<BatteryPublication | null> {
@@ -129,6 +153,73 @@ export class BatteryPublicationRepository {
           parseReasonPayload(row.reason)?.maturity !== 'SUPERSEDED',
       ) ?? null
     );
+  }
+
+  async findLatestActiveLvPublication(input: {
+    organizationId: string;
+    vehicleId: string;
+  }): Promise<BatteryPublication | null> {
+    const rows = await this.prisma.batteryPublication.findMany({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        scope: BatteryEvidenceScope.LV,
+      },
+      orderBy: { publishedAt: 'desc' },
+      take: 25,
+    });
+
+    const supersededIds = new Set<string>();
+    for (const row of rows) {
+      const payload = parseReasonPayload(row.reason);
+      const supersedeId = payload?.supersedePublicationId;
+      if (typeof supersedeId === 'string') {
+        supersededIds.add(supersedeId);
+      }
+    }
+
+    return (
+      rows.find((row) => {
+        const payload = parseReasonPayload(row.reason);
+        const maturity = payload?.maturity;
+        return (
+          !supersededIds.has(row.id) &&
+          maturity !== 'SUPERSEDED' &&
+          maturity !== 'STALE'
+        );
+      }) ?? null
+    );
+  }
+
+  async findPublicationByAssessmentIdentity(input: {
+    organizationId: string;
+    vehicleId: string;
+    assessmentId: string;
+    publicationVersion: number;
+  }): Promise<BatteryPublication | null> {
+    const idempotencyKey = buildPublicationJobIdempotencyKey({
+      assessmentId: input.assessmentId,
+      publicationVersion: input.publicationVersion,
+    });
+    return this.prisma.batteryPublication.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        idempotencyKey,
+      },
+    });
+  }
+
+  async findPublicationById(input: {
+    organizationId: string;
+    publicationId: string;
+  }): Promise<BatteryPublication | null> {
+    return this.prisma.batteryPublication.findFirst({
+      where: {
+        id: input.publicationId,
+        organizationId: input.organizationId,
+      },
+    });
   }
 
   toPublicationPreviousState(
@@ -206,6 +297,7 @@ export class BatteryPublicationRepository {
     });
 
     const reasonPayload = buildLvPublicationReasonPayload(input.decision, {
+      assessmentId: input.assessmentId,
       assessmentIdempotencyKey: input.assessment.idempotencyKey,
       assessmentTrack: input.assessment.assessmentTrack,
       assessmentMode: input.assessment.assessmentMode,
@@ -242,6 +334,37 @@ export class BatteryPublicationRepository {
       }
       throw error;
     }
+  }
+
+  async materializePublicationLifecycleState(input: {
+    organizationId: string;
+    publicationId: string;
+    decision: LvPublicationDecision;
+    assessmentId: string;
+  }): Promise<BatteryPublication> {
+    const existing = await this.prisma.batteryPublication.findFirstOrThrow({
+      where: {
+        id: input.publicationId,
+        organizationId: input.organizationId,
+      },
+    });
+
+    const payload = parseReasonPayload(existing.reason) ?? {};
+    const updatedPayload = buildLvPublicationReasonPayload(input.decision, {
+      assessmentId: input.assessmentId,
+      assessmentTrack: payload.assessmentTrack,
+      assessmentMode: payload.assessmentMode,
+      scoreSemantics: payload.scoreSemantics,
+      assessmentIdempotencyKey: payload.assessmentIdempotencyKey,
+    });
+
+    return this.prisma.batteryPublication.update({
+      where: { id: existing.id },
+      data: {
+        staleAt: input.decision.staleAt ? new Date(input.decision.staleAt) : null,
+        reason: JSON.stringify(updatedPayload),
+      },
+    });
   }
 
   async markPublicationSuperseded(input: {

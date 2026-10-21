@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import batteryV2RetentionConfig from '@config/battery-v2-retention.config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { createGtOrgVehicle } from '../ground-truth/ground-truth-postgres.fixture';
 import { BatteryV2RetentionAggregateService } from './battery-v2-retention-aggregate.service';
 import { BatteryV2RetentionService } from './battery-v2-retention.service';
 
@@ -74,28 +75,9 @@ async function probeDatabase(): Promise<boolean> {
     if (!dbOk) return;
 
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const org = await prisma.organization.create({
-      data: {
-        companyName: `Retention Test Org ${suffix}`,
-        businessType: 'FLEET',
-        status: 'ACTIVE',
-      },
-    });
-    organizationId = org.id;
-
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        organizationId,
-        licensePlate: `RT-${suffix}`,
-        vin: `VIN${suffix}`.slice(0, 17).padEnd(17, '0'),
-        make: 'Test',
-        model: 'Retention',
-        year: 2024,
-        fuelType: 'ELECTRIC',
-        status: 'AVAILABLE',
-      },
-    });
-    vehicleId = vehicle.id;
+    const { organizationId: orgId, vehicleId: vehId } = await createGtOrgVehicle(prisma);
+    organizationId = orgId;
+    vehicleId = vehId;
 
     const oldObservedAt = new Date('2019-06-01T00:00:00.000Z');
     const session = await prisma.batteryMeasurementSession.create({

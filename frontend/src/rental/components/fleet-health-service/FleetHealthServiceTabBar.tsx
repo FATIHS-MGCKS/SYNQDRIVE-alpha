@@ -1,7 +1,7 @@
 import { chromeTabBarClass, chromeTabTriggerClass } from '../../../components/patterns/chrome-tab-bar';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { FHS_TAB_ID, FHS_TAB_PANEL_ID } from './fleet-health-service-a11y';
 import { fhs } from './fleet-health-service-shell';
 import {

@@ -3,6 +3,11 @@ import { BillingQuantityEventSource } from '@prisma/client';
 import { BillableVehiclesService } from './billable-vehicles.service';
 import { BillingQuantityService } from './billing-quantity.service';
 import { buildQuantityIdempotencyKey } from './domain/billing-quantity-ledger';
+import {
+  BillingVehicleRegistryOffboardProjection,
+  type RegistryOffboardBillingProjectionResult,
+} from './registry-lifecycle/billing-vehicle-registry-offboard.projection';
+import type { ValidatedVehicleOffboardedRegistryEvent } from './registry-lifecycle/validate-vehicle-offboarded-registry-event';
 
 @Injectable()
 export class BillingQuantityVehicleIntegration {
@@ -11,6 +16,7 @@ export class BillingQuantityVehicleIntegration {
   constructor(
     private readonly quantity: BillingQuantityService,
     private readonly billableVehicles: BillableVehiclesService,
+    private readonly registryOffboardProjection: BillingVehicleRegistryOffboardProjection,
   ) {}
 
   async onVehicleProvisioned(input: {
@@ -59,6 +65,12 @@ export class BillingQuantityVehicleIntegration {
         ]),
       retroactiveAuthorized: input.retroactiveAuthorized,
     });
+  }
+
+  async onVehicleOffboardedLifecycleEvent(
+    event: ValidatedVehicleOffboardedRegistryEvent,
+  ): Promise<RegistryOffboardBillingProjectionResult> {
+    return this.registryOffboardProjection.onVehicleOffboardedLifecycleEvent(event);
   }
 
   async onVehicleRemoved(input: {

@@ -2,7 +2,7 @@ import { Calendar, Car, DollarSign, ListTodo, Users, Wrench } from 'lucide-react
 import { Icon } from './ui/Icon';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { api, streamChatMessage } from '../../lib/api';
 import type { ChatMessageResponse, ChatStreamEvent, ChatStreamTechnicalDetails } from '../../lib/api';

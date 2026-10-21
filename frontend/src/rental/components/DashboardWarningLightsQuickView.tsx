@@ -1,11 +1,7 @@
-import tellTaleOilIcon from '../../assets/icons/telltale/oil.svg';
-import tellTaleCelIcon from '../../assets/icons/telltale/cel.svg';
-import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
-import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
-import tellTaleBatteryWarningIcon from '../../assets/icons/telltale/battery.svg';
 import type { DashboardWarningLightsResponse } from '../../lib/api';
 import { Icon } from './ui/Icon';
 import { StatusChip } from '../../components/patterns';
+import { DashboardTelltaleIcon } from './health/DashboardTelltaleIcon';
 import {
   DASHBOARD_TELLTALE_KEYS,
   formatRelativeObservedAt,
@@ -22,14 +18,6 @@ export interface DashboardWarningLightsQuickViewProps {
   onViewDetails?: () => void;
 }
 
-function iconForKey(key: string): string {
-  if (key === 'engine_oil_level') return tellTaleOilIcon;
-  if (key === 'engine_limp_mode') return tellTaleCelIcon;
-  if (key === 'brake_lining_wear_pre_warning') return tellTaleBrakePadIcon;
-  if (key === 'tire_pressure_warning') return tellTaleTirePressureIcon;
-  if (key === 'battery_warning_light') return tellTaleBatteryWarningIcon;
-  return tellTaleCelIcon;
-}
 
 function iconBgFor(tone: TelltaleTone): string {
   if (tone === 'critical') return 'bg-[color:var(--status-critical-soft)]';
@@ -57,7 +45,6 @@ export function DashboardWarningLightsQuickView({
       label,
       tone,
       text: light ? telltaleShortTextFromLight(light, telltales?.freshness) : loading ? '…' : 'Unbekannt',
-      icon: iconForKey(key),
     };
   });
 
@@ -105,11 +92,9 @@ export function DashboardWarningLightsQuickView({
             }`}
           >
             <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBgFor(it.tone)}`}>
-              <img
-                src={it.icon}
-                alt=""
-                aria-hidden="true"
-                className={`w-3.5 h-3.5 object-contain transition-opacity ${
+              <DashboardTelltaleIcon
+                telltaleKey={it.key}
+                className={`w-3.5 h-3.5 transition-opacity ${
                   it.tone === 'alert' || it.tone === 'critical'
                     ? 'opacity-95'
                     : it.tone === 'ok'

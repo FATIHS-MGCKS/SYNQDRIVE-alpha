@@ -1,6 +1,7 @@
 import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, streamAiSpecs, streamAiTireSpecs } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabilityDto } from '../../lib/api';
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
 import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
@@ -17,6 +18,9 @@ interface VehicleRegistrationModalProps {
   dimoVehicle?: DimoVehicle;
   existingVehicle?: RegisteredVehicle;
   organizations: Organization[];
+  initialOrganizationId?: string | null;
+  /** When true, service history / HM blocks are hidden (not persisted on manual create). */
+  manualCreateOnly?: boolean;
   onRegister: (vehicle: RegisteredVehicle) => void | Promise<void>;
   onUpdate?: (vehicle: RegisteredVehicle) => void | Promise<void>;
 }
@@ -42,14 +46,22 @@ const HIGH_MOBILITY_SIGNALS = [
   { id: 'parking_brake_status', label: 'Parking Brake Status' },
 ] as const;
 
-export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehicle, existingVehicle, organizations, onRegister, onUpdate }: VehicleRegistrationModalProps) {
+export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehicle, existingVehicle, organizations, initialOrganizationId, manualCreateOnly = false, onRegister, onUpdate }: VehicleRegistrationModalProps) {
+  const { t } = useLanguage();
   const isEditMode = !!existingVehicle;
+  const isManualCreate = manualCreateOnly || (!isEditMode && !dimoVehicle);
+
+  const [manualVin, setManualVin] = useState('');
+  const [manualMake, setManualMake] = useState('');
+  const [manualModel, setManualModel] = useState('');
+  const [manualYear, setManualYear] = useState(new Date().getFullYear());
+  const [manualOdometer, setManualOdometer] = useState(0);
 
   const vehicleIdentity = isEditMode
     ? { vin: existingVehicle.vin, make: existingVehicle.make, model: existingVehicle.model, year: existingVehicle.year, odometer: existingVehicle.mileage }
     : dimoVehicle
       ? { vin: dimoVehicle.vin, make: dimoVehicle.make, model: dimoVehicle.model, year: dimoVehicle.year, odometer: dimoVehicle.odometer }
-      : { vin: '', make: '', model: '', year: 0, odometer: 0 };
+      : { vin: manualVin, make: manualMake, model: manualModel, year: manualYear, odometer: manualOdometer };
 
   const [expandedSections, setExpandedSections] = useState<string[]>(['assignment', 'technical', 'battery', 'brakes', 'tires', 'service', 'history', 'exterior', 'hm', 'hardware']);
   const [aiLoading, setAiLoading] = useState(!isEditMode);
@@ -259,15 +271,22 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       setAiLoading(false);
       return;
     }
-    setOrganizationId('');
+    setOrganizationId(initialOrganizationId ?? '');
     setStation('');
     setVehicleType('SEDAN');
     setFuelType(dimoVehicle ? inferDefaultFuelType(dimoVehicle) : 'Gasoline');
     setLicensePlate('');
     setOperationalStatus('Active');
     setNotes('');
+    if (!dimoVehicle) {
+      setManualVin('');
+      setManualMake('');
+      setManualModel('');
+      setManualYear(new Date().getFullYear());
+      setManualOdometer(0);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isEditMode ? existingVehicle?.id : dimoVehicle?.id]);
+  }, [isOpen, isEditMode ? existingVehicle?.id : dimoVehicle?.id, initialOrganizationId]);
 
   const aiAbortRef = useRef<AbortController | null>(null);
   const aiGenerationRef = useRef(0);
@@ -772,6 +791,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
         <div className="px-8 py-5 space-y-1 max-h-[72vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
 
+          {isManualCreate && !isEditMode ? (
+            <div className="mb-4 rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">{t('master.cv.addVehicle.manualBaselineTitle')}</p>
+              <p className="mt-1">{t('master.cv.addVehicle.manualBaselineHint')}</p>
+              <p className="mt-1">{t('master.cv.addVehicle.manualServiceHistoryUnavailable')}</p>
+            </div>
+          ) : null}
+
           {/* ═══════════════════════════════════════════════
               SECTION 0 — Vehicle Identity (read-only)
              ═══════════════════════════════════════════════ */}
@@ -780,15 +807,65 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold bg-muted text-muted-foreground`}>ID</span>
               <span className={`text-sm font-semibold text-foreground`}>Vehicle Identity</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-muted text-muted-foreground`}>
-                {isEditMode ? 'From Registration' : 'From DIMO'}
+                {isEditMode ? 'From Registration' : isManualCreate ? 'Manual entry' : 'From DIMO'}
               </span>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              <div><label className={labelClass}>VIN</label><input value={vehicleIdentity.vin} readOnly className={`${inputClass} opacity-60 cursor-not-allowed font-mono text-xs`} /></div>
-              <div><label className={labelClass}>Make</label><input value={vehicleIdentity.make} readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} /></div>
-              <div><label className={labelClass}>Model</label><input value={vehicleIdentity.model} readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} /></div>
-              <div><label className={labelClass}>Year</label><input value={vehicleIdentity.year} readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} /></div>
-              <div><label className={labelClass}>Odometer</label><input value={`${(vehicleIdentity.odometer ?? 0).toLocaleString()} km`} readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} /></div>
+              <div>
+                <label className={labelClass}>VIN</label>
+                <input
+                  value={vehicleIdentity.vin}
+                  readOnly={!isManualCreate}
+                  onChange={(e) => isManualCreate && setManualVin(e.target.value)}
+                  className={`${inputClass} ${!isManualCreate ? 'opacity-60 cursor-not-allowed' : ''} font-mono text-xs`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Make</label>
+                <input
+                  value={vehicleIdentity.make}
+                  readOnly={!isManualCreate}
+                  onChange={(e) => isManualCreate && setManualMake(e.target.value)}
+                  className={`${inputClass} ${!isManualCreate ? 'opacity-60 cursor-not-allowed' : ''}`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Model</label>
+                <input
+                  value={vehicleIdentity.model}
+                  readOnly={!isManualCreate}
+                  onChange={(e) => isManualCreate && setManualModel(e.target.value)}
+                  className={`${inputClass} ${!isManualCreate ? 'opacity-60 cursor-not-allowed' : ''}`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Year</label>
+                <input
+                  value={vehicleIdentity.year}
+                  readOnly={!isManualCreate}
+                  onChange={(e) => isManualCreate && setManualYear(Number(e.target.value) || 0)}
+                  className={`${inputClass} ${!isManualCreate ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  type={isManualCreate ? 'number' : 'text'}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Odometer</label>
+                {isManualCreate ? (
+                  <input
+                    value={manualOdometer}
+                    onChange={(e) => setManualOdometer(Number(e.target.value) || 0)}
+                    className={inputClass}
+                    type="number"
+                    min={0}
+                  />
+                ) : (
+                  <input
+                    value={`${(vehicleIdentity.odometer ?? 0).toLocaleString()} km`}
+                    readOnly
+                    className={`${inputClass} opacity-60 cursor-not-allowed`}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -1138,8 +1215,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {/* ═══════════════════════════════════════════════
               SECTION 7 — Service History
              ═══════════════════════════════════════════════ */}
-          {sectionHeader('history', '7', 'Service History')}
-          {expandedSections.includes('history') && (
+          {!isManualCreate ? sectionHeader('history', '7', 'Service History') : null}
+          {!isManualCreate && expandedSections.includes('history') && (
             <div className="grid grid-cols-2 gap-3 pl-1 pb-3">
               <div><label className={labelClass}>Last TÜV</label><input type="date" value={lastTuev} onChange={e => setLastTuev(e.target.value)} className={inputClass} /></div>
               <div><label className={labelClass}>Last BOKraft</label><input type="date" value={lastBokraft} onChange={e => setLastBokraft(e.target.value)} className={inputClass} /></div>
@@ -1171,8 +1248,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {/* ═══════════════════════════════════════════════
               SECTION 9 — High Mobility Data
              ═══════════════════════════════════════════════ */}
-          {sectionHeader('hm', '9', 'High Mobility Data')}
-          {expandedSections.includes('hm') && (
+          {!isManualCreate ? sectionHeader('hm', '9', 'High Mobility Data') : null}
+          {!isManualCreate && expandedSections.includes('hm') && (
             <div className="pl-1 pb-3 space-y-3">
               {/* Loading state */}
               {hmAvailabilityLoading && (

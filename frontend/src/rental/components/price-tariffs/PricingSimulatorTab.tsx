@@ -3,7 +3,7 @@ import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { usePriceTariffs } from '../../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../../hooks/usePricingSimulation';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   buildSimulatorPriceBreakdown,
   resolveSimulatorDraftDepositHint,

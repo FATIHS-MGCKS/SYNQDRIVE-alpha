@@ -1,22 +1,40 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Building2, Loader2, RefreshCw, Unlink } from 'lucide-react';
-import { DetailDrawer, ConfirmDialog, StatusChip } from '../../components/patterns';
+import { AlertTriangle, Building2, Loader2, RefreshCw, ShieldOff } from 'lucide-react';
+import { DetailDrawer, StatusChip } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useConnectedVehicleDetail } from './useConnectedVehiclesOperational';
+import { RegistryLifecycleChip } from './RegistryLifecycleChip';
+import { VehicleOffboardDialog } from './VehicleOffboardDialog';
+import { canOffboardRegisteredVehicle } from './registry-lifecycle.utils';
+import type { VehicleOffboardReasonCode } from './vehicle-offboard.types';
 import {
   CvAttentionChip,
   CvIntegrationChip,
   CvIntegrityChip,
   CvTelemetryChip,
 } from './ConnectedVehicleStatusChips';
+import { ConnectivityDiagnosticPanel } from './ConnectivityDiagnosticPanel';
 import { formatDateTimeDe } from './cv.utils';
+import { OffboardReleaseGatePanel } from './OffboardReleaseGatePanel';
 
 interface ConnectedVehicleDetailDrawerProps {
   open: boolean;
   vehicleId: string | null;
   dimoVehicleId: string | null;
   onClose: () => void;
-  onDeregister?: (vehicleId: string, reason: string) => Promise<void>;
+  offboardUiEnabled?: boolean;
+  onOffboard?: (input: {
+    organizationId: string;
+    vehicleId: string;
+    reason: VehicleOffboardReasonCode;
+    note?: string;
+  }) => Promise<void>;
+  offboardSubmitting?: boolean;
+  offboardPhase?: 'idle' | 'submitting' | 'mfa_required' | 'uncertain' | 'success';
+  onRetryUncertainOffboard?: () => void;
+  onAbandonOffboardIntent?: () => void;
+  onRegisterDetailRefresh?: (refresh: () => void) => void;
   onOpenOrganization?: (organizationId: string) => void;
 }
 
@@ -25,9 +43,16 @@ export function ConnectedVehicleDetailDrawer({
   vehicleId,
   dimoVehicleId,
   onClose,
-  onDeregister,
+  offboardUiEnabled = true,
+  onOffboard,
+  offboardSubmitting = false,
+  offboardPhase = 'idle',
+  onRetryUncertainOffboard,
+  onAbandonOffboardIntent,
+  onRegisterDetailRefresh,
   onOpenOrganization,
 }: ConnectedVehicleDetailDrawerProps) {
+  const { t } = useLanguage();
   const {
     detail,
     diagnostics,
@@ -40,27 +65,40 @@ export function ConnectedVehicleDetailDrawer({
   } = useConnectedVehicleDetail(open ? vehicleId : null, open ? dimoVehicleId : null);
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [showDeregister, setShowDeregister] = useState(false);
-  const [deregisterReason, setDeregisterReason] = useState('');
-  const [deregistering, setDeregistering] = useState(false);
+  const [showOffboard, setShowOffboard] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setShowDiagnostics(false);
-      setShowDeregister(false);
-      setDeregisterReason('');
+      setShowOffboard(false);
     }
   }, [open]);
 
-  const handleDeregister = async () => {
-    if (!vehicleId || !onDeregister || deregisterReason.trim().length < 5 || deregistering) return;
-    setDeregistering(true);
+  useEffect(() => {
+    onRegisterDetailRefresh?.(refresh);
+  }, [onRegisterDetailRefresh, refresh]);
+
+  const lifecycleAllowsOffboard = Boolean(detail && canOffboardRegisteredVehicle(detail));
+  const offboardAllowed =
+    offboardUiEnabled && Boolean(onOffboard) && lifecycleAllowsOffboard;
+  const showReleaseGatePanel =
+    Boolean(vehicleId && detail?.organizationId && lifecycleAllowsOffboard && !offboardUiEnabled);
+
+  const handleOffboardConfirm = async (input: {
+    reason: VehicleOffboardReasonCode;
+    note?: string;
+  }) => {
+    if (!vehicleId || !detail?.organizationId || !onOffboard || offboardSubmitting) return;
     try {
-      await onDeregister(vehicleId, deregisterReason.trim());
-      setShowDeregister(false);
-      onClose();
-    } finally {
-      setDeregistering(false);
+      await onOffboard({
+        organizationId: detail.organizationId,
+        vehicleId,
+        reason: input.reason,
+        note: input.note,
+      });
+      setShowOffboard(false);
+    } catch {
+      /* hub surfaces toast; keep dialog open for retry */
     }
   };
 
@@ -119,6 +157,7 @@ export function ConnectedVehicleDetailDrawer({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <RegistryLifecycleChip lifecycle={detail.registryLifecycle} />
                 <CvIntegrationChip label={detail.integrationConnectivityLabel} state={detail.integrationConnectivity} />
                 <CvTelemetryChip label={detail.telemetryLabel} freshness={detail.telemetryFreshness} />
                 <CvAttentionChip attention={detail.attention} />
@@ -193,7 +232,24 @@ export function ConnectedVehicleDetailDrawer({
                   <dd className="mt-1 font-mono text-xs">{detail.mapping.tokenIdMasked ?? '—'}</dd>
                 </div>
                 <div className="rounded-xl border border-border p-3">
-                  <dt className="text-xs text-muted-foreground">Autorisierung</dt>
+                  <dt className="text-xs text-muted-foreground">{t('master.cv.mapping.mirrorProvider')}</dt>
+                  <dd className="mt-1 font-mono text-xs">{detail.mapping.connectionStatus ?? '—'}</dd>
+                  {detail.mapping.mirrorIntegrationConnectivity ? (
+                    <dd className="mt-2">
+                      <CvIntegrationChip
+                        label={
+                          detail.mapping.mirrorIntegrationConnectivityLabel ??
+                          detail.mapping.mirrorIntegrationConnectivity
+                        }
+                        state={detail.mapping.mirrorIntegrationConnectivity}
+                      />
+                    </dd>
+                  ) : null}
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <dt className="text-xs text-muted-foreground">
+                    {t('master.cv.mapping.effectiveSynqDriveAccess')}
+                  </dt>
                   <dd className="mt-1">
                     <CvIntegrationChip
                       label={detail.integrationConnectivityLabel}
@@ -249,9 +305,21 @@ export function ConnectedVehicleDetailDrawer({
                     {diagnosticsError}
                   </p>
                 ) : diagnostics ? (
-                  <pre className="text-xs bg-muted/40 rounded-xl p-3 overflow-x-auto max-h-64">
-                    {JSON.stringify(diagnostics, null, 2)}
-                  </pre>
+                  <div className="space-y-3">
+                    {diagnostics.connectivityDiagnostic ? (
+                      <ConnectivityDiagnosticPanel
+                        diagnostic={diagnostics.connectivityDiagnostic}
+                      />
+                    ) : null}
+                    <details>
+                      <summary className="cursor-pointer text-xs text-muted-foreground">
+                        Rohdaten anzeigen
+                      </summary>
+                      <pre className="mt-2 text-xs bg-muted/40 rounded-xl p-3 overflow-x-auto max-h-64">
+                        {JSON.stringify(diagnostics, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Keine Diagnostikdaten.</p>
                 )
@@ -262,50 +330,71 @@ export function ConnectedVehicleDetailDrawer({
               )}
             </section>
 
-            {vehicleId && onDeregister ? (
+            {vehicleId && offboardPhase === 'uncertain' ? (
+              <div
+                className="border-t border-border pt-4 space-y-2"
+                role="status"
+                data-testid="offboard-uncertain-panel"
+              >
+                <p className="text-sm text-foreground">{t('master.cv.offboard.uncertainRetry')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    disabled={offboardSubmitting}
+                    onClick={() => onRetryUncertainOffboard?.()}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" aria-hidden />
+                    {t('master.cv.offboard.uncertainRetryAction')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onAbandonOffboardIntent?.()}
+                  >
+                    {t('master.cv.offboard.uncertainAbandon')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {vehicleId && offboardAllowed ? (
               <div className="border-t border-border pt-4">
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={() => setShowDeregister(true)}
+                  onClick={() => setShowOffboard(true)}
                   className="w-full sm:w-auto"
+                  disabled={offboardSubmitting}
+                  data-testid="offboard-action-button"
                 >
-                  <Unlink className="h-4 w-4 mr-2" aria-hidden />
-                  Registrierung aufheben
+                  <ShieldOff className="h-4 w-4 mr-2" aria-hidden />
+                  {t('master.cv.offboard.action')}
                 </Button>
               </div>
+            ) : null}
+            {showReleaseGatePanel ? <OffboardReleaseGatePanel /> : null}
+            {vehicleId && detail && !offboardAllowed && detail.registrationState === 'registered' ? (
+              <p className="text-xs text-muted-foreground border-t border-border pt-4">
+                {detail.registryLifecycle == null
+                  ? t('master.cv.offboard.lifecycleUnknown')
+                  : null}
+              </p>
             ) : null}
           </div>
         ) : null}
       </DetailDrawer>
 
-      <ConfirmDialog
-        open={showDeregister}
-        onOpenChange={setShowDeregister}
-        title="Registrierung aufheben"
-        description="Das SynqDrive-Fahrzeug wird aus der Organisation entfernt. Die DIMO-Spiegel-Identität bleibt erhalten. Telemetrie-Historie wird nicht gelöscht."
-        confirmLabel={deregistering ? 'Wird aufgehoben…' : 'Aufheben bestätigen'}
-        tone="critical"
-        loading={deregistering}
-        onConfirm={handleDeregister}
-      >
-        <div className="space-y-2 mt-3">
-          {detail?.organizationName ? (
-            <p className="text-sm">
-              Organisation: <strong>{detail.organizationName}</strong>
-            </p>
-          ) : null}
-          <label className="block text-sm font-medium" htmlFor="deregister-reason">
-            Begründung (min. 5 Zeichen)
-          </label>
-          <textarea
-            id="deregister-reason"
-            className="w-full rounded-xl border border-border bg-background p-3 text-sm min-h-[80px]"
-            value={deregisterReason}
-            onChange={(e) => setDeregisterReason(e.target.value)}
-          />
-        </div>
-      </ConfirmDialog>
+      <VehicleOffboardDialog
+        open={showOffboard}
+        onOpenChange={setShowOffboard}
+        loading={offboardSubmitting}
+        displayTitle={detail?.displayTitle ?? ''}
+        organizationName={detail?.organizationName ?? null}
+        onConfirm={(input) => void handleOffboardConfirm(input)}
+      />
     </>
   );
 }

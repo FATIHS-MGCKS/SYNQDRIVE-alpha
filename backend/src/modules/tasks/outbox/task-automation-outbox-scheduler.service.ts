@@ -13,6 +13,7 @@ import {
   buildTaskAutomationOutboxJobId,
   buildTaskAutomationOutboxJobOptions,
 } from './task-automation-outbox-queue.util';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class TaskAutomationOutboxSchedulerService {
@@ -25,6 +26,7 @@ export class TaskAutomationOutboxSchedulerService {
     private readonly enqueueService: TaskAutomationOutboxEnqueueService,
     private readonly outboxRepo: TaskAutomationOutboxRepository,
     private readonly observability: TaskAutomationOutboxObservabilityService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   async scheduleOutboxIds(outboxIds: string[]): Promise<void> {
@@ -52,6 +54,7 @@ export class TaskAutomationOutboxSchedulerService {
 
   @Cron('*/30 * * * * *')
   async pollPendingOutbox(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('task_automation_outbox')) return;
     if (!this.enqueueService.isEnabled()) return;
 
     const staleBefore = new Date(Date.now() - this.config.processingStaleMs);

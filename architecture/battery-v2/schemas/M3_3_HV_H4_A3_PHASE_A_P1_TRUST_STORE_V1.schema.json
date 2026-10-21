@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://synqdrive.eu/schemas/battery-v2/M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_V1.schema.json",
+  "title": "M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "keys", "revokedKeyIds"],
+  "properties": {
+    "contractVersion": {
+      "const": "M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_V1"
+    },
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keyId", "publicKeySpkiBase64"],
+        "properties": {
+          "keyId": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "publicKeySpkiBase64": { "type": "string", "minLength": 32, "maxLength": 512 },
+          "notBeforeUtc": { "type": "string", "format": "date-time" },
+          "notAfterUtc": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "revokedKeyIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+    }
+  }
+}

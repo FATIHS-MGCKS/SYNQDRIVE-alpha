@@ -5,7 +5,7 @@ import { StatusChip } from '../../../components/patterns';
 import { buildOriginContextHint } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
 import { useDocumentFollowUpSuggestions } from '../../hooks/useDocumentFollowUpSuggestions';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import {
   DOC_TYPE_LABELS,

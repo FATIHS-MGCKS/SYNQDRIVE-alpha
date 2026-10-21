@@ -1,5 +1,9 @@
 import type { VehicleData } from '../../../data/vehicles';
 import {
+  OPERATIONAL_AVAILABILITY_STATE,
+  type OperationalAvailabilityState,
+} from '../../../lib/operational-availability/types';
+import {
   VEHICLE_DATA_QUALITY_STATE,
   VEHICLE_OPERATIONAL_STATUS,
   type VehicleBookingReference,
@@ -32,6 +36,7 @@ const READINESS_BLOCKING_CATEGORIES = new Set<RuntimeReasonCategory>([
 export interface DeriveReadyForRentingInput {
   operationalBlock: RentalReadinessOperationalBlock;
   operationalStatus: VehicleOperationalStatus;
+  operationalAvailability: OperationalAvailabilityState | 'absent';
   cleaningStatus: VehicleData['cleaningStatus'];
   blockLevel: RentalBlockLevel;
   reasons: RuntimeReason[];
@@ -49,6 +54,8 @@ export function isBackendOperationalDataQualityReliable(
 
 export function reasonBlocksReadyForRenting(reason: RuntimeReason): boolean {
   if (reason.source === RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE) return false;
+  // Canonical connectivity attention is informational for Dashboard readiness — P0.2 owns availability.
+  if (reason.source?.startsWith('canonical:connectivity:')) return false;
   if (reason.preventsReady === true) return true;
   if (reason.blocking === true) return true;
   if (reason.severity === 'critical' && READINESS_BLOCKING_CATEGORIES.has(reason.category)) {
@@ -71,7 +78,7 @@ export function deriveIsReadyForRenting(input: DeriveReadyForRentingInput): bool
 
   if (input.blockLevel !== 'none') return false;
 
-  if (input.telemetryState === 'offline') return false;
+  if (input.operationalAvailability !== OPERATIONAL_AVAILABILITY_STATE.AVAILABLE) return false;
 
   const readinessBlockers = input.reasons.filter(reasonBlocksReadyForRenting);
   if (readinessBlockers.length > 0) return false;

@@ -12,7 +12,7 @@ import {
   categoryAllowsVehicleAssignment,
   labelCategoryStatus,
 } from './rental-rules-category-lifecycle.utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { RentalRulesMutationError, rentalRulesMutate } from './rental-rules-concurrency.errors';
 import { RentalRulesConcurrencyDialog } from './RentalRulesConcurrencyDialog';
 import {

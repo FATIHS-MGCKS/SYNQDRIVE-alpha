@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { resolveChunkTimestamps } from './route-artifact/chunked-matching/trip-route-mapbox-timestamps';
 
 export interface MapMatchedLeg {
   distance: number;
@@ -13,7 +14,27 @@ export interface MapMatchResult {
   legs: MapMatchedLeg[];
   totalDistance: number;
   confidence: number;
+  /** Present on chunk matches — fraction of input tracepoints matched. */
+  tracepointCoverage?: number;
 }
+
+export type MapboxChunkMatchFailureClass = 'RETRYABLE' | 'NON_RETRYABLE';
+
+export interface MapboxChunkMatchDetailedSuccess {
+  ok: true;
+  result: MapMatchResult;
+}
+
+export interface MapboxChunkMatchDetailedFailure {
+  ok: false;
+  failureReason: string;
+  failureClass: MapboxChunkMatchFailureClass;
+  httpStatus?: number;
+}
+
+export type MapboxChunkMatchDetailedResponse =
+  | MapboxChunkMatchDetailedSuccess
+  | MapboxChunkMatchDetailedFailure;
 
 // ── Speeding Sections Architecture ──────────────────────────────────────────
 
@@ -118,28 +139,128 @@ export class MapboxService {
       ? coordinates.filter((_, i) => i % Math.ceil(coordinates.length / MAX_COORDS) === 0)
       : coordinates;
 
-    const coordStr = sampled.map((c) => `${c.longitude},${c.latitude}`).join(';');
-    const timestamps = sampled.every((c) => c.timestamp)
-      ? `&timestamps=${sampled.map((c) => Math.floor(new Date(c.timestamp!).getTime() / 1000)).join(';')}`
-      : '';
+    return this.matchMapboxChunkInternal(sampled, { tidy: true });
+  }
 
-    const url = `https://api.mapbox.com/matching/v5/mapbox/driving/${coordStr}?access_token=${this.token}&geometries=geojson&overview=full&annotations=speed,maxspeed,distance&tidy=true${timestamps}`;
+  /**
+   * R3 canonical chunk matcher — NO global stride sampling.
+   * Caller must ensure coordinates.length <= 100.
+   */
+  async matchMapboxChunk(
+    coordinates: { longitude: number; latitude: number; timestamp?: string }[],
+    options?: { radiusMeters?: number; timeoutMs?: number },
+  ): Promise<MapMatchResult | null> {
+    const detailed = await this.matchMapboxChunkDetailed(coordinates, options);
+    return detailed.ok ? detailed.result : null;
+  }
+
+  async matchMapboxChunkDetailed(
+    coordinates: { longitude: number; latitude: number; timestamp?: string }[],
+    options?: { radiusMeters?: number; timeoutMs?: number },
+  ): Promise<MapboxChunkMatchDetailedResponse> {
+    if (!this.token) {
+      return {
+        ok: false,
+        failureReason: 'mapbox_token_missing',
+        failureClass: 'NON_RETRYABLE',
+      };
+    }
+    if (coordinates.length < 2) {
+      return {
+        ok: false,
+        failureReason: 'chunk_too_short',
+        failureClass: 'NON_RETRYABLE',
+      };
+    }
+    if (coordinates.length > 100) {
+      return {
+        ok: false,
+        failureReason: `chunk_exceeds_100_coordinates:${coordinates.length}`,
+        failureClass: 'NON_RETRYABLE',
+      };
+    }
 
     try {
-      const res = await fetch(url);
+      const result = await this.matchMapboxChunkInternal(coordinates, {
+        tidy: false,
+        radiusMeters: options?.radiusMeters,
+        timeoutMs: options?.timeoutMs,
+      });
+      if (!result) {
+        return {
+          ok: false,
+          failureReason: 'zero_matchings',
+          failureClass: 'NON_RETRYABLE',
+          httpStatus: 200,
+        };
+      }
+      return { ok: true, result };
+    } catch (err: any) {
+      const message = err?.message ?? String(err);
+      if (err?.retryable === true) {
+        return {
+          ok: false,
+          failureReason: message,
+          failureClass: 'RETRYABLE',
+          httpStatus: err?.httpStatus,
+        };
+      }
+      return {
+        ok: false,
+        failureReason: message,
+        failureClass: 'NON_RETRYABLE',
+        httpStatus: err?.httpStatus,
+      };
+    }
+  }
+
+  private async matchMapboxChunkInternal(
+    sampled: { longitude: number; latitude: number; timestamp?: string }[],
+    options: { tidy: boolean; radiusMeters?: number; timeoutMs?: number },
+  ): Promise<MapMatchResult | null> {
+    const coordStr = sampled.map((c) => `${c.longitude},${c.latitude}`).join(';');
+    const timestampResolution = resolveChunkTimestamps(sampled);
+    const timestamps = timestampResolution.include && timestampResolution.timestamps
+      ? `&timestamps=${timestampResolution.timestamps.join(';')}`
+      : '';
+    const tidy = options.tidy ? '&tidy=true' : '';
+    const radiuses =
+      options.radiusMeters != null
+        ? `&radiuses=${sampled.map(() => String(options.radiusMeters)).join(';')}`
+        : '';
+
+    const url = `https://api.mapbox.com/matching/v5/mapbox/driving/${coordStr}?access_token=${this.token}&geometries=geojson&overview=full&annotations=speed,maxspeed,distance${tidy}${timestamps}${radiuses}`;
+
+    const timeoutMs = options.timeoutMs ?? 30_000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
+
+      if (!res.ok) {
+        const retryable = res.status === 429 || res.status >= 500;
+        const err = new Error(`mapbox_http_${res.status}`) as Error & {
+          retryable?: boolean;
+          httpStatus?: number;
+        };
+        err.retryable = retryable;
+        err.httpStatus = res.status;
+        throw err;
+      }
 
       if (data.code !== 'Ok' || !data.matchings?.length) {
         this.logger.debug(`Map matching returned ${data.code} for ${sampled.length} points`);
         return null;
       }
 
-      const matching = data.matchings[0];
+      const matching = this.selectCanonicalMatching(data.matchings);
+      if (!matching) return null;
       const matchedGeometry: [number, number][] = matching.geometry?.coordinates ?? [];
 
-      const legs: MapMatchedLeg[] = (matching.legs ?? []).map((leg: any, i: number) => {
+      const legs: MapMatchedLeg[] = (matching.legs ?? []).map((leg: any) => {
         const annotation = leg.annotation ?? {};
-        const distances: number[] = annotation.distance ?? [];
         const speeds: number[] = annotation.speed ?? [];
         const maxspeeds: any[] = annotation.maxspeed ?? [];
 
@@ -164,16 +285,37 @@ export class MapboxService {
       });
 
       const totalDistance = legs.reduce((s, l) => s + l.distance, 0);
+      const tracepoints = data.tracepoints ?? [];
+      const matchedTracepoints = tracepoints.filter((tp: unknown) => tp != null).length;
+      const tracepointCoverage =
+        sampled.length > 0 ? matchedTracepoints / sampled.length : 0;
 
       return {
         matchedGeometry,
         legs,
         totalDistance: totalDistance || matching.distance || 0,
         confidence: matching.confidence ?? 0,
-      };
+        tracepointCoverage,
+      } as MapMatchResult & { tracepointCoverage: number };
     } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        const timeoutErr = new Error('mapbox_request_timeout') as Error & {
+          retryable?: boolean;
+        };
+        timeoutErr.retryable = true;
+        throw timeoutErr;
+      }
+      if (err?.retryable != null) {
+        throw err;
+      }
       this.logger.warn(`Mapbox map matching failed: ${err.message}`);
-      return null;
+      const networkErr = new Error(err.message ?? 'mapbox_network_failure') as Error & {
+        retryable?: boolean;
+      };
+      networkErr.retryable = true;
+      throw networkErr;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -465,6 +607,28 @@ export class MapboxService {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private selectCanonicalMatching(matchings: any[]): any | null {
+    if (!matchings.length) return null;
+    if (matchings.length === 1) return matchings[0];
+
+    const selected = matchings.reduce((best, current) => {
+      const bestConfidence = best?.confidence ?? 0;
+      const currentConfidence = current?.confidence ?? 0;
+      if (currentConfidence > bestConfidence) return current;
+      if (currentConfidence === bestConfidence) {
+        const bestDistance = best?.distance ?? 0;
+        const currentDistance = current?.distance ?? 0;
+        return currentDistance > bestDistance ? current : best;
+      }
+      return best;
+    }, matchings[0]);
+
+    this.logger.debug(
+      `Mapbox returned ${matchings.length} matchings; selected confidence=${selected?.confidence ?? 0}`,
+    );
+    return selected;
+  }
 
   private inferRoadClassFromSpeed(avgSpeed: number | null, speedLimit: number | null): string {
     const ref = speedLimit ?? avgSpeed;

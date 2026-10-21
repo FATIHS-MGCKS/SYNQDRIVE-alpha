@@ -4,7 +4,7 @@
  * (never labelled "actual usage"), the PARTIAL limitation, and the unknown
  * blocked/downtime history. Telemetry is not shown as downtime.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type { EvaluationsUtilizationSection } from '../../lib/evaluations/evaluations-canonical.types';
 import { EvaluationsSectionShell } from './EvaluationsSectionShell';

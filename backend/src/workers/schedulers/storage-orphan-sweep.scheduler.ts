@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { join, basename } from 'path';
 import { readdir, stat, unlink } from 'fs/promises';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 /**
  * StorageOrphanSweepScheduler
@@ -28,11 +29,13 @@ export class StorageOrphanSweepScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   // Weekly, Sunday 04:00 — well after nightly retention/reclamation windows.
   @Cron('0 4 * * 0')
   async sweep(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('storage_orphan_sweep')) return;
     const enabled = this.config.get<boolean>('storage.orphanSweep.enabled', false);
     if (!enabled) return;
 

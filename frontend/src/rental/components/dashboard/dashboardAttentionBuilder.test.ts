@@ -115,7 +115,35 @@ describe('dashboardAttentionBuilder', () => {
     const issues = buildRuntimeOperationalIssues({
       locale: 'de',
       stationFilter: null,
-      fleetById: new Map([['v1', vehicle()]]),
+      fleetById: new Map([
+        [
+          'v1',
+          {
+            ...vehicle(),
+            connectivityRuntime: {
+              vehicleId: 'v1',
+              organizationId: 'org-1',
+              overallState: 'OFFLINE',
+              providerLinkState: 'ACTIVE',
+              telemetryState: 'offline',
+              physicalDeviceState: 'PLUGGED_CONFIRMED',
+              dataCoverageState: 'GOOD',
+              attentionState: 'CRITICAL',
+              reasonCodes: ['TELEMETRY_STALE'],
+              recommendedAction: 'CHECK_DEVICE',
+              requiresAction: true,
+              lastTelemetryAt: '2026-06-25T12:00:00.000Z',
+              lastProviderObservedAt: '2026-06-25T12:00:00.000Z',
+              lastReceivedAt: '2026-06-25T12:00:00.000Z',
+              deviceBindingId: null,
+              activeEpisodeId: 'ep-offline',
+              evidence: {},
+              calculatedAt: '2026-06-25T12:00:00.000Z',
+              stateVersion: 1,
+            },
+          },
+        ],
+      ]),
       insights: [insight()],
       vehicleHealthAlerts: [
         {

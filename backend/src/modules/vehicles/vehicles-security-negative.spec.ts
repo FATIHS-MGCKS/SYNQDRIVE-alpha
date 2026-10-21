@@ -204,6 +204,7 @@ describe('Vehicles — security negative tests', () => {
         stub(),
         stub(),
         stub(),
+        stub(),
         new FleetMapCacheService({ del: jest.fn() } as never),
       );
 
@@ -242,6 +243,7 @@ describe('Vehicles — security negative tests', () => {
         stub(),
         dataAuthorizations,
         dataAuthEnforcement,
+        stub(),
         stub(),
         stub(),
         stub(),
@@ -295,6 +297,7 @@ describe('Vehicles — security negative tests', () => {
         stub(),
         stub(),
         stub(),
+        stub(),
         new FleetMapCacheService({ del: jest.fn() } as never),
       );
 
@@ -328,6 +331,8 @@ describe('Vehicles — security negative tests', () => {
           booking: { findMany: jest.fn().mockResolvedValue([]) },
         }),
         redis,
+        stub(),
+        stub(),
         stub(),
         stub(),
         stub(),
@@ -416,6 +421,7 @@ describe('Vehicles — security negative tests', () => {
         stub(),
         stub(),
         stub(),
+        stub(),
         new FleetMapCacheService({ del: jest.fn() } as never),
       );
 
@@ -491,6 +497,7 @@ describe('Vehicles — security negative tests', () => {
         stub(),
         dataAuthorizations,
         dataAuthEnforcement,
+        stub(),
         stub(),
         stub(),
         stub(),

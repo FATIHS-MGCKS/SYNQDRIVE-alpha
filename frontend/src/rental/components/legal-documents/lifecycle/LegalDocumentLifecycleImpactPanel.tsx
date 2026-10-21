@@ -5,7 +5,7 @@ import {
   formatLegalDocumentTypeLabel,
 } from '../../../lib/legal-document-lifecycle.utils';
 import { LEGAL_LIFECYCLE_ACTION_CONFIG } from '../../../lib/legal-document-lifecycle.constants';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 
 interface Props {
   action: LegalDocumentLifecycleAction;

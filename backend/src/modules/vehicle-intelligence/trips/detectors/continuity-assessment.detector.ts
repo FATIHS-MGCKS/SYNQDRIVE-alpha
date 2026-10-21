@@ -27,7 +27,7 @@ export class ContinuityAssessmentDetector implements TripDetector {
         verdict: 'NOT_TRIGGERED',
         confidence: 'LOW',
         evidence: {
-          verdict: 'POSSIBLE_END',
+          continuityVerdict: 'POSSIBLE_END',
           reason: 'no_core_data_points',
         },
         timestamp: new Date(),
@@ -35,7 +35,12 @@ export class ContinuityAssessmentDetector implements TripDetector {
     }
 
     const perfActive = evaluatePerformanceActivity(performanceReadings ?? []);
-    const assessment = assessActiveContinuity(coreDataPoints, perfActive, profile);
+    const assessment = assessActiveContinuity(
+      coreDataPoints,
+      perfActive,
+      profile,
+      ctx.resumeAfterStopAt ?? null,
+    );
 
     // Translate continuity verdict to detector finding
     // TRIGGERED = trip is active/idle (keep open)

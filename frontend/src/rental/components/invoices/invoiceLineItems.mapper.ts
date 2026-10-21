@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { formatAmount } from './invoiceFormatters';
 import type { InvoiceLineItemView, InvoiceLineItemsPanel, InvoiceTaxBreakdownRow } from './invoiceLineItemTypes';
 import type { Invoice, InvoiceLineItem } from './invoiceTypes';

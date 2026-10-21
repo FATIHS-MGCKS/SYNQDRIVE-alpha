@@ -6,17 +6,20 @@ describe('data-summary.query', () => {
     expect(query).toContain('dataSummary(tokenId: 186946)');
     expect(query).toContain('eventDataSummary');
     expect(query).toContain('numberOfEvents');
+    expect(query).toContain('firstSeen');
+    expect(query).not.toContain('firstSignalSeen');
   });
 
   it('parses GraphQL data payload', () => {
     const parsed = parseDataSummaryResponse({
       dataSummary: {
         numberOfSignals: 42,
-        lastSignalSeen: '2026-07-16T10:00:00.000Z',
+        lastSeen: '2026-07-16T10:00:00.000Z',
         eventDataSummary: [{ name: 'behavior.harshAcceleration', numberOfEvents: 3 }],
       },
     });
     expect(parsed?.numberOfSignals).toBe(42);
+    expect(parsed?.lastSignalSeen).toBe('2026-07-16T10:00:00.000Z');
     expect(parsed?.eventDataSummary?.[0]?.name).toBe('behavior.harshAcceleration');
   });
 

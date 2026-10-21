@@ -1,0 +1,268 @@
+[
+  {
+    "acquisitionOrdinal": 247,
+    "providerTimestamp": "2026-09-04T03:37:44.122Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": -1.878,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 254,
+    "providerTimestamp": "2026-09-04T03:37:48.647Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 2.647,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 256,
+    "providerTimestamp": "2026-09-04T03:37:49.647Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 3.647,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 263,
+    "providerTimestamp": "2026-09-04T03:37:51.293Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 5.293,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 265,
+    "providerTimestamp": "2026-09-04T03:37:52.293Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 6.293,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 272,
+    "providerTimestamp": "2026-09-04T03:37:58.416Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 12.416,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 279,
+    "providerTimestamp": "2026-09-04T03:38:05.110Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 19.11,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 286,
+    "providerTimestamp": "2026-09-04T03:38:09.904Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 23.904,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 288,
+    "providerTimestamp": "2026-09-04T03:38:11.904Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 25.904,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 319,
+    "providerTimestamp": "2026-09-04T03:38:15.723Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 29.723,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 337,
+    "providerTimestamp": "2026-09-04T03:38:34.640Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 48.64,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 352,
+    "providerTimestamp": "2026-09-04T03:38:44.395Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 58.395,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 411,
+    "providerTimestamp": "2026-09-04T03:39:19.966Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 93.966,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 450,
+    "providerTimestamp": "2026-09-04T03:39:30.620Z",
+    "speedKmh": 24,
+    "videoRelativeSecondsProvisional": 104.62,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 455,
+    "providerTimestamp": "2026-09-04T03:39:32.620Z",
+    "speedKmh": 17,
+    "videoRelativeSecondsProvisional": 106.62,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 465,
+    "providerTimestamp": "2026-09-04T03:39:37.352Z",
+    "speedKmh": 20,
+    "videoRelativeSecondsProvisional": 111.352,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 475,
+    "providerTimestamp": "2026-09-04T03:39:43.937Z",
+    "speedKmh": 13,
+    "videoRelativeSecondsProvisional": 117.937,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 480,
+    "providerTimestamp": "2026-09-04T03:39:44.937Z",
+    "speedKmh": 5,
+    "videoRelativeSecondsProvisional": 118.937,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 485,
+    "providerTimestamp": "2026-09-04T03:39:45.937Z",
+    "speedKmh": 5,
+    "videoRelativeSecondsProvisional": 119.937,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 495,
+    "providerTimestamp": "2026-09-04T03:39:47.625Z",
+    "speedKmh": 21,
+    "videoRelativeSecondsProvisional": 121.625,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 593,
+    "providerTimestamp": "2026-09-04T03:40:39.908Z",
+    "speedKmh": 31,
+    "videoRelativeSecondsProvisional": 173.908,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 598,
+    "providerTimestamp": "2026-09-04T03:40:41.908Z",
+    "speedKmh": 11,
+    "videoRelativeSecondsProvisional": 175.908,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 613,
+    "providerTimestamp": "2026-09-04T03:40:54.884Z",
+    "speedKmh": 3,
+    "videoRelativeSecondsProvisional": 188.884,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 672,
+    "providerTimestamp": "2026-09-04T03:41:27.544Z",
+    "speedKmh": 21,
+    "videoRelativeSecondsProvisional": 221.544,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 736,
+    "providerTimestamp": "2026-09-04T03:42:09.311Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 263.311,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 780,
+    "providerTimestamp": "2026-09-04T03:42:27.018Z",
+    "speedKmh": 0,
+    "videoRelativeSecondsProvisional": 281.018,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 834,
+    "providerTimestamp": "2026-09-04T03:42:57.694Z",
+    "speedKmh": 44,
+    "videoRelativeSecondsProvisional": 311.694,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 849,
+    "providerTimestamp": "2026-09-04T03:43:06.682Z",
+    "speedKmh": 33,
+    "videoRelativeSecondsProvisional": 320.682,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 854,
+    "providerTimestamp": "2026-09-04T03:43:08.682Z",
+    "speedKmh": 30,
+    "videoRelativeSecondsProvisional": 322.682,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 859,
+    "providerTimestamp": "2026-09-04T03:43:09.682Z",
+    "speedKmh": 30,
+    "videoRelativeSecondsProvisional": 323.682,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 879,
+    "providerTimestamp": "2026-09-04T03:43:23.051Z",
+    "speedKmh": 31,
+    "videoRelativeSecondsProvisional": 337.051,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 918,
+    "providerTimestamp": "2026-09-04T03:43:34.723Z",
+    "speedKmh": 23,
+    "videoRelativeSecondsProvisional": 348.723,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 933,
+    "providerTimestamp": "2026-09-04T03:43:48.205Z",
+    "speedKmh": 15,
+    "videoRelativeSecondsProvisional": 362.205,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 938,
+    "providerTimestamp": "2026-09-04T03:43:49.205Z",
+    "speedKmh": 11,
+    "videoRelativeSecondsProvisional": 363.205,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 943,
+    "providerTimestamp": "2026-09-04T03:43:50.205Z",
+    "speedKmh": 4,
+    "videoRelativeSecondsProvisional": 364.205,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 953,
+    "providerTimestamp": "2026-09-04T03:43:51.898Z",
+    "speedKmh": 9,
+    "videoRelativeSecondsProvisional": 365.898,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 958,
+    "providerTimestamp": "2026-09-04T03:43:52.898Z",
+    "speedKmh": 8,
+    "videoRelativeSecondsProvisional": 366.898,
+    "flags": []
+  },
+  {
+    "acquisitionOrdinal": 963,
+    "providerTimestamp": "2026-09-04T03:43:53.898Z",
+    "speedKmh": 5,
+    "videoRelativeSecondsProvisional": 367.898,
+    "flags": []
+  }
+]

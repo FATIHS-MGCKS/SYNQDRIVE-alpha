@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DimoSegmentsService,
@@ -7,7 +7,6 @@ import {
   TemperatureReading,
 } from '../../dimo/dimo-segments.service';
 import { MapboxService } from './mapbox.service';
-import { ROUTE_MAP_MATCHER, RouteMapMatcher } from './route-map-matcher.port';
 import {
   assertTripInOrganization,
   assertVehicleInOrganization,
@@ -15,6 +14,18 @@ import {
   scopedVehicleTripWhere,
 } from '../tenant/vehicle-intelligence-tenant.scope';
 import { resolveEnrichmentDistanceKm } from './trip-distance.helpers';
+import {
+  TripRouteArtifactMaterializerService,
+  TripRouteCanonicalReadService,
+  selectWaypointsForPersistence,
+  type CanonicalTripRouteResponse,
+  type TripRouteWaypointFidelity,
+} from './route-artifact';
+import {
+  DrivingIntelligenceJobRetryableError,
+  DRIVING_INTELLIGENCE_JOB_ERROR_CODES,
+} from '../driving-intelligence-jobs/driving-intelligence-jobs.errors';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -58,9 +69,9 @@ export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
-    @Inject(ROUTE_MAP_MATCHER)
-    private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
+    private readonly routeArtifactMaterializer: TripRouteArtifactMaterializerService,
+    private readonly routeCanonicalRead: TripRouteCanonicalReadService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -117,7 +128,7 @@ export class TripsService {
     organizationId: string,
     vehicleId: string,
     tripId: string,
-  ): Promise<RoutePoint[]> {
+  ): Promise<CanonicalTripRouteResponse> {
     await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
     const { vehicleId: scopedVehicleId } = await assertTripInOrganization(
       this.prisma,
@@ -125,31 +136,52 @@ export class TripsService {
       tripId,
     );
     if (scopedVehicleId !== vehicleId) {
-      return [];
+      return this.emptyCanonicalRouteResponse(tripId, vehicleId);
     }
 
-    const trip = await this.prisma.vehicleTrip.findFirst({
-      where: { id: tripId, vehicle: { organizationId } },
-    });
-    if (!trip) return [];
-
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: vehicleId, organizationId },
-      include: { dimoVehicle: true },
-    });
-    const tokenId = vehicle?.dimoVehicle?.tokenId;
-    if (!tokenId) return this.getStoredWaypoints(tripId);
-
-    const endTime = trip.endTime ?? new Date();
-    const points = await this.segments.fetchRouteEnrichment(
-      tokenId,
-      trip.startTime,
-      endTime,
+    return this.routeCanonicalRead.getCanonicalRouteForTrip(
+      organizationId,
+      vehicleId,
+      tripId,
     );
-    if (points.length > 0) {
-      await this.storeWaypoints(tripId, points);
-    }
-    return points.length > 0 ? points : this.getStoredWaypoints(tripId);
+  }
+
+  private emptyCanonicalRouteResponse(
+    tripId: string,
+    vehicleId: string,
+  ): CanonicalTripRouteResponse {
+    return {
+      tripId,
+      vehicleId,
+      routeQuality: null,
+      geometry: null,
+      source: {
+        provider: null,
+        algorithmVersion: null,
+        processedAt: null,
+      },
+      quality: {
+        matchConfidence: null,
+        matchCoverage: null,
+      },
+      counts: {
+        sourcePointCount: 0,
+        filteredPointCount: 0,
+        matchedPointCount: null,
+      },
+      continuity: {
+        status: 'INSUFFICIENT_DATA',
+        hasUnknownGaps: false,
+        gapCount: 0,
+      },
+      status: {
+        processingState: 'UNAVAILABLE',
+        ready: false,
+        retryableFailure: false,
+        failureReason: 'TRIP_VEHICLE_MISMATCH',
+      },
+      speedPoints: [],
+    };
   }
 
   async getStats(organizationId: string, vehicleId: string) {
@@ -263,31 +295,46 @@ export class TripsService {
     if (!tokenId) return null;
 
     const endTime = trip.endTime ?? new Date();
+    const providerContext = buildDimoProviderRequestContext(tokenId, {
+      organizationId,
+      vehicleId,
+    });
 
     const [routePoints, tempReadings, perfReadings] = await Promise.all([
-      this.segments.fetchRouteEnrichment(tokenId, trip.startTime, endTime),
+      this.segments.fetchRouteEnrichment(
+        tokenId,
+        trip.startTime,
+        endTime,
+        providerContext,
+      ),
       this.segments.fetchEnvironmentTemperature(
         tokenId,
         trip.startTime,
         endTime,
+        providerContext,
       ),
-      this.segments.fetchPerformance(tokenId, trip.startTime, endTime),
+      this.segments.fetchPerformance(
+        tokenId,
+        trip.startTime,
+        endTime,
+        providerContext,
+      ),
     ]);
 
+    // Route V2 R2: persist canonical measured waypoints first (durable RAW authority),
+    // then materialize artifact. Retryable artifact failures propagate to DRIVING_ROUTE_ENRICH.
     if (routePoints.length > 0) {
-      await this.storeWaypoints(tripId, routePoints);
+      await this.storeWaypoints(tripId, routePoints, { fidelity: 'canonical' });
     }
 
-    const matchResult =
-      routePoints.length >= 2
-        ? await this.routeMapMatcher.matchRoute(
-            routePoints.map((p) => ({
-              longitude: p.longitude,
-              latitude: p.latitude,
-              timestamp: p.timestamp,
-            })),
-          )
-        : null;
+    const artifactOutcome = await this.materializeRouteArtifact(
+      organizationId,
+      vehicleId,
+      tripId,
+      routePoints,
+    );
+
+    const matchResult = artifactOutcome?.matchResult ?? null;
 
     const roadDist = matchResult
       ? this.mapbox.deriveRoadTypeDistribution(
@@ -477,19 +524,51 @@ export class TripsService {
   }
 
   // ────────────────────────────────────────────────────────
+  // ROUTE V2 ARTIFACT (R2)
+  // ────────────────────────────────────────────────────────
+
+  private async materializeRouteArtifact(
+    organizationId: string,
+    vehicleId: string,
+    tripId: string,
+    routePoints: RoutePoint[],
+  ): Promise<{ matchResult: import('./mapbox.service').MapMatchResult | null } | null> {
+    const outcome = await this.routeArtifactMaterializer.materializeFromMeasuredRoute({
+      organizationId,
+      vehicleId,
+      tripId,
+      points: routePoints.map((p) => ({
+        latitude: p.latitude,
+        longitude: p.longitude,
+        recordedAt: p.timestamp,
+      })),
+    });
+    if (!outcome.ok) {
+      if (outcome.retryable) {
+        throw new DrivingIntelligenceJobRetryableError(
+          DRIVING_INTELLIGENCE_JOB_ERROR_CODES.HANDLER_TRANSIENT,
+          `Route artifact materialization failed trip=${tripId}: ${outcome.error}`,
+        );
+      }
+      this.logger.error(
+        `Route V2 artifact permanent failure trip=${tripId}: ${outcome.error}`,
+      );
+      return null;
+    }
+    return { matchResult: outcome.matchResult };
+  }
+
+  // ────────────────────────────────────────────────────────
   // WAYPOINT STORAGE
   // ────────────────────────────────────────────────────────
 
   private async storeWaypoints(
     tripId: string,
     points: RoutePoint[],
+    options?: { fidelity?: TripRouteWaypointFidelity },
   ): Promise<void> {
-    const sampled =
-      points.length > 500
-        ? points.filter(
-            (_, i) => i % Math.ceil(points.length / 500) === 0,
-          )
-        : points;
+    const fidelity = options?.fidelity ?? 'bounded';
+    const sampled = selectWaypointsForPersistence(points, fidelity);
 
     await this.prisma.vehicleTripWaypoint.deleteMany({
       where: { tripId },

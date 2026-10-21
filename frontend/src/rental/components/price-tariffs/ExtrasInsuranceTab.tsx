@@ -7,7 +7,7 @@ import {
   getActiveVersion,
   getDraftVersion,
 } from '../../pricing/pricingUtils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../../components/ui/button';
 
 interface ExtrasInsuranceTabProps {

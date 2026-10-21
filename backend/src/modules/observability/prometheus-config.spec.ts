@@ -5,6 +5,8 @@ import { TireMetricsService } from '@modules/vehicle-intelligence/tires/tire-met
 import { BrakeMetricsService } from '@modules/vehicle-intelligence/brakes/brake-metrics.service';
 import { FleetHealthMetricsService } from '@modules/fleet-health-observability/fleet-health-metrics.service';
 import { EvaluationsMetricsService } from '@modules/evaluations-observability/evaluations-metrics.service';
+import { PhysicalRefuelReconciliationMetricsService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-metrics.service';
+import { RawFuelRefuelFallbackMetricsService } from '@modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service';
 
 const FORBIDDEN_LABELS = [
   'vehicle_id',
@@ -29,6 +31,8 @@ describe('TripMetricsService label cardinality', () => {
     new BrakeMetricsService(metrics);
     new FleetHealthMetricsService(metrics);
     new EvaluationsMetricsService(metrics);
+    new PhysicalRefuelReconciliationMetricsService(metrics);
+    new RawFuelRefuelFallbackMetricsService(metrics);
   });
 
   it('does not register forbidden high-cardinality labels', async () => {
@@ -61,6 +65,9 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_battery_provider_observation_total');
     expect(text).toContain('synqdrive_battery_jobs_total');
     expect(text).toContain('synqdrive_battery_publications_total');
+    expect(text).toContain('synqdrive_battery_rest_session_feature_trigger_total');
+    expect(text).toContain('synqdrive_battery_rest_session_feature_trigger_duration_seconds');
+    expect(text).toContain('synqdrive_battery_rest_session_feature_row_created_total');
     expect(text).toContain('synqdrive_battery_capability_signals_total');
     expect(text).toContain('synqdrive_hv_capacity_method_conflict_total');
     expect(text).toContain('synqdrive_battery_postgres_table_rows');
@@ -103,11 +110,23 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_evaluations_db_query_duration_seconds');
     expect(text).toContain('synqdrive_evaluations_forecast_total');
     expect(text).toContain('synqdrive_dependency_up');
+    expect(text).toContain('synqdrive_physical_refuel_recovery_backlog');
+    expect(text).toContain('synqdrive_physical_refuel_recovery_enabled');
+    expect(text).toContain('synqdrive_physical_refuel_recovery_runs_total');
+    expect(text).toContain('synqdrive_physical_refuel_recovery_last_success_unixtime');
   });
 });
 
 describe('Prometheus infra alert rules', () => {
   const root = join(__dirname, '../../../monitoring/prometheus');
+
+  it('alerts-di-s4.yml defines DI S4 shadow operational alerts', () => {
+    const yaml = readFileSync(join(root, 'alerts-di-s4.yml'), 'utf8');
+    expect(yaml).toContain('DiV0S4AllowlistTenantViolation');
+    expect(yaml).toContain('synqdrive_di_v0_s4_activity_signal');
+    expect(yaml).toContain('component: driving_intelligence_s4');
+    expect(yaml).not.toContain('vehicle_id');
+  });
 
   it('alerts-infra.yml defines platform and host alerts', () => {
     const yaml = readFileSync(join(root, 'alerts-infra.yml'), 'utf8');
@@ -126,6 +145,7 @@ describe('Prometheus infra alert rules', () => {
     expect(yaml).toContain('alertmanagers');
     expect(yaml).toContain('127.0.0.1:9093');
     expect(yaml).toContain('alerts-infra.yml');
+    expect(yaml).toContain('alerts-di-s4.yml');
     expect(yaml).toContain('job_name: node');
     expect(yaml).toContain('blackbox-ssl');
   });
@@ -184,6 +204,22 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('FleetHealthBlockingCasesBacklogHigh');
     expect(yaml).toContain('EvaluationsInsightsRunFailureRateHigh');
     expect(yaml).toContain('synqdrive_evaluations_insights_runs_total');
+    expect(yaml).toContain('PhysicalRefuelOrphanBacklogPersistent');
+    expect(yaml).toContain('PhysicalRefuelLostEnqueueBacklogPersistent');
+    expect(yaml).toContain('PhysicalRefuelStaleEnrichmentBacklogPersistent');
+    expect(yaml).toContain('PhysicalRefuelRecoverySchedulerStale');
+    expect(yaml).toContain('PhysicalRefuelRecoveryFailuresElevated');
+    expect(yaml).toContain('synqdrive_physical_refuel_recovery_backlog{reason="orphan_refuel"}');
+    expect(yaml).toContain('min(synqdrive_physical_refuel_recovery_enabled) == 1');
+    expect(yaml).toContain('max(synqdrive_physical_refuel_recovery_last_success_unixtime)');
+    expect(yaml).toContain('max(synqdrive_physical_refuel_recovery_last_success_unixtime) == 0');
+    expect(yaml).not.toMatch(/synqdrive_physical_refuel_recovery_last_success_unixtime > 0/);
+    expect(yaml).toContain('for: 5m');
+    expect(yaml).toContain('synqdrive_physical_refuel_recovery_runs_total{result="failure"}');
+    expect(yaml).not.toContain('vehicle_id');
+    expect(yaml).not.toContain('vehicleId');
+    expect(yaml).not.toContain('organization_id');
+    expect(yaml).not.toContain('energyEventId');
     expect(yaml).toContain('owner: evaluations');
     expect(yaml).toContain('owner: fleet-health-service');
     expect(yaml).toContain('runbook_url:');

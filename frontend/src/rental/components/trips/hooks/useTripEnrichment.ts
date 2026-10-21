@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { api } from '../../../../lib/api';
 import type { TripEnrichment } from '../../../../lib/api';
 import type { TripData } from '../trips.types';
 
+/**
+ * Manual trip enrichment hook.
+ * Route production is handled server-side via DRIVING_ROUTE_ENRICH — do not auto-call on selection.
+ */
 export function useTripEnrichment(vehicleId?: string, onTripsReload?: () => void) {
   const [enrichments, setEnrichments] = useState<Record<string, TripEnrichment>>({});
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
@@ -26,17 +30,4 @@ export function useTripEnrichment(vehicleId?: string, onTripsReload?: () => void
   );
 
   return { enrichments, enrichingId, enrichTrip };
-}
-
-export function useAutoTripEnrichment(
-  selectedTrip: TripData | null,
-  enrichments: Record<string, TripEnrichment>,
-  enrichingId: string | null,
-  enrichTrip: (trip: TripData) => void,
-) {
-  useEffect(() => {
-    if (!selectedTrip || enrichingId) return;
-    if (selectedTrip.enrichedAt || enrichments[selectedTrip.id]) return;
-    enrichTrip(selectedTrip);
-  }, [selectedTrip?.id]);
 }

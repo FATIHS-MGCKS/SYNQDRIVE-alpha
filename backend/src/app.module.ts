@@ -10,7 +10,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, taskAutomationWorkflowRuntimeConfig, workflowShadowConfig, workflowRuntimeRolloutConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, fuelStationEnrichmentConfig, chargingStationEnrichmentConfig, physicalRefuelReconciliationConfig, rawFuelRefuelFallbackConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, taskAutomationWorkflowRuntimeConfig, workflowShadowConfig, workflowRuntimeRolloutConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, referenceCaptureConfig, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig, schedulerLeaderElectionConfig, reconciliationExecutionMutexConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { StripeEnvironmentModule } from '@shared/stripe/stripe-environment.module';
@@ -32,8 +32,11 @@ import { FleetHealthObservabilityModule } from '@modules/fleet-health-observabil
 import { VehicleDetailObservabilityModule } from '@modules/vehicles/observability/vehicle-detail-observability.module';
 import { IamObservabilityModule } from '@modules/iam-observability/iam-observability.module';
 import { EvaluationsObservabilityModule } from '@modules/evaluations-observability/evaluations-observability.module';
+import { EnergyEventsObservabilityModule } from '@modules/energy-events-observability/energy-events-observability.module';
 import { EvaluationsApiObservabilityInterceptor } from '@modules/evaluations-observability/evaluations-api.interceptor';
 import { DimoModule } from '@modules/dimo/dimo.module';
+import { VehicleOnboardingModule } from '@modules/vehicle-onboarding/vehicle-onboarding.module';
+import { PhysicalDeviceInventoryModule } from '@modules/physical-device-inventory/physical-device-inventory.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { BillingModule } from '@modules/billing/billing.module';
@@ -81,6 +84,8 @@ import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.modu
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { WorkersModule } from '@workers/workers.module';
+import { SchedulerLeaderElectionModule } from '@shared/scheduler-leader/scheduler-leader-election.module';
+import { ReconciliationExecutionMutexModule } from '@shared/reconciliation-execution-mutex/reconciliation-execution-mutex.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { AccountModule } from '@modules/account/account.module';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
@@ -161,7 +166,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, taskAutomationWorkflowRuntimeConfig, workflowShadowConfig, workflowRuntimeRolloutConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, fuelStationEnrichmentConfig, chargingStationEnrichmentConfig, physicalRefuelReconciliationConfig, rawFuelRefuelFallbackConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, taskAutomationWorkflowRuntimeConfig, workflowShadowConfig, workflowRuntimeRolloutConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, referenceCaptureConfig, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig, schedulerLeaderElectionConfig, reconciliationExecutionMutexConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)
@@ -226,12 +231,17 @@ export class AppModule {
         VehiclesModule,
         ClickHouseModule,
         ObservabilityModule,
+        SchedulerLeaderElectionModule,
+        ReconciliationExecutionMutexModule,
         IamObservabilityModule,
         FleetHealthObservabilityModule,
         VehicleDetailObservabilityModule,
         EvaluationsObservabilityModule,
+        EnergyEventsObservabilityModule,
         VehicleIntelligenceModule,
         DimoModule,
+        VehicleOnboardingModule,
+        PhysicalDeviceInventoryModule,
         AiModule,
         IntegrationsModule,
         BillingModule,

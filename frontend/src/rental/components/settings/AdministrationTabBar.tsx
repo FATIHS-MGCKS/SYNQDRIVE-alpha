@@ -6,8 +6,8 @@ import {
 } from '../../../components/patterns/chrome-tab-bar';
 import { useRentalOrg } from '../../RentalContext';
 import { useRovingTablist } from '../../../hooks/useRovingTablist';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   ADMIN_TAB_ID,
   ADMIN_TAB_PANEL_ID,

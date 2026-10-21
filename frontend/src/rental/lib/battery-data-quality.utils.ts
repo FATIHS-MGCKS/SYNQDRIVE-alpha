@@ -1,5 +1,5 @@
 import type { BatteryDataQualityStatus } from './battery-data-quality';
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export type BatteryTranslate = (key: TranslationKey) => string;
 

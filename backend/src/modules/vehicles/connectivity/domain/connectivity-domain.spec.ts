@@ -12,6 +12,7 @@ import {
   ProviderLinkState,
   type VehicleConnectivityRuntimeState,
 } from './connectivity-domain.types';
+import { classifyConnectivityDiagnostic } from './connectivity-diagnostic-state';
 import {
   OVERALL_CONNECTIVITY_STATE_PRIORITY,
   overallConnectivityPriority,
@@ -27,7 +28,9 @@ import {
 function baseRuntimeState(
   overrides: Partial<VehicleConnectivityRuntimeState> = {},
 ): VehicleConnectivityRuntimeState {
-  return {
+  const state: Omit<VehicleConnectivityRuntimeState, 'diagnostic'> & {
+    diagnostic?: VehicleConnectivityRuntimeState['diagnostic'];
+  } = {
     vehicleId: 'veh-domain-1',
     organizationId: 'org-domain-1',
     providerLinkState: 'ACTIVE',
@@ -51,6 +54,19 @@ function baseRuntimeState(
     calculatedAt: '2026-07-18T12:00:02.000Z',
     stateVersion: CONNECTIVITY_RUNTIME_STATE_VERSION,
     ...overrides,
+  };
+
+  return {
+    ...state,
+    diagnostic:
+      state.diagnostic ??
+      classifyConnectivityDiagnostic({
+        providerLinkState: state.providerLinkState,
+        telemetryState: state.telemetryState,
+        lastObservationAt: state.lastTelemetryAt,
+        lastProviderFetchAt: state.lastReceivedAt,
+        nowMs: Date.parse(state.calculatedAt),
+      }),
   };
 }
 
@@ -96,9 +112,10 @@ describe('connectivity domain types', () => {
         'LINK_ACTIVE',
         'STATE_CONFLICT',
         'MANUAL_REVIEW_REQUIRED',
+        'DEVICE_CHECK_REQUIRED',
       ]),
     );
-    expect(CONNECTIVITY_REASON_CODES).toHaveLength(22);
+    expect(CONNECTIVITY_REASON_CODES).toHaveLength(23);
   });
 
   it('stores machine codes only — no user-facing label fields on runtime state', () => {

@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # PostGIS parity with production (OSM fuel-station dataset dev/tests).
+    image: postgis/postgis:16-3.4-alpine
     container_name: synqdrive-postgres
     logging: &docker_log_limits
       driver: json-file
@@ -63,6 +64,7 @@ services:
       - ./docker/clickhouse/config.d/01_logger.xml:/etc/clickhouse-server/config.d/01_logger.xml:ro
       - ./docker/clickhouse/config.d/z_system_logs.xml:/etc/clickhouse-server/config.d/z_system_logs.xml:ro
       - ./docker/clickhouse/config.d/z_async_insert.xml:/etc/clickhouse-server/config.d/z_async_insert.xml:ro
+      - ./docker/clickhouse/config.d/z_memory_budget.xml:/etc/clickhouse-server/config.d/z_memory_budget.xml:ro
       - ./docker/clickhouse/users.d/z_log_profiles.xml:/etc/clickhouse-server/users.d/z_log_profiles.xml:ro
     healthcheck:
       test:
@@ -87,6 +89,7 @@ services:
       - ./monitoring/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - ./monitoring/prometheus/alerts-infra.yml:/etc/prometheus/alerts-infra.yml:ro
+      - ./monitoring/prometheus/alerts-di-s4.yml:/etc/prometheus/alerts-di-s4.yml:ro
       - ./monitoring/prometheus/secrets:/etc/prometheus/secrets:ro
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'

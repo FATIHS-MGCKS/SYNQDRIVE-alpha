@@ -1,0 +1,188 @@
+# DIMO Integration Knowledge Graph — Schema
+
+version: "1.1"
+description: >
+  Schema for DIMO Integration living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - data
+  - index
+  - pipeline
+  - orchestrator
+  - query
+  - resolver
+  - score
+  - ambiguity
+  - confidence
+  - dedupe
+  - event
+  - state
+  - policy
+  - queue
+  - worker
+  - recovery
+  - authority
+  - persist
+  - api
+  - dto
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+  - CALIBRATION_RUN
+
+# Node evidence: arrays may reference only these types (see validate-graph.mjs)
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - upstream_of
+  - downstream_of
+  - queries
+  - scores
+  - dedupes
+  - decides
+  - invokes
+  - uses
+  - input_to
+  - returns_to
+  - persists
+  - enqueues
+  - processes
+  - recovers
+  - governs
+  - projects_to
+  - presents
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - protected_by
+  - does_not_solve
+  - gates
+  - validates
+  - derives_from
+  - enables
+
+relation_semantics_doc: architecture/dimo-integration/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: DIM-DOM-
+  data: DIM-DATA-
+  index: DIM-IDX-
+  pipeline: DIM-PIPE-
+  orchestrator: DIM-ORCH-
+  query: DIM-QUERY-
+  resolver: DIM-RES-
+  score: DIM-SCORE-
+  ambiguity: DIM-AMB-
+  confidence: DIM-CONF-
+  dedupe: DIM-DEDUPE-
+  event: DIM-EVT-
+  state: DIM-STATE-
+  policy: DIM-POL-
+  queue: DIM-QUEUE-
+  worker: DIM-WORK-
+  recovery: DIM-REC-
+  authority: DIM-AUTH-
+  persist: DIM-PERSIST-
+  api: DIM-API-
+  dto: DIM-DTO-
+  consumer: DIM-CONS-
+  decision: DIM-DEC-
+  evidence: DIM-EVID-
+  test_evidence: DIM-TEST-
+  hypothesis: DIM-HYP-
+  invariant: DIM-INV-
+  gap: DIM-GAP-
+  contradiction: DIM-CX-
+  failed_approach: DIM-FAIL-
+  rejected_approach: DIM-REJECT-
+  superseded_approach: DIM-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - source_locator
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - superseded_by
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes

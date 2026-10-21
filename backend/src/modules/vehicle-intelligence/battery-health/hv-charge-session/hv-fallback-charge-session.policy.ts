@@ -52,8 +52,12 @@ function sortObservations(
   );
 }
 
-function isTruthyBoolean(value: boolean | null | undefined): value is true {
+function isAuthoritativeTrue(value: boolean | null | undefined): value is true {
   return value === true;
+}
+
+function isAuthoritativeFalse(value: boolean | null | undefined): value is false {
+  return value === false;
 }
 
 function socDelta(start: number, end: number): number {
@@ -75,8 +79,8 @@ function detectStartTier(
 ): { tier: HvFallbackDetectionTier; corroborating: HvFallbackDetectionTier[] } | null {
   const corroborating: HvFallbackDetectionTier[] = [];
 
-  if (!prev.isCharging && current.isCharging) {
-    if (isTruthyBoolean(current.cableConnected)) {
+  if (isAuthoritativeFalse(prev.isCharging) && isAuthoritativeTrue(current.isCharging)) {
+    if (isAuthoritativeTrue(current.cableConnected)) {
       corroborating.push(HV_FALLBACK_DETECTION_TIER.CABLE_CONNECTED);
     }
     if (addedEnergyProgress(prev.addedEnergyKwh, current.addedEnergyKwh) != null) {
@@ -99,7 +103,7 @@ function detectStartTier(
   if (
     prev.cableConnected !== true &&
     current.cableConnected === true &&
-    !current.isCharging
+    !isAuthoritativeTrue(current.isCharging)
   ) {
     if (addedEnergyProgress(prev.addedEnergyKwh, current.addedEnergyKwh) != null) {
       corroborating.push(HV_FALLBACK_DETECTION_TIER.ADDED_ENERGY);
@@ -121,7 +125,7 @@ function detectStartTier(
 
   const energyDelta = addedEnergyProgress(prev.addedEnergyKwh, current.addedEnergyKwh);
   if (energyDelta != null && energyDelta >= 0.1) {
-    if (isTruthyBoolean(current.cableConnected)) {
+    if (isAuthoritativeTrue(current.cableConnected)) {
       corroborating.push(HV_FALLBACK_DETECTION_TIER.CABLE_CONNECTED);
     }
     if (socDelta(prev.socPercent, current.socPercent) >= 1) {
@@ -147,7 +151,7 @@ function collectCorroboration(
   current: HvFallbackChargeObservation,
   open: OpenFallbackSession,
 ): void {
-  if (!prev.isCharging && current.isCharging) {
+  if (isAuthoritativeFalse(prev.isCharging) && isAuthoritativeTrue(current.isCharging)) {
     open.corroboratingTiers.add(HV_FALLBACK_DETECTION_TIER.IS_CHARGING_FLANK);
   }
   if (prev.cableConnected !== true && current.cableConnected === true) {
@@ -212,9 +216,36 @@ function hasMinimumSignalGroups(
   ) {
     return true;
   }
+  return false;
+}
+
+function isImpossibleSoc(value: number): boolean {
+  return !Number.isFinite(value) || value < 0 || value > 100;
+}
+
+function rejectObservationPair(
+  prev: HvFallbackChargeObservation,
+  current: HvFallbackChargeObservation,
+): boolean {
+  if (isImpossibleSoc(prev.socPercent) || isImpossibleSoc(current.socPercent)) {
+    return true;
+  }
+  const gapMs = current.recordedAt.getTime() - prev.recordedAt.getTime();
+  if (gapMs < 0) return true;
   if (
-    tiers.has(HV_FALLBACK_DETECTION_TIER.SOC_RISE) &&
-    tiers.has(HV_FALLBACK_DETECTION_TIER.CHARGING_POWER)
+    isAuthoritativeTrue(current.isCharging) &&
+    prev.addedEnergyKwh != null &&
+    current.addedEnergyKwh != null &&
+    current.addedEnergyKwh + 0.05 < prev.addedEnergyKwh
+  ) {
+    return true;
+  }
+  if (
+    socDelta(prev.socPercent, current.socPercent) >= 8 &&
+    !isAuthoritativeTrue(current.isCharging) &&
+    !isAuthoritativeTrue(current.cableConnected) &&
+    addedEnergyProgress(prev.addedEnergyKwh, current.addedEnergyKwh) == null &&
+    (current.chargingPowerKw ?? 0) < HV_FALLBACK_MIN_CHARGING_POWER_KW
   ) {
     return true;
   }
@@ -312,6 +343,12 @@ export function detectFallbackChargeSessions(
     const prev = sorted[i - 1];
     const current = sorted[i];
 
+    if (rejectObservationPair(prev, current)) {
+      rejectedFalsePositives += 1;
+      open = null;
+      continue;
+    }
+
     if (!open) {
       const start = detectStartTier(prev, current);
       if (!start) continue;
@@ -348,10 +385,12 @@ export function detectFallbackChargeSessions(
     );
     collectCorroboration(prev, current, open);
 
-    const chargingStopped = prev.isCharging && !current.isCharging;
+    const chargingStopped =
+      isAuthoritativeTrue(prev.isCharging) && isAuthoritativeFalse(current.isCharging);
     const cableDisconnected =
       prev.cableConnected === true && current.cableConnected === false;
-    const chargingResumed = !prev.isCharging && current.isCharging;
+    const chargingResumed =
+      isAuthoritativeFalse(prev.isCharging) && isAuthoritativeTrue(current.isCharging);
 
     if (chargingStopped) {
       if (current.cableConnected === true) {
@@ -377,7 +416,7 @@ export function detectFallbackChargeSessions(
         if (
           pauseMs >= HV_FALLBACK_CHARGING_PAUSE_MS ||
           cableDisconnected ||
-          (!socStillRising && !energyStillRising && !current.isCharging)
+          (!socStillRising && !energyStillRising && !isAuthoritativeTrue(current.isCharging))
         ) {
           closeOpen(
             open.pauseStartedAt,
@@ -385,7 +424,7 @@ export function detectFallbackChargeSessions(
           );
         }
       }
-    } else if (cableDisconnected && !current.isCharging) {
+    } else if (cableDisconnected && !isAuthoritativeTrue(current.isCharging)) {
       closeOpen(current.recordedAt, 'CABLE_DISCONNECTED');
     }
   }
@@ -436,10 +475,12 @@ export function sessionsOverlap(
   aEnd: Date | null,
   bStart: Date,
   bEnd: Date | null,
+  evaluatedAt: Date,
   toleranceMs = 15 * 60 * 1000,
 ): boolean {
-  const aEndMs = (aEnd ?? new Date()).getTime() + toleranceMs;
-  const bEndMs = (bEnd ?? new Date()).getTime() + toleranceMs;
+  const openEndMs = evaluatedAt.getTime();
+  const aEndMs = (aEnd ?? new Date(openEndMs)).getTime() + toleranceMs;
+  const bEndMs = (bEnd ?? new Date(openEndMs)).getTime() + toleranceMs;
   const aStartMs = aStart.getTime() - toleranceMs;
   const bStartMs = bStart.getTime() - toleranceMs;
   return aStartMs <= bEndMs && bStartMs <= aEndMs;

@@ -15,6 +15,7 @@ import {
 import {
   buildLvEstimatedHealthAssessmentIdempotencyKey,
   computeLvEstimatedHealthAssessment,
+  LV_ASSESSMENT_IDEMPOTENCY_KEY_MAX_BYTES,
 } from './lv-estimated-health-assessment.policy';
 import type { LvAssessmentEvidenceCandidate } from './lv-evidence-selection.policy';
 
@@ -255,5 +256,40 @@ describe('lv-estimated-health-assessment.policy', () => {
     expect(key).toContain(VEHICLE_ID);
     expect(key).toContain('TELEMETRY');
     expect(key).toContain(`m${LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION}`);
+    expect(key).toContain(':fp');
+    expect(key.length).toBeLessThan(256);
+  });
+
+  it('bounds idempotency key size for large evidence fingerprints (Postgres 54000 guard)', () => {
+    const manyIds = Array.from({ length: 80 }, (_, index) =>
+      `aaaaaaaa-bbbb-cccc-dddd-${String(index).padStart(12, '0')}`,
+    ).join('|');
+    const fingerprint = `CANONICAL:TELEMETRY:${manyIds}`;
+    const key = buildLvEstimatedHealthAssessmentIdempotencyKey({
+      vehicleId: VEHICLE_ID,
+      assessmentTrack: 'TELEMETRY',
+      assessmentMode: 'CANONICAL',
+      evidenceFingerprint: fingerprint,
+    });
+    expect(fingerprint.length).toBeGreaterThan(2000);
+    expect(key.length).toBeLessThan(LV_ASSESSMENT_IDEMPOTENCY_KEY_MAX_BYTES);
+    expect(key).toMatch(/:fp[a-f0-9]{64}$/);
+  });
+
+  it('preserves canonical identity via stable digest of evidence fingerprint', () => {
+    const fingerprint = 'CANONICAL:TELEMETRY:meas-a|meas-b';
+    const keyA = buildLvEstimatedHealthAssessmentIdempotencyKey({
+      vehicleId: VEHICLE_ID,
+      assessmentTrack: 'TELEMETRY',
+      assessmentMode: 'CANONICAL',
+      evidenceFingerprint: fingerprint,
+    });
+    const keyB = buildLvEstimatedHealthAssessmentIdempotencyKey({
+      vehicleId: VEHICLE_ID,
+      assessmentTrack: 'TELEMETRY',
+      assessmentMode: 'CANONICAL',
+      evidenceFingerprint: fingerprint,
+    });
+    expect(keyA).toBe(keyB);
   });
 });

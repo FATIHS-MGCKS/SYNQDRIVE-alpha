@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
@@ -22,6 +23,14 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import {
+  LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+  legacyVehicleDeleteDisabledException,
+  legacyVehicleDestructionDisabledException,
+} from './legacy-vehicle-destruction.errors';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
@@ -65,6 +74,8 @@ function parseExteriorView(value: string): VehicleExteriorView {
 @Controller()
 @UseGuards(RolesGuard)
 export class VehiclesController {
+  private readonly logger = new Logger(VehiclesController.name);
+
   constructor(
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
@@ -127,6 +138,12 @@ export class VehiclesController {
     @Param('vehicleId') vehicleId: string,
     @Query('organizationId') organizationId: string,
   ) {
+    // Without an explicit org the Prisma filter would collapse to an unscoped
+    // vehicle lookup, so the diagnostic payload could describe a vehicle in an
+    // organization the caller never named.
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required');
+    }
     return this.vehiclesOperational.getDiagnostics(vehicleId, organizationId);
   }
 
@@ -460,15 +477,29 @@ export class VehiclesController {
   @UseGuards(OrgScopingGuard, PermissionsGuard)
   @RequirePermission('fleet', 'manage')
   async deleteByOrg(
-    @Param('orgId') orgId: string,
+    @Param('orgId') _orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.delete(vehicleId, orgId);
+    this.logger.warn({
+      msg: 'legacy_vehicle_delete_blocked',
+      code: LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+      route: 'organizations/:orgId/vehicles/:vehicleId',
+      vehicleId,
+    });
+    throw legacyVehicleDeleteDisabledException();
   }
 
   @Post('admin/vehicles/:vehicleId/deregister')
+  @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
   async deregisterVehicle(@Param('vehicleId') vehicleId: string) {
-    return this.vehiclesService.deregister(vehicleId);
+    this.logger.warn({
+      msg: 'legacy_vehicle_deregistration_blocked',
+      code: LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+      vehicleId,
+    });
+    throw legacyVehicleDestructionDisabledException();
   }
 
   // ── vehicles/:vehicleId (direct access) ───────────────────────────
@@ -503,12 +534,14 @@ export class VehiclesController {
 
   @Delete('vehicles/:vehicleId')
   @UseGuards(VehicleOwnershipGuard)
-  async delete(@Param('vehicleId') vehicleId: string, @Req() req: any) {
-    const orgId: string | undefined =
-      req?.user?.platformRole === 'MASTER_ADMIN'
-        ? undefined
-        : req?.user?.organizationId;
-    return this.vehiclesService.delete(vehicleId, orgId);
+  async delete(@Param('vehicleId') vehicleId: string, @Req() _req: any) {
+    this.logger.warn({
+      msg: 'legacy_vehicle_delete_blocked',
+      code: LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+      route: 'vehicles/:vehicleId',
+      vehicleId,
+    });
+    throw legacyVehicleDeleteDisabledException();
   }
 
   // ── Exterior Images (Damage Map) ─────────────────────────────────

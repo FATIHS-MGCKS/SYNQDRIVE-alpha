@@ -4,7 +4,7 @@ export type { TimelineLoadSource } from './useVehicleTrips';
 export { useTripRoute } from './useTripRoute';
 export { useTripBehaviorEvents } from './useTripBehaviorEvents';
 export { useTripDetail } from './useTripDetail';
-export { useTripEnrichment, useAutoTripEnrichment } from './useTripEnrichment';
+export { useTripEnrichment } from './useTripEnrichment';
 export { useTripMapbox } from './useTripMapbox';
 export { useTripsTab } from './useTripsTab';
 

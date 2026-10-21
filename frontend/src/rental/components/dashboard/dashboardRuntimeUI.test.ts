@@ -7,6 +7,7 @@ import { buildDashboardGroups, collectDrawerRowIds } from './dashboardDrilldownG
 import { readyToRentNotReadyRows, resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
+import { dashboardTestVehicle } from './runtime/dashboard-canonical-test-fixtures';
 import type { DashboardSliceId } from './runtime';
 
 const NOW = new Date('2026-06-24T10:00:00.000Z');
@@ -25,39 +26,11 @@ function hoursAgoIso(hours: number): string {
 }
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
-  return {
-    id: overrides.id ?? 'v1',
+  return dashboardTestVehicle({
     license: overrides.license ?? 'KS-FS 123',
-    make: overrides.make ?? 'VW',
-    model: overrides.model ?? 'Golf',
-    year: overrides.year ?? 2024,
-    station: overrides.station ?? 'Zentrale',
-    stationId: overrides.stationId ?? 'st-1',
-    fuelType: overrides.fuelType ?? 'Petrol',
-    status: overrides.status ?? 'Available',
-    cleaningStatus: overrides.cleaningStatus ?? 'Clean',
-    healthStatus: overrides.healthStatus ?? 'Good Health',
-    online: overrides.online ?? true,
     lastSignal: overrides.lastSignal ?? hoursAgoIso(1),
-    badge: overrides.badge ?? 0,
-    odometer: overrides.odometer ?? 10000,
-    fuel: overrides.fuel ?? 72,
-    battery: overrides.battery ?? 100,
-    speed: overrides.speed ?? 0,
-    coolant: overrides.coolant ?? 90,
-    brakes: overrides.brakes ?? 90,
-    tires: overrides.tires ?? 90,
-    engineOil: overrides.engineOil ?? 90,
-    isElectric: overrides.isElectric ?? false,
-    hvBatteryCapacityKwh: overrides.hvBatteryCapacityKwh ?? null,
-    isFresh: overrides.isFresh ?? false,
-    onlineStatus: overrides.onlineStatus ?? 'STANDBY',
-    leasingRate: overrides.leasingRate ?? '',
-    insuranceCost: overrides.insuranceCost ?? '',
-    taxCost: overrides.taxCost ?? '',
-    totalMonthlyCost: overrides.totalMonthlyCost ?? '',
     ...overrides,
-  };
+  });
 }
 
 const testDir = dirname(fileURLToPath(import.meta.url));
@@ -174,7 +147,8 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(shellSrc).not.toMatch(/lg:row-span-2/);
     expect(shellSrc).toMatch(/notificationsPanelScroll/);
     expect(shellSrc).not.toMatch(/notificationsDayPlanGrid:[\s\S]*lg:grid-cols-2/);
-    expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*sm:grid-cols-4/);
+    expect(shellSrc).toMatch(/operationsGrid:[\s\S]*grid-cols-2/);
+    expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*contents/);
     expect(shellSrc).toMatch(/lg:items-start/);
     expect(dashboardViewSrc).toMatch(/useDashboardLeftColumnHeight/);
     expect(dashboardViewSrc).toMatch(/leftColumnRef/);
@@ -185,7 +159,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(dashboardViewSrc).toMatch(/tasksSlot/);
     expect(dashboardViewSrc).toMatch(/layout="sidebar"/);
     expect(dashboardViewSrc).toMatch(/<DashboardContextHeader vm=\{vm\}/);
-    expect(dashboardViewSrc).toMatch(/<DashboardControlHeader>[\s\S]*<ControlKpiStrip/);
+    expect(dashboardViewSrc).toMatch(/operationsGrid[\s\S]*<ControlKpiStrip/);
     expect(dashboardViewSrc).toMatch(/controlFinanceGrid[\s\S]*<DashboardUtilizationPanel/);
     expect(dashboardViewSrc).toMatch(/<FinanceKpiStrip/);
     expect(dashboardViewSrc).not.toMatch(/controlKpiShell/);
@@ -198,7 +172,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(businessPulseSrc).toMatch(/hasOptionalBusinessMetrics/);
     expect(businessPulseSrc).not.toMatch(/financeKpiGrid/);
     expect(financeStripSrc).toMatch(/PRIMARY_BUSINESS_METRICS/);
-    expect(financeStripSrc).toMatch(/controlFinanceKpiGrid/);
+    expect(financeStripSrc).toMatch(/operationsGridContents/);
     expect(financeStripSrc).not.toMatch(/dashboard\.openInvoices/);
     expect(readFileSync(resolve(testDir, './financeKpiCards.tsx'), 'utf8')).not.toMatch(/profitHint/);
     expect(businessPulseSrc).not.toMatch(/Slice based|Slice-basiert|Business Pulse ·|Dokumente/);

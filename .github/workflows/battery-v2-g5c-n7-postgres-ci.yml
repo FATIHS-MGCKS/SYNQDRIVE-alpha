@@ -1,0 +1,65 @@
+name: Battery V2 — G5C-N7 canonical REST postgres CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-canonical-target-anchor*'
+      - 'backend/src/modules/vehicle-intelligence/battery-health/lv-rest-window/battery-rest-target-evaluation*'
+      - 'backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-reconciliation.service.ts'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/scripts/test/battery-g5c-n7-postgres-ci.sh'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/battery-v2-g5c-n7-postgres-ci.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'cursor/g5c-n7-*'
+      - 'cursor/battery-v2-*'
+
+concurrency:
+  group: battery-v2-g5c-n7-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+
+jobs:
+  g5c-n7-postgres:
+    name: G5C-N7 canonical REST + assessment consumer PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: battery-g5c-n7-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed on non-ephemeral DATABASE_URL
+        run: |
+          set -euo pipefail
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:battery:v2:g5c-n7:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}

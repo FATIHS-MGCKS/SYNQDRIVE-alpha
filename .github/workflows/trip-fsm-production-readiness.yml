@@ -1,0 +1,202 @@
+name: Trip FSM — Production Readiness CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/trips/**'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'architecture/trip-detection-lifecycle/**'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - '.github/workflows/trip-fsm-production-readiness.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'cursor/trip-fsm-*'
+      - 'trip-fsm/**'
+
+# Concurrency (GitHub Actions):
+# - Same group per ref (`trip-fsm-ci-${{ github.ref }}`).
+# - `main` (`refs/heads/main`): cancel-in-progress=false — a new push queues; the in-flight run
+#   (including long R11/R12 postgres+redis and BASE/HEAD red-proof) is not cancelled. At most one
+#   pending run waits; a newer main push replaces that pending slot (in-progress still protected).
+# - PRs and feature-branch pushes: cancel-in-progress=true — supersede stale runs on the same ref.
+concurrency:
+  group: trip-fsm-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_ephemeral?schema=public
+
+jobs:
+  install-lockfile:
+    name: Install (lockfile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+
+  backend-r10-unit:
+    name: Backend R10 unit tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:trip-fsm:production-readiness:r10 -- --no-coverage
+        working-directory: backend
+
+  backend-trip-finalize-postgres:
+    name: Backend trip finalize PostgreSQL integration
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: trip-fsm-finalize-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed on missing CI-local database config
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "DATABASE_URL is required for trip finalize postgres integration"
+            exit 1
+          fi
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL (127.0.0.1 or localhost)"
+              exit 1
+              ;;
+          esac
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:trip-finalize:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TRIP_FINALIZE_POSTGRES_INTEGRATION: '1'
+          TRIP_FINALIZE_POSTGRES_REQUIRED: '1'
+
+  backend-r11-unit:
+    name: Backend R11 unit + scaling probe
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:trip-r11:unit
+        working-directory: backend
+
+  backend-r12-hardening-unit:
+    name: Backend R12 hardening unit tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:trip-r12:hardening
+        working-directory: backend
+
+  backend-trip-r11-postgres-redis:
+    name: Backend R11 postgres+redis integration
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: trip-fsm-r11-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:trip-r11:postgres-redis:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TRIP_R11_POSTGRES_REDIS_INTEGRATION: '1'
+          TRIP_R11_POSTGRES_REDIS_REQUIRED: '1'
+
+  backend-trip-fsm-shadow-postgres-redis:
+    name: Backend Trip FSM shadow postgres+redis integration
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: trip-fsm-shadow-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:trip-fsm-shadow:postgres-redis:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TRIP_FSM_SHADOW_POSTGRES_REDIS_INTEGRATION: '1'
+          TRIP_FSM_SHADOW_POSTGRES_REDIS_REQUIRED: '1'
+
+  ci-gate:
+    name: CI gate (Trip FSM critical jobs)
+    runs-on: ubuntu-latest
+    needs:
+      - install-lockfile
+      - backend-r10-unit
+      - backend-r11-unit
+      - backend-r12-hardening-unit
+      - backend-trip-finalize-postgres
+      - backend-trip-r11-postgres-redis
+      - backend-trip-fsm-shadow-postgres-redis
+    steps:
+      - run: echo "Trip FSM CI gates passed (R10/R11/R12 hardening unit + postgres/redis integration + shadow observability integration)."

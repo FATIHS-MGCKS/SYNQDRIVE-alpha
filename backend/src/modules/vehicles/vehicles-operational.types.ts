@@ -9,12 +9,16 @@ import type { TelemetryFreshness } from './vehicle-state-interpreter';
 
 export type RegistrationState = 'registered' | 'unregistered';
 
+export type VehicleRegistryLifecycleFilter = 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED' | 'all';
+
 export interface VehiclesOperationalQueryDto {
   page?: number;
   limit?: number;
   q?: string;
   organizationId?: string;
   registrationState?: RegistrationState | 'all';
+  /** Registered rows only; default ACTIVE when omitted (VO-5C P2A). */
+  registryLifecycle?: VehicleRegistryLifecycleFilter;
   integrationConnectivity?: IntegrationConnectivity | 'all';
   telemetryFreshness?: TelemetryFreshness | 'all';
   attention?: 'true' | 'false' | 'all';
@@ -22,6 +26,8 @@ export interface VehiclesOperationalQueryDto {
 }
 
 export interface VehicleOperationalRowDto {
+  /** Registry lifecycle for Master Admin cutover (VO-5C); ACTIVE vs OFFBOARDED visibility. */
+  registryLifecycle?: 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED' | null;
   vehicleId: string | null;
   dimoVehicleId: string | null;
   displayTitle: string;
@@ -63,7 +69,11 @@ export interface VehicleOperationalDetailDto extends VehicleOperationalRowDto {
     dimoVehicleId: string | null;
     dimoExternalId: string | null;
     tokenIdMasked: string | null;
+    /** Raw `dimo_vehicles.connection_status` (last provider mirror observation). */
     connectionStatus: string | null;
+    /** Derived from mirror only — not SynqDrive effective access. */
+    mirrorIntegrationConnectivity?: IntegrationConnectivity;
+    mirrorIntegrationConnectivityLabel?: string;
     syncedAt: string | null;
     deviceType: string | null;
   };

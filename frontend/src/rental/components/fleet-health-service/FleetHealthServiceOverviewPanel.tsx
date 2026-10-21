@@ -15,8 +15,8 @@ import type {
   FleetHealthServiceWorkSection,
 } from './fleet-health-service.types';
 import { sanitizeFleetHealthServiceNavState } from './fleet-health-service.types';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 const KPI_LABEL_KEYS: Record<string, TranslationKey> = {
   blocked: 'fleetHealthService.kpi.blocked',

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type LegalDocumentDto, type LegalDocumentEventDto } from '../../../lib/api';
 import { buildLegalDocumentsReadinessSummary } from '../../lib/legal-documents-overview';
 import type { LegalDocumentWorkflowSettings } from '../../lib/legal-document-lifecycle.types';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface UseLegalDocumentsOverviewResult {
   docs: LegalDocumentDto[];

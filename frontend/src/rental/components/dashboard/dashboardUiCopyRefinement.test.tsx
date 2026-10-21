@@ -8,9 +8,9 @@ import { FleetReadinessAttentionPanel } from './attention/FleetReadinessAttentio
 import { FinanceKpiStrip } from './FinanceKpiStrip';
 import { TaskSummaryRow } from './tasks/TaskSummaryRow';
 import type { DashboardViewModel } from './dashboardTypes';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { ApiTask } from '../../../lib/api';
 
 vi.mock('../../RentalContext', () => ({

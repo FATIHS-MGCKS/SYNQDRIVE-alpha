@@ -1,7 +1,7 @@
 import { StatusChip } from '../../../components/patterns';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { CommunicationSettingsSection } from './communication-center.types';
 import { useCommunicationSettingsOverview } from './useCommunicationSettingsOverview';

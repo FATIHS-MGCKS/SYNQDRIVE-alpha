@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { api } from '../../../lib/api';
 import { useDocumentEntityLinks } from '../../hooks/useDocumentEntityLinks';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { DocumentEntityLinkType } from '../../lib/document-entity-links';
 import {
   buildEntityReviewSections,

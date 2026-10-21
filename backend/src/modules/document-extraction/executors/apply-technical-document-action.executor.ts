@@ -227,11 +227,19 @@ export class ApplyBatteryMeasurementDocumentActionExecutor implements DocumentAc
     }
 
     try {
+      const confirmedAt = new Date(context.plan.confirmedAt);
       const result = await this.batteryHealth.applyFromDocumentExtraction({
-        organizationId: context.organizationId,
+        organizationId: context.organizationId!,
         vehicleId: context.vehicleId,
         documentExtractionId: context.extractionId,
         documentActionIdempotencyKey: context.idempotencyKey,
+        confirmationAuthority: {
+          mode: 'CONFIRMED_ACTION_EXECUTION',
+          confirmedAt,
+          confirmedByUserId: context.plan.confirmedById ?? null,
+          actionPlanFingerprint: context.plan.fingerprint,
+          documentActionIdempotencyKey: context.idempotencyKey,
+        },
         scope: payload.scope,
         isReplacement: payload.isReplacement,
         observedAt: payload.observedAt,
@@ -256,6 +264,7 @@ export class ApplyBatteryMeasurementDocumentActionExecutor implements DocumentAc
         output: {
           serviceEventId: result.serviceEventId,
           batteryEvidenceIds: result.evidenceIds,
+          groundTruthEventIds: result.groundTruthEventIds,
           snapshotId: result.snapshotId,
           scope: payload.scope,
           measurementType: payload.measurementType,

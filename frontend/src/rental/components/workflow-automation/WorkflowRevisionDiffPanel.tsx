@@ -1,6 +1,6 @@
 import type { WorkflowRevisionDiffResultDto } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { workflowRiskLabel, workflowRiskTone } from './workflow-runtime.utils';
 
 const KIND_I18N: Record<string, string> = {

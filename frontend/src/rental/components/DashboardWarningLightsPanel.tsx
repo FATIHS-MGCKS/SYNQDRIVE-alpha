@@ -1,15 +1,11 @@
 import { useState } from 'react';
-import tellTaleOilIcon from '../../assets/icons/telltale/oil.svg';
-import tellTaleCelIcon from '../../assets/icons/telltale/cel.svg';
-import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
-import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
-import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import type {
   DashboardWarningLightsResponse,
   OilLevelDisplay,
 } from '../../lib/api';
 import { Icon } from './ui/Icon';
 import { StatusChip, SkeletonCard } from '../../components/patterns';
+import { DashboardTelltaleIcon } from './health/DashboardTelltaleIcon';
 import {
   DASHBOARD_TELLTALE_KEYS,
   formatRelativeObservedAt,
@@ -32,14 +28,6 @@ export interface DashboardWarningLightsPanelProps {
   onOpenTrips?: (dateIso?: string) => void;
 }
 
-function iconForKey(key: string): string {
-  if (key === 'engine_oil_level') return tellTaleOilIcon;
-  if (key === 'engine_limp_mode' || key === 'check_engine_light') return tellTaleCelIcon;
-  if (key === 'brake_lining_wear_pre_warning') return tellTaleBrakePadIcon;
-  if (key === 'tire_pressure_warning') return tellTaleTirePressureIcon;
-  if (key === 'battery_warning_light') return tellTaleBatteryIcon;
-  return tellTaleCelIcon;
-}
 
 function tileIconBg(tone: TelltaleTone, disabled: boolean): string {
   if (disabled) return 'bg-muted/30 ring-1 ring-border';
@@ -95,7 +83,6 @@ export function DashboardWarningLightsPanel({
       label: telltaleShortLabel(key),
       tone,
       statusLabel,
-      icon: iconForKey(key),
       ariaLabel: `${telltaleShortLabel(key)}: ${statusLabel}`,
     };
   });
@@ -147,11 +134,9 @@ export function DashboardWarningLightsPanel({
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tileIconBg(tile.tone, disabled)}`}
               >
-                <img
-                  src={tile.icon}
-                  alt=""
-                  aria-hidden="true"
-                  className={`w-3.5 h-3.5 object-contain ${
+                <DashboardTelltaleIcon
+                  telltaleKey={tile.key}
+                  className={`w-3.5 h-3.5 ${
                     disabled
                       ? 'opacity-30 grayscale'
                       : tile.tone === 'alert' || tile.tone === 'critical'

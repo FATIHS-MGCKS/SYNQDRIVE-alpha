@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { DetailDrawer } from '../../../../components/patterns';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { OrganizationRentalRulesDto } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
 import { RentalRuleLivePreviewPanel } from './RentalRuleLivePreviewPanel';

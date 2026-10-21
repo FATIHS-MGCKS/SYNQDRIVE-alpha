@@ -3,7 +3,7 @@ import { Icon } from './ui/Icon';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { useFleetVehicles } from '../FleetContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 
 // V4.6.94 — `Schedule` widget for the dashboard. A compact Gantt-style

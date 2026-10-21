@@ -191,6 +191,8 @@ describe('lv-publication.policy', () => {
   it('applies hysteresis to prevent flutter on small score changes', () => {
     const previous: LvPublicationPreviousState = {
       publicationId: 'pub-1',
+      assessmentId: 'assess-prev',
+      assessmentTrack: 'TELEMETRY',
       publishedEstimatedHealth: 80,
       stabilizedEstimatedHealth: 80,
       maturity: 'STABLE',
@@ -219,6 +221,8 @@ describe('lv-publication.policy', () => {
     ).toISOString();
     const previous: LvPublicationPreviousState = {
       publicationId: 'pub-stale',
+      assessmentId: 'assess-stale',
+      assessmentTrack: 'TELEMETRY',
       publishedEstimatedHealth: 78,
       stabilizedEstimatedHealth: 78,
       maturity: 'STABLE',
@@ -229,9 +233,10 @@ describe('lv-publication.policy', () => {
     const decision = evaluateLvPublicationPolicy({
       publicationEnabled: true,
       policy: iceAgmPolicy(),
-      assessment: baseAssessment(),
+      assessment: null,
       evidence: stableEvidence(),
       previous,
+      materializeStaleLifecycle: true,
       liveVoltageObservedAt: NOW.toISOString(),
       now: NOW,
     });
@@ -247,6 +252,8 @@ describe('lv-publication.policy', () => {
   it('supersedes previous publication when a new value is published', () => {
     const previous: LvPublicationPreviousState = {
       publicationId: 'pub-old',
+      assessmentId: 'assess-old',
+      assessmentTrack: 'TELEMETRY',
       publishedEstimatedHealth: 68,
       stabilizedEstimatedHealth: 70,
       maturity: 'PROVISIONAL',
@@ -292,6 +299,118 @@ describe('lv-publication.policy', () => {
 
     expect(decision.maturity).toBe('CALIBRATING');
     expect(decision.reasons.some((r) => r.code === 'contamination_dominance')).toBe(
+      true,
+    );
+  });
+
+  it('resets stabilization baseline on cross-track authority transition', () => {
+    const previous: LvPublicationPreviousState = {
+      publicationId: 'pub-t',
+      assessmentId: 'assess-t-old',
+      assessmentTrack: 'TELEMETRY',
+      publishedEstimatedHealth: 72,
+      stabilizedEstimatedHealth: 72,
+      maturity: 'STABLE',
+      publishedAt: new Date(NOW.getTime() - 24 * 60 * 60_000).toISOString(),
+      assessmentEvidenceObservedAt: NOW.toISOString(),
+    };
+
+    const decision = evaluateLvPublicationPolicy({
+      publicationEnabled: true,
+      policy: iceAgmPolicy(),
+      assessment: baseAssessment({
+        assessmentTrack: 'WORKSHOP_OVERRIDE',
+        estimatedHealthScore: 85,
+      }),
+      evidence: stableEvidence(),
+      previous,
+      now: NOW,
+    });
+
+    expect(decision.publicationAuthorityEpochChanged).toBe(true);
+    expect(decision.stabilizedEstimatedHealth).toBe(85);
+    expect(decision.shouldPersistPublication).toBe(true);
+  });
+
+  it('persists equal-value authority transition when policy permits', () => {
+    const previous: LvPublicationPreviousState = {
+      publicationId: 'pub-t',
+      assessmentId: 'assess-t-old',
+      assessmentTrack: 'TELEMETRY',
+      publishedEstimatedHealth: 72,
+      stabilizedEstimatedHealth: 72,
+      maturity: 'STABLE',
+      publishedAt: new Date(NOW.getTime() - 24 * 60 * 60_000).toISOString(),
+      assessmentEvidenceObservedAt: NOW.toISOString(),
+    };
+
+    const decision = evaluateLvPublicationPolicy({
+      publicationEnabled: true,
+      policy: iceAgmPolicy(),
+      assessment: baseAssessment({
+        assessmentTrack: 'WORKSHOP_OVERRIDE',
+        estimatedHealthScore: 72,
+      }),
+      evidence: stableEvidence(),
+      previous,
+      now: NOW,
+    });
+
+    expect(decision.publicationAuthorityEpochChanged).toBe(true);
+    expect(decision.publishedEstimatedHealth).toBe(72);
+    expect(decision.shouldPersistPublication).toBe(true);
+  });
+
+  it('does not force publication on same-track equal-value recompute', () => {
+    const previous: LvPublicationPreviousState = {
+      publicationId: 'pub-t',
+      assessmentId: 'assess-t-old',
+      assessmentTrack: 'TELEMETRY',
+      publishedEstimatedHealth: 72,
+      stabilizedEstimatedHealth: 72,
+      maturity: 'STABLE',
+      publishedAt: new Date(NOW.getTime() - 24 * 60 * 60_000).toISOString(),
+      assessmentEvidenceObservedAt: NOW.toISOString(),
+    };
+
+    const decision = evaluateLvPublicationPolicy({
+      publicationEnabled: true,
+      policy: iceAgmPolicy(),
+      assessment: baseAssessment({
+        assessmentTrack: 'TELEMETRY',
+        estimatedHealthScore: 72,
+      }),
+      evidence: stableEvidence(),
+      previous,
+      now: NOW,
+    });
+
+    expect(decision.publicationAuthorityEpochChanged).toBe(false);
+    expect(decision.shouldPersistPublication).toBe(false);
+  });
+
+  it('converges same-assessment retry without new publication persistence', () => {
+    const decision = evaluateLvPublicationPolicy({
+      publicationEnabled: true,
+      policy: iceAgmPolicy(),
+      assessment: baseAssessment(),
+      evidence: stableEvidence(),
+      previous: {
+        publicationId: 'pub-a',
+        assessmentId: 'assess-a',
+        assessmentTrack: 'TELEMETRY',
+        publishedEstimatedHealth: 82,
+        stabilizedEstimatedHealth: 82,
+        maturity: 'STABLE',
+        publishedAt: NOW.toISOString(),
+        assessmentEvidenceObservedAt: NOW.toISOString(),
+      },
+      isSameAssessmentRetry: true,
+      now: NOW,
+    });
+
+    expect(decision.shouldPersistPublication).toBe(false);
+    expect(decision.reasons.some((r) => r.code === 'same_assessment_retry_converged')).toBe(
       true,
     );
   });

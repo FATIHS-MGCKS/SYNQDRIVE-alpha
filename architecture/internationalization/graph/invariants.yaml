@@ -1,0 +1,41 @@
+invariants:
+  - id: I18N-INV-SINGLE-PROVIDER-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Single LanguageProvider at SPA root
+    statement: App.tsx mounts one LanguageProvider; no nested Rental-specific provider.
+    source_paths:
+      - frontend/src/App.tsx
+      - frontend/src/i18n/LanguageContext.tsx
+    evidence:
+      - I18N-EVID-AUDIT-2C-001
+
+  - id: I18N-INV-EN-FALLBACK-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: English fallback for missing locale keys
+    statement: translateKey falls back to en dictionary before returning missing key string.
+    source_paths:
+      - frontend/src/i18n/LanguageContext.tsx
+    evidence:
+      - I18N-EVID-CODE-RUNTIME-001
+
+  - id: I18N-INV-NO-EN-SPREAD-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: No ...en spread for false locale completeness
+    statement: Structural test forbids spreading en dictionary into other locale modules.
+    source_paths:
+      - frontend/src/i18n/translation-registry.test.ts
+    evidence:
+      - I18N-EVID-CODE-COVERAGE-001
+
+  - id: I18N-INV-GOV-FAIL-CLOSED-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Governance authority paths fail closed on drift
+    statement: authority-path-contract.mjs is SSOT; PR gate and classifier tests enforce parity on main.
+    source_paths:
+      - frontend/scripts/lib/i18n-governance/authority-path-contract.mjs
+    evidence:
+      - I18N-EVID-CODE-GOV-001

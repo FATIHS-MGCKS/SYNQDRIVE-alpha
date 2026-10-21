@@ -10,7 +10,7 @@ import {
   type DataTableColumn,
 } from '../../../components/patterns';
 import { api, type IamTeamListItemDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { CreateUserWizard } from './CreateUserWizard';
 import { MfaStateBadge, RiskBadge } from './IamBadges';

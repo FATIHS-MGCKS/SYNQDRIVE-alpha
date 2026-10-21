@@ -4,6 +4,7 @@ import type { VehicleData } from '../data/vehicles';
 /** Vehicle detail tabs — keep in sync with `VEHICLE_DETAIL_VIEWS` in `rental/App.tsx`. */
 export type VehicleDetailTab =
   | 'overview'
+  | 'connectivity'
   | 'trips'
   | 'health-errors'
   | 'damages'

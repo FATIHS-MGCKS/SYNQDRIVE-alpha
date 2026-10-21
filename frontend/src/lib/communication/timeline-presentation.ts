@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../rental/i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type {
   CommunicationApiChannel,
   CommunicationApiDirection,

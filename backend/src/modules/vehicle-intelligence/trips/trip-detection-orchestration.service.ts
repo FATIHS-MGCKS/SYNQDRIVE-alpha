@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
@@ -8,7 +8,11 @@ import {
   DimoSegmentsService,
   type DimoTripSegment,
 } from '../../dimo/dimo-segments.service';
+import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
+import type { DimoProviderRequestContext } from '../../dimo/provider/dimo-provider-gateway.types';
 import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
+import { BatteryV2LvRestSessionProducer } from '../battery-health/jobs/battery-v2-lv-rest-session.producer';
+import { ShutdownEvidenceTripContextService } from '../battery-health/shutdown-evidence/shutdown-evidence-trip-context.service';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
 import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
 import {
@@ -32,6 +36,8 @@ import {
   type SnapshotEvidenceSignals,
   type WorkerLockResult,
   type StartDetectionMode,
+  type TerminalLifecycleCommit,
+  type TerminalLifecycleIntent,
 } from './trip-detection.types';
 import {
   // evaluateSnapshotEvidence → SnapshotEvidenceEvaluator (Phase 2 seam, done)
@@ -39,6 +45,7 @@ import {
   // assessActiveContinuity/evaluatePerformanceActivity → ContinuityAssessmentDetector (Phase 2 seam, done)
   // hasActivityResumed → EndContinuityDetector (Phase 2 seam, done)
   checkTripQuality,
+  hasPersistedMeaningfulMovementForQuality,
   refineTripStartBoundary,
   resolveAnalyticsAssistedStartDecision,
   resolveAnalyticsAssistedEndDecision,
@@ -46,7 +53,18 @@ import {
   resolveDetectionProfile,
   isCurrentTelemetryInactive,
   extractLatestSegmentEnd,
+  resolveLatestMeaningfulMovementEventAt,
+  continuityImpliesMeaningfulMovement,
+  continuityImpliesCrediblePostBoundaryMovement,
+  hasCrediblePostBoundaryRouteMotion,
+  assessLiveStartSnapshotFreshness,
 } from './trip-evidence.helpers';
+import { START_DETECTION_PHASES } from './trip-start-detection-policy';
+import {
+  evaluateTrustedCompleteCooldownBypass,
+  buildSnapshotWakeForensics,
+} from '../../../workers/snapshot-wake/snapshot-wake.util';
+import type { EvaluateSnapshotForTripStartWakeOptions } from '../../../workers/snapshot-wake/snapshot-wake.types';
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.resolver';
@@ -58,8 +76,188 @@ import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
+import {
+  computePossibleStartCoreFetchFrom,
+  computeStartBoundaryWindowFrom,
+} from './start-boundary-window.util';
+import { isTripStartBoundaryAdmissionShadowEnabledForVehicle } from './start-boundary-admission/trip-start-boundary-admission-shadow.config';
+import {
+  mergeShadowStartBoundaryIntoEvidenceSummary,
+  runStartBoundaryAdmissionShadow,
+} from './start-boundary-admission/trip-start-boundary-admission-shadow.runtime';
+import { resolveTripStartIntegrationModality } from './start-boundary-admission/trip-start-boundary-integration-modality';
+import {
+  resolveLegacyConfirmedStartBoundary,
+  type StartBoundaryEvidenceContext,
+} from './start-boundary-admission/trip-start-boundary-legacy-resolution';
+import {
+  clearPossibleEndClockFields,
+  clearPossibleStartClockFields,
+  reconcilePossibleEndClockColumns,
+  readPossibleEndEnteredAtFromEvidence,
+  resolvePossibleEndBoundaryAnchor,
+  resolvePossibleEndBoundaryCandidate,
+  resolvePossibleEndFsmDwellAnchor,
+  resolvePossibleStartConfirmationAnchor,
+  resolveOperationalNoCoreInactivityAnchor,
+  resolveStartCandidateClock,
+  isValidProviderEventTimestamp,
+} from './trip-fsm-clock-contract';
+import {
+  TripLifecycleRecoveryService,
+  type ExecuteLifecycleRecoveryParams,
+} from './trip-lifecycle-recovery.service';
+import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
+import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
+import {
+  buildMidGapAppliedForensics,
+  buildMidGapRejectedForensics,
+  classifyLiveMidGapDriftDecision,
+  computeMidGapDriftEvidence,
+  findLargestQualifyingMidGapFromCoreTimeline,
+  selectRoutePointAtOrAfter,
+  selectRoutePointAtOrBefore,
+  type MidGapSplitCommitPhase,
+} from './trip-mid-gap-split.util';
+import { resolveMaxSameTripQualifiedStopMs } from './trip-qualified-stop-duration.config';
+import {
+  buildMidGapCommitAmbiguityForensics,
+  readDurableLiveSplitOutcome,
+  type DurableLiveSplitOutcome,
+} from './trip-mid-gap-split-commit.util';
+import {
+  readDurableTerminalOutcome,
+  resolveTerminalRestingRecoveryWake,
+} from './trip-terminal-lifecycle-commit.util';
+import {
+  assessSuccessfulEmptyCoreEndEligibility,
+  buildEmptyCoreKeepOpenSummary,
+  buildEmptyCorePossibleEndSummary,
+} from './trip-empty-core-end-gate';
+import { computeEmptyCoreBackoffMs } from './trip-empty-core-backoff';
+import {
+  classifyFetchError,
+  coreFetchOutcome,
+  type TripTelemetryFetchOutcome,
+} from './trip-fetch-outcome';
+import {
+  clearPauseEvidence,
+  isPauseCorroborated,
+  mergeEmptyCoreDeferral,
+  mergeLastProviderActivityAt,
+  mergePauseDetectedAt,
+  mergeStopBoundaryAt,
+  mergeProviderStopBoundaryCandidate,
+  readActiveStopBoundaryAt,
+  readLastProviderActivityAt,
+  resolveIdleStopBoundaryAt,
+  resolveProviderStopBoundaryCandidate,
+  readEmptyCoreDeferralStreak,
+  readPauseDetectedAt,
+  readStopBoundaryAt,
+  readStopBoundaryProvenance,
+  resolveProviderOperationalAnchor,
+  retireActiveStopBoundaryAfterMovement,
+} from './trip-fsm-evidence-state';
+import {
+  buildEndValidationCompletionEvidence,
+  buildEndValidationFailureEvidence,
+  buildEndValidationFetchFailureEvidence,
+  buildEndValidationScheduledEvidence,
+  buildEndValidationStartedEvidence,
+  buildChSkipResumeRevalidationDeferredEvidence,
+  buildChSkipResumeRevalidationHandoffEvidence,
+  buildMaxAttemptFallbackEvidence,
+  buildPendingFinalizeScheduledEvidence,
+  buildPossibleEndToActiveReset,
+  evaluateChSkipResumeRevalidationMaturity,
+  evaluateEndCycleJobAdmission,
+  extractR5EndForensicsForPersistence,
+  mapEndCycleStaleFinalizeReason,
+  readChSkipResumeRevalidationDeferCount,
+  resolveChSkipResumeRevalidationImmaturityBoundMs,
+  resolveChSkipResumeRevalidationHandoffReason,
+  resolveChSkipResumeRevalidationMaxDeferCount,
+  resolveChSkipResumeRevalidationRelatchEnteredAt,
+  resolveEndCycleToken,
+  resolveEndValidationAttemptsOnPossibleEndReentry,
+  type ChSkipResumeRevalidationOutcome,
+  type PecResumeCheckOutcome,
+  validateCusumMovementEventTime,
+} from './trip-end-cycle-reset';
+import {
+  classifyChangePointEndFinding,
+} from './trip-end-validation-classifier';
+import {
+  cancelPendingTripTrackingJobs,
+  enqueueEndCycleTripTrackingJob,
+  enqueuePreemptiveTripTrackingJob,
+  enqueueStableTripTrackingJob,
+} from './trip-tracking-queue.util';
+import {
+  isTripTrackingHandoffJob,
+  TripTrackingHandoffLockContentionError,
+} from './trip-tracking-lock-contention';
+import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
+import {
+  buildEndTimelineFields,
+  buildStartTimelineFields,
+  buildTripFsmForensicsR8V1,
+  mergeFinalizeRawDetectionMeta,
+  parseStrictEvidenceTimestamp,
+  readPersistedEndRecognizedAt,
+  resolveBoundaryConsistentEndCoordinate,
+  resolveStartForensicProvenance,
+} from './trip-fsm-forensics.util';
+import { runTripObservabilitySafely } from './trip-fsm-observability-safe.util';
+import {
+  attachShadowToResultSummary,
+  runShadowActiveTickObservation,
+  runShadowFinalizeObservation,
+  runShadowPauseStartObservation,
+  runShadowResumeObservation,
+} from './trip-fsm-shadow-observability.integration';
+import {
+  observeEndBoundaryAdjustment,
+  observeEndCandidateLatency,
+  observeEndRecognitionLatency,
+  observeStartBoundaryAdjustment,
+  observeStartCandidateLatency,
+  observeStartRecognitionLatency,
+  observeTripDuration,
+} from './trip-fsm-timing-observability.util';
+import {
+  analyzePersistedRouteMovement,
+  computePersistedRouteDisplacementM,
+  resolveFinalizeEndTime,
+} from './trip-finalize-quality.util';
+import { TripDiBoundaryAdmissionService } from './di-boundary-admission/trip-di-boundary-admission.service';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
+
+/** Non-authoritative shadow layer — module-level so prototype `.call(harness)` tests still work. */
+function runShadowObservabilitySafely<T>(
+  logger: { warn: (message: string) => void } | undefined,
+  name: string,
+  fn: () => T,
+): T | undefined {
+  let result: T | undefined;
+  runTripObservabilitySafely(logger, name, () => {
+    result = fn();
+  });
+  return result;
+}
+
+function mergeShadowEvidencePatch(
+  prior: Record<string, unknown>,
+  shadowPatch: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  if (!shadowPatch?.shadowObservability) return prior;
+  return {
+    ...prior,
+    shadowObservability: shadowPatch.shadowObservability,
+  };
+}
 
 @Injectable()
 export class TripDetectionOrchestrationService {
@@ -73,7 +271,7 @@ export class TripDetectionOrchestrationService {
   private readonly OVERLAP_ROUTE_MS = 15_000;
   private readonly OVERLAP_PERF_MS = 30_000;
   private readonly CONFIRM_MAX_WAIT_MS = 180_000;
-  private readonly POSSIBLE_START_CONFIRMATION_LOOKBACK_MS = 5 * 60_000;
+  private readonly tripStartBoundaryMaxLookbackMs: number;
 
   // ── Smart cooldown constants (replaces blunt COOLDOWN_MS = 5min) ──
   // After a completed trip: 2 min (vehicle likely still) — configurable
@@ -110,13 +308,18 @@ export class TripDetectionOrchestrationService {
   private readonly TRIP_END_CH_ASSIST_STABILITY_MS: number;
   private readonly TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS: number;
 
+  private readonly TRIP_EMPTY_CORE_BACKOFF_BASE_MS: number;
+  private readonly TRIP_EMPTY_CORE_BACKOFF_MAX_MS: number;
+  private readonly TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO: number;
+
   // ── Mid-trip gap split: recognise short ignition-off parks inside a trip ──
   // Silence of at least this duration inside an otherwise ACTIVE trip,
   // sandwiched by stationary data, is treated as a mid-trip end + restart
   // and the trip is split into two canonical trips. Covers the DIMO case
   // where the telematics unit sleeps during a brief stop and no explicit
   // ignition-off signal is ever emitted.
-  private readonly TRIP_MID_GAP_SPLIT_MS: number;
+  /** Max qualified-stop duration that remains the same trip (ms); split when duration > this. */
+  private readonly maxSameTripQualifiedStopMs: number;
   // Max GPS drift between pre-gap and post-gap position that still counts
   // as "same parking spot" (prevents splitting signal dropouts during
   // actual driving, e.g., tunnels).
@@ -130,6 +333,7 @@ export class TripDetectionOrchestrationService {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly batteryTripStartProducer: BatteryV2TripStartProducer,
+    private readonly batteryLvRestSessionProducer: BatteryV2LvRestSessionProducer,
     private readonly configService: ConfigService,
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
@@ -140,6 +344,11 @@ export class TripDetectionOrchestrationService {
     private readonly decisionEngine: TripDecisionEngine,
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly detectorRegistry: DetectorRegistry,
+    @Inject(forwardRef(() => TripLifecycleRecoveryService))
+    private readonly lifecycleRecovery: TripLifecycleRecoveryService,
+    private readonly diBoundaryAdmission: TripDiBoundaryAdmissionService,
+    @Optional()
+    private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -161,9 +370,20 @@ export class TripDetectionOrchestrationService {
       this.configService.get<number>('worker.tripEndChAssistStabilityMs') ?? 30_000;
     this.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS =
       this.configService.get<number>('worker.tripEndChAssistHighConfidenceStationaryMs') ?? 90_000;
-    this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
+    this.TRIP_EMPTY_CORE_BACKOFF_BASE_MS =
+      this.configService.get<number>('worker.tripEndEmptyCoreBackoffBaseMs') ?? 30_000;
+    this.TRIP_EMPTY_CORE_BACKOFF_MAX_MS =
+      this.configService.get<number>('worker.tripEndEmptyCoreBackoffMaxMs') ?? 600_000;
+    this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO =
+      this.configService.get<number>('worker.tripEndEmptyCoreBackoffJitterRatio') ?? 0.15;
+    this.maxSameTripQualifiedStopMs =
+      this.configService.get<number>('worker.tripSameTripMaxQualifiedStopMs') ??
+      this.configService.get<number>('worker.tripMidGapSplitMs') ??
+      resolveMaxSameTripQualifiedStopMs();
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
+    this.tripStartBoundaryMaxLookbackMs =
+      this.configService.get<number>('worker.tripStartBoundaryMaxLookbackMs') ?? 35 * 60_000;
 
     this.logger.log(
       `Trip end detection config: trackingIntervalMs=${this.TRACKING_INTERVAL_MS} ` +
@@ -174,6 +394,17 @@ export class TripDetectionOrchestrationService {
         `timeoutMs=${this.TRIP_END_TIMEOUT_MS} ` +
         `chEndAssistMinStationaryMs=${this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS}`,
     );
+  }
+
+  private dimoProviderContext(
+    dimoTokenId: number,
+    vehicleId?: string,
+    organizationId?: string | null,
+  ): DimoProviderRequestContext {
+    return buildDimoProviderRequestContext(dimoTokenId, {
+      vehicleId,
+      organizationId: organizationId ?? undefined,
+    });
   }
 
   // ══════════════════════════════════════════════════════════
@@ -217,6 +448,171 @@ export class TripDetectionOrchestrationService {
       where: { vehicleId },
       data: { state: newState, ...extras } as any,
     });
+  }
+
+  /**
+   * R2 — apply a lifecycle invariant recovery action (FSM authority only).
+   * Canonical trip rows are never mutated here.
+   */
+  async executeLifecycleRecoveryAction(
+    params: ExecuteLifecycleRecoveryParams,
+  ): Promise<void> {
+    const now = new Date();
+    const {
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      det,
+      action,
+      tripId,
+      classification,
+      referencedTrip,
+      recoveredTrip,
+    } = params;
+
+    const resolveRecoveredPossibleStartAt = (
+      trip: TripLifecycleTripFact,
+    ): Date => {
+      if (classification === 'RECOVERABLE_MERGE_ORPHAN') {
+        const anchor = resolveMergeReopenPossibleStartAt({
+          rawDetectionMeta: trip.rawDetectionMeta,
+          detPossibleStartAt: det.possibleStartAt,
+        });
+        if (!anchor) {
+          throw new Error(
+            `Merge orphan recovery missing safe episode anchor for trip ${tripId}`,
+          );
+        }
+        return anchor;
+      }
+      if (
+        classification === 'RECOVERABLE_MISSING_POINTER' &&
+        det.possibleStartAt
+      ) {
+        return det.possibleStartAt;
+      }
+      return trip.startTime;
+    };
+
+    if (action === 'ADOPT_ONGOING') {
+      const trip = recoveredTrip;
+      if (!trip) {
+        throw new Error(`Lifecycle recovery missing recovered trip ${tripId}`);
+      }
+      const possibleStartAt = resolveRecoveredPossibleStartAt(trip);
+      const startRecognizedAt = new Date();
+      await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
+        activeTripId: tripId,
+        possibleStartAt,
+        possibleStartEnteredAt: null,
+        lastActivityAt: now,
+        lastEvidenceSummary: {
+          ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
+          lifecycleRecovery: classification,
+          lifecycleRecoveryAt: now.toISOString(),
+          lifecycleRecoveryTripId: tripId,
+          startRecognizedAt: startRecognizedAt.toISOString(),
+        },
+      });
+      const profileStr = String(det.detectionProfile ?? 'UNKNOWN');
+      runTripObservabilitySafely(this.logger,'start_recognition_recovery', () => {
+        observeStartRecognitionLatency(this.tripMetrics, {
+          profile: profileStr,
+          mode: 'recovery',
+          outcome: 'recovery',
+          recognizedAt: startRecognizedAt,
+          canonicalStartAt: trip.startTime,
+        });
+      });
+      await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+      return;
+    }
+
+    if (action === 'REPOINT_ACTIVE_TRIP') {
+      const trip = recoveredTrip;
+      if (!trip) {
+        throw new Error(`Lifecycle split repoint missing recovered trip ${tripId}`);
+      }
+      await this.transitionState(
+        vehicleId,
+        TripDetectionState.ACTIVE_TRIP,
+        {
+          ...buildMidGapSplitActiveFsmExtras({
+            secondTripId: tripId,
+            secondStartAt: trip.startTime,
+          }),
+          lastEvidenceSummary: {
+            ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
+            lifecycleRecovery: classification,
+            lifecycleRecoveryAt: now.toISOString(),
+            lifecycleRecoveryTripId: tripId,
+          },
+        },
+      );
+      await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+      return;
+    }
+
+    if (action === 'RESET_TO_RESTING') {
+      const restingReason =
+        referencedTrip?.tripStatus === TripStatus.CANCELLED
+          ? 'discard'
+          : 'complete';
+      const restAnchor =
+        referencedTrip?.tripStatus === TripStatus.COMPLETED &&
+        referencedTrip.endTime
+          ? referencedTrip.endTime
+          : now;
+
+      await this.transitionState(vehicleId, TripDetectionState.RESTING, {
+        activeTripId: null,
+        ...clearPossibleStartClockFields(),
+        ...clearPossibleEndClockFields(),
+        lastActivityAt: restAnchor,
+        lastMeaningfulMovementAt: null,
+        lastCoreProcessedAt: null,
+        lastRouteProcessedAt: null,
+        lastDrivingProcessedAt: null,
+        startOdometerKm: null,
+        startFuelLevel: null,
+        startEvSoc: null,
+        startDetectionMode: null,
+        startConfidence: null,
+        endDetectionMode: null,
+        endConfidence: null,
+        endValidationAttempts: 0,
+        cusumValidatedAt: null,
+        cusumSegmentStart: null,
+        cusumSegmentEnd: null,
+        lastEvidenceSummary: {
+          lastRestingReason: restingReason,
+          lifecycleRecovery: classification,
+          lifecycleRecoveryAt: now.toISOString(),
+          recoveredFromTripId: tripId,
+        },
+      });
+    }
+  }
+
+  private async maybeRecoverLifecycleInvariant(params: {
+    det: DetState;
+    organizationId: string | null;
+    dimoTokenId: number;
+    context?: {
+      expectedStartAt?: Date | null;
+      expectedDimoSegmentId?: string | null;
+      mergeTargetTripId?: string | null;
+    };
+  }): Promise<'recovered' | 'blocked' | 'continue'> {
+    const outcome = await this.lifecycleRecovery.attemptRecovery({
+      det: params.det,
+      organizationId: params.organizationId,
+      dimoTokenId: params.dimoTokenId,
+      context: params.context,
+    });
+    if (outcome.recovered) return 'recovered';
+    if (outcome.blocked) return 'blocked';
+    return 'continue';
   }
 
   // ══════════════════════════════════════════════════════════
@@ -282,14 +678,54 @@ export class TripDetectionOrchestrationService {
     return det?.activeTripId ?? null;
   }
 
+  /** Drop queued successor/primary end-cycle jobs when POSSIBLE_END is cancelled. */
+  private async cancelPendingEndCycleJobs(
+    vehicleId: string,
+    activeTripId: string | null,
+  ): Promise<void> {
+    const phases: TripTrackingSchedulePhase[] = ['ev', 'fin'];
+    const jobIds = phases.map((phase) =>
+      this.tripTrackingJobId(phase, vehicleId, activeTripId),
+    );
+    const { removed, activePreserved } = await cancelPendingTripTrackingJobs({
+      queue: this.trackingQueue,
+      jobIds,
+    });
+    if (removed > 0 || activePreserved > 0) {
+      this.logger.debug(
+        `End-cycle job recycle for ${vehicleId} trip=${activeTripId ?? 'pending'}: ` +
+          `removed=${removed} activePreserved=${activePreserved}`,
+      );
+    }
+  }
+
+  /**
+   * R12: restore POSSIBLE_END clock columns from durable evidence when DB columns
+   * were lost; prevents updatedAt/workerNow from becoming dwell/boundary anchors.
+   */
+  private async ensurePossibleEndClockDurability(
+    vehicleId: string,
+    det: DetState,
+    workerNow: Date,
+  ): Promise<DetState> {
+    if (det.state !== TripDetectionState.POSSIBLE_END) return det;
+    const patch = reconcilePossibleEndClockColumns({
+      state: det.state,
+      possibleEndAt: det.possibleEndAt,
+      possibleEndEnteredAt: det.possibleEndEnteredAt,
+      lastEvidenceSummary: det.lastEvidenceSummary,
+      workerNow,
+    });
+    if (!patch) return det;
+    return this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, patch);
+  }
+
   /**
    * Enqueue a trip-tracking job with a stable per-vehicle/phase/trip jobId so
    * concurrent schedule calls do not pile up duplicate BullMQ jobs.
    *
-   * Completed jobs are removed (`removeOnComplete`) so legitimate follow-up
-   * ticks can reuse the same id after the previous run finishes. When the
-   * matching job is still active (self-reschedule from inside the worker),
-   * enqueue is deferred to the next event-loop turn.
+   * R3A: when the primary job is still ACTIVE (self-reschedule), a durable
+   * successor slot (`${jobId}__succ`) is used instead of one-shot setImmediate.
    */
   private async enqueueTripTrackingJob(
     phase: TripTrackingSchedulePhase,
@@ -300,7 +736,11 @@ export class TripDetectionOrchestrationService {
     opts?: {
       delayMs?: number;
       activeTripId?: string | null;
-      allowDeferIfActive?: boolean;
+      endCycleToken?: string | null;
+      /** R10: recycle waiting end-cycle jobs before enqueue (FINALIZE / END_VALIDATION). */
+      recycleEndCycleSlot?: boolean;
+      /** R11: replace delayed empty-core backoff with an urgent ACTIVE_TICK. */
+      preemptDelayed?: boolean;
     },
   ): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
@@ -314,76 +754,55 @@ export class TripDetectionOrchestrationService {
 
     const jobId = this.tripTrackingJobId(phase, vehicleId, activeTripId);
     const delayMs = opts?.delayMs ?? 0;
-    const allowDeferIfActive = opts?.allowDeferIfActive !== false;
-
-    const attemptAdd = async (): Promise<void> => {
-      try {
-        const existing = await this.trackingQueue.getJob(jobId);
-        if (existing) {
-          const state = await existing.getState();
-          if (state === 'failed' || state === 'completed') {
-            await existing.remove();
-          } else if (state === 'waiting' || state === 'delayed') {
-            this.logger.debug(
-              `Trip tracking job not re-enqueued (already queued): jobId=${jobId} state=${state} trigger=${trigger}`,
-            );
-            return;
-          } else if (state === 'active') {
-            if (allowDeferIfActive) {
-              this.logger.debug(
-                `Trip tracking job deferred until active job completes: jobId=${jobId} trigger=${trigger}`,
-              );
-              setImmediate(() => {
-                void this.enqueueTripTrackingJob(
-                  phase,
-                  vehicleId,
-                  organizationId,
-                  dimoTokenId,
-                  trigger,
-                  { delayMs, activeTripId, allowDeferIfActive: false },
-                );
-              });
-              return;
-            }
-            this.logger.debug(
-              `Trip tracking job not re-enqueued (still active): jobId=${jobId} trigger=${trigger}`,
-            );
-            return;
-          }
-        }
-
-        await this.trackingQueue.add(
-          'trip-tracking',
-          {
-            vehicleId,
-            organizationId,
-            dimoTokenId,
-            trigger,
-            requestedAt: new Date().toISOString(),
-          } satisfies TripTrackingJobData,
-          {
-            delay: delayMs,
-            jobId,
-            removeOnComplete: true,
-            removeOnFail: 5,
-          },
-        );
-      } catch (err: unknown) {
-        const msg = (err as Error).message ?? '';
-        if (
-          msg.toLowerCase().includes('duplicate') ||
-          msg.toLowerCase().includes('already exists')
-        ) {
-          this.logger.debug(
-            `Trip tracking job not re-enqueued (duplicate jobId): jobId=${jobId} trigger=${trigger}`,
-          );
-          return;
-        }
-        throw err;
-      }
+    const data: TripTrackingJobData = {
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      trigger,
+      requestedAt: new Date().toISOString(),
+      ...(opts?.endCycleToken ? { endCycleToken: opts.endCycleToken } : {}),
     };
 
-    await attemptAdd();
+    const outcome = opts?.recycleEndCycleSlot
+      ? await enqueueEndCycleTripTrackingJob({
+          queue: this.trackingQueue,
+          jobName: 'trip-tracking',
+          jobId,
+          data,
+          trigger,
+          delayMs,
+        })
+      : opts?.preemptDelayed
+        ? await enqueuePreemptiveTripTrackingJob({
+            queue: this.trackingQueue,
+            jobName: 'trip-tracking',
+            jobId,
+            data,
+            trigger,
+            delayMs,
+          })
+        : await enqueueStableTripTrackingJob({
+            queue: this.trackingQueue,
+            jobName: 'trip-tracking',
+            jobId,
+            data,
+            trigger,
+            delayMs,
+          });
+
+    if (outcome === 'skipped') {
+      this.logger.debug(
+        `Trip tracking job not re-enqueued (already queued): jobId=${jobId} trigger=${trigger}`,
+      );
+    } else if (outcome === 'successor') {
+      this.logger.debug(
+        `Trip tracking successor scheduled: primary=${jobId} successor=${jobId}__succ trigger=${trigger} delayMs=${delayMs}`,
+      );
+    } else if (opts?.recycleEndCycleSlot) {
+      this.logger.debug(
+        `End-cycle enqueue outcome=${outcome} jobId=${jobId} trigger=${trigger} delayMs=${delayMs}`,
+      );
+    }
   }
 
   async schedulePossibleStart(
@@ -407,6 +826,7 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
     delayMs?: number,
+    opts?: { preemptDelayed?: boolean },
   ): Promise<void> {
     await this.enqueueTripTrackingJob(
       'at',
@@ -414,8 +834,24 @@ export class TripDetectionOrchestrationService {
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.ACTIVE_TICK,
-      { delayMs: delayMs ?? this.TRACKING_INTERVAL_MS },
+      {
+        delayMs: delayMs ?? this.TRACKING_INTERVAL_MS,
+        preemptDelayed: opts?.preemptDelayed,
+      },
     );
+  }
+
+  /**
+   * R11: urgent provider wake during empty-core backoff — preempt delayed ACTIVE_TICK.
+   */
+  async accelerateActiveTickAfterWake(
+    vehicleId: string,
+    organizationId: string | null,
+    dimoTokenId: number,
+  ): Promise<void> {
+    await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId, 0, {
+      preemptDelayed: true,
+    });
   }
 
   async schedulePossibleEndCheck(
@@ -440,13 +876,20 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
+    const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+    const endCycleToken = resolveEndCycleToken(det);
     await this.enqueueTripTrackingJob(
       'ev',
       vehicleId,
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.END_VALIDATION,
-      { delayMs: delayMs ?? 0 },
+      {
+        delayMs: delayMs ?? 0,
+        activeTripId: det.activeTripId,
+        endCycleToken,
+        recycleEndCycleSlot: endCycleToken != null,
+      },
     );
   }
 
@@ -455,13 +898,40 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
   ): Promise<void> {
+    const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+    if (det.state === TripDetectionState.ACTIVE_TRIP) {
+      this.logger.debug(
+        `scheduleFinalize skipped for ${vehicleId}: FSM is ACTIVE_TRIP`,
+      );
+      return;
+    }
+    const endCycleToken = resolveEndCycleToken(det);
+    if (!endCycleToken) {
+      this.logger.warn(
+        `scheduleFinalize skipped for ${vehicleId}: missing end cycle token (possibleEndEnteredAt)`,
+      );
+      return;
+    }
+    const workerNow = new Date();
+    await this.transitionState(vehicleId, det.state, {
+      lastEvidenceSummary: buildPendingFinalizeScheduledEvidence({
+        priorSummary: det.lastEvidenceSummary as Record<string, unknown> | null,
+        endCycleToken,
+        workerNow,
+      }),
+    });
     await this.enqueueTripTrackingJob(
       'fin',
       vehicleId,
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.FINALIZE,
-      { delayMs: 0 },
+      {
+        delayMs: 0,
+        activeTripId: det.activeTripId,
+        endCycleToken,
+        recycleEndCycleSlot: true,
+      },
     );
   }
 
@@ -474,6 +944,7 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     previousTelemetry: VehicleLatestState | null,
     current: SnapshotEvidenceSignals,
+    wakeOptions?: EvaluateSnapshotForTripStartWakeOptions,
   ): Promise<TripStartEvaluation> {
     const detState = await this.getOrCreateDetectionState(vehicleId);
 
@@ -481,13 +952,26 @@ export class TripDetectionOrchestrationService {
       return { shouldStartTracking: false };
     }
 
+    const workerNow = new Date();
+    const wakeContext = wakeOptions?.wakeContext ?? null;
+    const snapshotFetchedAt = wakeOptions?.snapshotFetchedAt ?? workerNow;
+    const restAnchorAt = detState.lastActivityAt ?? null;
+    const lastMeta = detState.lastEvidenceSummary as Record<string, unknown> | null;
+    const lastReason = lastMeta?.lastRestingReason as string | undefined;
+
+    const cooldownBypass = evaluateTrustedCompleteCooldownBypass({
+      lastRestingReason: lastReason,
+      restAnchorAt,
+      wakeContext,
+      snapshotSourceTimestamp: current.sourceTimestamp,
+      workerNow,
+    });
+
     // ── Smart cooldown (replaces blunt 5-min flat cooldown) ──────────────────
     // Cooldown duration depends on WHY we entered RESTING, not just time elapsed.
     // This prevents false-zero blind spots after discarded micro-trips.
-    if (detState.updatedAt) {
-      const sinceLast = Date.now() - detState.updatedAt.getTime();
-      const lastMeta = detState.lastEvidenceSummary as any;
-      const lastReason = lastMeta?.lastRestingReason as string | undefined;
+    if (detState.updatedAt && !cooldownBypass.bypass) {
+      const sinceLast = workerNow.getTime() - detState.updatedAt.getTime();
 
       let cooldownMs: number;
       if (lastReason === 'discard') {
@@ -505,30 +989,43 @@ export class TripDetectionOrchestrationService {
 
     const profile = detState.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
     const profileStr = String(profile);
+    const liveStartFreshness = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: current.sourceTimestamp,
+      workerNow,
+    });
 
-    // ── PHASE 2 SEAM: policy → detector → decision ───────────────────────────
-    // The policy resolver decides which detectors to run for the live_start phase.
-    // Detectors return findings; the decision engine converts findings to a decision.
-    // No truth is committed here — this method only decides whether to enter POSSIBLE_START.
+    const dataQuality = this.policyResolver.assessDataQuality({
+      snapshotFreshMs: liveStartFreshness.snapshotFreshMs,
+      ignitionAvailable: current.isIgnitionOn != null,
+      speedAvailable: current.speedKmh != null,
+      odometerAvailable: current.odometerKm != null,
+      corePointCount: 1,
+      hasRoutePoints: false,
+      hasHighFrequency: false,
+    });
+    if (liveStartFreshness.state === 'FRESH') {
+      dataQuality.snapshotFreshness = 'FRESH';
+    } else if (liveStartFreshness.state === 'STALE') {
+      dataQuality.snapshotFreshness = 'STALE';
+    } else if (liveStartFreshness.state === 'MISSING') {
+      dataQuality.snapshotFreshness = 'MISSING';
+    }
+
     const policy = this.policyResolver.resolve({
       phase: DETECTION_PHASES.LIVE_START,
       profile,
-      dataQuality: this.policyResolver.assessDataQuality({
-        // Snapshot freshness not available in SnapshotEvidenceSignals type;
-        // previousTelemetry.updatedAt is the best proxy we have here.
-        // TODO(Phase 2 completion): pass snapshot timestamp from caller context.
-        snapshotFreshMs: previousTelemetry?.updatedAt
-          ? Date.now() - previousTelemetry.updatedAt.getTime()
-          : null,
-        ignitionAvailable: current.isIgnitionOn != null,
-        speedAvailable: current.speedKmh != null,
-        odometerAvailable: current.odometerKm != null,
-        corePointCount: 1, // Single snapshot context
-        hasRoutePoints: false,
-        hasHighFrequency: false,
-      }),
+      dataQuality,
+      liveStartFreshnessState: liveStartFreshness.state,
       anomalyContext: {},
     });
+
+    if (policy.detectors.length === 0) {
+      this.logger.debug(
+        `LIVE_START skipped ${vehicleId} freshness=${liveStartFreshness.state}` +
+          (policy.skipReason ? ` reason=${policy.skipReason}` : ''),
+      );
+      return { shouldStartTracking: false };
+    }
 
     const findings = await this.detectorRegistry.runAll(
       policy.detectors,
@@ -564,7 +1061,11 @@ export class TripDetectionOrchestrationService {
     const evidenceFinding = findings.find((f) => f.detectorName === 'SnapshotEvidenceEvaluator');
     const ev = evidenceFinding?.evidence ?? {};
 
-    const now = new Date();
+    const now = workerNow;
+    const startClock = resolveStartCandidateClock({
+      providerSourceTimestamp: current.sourceTimestamp,
+      workerNow: now,
+    });
     const confEnum =
       startDecision.confidence === 'HIGH'
         ? DetectionConfidence.HIGH
@@ -576,8 +1077,10 @@ export class TripDetectionOrchestrationService {
       vehicleId,
       TripDetectionState.POSSIBLE_START,
       {
-        possibleStartAt: now,
-        lastSnapshotEvidenceAt: now,
+        possibleStartAt: startClock.candidateEventAt,
+        possibleStartEnteredAt: startClock.enteredAt,
+        lastSnapshotEvidenceAt: startClock.candidateEventAt,
+        // WORKER_TIME — operational evaluation timestamp, not physical movement.
         lastActivityAt: now,
         startOdometerKm: current.odometerKm,
         startFuelLevel: current.fuelLevelAbsolute,
@@ -585,12 +1088,30 @@ export class TripDetectionOrchestrationService {
         startDetectionMode: startDecision.mode as StartDetectionMode | undefined,
         startConfidence: confEnum,
         lastEvidenceSummary: {
+          candidatePhase: START_DETECTION_PHASES.START_CANDIDATE_WAKE,
+          candidatePolicyProfile: profileStr,
           strong: ev.strong,
           weak: ev.weak,
           hasMovement: ev.hasMovement,
           reasons: ev.reasons,
           profile: profileStr,
           detectorPolicy: policy.detectors,
+          candidateFreshnessState: liveStartFreshness.state,
+          candidateTimestampSource: liveStartFreshness.timestampSource,
+          candidateProviderObservedAt:
+            liveStartFreshness.providerSourceTimestamp?.toISOString() ?? null,
+          startCandidateClockSource: startClock.clockSource,
+          startCandidateObservedAt: startClock.candidateEventAt.toISOString(),
+          startCandidateEnteredAt: startClock.enteredAt.toISOString(),
+          ...(wakeContext
+            ? {
+                startWake: buildSnapshotWakeForensics({
+                  wakeContext,
+                  snapshotFetchedAt,
+                  cooldownBypassUsed: cooldownBypass.cooldownBypassUsed,
+                }),
+              }
+            : {}),
         },
       },
     );
@@ -606,7 +1127,20 @@ export class TripDetectionOrchestrationService {
       `POSSIBLE_START ${vehicleId} [${profileStr}] via ${policy.detectors.join('+')}` +
         `: ${reasons.join(', ')} (conf=${startDecision.confidence})`,
     );
-    this.tripMetrics?.tripStartCandidates.inc({ profile: profileStr, detector: policy.detectors[0] ?? 'none' });
+    runTripObservabilitySafely(this.logger, 'start_candidate_counter', () => {
+      this.tripMetrics?.tripStartCandidates.inc({
+        profile: profileStr,
+        detector: policy.detectors[0] ?? 'none',
+      });
+    });
+    runTripObservabilitySafely(this.logger,'start_candidate_latency', () => {
+      observeStartCandidateLatency(this.tripMetrics, {
+        profile: profileStr,
+        clockSource: startClock.clockSource,
+        candidateAt: startClock.candidateEventAt,
+        enteredAt: startClock.enteredAt,
+      });
+    });
 
     return {
       shouldStartTracking: true,
@@ -630,6 +1164,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for POSSIBLE_START ${vehicleId}`);
       return;
     }
@@ -639,13 +1176,32 @@ export class TripDetectionOrchestrationService {
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
-      if (det.state !== TripDetectionState.POSSIBLE_START) return;
+      if (det.state !== TripDetectionState.POSSIBLE_START) {
+        if (
+          (det.state === TripDetectionState.ACTIVE_TRIP ||
+            det.state === TripDetectionState.IDLE_WITHIN_TRIP) &&
+          det.activeTripId
+        ) {
+          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+        }
+        return;
+      }
+
+      const earlyRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (earlyRecovery !== 'continue') {
+        return;
+      }
 
       const profile = det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
       const profileStr = String(profile);
       const now = new Date();
       const startAt = det.possibleStartAt ?? now;
-      const elapsed = now.getTime() - startAt.getTime();
+      const confirmationAnchor = resolvePossibleStartConfirmationAnchor(det, now);
+      const elapsed = now.getTime() - confirmationAnchor.getTime();
 
       // Expire stale start candidates before they can be confirmed from old data.
       if (elapsed > this.CONFIRM_MAX_WAIT_MS) {
@@ -654,7 +1210,7 @@ export class TripDetectionOrchestrationService {
           vehicleId,
           TripDetectionState.RESTING,
           {
-            possibleStartAt: null,
+            ...clearPossibleStartClockFields(),
             startOdometerKm: null,
             startFuelLevel: null,
             startEvSoc: null,
@@ -687,17 +1243,18 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
-      const from = new Date(
-        Math.max(
-          startAt.getTime() - this.BACKFILL_MS,
-          now.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
-        ),
+      const from = computePossibleStartCoreFetchFrom(
+        startAt,
+        now,
+        this.tripStartBoundaryMaxLookbackMs,
+        this.BACKFILL_MS,
       );
 
       const corePoints = await this.segments.fetchRawTripCoreData(
         dimoTokenId,
         from,
         now,
+        this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
       );
 
       const telemetry = await this.prisma.vehicleLatestState.findUnique({
@@ -751,6 +1308,7 @@ export class TripDetectionOrchestrationService {
                 odometerKm: telemetry.odometerKm,
                 fuelLevelAbsolute: telemetry.fuelLevelAbsolute,
                 evSoc: telemetry.evSoc,
+                sourceTimestamp: telemetry.sourceTimestamp ?? null,
               }
             : undefined,
           anomalyContext: {
@@ -801,23 +1359,37 @@ export class TripDetectionOrchestrationService {
             : confirmConfidence === 'MEDIUM'
               ? DetectionConfidence.MEDIUM
               : DetectionConfidence.LOW;
-        const resolvedStart = await this.resolveConfirmedStartBoundary({
+        const boundaryResolution = await this.resolveConfirmedStartBoundary({
           dimoTokenId,
+          vehicleId,
+          organizationId,
           candidateStartAt: startAt,
           confirmedAt: now,
           corePoints,
           profile: profileStr,
         });
+        const resolvedStart = boundaryResolution.legacy;
         const effectiveStartAt = resolvedStart.startAt;
         const startRouteFetchFrom = new Date(
           Math.max(
             effectiveStartAt.getTime() - this.BACKFILL_MS,
-            now.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
+            now.getTime() - this.tripStartBoundaryMaxLookbackMs,
           ),
         );
-        const startEvidenceSummary = {
+        let startEvidenceSummary = {
           ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
           startCandidateAt: startAt.toISOString(),
+          startCandidateObservedAt:
+            typeof (det.lastEvidenceSummary as Record<string, unknown> | null)
+              ?.startCandidateObservedAt === 'string'
+              ? (det.lastEvidenceSummary as Record<string, unknown>).startCandidateObservedAt
+              : startAt.toISOString(),
+          startCandidateEnteredAt:
+            det.possibleStartEnteredAt?.toISOString() ??
+            (typeof (det.lastEvidenceSummary as Record<string, unknown> | null)
+              ?.startCandidateEnteredAt === 'string'
+              ? (det.lastEvidenceSummary as Record<string, unknown>).startCandidateEnteredAt
+              : null),
           confirmedStartAt: effectiveStartAt.toISOString(),
           confirmedStartSource: resolvedStart.source,
           startBoundaryAdjustedMs: resolvedStart.adjustedMs,
@@ -825,9 +1397,53 @@ export class TripDetectionOrchestrationService {
           clickhouseAssistedStart: analyticsStartDecision.evidencePath !== 'DIMO_ONLY',
           startConfirmationSummary: analyticsStartDecision.summary,
         };
-        this.tripMetrics?.tripEvidencePaths.inc({
-          phase: 'start_confirmation',
-          path: analyticsStartDecision.evidencePath,
+        if (isTripStartBoundaryAdmissionShadowEnabledForVehicle(vehicleId)) {
+          try {
+            const integrationModality = await resolveTripStartIntegrationModality(
+              this.prisma,
+              vehicleId,
+            );
+            const shadowSummary = await runStartBoundaryAdmissionShadow({
+              vehicleId,
+              dimoTokenId,
+              organizationId,
+              candidateStartAt: startAt,
+              confirmedAt: now,
+              corePoints,
+              profile: profileStr,
+              integrationModality,
+              legacy: {
+                startAt: effectiveStartAt,
+                source: resolvedStart.source,
+                dimoSegmentId: resolvedStart.dimoSegmentId,
+              },
+              evidence: boundaryResolution.evidence,
+              segments: this.segments,
+              providerContext: this.dimoProviderContext(
+                dimoTokenId,
+                vehicleId,
+                organizationId,
+              ),
+              tripMetrics: this.tripMetrics,
+              logger: this.logger,
+            });
+            startEvidenceSummary = mergeShadowStartBoundaryIntoEvidenceSummary(
+              startEvidenceSummary,
+              shadowSummary,
+            );
+          } catch (err) {
+            this.logger.warn(
+              `Start boundary admission shadow wiring failed (non-blocking): vehicle=${vehicleId} ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+            );
+          }
+        }
+        runTripObservabilitySafely(this.logger, 'start_confirmation_evidence', () => {
+          this.tripMetrics?.tripEvidencePaths.inc({
+            phase: 'start_confirmation',
+            path: analyticsStartDecision.evidencePath,
+          });
         });
 
         // Check for merge with recent previous trip
@@ -843,12 +1459,40 @@ export class TripDetectionOrchestrationService {
           0,
           previousTrip?.endTime ?? null,
           effectiveStartAt,
+          undefined,
+          this.maxSameTripQualifiedStopMs,
         );
 
+        const recoveryPreflight = await this.maybeRecoverLifecycleInvariant({
+          det,
+          organizationId,
+          dimoTokenId,
+          context: {
+            expectedStartAt: effectiveStartAt,
+            expectedDimoSegmentId:
+              resolvedStart.dimoSegmentId ??
+              `v2-${vehicleId}-${effectiveStartAt.getTime()}`,
+            mergeTargetTripId:
+              mergeCheck.shouldMergeWithPrevious && previousTrip?.id
+                ? previousTrip.id
+                : null,
+          },
+        });
+        if (recoveryPreflight !== 'continue') {
+          return;
+        }
+
         if (mergeCheck.shouldMergeWithPrevious && previousTrip?.id) {
+          const startRecognizedAt = new Date();
           // Reopen the previous trip instead of creating a new one
           // DecisionEngine is the sole writer of tripStatus changes
-          await this.decisionEngine.reopenTripForMerge(previousTrip.id);
+          await this.decisionEngine.reopenTripForMerge({
+            targetTripId: previousTrip.id,
+            lifecycleRecovery: {
+              candidateStartAt: startAt,
+              effectiveStartAt,
+            },
+          });
 
           resultState = TripDetectionState.ACTIVE_TRIP;
           await this.transitionState(
@@ -857,23 +1501,54 @@ export class TripDetectionOrchestrationService {
             {
               activeTripId: previousTrip.id,
               possibleStartAt: effectiveStartAt,
+              possibleStartEnteredAt: null,
               lastCoreProcessedAt: now,
               lastRouteProcessedAt: null,
               lastDrivingProcessedAt: null,
               lastActivityAt: now,
               startDetectionMode: confirmMode as StartDetectionMode,
               startConfidence: confEnum,
-              lastEvidenceSummary: startEvidenceSummary,
+              lastEvidenceSummary: {
+                ...startEvidenceSummary,
+                startRecognizedAt: startRecognizedAt.toISOString(),
+              },
             },
           );
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+          runTripObservabilitySafely(this.logger,'start_recognition_merge', () => {
+            observeStartRecognitionLatency(this.tripMetrics, {
+              profile: profileStr,
+              mode: confirmMode,
+              outcome: 'merge',
+              recognizedAt: startRecognizedAt,
+              canonicalStartAt: effectiveStartAt,
+            });
+            observeStartBoundaryAdjustment(this.tripMetrics, {
+              profile: profileStr,
+              source: resolvedStart.source,
+              outcome: 'merge',
+              initialCandidateAt: startAt,
+              effectiveStartAt,
+            });
+            this.logTripStartTimeline('active_trip_confirmed', {
+              vehicleId,
+              tripId: previousTrip.id,
+              startCandidateAt: startAt,
+              startCandidateEnteredAt: det.possibleStartEnteredAt,
+              canonicalStartAt: effectiveStartAt,
+              startRecognizedAt,
+              boundarySource: resolvedStart.source,
+              evidencePath: analyticsStartDecision.evidencePath,
+            });
+          });
           this.logger.log(
             `ACTIVE_TRIP merged with previous: vehicle=${vehicleId} trip=${previousTrip.id}` +
               ` startSource=${resolvedStart.source} evidencePath=${analyticsStartDecision.evidencePath}` +
               ` adjustedMs=${resolvedStart.adjustedMs}`,
           );
         } else {
+          const startRecognizedAt = new Date();
           // DecisionEngine.createTrip is the SOLE canonical trip creator
           const trip = await this.decisionEngine.createTrip({
             vehicleId,
@@ -889,6 +1564,13 @@ export class TripDetectionOrchestrationService {
             detectionProfile: profileStr,
             startDetectionMode: confirmMode,
             startConfidence: confirmConfidence,
+            lifecycleRecovery: {
+              candidateStartAt: startAt,
+              effectiveStartAt,
+              dimoSegmentId:
+                resolvedStart.dimoSegmentId ??
+                `v2-${vehicleId}-${effectiveStartAt.getTime()}`,
+            },
           });
 
           resultState = TripDetectionState.ACTIVE_TRIP;
@@ -898,20 +1580,27 @@ export class TripDetectionOrchestrationService {
             {
               activeTripId: trip.id,
               possibleStartAt: effectiveStartAt,
+              possibleStartEnteredAt: null,
               lastCoreProcessedAt: now,
               lastRouteProcessedAt: null,
               lastDrivingProcessedAt: null,
               lastActivityAt: now,
               startDetectionMode: confirmMode as StartDetectionMode,
               startConfidence: confEnum,
-              lastEvidenceSummary: startEvidenceSummary,
+              lastEvidenceSummary: {
+                ...startEvidenceSummary,
+                startRecognizedAt: startRecognizedAt.toISOString(),
+              },
             },
           );
+
+          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
           this.fetchAndStoreStartTemperature(
             dimoTokenId,
             trip.id,
             effectiveStartAt,
+            this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
           ).catch((e) =>
             this.logger.warn(`Temp fetch failed for trip ${trip.id}: ${e}`),
           );
@@ -921,34 +1610,68 @@ export class TripDetectionOrchestrationService {
             trip.id,
             startRouteFetchFrom,
             now,
+            this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
           ).catch((e) =>
             this.logger.warn(
               `Initial route fetch failed for trip ${trip.id}: ${e}`,
             ),
           );
 
-          // Battery V2: delayed START_DIP_PROXY job (policy-gated in producer).
           const orgId = det.organizationId;
           if (orgId) {
-            await this.batteryTripStartProducer.enqueueStartProxy({
-              organizationId: orgId,
-              vehicleId,
-              tripId: trip.id,
-              tripStartedAt: effectiveStartAt,
-            });
+            try {
+              await this.batteryTripStartProducer.enqueueStartProxy({
+                organizationId: orgId,
+                vehicleId,
+                tripId: trip.id,
+                tripStartedAt: effectiveStartAt,
+              });
+            } catch (e) {
+              this.logger.warn(
+                `Battery start-proxy enqueue failed for trip ${trip.id}: ${e}`,
+              );
+            }
           } else {
             this.logger.warn(
               `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
             );
           }
 
-          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           this.logger.log(
             `ACTIVE_TRIP confirmed: vehicle=${vehicleId} trip=${trip.id} mode=${confirmMode}` +
               ` [${profileStr}] startSource=${resolvedStart.source}` +
               ` evidencePath=${analyticsStartDecision.evidencePath} adjustedMs=${resolvedStart.adjustedMs}`,
           );
-          this.tripMetrics?.tripStartsConfirmed.inc({ profile: profileStr, mode: confirmMode });
+          runTripObservabilitySafely(this.logger, 'start_recognition_create', () => {
+            this.tripMetrics?.tripStartsConfirmed.inc({
+              profile: profileStr,
+              mode: confirmMode,
+            });
+            observeStartRecognitionLatency(this.tripMetrics, {
+              profile: profileStr,
+              mode: confirmMode,
+              outcome: 'create',
+              recognizedAt: startRecognizedAt,
+              canonicalStartAt: effectiveStartAt,
+            });
+            observeStartBoundaryAdjustment(this.tripMetrics, {
+              profile: profileStr,
+              source: resolvedStart.source,
+              outcome: 'create',
+              initialCandidateAt: startAt,
+              effectiveStartAt,
+            });
+            this.logTripStartTimeline('active_trip_confirmed', {
+              vehicleId,
+              tripId: trip.id,
+              startCandidateAt: startAt,
+              startCandidateEnteredAt: det.possibleStartEnteredAt,
+              canonicalStartAt: effectiveStartAt,
+              startRecognizedAt,
+              boundarySource: resolvedStart.source,
+              evidencePath: analyticsStartDecision.evidencePath,
+            });
+          });
         }
       } else {
         if (elapsed > this.CONFIRM_MAX_WAIT_MS) {
@@ -957,7 +1680,7 @@ export class TripDetectionOrchestrationService {
             vehicleId,
             TripDetectionState.RESTING,
             {
-              possibleStartAt: null,
+              ...clearPossibleStartClockFields(),
               startOdometerKm: null,
               startFuelLevel: null,
               startEvSoc: null,
@@ -994,14 +1717,21 @@ export class TripDetectionOrchestrationService {
       });
     } catch (err) {
       this.logger.warn(`POSSIBLE_START error for ${vehicleId}: ${err}`);
-      await this.logTrackingRun({
-        vehicleId,
-        organizationId,
-        stateAtRun: TripDetectionState.POSSIBLE_START,
-        runType: TripTrackingRunType.POSSIBLE_START_VALIDATION,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        durationMs: Date.now() - startedMs,
-      }).catch(() => {});
+      try {
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          stateAtRun: TripDetectionState.POSSIBLE_START,
+          runType: TripTrackingRunType.POSSIBLE_START_VALIDATION,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          durationMs: Date.now() - startedMs,
+        });
+      } catch (logErr) {
+        this.logger.warn(
+          `POSSIBLE_START diagnostic log failed for ${vehicleId}: ${logErr}`,
+        );
+      }
+      throw err;
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
     }
@@ -1015,6 +1745,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for ACTIVE_TICK ${vehicleId}`);
       return;
     }
@@ -1031,12 +1764,28 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
+      const activeRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (activeRecovery !== 'continue') {
+        return;
+      }
+
       const tripId = det.activeTripId;
       if (!tripId) {
         this.logger.warn(`ACTIVE_TICK but no activeTripId for ${vehicleId}`);
-        await this.transitionState(vehicleId, TripDetectionState.RESTING, {
-          activeTripId: null,
+        const missingPointerRecovery = await this.maybeRecoverLifecycleInvariant({
+          det,
+          organizationId,
+          dimoTokenId,
         });
+        if (missingPointerRecovery === 'continue') {
+          await this.transitionState(vehicleId, TripDetectionState.RESTING, {
+            activeTripId: null,
+          });
+        }
         return;
       }
 
@@ -1059,9 +1808,24 @@ export class TripDetectionOrchestrationService {
         : new Date(det.lastDrivingProcessedAt!.getTime() - this.OVERLAP_PERF_MS);
 
       const [corePoints, routePoints, perfReadings] = await Promise.all([
-        this.segments.fetchRawTripCoreData(dimoTokenId, coreFrom, now),
-        this.segments.fetchRouteEnrichment(dimoTokenId, routeFrom, now),
-        this.segments.fetchPerformance(dimoTokenId, perfFrom, now),
+        this.segments.fetchRawTripCoreData(
+          dimoTokenId,
+          coreFrom,
+          now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
+        ),
+        this.segments.fetchRouteEnrichment(
+          dimoTokenId,
+          routeFrom,
+          now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
+        ),
+        this.segments.fetchPerformance(
+          dimoTokenId,
+          perfFrom,
+          now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
+        ),
       ]);
 
       if (corePoints.length === 0) {
@@ -1110,26 +1874,276 @@ export class TripDetectionOrchestrationService {
         // inactivity threshold, hand off to POSSIBLE_END and let the
         // POSSIBLE_END_CHECK → END_VALIDATION chain finalize the trip with
         // a proper endTime (lastMeaningfulMovementAt / last waypoint / CUSUM).
-        const anchorAt =
-          (det as any).lastMeaningfulMovementAt ??
-          det.lastActivityAt ??
-          det.possibleStartAt ??
-          now;
-        const inactiveMs = now.getTime() - anchorAt.getTime();
-        if (inactiveMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS) {
+        const priorSummary =
+          (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+        let evidencePatch: Record<string, unknown> = { ...priorSummary };
+        const priorStopBoundaryAt = readActiveStopBoundaryAt(evidencePatch);
+        const priorStopBoundaryProvenance = readStopBoundaryProvenance(priorSummary);
+        const priorTrustedStopBoundaryAt =
+          priorStopBoundaryProvenance?.trust === true
+            ? priorStopBoundaryProvenance.boundaryAt
+            : null;
+        let stopBoundaryAt = priorStopBoundaryAt;
+        const emptyCoreVlsTelemetry = telemetryNoCore
+          ? {
+              isIgnitionOn: telemetryNoCore.isIgnitionOn,
+              speedKmh: telemetryNoCore.speedKmh,
+              engineLoad: telemetryNoCore.engineLoad,
+              sourceTimestamp: telemetryNoCore.sourceTimestamp,
+            }
+          : null;
+        const emptyCoreStopCandidate = resolveProviderStopBoundaryCandidate({
+          telemetry: emptyCoreVlsTelemetry,
+          profile,
+          workerNow: now,
+          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+          existingStopBoundaryAt: stopBoundaryAt,
+          existingStopBoundarySummary: evidencePatch,
+          maxFreshObservationAgeMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+        });
+        if (emptyCoreStopCandidate) {
+          evidencePatch = mergeProviderStopBoundaryCandidate(
+            evidencePatch,
+            emptyCoreStopCandidate,
+          );
+          stopBoundaryAt = readActiveStopBoundaryAt(evidencePatch);
+          if (
+            now.getTime() - emptyCoreStopCandidate.boundaryAt.getTime() <
+            this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS
+          ) {
+            evidencePatch = mergePauseDetectedAt(
+              evidencePatch,
+              emptyCoreStopCandidate.boundaryAt,
+              'provider_stationary_vls',
+            );
+          }
+        }
+
+        const emptyCoreGateStopBoundary = emptyCoreStopCandidate
+          ? priorTrustedStopBoundaryAt
+          : stopBoundaryAt;
+
+        const { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource } =
+          resolveProviderOperationalAnchor({
+            lastEvidenceSummary: evidencePatch,
+            lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+            lastActivityAt: det.lastActivityAt,
+            possibleStartAt: det.possibleStartAt,
+            workerNow: now,
+          });
+        const effectiveOperationalAnchor =
+          emptyCoreGateStopBoundary &&
+          isValidProviderEventTimestamp(emptyCoreGateStopBoundary, now) &&
+          operationalAnchor.getTime() < emptyCoreGateStopBoundary.getTime()
+            ? {
+                anchorAt: emptyCoreGateStopBoundary,
+                anchorSource: 'stopBoundaryAt',
+              }
+            : { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource };
+        const inactiveMs =
+          now.getTime() - effectiveOperationalAnchor.anchorAt.getTime();
+        const movementInvalidationAnchor =
+          emptyCoreGateStopBoundary ??
+          (isValidProviderEventTimestamp((det as any).lastMeaningfulMovementAt, now)
+            ? ((det as any).lastMeaningfulMovementAt as Date)
+            : null);
+        const hasCrediblePostBoundaryMovement =
+          movementInvalidationAnchor != null
+            ? hasCrediblePostBoundaryRouteMotion(
+                routePoints,
+                profile,
+                movementInvalidationAnchor,
+              )
+            : false;
+        const providerSilenceAnchorAt =
+          readLastProviderActivityAt(evidencePatch) ??
+          emptyCoreVlsTelemetry?.sourceTimestamp ??
+          null;
+        const emptyCoreGateStopBoundaryProvenance =
+          emptyCoreGateStopBoundary != null
+            ? emptyCoreStopCandidate
+              ? readStopBoundaryProvenance({
+                  ...priorSummary,
+                  stopBoundaryAt: emptyCoreGateStopBoundary.toISOString(),
+                })
+              : readStopBoundaryProvenance(evidencePatch)
+            : null;
+        const emptyCoreGate = assessSuccessfulEmptyCoreEndEligibility({
+          operationalInactiveMs: inactiveMs,
+          minInactivityBeforeCusumMs:
+            this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+          telemetry: emptyCoreVlsTelemetry,
+          perfReadings,
+          routePoints,
+          profile,
+          workerNow: now,
+          stopBoundaryAt: emptyCoreGateStopBoundary,
+          stopBoundaryProvenance: emptyCoreGateStopBoundaryProvenance,
+          operationalAnchorSource: effectiveOperationalAnchor.anchorSource,
+          hasCrediblePostBoundaryMovement,
+          providerSilenceAnchorAt,
+          lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+        });
+
+        const shadowEmptyCorePatch = runShadowObservabilitySafely(this.logger, 
+          'shadow_provider_silence_empty_core',
+          () =>
+            runShadowActiveTickObservation({
+              vehicleId,
+              tripId,
+              activeTripId: det.activeTripId,
+              fsmState: det.state,
+              workerNow: now,
+              operationalInactiveMs: inactiveMs,
+              minInactivityBeforeCusumMs:
+                this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+              telemetry: emptyCoreVlsTelemetry,
+              profile,
+              stopBoundaryProvenance: emptyCoreGateStopBoundaryProvenance,
+              performanceActivity: emptyCoreGate.forensics.performanceActivity,
+              routeMotion: emptyCoreGate.forensics.routeMotion,
+              hasCrediblePostMovement: hasCrediblePostBoundaryMovement,
+              providerSilenceAnchorAt,
+              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+              lastProviderActivityAt: readLastProviderActivityAt(evidencePatch),
+              emptyCoreForensics: emptyCoreGate.forensics,
+              realWinningEndPath: emptyCoreGate.eligible
+                ? emptyCoreGate.forensics.providerSilenceAdmissionEligible
+                  ? 'provider_silence_admitted'
+                  : emptyCoreGate.forensics.boundaryBackedSilenceEligible
+                    ? 'trusted_boundary_backed_silence'
+                    : emptyCoreGate.forensics.reason
+                : null,
+              endCycleGeneration: resolveEndCycleToken(det),
+              priorSummary: evidencePatch,
+              evaluateProviderSilence: true,
+            }),
+        );
+        if (shadowEmptyCorePatch) {
+          evidencePatch = mergeShadowEvidencePatch(
+            evidencePatch,
+            shadowEmptyCorePatch,
+          );
+        }
+
+        if (
+          isPauseCorroborated({
+            telemetry: emptyCoreVlsTelemetry,
+            workerNow: now,
+            maxObservationAgeMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+            operationalInactiveMs: inactiveMs,
+            minEndInactivityMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+          })
+        ) {
+          const pauseAt =
+            telemetryNoCore?.sourceTimestamp &&
+            isValidProviderEventTimestamp(telemetryNoCore.sourceTimestamp, now)
+              ? telemetryNoCore.sourceTimestamp
+              : effectiveOperationalAnchor.anchorAt;
+          evidencePatch = mergePauseDetectedAt(
+            evidencePatch,
+            pauseAt,
+            'vls_inactive_empty_core',
+          );
+        } else if (
+          emptyCoreStopCandidate &&
+          inactiveMs < this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS &&
+          !readPauseDetectedAt(evidencePatch)
+        ) {
+          evidencePatch = mergePauseDetectedAt(
+            evidencePatch,
+            emptyCoreStopCandidate.boundaryAt,
+            'provider_stationary_vls',
+          );
+        }
+
+        if (
+          readPauseDetectedAt(evidencePatch) &&
+          !readPauseDetectedAt(priorSummary)
+        ) {
+          const pauseShadowPatch = runShadowObservabilitySafely(this.logger, 
+            'shadow_pause_start_empty_core',
+            () =>
+              runShadowPauseStartObservation({
+                vehicleId,
+                tripId,
+                activeTripId: det.activeTripId,
+                fsmState: det.state,
+                workerNow: now,
+                episodeStartSource: 'empty_core_pause_detected',
+                stopAnchorAt: readStopBoundaryAt(evidencePatch),
+                possibleEndAt: det.possibleEndAt,
+                completedAt: null,
+                restingAt: null,
+                priorSummary: evidencePatch,
+              }),
+          );
+          if (pauseShadowPatch) {
+            evidencePatch = mergeShadowEvidencePatch(
+              evidencePatch,
+              pauseShadowPatch,
+            );
+          }
+        }
+
+        if (emptyCoreGate.eligible) {
+          const silenceEndCandidate =
+            emptyCoreGate.forensics.providerSilenceAdmissionEligible &&
+            emptyCoreGate.forensics.providerSilenceCandidateAt
+              ? {
+                  anchorAt: new Date(emptyCoreGate.forensics.providerSilenceCandidateAt),
+                  source: 'provider_silence_candidate' as const,
+                  clockAuthority: 'PROVIDER_EVENT_TIME' as const,
+                  trust: false as const,
+                }
+              : null;
+          const endBoundary = resolvePossibleEndBoundaryCandidate({
+            stopBoundaryProvenance: emptyCoreGateStopBoundaryProvenance,
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+            lastActivityAt: det.lastActivityAt,
+            workerNow: now,
+            silenceEndCandidate,
+          });
           resultState = TripDetectionState.POSSIBLE_END;
           await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
-            possibleEndAt: anchorAt,
-            endValidationAttempts: 0,
+            possibleEndAt: endBoundary.boundaryAt,
+            possibleEndEnteredAt: now,
+            endValidationAttempts: resolveEndValidationAttemptsOnPossibleEndReentry({
+              priorState: det.state,
+              endValidationAttempts: det.endValidationAttempts,
+              priorSummary:
+                (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {},
+              workerNow: now,
+              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+              candidateStopBoundary: emptyCoreGateStopBoundaryProvenance,
+              candidateProviderSilence: silenceEndCandidate,
+            }),
             cusumValidatedAt: null,
             cusumSegmentStart: null,
             cusumSegmentEnd: null,
-          });
-          this.logTripEndTimeline('possible_end_entered', {
-            vehicleId,
-            tripId,
-            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? anchorAt,
-            possibleEndAt: anchorAt,
+            lastEvidenceSummary: {
+              ...evidencePatch,
+              endCandidateClockSource: endBoundary.clockSource,
+              noCoreEmptyCoreForensics: emptyCoreGate.forensics,
+              emptyCoreDecision: emptyCoreGate.forensics.decision,
+              emptyCoreReason: emptyCoreGate.forensics.reason,
+              innerGateReason: emptyCoreGate.forensics.innerGateReason,
+              boundaryBackedSilenceEligible:
+                emptyCoreGate.forensics.boundaryBackedSilenceEligible,
+              providerSilenceAdmissionEligible:
+                emptyCoreGate.forensics.providerSilenceAdmissionEligible,
+              providerSilenceCandidateAt:
+                emptyCoreGate.forensics.providerSilenceCandidateAt,
+              providerSilenceCandidateSource:
+                emptyCoreGate.forensics.providerSilenceCandidateSource,
+              providerSilenceCandidateClockAuthority:
+                emptyCoreGate.forensics.providerSilenceCandidateClockAuthority,
+              providerSilenceCandidateTrust:
+                emptyCoreGate.forensics.providerSilenceCandidateTrust,
+              vlsEvidenceState: emptyCoreGate.forensics.vlsEvidenceState,
+              vlsProviderObservedAt: emptyCoreGate.forensics.vlsProviderObservedAt,
+              vlsObservationAgeMs: emptyCoreGate.forensics.vlsObservationAgeMs,
+            },
           });
           await this.schedulePossibleEndCheck(
             vehicleId,
@@ -1137,8 +2151,30 @@ export class TripDetectionOrchestrationService {
             dimoTokenId,
             0,
           );
+          runTripObservabilitySafely(this.logger,'empty_core_end_candidate', () => {
+            this.observePossibleEndCandidateLatency({
+              priorState: det.state,
+              profile: String(profile),
+              evidencePath: 'EMPTY_CORE_GATE',
+              clockSource: endBoundary.clockSource,
+              candidateAt: endBoundary.boundaryAt,
+              enteredAt: now,
+            });
+            this.tripMetrics?.tripEvidencePaths?.inc({
+              phase: 'end_candidate',
+              path: 'EMPTY_CORE_GATE',
+            });
+            this.logTripEndTimeline('possible_end_entered', {
+              vehicleId,
+              tripId,
+              lastMeaningfulMovementAt:
+                (det as any).lastMeaningfulMovementAt ?? endBoundary.boundaryAt,
+              possibleEndAt: endBoundary.boundaryAt,
+              possibleEndEnteredAt: now,
+            });
+          });
           this.logger.log(
-            `ACTIVE_TICK: no core data for ${vehicleId}, last movement ${Math.round(inactiveMs / 60_000)}min ago → POSSIBLE_END`,
+            `ACTIVE_TICK: no core data for ${vehicleId}, corroborated inactivity ${Math.round(inactiveMs / 60_000)}min ago → POSSIBLE_END`,
           );
           await this.logTrackingRun({
             vehicleId,
@@ -1152,20 +2188,45 @@ export class TripDetectionOrchestrationService {
             routePointsCount: routePoints.length,
             drivingPointsCount: perfReadings.length,
             resultState,
-            resultSummary: {
-              reason: 'no_core_data_inactivity_to_possible_end',
-              inactiveMs,
-              anchorAt: anchorAt.toISOString(),
-              routePointsCount: routePoints.length,
-              drivingPointsCount: perfReadings.length,
-            },
+            resultSummary: attachShadowToResultSummary(
+              buildEmptyCorePossibleEndSummary(
+                emptyCoreGate.forensics,
+                effectiveOperationalAnchor.anchorAt.toISOString(),
+              ),
+              shadowEmptyCorePatch ?? null,
+            ),
             durationMs: Date.now() - startedMs,
           });
           return;
         }
 
         resultState = det.state;
-        await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+        const deferralStreak =
+          emptyCoreGate.forensics.vlsEvidenceState === 'UNKNOWN' ||
+          emptyCoreGate.forensics.innerGateReason.startsWith('vls_')
+            ? readEmptyCoreDeferralStreak(priorSummary) + 1
+            : 0;
+        const nextDelayMs = computeEmptyCoreBackoffMs({
+          baseIntervalMs: this.TRACKING_INTERVAL_MS,
+          consecutiveDeferrals: deferralStreak,
+          backoffBaseMs: this.TRIP_EMPTY_CORE_BACKOFF_BASE_MS,
+          backoffMaxMs: this.TRIP_EMPTY_CORE_BACKOFF_MAX_MS,
+          jitterRatio: this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO,
+        });
+        evidencePatch = mergeEmptyCoreDeferral(evidencePatch, {
+          streak: deferralStreak,
+          nextCheckDelayMs: nextDelayMs,
+          innerGateReason: emptyCoreGate.forensics.innerGateReason,
+        });
+        await this.transitionState(vehicleId, det.state, {
+          lastEvidenceSummary: evidencePatch,
+        });
+        await this.scheduleActiveTick(
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          nextDelayMs,
+        );
         await this.logTrackingRun({
           vehicleId,
           organizationId,
@@ -1178,12 +2239,18 @@ export class TripDetectionOrchestrationService {
           routePointsCount: routePoints.length,
           drivingPointsCount: perfReadings.length,
           resultState,
-          resultSummary: {
-            reason: 'no_core_data_keep_open',
-            inactiveMs,
-            routePointsCount: routePoints.length,
-            drivingPointsCount: perfReadings.length,
-          },
+          resultSummary: attachShadowToResultSummary(
+            {
+              ...buildEmptyCoreKeepOpenSummary(
+                emptyCoreGate.forensics,
+                effectiveOperationalAnchor.anchorAt.toISOString(),
+              ),
+              fetchOutcome: 'SUCCESS_EMPTY' satisfies TripTelemetryFetchOutcome,
+              nextCheckDelayMs: nextDelayMs,
+              emptyCoreDeferralStreak: deferralStreak,
+            },
+            shadowEmptyCorePatch ?? null,
+          ),
           durationMs: Date.now() - startedMs,
         });
         return;
@@ -1203,24 +2270,48 @@ export class TripDetectionOrchestrationService {
         const tripAge =
           new Date().getTime() - det.possibleStartAt!.getTime();
         if (tripAge >= this.TRIP_MID_GAP_MIN_PRE_DURATION_MS) {
-          // Validate with GPS drift between the last pre-gap waypoint and
-          // the first post-gap waypoint (both still on this trip). If the
-          // vehicle drifted more than the stationary threshold, the gap is
-          // likely a signal dropout during actual driving (tunnel, rural
-          // area) and MUST NOT be split.
-          const drift = await this.computeMidGapPositionDrift(
+          const driftEvidence = await this.resolveLiveMidGapDriftEvidence(
             tripId,
             midGap.firstEndAt,
             midGap.secondStartAt,
+            routePoints,
           );
-          const driftOk =
-            drift == null || drift <= this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M;
+          const driftDecision = classifyLiveMidGapDriftDecision(
+            driftEvidence,
+            this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M,
+          );
 
-          if (driftOk) {
+          if (driftDecision.decision === 'REJECTED') {
+            this.logger.debug(
+              `MID_GAP_SPLIT: rejected for ${vehicleId} — reason=${driftDecision.reason} ` +
+                `driftState=${driftEvidence.state} ` +
+                `drift=${driftEvidence.driftM != null ? `${Math.round(driftEvidence.driftM)}m` : 'unknown'} ` +
+                `max=${this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M}m`,
+            );
+            await this.logTrackingRun({
+              vehicleId,
+              organizationId,
+              tripId,
+              stateAtRun: det.state,
+              runType: TripTrackingRunType.ACTIVE_TRACKING,
+              requestedFrom: coreFrom,
+              requestedTo: now,
+              corePointsCount: corePoints.length,
+              routePointsCount: routePoints.length,
+              drivingPointsCount: perfReadings.length,
+              resultState: det.state,
+              resultSummary: buildMidGapRejectedForensics({
+                gapMs: midGap.gapMs,
+                firstEndAt: midGap.firstEndAt,
+                secondStartAt: midGap.secondStartAt,
+                driftDecision,
+                maxAllowedDriftM: this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M,
+              }),
+              durationMs: Date.now() - startedMs,
+            }).catch(() => {});
+          } else {
+            let splitCommitPhase: MidGapSplitCommitPhase = 'PRE_COMMIT';
             try {
-              // Persist waypoints that belong to segment 1 (<= firstEndAt)
-              // before the split so route rendering stays intact. Anything
-              // after the gap will arrive via the next tick on the new trip.
               const seg1Cutoff = det.lastRouteProcessedAt
                 ? det.lastRouteProcessedAt.getTime() - 5000
                 : 0;
@@ -1256,41 +2347,19 @@ export class TripDetectionOrchestrationService {
                 ),
                 reason: 'live_mid_trip_gap_split',
                 triggeredBy: 'LIVE_FSM',
+                splitDriftM: driftEvidence.driftM,
               });
+              splitCommitPhase = 'POST_COMMIT';
 
-              // Re-point the FSM at the continuation trip and reset
-              // lifecycle-scoped fields so the next tick processes segment 2
-              // from a clean slate.
               await this.transitionState(
                 vehicleId,
                 TripDetectionState.ACTIVE_TRIP,
-                {
-                  activeTripId: splitResult.secondTripId,
-                  possibleStartAt: midGap.secondStartAt,
-                  possibleEndAt: null,
-                  endValidationAttempts: 0,
-                  endDetectionMode: null,
-                  endConfidence: null,
-                  cusumValidatedAt: null,
-                  cusumSegmentStart: null,
-                  cusumSegmentEnd: null,
-                  startDetectionMode:
-                    'MID_TRIP_GAP_SPLIT' as unknown as StartDetectionMode,
-                  startConfidence: 'MEDIUM' as DetectionConfidence,
-                  lastActivityAt: midGap.secondStartAt,
-                  lastMeaningfulMovementAt: midGap.secondStartAt,
-                  // Next fetch windows start at the gap boundary so we do not
-                  // re-process segment 1 on the next tick.
-                  lastRouteProcessedAt: midGap.secondStartAt,
-                  lastDrivingProcessedAt: midGap.secondStartAt,
-                  lastCoreProcessedAt: midGap.secondStartAt,
-                  startOdometerKm: null,
-                  startFuelLevel: null,
-                  startEvSoc: null,
-                },
+                buildMidGapSplitActiveFsmExtras({
+                  secondTripId: splitResult.secondTripId,
+                  secondStartAt: midGap.secondStartAt,
+                }),
               );
 
-              // Durable V2 analysis init (awaited) + legacy enrichment (unchanged).
               await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
                 tripId: splitResult.firstTripId,
                 vehicleId,
@@ -1309,20 +2378,20 @@ export class TripDetectionOrchestrationService {
                   ),
                 );
 
-              // Schedule the next ACTIVE_TICK so the new trip picks up its
-              // own data immediately.
               await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
               this.logger.log(
                 `MID_GAP_SPLIT: vehicle=${vehicleId} firstTrip=${splitResult.firstTripId} ` +
                   `→ secondTrip=${splitResult.secondTripId} gap=${Math.round(midGap.gapMs / 1000)}s ` +
                   `firstEnd=${midGap.firstEndAt.toISOString()} secondStart=${midGap.secondStartAt.toISOString()} ` +
-                  `drift=${drift != null ? `${Math.round(drift)}m` : 'unknown'}`,
+                  `drift=${driftEvidence.driftM != null ? `${Math.round(driftEvidence.driftM)}m` : 'unknown'}`,
               );
 
-              this.tripMetrics?.tripEvidencePaths.inc({
-                phase: 'mid_gap_split',
-                path: 'live_fsm',
+              runTripObservabilitySafely(this.logger, 'mid_gap_split_evidence', () => {
+                this.tripMetrics?.tripEvidencePaths.inc({
+                  phase: 'mid_gap_split',
+                  path: 'live_fsm',
+                });
               });
 
               await this.logTrackingRun({
@@ -1337,30 +2406,77 @@ export class TripDetectionOrchestrationService {
                 routePointsCount: routePoints.length,
                 drivingPointsCount: perfReadings.length,
                 resultState: TripDetectionState.ACTIVE_TRIP,
-                resultSummary: {
-                  reason: 'live_mid_trip_gap_split_applied',
+                resultSummary: buildMidGapAppliedForensics({
+                  gapMs: midGap.gapMs,
+                  firstEndAt: midGap.firstEndAt,
+                  secondStartAt: midGap.secondStartAt,
+                  driftM: driftEvidence.driftM,
                   firstTripId: splitResult.firstTripId,
                   secondTripId: splitResult.secondTripId,
-                  firstEndAt: midGap.firstEndAt.toISOString(),
-                  secondStartAt: midGap.secondStartAt.toISOString(),
-                  gapMs: midGap.gapMs,
-                  driftM: drift,
-                },
+                  maxSameTripStopMs: this.maxSameTripQualifiedStopMs,
+                  qualificationReason: 'live_mid_gap_qualified_stationary',
+                }),
                 durationMs: Date.now() - startedMs,
               });
 
               return;
             } catch (err) {
+              if (splitCommitPhase === 'POST_COMMIT') {
+                this.logger.warn(
+                  `MID_GAP_SPLIT: post-commit failure for ${vehicleId} (split committed, aborting tick): ${err}`,
+                );
+                await this.scheduleActiveTick(
+                  vehicleId,
+                  organizationId,
+                  dimoTokenId,
+                ).catch(() => {});
+                return;
+              }
+
+              const failureMsg = err instanceof Error ? err.message : String(err);
+              const durableOutcome = await readDurableLiveSplitOutcome(this.prisma, {
+                vehicleId,
+                originalTripId: tripId,
+                expectedFirstEndAt: midGap.firstEndAt,
+                expectedSecondStartAt: midGap.secondStartAt,
+              });
+
+              if (durableOutcome !== 'NOT_COMMITTED') {
+                this.logger.warn(
+                  `MID_GAP_SPLIT: split promise failed with durableOutcome=${durableOutcome} for ${vehicleId}: ${err}`,
+                );
+                await this.logTrackingRun({
+                  vehicleId,
+                  organizationId,
+                  tripId,
+                  stateAtRun: det.state,
+                  runType: TripTrackingRunType.ACTIVE_TRACKING,
+                  requestedFrom: coreFrom,
+                  requestedTo: now,
+                  corePointsCount: corePoints.length,
+                  routePointsCount: routePoints.length,
+                  drivingPointsCount: perfReadings.length,
+                  resultSummary: buildMidGapCommitAmbiguityForensics({
+                    durableOutcome,
+                    originalTripId: tripId,
+                    expectedFirstEndAt: midGap.firstEndAt,
+                    expectedSecondStartAt: midGap.secondStartAt,
+                    errorMessage: failureMsg,
+                  }),
+                  durationMs: Date.now() - startedMs,
+                }).catch(() => {});
+                await this.scheduleActiveTick(
+                  vehicleId,
+                  organizationId,
+                  dimoTokenId,
+                ).catch(() => {});
+                return;
+              }
+
               this.logger.warn(
-                `MID_GAP_SPLIT: split failed for ${vehicleId}: ${err}`,
+                `MID_GAP_SPLIT: pre-commit split failed (durable NOT_COMMITTED) for ${vehicleId}: ${err}`,
               );
-              // Fall through and continue the tick as normal.
             }
-          } else {
-            this.logger.debug(
-              `MID_GAP_SPLIT: rejected for ${vehicleId} — drift=${Math.round(drift!)}m ` +
-                `exceeds ${this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M}m (likely signal dropout, not park)`,
-            );
           }
         }
       }
@@ -1489,6 +2605,7 @@ export class TripDetectionOrchestrationService {
       await this.prisma.vehicleTrip.update({
         where: { id: tripId },
         data: {
+          // ONGOING endTime is provisional/worker-anchored — not canonical physical boundary (R1/P5-F01).
           endTime: now,
           ...(endCoord && {
             endLatitude: endCoord.latitude,
@@ -1583,6 +2700,53 @@ export class TripDetectionOrchestrationService {
       });
 
       // ── PHASE 2 SEAM: ContinuityAssessmentDetector ───────────────────────────
+      let priorSummaryForCore =
+        (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      const priorStopBoundaryProvenance = readStopBoundaryProvenance(priorSummaryForCore);
+      const priorTrustedStopBoundaryAt =
+        priorStopBoundaryProvenance?.trust === true
+          ? priorStopBoundaryProvenance.boundaryAt
+          : null;
+      const priorStopBoundaryAt = readActiveStopBoundaryAt(priorSummaryForCore);
+      let persistedStopBoundaryAt = priorStopBoundaryAt;
+
+      const vlsTelemetryForBoundary = telemetry
+        ? {
+            isIgnitionOn: telemetry.isIgnitionOn,
+            speedKmh: telemetry.speedKmh,
+            engineLoad: telemetry.engineLoad,
+            sourceTimestamp: telemetry.sourceTimestamp,
+          }
+        : null;
+      const providerStopCandidate = resolveProviderStopBoundaryCandidate({
+        telemetry: vlsTelemetryForBoundary,
+        profile,
+        workerNow: now,
+        lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+        existingStopBoundaryAt: priorStopBoundaryAt,
+        existingStopBoundarySummary: priorSummaryForCore,
+        maxFreshObservationAgeMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+      });
+      if (providerStopCandidate) {
+        priorSummaryForCore = mergeProviderStopBoundaryCandidate(
+          priorSummaryForCore,
+          providerStopCandidate,
+        );
+        persistedStopBoundaryAt = readActiveStopBoundaryAt(priorSummaryForCore);
+        if (
+          now.getTime() - providerStopCandidate.boundaryAt.getTime() <
+          this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS
+        ) {
+          priorSummaryForCore = mergePauseDetectedAt(
+            priorSummaryForCore,
+            providerStopCandidate.boundaryAt,
+            'provider_stationary_vls',
+          );
+        }
+      }
+
+      const continuityStopBoundaryAt = priorTrustedStopBoundaryAt;
+
       const continuityFindings = await this.detectorRegistry.runAll(
         continuityPolicy.detectors,
         {
@@ -1593,6 +2757,7 @@ export class TripDetectionOrchestrationService {
           timeWindow: { from: coreFrom, to: now },
           coreDataPoints: evalCore,
           performanceReadings: recentPerf,
+          resumeAfterStopAt: continuityStopBoundaryAt,
           anomalyContext: {
             clickhouseAvailable,
           },
@@ -1666,6 +2831,13 @@ export class TripDetectionOrchestrationService {
           activityWindowFinding,
         );
 
+        runTripObservabilitySafely(this.logger, 'active_continuity_evidence', () => {
+          this.tripMetrics?.tripEvidencePaths.inc({
+            phase: 'active_continuity',
+            path: clickhouseGuard.evidencePath,
+          });
+        });
+
         if (clickhouseGuard.keepTripOpen) {
           effectiveContinuityDecision = {
             verdict: 'ACTIVE',
@@ -1676,16 +2848,25 @@ export class TripDetectionOrchestrationService {
             ...(effectiveContinuitySummary ?? {}),
             clickhouseGuard: clickhouseGuard.summary,
           };
-          this.tripMetrics?.tripEvidencePaths.inc({
-            phase: 'active_continuity',
-            path: clickhouseGuard.evidencePath,
-          });
-        } else {
-          this.tripMetrics?.tripEvidencePaths.inc({
-            phase: 'active_continuity',
-            path: clickhouseGuard.evidencePath,
-          });
         }
+      }
+
+      // R12: STOP OBSERVATION != END DECISION — first trusted stop boundary of the
+      // episode (including WORKER_TIME → PROVIDER upgrade) must not authorize
+      // continuity POSSIBLE_END in the same tick.
+      const trustedBoundaryEstablishedThisTick =
+        providerStopCandidate != null &&
+        priorStopBoundaryProvenance?.trust !== true;
+      if (
+        trustedBoundaryEstablishedThisTick &&
+        effectiveContinuityDecision.verdict === 'POSSIBLE_END'
+      ) {
+        effectiveContinuityDecision = {
+          verdict: 'ACTIVE',
+          reason:
+            'Stop boundary observation tick — defer end until a later tick',
+          findings: continuityFindings,
+        };
       }
 
       const stateUpdateBase = {
@@ -1694,12 +2875,66 @@ export class TripDetectionOrchestrationService {
         lastDrivingProcessedAt: now,
       };
 
-      // Track the last moment meaningful movement was observed
-      const hadMeaningfulMovement =
-        effectiveContinuityDecision.verdict === 'ACTIVE' &&
-        (((effectiveContinuitySummary as any)?.motionCount ?? 0) > 0 ||
-          ((effectiveContinuitySummary as any)?.clickhouseGuard?.maxSpeedKmh ?? 0) > 5 ||
-          ((effectiveContinuitySummary as any)?.clickhouseGuard?.odometerDeltaKm ?? 0) > 0.05);
+      // Track the last moment meaningful movement was observed (EVENT_TIME only).
+      const chGuardSummary = (effectiveContinuitySummary as any)?.clickhouseGuard;
+      const impliesMovement = continuityStopBoundaryAt
+        ? continuityImpliesCrediblePostBoundaryMovement({
+            recentPoints: evalCore,
+            profile,
+            continuitySummary: effectiveContinuitySummary,
+            clickhouseGuardSummary: chGuardSummary,
+            stopBoundaryAt: continuityStopBoundaryAt,
+            workerNow: now,
+          })
+        : continuityImpliesMeaningfulMovement(
+            effectiveContinuitySummary,
+            chGuardSummary,
+          );
+      const movementEventAt =
+        effectiveContinuityDecision.verdict === 'ACTIVE' && impliesMovement
+          ? resolveLatestMeaningfulMovementEventAt({
+              recentPoints: evalCore,
+              profile,
+              continuitySummary: effectiveContinuitySummary,
+              clickhouseGuardSummary: chGuardSummary,
+              workerNow: now,
+              resumeAfterAt: continuityStopBoundaryAt,
+            })
+          : null;
+
+      let continuityEvidencePatch = priorSummaryForCore;
+      if (movementEventAt) {
+        if (readPauseDetectedAt(continuityEvidencePatch)) {
+          const resumeShadowPatch = runShadowObservabilitySafely(this.logger, 
+            'shadow_pause_resume_active_continuity',
+            () =>
+              runShadowResumeObservation({
+                vehicleId,
+                tripId,
+                activeTripId: det.activeTripId,
+                fsmState: det.state,
+                workerNow: now,
+                movementEvidenceSource: 'active_continuity_meaningful_movement',
+                priorSummary: continuityEvidencePatch,
+              }),
+          );
+          if (resumeShadowPatch) {
+            continuityEvidencePatch = mergeShadowEvidencePatch(
+              continuityEvidencePatch,
+              resumeShadowPatch,
+            );
+          }
+        }
+        continuityEvidencePatch = mergeLastProviderActivityAt(
+          continuityEvidencePatch,
+          movementEventAt,
+        );
+        continuityEvidencePatch = clearPauseEvidence(continuityEvidencePatch);
+        continuityEvidencePatch = retireActiveStopBoundaryAfterMovement(
+          continuityEvidencePatch,
+          movementEventAt,
+        );
+      }
 
       switch (effectiveContinuityDecision.verdict) {
         case 'ACTIVE':
@@ -1710,7 +2945,8 @@ export class TripDetectionOrchestrationService {
             {
               ...stateUpdateBase,
               lastActivityAt: now,
-              ...(hadMeaningfulMovement && { lastMeaningfulMovementAt: now }),
+              ...(movementEventAt && { lastMeaningfulMovementAt: movementEventAt }),
+              lastEvidenceSummary: continuityEvidencePatch,
             },
           );
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
@@ -1718,28 +2954,97 @@ export class TripDetectionOrchestrationService {
 
         case 'IDLE':
           resultState = TripDetectionState.IDLE_WITHIN_TRIP;
-          await this.transitionState(
-            vehicleId,
-            TripDetectionState.IDLE_WITHIN_TRIP,
-            { ...stateUpdateBase, lastActivityAt: now },
-          );
+          {
+            const idleBoundaryProvenance = resolveIdleStopBoundaryAt({
+                movementEventAt,
+                lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                lastActivityAt: det.lastActivityAt,
+                workerNow: now,
+                telemetry: telemetry
+                  ? {
+                      isIgnitionOn: telemetry.isIgnitionOn,
+                      speedKmh: telemetry.speedKmh,
+                      engineLoad: telemetry.engineLoad,
+                      sourceTimestamp: telemetry.sourceTimestamp,
+                    }
+                  : null,
+                profile,
+                maxFreshObservationAgeMs:
+                  this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+              });
+            let idleEvidence = mergeStopBoundaryAt(
+              continuityEvidencePatch,
+              idleBoundaryProvenance.boundaryAt,
+              idleBoundaryProvenance.source,
+              idleBoundaryProvenance.clockAuthority,
+            );
+            idleEvidence = mergeLastProviderActivityAt(
+              idleEvidence,
+              idleBoundaryProvenance.boundaryAt,
+            );
+            const idlePauseShadowPatch = runShadowObservabilitySafely(this.logger, 
+              'shadow_pause_start_idle_within_trip',
+              () =>
+                runShadowPauseStartObservation({
+                  vehicleId,
+                  tripId,
+                  activeTripId: det.activeTripId,
+                  fsmState: TripDetectionState.IDLE_WITHIN_TRIP,
+                  workerNow: now,
+                  episodeStartSource: 'idle_within_trip_stop_boundary',
+                  stopAnchorAt: idleBoundaryProvenance.boundaryAt,
+                  possibleEndAt: det.possibleEndAt,
+                  completedAt: null,
+                  restingAt: null,
+                  priorSummary: idleEvidence,
+                }),
+            );
+            if (idlePauseShadowPatch) {
+              idleEvidence = mergeShadowEvidencePatch(
+                idleEvidence,
+                idlePauseShadowPatch,
+              );
+            }
+            await this.transitionState(
+              vehicleId,
+              TripDetectionState.IDLE_WITHIN_TRIP,
+              {
+                ...stateUpdateBase,
+                lastActivityAt: now,
+                lastEvidenceSummary: idleEvidence,
+              },
+            );
+          }
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           break;
 
         case 'POSSIBLE_END':
           resultState = TripDetectionState.POSSIBLE_END;
           {
-            const possibleEndAt =
-              det.lastMeaningfulMovementAt ??
-              det.lastActivityAt ??
-              now;
+            const enteredAt = now;
+            const persistedStopBoundaryProvenance =
+              readStopBoundaryProvenance(continuityEvidencePatch);
+            const endBoundary = resolvePossibleEndBoundaryCandidate({
+              stopBoundaryProvenance: persistedStopBoundaryProvenance,
+              lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+              lastActivityAt: det.lastActivityAt,
+              workerNow: now,
+            });
             await this.transitionState(
               vehicleId,
               TripDetectionState.POSSIBLE_END,
               {
                 ...stateUpdateBase,
-                possibleEndAt,
-                endValidationAttempts: 0,
+                possibleEndAt: endBoundary.boundaryAt,
+                possibleEndEnteredAt: enteredAt,
+                endValidationAttempts: resolveEndValidationAttemptsOnPossibleEndReentry({
+                  priorState: det.state,
+                  endValidationAttempts: det.endValidationAttempts,
+                  priorSummary: continuityEvidencePatch,
+                  workerNow: now,
+                  lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                  candidateStopBoundary: persistedStopBoundaryProvenance,
+                }),
                 endDetectionMode:
                   effectiveContinuityDecision.endMode ?? END_DETECTION_MODES.COMPOSITE_INACTIVITY,
                 endConfidence:
@@ -1748,20 +3053,39 @@ export class TripDetectionOrchestrationService {
                     : effectiveContinuityDecision.endConfidence === 'MEDIUM'
                       ? DetectionConfidence.MEDIUM
                       : DetectionConfidence.LOW,
+                lastEvidenceSummary: {
+                  ...continuityEvidencePatch,
+                  endCandidateClockSource: endBoundary.clockSource,
+                },
               },
             );
-            this.logTripEndTimeline('possible_end_entered', {
+            await this.schedulePossibleEndCheck(
               vehicleId,
-              tripId,
-              lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
-              possibleEndAt,
+              organizationId,
+              dimoTokenId,
+            );
+            runTripObservabilitySafely(this.logger,'continuity_end_candidate', () => {
+              this.observePossibleEndCandidateLatency({
+                priorState: det.state,
+                profile: String(det.detectionProfile ?? profile),
+                evidencePath: 'CONTINUITY',
+                clockSource: endBoundary.clockSource,
+                candidateAt: endBoundary.boundaryAt,
+                enteredAt,
+              });
+              this.tripMetrics?.tripEvidencePaths?.inc({
+                phase: 'end_candidate',
+                path: 'CONTINUITY',
+              });
+              this.logTripEndTimeline('possible_end_entered', {
+                vehicleId,
+                tripId,
+                lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                possibleEndAt: endBoundary.boundaryAt,
+                possibleEndEnteredAt: enteredAt,
+              });
             });
           }
-          await this.schedulePossibleEndCheck(
-            vehicleId,
-            organizationId,
-            dimoTokenId,
-          );
           break;
       }
 
@@ -1777,17 +3101,52 @@ export class TripDetectionOrchestrationService {
         routePointsCount: routePoints.length,
         drivingPointsCount: perfReadings.length,
         resultState,
-        resultSummary: effectiveContinuitySummary,
+        resultSummary: {
+          ...(effectiveContinuitySummary ?? {}),
+          fetchOutcome: coreFetchOutcome(corePoints.length),
+          stopBoundaryAt: persistedStopBoundaryAt?.toISOString() ?? null,
+          priorStopBoundaryAt: priorStopBoundaryAt?.toISOString() ?? null,
+        },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
       this.logger.warn(`ACTIVE_TICK error for ${vehicleId}: ${err}`);
+      const detOnError = await this.getOrCreateDetectionState(
+        vehicleId,
+        organizationId,
+      ).catch(() => null);
+      const errorSummary =
+        (detOnError?.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      const errorStreak = readEmptyCoreDeferralStreak(errorSummary) + 1;
+      const errorDelayMs = computeEmptyCoreBackoffMs({
+        baseIntervalMs: this.TRACKING_INTERVAL_MS,
+        consecutiveDeferrals: errorStreak,
+        backoffBaseMs: this.TRIP_EMPTY_CORE_BACKOFF_BASE_MS,
+        backoffMaxMs: this.TRIP_EMPTY_CORE_BACKOFF_MAX_MS,
+        jitterRatio: this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO,
+      });
+      if (detOnError) {
+        await this.transitionState(vehicleId, detOnError.state, {
+          lastEvidenceSummary: mergeEmptyCoreDeferral(errorSummary, {
+            streak: errorStreak,
+            nextCheckDelayMs: errorDelayMs,
+            innerGateReason: 'active_tick_fetch_error',
+          }),
+        }).catch(() => {});
+      }
       await this.logTrackingRun({
         vehicleId,
         organizationId,
         stateAtRun: TripDetectionState.ACTIVE_TRIP,
         runType: TripTrackingRunType.ACTIVE_TRACKING,
         errorMessage: err instanceof Error ? err.message : String(err),
+        resultSummary: {
+          fetchOutcome: 'FETCH_ERROR',
+          fetchErrorClass: classifyFetchError(err),
+          innerGateReason: 'active_tick_fetch_error',
+          nextCheckDelayMs: errorDelayMs,
+          emptyCoreDeferralStreak: errorStreak,
+        },
         durationMs: Date.now() - startedMs,
       }).catch(() => {});
 
@@ -1795,7 +3154,7 @@ export class TripDetectionOrchestrationService {
         vehicleId,
         organizationId,
         dimoTokenId,
-        this.TRACKING_INTERVAL_MS,
+        errorDelayMs,
       ).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
@@ -1810,30 +3169,57 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for POSSIBLE_END_CHECK ${vehicleId}`);
       return;
     }
 
     const startedMs = Date.now();
     let resultState: TripDetectionState | undefined;
+    let deferredEndValidation: {
+      vehicleId: string;
+      organizationId: string | null;
+      dimoTokenId: number;
+    } | null = null;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
+      const peRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (peRecovery !== 'continue') {
+        return;
+      }
+
       const profile = String(det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN);
       const now = new Date();
-      const endCandidateAt = det.possibleEndAt ?? now;
-      const elapsedMs = now.getTime() - endCandidateAt.getTime();
+      const durableDet = await this.ensurePossibleEndClockDurability(
+        vehicleId,
+        det,
+        now,
+      );
+      const endBoundaryAt = resolvePossibleEndBoundaryAnchor(durableDet, now);
+      const fsmEnteredAt = resolvePossibleEndFsmDwellAnchor(durableDet, now);
+      const fsmDwellMs = now.getTime() - fsmEnteredAt.getTime();
+      const physicalInactivityMs = now.getTime() - endBoundaryAt.getTime();
+      const priorSummary =
+        (durableDet.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      let resumeCheckOutcome: PecResumeCheckOutcome = 'NO_RESUME_EVIDENCE';
 
       // ── Step 1: Check if activity has resumed ──
-      // PHASE 2 SEAM: EndContinuityDetector wraps hasActivityResumed via registry.
       try {
         const recentFrom = new Date(now.getTime() - 90_000);
         const recentPoints = await this.segments.fetchRawTripCoreData(
           dimoTokenId,
           recentFrom,
           now,
+          this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
         );
 
         const activityResumed = await this.checkDimoActivityResumed({
@@ -1842,25 +3228,30 @@ export class TripDetectionOrchestrationService {
           profile: det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN,
           now,
           corePoints: recentPoints,
+          resumeAfterAt: endBoundaryAt,
         });
 
         if (activityResumed) {
+          resumeCheckOutcome = 'RESUMED';
           resultState = TripDetectionState.ACTIVE_TRIP;
           this.logger.log(
             `Activity resumed for ${vehicleId} [${profile}], cancelling POSSIBLE_END`,
           );
-          await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
-            possibleEndAt: null,
-            endDetectionMode: null,
-            endConfidence: null,
-            endValidationAttempts: 0,
-            cusumValidatedAt: null,
-            cusumSegmentStart: null,
-            cusumSegmentEnd: null,
-            lastActivityAt: now,
-            lastMeaningfulMovementAt: now,
-            lastCoreProcessedAt: now,
+          const resumedMovementAt = resolveLatestMeaningfulMovementEventAt({
+            recentPoints,
+            profile,
+            workerNow: now,
+            resumeAfterAt: endBoundaryAt,
           });
+          await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
+            ...buildPossibleEndToActiveReset({
+              workerNow: now,
+              lastMeaningfulMovementAt: resumedMovementAt,
+              priorSummary,
+              reopenReason: 'ACTIVITY_RESUMED',
+            }),
+          });
+          await this.cancelPendingEndCycleJobs(vehicleId, det.activeTripId);
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
           await this.logTrackingRun({
@@ -1871,19 +3262,65 @@ export class TripDetectionOrchestrationService {
             requestedFrom: recentFrom, requestedTo: now,
             corePointsCount: recentPoints.length,
             resultState,
-            resultSummary: { reason: 'activity_resumed', profile },
+            resultSummary: {
+              reason: 'activity_resumed',
+              resumeCheckOutcome,
+              profile,
+            },
             durationMs: Date.now() - startedMs,
           });
           return;
         }
       } catch {
-        // Fetch failure → keep waiting, do not finalize prematurely
+        resumeCheckOutcome = 'FETCH_ERROR';
       }
 
-      // ── Step 2: Hard timeout fallback (last resort only) ──
-      if (elapsedMs >= this.TRIP_END_TIMEOUT_MS) {
+      if (resumeCheckOutcome === 'FETCH_ERROR') {
+        if (fsmDwellMs >= this.TRIP_END_TIMEOUT_MS) {
+          this.logger.warn(
+            `POSSIBLE_END timeout reached for ${vehicleId} (${Math.round(fsmDwellMs / 60000)} min), forcing finalize`,
+          );
+          resultState = TripDetectionState.RESTING;
+          await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+          await this.logTrackingRun({
+            vehicleId, organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.POSSIBLE_END_CHECK,
+            resultState,
+            resultSummary: {
+              reason: 'hard_timeout_fallback',
+              resumeCheckOutcome,
+              fsmDwellMs,
+              physicalInactivityMs,
+              profile,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
+        await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId);
+        await this.logTrackingRun({
+          vehicleId, organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: TripDetectionState.POSSIBLE_END,
+          runType: TripTrackingRunType.POSSIBLE_END_CHECK,
+          resultSummary: {
+            reason: 'resume_check_fetch_error_reschedule',
+            resumeCheckOutcome,
+            fsmDwellMs,
+            physicalInactivityMs,
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
+
+      // ── Step 2: Hard timeout fallback (FSM dwell — last resort only) ──
+      if (fsmDwellMs >= this.TRIP_END_TIMEOUT_MS) {
         this.logger.warn(
-          `POSSIBLE_END timeout reached for ${vehicleId} (${Math.round(elapsedMs / 60000)} min), forcing finalize`,
+          `POSSIBLE_END timeout reached for ${vehicleId} (${Math.round(fsmDwellMs / 60000)} min), forcing finalize`,
         );
         resultState = TripDetectionState.RESTING;
         await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
@@ -1893,24 +3330,26 @@ export class TripDetectionOrchestrationService {
           stateAtRun: TripDetectionState.POSSIBLE_END,
           runType: TripTrackingRunType.POSSIBLE_END_CHECK,
           resultState,
-          resultSummary: { reason: 'hard_timeout_fallback', elapsedMs, profile },
+          resultSummary: {
+            reason: 'hard_timeout_fallback',
+            fsmDwellMs,
+            physicalInactivityMs,
+            profile,
+          },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Step 3: Stability window — wait before triggering CUSUM ──
-      // Also enforces TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS: CUSUM must not run
-      // until both the stability window AND the min-inactivity guard have elapsed.
-      const cusumGateMs =
-        det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST
-          ? this.TRIP_END_CH_ASSIST_STABILITY_MS
-          : Math.max(
-              this.TRIP_END_STABILITY_WINDOW_MS,
-              this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-            );
-      if (elapsedMs < cusumGateMs) {
-        // Still within stability/inactivity window — keep watching, reschedule
+      // ── Step 3: Stability / inactivity gates before CUSUM ──
+      const chEndAssist =
+        det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST;
+      const stabilitySatisfied = chEndAssist
+        ? fsmDwellMs >= this.TRIP_END_CH_ASSIST_STABILITY_MS
+        : fsmDwellMs >= this.TRIP_END_STABILITY_WINDOW_MS &&
+          physicalInactivityMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS;
+
+      if (!stabilitySatisfied) {
         await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId);
         await this.logTrackingRun({
           vehicleId, organizationId,
@@ -1919,39 +3358,42 @@ export class TripDetectionOrchestrationService {
           runType: TripTrackingRunType.POSSIBLE_END_CHECK,
           resultSummary: {
             reason: 'stability_window_waiting',
-            elapsedMs,
+            fsmDwellMs,
+            physicalInactivityMs,
             stabilityWindowMs: this.TRIP_END_STABILITY_WINDOW_MS,
             minInactivityMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-            cusumGateMs,
+            chAssistStabilityMs: this.TRIP_END_CH_ASSIST_STABILITY_MS,
+            chEndAssist,
           },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Step 4: Gate elapsed — trigger CUSUM end validation ──
+      // ── Step 4: Gate elapsed — schedule CUSUM end validation (attempt unchanged) ──
       const attempts = det.endValidationAttempts ?? 0;
       if (attempts < this.TRIP_END_VALIDATION_MAX_ATTEMPTS) {
-        const validationStartedAt = now;
-        const priorSummary =
-          (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
         await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
-          endValidationAttempts: attempts + 1,
-          lastEvidenceSummary: {
-            ...priorSummary,
-            endValidationStartedAt: validationStartedAt.toISOString(),
-          },
+          lastEvidenceSummary: buildEndValidationScheduledEvidence({
+            priorSummary,
+            workerNow: now,
+            possibleEndEnteredAt:
+              durableDet.possibleEndEnteredAt ??
+              readPossibleEndEnteredAtFromEvidence(priorSummary) ??
+              undefined,
+          }),
         });
-        this.logTripEndTimeline('end_validation_started', {
+        this.logTripEndTimeline('end_validation_scheduled', {
           vehicleId,
-          tripId: det.activeTripId,
-          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
-          possibleEndAt: det.possibleEndAt,
-          endValidationStartedAt: validationStartedAt,
-          attempt: attempts + 1,
+          tripId: durableDet.activeTripId,
+          lastMeaningfulMovementAt: durableDet.lastMeaningfulMovementAt,
+          possibleEndAt: durableDet.possibleEndAt ?? endBoundaryAt,
+          possibleEndEnteredAt: durableDet.possibleEndEnteredAt ?? fsmEnteredAt,
+          endValidationScheduledAt: now,
+          completedAttempts: attempts,
           maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
         });
-        await this.scheduleEndValidation(vehicleId, organizationId, dimoTokenId);
+        deferredEndValidation = { vehicleId, organizationId, dimoTokenId };
         await this.logTrackingRun({
           vehicleId, organizationId,
           tripId: det.activeTripId,
@@ -1959,23 +3401,36 @@ export class TripDetectionOrchestrationService {
           runType: TripTrackingRunType.POSSIBLE_END_CHECK,
           resultSummary: {
             reason: 'triggering_cusum_validation',
-            attempt: attempts + 1,
+            completedAttempts: attempts,
             maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
-            elapsedMs,
+            fsmDwellMs,
+            physicalInactivityMs,
+            resumeCheckOutcome,
           },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Step 5: Max CUSUM attempts exhausted — finalize with best available data ──
-      this.tripMetrics?.possibleEndStuck.set(
-        { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
-        1,
-      );
+      // ── Step 5: Max completed CUSUM cycles — fallback finalize with explicit forensics ──
+      runTripObservabilitySafely(this.logger, 'possible_end_stuck_gauge', () => {
+        this.tripMetrics?.possibleEndStuck.set(
+          { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
+          1,
+        );
+      });
       this.logger.log(
-        `CUSUM max attempts (${attempts}) for ${vehicleId}, finalizing`,
+        `CUSUM max completed attempts (${attempts}) for ${vehicleId}, fallback finalize`,
       );
+      await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+        endDetectionMode: END_DETECTION_MODES.COMPOSITE_INACTIVITY,
+        endConfidence: DetectionConfidence.LOW,
+        lastEvidenceSummary: buildMaxAttemptFallbackEvidence({
+          priorSummary,
+          completedAttemptCount: attempts,
+          resumeCheckOutcome,
+        }),
+      });
       resultState = TripDetectionState.RESTING;
       await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
       await this.logTrackingRun({
@@ -1985,8 +3440,12 @@ export class TripDetectionOrchestrationService {
         runType: TripTrackingRunType.POSSIBLE_END_CHECK,
         resultState,
         resultSummary: {
-          reason: 'max_cusum_attempts_finalize',
-          attempts, elapsedMs, profile,
+          reason: 'max_completed_cusum_attempts_fallback',
+          completedAttempts: attempts,
+          resumeCheckOutcome,
+          fsmDwellMs,
+          physicalInactivityMs,
+          profile,
         },
         durationMs: Date.now() - startedMs,
       });
@@ -1995,6 +3454,14 @@ export class TripDetectionOrchestrationService {
       await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
+      // Must run inside finally: early `return` paths in try skip any code placed after try/finally.
+      if (deferredEndValidation) {
+        await this.scheduleEndValidation(
+          deferredEndValidation.vehicleId,
+          deferredEndValidation.organizationId,
+          deferredEndValidation.dimoTokenId,
+        );
+      }
     }
   }
 
@@ -2006,19 +3473,38 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
-      this.logger.debug(`Lock not acquired for END_VALIDATION ${vehicleId}`);
-      return;
+      throw new TripTrackingHandoffLockContentionError();
     }
 
     const startedMs = Date.now();
     let resultState: TripDetectionState | undefined;
+    let det: Awaited<ReturnType<typeof this.getOrCreateDetectionState>> | undefined;
+    let validationStartedAt: Date | null = null;
+    let priorSummaryForFailure: Record<string, unknown> = {};
+    let deferredFinalize: {
+      vehicleId: string;
+      organizationId: string | null;
+      dimoTokenId: number;
+    } | null = null;
 
     try {
-      const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+      det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
+      const endCycleCheck = evaluateEndCycleJobAdmission({ det, job: data });
+      if (endCycleCheck !== 'ok') {
+        this.logger.debug(
+          `END_VALIDATION skipped for ${vehicleId}: ${endCycleCheck}`,
+        );
+        return;
+      }
+
       const now = new Date();
-      const endCandidateAt = det.possibleEndAt ?? now;
+      det = await this.ensurePossibleEndClockDurability(vehicleId, det, now);
+      const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
+      let priorSummary =
+        (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      priorSummaryForFailure = priorSummary;
 
       // ── CH end assist (MEDIUM): segment end already validated — skip CUSUM ──
       if (
@@ -2027,7 +3513,128 @@ export class TripDetectionOrchestrationService {
       ) {
         const validatedEndTime = det.cusumSegmentEnd;
         const endConfEnum = det.endConfidence ?? DetectionConfidence.MEDIUM;
+        const chSkipRevalidation = await this.evaluateClickHouseSkipResumeRevalidation({
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          det,
+          now,
+          candidateEndAt: validatedEndTime,
+          priorSummary,
+        });
 
+        if (chSkipRevalidation.outcome === 'RESUME_CONFIRMED') {
+          await this.cancelPossibleEndForResumedActivity({
+            vehicleId,
+            organizationId,
+            dimoTokenId,
+            now,
+            activeTripId: det.activeTripId,
+            priorSummary,
+          });
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultState: TripDetectionState.ACTIVE_TRIP,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_invalidated',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
+        if (
+          chSkipRevalidation.outcome === 'NO_RESUME_EVIDENCE_IMMATURE' ||
+          chSkipRevalidation.outcome === 'FETCH_UNCERTAIN'
+        ) {
+          await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+            lastEvidenceSummary: buildChSkipResumeRevalidationDeferredEvidence({
+              priorSummary,
+              workerNow: now,
+              deferCount: chSkipRevalidation.deferCount,
+              relatchEnteredAt: chSkipRevalidation.relatchEnteredAt,
+              candidateEndAt: validatedEndTime,
+              immaturityBoundMs: chSkipRevalidation.immaturityBoundMs,
+              outcome: chSkipRevalidation.outcome,
+            }),
+          });
+          await this.scheduleEndValidation(
+            vehicleId,
+            organizationId,
+            dimoTokenId,
+            this.TRIP_END_VALIDATION_RETRY_MS,
+          );
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_revalidation_deferred',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+              chSkipResumeRevalidationDeferCount: chSkipRevalidation.deferCount,
+              chSkipResumeRevalidationImmaturityBoundMs:
+                chSkipRevalidation.immaturityBoundMs,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
+        if (chSkipRevalidation.outcome === 'HANDOFF_TO_CUSUM_VALIDATION') {
+          const dwellMs =
+            now.getTime() - chSkipRevalidation.relatchEnteredAt.getTime();
+          const handoffReason = resolveChSkipResumeRevalidationHandoffReason({
+            fetchUncertain: chSkipRevalidation.fetchUncertain,
+            immaturityElapsed: dwellMs >= chSkipRevalidation.immaturityBoundMs,
+            deferBudgetExhausted:
+              chSkipRevalidation.deferCount >=
+                resolveChSkipResumeRevalidationMaxDeferCount(
+                  this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+                ) &&
+              resolveChSkipResumeRevalidationMaxDeferCount(
+                this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+              ) > 0,
+          });
+          await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+            endDetectionMode: null,
+            lastEvidenceSummary: buildChSkipResumeRevalidationHandoffEvidence({
+              priorSummary,
+              workerNow: now,
+              candidateEndAt: validatedEndTime,
+              relatchEnteredAt: chSkipRevalidation.relatchEnteredAt,
+              handoffReason,
+              priorDeferCount: chSkipRevalidation.deferCount,
+            }),
+          });
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_handoff_cusum',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+              chSkipResumeRevalidationHandoffReason: handoffReason,
+              chSkipResumeRevalidationDeferCount: chSkipRevalidation.deferCount,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+          priorSummary =
+            (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+          priorSummaryForFailure = priorSummary;
+        } else {
         this.logTripEndTimeline('clickhouse_end_assist_confirmed', {
           vehicleId,
           tripId: det.activeTripId,
@@ -2044,7 +3651,7 @@ export class TripDetectionOrchestrationService {
         });
 
         resultState = TripDetectionState.RESTING;
-        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+        deferredFinalize = { vehicleId, organizationId, dimoTokenId };
 
         await this.logTrackingRun({
           vehicleId,
@@ -2060,7 +3667,21 @@ export class TripDetectionOrchestrationService {
           durationMs: Date.now() - startedMs,
         });
         return;
+        }
       }
+
+      const scheduledAt = this.parseEvidenceTimestamp(
+        priorSummary,
+        'endValidationScheduledAt',
+      )?.toISOString() ?? null;
+
+      validationStartedAt = new Date();
+      await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+        lastEvidenceSummary: buildEndValidationStartedEvidence({
+          priorSummary,
+          validationStartedAt,
+        }),
+      });
 
       // Fetch a bounded window of data centred on the POSSIBLE_END candidate
       const corePoints = await this.segments.fetchEndValidationWindow(
@@ -2068,15 +3689,13 @@ export class TripDetectionOrchestrationService {
         endCandidateAt,
         this.TRIP_END_SEGMENT_LOOKBACK_MS,
         this.TRIP_END_SEGMENT_LOOKAHEAD_MS,
+        this.dimoProviderContext(dimoTokenId, vehicleId, organizationId),
       );
 
       this.logger.debug(
         `END_VALIDATION for ${vehicleId}: fetched ${corePoints.length} points around ${endCandidateAt.toISOString()}`,
       );
 
-      // ── PHASE 2 SEAM: ChangePointEndDetector + evaluateEndCandidate ──────────
-      // ChangePointEndDetector wraps detectTripEndChangePoint and sorts inputs.
-      // evaluateEndCandidate converts the finding into a typed EndDecision.
       const endFindings = await this.detectorRegistry.runAll(
         ['ChangePointEndDetector'],
         {
@@ -2090,36 +3709,85 @@ export class TripDetectionOrchestrationService {
         },
       );
 
-      const endDecision = this.decisionEngine.evaluateEndCandidate(endFindings);
       const endFinding = endFindings.find((f) => f.detectorName === 'ChangePointEndDetector');
+      const findingOutcome = classifyChangePointEndFinding(endFinding);
+
+      if (findingOutcome !== 'VALID_DECISION') {
+        const failureReason =
+          findingOutcome === 'DETECTOR_MISSING'
+            ? 'change_point_end_detector_missing'
+            : String(endFinding?.evidence?.error ?? 'detector_execution_failure');
+        this.logger.warn(
+          `END_VALIDATION detector failure for ${vehicleId}: ${failureReason}`,
+        );
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          lastEvidenceSummary: buildEndValidationFailureEvidence({
+            priorSummary,
+            validationStartedAt,
+            failureReason,
+            failureOutcome: findingOutcome,
+          }),
+        });
+        await this.schedulePossibleEndCheck(
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          this.TRIP_END_VALIDATION_RETRY_MS,
+        );
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: TripDetectionState.POSSIBLE_END,
+          runType: TripTrackingRunType.END_VALIDATION,
+          corePointsCount: corePoints.length,
+          resultSummary: {
+            reason: 'detector_execution_failure',
+            failureOutcome: findingOutcome,
+            failureReason,
+            completedAttempts: det.endValidationAttempts ?? 0,
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
+
+      const endDecision = this.decisionEngine.evaluateEndCandidate(endFindings);
+      const validationCompletedAt = new Date();
       const endConfEnum =
         endDecision.confidence === 'HIGH'
           ? DetectionConfidence.HIGH
           : endDecision.confidence === 'MEDIUM'
             ? DetectionConfidence.MEDIUM
             : DetectionConfidence.LOW;
+      const completedAttempt = (det.endValidationAttempts ?? 0) + 1;
 
-      // ── Still ongoing? → back to ACTIVE_TRIP ──
+      // ── Still ongoing? → back to ACTIVE_TRIP (cycle completed; counter reset) ──
       if (endDecision.shouldReopen && endDecision.endMode !== 'CUSUM_VALIDATED') {
         resultState = TripDetectionState.ACTIVE_TRIP;
         this.logger.log(
-          `CUSUM: trip ${vehicleId} still appears ongoing — returning to ACTIVE_TRIP`,
+          `CUSUM: trip ${vehicleId} still appears ongoing — returning to ACTIVE_TRIP (completedAttempt=${completedAttempt})`,
         );
 
-        // Extract lastMovementAt from evidence if available
-        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as string | undefined;
-        const lastMovementAt = lastMovementStr ? new Date(lastMovementStr) : undefined;
+        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as
+          | string
+          | undefined;
+        const lastMovementAt = validateCusumMovementEventTime(
+          lastMovementStr,
+          now,
+        );
 
-        await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
-          possibleEndAt: null,
-          endValidationAttempts: 0,
-          cusumValidatedAt: null,
-          cusumSegmentStart: null,
-          cusumSegmentEnd: null,
-          lastActivityAt: now,
-          ...(lastMovementAt && { lastMeaningfulMovementAt: lastMovementAt }),
-          lastCoreProcessedAt: now,
+        const activeReopenReset = buildPossibleEndToActiveReset({
+          workerNow: now,
+          lastMeaningfulMovementAt: lastMovementAt,
+          priorSummary,
+          reopenReason: 'CUSUM_STILL_ONGOING',
+          completedEndValidationAttempts: completedAttempt,
         });
+        await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
+          ...activeReopenReset,
+        });
+        await this.cancelPendingEndCycleJobs(vehicleId, det.activeTripId);
         await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
         await this.logTrackingRun({
@@ -2129,7 +3797,13 @@ export class TripDetectionOrchestrationService {
           runType: TripTrackingRunType.END_VALIDATION,
           corePointsCount: corePoints.length,
           resultState,
-          resultSummary: { reason: 'cusum_still_ongoing', endDecisionReason: endDecision.reason },
+          resultSummary: {
+            reason: 'cusum_still_ongoing',
+            endDecisionReason: endDecision.reason,
+            completedAttempt,
+            persistedAttemptsAfterReset:
+              (activeReopenReset.endValidationAttempts as number | undefined) ?? 0,
+          },
           durationMs: Date.now() - startedMs,
         });
         return;
@@ -2138,11 +3812,16 @@ export class TripDetectionOrchestrationService {
       // ── Clear change-point detected → finalize ──
       if (endDecision.shouldEnd && endDecision.detectedEndAt) {
         const validatedEndTime = endDecision.detectedEndAt;
-        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as string | undefined;
-        const lastMovementAt = lastMovementStr ? new Date(lastMovementStr) : undefined;
+        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as
+          | string
+          | undefined;
+        const lastMovementAt = validateCusumMovementEventTime(
+          lastMovementStr,
+          now,
+        );
 
         this.logger.log(
-          `CUSUM: change-point detected for ${vehicleId} at ${validatedEndTime.toISOString()} [${endDecision.confidence}]`,
+          `CUSUM: change-point detected for ${vehicleId} at ${validatedEndTime.toISOString()} [${endDecision.confidence}] (completedAttempt=${completedAttempt})`,
         );
 
         this.logTripEndTimeline('cusum_confirmed', {
@@ -2150,11 +3829,9 @@ export class TripDetectionOrchestrationService {
           tripId: det.activeTripId,
           lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
           possibleEndAt: det.possibleEndAt,
-          endValidationStartedAt: this.parseEvidenceTimestamp(
-            det.lastEvidenceSummary,
-            'endValidationStartedAt',
-          ),
+          endValidationStartedAt: validationStartedAt,
           finalizedAt: validatedEndTime,
+          completedEndValidationAttempt: completedAttempt,
           latencyFromMovementMs:
             det.lastMeaningfulMovementAt != null
               ? validatedEndTime.getTime() - det.lastMeaningfulMovementAt.getTime()
@@ -2163,16 +3840,24 @@ export class TripDetectionOrchestrationService {
         });
 
         await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          endValidationAttempts: completedAttempt,
           cusumValidatedAt: now,
           cusumSegmentStart: corePoints.length > 0 ? new Date(corePoints[0].timestamp) : null,
           cusumSegmentEnd: validatedEndTime,
           endDetectionMode: END_DETECTION_MODES.CUSUM_VALIDATED,
           endConfidence: endConfEnum,
           ...(lastMovementAt && { lastMeaningfulMovementAt: lastMovementAt }),
+          lastEvidenceSummary: buildEndValidationCompletionEvidence({
+            priorSummary,
+            validationStartedAt,
+            validationCompletedAt,
+            completedAttempt,
+            scheduledAt,
+          }),
         });
 
         resultState = TripDetectionState.RESTING;
-        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+        deferredFinalize = { vehicleId, organizationId, dimoTokenId };
 
         await this.logTrackingRun({
           vehicleId, organizationId,
@@ -2187,16 +3872,27 @@ export class TripDetectionOrchestrationService {
             confidence: endDecision.confidence,
             endDecisionReason: endDecision.reason,
             lastMovementAt: lastMovementAt?.toISOString(),
+            completedAttempt,
           },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Inconclusive: reschedule another attempt ──
+      // ── Inconclusive: persist completed attempt and reschedule PEC ──
       this.logger.debug(
-        `CUSUM inconclusive for ${vehicleId}: ${endDecision.reason} — rescheduling`,
+        `CUSUM inconclusive for ${vehicleId}: ${endDecision.reason} — rescheduling (completedAttempt=${completedAttempt})`,
       );
+      await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+        endValidationAttempts: completedAttempt,
+        lastEvidenceSummary: buildEndValidationCompletionEvidence({
+          priorSummary,
+          validationStartedAt,
+          validationCompletedAt,
+          completedAttempt,
+          scheduledAt,
+        }),
+      });
       await this.schedulePossibleEndCheck(
         vehicleId, organizationId, dimoTokenId,
         this.TRIP_END_VALIDATION_RETRY_MS,
@@ -2211,18 +3907,36 @@ export class TripDetectionOrchestrationService {
         resultSummary: {
           reason: 'cusum_inconclusive',
           endDecisionReason: endDecision.reason,
-          attempts: det.endValidationAttempts,
+          completedAttempt,
         },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
       this.logger.warn(`END_VALIDATION error for ${vehicleId}: ${err}`);
-      // On error, fall back to rescheduling the basic check
+      const failureMsg = err instanceof Error ? err.message : String(err);
+      if (det?.state === TripDetectionState.POSSIBLE_END) {
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          lastEvidenceSummary: buildEndValidationFetchFailureEvidence({
+            priorSummary: priorSummaryForFailure,
+            validationStartedAt,
+            failureReason: failureMsg,
+          }),
+        }).catch(() => {});
+      }
       await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId,
         this.TRIP_END_VALIDATION_RETRY_MS,
       ).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
+      // Must run inside finally: schedule after lock release so concurrent BullMQ
+      // workers cannot pick FINALIZE while END_VALIDATION still holds the lock.
+      if (deferredFinalize) {
+        await this.scheduleFinalize(
+          deferredFinalize.vehicleId,
+          deferredFinalize.organizationId,
+          deferredFinalize.dimoTokenId,
+        );
+      }
     }
   }
 
@@ -2234,18 +3948,63 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
-      this.logger.debug(`Lock not acquired for FINALIZE ${vehicleId}`);
-      return;
+      throw new TripTrackingHandoffLockContentionError();
     }
 
     const startedMs = Date.now();
     // 'complete' | 'discard' | 'timeout' — used to select smart cooldown window
     let restingReason = 'complete';
     let restWindowAnchorAt: Date | null = null;
+    // Set when a trip is persisted as COMPLETED — after the RESTING transition
+    // commits we hand the finalized trip to Battery V2 so the LV rest window
+    // opens without requiring another provider observation.
+    let finalizedTripForRestWindow: { tripId: string; endTime: Date } | null =
+      null;
+    let terminalLifecycleCommit: TerminalLifecycleCommit = 'NONE';
+    let terminalLifecycleIntent: TerminalLifecycleIntent = 'NONE';
+    let terminalTripId: string | null = null;
+    let restingTransitionSucceeded = false;
+    let detectionProfileLabel = 'UNKNOWN';
+    let finalizeQualityObservability: Record<string, unknown> | null = null;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+      detectionProfileLabel = String(det.detectionProfile ?? 'UNKNOWN');
       const tripId = det.activeTripId;
+
+      const endRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId: data.dimoTokenId,
+      });
+      if (endRecovery !== 'continue') {
+        return;
+      }
+
+      const endCycleCheck = evaluateEndCycleJobAdmission({ det, job: data });
+      if (endCycleCheck !== 'ok') {
+        const reason = mapEndCycleStaleFinalizeReason(endCycleCheck);
+        this.logger.log(
+          `FINALIZE skipped for ${vehicleId}: ${reason}` +
+            (data.endCycleToken ? ` jobToken=${data.endCycleToken}` : '') +
+            (data.requestedAt ? ` requestedAt=${data.requestedAt}` : ''),
+        );
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: det.state,
+          runType: TripTrackingRunType.FINALIZATION_CHECK,
+          resultSummary: {
+            reason,
+            jobEndCycleToken: data.endCycleToken ?? null,
+            expectedEndCycleToken: resolveEndCycleToken(det),
+            jobRequestedAt: data.requestedAt ?? null,
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
 
       if (tripId) {
         const trip = await this.prisma.vehicleTrip.findUnique({
@@ -2253,40 +4012,60 @@ export class TripDetectionOrchestrationService {
         });
 
         if (trip) {
-          const [lastWaypoint, waypointCount] = await Promise.all([
-            this.prisma.vehicleTripWaypoint.findFirst({
+          const [waypoints, waypointCountLegacy] = await Promise.all([
+            this.prisma.vehicleTripWaypoint.findMany({
               where: { tripId },
-              orderBy: { recordedAt: 'desc' },
+              orderBy: { recordedAt: 'asc' },
+              select: {
+                latitude: true,
+                longitude: true,
+                speedKmh: true,
+                recordedAt: true,
+              },
             }),
             this.prisma.vehicleTripWaypoint.count({ where: { tripId } }),
           ]);
+          const waypointCount = waypoints.length || waypointCountLegacy;
+          const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
+          const routeMovement = analyzePersistedRouteMovement(
+            waypoints,
+            profileLabel,
+          );
+          const earliestWaypoint = waypoints[0] ?? null;
+          const latestWaypoint =
+            waypoints.length > 0 ? waypoints[waypoints.length - 1]! : null;
 
-          // ── End-time priority (most reliable → least reliable):
-          //   1. CUSUM validated segment end (change-point detected)
-          //   2. lastMeaningfulMovementAt (last observed movement)
-          //   3. lastWaypoint.recordedAt (last GPS fix)
-          //   4. possibleEndAt (first inactivity candidate)
-          //   5. now (absolute fallback)
-          const endTime =
-            (det as any).cusumSegmentEnd ??
-            (det as any).lastMeaningfulMovementAt ??
-            lastWaypoint?.recordedAt ??
-            det.possibleEndAt ??
-            new Date();
+          const routeDisplacementM = computePersistedRouteDisplacementM(
+            earliestWaypoint,
+            latestWaypoint,
+          );
 
+          const resolvedEnd = resolveFinalizeEndTime({
+            cusumSegmentEnd: (det as any).cusumSegmentEnd ?? null,
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
+            latestCredibleMovementAt: routeMovement.latestCredibleMovementAt,
+            possibleEndAt: det.possibleEndAt ?? null,
+            tripStartTime: trip.startTime,
+            fallbackNow: new Date(),
+          });
+          const endTime = resolvedEnd.endTime;
           const chosenEndSource =
             det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST &&
             (det as any).cusumSegmentEnd
               ? 'clickhouse_segment_end'
-              : (det as any).cusumSegmentEnd
-              ? 'cusum_segment_end'
-              : (det as any).lastMeaningfulMovementAt
-                ? 'last_meaningful_movement'
-                : lastWaypoint?.recordedAt
-                  ? 'last_waypoint'
-                  : det.possibleEndAt
-                    ? 'possible_end_at'
-                    : 'fallback_now';
+              : resolvedEnd.source;
+
+          const boundaryWaypoint =
+            latestWaypoint &&
+            latestWaypoint.recordedAt.getTime() <= endTime.getTime()
+              ? latestWaypoint
+              : await this.prisma.vehicleTripWaypoint.findFirst({
+                  where: {
+                    tripId,
+                    recordedAt: { lte: endTime },
+                  },
+                  orderBy: { recordedAt: 'desc' },
+                });
 
           const durationMs = endTime.getTime() - trip.startTime.getTime();
           // Keep the latest known trip end as rest-window anchor for Battery V2.
@@ -2308,106 +4087,276 @@ export class TripDetectionOrchestrationService {
             waypointCount,
             null,
             trip.startTime,
+            {
+              routeDisplacementM,
+              hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
+              movementAuthority: routeMovement.movementAuthority,
+              cumulativeRouteMovementM: routeMovement.cumulativeCredibleRouteMovementM,
+            },
           );
+          const qualityMeaningfulMovement = hasPersistedMeaningfulMovementForQuality({
+            hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
+          });
+          finalizeQualityObservability = {
+            QUALITY_DURATION_MS: durationMs,
+            QUALITY_DISTANCE_KM: trip.distanceKm,
+            QUALITY_WAYPOINT_COUNT: waypointCount,
+            QUALITY_MEANINGFUL_MOVEMENT: qualityMeaningfulMovement,
+            QUALITY_MOVEMENT_AUTHORITY: routeMovement.movementAuthority,
+            QUALITY_ROUTE_MOVEMENT_METERS: routeMovement.cumulativeCredibleRouteMovementM,
+            QUALITY_DECISION: qualityCheck.shouldDiscard
+              ? 'discard'
+              : qualityCheck.shouldMergeWithPrevious
+                ? 'merge'
+                : 'keep',
+            QUALITY_REASON: qualityCheck.reason ?? null,
+            FINALIZE_END_SOURCE: chosenEndSource,
+            FINALIZE_END_EVENT_AT: endTime.toISOString(),
+          };
 
           // ── Delegate all lifecycle mutations to TripDecisionEngine ──────────
-          const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
 
           if (qualityCheck.shouldDiscard) {
+            terminalLifecycleIntent = 'CANCEL';
+            terminalTripId = tripId;
             await this.decisionEngine.discardTrip(
               tripId,
               qualityCheck.reason ?? 'quality_check_failed',
             );
+            terminalLifecycleCommit = 'CANCELLED';
             // Smart cooldown: discard → short 30s cooldown
             restingReason = 'discard';
-            this.logger.log(`Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`);
-            this.tripMetrics?.tripDiscarded.inc({ reason: qualityCheck.reason ?? 'quality_check_failed' });
-            this.tripMetrics?.tripQualityAnomalies.inc({
-              anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
-            });
+            runTripObservabilitySafely(
+              this.logger,
+              'discard_post_commit_observability',
+              () => {
+                this.logger.log(
+                  `Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`,
+                );
+                this.tripMetrics?.tripDiscarded.inc({
+                  reason: qualityCheck.reason ?? 'quality_check_failed',
+                });
+                this.tripMetrics?.tripQualityAnomalies.inc({
+                  anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
+                });
+              },
+            );
           } else {
+            const r5EndForensics = extractR5EndForensicsForPersistence(
+              det.lastEvidenceSummary as Record<string, unknown> | null,
+              det.endValidationAttempts ?? 0,
+            );
+            const endRecognizedAt = new Date();
+            const endCoords = resolveBoundaryConsistentEndCoordinate({
+              canonicalEndAt: endTime,
+              waypointAtOrBefore: boundaryWaypoint,
+            });
+            const evidenceSummary =
+              (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+            const startForensics = resolveStartForensicProvenance({
+              evidenceSummary,
+              detPossibleStartAt: det.possibleStartAt,
+              detPossibleStartEnteredAt: det.possibleStartEnteredAt,
+              tripCanonicalStartAt: trip.startTime,
+              priorRawDetectionMeta: trip.rawDetectionMeta,
+            });
+            const tripFsmForensics = buildTripFsmForensicsR8V1({
+              startCandidateAt: startForensics.startCandidateAt,
+              startCandidateClockSource: startForensics.startCandidateClockSource,
+              startCandidateEnteredAt: startForensics.startCandidateEnteredAt,
+              startRecognizedAt: startForensics.startRecognizedAt,
+              canonicalStartAt: startForensics.startEpisodeCanonicalAt,
+              tripCanonicalStartAt: trip.startTime,
+              startBoundarySource: startForensics.startBoundarySource,
+              startEvidencePath: startForensics.startEvidencePath,
+              startBoundaryAdjustedMs: startForensics.startBoundaryAdjustedMs,
+              endCandidateAt: det.possibleEndAt,
+              endCandidateClockSource:
+                typeof evidenceSummary.endCandidateClockSource === 'string'
+                  ? evidenceSummary.endCandidateClockSource
+                  : null,
+              endCandidateEnteredAt: det.possibleEndEnteredAt,
+              endRecognizedAt,
+              canonicalEndAt: endTime,
+              endBoundarySource: chosenEndSource,
+              endDetectionMode: det.endDetectionMode ?? null,
+              endConfidence: det.endConfidence ?? null,
+            });
+            const shadowFinalize = runShadowObservabilitySafely(this.logger, 
+              'shadow_finalize_terminal_summary',
+              () =>
+                runShadowFinalizeObservation({
+                  vehicleId,
+                  priorSummary: det.lastEvidenceSummary as Record<string, unknown> | null,
+                  realEndPath: chosenEndSource,
+                }),
+            );
+            const finalizeLayer = {
+              detectionProfile: det.detectionProfile,
+              startDetectionMode: det.startDetectionMode,
+              startBoundarySource: startForensics.startBoundarySource,
+              startCandidateAt:
+                startForensics.flatStartCandidateAt ??
+                (typeof evidenceSummary.startCandidateAt === 'string'
+                  ? evidenceSummary.startCandidateAt
+                  : null),
+              startBoundaryAdjustedMs: startForensics.startBoundaryAdjustedMs,
+              startEvidencePath: startForensics.startEvidencePath,
+              endDetectionMode: det.endDetectionMode,
+              startConfidence: det.startConfidence,
+              endConfidence: det.endConfidence,
+              endTimeSource: chosenEndSource,
+              possibleStartAt: det.possibleStartAt?.toISOString(),
+              possibleEndAt: det.possibleEndAt?.toISOString(),
+              lastActivityAt: det.lastActivityAt?.toISOString(),
+              lastMeaningfulMovementAt:
+                (det as any).lastMeaningfulMovementAt?.toISOString() ?? null,
+              cusumValidatedAt: (det as any).cusumValidatedAt?.toISOString() ?? null,
+              cusumSegmentStart: (det as any).cusumSegmentStart?.toISOString() ?? null,
+              cusumSegmentEnd: (det as any).cusumSegmentEnd?.toISOString() ?? null,
+              endValidationAttempts: (det as any).endValidationAttempts ?? 0,
+              startOdometerKm: det.startOdometerKm,
+              startFuelLevel: det.startFuelLevel,
+              startEvSoc: det.startEvSoc,
+              endRecognizedAt: endRecognizedAt.toISOString(),
+              endCoordinateSource: endCoords.endCoordinateSource,
+              endCoordinateObservedAt: endCoords.endCoordinateObservedAt,
+              tripFsmForensics,
+              ...r5EndForensics,
+              ...(shadowFinalize?.terminalSummary
+                ? { shadowObservability: shadowFinalize.terminalSummary }
+                : {}),
+            };
+            terminalLifecycleIntent = 'COMPLETE';
+            terminalTripId = tripId;
+
+            const preWriteDet = await this.getOrCreateDetectionState(
+              vehicleId,
+              organizationId,
+            );
+            const preWriteAdmission = evaluateEndCycleJobAdmission({
+              det: preWriteDet,
+              job: data,
+            });
+            if (preWriteAdmission !== 'ok') {
+              const reason = mapEndCycleStaleFinalizeReason(preWriteAdmission);
+              this.logger.log(
+                `FINALIZE pre-write admission blocked for ${vehicleId}: ${reason}`,
+              );
+              await this.logTrackingRun({
+                vehicleId,
+                organizationId,
+                tripId: preWriteDet.activeTripId,
+                stateAtRun: preWriteDet.state,
+                runType: TripTrackingRunType.FINALIZATION_CHECK,
+                resultSummary: {
+                  reason: `${reason}_pre_write`,
+                  jobEndCycleToken: data.endCycleToken ?? null,
+                  expectedEndCycleToken: resolveEndCycleToken(preWriteDet),
+                  jobRequestedAt: data.requestedAt ?? null,
+                },
+                durationMs: Date.now() - startedMs,
+              });
+              return;
+            }
+
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
+              endLatitude: endCoords.endLatitude,
+              endLongitude: endCoords.endLongitude,
               endDetectionMode:
                 det.endDetectionMode ?? END_DETECTION_MODES.NO_ACTIVITY_TIMEOUT,
-              endConfidence: (det.endConfidence as 'LOW' | 'MEDIUM' | 'HIGH' | null) ?? undefined,
+              endConfidence:
+                (det.endConfidence as 'LOW' | 'MEDIUM' | 'HIGH' | null) ?? undefined,
               cusumSegmentStart: (det as any).cusumSegmentStart ?? null,
               cusumSegmentEnd: (det as any).cusumSegmentEnd ?? null,
               durationMs,
-              rawDetectionMeta: {
-                detectionProfile: det.detectionProfile,
-                startDetectionMode: det.startDetectionMode,
-                startBoundarySource:
-                  typeof (det.lastEvidenceSummary as any)?.confirmedStartSource === 'string'
-                    ? (det.lastEvidenceSummary as any).confirmedStartSource
-                    : null,
-                startCandidateAt:
-                  typeof (det.lastEvidenceSummary as any)?.startCandidateAt === 'string'
-                    ? (det.lastEvidenceSummary as any).startCandidateAt
-                    : null,
-                startBoundaryAdjustedMs:
-                  typeof (det.lastEvidenceSummary as any)?.startBoundaryAdjustedMs === 'number'
-                    ? (det.lastEvidenceSummary as any).startBoundaryAdjustedMs
-                    : null,
-                startEvidencePath:
-                  typeof (det.lastEvidenceSummary as any)?.startEvidencePath === 'string'
-                    ? (det.lastEvidenceSummary as any).startEvidencePath
-                    : null,
-                endDetectionMode: det.endDetectionMode,
-                startConfidence: det.startConfidence,
-                endConfidence: det.endConfidence,
-                endTimeSource: chosenEndSource,
-                possibleStartAt: det.possibleStartAt?.toISOString(),
-                possibleEndAt: det.possibleEndAt?.toISOString(),
-                lastActivityAt: det.lastActivityAt?.toISOString(),
-                lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt?.toISOString() ?? null,
-                cusumValidatedAt: (det as any).cusumValidatedAt?.toISOString() ?? null,
-                cusumSegmentStart: (det as any).cusumSegmentStart?.toISOString() ?? null,
-                cusumSegmentEnd: (det as any).cusumSegmentEnd?.toISOString() ?? null,
-                endValidationAttempts: (det as any).endValidationAttempts ?? 0,
-                startOdometerKm: det.startOdometerKm,
-                startFuelLevel: det.startFuelLevel,
-                startEvSoc: det.startEvSoc,
-              },
+              rawDetectionMeta: mergeFinalizeRawDetectionMeta({
+                priorRaw: trip.rawDetectionMeta,
+                finalizeLayer,
+              }),
             });
-            this.logger.log(
-              `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
-            );
-            this.tripMetrics?.tripFinalized.inc({ profile: profileLabel, quality: 'ok', source: 'v2_live' });
-            this.tripMetrics?.tripFinalizeLatency.observe(
-              { profile: profileLabel },
-              durationMs / 1000,
-            );
-
-            const movementAnchor =
-              (det as any).lastMeaningfulMovementAt ??
-              det.possibleEndAt ??
-              null;
-            if (movementAnchor) {
-              const latencyFromMovementMs = endTime.getTime() - movementAnchor.getTime();
-              if (latencyFromMovementMs >= 0) {
-                this.tripMetrics?.tripEndLatencyFromMovement.observe(
-                  { profile: profileLabel, end_source: chosenEndSource },
-                  latencyFromMovementMs / 1000,
-                );
+            terminalLifecycleCommit = 'COMPLETED';
+            terminalTripId = tripId;
+            finalizedTripForRestWindow = { tripId, endTime };
+            runTripObservabilitySafely(
+              this.logger,
+              'finalize_post_commit_observability',
+              () => {
+              this.logger.log(
+                `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
+              );
+              this.tripMetrics?.tripFinalized.inc({
+                profile: profileLabel,
+                quality: 'ok',
+                source: 'v2_live',
+              });
+              this.tripMetrics?.tripEvidencePaths?.inc({
+                phase: 'end_finalization',
+                path: chosenEndSource.toUpperCase(),
+              });
+              observeTripDuration(this.tripMetrics, {
+                profile: profileLabel,
+                startAt: trip.startTime,
+                endAt: endTime,
+              });
+              observeEndRecognitionLatency(this.tripMetrics, {
+                profile: profileLabel,
+                commitConfirmation: 'direct',
+                recognizedAt: endRecognizedAt,
+                canonicalEndAt: endTime,
+              });
+              observeEndBoundaryAdjustment(this.tripMetrics, {
+                profile: profileLabel,
+                endSource: chosenEndSource,
+                candidateAt: det.possibleEndAt,
+                canonicalEndAt: endTime,
+              });
+              this.tripMetrics?.tripFinalizeLatency?.observe(
+                { profile: profileLabel },
+                durationMs / 1000,
+              );
+              const movementAnchor =
+                (det as any).lastMeaningfulMovementAt ??
+                det.possibleEndAt ??
+                null;
+              if (movementAnchor) {
+                const latencyFromMovementMs =
+                  endTime.getTime() - movementAnchor.getTime();
+                if (latencyFromMovementMs >= 0) {
+                  this.tripMetrics?.tripEndLatencyFromMovement?.observe(
+                    { profile: profileLabel, end_source: chosenEndSource },
+                    latencyFromMovementMs / 1000,
+                  );
+                }
               }
-            }
-
-            this.logTripEndTimeline('trip_finalized', {
-              vehicleId,
-              tripId,
-              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
-              possibleEndAt: det.possibleEndAt,
-              endValidationStartedAt: this.parseEvidenceTimestamp(
-                det.lastEvidenceSummary,
-                'endValidationStartedAt',
-              ),
-              finalizedAt: endTime,
-              endSource: chosenEndSource,
-              latencyFromMovementMs:
-                movementAnchor != null
-                  ? endTime.getTime() - movementAnchor.getTime()
-                  : null,
+              const endTimelineFields = buildEndTimelineFields({
+                possibleEndAt: det.possibleEndAt,
+                possibleEndEnteredAt: det.possibleEndEnteredAt,
+                canonicalEndAt: endTime,
+                endRecognizedAt,
+              });
+              this.logTripEndTimeline('trip_finalized', {
+                vehicleId,
+                tripId,
+                lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
+                possibleEndAt: det.possibleEndAt,
+                possibleEndEnteredAt: det.possibleEndEnteredAt,
+                endValidationStartedAt: this.parseEvidenceTimestamp(
+                  det.lastEvidenceSummary,
+                  'endValidationStartedAt',
+                ),
+                canonicalEndAt: endTime,
+                endRecognizedAt,
+                endSource: chosenEndSource,
+                candidateLatencySec: endTimelineFields.candidateLatencySec,
+                recognitionLatencySec: endTimelineFields.recognitionLatencySec,
+                boundaryAdjustmentSec: endTimelineFields.boundaryAdjustmentSec,
+                latencyFromMovementMs:
+                  movementAnchor != null
+                    ? endTime.getTime() - movementAnchor.getTime()
+                    : null,
+              });
             });
 
             // Durable V2 analysis init (awaited) after persisted finalize.
@@ -2428,8 +4377,8 @@ export class TripDetectionOrchestrationService {
 
       await this.transitionState(vehicleId, TripDetectionState.RESTING, {
         activeTripId: null,
-        possibleStartAt: null,
-        possibleEndAt: null,
+        ...clearPossibleStartClockFields(),
+        ...clearPossibleEndClockFields(),
         lastActivityAt: restWindowAnchorAt,
         lastMeaningfulMovementAt: null,
         lastCoreProcessedAt: null,
@@ -2449,6 +4398,56 @@ export class TripDetectionOrchestrationService {
         // Store resting reason for smart cooldown selection on next snapshot
         lastEvidenceSummary: { lastRestingReason: restingReason },
       });
+      restingTransitionSucceeded = true;
+
+      // ── Battery V2 LV rest window (observation-independent primary path) ──
+      // Enqueued only after both the COMPLETED trip and the RESTING transition
+      // are persisted, so the consumer reads authoritative finalized state.
+      // Durable + idempotent (lv-rest-open:{vehicleId}:{anchorMs}); failures
+      // never affect the trip lifecycle — reconciliation self-heals misses.
+      if (finalizedTripForRestWindow && organizationId) {
+        const { tripId: finalizedTripId, endTime: finalizedEndTime } =
+          finalizedTripForRestWindow;
+        try {
+          await this.batteryLvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
+            organizationId,
+            vehicleId,
+            tripId: finalizedTripId,
+            tripEndedAt: finalizedEndTime,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `V2 finalize: LV rest session open enqueue failed for trip ${finalizedTripId}: ${e}`,
+          );
+        }
+
+        try {
+          await this.shutdownEvidenceTripContext?.captureAtTripFinalization({
+            organizationId,
+            vehicleId,
+            tripId: finalizedTripId,
+            tripEndedAt: finalizedEndTime,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `V2 finalize: shutdown evidence trip context capture failed for trip ${finalizedTripId}: ${e}`,
+          );
+        }
+
+        if (this.diBoundaryAdmission) {
+          try {
+            await this.diBoundaryAdmission.releaseLiveFsmSplitSegmentsAfterFinalization(
+              organizationId,
+              vehicleId,
+              finalizedTripId,
+            );
+          } catch (e) {
+            this.logger.warn(
+              `V2 finalize: DI boundary admission LIVE_FSM settlement release failed for vehicle ${vehicleId}: ${e}`,
+            );
+          }
+        }
+      }
 
       await this.logTrackingRun({
         vehicleId,
@@ -2457,10 +4456,96 @@ export class TripDetectionOrchestrationService {
         stateAtRun: det.state,
         runType: TripTrackingRunType.FINALIZATION_CHECK,
         resultState: TripDetectionState.RESTING,
+        resultSummary: {
+          terminalLifecycleCommit,
+          ...(finalizeQualityObservability ?? {}),
+        },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
       this.logger.warn(`FINALIZE error for ${vehicleId}: ${err}`);
+
+      let durableTerminalOutcome = null;
+      if (
+        terminalLifecycleCommit === 'NONE' &&
+        terminalLifecycleIntent !== 'NONE' &&
+        terminalTripId
+      ) {
+        durableTerminalOutcome = await readDurableTerminalOutcome(this.prisma, {
+          intent: terminalLifecycleIntent,
+          tripId: terminalTripId,
+        });
+      }
+
+      const recovery = resolveTerminalRestingRecoveryWake({
+        restingTransitionSucceeded,
+        terminalTripId,
+        terminalLifecycleCommit,
+        terminalLifecycleIntent,
+        durableOutcome: durableTerminalOutcome,
+      });
+
+      if (recovery.shouldWake && terminalTripId) {
+        try {
+          await this.scheduleFinalize(
+            vehicleId,
+            organizationId,
+            data.dimoTokenId,
+          );
+          const commitLabel =
+            recovery.effectiveCommit !== 'NONE'
+              ? recovery.effectiveCommit
+              : `AMBIGUOUS(${terminalLifecycleIntent})`;
+          this.logger.warn(
+            `FINALIZE terminal orphan recovery wake scheduled vehicle=${vehicleId} ` +
+              `trip=${terminalTripId} commit=${commitLabel}` +
+              (durableTerminalOutcome ? ` durable=${durableTerminalOutcome}` : ''),
+          );
+          if (
+            durableTerminalOutcome === 'TERMINAL_EXPECTED' &&
+            terminalLifecycleIntent === 'COMPLETE' &&
+            recovery.effectiveCommit !== 'NONE'
+          ) {
+            try {
+              const durableTrip = await this.prisma.vehicleTrip.findUnique({
+                where: { id: terminalTripId },
+                select: {
+                  tripStatus: true,
+                  endTime: true,
+                  rawDetectionMeta: true,
+                  startTime: true,
+                },
+              });
+              const recognizedAt = readPersistedEndRecognizedAt(
+                durableTrip?.rawDetectionMeta,
+              );
+              if (
+                durableTrip?.tripStatus === TripStatus.COMPLETED &&
+                durableTrip.endTime &&
+                recognizedAt
+              ) {
+                runTripObservabilitySafely(this.logger,'finalize_durable_recognition_metric', () => {
+                  observeEndRecognitionLatency(this.tripMetrics, {
+                    profile: detectionProfileLabel,
+                    commitConfirmation: 'durable',
+                    recognizedAt,
+                    canonicalEndAt: durableTrip.endTime!,
+                  });
+                });
+              }
+            } catch (metricErr) {
+              this.logger.warn(
+                `FINALIZE durable recognition metric skipped trip=${terminalTripId}: ${metricErr}`,
+              );
+            }
+          }
+        } catch (enqueueErr) {
+          this.logger.warn(
+            `FINALIZE terminal orphan recovery enqueue failed vehicle=${vehicleId} ` +
+              `trip=${terminalTripId}: ${enqueueErr}`,
+          );
+        }
+      }
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
     }
@@ -2480,6 +4565,83 @@ export class TripDetectionOrchestrationService {
   }
 
   /**
+   * Bounded post-boundary resume revalidation immediately before CH skip terminalization.
+   * Reuses TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS immaturity bound
+   * and a separate defer counter so #1627 attempt budget is not consumed.
+   */
+  private async evaluateClickHouseSkipResumeRevalidation(params: {
+    vehicleId: string;
+    organizationId: string | null;
+    dimoTokenId: number;
+    det: DetState;
+    now: Date;
+    candidateEndAt: Date;
+    priorSummary: Record<string, unknown>;
+  }): Promise<{
+    outcome: ChSkipResumeRevalidationOutcome;
+    deferCount: number;
+    relatchEnteredAt: Date;
+    immaturityBoundMs: number;
+    fetchUncertain: boolean;
+  }> {
+    const profile =
+      params.det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
+    const relatchEnteredAt = resolveChSkipResumeRevalidationRelatchEnteredAt({
+      detPossibleEndEnteredAt: params.det.possibleEndEnteredAt,
+      priorSummary: params.priorSummary,
+      fallbackNow: params.now,
+      endDetectionMode: params.det.endDetectionMode,
+    });
+    const immaturityBoundMs = resolveChSkipResumeRevalidationImmaturityBoundMs({
+      validationRetryMs: this.TRIP_END_VALIDATION_RETRY_MS,
+      chAssistStabilityMs: this.TRIP_END_CH_ASSIST_STABILITY_MS,
+    });
+    const priorDeferCount = readChSkipResumeRevalidationDeferCount(
+      params.priorSummary,
+    );
+    const maxDeferCount = resolveChSkipResumeRevalidationMaxDeferCount(
+      this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+    );
+
+    let resumeObserved = false;
+    let fetchUncertain = false;
+    try {
+      resumeObserved = await this.checkDimoActivityResumed({
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        profile,
+        now: params.now,
+        resumeAfterAt: params.candidateEndAt,
+      });
+    } catch {
+      fetchUncertain = true;
+    }
+
+    const outcome = evaluateChSkipResumeRevalidationMaturity({
+      nowMs: params.now.getTime(),
+      relatchEnteredAtMs: relatchEnteredAt.getTime(),
+      immaturityBoundMs,
+      resumeObserved,
+      fetchUncertain,
+      priorDeferCount,
+      maxDeferCount,
+    });
+
+    const deferCount =
+      outcome === 'NO_RESUME_EVIDENCE_IMMATURE' || outcome === 'FETCH_UNCERTAIN'
+        ? Math.min(priorDeferCount + 1, maxDeferCount)
+        : priorDeferCount;
+
+    return {
+      outcome,
+      deferCount,
+      relatchEnteredAt,
+      immaturityBoundMs,
+      fetchUncertain,
+    };
+  }
+
+  /**
    * DIMO recent-core resume check shared by CH end assist and POSSIBLE_END_CHECK.
    */
   private async checkDimoActivityResumed(params: {
@@ -2488,6 +4650,8 @@ export class TripDetectionOrchestrationService {
     profile: VehicleDetectionProfile;
     now: Date;
     corePoints?: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
+    /** Only points strictly after this boundary may reopen the trip. */
+    resumeAfterAt?: Date | null;
   }): Promise<boolean> {
     const recentFrom = new Date(params.now.getTime() - 90_000);
     const recentPoints =
@@ -2499,6 +4663,7 @@ export class TripDetectionOrchestrationService {
             params.dimoTokenId,
             recentFrom,
             params.now,
+            this.dimoProviderContext(params.dimoTokenId, params.vehicleId),
           );
 
     const resumeFindings = await this.detectorRegistry.runAll(
@@ -2509,6 +4674,7 @@ export class TripDetectionOrchestrationService {
         profile: params.profile,
         phase: DETECTION_PHASES.POSSIBLE_END,
         coreDataPoints: recentPoints,
+        possibleEndAt: params.resumeAfterAt ?? null,
       },
     );
     return resumeFindings.some(
@@ -2522,19 +4688,20 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null;
     dimoTokenId: number;
     now: Date;
+    activeTripId?: string | null;
+    priorSummary?: Record<string, unknown> | null;
   }): Promise<void> {
     await this.transitionState(params.vehicleId, TripDetectionState.ACTIVE_TRIP, {
-      possibleEndAt: null,
-      endDetectionMode: null,
-      endConfidence: null,
-      endValidationAttempts: 0,
-      cusumValidatedAt: null,
-      cusumSegmentStart: null,
-      cusumSegmentEnd: null,
-      lastActivityAt: params.now,
-      lastMeaningfulMovementAt: params.now,
-      lastCoreProcessedAt: params.now,
+      ...buildPossibleEndToActiveReset({
+        workerNow: params.now,
+        priorSummary: params.priorSummary,
+        reopenReason: 'ACTIVITY_RESUMED',
+      }),
     });
+    await this.cancelPendingEndCycleJobs(
+      params.vehicleId,
+      params.activeTripId ?? null,
+    );
     await this.scheduleActiveTick(
       params.vehicleId,
       params.organizationId,
@@ -2733,6 +4900,7 @@ export class TripDetectionOrchestrationService {
         profile: profileEnum,
         now: params.now,
         corePoints: recentPoints,
+        resumeAfterAt: endDecision.detectedEndAt,
       })
     ) {
       return false;
@@ -2747,28 +4915,29 @@ export class TripDetectionOrchestrationService {
 
     const detectedEndAt = endDecision.detectedEndAt;
 
-    this.tripMetrics?.tripEvidencePaths.inc({
-      phase: 'end_assist',
-      path: endDecision.evidencePath,
-    });
-
-    this.logger.log(
-      `CH end assist for ${params.vehicleId}: end at ${detectedEndAt.toISOString()} ` +
-        `[${endDecision.confidence}] path=${endDecision.evidencePath}`,
-    );
-
-    this.logTripEndTimeline('clickhouse_end_assist', {
-      vehicleId: params.vehicleId,
-      tripId: params.tripId,
-      lastMeaningfulMovementAt: (params.det as any).lastMeaningfulMovementAt,
-      possibleEndAt: detectedEndAt,
-      finalizedAt: detectedEndAt,
-      endSource: 'clickhouse_segment_end',
-      confidence: endDecision.confidence,
+    runTripObservabilitySafely(this.logger,'ch_end_assist_pre', () => {
+      this.tripMetrics?.tripEvidencePaths?.inc({
+        phase: 'end_assist',
+        path: endDecision.evidencePath,
+      });
+      this.logger.log(
+        `CH end assist for ${params.vehicleId}: end at ${detectedEndAt.toISOString()} ` +
+          `[${endDecision.confidence}] path=${endDecision.evidencePath}`,
+      );
+      this.logTripEndTimeline('clickhouse_end_assist', {
+        vehicleId: params.vehicleId,
+        tripId: params.tripId,
+        lastMeaningfulMovementAt: (params.det as any).lastMeaningfulMovementAt,
+        possibleEndAt: detectedEndAt,
+        finalizedAt: detectedEndAt,
+        endSource: 'clickhouse_segment_end',
+        confidence: endDecision.confidence,
+      });
     });
 
     await this.transitionState(params.vehicleId, TripDetectionState.POSSIBLE_END, {
       possibleEndAt: detectedEndAt,
+      possibleEndEnteredAt: params.now,
       endValidationAttempts: 0,
       cusumValidatedAt: null,
       cusumSegmentStart: params.tripStartAt,
@@ -2781,6 +4950,14 @@ export class TripDetectionOrchestrationService {
         clickhouseEndEvidencePath: endDecision.evidencePath,
         dimoContinuityCorroborated:
           endDecision.evidencePath === 'DIMO_PLUS_CLICKHOUSE',
+        endCandidateClockSource: 'PROVIDER_EVENT_TIME',
+        ...(params.corePoints.length === 0
+          ? {
+              clickhouseEndAssistRelatchEmptyCore: true,
+              noCoreStream: true,
+              chSkipResumeRevalidationRelatchEnteredAt: params.now.toISOString(),
+            }
+          : {}),
       },
     });
 
@@ -2792,6 +4969,7 @@ export class TripDetectionOrchestrationService {
           profile: profileEnum,
           now: params.now,
           corePoints: recentPoints,
+          resumeAfterAt: detectedEndAt,
         })
       ) {
         this.logger.log(
@@ -2802,6 +4980,7 @@ export class TripDetectionOrchestrationService {
           organizationId: params.organizationId,
           dimoTokenId: params.dimoTokenId,
           now: params.now,
+          activeTripId: params.tripId,
         });
         return false;
       }
@@ -2822,6 +5001,21 @@ export class TripDetectionOrchestrationService {
         0,
       );
     }
+
+    runTripObservabilitySafely(this.logger,'ch_end_candidate', () => {
+      this.observePossibleEndCandidateLatency({
+        priorState: params.det.state,
+        profile: String(params.profile),
+        evidencePath: endDecision.evidencePath,
+        clockSource: 'PROVIDER_EVENT_TIME',
+        candidateAt: detectedEndAt,
+        enteredAt: params.now,
+      });
+      this.tripMetrics?.tripEvidencePaths?.inc({
+        phase: 'end_candidate',
+        path: endDecision.evidencePath,
+      });
+    });
 
     return true;
   }
@@ -2886,92 +5080,74 @@ export class TripDetectionOrchestrationService {
 
     if (timeline.length < 2) return null;
 
-    let bestIdx = -1;
-    let bestGapMs = 0;
-    for (let i = 1; i < timeline.length; i++) {
-      const before = timeline[i - 1];
-      const after = timeline[i];
-      const gapMs = after.ts.getTime() - before.ts.getTime();
-      if (gapMs < this.TRIP_MID_GAP_SPLIT_MS) continue;
-      const beforeStopped = before.speed == null || before.speed <= 5;
-      if (!beforeStopped) continue;
-      if (gapMs > bestGapMs) {
-        bestIdx = i;
-        bestGapMs = gapMs;
-      }
-    }
+    const selected = findLargestQualifyingMidGapFromCoreTimeline({
+      timeline,
+      maxSameTripQualifiedStopMs: this.maxSameTripQualifiedStopMs,
+    });
+    if (!selected) return null;
 
-    if (bestIdx < 0) return null;
-
-    // Confirm motion resumed at/after the gap: the `after` sample itself
-    // is moving, OR a later sample in the same batch shows motion.
-    const after = timeline[bestIdx];
-    const afterMoving = after.speed != null && after.speed > 5;
-    const anyLaterMoving = timeline
-      .slice(bestIdx)
-      .some((p) => p.speed != null && p.speed > 5);
-    if (!afterMoving && !anyLaterMoving) return null;
-
-    // Resolve the split point: prefer the after-gap sample if it shows
-    // motion; otherwise advance to the first later sample that does.
-    let secondStartIdx = bestIdx;
-    if (!afterMoving) {
-      for (let i = bestIdx + 1; i < timeline.length; i++) {
-        const p = timeline[i];
-        if (p.speed != null && p.speed > 5) {
-          secondStartIdx = i;
-          break;
-        }
-      }
-    }
-
-    const before = timeline[bestIdx - 1];
-    const second = timeline[secondStartIdx];
-
-    // Lat/Lng are not on the core-data shape — caller will resolve these
-    // via waypoints when drift-validating the split.
     return {
-      gapMs: bestGapMs,
-      firstEndAt: before.ts,
+      gapMs: selected.gapMs,
+      firstEndAt: selected.firstEndAt,
       firstEndLatitude: null,
       firstEndLongitude: null,
-      secondStartAt: second.ts,
+      secondStartAt: selected.secondStartAt,
       secondStartLatitude: null,
       secondStartLongitude: null,
     };
   }
 
   /**
-   * Returns the GPS drift in metres between the last pre-gap waypoint and
-   * the first post-gap waypoint for the given trip. If either waypoint is
-   * missing (e.g., route enrichment lagged), returns `null` — callers should
-   * treat that as "cannot validate, allow split" to avoid blocking the fix
-   * on missing route data for live detections.
+   * Resolves GPS drift evidence for a live mid-gap split candidate.
+   * Uses persisted waypoints first; falls back to the current route batch
+   * only when timestamp-bounded pre/post coordinates are unambiguous.
    */
-  private async computeMidGapPositionDrift(
+  private async resolveLiveMidGapDriftEvidence(
     tripId: string,
     firstEndAt: Date,
     secondStartAt: Date,
-  ): Promise<number | null> {
-    const [pre, post] = await Promise.all([
+    routePoints: Array<{
+      timestamp: string;
+      latitude: number;
+      longitude: number;
+    }>,
+  ) {
+    const [preDb, postDb] = await Promise.all([
       this.prisma.vehicleTripWaypoint.findFirst({
         where: { tripId, recordedAt: { lte: firstEndAt } },
         orderBy: { recordedAt: 'desc' },
-        select: { latitude: true, longitude: true, recordedAt: true },
+        select: { latitude: true, longitude: true },
       }),
       this.prisma.vehicleTripWaypoint.findFirst({
         where: { tripId, recordedAt: { gte: secondStartAt } },
         orderBy: { recordedAt: 'asc' },
-        select: { latitude: true, longitude: true, recordedAt: true },
+        select: { latitude: true, longitude: true },
       }),
     ]);
-    if (!pre || !post) return null;
-    return this.haversineMeters(
-      pre.latitude,
-      pre.longitude,
-      post.latitude,
-      post.longitude,
-    );
+
+    const preFromRoute = selectRoutePointAtOrBefore(routePoints, firstEndAt);
+    const postFromRoute = selectRoutePointAtOrAfter(routePoints, secondStartAt);
+
+    return computeMidGapDriftEvidence({
+      pre: preDb
+        ? { latitude: preDb.latitude, longitude: preDb.longitude }
+        : preFromRoute
+          ? {
+              latitude: preFromRoute.latitude,
+              longitude: preFromRoute.longitude,
+            }
+          : null,
+      post: postDb
+        ? { latitude: postDb.latitude, longitude: postDb.longitude }
+        : postFromRoute
+          ? {
+              latitude: postFromRoute.latitude,
+              longitude: postFromRoute.longitude,
+            }
+          : null,
+      maxAllowedDriftM: this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M,
+      haversineMeters: this.haversineMeters.bind(this),
+    });
   }
 
   private haversineMeters(
@@ -2992,90 +5168,88 @@ export class TripDetectionOrchestrationService {
 
   private async resolveConfirmedStartBoundary(input: {
     dimoTokenId: number;
+    vehicleId: string;
+    organizationId?: string | null;
     candidateStartAt: Date;
     confirmedAt: Date;
     corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
     profile: string;
   }): Promise<{
-    startAt: Date;
-    source: 'DIMO_SEGMENT' | 'ROUTE_ACTIVITY' | 'CORE_ACTIVITY' | 'SNAPSHOT_CANDIDATE';
-    startLatitude: number | null;
-    startLongitude: number | null;
-    adjustedMs: number;
-    dimoSegmentId: string | null;
+    legacy: {
+      startAt: Date;
+      source:
+        | 'DIMO_SEGMENT'
+        | 'ROUTE_ACTIVITY'
+        | 'CORE_ACTIVITY'
+        | 'SNAPSHOT_CANDIDATE';
+      startLatitude: number | null;
+      startLongitude: number | null;
+      adjustedMs: number;
+      dimoSegmentId: string | null;
+    };
+    evidence: StartBoundaryEvidenceContext;
   }> {
-    const boundaryWindowFrom = new Date(
-      Math.max(
-        input.candidateStartAt.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
-        input.confirmedAt.getTime() - this.POSSIBLE_START_CONFIRMATION_LOOKBACK_MS,
-      ),
-    );
-    const matchingSegment = this.selectConfirmedStartSegment(
-      await this.segments.fetchTripSegments(
-        input.dimoTokenId,
-        boundaryWindowFrom,
-        input.confirmedAt,
-      ),
+    const boundaryWindowFrom = computeStartBoundaryWindowFrom(
       input.candidateStartAt,
       input.confirmedAt,
+      this.tripStartBoundaryMaxLookbackMs,
     );
-
-    if (matchingSegment) {
-      const startAt = new Date(matchingSegment.startTime);
-      return {
-        startAt,
-        source: 'DIMO_SEGMENT',
-        startLatitude: matchingSegment.startLatitude,
-        startLongitude: matchingSegment.startLongitude,
-        adjustedMs: startAt.getTime() - input.candidateStartAt.getTime(),
-        dimoSegmentId: matchingSegment.segmentId,
-      };
-    }
-
-    const routePoints = await this.segments.fetchRouteEnrichment(
+    const providerContext = this.dimoProviderContext(
+      input.dimoTokenId,
+      input.vehicleId,
+      input.organizationId,
+    );
+    const segments = await this.segments.fetchTripSegments(
       input.dimoTokenId,
       boundaryWindowFrom,
       input.confirmedAt,
+      undefined,
+      providerContext,
     );
-    const refined = refineTripStartBoundary(
-      input.candidateStartAt,
-      input.corePoints,
+
+    let routePoints: Awaited<
+      ReturnType<DimoSegmentsService['fetchRouteEnrichment']>
+    > = [];
+    let legacyRouteFetchPerformed = false;
+
+    const preMatch = resolveLegacyConfirmedStartBoundary({
+      boundaryWindowFrom,
+      candidateStartAt: input.candidateStartAt,
+      confirmedAt: input.confirmedAt,
+      corePoints: input.corePoints,
+      profile: input.profile,
+      segments,
+      routePoints: [],
+      legacyRouteFetchPerformed: false,
+    });
+
+    if (!preMatch.evidence.matchingSegment) {
+      routePoints = await this.segments.fetchRouteEnrichment(
+        input.dimoTokenId,
+        boundaryWindowFrom,
+        input.confirmedAt,
+        providerContext,
+      );
+      legacyRouteFetchPerformed = true;
+    }
+
+    return resolveLegacyConfirmedStartBoundary({
+      boundaryWindowFrom,
+      candidateStartAt: input.candidateStartAt,
+      confirmedAt: input.confirmedAt,
+      corePoints: input.corePoints,
+      profile: input.profile,
+      segments,
       routePoints,
-      input.profile,
-    );
-
-    return {
-      ...refined,
-      dimoSegmentId: null,
-    };
-  }
-
-  private selectConfirmedStartSegment(
-    segments: DimoTripSegment[],
-    candidateStartAt: Date,
-    confirmedAt: Date,
-  ): DimoTripSegment | null {
-    const candidateMs = candidateStartAt.getTime();
-    const confirmedMs = confirmedAt.getTime();
-
-    return (
-      segments.find((segment) => {
-        if (segment.startedBeforeRange) return false;
-
-        const startMs = new Date(segment.startTime).getTime();
-        const endMs = segment.endTime
-          ? new Date(segment.endTime).getTime()
-          : confirmedMs;
-
-        return startMs <= confirmedMs && endMs >= candidateMs;
-      }) ?? null
-    );
+      legacyRouteFetchPerformed,
+    });
   }
 
   private async fetchAndStoreStartTemperature(
     tokenId: number,
     tripId: string,
     startTime: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<void> {
     const from = new Date(startTime.getTime() - 5 * 60_000);
     const to = new Date(startTime.getTime() + 5 * 60_000);
@@ -3083,6 +5257,7 @@ export class TripDetectionOrchestrationService {
       tokenId,
       from,
       to,
+      requestContext,
     );
 
     if (readings.length > 0) {
@@ -3107,11 +5282,13 @@ export class TripDetectionOrchestrationService {
     tripId: string,
     from: Date,
     to: Date,
+    requestContext?: DimoProviderRequestContext,
   ): Promise<void> {
     const routePoints = await this.segments.fetchRouteEnrichment(
       tokenId,
       from,
       to,
+      requestContext,
     );
     if (routePoints.length === 0) return;
 
@@ -3149,14 +5326,66 @@ export class TripDetectionOrchestrationService {
   ): Date | null {
     if (!summary || typeof summary !== 'object') return null;
     const raw = (summary as Record<string, unknown>)[key];
-    if (typeof raw !== 'string') return null;
-    const parsed = new Date(raw);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    return parseStrictEvidenceTimestamp(raw);
+  }
+
+  private observePossibleEndCandidateLatency(params: {
+    priorState: TripDetectionState;
+    profile: string;
+    evidencePath: string;
+    clockSource: string;
+    candidateAt: Date;
+    enteredAt: Date;
+  }): void {
+    if (params.priorState === TripDetectionState.POSSIBLE_END) {
+      return;
+    }
+    observeEndCandidateLatency(this.tripMetrics, params);
+  }
+
+  private logTripStartTimeline(
+    phase: 'active_trip_confirmed',
+    input: {
+      vehicleId: string;
+      tripId?: string | null;
+      startCandidateAt?: Date | null;
+      startCandidateEnteredAt?: Date | null;
+      canonicalStartAt?: Date | null;
+      startRecognizedAt?: Date | null;
+      boundarySource?: string | null;
+      evidencePath?: string | null;
+    },
+  ): void {
+    runTripObservabilitySafely(this.logger,'trip_start_timeline', () => {
+      const fmt = (d?: Date | null) =>
+        d && Number.isFinite(d.getTime()) ? d.toISOString() : '—';
+      const fields = buildStartTimelineFields(input);
+      this.logger.log(
+        `TRIP_START_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
+          (input.tripId ? ` trip=${input.tripId}` : '') +
+          ` startCandidateAt=${fmt(input.startCandidateAt)}` +
+          ` startCandidateEnteredAt=${fmt(input.startCandidateEnteredAt)}` +
+          ` canonicalStartAt=${fmt(input.canonicalStartAt)}` +
+          ` startRecognizedAt=${fmt(input.startRecognizedAt)}` +
+          (input.boundarySource ? ` boundarySource=${input.boundarySource}` : '') +
+          (input.evidencePath ? ` evidencePath=${input.evidencePath}` : '') +
+          (fields.candidateLatencySec != null
+            ? ` candidateLatencySec=${Math.round(fields.candidateLatencySec)}`
+            : '') +
+          (fields.recognitionLatencySec != null
+            ? ` recognitionLatencySec=${Math.round(fields.recognitionLatencySec)}`
+            : '') +
+          (fields.boundaryAdjustmentSec != null
+            ? ` boundaryAdjustmentSec=${Math.round(fields.boundaryAdjustmentSec)}`
+            : ''),
+      );
+    });
   }
 
   private logTripEndTimeline(
     phase:
       | 'possible_end_entered'
+      | 'end_validation_scheduled'
       | 'end_validation_started'
       | 'clickhouse_end_assist'
       | 'clickhouse_end_assist_confirmed'
@@ -3167,35 +5396,63 @@ export class TripDetectionOrchestrationService {
       tripId?: string | null;
       lastMeaningfulMovementAt?: Date | null;
       possibleEndAt?: Date | null;
+      possibleEndEnteredAt?: Date | null;
       endValidationStartedAt?: Date | null;
+      endValidationScheduledAt?: Date | null;
+      /** @deprecated Use canonicalEndAt — boundary time, not worker recognition. */
       finalizedAt?: Date | null;
+      canonicalEndAt?: Date | null;
+      endRecognizedAt?: Date | null;
+      candidateLatencySec?: number | null;
+      recognitionLatencySec?: number | null;
+      boundaryAdjustmentSec?: number | null;
       endSource?: string;
       confidence?: string;
       latencyFromMovementMs?: number | null;
       attempt?: number;
+      completedAttempts?: number;
+      completedEndValidationAttempt?: number;
       maxAttempts?: number;
     },
   ): void {
-    const fmt = (d?: Date | null) => (d ? d.toISOString() : '—');
-    const latencySec =
-      input.latencyFromMovementMs != null
-        ? Math.round(input.latencyFromMovementMs / 1000)
-        : null;
+    runTripObservabilitySafely(this.logger,'trip_end_timeline', () => {
+      const fmt = (d?: Date | null) =>
+        d && Number.isFinite(d.getTime()) ? d.toISOString() : '—';
+      const latencySec =
+        input.latencyFromMovementMs != null
+          ? Math.round(input.latencyFromMovementMs / 1000)
+          : null;
+      const canonicalEndAt = input.canonicalEndAt ?? input.finalizedAt ?? null;
 
-    this.logger.log(
-      `TRIP_END_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
-        (input.tripId ? ` trip=${input.tripId}` : '') +
-        ` lastMeaningfulMovementAt=${fmt(input.lastMeaningfulMovementAt)}` +
-        ` possibleEndAt=${fmt(input.possibleEndAt)}` +
-        ` endValidationStartedAt=${fmt(input.endValidationStartedAt)}` +
-        ` finalizedAt=${fmt(input.finalizedAt)}` +
-        (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +
-        (input.endSource ? ` endSource=${input.endSource}` : '') +
-        (input.confidence ? ` confidence=${input.confidence}` : '') +
-        (input.attempt != null
-          ? ` cusumAttempt=${input.attempt}/${input.maxAttempts ?? '?'}`
-          : ''),
-    );
+      this.logger.log(
+        `TRIP_END_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
+          (input.tripId ? ` trip=${input.tripId}` : '') +
+          ` lastMeaningfulMovementAt=${fmt(input.lastMeaningfulMovementAt)}` +
+          ` possibleEndAt=${fmt(input.possibleEndAt)}` +
+          ` possibleEndEnteredAt=${fmt(input.possibleEndEnteredAt)}` +
+          ` endValidationStartedAt=${fmt(input.endValidationStartedAt)}` +
+          ` canonicalEndAt=${fmt(canonicalEndAt)}` +
+          ` endRecognizedAt=${fmt(input.endRecognizedAt)}` +
+          (input.finalizedAt
+            ? ` finalizedAt=${fmt(input.finalizedAt)}`
+            : '') +
+          (input.candidateLatencySec != null
+            ? ` candidateLatencySec=${Math.round(input.candidateLatencySec)}`
+            : '') +
+          (input.recognitionLatencySec != null
+            ? ` recognitionLatencySec=${Math.round(input.recognitionLatencySec)}`
+            : '') +
+          (input.boundaryAdjustmentSec != null
+            ? ` boundaryAdjustmentSec=${Math.round(input.boundaryAdjustmentSec)}`
+            : '') +
+          (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +
+          (input.endSource ? ` endSource=${input.endSource}` : '') +
+          (input.confidence ? ` confidence=${input.confidence}` : '') +
+          (input.attempt != null
+            ? ` cusumAttempt=${input.attempt}/${input.maxAttempts ?? '?'}`
+            : ''),
+      );
+    });
   }
 
   async logTrackingRun(input: {
@@ -3227,7 +5484,7 @@ export class TripDetectionOrchestrationService {
           corePointsCount: input.corePointsCount ?? null,
           routePointsCount: input.routePointsCount ?? null,
           drivingPointsCount: input.drivingPointsCount ?? null,
-          resultState: input.resultState ?? null,
+          resultState: input.resultState ?? input.stateAtRun,
           resultSummary: (input.resultSummary as any) ?? null,
           errorMessage: input.errorMessage ?? null,
           durationMs: input.durationMs ?? null,

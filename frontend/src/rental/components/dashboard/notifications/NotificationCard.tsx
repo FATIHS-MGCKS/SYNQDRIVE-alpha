@@ -5,7 +5,7 @@ import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { NotificationCardViewModel } from './notificationCardViewModel';
 import { getNotificationCardSeverityLabel } from './notificationCardViewModel';
 import { notificationDomainIcon } from './notificationDomainIcon';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 import { NotificationActionsMenu } from './NotificationActionsMenu';
 
 function severitySurface(severity: NotificationCardViewModel['severity'], resolved: boolean): string {

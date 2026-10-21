@@ -568,7 +568,65 @@ export async function installFleetOperationalMocks(page: Page) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { total: 0 } }) });
     }
 
+    if (url.includes(`/organizations/${TEST_ORG_ID}/dashboard/utilization`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'AVAILABLE',
+          reason: null,
+          year: 2026,
+          month: 8,
+          isPartialMonth: false,
+          stationScoped: false,
+          generatedAt: new Date().toISOString(),
+          monthMetrics: {
+            utilizationPercent: 0,
+            bookingCount: 0,
+            utilizationDeltaPp: null,
+            bookingDeltaPercent: null,
+          },
+          previousMonthMetrics: {
+            utilizationPercent: null,
+            bookingCount: 0,
+            utilizationDeltaPp: null,
+            bookingDeltaPercent: null,
+          },
+          days: [],
+        }),
+      });
+    }
+
+    if (url.includes(`/organizations/${TEST_ORG_ID}/communication/conversations/summary`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalUnreadMessages: 0,
+          unreadConversations: 0,
+          unassigned: 0,
+          requiresAttention: 0,
+          byChannel: {},
+        }),
+      });
+    }
+
+    if (url.includes(`/organizations/${TEST_ORG_ID}/communication/conversations/attention-preview`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: [] }),
+      });
+    }
+
     return route.continue();
+  });
+}
+
+/** Stable Fleet Command container — avoids brittle styling-class selectors. */
+export function fleetCommandPanel(page: Page) {
+  return page.locator('.surface-premium').filter({
+    has: page.getByRole('heading', { name: 'Fleet Command' }),
   });
 }
 
@@ -624,23 +682,16 @@ export async function openFleetOperationalFleetPage(page: Page, options?: { them
 }
 
 export function fleetTabButton(page: Page, label: string | RegExp) {
-  return page
-    .locator('.surface-premium.rounded-2xl')
-    .filter({ hasText: 'Fleet Command' })
-    .locator('.sq-tab-bar button')
-    .filter({ hasText: label });
+  return fleetCommandPanel(page).locator('.sq-tab-bar button').filter({ hasText: label });
 }
 
 export async function openFleetAllTab(page: Page) {
-  const panel = page.locator('.surface-premium.rounded-2xl').filter({ hasText: 'Fleet Command' });
+  const panel = fleetCommandPanel(page);
   await panel.locator('.sq-tab-bar button').filter({ hasText: 'All' }).first().click();
 }
 
 export function fleetRowByPlate(page: Page, plate: string) {
-  return page
-    .locator('.surface-premium.rounded-2xl')
-    .filter({ hasText: 'Fleet Command' })
-    .getByText(plate, { exact: true });
+  return fleetCommandPanel(page).getByText(plate, { exact: true });
 }
 
 export async function dispatchHandoverCompleted(page: Page) {

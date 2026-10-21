@@ -11,6 +11,7 @@ import {
   buildPaymentEmailJobId,
   buildPaymentEmailJobOptions,
 } from './payment-email-queue.util';
+import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
 @Injectable()
 export class PaymentEmailSchedulerService {
@@ -20,6 +21,7 @@ export class PaymentEmailSchedulerService {
     @Inject(paymentEmailConfig.KEY)
     private readonly config: ConfigType<typeof paymentEmailConfig>,
     private readonly outboxRepo: PaymentEmailOutboxRepository,
+    private readonly leaderGuard: SchedulerLeaderGuardService,
   ) {}
 
   isEnabled(): boolean {
@@ -55,6 +57,7 @@ export class PaymentEmailSchedulerService {
 
   @Cron('*/30 * * * * *')
   async pollPendingOutbox(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('payment_email')) return;
     if (!this.isEnabled()) {
       return;
     }

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Icon } from '../ui/Icon';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, parseIso, rowStatus, bookingStartIso } from './bookingUtils';

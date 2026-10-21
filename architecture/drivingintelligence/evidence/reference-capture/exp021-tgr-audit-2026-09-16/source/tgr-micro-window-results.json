@@ -1,0 +1,1127 @@
+{
+  "auditId": "EXP-021-TGR-MICRO-WINDOW-AUDIT",
+  "executedAt": "2026-09-16T09:59:44.184Z",
+  "tokenId": 187336,
+  "field": "speed",
+  "interval": "1s",
+  "aggregation": "AVG",
+  "hf60": {
+    "windowKey": "hf60",
+    "windowId": "PC-HF60-NATIVE-SLOT2",
+    "fullWindow": {
+      "from": "2026-09-15T11:50:02.945Z",
+      "to": "2026-09-15T11:51:08.366Z",
+      "httpStatus": 200,
+      "providerRows": 10,
+      "bucketIdentities": [
+        "speed|2026-09-15T11:50:27.945Z",
+        "speed|2026-09-15T11:50:33.945Z",
+        "speed|2026-09-15T11:50:34.945Z",
+        "speed|2026-09-15T11:50:36.945Z",
+        "speed|2026-09-15T11:50:37.945Z",
+        "speed|2026-09-15T11:50:40.945Z",
+        "speed|2026-09-15T11:50:42.945Z",
+        "speed|2026-09-15T11:50:45.945Z",
+        "speed|2026-09-15T11:50:46.945Z",
+        "speed|2026-09-15T11:51:03.945Z"
+      ],
+      "bucketIdentityCount": 10,
+      "uniqueTemporalBucketStarts": 10,
+      "durationMs": 274
+    },
+    "partitions": {
+      "30s": {
+        "chunkMs": 30000,
+        "queryCount": 3,
+        "totalDurationMs": 348,
+        "totalProviderRows": 10,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:50:27.945Z",
+          "speed|2026-09-15T11:50:33.945Z",
+          "speed|2026-09-15T11:50:34.945Z",
+          "speed|2026-09-15T11:50:36.945Z",
+          "speed|2026-09-15T11:50:37.945Z",
+          "speed|2026-09-15T11:50:40.945Z",
+          "speed|2026-09-15T11:50:42.945Z",
+          "speed|2026-09-15T11:50:45.945Z",
+          "speed|2026-09-15T11:50:46.945Z",
+          "speed|2026-09-15T11:51:03.945Z"
+        ],
+        "unionBucketIdentityCount": 10,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 10,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:50:02.945Z",
+            "to": "2026-09-15T11:50:32.945Z",
+            "bucketCount": 1,
+            "durationMs": 119,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:32.945Z",
+            "to": "2026-09-15T11:51:02.945Z",
+            "bucketCount": 8,
+            "durationMs": 137,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:51:02.945Z",
+            "to": "2026-09-15T11:51:08.366Z",
+            "bucketCount": 1,
+            "durationMs": 92,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "15s": {
+        "chunkMs": 15000,
+        "queryCount": 5,
+        "totalDurationMs": 491,
+        "totalProviderRows": 10,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:50:27.945Z",
+          "speed|2026-09-15T11:50:33.945Z",
+          "speed|2026-09-15T11:50:34.945Z",
+          "speed|2026-09-15T11:50:36.945Z",
+          "speed|2026-09-15T11:50:37.945Z",
+          "speed|2026-09-15T11:50:40.945Z",
+          "speed|2026-09-15T11:50:42.945Z",
+          "speed|2026-09-15T11:50:45.945Z",
+          "speed|2026-09-15T11:50:46.945Z",
+          "speed|2026-09-15T11:51:03.945Z"
+        ],
+        "unionBucketIdentityCount": 10,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 10,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:50:02.945Z",
+            "to": "2026-09-15T11:50:17.945Z",
+            "bucketCount": 0,
+            "durationMs": 97,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:17.945Z",
+            "to": "2026-09-15T11:50:32.945Z",
+            "bucketCount": 1,
+            "durationMs": 92,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:32.945Z",
+            "to": "2026-09-15T11:50:47.945Z",
+            "bucketCount": 8,
+            "durationMs": 117,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:47.945Z",
+            "to": "2026-09-15T11:51:02.945Z",
+            "bucketCount": 0,
+            "durationMs": 94,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:51:02.945Z",
+            "to": "2026-09-15T11:51:08.366Z",
+            "bucketCount": 1,
+            "durationMs": 91,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "10s": {
+        "chunkMs": 10000,
+        "queryCount": 7,
+        "totalDurationMs": 890,
+        "totalProviderRows": 10,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:50:27.945Z",
+          "speed|2026-09-15T11:50:33.945Z",
+          "speed|2026-09-15T11:50:34.945Z",
+          "speed|2026-09-15T11:50:36.945Z",
+          "speed|2026-09-15T11:50:37.945Z",
+          "speed|2026-09-15T11:50:40.945Z",
+          "speed|2026-09-15T11:50:42.945Z",
+          "speed|2026-09-15T11:50:45.945Z",
+          "speed|2026-09-15T11:50:46.945Z",
+          "speed|2026-09-15T11:51:03.945Z"
+        ],
+        "unionBucketIdentityCount": 10,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 10,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:50:02.945Z",
+            "to": "2026-09-15T11:50:12.945Z",
+            "bucketCount": 0,
+            "durationMs": 95,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:12.945Z",
+            "to": "2026-09-15T11:50:22.945Z",
+            "bucketCount": 0,
+            "durationMs": 90,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:22.945Z",
+            "to": "2026-09-15T11:50:32.945Z",
+            "bucketCount": 1,
+            "durationMs": 90,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:32.945Z",
+            "to": "2026-09-15T11:50:42.945Z",
+            "bucketCount": 5,
+            "durationMs": 122,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:42.945Z",
+            "to": "2026-09-15T11:50:52.945Z",
+            "bucketCount": 3,
+            "durationMs": 101,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:52.945Z",
+            "to": "2026-09-15T11:51:02.945Z",
+            "bucketCount": 0,
+            "durationMs": 260,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:51:02.945Z",
+            "to": "2026-09-15T11:51:08.366Z",
+            "bucketCount": 1,
+            "durationMs": 132,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "5s": {
+        "chunkMs": 5000,
+        "queryCount": 14,
+        "totalDurationMs": 1576,
+        "totalProviderRows": 10,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:50:27.945Z",
+          "speed|2026-09-15T11:50:33.945Z",
+          "speed|2026-09-15T11:50:34.945Z",
+          "speed|2026-09-15T11:50:36.945Z",
+          "speed|2026-09-15T11:50:37.945Z",
+          "speed|2026-09-15T11:50:40.945Z",
+          "speed|2026-09-15T11:50:42.945Z",
+          "speed|2026-09-15T11:50:45.945Z",
+          "speed|2026-09-15T11:50:46.945Z",
+          "speed|2026-09-15T11:51:03.945Z"
+        ],
+        "unionBucketIdentityCount": 10,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 10,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:50:02.945Z",
+            "to": "2026-09-15T11:50:07.945Z",
+            "bucketCount": 0,
+            "durationMs": 196,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:07.945Z",
+            "to": "2026-09-15T11:50:12.945Z",
+            "bucketCount": 0,
+            "durationMs": 90,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:12.945Z",
+            "to": "2026-09-15T11:50:17.945Z",
+            "bucketCount": 0,
+            "durationMs": 121,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:17.945Z",
+            "to": "2026-09-15T11:50:22.945Z",
+            "bucketCount": 0,
+            "durationMs": 117,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:22.945Z",
+            "to": "2026-09-15T11:50:27.945Z",
+            "bucketCount": 0,
+            "durationMs": 124,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:27.945Z",
+            "to": "2026-09-15T11:50:32.945Z",
+            "bucketCount": 1,
+            "durationMs": 99,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:32.945Z",
+            "to": "2026-09-15T11:50:37.945Z",
+            "bucketCount": 3,
+            "durationMs": 91,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:37.945Z",
+            "to": "2026-09-15T11:50:42.945Z",
+            "bucketCount": 2,
+            "durationMs": 138,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:42.945Z",
+            "to": "2026-09-15T11:50:47.945Z",
+            "bucketCount": 3,
+            "durationMs": 92,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:47.945Z",
+            "to": "2026-09-15T11:50:52.945Z",
+            "bucketCount": 0,
+            "durationMs": 90,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:52.945Z",
+            "to": "2026-09-15T11:50:57.945Z",
+            "bucketCount": 0,
+            "durationMs": 134,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:57.945Z",
+            "to": "2026-09-15T11:51:02.945Z",
+            "bucketCount": 0,
+            "durationMs": 96,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:51:02.945Z",
+            "to": "2026-09-15T11:51:07.945Z",
+            "bucketCount": 1,
+            "durationMs": 96,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:51:07.945Z",
+            "to": "2026-09-15T11:51:08.366Z",
+            "bucketCount": 0,
+            "durationMs": 92,
+            "httpStatus": 200
+          }
+        ]
+      }
+    }
+  },
+  "hf90": {
+    "windowKey": "hf90",
+    "windowId": "PC-HF90-NATIVE-SLOT4",
+    "fullWindow": {
+      "from": "2026-09-15T11:43:22.504Z",
+      "to": "2026-09-15T11:44:55.707Z",
+      "httpStatus": 200,
+      "providerRows": 6,
+      "bucketIdentities": [
+        "speed|2026-09-15T11:43:45.504Z",
+        "speed|2026-09-15T11:44:19.504Z",
+        "speed|2026-09-15T11:44:21.504Z",
+        "speed|2026-09-15T11:44:23.504Z",
+        "speed|2026-09-15T11:44:24.504Z",
+        "speed|2026-09-15T11:44:29.504Z"
+      ],
+      "bucketIdentityCount": 6,
+      "uniqueTemporalBucketStarts": 6,
+      "durationMs": 109
+    },
+    "partitions": {
+      "30s": {
+        "chunkMs": 30000,
+        "queryCount": 4,
+        "totalDurationMs": 478,
+        "totalProviderRows": 6,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:43:45.504Z",
+          "speed|2026-09-15T11:44:19.504Z",
+          "speed|2026-09-15T11:44:21.504Z",
+          "speed|2026-09-15T11:44:23.504Z",
+          "speed|2026-09-15T11:44:24.504Z",
+          "speed|2026-09-15T11:44:29.504Z"
+        ],
+        "unionBucketIdentityCount": 6,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 6,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:43:22.504Z",
+            "to": "2026-09-15T11:43:52.504Z",
+            "bucketCount": 1,
+            "durationMs": 117,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:52.504Z",
+            "to": "2026-09-15T11:44:22.504Z",
+            "bucketCount": 2,
+            "durationMs": 120,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:22.504Z",
+            "to": "2026-09-15T11:44:52.504Z",
+            "bucketCount": 3,
+            "durationMs": 119,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:52.504Z",
+            "to": "2026-09-15T11:44:55.707Z",
+            "bucketCount": 0,
+            "durationMs": 122,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "15s": {
+        "chunkMs": 15000,
+        "queryCount": 7,
+        "totalDurationMs": 715,
+        "totalProviderRows": 6,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:43:45.504Z",
+          "speed|2026-09-15T11:44:19.504Z",
+          "speed|2026-09-15T11:44:21.504Z",
+          "speed|2026-09-15T11:44:23.504Z",
+          "speed|2026-09-15T11:44:24.504Z",
+          "speed|2026-09-15T11:44:29.504Z"
+        ],
+        "unionBucketIdentityCount": 6,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 6,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:43:22.504Z",
+            "to": "2026-09-15T11:43:37.504Z",
+            "bucketCount": 0,
+            "durationMs": 101,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:37.504Z",
+            "to": "2026-09-15T11:43:52.504Z",
+            "bucketCount": 1,
+            "durationMs": 93,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:52.504Z",
+            "to": "2026-09-15T11:44:07.504Z",
+            "bucketCount": 0,
+            "durationMs": 99,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:07.504Z",
+            "to": "2026-09-15T11:44:22.504Z",
+            "bucketCount": 2,
+            "durationMs": 107,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:22.504Z",
+            "to": "2026-09-15T11:44:37.504Z",
+            "bucketCount": 3,
+            "durationMs": 95,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:37.504Z",
+            "to": "2026-09-15T11:44:52.504Z",
+            "bucketCount": 0,
+            "durationMs": 130,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:52.504Z",
+            "to": "2026-09-15T11:44:55.707Z",
+            "bucketCount": 0,
+            "durationMs": 90,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "10s": {
+        "chunkMs": 10000,
+        "queryCount": 10,
+        "totalDurationMs": 1151,
+        "totalProviderRows": 6,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:43:45.504Z",
+          "speed|2026-09-15T11:44:19.504Z",
+          "speed|2026-09-15T11:44:21.504Z",
+          "speed|2026-09-15T11:44:23.504Z",
+          "speed|2026-09-15T11:44:24.504Z",
+          "speed|2026-09-15T11:44:29.504Z"
+        ],
+        "unionBucketIdentityCount": 6,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 6,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:43:22.504Z",
+            "to": "2026-09-15T11:43:32.504Z",
+            "bucketCount": 0,
+            "durationMs": 125,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:32.504Z",
+            "to": "2026-09-15T11:43:42.504Z",
+            "bucketCount": 0,
+            "durationMs": 109,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:42.504Z",
+            "to": "2026-09-15T11:43:52.504Z",
+            "bucketCount": 1,
+            "durationMs": 130,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:52.504Z",
+            "to": "2026-09-15T11:44:02.504Z",
+            "bucketCount": 0,
+            "durationMs": 127,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:02.504Z",
+            "to": "2026-09-15T11:44:12.504Z",
+            "bucketCount": 0,
+            "durationMs": 123,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:12.504Z",
+            "to": "2026-09-15T11:44:22.504Z",
+            "bucketCount": 2,
+            "durationMs": 124,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:22.504Z",
+            "to": "2026-09-15T11:44:32.504Z",
+            "bucketCount": 3,
+            "durationMs": 103,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:32.504Z",
+            "to": "2026-09-15T11:44:42.504Z",
+            "bucketCount": 0,
+            "durationMs": 112,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:42.504Z",
+            "to": "2026-09-15T11:44:52.504Z",
+            "bucketCount": 0,
+            "durationMs": 89,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:52.504Z",
+            "to": "2026-09-15T11:44:55.707Z",
+            "bucketCount": 0,
+            "durationMs": 109,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "5s": {
+        "chunkMs": 5000,
+        "queryCount": 19,
+        "totalDurationMs": 2027,
+        "totalProviderRows": 6,
+        "unionBucketIdentities": [
+          "speed|2026-09-15T11:43:45.504Z",
+          "speed|2026-09-15T11:44:19.504Z",
+          "speed|2026-09-15T11:44:21.504Z",
+          "speed|2026-09-15T11:44:23.504Z",
+          "speed|2026-09-15T11:44:24.504Z",
+          "speed|2026-09-15T11:44:29.504Z"
+        ],
+        "unionBucketIdentityCount": 6,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 6,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:43:22.504Z",
+            "to": "2026-09-15T11:43:27.504Z",
+            "bucketCount": 0,
+            "durationMs": 98,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:27.504Z",
+            "to": "2026-09-15T11:43:32.504Z",
+            "bucketCount": 0,
+            "durationMs": 93,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:32.504Z",
+            "to": "2026-09-15T11:43:37.504Z",
+            "bucketCount": 0,
+            "durationMs": 94,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:37.504Z",
+            "to": "2026-09-15T11:43:42.504Z",
+            "bucketCount": 0,
+            "durationMs": 110,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:42.504Z",
+            "to": "2026-09-15T11:43:47.504Z",
+            "bucketCount": 1,
+            "durationMs": 115,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:47.504Z",
+            "to": "2026-09-15T11:43:52.504Z",
+            "bucketCount": 0,
+            "durationMs": 105,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:52.504Z",
+            "to": "2026-09-15T11:43:57.504Z",
+            "bucketCount": 0,
+            "durationMs": 105,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:43:57.504Z",
+            "to": "2026-09-15T11:44:02.504Z",
+            "bucketCount": 0,
+            "durationMs": 110,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:02.504Z",
+            "to": "2026-09-15T11:44:07.504Z",
+            "bucketCount": 0,
+            "durationMs": 101,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:07.504Z",
+            "to": "2026-09-15T11:44:12.504Z",
+            "bucketCount": 0,
+            "durationMs": 112,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:12.504Z",
+            "to": "2026-09-15T11:44:17.504Z",
+            "bucketCount": 0,
+            "durationMs": 93,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:17.504Z",
+            "to": "2026-09-15T11:44:22.504Z",
+            "bucketCount": 2,
+            "durationMs": 94,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:22.504Z",
+            "to": "2026-09-15T11:44:27.504Z",
+            "bucketCount": 2,
+            "durationMs": 112,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:27.504Z",
+            "to": "2026-09-15T11:44:32.504Z",
+            "bucketCount": 1,
+            "durationMs": 117,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:32.504Z",
+            "to": "2026-09-15T11:44:37.504Z",
+            "bucketCount": 0,
+            "durationMs": 100,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:37.504Z",
+            "to": "2026-09-15T11:44:42.504Z",
+            "bucketCount": 0,
+            "durationMs": 96,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:42.504Z",
+            "to": "2026-09-15T11:44:47.504Z",
+            "bucketCount": 0,
+            "durationMs": 128,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:47.504Z",
+            "to": "2026-09-15T11:44:52.504Z",
+            "bucketCount": 0,
+            "durationMs": 134,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:44:52.504Z",
+            "to": "2026-09-15T11:44:55.707Z",
+            "bucketCount": 0,
+            "durationMs": 110,
+            "httpStatus": 200
+          }
+        ]
+      }
+    }
+  },
+  "transition": {
+    "windowKey": "transition",
+    "windowId": "GAP-60S-SLOT1-TRANSITION-HF",
+    "fullWindow": {
+      "from": "2026-09-15T11:49:04.650Z",
+      "to": "2026-09-15T11:50:08.945Z",
+      "httpStatus": 200,
+      "providerRows": 0,
+      "bucketIdentities": [],
+      "bucketIdentityCount": 0,
+      "uniqueTemporalBucketStarts": 0,
+      "durationMs": 148
+    },
+    "partitions": {
+      "30s": {
+        "chunkMs": 30000,
+        "queryCount": 3,
+        "totalDurationMs": 376,
+        "totalProviderRows": 0,
+        "unionBucketIdentities": [],
+        "unionBucketIdentityCount": 0,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 0,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:49:04.650Z",
+            "to": "2026-09-15T11:49:34.650Z",
+            "bucketCount": 0,
+            "durationMs": 171,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:34.650Z",
+            "to": "2026-09-15T11:50:04.650Z",
+            "bucketCount": 0,
+            "durationMs": 89,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:04.650Z",
+            "to": "2026-09-15T11:50:08.945Z",
+            "bucketCount": 0,
+            "durationMs": 116,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "15s": {
+        "chunkMs": 15000,
+        "queryCount": 5,
+        "totalDurationMs": 602,
+        "totalProviderRows": 0,
+        "unionBucketIdentities": [],
+        "unionBucketIdentityCount": 0,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 0,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:49:04.650Z",
+            "to": "2026-09-15T11:49:19.650Z",
+            "bucketCount": 0,
+            "durationMs": 95,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:19.650Z",
+            "to": "2026-09-15T11:49:34.650Z",
+            "bucketCount": 0,
+            "durationMs": 141,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:34.650Z",
+            "to": "2026-09-15T11:49:49.650Z",
+            "bucketCount": 0,
+            "durationMs": 148,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:49.650Z",
+            "to": "2026-09-15T11:50:04.650Z",
+            "bucketCount": 0,
+            "durationMs": 111,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:04.650Z",
+            "to": "2026-09-15T11:50:08.945Z",
+            "bucketCount": 0,
+            "durationMs": 107,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "10s": {
+        "chunkMs": 10000,
+        "queryCount": 7,
+        "totalDurationMs": 691,
+        "totalProviderRows": 0,
+        "unionBucketIdentities": [],
+        "unionBucketIdentityCount": 0,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 0,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:49:04.650Z",
+            "to": "2026-09-15T11:49:14.650Z",
+            "bucketCount": 0,
+            "durationMs": 92,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:14.650Z",
+            "to": "2026-09-15T11:49:24.650Z",
+            "bucketCount": 0,
+            "durationMs": 98,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:24.650Z",
+            "to": "2026-09-15T11:49:34.650Z",
+            "bucketCount": 0,
+            "durationMs": 97,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:34.650Z",
+            "to": "2026-09-15T11:49:44.650Z",
+            "bucketCount": 0,
+            "durationMs": 99,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:44.650Z",
+            "to": "2026-09-15T11:49:54.650Z",
+            "bucketCount": 0,
+            "durationMs": 93,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:54.650Z",
+            "to": "2026-09-15T11:50:04.650Z",
+            "bucketCount": 0,
+            "durationMs": 107,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:04.650Z",
+            "to": "2026-09-15T11:50:08.945Z",
+            "bucketCount": 0,
+            "durationMs": 105,
+            "httpStatus": 200
+          }
+        ]
+      },
+      "5s": {
+        "chunkMs": 5000,
+        "queryCount": 13,
+        "totalDurationMs": 1486,
+        "totalProviderRows": 0,
+        "unionBucketIdentities": [],
+        "unionBucketIdentityCount": 0,
+        "duplicateIdentitiesAcrossPartitions": 0,
+        "unionExtraVsFull": [],
+        "fullOnlyNotInUnion": [],
+        "intersectionCount": 0,
+        "classification": "SAME_COVERAGE",
+        "partitions": [
+          {
+            "from": "2026-09-15T11:49:04.650Z",
+            "to": "2026-09-15T11:49:09.650Z",
+            "bucketCount": 0,
+            "durationMs": 130,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:09.650Z",
+            "to": "2026-09-15T11:49:14.650Z",
+            "bucketCount": 0,
+            "durationMs": 127,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:14.650Z",
+            "to": "2026-09-15T11:49:19.650Z",
+            "bucketCount": 0,
+            "durationMs": 141,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:19.650Z",
+            "to": "2026-09-15T11:49:24.650Z",
+            "bucketCount": 0,
+            "durationMs": 118,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:24.650Z",
+            "to": "2026-09-15T11:49:29.650Z",
+            "bucketCount": 0,
+            "durationMs": 131,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:29.650Z",
+            "to": "2026-09-15T11:49:34.650Z",
+            "bucketCount": 0,
+            "durationMs": 107,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:34.650Z",
+            "to": "2026-09-15T11:49:39.650Z",
+            "bucketCount": 0,
+            "durationMs": 120,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:39.650Z",
+            "to": "2026-09-15T11:49:44.650Z",
+            "bucketCount": 0,
+            "durationMs": 108,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:44.650Z",
+            "to": "2026-09-15T11:49:49.650Z",
+            "bucketCount": 0,
+            "durationMs": 111,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:49.650Z",
+            "to": "2026-09-15T11:49:54.650Z",
+            "bucketCount": 0,
+            "durationMs": 98,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:54.650Z",
+            "to": "2026-09-15T11:49:59.650Z",
+            "bucketCount": 0,
+            "durationMs": 104,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:49:59.650Z",
+            "to": "2026-09-15T11:50:04.650Z",
+            "bucketCount": 0,
+            "durationMs": 96,
+            "httpStatus": 200
+          },
+          {
+            "from": "2026-09-15T11:50:04.650Z",
+            "to": "2026-09-15T11:50:08.945Z",
+            "bucketCount": 0,
+            "durationMs": 95,
+            "httpStatus": 200
+          }
+        ]
+      }
+    }
+  },
+  "synthetic": {
+    "simulatedMissingRegions": [
+      "2026-09-15T11:50:27.945Z",
+      "2026-09-15T11:50:40.945Z",
+      "2026-09-15T11:51:03.945Z"
+    ],
+    "localWindowSizesMs": [
+      5000,
+      10000,
+      15000
+    ],
+    "attempts": 9,
+    "recoveredKnownBuckets": 3,
+    "recoveredKnownBucketPercent": 0.3333333333333333,
+    "requestCostRelativeToFullWindow": 9,
+    "fullWindowDurationMs": 65421,
+    "details": [
+      {
+        "targetTimestamp": "2026-09-15T11:50:27.945Z",
+        "localWindowMs": 5000,
+        "from": "2026-09-15T11:50:25.445Z",
+        "to": "2026-09-15T11:50:30.445Z",
+        "recovered": false,
+        "returnedIds": [
+          "speed|2026-09-15T11:50:27.445Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:50:27.945Z",
+        "localWindowMs": 10000,
+        "from": "2026-09-15T11:50:22.945Z",
+        "to": "2026-09-15T11:50:32.945Z",
+        "recovered": true,
+        "returnedIds": [
+          "speed|2026-09-15T11:50:27.945Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:50:27.945Z",
+        "localWindowMs": 15000,
+        "from": "2026-09-15T11:50:20.445Z",
+        "to": "2026-09-15T11:50:35.445Z",
+        "recovered": false,
+        "returnedIds": [
+          "speed|2026-09-15T11:50:27.445Z",
+          "speed|2026-09-15T11:50:33.445Z",
+          "speed|2026-09-15T11:50:34.445Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:50:40.945Z",
+        "localWindowMs": 5000,
+        "from": "2026-09-15T11:50:38.445Z",
+        "to": "2026-09-15T11:50:43.445Z",
+        "recovered": false,
+        "returnedIds": [
+          "speed|2026-09-15T11:50:40.445Z",
+          "speed|2026-09-15T11:50:42.445Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:50:40.945Z",
+        "localWindowMs": 10000,
+        "from": "2026-09-15T11:50:35.945Z",
+        "to": "2026-09-15T11:50:45.945Z",
+        "recovered": true,
+        "returnedIds": [
+          "speed|2026-09-15T11:50:36.945Z",
+          "speed|2026-09-15T11:50:37.945Z",
+          "speed|2026-09-15T11:50:40.945Z",
+          "speed|2026-09-15T11:50:42.945Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:50:40.945Z",
+        "localWindowMs": 15000,
+        "from": "2026-09-15T11:50:33.445Z",
+        "to": "2026-09-15T11:50:48.445Z",
+        "recovered": false,
+        "returnedIds": [
+          "speed|2026-09-15T11:50:33.445Z",
+          "speed|2026-09-15T11:50:34.445Z",
+          "speed|2026-09-15T11:50:36.445Z",
+          "speed|2026-09-15T11:50:37.445Z",
+          "speed|2026-09-15T11:50:40.445Z",
+          "speed|2026-09-15T11:50:42.445Z",
+          "speed|2026-09-15T11:50:45.445Z",
+          "speed|2026-09-15T11:50:46.445Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:51:03.945Z",
+        "localWindowMs": 5000,
+        "from": "2026-09-15T11:51:01.445Z",
+        "to": "2026-09-15T11:51:06.445Z",
+        "recovered": false,
+        "returnedIds": [
+          "speed|2026-09-15T11:51:03.445Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:51:03.945Z",
+        "localWindowMs": 10000,
+        "from": "2026-09-15T11:50:58.945Z",
+        "to": "2026-09-15T11:51:08.945Z",
+        "recovered": true,
+        "returnedIds": [
+          "speed|2026-09-15T11:51:03.945Z"
+        ]
+      },
+      {
+        "targetTimestamp": "2026-09-15T11:51:03.945Z",
+        "localWindowMs": 15000,
+        "from": "2026-09-15T11:50:56.445Z",
+        "to": "2026-09-15T11:51:11.445Z",
+        "recovered": false,
+        "returnedIds": [
+          "speed|2026-09-15T11:51:03.445Z"
+        ]
+      }
+    ]
+  }
+}

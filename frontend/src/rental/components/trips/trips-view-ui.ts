@@ -87,6 +87,29 @@ export const TRIPS_COPY = {
   retry: 'Erneut versuchen',
 } as const;
 
+export const ROUTE_QUALITY_COPY = {
+  MATCHED: 'Straßenabgleich',
+  FILTERED: 'GPS-bereinigt',
+  RAW: 'Telemetrie roh',
+  routeAvailable: 'Route verfügbar',
+  routeIncomplete: 'Route unvollständig',
+  routeProcessing: 'Route wird verarbeitet…',
+  routeRetrying: 'Route vorübergehend nicht verfügbar',
+  routeFailed: 'Route nicht verfügbar',
+  continuity: {
+    COMPLETE: 'Route vollständig',
+    GAPS_PRESENT: 'Route unvollständig',
+    INSUFFICIENT_DATA: 'Route unvollständig',
+  },
+  processing: {
+    READY: 'Route bereit',
+    PROCESSING: 'Route wird verarbeitet…',
+    RETRYING: 'Route vorübergehend nicht verfügbar',
+    FAILED: 'Route nicht verfügbar',
+    UNAVAILABLE: 'Route nicht verfügbar',
+  },
+} as const;
+
 export const TIMELINE_COPY = {
   tripHistory: 'Fahrtenliste',
   checkMissingTrips: 'Fehlende Fahrten prüfen',

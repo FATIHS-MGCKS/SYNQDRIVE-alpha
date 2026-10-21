@@ -176,6 +176,31 @@ function validateBasePayload(raw: unknown): BatteryV2JobPayloadBase {
   };
 }
 
+function validatePositiveIntegerPublicationVersion(
+  value: unknown,
+  field: string,
+): number {
+  if (value === undefined || value === null) {
+    throw new BatteryV2JobValidationError(
+      `${field} is required`,
+      field,
+    );
+  }
+  if (typeof value !== 'number') {
+    throw new BatteryV2JobValidationError(
+      `${field} must be a number`,
+      field,
+    );
+  }
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+    throw new BatteryV2JobValidationError(
+      `${field} must be a positive integer`,
+      field,
+    );
+  }
+  return value;
+}
+
 function validateSnapshotContext(value: unknown): BatteryObservationSnapshotContext | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -304,7 +329,21 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
         snapshotContext: snapshotContext ?? null,
       } as BatteryV2JobPayload<T>;
     }
+    case 'BATTERY_LV_REST_SESSION_OPEN': {
+      if (!isEntityId(data.tripId)) {
+        throw new BatteryV2JobValidationError('tripId is required', 'tripId');
+      }
+      const tripEndedAt = parseIsoDate(data.tripEndedAt, 'tripEndedAt');
+      return {
+        ...base,
+        tripId: data.tripId,
+        tripEndedAt,
+      } as BatteryV2JobPayload<T>;
+    }
     case 'BATTERY_REST_TARGET_EVALUATE': {
+      if (!isNonEmptyString(data.restWindowId, 256)) {
+        throw new BatteryV2JobValidationError('restWindowId is required', 'restWindowId');
+      }
       let restWindowStartedAt: string | null | undefined;
       if (data.restWindowStartedAt !== undefined && data.restWindowStartedAt !== null) {
         restWindowStartedAt = parseIsoDate(
@@ -325,6 +364,7 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
       }
       return {
         ...base,
+        restWindowId: data.restWindowId.trim(),
         restWindowStartedAt: restWindowStartedAt ?? null,
         restTargetType: restTargetType ?? null,
       } as BatteryV2JobPayload<T>;
@@ -338,6 +378,21 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
         ...base,
         tripId: data.tripId,
         tripStartedAt,
+      } as BatteryV2JobPayload<T>;
+    }
+    case 'BATTERY_PUBLICATION_UPDATE': {
+      if (!isEntityId(data.assessmentId)) {
+        throw new BatteryV2JobValidationError('assessmentId is required', 'assessmentId');
+      }
+      const publicationVersion = validatePositiveIntegerPublicationVersion(
+        data.publicationVersion,
+        'publicationVersion',
+      );
+      return {
+        ...base,
+        assessmentId: data.assessmentId,
+        publicationVersion,
+        sourceEntityId: data.sourceEntityId ?? data.assessmentId,
       } as BatteryV2JobPayload<T>;
     }
     default:

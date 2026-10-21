@@ -1,0 +1,16 @@
+export const operatorVehicleQuickViewTireDe = {
+  'operator.vehicleQuickView.tire.sectionTitle': 'Reifenprofil',
+  'operator.vehicleQuickView.tire.measureAction': 'Messung eintragen',
+  'operator.vehicleQuickView.tire.empty': 'Keine Reifendaten.',
+  'operator.vehicleQuickView.tire.label.lastMeasurement': 'Letzte Messung',
+  'operator.vehicleQuickView.tire.label.minTread': 'Profil (min.)',
+  'operator.vehicleQuickView.tire.label.status': 'Status',
+  'operator.vehicleQuickView.tire.label.remaining': 'Restlaufzeit',
+  'operator.vehicleQuickView.tire.label.mode': 'Modus',
+  'operator.vehicleQuickView.tire.displayMode.MEASURED': 'Gemessen',
+  'operator.vehicleQuickView.tire.displayMode.ESTIMATED': 'Geschätzt',
+  'operator.vehicleQuickView.tire.displayMode.UNKNOWN': 'Unbekannt',
+  'operator.vehicleQuickView.tire.measurementState.measured': 'Gemessen',
+  'operator.vehicleQuickView.tire.measurementState.estimated': 'Geschätzt',
+  'operator.vehicleQuickView.tire.measurementState.mixed': 'Gemischt',
+} as const;

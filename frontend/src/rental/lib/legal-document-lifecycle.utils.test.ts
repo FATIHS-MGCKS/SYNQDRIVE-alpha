@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LegalDocumentDto } from '../../lib/api';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import {
   findActivePeer,
   getLifecycleActionsForDocument,

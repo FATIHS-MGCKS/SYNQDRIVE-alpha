@@ -1,0 +1,8 @@
+{
+  "CHRONOLOGY_PATH_FOUND": "NO",
+  "CHRONOLOGY_PATH_STATUS": "CHRONOLOGY_CONSTRAINT_UNSATISFIABLE",
+  "CHRONOLOGY_PATH_TOTAL_SCORE": null,
+  "CHRONOLOGY_PATH_MIN_CLIP_CONFIDENCE": null,
+  "path": [],
+  "note": "No non-overlapping chronology-consistent path exists without fabricating basins"
+}

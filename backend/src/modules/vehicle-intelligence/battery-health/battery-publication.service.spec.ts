@@ -77,6 +77,8 @@ describe('BatteryPublicationService', () => {
               },
             }),
             findLatestActiveLvPublication: jest.fn().mockResolvedValue(null),
+            findLatestRetainedLvPublication: jest.fn().mockResolvedValue(null),
+            findPublicationByAssessmentIdentity: jest.fn().mockResolvedValue(null),
             toPublicationPreviousState: jest.fn().mockReturnValue(null),
             assessmentToEstimatedHealthModel: jest.fn().mockImplementation(
               (row) => ({

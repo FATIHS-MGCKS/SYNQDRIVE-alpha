@@ -17,6 +17,7 @@ import {
   isDeterministicBatteryV2JobId,
 } from './battery-v2-job-queue.util';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import { isBullMqCompatibleJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 const ORG = 'clorg1234567890123456789012';
@@ -126,7 +127,7 @@ describe('battery-v2 BullMQ custom job id', () => {
         }),
       };
 
-      const producer = new BatteryV2JobProducerService(
+      const producer = createBatteryV2JobProducer(
         queue as never,
         mockDeadLetters() as never,
       );
