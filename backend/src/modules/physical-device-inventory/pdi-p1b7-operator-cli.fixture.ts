@@ -407,3 +407,35 @@ export async function seedAuthorizedGateDIdempotencyAssignment(
 
   return { assignmentId: assignment.id };
 }
+
+export async function seedAuthorizedGateDInstallDomainAudit(
+  prisma: PrismaClient,
+  actorUserId: string,
+): Promise<{ auditId: string }> {
+  const deviceId = PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId;
+  const dto = buildPdiP1b7InstallDto();
+  const payloadFingerprint = buildInstallPayloadFingerprint(deviceId, dto);
+  await prisma.physicalDeviceInventoryAuditEvent.deleteMany({
+    where: {
+      physicalDeviceId: deviceId,
+      eventKind: PhysicalDeviceInventoryAuditEventKind.INSTALL,
+    },
+  });
+  const audit = await prisma.physicalDeviceInventoryAuditEvent.create({
+    data: {
+      physicalDeviceId: deviceId,
+      eventKind: PhysicalDeviceInventoryAuditEventKind.INSTALL,
+      actorUserId,
+      payloadFingerprint,
+      evidenceJson: {
+        vehicleId: PDI_P1B7_AUTHORIZED_INSTALL.vehicleId,
+        organizationId: PDI_P1B7_AUTHORIZED_INSTALL.ownerOrganizationId,
+        idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey,
+        installNotes: PDI_P1B7_AUTHORIZED_INSTALL.installNotes,
+        providerBindingMutated: false,
+        vehicleDataSourceLinksMutated: false,
+      } as Prisma.InputJsonValue,
+    },
+  });
+  return { auditId: audit.id };
+}

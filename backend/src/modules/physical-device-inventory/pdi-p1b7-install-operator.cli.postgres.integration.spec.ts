@@ -15,7 +15,11 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { MASTER_ADMIN_SMOKE_EMAIL } from '@modules/master-admin-smoke-lifecycle/master-admin-smoke-lifecycle.constants';
-import { PDI_P1B7_AUTHORIZED_INSTALL } from './pdi-p1b7-install-operator.lib';
+import {
+  PDI_P1B7_AUTHORIZED_INSTALL,
+  physicalDeviceDetailToListItem,
+  reconcilePdiP1b7InstallDomainCommit,
+} from './pdi-p1b7-install-operator.lib';
 import {
   createPdiP1b7InstallOperatorApplicationContext,
   runPdiP1b7InstallOperator,
@@ -28,6 +32,7 @@ import {
   createOperatorTestMasterAdmin,
   resetPdiP1b7GateDInstallState,
   seedAuthorizedGateDIdempotencyAssignment,
+  seedAuthorizedGateDInstallDomainAudit,
   seedPdiP1b7InstallOperatorFixtures,
   seedPdiP1b7OperatorPreflightIdentity,
 } from './pdi-p1b7-operator-cli.fixture';
@@ -692,6 +697,7 @@ const ATTESTATION = 'Owner authorized PDI P1B.7 Gate D install test';
 
     it('allows valid replay execute without duplicate INSTALL domain audit', async () => {
       await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id);
+      await seedAuthorizedGateDInstallDomainAudit(prisma, masterAdmin.id);
       const auditsBefore = await prisma.physicalDeviceInventoryAuditEvent.count({
         where: {
           physicalDeviceId: PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId,
@@ -720,6 +726,105 @@ const ATTESTATION = 'Owner authorized PDI P1B.7 Gate D install test';
         },
       });
       expect(auditsAfter).toBe(auditsBefore);
+    });
+  });
+
+  describe('read-only domain commit reconciliation', () => {
+    it('detects committed install without calling installOnVehicle', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id);
+      await seedAuthorizedGateDInstallDomainAudit(prisma, masterAdmin.id);
+      const service = app.get(PhysicalDeviceInventoryService);
+      const installSpy = jest.spyOn(service, 'installOnVehicle');
+      const createAssignSpy = jest.spyOn(prisma.physicalDeviceAssignment, 'create');
+      const updateAssignSpy = jest.spyOn(prisma.physicalDeviceAssignment, 'update');
+      const deleteAssignSpy = jest.spyOn(prisma.physicalDeviceAssignment, 'delete');
+      const createAuditSpy = jest.spyOn(prisma.physicalDeviceInventoryAuditEvent, 'create');
+
+      const outcome = await reconcilePdiP1b7InstallDomainCommit(prisma, async (id) =>
+        physicalDeviceDetailToListItem(await service.getDeviceDetail(id)),
+      );
+
+      expect(outcome.status).toBe('COMMITTED');
+      expect(installSpy).not.toHaveBeenCalled();
+      expect(createAssignSpy).not.toHaveBeenCalled();
+      expect(updateAssignSpy).not.toHaveBeenCalled();
+      expect(deleteAssignSpy).not.toHaveBeenCalled();
+      expect(createAuditSpy).not.toHaveBeenCalled();
+
+      installSpy.mockRestore();
+      createAssignSpy.mockRestore();
+      updateAssignSpy.mockRestore();
+      deleteAssignSpy.mockRestore();
+      createAuditSpy.mockRestore();
+    });
+
+    it('returns RECONCILIATION_REQUIRED when INSTALL domain audit is missing', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id);
+      const service = app.get(PhysicalDeviceInventoryService);
+      const outcome = await reconcilePdiP1b7InstallDomainCommit(prisma, async (id) =>
+        physicalDeviceDetailToListItem(await service.getDeviceDetail(id)),
+      );
+      expect(outcome.status).toBe('RECONCILIATION_REQUIRED');
+      if (outcome.status === 'RECONCILIATION_REQUIRED') {
+        expect(outcome.reasons).toContain('INSTALL_DOMAIN_AUDIT_MISSING');
+      }
+    });
+
+    it('returns RECONCILIATION_REQUIRED for inconsistent assignment fingerprint', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id, {
+        payloadFingerprint: 'inconsistent-fingerprint',
+      });
+      await seedAuthorizedGateDInstallDomainAudit(prisma, masterAdmin.id);
+      const service = app.get(PhysicalDeviceInventoryService);
+      const outcome = await reconcilePdiP1b7InstallDomainCommit(prisma, async (id) =>
+        physicalDeviceDetailToListItem(await service.getDeviceDetail(id)),
+      );
+      expect(outcome.status).toBe('RECONCILIATION_REQUIRED');
+    });
+
+    it('returns UNKNOWN (not NOT_COMMITTED) when domain evidence read fails', async () => {
+      const service = app.get(PhysicalDeviceInventoryService);
+      const findManySpy = jest
+        .spyOn(prisma.physicalDeviceInventoryAuditEvent, 'findMany')
+        .mockRejectedValue(new Error('connection reset'));
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id);
+      const outcome = await reconcilePdiP1b7InstallDomainCommit(prisma, async (id) =>
+        physicalDeviceDetailToListItem(await service.getDeviceDetail(id)),
+      );
+      findManySpy.mockRestore();
+      expect(outcome.status).toBe('UNKNOWN');
+      expect(outcome.status).not.toBe('NOT_COMMITTED');
+    });
+
+    it('recovers COMMITTED via read-only reconciliation when installOnVehicle throws once', async () => {
+      await seedAuthorizedGateDIdempotencyAssignment(prisma, masterAdmin.id);
+      await seedAuthorizedGateDInstallDomainAudit(prisma, masterAdmin.id);
+      const service = app.get(PhysicalDeviceInventoryService);
+      let installCalls = 0;
+      const originalInstall = service.installOnVehicle.bind(service);
+      service.installOnVehicle = async (...args) => {
+        installCalls += 1;
+        throw new Error('simulated install transport failure');
+      };
+
+      const outcome = await runOperator(
+        {
+          execute: true,
+          confirmFlag: true,
+          actorEmail: masterAdmin.email,
+          operatorAttestation: ATTESTATION,
+        },
+        { PDI_P1B7_INSTALL_OPERATOR_ENABLED: 'true' },
+      );
+      service.installOnVehicle = originalInstall;
+
+      expect(installCalls).toBe(1);
+      expect(outcome.ok).toBe(true);
+      if (outcome.ok) {
+        expect(outcome.stdout).toMatch(/"domainCommitStatus": "COMMITTED"/);
+        expect(outcome.stdout).toMatch(/"idempotentReplay": true/);
+        expect(outcome.stdout).toMatch(/"domainReconciliation"/);
+      }
     });
   });
 

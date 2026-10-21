@@ -11,6 +11,7 @@ import {
   assertPdiP1b7InstallExecuteGates,
   buildPdiP1b7InstallDto,
   PDI_P1B7_AUTHORIZED_INSTALL,
+  physicalDeviceDetailToListItem,
   reconcilePdiP1b7InstallDomainCommit,
   recordPdiP1b7InstallActivityAudit,
   resolveAuthorizedMasterAdminActor,
@@ -31,7 +32,8 @@ export type PdiP1b7InstallDomainCommitStatus =
   | 'NOT_ATTEMPTED'
   | 'COMMITTED'
   | 'NOT_COMMITTED'
-  | 'RECONCILIATION_REQUIRED';
+  | 'RECONCILIATION_REQUIRED'
+  | 'UNKNOWN';
 
 export type PdiP1b7InstallOperatorRunSuccess = {
   ok: true;
@@ -191,22 +193,33 @@ export async function runPdiP1b7InstallOperator(
     } catch (installError) {
       const installMessage =
         installError instanceof Error ? installError.message : String(installError);
-      const reconciled = await reconcilePdiP1b7InstallDomainCommit(prisma, inventory, actor.id);
+      const reconciled = await reconcilePdiP1b7InstallDomainCommit(prisma, async (id) => {
+        const detail = await inventory.getDeviceDetail(id);
+        return physicalDeviceDetailToListItem(detail);
+      });
       if (reconciled.status === 'COMMITTED') {
         installResult = reconciled.result;
         domainCommitStatus = 'COMMITTED';
         idempotentReplay = reconciled.idempotentReplay;
-      } else if (reconciled.status === 'RECONCILIATION_REQUIRED') {
+        report.domainReconciliation = {
+          mode: 'READ_ONLY',
+          evidence: reconciled.evidence,
+        };
+      } else if (
+        reconciled.status === 'RECONCILIATION_REQUIRED' ||
+        reconciled.status === 'UNKNOWN'
+      ) {
         const failureReport = {
           ...report,
-          domainCommitStatus: 'RECONCILIATION_REQUIRED',
+          domainCommitStatus: reconciled.status,
           reconciliation: reconciled,
+          installError: installMessage,
         };
         const stdout = JSON.stringify(failureReport, null, 2);
         return {
           ok: false,
           exitCode: 1,
-          stderr: `Install outcome unclear after error (${installMessage}); read-only reconciliation required — do not re-execute`,
+          stderr: `Install outcome unclear after error (${installMessage}); ${reconciled.status} — do not re-execute`,
           report: failureReport,
           stdout,
         };
@@ -214,6 +227,7 @@ export async function runPdiP1b7InstallOperator(
         const failureReport = {
           ...report,
           domainCommitStatus: 'NOT_COMMITTED',
+          reconciliation: reconciled,
           installError: installMessage,
         };
         const stdout = JSON.stringify(failureReport, null, 2);

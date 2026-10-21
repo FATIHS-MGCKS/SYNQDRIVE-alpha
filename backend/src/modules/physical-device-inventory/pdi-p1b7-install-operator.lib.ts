@@ -12,14 +12,16 @@ import {
   type PrismaClient,
 } from '@prisma/client';
 import type { AuditService } from '@modules/activity-log/audit.service';
-import type { PhysicalDeviceListItemDto } from './physical-device-inventory.types';
 import { InstallPhysicalDeviceDto } from './dto/install-physical-device.dto';
 import {
   assessInstallIdempotencyReplay,
   buildInstallPayloadFingerprint,
 } from './physical-device-install.fingerprint';
 import { isPhysicalDeviceInventoryP1b1WritesEnabled } from './physical-device-inventory.config';
-import type { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
+import type {
+  PhysicalDeviceDetailDto,
+  PhysicalDeviceListItemDto,
+} from './physical-device-inventory.types';
 import { PDI_P1B7_AUTHORIZED_IDENTITY_VERIFY } from './pdi-p1b7-identity-verify-operator.lib';
 import {
   resolveAuthorizedMasterAdminActor,
@@ -376,47 +378,198 @@ export type PdiP1b7InstallDomainCommitReconciliation =
       status: 'COMMITTED';
       idempotentReplay: boolean;
       result: PhysicalDeviceListItemDto;
+      evidence: {
+        assignmentId: string;
+        installAuditId: string;
+        payloadFingerprint: string;
+      };
     }
-  | { status: 'NOT_COMMITTED' }
-  | { status: 'RECONCILIATION_REQUIRED'; reasons: string[] };
+  | { status: 'NOT_COMMITTED'; reasons: string[] }
+  | { status: 'RECONCILIATION_REQUIRED'; reasons: string[] }
+  | { status: 'UNKNOWN'; reasons: string[] };
+
+export function physicalDeviceDetailToListItem(
+  detail: PhysicalDeviceDetailDto,
+): PhysicalDeviceListItemDto {
+  return {
+    id: detail.id,
+    internalInventoryNumber: detail.internalInventoryNumber,
+    manufacturer: detail.manufacturer,
+    modelCode: detail.modelCode,
+    serialNumberMasked: detail.serialNumberMasked,
+    imeiMasked: detail.imeiMasked,
+    ownerOrganizationId: detail.ownerOrganizationId,
+    warehouseLocation: detail.warehouseLocation,
+    status: detail.status,
+    identityStatus: detail.identityStatus,
+    recordedAt: detail.recordedAt,
+    currentVehicleId: detail.currentVehicleId,
+    installEligible: detail.installEligible,
+  };
+}
+
+type ReadCommittedInstallListItem = (
+  deviceId: string,
+) => Promise<PhysicalDeviceListItemDto>;
 
 /**
- * Read-only check after an installOnVehicle failure — never performs compensating writes.
+ * Read-only reconciliation after installOnVehicle failure — never mutates domain state.
  */
 export async function reconcilePdiP1b7InstallDomainCommit(
   prisma: PrismaClient,
-  inventory: PhysicalDeviceInventoryService,
-  actorUserId: string,
+  readListItem: ReadCommittedInstallListItem,
 ): Promise<PdiP1b7InstallDomainCommitReconciliation> {
-  const dto = buildPdiP1b7InstallDto();
   const deviceId = PDI_P1B7_AUTHORIZED_INSTALL.physicalDeviceId;
-  const preflight = await runPdiP1b7InstallPreflight(prisma);
-  if (preflight.idempotentReplayReady) {
-    try {
-      const result = await inventory.installOnVehicle(deviceId, dto, actorUserId);
-      return { status: 'COMMITTED', idempotentReplay: true, result };
-    } catch {
-      return {
-        status: 'RECONCILIATION_REQUIRED',
-        reasons: ['IDEMPOTENT_REPLAY_PREFLIGHT_OK_BUT_INSTALL_FAILED'],
-      };
-    }
+  const expectedFingerprint = buildAuthorizedPdiP1b7InstallPayloadFingerprint();
+
+  let assignment: {
+    id: string;
+    physicalDeviceId: string;
+    assignmentKind: PhysicalDeviceAssignmentKind;
+    vehicleId: string | null;
+    effectiveTo: Date | null;
+    metadataJson: unknown;
+  } | null;
+  let device: {
+    id: string;
+    status: PhysicalDeviceInventoryStatus;
+    identityStatus: PhysicalDeviceIdentityStatus;
+    assignments: Array<{
+      id: string;
+      vehicleId: string | null;
+      assignmentKind: PhysicalDeviceAssignmentKind;
+    }>;
+  } | null;
+
+  try {
+    assignment = await prisma.physicalDeviceAssignment.findUnique({
+      where: { idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey },
+      select: {
+        id: true,
+        physicalDeviceId: true,
+        assignmentKind: true,
+        vehicleId: true,
+        effectiveTo: true,
+        metadataJson: true,
+      },
+    });
+    device = await prisma.physicalDevice.findUnique({
+      where: { id: deviceId },
+      select: {
+        id: true,
+        status: true,
+        identityStatus: true,
+        assignments: {
+          where: { effectiveTo: null },
+          select: {
+            id: true,
+            vehicleId: true,
+            assignmentKind: true,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { status: 'UNKNOWN', reasons: ['DOMAIN_EVIDENCE_READ_FAILED', message] };
   }
 
-  const assignment = await prisma.physicalDeviceAssignment.findUnique({
-    where: { idempotencyKey: PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey },
-    select: { id: true },
-  });
-  if (assignment) {
+  if (!assignment) {
+    if (
+      device &&
+      device.status === PhysicalDeviceInventoryStatus.AVAILABLE &&
+      device.identityStatus === PhysicalDeviceIdentityStatus.VERIFIED &&
+      !device.assignments.some(
+        (a) =>
+          a.assignmentKind === PhysicalDeviceAssignmentKind.INSTALL && a.vehicleId != null,
+      )
+    ) {
+      return { status: 'NOT_COMMITTED', reasons: ['NO_INSTALL_IDEMPOTENCY_ASSIGNMENT_ROW'] };
+    }
     return {
       status: 'RECONCILIATION_REQUIRED',
-      reasons: preflight.blockingReasons.length
-        ? preflight.blockingReasons
-        : ['INSTALL_IDEMPOTENCY_ROW_PRESENT_BUT_NOT_VALID_REPLAY'],
+      reasons: ['INSTALL_COMMIT_STATE_AMBIGUOUS_WITHOUT_IDEMPOTENCY_ROW'],
     };
   }
 
-  return { status: 'NOT_COMMITTED' };
+  if (!device) {
+    return { status: 'RECONCILIATION_REQUIRED', reasons: ['DEVICE_NOT_FOUND_DURING_RECONCILIATION'] };
+  }
+
+  const activeInstallAssignments = device.assignments.filter(
+    (a) => a.assignmentKind === PhysicalDeviceAssignmentKind.INSTALL && a.vehicleId != null,
+  );
+  const replayAssessment = assessInstallIdempotencyReplay({
+    requestedDeviceId: deviceId,
+    requestedVehicleId: PDI_P1B7_AUTHORIZED_INSTALL.vehicleId,
+    expectedPayloadFingerprint: expectedFingerprint,
+    assignment,
+    deviceStatus: device.status,
+    activeInstallAssignmentIdsForDevice: activeInstallAssignments.map((a) => a.id),
+  });
+  if (!replayAssessment.valid) {
+    return { status: 'RECONCILIATION_REQUIRED', reasons: [replayAssessment.reason] };
+  }
+
+  if (device.identityStatus !== PhysicalDeviceIdentityStatus.VERIFIED) {
+    return { status: 'RECONCILIATION_REQUIRED', reasons: ['IDENTITY_NOT_VERIFIED_DURING_RECONCILIATION'] };
+  }
+
+  let installAudits: Array<{ id: string; payloadFingerprint: string | null; evidenceJson: unknown }>;
+  try {
+    installAudits = await prisma.physicalDeviceInventoryAuditEvent.findMany({
+      where: {
+        physicalDeviceId: deviceId,
+        eventKind: PhysicalDeviceInventoryAuditEventKind.INSTALL,
+        payloadFingerprint: expectedFingerprint,
+      },
+      select: { id: true, payloadFingerprint: true, evidenceJson: true },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { status: 'UNKNOWN', reasons: ['INSTALL_AUDIT_READ_FAILED', message] };
+  }
+
+  if (installAudits.length !== 1) {
+    return {
+      status: 'RECONCILIATION_REQUIRED',
+      reasons: [
+        installAudits.length === 0
+          ? 'INSTALL_DOMAIN_AUDIT_MISSING'
+          : 'INSTALL_DOMAIN_AUDIT_AMBIGUOUS',
+      ],
+    };
+  }
+
+  const installAudit = installAudits[0];
+  const evidence = installAudit.evidenceJson as Record<string, unknown> | null;
+  const evidenceVehicleId =
+    evidence && typeof evidence.vehicleId === 'string' ? evidence.vehicleId : null;
+  const evidenceIdempotencyKey =
+    evidence && typeof evidence.idempotencyKey === 'string' ? evidence.idempotencyKey : null;
+  if (evidenceVehicleId !== PDI_P1B7_AUTHORIZED_INSTALL.vehicleId) {
+    return { status: 'RECONCILIATION_REQUIRED', reasons: ['INSTALL_AUDIT_VEHICLE_MISMATCH'] };
+  }
+  if (evidenceIdempotencyKey !== PDI_P1B7_AUTHORIZED_INSTALL.idempotencyKey) {
+    return { status: 'RECONCILIATION_REQUIRED', reasons: ['INSTALL_AUDIT_IDEMPOTENCY_MISMATCH'] };
+  }
+
+  try {
+    const result = await readListItem(deviceId);
+    return {
+      status: 'COMMITTED',
+      idempotentReplay: true,
+      result,
+      evidence: {
+        assignmentId: assignment.id,
+        installAuditId: installAudit.id,
+        payloadFingerprint: expectedFingerprint,
+      },
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { status: 'UNKNOWN', reasons: ['LIST_ITEM_READ_FAILED', message] };
+  }
 }
 
 /**
