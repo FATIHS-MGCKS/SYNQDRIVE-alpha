@@ -2062,3 +2062,39 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | SOURCE | PR #2051 audit reference `6311d8c375dc5652bd64212ca4ed208175dc8148` — logic re-extracted; fixture-bound IDs/time/OSM pins remain in evidence/tests only |
 | VALIDATION | Tesla replay parity: baseline `{ASSOCIATED:264, AMBIGUOUS:512, UNKNOWN:360}`, Viterbi `{ASSOCIATED:300, AMBIGUOUS:357, UNKNOWN:479}`; F4-B promotions=36, impossible transitions ≥5, STILL_AMBIGUOUS preserved |
 | NON_EFFECTS | No Nest/scheduler/BullMQ/Prisma/DIMO/OSM network; no S4A–S4F/L3/S1/QC/score/UI changes; no deploy; `ROAD_ID_GROUND_TRUTH=NOT_ASSESSABLE` unchanged |
+
+### EXP-021 motion core — TypeScript step 1 (baseline L3 replay + leg consistency) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `core/kinematics/{motion-core-grid,leg-consistency,frozen-l3-replay}.ts` + `motion-core-step1.spec.ts`; offline harness `backend/scripts/test/motion-core-ts-step1.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-step1/` |
+| WHY | Port EXP021 Python prototype step 0+1: reproducible frozen L3 on Tesla grids and timing-jitter leg signature diagnostics before C4 adaptive speed (step 2) |
+| VALIDATION | Jest `motion-core-step1` 11/11; Tesla trips `14c41c06…` / `7a9d6a28…` shadow mismatch 0 @ 0.05 km/h; jitter legs 5+3 match Python `jitter_suspect_legs` |
+| NON_EFFECTS | `evaluateL3AtCenter` and `compute-trip-intervals` runtime unchanged; no C4/FSM/events in production path; FSM/event synthetic scenarios S2/S3/S5/S10 not ported yet |
+
+### EXP-021 motion core — TypeScript step 2 (C4 adaptive L3) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `c4-adaptive-l3.ts`, `robust-path-slope.ts`, `motion-evaluation.ts`, `motion-core-step2.spec.ts`, harness `motion-core-ts-step2.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-step2/` |
+| WHY | Port C4 (L3-direct via replayed `evaluateL3AtCenter`, else C1 fallback) for reproducible Tesla comparison before FSM/events |
+| VALIDATION | Jest 18/18 motion-core-step; Python C4 parity TRIP_1 + S8; common support TRIP_1 MAE 1.963 n=62 vs published shadow; coverage 27.1%→65.5% display denominator |
+| NON_EFFECTS | No `compute-trip-intervals` wiring; offline/delayed-capable candidate only |
+
+### EXP-021 motion core — TypeScript FSM V0.2 (Fable port) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-fsm.ts`, `shadow-gating-reconciliation.ts`, `motion-fsm-zero-run-eval.ts`, `motion-core-step3-fsm.spec.ts`, harness `motion-core-ts-fsm.harness.ts`; C4 TRIP_2 parity + shadow gating tests in step2; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-fsm/` |
+| WHY | Close C4 Python parity on both Tesla trips; port Fable `motion_fsm.py` V0.2 (CAUSAL/RETROSPECTIVE) without threshold tuning; reproduce 10/10 evaluable zero-display stop matching with DIMO sparse speed evidence |
+| VALIDATION | Jest `motion-core-step` 32/32; FSM Python parity TRIP_1+2 with sparse DIMO; `FSM_STEP_REPORT.json` causal/retro matched 10/10 |
+| NON_EFFECTS | No manoeuvre/event detector; no production FSM wiring; `compute-trip-intervals` unchanged |
+
+### EXP-021 motion core — TypeScript event detector (Fable port) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-event-detector.ts`, `motion-event.types.ts`, `motion-core-step4-events.spec.ts`, harness `motion-core-ts-events.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-ts-events/` |
+| WHY | Port neutral ACCELERATION/DECELERATION detector on C4 speed series; close offline chain C4→events without FSM coupling |
+| VALIDATION | Jest `motion-core-step` 38/38; Python parity TRIP_1+TRIP_2 C4 events; harness 8 C4 events, 7 display-manoeuvre overlaps (±3 s), B0 baseline 5 combined |
+| NON_EFFECTS | No production shadow export; no wear/braking semantics; `compute-trip-intervals` unchanged |
