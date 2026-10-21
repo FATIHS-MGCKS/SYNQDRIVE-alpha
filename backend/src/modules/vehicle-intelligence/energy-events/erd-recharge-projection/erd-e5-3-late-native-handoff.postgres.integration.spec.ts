@@ -22,6 +22,7 @@ import type { HvFallbackChargeObservation } from '@modules/vehicle-intelligence/
 import { HvChargeSessionRepository } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.repository';
 import { HvChargeSessionPersistService } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service';
 import { HvChargeSessionNativeFallbackConvergenceService } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-native-fallback-convergence.service';
+import { createPassThroughHvChargeSessionBoundaryEnrichment } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-boundary-enrichment.test-helpers';
 import {
   ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME,
 } from './erd-canonical-recharge-projector.types';
@@ -51,6 +52,7 @@ function buildAuthorityStack(client: PrismaClient) {
     client as unknown as PrismaService,
     repository,
     metrics,
+    createPassThroughHvChargeSessionBoundaryEnrichment(),
   );
   const persist = new HvChargeSessionPersistService(
     repository,

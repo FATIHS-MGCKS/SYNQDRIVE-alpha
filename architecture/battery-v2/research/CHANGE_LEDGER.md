@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-21 — HV charge session snapshot boundary enrichment (native DIMO ingest)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `hv-charge-session-boundary-*` resolves SOC/pack-energy at segment `startAt`/`endAt` from `hv_battery_health_snapshots` (bounded query, fail-closed); provenance `SNAPSHOT_TEMPORAL_BOUNDARY_V1`; wired in `persistNativeWithFallbackConvergence` |
+| **WHY** | SEGMENT_EXTREMA blocked QUALIFIED/M3; historical polls already carry timestamped SOC/energy |
+| **VALIDATION** | `hv-charge-session-boundary-snapshot.policy.spec.ts`; existing assessor/M3 specs unchanged |
+| **NON_EFFECTS** | No M3/assessor threshold edits; no DIMO calls; no fleet backfill; no migrations; no production deploy |
+| **REMAINING_GAPS** | Existing production rows unchanged until re-ingest; added-energy reset still from segment MIN |
+
+---
+
 ## 2026-10-21 — HV measurement quality MVP hardening (PR #2108)
 
 | Field | Value |

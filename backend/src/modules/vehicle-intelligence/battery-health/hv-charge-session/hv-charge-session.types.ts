@@ -70,6 +70,13 @@ export interface HvChargeSessionMetadata {
   }>;
   startLocation?: HvChargeSessionAuthoritativeLocation;
   endLocation?: HvChargeSessionAuthoritativeLocation;
+  boundaryEnrichmentVersion?: number;
+  boundaryStartSocObservedAt?: string;
+  boundaryEndSocObservedAt?: string;
+  boundaryStartEnergyObservedAt?: string;
+  boundaryEndEnergyObservedAt?: string;
+  boundaryStartOffsetMs?: number;
+  boundaryEndOffsetMs?: number;
 }
 
 export interface HvChargeSessionDraft {

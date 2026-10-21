@@ -11,6 +11,7 @@ import { mergeHvChargeSessionUpdate } from '@modules/vehicle-intelligence/batter
 import { HvChargeSessionPersistService } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service';
 import { HvChargeSessionRepository } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.repository';
 import { HvChargeSessionNativeFallbackConvergenceService } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-native-fallback-convergence.service';
+import { createPassThroughHvChargeSessionBoundaryEnrichment } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-boundary-enrichment.test-helpers';
 import { detectFallbackChargeSessions } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-fallback-charge-session.policy';
 import type { HvFallbackChargeObservation } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-fallback-charge-session.types';
 import { normalizeDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.normalizer';
@@ -168,6 +169,7 @@ function buildAuthorityStack(client: PrismaClient) {
     client as unknown as PrismaService,
     repository,
     metrics,
+    createPassThroughHvChargeSessionBoundaryEnrichment(),
   );
   const persist = new HvChargeSessionPersistService(
     repository,

@@ -13,6 +13,10 @@ import {
   mergeAuthoritativeSessionLocationMetadata,
 } from '@modules/vehicle-intelligence/energy-events/erd-recharge-location-provenance/erd-recharge-session-location.policy';
 import { HV_SESSION_ADDED_ENERGY_RESET_MIN_KWH } from './hv-charge-session-quality.assessor';
+import {
+  isStrongerHvSessionBoundaryProvenance,
+  shouldPreserveExistingBoundaryScalars,
+} from './hv-charge-session-boundary-snapshot.constants';
 
 const MEASUREMENT_PROGRESS_EPSILON = 0.001;
 
@@ -373,26 +377,48 @@ export function mergeHvChargeSessionUpdate(input: {
     }
   }
 
-  const endSocPercent = preferCoherentNumber(
-    existing.endSocPercent,
-    incoming.endSocPercent,
-    allowEndFieldUpdates,
+  const preserveSnapshotBoundary = shouldPreserveExistingBoundaryScalars(
+    existingMeta?.socProvenance,
+    incoming.metadata.socProvenance,
   );
-  const endEnergyKwh = preferCoherentNumber(
-    existing.endEnergyKwh,
-    incoming.endEnergyKwh,
-    allowEndFieldUpdates,
+  const upgradeSnapshotBoundary = isStrongerHvSessionBoundaryProvenance(
+    incoming.metadata.socProvenance,
+    existingMeta?.socProvenance,
   );
+
+  let startSocPercent = existing.startSocPercent;
+  let startEnergyKwh = existing.startEnergyKwh;
+  if (upgradeSnapshotBoundary) {
+    if (incoming.startSocPercent != null) startSocPercent = incoming.startSocPercent;
+    if (incoming.startEnergyKwh != null) startEnergyKwh = incoming.startEnergyKwh;
+  }
+
+  const endSocPercent = preserveSnapshotBoundary
+    ? existing.endSocPercent
+    : preferCoherentNumber(
+        existing.endSocPercent,
+        incoming.endSocPercent,
+        allowEndFieldUpdates,
+      );
+  const endEnergyKwh = preserveSnapshotBoundary
+    ? existing.endEnergyKwh
+    : preferCoherentNumber(
+        existing.endEnergyKwh,
+        incoming.endEnergyKwh,
+        allowEndFieldUpdates,
+      );
   const energyAddedKwh = preferCoherentNumber(
     existing.energyAddedKwh,
     incoming.energyAddedKwh,
     allowEndFieldUpdates,
   );
-  const deltaSocPercent = preferCoherentNumber(
-    existing.deltaSocPercent,
-    incoming.deltaSocPercent,
-    allowEndFieldUpdates,
-  );
+  const deltaSocPercent = preserveSnapshotBoundary
+    ? existing.deltaSocPercent
+    : preferCoherentNumber(
+        existing.deltaSocPercent,
+        incoming.deltaSocPercent,
+        allowEndFieldUpdates,
+      );
 
   const isOngoing =
     existingCompleted && endAt != null
@@ -422,6 +448,8 @@ export function mergeHvChargeSessionUpdate(input: {
   };
 
   setIfChanged('endAt', endAt, existing.endAt);
+  setIfChanged('startSocPercent', startSocPercent, existing.startSocPercent);
+  setIfChanged('startEnergyKwh', startEnergyKwh, existing.startEnergyKwh);
   setIfChanged('endSocPercent', endSocPercent, existing.endSocPercent);
   setIfChanged('endEnergyKwh', endEnergyKwh, existing.endEnergyKwh);
   setIfChanged('energyAddedKwh', energyAddedKwh, existing.energyAddedKwh);
