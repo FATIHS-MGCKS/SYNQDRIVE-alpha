@@ -1,0 +1,54 @@
+{
+  "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "fixture": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/fixtures/tiguan-20261022-position-grid.json",
+  "primaryShiftS": 0,
+  "auditFrozenBaseline": {
+    "auditCodeSha": "dea2555bb746550c632f4315dabe08b9481be0df",
+    "researchExportSha": "36cbd9825364081ad389795c29e98420e74d0292",
+    "c4FsmLines": 2094,
+    "manoeuvreEvents": 21,
+    "stopEpisodes": 12,
+    "note": "Frozen audit replay package; not current main without product fixes"
+  },
+  "variants": {
+    "mainPreFix_noLegGate_obdDirect": {
+      "description": "Current main motion core on fixture grid without leg quarantine; OBD bucket labels treated as DIRECT (reproduces audit failure modes)",
+      "manoeuvreEvents": 21,
+      "stopEpisodes": 12,
+      "c4AtJump2026-10-22T18:49:18Z": { "valueKmh": 1930.8268990688694, "quality": "OK" },
+      "falseAccelerationWindowUtc": "2026-10-22T18:49:12Z–2026-10-22T18:49:18Z"
+    },
+    "product_gpsLegGate_only": {
+      "description": "withImplausibleLegEndpointsQuarantined + computeC4AdaptiveL3 (processor path)",
+      "manoeuvreEvents": 20,
+      "stopEpisodes": "11–12 (11 on full-grid replay; audit frozen had 12)",
+      "c4AtJump2026-10-22T18:49:18Z": { "valueKmh": null, "quality": "OUTLIER_REJECTED" },
+      "c4CoverageNote": "Numeric C4 count decreases where implausible 1s legs quarantined; not capped to max speed"
+    },
+    "product_obdPointAuthority_only": {
+      "description": "R1 sparse without measurementTimeUtc → fsmPointAuthority false; no DIRECT FSM from aggregation label",
+      "sparseSamplesOnTrip": 560,
+      "measurementTimeUtcPresent": 0,
+      "example2026-10-22T18:47:58Z": "84 km/h label no longer STARTING/DIRECT when authority false"
+    },
+    "product_combined": {
+      "description": "Leg gate in shadow processor + adapter point authority + FSM guard",
+      "bundleVersion": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V1"
+    }
+  },
+  "openReleasePoint": {
+    "creepStationaryTradeoff": "Full OBD ablation B (drop all unbelegte sparse) improves tacho-zero STATIONARY (85/96) but adds false STATIONARY at 4–5 km/h (6 cases); not adopted wholesale",
+    "stopEpisodeDelta": "GPS gate may yield 11 vs audit 12 stop episodes — review per-episode in event_window_audit.json"
+  },
+  "auditReproduction": {
+    "run_audit_sh": "NOT_RUN",
+    "reason": "Environment Node v22.14; frozen loader requires Node 24 (node:module registerHooks)",
+    "prepare_inputs_py": "PASS (input hashes verified in agent run)"
+  },
+  "projectTests": [
+    "motion-core-tiguan-gps-obd-hardening.spec.ts",
+    "motion-core-review-robustness.spec.ts",
+    "di-v0-motion-core-shadow-processor.unit.spec.ts"
+  ]
+}

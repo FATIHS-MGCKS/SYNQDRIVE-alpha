@@ -21,3 +21,11 @@ npx jest src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/mo
 - `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V1`
 
 Persisted historical shadow runs are unchanged; new runs get a new bundle/intent fingerprint.
+
+## Before / after
+
+See `BEFORE_AFTER_SUMMARY.json`. Audit `run_audit.sh`: **NOT_RUN** on Node 22 (requires Node 24); use project Jest regressions on this branch.
+
+## Open release point
+
+Unbelegte R1 sparse remains in the export for audit but cannot assert DIRECT FSM. Full sparse removal (ablation B) is documented in the audit package only — not product-default.

@@ -1,4 +1,5 @@
 import { haversineMeters } from '../geo/haversine';
+import { coordsEqual } from '../position/coord-key';
 import {
   availabilityByLabel,
   bucketLabelPlusSeconds,
@@ -216,6 +217,7 @@ export function detectImplausibleOneSecondLegEndpointLabels(
   maxLegKmh = MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH,
 ): Set<string> {
   const ordered = orderMotionCoreGrid(buckets);
+  const pm = presentBucketMap(ordered);
   const rejected = new Set<string>();
   for (let i = 1; i < ordered.length; i++) {
     const a = ordered[i - 1]!;
@@ -237,6 +239,22 @@ export function detectImplausibleOneSecondLegEndpointLabels(
     }
     const speedKmh = haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude) * 3.6 / dtS;
     if (speedKmh > maxLegKmh) {
+      const aPrev = pm.get(bucketLabelPlusSeconds(a.bucketLabelUtc, -1));
+      const resumeAfterStaleFix =
+        aPrev != null &&
+        aPrev.latitude != null &&
+        aPrev.longitude != null &&
+        coordsEqual(
+          { latitude: aPrev.latitude, longitude: aPrev.longitude },
+          { latitude: a.latitude, longitude: a.longitude },
+        ) &&
+        !coordsEqual(
+          { latitude: a.latitude, longitude: a.longitude },
+          { latitude: b.latitude, longitude: b.longitude },
+        );
+      if (resumeAfterStaleFix) {
+        continue;
+      }
       rejected.add(a.bucketLabelUtc);
       rejected.add(b.bucketLabelUtc);
     }
