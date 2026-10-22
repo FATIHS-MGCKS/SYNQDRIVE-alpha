@@ -21,6 +21,6 @@ import { DI_V0_S4_RESEARCH_OSM_PROVIDER } from './di-v0-s4-research.tokens';
     DiV0S4ResearchV2Service,
     DiV0S4ResearchV2Scheduler,
   ],
-  exports: [DiV0S4ResearchV2Service],
+  exports: [DiV0S4ResearchV2Service, DI_V0_S4_RESEARCH_OSM_PROVIDER],
 })
 export class DiV0S4ResearchModule {}

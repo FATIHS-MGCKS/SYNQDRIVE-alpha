@@ -24,6 +24,8 @@ const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
 /** Post-S4 motion-core shadow (default OFF); read-only S4 evidence + outbox — not S4A runtime. */
 const MOTION_CORE_SHADOW_DIR = path.join(__dirname, '../../motion-core-shadow-worker');
+/** Post-S4 frozen M7A road-assignment shadow (default OFF); read-only S4 evidence + outbox — not S4A runtime. */
+const M7A_ROAD_ASSIGNMENT_SHADOW_DIR = path.join(__dirname, '../../m7a-road-assignment-shadow-worker');
 const S4_RESEARCH_DIR = S4_RESEARCH_WORKER_DIR;
 const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
 const TRIPS_DI_BOUNDARY_ADMISSION_DIR = path.join(__dirname, '../../../trips/di-boundary-admission');
@@ -109,6 +111,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4E_DIR + path.sep) ||
           file.startsWith(S4F_DIR + path.sep) ||
           file.startsWith(MOTION_CORE_SHADOW_DIR + path.sep) ||
+          file.startsWith(M7A_ROAD_ASSIGNMENT_SHADOW_DIR + path.sep) ||
           file.startsWith(S4_RESEARCH_DIR + path.sep) ||
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
           file.startsWith(TRIPS_DI_BOUNDARY_ADMISSION_DIR + path.sep) ||
