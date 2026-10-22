@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import {
   EXP021_FROZEN_M7A_HARNESS_MODEL_ID,
   EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256,
-  EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256,
+  EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
 } from '../exp021-frozen-m7a';
 import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-m7a-road-assignment-shadow.bundle.version';
 
@@ -21,7 +21,7 @@ export function frozenM7aAlgorithmFingerprint(): string {
       JSON.stringify({
         model: EXP021_FROZEN_M7A_HARNESS_MODEL_ID,
         phase3Lib: EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256,
-        s4ResearchTree: EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256,
+        s4ResearchTree: EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
       }),
     )
     .digest('hex');

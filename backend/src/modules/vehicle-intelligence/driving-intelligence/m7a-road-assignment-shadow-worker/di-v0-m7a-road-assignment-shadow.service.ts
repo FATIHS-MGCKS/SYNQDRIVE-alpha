@@ -205,6 +205,7 @@ export class DiV0M7aRoadAssignmentShadowService {
         },
         shadowByBucket,
         osmProvider: this.osmProvider,
+        processingDeadlineMs: DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING.maxProcessingMsPerTrip,
         computedAt: now,
       });
     } catch (error) {

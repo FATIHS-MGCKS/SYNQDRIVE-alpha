@@ -20,12 +20,12 @@ import {
   EXP021_FROZEN_M7A_RESEARCH_SHA,
   EXP021_FROZEN_M7A_HARNESS_MODEL_ID,
   EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256,
-  EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256,
-  buildM7aRuntimeContext,
+  EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
   perBucketAssignmentHash,
-  runFrozenM7a,
+  runFrozenM7aIsolated,
 } from '../exp021-frozen-m7a';
 import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-m7a-road-assignment-shadow.bundle.version';
+import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING } from './di-v0-m7a-road-assignment-shadow.config';
 import {
   buildM7aRoadAssignmentShadowDiscoveryIntentKey,
   buildM7aRoadAssignmentShadowRunIntentKey,
@@ -50,6 +50,7 @@ export type DiV0M7aRoadAssignmentShadowProcessInput = {
   snapshotRow: DiV0S4dSnapshotRow;
   shadowByBucket: ReadonlyMap<string, DiV0S4ResearchShadowBucketEvidence>;
   osmProvider: DiV0S4ResearchOsmProvider;
+  processingDeadlineMs?: number;
   computedAt?: Date;
 };
 
@@ -211,12 +212,43 @@ export async function processDiV0M7aRoadAssignmentShadowTrip(
     osmSnapshotSha256: osm.osmSnapshotSha256,
   });
 
-  const runtimeCtx = buildM7aRuntimeContext({
-    buckets,
-    overpassBody: osm.overpassBody,
-    corridorMarginM: DI_V0_S4_RESEARCH_CORRIDOR_MARGIN_M,
-  });
-  const { matches, cpuMs } = runFrozenM7a(runtimeCtx);
+  const deadlineMs = input.processingDeadlineMs ?? DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING.maxProcessingMsPerTrip;
+  let matches;
+  let cpuMs: number;
+  try {
+    const decoded = await runFrozenM7aIsolated(
+      {
+        buckets,
+        overpassBody: osm.overpassBody,
+        corridorMarginM: DI_V0_S4_RESEARCH_CORRIDOR_MARGIN_M,
+      },
+      deadlineMs,
+    );
+    matches = decoded.matches;
+    cpuMs = decoded.cpuMs;
+  } catch (error) {
+    const runIntentKey = buildM7aRoadAssignmentShadowRunIntentKey({
+      discoveryIntentKey: input.discoveryIntentKey,
+      osmSnapshotSha256: `DECODE_FAIL:${osm.osmSnapshotSha256}`,
+    });
+    const code = error instanceof Error ? error.message.slice(0, 120) : 'DECODE_FAILED';
+    return {
+      kind: 'ROAD_CONTEXT_UNAVAILABLE',
+      runIntentKey,
+      summary: {
+        bundleVersion: DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1,
+        discoveryIntentKey: input.discoveryIntentKey,
+        runIntentKey,
+        runStatus: 'ROAD_CONTEXT_UNAVAILABLE',
+        osmSnapshotSha256: osm.osmSnapshotSha256,
+        osmContextKey: osm.osmContextKey,
+        processingCpuMs: null,
+        perBucketAssignmentHash: null,
+        contentFingerprint: createHash('sha256').update(code).digest('hex'),
+        errorCode: code,
+      },
+    };
+  }
   const bucketDtos = matches.map(mapFrozenMatchToBucketDto);
   const assignmentHash = perBucketAssignmentHash(matches);
   const presentCount = buckets.filter((b) => b.availability === 'PRESENT').length;
@@ -230,7 +262,7 @@ export async function processDiV0M7aRoadAssignmentShadowTrip(
       harnessModelId: EXP021_FROZEN_M7A_HARNESS_MODEL_ID,
       researchSha: EXP021_FROZEN_M7A_RESEARCH_SHA,
       phase3LibSnapshotSha256: EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256,
-      s4ResearchTreeSha256: EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256,
+      s4ResearchTreeSha256: EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
       osmSnapshotSha256: osm.osmSnapshotSha256,
       osmContextKey: osm.osmContextKey,
       pinnedSnapshotHash: input.snapshotHash,

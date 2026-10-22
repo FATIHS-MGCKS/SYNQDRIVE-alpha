@@ -18,6 +18,8 @@ export const DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING = {
   claimLeaseMs: 5 * 60_000,
   maxProcessingAttempts: 5,
   maxPayloadUncompressedBytes: 8 * 1024 * 1024,
+  /** Hard per-trip M7A decode budget (worker thread terminated on exceed). */
+  maxProcessingMsPerTrip: 120_000,
 } as const;
 
 export interface DiV0M7aRoadAssignmentShadowRuntimeConfig {
@@ -51,7 +53,7 @@ export function parseDiV0M7aRoadAssignmentShadowRuntimeConfig(
   }
   if (isDiV0M7aRoadAssignmentShadowRunnable(controlPlane) && !enabledSince) {
     throw new DiV0M7aRoadAssignmentShadowConfigError(
-      `${DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_ENV.enabledSince} is required when motion-core shadow flags are enabled`,
+      `${DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_ENV.enabledSince} is required when M7A road-assignment shadow flags are enabled`,
     );
   }
 

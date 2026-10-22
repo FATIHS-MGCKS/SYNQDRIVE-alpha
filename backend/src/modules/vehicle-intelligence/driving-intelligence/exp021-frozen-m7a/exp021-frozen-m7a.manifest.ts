@@ -6,8 +6,13 @@ export const EXP021_FROZEN_M7A_HARNESS_MODEL_ID = 'M7A';
 export const EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256 =
   'd147dcb48852d886b15a150f68c19fcedf8583734264bc962cc0df1b91000316';
 
-export const EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256 =
+/** Git tree archive at research freeze SHA 477ecad… (historical; may differ from main). */
+export const EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_FREEZE =
   '55080af81f6fd2f61b011a62df01404d3a86149e6c8fbf3d4f4d7669458da074';
+
+/** Sorted `.ts` source hash of `s4-research/` on integration main (drift gate for this PR). */
+export const EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION =
+  '74863d2f3b7e4d95777697fcc27984ffe4904c8726e62e0432df38a6ddd74af7';
 
 /** Tiguan development-set per-bucket assignment hash (freeze reproducibility.json). */
 export const EXP021_FROZEN_M7A_TIGUAN_PER_BUCKET_SHA256 =
