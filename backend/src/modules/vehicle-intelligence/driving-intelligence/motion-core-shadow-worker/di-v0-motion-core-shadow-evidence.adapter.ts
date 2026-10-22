@@ -45,11 +45,20 @@ export function adaptMotionCoreShadowEvidenceFromParsedContainer(
   const sparseSpeed: SparseVehicleSpeedSample[] = [];
   for (const row of bundle.r1Obd) {
     if (row.speedKmh == null) continue;
-    sparseSpeed.push({ label: row.bucketLabel, speedKmh: row.speedKmh });
+    const measurementTimeUtc =
+      typeof (row as { measurementTimeUtc?: string | null }).measurementTimeUtc === 'string'
+        ? (row as { measurementTimeUtc: string }).measurementTimeUtc
+        : null;
+    const fsmPointAuthority = measurementTimeUtc != null;
+    sparseSpeed.push({
+      label: row.bucketLabel,
+      speedKmh: row.speedKmh,
+      fsmPointAuthority,
+    });
     sparsePersisted.push({
       aggregationBucketLabelUtc: row.bucketLabel,
       speedKmh: row.speedKmh,
-      measurementTimeUtc: null,
+      measurementTimeUtc,
       arrivalTimestampUtc: null,
       provenance: 'R1_OBD_PINNED_SNAPSHOT',
     });
@@ -67,6 +76,9 @@ export function adaptMotionCoreShadowEvidenceFromParsedContainer(
   }
   if (sparseSpeed.length > 0) {
     limitations.push('SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN');
+    if (sparseSpeed.every((s) => s.fsmPointAuthority === false)) {
+      limitations.push('SPARSE_R1_BUCKET_ONLY_NO_FSM_POINT_AUTHORITY');
+    }
   }
 
   return {

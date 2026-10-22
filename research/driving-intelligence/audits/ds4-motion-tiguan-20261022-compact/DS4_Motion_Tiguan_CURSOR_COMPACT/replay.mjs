@@ -1,0 +1,42 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { computeC4AdaptiveL3 } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/c4-adaptive-l3.ts';
+import { runMotionFsm, extractMotionFsmStopEpisodes, MOTION_FSM_PARAMS_V0_2_DEV, MOTION_FSM_V0_3_CANDIDATE_OPTIONS } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm.ts';
+import { detectMotionManoeuvreEvents, MOTION_CORE_EVENT_GUARDS_V0_1_DEV, MOTION_EVENT_V0_2_CANDIDATE_OPTIONS } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-detector.ts';
+import { analyzeOneSecondLegs, detectPositionOutliers } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/leg-consistency.ts';
+
+const read = (path) => JSON.parse(fs.readFileSync(new URL(path, import.meta.url), 'utf8'));
+const grid = read('./evaluation/snapshots/position_grid_verified.json');
+const persisted = read('./evaluation/snapshots/di_v0_motion_core_shadow_payload.json');
+const c4 = computeC4AdaptiveL3(grid);
+const actualByLabel = new Map(persisted.speeds.map(s => [s.bucketLabelUtc, s]));
+const mismatches = [];
+for (const s of c4) {
+  const p = actualByLabel.get(s.label);
+  if (!p || (s.valueKmh === null ? p.speedKmh !== null : p.speedKmh === null || Math.abs(s.valueKmh - p.speedKmh) > 1e-9) || s.quality !== p.quality || JSON.stringify(s.flags) !== JSON.stringify(p.flags) || JSON.stringify(s.supportLabels)!==JSON.stringify(p.support) || s.estimator!==p.estimator) mismatches.push({s,p});
+}
+const sparsePayload = persisted.contract?.sparse ?? persisted.sparse;
+console.log('payload keys',Object.keys(persisted));
+console.log('contract keys',Object.keys(persisted.contract??{}));
+console.log('c4 baseline',{labels:c4.length,mismatches:mismatches.length,first:mismatches.slice(0,1)});
+assert.equal(mismatches.length,0,'frozen C4 must reproduce before any candidate');
+const sparse = sparsePayload?.samples?.map(s=>({label:s.aggregationBucketLabelUtc,speedKmh:s.speedKmh})) ?? [];
+const fsm = runMotionFsm(grid,c4,'RETROSPECTIVE',sparse,MOTION_FSM_PARAMS_V0_2_DEV,MOTION_FSM_V0_3_CANDIDATE_OPTIONS);
+const stops = extractMotionFsmStopEpisodes(0,fsm,'RETROSPECTIVE');
+const events = detectMotionManoeuvreEvents(0,c4,'C4_ADAPTIVE_L3',MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,MOTION_EVENT_V0_2_CANDIDATE_OPTIONS);
+const fsmMismatch = fsm.filter((s,i)=>s.state!==persisted.fsmLabels[i]?.state);
+const fsmFieldMismatches=fsm.filter((s,i)=>Object.entries(persisted.fsmLabels[i]??{}).some(([k,v])=>JSON.stringify(s[k==='bucketLabelUtc'?'label':k])!==JSON.stringify(v)));
+const eventMismatch = events.filter((s,i)=>Object.entries(persisted.events[i]??{}).some(([k,v])=>JSON.stringify(s[k])!==JSON.stringify(v)));
+console.log('fsm baseline',{labels:fsm.length,sparse:sparse.length,stateMismatches:fsmMismatch.length,first:fsmMismatch.slice(0,1)});
+console.log('events baseline',{events:events.length,persisted:persisted.events.length,exactMismatches:eventMismatch.length});
+assert.equal(fsmMismatch.length,0);
+assert.equal(fsmFieldMismatches.length,0,'all persisted FSM fields must reproduce');
+assert.deepEqual(stops,persisted.stopEpisodes,'all stop episode fields must reproduce');
+assert.equal(events.length,persisted.events.length);
+assert.equal(eventMismatch.length,0,'persisted event fields must reproduce');
+const outliers = Object.fromEntries(detectPositionOutliers(grid));
+const legs = analyzeOneSecondLegs(grid);
+const selectedLegs = legs.filter(l=>l.legStartLabel>='2026-10-22T18:49:11Z'&&l.legStartLabel<='2026-10-22T18:49:24Z');
+console.log('jump legs',selectedLegs.map(l=>({label:l.legStartLabel,speedKmh:l.legSpeedKmh,assessment:l.assessment,neighbours:l.neighbourLegSpeedsKmh.map(x=>Math.round(x.legSpeedKmh)),outlier:outliers[l.legStartLabel]??null})));
+fs.mkdirSync(new URL('./analysis/',import.meta.url),{recursive:true});
+fs.writeFileSync(new URL('./analysis/baseline_replay.json',import.meta.url),JSON.stringify({codeSha:'dea2555bb746550c632f4315dabe08b9481be0df',labels:c4.length,c4Mismatches:mismatches.length,fsmStateMismatches:fsmMismatch.length,events:events.length,eventExactMismatches:eventMismatch.length,c4,fsm,stops,legs,events},null,2));

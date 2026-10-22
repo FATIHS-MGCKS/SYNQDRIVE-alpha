@@ -1,0 +1,1368 @@
+[
+  {
+    "id": 1,
+    "start": "2026-10-22T18:38:34Z",
+    "end": "2026-10-22T18:38:52Z",
+    "local_start": "20:38:34",
+    "local_end": "20:38:52",
+    "clip": "TC_00077.MOV",
+    "zero_rows": 19,
+    "fsm_counts": {
+      "STATIONARY": 19
+    },
+    "first_stationary": "2026-10-22T18:38:34Z",
+    "first_stationary_offset_from_first_zero_s": 0.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T18:38:31Z",
+        "startLatest": "2026-10-22T18:38:33Z",
+        "endEarliest": "2026-10-22T18:38:52Z",
+        "endLatest": "2026-10-22T18:38:53Z",
+        "minDurationS": 19,
+        "maxDurationS": 22,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 22,
+        "directLabels": 16,
+        "inferredLabels": 6,
+        "indeterminateLabels": 0,
+        "observedLabels": 18,
+        "gapLabels": 4,
+        "lastEvidenceLabel": "2026-10-22T18:38:52Z",
+        "observedMinDurationS": 19,
+        "hysteresisBandLabels": 0,
+        "firstStationarySource": "C4_OK",
+        "firstStationaryC4Quality": "OK"
+      }
+    ],
+    "departure_observation": {
+      "last_zero": "2026-10-22T18:38:52Z",
+      "first_positive": "2026-10-22T18:38:53Z",
+      "fsm_at_first_positive": "STARTING",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T18:38:34Z",
+        "c4": 0.6249282521014944,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:35Z",
+        "c4": 0.6249282523235136,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:36Z",
+        "c4": 0.4155772876352828,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": 0.0,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:37Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:38:38Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:38:39Z",
+        "c4": 0.4569986439901805,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:40Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:38:41Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:38:42Z",
+        "c4": 0.7399796800958136,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:43Z",
+        "c4": 0.9912351927615777,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:44Z",
+        "c4": 1.2206994584433497,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:45Z",
+        "c4": 1.334232859450144,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:46Z",
+        "c4": 1.6208362125712519,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:47Z",
+        "c4": 1.4137584293471595,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:48Z",
+        "c4": 1.4979519715333234,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:49Z",
+        "c4": 1.008223898133064,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:50Z",
+        "c4": 0.41245282663895694,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:51Z",
+        "c4": 0.5402336033498879,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:38:52Z",
+        "c4": 2.906598527707428,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "start": "2026-10-22T18:41:01Z",
+    "end": "2026-10-22T18:41:10Z",
+    "local_start": "20:41:01",
+    "local_end": "20:41:10",
+    "clip": "TC_00077.MOV",
+    "zero_rows": 10,
+    "fsm_counts": {
+      "UNKNOWN": 3,
+      "MOVING": 2,
+      "STOP_CANDIDATE": 2,
+      "STATIONARY": 2,
+      "STARTING": 1
+    },
+    "first_stationary": "2026-10-22T18:41:08Z",
+    "first_stationary_offset_from_first_zero_s": 7.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T18:41:06Z",
+        "startLatest": "2026-10-22T18:41:08Z",
+        "endEarliest": "2026-10-22T18:41:09Z",
+        "endLatest": "2026-10-22T18:41:10Z",
+        "minDurationS": 1,
+        "maxDurationS": 4,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 4,
+        "directLabels": 1,
+        "inferredLabels": 3,
+        "indeterminateLabels": 0,
+        "observedLabels": 2,
+        "gapLabels": 2,
+        "lastEvidenceLabel": "2026-10-22T18:41:09Z",
+        "observedMinDurationS": 1,
+        "hysteresisBandLabels": 0,
+        "firstStationarySource": "GAP_OR_POSITION_INFERENCE",
+        "firstStationaryC4Quality": null
+      }
+    ],
+    "departure_observation": {
+      "last_zero": "2026-10-22T18:41:10Z",
+      "first_positive": "2026-10-22T18:41:11Z",
+      "fsm_at_first_positive": "MOVING",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T18:41:01Z",
+        "c4": null,
+        "quality": "NO_POSITION",
+        "fsm": "UNKNOWN",
+        "reason": "gap_without_context",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:41:02Z",
+        "c4": null,
+        "quality": "NO_POSITION",
+        "fsm": "UNKNOWN",
+        "reason": "gap_without_context",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:41:03Z",
+        "c4": null,
+        "quality": "NO_POSITION",
+        "fsm": "UNKNOWN",
+        "reason": "gap_without_context",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:41:04Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "MOVING",
+        "reason": "vehicle_speed_sample_moving_during_gap",
+        "r1_speed": 15.0,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:41:05Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "MOVING",
+        "reason": "short_gap_while_cruising_keep_moving",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:41:06Z",
+        "c4": 0.40028560675405706,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:41:07Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "gap_after_low_speed_observing",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:41:08Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_bracketed_low_speed_small_displacement(lookahead)",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:41:09Z",
+        "c4": 2.294099048900129,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:41:10Z",
+        "c4": 5.980581790574454,
+        "quality": "OK",
+        "fsm": "STARTING",
+        "reason": "speed_above_moving_band_from_stop",
+        "r1_speed": null,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "start": "2026-10-22T18:43:00Z",
+    "end": "2026-10-22T18:43:05Z",
+    "local_start": "20:43:00",
+    "local_end": "20:43:05",
+    "clip": "TC_00078.MOV",
+    "zero_rows": 6,
+    "fsm_counts": {
+      "STATIONARY": 6
+    },
+    "first_stationary": "2026-10-22T18:43:00Z",
+    "first_stationary_offset_from_first_zero_s": 0.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T18:42:58Z",
+        "startLatest": "2026-10-22T18:43:00Z",
+        "endEarliest": "2026-10-22T18:43:05Z",
+        "endLatest": "2026-10-22T18:43:06Z",
+        "minDurationS": 5,
+        "maxDurationS": 8,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 8,
+        "directLabels": 6,
+        "inferredLabels": 2,
+        "indeterminateLabels": 0,
+        "observedLabels": 7,
+        "gapLabels": 1,
+        "lastEvidenceLabel": "2026-10-22T18:43:05Z",
+        "observedMinDurationS": 5,
+        "hysteresisBandLabels": 2,
+        "firstStationarySource": "SPARSE_VEHICLE_SPEED",
+        "firstStationaryC4Quality": null
+      }
+    ],
+    "departure_observation": {
+      "last_zero": "2026-10-22T18:43:05Z",
+      "first_positive": "2026-10-22T18:43:06Z",
+      "fsm_at_first_positive": "STARTING",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T18:43:00Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "vehicle_speed_sample_zero_during_gap",
+        "r1_speed": 0.0,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:43:01Z",
+        "c4": 0.5522535671537275,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:43:02Z",
+        "c4": 0.640482776424458,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:43:03Z",
+        "c4": 0.5326631450616865,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": 0.0,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:43:04Z",
+        "c4": 0.6404827764244578,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": 0.0,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:43:05Z",
+        "c4": 3.0740710011045764,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "hysteresis_band_keep_stop_state",
+        "r1_speed": null,
+        "flags": [
+          "HYSTERESIS_BAND_CREEP_POSSIBLE"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "start": "2026-10-22T18:44:04Z",
+    "end": "2026-10-22T18:44:06Z",
+    "local_start": "20:44:04",
+    "local_end": "20:44:06",
+    "clip": "TC_00078.MOV",
+    "zero_rows": 3,
+    "fsm_counts": {
+      "MOVING": 2,
+      "STOP_CANDIDATE": 1
+    },
+    "first_stationary": null,
+    "first_stationary_offset_from_first_zero_s": null,
+    "overlapping_episodes": [],
+    "departure_observation": {
+      "last_zero": "2026-10-22T18:44:06Z",
+      "first_positive": "2026-10-22T18:44:07Z",
+      "fsm_at_first_positive": "STOP_CANDIDATE",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T18:44:04Z",
+        "c4": 0.8022681644835736,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 19.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=19.0/0.8"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:44:05Z",
+        "c4": 0.6135819281469451,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 11.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=11.0/0.6"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:44:06Z",
+        "c4": 1.5484905418137438,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": 0.0,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "start": "2026-10-22T18:44:10Z",
+    "end": "2026-10-22T18:44:16Z",
+    "local_start": "20:44:10",
+    "local_end": "20:44:16",
+    "clip": "TC_00078.MOV",
+    "zero_rows": 7,
+    "fsm_counts": {
+      "STATIONARY": 7
+    },
+    "first_stationary": "2026-10-22T18:44:10Z",
+    "first_stationary_offset_from_first_zero_s": 0.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T18:44:09Z",
+        "startLatest": "2026-10-22T18:44:10Z",
+        "endEarliest": "2026-10-22T18:44:16Z",
+        "endLatest": "2026-10-22T18:44:17Z",
+        "minDurationS": 6,
+        "maxDurationS": 8,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 8,
+        "directLabels": 4,
+        "inferredLabels": 4,
+        "indeterminateLabels": 0,
+        "observedLabels": 6,
+        "gapLabels": 2,
+        "lastEvidenceLabel": "2026-10-22T18:44:16Z",
+        "observedMinDurationS": 6,
+        "hysteresisBandLabels": 1,
+        "firstStationarySource": "SPARSE_VEHICLE_SPEED",
+        "firstStationaryC4Quality": null
+      }
+    ],
+    "departure_observation": {
+      "last_zero": "2026-10-22T18:44:16Z",
+      "first_positive": "2026-10-22T18:44:17Z",
+      "fsm_at_first_positive": "STARTING",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T18:44:10Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "vehicle_speed_sample_zero_during_gap",
+        "r1_speed": 0.0,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:44:11Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:44:12Z",
+        "c4": 0.5889912163454083,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:44:13Z",
+        "c4": 0.5889912163454083,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": 0.0,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:44:14Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:44:15Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "vehicle_speed_sample_zero_during_gap",
+        "r1_speed": 0.0,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:44:16Z",
+        "c4": 4.042564032841985,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "hysteresis_band_keep_stop_state",
+        "r1_speed": null,
+        "flags": [
+          "HYSTERESIS_BAND_CREEP_POSSIBLE"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "start": "2026-10-22T18:47:50Z",
+    "end": "2026-10-22T18:48:08Z",
+    "local_start": "20:47:50",
+    "local_end": "20:48:08",
+    "clip": "TC_00080.MOV",
+    "zero_rows": 19,
+    "fsm_counts": {
+      "STATIONARY": 14,
+      "STARTING": 3,
+      "STOP_CANDIDATE": 2
+    },
+    "first_stationary": "2026-10-22T18:47:50Z",
+    "first_stationary_offset_from_first_zero_s": 0.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T18:47:48Z",
+        "startLatest": "2026-10-22T18:47:50Z",
+        "endEarliest": "2026-10-22T18:47:57Z",
+        "endLatest": "2026-10-22T18:47:58Z",
+        "minDurationS": 7,
+        "maxDurationS": 10,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 10,
+        "directLabels": 6,
+        "inferredLabels": 4,
+        "indeterminateLabels": 0,
+        "observedLabels": 8,
+        "gapLabels": 2,
+        "lastEvidenceLabel": "2026-10-22T18:47:57Z",
+        "observedMinDurationS": 7,
+        "hysteresisBandLabels": 0,
+        "firstStationarySource": "GAP_OR_POSITION_INFERENCE",
+        "firstStationaryC4Quality": null
+      },
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T18:48:01Z",
+        "startLatest": "2026-10-22T18:48:03Z",
+        "endEarliest": "2026-10-22T18:48:13Z",
+        "endLatest": "2026-10-22T18:48:14Z",
+        "minDurationS": 10,
+        "maxDurationS": 13,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 13,
+        "directLabels": 7,
+        "inferredLabels": 6,
+        "indeterminateLabels": 0,
+        "observedLabels": 9,
+        "gapLabels": 4,
+        "lastEvidenceLabel": "2026-10-22T18:48:13Z",
+        "observedMinDurationS": 10,
+        "hysteresisBandLabels": 0,
+        "firstStationarySource": "GAP_OR_POSITION_INFERENCE",
+        "firstStationaryC4Quality": null
+      }
+    ],
+    "departure_observation": null,
+    "details": [
+      {
+        "utc": "2026-10-22T18:47:50Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_after_low_speed_confirmed_by_duration",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:47:51Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:47:52Z",
+        "c4": 0.8071757207455712,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:47:53Z",
+        "c4": 0.8071757207455712,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:47:54Z",
+        "c4": 0.6071784539349776,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:47:55Z",
+        "c4": 0.624991459088412,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:47:56Z",
+        "c4": 1.0374858220379148,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:47:57Z",
+        "c4": 0.7249900924937087,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:47:58Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STARTING",
+        "reason": "vehicle_speed_sample_moving_during_gap",
+        "r1_speed": 84.0,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:47:59Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STARTING",
+        "reason": "short_gap_while_cruising_keep_moving",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:48:00Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STARTING",
+        "reason": "short_gap_while_cruising_keep_moving",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:48:01Z",
+        "c4": 0.7109648006630624,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:48:02Z",
+        "c4": 0.7109648006630624,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:48:03Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_after_low_speed_confirmed_by_duration",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:48:04Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:48:05Z",
+        "c4": 0.9798397192309559,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:48:06Z",
+        "c4": 1.138169349024275,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:48:07Z",
+        "c4": 0.862469163681474,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:48:08Z",
+        "c4": 0.7527507495802128,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "start": "2026-10-22T18:58:53Z",
+    "end": "2026-10-22T18:59:00Z",
+    "local_start": "20:58:53",
+    "local_end": "20:59:00",
+    "clip": "TC_00084.MOV",
+    "zero_rows": 8,
+    "fsm_counts": {
+      "MOVING": 6,
+      "STOP_CANDIDATE": 2
+    },
+    "first_stationary": null,
+    "first_stationary_offset_from_first_zero_s": null,
+    "overlapping_episodes": [],
+    "departure_observation": {
+      "last_zero": "2026-10-22T18:59:00Z",
+      "first_positive": "2026-10-22T18:59:01Z",
+      "fsm_at_first_positive": "MOVING",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T18:58:53Z",
+        "c4": 2.281142695599379,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 63.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=63.0/2.3"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:58:54Z",
+        "c4": 3.292009442419041,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 61.0,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:58:55Z",
+        "c4": 2.501610478456173,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:58:56Z",
+        "c4": 2.209800353273565,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 60.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=60.0/2.2"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:58:57Z",
+        "c4": 3.4044821051914944,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 59.0,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:58:58Z",
+        "c4": 2.531911818883558,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 60.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=60.0/2.5"
+        ]
+      },
+      {
+        "utc": "2026-10-22T18:58:59Z",
+        "c4": 2.0885891567528883,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T18:59:00Z",
+        "c4": 7.376599388408317,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 60.0,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "start": "2026-10-22T19:00:05Z",
+    "end": "2026-10-22T19:00:06Z",
+    "local_start": "21:00:05",
+    "local_end": "21:00:06",
+    "clip": "TC_00084.MOV",
+    "zero_rows": 2,
+    "fsm_counts": {
+      "MOVING": 2
+    },
+    "first_stationary": null,
+    "first_stationary_offset_from_first_zero_s": null,
+    "overlapping_episodes": [],
+    "departure_observation": null,
+    "details": [
+      {
+        "utc": "2026-10-22T19:00:05Z",
+        "c4": 0.7959461215575074,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 56.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=56.0/0.8"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:06Z",
+        "c4": 0.6138161906987193,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 56.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=56.0/0.6"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "start": "2026-10-22T19:00:13Z",
+    "end": "2026-10-22T19:00:26Z",
+    "local_start": "21:00:13",
+    "local_end": "21:00:26",
+    "clip": "TC_00085.MOV",
+    "zero_rows": 14,
+    "fsm_counts": {
+      "MOVING": 6,
+      "STOP_CANDIDATE": 6,
+      "STATIONARY": 1,
+      "STARTING": 1
+    },
+    "first_stationary": "2026-10-22T19:00:17Z",
+    "first_stationary_offset_from_first_zero_s": 4.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T19:00:15Z",
+        "startLatest": "2026-10-22T19:00:17Z",
+        "endEarliest": "2026-10-22T19:00:17Z",
+        "endLatest": "2026-10-22T19:00:18Z",
+        "minDurationS": 0,
+        "maxDurationS": 3,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 3,
+        "directLabels": 1,
+        "inferredLabels": 2,
+        "indeterminateLabels": 0,
+        "observedLabels": 3,
+        "gapLabels": 0,
+        "lastEvidenceLabel": "2026-10-22T19:00:17Z",
+        "observedMinDurationS": 0,
+        "hysteresisBandLabels": 0,
+        "firstStationarySource": "C4_OK",
+        "firstStationaryC4Quality": "OK"
+      }
+    ],
+    "departure_observation": null,
+    "details": [
+      {
+        "utc": "2026-10-22T19:00:13Z",
+        "c4": 1.0617131234137427,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 47.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=47.0/1.1"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:14Z",
+        "c4": 0.9235874527383086,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 45.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=45.0/0.9"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:15Z",
+        "c4": 1.2353217694467904,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:16Z",
+        "c4": 1.0905639541419336,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:17Z",
+        "c4": 0.5902154818926811,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:18Z",
+        "c4": 0.9244798013246416,
+        "quality": "OK",
+        "fsm": "STARTING",
+        "reason": "speed_above_moving_band_from_stop",
+        "r1_speed": 44.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=44.0/0.9"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:19Z",
+        "c4": 1.5497771981834416,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:20Z",
+        "c4": 1.3727748346861233,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 45.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=45.0/1.4"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:21Z",
+        "c4": 0.9360916167312453,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:22Z",
+        "c4": 0.813911560220291,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 46.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=46.0/0.8"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:23Z",
+        "c4": 0.8139115559258054,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:24Z",
+        "c4": 0.7788296566198337,
+        "quality": "OK",
+        "fsm": "STOP_CANDIDATE",
+        "reason": "speed_in_stationary_band_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:00:25Z",
+        "c4": 0.7178708528339494,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "stop_candidate_aborted_speed_above_moving_band",
+        "r1_speed": 48.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=48.0/0.7"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:26Z",
+        "c4": 0.6805129504842953,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 48.0,
+        "flags": [
+          "SPARSE_C4_CONTRADICTION=48.0/0.7"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "start": "2026-10-22T19:00:31Z",
+    "end": "2026-10-22T19:00:33Z",
+    "local_start": "21:00:31",
+    "local_end": "21:00:33",
+    "clip": "TC_00085.MOV",
+    "zero_rows": 3,
+    "fsm_counts": {
+      "MOVING": 3
+    },
+    "first_stationary": null,
+    "first_stationary_offset_from_first_zero_s": null,
+    "overlapping_episodes": [],
+    "departure_observation": {
+      "last_zero": "2026-10-22T19:00:33Z",
+      "first_positive": "2026-10-22T19:00:34Z",
+      "fsm_at_first_positive": "MOVING",
+      "reference_bracket_width_s": 1.0
+    },
+    "details": [
+      {
+        "utc": "2026-10-22T19:00:31Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "MOVING",
+        "reason": "vehicle_speed_sample_moving_during_gap",
+        "r1_speed": 47.0,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:32Z",
+        "c4": null,
+        "quality": "FROZEN_POSITION",
+        "fsm": "MOVING",
+        "reason": "short_gap_while_cruising_keep_moving",
+        "r1_speed": null,
+        "flags": [
+          "FROZEN_POSITION_TREATED_AS_NO_EVIDENCE"
+        ]
+      },
+      {
+        "utc": "2026-10-22T19:00:33Z",
+        "c4": 8.173616993684629,
+        "quality": "OK",
+        "fsm": "MOVING",
+        "reason": "speed_above_moving_band",
+        "r1_speed": 45.0,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "start": "2026-10-22T19:02:58Z",
+    "end": "2026-10-22T19:03:01Z",
+    "local_start": "21:02:58",
+    "local_end": "21:03:01",
+    "clip": "TC_00085.MOV",
+    "zero_rows": 4,
+    "fsm_counts": {
+      "STATIONARY": 4
+    },
+    "first_stationary": "2026-10-22T19:02:58Z",
+    "first_stationary_offset_from_first_zero_s": 0.0,
+    "overlapping_episodes": [
+      {
+        "trip": 0,
+        "mode": "RETROSPECTIVE",
+        "startEarliest": "2026-10-22T19:02:54Z",
+        "startLatest": "2026-10-22T19:02:56Z",
+        "endEarliest": "2026-10-22T19:03:28Z",
+        "endLatest": "2026-10-22T19:03:29Z",
+        "minDurationS": 32,
+        "maxDurationS": 35,
+        "evidenceQuality": "DIRECT",
+        "openEnd": false,
+        "labels": 35,
+        "directLabels": 3,
+        "inferredLabels": 32,
+        "indeterminateLabels": 0,
+        "observedLabels": 6,
+        "gapLabels": 29,
+        "lastEvidenceLabel": "2026-10-22T19:02:59Z",
+        "observedMinDurationS": 3,
+        "hysteresisBandLabels": 0,
+        "firstStationarySource": "C4_OK",
+        "firstStationaryC4Quality": "OK"
+      }
+    ],
+    "departure_observation": null,
+    "details": [
+      {
+        "utc": "2026-10-22T19:02:58Z",
+        "c4": 1.702935257033237,
+        "quality": "OK",
+        "fsm": "STATIONARY",
+        "reason": "speed_in_stationary_band_confirmed",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:02:59Z",
+        "c4": null,
+        "quality": "NO_SUPPORT",
+        "fsm": "STATIONARY",
+        "reason": "no_displacement_observing",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:03:00Z",
+        "c4": null,
+        "quality": "NO_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": []
+      },
+      {
+        "utc": "2026-10-22T19:03:01Z",
+        "c4": null,
+        "quality": "NO_POSITION",
+        "fsm": "STATIONARY",
+        "reason": "gap_while_stationary_change_triggered_source",
+        "r1_speed": null,
+        "flags": []
+      }
+    ]
+  }
+]

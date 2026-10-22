@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import {
   computeC4AdaptiveL3,
+  withImplausibleLegEndpointsQuarantined,
   detectMotionManoeuvreEvents,
   extractMotionFsmStopEpisodes,
   MOTION_CORE_C4_FULL_FINALIZATION_HORIZON_FORWARD_S,
@@ -66,10 +67,11 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
   },
 ): DiV0MotionCoreShadowProcessResult {
   const computedAt = meta.computedAt ?? new Date();
-  const c4 = computeC4AdaptiveL3(evidence.buckets);
+  const kinBuckets = withImplausibleLegEndpointsQuarantined(evidence.buckets);
+  const c4 = computeC4AdaptiveL3(kinBuckets);
   const sparseArg = evidence.sparseComparable ? evidence.sparseSpeed : null;
   const fsmLabels = runMotionFsm(
-    evidence.buckets,
+    kinBuckets,
     c4,
     DI_V0_MOTION_CORE_SHADOW_DEFAULT_FSM_MODE,
     sparseArg,

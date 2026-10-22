@@ -3,6 +3,7 @@ import {
   availabilityByLabel,
   bucketLabelPlusSeconds,
   orderMotionCoreGrid,
+  parseBucketLabelMs,
   presentBucketMap,
   type MotionCorePositionBucket,
 } from './motion-core-grid';
@@ -11,7 +12,13 @@ import {
 export const MOTION_CORE_JITTER_RATIO = 1.5;
 export const MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH = 5.0;
 export const MOTION_CORE_OUTLIER_CHORD_DEVIATION_M = 8.0;
-export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_1_DEV';
+export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_2_DEV';
+
+/**
+ * Road-vehicle plausibility ceiling for a single 1 s chord between consecutive PRESENT buckets.
+ * Not a legal speeding limit — rejects GPS teleports that cannot be kinematic truth.
+ */
+export const MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH = 250;
 
 /**
  * Neighbour legs used for the local median in {@link detectTimingJitterSuspectLegs}.
@@ -182,6 +189,59 @@ export function detectPositionOutliers(
     }
   }
   return out;
+}
+
+/**
+ * Labels whose PRESENT coordinates participate in an implausible 1 s leg (both endpoints quarantined).
+ * Raw buckets are unchanged; kinematics must treat these labels as unavailable (see C4).
+ */
+/** Derived kinematics view: quarantined endpoints become ROW_ABSENT (raw snapshot unchanged). */
+export function withImplausibleLegEndpointsQuarantined(
+  buckets: MotionCorePositionBucket[],
+  maxLegKmh = MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH,
+): MotionCorePositionBucket[] {
+  const rejected = detectImplausibleOneSecondLegEndpointLabels(buckets, maxLegKmh);
+  if (rejected.size === 0) {
+    return buckets;
+  }
+  return buckets.map((b) =>
+    rejected.has(b.bucketLabelUtc)
+      ? { ...b, availability: 'ROW_ABSENT', latitude: null, longitude: null }
+      : b,
+  );
+}
+
+export function detectImplausibleOneSecondLegEndpointLabels(
+  buckets: MotionCorePositionBucket[],
+  maxLegKmh = MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH,
+): Set<string> {
+  const ordered = orderMotionCoreGrid(buckets);
+  const rejected = new Set<string>();
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1]!;
+    const b = ordered[i]!;
+    if (a.availability !== 'PRESENT' || b.availability !== 'PRESENT') {
+      continue;
+    }
+    if (
+      a.latitude == null ||
+      a.longitude == null ||
+      b.latitude == null ||
+      b.longitude == null
+    ) {
+      continue;
+    }
+    const dtS = (parseBucketLabelMs(b.bucketLabelUtc) - parseBucketLabelMs(a.bucketLabelUtc)) / 1000;
+    if (dtS !== 1) {
+      continue;
+    }
+    const speedKmh = haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude) * 3.6 / dtS;
+    if (speedKmh > maxLegKmh) {
+      rejected.add(a.bucketLabelUtc);
+      rejected.add(b.bucketLabelUtc);
+    }
+  }
+  return rejected;
 }
 
 export function analyzeOneSecondLegs(buckets: MotionCorePositionBucket[]): OneSecondLegRecord[] {

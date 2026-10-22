@@ -1,0 +1,45 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { candidateLegQuarantine } from './candidate-leg-quarantine.mjs';
+import { computeC4AdaptiveL3 } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/c4-adaptive-l3.ts';
+import { runMotionFsm, extractMotionFsmStopEpisodes, MOTION_FSM_PARAMS_V0_2_DEV, MOTION_FSM_V0_3_CANDIDATE_OPTIONS } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm.ts';
+import { detectMotionManoeuvreEvents, MOTION_CORE_EVENT_GUARDS_V0_1_DEV, MOTION_EVENT_V0_2_CANDIDATE_OPTIONS } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-detector.ts';
+
+const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url),'utf8'));
+const grid=read('./evaluation/snapshots/position_grid_verified.json');
+const persisted=read('./evaluation/snapshots/di_v0_motion_core_shadow_payload.json');
+const sparse=persisted.contract.sparse.samples.map(s=>({label:s.aggregationBucketLabelUtc,speedKmh:s.speedKmh}));
+const eventOf=c4=>detectMotionManoeuvreEvents(0,c4,'C4_ADAPTIVE_L3',MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,MOTION_EVENT_V0_2_CANDIDATE_OPTIONS);
+const fsmOf=(g,c4,s=null)=>runMotionFsm(g,c4,'RETROSPECTIVE',s,MOTION_FSM_PARAMS_V0_2_DEV,MOTION_FSM_V0_3_CANDIDATE_OPTIONS);
+const candidate=candidateLegQuarantine(grid);
+candidate.fsm=fsmOf(candidate.grid,candidate.c4,sparse);
+candidate.events=eventOf(candidate.c4);
+candidate.stops=extractMotionFsmStopEpisodes(0,candidate.fsm,'RETROSPECTIVE');
+const tests=[];
+const check=(name,fn)=>{fn();tests.push({name,result:'PASS'});};
+check('all 2094 original input rows retained and input untouched',()=>{assert.equal(candidate.c4.length,grid.length);assert.deepEqual(grid,read('./evaluation/snapshots/position_grid_verified.json'));});
+check('contaminated seconds have no claimed speed',()=>{for(const l of candidate.rejectedLabels)assert.equal(candidate.c4.find(s=>s.label===l).valueKmh,null);});
+check('no false acceleration across the observed jump window',()=>{assert(!candidate.events.some(e=>e.startLabel<='2026-10-22T18:49:24Z'&&e.endLabel>='2026-10-22T18:49:12Z'));});
+check('remaining 20 events retain all persisted fields',()=>{const expected=persisted.events.filter(e=>e.startLabel!=='2026-10-22T18:49:12Z');assert.equal(candidate.events.length,expected.length);for(let i=0;i<expected.length;i++)for(const [k,v]of Object.entries(expected[i]))assert.deepEqual(candidate.events[i][k],v);});
+check('persisted 12 stop episodes unchanged on Tiguan 22 Oct',()=>assert.deepEqual(candidate.stops,persisted.stopEpisodes));
+const sensitivity=[300,350,400,500,600].map(max=>{const r=candidateLegQuarantine(grid,max);assert.deepEqual(r.rejectedLabels,candidate.rejectedLabels);return{maxLegKmh:max,rejectedLabels:r.rejectedLabels.length,invalidLegs:r.invalidLegs.length};});
+const old=read('./evaluation/snapshots/TIGUAN_20261019_POSITION_GRID.json').buckets;
+const oldGrid=old.map(b=>({bucketLabelUtc:b.bucketLabelUtc??b.bucketLabel,availability:b.availability,latitude:b.latitude,longitude:b.longitude}));
+const oldBase=computeC4AdaptiveL3(oldGrid),oldCandidate=candidateLegQuarantine(oldGrid);
+check('older Tiguan 19 Oct: every C4 field unchanged',()=>assert.deepEqual(oldCandidate.c4,oldBase));
+check('older Tiguan 19 Oct: manoeuvre events unchanged',()=>assert.deepEqual(eventOf(oldCandidate.c4),eventOf(oldBase)));
+check('older Tiguan 19 Oct: position-only FSM unchanged',()=>assert.deepEqual(fsmOf(oldCandidate.grid,oldCandidate.c4),fsmOf(oldGrid,oldBase)));
+
+function straight(velocities){let d=0;return velocities.map((v,i)=>{if(i)d+=v/3.6;return{bucketLabelUtc:new Date(Date.UTC(2026,0,1)+i*1000).toISOString().replace('.000Z','Z'),availability:'PRESENT',latitude:51+d/6371000*180/Math.PI,longitude:9};});}
+const constant=v=>straight(Array(101).fill(v));
+for(const v of [30,100,250,350])check(`synthetic constant ${v} km/h preserved`,()=>{const g=constant(v);const c=candidateLegQuarantine(g);assert.equal(c.rejectedLabels.length,0);assert.deepEqual(c.c4,computeC4AdaptiveL3(g));});
+const accel=straight([...Array(20).fill(20),40,60,80,100,...Array(20).fill(100),80,60,40,20,...Array(20).fill(20)]);
+check('real strong acceleration/deceleration remain detectable',()=>{const c=candidateLegQuarantine(accel),e=eventOf(c.c4);assert.equal(c.rejectedLabels.length,0);assert.deepEqual(e,eventOf(computeC4AdaptiveL3(accel)));assert(e.some(x=>x.kind==='ACCELERATION'));assert(e.some(x=>x.kind==='DECELERATION'));});
+const stopGo=straight([...Array(20).fill(30),20,10,...Array(15).fill(0),10,20,...Array(20).fill(30)]);
+check('stop/go without GPS jump unchanged',()=>{const c=candidateLegQuarantine(stopGo);assert.deepEqual(c.c4,computeC4AdaptiveL3(stopGo));assert.deepEqual(fsmOf(c.grid,c.c4),fsmOf(stopGo,computeC4AdaptiveL3(stopGo)));});
+const missing=constant(60).map((b,i)=>i>=35&&i<=42?{...b,availability:'ROW_ABSENT',latitude:null,longitude:null}:b);
+check('data gap remains missing, no invented zero speed or cross-gap event',()=>{const c=candidateLegQuarantine(missing);for(let i=35;i<=42;i++)assert.equal(c.c4[i].valueKmh,null);assert.equal(eventOf(c.c4).length,0);});
+for(const pattern of ['single','alternating','sustained'])check(`synthetic ${pattern} 500 m jump suppressed`,()=>{const g=constant(70);for(let i=40;i<50;i++){if(pattern==='single'&&i!==40)continue;if(pattern==='alternating'&&i%2)continue;g[i]={...g[i],longitude:g[i].longitude+0.0072};}const c=candidateLegQuarantine(g);assert(c.invalidLegs.length>0);assert.equal(eventOf(c.c4).length,0);assert(!extractMotionFsmStopEpisodes(0,fsmOf(c.grid,c.c4),'RETROSPECTIVE').length);});
+const report={status:'RESEARCH_CANDIDATE_NOT_RUNTIME_INTEGRATED',codeSha:'dea2555bb746550c632f4315dabe08b9481be0df',thresholdNotCalibrated:true,tests,thresholdSensitivity:sensitivity,olderDrive:{date:'2026-10-19',buckets:oldGrid.length,numeric:oldBase.filter(x=>x.valueKmh!==null).length,rejectedLabels:oldCandidate.rejectedLabels.length},candidate};
+fs.writeFileSync(new URL('./analysis/candidate_experiment.json',import.meta.url),JSON.stringify(report,null,2));
+console.log(JSON.stringify({tests,thresholdSensitivity:sensitivity,olderDrive:report.olderDrive,invalidLegs:candidate.invalidLegs.length,rejectedLabels:candidate.rejectedLabels.length,events:candidate.events.length,stops:candidate.stops.length},null,2));

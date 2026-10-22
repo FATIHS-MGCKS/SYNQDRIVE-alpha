@@ -125,6 +125,15 @@ export interface MotionFsmStopEpisode {
 export interface SparseVehicleSpeedSample {
   label: string;
   speedKmh: number;
+  /**
+   * When false, the sample is retained for audit/export but must not drive DIRECT FSM transitions
+   * (e.g. R1 bucket aggregation without provider measurement instant).
+   */
+  fsmPointAuthority?: boolean;
+}
+
+function sparseEligibleForFsmPointAuthority(sample: SparseVehicleSpeedSample | undefined): boolean {
+  return sample != null && sample.fsmPointAuthority !== false;
 }
 
 const FSM_NUMERIC_SPEED_QUALITIES: ReadonlySet<MotionCoreSpeedQuality | string> = new Set([
@@ -183,7 +192,7 @@ export function runMotionFsm(
   const opt = options;
   const ordered = orderMotionCoreGrid(buckets);
   const spBy = new Map(speedSamples.map((s) => [s.label, s]));
-  const sparse = new Map((sparseSpeed ?? []).map((s) => [s.label, s.speedKmh]));
+  const sparseByLabel = new Map((sparseSpeed ?? []).map((s) => [s.label, s]));
   const pres = new Set(
     ordered.filter((b) => b.availability === 'PRESENT').map((b) => b.bucketLabelUtc),
   );
@@ -236,11 +245,18 @@ export function runMotionFsm(
       present = false;
       flags.push('FROZEN_POSITION_TREATED_AS_NO_EVIDENCE');
     }
-
+    const sparseRow = sparseByLabel.get(lab);
+    const sparseAuthoritative = sparseEligibleForFsmPointAuthority(sparseRow);
+    const sparseKmh = sparseRow?.speedKmh ?? null;
+    if (sparseRow && !sparseAuthoritative) {
+      flags.push('SPARSE_AGGREGATION_LABEL_NOT_POINT_AUTHORITY');
+    }
     const directZero =
-      sparse.has(lab) && (sparse.get(lab) ?? p.stationaryBandMaxKmh + 1) <= p.stationaryBandMaxKmh;
+      sparseAuthoritative &&
+      sparseKmh != null &&
+      sparseKmh <= p.stationaryBandMaxKmh;
     const directMoving =
-      sparse.has(lab) && (sparse.get(lab) ?? 0) >= p.movingBandMinKmh;
+      sparseAuthoritative && sparseKmh != null && sparseKmh >= p.movingBandMinKmh;
 
     if (present && b.latitude != null && b.longitude != null) {
       const disp =
@@ -402,7 +418,7 @@ export function runMotionFsm(
         startingLen = state === 'STARTING' ? 1 : 0;
         stopObs = 0;
         gapLen = 0;
-        lastSpeed = sparse.get(lab)!;
+        lastSpeed = sparseKmh!;
         lastSpeedLabel = lab;
       } else if (gapLen > p.gapLongMaxS) {
         state = 'UNKNOWN';
@@ -479,7 +495,7 @@ export function runMotionFsm(
     }
 
     if (opt.evidencePropagation) {
-      const sparseHere = sparse.has(lab) ? sparse.get(lab)! : null;
+      const sparseHere = sparseAuthoritative ? sparseKmh : null;
       if (quality === 'DIRECT' && v != null && sparseHere == null && s!.quality !== 'OK') {
         quality = 'INFERRED';
         flags.push(`EVIDENCE_DOWNGRADED_C4_QUALITY=${s!.quality}`);
@@ -519,7 +535,7 @@ export function runMotionFsm(
       positionPresent: present,
       mode,
       flags,
-      sparseSpeedKmh: sparse.has(lab) ? sparse.get(lab)! : null,
+      sparseSpeedKmh: sparseKmh,
       speedQuality: v != null ? s!.quality : null,
     });
   }

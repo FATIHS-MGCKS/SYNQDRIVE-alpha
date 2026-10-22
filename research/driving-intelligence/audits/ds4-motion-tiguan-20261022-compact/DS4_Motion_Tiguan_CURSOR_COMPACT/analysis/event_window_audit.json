@@ -1,0 +1,691 @@
+[
+  {
+    "id": 1,
+    "start": "2026-10-22T18:40:48Z",
+    "end": "2026-10-22T18:41:01Z",
+    "local_start": "20:40:48",
+    "local_end": "20:41:01",
+    "direction": "DECELERATION",
+    "reference_start_kmh": 38,
+    "reference_end_kmh": 0,
+    "reference_mean_accel_mps2": -0.8118,
+    "c4_start_kmh": 35.137654132937385,
+    "c4_end_kmh": null,
+    "c4_metrics": {
+      "n": 8,
+      "mae": 2.943005314987986,
+      "median_abs": 3.025680117647278,
+      "rmse": 3.0136289179613525,
+      "bias": -2.943005314987986,
+      "p90_abs": 3.66791546336467,
+      "p95_abs": 3.685744888883199,
+      "within3": 0.5,
+      "within5": 1,
+      "within10": 1,
+      "max_abs": 3.7035743144017275,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [],
+    "all_overlapping_events": [],
+    "verdict": "NO_MATCHING_EVENT_REQUIRES_THRESHOLD_REVIEW",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:40:56Z",
+        "endLabel": "2026-10-22T18:40:58Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 17,
+        "endSpeedKmh": 6,
+        "deltaKmh": 11,
+        "meanAccelMps2": 1.528,
+        "peakAccel1sMps2": 1.667,
+        "peakAccel2sMps2": 1.528,
+        "durationS": 2,
+        "steps": 2,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00077.MOV"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "start": "2026-10-22T18:42:46Z",
+    "end": "2026-10-22T18:43:00Z",
+    "local_start": "20:42:46",
+    "local_end": "20:43:00",
+    "direction": "DECELERATION",
+    "reference_start_kmh": 48,
+    "reference_end_kmh": 0,
+    "reference_mean_accel_mps2": -0.9523,
+    "c4_start_kmh": 44.751800335374,
+    "c4_end_kmh": null,
+    "c4_metrics": {
+      "n": 13,
+      "mae": 1.9907045772418805,
+      "median_abs": 1.977767945185441,
+      "rmse": 2.168703174802751,
+      "bias": -1.9890642272694585,
+      "p90_abs": 3.0706352672393926,
+      "p95_abs": 3.425909825483708,
+      "within3": 0.8461538461538461,
+      "within5": 1,
+      "within10": 1,
+      "max_abs": 3.692475066770271,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [],
+    "all_overlapping_events": [],
+    "verdict": "NO_MATCHING_EVENT_REQUIRES_THRESHOLD_REVIEW",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:42:56Z",
+        "endLabel": "2026-10-22T18:42:58Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 14,
+        "endSpeedKmh": 3,
+        "deltaKmh": 11,
+        "meanAccelMps2": 1.528,
+        "peakAccel1sMps2": 1.667,
+        "peakAccel2sMps2": 1.528,
+        "durationS": 2,
+        "steps": 2,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00078.MOV"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "start": "2026-10-22T18:45:24Z",
+    "end": "2026-10-22T18:45:30Z",
+    "local_start": "20:45:24",
+    "local_end": "20:45:30",
+    "direction": "ACCELERATION",
+    "reference_start_kmh": 45,
+    "reference_end_kmh": 83,
+    "reference_mean_accel_mps2": 1.7593,
+    "c4_start_kmh": 44.00586422457082,
+    "c4_end_kmh": 79.06522846958693,
+    "c4_metrics": {
+      "n": 7,
+      "mae": 2.662666549998901,
+      "median_abs": 2.8150311186571315,
+      "rmse": 3.093753610880567,
+      "bias": -2.662666549998901,
+      "p90_abs": 4.5436209558737435,
+      "p95_abs": 5.000258024969245,
+      "within3": 0.5714285714285714,
+      "within5": 0.8571428571428571,
+      "within10": 1,
+      "max_abs": 5.456895094064748,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:45:24Z",
+        "endLabel": "2026-10-22T18:45:28Z",
+        "startSpeedKmh": 44,
+        "endSpeedKmh": 72.2,
+        "deltaKmh": 28.2,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:45:24Z",
+        "endLabel": "2026-10-22T18:45:28Z",
+        "startSpeedKmh": 44,
+        "endSpeedKmh": 72.2,
+        "deltaKmh": 28.2,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:45:25Z",
+        "endLabel": "2026-10-22T18:45:27Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 50,
+        "endSpeedKmh": 72,
+        "deltaKmh": 22,
+        "meanAccelMps2": 3.056,
+        "peakAccel1sMps2": 3.333,
+        "peakAccel2sMps2": 3.056,
+        "durationS": 2,
+        "steps": 2,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00080.MOV"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "start": "2026-10-22T18:47:00Z",
+    "end": "2026-10-22T18:47:07Z",
+    "local_start": "20:47:00",
+    "local_end": "20:47:07",
+    "direction": "ACCELERATION",
+    "reference_start_kmh": 50,
+    "reference_end_kmh": 90,
+    "reference_mean_accel_mps2": 1.5873,
+    "c4_start_kmh": 49.15127641071192,
+    "c4_end_kmh": 85.79440956137388,
+    "c4_metrics": {
+      "n": 8,
+      "mae": 2.7443853802342284,
+      "median_abs": 3.0318473966985877,
+      "rmse": 3.129895874624586,
+      "bias": -2.7443853802342284,
+      "p90_abs": 4.292715034722351,
+      "p95_abs": 4.394360396834621,
+      "within3": 0.5,
+      "within5": 1,
+      "within10": 1,
+      "max_abs": 4.496005758946893,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:47:00Z",
+        "endLabel": "2026-10-22T18:47:04Z",
+        "startSpeedKmh": 49.2,
+        "endSpeedKmh": 80.5,
+        "deltaKmh": 31.4,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:47:00Z",
+        "endLabel": "2026-10-22T18:47:04Z",
+        "startSpeedKmh": 49.2,
+        "endSpeedKmh": 80.5,
+        "deltaKmh": 31.4,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:47:00Z",
+        "endLabel": "2026-10-22T18:47:04Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 50,
+        "endSpeedKmh": 85,
+        "deltaKmh": 35,
+        "meanAccelMps2": 2.431,
+        "peakAccel1sMps2": 2.778,
+        "peakAccel2sMps2": 2.778,
+        "durationS": 4,
+        "steps": 4,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00080.MOV"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "start": "2026-10-22T18:47:30Z",
+    "end": "2026-10-22T18:47:50Z",
+    "local_start": "20:47:30",
+    "local_end": "20:47:50",
+    "direction": "DECELERATION",
+    "reference_start_kmh": 76,
+    "reference_end_kmh": 0,
+    "reference_mean_accel_mps2": -1.0555,
+    "c4_start_kmh": 71.39563657493854,
+    "c4_end_kmh": null,
+    "c4_metrics": {
+      "n": 20,
+      "mae": 3.043202220902993,
+      "median_abs": 3.2319442828516536,
+      "rmse": 3.30886618500129,
+      "bias": -3.038828647243888,
+      "p90_abs": 4.635362453467867,
+      "p95_abs": 4.916686738104614,
+      "within3": 0.4,
+      "within5": 1,
+      "within10": 1,
+      "max_abs": 4.961014288708199,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:47:42Z",
+        "endLabel": "2026-10-22T18:47:47Z",
+        "startSpeedKmh": 34.1,
+        "endSpeedKmh": 6.6,
+        "deltaKmh": 27.5,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:47:42Z",
+        "endLabel": "2026-10-22T18:47:47Z",
+        "startSpeedKmh": 34.1,
+        "endSpeedKmh": 6.6,
+        "deltaKmh": 27.5,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:47:42Z",
+        "endLabel": "2026-10-22T18:47:45Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 37,
+        "endSpeedKmh": 17,
+        "deltaKmh": 20,
+        "meanAccelMps2": 1.852,
+        "peakAccel1sMps2": 2.222,
+        "peakAccel2sMps2": 1.944,
+        "durationS": 3,
+        "steps": 3,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00080.MOV"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "start": "2026-10-22T18:58:17Z",
+    "end": "2026-10-22T18:58:22Z",
+    "local_start": "20:58:17",
+    "local_end": "20:58:22",
+    "direction": "DECELERATION",
+    "reference_start_kmh": 44,
+    "reference_end_kmh": 5,
+    "reference_mean_accel_mps2": -2.1667,
+    "c4_start_kmh": 34.38207823998713,
+    "c4_end_kmh": 8.520007987420462,
+    "c4_metrics": {
+      "n": 6,
+      "mae": 8.200495913765412,
+      "median_abs": 9.730266214365379,
+      "rmse": 8.92102647629713,
+      "bias": -7.027159917958591,
+      "p90_abs": 11.524375673684977,
+      "p95_abs": 11.596558315670162,
+      "within3": 0,
+      "within5": 0.3333333333333333,
+      "within10": 0.6666666666666666,
+      "max_abs": 11.668740957655345,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:58:16Z",
+        "endLabel": "2026-10-22T18:58:20Z",
+        "startSpeedKmh": 40.3,
+        "endSpeedKmh": 9.2,
+        "deltaKmh": 31.1,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:58:16Z",
+        "endLabel": "2026-10-22T18:58:20Z",
+        "startSpeedKmh": 40.3,
+        "endSpeedKmh": 9.2,
+        "deltaKmh": 31.1,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      },
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:58:22Z",
+        "endLabel": "2026-10-22T18:58:25Z",
+        "startSpeedKmh": 8.5,
+        "endSpeedKmh": 25,
+        "deltaKmh": 16.5,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:58:17Z",
+        "endLabel": "2026-10-22T18:58:21Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 44,
+        "endSpeedKmh": 9,
+        "deltaKmh": 35,
+        "meanAccelMps2": 2.431,
+        "peakAccel1sMps2": 2.778,
+        "peakAccel2sMps2": 2.639,
+        "durationS": 4,
+        "steps": 4,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00084.MOV"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "start": "2026-10-22T18:59:00Z",
+    "end": "2026-10-22T18:59:07Z",
+    "local_start": "20:59:00",
+    "local_end": "20:59:07",
+    "direction": "ACCELERATION",
+    "reference_start_kmh": 0,
+    "reference_end_kmh": 53,
+    "reference_mean_accel_mps2": 2.1032,
+    "c4_start_kmh": 7.376599388408317,
+    "c4_end_kmh": 50.380190293510815,
+    "c4_metrics": {
+      "n": 8,
+      "mae": 6.082860701596051,
+      "median_abs": 6.20150806874334,
+      "rmse": 7.527430745386999,
+      "bias": 5.267430269165395,
+      "p90_abs": 10.70199235301751,
+      "p95_abs": 12.5417216816684,
+      "within3": 0.375,
+      "within5": 0.375,
+      "within10": 0.875,
+      "max_abs": 14.381451010319296,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:59:00Z",
+        "endLabel": "2026-10-22T18:59:04Z",
+        "startSpeedKmh": 7.4,
+        "endSpeedKmh": 46,
+        "deltaKmh": 38.6,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:59:00Z",
+        "endLabel": "2026-10-22T18:59:04Z",
+        "startSpeedKmh": 7.4,
+        "endSpeedKmh": 46,
+        "deltaKmh": 38.6,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:59:01Z",
+        "endLabel": "2026-10-22T18:59:05Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 4,
+        "endSpeedKmh": 49,
+        "deltaKmh": 45,
+        "meanAccelMps2": 3.125,
+        "peakAccel1sMps2": 4.722,
+        "peakAccel2sMps2": 3.611,
+        "durationS": 4,
+        "steps": 4,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00084.MOV"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "start": "2026-10-22T18:59:27Z",
+    "end": "2026-10-22T18:59:31Z",
+    "local_start": "20:59:27",
+    "local_end": "20:59:31",
+    "direction": "ACCELERATION",
+    "reference_start_kmh": 38,
+    "reference_end_kmh": 65,
+    "reference_mean_accel_mps2": 1.875,
+    "c4_start_kmh": 40.42038488735455,
+    "c4_end_kmh": 59.27604249438833,
+    "c4_metrics": {
+      "n": 5,
+      "mae": 4.690276221603997,
+      "median_abs": 5.723957505611672,
+      "rmse": 5.533093954154457,
+      "bias": 2.3283867485486183,
+      "p90_abs": 7.582606318026755,
+      "p95_abs": 7.6215464160532775,
+      "within3": 0.4,
+      "within5": 0.4,
+      "within10": 1,
+      "max_abs": 7.6604865140798,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:59:27Z",
+        "endLabel": "2026-10-22T18:59:29Z",
+        "startSpeedKmh": 40.4,
+        "endSpeedKmh": 57.5,
+        "deltaKmh": 17,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:59:27Z",
+        "endLabel": "2026-10-22T18:59:29Z",
+        "startSpeedKmh": 40.4,
+        "endSpeedKmh": 57.5,
+        "deltaKmh": 17,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T18:59:28Z",
+        "endLabel": "2026-10-22T18:59:30Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 41,
+        "endSpeedKmh": 61,
+        "deltaKmh": 20,
+        "meanAccelMps2": 2.778,
+        "peakAccel1sMps2": 3.056,
+        "peakAccel2sMps2": 2.778,
+        "durationS": 2,
+        "steps": 2,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00084.MOV"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "start": "2026-10-22T18:59:31Z",
+    "end": "2026-10-22T18:59:42Z",
+    "local_start": "20:59:31",
+    "local_end": "20:59:42",
+    "direction": "DECELERATION",
+    "reference_start_kmh": 65,
+    "reference_end_kmh": 18,
+    "reference_mean_accel_mps2": -1.1867,
+    "c4_start_kmh": 59.27604249438833,
+    "c4_end_kmh": 17.05841503658896,
+    "c4_metrics": {
+      "n": 12,
+      "mae": 6.770995763238787,
+      "median_abs": 7.162805137669743,
+      "rmse": 7.228926307330252,
+      "bias": -6.770995763238787,
+      "p90_abs": 9.252145328405282,
+      "p95_abs": 9.677407264583312,
+      "within3": 0.08333333333333333,
+      "within5": 0.16666666666666666,
+      "within10": 0.9166666666666666,
+      "max_abs": 10.151934088826575,
+      "abs_error_gt100": 0
+    },
+    "matching_events": [
+      {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:59:37Z",
+        "endLabel": "2026-10-22T18:59:40Z",
+        "startSpeedKmh": 37.6,
+        "endSpeedKmh": 19.1,
+        "deltaKmh": 18.5,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "all_overlapping_events": [
+      {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:59:37Z",
+        "endLabel": "2026-10-22T18:59:40Z",
+        "startSpeedKmh": 37.6,
+        "endSpeedKmh": 19.1,
+        "deltaKmh": 18.5,
+        "quality": "OK",
+        "flags": [
+          "L3_DIRECT"
+        ]
+      }
+    ],
+    "verdict": "DIRECTION_MATCH_TIME_OVERLAP",
+    "scope": "selected window only; no global precision/recall; no pedal ground truth",
+    "reference_threshold_diagnostic_events": [
+      {
+        "trip": 0,
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T18:59:38Z",
+        "endLabel": "2026-10-22T18:59:41Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 41,
+        "endSpeedKmh": 20,
+        "deltaKmh": 21,
+        "meanAccelMps2": 1.944,
+        "peakAccel1sMps2": 2.222,
+        "peakAccel2sMps2": 2.083,
+        "durationS": 3,
+        "steps": 3,
+        "coverageRatio": 1,
+        "quality": "OK",
+        "source": "VIDEO_TACHO_DIAGNOSTIC",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [],
+        "clip": "TC_00084.MOV"
+      }
+    ]
+  }
+]

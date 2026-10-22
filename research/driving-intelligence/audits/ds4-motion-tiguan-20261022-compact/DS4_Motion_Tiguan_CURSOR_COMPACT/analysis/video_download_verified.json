@@ -1,0 +1,17 @@
+[
+  {
+    "name": "TC_00080.MOV",
+    "sha256": "ae60ed4854e44ae49609e57f1bde69c7cf35f45879b52126fd371820797595df",
+    "bytes": 134142925
+  },
+  {
+    "name": "TC_00081.MOV",
+    "sha256": "732e462f254480a0e1dcfb9dcf2f38a5a124a6e9a93d2508ede93decc54e2c09",
+    "bytes": 133785424
+  },
+  {
+    "name": "TC_00084.MOV",
+    "sha256": "07880b9999d6f82f14c4fd0fcf58b48e9348b022365a3365b350e9e3bcb0e7d5",
+    "bytes": 134667662
+  }
+]
