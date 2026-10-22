@@ -1,0 +1,296 @@
+import type { Logger } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import type { PrismaService } from '@shared/database/prisma.service';
+import type { TripMetricsService } from '../../../observability/trip-metrics.service';
+import type { StartBoundaryEvidenceContext } from './trip-start-boundary-legacy-resolution';
+import type { ShadowStartBoundaryAdmissionSummary } from './trip-start-boundary-admission-shadow.runtime';
+
+export const START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY =
+  'startBoundaryAdmissionShadowV1';
+
+export const START_BOUNDARY_ADMISSION_SHADOW_DURABLE_VERSION = 'p1b10-v1';
+
+export type StartBoundaryAdmissionShadowExecutionStatus =
+  | 'EXECUTED'
+  | 'NOT_EXECUTED';
+
+export type StartBoundaryAdmissionShadowNotExecutedReason =
+  | 'SHADOW_DISABLED'
+  | 'MID_TRIP_GAP_SPLIT_FOLLOW_ON'
+  | 'SHADOW_RUNNER_SKIPPED';
+
+export type StartBoundaryAdmissionShadowPersistenceStatus =
+  | 'WRITTEN'
+  | 'SKIPPED_ALREADY_PRESENT'
+  | 'FAILED';
+
+export type StartBoundaryAdmissionShadowDataSourcesAtDecision = {
+  corePointCount: number;
+  segmentCount: number;
+  routePointCountInEvidence: number;
+  matchingSegmentPresent: boolean;
+  legacyRouteFetchPerformed: boolean;
+  additionalShadowRouteFetchPerformed: boolean | null;
+};
+
+export type StartBoundaryAdmissionShadowDurableRecord = {
+  version: typeof START_BOUNDARY_ADMISSION_SHADOW_DURABLE_VERSION;
+  tripId: string;
+  vehicleId: string;
+  organizationId: string | null;
+  decisionAt: string;
+  releaseSha: string | null;
+  executionStatus: StartBoundaryAdmissionShadowExecutionStatus;
+  notExecutedReason?: StartBoundaryAdmissionShadowNotExecutedReason;
+  fsmCandidateStartAt: string;
+  fsmConfirmationAt: string;
+  shadow: ShadowStartBoundaryAdmissionSummary | null;
+  dataSourcesAtDecision: StartBoundaryAdmissionShadowDataSourcesAtDecision;
+  persistence: {
+    status: StartBoundaryAdmissionShadowPersistenceStatus;
+    persistedAt: string;
+    errorMessage?: string;
+  };
+};
+
+function asRecord(meta: unknown): Record<string, unknown> {
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return {};
+  return meta as Record<string, unknown>;
+}
+
+export function readStartBoundaryAdmissionShadowDurable(
+  rawDetectionMeta: unknown,
+): StartBoundaryAdmissionShadowDurableRecord | null {
+  const raw = asRecord(rawDetectionMeta)[
+    START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY
+  ];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  return raw as StartBoundaryAdmissionShadowDurableRecord;
+}
+
+function resolveReleaseSha(env: NodeJS.ProcessEnv = process.env): string | null {
+  const sha = env.SYNQDRIVE_DEPLOYED_GIT_SHA?.trim();
+  if (!sha || sha.length < 8) return null;
+  return sha;
+}
+
+export function buildStartBoundaryAdmissionShadowDataSourcesAtDecision(params: {
+  evidence: StartBoundaryEvidenceContext;
+  corePointCount: number;
+  shadowSummary: ShadowStartBoundaryAdmissionSummary | null;
+}): StartBoundaryAdmissionShadowDataSourcesAtDecision {
+  return {
+    corePointCount: params.corePointCount,
+    segmentCount: params.evidence.segments.length,
+    routePointCountInEvidence: params.evidence.routePoints.length,
+    matchingSegmentPresent: params.evidence.matchingSegment != null,
+    legacyRouteFetchPerformed: params.evidence.legacyRouteFetchPerformed,
+    additionalShadowRouteFetchPerformed:
+      params.shadowSummary?.additionalShadowRouteFetchPerformed ?? null,
+  };
+}
+
+export function buildStartBoundaryAdmissionShadowDurableRecord(params: {
+  tripId: string;
+  vehicleId: string;
+  organizationId: string | null;
+  candidateStartAt: Date;
+  confirmedAt: Date;
+  shadowSummary: ShadowStartBoundaryAdmissionSummary | null;
+  shadowEnabled: boolean;
+  evidence: StartBoundaryEvidenceContext;
+  corePointCount: number;
+  notExecutedReason?: StartBoundaryAdmissionShadowNotExecutedReason;
+  env?: NodeJS.ProcessEnv;
+}): StartBoundaryAdmissionShadowDurableRecord {
+  const executed =
+    params.shadowSummary != null &&
+    params.shadowEnabled &&
+    params.notExecutedReason == null;
+
+  const executionStatus: StartBoundaryAdmissionShadowExecutionStatus = executed
+    ? 'EXECUTED'
+    : 'NOT_EXECUTED';
+
+  let notExecutedReason = params.notExecutedReason;
+  if (executionStatus === 'NOT_EXECUTED' && !notExecutedReason) {
+    notExecutedReason = params.shadowEnabled
+      ? 'SHADOW_RUNNER_SKIPPED'
+      : 'SHADOW_DISABLED';
+  }
+
+  return {
+    version: START_BOUNDARY_ADMISSION_SHADOW_DURABLE_VERSION,
+    tripId: params.tripId,
+    vehicleId: params.vehicleId,
+    organizationId: params.organizationId,
+    decisionAt: params.confirmedAt.toISOString(),
+    releaseSha: resolveReleaseSha(params.env),
+    executionStatus,
+    ...(executionStatus === 'NOT_EXECUTED' && notExecutedReason
+      ? { notExecutedReason }
+      : {}),
+    fsmCandidateStartAt: params.candidateStartAt.toISOString(),
+    fsmConfirmationAt: params.confirmedAt.toISOString(),
+    shadow: executed ? params.shadowSummary : null,
+    dataSourcesAtDecision: buildStartBoundaryAdmissionShadowDataSourcesAtDecision(
+      {
+        evidence: params.evidence,
+        corePointCount: params.corePointCount,
+        shadowSummary: params.shadowSummary,
+      },
+    ),
+    persistence: {
+      status: 'WRITTEN',
+      persistedAt: new Date().toISOString(),
+    },
+  };
+}
+
+export function mergeStartBoundaryAdmissionShadowDurableIntoRawMeta(
+  existingMeta: unknown,
+  record: StartBoundaryAdmissionShadowDurableRecord,
+): Record<string, unknown> {
+  const base = asRecord(existingMeta);
+  if (readStartBoundaryAdmissionShadowDurable(base)) {
+    return base;
+  }
+  return {
+    ...base,
+    [START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY]: record,
+  };
+}
+
+export function mergeMidGapSplitFollowOnShadowNotExecutedMeta(
+  existingMeta: unknown,
+  params: {
+    tripId: string;
+    vehicleId: string;
+    organizationId: string | null;
+    secondStartAt: Date;
+    splitFromTripId: string;
+  },
+): Record<string, unknown> {
+  const base = asRecord(existingMeta);
+  if (readStartBoundaryAdmissionShadowDurable(base)) {
+    return base;
+  }
+  const record: StartBoundaryAdmissionShadowDurableRecord = {
+    version: START_BOUNDARY_ADMISSION_SHADOW_DURABLE_VERSION,
+    tripId: params.tripId,
+    vehicleId: params.vehicleId,
+    organizationId: params.organizationId,
+    decisionAt: params.secondStartAt.toISOString(),
+    releaseSha: resolveReleaseSha(),
+    executionStatus: 'NOT_EXECUTED',
+    notExecutedReason: 'MID_TRIP_GAP_SPLIT_FOLLOW_ON',
+    fsmCandidateStartAt: params.secondStartAt.toISOString(),
+    fsmConfirmationAt: params.secondStartAt.toISOString(),
+    shadow: null,
+    dataSourcesAtDecision: {
+      corePointCount: 0,
+      segmentCount: 0,
+      routePointCountInEvidence: 0,
+      matchingSegmentPresent: false,
+      legacyRouteFetchPerformed: false,
+      additionalShadowRouteFetchPerformed: null,
+    },
+    persistence: {
+      status: 'WRITTEN',
+      persistedAt: new Date().toISOString(),
+    },
+  };
+  return {
+    ...base,
+    [START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY]: record,
+    splitFrom: params.splitFromTripId,
+  };
+}
+
+export type PersistStartBoundaryAdmissionShadowDurableParams = {
+  tripId: string;
+  vehicleId: string;
+  organizationId: string | null;
+  candidateStartAt: Date;
+  confirmedAt: Date;
+  shadowSummary: ShadowStartBoundaryAdmissionSummary | null;
+  shadowEnabled: boolean;
+  evidence: StartBoundaryEvidenceContext;
+  corePointCount: number;
+  prisma: PrismaService | Prisma.TransactionClient;
+  tripMetrics?: TripMetricsService | null;
+  logger?: Logger;
+  env?: NodeJS.ProcessEnv;
+};
+
+export async function persistStartBoundaryAdmissionShadowDurable(
+  params: PersistStartBoundaryAdmissionShadowDurableParams,
+): Promise<StartBoundaryAdmissionShadowPersistenceStatus> {
+  try {
+    const existing = await params.prisma.vehicleTrip.findUnique({
+      where: { id: params.tripId },
+      select: { id: true, vehicleId: true, rawDetectionMeta: true },
+    });
+    if (!existing) {
+      throw new Error(`trip ${params.tripId} not found`);
+    }
+    if (existing.vehicleId !== params.vehicleId) {
+      throw new Error(
+        `trip ${params.tripId} vehicle mismatch expected=${params.vehicleId}`,
+      );
+    }
+    if (readStartBoundaryAdmissionShadowDurable(existing.rawDetectionMeta)) {
+      return 'SKIPPED_ALREADY_PRESENT';
+    }
+
+    const record = buildStartBoundaryAdmissionShadowDurableRecord({
+      tripId: params.tripId,
+      vehicleId: params.vehicleId,
+      organizationId: params.organizationId,
+      candidateStartAt: params.candidateStartAt,
+      confirmedAt: params.confirmedAt,
+      shadowSummary: params.shadowSummary,
+      shadowEnabled: params.shadowEnabled,
+      evidence: params.evidence,
+      corePointCount: params.corePointCount,
+      env: params.env,
+    });
+
+    const merged = mergeStartBoundaryAdmissionShadowDurableIntoRawMeta(
+      existing.rawDetectionMeta,
+      record,
+    );
+
+    await params.prisma.vehicleTrip.update({
+      where: { id: params.tripId },
+      data: { rawDetectionMeta: merged as Prisma.InputJsonValue },
+    });
+
+    return 'WRITTEN';
+  } catch (err) {
+    params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors?.inc({
+      phase: 'durable_persist',
+    });
+    params.logger?.warn(
+      `Start boundary admission shadow durable persist failed (non-blocking): trip=${params.tripId} vehicle=${params.vehicleId} ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    return 'FAILED';
+  }
+}
+
+export async function readStartBoundaryAdmissionShadowDurableForOrgScopedTrip(
+  prisma: PrismaService,
+  params: { tripId: string; organizationId: string },
+): Promise<StartBoundaryAdmissionShadowDurableRecord | null> {
+  const trip = await prisma.vehicleTrip.findFirst({
+    where: {
+      id: params.tripId,
+      vehicle: { organizationId: params.organizationId },
+    },
+    select: { rawDetectionMeta: true },
+  });
+  if (!trip) return null;
+  return readStartBoundaryAdmissionShadowDurable(trip.rawDetectionMeta);
+}

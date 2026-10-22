@@ -36,6 +36,7 @@ import {
   buildMergeReopenRecoveryMeta,
   mergeLifecycleRecoveryMeta,
 } from '../trip-lifecycle-recovery-meta';
+import { mergeMidGapSplitFollowOnShadowNotExecutedMeta } from '../start-boundary-admission/trip-start-boundary-admission-durable.persistence';
 
 /**
  * TripDecisionEngine
@@ -540,6 +541,13 @@ export class TripDecisionEngine {
         },
       });
 
+      const splitFollowOnBaseMeta = {
+        splitFrom: params.tripId,
+        splitReason: params.reason,
+        splitTriggeredBy: params.triggeredBy,
+        splitGapMs: params.gapMs,
+      };
+
       const secondTrip = await writeClient.vehicleTrip.create({
         data: {
           vehicleId: originalTrip.vehicleId,
@@ -558,12 +566,23 @@ export class TripDecisionEngine {
           behaviorSummaryStatus: 'PENDING',
           drivingImpactStatus: 'PENDING',
           isRepaired: params.triggeredBy === 'RECONCILIATION',
-          rawDetectionMeta: {
-            splitFrom: params.tripId,
-            splitReason: params.reason,
-            splitTriggeredBy: params.triggeredBy,
-            splitGapMs: params.gapMs,
-          } as any,
+          rawDetectionMeta: splitFollowOnBaseMeta as any,
+        },
+      });
+
+      await writeClient.vehicleTrip.update({
+        where: { id: secondTrip.id },
+        data: {
+          rawDetectionMeta: mergeMidGapSplitFollowOnShadowNotExecutedMeta(
+            splitFollowOnBaseMeta,
+            {
+              tripId: secondTrip.id,
+              vehicleId: originalTrip.vehicleId,
+              organizationId: vehicleRow?.organizationId ?? null,
+              secondStartAt: params.secondStartAt,
+              splitFromTripId: params.tripId,
+            },
+          ) as any,
         },
       });
 

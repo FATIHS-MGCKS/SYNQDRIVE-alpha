@@ -84,7 +84,9 @@ import { isTripStartBoundaryAdmissionShadowEnabledForVehicle } from './start-bou
 import {
   mergeShadowStartBoundaryIntoEvidenceSummary,
   runStartBoundaryAdmissionShadow,
+  type ShadowStartBoundaryAdmissionSummary,
 } from './start-boundary-admission/trip-start-boundary-admission-shadow.runtime';
+import { persistStartBoundaryAdmissionShadowDurable } from './start-boundary-admission/trip-start-boundary-admission-durable.persistence';
 import { resolveTripStartIntegrationModality } from './start-boundary-admission/trip-start-boundary-integration-modality';
 import {
   resolveLegacyConfirmedStartBoundary,
@@ -1377,6 +1379,8 @@ export class TripDetectionOrchestrationService {
             now.getTime() - this.tripStartBoundaryMaxLookbackMs,
           ),
         );
+        let startBoundaryShadowSummary: ShadowStartBoundaryAdmissionSummary | null =
+          null;
         let startEvidenceSummary = {
           ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
           startCandidateAt: startAt.toISOString(),
@@ -1428,6 +1432,7 @@ export class TripDetectionOrchestrationService {
               tripMetrics: this.tripMetrics,
               logger: this.logger,
             });
+            startBoundaryShadowSummary = shadowSummary;
             startEvidenceSummary = mergeShadowStartBoundaryIntoEvidenceSummary(
               startEvidenceSummary,
               shadowSummary,
@@ -1517,6 +1522,20 @@ export class TripDetectionOrchestrationService {
           );
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+          await persistStartBoundaryAdmissionShadowDurable({
+            tripId: previousTrip.id,
+            vehicleId,
+            organizationId: det.organizationId ?? null,
+            candidateStartAt: startAt,
+            confirmedAt: now,
+            shadowSummary: startBoundaryShadowSummary,
+            shadowEnabled: isTripStartBoundaryAdmissionShadowEnabledForVehicle(vehicleId),
+            evidence: boundaryResolution.evidence,
+            corePointCount: corePoints.length,
+            prisma: this.prisma,
+            tripMetrics: this.tripMetrics,
+            logger: this.logger,
+          });
           runTripObservabilitySafely(this.logger,'start_recognition_merge', () => {
             observeStartRecognitionLatency(this.tripMetrics, {
               profile: profileStr,
@@ -1596,6 +1615,21 @@ export class TripDetectionOrchestrationService {
           );
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+
+          await persistStartBoundaryAdmissionShadowDurable({
+            tripId: trip.id,
+            vehicleId,
+            organizationId: det.organizationId ?? null,
+            candidateStartAt: startAt,
+            confirmedAt: now,
+            shadowSummary: startBoundaryShadowSummary,
+            shadowEnabled: isTripStartBoundaryAdmissionShadowEnabledForVehicle(vehicleId),
+            evidence: boundaryResolution.evidence,
+            corePointCount: corePoints.length,
+            prisma: this.prisma,
+            tripMetrics: this.tripMetrics,
+            logger: this.logger,
+          });
 
           this.fetchAndStoreStartTemperature(
             dimoTokenId,
