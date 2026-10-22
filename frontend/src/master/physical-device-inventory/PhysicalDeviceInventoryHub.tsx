@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Package, Plus, RefreshCw } from 'lucide-react';
+import { Loader2, Package, Plus, Radar, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
@@ -33,6 +33,10 @@ import {
   type PhysicalDeviceStockSummaryDto,
 } from '../../lib/physical-device-inventory.types';
 import { PhysicalDeviceDetailDialog } from './PhysicalDeviceDetailDialog';
+import { PhysicalDeviceIdentityMonitoringPanel } from './PhysicalDeviceIdentityMonitoringPanel';
+import { MasterPageTabs } from '../shell/MasterPageTabs';
+
+type PdiHubTab = 'stock' | 'monitoring';
 
 interface PhysicalDeviceInventoryHubProps {
   organizations: Organization[];
@@ -57,6 +61,7 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
   const [intakeNotes, setIntakeNotes] = useState('');
   const [detailDeviceId, setDetailDeviceId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<PdiHubTab>('stock');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,26 +179,8 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
     [t, orgNameById],
   );
 
-  return (
-    <div className="space-y-6">
-      <MasterPageHeader
-        title={t('master.physicalDeviceInventory.title')}
-        description={t('master.physicalDeviceInventory.description')}
-        icon={<Package className="h-6 w-6" />}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              {t('master.physicalDeviceInventory.refresh')}
-            </Button>
-            <Button size="sm" onClick={() => setIntakeOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('master.physicalDeviceInventory.intakeButton')}
-            </Button>
-          </div>
-        }
-      />
-
+  const stockContent = (
+    <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label={t('master.physicalDeviceInventory.stockTotal')}
@@ -271,6 +258,50 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
         onOpenChange={setDetailOpen}
         onUpdated={() => void load()}
       />
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <MasterPageHeader
+        title={t('master.physicalDeviceInventory.title')}
+        description={t('master.physicalDeviceInventory.description')}
+        icon={<Package className="h-6 w-6" />}
+        actions={
+          activeTab === 'stock' ? (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {t('master.physicalDeviceInventory.refresh')}
+              </Button>
+              <Button size="sm" onClick={() => setIntakeOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('master.physicalDeviceInventory.intakeButton')}
+              </Button>
+            </div>
+          ) : null
+        }
+      />
+
+      <MasterPageTabs<PdiHubTab>
+        ariaLabel={t('master.physicalDeviceInventory.tabs.aria')}
+        activeId={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          {
+            id: 'stock',
+            label: t('master.physicalDeviceInventory.tabs.stock'),
+            icon: <Package className="h-4 w-4" />,
+          },
+          {
+            id: 'monitoring',
+            label: t('master.physicalDeviceInventory.tabs.monitoring'),
+            icon: <Radar className="h-4 w-4" />,
+          },
+        ]}
+      />
+
+      {activeTab === 'stock' ? stockContent : <PhysicalDeviceIdentityMonitoringPanel />}
 
       <Dialog open={intakeOpen} onOpenChange={setIntakeOpen}>
         <DialogContent className="max-w-lg">

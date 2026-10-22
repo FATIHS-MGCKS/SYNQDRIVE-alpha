@@ -17,6 +17,7 @@ import { MarkPhysicalDeviceDefectiveDto } from './dto/mark-physical-device-defec
 import { MarkPhysicalDeviceLostDto } from './dto/mark-physical-device-lost.dto';
 import { RetirePhysicalDeviceDto } from './dto/retire-physical-device.dto';
 import { assertPhysicalDeviceLifecycleActivityRecorded } from './physical-device-inventory-lifecycle-activity';
+import { PdiIdentityMonitoringService } from './pdi-identity-monitoring.service';
 
 @Controller('admin/physical-device-inventory')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -25,12 +26,19 @@ import { assertPhysicalDeviceLifecycleActivityRecorded } from './physical-device
 export class PhysicalDeviceInventoryController {
   constructor(
     private readonly inventory: PhysicalDeviceInventoryService,
+    private readonly identityMonitoring: PdiIdentityMonitoringService,
     private readonly audit: AuditService,
   ) {}
 
   @Get('summary')
   async getSummary() {
     return this.inventory.getStockSummary();
+  }
+
+  /** Read-only live identity alignment (PDI INSTALL vs DIMO mirror). No drift history in V1. */
+  @Get('identity-monitoring/live-snapshot')
+  async getIdentityMonitoringLiveSnapshot() {
+    return this.identityMonitoring.getLiveSnapshot();
   }
 
   @Get('devices')
