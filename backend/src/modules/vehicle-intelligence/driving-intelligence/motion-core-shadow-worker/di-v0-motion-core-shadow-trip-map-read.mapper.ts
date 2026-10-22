@@ -162,6 +162,39 @@ function mapOneEvent(
   };
 }
 
+export function stripMotionTripMapSamples(
+  samples: DiV0MotionCoreShadowTripMapSampleDto[],
+): DiV0MotionCoreShadowTripMapSampleDto[] {
+  return samples.map((s) => ({
+    ...s,
+    latitude: null,
+    longitude: null,
+    positionAvailability: null,
+  }));
+}
+
+export function stripMotionTripMapEventGeometry(
+  events: DiV0MotionCoreShadowTripMapEventDto[],
+): DiV0MotionCoreShadowTripMapEventDto[] {
+  return events.map((e) => ({
+    ...e,
+    latitude: null,
+    longitude: null,
+    positionResolved: false,
+  }));
+}
+
+export function stripMotionTripMapStopGeometry(
+  stops: DiV0MotionCoreShadowTripMapStopDto[],
+): DiV0MotionCoreShadowTripMapStopDto[] {
+  return stops.map((s) => ({
+    ...s,
+    latitude: null,
+    longitude: null,
+    positionResolved: false,
+  }));
+}
+
 export function mapMotionTripMapStops(
   episodes: MotionFsmStopEpisode[],
   sampleByLabel: Map<string, DiV0MotionCoreShadowTripMapSampleDto>,

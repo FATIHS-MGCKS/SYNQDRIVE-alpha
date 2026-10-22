@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMotionSpeedLineFeatures,
   groupMotionEventsByCoordinate,
+  isMotionMapActive,
   motionCoordKey,
   pickMotionSampleAtPoint,
+  resolveMotionSamplesForMap,
 } from './motion-map.utils';
 import type { TripMotionMapEvent } from './motion-map.types';
 import type { TripMotionMapSample } from './motion-map.types';
@@ -130,5 +132,45 @@ describe('motion map grouping and route pick', () => {
     };
     const picked = pickMotionSampleAtPoint(map, samples, { x: 110, y: 100 });
     expect(picked?.bucketLabelUtc).toBe('2026-01-01T10:00:00Z');
+  });
+
+  it('does not align motion to Mapbox route when snapshot binding is unverified', () => {
+    const payload = {
+      status: 'SUCCEEDED' as const,
+      previewLabel: 'S4 Motion · vorläufig' as const,
+      runId: 'r1',
+      workItemId: 'w1',
+      pinnedSnapshotHash: 'h',
+      combinedInputIdentity: 'i',
+      algorithmVersions: null,
+      computedAtUtc: null,
+      geometrySource: 'NONE' as const,
+      geometryNote: null,
+      samples: [
+        {
+          bucketLabelUtc: '2026-01-01T10:00:00Z',
+          speedKmh: 50,
+          motionState: 'MOVING',
+          evidenceQuality: 'DIRECT',
+          latitude: null,
+          longitude: null,
+          positionAvailability: null,
+        },
+      ],
+      events: [],
+      stopEpisodes: [],
+      limitations: [],
+      failureCode: null,
+      snapshotBindingVerified: false,
+      newerFailedRunId: null,
+      newerFailedRunStatus: null,
+    };
+    const routePoints = [
+      { timestamp: '2026-01-01T10:00:00Z', latitude: 51, longitude: 9, speedKmh: 30 },
+      { timestamp: '2026-01-01T10:00:01Z', latitude: 51.1, longitude: 9.1, speedKmh: 30 },
+    ];
+    const resolved = resolveMotionSamplesForMap(payload, routePoints);
+    expect(resolved.samples[0]?.latitude).toBeNull();
+    expect(isMotionMapActive(payload)).toBe(false);
   });
 });

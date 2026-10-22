@@ -87,4 +87,41 @@ describe('DiV0MotionCoreShadowTripMapReadService — run selection', () => {
     expect(res.newerFailedRunId).toBe('run-new-fail');
     expect(res.newerFailedRunStatus).toBe('FAILED');
   });
+
+  it('strips map geometry when snapshot binding is not verified', async () => {
+    const succeeded = {
+      id: 'run-ok',
+      shadowStatus: 'SUCCEEDED',
+      workItemId: 'wi',
+      pinnedSnapshotHash: 'hash',
+      combinedInputIdentity: 'id',
+      payloadGzip: Buffer.from(''),
+      summaryJson: { limitations: [] },
+    };
+    const { service, runs } = makeService({
+      findLatestRunForTrip: jest.fn().mockResolvedValue(succeeded),
+      findLatestSucceededRunForTrip: jest.fn().mockResolvedValue(succeeded),
+    });
+    jest.spyOn(runs, 'decodePayload').mockReturnValue({
+      contract: {
+        algorithmVersions: { c4: '1', fsm: '1', events: '1', bundle: '1' },
+        timeSemantics: { computedAtUtc: '2026-01-01T00:00:00Z' },
+        sparse: { limitations: [] },
+      },
+      speeds: [{ bucketLabelUtc: '2026-01-01T10:00:00Z', speedKmh: 40 }],
+      fsmLabels: [{ bucketLabelUtc: '2026-01-01T10:00:00Z', state: 'MOVING', evidenceQuality: 'DIRECT' }],
+      events: [],
+      stopEpisodes: [],
+    } as never);
+    jest.spyOn(service as unknown as { loadPositionGrid: () => Promise<unknown> }, 'loadPositionGrid').mockResolvedValue({
+      rows: [{ bucketLabelUtc: '2026-01-01T10:00:00Z', latitude: 50, longitude: 8, availability: 'PRESENT' }],
+      snapshotBindingVerified: false,
+    });
+
+    const res = await service.readForTrip(organizationId, vehicleId, tripId);
+    expect(res.snapshotBindingVerified).toBe(false);
+    expect(res.geometrySource).toBe('NONE');
+    expect(res.samples.every((s) => s.latitude == null && s.longitude == null)).toBe(true);
+    expect(res.limitations).toContain('SNAPSHOT_BINDING_UNVERIFIED');
+  });
 });

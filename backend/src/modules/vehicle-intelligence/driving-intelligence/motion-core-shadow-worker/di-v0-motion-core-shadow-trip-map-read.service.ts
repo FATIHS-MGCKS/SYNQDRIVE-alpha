@@ -9,6 +9,9 @@ import {
   buildMotionTripMapSamples,
   mapMotionTripMapEvents,
   mapMotionTripMapStops,
+  stripMotionTripMapEventGeometry,
+  stripMotionTripMapSamples,
+  stripMotionTripMapStopGeometry,
   type MotionMapPositionRow,
 } from './di-v0-motion-core-shadow-trip-map-read.mapper';
 import type { DiV0MotionCoreShadowTripMapReadResponse } from './di-v0-motion-core-shadow-trip-map-read.types';
@@ -95,15 +98,10 @@ export class DiV0MotionCoreShadowTripMapReadService {
       run.pinnedSnapshotHash,
     );
     const positions = positionLoad.rows;
-    const { samples, geometrySource, geometryNote } = buildMotionTripMapSamples(payload, positions, []);
-    const sampleByLabel = new Map(samples.map((s) => [s.bucketLabelUtc, s]));
-    const events = mapMotionTripMapEvents(payload, sampleByLabel);
-    const stopEpisodes = mapMotionTripMapStops(payload.stopEpisodes, sampleByLabel);
-
-    const status =
-      events.length === 0 && stopEpisodes.length === 0 && samples.every((s) => s.speedKmh == null)
-        ? 'SUCCEEDED_EMPTY'
-        : 'SUCCEEDED';
+    let { samples, geometrySource, geometryNote } = buildMotionTripMapSamples(payload, positions, []);
+    let sampleByLabel = new Map(samples.map((s) => [s.bucketLabelUtc, s]));
+    let events = mapMotionTripMapEvents(payload, sampleByLabel);
+    let stopEpisodes = mapMotionTripMapStops(payload.stopEpisodes, sampleByLabel);
 
     const limitations = [
       ...payload.contract.sparse.limitations,
@@ -111,7 +109,18 @@ export class DiV0MotionCoreShadowTripMapReadService {
     ];
     if (!positionLoad.snapshotBindingVerified) {
       limitations.push('SNAPSHOT_BINDING_UNVERIFIED');
+      samples = stripMotionTripMapSamples(samples);
+      sampleByLabel = new Map(samples.map((s) => [s.bucketLabelUtc, s]));
+      events = stripMotionTripMapEventGeometry(events);
+      stopEpisodes = stripMotionTripMapStopGeometry(stopEpisodes);
+      geometrySource = 'NONE';
+      geometryNote = 'Positionsraster nicht verifiziert — keine Karten-Geometrie.';
     }
+
+    const status =
+      events.length === 0 && stopEpisodes.length === 0 && samples.every((s) => s.speedKmh == null)
+        ? 'SUCCEEDED_EMPTY'
+        : 'SUCCEEDED';
 
     return {
       status,

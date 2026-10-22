@@ -1,6 +1,6 @@
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TripMotionMapPayload } from './motion-map.types';
-import { isMotionMapActive } from './motion-map.utils';
+import { isMotionMapActive, isMotionMapEvaluationPresent } from './motion-map.utils';
 
 export function TripMotionMapStatusBanner({
   payload,
@@ -28,6 +28,17 @@ export function TripMotionMapStatusBanner({
     );
   }
   if (!payload) return null;
+  if (isMotionMapEvaluationPresent(payload) && !isMotionMapActive(payload)) {
+    return (
+      <div className="pointer-events-none absolute top-3 left-3 z-20 max-w-[min(100%,18rem)] rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[10px] text-amber-900 dark:text-amber-200 backdrop-blur-sm">
+        <span className="font-semibold">{payload.previewLabel}</span>
+        <span className="mt-0.5 block">{t('trips.motionMap.snapshotUnverified')}</span>
+        {payload.geometryNote && (
+          <span className="mt-0.5 block text-muted-foreground">{payload.geometryNote}</span>
+        )}
+      </div>
+    );
+  }
   if (isMotionMapActive(payload)) {
     return (
       <div className="pointer-events-none absolute top-3 left-3 z-20 max-w-[min(100%,18rem)] rounded-lg border border-brand/25 bg-background/90 px-2.5 py-1.5 text-[10px] text-foreground backdrop-blur-sm">

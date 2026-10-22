@@ -92,6 +92,14 @@ export function isMotionRouteHitAtPoint(
   return pickMotionSampleAtPoint(map, motionSamples, point) != null;
 }
 
+export function isMotionMapGeometryTrusted(payload: TripMotionMapPayload | null): boolean {
+  return payload?.snapshotBindingVerified === true;
+}
+
+export function isMotionMapEvaluationPresent(payload: TripMotionMapPayload | null): boolean {
+  return payload?.status === 'SUCCEEDED' || payload?.status === 'SUCCEEDED_EMPTY';
+}
+
 export function resolveMotionSamplesForMap(
   payload: TripMotionMapPayload,
   routePoints: TripMapRoutePoint[],
@@ -100,6 +108,18 @@ export function resolveMotionSamplesForMap(
   geometrySource: TripMotionMapPayload['geometrySource'];
   geometryNote: string | null;
 } {
+  if (!isMotionMapGeometryTrusted(payload)) {
+    return {
+      samples: payload.samples.map((s) => ({
+        ...s,
+        latitude: null,
+        longitude: null,
+        positionAvailability: null,
+      })),
+      geometrySource: 'NONE',
+      geometryNote: payload.geometryNote,
+    };
+  }
   if (payload.geometrySource === 'MOTION_POSITION_GRID') {
     return {
       samples: payload.samples,
@@ -255,7 +275,10 @@ export function formatMotionBucketTime(labelUtc: string, locale = 'de-DE'): stri
 }
 
 export function isMotionMapActive(payload: TripMotionMapPayload | null): boolean {
-  return payload?.status === 'SUCCEEDED' || payload?.status === 'SUCCEEDED_EMPTY';
+  return (
+    (payload?.status === 'SUCCEEDED' || payload?.status === 'SUCCEEDED_EMPTY') &&
+    isMotionMapGeometryTrusted(payload)
+  );
 }
 
 export function createMotionEventMarkerElement(
