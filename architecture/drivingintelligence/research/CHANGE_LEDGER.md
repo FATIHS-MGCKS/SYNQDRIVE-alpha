@@ -2112,3 +2112,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest `motion-core` 61/61 (38 baseline + 3 horizon + 20 robustness); harness `backend/scripts/test/motion-core-fable-review.harness.ts` → `BEFORE_AFTER.md`: stop matching identical for all FSM variants (cS 10/10, c0 7/10 + 3 NOT_ASSESSABLE sparse-only) at offsets −2..+2; K-C downgrades 76/78 (TRIP_1) and 6/8 (TRIP_2) DIRECT labels from degraded C4 to INFERRED, episode-level quality unchanged; K3 effective EXTRA_ARTEFACT 1→0, MATCHED 7→7 at all offsets; tsc errors only in pre-existing unrelated files |
 | NON_EFFECTS | No production wiring, deploy, flag or data mutation; no change to speeding, road matching, wear modules; C4 numeric values unchanged in the recommended set; Python prototype untouched |
 | MODEL_WEAKNESSES (open) | Sustained equal stamp shift (two late labels, no adjacent short leg/absence) escapes the jitter signature → C4 OK at +20 km/h (synthetic); symmetric spike pairs are exempt from K3 (opposite event follows); slow roll 1–5 km/h in a STATIONARY band is not separable from standstill — flagged `HYSTERESIS_BAND_CREEP_POSSIBLE`, not resolved; stop episodes spanned through gaps carry large interior gaps (`gapLabels`; TRIP_1 first stop 12 of 46 labels observed, 34 gap labels; TRIP_2 12:19:55 stop 5 of 20) — `minDurationS` is a propagation claim, not an observation |
+
+### EXP-021 motion core — shadow integration (post-S4 comparison wiring) (2026-10-21)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-core-shadow-worker/`: control plane (default OFF, empty allowlist fails closed), outbox + `di_v0_motion_core_shadow_{outbox,runs}_v1`, post-trip processor (FSM V0.3 + K3, RETROSPECTIVE, pinned POSITION/R1_OBD only); scheduler `di_v0_motion_core_shadow_v1`; Nest module wired in `vehicle-intelligence.module.ts` |
+| WHY | Parallel comparison vs existing S4 shadow without mutating published intervals, scores, or customer surfaces |
+| VALIDATION | Jest `motion-core` 68/68 incl. shadow control/processor/schema; offline harness `scripts/test/motion-core-shadow-replay.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-shadow-integration/` |
+| NON_EFFECTS | S4C completion unchanged; no production flag ON; no DIMO polling; migration not applied on Production in this workstream |

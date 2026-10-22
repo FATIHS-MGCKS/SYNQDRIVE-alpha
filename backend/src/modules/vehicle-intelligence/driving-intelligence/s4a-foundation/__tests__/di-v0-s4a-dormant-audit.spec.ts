@@ -22,10 +22,13 @@ const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
+/** Post-S4 motion-core shadow (default OFF); read-only S4 evidence + outbox — not S4A runtime. */
+const MOTION_CORE_SHADOW_DIR = path.join(__dirname, '../../motion-core-shadow-worker');
 const S4_RESEARCH_DIR = S4_RESEARCH_WORKER_DIR;
 const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
 const TRIPS_DI_BOUNDARY_ADMISSION_DIR = path.join(__dirname, '../../../trips/di-boundary-admission');
 const OFFLINE_RESEARCH_SCRIPTS_DIR = path.join(REPO_ROOT, 'backend/scripts/research');
+const MOTION_CORE_SHADOW_TEST_SCRIPTS_DIR = path.join(REPO_ROOT, 'backend/scripts/test');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -105,10 +108,13 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4D_DIR + path.sep) ||
           file.startsWith(S4E_DIR + path.sep) ||
           file.startsWith(S4F_DIR + path.sep) ||
+          file.startsWith(MOTION_CORE_SHADOW_DIR + path.sep) ||
           file.startsWith(S4_RESEARCH_DIR + path.sep) ||
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
           file.startsWith(TRIPS_DI_BOUNDARY_ADMISSION_DIR + path.sep) ||
           file.startsWith(OFFLINE_RESEARCH_SCRIPTS_DIR + path.sep) ||
+          (file.startsWith(MOTION_CORE_SHADOW_TEST_SCRIPTS_DIR + path.sep) &&
+            path.basename(file).startsWith('motion-core-shadow')) ||
           file.endsWith('backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts') ||
           file.includes(`${path.sep}di-v0-s4-global-kill-init-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`) ||
