@@ -17,12 +17,12 @@ export class DiV0M7aRoadAssignmentShadowScheduler implements OnModuleInit, OnMod
 
   onModuleInit(): void {
     if (!this.service.isConfigured()) {
-      this.logger.log('Motion-core shadow scheduler dormant (feature disabled)');
+      this.logger.log('M7A road-assignment shadow scheduler dormant (feature disabled)');
       return;
     }
     const intervalMs = this.service.getRuntimeConfig().schedulerIntervalMs;
     this.timer = setInterval(() => void this.tick(), intervalMs);
-    this.logger.log(`Motion-core shadow scheduler active (intervalMs=${intervalMs})`);
+    this.logger.log(`M7A road-assignment shadow scheduler active (intervalMs=${intervalMs}, leaderJob=${LEADER_JOB})`);
   }
 
   onModuleDestroy(): void {
@@ -38,12 +38,12 @@ export class DiV0M7aRoadAssignmentShadowScheduler implements OnModuleInit, OnMod
       const pass = await this.service.runPass();
       if (pass.claimed > 0) {
         this.logger.log(
-          `motion-core shadow pass discovered=${pass.discovered} claimed=${pass.claimed} ok=${pass.succeeded} neutral=${pass.neutral} retry=${pass.failedRetryable}`,
+          `M7A road-assignment shadow pass discovered=${pass.discovered} claimed=${pass.claimed} ok=${pass.succeeded} neutral=${pass.neutral} retry=${pass.failedRetryable}`,
         );
       }
     } catch (error) {
       this.logger.warn(
-        `motion-core shadow tick failed: ${error instanceof Error ? error.message.slice(0, 200) : 'unknown'}`,
+        `M7A road-assignment shadow tick failed: ${error instanceof Error ? error.message.slice(0, 200) : 'unknown'}`,
       );
     } finally {
       this.running = false;
