@@ -12,6 +12,7 @@ import type {
   Dtc02PlannerEvidenceQuality,
   Dtc02WebhookEvidenceQuality,
 } from './dtc-02-adaptive-planner.types';
+import { applyDtc02P6TripVsiShadowOverlay } from './dtc-02-adaptive-p6-trip-vsi.overlay';
 
 const EXCLUDED_LIFECYCLES = new Set(['OFFBOARDED', 'ARCHIVED']);
 
@@ -177,7 +178,7 @@ export function planDtc02AdaptivePollCheck(
   /** Positive when shadow proposes deferring relative to legacy next tick (fewer polls). */
   const projectedPollReductionMs = proposed - legacyNextCheckAtMs;
 
-  return {
+  const baseResult: Dtc02AdaptivePlannerResult = {
     legacyNextCheckAtMs,
     proposedNextCheckAtMs: proposed,
     decisionReason,
@@ -187,7 +188,15 @@ export function planDtc02AdaptivePollCheck(
     projectedDeferMs,
     projectedPollReductionMs,
     excluded: false,
+    hypotheticalNextCheckAtMs: proposed,
+    hypotheticalPollReductionMs: projectedPollReductionMs,
   };
+
+  if (input.tripVsiContext) {
+    return applyDtc02P6TripVsiShadowOverlay(baseResult, input, input.tripVsiContext);
+  }
+
+  return baseResult;
 }
 
 export function deriveWebhookEvidenceQuality(input: {

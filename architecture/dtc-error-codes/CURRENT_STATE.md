@@ -18,6 +18,11 @@
 - Adaptive poll planner (pure) + shadow batch on existing `dtc-poll` fan-out; **no** enqueue/cadence/DIMO changes.
 - Evidence: [`evidence/DTC02_P3_ADAPTIVE_SHADOW.md`](evidence/DTC02_P3_ADAPTIVE_SHADOW.md)
 
+## DTC-02 P6 (repository — shadow wiring, default OFF)
+
+- Trip FSM (`vehicle_trip_detection_state` + `vehicle_trips` interval) and VSI `diagnostic_trouble_code` freshness wired into adaptive shadow planner overlay; **no** enqueue, 3h scheduler, episode, or webhook changes.
+- Evidence: [`evidence/DTC02_P6_VSI_TRIP_FSM_SHADOW.md`](evidence/DTC02_P6_VSI_TRIP_FSM_SHADOW.md)
+
 ## DTC-02 P2 (repository — default OFF, not deployed)
 
 - Webhook capability classification + gated ingress (`DTC_02_*` env); reuses 01A snapshot apply and source-head watermarks.

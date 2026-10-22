@@ -1,3 +1,5 @@
+import type { Dtc02TripVsiPlannerContext } from './dtc-02-adaptive-trip-vsi.types';
+
 export type Dtc02ProviderCapability = 'dimo_linked' | 'unknown';
 
 export type Dtc02WebhookEvidenceQuality =
@@ -24,6 +26,8 @@ export type Dtc02AdaptivePlannerInput = {
   hasActiveDtc: boolean;
   providerErrorState: Dtc02ProviderErrorState;
   evaluatedAtMs: number;
+  /** P6 — when set, applies Trip FSM × VSI shadow overlay after P3 baseline plan. */
+  tripVsiContext?: Dtc02TripVsiPlannerContext;
 };
 
 export type Dtc02AdaptivePlannerResult = {
@@ -38,4 +42,9 @@ export type Dtc02AdaptivePlannerResult = {
   /** Positive when adaptive would defer relative to legacy next tick (projected). */
   projectedPollReductionMs: number;
   excluded: boolean;
+  /** P6 shadow-only horizon (may exceed legacy 3h for evaluation metrics). */
+  hypotheticalNextCheckAtMs?: number;
+  hypotheticalPollReductionMs?: number;
+  tripVsiPhase?: Dtc02TripVsiPlannerContext['tripPhase'];
+  vsiDtcFreshness?: Dtc02TripVsiPlannerContext['vsiDtcFreshness'];
 };
