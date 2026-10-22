@@ -74,6 +74,9 @@ import {
 } from './detectors/detector.interfaces';
 import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { RedisService } from '@shared/redis/redis.service';
+import { Dtc02ObservabilityService } from '../dtc/observability/dtc02-observability.service';
+import { runDtc02AdaptiveShadowOnTripFsmEvent } from '../dtc/adaptive/dtc-02-adaptive-trip-fsm-shadow.hook';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
 import {
@@ -357,6 +360,8 @@ export class TripDetectionOrchestrationService {
     private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly redis?: RedisService,
+    @Optional() private readonly dtc02Observability?: Dtc02ObservabilityService,
   ) {
     this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 30_000;
     this.TRIP_CONTINUITY_CORE_WINDOW_MS = this.configService.get<number>('worker.tripContinuityCoreWindowMs') ?? 120_000;
@@ -1525,6 +1530,16 @@ export class TripDetectionOrchestrationService {
           );
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+          void runDtc02AdaptiveShadowOnTripFsmEvent({
+            prisma: this.prisma,
+            observability: this.dtc02Observability,
+            redis: this.redis,
+            vehicleId,
+            tripId: previousTrip.id,
+            eventKind: 'trip_start_confirmed',
+            evaluatedAtMs: Date.now(),
+            logger: this.logger,
+          });
           await persistStartBoundaryAdmissionShadowDurable({
             tripId: previousTrip.id,
             vehicleId,
@@ -1674,6 +1689,17 @@ export class TripDetectionOrchestrationService {
               `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
             );
           }
+
+          void runDtc02AdaptiveShadowOnTripFsmEvent({
+            prisma: this.prisma,
+            observability: this.dtc02Observability,
+            redis: this.redis,
+            vehicleId,
+            tripId: trip.id,
+            eventKind: 'trip_start_confirmed',
+            evaluatedAtMs: Date.now(),
+            logger: this.logger,
+          });
 
           this.logger.log(
             `ACTIVE_TRIP confirmed: vehicle=${vehicleId} trip=${trip.id} mode=${confirmMode}` +
@@ -4437,6 +4463,19 @@ export class TripDetectionOrchestrationService {
         lastEvidenceSummary: { lastRestingReason: restingReason },
       });
       restingTransitionSucceeded = true;
+
+      if (finalizedTripForRestWindow) {
+        void runDtc02AdaptiveShadowOnTripFsmEvent({
+          prisma: this.prisma,
+          observability: this.dtc02Observability,
+          redis: this.redis,
+          vehicleId,
+          tripId: finalizedTripForRestWindow.tripId,
+          eventKind: 'trip_end_finalized',
+          evaluatedAtMs: Date.now(),
+          logger: this.logger,
+        });
+      }
 
       // ── Battery V2 LV rest window (observation-independent primary path) ──
       // Enqueued only after both the COMPLETED trip and the RESTING transition

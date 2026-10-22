@@ -16,6 +16,9 @@ describe('runDtc02AdaptiveSchedulerShadowBatch', () => {
       vehicle: { findMany: async () => { throw new Error('db down'); } },
       vehicleDtcEvent: { groupBy: async () => [] },
       vehicleDtcSourceHead: { findMany: async () => [] },
+      vehicleTripDetectionState: { findMany: async () => [] },
+      vehicleTrip: { findMany: async () => [] },
+      vehicleSignalCapabilityProfile: { findMany: async () => [] },
     };
 
     await expect(
