@@ -2113,6 +2113,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No production wiring, deploy, flag or data mutation; no change to speeding, road matching, wear modules; C4 numeric values unchanged in the recommended set; Python prototype untouched |
 | MODEL_WEAKNESSES (open) | Sustained equal stamp shift (two late labels, no adjacent short leg/absence) escapes the jitter signature → C4 OK at +20 km/h (synthetic); symmetric spike pairs are exempt from K3 (opposite event follows); slow roll 1–5 km/h in a STATIONARY band is not separable from standstill — flagged `HYSTERESIS_BAND_CREEP_POSSIBLE`, not resolved; stop episodes spanned through gaps carry large interior gaps (`gapLabels`; TRIP_1 first stop 12 of 46 labels observed, 34 gap labels; TRIP_2 12:19:55 stop 5 of 20) — `minDurationS` is a propagation claim, not an observation |
 
+### EXP-021 frozen M7A — S4 road-assignment shadow step 1 (2026-10-22)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `m7a-road-assignment-shadow-worker/` + `exp021-frozen-m7a/`; migration `20261022130000_di_v0_m7a_road_assignment_shadow_v1`; GET `trips/:tripId/m7a-road-assignment-shadow`; freeze evidence `exp021-phase5a-baseline-freeze/` |
+| WHY | Post-S4 batch frozen M7A street assignment for evaluation without Mapbox/UI changes; independent of motion shadow |
+| VALIDATION | Jest Tiguan per-bucket hash parity vs Phase 5A manifest; control-plane + schema specs |
+| NON_EFFECTS | Flags default OFF; no production backfill; no algorithm retuning |
+
 ### EXP-021 motion core — shadow integration (post-S4 comparison wiring) (2026-10-21)
 
 | Event | Detail |

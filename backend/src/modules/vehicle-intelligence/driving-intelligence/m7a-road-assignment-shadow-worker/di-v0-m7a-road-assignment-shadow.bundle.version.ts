@@ -1,0 +1,3 @@
+/** Post-S4 EXP021 frozen M7A road-assignment shadow bundle (Phase 5A freeze). */
+export const DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1 =
+  'DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_V1_EXP021_PHASE5A_FROZEN_M7A';

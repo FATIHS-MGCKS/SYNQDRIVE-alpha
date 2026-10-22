@@ -128,6 +128,7 @@ import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.s
 import { DiV0TripSpeedQualityProductReadService } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.service';
 import { isDiV0TripSpeedQualityV2ProductReadEnabled } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.config';
 import { DiV0MotionCoreShadowTripMapReadService } from './driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service';
+import { DiV0M7aRoadAssignmentShadowReadService } from './driving-intelligence/m7a-road-assignment-shadow-worker/di-v0-m7a-road-assignment-shadow-read.service';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, VehicleIntelligencePermissionGuard)
@@ -186,6 +187,7 @@ export class VehicleIntelligenceController {
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
     private readonly tripSpeedQualityProductRead: DiV0TripSpeedQualityProductReadService,
     private readonly motionCoreShadowTripMapRead: DiV0MotionCoreShadowTripMapReadService,
+    private readonly m7aRoadAssignmentShadowRead: DiV0M7aRoadAssignmentShadowReadService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1508,6 +1510,20 @@ export class VehicleIntelligenceController {
       throw new NotFoundException('Trip not found');
     }
     return this.motionCoreShadowTripMapRead.readForTrip(organizationId, vehicleId, tripId);
+  }
+
+  @Get('trips/:tripId/m7a-road-assignment-shadow')
+  async getTripM7aRoadAssignmentShadow(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const trip = await this.tripsService.findById(organizationId, tripId);
+    if (!trip || trip.vehicleId !== vehicleId) {
+      throw new NotFoundException('Trip not found');
+    }
+    return this.m7aRoadAssignmentShadowRead.readForTrip(organizationId, vehicleId, tripId);
   }
 
   @Get('trips/:tripId/gps-speed-evaluation-v2')
