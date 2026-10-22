@@ -461,24 +461,6 @@ export class TripDetectionOrchestrationService {
     });
   }
 
-  /** DTC-02 P6 — shadow-only adaptive plan on authoritative trip boundaries (no poll enqueue). */
-  private scheduleDtc02AdaptiveShadowTripFsmEvent(input: {
-    vehicleId: string;
-    tripId: string;
-    eventKind: 'trip_start_confirmed' | 'trip_end_finalized';
-  }): void {
-    void runDtc02AdaptiveShadowOnTripFsmEvent({
-      prisma: this.prisma,
-      observability: this.dtc02Observability,
-      redis: this.redis,
-      vehicleId: input.vehicleId,
-      tripId: input.tripId,
-      eventKind: input.eventKind,
-      evaluatedAtMs: Date.now(),
-      logger: this.logger,
-    });
-  }
-
   /**
    * R2 — apply a lifecycle invariant recovery action (FSM authority only).
    * Canonical trip rows are never mutated here.
@@ -1548,10 +1530,15 @@ export class TripDetectionOrchestrationService {
           );
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
-          this.scheduleDtc02AdaptiveShadowTripFsmEvent({
+          void runDtc02AdaptiveShadowOnTripFsmEvent({
+            prisma: this.prisma,
+            observability: this.dtc02Observability,
+            redis: this.redis,
             vehicleId,
             tripId: previousTrip.id,
             eventKind: 'trip_start_confirmed',
+            evaluatedAtMs: Date.now(),
+            logger: this.logger,
           });
           await persistStartBoundaryAdmissionShadowDurable({
             tripId: previousTrip.id,
@@ -1703,10 +1690,15 @@ export class TripDetectionOrchestrationService {
             );
           }
 
-          this.scheduleDtc02AdaptiveShadowTripFsmEvent({
+          void runDtc02AdaptiveShadowOnTripFsmEvent({
+            prisma: this.prisma,
+            observability: this.dtc02Observability,
+            redis: this.redis,
             vehicleId,
             tripId: trip.id,
             eventKind: 'trip_start_confirmed',
+            evaluatedAtMs: Date.now(),
+            logger: this.logger,
           });
 
           this.logger.log(
@@ -4473,10 +4465,15 @@ export class TripDetectionOrchestrationService {
       restingTransitionSucceeded = true;
 
       if (finalizedTripForRestWindow) {
-        this.scheduleDtc02AdaptiveShadowTripFsmEvent({
+        void runDtc02AdaptiveShadowOnTripFsmEvent({
+          prisma: this.prisma,
+          observability: this.dtc02Observability,
+          redis: this.redis,
           vehicleId,
           tripId: finalizedTripForRestWindow.tripId,
           eventKind: 'trip_end_finalized',
+          evaluatedAtMs: Date.now(),
+          logger: this.logger,
         });
       }
 
