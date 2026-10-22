@@ -3565,6 +3565,10 @@ export const api = {
         get<import('./physical-device-inventory.types').PhysicalDeviceStockSummaryDto>(
           '/admin/physical-device-inventory/summary',
         ),
+      identityMonitoringLiveSnapshot: () =>
+        get<import('./physical-device-inventory.types').PdiIdentityMonitoringSnapshotDto>(
+          '/admin/physical-device-inventory/identity-monitoring/live-snapshot',
+        ),
       listDevices: (params?: import('./physical-device-inventory.types').ListPhysicalDevicesQuery) => {
         const q = new URLSearchParams();
         if (params?.search) q.set('search', params.search);

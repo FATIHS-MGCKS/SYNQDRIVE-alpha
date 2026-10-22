@@ -410,6 +410,23 @@ export class TripReconciliationService {
    * Manual reconciliation triggered by the user (replaces old "Sync Trips" button).
    * Uses the warm window (last 12 hours) for a responsive manual check.
    */
+  /**
+   * Narrow fast reconcile after trip finalization so step-4 boundary scan and
+   * DI admission release are not blocked on the 15-minute fast-repair scheduler tick.
+   */
+  async reconcileAdmissionAfterFinalization(
+    vehicleId: string,
+    tripStart: Date,
+    tripEnd: Date,
+  ): Promise<ReconciliationResult> {
+    const padMs = 30 * 60_000;
+    const from = new Date(Math.min(tripStart.getTime(), tripEnd.getTime()) - padMs);
+    const to = new Date(Math.max(tripStart.getTime(), tripEnd.getTime()) + padMs);
+    return this.reconcileWindow(vehicleId, from, to, 'fast', {
+      useDimoSegmentFallback: true,
+    });
+  }
+
   async triggerManualReconciliation(
     vehicleId: string,
     options?: {
