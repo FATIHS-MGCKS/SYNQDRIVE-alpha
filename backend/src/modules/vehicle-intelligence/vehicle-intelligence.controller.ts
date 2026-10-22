@@ -127,6 +127,7 @@ import { resolveTelemetrySourceFamily } from './telemetry-source-family';
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
 import { DiV0TripSpeedQualityProductReadService } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.service';
 import { isDiV0TripSpeedQualityV2ProductReadEnabled } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.config';
+import { DiV0MotionCoreShadowTripMapReadService } from './driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, VehicleIntelligencePermissionGuard)
@@ -184,6 +185,7 @@ export class VehicleIntelligenceController {
     private readonly drivingImpactService: DrivingImpactService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
     private readonly tripSpeedQualityProductRead: DiV0TripSpeedQualityProductReadService,
+    private readonly motionCoreShadowTripMapRead: DiV0MotionCoreShadowTripMapReadService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1492,6 +1494,20 @@ export class VehicleIntelligenceController {
       vehicleId,
       tripId,
     );
+  }
+
+  @Get('trips/:tripId/motion-shadow-map')
+  async getTripMotionShadowMap(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const trip = await this.tripsService.findById(organizationId, tripId);
+    if (!trip || trip.vehicleId !== vehicleId) {
+      throw new NotFoundException('Trip not found');
+    }
+    return this.motionCoreShadowTripMapRead.readForTrip(organizationId, vehicleId, tripId);
   }
 
   @Get('trips/:tripId/gps-speed-evaluation-v2')

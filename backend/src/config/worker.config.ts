@@ -100,6 +100,15 @@ export default registerAs('worker', () => ({
     process.env.TRIP_MID_GAP_MIN_PRE_DURATION_MS || '60000',
     10,
   ),
+  // P1B.9C: mid-gap false-split hardening (default off; per-vehicle via allowlist).
+  tripMidGapTelemetrySilenceHardeningEnabled:
+    process.env.TRIP_MID_GAP_TELEMETRY_SILENCE_HARDENING_ENABLED === 'true',
+  tripMidGapTelemetrySilenceHardeningVehicleIds: (
+    process.env.TRIP_MID_GAP_TELEMETRY_SILENCE_HARDENING_VEHICLE_IDS ?? ''
+  )
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean),
 
   // ── Trip FSM shadow observability (non-authoritative counterfactual / pause audit) ──
   tripFsmShadowObservabilityEnabled: parseBoolEnv(

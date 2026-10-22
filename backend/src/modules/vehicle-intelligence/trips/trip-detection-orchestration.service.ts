@@ -114,11 +114,12 @@ import {
   buildMidGapRejectedForensics,
   classifyLiveMidGapDriftDecision,
   computeMidGapDriftEvidence,
-  findLargestQualifyingMidGapFromCoreTimeline,
   selectRoutePointAtOrAfter,
   selectRoutePointAtOrBefore,
   type MidGapSplitCommitPhase,
 } from './trip-mid-gap-split.util';
+import { findMidTripGapCandidateWithPolicy } from './trip-mid-gap-detection.util';
+import { isTripMidGapTelemetrySilenceHardeningEnabledForVehicle } from './trip-mid-gap-telemetry-silence.config';
 import { resolveMaxSameTripQualifiedStopMs } from './trip-qualified-stop-duration.config';
 import {
   buildMidGapCommitAmbiguityForensics,
@@ -232,6 +233,7 @@ import {
   resolveFinalizeEndTime,
 } from './trip-finalize-quality.util';
 import { TripDiBoundaryAdmissionService } from './di-boundary-admission/trip-di-boundary-admission.service';
+import { TripReconciliationService } from './reconciliation/trip-reconciliation.service';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -347,6 +349,8 @@ export class TripDetectionOrchestrationService {
     @Inject(forwardRef(() => TripLifecycleRecoveryService))
     private readonly lifecycleRecovery: TripLifecycleRecoveryService,
     private readonly diBoundaryAdmission: TripDiBoundaryAdmissionService,
+    @Optional()
+    private readonly tripReconciliation?: TripReconciliationService,
     @Optional()
     private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
@@ -2265,7 +2269,7 @@ export class TripDetectionOrchestrationService {
       // Detected here on the LIVE path so the split happens as soon as the
       // new data arrives; a parallel retroactive scan lives in
       // TripReconciliationService.repairIntraTripGapSplits.
-      const midGap = this.findMidTripGap(corePoints, det);
+      const midGap = this.findMidTripGap(corePoints, det, vehicleId);
       if (midGap) {
         const tripAge =
           new Date().getTime() - det.possibleStartAt!.getTime();
@@ -3958,7 +3962,7 @@ export class TripDetectionOrchestrationService {
     // Set when a trip is persisted as COMPLETED — after the RESTING transition
     // commits we hand the finalized trip to Battery V2 so the LV rest window
     // opens without requiring another provider observation.
-    let finalizedTripForRestWindow: { tripId: string; endTime: Date } | null =
+    let finalizedTripForRestWindow: { tripId: string; startTime: Date; endTime: Date } | null =
       null;
     let terminalLifecycleCommit: TerminalLifecycleCommit = 'NONE';
     let terminalLifecycleIntent: TerminalLifecycleIntent = 'NONE';
@@ -4278,7 +4282,7 @@ export class TripDetectionOrchestrationService {
             });
             terminalLifecycleCommit = 'COMPLETED';
             terminalTripId = tripId;
-            finalizedTripForRestWindow = { tripId, endTime };
+            finalizedTripForRestWindow = { tripId, startTime: trip.startTime, endTime };
             runTripObservabilitySafely(
               this.logger,
               'finalize_post_commit_observability',
@@ -4406,8 +4410,11 @@ export class TripDetectionOrchestrationService {
       // Durable + idempotent (lv-rest-open:{vehicleId}:{anchorMs}); failures
       // never affect the trip lifecycle — reconciliation self-heals misses.
       if (finalizedTripForRestWindow && organizationId) {
-        const { tripId: finalizedTripId, endTime: finalizedEndTime } =
-          finalizedTripForRestWindow;
+        const {
+          tripId: finalizedTripId,
+          startTime: finalizedStartTime,
+          endTime: finalizedEndTime,
+        } = finalizedTripForRestWindow;
         try {
           await this.batteryLvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
             organizationId,
@@ -4444,6 +4451,20 @@ export class TripDetectionOrchestrationService {
           } catch (e) {
             this.logger.warn(
               `V2 finalize: DI boundary admission LIVE_FSM settlement release failed for vehicle ${vehicleId}: ${e}`,
+            );
+          }
+        }
+
+        if (this.tripReconciliation) {
+          try {
+            await this.tripReconciliation.reconcileAdmissionAfterFinalization(
+              vehicleId,
+              finalizedStartTime,
+              finalizedEndTime,
+            );
+          } catch (e) {
+            this.logger.warn(
+              `V2 finalize: post-finalize DI admission reconcile failed for vehicle ${vehicleId} trip ${finalizedTripId}: ${e}`,
             );
           }
         }
@@ -5040,6 +5061,7 @@ export class TripDetectionOrchestrationService {
   private findMidTripGap(
     corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>,
     det: DetState,
+    vehicleId: string,
   ): {
     gapMs: number;
     firstEndAt: Date;
@@ -5062,38 +5084,32 @@ export class TripDetectionOrchestrationService {
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    type TP = { ts: Date; speed: number | null; ign: boolean | null };
-    const timeline: TP[] = [];
+    const telemetrySilenceHardeningEnabled =
+      isTripMidGapTelemetrySilenceHardeningEnabledForVehicle(vehicleId);
 
-    // Prepend synthetic anchor (stationary assumption since no motion was
-    // recorded between that timestamp and now).
-    if (anchorAt) {
-      timeline.push({ ts: anchorAt, speed: 0, ign: null });
-    }
-    for (const p of sorted) {
-      timeline.push({
-        ts: new Date(p.timestamp),
+    const candidate = findMidTripGapCandidateWithPolicy({
+      corePoints: sorted.map((p) => ({
+        timestamp: p.timestamp,
         speed: p.speed ?? null,
-        ign: p.isIgnitionOn ?? null,
-      });
-    }
-
-    if (timeline.length < 2) return null;
-
-    const selected = findLargestQualifyingMidGapFromCoreTimeline({
-      timeline,
+        isIgnitionOn: p.isIgnitionOn ?? null,
+      })),
+      anchorAt: anchorAt ? new Date(anchorAt) : null,
       maxSameTripQualifiedStopMs: this.maxSameTripQualifiedStopMs,
+      stoppedSpeedKmh: 5,
+      telemetrySilenceHardeningEnabled,
     });
-    if (!selected) return null;
+    if (!candidate) {
+      return null;
+    }
 
     return {
-      gapMs: selected.gapMs,
-      firstEndAt: selected.firstEndAt,
-      firstEndLatitude: null,
-      firstEndLongitude: null,
-      secondStartAt: selected.secondStartAt,
-      secondStartLatitude: null,
-      secondStartLongitude: null,
+      gapMs: candidate.gapMs,
+      firstEndAt: candidate.firstEndAt,
+      firstEndLatitude: candidate.firstEndLatitude,
+      firstEndLongitude: candidate.firstEndLongitude,
+      secondStartAt: candidate.secondStartAt,
+      secondStartLatitude: candidate.secondStartLatitude,
+      secondStartLongitude: candidate.secondStartLongitude,
     };
   }
 

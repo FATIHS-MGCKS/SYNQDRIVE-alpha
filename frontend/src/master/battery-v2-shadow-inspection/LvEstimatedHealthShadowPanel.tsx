@@ -6,13 +6,11 @@ type Props = {
   loading: boolean;
 };
 
-function AssessmentBlock({
-  title,
-  assessment,
-}: {
-  title: string;
-  assessment: LvEstimatedBatteryHealthShadowAdminV1['assessment'];
-}) {
+type AssessmentVm = LvEstimatedBatteryHealthShadowAdminV1['assessment'];
+
+function AssessmentBlock({ title, assessment }: { title: string; assessment: AssessmentVm }) {
+  const ruleId =
+    assessment.decisionTrace.p11ShadowRuleId ?? assessment.decisionTrace.finalRuleId ?? '—';
   return (
     <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
@@ -31,21 +29,34 @@ function AssessmentBlock({
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground">
+            {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.eligibility')}
+          </p>
+          <p className="font-mono text-[11px]">{assessment.assessmentEligibility}</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">
             {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.episodes')}
           </p>
           <p className="font-medium tabular-nums">{assessment.decisionTrace.qualifiedEpisodeCount}</p>
         </div>
-        <div>
-          <p className="text-[11px] text-muted-foreground">
-            {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.rule')}
-          </p>
-          <p className="font-mono text-[11px]">
-            {assessment.decisionTrace.p11ShadowRuleId ??
-              assessment.decisionTrace.finalRuleId ??
-              '—'}
-          </p>
-        </div>
       </div>
+      <p className="text-xs">
+        <span className="text-muted-foreground">
+          {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.rule')}:{' '}
+        </span>
+        <span className="font-mono text-[11px]">{ruleId}</span>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        SOH: {assessment.measuredSOH} · load: {assessment.decisionTrace.loadSignal} · trend:{' '}
+        {assessment.decisionTrace.longitudinalTrend}
+      </p>
+      {assessment.reasonCodes.length > 0 ? (
+        <ul className="text-[11px] font-mono text-muted-foreground list-disc pl-4 max-h-24 overflow-y-auto">
+          {assessment.reasonCodes.slice(0, 8).map((code) => (
+            <li key={code}>{code}</li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
@@ -84,12 +95,10 @@ export function LvEstimatedHealthShadowPanel({ data, loading }: Props) {
         title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.p1Title')}
         assessment={data.assessment}
       />
-      {data.p11ShadowAssessment ? (
-        <AssessmentBlock
-          title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.p11Title')}
-          assessment={data.p11ShadowAssessment}
-        />
-      ) : null}
+      <AssessmentBlock
+        title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.p11Title')}
+        assessment={data.p11ShadowAssessment}
+      />
       <p className="text-xs text-muted-foreground">
         {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.dataSelection', {
           raw: sel.rawVoltageRowCount,

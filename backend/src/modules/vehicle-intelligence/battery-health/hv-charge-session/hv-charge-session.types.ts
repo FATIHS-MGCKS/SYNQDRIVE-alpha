@@ -41,6 +41,8 @@ export interface HvChargeSessionMetadata {
   socProvenance?: string | null;
   currentEnergyProvenance?: string | null;
   addedEnergyProvenance?: string | null;
+  segmentAddedEnergyMinKwh?: number | null;
+  segmentAddedEnergyMaxKwh?: number | null;
   isChargingStart?: boolean | null;
   isChargingEnd?: boolean | null;
   cableConnectedStart?: boolean | null;
@@ -70,6 +72,13 @@ export interface HvChargeSessionMetadata {
   }>;
   startLocation?: HvChargeSessionAuthoritativeLocation;
   endLocation?: HvChargeSessionAuthoritativeLocation;
+  boundaryEnrichmentVersion?: number;
+  boundaryStartSocObservedAt?: string;
+  boundaryEndSocObservedAt?: string;
+  boundaryStartEnergyObservedAt?: string;
+  boundaryEndEnergyObservedAt?: string;
+  boundaryStartOffsetMs?: number;
+  boundaryEndOffsetMs?: number;
 }
 
 export interface HvChargeSessionDraft {

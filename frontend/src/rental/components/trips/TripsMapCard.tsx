@@ -3,6 +3,7 @@ import type { RouteContinuityStatus, RouteProcessingState } from '../../../lib/a
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { useAddress } from '../../../lib/useAddress';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { TRIPS_COPY, tv } from './trips-view-ui';
 import type { TripBehaviorEvent } from './trips-map.types';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
@@ -13,6 +14,11 @@ import { TripMapSummaryOverlay } from './TripMapSummaryOverlay';
 import { TripEventPopover } from './TripEventPopover';
 import { deriveTripMapQuality } from './trips-map.utils';
 import { DEFAULT_TRIP_MAP_LAYERS } from './utils/tripMapLayers';
+import { TripMotionMapPopover } from './TripMotionMapPopover';
+import { TripMotionMapStatusBanner } from './TripMotionMapStatusBanner';
+import type { TripMotionMapPayload, TripMotionMapPopoverState } from './motion-map.types';
+import { isMotionMapActive, motionEventLabelKey, resolveMotionSamplesForMap } from './motion-map.utils';
+import type { TripMotionMapEvent, TripMotionMapPickListItem } from './motion-map.types';
 import { useTripsRouteMap } from './useTripsRouteMap';
 
 export interface TripsMapCardProps {
@@ -38,6 +44,9 @@ export interface TripsMapCardProps {
   selectedBehaviorEventId?: string | null;
   onBehaviorEventSelect?: (eventId: string | null) => void;
   onMapReady?: (actions: { centerRoute: () => void; focusBehaviorEvent: (eventId: string) => void }) => void;
+  motionMapPayload?: TripMotionMapPayload | null;
+  motionMapLoading?: boolean;
+  motionMapError?: boolean;
 }
 
 const DEFAULT_LAYERS = DEFAULT_TRIP_MAP_LAYERS;
@@ -65,10 +74,22 @@ export function TripsMapCard({
   selectedBehaviorEventId,
   onBehaviorEventSelect,
   onMapReady,
+  motionMapPayload = null,
+  motionMapLoading = false,
+  motionMapError = false,
 }: TripsMapCardProps) {
   const isDark = isDarkMode;
+  const { t } = useLanguage();
   const [layers, setLayers] = useState<TripMapLayerState>(DEFAULT_LAYERS);
   const [popover, setPopover] = useState<TripMapPopoverState | null>(null);
+  const [motionPopover, setMotionPopover] = useState<TripMotionMapPopoverState | null>(null);
+  const [selectedMotionEventId, setSelectedMotionEventId] = useState<string | null>(null);
+
+  const motionActive = isMotionMapActive(motionMapPayload);
+  const resolvedMotion = useMemo(() => {
+    if (!motionMapPayload || !motionActive) return null;
+    return resolveMotionSamplesForMap(motionMapPayload, routePoints);
+  }, [motionMapPayload, motionActive, routePoints]);
   const { address: startAddress } = useAddress(selectedTrip?.startLatitude, selectedTrip?.startLongitude);
   const { address: endAddress } = useAddress(selectedTrip?.endLatitude, selectedTrip?.endLongitude);
 
@@ -107,6 +128,27 @@ export function TripsMapCard({
     ],
   );
 
+  const motionEventAriaLabel = useCallback(
+    (event: TripMotionMapEvent) => t(motionEventLabelKey(event)),
+    [t],
+  );
+
+  const handleMotionPickListSelect = useCallback(
+    (item: TripMotionMapPickListItem) => {
+      setMotionPopover((prev) => {
+        if (!prev || prev.kind !== 'pickList') return prev;
+        const { x, y } = prev;
+        if (item.type === 'event') {
+          setSelectedMotionEventId(item.event.id);
+          return { kind: 'event', event: item.event, x, y };
+        }
+        setSelectedMotionEventId(null);
+        return { kind: 'stop', stop: item.stop, x, y };
+      });
+    },
+    [],
+  );
+
   const handleEventSelect = useCallback(
     (state: TripMapPopoverState | null) => {
       setPopover(state);
@@ -135,6 +177,17 @@ export function TripsMapCard({
     onEventSelect: handleEventSelect,
     selectedBehaviorEventId,
     endpointLabels,
+    motionMapActive: motionActive,
+    motionSamples: resolvedMotion?.samples ?? [],
+    motionEvents: motionMapPayload?.events ?? [],
+    motionStops: motionMapPayload?.stopEpisodes ?? [],
+    onMotionPopover: (state) => {
+      setMotionPopover(state);
+      if (state?.kind === 'event') setSelectedMotionEventId(state.event.id);
+      else if (state?.kind !== 'pickList') setSelectedMotionEventId(null);
+    },
+    selectedMotionEventId,
+    motionEventAriaLabel,
   });
 
   // Keep popover anchored on map move/zoom
@@ -163,7 +216,9 @@ export function TripsMapCard({
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const hasRoute = quality.routeAvailable && !routeError;
+  const hasRoute =
+    (quality.routeAvailable && !routeError) ||
+    (motionActive && (resolvedMotion?.samples.length ?? 0) > 0);
   const frameHeight = selectedTrip
     ? 'h-[min(40vh,380px)] sm:h-[min(44vh,420px)] xl:h-auto xl:flex-1 xl:min-h-[360px]'
     : 'h-[200px] sm:h-[240px] xl:h-auto xl:flex-1 xl:min-h-[300px]';
@@ -257,6 +312,11 @@ export function TripsMapCard({
           <>
             <TripMapSummaryOverlay trip={selectedTrip} isDark={isDark} />
             <TripMapDataQualityOverlay quality={quality} routeLoading={routeLoading} />
+            <TripMotionMapStatusBanner
+              payload={motionMapPayload}
+              loading={motionMapLoading}
+              error={motionMapError}
+            />
           </>
         )}
 
@@ -271,7 +331,18 @@ export function TripsMapCard({
           </>
         )}
 
-        {popover && (
+        {motionPopover && (
+          <TripMotionMapPopover
+            state={motionPopover}
+            onClose={() => {
+              setMotionPopover(null);
+              setSelectedMotionEventId(null);
+            }}
+            onPickListSelect={handleMotionPickListSelect}
+          />
+        )}
+
+        {popover && !motionPopover && (
           <TripEventPopover
             event={popover.event}
             x={popover.x}

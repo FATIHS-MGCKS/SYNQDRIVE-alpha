@@ -159,11 +159,18 @@ async function main(): Promise<void> {
   const csvPath = process.argv[2] ?? '/tmp/p12-ge-120d.csv';
   const byVid = await loadCsv(csvPath);
   const evaluatedAtIso = new Date().toISOString();
-  const out: Record<string, unknown> = {
+  const vehicles: Record<string, unknown> = {};
+  const out: {
+    productionSha: string;
+    syntheticTimeline: boolean;
+    evaluatedAtIso: string;
+    vehicles: Record<string, unknown>;
+    p11Deterministic?: boolean;
+  } = {
     productionSha: 'feab323bbc8c63b2fe886fa8772ff28846d0b3d3',
     syntheticTimeline: false,
     evaluatedAtIso,
-    vehicles: {},
+    vehicles,
   };
 
   for (const [vid, meta] of Object.entries(VEHICLES)) {
@@ -177,7 +184,7 @@ async function main(): Promise<void> {
       eligibleRestObservations: eligible,
       assessmentTimelineObservations: observations,
     });
-    out.vehicles[meta.label] = {
+    vehicles[meta.label] = {
       observationCount: observations.length,
       p1: {
         status: p1.estimatedHealthStatus,

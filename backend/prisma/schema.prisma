@@ -12857,6 +12857,52 @@ model DiV0S4ResearchRunV1 {
   @@map("di_v0_s4_research_runs_v1")
 }
 
+/// EXP-021 motion-core shadow comparison runs (post-S4 batch; flags OFF by default).
+model DiV0MotionCoreShadowRunV1 {
+  id                    String   @id @map("id")
+  organizationId        String   @map("organization_id")
+  vehicleId             String   @map("vehicle_id")
+  tripId                String   @map("trip_id")
+  workItemId            String   @map("work_item_id")
+  shadowIntentKey       String   @map("shadow_intent_key")
+  shadowBundleVersion   String   @map("shadow_bundle_version")
+  pinnedSnapshotHash    String   @map("pinned_snapshot_hash")
+  combinedInputIdentity String   @map("combined_input_identity")
+  contentFingerprint    String   @map("content_fingerprint")
+  shadowStatus          String   @map("shadow_status")
+  summaryJson           Json     @map("summary_json")
+  payloadGzip           Bytes    @map("payload_gzip")
+  uncompressedBytes     Int      @map("uncompressed_bytes")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([organizationId, tripId], map: "di_v0_motion_core_shadow_runs_org_trip_idx")
+  @@index([workItemId, shadowIntentKey], map: "di_v0_motion_core_shadow_runs_wi_intent_idx")
+  @@map("di_v0_motion_core_shadow_runs_v1")
+}
+
+model DiV0MotionCoreShadowOutboxV1 {
+  outboxId            String    @id @default(uuid()) @map("outbox_id")
+  workItemId          String    @map("work_item_id")
+  shadowIntentKey     String    @map("shadow_intent_key")
+  organizationId      String    @map("organization_id")
+  tripId              String    @map("trip_id")
+  vehicleId           String    @map("vehicle_id")
+  shadowBundleVersion String    @map("shadow_bundle_version")
+  status              String    @map("status")
+  attemptCount        Int       @default(0) @map("attempt_count")
+  nextAttemptAt       DateTime  @map("next_attempt_at") @db.Timestamptz(6)
+  lastErrorCode       String?   @map("last_error_code")
+  lastErrorAt         DateTime? @map("last_error_at") @db.Timestamptz(6)
+  claimToken          String?   @map("claim_token")
+  claimExpiresAt      DateTime? @map("claim_expires_at") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([workItemId, shadowIntentKey], map: "di_v0_motion_core_shadow_outbox_wi_intent_uq")
+  @@index([status, nextAttemptAt, createdAt], map: "di_v0_motion_core_shadow_outbox_claim_idx")
+  @@map("di_v0_motion_core_shadow_outbox_v1")
+}
+
 /// EXP-021 P2 internal trip speed quality projection (ops-only; runtime wiring OFF by default).
 model DiV0TripSpeedQualityProjectionV1 {
   id                      String    @id

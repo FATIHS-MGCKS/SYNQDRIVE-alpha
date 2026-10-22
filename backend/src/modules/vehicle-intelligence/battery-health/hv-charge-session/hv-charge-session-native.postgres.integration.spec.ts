@@ -11,6 +11,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { HvChargeSessionRepository } from './hv-charge-session.repository';
 import { HvChargeSessionPersistService } from './hv-charge-session-persist.service';
 import { HvChargeSessionNativeFallbackConvergenceService } from './hv-charge-session-native-fallback-convergence.service';
+import { createPassThroughHvChargeSessionBoundaryEnrichment } from './hv-charge-session-boundary-enrichment.test-helpers';
 
 const LIVE = process.env.ERD_E2_POSTGRES_INTEGRATION === '1';
 
@@ -76,6 +77,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
         prisma as unknown as PrismaService,
         repository,
         metrics,
+        createPassThroughHvChargeSessionBoundaryEnrichment(),
       );
       persist = new HvChargeSessionPersistService(
         repository,

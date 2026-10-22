@@ -165,3 +165,43 @@ export function isPhysicalDeviceInventoryStatus(
 ): value is PhysicalDeviceInventoryStatus {
   return (PHYSICAL_DEVICE_INVENTORY_STATUSES as readonly string[]).includes(value);
 }
+
+export const PDI_IDENTITY_DRIFT_REASON_CODES = [
+  'MATCH',
+  'IDENTITY_UNCONFIRMED',
+  'SWAP_SUSPECTED',
+  'UNKNOWN_DEVICE',
+  'ASSIGNMENT_MISMATCH',
+] as const;
+
+export type PdiIdentityDriftReasonCode = (typeof PDI_IDENTITY_DRIFT_REASON_CODES)[number];
+
+export type PdiIdentityMonitoringDeviceRowDto = {
+  physicalDeviceId: string;
+  vehicleId: string;
+  vehicleLabel: string;
+  licensePlate: string | null;
+  dimoTokenId: number | null;
+  expectedSerialMasked: string;
+  observedSerialMasked: string | null;
+  mirrorSyncedAt: string | null;
+  identityStatus: PdiIdentityDriftReasonCode;
+  confidence: 'HIGH' | 'CANDIDATE' | 'UNCONFIRMED' | 'CONFIRMED';
+  detailCodes: string[];
+  evidenceStale: boolean;
+};
+
+export type PdiIdentityMonitoringSnapshotDto = {
+  evaluatedAt: string;
+  evaluationScope: 'RUPTELA_R1_ACTIVE_INSTALL';
+  lastSuccessfulDimoVehicleSyncAt: string | null;
+  inventoryRegisteredCount: number;
+  inventoryInstalledCount: number;
+  summary: {
+    matchCount: number;
+    driftCount: number;
+    unconfirmedCount: number;
+  };
+  devices: PdiIdentityMonitoringDeviceRowDto[];
+  note: string;
+};

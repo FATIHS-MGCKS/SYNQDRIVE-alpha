@@ -228,10 +228,11 @@ function replayVehicle(label: string, vehicleId: string, all: LvOperationalCondi
 async function main(): Promise<void> {
   const csvPath = process.argv[2] ?? '/tmp/p12-ge-120d.csv';
   const byVid = await loadCsv(csvPath);
-  const out: Record<string, unknown> = { csvPath, vehicles: {} };
+  const vehicles: Record<string, unknown> = {};
+  const out = { csvPath, vehicles };
   for (const [vid, meta] of Object.entries(VEHICLES)) {
     const all = byVid.get(vid) ?? [];
-    out.vehicles[meta.label] = replayVehicle(meta.label, vid, all);
+    vehicles[meta.label] = replayVehicle(meta.label, vid, all);
   }
   console.log(JSON.stringify(out, null, 2));
 }

@@ -7,6 +7,7 @@ import { useTripDetail } from './useTripDetail';
 import { useTripRoute } from './useTripRoute';
 import { useTripsRentalContext } from './useTripsRentalContext';
 import { useRequestGuard } from './useRequestGuard';
+import { useTripMotionMap } from './useTripMotionMap';
 import { useVehicleTrips } from './useVehicleTrips';
 
 /** Orchestrates all Trips-tab data loading, selection, route, behavior and map actions. */
@@ -30,6 +31,7 @@ export function useTripsTab({
 
   const route = useTripRoute(vehicleId, orgId ?? undefined);
   const tripDetail = useTripDetail(vehicleId);
+  const motionMap = useTripMotionMap(vehicleId, selectedTrip?.id ?? null);
 
   const rental = useTripsRentalContext({
     orgId: orgId ?? undefined,
@@ -54,6 +56,7 @@ export function useTripsTab({
     route.resetRoute();
     behavior.resetBehaviorState();
     tripDetail.clearDetailCache();
+    motionMap.clear();
   }, [vehicleId, selectedDate, selectedDriver]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep selected trip in sync after timeline reload (e.g. reconcile) without dropping selection.
@@ -171,5 +174,8 @@ export function useTripsTab({
     rentalBookingsError: rental.bookingsError,
     rentalDetailLoadingId: rental.detailLoadingId,
     unlinkedTripCount: rental.unlinkedTripCount,
+    motionMapPayload: motionMap.payload,
+    motionMapLoading: motionMap.loading,
+    motionMapError: motionMap.error,
   };
 }

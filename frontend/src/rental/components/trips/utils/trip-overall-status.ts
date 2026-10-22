@@ -3,6 +3,7 @@ import {
   deriveBehaviorOverallStatus,
   type BehaviorOverallStatus,
 } from '../behavior-ui.utils';
+import { deriveTripAssessability, hasNativeBehaviorEvents } from '../event-context-ui';
 import { hasAbuseSuspicion } from '../utils/tripStatus';
 import type { TripAssessmentStatus } from '../../../../lib/api';
 import type { TripBehaviorEvent, TripTimelineTrip } from '../trips.types';
@@ -43,7 +44,19 @@ export function deriveTripOverallRating(
 ): TripOverallRating {
   if (trip.tripStatus === 'ONGOING') return 'aktiv';
 
-  const behavior = deriveBehaviorOverallStatus(trip, events);
+  const assessability = deriveTripAssessability({
+    enrichmentStatus: trip.behaviorEnrichmentStatus,
+    detailsLimited: trip.detailsLimited,
+    behaviorReady: trip.behaviorReady,
+    hasNativeEvents: hasNativeBehaviorEvents(events),
+    analysisAssessability: trip.analysisAssessability ?? null,
+    analysisLimitReason: trip.analysisLimitReason ?? null,
+    shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
+    deviceQualityWarning: trip.deviceQualityWarning,
+  });
+  const behavior = deriveBehaviorOverallStatus(trip, events, {
+    assessable: assessability.assessable,
+  });
 
   if (
     hasAbuseSuspicion(trip) ||

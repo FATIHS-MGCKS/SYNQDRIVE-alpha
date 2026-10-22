@@ -56,6 +56,9 @@ export function TripsView(props: TripsViewProps) {
             onBehaviorEventSelect={tab.setSelectedBehaviorEventId}
             onShowEventInDetails={tab.setSelectedBehaviorEventId}
             onMapReady={tab.setMapActions}
+            motionMapPayload={tab.motionMapPayload}
+            motionMapLoading={tab.motionMapLoading}
+            motionMapError={tab.motionMapError}
           />
         </div>
 

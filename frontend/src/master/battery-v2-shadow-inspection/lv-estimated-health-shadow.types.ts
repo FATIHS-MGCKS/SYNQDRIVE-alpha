@@ -1,5 +1,25 @@
 export type LvEstimatedHealthStatusV1 = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
 
+type LvEstimatedHealthShadowAssessmentVm = {
+  estimatedHealthStatus: LvEstimatedHealthStatusV1;
+  estimateConfidence: string;
+  assessmentEligibility: string;
+  reasonCodes: string[];
+  measuredSOH: 'UNKNOWN';
+  decisionTrace: {
+    finalRuleId: string | null;
+    p11ShadowRuleId?: string | null;
+    qualifiedEpisodeCount: number;
+    bandCounts: Record<string, number>;
+    longitudinalTrend: string;
+    loadSignal: string;
+  };
+  evidenceCounts: {
+    qualifiedRestEpisodes: number;
+    eligibleRestObservations: number;
+  };
+};
+
 export type LvEstimatedBatteryHealthShadowAdminV1 = {
   shadowContractVersion: 'LV_ESTIMATED_BATTERY_HEALTH_SHADOW_ADMIN_V1';
   organizationId: string;
@@ -22,24 +42,6 @@ export type LvEstimatedBatteryHealthShadowAdminV1 = {
     inputCoverageIncomplete: boolean;
     historicalQueryMode: 'DATE_RANGE_ASC' | 'RECENT_DESC_LIMIT';
   };
-  assessment: {
-    estimatedHealthStatus: LvEstimatedHealthStatusV1;
-    estimateConfidence: string;
-    assessmentEligibility: string;
-    reasonCodes: string[];
-    measuredSOH: 'UNKNOWN';
-    decisionTrace: {
-      finalRuleId: string | null;
-      p11ShadowRuleId?: string | null;
-      qualifiedEpisodeCount: number;
-      bandCounts: Record<string, number>;
-      longitudinalTrend: string;
-      loadSignal: string;
-    };
-    evidenceCounts: {
-      qualifiedRestEpisodes: number;
-      eligibleRestObservations: number;
-    };
-  };
-  p11ShadowAssessment?: LvEstimatedBatteryHealthShadowAdminV1['assessment'];
+  assessment: LvEstimatedHealthShadowAssessmentVm;
+  p11ShadowAssessment: LvEstimatedHealthShadowAssessmentVm;
 };

@@ -13,6 +13,7 @@ import { HV_FALLBACK_DETECTION_TIER } from './hv-fallback-charge-session.types';
 import { HvChargeSessionRepository } from './hv-charge-session.repository';
 import { HvChargeSessionPersistService } from './hv-charge-session-persist.service';
 import { HvChargeSessionNativeFallbackConvergenceService } from './hv-charge-session-native-fallback-convergence.service';
+import { createPassThroughHvChargeSessionBoundaryEnrichment } from './hv-charge-session-boundary-enrichment.test-helpers';
 
 function buildAuthorityStack(client: PrismaClient) {
   const repository = new HvChargeSessionRepository(client as unknown as PrismaService);
@@ -21,6 +22,7 @@ function buildAuthorityStack(client: PrismaClient) {
     client as unknown as PrismaService,
     repository,
     metrics,
+    createPassThroughHvChargeSessionBoundaryEnrichment(),
   );
   const persist = new HvChargeSessionPersistService(
     repository,

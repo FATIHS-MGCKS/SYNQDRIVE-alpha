@@ -1,5 +1,6 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapNL } from './rental-legacy-gap.nl';
+import { tripsMotionMapNL } from './trips-motion-map.nl';
 import { rentalTripGpsSpeedEvaluationNl } from './rental.tripGpsSpeedEvaluation.nl';
 import { dimoWebhookHealthNl } from './dimo-webhook-health.nl';
 import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
@@ -156,6 +157,7 @@ export const nl = {
   'documents.vehicleDocuments': 'Voertuigdocumenten', 'documents.monthlyFixedCosts': 'Maandelijkse vaste kosten',
   'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities',   'customerDetail.drivingScore': 'Rijscore',
   ...rentalLegacyGapNL,
+  ...tripsMotionMapNL,
   ...rentalTripGpsSpeedEvaluationNl,
   ...dimoWebhookHealthNl,
   ...masterPlatformOpsDiS4Nl,

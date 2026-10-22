@@ -18,6 +18,7 @@ import { TripsService } from '../trips/trips.service';
 import { DI_V0_SPEED_QC_POLICY_V2 } from '../driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
 import { DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENV } from '../driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.config';
 import { DiV0TripSpeedQualityProductReadService } from '../driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.service';
+import { DiV0MotionCoreShadowTripMapReadService } from '../driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service';
 import { DiV0TripSpeedQualityProjectionService } from '../driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-projection.service';
 import { DiV0P2AutoProjectionV2Service } from '../driving-intelligence/trip-speed-quality/di-v0-p2-auto-projection-v2.service';
 import { BatteryService } from '../battery/battery.service';
@@ -113,6 +114,7 @@ describe('VehicleIntelligenceController — gps-speed-evaluation-v2 HTTP integra
   };
   let p2AutoProjection: { runPass: jest.Mock };
   let productReadService: { readForTrip: jest.Mock };
+  let motionTripMapRead: { readForTrip: jest.Mock };
   let realProductReadService: DiV0TripSpeedQualityProductReadService;
   let originalProductReadEnv: string | undefined;
 
@@ -167,6 +169,21 @@ describe('VehicleIntelligenceController — gps-speed-evaluation-v2 HTTP integra
     productReadService = {
       readForTrip: jest.fn(async (...args: unknown[]) => realProductReadService.readForTrip(...(args as [string, string, string]))),
     };
+    motionTripMapRead = {
+      readForTrip: jest.fn().mockResolvedValue({
+        status: 'NOT_AVAILABLE',
+        previewLabel: 'S4 Motion · vorläufig',
+        runId: null,
+        snapshotBindingVerified: false,
+        newerFailedRunId: null,
+        newerFailedRunStatus: null,
+        samples: [],
+        events: [],
+        stopEpisodes: [],
+        limitations: [],
+        failureCode: null,
+      }),
+    };
 
     const stub = {};
     const moduleRef = await Test.createTestingModule({
@@ -179,6 +196,7 @@ describe('VehicleIntelligenceController — gps-speed-evaluation-v2 HTTP integra
         { provide: PrismaService, useValue: prisma },
         { provide: TripsService, useValue: tripsService },
         { provide: DiV0TripSpeedQualityProductReadService, useValue: productReadService },
+        { provide: DiV0MotionCoreShadowTripMapReadService, useValue: motionTripMapRead },
         { provide: DiV0TripSpeedQualityProjectionService, useValue: projectionService },
         { provide: DiV0P2AutoProjectionV2Service, useValue: p2AutoProjection },
         { provide: BatteryService, useValue: stub },
@@ -330,6 +348,28 @@ describe('VehicleIntelligenceController — gps-speed-evaluation-v2 HTTP integra
       tripOwned,
       DI_V0_SPEED_QC_POLICY_V2,
     );
+  });
+
+  it('motion-shadow-map allows fleet.read and delegates to motion read service', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/vehicles/${vehOwned}/trips/${tripOwned}/motion-shadow-map`)
+      .set(...auth(fleetReader))
+      .expect(200);
+    expect(motionTripMapRead.readForTrip).toHaveBeenCalledWith(orgA, vehOwned, tripOwned);
+  });
+
+  it('motion-shadow-map denies user without fleet.read', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/vehicles/${vehOwned}/trips/${tripOwned}/motion-shadow-map`)
+      .set(...auth(noFleet))
+      .expect(403);
+  });
+
+  it('motion-shadow-map returns 404 when trip belongs to another vehicle', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/vehicles/${vehOwned}/trips/trip-wrong-vehicle/motion-shadow-map`)
+      .set(...auth(fleetReader))
+      .expect(404);
   });
 
   it('GET path does not invoke projection write or P2 enqueue (real product read service)', async () => {
