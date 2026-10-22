@@ -27,6 +27,22 @@ export function frozenM7aAlgorithmFingerprint(): string {
     .digest('hex');
 }
 
+export function m7aRoadAssignmentShadowDiscoveryIntentDigestPayload(input: {
+  pinnedSnapshotHash: string;
+  combinedInputIdentity: string;
+  osmDataVersion: string;
+  bundleVersion?: string;
+  algorithmFingerprint?: string;
+}): string {
+  return JSON.stringify({
+    b: input.bundleVersion ?? DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1,
+    a: input.algorithmFingerprint ?? frozenM7aAlgorithmFingerprint(),
+    c: input.combinedInputIdentity,
+    o: input.osmDataVersion,
+    p: input.pinnedSnapshotHash,
+  });
+}
+
 /** Discovery intent (graph not yet resolved). */
 export function buildM7aRoadAssignmentShadowDiscoveryIntentKey(input: {
   pinnedSnapshotHash: string;
@@ -34,13 +50,7 @@ export function buildM7aRoadAssignmentShadowDiscoveryIntentKey(input: {
   osmDataVersion: string;
   bundleVersion?: string;
 }): string {
-  const payload = JSON.stringify({
-    b: input.bundleVersion ?? DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1,
-    a: frozenM7aAlgorithmFingerprint(),
-    c: input.combinedInputIdentity,
-    o: input.osmDataVersion,
-    p: input.pinnedSnapshotHash,
-  });
+  const payload = m7aRoadAssignmentShadowDiscoveryIntentDigestPayload(input);
   return `DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_INTENT_V1:sha256:${createHash('sha256').update(payload).digest('hex')}`;
 }
 

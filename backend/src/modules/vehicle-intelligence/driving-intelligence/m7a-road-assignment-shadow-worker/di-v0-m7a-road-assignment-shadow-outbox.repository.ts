@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-m7a-road-assignment-shadow.bundle.version';
-import { buildM7aRoadAssignmentShadowDiscoveryIntentKey } from './di-v0-m7a-road-assignment-shadow-intent';
+import { frozenM7aAlgorithmFingerprint } from './di-v0-m7a-road-assignment-shadow-intent';
 import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING } from './di-v0-m7a-road-assignment-shadow.config';
 
 export type DiV0M7aRoadAssignmentShadowOutboxStatus =
@@ -27,6 +27,11 @@ export interface DiV0M7aRoadAssignmentShadowOutboxRow {
 export class DiV0M7aRoadAssignmentShadowOutboxRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  /**
+   * Enqueue durable shadow work for eligible completed PRIMARY S4 items.
+   * Rows already in outbox or already SUCCEEDED for the same discovery intent are excluded
+   * before ORDER BY/LIMIT so processed trips cannot occupy the discovery window.
+   */
   async discoverEligible(input: {
     enabledSince: Date;
     organizationAllowlist: readonly string[];
@@ -38,17 +43,11 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
     if (input.organizationAllowlist.length === 0 || input.vehicleAllowlist.length === 0) return 0;
     const orgs = input.organizationAllowlist;
     const vehicles = input.vehicleAllowlist;
+    const bundleVersion = DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1;
+    const algorithmFingerprint = frozenM7aAlgorithmFingerprint();
+    const osmDataVersion = input.osmDataVersion;
 
-    const candidates = await this.prisma.$queryRaw<
-      Array<{
-        work_item_id: string;
-        organization_id: string;
-        trip_id: string;
-        vehicle_id: string;
-        pinned_snapshot_hash: string;
-        combined_input_identity: string;
-      }>
-    >`
+    const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
       WITH active_primary AS (
         SELECT DISTINCT ON (organization_id, trip_id)
           id, organization_id, trip_id
@@ -57,57 +56,75 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
           AND purpose_discriminator = 'PRIMARY'
           AND status <> 'SUPERSEDED'
         ORDER BY organization_id, trip_id, boundary_occurrence DESC, created_at DESC
+      ),
+      eligible AS (
+        SELECT
+          wi.id AS work_item_id,
+          wi.organization_id,
+          wi.trip_id,
+          wi.vehicle_id,
+          wi.pinned_snapshot_hash,
+          coalesce(wi.combined_input_identity, '') AS combined_input_identity,
+          wi.completed_at,
+          (
+            'DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_INTENT_V1:sha256:' || encode(
+              digest(
+                json_build_object(
+                  'b', ${bundleVersion},
+                  'a', ${algorithmFingerprint},
+                  'c', coalesce(wi.combined_input_identity, ''),
+                  'o', ${osmDataVersion},
+                  'p', wi.pinned_snapshot_hash
+                )::text,
+                'sha256'
+              ),
+              'hex'
+            )
+          ) AS shadow_intent_key
+        FROM di_v0_s4_work_items wi
+        INNER JOIN active_primary ap
+          ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
+        WHERE wi.status = 'COMPLETED'
+          AND wi.run_purpose = 'PRIMARY'
+          AND wi.purpose_discriminator = 'PRIMARY'
+          AND wi.pinned_snapshot_hash IS NOT NULL
+          AND wi.shadow_run_id IS NOT NULL
+          AND wi.completed_at IS NOT NULL
+          AND wi.completed_at >= ${input.enabledSince}
+          AND wi.organization_id = ANY(${orgs}::text[])
+          AND wi.vehicle_id = ANY(${vehicles}::text[])
+      )
+      INSERT INTO di_v0_m7a_road_assignment_shadow_outbox_v1 (
+        work_item_id, shadow_intent_key, organization_id, trip_id, vehicle_id,
+        shadow_bundle_version, status, next_attempt_at
       )
       SELECT
-        wi.id AS work_item_id,
-        wi.organization_id,
-        wi.trip_id,
-        wi.vehicle_id,
-        wi.pinned_snapshot_hash,
-        coalesce(wi.combined_input_identity, '') AS combined_input_identity
-      FROM di_v0_s4_work_items wi
-      INNER JOIN active_primary ap
-        ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
-      WHERE wi.status = 'COMPLETED'
-        AND wi.run_purpose = 'PRIMARY'
-        AND wi.purpose_discriminator = 'PRIMARY'
-        AND wi.pinned_snapshot_hash IS NOT NULL
-        AND wi.shadow_run_id IS NOT NULL
-        AND wi.completed_at IS NOT NULL
-        AND wi.completed_at >= ${input.enabledSince}
-        AND wi.organization_id = ANY(${orgs}::text[])
-        AND wi.vehicle_id = ANY(${vehicles}::text[])
-      ORDER BY wi.completed_at ASC
-      LIMIT ${input.limit}`;
-
-    let inserted = 0;
-    for (const c of candidates) {
-      const shadowIntentKey = buildM7aRoadAssignmentShadowDiscoveryIntentKey({
-        pinnedSnapshotHash: c.pinned_snapshot_hash,
-        combinedInputIdentity: c.combined_input_identity,
-        osmDataVersion: input.osmDataVersion,
-      });
-      const blocked = await this.prisma.$queryRaw<Array<{ one: number }>>`
-        SELECT 1 AS one FROM di_v0_m7a_road_assignment_shadow_runs_v1 r
-        WHERE r.work_item_id = ${c.work_item_id}
-          AND r.shadow_intent_key = ${shadowIntentKey}
+        e.work_item_id,
+        e.shadow_intent_key,
+        e.organization_id,
+        e.trip_id,
+        e.vehicle_id,
+        ${bundleVersion},
+        'PENDING',
+        ${input.now}
+      FROM eligible e
+      WHERE NOT EXISTS (
+        SELECT 1 FROM di_v0_m7a_road_assignment_shadow_runs_v1 r
+        WHERE r.work_item_id = e.work_item_id
+          AND r.shadow_intent_key = e.shadow_intent_key
           AND r.shadow_status = 'SUCCEEDED'
-        LIMIT 1`;
-      if (blocked.length > 0) continue;
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM di_v0_m7a_road_assignment_shadow_outbox_v1 o
+        WHERE o.work_item_id = e.work_item_id
+          AND o.shadow_intent_key = e.shadow_intent_key
+      )
+      ORDER BY e.completed_at ASC
+      LIMIT ${input.limit}
+      ON CONFLICT (work_item_id, shadow_intent_key) DO NOTHING
+      RETURNING outbox_id`;
 
-      const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
-        INSERT INTO di_v0_m7a_road_assignment_shadow_outbox_v1 (
-          work_item_id, shadow_intent_key, organization_id, trip_id, vehicle_id,
-          shadow_bundle_version, status, next_attempt_at
-        ) VALUES (
-          ${c.work_item_id}, ${shadowIntentKey}, ${c.organization_id}, ${c.trip_id}, ${c.vehicle_id},
-          ${DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1}, 'PENDING', ${input.now}
-        )
-        ON CONFLICT (work_item_id, shadow_intent_key) DO NOTHING
-        RETURNING outbox_id`;
-      inserted += rows.length;
-    }
-    return inserted;
+    return rows.length;
   }
 
   async claimBatch(limit: number, now: Date): Promise<DiV0M7aRoadAssignmentShadowOutboxRow[]> {
