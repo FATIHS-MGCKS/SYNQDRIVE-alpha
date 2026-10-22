@@ -110,12 +110,23 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.lvMeasured.table.status': 'Status',
   'master.batteryV2Shadow.lvMeasured.table.measuredPts': 'MEASURED pts',
   'master.batteryV2Shadow.lvMeasured.historyRangeTitle': 'Historical MEASURED window',
-  'master.batteryV2Shadow.lvMeasured.historyFrom': 'From (UTC)',
-  'master.batteryV2Shadow.lvMeasured.historyTo': 'To (UTC)',
+  'master.batteryV2Shadow.lvMeasured.historyFrom': 'From (local time)',
+  'master.batteryV2Shadow.lvMeasured.historyTo': 'To (local time)',
   'master.batteryV2Shadow.lvMeasured.historyApply': 'Load range',
   'master.batteryV2Shadow.lvMeasured.historyRecentLimit': 'Recent limit',
-  'master.batteryV2Shadow.lvMeasured.historyModeRecent': 'Showing most recent points (server limit). Use date range for months of Ruptela history.',
-  'master.batteryV2Shadow.lvMeasured.historyModeRange': 'Date-range browse (ascending MEASURED, deduped).',
+  'master.batteryV2Shadow.lvMeasured.historyModeRecent':
+    'Default: newest MEASURED points first (server cap 500). Chart focuses on the returned window — not synthetic interpolation.',
+  'master.batteryV2Shadow.lvMeasured.historyModeRange':
+    'Custom local date range (ascending MEASURED, deduped). If the server limit is hit, the oldest points in the range are returned first — narrow the range or use Recent limit for the latest data.',
+  'master.batteryV2Shadow.lvMeasured.historyWindowLabel': 'Loaded window: {{from}} → {{to}} ({{count}} chart points)',
+  'master.batteryV2Shadow.lvMeasured.truncatedHistoryRange':
+    'Server observation limit reached inside this date range — chart may omit the newest measurements in the range. Use Recent limit or a shorter range.',
+  'master.batteryV2Shadow.lvMeasured.chart.empty': 'No MEASURED voltage points in the loaded window.',
+  'master.batteryV2Shadow.lvMeasured.chart.singlePoint':
+    'Only one MEASURED point in this window — shown as a marker (no interpolated curve).',
+  'master.batteryV2Shadow.lvMeasured.chart.gapBreaks':
+    '{{count}} measurement gap(s) — line is not drawn across long silent intervals.',
+  'master.batteryV2Shadow.lvMeasured.tooltip.context': 'Operational context',
   'master.batteryV2Shadow.lvMeasured.metric.observationSpan': 'C3 observation span',
   'master.batteryV2Shadow.lvMeasured.metric.validRestPoints': 'C3 valid rest pts',
   'master.batteryV2Shadow.lvMeasured.slope.contextLimited': 'CONTEXT_LIMITED slope (not a reliable resting self-discharge trend)',
@@ -125,6 +136,116 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.lvMeasured.slope.interpretable': 'Rest self-discharge trend (C3 Theil-Sen)',
   'master.batteryV2Shadow.lvMeasured.selectEpisode': 'Inspect session',
   'master.batteryV2Shadow.lvMeasured.endReason': 'End reason',
+  'master.batteryV2Shadow.lvMeasured.evidence.section.measurement': 'Measurement',
+  'master.batteryV2Shadow.lvMeasured.evidence.section.operational': 'Operational state',
+  'master.batteryV2Shadow.lvMeasured.evidence.section.quality': 'Data quality / usability',
+  'master.batteryV2Shadow.lvMeasured.evidence.section.interpretation': 'Internal interpretation (evidence, not health)',
+  'master.batteryV2Shadow.lvMeasured.evidence.measuredAt': 'Measured at (stored voltageObservedAt)',
+  'master.batteryV2Shadow.lvMeasured.evidence.evidenceClass': 'Stored evidenceClass',
+  'master.batteryV2Shadow.lvMeasured.evidence.batteryHealth': 'Battery health assessment',
+  'master.batteryV2Shadow.lvMeasured.evidence.cranking': 'Cranking evidence',
+  'master.batteryV2Shadow.lvMeasured.evidence.notHealthAssessment':
+    'This panel is generalized-evidence review only — not a validated SOH or GOOD/BAD battery verdict.',
+  'master.batteryV2Shadow.lvMeasured.evidence.openGapsDetail':
+    '{{count}} open provider observability gap(s) — coverage may be incomplete between measurements.',
+  'master.batteryV2Shadow.lvMeasured.boundary.batteryHealthNotAssessed': 'Not available (NOT_ASSESSED)',
+  'master.batteryV2Shadow.lvMeasured.cranking.unknown': 'UNKNOWN',
+  'master.batteryV2Shadow.lvMeasured.cranking.notInReadModel':
+    'No confirmed cranking capture in LV_MEASURED_INTELLIGENCE_V1 — do not infer startability from voltage alone.',
+  'master.batteryV2Shadow.lvMeasured.missing.providerTime':
+    'Provider timestamp not stored on this row — use measuredAt for ordering.',
+  'master.batteryV2Shadow.lvMeasured.missing.slopeNotComputed':
+    'DERIVED slope not computed for this session (see limitation codes in details).',
+  'master.batteryV2Shadow.lvMeasured.missing.observationSpan':
+    'Observation span not available — insufficient DERIVED feature row.',
+  'master.batteryV2Shadow.lvMeasured.missing.validRestPoints':
+    'Valid rest point count not published — C3 inputs incomplete for this session.',
+  'master.batteryV2Shadow.lvMeasured.missing.endReason': 'Session end reason not recorded.',
+  'master.batteryV2Shadow.lvMeasured.missing.d4Revision': 'No bounded D3/D4 revision loaded for this vehicle.',
+  'master.batteryV2Shadow.lvMeasured.interpretation.openProviderGaps':
+    'Open provider gaps mean telemetry may be missing between stored MEASURED rows.',
+  'master.batteryV2Shadow.lvMeasured.interpretation.lvChargingActive':
+    'LV charging flag is true — voltage reflects charging context, not a resting baseline.',
+  'master.batteryV2Shadow.lvMeasured.interpretation.engineRunning':
+    'Engine running flag is true — voltage is not a parked-rest sample.',
+  'master.batteryV2Shadow.lvMeasured.interpretation.noExtraFlags': '',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.unmapped':
+    'Unmapped evidenceClass in UI dictionary — treat as stored pipeline label only.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.PARKED_REST_CANDIDATE':
+    'Parked rest candidate — voltage suitable for internal rest-series review when context stays stable.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.REST_STABLE_VOLTAGE':
+    'Stable rest voltage sample — preferred for resting voltage inspection.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.REST_WAKE_VOLTAGE':
+    'Rest wake voltage — may include wake/load effects; not a confirmed cranking event.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.DRIVING_NON_CHARGING':
+    'Driving, not charging — voltage mixes alternator/load; not a rest baseline.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.DRIVING_CHARGING':
+    'Driving while charging — voltage dominated by charging/alternator context.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.ENGINE_OFF_TRANSITION':
+    'Engine-off transition — short-lived context; avoid resting-trend conclusions.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.CHARGING_CONTAMINATED':
+    'Charging-contaminated evidence — resting interpretation is context-limited.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.ACTIVE_VEHICLE_CONTAMINATED':
+    'Active-vehicle contamination — resting interpretation is context-limited.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.STALE_REPLAY':
+    'Stale replay — timestamp or replay semantics reduce trust for freshness.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.STATE_AMBIGUOUS':
+    'Ambiguous vehicle state — operational context may not match resting use.',
+  'master.batteryV2Shadow.lvMeasured.evidenceClass.UNKNOWN':
+    'Unknown evidence class — usability not established in the stored row.',
+  'master.batteryV2Shadow.lvMeasured.usability.restCandidate.label': 'Usable for rest review (context-dependent)',
+  'master.batteryV2Shadow.lvMeasured.usability.restCandidate.explanation':
+    'Stored as parked rest candidate — suitable for internal MEASURED review when session context remains stable.',
+  'master.batteryV2Shadow.lvMeasured.usability.restStable.label': 'Usable resting voltage sample',
+  'master.batteryV2Shadow.lvMeasured.usability.restStable.explanation':
+    'Stable rest class — preferred for inspecting resting voltage level (still not a health verdict).',
+  'master.batteryV2Shadow.lvMeasured.usability.restWake.label': 'Limited — wake/rest transition',
+  'master.batteryV2Shadow.lvMeasured.usability.restWake.explanation':
+    'Wake-related rest voltage — do not treat as confirmed cranking or SOH evidence.',
+  'master.batteryV2Shadow.lvMeasured.usability.driving.label': 'Limited — driving context',
+  'master.batteryV2Shadow.lvMeasured.usability.driving.explanation':
+    'Driving sample — voltage reflects alternator/load, not a resting baseline.',
+  'master.batteryV2Shadow.lvMeasured.usability.drivingCharging.label': 'Limited — driving + charging',
+  'master.batteryV2Shadow.lvMeasured.usability.drivingCharging.explanation':
+    'Charging while driving — not suitable for resting self-discharge interpretation.',
+  'master.batteryV2Shadow.lvMeasured.usability.transition.label': 'Limited — transition',
+  'master.batteryV2Shadow.lvMeasured.usability.transition.explanation':
+    'Engine-off transition — short window; avoid trend or health conclusions.',
+  'master.batteryV2Shadow.lvMeasured.usability.chargingContaminated.label': 'Limited — charging contamination',
+  'master.batteryV2Shadow.lvMeasured.usability.chargingContaminated.explanation':
+    'Charging contamination flag on evidence — resting metrics may be biased.',
+  'master.batteryV2Shadow.lvMeasured.usability.activeContaminated.label': 'Limited — active vehicle contamination',
+  'master.batteryV2Shadow.lvMeasured.usability.activeContaminated.explanation':
+    'Active-vehicle contamination — resting interpretation is not reliable.',
+  'master.batteryV2Shadow.lvMeasured.usability.staleReplay.label': 'Insufficient — stale replay',
+  'master.batteryV2Shadow.lvMeasured.usability.staleReplay.explanation':
+    'Replay/staleness semantics — do not treat as a fresh operational snapshot.',
+  'master.batteryV2Shadow.lvMeasured.usability.ambiguous.label': 'Insufficient — ambiguous state',
+  'master.batteryV2Shadow.lvMeasured.usability.ambiguous.explanation':
+    'Ambiguous state — operational context cannot support resting conclusions.',
+  'master.batteryV2Shadow.lvMeasured.usability.unknownClass.label': 'Insufficient — unknown class',
+  'master.batteryV2Shadow.lvMeasured.usability.unknownClass.explanation':
+    'Unknown stored class — inspect raw evidenceClass and provider gaps before use.',
+  'master.batteryV2Shadow.lvMeasured.usability.unmapped.label': 'Limited — unmapped class label',
+  'master.batteryV2Shadow.lvMeasured.usability.unmapped.explanation':
+    'evidenceClass not in UI map — use stored enum string; no automatic health classification.',
+  'master.batteryV2Shadow.lvMeasured.episode.mobile.measurementCount': '{{count}} MEASURED point(s) in episode window',
+  'master.batteryV2Shadow.lvMeasured.episode.mobile.technicalDetails': 'Technical details (C3 / DERIVED / codes)',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.none.label': 'Not evaluable',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.none.explanation':
+    'No deduped MEASURED points linked to this REST episode — nothing to plot or derive.',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.noDerived.label': 'Partially evaluable',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.noDerived.explanation':
+    'MEASURED points exist but no DERIVED feature summary was returned for this session.',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.contextLimited.label': 'Context-limited',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.contextLimited.explanation':
+    'Session marked CONTEXT_LIMITED — resting slope/trend is not presented as reliable.',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.slopeLimited.label': 'Trend context-limited',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.slopeLimited.explanation':
+    'DERIVED slope is CONTEXT_LIMITED (policy codes in technical details) — not a health assessment.',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.trendReady.label': 'Internally trend-ready',
+  'master.batteryV2Shadow.lvMeasured.episode.eval.trendReady.explanation':
+    'DERIVED rest self-discharge trend is interpretable for engineering review — still not customer battery health.',
 };
 
 export function resolveBatteryV2ShadowCopy(key: string, params?: Record<string, string | number>): string {
