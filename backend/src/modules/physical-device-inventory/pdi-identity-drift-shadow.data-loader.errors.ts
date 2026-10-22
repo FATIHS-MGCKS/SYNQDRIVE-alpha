@@ -1,5 +1,10 @@
 export function isPdiInventoryRelationMissingError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
+  const message =
+    error instanceof Error
+      ? error.message
+      : error && typeof error === 'object' && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : String(error);
   const code =
     error && typeof error === 'object' && 'code' in error
       ? String((error as { code: unknown }).code)
