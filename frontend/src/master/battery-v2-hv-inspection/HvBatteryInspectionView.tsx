@@ -13,6 +13,11 @@ import type {
   HvBatteryAdminOverviewV1,
   HvBatteryAdminTechnicalDetailsV1,
 } from './hv-battery-inspection.types';
+import {
+  formatExclusionList,
+  formatM2SummaryLines,
+  formatM3ValidationLines,
+} from './hv-battery-m2-m3-display.util';
 
 type MasterOrgOption = { id: string; companyName: string };
 
@@ -298,14 +303,20 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
               </MasterPageSection>
               <MasterPageSection title={t('master.hvBattery.metric.measurementQuality')}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <Metric label="Level" value={overview.measurementQuality.vehicleQualityLevel} />
-                  <Metric label="Score" value={overview.measurementQuality.qualityScore} />
                   <Metric
-                    label="Capacity confidence"
+                    label={t('master.hvBattery.metric.qualityLevel')}
+                    value={overview.measurementQuality.vehicleQualityLevel}
+                  />
+                  <Metric
+                    label={t('master.hvBattery.metric.qualityScore')}
+                    value={overview.measurementQuality.qualityScore}
+                  />
+                  <Metric
+                    label={t('master.hvBattery.metric.capacityConfidence')}
                     value={overview.measurementQuality.capacityConfidence}
                   />
                   <Metric
-                    label="SOH readiness"
+                    label={t('master.hvBattery.metric.sohReadiness')}
                     value={overview.measurementQuality.sohPublicationReadiness}
                   />
                 </div>
@@ -313,15 +324,19 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
               <MasterPageSection title={t('master.hvBattery.metric.capacityEvidence')}>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   <Metric
-                    label="Status"
+                    label={t('master.hvBattery.metric.status')}
                     value={formatAvailability(t, overview.capacityEvidence.crossSessionAvailability)}
                   />
                   <Metric
-                    label="Shadow gate"
-                    value={overview.capacityEvidence.shadowGatePassed ? 'PASS' : '—'}
+                    label={t('master.hvBattery.metric.shadowGate')}
+                    value={
+                      overview.capacityEvidence.shadowGatePassed
+                        ? t('master.hvBattery.metric.shadowGatePass')
+                        : t('master.hvBattery.metric.shadowGateFail')
+                    }
                   />
                   <Metric
-                    label="Estimated kWh"
+                    label={t('master.hvBattery.metric.estimatedKwh')}
                     value={
                       overview.capacityEvidence.estimatedUsableCapacityKwh != null
                         ? overview.capacityEvidence.estimatedUsableCapacityKwh.toFixed(2)
@@ -334,11 +349,11 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                 <p className="text-xs text-muted-foreground mb-2">{overview.sohEvidence.disclaimer}</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   <Metric
-                    label="Availability"
+                    label={t('master.hvBattery.metric.availability')}
                     value={formatAvailability(t, overview.sohEvidence.availability)}
                   />
                   <Metric
-                    label="Internal SOH %"
+                    label={t('master.hvBattery.metric.internalSoh')}
                     value={
                       overview.sohEvidence.internalEstimatedSohPercent != null
                         ? overview.sohEvidence.internalEstimatedSohPercent.toFixed(1)
@@ -346,16 +361,19 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                     }
                   />
                   <Metric
-                    label="Presentation"
+                    label={t('master.hvBattery.metric.presentation')}
                     value={overview.sohEvidence.presentation}
                   />
                 </div>
               </MasterPageSection>
               <MasterPageSection title={t('master.hvBattery.metric.snapshotCoverage')}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <Metric label="Count (30d)" value={overview.snapshotCoverage.snapshotsLast30Days} />
                   <Metric
-                    label="Latest"
+                    label={t('master.hvBattery.metric.snapshotCount30d')}
+                    value={overview.snapshotCoverage.snapshotsLast30Days}
+                  />
+                  <Metric
+                    label={t('master.hvBattery.metric.latest')}
                     value={
                       overview.snapshotCoverage.latestRecordedAt
                         ? new Date(overview.snapshotCoverage.latestRecordedAt).toLocaleString()
@@ -363,11 +381,11 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                     }
                   />
                   <Metric
-                    label="Latest SOC %"
+                    label={t('master.hvBattery.metric.latestSoc')}
                     value={overview.snapshotCoverage.latestSocPercent ?? formatAvailability(t, 'NOT_MEASURED')}
                   />
                   <Metric
-                    label="Latest energy"
+                    label={t('master.hvBattery.metric.latestEnergy')}
                     value={
                       overview.snapshotCoverage.latestEnergyKwh != null
                         ? `${overview.snapshotCoverage.latestEnergyKwh.toFixed(1)} kWh`
@@ -436,7 +454,9 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                             {seg.endAt ? new Date(seg.endAt).toLocaleString() : 'ongoing'}
                           </p>
                           {seg.isSuperseded ? (
-                            <p className="text-xs text-amber-700 dark:text-amber-300">superseded</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                              {t('master.hvBattery.segment.superseded')}
+                            </p>
                           ) : null}
                         </li>
                       ))}
@@ -455,6 +475,42 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                         value={episodeDetail.m2.observationCount}
                       />
                     </div>
+                    <MasterPageSection title={t('master.hvBattery.detail.m2')}>
+                      {formatM2SummaryLines(episodeDetail.m2.summary).length > 0 ? (
+                        <ul className="list-disc pl-4 space-y-1 text-xs font-mono">
+                          {formatM2SummaryLines(episodeDetail.m2.summary).map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{t('master.hvBattery.m2.noData')}</p>
+                      )}
+                    </MasterPageSection>
+                    <MasterPageSection title={t('master.hvBattery.detail.m3')}>
+                      {formatM3ValidationLines(episodeDetail.m3.validation).length > 0 ? (
+                        <ul className="list-disc pl-4 space-y-1 text-xs font-mono">
+                          {formatM3ValidationLines(episodeDetail.m3.validation).map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{t('master.hvBattery.m3.noData')}</p>
+                      )}
+                    </MasterPageSection>
+                    {episodeDetail.measurementQuality ? (
+                      <MasterPageSection title={t('master.hvBattery.exclusion.title')}>
+                        <p className="text-sm">
+                          {episodeDetail.measurementQuality.qualityLevel} ·{' '}
+                          {episodeDetail.measurementQuality.qualityScore}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatExclusionList(episodeDetail.measurementQuality.exclusionReasons)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatExclusionList(episodeDetail.measurementQuality.qualityReasonCodes)}
+                        </p>
+                      </MasterPageSection>
+                    ) : null}
                   </div>
                 )}
               </MasterPageSection>
@@ -468,26 +524,57 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                 <p className="text-sm mb-2">
                   {formatAvailability(t, technical.crossSessionAssessment.availability)}
                 </p>
-                <pre className="text-xs overflow-auto max-h-48 rounded bg-muted/40 p-2">
-                  {JSON.stringify(technical.crossSessionAssessment.persisted, null, 2)}
-                </pre>
+                {technical.crossSessionAssessment.persisted ? (
+                  <dl className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <dt className="text-muted-foreground">{t('master.hvBattery.metric.estimatedKwh')}</dt>
+                      <dd className="tabular-nums font-medium">
+                        {typeof technical.crossSessionAssessment.persisted.scoreValue === 'number'
+                          ? Number(technical.crossSessionAssessment.persisted.scoreValue).toFixed(2)
+                          : formatAvailability(t, 'NOT_CALCULATED')}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">{t('master.hvBattery.metric.status')}</dt>
+                      <dd>{String(technical.crossSessionAssessment.persisted.confidence ?? '—')}</dd>
+                    </div>
+                  </dl>
+                ) : null}
+                <details className="mt-2">
+                  <summary className="text-xs cursor-pointer text-muted-foreground">
+                    {t('master.hvBattery.technical.rawJson')}
+                  </summary>
+                  <pre className="text-xs overflow-auto max-h-48 rounded bg-muted/40 p-2 mt-1">
+                    {JSON.stringify(technical.crossSessionAssessment.persisted, null, 2)}
+                  </pre>
+                </details>
               </MasterPageSection>
               <MasterPageSection title={t('master.hvBattery.metric.sohEvidence')}>
                 <Metric
-                  label="Internal SOH %"
+                  label={t('master.hvBattery.metric.internalSoh')}
                   value={
                     technical.sohAssessment.internalEstimatedSohPercent != null
                       ? technical.sohAssessment.internalEstimatedSohPercent.toFixed(1)
                       : formatAvailability(t, 'NOT_CALCULATED')
                   }
                 />
-                <pre className="text-xs overflow-auto max-h-48 rounded bg-muted/40 p-2 mt-2">
-                  {JSON.stringify(technical.sohAssessment.persisted, null, 2)}
-                </pre>
+                {technical.sohAssessment.gateReasonCodes.length > 0 ? (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {formatExclusionList(technical.sohAssessment.gateReasonCodes)}
+                  </p>
+                ) : null}
+                <details className="mt-2">
+                  <summary className="text-xs cursor-pointer text-muted-foreground">
+                    {t('master.hvBattery.technical.rawJson')}
+                  </summary>
+                  <pre className="text-xs overflow-auto max-h-48 rounded bg-muted/40 p-2 mt-1">
+                    {JSON.stringify(technical.sohAssessment.persisted, null, 2)}
+                  </pre>
+                </details>
               </MasterPageSection>
               <MasterPageSection title={t('master.hvBattery.technical.reference')}>
                 <Metric
-                  label="kWh"
+                  label={t('master.hvBattery.metric.kwh')}
                   value={
                     technical.referenceCapacity.capacityKwh != null
                       ? technical.referenceCapacity.capacityKwh
@@ -496,9 +583,14 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                 />
               </MasterPageSection>
               <MasterPageSection title={t('master.hvBattery.technical.flags')}>
-                <pre className="text-xs overflow-auto rounded bg-muted/40 p-2">
-                  {JSON.stringify(technical.featureFlags, null, 2)}
-                </pre>
+                <ul className="text-sm space-y-1">
+                  {Object.entries(technical.featureFlags).map(([key, value]) => (
+                    <li key={key}>
+                      <span className="font-mono text-xs">{key}</span>:{' '}
+                      <span className="tabular-nums">{String(value)}</span>
+                    </li>
+                  ))}
+                </ul>
               </MasterPageSection>
             </div>
           )}
