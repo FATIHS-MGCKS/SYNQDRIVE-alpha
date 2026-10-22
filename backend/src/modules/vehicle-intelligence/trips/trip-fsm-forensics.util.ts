@@ -284,11 +284,17 @@ export function mergeFinalizeRawDetectionMeta(params: {
   finalizeLayer: Record<string, unknown>;
 }): Record<string, unknown> {
   const priorMeta = readRawDetectionMeta(params.priorRaw);
-  return {
+  const shadowDurableKey = 'startBoundaryAdmissionShadowV1';
+  const preservedShadow = priorMeta[shadowDurableKey];
+  const merged: Record<string, unknown> = {
     ...priorMeta,
     ...params.finalizeLayer,
     tripFsmForensics: params.finalizeLayer.tripFsmForensics ?? priorMeta.tripFsmForensics,
   };
+  if (preservedShadow !== undefined && merged[shadowDurableKey] === undefined) {
+    merged[shadowDurableKey] = preservedShadow;
+  }
+  return merged;
 }
 
 export interface BoundaryConsistentEndCoordinate {

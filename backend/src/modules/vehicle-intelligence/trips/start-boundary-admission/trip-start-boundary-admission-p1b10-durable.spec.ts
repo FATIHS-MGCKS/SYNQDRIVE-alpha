@@ -89,15 +89,14 @@ describe('P1B.10 durable start shadow persistence', () => {
       }),
     );
 
-    const update = jest.fn();
     const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       vehicleTrip: {
         findUnique: jest.fn().mockResolvedValue({
           id: TRIP_ID,
           vehicleId: VEHICLE_ID,
           rawDetectionMeta: prior,
         }),
-        update,
       },
     };
 
@@ -115,7 +114,7 @@ describe('P1B.10 durable start shadow persistence', () => {
     });
 
     expect(status).toBe('SKIPPED_ALREADY_PRESENT');
-    expect(update).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
   it('RESTING clears detection lastEvidenceSummary but trip raw meta remains', () => {
@@ -180,13 +179,9 @@ describe('P1B.10 durable start shadow persistence', () => {
 
   it('persist failure is non-blocking and returns FAILED', async () => {
     const prisma = {
+      $queryRaw: jest.fn().mockRejectedValue(new Error('db down')),
       vehicleTrip: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: TRIP_ID,
-          vehicleId: VEHICLE_ID,
-          rawDetectionMeta: {},
-        }),
-        update: jest.fn().mockRejectedValue(new Error('db down')),
+        findUnique: jest.fn(),
       },
     };
     const tripMetrics = {
@@ -235,17 +230,36 @@ describe('P1B.10 durable start shadow persistence', () => {
   });
 
   it('parallel persist attempts — second call skips after first write', async () => {
-    let stored: Record<string, unknown> = {};
+    let inserted = false;
+    const storedRecord = buildStartBoundaryAdmissionShadowDurableRecord({
+      tripId: TRIP_ID,
+      vehicleId: VEHICLE_ID,
+      organizationId: ORG_A,
+      candidateStartAt: P1B_ORCH_CANDIDATE,
+      confirmedAt: P1B_ORCH_NOW,
+      shadowSummary: sampleShadow(),
+      shadowEnabled: true,
+      evidence,
+      corePointCount: 2,
+    });
     const prisma = {
+      $queryRaw: jest.fn().mockImplementation(async () => {
+        if (!inserted) {
+          inserted = true;
+          return [{ id: TRIP_ID }];
+        }
+        return [];
+      }),
       vehicleTrip: {
         findUnique: jest.fn().mockImplementation(async () => ({
           id: TRIP_ID,
           vehicleId: VEHICLE_ID,
-          rawDetectionMeta: stored,
+          rawDetectionMeta: inserted
+            ? {
+                [START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY]: storedRecord,
+              }
+            : {},
         })),
-        update: jest.fn().mockImplementation(async ({ data }: { data: { rawDetectionMeta: Record<string, unknown> } }) => {
-          stored = data.rawDetectionMeta;
-        }),
       },
     };
 
@@ -270,9 +284,6 @@ describe('P1B.10 durable start shadow persistence', () => {
 
     expect(first).toBe('WRITTEN');
     expect(second).toBe('SKIPPED_ALREADY_PRESENT');
-    expect(
-      readStartBoundaryAdmissionShadowDurable(stored)?.dataSourcesAtDecision
-        .corePointCount,
-    ).toBe(2);
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
   });
 });

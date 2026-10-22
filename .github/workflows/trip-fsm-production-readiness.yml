@@ -102,6 +102,12 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           TRIP_FINALIZE_POSTGRES_INTEGRATION: '1'
           TRIP_FINALIZE_POSTGRES_REQUIRED: '1'
+      - run: npm run test:trip-p1b10-durable:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TRIP_P1B10_DURABLE_POSTGRES_INTEGRATION: '1'
+          TRIP_P1B10_DURABLE_POSTGRES_REQUIRED: '1'
 
   backend-r11-unit:
     name: Backend R11 unit + scaling probe

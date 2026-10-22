@@ -36,7 +36,8 @@ import {
   buildMergeReopenRecoveryMeta,
   mergeLifecycleRecoveryMeta,
 } from '../trip-lifecycle-recovery-meta';
-import { mergeMidGapSplitFollowOnShadowNotExecutedMeta } from '../start-boundary-admission/trip-start-boundary-admission-durable.persistence';
+import { persistStartBoundaryAdmissionShadowDurable } from '../start-boundary-admission/trip-start-boundary-admission-durable.persistence';
+import type { StartBoundaryEvidenceContext } from '../start-boundary-admission/trip-start-boundary-legacy-resolution';
 
 /**
  * TripDecisionEngine
@@ -492,6 +493,7 @@ export class TripDecisionEngine {
         startTime: true,
         distanceKm: true,
         tripStatus: true,
+        rawDetectionMeta: true,
       },
     });
     if (!originalTrip) {
@@ -529,6 +531,11 @@ export class TripDecisionEngine {
           behaviorSummaryStatus: 'PENDING',
           drivingImpactStatus: 'PENDING',
           rawDetectionMeta: {
+            ...(originalTrip.rawDetectionMeta &&
+            typeof originalTrip.rawDetectionMeta === 'object' &&
+            !Array.isArray(originalTrip.rawDetectionMeta)
+              ? (originalTrip.rawDetectionMeta as Record<string, unknown>)
+              : {}),
             splitReason: params.reason,
             splitTriggeredBy: params.triggeredBy,
             splitGapMs: params.gapMs,
@@ -570,20 +577,26 @@ export class TripDecisionEngine {
         },
       });
 
-      await writeClient.vehicleTrip.update({
-        where: { id: secondTrip.id },
-        data: {
-          rawDetectionMeta: mergeMidGapSplitFollowOnShadowNotExecutedMeta(
-            splitFollowOnBaseMeta,
-            {
-              tripId: secondTrip.id,
-              vehicleId: originalTrip.vehicleId,
-              organizationId: vehicleRow?.organizationId ?? null,
-              secondStartAt: params.secondStartAt,
-              splitFromTripId: params.tripId,
-            },
-          ) as any,
-        },
+      const splitFollowOnEvidence: StartBoundaryEvidenceContext = {
+        boundaryWindowFrom: params.secondStartAt,
+        segments: [],
+        matchingSegment: null,
+        routePoints: [],
+        legacyRouteFetchPerformed: false,
+      };
+      await persistStartBoundaryAdmissionShadowDurable({
+        tripId: secondTrip.id,
+        vehicleId: originalTrip.vehicleId,
+        organizationId: vehicleRow?.organizationId ?? null,
+        candidateStartAt: params.secondStartAt,
+        confirmedAt: params.secondStartAt,
+        shadowSummary: null,
+        shadowEnabled: false,
+        notExecutedReason: 'MID_TRIP_GAP_SPLIT_FOLLOW_ON',
+        evidence: splitFollowOnEvidence,
+        corePointCount: 0,
+        prisma: writeClient,
+        logger: this.logger,
       });
 
       const movedWaypoints = await writeClient.vehicleTripWaypoint.updateMany({

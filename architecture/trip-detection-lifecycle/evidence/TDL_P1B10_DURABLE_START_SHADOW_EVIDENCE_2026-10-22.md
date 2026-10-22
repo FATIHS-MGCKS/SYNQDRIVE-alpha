@@ -12,10 +12,34 @@ P1B start-shadow comparisons were merged into ephemeral `VehicleTripDetectionSta
 | Item | Choice |
 |------|--------|
 | Store | `VehicleTrip.rawDetectionMeta.startBoundaryAdmissionShadowV1` |
-| Writer | Append-only, first-write-wins per trip |
+| Writer | Atomic PostgreSQL `jsonb` merge (`COALESCE(raw) \|\| jsonb_build_object(key, record)`), conditional on key absent |
 | Canonical start writer | Unchanged (`resolveLegacyConfirmedStartBoundary` + `TripDecisionEngine.createTrip`) |
-| Split follow-on | `NOT_EXECUTED` / `MID_TRIP_GAP_SPLIT_FOLLOW_ON` at second-trip create |
-| Persist failure | Non-blocking; `tripStartBoundaryAdmissionShadowErrors{phase=durable_persist}` |
+| Split follow-on | `NOT_EXECUTED` / `MID_TRIP_GAP_SPLIT_FOLLOW_ON` via same atomic inserter |
+| Persist failure | Non-blocking; one immediate retry; `tripStartBoundaryAdmissionShadowErrors{phase=durable_persist}` |
+
+## Post-commit crash window (best-effort)
+
+1. `TripDecisionEngine.createTrip` / `reopenTripForMerge` commits the canonical trip.
+2. `persistStartBoundaryAdmissionShadowDurable` runs immediately after (same worker turn).
+
+If the process crashes between (1) and (2), the trip exists without durable shadow until a future manual/backfill path (out of scope). No new queue/infra; a single in-process retry covers transient DB errors only.
+
+## Shadow OFF write impact
+
+Every start confirmation still performs one best-effort durable persist (records `NOT_EXECUTED` / `SHADOW_DISABLED`). No extra DIMO/provider calls. Legacy canonical writer unchanged.
+
+## Lifecycle `rawDetectionMeta` preservation
+
+| Path | Shadow preserved |
+|------|------------------|
+| Start `createTrip` | N/A (persist follows) |
+| Merge reopen | `mergeLifecycleRecoveryMeta` spreads prior keys |
+| Finalize | `mergeFinalizeRawDetectionMeta` spreads prior + explicit shadow key guard |
+| RESTING | Detection `lastEvidenceSummary` only — trip row untouched |
+| Reconciliation boundary refresh | spreads `priorMeta` |
+| Mid-gap split (first trip) | prior meta spread before split fields |
+| Mid-gap split (follow-on) | atomic shadow insert after create |
+| `discardTrip` | replaces meta (CANCELLED — intentional) |
 
 ## Record fields (summary)
 

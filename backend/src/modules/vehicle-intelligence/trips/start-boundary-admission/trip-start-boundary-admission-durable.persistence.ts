@@ -217,67 +217,113 @@ export type PersistStartBoundaryAdmissionShadowDurableParams = {
   shadowEnabled: boolean;
   evidence: StartBoundaryEvidenceContext;
   corePointCount: number;
+  notExecutedReason?: StartBoundaryAdmissionShadowNotExecutedReason;
   prisma: PrismaService | Prisma.TransactionClient;
   tripMetrics?: TripMetricsService | null;
   logger?: Logger;
   env?: NodeJS.ProcessEnv;
 };
 
+type AtomicShadowInsertOutcome = 'inserted' | 'skipped' | 'not_found' | 'vehicle_mismatch';
+
+/**
+ * Single-statement JSONB merge: adds startBoundaryAdmissionShadowV1 only when absent.
+ * Preserves all other keys on raw_detection_meta.
+ */
+export async function atomicInsertStartBoundaryAdmissionShadowDurable(
+  prisma: PrismaService | Prisma.TransactionClient,
+  params: {
+    tripId: string;
+    vehicleId: string;
+    record: StartBoundaryAdmissionShadowDurableRecord;
+  },
+): Promise<AtomicShadowInsertOutcome> {
+  const payload = JSON.stringify(params.record);
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    UPDATE vehicle_trips
+    SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb)
+      || jsonb_build_object(${START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY}, ${payload}::jsonb)
+    WHERE id = ${params.tripId}::uuid
+      AND vehicle_id = ${params.vehicleId}::uuid
+      AND NOT (
+        COALESCE(raw_detection_meta, '{}'::jsonb) ? ${START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY}
+      )
+    RETURNING id
+  `;
+  if (rows.length > 0) {
+    return 'inserted';
+  }
+
+  const existing = await prisma.vehicleTrip.findUnique({
+    where: { id: params.tripId },
+    select: { vehicleId: true, rawDetectionMeta: true },
+  });
+  if (!existing) {
+    return 'not_found';
+  }
+  if (existing.vehicleId !== params.vehicleId) {
+    return 'vehicle_mismatch';
+  }
+  if (readStartBoundaryAdmissionShadowDurable(existing.rawDetectionMeta)) {
+    return 'skipped';
+  }
+  return 'not_found';
+}
+
 export async function persistStartBoundaryAdmissionShadowDurable(
   params: PersistStartBoundaryAdmissionShadowDurableParams,
 ): Promise<StartBoundaryAdmissionShadowPersistenceStatus> {
-  try {
-    const existing = await params.prisma.vehicleTrip.findUnique({
-      where: { id: params.tripId },
-      select: { id: true, vehicleId: true, rawDetectionMeta: true },
-    });
-    if (!existing) {
-      throw new Error(`trip ${params.tripId} not found`);
-    }
-    if (existing.vehicleId !== params.vehicleId) {
-      throw new Error(
-        `trip ${params.tripId} vehicle mismatch expected=${params.vehicleId}`,
+  const record = buildStartBoundaryAdmissionShadowDurableRecord({
+    tripId: params.tripId,
+    vehicleId: params.vehicleId,
+    organizationId: params.organizationId,
+    candidateStartAt: params.candidateStartAt,
+    confirmedAt: params.confirmedAt,
+    shadowSummary: params.shadowSummary,
+    shadowEnabled: params.shadowEnabled,
+    evidence: params.evidence,
+    corePointCount: params.corePointCount,
+    notExecutedReason: params.notExecutedReason,
+    env: params.env,
+  });
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const outcome = await atomicInsertStartBoundaryAdmissionShadowDurable(
+        params.prisma,
+        {
+          tripId: params.tripId,
+          vehicleId: params.vehicleId,
+          record,
+        },
       );
+      if (outcome === 'inserted') {
+        return 'WRITTEN';
+      }
+      if (outcome === 'skipped') {
+        return 'SKIPPED_ALREADY_PRESENT';
+      }
+      if (outcome === 'vehicle_mismatch') {
+        throw new Error(
+          `trip ${params.tripId} vehicle mismatch expected=${params.vehicleId}`,
+        );
+      }
+      throw new Error(`trip ${params.tripId} not found`);
+    } catch (err) {
+      if (attempt === 1) {
+        params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors?.inc({
+          phase: 'durable_persist',
+        });
+        params.logger?.warn(
+          `Start boundary admission shadow durable persist failed (non-blocking): trip=${params.tripId} vehicle=${params.vehicleId} ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+        return 'FAILED';
+      }
     }
-    if (readStartBoundaryAdmissionShadowDurable(existing.rawDetectionMeta)) {
-      return 'SKIPPED_ALREADY_PRESENT';
-    }
-
-    const record = buildStartBoundaryAdmissionShadowDurableRecord({
-      tripId: params.tripId,
-      vehicleId: params.vehicleId,
-      organizationId: params.organizationId,
-      candidateStartAt: params.candidateStartAt,
-      confirmedAt: params.confirmedAt,
-      shadowSummary: params.shadowSummary,
-      shadowEnabled: params.shadowEnabled,
-      evidence: params.evidence,
-      corePointCount: params.corePointCount,
-      env: params.env,
-    });
-
-    const merged = mergeStartBoundaryAdmissionShadowDurableIntoRawMeta(
-      existing.rawDetectionMeta,
-      record,
-    );
-
-    await params.prisma.vehicleTrip.update({
-      where: { id: params.tripId },
-      data: { rawDetectionMeta: merged as Prisma.InputJsonValue },
-    });
-
-    return 'WRITTEN';
-  } catch (err) {
-    params.tripMetrics?.tripStartBoundaryAdmissionShadowErrors?.inc({
-      phase: 'durable_persist',
-    });
-    params.logger?.warn(
-      `Start boundary admission shadow durable persist failed (non-blocking): trip=${params.tripId} vehicle=${params.vehicleId} ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
-    return 'FAILED';
   }
+  return 'FAILED';
 }
 
 export async function readStartBoundaryAdmissionShadowDurableForOrgScopedTrip(
