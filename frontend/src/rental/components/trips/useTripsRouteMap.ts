@@ -11,6 +11,7 @@ import {
   isMotionRouteHitAtPoint,
   motionCoordKey,
   pickMotionSampleAtPoint,
+  type MotionRoutePickMap,
 } from './motion-map.utils';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
 import {
@@ -580,7 +581,11 @@ export function useTripsRouteMap({
     };
 
     const pickFromPoint = (point: mapboxgl.Point) => {
-      const sample = pickMotionSampleAtPoint(map, motionSamples, point);
+      const sample = pickMotionSampleAtPoint(
+        map as unknown as MotionRoutePickMap,
+        motionSamples,
+        { x: point.x, y: point.y },
+      );
       if (sample) showSampleAt(sample, point.x, point.y);
     };
 
@@ -601,7 +606,11 @@ export function useTripsRouteMap({
     };
     const onTouchStart = (e: mapboxgl.MapTouchEvent) => {
       if (e.points.length !== 1) return;
-      if (isMotionRouteHitAtPoint(map, motionSamples, e.point)) {
+      if (isMotionRouteHitAtPoint(
+        map as unknown as MotionRoutePickMap,
+        motionSamples,
+        { x: e.point.x, y: e.point.y },
+      )) {
         scrubActive = true;
         try {
           map.dragPan.disable();

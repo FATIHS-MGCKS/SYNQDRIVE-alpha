@@ -14,7 +14,7 @@ interface TripMotionMapPopoverProps {
 
 function pickListItemLabel(
   item: TripMotionMapPickListItem,
-  t: (key: string) => string,
+  t: (key: string, vars?: Record<string, string | number>) => string,
   locale: string,
 ): string {
   if (item.type === 'event') {
@@ -44,7 +44,7 @@ export function TripMotionMapPopover({ state, onClose, onPickListSelect }: TripM
                 className="w-full rounded-md px-2 py-1 text-left text-[10px] font-medium text-foreground hover:bg-muted/60 tabular-nums"
                 onClick={() => onPickListSelect?.(item)}
               >
-                {pickListItemLabel(item, t, locale)}
+                {pickListItemLabel(item, (key, vars) => t(key as never, vars), locale)}
               </button>
             </li>
           ))}

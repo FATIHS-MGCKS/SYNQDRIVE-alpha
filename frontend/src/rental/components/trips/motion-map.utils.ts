@@ -3,6 +3,7 @@ import type {
   TripMotionMapEvent,
   TripMotionMapPayload,
   TripMotionMapSample,
+  TripMotionMapStop,
 } from './motion-map.types';
 
 const ROUTE_ALIGN_TOLERANCE_MS = 2500;
@@ -45,19 +46,21 @@ export function groupMotionStopsByCoordinate(stops: TripMotionMapStop[]): Map<st
   return map;
 }
 
+export type MotionRoutePickPoint = { x: number; y: number };
+
 export type MotionRoutePickMap = {
   queryRenderedFeatures: (
-    point: { x: number; y: number },
+    point: MotionRoutePickPoint,
     options: { layers: string[] },
   ) => Array<{ properties?: Record<string, unknown> }>;
-  unproject: (point: { x: number; y: number }) => { lng: number; lat: number };
+  unproject: (point: MotionRoutePickPoint) => { lng: number; lat: number };
   project: (lngLat: [number, number]) => { x: number; y: number };
 };
 
 export function pickMotionSampleAtPoint(
   map: MotionRoutePickMap,
   motionSamples: TripMotionMapSample[],
-  point: { x: number; y: number },
+  point: MotionRoutePickPoint,
   hitRadiusPx = MOTION_ROUTE_HIT_PX,
 ): TripMotionMapSample | null {
   const features = map.queryRenderedFeatures(point, { layers: ['speed-route-layer'] });
@@ -87,7 +90,7 @@ export function pickMotionSampleAtPoint(
 export function isMotionRouteHitAtPoint(
   map: MotionRoutePickMap,
   motionSamples: TripMotionMapSample[],
-  point: { x: number; y: number },
+  point: MotionRoutePickPoint,
 ): boolean {
   return pickMotionSampleAtPoint(map, motionSamples, point) != null;
 }
