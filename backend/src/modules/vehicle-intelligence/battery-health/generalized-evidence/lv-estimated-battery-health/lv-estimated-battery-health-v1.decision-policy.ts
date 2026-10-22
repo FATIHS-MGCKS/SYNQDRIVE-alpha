@@ -57,7 +57,17 @@ export type LvEstimatedHealthDecisionTraceV1 = {
   finalRuleId: HealthDecisionRuleIdV1 | null;
   /** Present only for offline research policy runs (P2/P3). */
   researchRuleId?: string | null;
-  researchPolicyVariant?: 'P1_BASELINE' | 'P2_LOAD_REQUIRED_GREEN' | 'P3_CONSERVATIVE_GREEN';
+  researchPolicyVariant?: 'P1_BASELINE' | 'P2_LOAD_REQUIRED_GREEN' | 'P3_CONSERVATIVE_GREEN' | 'P11_CONDITION_POLICY_V2';
+  /** P11 shadow policy only. */
+  p11LongitudinalTrend?: 'DECLINE' | 'STABLE' | 'IMPROVING' | 'NOT_EVALUABLE';
+  p11EpisodeSelectionTrace?: {
+    sessionsConsidered: number;
+    sessionsWithStableCandidate: number;
+    sessionsPreStartSuspectOnly: number;
+    lowVoltageEventCount: number;
+    selectionPolicy: string;
+  };
+  p11ShadowRuleId?: string | null;
 };
 
 export type ClassifyEstimatedHealthInput = {

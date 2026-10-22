@@ -25,6 +25,8 @@ import {
   observationSpanDaysFromIsoRange,
   type LvEstimatedBatteryHealthResearchPolicyVariant,
 } from './lv-estimated-battery-health-v1.research-policy';
+import { evaluateLvEstimatedBatteryHealthP11V1 } from './lv-estimated-battery-health-p11.evaluator';
+import { LV_ESTIMATED_BATTERY_HEALTH_P11_POLICY_ID } from './lv-estimated-battery-health-p11.constants';
 import {
   classifyEstimatedHealthStatusP1,
   independentSupportingFamiliesP1,
@@ -135,6 +137,8 @@ function researchPolicyIdForVariant(
       return LV_ESTIMATED_BATTERY_HEALTH_RESEARCH_POLICY_P2_ID;
     case 'P3_CONSERVATIVE_GREEN':
       return LV_ESTIMATED_BATTERY_HEALTH_RESEARCH_POLICY_P3_ID;
+    case 'P11_CONDITION_POLICY_V2':
+      return LV_ESTIMATED_BATTERY_HEALTH_P11_POLICY_ID;
     default:
       return LV_ESTIMATED_BATTERY_HEALTH_DECISION_POLICY_ID;
   }
@@ -157,6 +161,9 @@ export function evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(
   input: LvEstimatedBatteryHealthInputV1,
   researchPolicyVariant: LvEstimatedBatteryHealthResearchPolicyVariant,
 ): LvEstimatedBatteryHealthAssessmentV1 {
+  if (researchPolicyVariant === 'P11_CONDITION_POLICY_V2') {
+    return evaluateLvEstimatedBatteryHealthP11V1(input);
+  }
   const n14 = evaluateLvOperationalConditionV1(input.conditionInput);
   const reasonCodes: LvEstimatedHealthReasonCodeV1[] = [
     'HEALTH_N14_OPERATIONAL_RISK_NOT_HEALTH_PROXY',

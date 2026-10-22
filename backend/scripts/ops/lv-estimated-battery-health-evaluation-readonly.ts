@@ -157,6 +157,10 @@ async function main(): Promise<void> {
           healthInput,
           'P3_CONSERVATIVE_GREEN',
         );
+        const n16p11 = evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(
+          healthInput,
+          'P11_CONDITION_POLICY_V2',
+        );
         const eligible = healthInput.conditionInput.eligibleRestObservations.filter(
           isEligibleRestObservationForConditionV1,
         );
@@ -207,6 +211,13 @@ async function main(): Promise<void> {
             ruleId: n16c.decisionTrace.finalRuleId,
             researchRuleId: n16c.decisionTrace.researchRuleId,
             reasonCodes: n16c.reasonCodes,
+          },
+          policyP11: {
+            status: n16p11.estimatedHealthStatus,
+            p11RuleId: n16p11.decisionTrace.p11ShadowRuleId,
+            p11Trend: n16p11.decisionTrace.p11LongitudinalTrend,
+            episodeSelection: n16p11.decisionTrace.p11EpisodeSelectionTrace,
+            reasonCodes: n16p11.reasonCodes,
           },
           evidenceCompleteness: computeResearchEvidenceCompleteness(
             researchCtx,

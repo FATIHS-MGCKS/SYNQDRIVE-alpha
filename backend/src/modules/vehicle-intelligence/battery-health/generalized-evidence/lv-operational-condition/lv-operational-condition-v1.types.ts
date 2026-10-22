@@ -108,6 +108,11 @@ export type LvOperationalConditionInputV1 = {
   historicalObservationsTruncated: boolean;
   geDataSelection: LvOperationalGeDataSelectionV1;
   eligibleRestObservations: LvOperationalConditionObservationV1[];
+  /**
+   * Full deduped GE timeline for shadow P11 pre-start/wake analysis only.
+   * Not consumed by N14 production evaluation.
+   */
+  assessmentTimelineObservations: LvOperationalConditionObservationV1[];
   latestGlobalObservation: LvOperationalConditionObservationV1 | null;
   latestEligibleRestObservation: LvOperationalConditionObservationV1 | null;
   wakeVoltageObservations: LvOperationalConditionObservationV1[];

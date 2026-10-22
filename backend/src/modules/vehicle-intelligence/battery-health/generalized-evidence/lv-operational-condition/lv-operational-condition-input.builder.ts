@@ -185,6 +185,7 @@ export async function buildLvOperationalConditionInputV1(
       measuredToIso: geLoad.measuredTo?.toISOString() ?? null,
     },
     eligibleRestObservations,
+    assessmentTimelineObservations: dedupedObservations,
     latestGlobalObservation,
     latestEligibleRestObservation,
     wakeVoltageObservations,
