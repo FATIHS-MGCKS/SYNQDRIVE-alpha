@@ -58,8 +58,8 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
     const v = evaluateDiV0SpeedQcInterval({
       ...base,
       r1Obd: [
-        { bucketLabel: base.centerBucketLabel, speedKmh: 130 },
-        { bucketLabel: base.centerBucketLabel, speedKmh: 50 },
+        { bucketLabel: base.centerBucketLabel, speedKmh: 130, temporalConfidence: 'INTERVAL_ONLY' },
+        { bucketLabel: base.centerBucketLabel, speedKmh: 50, temporalConfidence: 'INTERVAL_ONLY' },
       ],
     });
     expect(v.trustLevel).toBe('UNTRUSTED');
@@ -92,7 +92,7 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
         ...base.shadow,
         sourceQualityFlags: ['R1_INTERVAL_ONLY'],
       },
-      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 130 }],
+      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 130, temporalConfidence: 'INTERVAL_ONLY' }],
     });
     expect(v.sourceCorroboration.r1CorroboratesL3).toBe(true);
     expect(v.sourceCorroboration.r1IndependentWitness).toBe(false);

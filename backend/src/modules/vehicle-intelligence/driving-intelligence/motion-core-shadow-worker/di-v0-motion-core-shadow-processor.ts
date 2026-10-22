@@ -68,7 +68,7 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
 ): DiV0MotionCoreShadowProcessResult {
   const computedAt = meta.computedAt ?? new Date();
   const kinBuckets = withImplausibleLegEndpointsQuarantined(evidence.buckets);
-  const c4 = computeC4AdaptiveL3(kinBuckets);
+  const c4 = computeC4AdaptiveL3(evidence.buckets);
   const sparseArg = evidence.sparseComparable ? evidence.sparseSpeed : null;
   const fsmLabels = runMotionFsm(
     kinBuckets,

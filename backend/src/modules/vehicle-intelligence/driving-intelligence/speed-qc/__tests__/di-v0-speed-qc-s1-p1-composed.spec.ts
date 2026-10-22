@@ -99,7 +99,7 @@ describe('S1 shadow output composed through P1 speed QC', () => {
         estimatedSpeedKmh: 36,
         sourceRelation: 'CONFLICTING',
       },
-      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 80 }],
+      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 80, temporalConfidence: 'INTERVAL_ONLY' }],
     });
     expect(v.originalEstimatedSpeedKmh).toBe(36);
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.CROSS_SOURCE_CONFLICT);

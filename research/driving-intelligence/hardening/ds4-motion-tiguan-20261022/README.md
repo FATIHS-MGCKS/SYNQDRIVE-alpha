@@ -16,9 +16,9 @@ npx jest src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/mo
 
 ## Version bumps
 
-- `MOTION_CORE_SPEED_C4_V0_2_DEV`
-- `MOTION_CORE_LEG_CONSISTENCY_V0_2_DEV`
-- `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V1`
+- `MOTION_CORE_SPEED_C4_V0_3_DEV`
+- `MOTION_CORE_LEG_CONSISTENCY_V0_3_DEV`
+- `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V2`
 
 Persisted historical shadow runs are unchanged; new runs get a new bundle/intent fingerprint.
 

@@ -2,6 +2,7 @@ import type { MotionCorePositionBucket } from '../core/kinematics/motion-core-gr
 import type { SparseVehicleSpeedSample } from '../core/kinematics/motion-fsm';
 import type { DiV0S4ParsedEvidenceContainer } from '../s4a-foundation/di-v0-s4a-evidence-container-parse';
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+import { resolveR1ObdFsmPointAuthority } from '../r1-obd-acquisition/r1-obd-fsm-point-authority';
 import { buildDiV0TripSpeedQualityEvidenceFromParsedContainer } from '../trip-speed-quality/di-v0-trip-speed-quality-evidence';
 
 export type DiV0MotionCoreShadowSparseSamplePersisted = {
@@ -45,20 +46,19 @@ export function adaptMotionCoreShadowEvidenceFromParsedContainer(
   const sparseSpeed: SparseVehicleSpeedSample[] = [];
   for (const row of bundle.r1Obd) {
     if (row.speedKmh == null) continue;
-    const measurementTimeUtc =
-      typeof (row as { measurementTimeUtc?: string | null }).measurementTimeUtc === 'string'
-        ? (row as { measurementTimeUtc: string }).measurementTimeUtc
-        : null;
-    const fsmPointAuthority = measurementTimeUtc != null;
+    const authority = resolveR1ObdFsmPointAuthority({
+      temporalConfidence: row.temporalConfidence,
+      bucketLabel: row.bucketLabel,
+    });
     sparseSpeed.push({
       label: row.bucketLabel,
       speedKmh: row.speedKmh,
-      fsmPointAuthority,
+      fsmPointAuthority: authority.fsmPointAuthority,
     });
     sparsePersisted.push({
       aggregationBucketLabelUtc: row.bucketLabel,
       speedKmh: row.speedKmh,
-      measurementTimeUtc,
+      measurementTimeUtc: authority.measurementTimeUtc,
       arrivalTimestampUtc: null,
       provenance: 'R1_OBD_PINNED_SNAPSHOT',
     });

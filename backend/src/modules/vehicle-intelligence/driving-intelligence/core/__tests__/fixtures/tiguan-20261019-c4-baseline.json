@@ -1,0 +1,7402 @@
+[
+  {
+    "label": "2026-10-19T10:15:00Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:01Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:02Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:03Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:04Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:05Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:06Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:07Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:08Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:09Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:10Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:11Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:12Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:13Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:14Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:15Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:16Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:17Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:18Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:19Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:20Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:21Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:22Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:23Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:24Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:25Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:26Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:27Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:28Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:29Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:30Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:31Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:32Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:33Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:34Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:35Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:36Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:37Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:38Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:39Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:40Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:41Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:42Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:43Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:44Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:45Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:46Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:47Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:48Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:49Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:50Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:15:51Z",
+    "valueKmh": 38.68539793171721,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:15:52Z",
+    "valueKmh": 18.768182988907324,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:15:53Z",
+    "valueKmh": 18.413812724842938,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:15:54Z",
+    "valueKmh": 20.072562893990987,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:15:55Z",
+    "valueKmh": 21.241544891916675,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:15:56Z",
+    "valueKmh": 21.941548294981565,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:15:57Z",
+    "valueKmh": 22.859910161623578,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:15:58Z",
+    "valueKmh": 23.668690190924366,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:15:59Z",
+    "valueKmh": 23.65548264540979,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:00Z",
+    "valueKmh": 22.527554819263127,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:01Z",
+    "valueKmh": 21.462257882757036,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:02Z",
+    "valueKmh": 20.0846075743325,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:03Z",
+    "valueKmh": 18.21191331334036,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:04Z",
+    "valueKmh": 16.018560859318978,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:05Z",
+    "valueKmh": 13.15481141297943,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:06Z",
+    "valueKmh": 10.457747247887683,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:07Z",
+    "valueKmh": 9.201500459388209,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:08Z",
+    "valueKmh": 10.667137152061061,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:09Z",
+    "valueKmh": 14.042337029490705,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:10Z",
+    "valueKmh": 17.854743709197173,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:11Z",
+    "valueKmh": 21.114184636443966,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:12Z",
+    "valueKmh": 22.54443165710223,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:13Z",
+    "valueKmh": 22.396231442841977,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:14Z",
+    "valueKmh": 21.221904758112114,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:15Z",
+    "valueKmh": 19.943315365249557,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:16Z",
+    "valueKmh": 19.17491690661995,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:17Z",
+    "valueKmh": 17.997339126990013,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:18Z",
+    "valueKmh": 14.340713745368527,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:19Z",
+    "valueKmh": 8.91372272204979,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:20Z",
+    "valueKmh": 4.263201354292244,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:21Z",
+    "valueKmh": 1.295072472336326,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:22Z",
+    "valueKmh": 1.0378858318073938,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:23Z",
+    "valueKmh": 2.0757716638369144,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:24Z",
+    "valueKmh": 2.147394400717659,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:25Z",
+    "valueKmh": 2.881572552101657,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:26Z",
+    "valueKmh": 6.035444073262477,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:27Z",
+    "valueKmh": 10.30465711319467,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:28Z",
+    "valueKmh": 14.58699556174093,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:29Z",
+    "valueKmh": 17.88756690816739,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:30Z",
+    "valueKmh": 19.456582238821245,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:31Z",
+    "valueKmh": 20.588625796401065,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:32Z",
+    "valueKmh": 21.514744202194123,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:33Z",
+    "valueKmh": 22.290946218527523,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:34Z",
+    "valueKmh": 22.667350209993465,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:35Z",
+    "valueKmh": 22.920662839055392,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:36Z",
+    "valueKmh": 23.701815228650712,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:37Z",
+    "valueKmh": 23.710211065840713,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:38Z",
+    "valueKmh": 23.056815969658636,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:39Z",
+    "valueKmh": 22.144684928828383,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:40Z",
+    "valueKmh": 20.458465775306365,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:41Z",
+    "valueKmh": 16.80438071672678,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:42Z",
+    "valueKmh": 11.332762454966584,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:43Z",
+    "valueKmh": 6.133422436303194,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:44Z",
+    "valueKmh": 2.5033792962930983,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:45Z",
+    "valueKmh": 1.0294130539800754,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:46Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:16:47Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:16:48Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:16:49Z",
+    "valueKmh": 0.6198208986907244,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:50Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:16:51Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:16:52Z",
+    "valueKmh": 1.1882514739003653,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:53Z",
+    "valueKmh": 1.798416081161936,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:54Z",
+    "valueKmh": 2.7615209829973373,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:55Z",
+    "valueKmh": 7.868655616925537,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:56Z",
+    "valueKmh": 16.07620047352115,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:57Z",
+    "valueKmh": 20.85876615426484,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:58Z",
+    "valueKmh": 21.643088638553134,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:16:59Z",
+    "valueKmh": 21.367539618593955,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:00Z",
+    "valueKmh": 21.878374522011566,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:01Z",
+    "valueKmh": 22.386801916098623,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:02Z",
+    "valueKmh": 23.085818575157372,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:03Z",
+    "valueKmh": 23.30532868710422,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:04Z",
+    "valueKmh": 21.673867634153186,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:05Z",
+    "valueKmh": 18.933692198548393,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:06Z",
+    "valueKmh": 15.064417951924987,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:07Z",
+    "valueKmh": 11.981132335034816,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:08Z",
+    "valueKmh": 12.762572165914467,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:09Z",
+    "valueKmh": 16.3731454127599,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:10Z",
+    "valueKmh": 19.27106557130821,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:11Z",
+    "valueKmh": 21.23313379283766,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:12Z",
+    "valueKmh": 23.52459537487817,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:13Z",
+    "valueKmh": 25.47181296000158,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:14Z",
+    "valueKmh": 26.785924615278976,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:15Z",
+    "valueKmh": 28.118324801481425,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:16Z",
+    "valueKmh": 28.933128150478197,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:17Z",
+    "valueKmh": 28.818774700182146,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:18Z",
+    "valueKmh": 29.345757826997225,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:19Z",
+    "valueKmh": 30.342776469161716,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:20Z",
+    "valueKmh": 30.242682477765758,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:21Z",
+    "valueKmh": 30.25696000931833,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:22Z",
+    "valueKmh": 31.381298302975164,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:23Z",
+    "valueKmh": 30.09804759041906,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:24Z",
+    "valueKmh": 25.696939718994145,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:25Z",
+    "valueKmh": 22.867413527375316,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:26Z",
+    "valueKmh": 23.332359749127644,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:27Z",
+    "valueKmh": 23.990268141071013,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:28Z",
+    "valueKmh": 23.378118089117127,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:29Z",
+    "valueKmh": 21.714943203909147,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:30Z",
+    "valueKmh": 18.352077040961955,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:31Z",
+    "valueKmh": 14.127288585409017,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:32Z",
+    "valueKmh": 10.158426410907154,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:33Z",
+    "valueKmh": 7.058819374287294,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:34Z",
+    "valueKmh": 5.186493930747856,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:35Z",
+    "valueKmh": 4.522981367608769,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:36Z",
+    "valueKmh": 2.3951791794058157,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:37Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:17:38Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:17:39Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:17:40Z",
+    "valueKmh": 0.9085747910006432,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:41Z",
+    "valueKmh": 3.0960606076620096,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:42Z",
+    "valueKmh": 6.335318935807725,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:43Z",
+    "valueKmh": 11.128870841710235,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:44Z",
+    "valueKmh": 16.500838694917192,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:45Z",
+    "valueKmh": 20.638630895040635,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:46Z",
+    "valueKmh": 22.7269804439343,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:47Z",
+    "valueKmh": 23.763905786409016,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:48Z",
+    "valueKmh": 24.181360358970736,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:49Z",
+    "valueKmh": 24.619721345877696,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:50Z",
+    "valueKmh": 24.887948888553534,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:51Z",
+    "valueKmh": 24.688153214713253,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:52Z",
+    "valueKmh": 25.046104866383747,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:53Z",
+    "valueKmh": 25.657611966268853,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:54Z",
+    "valueKmh": 23.997174447422434,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:55Z",
+    "valueKmh": 18.97866874531898,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:56Z",
+    "valueKmh": 12.106260344156903,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:57Z",
+    "valueKmh": 6.131585342083913,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:58Z",
+    "valueKmh": 3.1915573848706553,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:17:59Z",
+    "valueKmh": 3.023122861446981,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:00Z",
+    "valueKmh": 5.53954044759988,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:01Z",
+    "valueKmh": 9.845102567846553,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:02Z",
+    "valueKmh": 13.762941761300981,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:03Z",
+    "valueKmh": 15.713280335898409,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:04Z",
+    "valueKmh": 15.40350471276439,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:05Z",
+    "valueKmh": 13.6275415558568,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:06Z",
+    "valueKmh": 10.437349711746013,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:07Z",
+    "valueKmh": 8.067516358265197,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:08Z",
+    "valueKmh": 8.564173315150967,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:09Z",
+    "valueKmh": 9.782626680335603,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:10Z",
+    "valueKmh": 11.388515451284247,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:11Z",
+    "valueKmh": 12.212357240554597,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:12Z",
+    "valueKmh": 11.058642145099844,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:13Z",
+    "valueKmh": 16.5772392152144,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:14Z",
+    "valueKmh": 21.113234056499188,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:15Z",
+    "valueKmh": 22.34075376901854,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:16Z",
+    "valueKmh": 27.02352142829151,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:17Z",
+    "valueKmh": 29.71669089128434,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:18Z",
+    "valueKmh": 31.048579825877443,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:19Z",
+    "valueKmh": 33.068372784453985,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:20Z",
+    "valueKmh": 35.417144002173345,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:21Z",
+    "valueKmh": 37.39546396693183,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:22Z",
+    "valueKmh": 40.40448767627196,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:23Z",
+    "valueKmh": 43.7629025348174,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:24Z",
+    "valueKmh": 46.42141158869925,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:25Z",
+    "valueKmh": 47.73329721084467,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:26Z",
+    "valueKmh": 47.725378400261896,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:27Z",
+    "valueKmh": 47.394121163536425,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:28Z",
+    "valueKmh": 47.04001471364615,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:29Z",
+    "valueKmh": 46.35689081949062,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:30Z",
+    "valueKmh": 46.03666288956154,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:31Z",
+    "valueKmh": 46.45112892052494,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:32Z",
+    "valueKmh": 46.38434783947644,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:33Z",
+    "valueKmh": 46.38784717598016,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:34Z",
+    "valueKmh": 46.51262063238939,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:35Z",
+    "valueKmh": 46.53189538385943,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:36Z",
+    "valueKmh": 46.9955991246291,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:37Z",
+    "valueKmh": 47.19991372701094,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:38Z",
+    "valueKmh": 47.302254342954555,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:39Z",
+    "valueKmh": 47.48176744093125,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:40Z",
+    "valueKmh": 47.37937811941015,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:41Z",
+    "valueKmh": 46.79917567154317,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:42Z",
+    "valueKmh": 46.51838155889627,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:43Z",
+    "valueKmh": 46.2211710911298,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:44Z",
+    "valueKmh": 45.12244809948352,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:45Z",
+    "valueKmh": 43.943752776003535,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:46Z",
+    "valueKmh": 43.086677207533185,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:47Z",
+    "valueKmh": 41.61196354726685,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:48Z",
+    "valueKmh": 39.633259019717514,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:49Z",
+    "valueKmh": 37.955941028809576,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:50Z",
+    "valueKmh": 36.401825879698954,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:51Z",
+    "valueKmh": 34.84096037963347,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:52Z",
+    "valueKmh": 32.96323484563873,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:53Z",
+    "valueKmh": 30.308586585023715,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:54Z",
+    "valueKmh": 25.49593007999903,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:55Z",
+    "valueKmh": 19.924637718385146,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:56Z",
+    "valueKmh": 15.714706957857677,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:57Z",
+    "valueKmh": 11.08026560996401,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:58Z",
+    "valueKmh": 6.175454466006098,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:18:59Z",
+    "valueKmh": 2.6747545246224798,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:00Z",
+    "valueKmh": 1.4948041355627704,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:01Z",
+    "valueKmh": 4.119772766096812,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:02Z",
+    "valueKmh": 8.729716362739081,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:03Z",
+    "valueKmh": 12.766170111818903,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:04Z",
+    "valueKmh": 16.69979193069563,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:05Z",
+    "valueKmh": 20.063127174911003,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:06Z",
+    "valueKmh": 22.42275450746098,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:07Z",
+    "valueKmh": 24.64541155160191,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:08Z",
+    "valueKmh": 26.400845909825627,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:09Z",
+    "valueKmh": 27.85982672408043,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:10Z",
+    "valueKmh": 29.72939830340876,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:11Z",
+    "valueKmh": 31.702477289882676,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:12Z",
+    "valueKmh": 33.45910602516683,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:13Z",
+    "valueKmh": 34.52348713162676,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:14Z",
+    "valueKmh": 35.31840525322889,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:15Z",
+    "valueKmh": 35.61803133615801,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:16Z",
+    "valueKmh": 35.60043980130849,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:17Z",
+    "valueKmh": 35.61809783358233,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:18Z",
+    "valueKmh": 35.61808386307868,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:19Z",
+    "valueKmh": 35.519036314205316,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:20Z",
+    "valueKmh": 35.51902249650563,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:21Z",
+    "valueKmh": 35.901451883600934,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:22Z",
+    "valueKmh": 35.80658025388332,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:23Z",
+    "valueKmh": 35.70936452744806,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:24Z",
+    "valueKmh": 36.10371445474127,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:25Z",
+    "valueKmh": 36.59510622842982,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:26Z",
+    "valueKmh": 36.995367107256975,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:27Z",
+    "valueKmh": 37.57897734775971,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:28Z",
+    "valueKmh": 38.65629266840833,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:29Z",
+    "valueKmh": 40.03203047183682,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:30Z",
+    "valueKmh": 41.49216565429894,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:31Z",
+    "valueKmh": 42.4670590339952,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:32Z",
+    "valueKmh": 43.47695943260094,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:33Z",
+    "valueKmh": 43.73548115066659,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:34Z",
+    "valueKmh": 43.65912543797984,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:35Z",
+    "valueKmh": 44.222036372634854,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:36Z",
+    "valueKmh": 44.298345196729755,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:37Z",
+    "valueKmh": 44.18931127987114,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:38Z",
+    "valueKmh": 44.18928752299933,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:39Z",
+    "valueKmh": 44.48275442133185,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:40Z",
+    "valueKmh": 44.77622126549992,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:41Z",
+    "valueKmh": 45.15023478337326,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:42Z",
+    "valueKmh": 45.62019763333537,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:43Z",
+    "valueKmh": 45.99705166418734,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:44Z",
+    "valueKmh": 46.798264215433925,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:45Z",
+    "valueKmh": 47.102955725918534,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:46Z",
+    "valueKmh": 46.717858722820694,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:47Z",
+    "valueKmh": 46.63637344904688,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:48Z",
+    "valueKmh": 46.724368284206165,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:49Z",
+    "valueKmh": 46.027593223919276,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:50Z",
+    "valueKmh": 45.72549714801256,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:51Z",
+    "valueKmh": 45.72547297919295,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:52Z",
+    "valueKmh": 45.34814672548494,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:53Z",
+    "valueKmh": 45.161062175868075,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:54Z",
+    "valueKmh": 43.686904572912454,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:55Z",
+    "valueKmh": 40.53280563521591,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:56Z",
+    "valueKmh": 37.966072875406354,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:57Z",
+    "valueKmh": 32.083767566933524,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:58Z",
+    "valueKmh": 27.012453264511777,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:19:59Z",
+    "valueKmh": 26.10909444668383,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:00Z",
+    "valueKmh": 24.638053065416397,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:01Z",
+    "valueKmh": 23.796607067338368,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:02Z",
+    "valueKmh": 24.220084472110358,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:03Z",
+    "valueKmh": 25.429337157539035,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:04Z",
+    "valueKmh": 24.732167768578528,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:05Z",
+    "valueKmh": 24.49746624349595,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:06Z",
+    "valueKmh": 26.38273405672361,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:07Z",
+    "valueKmh": 27.60820006642612,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:08Z",
+    "valueKmh": 28.464149910581952,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:09Z",
+    "valueKmh": 29.099094159406587,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:10Z",
+    "valueKmh": 30.738196272612903,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:11Z",
+    "valueKmh": 33.37211875938107,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:12Z",
+    "valueKmh": 35.669532729061316,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:13Z",
+    "valueKmh": 38.332293201650764,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:14Z",
+    "valueKmh": 38.237813442708884,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:15Z",
+    "valueKmh": 40.461136606983786,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:16Z",
+    "valueKmh": 44.409927293207716,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:17Z",
+    "valueKmh": 46.03666377876911,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:18Z",
+    "valueKmh": 50.39908448162158,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:19Z",
+    "valueKmh": 52.11470401225096,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:20Z",
+    "valueKmh": 51.25836069297602,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:21Z",
+    "valueKmh": 52.77762755957793,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:22Z",
+    "valueKmh": 54.93827558017541,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:23Z",
+    "valueKmh": 57.024288510888844,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:24Z",
+    "valueKmh": 58.33630696512454,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:25Z",
+    "valueKmh": 58.81999134254117,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:26Z",
+    "valueKmh": 59.35455045032407,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:27Z",
+    "valueKmh": 60.77739946702141,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:28Z",
+    "valueKmh": 62.87656851165398,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:29Z",
+    "valueKmh": 65.7350999064098,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:30Z",
+    "valueKmh": 67.66733738488936,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:31Z",
+    "valueKmh": 67.74882849049814,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:32Z",
+    "valueKmh": 67.49057509533468,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:33Z",
+    "valueKmh": 67.20426123661483,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:34Z",
+    "valueKmh": 67.20583982892111,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:35Z",
+    "valueKmh": 67.98348322654266,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:36Z",
+    "valueKmh": 68.00088740092916,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:37Z",
+    "valueKmh": 66.6663951443581,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:38Z",
+    "valueKmh": 66.54540116916536,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:39Z",
+    "valueKmh": 67.22294888573644,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:40Z",
+    "valueKmh": 66.44082463135405,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:41Z",
+    "valueKmh": 65.96831827946535,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:42Z",
+    "valueKmh": 65.96285462391364,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:43Z",
+    "valueKmh": 63.14887601812338,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:44Z",
+    "valueKmh": 58.60992008052867,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:45Z",
+    "valueKmh": 54.69597292072049,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:46Z",
+    "valueKmh": 49.702082383188454,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:47Z",
+    "valueKmh": 42.642229799894835,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:48Z",
+    "valueKmh": 35.086823591184896,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:49Z",
+    "valueKmh": 27.245786047285204,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:50Z",
+    "valueKmh": 21.79975593456306,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:51Z",
+    "valueKmh": 18.02450204134036,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:52Z",
+    "valueKmh": 14.31525191961888,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:53Z",
+    "valueKmh": 12.269705460877747,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:54Z",
+    "valueKmh": 11.167785749751516,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:55Z",
+    "valueKmh": 9.460789737712338,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:56Z",
+    "valueKmh": 6.409638694273336,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:57Z",
+    "valueKmh": 3.0386284603619798,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:58Z",
+    "valueKmh": 1.0007543401186816,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:20:59Z",
+    "valueKmh": 0.6604978648765341,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:00Z",
+    "valueKmh": 1.0341018323833673,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:01Z",
+    "valueKmh": 1.0885367392891718,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:02Z",
+    "valueKmh": 1.1801296024349117,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:03Z",
+    "valueKmh": 1.4755572269363562,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:04Z",
+    "valueKmh": 1.0148272888642698,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:05Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:06Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:07Z",
+    "valueKmh": 0.6324560370637179,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:08Z",
+    "valueKmh": 0.8148719893053875,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:09Z",
+    "valueKmh": 0.7444711204812123,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:10Z",
+    "valueKmh": 1.2467688759020292,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:11Z",
+    "valueKmh": 0.9592800776908202,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:12Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:13Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:14Z",
+    "valueKmh": 0.6250532079023641,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:15Z",
+    "valueKmh": 0.8292372557682822,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:16Z",
+    "valueKmh": 0.8375712986380218,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:17Z",
+    "valueKmh": 0.9218168174162538,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:18Z",
+    "valueKmh": 1.4880429818062062,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:19Z",
+    "valueKmh": 1.403144063867921,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:20Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:21Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:22Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:23Z",
+    "valueKmh": 0.6805129504842954,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:24Z",
+    "valueKmh": 0.7466406432781262,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:25Z",
+    "valueKmh": 0.6986844796474005,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:26Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:27Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:28Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:29Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:30Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:21:31Z",
+    "valueKmh": 0.4187855880863952,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:32Z",
+    "valueKmh": 0.9166895080380797,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:33Z",
+    "valueKmh": 3.5467170266528916,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:34Z",
+    "valueKmh": 7.370472851090572,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:35Z",
+    "valueKmh": 11.42338360186324,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:36Z",
+    "valueKmh": 17.505830343209567,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:37Z",
+    "valueKmh": 21.89148372968074,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:38Z",
+    "valueKmh": 24.22063824791586,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:39Z",
+    "valueKmh": 25.849539843466623,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:40Z",
+    "valueKmh": 26.478193297853867,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:41Z",
+    "valueKmh": 26.47819295419451,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:42Z",
+    "valueKmh": 30.802441416095892,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:43Z",
+    "valueKmh": 35.78961536917084,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:44Z",
+    "valueKmh": 37.74955208687025,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:45Z",
+    "valueKmh": 41.405164144365635,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:46Z",
+    "valueKmh": 44.40461165269459,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:47Z",
+    "valueKmh": 45.72468040229679,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:48Z",
+    "valueKmh": 47.083196816248,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:49Z",
+    "valueKmh": 48.09111818275989,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:50Z",
+    "valueKmh": 48.750746758391614,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:51Z",
+    "valueKmh": 49.11247294693019,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:52Z",
+    "valueKmh": 48.46482509158985,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:53Z",
+    "valueKmh": 48.46407858546697,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:54Z",
+    "valueKmh": 49.123387368006924,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:55Z",
+    "valueKmh": 49.77197124829817,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:56Z",
+    "valueKmh": 50.430399124535136,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:57Z",
+    "valueKmh": 51.42112272901614,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:58Z",
+    "valueKmh": 51.733397913590636,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:21:59Z",
+    "valueKmh": 51.72569480149901,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:00Z",
+    "valueKmh": 52.06617710751703,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:01Z",
+    "valueKmh": 52.07337869375657,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:02Z",
+    "valueKmh": 52.10097424201592,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:03Z",
+    "valueKmh": 52.46040550229635,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:04Z",
+    "valueKmh": 52.46040503491419,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:05Z",
+    "valueKmh": 52.11030538286423,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:06Z",
+    "valueKmh": 52.44189124521042,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:07Z",
+    "valueKmh": 52.19435810556099,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:08Z",
+    "valueKmh": 50.79480888341999,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:09Z",
+    "valueKmh": 49.018093700514186,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:10Z",
+    "valueKmh": 46.970839351292405,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:11Z",
+    "valueKmh": 43.46801976548933,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:12Z",
+    "valueKmh": 39.198672567152876,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:13Z",
+    "valueKmh": 34.56666369641093,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:14Z",
+    "valueKmh": 30.07306937994202,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:15Z",
+    "valueKmh": 25.625778899290477,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:16Z",
+    "valueKmh": 20.037556518555125,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:17Z",
+    "valueKmh": 14.703024956178224,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:18Z",
+    "valueKmh": 10.30236262068028,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:19Z",
+    "valueKmh": 6.071950087748074,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:20Z",
+    "valueKmh": 3.424909803372394,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:21Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:22Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:23Z",
+    "valueKmh": 1.3837989137103042,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:24Z",
+    "valueKmh": 2.066029116417179,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:25Z",
+    "valueKmh": 2.214427129608558,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:26Z",
+    "valueKmh": 1.311991673816885,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:27Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:28Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:29Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:30Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:31Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:32Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:33Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:34Z",
+    "valueKmh": 0.7398481692252923,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:35Z",
+    "valueKmh": 0.7293371741312819,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:36Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:37Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:38Z",
+    "valueKmh": 0.5880254072248255,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:39Z",
+    "valueKmh": 0.9653969751459048,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:40Z",
+    "valueKmh": 1.4961601162674878,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:41Z",
+    "valueKmh": 1.3245347285836555,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:42Z",
+    "valueKmh": 1.0569352372698824,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:43Z",
+    "valueKmh": 0.7472192645240203,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:44Z",
+    "valueKmh": 1.6919999120626963,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:45Z",
+    "valueKmh": 1.7997435562256523,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:46Z",
+    "valueKmh": 0.7618614372982082,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:22:47Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:48Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:49Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:50Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:51Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:52Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:53Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:54Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:55Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:56Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:22:57Z",
+    "valueKmh": 38.349978763135525,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:22:58Z",
+    "valueKmh": 24.461455054660377,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:22:59Z",
+    "valueKmh": 24.11108776426296,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:00Z",
+    "valueKmh": 27.812653948016813,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:01Z",
+    "valueKmh": 33.60308826906768,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:02Z",
+    "valueKmh": 39.10951326410677,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:03Z",
+    "valueKmh": 45.384080738029006,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:04Z",
+    "valueKmh": 50.70902462975841,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:05Z",
+    "valueKmh": 54.25813991039109,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:06Z",
+    "valueKmh": 57.037813915625414,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:07Z",
+    "valueKmh": 59.11005174176206,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:08Z",
+    "valueKmh": 60.73818602822531,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:09Z",
+    "valueKmh": 61.96286632146134,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:10Z",
+    "valueKmh": 62.80041561342574,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:11Z",
+    "valueKmh": 63.2324841504258,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:12Z",
+    "valueKmh": 63.468638732803925,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:13Z",
+    "valueKmh": 63.47884073552422,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:14Z",
+    "valueKmh": 63.47738614819848,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:15Z",
+    "valueKmh": 63.842848554117865,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:16Z",
+    "valueKmh": 64.3657014541664,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:17Z",
+    "valueKmh": 65.05423244468288,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:18Z",
+    "valueKmh": 66.05991320827214,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:19Z",
+    "valueKmh": 66.0662457121004,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:20Z",
+    "valueKmh": 65.24923167949105,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:21Z",
+    "valueKmh": 65.06663955646978,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:22Z",
+    "valueKmh": 65.34737305819509,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:23Z",
+    "valueKmh": 65.4271365052109,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:24Z",
+    "valueKmh": 65.04233884844605,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:25Z",
+    "valueKmh": 64.24918573413817,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:26Z",
+    "valueKmh": 64.24912240836,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:27Z",
+    "valueKmh": 63.74879846663295,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:28Z",
+    "valueKmh": 62.45570613248801,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:29Z",
+    "valueKmh": 62.370202565196294,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:30Z",
+    "valueKmh": 62.16907373899701,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:31Z",
+    "valueKmh": 61.89020764049763,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:32Z",
+    "valueKmh": 62.51028314204014,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:33Z",
+    "valueKmh": 62.98447602804642,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:34Z",
+    "valueKmh": 63.4613692293469,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:35Z",
+    "valueKmh": 64.34831986815057,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:36Z",
+    "valueKmh": 65.23258250958042,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:37Z",
+    "valueKmh": 65.83901966009054,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:38Z",
+    "valueKmh": 66.38315857314343,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:39Z",
+    "valueKmh": 66.87967141835787,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:40Z",
+    "valueKmh": 67.19981007940832,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:41Z",
+    "valueKmh": 67.2220833386554,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:42Z",
+    "valueKmh": 67.67437101330582,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:43Z",
+    "valueKmh": 69.11621784326813,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:44Z",
+    "valueKmh": 70.38628610131939,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:45Z",
+    "valueKmh": 71.17212313720974,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:46Z",
+    "valueKmh": 72.17933748275675,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:47Z",
+    "valueKmh": 73.23422684282711,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:48Z",
+    "valueKmh": 73.5499562814313,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:49Z",
+    "valueKmh": 73.59878103067874,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:50Z",
+    "valueKmh": 73.87038106655744,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:51Z",
+    "valueKmh": 73.72647177825915,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:52Z",
+    "valueKmh": 72.68754651250848,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:53Z",
+    "valueKmh": 72.73958333340809,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:54Z",
+    "valueKmh": 73.3625347559522,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:55Z",
+    "valueKmh": 72.98986417069581,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:56Z",
+    "valueKmh": 73.09380210432677,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:57Z",
+    "valueKmh": 73.56677747089951,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:58Z",
+    "valueKmh": 73.6102582376513,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:23:59Z",
+    "valueKmh": 73.44892827097044,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:00Z",
+    "valueKmh": 73.0184562608926,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:01Z",
+    "valueKmh": 73.38964422739038,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:02Z",
+    "valueKmh": 74.31727477282111,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:03Z",
+    "valueKmh": 74.7781449716087,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:04Z",
+    "valueKmh": 75.079548195464,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:05Z",
+    "valueKmh": 74.9121266767221,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:06Z",
+    "valueKmh": 74.60535950947279,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:07Z",
+    "valueKmh": 74.68666009024136,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:08Z",
+    "valueKmh": 74.93931710306519,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:09Z",
+    "valueKmh": 74.38749791476332,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:10Z",
+    "valueKmh": 73.56731415975557,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:11Z",
+    "valueKmh": 72.88974226215575,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:12Z",
+    "valueKmh": 72.75316553614782,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:13Z",
+    "valueKmh": 72.88441814662613,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:14Z",
+    "valueKmh": 72.67585101478251,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:15Z",
+    "valueKmh": 72.60860879792824,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:16Z",
+    "valueKmh": 72.33560152183992,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:17Z",
+    "valueKmh": 72.54406100986452,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:18Z",
+    "valueKmh": 72.88415052284562,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:19Z",
+    "valueKmh": 73.07703722838933,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:20Z",
+    "valueKmh": 73.57309295248162,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:21Z",
+    "valueKmh": 73.77776988901832,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:22Z",
+    "valueKmh": 74.09376320547312,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:23Z",
+    "valueKmh": 74.27596070847697,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:24Z",
+    "valueKmh": 74.11913606333302,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:25Z",
+    "valueKmh": 74.41230711464918,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:26Z",
+    "valueKmh": 74.68846843903961,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:27Z",
+    "valueKmh": 74.74619140568355,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:28Z",
+    "valueKmh": 74.94309967963441,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:29Z",
+    "valueKmh": 74.6874955228529,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:30Z",
+    "valueKmh": 74.44566241309465,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:31Z",
+    "valueKmh": 74.79343687084764,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:32Z",
+    "valueKmh": 74.92541953414131,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:33Z",
+    "valueKmh": 75.67761911701538,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:34Z",
+    "valueKmh": 76.64377647115006,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:35Z",
+    "valueKmh": 76.38164795623555,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:36Z",
+    "valueKmh": 75.88191871900212,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:37Z",
+    "valueKmh": 75.97865689116603,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:38Z",
+    "valueKmh": 76.24325128244605,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:39Z",
+    "valueKmh": 76.48836718580708,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:40Z",
+    "valueKmh": 77.25152325648796,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:41Z",
+    "valueKmh": 78.01067627826225,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:42Z",
+    "valueKmh": 78.29656463588202,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:43Z",
+    "valueKmh": 78.37670712820457,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:44Z",
+    "valueKmh": 78.71132230212696,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:45Z",
+    "valueKmh": 78.92119764755111,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:46Z",
+    "valueKmh": 78.71667120560785,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:47Z",
+    "valueKmh": 78.91333035110429,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:48Z",
+    "valueKmh": 78.87008894473473,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:49Z",
+    "valueKmh": 78.54480516156185,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:50Z",
+    "valueKmh": 78.06599782505906,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:51Z",
+    "valueKmh": 77.42194551407513,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:52Z",
+    "valueKmh": 77.33614396948576,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:53Z",
+    "valueKmh": 76.72177450949228,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:54Z",
+    "valueKmh": 74.87136224707409,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:55Z",
+    "valueKmh": 71.27188889316936,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:56Z",
+    "valueKmh": 65.89168335530744,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:57Z",
+    "valueKmh": 58.76494052324722,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:58Z",
+    "valueKmh": 51.34721718862439,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:24:59Z",
+    "valueKmh": 44.01048329718282,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:00Z",
+    "valueKmh": 35.81542780383505,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:01Z",
+    "valueKmh": 27.143189601727713,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:02Z",
+    "valueKmh": 17.007265765176076,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:03Z",
+    "valueKmh": 7.405743178549977,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:04Z",
+    "valueKmh": 1.9053954814764922,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:05Z",
+    "valueKmh": 0.8729786177950489,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:06Z",
+    "valueKmh": 1.1951939731166972,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:07Z",
+    "valueKmh": 1.4439880263867708,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:08Z",
+    "valueKmh": 1.9917127033886863,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:09Z",
+    "valueKmh": 1.7762547207299086,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:10Z",
+    "valueKmh": 1.9987435247689127,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:11Z",
+    "valueKmh": 2.325449666443407,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:12Z",
+    "valueKmh": 2.3763803370004624,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:13Z",
+    "valueKmh": 2.378903011436083,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:14Z",
+    "valueKmh": 1.7168967197526366,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:15Z",
+    "valueKmh": 1.0340904448189963,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:16Z",
+    "valueKmh": 0.7527195057419271,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:17Z",
+    "valueKmh": 0.7166162281131113,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:18Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:19Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:20Z",
+    "valueKmh": 0.6052206544171193,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:21Z",
+    "valueKmh": 0.5870960824587843,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:22Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:23Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:24Z",
+    "valueKmh": 0.4802776899614741,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:25Z",
+    "valueKmh": 0.4752317220255598,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:26Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:27Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:28Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:29Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:25:30Z",
+    "valueKmh": 1.1947489535576306,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:31Z",
+    "valueKmh": 1.3516359068255666,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:32Z",
+    "valueKmh": 1.094985573084873,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:33Z",
+    "valueKmh": 0.8938159941396653,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:34Z",
+    "valueKmh": 2.3251886019268784,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:35Z",
+    "valueKmh": 5.776940275312521,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:36Z",
+    "valueKmh": 10.027219612315625,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:37Z",
+    "valueKmh": 12.02612116812927,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:38Z",
+    "valueKmh": 13.179002035970395,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:39Z",
+    "valueKmh": 17.52748183117911,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:40Z",
+    "valueKmh": 22.72763908048762,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:41Z",
+    "valueKmh": 27.81891869560481,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:42Z",
+    "valueKmh": 32.19319309435778,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:43Z",
+    "valueKmh": 36.11099116230671,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:44Z",
+    "valueKmh": 40.04659381123469,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:45Z",
+    "valueKmh": 44.58878758740366,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:46Z",
+    "valueKmh": 48.34450383503344,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:47Z",
+    "valueKmh": 50.28308204225306,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:48Z",
+    "valueKmh": 51.6417157679875,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:49Z",
+    "valueKmh": 52.93891787668512,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:50Z",
+    "valueKmh": 54.55684027974995,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:51Z",
+    "valueKmh": 55.98620510558209,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:52Z",
+    "valueKmh": 56.99121403361746,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:53Z",
+    "valueKmh": 57.90685494982176,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:54Z",
+    "valueKmh": 59.1564623318119,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:55Z",
+    "valueKmh": 59.847554246240996,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:56Z",
+    "valueKmh": 60.40684623266065,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:57Z",
+    "valueKmh": 61.055332362447785,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:58Z",
+    "valueKmh": 61.75034056324424,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:25:59Z",
+    "valueKmh": 63.28728819828947,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:00Z",
+    "valueKmh": 65.20411043683602,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:01Z",
+    "valueKmh": 67.11857296946093,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:02Z",
+    "valueKmh": 68.1801989154452,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:03Z",
+    "valueKmh": 69.87751180838093,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:04Z",
+    "valueKmh": 70.53601660381379,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:05Z",
+    "valueKmh": 70.74255574337293,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:06Z",
+    "valueKmh": 71.79281554182484,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:07Z",
+    "valueKmh": 70.77639244566446,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:08Z",
+    "valueKmh": 70.87989523626163,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:09Z",
+    "valueKmh": 72.34045602377805,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:10Z",
+    "valueKmh": 72.73662414051238,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:11Z",
+    "valueKmh": 73.51251914684441,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:12Z",
+    "valueKmh": 73.76320268817827,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:13Z",
+    "valueKmh": 72.96474069907623,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:14Z",
+    "valueKmh": 72.65652828414001,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:15Z",
+    "valueKmh": 73.2819887518566,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:16Z",
+    "valueKmh": 73.86328453007498,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:17Z",
+    "valueKmh": 73.98793026938874,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:18Z",
+    "valueKmh": 73.74905303597694,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:19Z",
+    "valueKmh": 73.61735318454342,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:20Z",
+    "valueKmh": 73.86381902750658,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:21Z",
+    "valueKmh": 74.0620968914366,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:22Z",
+    "valueKmh": 73.97566118078497,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:23Z",
+    "valueKmh": 74.10669730882897,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:24Z",
+    "valueKmh": 74.08001267834567,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:25Z",
+    "valueKmh": 73.68107154147536,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:26Z",
+    "valueKmh": 73.01999118480653,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:27Z",
+    "valueKmh": 72.00755462329867,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:28Z",
+    "valueKmh": 70.94358864369573,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:29Z",
+    "valueKmh": 70.00681648515949,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:30Z",
+    "valueKmh": 69.32425539267419,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:31Z",
+    "valueKmh": 68.53993976223,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:32Z",
+    "valueKmh": 67.66592682313913,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:33Z",
+    "valueKmh": 67.05617010665733,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:34Z",
+    "valueKmh": 66.59657970867212,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:35Z",
+    "valueKmh": 66.1378084478015,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:36Z",
+    "valueKmh": 65.66466744494737,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:37Z",
+    "valueKmh": 65.50890270993426,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:38Z",
+    "valueKmh": 65.63237718676272,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:39Z",
+    "valueKmh": 65.5719082950293,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:40Z",
+    "valueKmh": 65.42009019958776,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:41Z",
+    "valueKmh": 65.27176182750385,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:42Z",
+    "valueKmh": 64.59567826352915,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:43Z",
+    "valueKmh": 63.111695011006084,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:44Z",
+    "valueKmh": 62.69303459486977,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:45Z",
+    "valueKmh": 62.62556485025756,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:46Z",
+    "valueKmh": 62.73028513160083,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:47Z",
+    "valueKmh": 63.68199480683924,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:48Z",
+    "valueKmh": 64.34518382203503,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:49Z",
+    "valueKmh": 65.27992017174704,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:50Z",
+    "valueKmh": 66.55803427429393,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:51Z",
+    "valueKmh": 67.07597626727743,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:52Z",
+    "valueKmh": 67.02698162804616,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:53Z",
+    "valueKmh": 66.99822480338331,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:54Z",
+    "valueKmh": 67.03350106218657,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:55Z",
+    "valueKmh": 67.18662494914346,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:56Z",
+    "valueKmh": 67.31937239868901,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:57Z",
+    "valueKmh": 66.7212322619675,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:58Z",
+    "valueKmh": 66.42249026006844,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:26:59Z",
+    "valueKmh": 66.50416128874109,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:00Z",
+    "valueKmh": 66.23029621051306,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:01Z",
+    "valueKmh": 65.91228749672193,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:02Z",
+    "valueKmh": 65.6976523249869,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:03Z",
+    "valueKmh": 65.43950233404549,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:04Z",
+    "valueKmh": 65.19661101300704,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:05Z",
+    "valueKmh": 64.9225916994777,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:06Z",
+    "valueKmh": 64.59316927069186,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:07Z",
+    "valueKmh": 64.33897586489915,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:08Z",
+    "valueKmh": 63.98035923531737,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:09Z",
+    "valueKmh": 63.873696508112715,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:10Z",
+    "valueKmh": 63.68127211899007,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:11Z",
+    "valueKmh": 63.539873127127606,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:12Z",
+    "valueKmh": 63.418428386912474,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:13Z",
+    "valueKmh": 63.16332516267291,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:14Z",
+    "valueKmh": 63.0396682398034,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:15Z",
+    "valueKmh": 63.10144216382107,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:16Z",
+    "valueKmh": 63.16935064490976,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:17Z",
+    "valueKmh": 62.94088750120661,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:18Z",
+    "valueKmh": 62.9411211020893,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:19Z",
+    "valueKmh": 63.73880215646647,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:20Z",
+    "valueKmh": 64.42487534993937,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:21Z",
+    "valueKmh": 64.8313309882738,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:22Z",
+    "valueKmh": 65.3333346806755,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:23Z",
+    "valueKmh": 65.73108663846538,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:24Z",
+    "valueKmh": 66.43040758861638,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:25Z",
+    "valueKmh": 67.01818566433083,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:26Z",
+    "valueKmh": 67.42898105276568,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:27Z",
+    "valueKmh": 67.33173019165353,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:28Z",
+    "valueKmh": 66.71902294877489,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:29Z",
+    "valueKmh": 66.43049134690295,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:30Z",
+    "valueKmh": 65.83073635512771,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:31Z",
+    "valueKmh": 65.321330233303,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:32Z",
+    "valueKmh": 65.03140927486226,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:33Z",
+    "valueKmh": 64.04564016289136,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:34Z",
+    "valueKmh": 62.8591321512291,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:35Z",
+    "valueKmh": 61.16978834205047,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:36Z",
+    "valueKmh": 58.17353272531175,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:37Z",
+    "valueKmh": 54.610246617333466,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:38Z",
+    "valueKmh": 51.52180411512571,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:39Z",
+    "valueKmh": 49.39022773871679,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:40Z",
+    "valueKmh": 48.240900794538994,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:41Z",
+    "valueKmh": 47.55885519748048,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:42Z",
+    "valueKmh": 46.567992150376256,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:43Z",
+    "valueKmh": 45.375789685204545,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:44Z",
+    "valueKmh": 45.03950233082698,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:45Z",
+    "valueKmh": 44.79724658524074,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:46Z",
+    "valueKmh": 44.61537899206372,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:47Z",
+    "valueKmh": 44.944414002018966,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:48Z",
+    "valueKmh": 44.29553973615284,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:49Z",
+    "valueKmh": 42.87269591460987,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:50Z",
+    "valueKmh": 40.73567458843366,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:51Z",
+    "valueKmh": 37.960997731803225,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:52Z",
+    "valueKmh": 34.84182940946794,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:53Z",
+    "valueKmh": 30.997140212836428,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:54Z",
+    "valueKmh": 26.114281523108115,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:55Z",
+    "valueKmh": 20.010500117111867,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:56Z",
+    "valueKmh": 13.968936504067072,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:57Z",
+    "valueKmh": 10.437501975331267,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:58Z",
+    "valueKmh": 9.21522491250168,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:27:59Z",
+    "valueKmh": 7.839802040849825,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:00Z",
+    "valueKmh": 4.690895028996087,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:01Z",
+    "valueKmh": 1.992614079030087,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:02Z",
+    "valueKmh": 1.3272518820441894,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:03Z",
+    "valueKmh": 2.7245312743327075,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:04Z",
+    "valueKmh": 8.089014618202155,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:05Z",
+    "valueKmh": 13.964905426088583,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:06Z",
+    "valueKmh": 15.461973923763997,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:07Z",
+    "valueKmh": 18.077941582356946,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:08Z",
+    "valueKmh": 21.21034888992457,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:09Z",
+    "valueKmh": 23.267102511907943,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:10Z",
+    "valueKmh": 27.134842173372736,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:11Z",
+    "valueKmh": 30.836335040165203,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:12Z",
+    "valueKmh": 34.57258013125499,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:13Z",
+    "valueKmh": 38.64796568285457,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:14Z",
+    "valueKmh": 42.87363690742159,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:15Z",
+    "valueKmh": 46.78543361746792,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:16Z",
+    "valueKmh": 50.14389975488614,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:17Z",
+    "valueKmh": 49.690251476018595,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:18Z",
+    "valueKmh": 51.08365706437118,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:19Z",
+    "valueKmh": 58.36145127675217,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:20Z",
+    "valueKmh": 56.2218154749242,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:21Z",
+    "valueKmh": 53.101630802414505,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:22Z",
+    "valueKmh": 56.76963038814118,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:23Z",
+    "valueKmh": 57.42922129885611,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:24Z",
+    "valueKmh": 57.08072818322271,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:25Z",
+    "valueKmh": 56.42113776028668,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:26Z",
+    "valueKmh": 59.120786021085934,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:27Z",
+    "valueKmh": 56.47358121891535,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:28Z",
+    "valueKmh": 54.767658568201334,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:29Z",
+    "valueKmh": 61.40883967871359,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:30Z",
+    "valueKmh": 58.07555687833157,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:31Z",
+    "valueKmh": 58.10805966742601,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:32Z",
+    "valueKmh": 60.79703412140373,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:33Z",
+    "valueKmh": 53.79133921193356,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:34Z",
+    "valueKmh": 54.45030344135943,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:35Z",
+    "valueKmh": 54.09897338972447,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:36Z",
+    "valueKmh": 47.750966035232,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:37Z",
+    "valueKmh": 44.405965818301844,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:38Z",
+    "valueKmh": 39.720166781714745,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:39Z",
+    "valueKmh": 32.94021085658715,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:40Z",
+    "valueKmh": 26.230616373095124,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:41Z",
+    "valueKmh": 22.417865451369998,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:42Z",
+    "valueKmh": 18.601305024988616,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:43Z",
+    "valueKmh": 14.737865809075473,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:44Z",
+    "valueKmh": 12.882419748273694,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:45Z",
+    "valueKmh": 12.170591076223543,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:46Z",
+    "valueKmh": 12.871997749878192,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:47Z",
+    "valueKmh": 13.134164379845163,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:48Z",
+    "valueKmh": 10.505704938539873,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:49Z",
+    "valueKmh": 8.714625518746198,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:50Z",
+    "valueKmh": 9.23496284922881,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:51Z",
+    "valueKmh": 8.991503480156247,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:52Z",
+    "valueKmh": 7.6428441879735,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:53Z",
+    "valueKmh": 8.524267141171553,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:54Z",
+    "valueKmh": 8.648924862440607,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:55Z",
+    "valueKmh": 8.728672019102987,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:56Z",
+    "valueKmh": 11.929590591389097,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:28:57Z",
+    "valueKmh": 9.715677992659685,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:28:58Z",
+    "valueKmh": 5.776198047451928,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:28:59Z",
+    "valueKmh": 1.4866334634180112,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:00Z",
+    "valueKmh": 0.9391406046642233,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:01Z",
+    "valueKmh": 0.7444651621061753,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:02Z",
+    "valueKmh": 0.5202561884909047,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:03Z",
+    "valueKmh": 0.5327571210815231,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:04Z",
+    "valueKmh": 0.5527722081114419,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:05Z",
+    "valueKmh": 0.5527722159957594,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:06Z",
+    "valueKmh": 0.5527722159957594,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:07Z",
+    "valueKmh": 0.5156622058976628,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:08Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:09Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:10Z",
+    "valueKmh": 0.4062801216609429,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:11Z",
+    "valueKmh": 0.5148450729214032,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:12Z",
+    "valueKmh": 0.5843551564834538,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:13Z",
+    "valueKmh": 0.7310141484975899,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:14Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:15Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:16Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:17Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:18Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:29:19Z",
+    "valueKmh": 0.8834280830043155,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:20Z",
+    "valueKmh": 1.3348613863489611,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:21Z",
+    "valueKmh": 2.782280733006838,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:22Z",
+    "valueKmh": 8.152205708658071,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:23Z",
+    "valueKmh": 13.911382875514127,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:24Z",
+    "valueKmh": 17.109674657076347,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:25Z",
+    "valueKmh": 19.702691230050952,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:26Z",
+    "valueKmh": 22.94576233485871,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:27Z",
+    "valueKmh": 25.424039620671024,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:28Z",
+    "valueKmh": 28.094154043441566,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:29Z",
+    "valueKmh": 32.444479493714795,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:30Z",
+    "valueKmh": 37.7087328291575,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:31Z",
+    "valueKmh": 40.94753435281003,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:32Z",
+    "valueKmh": 43.54182321486706,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:33Z",
+    "valueKmh": 47.274232145873256,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:34Z",
+    "valueKmh": 48.279299480919086,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:35Z",
+    "valueKmh": 53.556643047822426,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:36Z",
+    "valueKmh": 57.77858722902827,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:37Z",
+    "valueKmh": 57.06405509026296,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:38Z",
+    "valueKmh": 58.920421069825515,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:39Z",
+    "valueKmh": 60.258363237745165,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:40Z",
+    "valueKmh": 61.79174560560763,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:41Z",
+    "valueKmh": 60.00013949734144,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:42Z",
+    "valueKmh": 61.06512248815077,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:43Z",
+    "valueKmh": 68.33485680574971,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:44Z",
+    "valueKmh": 69.17362895801502,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:45Z",
+    "valueKmh": 66.70152628983968,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:46Z",
+    "valueKmh": 66.80195080579429,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:47Z",
+    "valueKmh": 66.90678822249684,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:48Z",
+    "valueKmh": 67.00877591432713,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:49Z",
+    "valueKmh": 66.81862642362826,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:50Z",
+    "valueKmh": 66.61278399524575,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:51Z",
+    "valueKmh": 66.67845462595166,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:52Z",
+    "valueKmh": 66.87265770821429,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:53Z",
+    "valueKmh": 66.52625285754186,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:54Z",
+    "valueKmh": 65.23954588576227,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:55Z",
+    "valueKmh": 63.90669575657698,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:56Z",
+    "valueKmh": 60.02831181940556,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:57Z",
+    "valueKmh": 59.167014215312854,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:58Z",
+    "valueKmh": 62.272348519898266,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:29:59Z",
+    "valueKmh": 61.31104608164162,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:00Z",
+    "valueKmh": 62.07475456464075,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:01Z",
+    "valueKmh": 59.93580677694643,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:02Z",
+    "valueKmh": 51.81996262065893,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:03Z",
+    "valueKmh": 49.06027136647131,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:04Z",
+    "valueKmh": 48.70585934199144,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:05Z",
+    "valueKmh": 41.73026378241574,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:06Z",
+    "valueKmh": 31.095291400612425,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:07Z",
+    "valueKmh": 21.08152841023029,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:08Z",
+    "valueKmh": 11.716327205787957,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:09Z",
+    "valueKmh": 5.043674020474245,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:10Z",
+    "valueKmh": 2.1949856222092374,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:11Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:12Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:13Z",
+    "valueKmh": 0.5994109566631709,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:14Z",
+    "valueKmh": 0.837662336269421,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:15Z",
+    "valueKmh": 0.9473627264923039,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:16Z",
+    "valueKmh": 0.7653388476052597,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:17Z",
+    "valueKmh": 1.3779575219383233,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:18Z",
+    "valueKmh": 1.7494249115052598,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:19Z",
+    "valueKmh": 1.3966405566053437,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:20Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:21Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:22Z",
+    "valueKmh": 0.6165737491421351,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:23Z",
+    "valueKmh": 0.6222719304549763,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:24Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:25Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:26Z",
+    "valueKmh": 2.014973424797907,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:27Z",
+    "valueKmh": 1.981633637003078,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:28Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:29Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:30Z",
+    "valueKmh": 0.73028362003776,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:31Z",
+    "valueKmh": 0.9027065653690846,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:32Z",
+    "valueKmh": 0.714943743550226,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:33Z",
+    "valueKmh": 0.6072434626514955,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:34Z",
+    "valueKmh": 0.42508221747131125,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:35Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:36Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:30:37Z",
+    "valueKmh": 0.9290293464987248,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:38Z",
+    "valueKmh": 1.7732582386421027,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:39Z",
+    "valueKmh": 2.5363543584407937,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:40Z",
+    "valueKmh": 1.8305022697810522,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:41Z",
+    "valueKmh": 1.7147380079696153,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:42Z",
+    "valueKmh": 1.8823266971519828,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:43Z",
+    "valueKmh": 1.4981892890807946,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:44Z",
+    "valueKmh": 1.1160554871977746,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:45Z",
+    "valueKmh": 0.714943784030968,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:46Z",
+    "valueKmh": 1.0885548246679644,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:47Z",
+    "valueKmh": 3.69611544920527,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:48Z",
+    "valueKmh": 10.374351515321711,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:49Z",
+    "valueKmh": 16.21214227056718,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:50Z",
+    "valueKmh": 18.606375303657906,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:51Z",
+    "valueKmh": 20.892899028046035,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:52Z",
+    "valueKmh": 22.713962079043554,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:53Z",
+    "valueKmh": 24.541152180294585,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:54Z",
+    "valueKmh": 26.6103318199324,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:55Z",
+    "valueKmh": 28.291277697552168,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:56Z",
+    "valueKmh": 30.188072930526257,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:57Z",
+    "valueKmh": 31.306064992066247,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:58Z",
+    "valueKmh": 30.98891610525449,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:30:59Z",
+    "valueKmh": 27.503609895966516,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:00Z",
+    "valueKmh": 23.25516686779032,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:01Z",
+    "valueKmh": 20.322936958370672,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:02Z",
+    "valueKmh": 18.176299860265157,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:03Z",
+    "valueKmh": 17.752820805545863,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:04Z",
+    "valueKmh": 17.689768457147785,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:05Z",
+    "valueKmh": 18.675266861736244,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:06Z",
+    "valueKmh": 20.86842637861506,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:07Z",
+    "valueKmh": 24.012659374206176,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:08Z",
+    "valueKmh": 27.280715047950633,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:09Z",
+    "valueKmh": 29.581180627847083,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:10Z",
+    "valueKmh": 30.3619557124721,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:11Z",
+    "valueKmh": 29.33338606441589,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:12Z",
+    "valueKmh": 25.441352366825726,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:13Z",
+    "valueKmh": 21.20898705360672,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:14Z",
+    "valueKmh": 19.058655839226763,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:15Z",
+    "valueKmh": 18.038805467878046,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:16Z",
+    "valueKmh": 19.44095729192281,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:17Z",
+    "valueKmh": 22.961405283745304,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:18Z",
+    "valueKmh": 27.062921910151974,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:19Z",
+    "valueKmh": 29.551626895161714,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:20Z",
+    "valueKmh": 30.293919987522305,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:21Z",
+    "valueKmh": 30.301439161022486,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:22Z",
+    "valueKmh": 29.62703442996664,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:23Z",
+    "valueKmh": 28.099403665118352,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:24Z",
+    "valueKmh": 25.915501084561303,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:25Z",
+    "valueKmh": 22.320120705252048,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:26Z",
+    "valueKmh": 17.845615897532895,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:27Z",
+    "valueKmh": 14.564675994649992,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:28Z",
+    "valueKmh": 12.51347407364656,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:29Z",
+    "valueKmh": 12.51817954268767,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:30Z",
+    "valueKmh": 14.34947417891111,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:31Z",
+    "valueKmh": 17.74245480303075,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:32Z",
+    "valueKmh": 21.99778730561068,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:33Z",
+    "valueKmh": 25.547124630749536,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:34Z",
+    "valueKmh": 27.346857271724033,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:35Z",
+    "valueKmh": 27.02010014471055,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:36Z",
+    "valueKmh": 24.824723150099643,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:37Z",
+    "valueKmh": 21.97349179457758,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:38Z",
+    "valueKmh": 18.799646430255493,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:39Z",
+    "valueKmh": 16.312572791709762,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:40Z",
+    "valueKmh": 17.247426417599787,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:41Z",
+    "valueKmh": 20.327460403349843,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:42Z",
+    "valueKmh": 24.06009583239175,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:43Z",
+    "valueKmh": 27.580963506445364,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:44Z",
+    "valueKmh": 29.8886649889924,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:45Z",
+    "valueKmh": 30.87031473120365,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:46Z",
+    "valueKmh": 30.877260744949872,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:47Z",
+    "valueKmh": 30.852136835739753,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:48Z",
+    "valueKmh": 30.909042022971004,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:49Z",
+    "valueKmh": 30.207696250789567,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:50Z",
+    "valueKmh": 29.956359586713944,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:51Z",
+    "valueKmh": 30.87076250618973,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:52Z",
+    "valueKmh": 31.065141053008542,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:53Z",
+    "valueKmh": 30.56253302712264,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:54Z",
+    "valueKmh": 30.667246895021005,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:55Z",
+    "valueKmh": 30.790152371646347,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:56Z",
+    "valueKmh": 30.851344367913615,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:57Z",
+    "valueKmh": 30.266012303852797,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:58Z",
+    "valueKmh": 28.39020432262456,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:31:59Z",
+    "valueKmh": 26.55436084064438,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:00Z",
+    "valueKmh": 23.281540976283427,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:01Z",
+    "valueKmh": 18.436091424797752,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:02Z",
+    "valueKmh": 12.505358519577257,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:03Z",
+    "valueKmh": 6.331398368992052,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:04Z",
+    "valueKmh": 2.99804288344284,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:05Z",
+    "valueKmh": 1.9237884348723078,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:06Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:32:07Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:32:08Z",
+    "valueKmh": 4.287601441721823,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:09Z",
+    "valueKmh": 7.322327963243494,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:10Z",
+    "valueKmh": 10.251175593070085,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:11Z",
+    "valueKmh": 13.867640039633802,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:12Z",
+    "valueKmh": 17.24704907847392,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:13Z",
+    "valueKmh": 20.126515196625277,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:14Z",
+    "valueKmh": 21.997728262884095,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:15Z",
+    "valueKmh": 23.93535752298713,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:16Z",
+    "valueKmh": 25.709935220646717,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:17Z",
+    "valueKmh": 25.86162822812545,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:18Z",
+    "valueKmh": 24.4637326277739,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:19Z",
+    "valueKmh": 21.055149010490318,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:20Z",
+    "valueKmh": 16.99667624330516,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:21Z",
+    "valueKmh": 13.534801200673837,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:22Z",
+    "valueKmh": 11.406325269646121,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:23Z",
+    "valueKmh": 10.976700299277194,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:24Z",
+    "valueKmh": 13.68349064254177,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:25Z",
+    "valueKmh": 19.108583824115442,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:26Z",
+    "valueKmh": 24.130842738748292,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:27Z",
+    "valueKmh": 27.204254562529716,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:28Z",
+    "valueKmh": 28.766015193489327,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:29Z",
+    "valueKmh": 27.97814348649406,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:30Z",
+    "valueKmh": 23.220114740259085,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:31Z",
+    "valueKmh": 17.134040148426,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:32Z",
+    "valueKmh": 11.44153420747899,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:33Z",
+    "valueKmh": 6.172174272111388,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:34Z",
+    "valueKmh": 2.400818674555948,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:35Z",
+    "valueKmh": 0.9447787055504485,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:36Z",
+    "valueKmh": 0.872462478072658,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:37Z",
+    "valueKmh": 1.1654019403190579,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:38Z",
+    "valueKmh": 5.905291162376483,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:39Z",
+    "valueKmh": 13.235150983267781,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:40Z",
+    "valueKmh": 18.10289662698231,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:41Z",
+    "valueKmh": 21.702441644184887,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:42Z",
+    "valueKmh": 24.588903977142646,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:43Z",
+    "valueKmh": 26.696229366496713,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:44Z",
+    "valueKmh": 28.68442149786917,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:45Z",
+    "valueKmh": 30.44796158227027,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:46Z",
+    "valueKmh": 31.730557136245366,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:47Z",
+    "valueKmh": 33.22363118515926,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:48Z",
+    "valueKmh": 34.44498580037741,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:49Z",
+    "valueKmh": 35.477504956451334,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:50Z",
+    "valueKmh": 36.29722165659129,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:51Z",
+    "valueKmh": 36.37634783308892,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:52Z",
+    "valueKmh": 36.376325568303834,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:53Z",
+    "valueKmh": 35.91680314519196,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:54Z",
+    "valueKmh": 35.46823999455103,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:55Z",
+    "valueKmh": 35.69748936064753,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:56Z",
+    "valueKmh": 35.71385315761381,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:57Z",
+    "valueKmh": 34.85289647131361,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:58Z",
+    "valueKmh": 33.74630985928579,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:32:59Z",
+    "valueKmh": 31.93770307931654,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:00Z",
+    "valueKmh": 29.359236419873714,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:01Z",
+    "valueKmh": 27.187415145180577,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:02Z",
+    "valueKmh": 25.15020049035813,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:03Z",
+    "valueKmh": 22.59650139023865,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:04Z",
+    "valueKmh": 19.364325868985674,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:05Z",
+    "valueKmh": 16.955990205213865,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:06Z",
+    "valueKmh": 16.796884921839457,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:07Z",
+    "valueKmh": 18.61024231992563,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:08Z",
+    "valueKmh": 21.695327160311955,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:09Z",
+    "valueKmh": 25.390110332603626,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:10Z",
+    "valueKmh": 29.071215629129735,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:11Z",
+    "valueKmh": 31.740398302061898,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:12Z",
+    "valueKmh": 32.05100846256315,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:13Z",
+    "valueKmh": 29.381825979387855,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:14Z",
+    "valueKmh": 25.064048589322443,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:15Z",
+    "valueKmh": 20.98244600006604,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:16Z",
+    "valueKmh": 17.57938804313711,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:17Z",
+    "valueKmh": 16.26488358951549,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:18Z",
+    "valueKmh": 16.957993390435973,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:19Z",
+    "valueKmh": 19.390623208390277,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:20Z",
+    "valueKmh": 22.802272670488023,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:21Z",
+    "valueKmh": 24.82104551062374,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:22Z",
+    "valueKmh": 25.844139654187188,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:23Z",
+    "valueKmh": 26.6807656494532,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:24Z",
+    "valueKmh": 26.86582935630781,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:25Z",
+    "valueKmh": 24.112675473498467,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:26Z",
+    "valueKmh": 18.224139652759632,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:27Z",
+    "valueKmh": 11.768286821559462,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:28Z",
+    "valueKmh": 8.565074679288808,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:29Z",
+    "valueKmh": 8.255175696273298,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:30Z",
+    "valueKmh": 9.191958460111525,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:31Z",
+    "valueKmh": 10.708104823569794,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:32Z",
+    "valueKmh": 11.713830521483008,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:33Z",
+    "valueKmh": 11.220134244044669,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:34Z",
+    "valueKmh": 9.187660437567056,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:35Z",
+    "valueKmh": 6.028335292506549,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:36Z",
+    "valueKmh": 2.7783324146627346,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:33:37Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:38Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:39Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:40Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:41Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:42Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:43Z",
+    "valueKmh": null,
+    "quality": "NO_SUPPORT"
+  },
+  {
+    "label": "2026-10-19T10:33:44Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:45Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:46Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:47Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:48Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:49Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:50Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:51Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:52Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:53Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:54Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:55Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:56Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:57Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:58Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:33:59Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:00Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:01Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:02Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:03Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:04Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:05Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:06Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:07Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:08Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:09Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:10Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:11Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:12Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:13Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:14Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:15Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:16Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:17Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:18Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:19Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:20Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:21Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:22Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:23Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:24Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:25Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:26Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:27Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:28Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:29Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:30Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:31Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:32Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:33Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:34Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:35Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:36Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:37Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:38Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:39Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:40Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:41Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:42Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:43Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:44Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:45Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:46Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:47Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:48Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:49Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:50Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:51Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:52Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:53Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:54Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:55Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:56Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:57Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:58Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:34:59Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:00Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:01Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:02Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:03Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:04Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:05Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:06Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:07Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:08Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:09Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:10Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:11Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:12Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:13Z",
+    "valueKmh": null,
+    "quality": "FROZEN_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:35:14Z",
+    "valueKmh": 24.14088678542956,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:35:15Z",
+    "valueKmh": 20.577995841985544,
+    "quality": "JITTER_SUSPECT"
+  },
+  {
+    "label": "2026-10-19T10:35:16Z",
+    "valueKmh": 19.736947464004793,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:17Z",
+    "valueKmh": 22.314682913165566,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:18Z",
+    "valueKmh": 24.49329952937181,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:19Z",
+    "valueKmh": 25.64802172677183,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:20Z",
+    "valueKmh": 25.60604908086047,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:21Z",
+    "valueKmh": 24.709299144708037,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:22Z",
+    "valueKmh": 21.610348759838715,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:23Z",
+    "valueKmh": 16.737568957369167,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:24Z",
+    "valueKmh": 11.167473958081706,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:25Z",
+    "valueKmh": 7.269073951702184,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:26Z",
+    "valueKmh": 6.36584725161561,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:27Z",
+    "valueKmh": 7.2964191552536395,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:28Z",
+    "valueKmh": 10.059502679326336,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:29Z",
+    "valueKmh": 14.383268714876806,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:30Z",
+    "valueKmh": 19.403389098949386,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:31Z",
+    "valueKmh": 24.445646853955406,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:32Z",
+    "valueKmh": 28.103483888783447,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:33Z",
+    "valueKmh": 31.059204471142763,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:34Z",
+    "valueKmh": 34.36869095550594,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:35Z",
+    "valueKmh": 36.736714791377295,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:36Z",
+    "valueKmh": 37.75560610609285,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:37Z",
+    "valueKmh": 38.41826691439401,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:38Z",
+    "valueKmh": 38.46185607897469,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:39Z",
+    "valueKmh": 37.515907327679685,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:40Z",
+    "valueKmh": 36.982275564050795,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:41Z",
+    "valueKmh": 37.04170914669842,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:42Z",
+    "valueKmh": 37.30150849270605,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:43Z",
+    "valueKmh": 38.24882292196657,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:44Z",
+    "valueKmh": 39.655299782054385,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:45Z",
+    "valueKmh": 41.015248213452544,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:46Z",
+    "valueKmh": 41.95909761022674,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:47Z",
+    "valueKmh": 42.392637795486955,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:48Z",
+    "valueKmh": 42.632523026267656,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:49Z",
+    "valueKmh": 42.696931204673795,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:50Z",
+    "valueKmh": 40.67851609898684,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:51Z",
+    "valueKmh": 36.853253215601825,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:52Z",
+    "valueKmh": 31.510995432018046,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:53Z",
+    "valueKmh": 25.331338493261995,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:54Z",
+    "valueKmh": 21.51177075563934,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:55Z",
+    "valueKmh": 20.58857174081864,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:56Z",
+    "valueKmh": 21.373170751926306,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:57Z",
+    "valueKmh": 23.607571683597875,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:58Z",
+    "valueKmh": 27.645995610974197,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:35:59Z",
+    "valueKmh": 32.51162782366821,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:00Z",
+    "valueKmh": 35.779415123268386,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:01Z",
+    "valueKmh": 35.828723848415024,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:02Z",
+    "valueKmh": 39.35836468036322,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:03Z",
+    "valueKmh": 41.400729383083714,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:04Z",
+    "valueKmh": 38.624762480655605,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:05Z",
+    "valueKmh": 37.61472319538767,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:06Z",
+    "valueKmh": 37.426704007323465,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:07Z",
+    "valueKmh": 37.70343583858104,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:08Z",
+    "valueKmh": 36.81296475764697,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:09Z",
+    "valueKmh": 36.14390739355751,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:10Z",
+    "valueKmh": 31.91333813853349,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:11Z",
+    "valueKmh": 27.027955477305813,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:12Z",
+    "valueKmh": 26.99557828618112,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:13Z",
+    "valueKmh": 27.924275579663483,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:14Z",
+    "valueKmh": 30.10100194792946,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:15Z",
+    "valueKmh": 33.09843666742869,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:16Z",
+    "valueKmh": 34.45819162272417,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:17Z",
+    "valueKmh": 34.458192971498605,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:18Z",
+    "valueKmh": 33.76947211322979,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:19Z",
+    "valueKmh": 32.443916719238395,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:20Z",
+    "valueKmh": 30.70878989602454,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:21Z",
+    "valueKmh": 26.657279841861257,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:22Z",
+    "valueKmh": 21.223038863465572,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:23Z",
+    "valueKmh": 19.25201739413968,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:24Z",
+    "valueKmh": 18.332865575617596,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:25Z",
+    "valueKmh": 17.05067554871149,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:26Z",
+    "valueKmh": 19.198707693945746,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:27Z",
+    "valueKmh": 22.94143996041018,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:28Z",
+    "valueKmh": 25.47476860930037,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:29Z",
+    "valueKmh": 26.31189731474627,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:30Z",
+    "valueKmh": 25.853251471909797,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:31Z",
+    "valueKmh": 25.21610559874112,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:32Z",
+    "valueKmh": 24.190659016479948,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:33Z",
+    "valueKmh": 22.980099723618746,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:34Z",
+    "valueKmh": 23.217849462482036,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:35Z",
+    "valueKmh": 24.90582636712779,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:36Z",
+    "valueKmh": 26.592943663107114,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:37Z",
+    "valueKmh": 27.589416705660852,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:38Z",
+    "valueKmh": 27.98410560986513,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:39Z",
+    "valueKmh": 28.183943029907173,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:40Z",
+    "valueKmh": 28.777275405576514,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:41Z",
+    "valueKmh": 28.974445734972242,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:42Z",
+    "valueKmh": 26.66984569555553,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:43Z",
+    "valueKmh": 21.510385782577185,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:44Z",
+    "valueKmh": 17.184689604579567,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:45Z",
+    "valueKmh": 15.123062887679188,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:46Z",
+    "valueKmh": 13.266843035048327,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:47Z",
+    "valueKmh": 16.66534366765573,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:48Z",
+    "valueKmh": 24.314498487751823,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:49Z",
+    "valueKmh": 27.991445543433763,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:50Z",
+    "valueKmh": 29.175949790539075,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:51Z",
+    "valueKmh": 30.54994271903819,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:52Z",
+    "valueKmh": 32.896794951207106,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:53Z",
+    "valueKmh": 35.13707086499584,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:54Z",
+    "valueKmh": 35.518964624845125,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:55Z",
+    "valueKmh": 35.62165846438746,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:56Z",
+    "valueKmh": 36.198396701110376,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:57Z",
+    "valueKmh": 35.5186461567409,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:58Z",
+    "valueKmh": 34.64716546243911,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:36:59Z",
+    "valueKmh": 30.86564702439302,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:00Z",
+    "valueKmh": 30.516859351522346,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:01Z",
+    "valueKmh": 34.78822826628452,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:02Z",
+    "valueKmh": 36.40306139003942,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:03Z",
+    "valueKmh": 37.41725272503694,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:04Z",
+    "valueKmh": 37.725437630867944,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:05Z",
+    "valueKmh": 38.3284720400246,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:06Z",
+    "valueKmh": 38.94152025813574,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:07Z",
+    "valueKmh": 38.46457169005864,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:08Z",
+    "valueKmh": 37.661821742289696,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:09Z",
+    "valueKmh": 38.188417224084276,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:10Z",
+    "valueKmh": 39.121373751746496,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:11Z",
+    "valueKmh": 38.95954945551042,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:12Z",
+    "valueKmh": 38.15490946489417,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:13Z",
+    "valueKmh": 37.39615636372657,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:14Z",
+    "valueKmh": 37.39938053440331,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:15Z",
+    "valueKmh": 36.367169517022596,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:16Z",
+    "valueKmh": 33.75253685539313,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:17Z",
+    "valueKmh": 29.56852545654288,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:18Z",
+    "valueKmh": 24.095017548243113,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:19Z",
+    "valueKmh": 19.924469202319813,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:20Z",
+    "valueKmh": 17.636346995694527,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:21Z",
+    "valueKmh": 17.815964745403814,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:22Z",
+    "valueKmh": 20.02572477104638,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:23Z",
+    "valueKmh": 22.975288728602948,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:24Z",
+    "valueKmh": 26.160341125339723,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:25Z",
+    "valueKmh": 29.26425545881882,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:26Z",
+    "valueKmh": 31.24826973109032,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:27Z",
+    "valueKmh": 31.262202713900543,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:28Z",
+    "valueKmh": 30.873545752668385,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:29Z",
+    "valueKmh": 29.57153295457577,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:30Z",
+    "valueKmh": 26.159344727243973,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:31Z",
+    "valueKmh": 24.113635219661983,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:32Z",
+    "valueKmh": 23.360851655291807,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:33Z",
+    "valueKmh": 23.137629660436655,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:34Z",
+    "valueKmh": 24.608686366218194,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:35Z",
+    "valueKmh": 26.326713422883966,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:36Z",
+    "valueKmh": 27.284172295961465,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:37Z",
+    "valueKmh": 25.405422925624265,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:38Z",
+    "valueKmh": 20.88462726325371,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:39Z",
+    "valueKmh": 16.418937720316958,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:40Z",
+    "valueKmh": 15.242607303474642,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:41Z",
+    "valueKmh": 16.52470257182514,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:42Z",
+    "valueKmh": 16.211872718384132,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:43Z",
+    "valueKmh": 16.493072640480783,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:44Z",
+    "valueKmh": 20.09034957744656,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:45Z",
+    "valueKmh": 25.554852101112562,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:46Z",
+    "valueKmh": 28.919552806904466,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:47Z",
+    "valueKmh": 30.342570787163236,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:48Z",
+    "valueKmh": 31.90348993018287,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:49Z",
+    "valueKmh": 31.78554249337421,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:50Z",
+    "valueKmh": 29.301887848758543,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:51Z",
+    "valueKmh": 26.957695941041337,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:52Z",
+    "valueKmh": 22.885634554344463,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:53Z",
+    "valueKmh": 18.637130368301513,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:54Z",
+    "valueKmh": 16.395507442682273,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:55Z",
+    "valueKmh": 11.508405352115178,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:56Z",
+    "valueKmh": 8.341478599300096,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:57Z",
+    "valueKmh": 13.828547893244135,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:58Z",
+    "valueKmh": 20.020962975907576,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:37:59Z",
+    "valueKmh": 23.62781097991243,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:00Z",
+    "valueKmh": 28.55658554225529,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:01Z",
+    "valueKmh": 31.58618447858549,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:02Z",
+    "valueKmh": 31.99686531950793,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:03Z",
+    "valueKmh": 31.71110466605683,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:04Z",
+    "valueKmh": 31.711125458852035,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:05Z",
+    "valueKmh": 31.00232727192847,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:06Z",
+    "valueKmh": 29.627817060494326,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:07Z",
+    "valueKmh": 27.62425996033315,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:08Z",
+    "valueKmh": 23.63401056581051,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:09Z",
+    "valueKmh": 18.78903131788648,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:10Z",
+    "valueKmh": 14.390344586586952,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:11Z",
+    "valueKmh": 10.053376127655072,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:12Z",
+    "valueKmh": 7.506260894662606,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:13Z",
+    "valueKmh": 6.389828060437015,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:14Z",
+    "valueKmh": 8.092652647409071,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:15Z",
+    "valueKmh": 11.408934436416196,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:16Z",
+    "valueKmh": 12.561522225734079,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:17Z",
+    "valueKmh": 12.295623806168535,
+    "quality": "OK"
+  },
+  {
+    "label": "2026-10-19T10:38:18Z",
+    "valueKmh": null,
+    "quality": "NO_SUPPORT"
+  },
+  {
+    "label": "2026-10-19T10:38:19Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:20Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:21Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:22Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:23Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:24Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:25Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:26Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:27Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:28Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:29Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:30Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:31Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:32Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:33Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:34Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:35Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:36Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:37Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:38Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:39Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:40Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:41Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:42Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:43Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:44Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:45Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:46Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:47Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:48Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:49Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:50Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:51Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:52Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:53Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:54Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:55Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:56Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:57Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:58Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:38:59Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:00Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:01Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:02Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:03Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:04Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:05Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:06Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:07Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:08Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:09Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:10Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:11Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:12Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:13Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:14Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:15Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:16Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:17Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:18Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:19Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:20Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:21Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:22Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:23Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:24Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:25Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:26Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:27Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:28Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:29Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:30Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:31Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:32Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:33Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:34Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:35Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:36Z",
+    "valueKmh": null,
+    "quality": "NO_SUPPORT"
+  },
+  {
+    "label": "2026-10-19T10:39:37Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:38Z",
+    "valueKmh": null,
+    "quality": "NO_POSITION"
+  },
+  {
+    "label": "2026-10-19T10:39:39Z",
+    "valueKmh": null,
+    "quality": "NO_SUPPORT"
+  }
+]

@@ -13,13 +13,22 @@ import {
 export const MOTION_CORE_JITTER_RATIO = 1.5;
 export const MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH = 5.0;
 export const MOTION_CORE_OUTLIER_CHORD_DEVIATION_M = 8.0;
-export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_2_DEV';
+export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_3_DEV';
 
 /**
- * Road-vehicle plausibility ceiling for a single 1 s chord between consecutive PRESENT buckets.
- * Not a legal speeding limit — rejects GPS teleports that cannot be kinematic truth.
+ * Absolute backstop for 1 s leg speed when neighbour legs are missing or also corrupted.
+ * Not a legal speeding limit — catches teleports when local median is inflated by jumps.
  */
-export const MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH = 250;
+export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH = 400;
+/** Extreme 1 s chord speeds treated as teleports regardless of a corrupted local median. */
+export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH = 1000;
+/** When neighbour median exceeds this, only the spike tier may reject (avoids jump-cluster collateral). */
+export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_LOCAL_MEDIAN_TRUST_CEILING_KMH = 120;
+
+export type MotionCoreLegGateOptions = {
+  /** When false, 1 s leg quarantine is disabled (baseline replay only). */
+  enabled?: boolean;
+};
 
 /**
  * Neighbour legs used for the local median in {@link detectTimingJitterSuspectLegs}.
@@ -197,11 +206,62 @@ export function detectPositionOutliers(
  * Raw buckets are unchanged; kinematics must treat these labels as unavailable (see C4).
  */
 /** Derived kinematics view: quarantined endpoints become ROW_ABSENT (raw snapshot unchanged). */
+function neighbourLegSpeedsKmh(
+  legStartLabel: string,
+  legs: Map<string, number>,
+): number[] {
+  const neigh: number[] = [];
+  for (const k of MOTION_CORE_JITTER_NEIGHBOUR_OFFSETS_S) {
+    const v = legs.get(bucketLabelPlusSeconds(legStartLabel, k));
+    if (v != null) {
+      neigh.push(v);
+    }
+  }
+  return neigh;
+}
+
+function buildOneSecondLegSpeedMap(buckets: MotionCorePositionBucket[]): Map<string, number> {
+  const ordered = orderMotionCoreGrid(buckets);
+  const legs = new Map<string, number>();
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1]!;
+    const b = ordered[i]!;
+    if (a.availability !== 'PRESENT' || b.availability !== 'PRESENT') continue;
+    if (a.latitude == null || a.longitude == null || b.latitude == null || b.longitude == null) continue;
+    const dtS = (parseBucketLabelMs(b.bucketLabelUtc) - parseBucketLabelMs(a.bucketLabelUtc)) / 1000;
+    if (dtS !== 1) continue;
+    legs.set(a.bucketLabelUtc, haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude) * 3.6 / dtS);
+  }
+  return legs;
+}
+
+/** Relative + absolute threshold for a 1 s leg speed (pre-hoc jitter ratio, not trip-tuned). */
+export function implausibleOneSecondLegSpeedKmh(
+  legSpeedKmh: number,
+  neighbourLegSpeedsKmh: number[],
+): boolean {
+  if (legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH) {
+    return true;
+  }
+  if (neighbourLegSpeedsKmh.length < 2) {
+    return legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH;
+  }
+  const med = median(neighbourLegSpeedsKmh);
+  if (med > MOTION_CORE_IMPLAUSIBLE_1S_LEG_LOCAL_MEDIAN_TRUST_CEILING_KMH) {
+    return false;
+  }
+  const relativeCap =
+    Math.max(MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH, med) * MOTION_CORE_JITTER_RATIO;
+  return (
+    legSpeedKmh > relativeCap && legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH
+  );
+}
+
 export function withImplausibleLegEndpointsQuarantined(
   buckets: MotionCorePositionBucket[],
-  maxLegKmh = MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH,
+  options?: MotionCoreLegGateOptions,
 ): MotionCorePositionBucket[] {
-  const rejected = detectImplausibleOneSecondLegEndpointLabels(buckets, maxLegKmh);
+  const rejected = detectImplausibleOneSecondLegEndpointLabels(buckets, options);
   if (rejected.size === 0) {
     return buckets;
   }
@@ -214,10 +274,14 @@ export function withImplausibleLegEndpointsQuarantined(
 
 export function detectImplausibleOneSecondLegEndpointLabels(
   buckets: MotionCorePositionBucket[],
-  maxLegKmh = MOTION_CORE_MAX_PLAUSIBLE_1S_LEG_SPEED_KMH,
+  options?: MotionCoreLegGateOptions,
 ): Set<string> {
+  if (options?.enabled === false) {
+    return new Set();
+  }
   const ordered = orderMotionCoreGrid(buckets);
   const pm = presentBucketMap(ordered);
+  const legs = buildOneSecondLegSpeedMap(buckets);
   const rejected = new Set<string>();
   for (let i = 1; i < ordered.length; i++) {
     const a = ordered[i - 1]!;
@@ -237,24 +301,24 @@ export function detectImplausibleOneSecondLegEndpointLabels(
     if (dtS !== 1) {
       continue;
     }
-    const speedKmh = haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude) * 3.6 / dtS;
-    if (speedKmh > maxLegKmh) {
-      const aPrev = pm.get(bucketLabelPlusSeconds(a.bucketLabelUtc, -1));
-      const resumeAfterStaleFix =
-        aPrev != null &&
-        aPrev.latitude != null &&
-        aPrev.longitude != null &&
-        coordsEqual(
-          { latitude: aPrev.latitude, longitude: aPrev.longitude },
-          { latitude: a.latitude, longitude: a.longitude },
-        ) &&
-        !coordsEqual(
-          { latitude: a.latitude, longitude: a.longitude },
-          { latitude: b.latitude, longitude: b.longitude },
-        );
-      if (resumeAfterStaleFix) {
-        continue;
-      }
+    const legStart = a.bucketLabelUtc;
+    const speedKmh = legs.get(legStart)!;
+    const neigh = neighbourLegSpeedsKmh(legStart, legs);
+    if (!implausibleOneSecondLegSpeedKmh(speedKmh, neigh)) {
+      continue;
+    }
+    const aPrev = pm.get(bucketLabelPlusSeconds(a.bucketLabelUtc, -1));
+    const legStartsAtStaleHold =
+      aPrev != null &&
+      aPrev.latitude != null &&
+      aPrev.longitude != null &&
+      coordsEqual(
+        { latitude: aPrev.latitude, longitude: aPrev.longitude },
+        { latitude: a.latitude, longitude: a.longitude },
+      );
+    if (legStartsAtStaleHold) {
+      rejected.add(b.bucketLabelUtc);
+    } else {
       rejected.add(a.bucketLabelUtc);
       rejected.add(b.bucketLabelUtc);
     }

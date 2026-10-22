@@ -23,7 +23,7 @@ describe('DI_V0_SPEED_QC_POLICY_V1 unit / edge cases', () => {
     const base = syntheticHighway130Input();
     const v = evaluateDiV0SpeedQcInterval({
       ...base,
-      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 40 }],
+      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 40, temporalConfidence: 'INTERVAL_ONLY' }],
     });
     expect(v.trustLevel).toBe('UNTRUSTED');
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.R1_DISAGREEMENT);

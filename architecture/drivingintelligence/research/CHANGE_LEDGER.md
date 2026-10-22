@@ -2136,7 +2136,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Event | Detail |
 |-------|--------|
 | BASELINE | Audit package `research/driving-intelligence/audits/ds4-motion-tiguan-20261022-compact/` (code SHA `dea2555bb`, research export PR #2133 `36cbd982`); trip `98d2a8e0-8b7d-4529-bf76-acee44d61fbe` |
-| CHANGE | `leg-consistency.ts`: implausible 1 s leg quarantine (250 km/h ceiling, not legal limit) + stale-fix resume exemption; `c4-adaptive-l3.ts` rejects quarantined endpoints; shadow processor applies `withImplausibleLegEndpointsQuarantined` before C4/FSM; `di-v0-motion-core-shadow-evidence.adapter.ts` + `motion-fsm.ts`: `fsmPointAuthority` requires `measurementTimeUtc` for DIRECT sparse transitions; bundle `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V1` |
+| CHANGE | `leg-consistency.ts`: tiered 1 s leg gate (spike teleport + median-trust ceiling + backstop); stale-hold landing-only quarantine; C4 on raw buckets, FSM on quarantined view; `r1-obd-fsm-point-authority.ts` + `DiV0SpeedQcR1Sample.temporalConfidence`; bundle `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V2` |
 | WHY | Extreme GPS teleports produced OK C4 ~1930 km/h and false ACCELERATION; 560/560 sparse OBD samples lacked point time authority but drove DIRECT FSM (e.g. 84 km/h STARTING at tacho 0) |
 | VALIDATION | Jest `motion-core-tiguan-gps-obd-hardening.spec.ts`, `motion-core-review-robustness.spec.ts`, `di-v0-motion-core-shadow-processor.unit.spec.ts`; hardening summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/` |
 | OPEN | Full sparse ablation B not adopted (creep vs tacho-zero tradeoff); stop episodes 11 vs audit 12 on replay; audit `run_audit.sh` needs Node 24 |
