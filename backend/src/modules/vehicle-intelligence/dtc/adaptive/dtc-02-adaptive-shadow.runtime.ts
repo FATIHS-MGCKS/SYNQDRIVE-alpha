@@ -13,6 +13,7 @@ import {
 import { DTC02_TRIP_FSM_TRANSITION_MAX_AGE_MS } from './dtc-02-adaptive-planner.constants';
 import { extractVsiDiagnosticTroubleCodeLastSourceTimestamp } from './dtc-02-adaptive-vsi-snapshot.util';
 import { buildDtc02TripVsiPlannerContext } from './dtc-02-adaptive-trip-vsi.resolver';
+import type { Dtc02TripVsiPlannerContext } from './dtc-02-adaptive-trip-vsi.types';
 
 function mapProviderErrorState(
   pollStatus: string | null | undefined,
@@ -177,6 +178,7 @@ export async function loadDtc02AdaptiveShadowVehicleRows(
 export function runDtc02AdaptiveShadowPlanForRow(
   row: Dtc02AdaptiveShadowVehicleRow,
   evaluatedAtMs: number,
+  tripVsiContextOverride?: Dtc02TripVsiPlannerContext,
 ): ReturnType<typeof planDtc02AdaptivePollCheck> {
   const webhookEvidenceQuality = deriveWebhookEvidenceQuality({
     lastConfirmedCompleteSourceAtMs: row.lastConfirmedCompleteSourceAt?.getTime() ?? null,
@@ -187,17 +189,19 @@ export function runDtc02AdaptiveShadowPlanForRow(
   const lastPollOrIntentAtMs =
     row.lastPollFetchAt?.getTime() ?? row.lastDtcPollAt?.getTime() ?? null;
 
-  const tripVsiContext = buildDtc02TripVsiPlannerContext({
-    evaluatedAtMs,
-    inTripInterval: row.inTripInterval,
-    tripDetectionState: row.tripDetectionState as TripDetectionState | null,
-    lastActivityAtMs: row.lastActivityAt?.getTime() ?? null,
-    possibleStartEnteredAtMs: row.possibleStartEnteredAt?.getTime() ?? null,
-    possibleEndEnteredAtMs: row.possibleEndEnteredAt?.getTime() ?? null,
-    vsiDtcLastSourceTimestamp: row.vsiDtcLastSourceTimestamp,
-    tripFsmTransitionMaxAgeMs: DTC02_TRIP_FSM_TRANSITION_MAX_AGE_MS,
-    lastPollOrIntentAtMs,
-  });
+  const tripVsiContext =
+    tripVsiContextOverride ??
+    buildDtc02TripVsiPlannerContext({
+      evaluatedAtMs,
+      inTripInterval: row.inTripInterval,
+      tripDetectionState: row.tripDetectionState as TripDetectionState | null,
+      lastActivityAtMs: row.lastActivityAt?.getTime() ?? null,
+      possibleStartEnteredAtMs: row.possibleStartEnteredAt?.getTime() ?? null,
+      possibleEndEnteredAtMs: row.possibleEndEnteredAt?.getTime() ?? null,
+      vsiDtcLastSourceTimestamp: row.vsiDtcLastSourceTimestamp,
+      tripFsmTransitionMaxAgeMs: DTC02_TRIP_FSM_TRANSITION_MAX_AGE_MS,
+      lastPollOrIntentAtMs,
+    });
 
   return planDtc02AdaptivePollCheck({
     registryLifecycle: row.registryLifecycle ?? 'ACTIVE',
