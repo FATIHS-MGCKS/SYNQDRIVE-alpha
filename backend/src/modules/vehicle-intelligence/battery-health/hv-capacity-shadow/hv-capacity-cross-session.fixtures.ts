@@ -58,6 +58,28 @@ function m3Validation(input: {
   };
 }
 
+function independentPhysicalEpisode(
+  endIso: string,
+  socStart: number,
+  socEnd: number,
+  durationHours = 2.5,
+  packKwh = 57,
+) {
+  const sessionEndAt = new Date(endIso);
+  const sessionStartAt = new Date(
+    sessionEndAt.getTime() - durationHours * 60 * 60 * 1000,
+  );
+  return {
+    sessionStartAt,
+    sessionEndAt,
+    startSocPercent: socStart,
+    endSocPercent: socEnd,
+    startEnergyKwh: (socStart / 100) * packKwh,
+    endEnergyKwh: (socEnd / 100) * packKwh,
+    isOngoing: false,
+  };
+}
+
 function session(
   id: string,
   endIso: string,
@@ -66,11 +88,22 @@ function session(
     validSampleCount?: number;
     cv?: number;
     m3Conflict?: boolean;
+    socStart?: number;
+    socEnd?: number;
+    physicalEpisode?: HvCrossSessionInputSession['physicalEpisode'];
   },
 ): HvCrossSessionInputSession {
+  const physicalEpisode =
+    options?.physicalEpisode ??
+    independentPhysicalEpisode(
+      endIso,
+      options?.socStart ?? 35,
+      options?.socEnd ?? 82,
+    );
   return {
     sessionId: id,
     sessionEndAt: new Date(endIso),
+    physicalEpisode,
     summary: buildStableSummary(
       medianKwh,
       options?.validSampleCount,
@@ -85,10 +118,22 @@ function session(
 
 /** Four stable Tesla audit-like sessions — cross-session median ~55.5 kWh. */
 export const TESLA_AUDIT_CROSS_SESSION_STABLE_INPUT: HvCrossSessionInputSession[] = [
-  session('session-3', '2026-06-18T09:58:36.000Z', 55.56),
-  session('session-4', '2026-06-22T05:36:49.000Z', 55.75),
-  session('session-6', '2026-06-25T11:18:24.000Z', 55.46),
-  session('session-7', '2026-06-26T05:47:57.000Z', 55.52),
+  session('session-3', '2026-06-18T09:58:36.000Z', 55.56, {
+    socStart: 28,
+    socEnd: 79,
+  }),
+  session('session-4', '2026-06-22T05:36:49.000Z', 55.75, {
+    socStart: 31,
+    socEnd: 84,
+  }),
+  session('session-6', '2026-06-25T11:18:24.000Z', 55.46, {
+    socStart: 26,
+    socEnd: 77,
+  }),
+  session('session-7', '2026-06-26T05:47:57.000Z', 55.52, {
+    socStart: 33,
+    socEnd: 81,
+  }),
 ];
 
 /** Contradictory mix — one high outlier session breaks cross-session spread gate. */

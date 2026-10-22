@@ -128,7 +128,13 @@ export class HvCapacityCrossSessionAssessmentService {
       take: 32,
       select: {
         id: true,
+        startAt: true,
         endAt: true,
+        startSocPercent: true,
+        endSocPercent: true,
+        startEnergyKwh: true,
+        endEnergyKwh: true,
+        isOngoing: true,
         metadata: true,
       },
     });
@@ -140,7 +146,13 @@ export class HvCapacityCrossSessionAssessmentService {
 
   private mapSessionRow(row: {
     id: string;
+    startAt: Date;
     endAt: Date | null;
+    startSocPercent: number | null;
+    endSocPercent: number | null;
+    startEnergyKwh: number | null;
+    endEnergyKwh: number | null;
+    isOngoing: boolean;
     metadata: unknown;
   }): HvCrossSessionInputSession | null {
     if (!row.endAt) return null;
@@ -153,6 +165,15 @@ export class HvCapacityCrossSessionAssessmentService {
       sessionEndAt: row.endAt,
       summary,
       m3Validation: metadata.m3Validation ?? null,
+      physicalEpisode: {
+        sessionStartAt: row.startAt,
+        sessionEndAt: row.endAt,
+        startSocPercent: row.startSocPercent,
+        endSocPercent: row.endSocPercent,
+        startEnergyKwh: row.startEnergyKwh,
+        endEnergyKwh: row.endEnergyKwh,
+        isOngoing: row.isOngoing,
+      },
     };
   }
 }

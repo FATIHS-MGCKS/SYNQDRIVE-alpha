@@ -5,6 +5,7 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import {
   buildHvCapacityObservationIdempotencyKey,
+  type CreateHvCapacityObservationInput,
   HvCapacityObservationRepository,
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
@@ -30,13 +31,19 @@ import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-ses
 import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
 import type { HvSohGateAssessmentResult } from './hv-soh-gate.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
+import {
+  buildHvCapacityShadowEvidenceFingerprint,
+  shadowEvidenceFromChargeSessionRow,
+} from './hv-capacity-shadow-evidence.policy';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
+import { HV_M3_CAPACITY_METHOD } from './hv-capacity-m3.types';
 import {
   recordHvCapacityObservation,
   recordHvCapacityM2SessionCv,
   recordHvCapacityMethodConflict,
   recordHvCapacitySessionQualified,
 } from '../observability/battery-v2-prometheus.metrics';
+import { withHvShadowSessionAdvisoryLock } from './hv-capacity-shadow-session-advisory-lock';
 
 export interface RecomputeHvM2ShadowInput {
   organizationId: string;
@@ -101,19 +108,37 @@ export class HvCapacityShadowService {
       return this.emptyResult(session.id);
     }
 
-    const alreadyProcessed = await this.observations.hasSessionObservations({
-      chargeSessionId: session.id,
-      method: HV_M2_CAPACITY_METHOD,
-      modelVersion: HV_M2_MODEL_VERSION,
-    });
+    return await withHvShadowSessionAdvisoryLock(this.prisma, session.id, async () => {
+      const lockedSession =
+        (await this.prisma.hvChargeSession.findFirst({
+          where: { id: session.id },
+        })) ?? session;
+      const lockedMetadata = (lockedSession.metadata ??
+        {}) as unknown as HvChargeSessionMetadata;
 
-    let estimates: HvCapacityM2PointEstimate[] = [];
-    let persistedCount = 0;
-    let skippedCount = 0;
-    let sessionMedianKwh: number | null = null;
-    let summaryObservations: HvCapacitySessionSummaryInputObservation[] | undefined;
+      const evidenceFingerprint = buildHvCapacityShadowEvidenceFingerprint(
+        shadowEvidenceFromChargeSessionRow(lockedSession, lockedMetadata),
+      );
 
-    if (!alreadyProcessed) {
+      const alreadyProcessed = await this.observations.hasSessionObservations({
+        chargeSessionId: lockedSession.id,
+        method: HV_M2_CAPACITY_METHOD,
+        modelVersion: HV_M2_MODEL_VERSION,
+      });
+
+      const shadowEvidenceStale =
+        lockedMetadata.m2CapacitySummary == null ||
+        lockedMetadata.shadowEvidenceFingerprint !== evidenceFingerprint;
+
+      let estimates: HvCapacityM2PointEstimate[] = [];
+      let persistedCount = 0;
+      let skippedCount = 0;
+      let sessionMedianKwh: number | null = null;
+      let summaryObservations: HvCapacitySessionSummaryInputObservation[] | undefined;
+
+      const shouldResample = !alreadyProcessed || shadowEvidenceStale;
+
+      if (shouldResample) {
       const reference = await this.prisma.vehicleBatteryReferenceCapacity.findFirst({
         where: {
           organizationId: input.organizationId,
@@ -132,8 +157,8 @@ export class HvCapacityShadowService {
         input.samplesOverride ??
         (await this.sampleProvider.loadSessionSamples({
           vehicleId: input.vehicleId,
-          startAt: session.startAt,
-          endAt: session.endAt,
+          startAt: lockedSession.startAt,
+          endAt: lockedSession.endAt,
         }));
 
       estimates = buildHvM2PointEstimates({
@@ -142,36 +167,57 @@ export class HvCapacityShadowService {
       });
       sessionMedianKwh = medianHvM2Estimates(estimates);
 
-      for (const estimate of estimates) {
-        const quality = resolveHvM2ObservationQuality(estimate);
-        await this.observations.createIdempotent({
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          chargeSessionId: session.id,
-          method: HV_M2_CAPACITY_METHOD,
-          estimatedCapacityKwh: estimate.valueKwh,
-          referenceCapacityKwh: capacityBand.referenceCapacityKwh,
-          quality,
-          modelVersion: HV_M2_MODEL_VERSION,
-          observedAt: estimate.sample.observedAt,
-          metadata: withHvCapacityShadowMetadata({
-            socPercent: estimate.sample.socPercent,
-            currentEnergyKwh: estimate.sample.currentEnergyKwh,
-            timestampDeltaMs: estimate.gate.timestampDeltaMs,
-            preferredSocBand: estimate.gate.preferredSocBand,
-            outlier: estimate.outlier,
-            gateReasonCodes: estimate.gate.reasonCodes,
-            sessionMedianKwh,
-          }),
-          idempotencyKey: buildHvCapacityObservationIdempotencyKey({
+      const createInputs: CreateHvCapacityObservationInput[] = estimates.map(
+        (estimate) => {
+          const quality = resolveHvM2ObservationQuality(estimate);
+          return {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
             chargeSessionId: session.id,
+            method: HV_M2_CAPACITY_METHOD,
+            estimatedCapacityKwh: estimate.valueKwh,
+            referenceCapacityKwh: capacityBand.referenceCapacityKwh,
+            quality,
+            modelVersion: HV_M2_MODEL_VERSION,
             observedAt: estimate.sample.observedAt,
-          }),
+            metadata: withHvCapacityShadowMetadata({
+              socPercent: estimate.sample.socPercent,
+              currentEnergyKwh: estimate.sample.currentEnergyKwh,
+              timestampDeltaMs: estimate.gate.timestampDeltaMs,
+              preferredSocBand: estimate.gate.preferredSocBand,
+              outlier: estimate.outlier,
+              gateReasonCodes: estimate.gate.reasonCodes,
+              sessionMedianKwh,
+            }),
+            idempotencyKey: buildHvCapacityObservationIdempotencyKey({
+              chargeSessionId: session.id,
+              observedAt: estimate.sample.observedAt,
+            }),
+          };
+        },
+      );
+
+      if (alreadyProcessed) {
+        await this.observations.resampleSessionM2ObservationsTransactional({
+          sessionId: lockedSession.id,
+          chargeSessionId: lockedSession.id,
+          metadata: lockedMetadata,
+          creates: createInputs,
         });
+        persistedCount = createInputs.length;
         if (this.metrics) {
-          recordHvCapacityObservation(this.metrics, { quality });
+          for (const row of createInputs) {
+            recordHvCapacityObservation(this.metrics, { quality: row.quality });
+          }
         }
-        persistedCount += 1;
+      } else {
+        for (const createInput of createInputs) {
+          await this.observations.createIdempotent(createInput);
+          if (this.metrics) {
+            recordHvCapacityObservation(this.metrics, { quality: createInput.quality });
+          }
+          persistedCount += 1;
+        }
       }
 
       skippedCount = Math.max(0, samples.length - persistedCount);
@@ -269,6 +315,7 @@ export class HvCapacityShadowService {
       crossSessionAssessment: crossSessionResult,
       sohGateAssessment: sohGateResult,
     };
+    });
   }
 
   private emptyResult(sessionId: string): HvCapacityM2SessionResult {

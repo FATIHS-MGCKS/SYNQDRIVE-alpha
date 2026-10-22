@@ -6,6 +6,37 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-22 — HV shadow P1 refresh consistency gate (PR #2122)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Cross-session assessment idempotency includes deterministic evidence-identity digest (session medians/M3 flags); transactional M2 resample clears metadata before delete+insert with fail-closed metadata on abort |
+| **WHY** | Same `latestSessionEndAt` suppressed cross-session/SOH refresh after M2 correction; delete-then-create without transaction could leave stale valid capacity |
+| **VALIDATION** | `hv-cross-session-evidence-identity.policy.spec.ts`; `hv-p1-shadow-refresh.postgres.integration.spec.ts` (+cross-session/SOH refresh, +resample abort safety) |
+| **NON_EFFECTS** | No flags, deploy, or non-HV modules |
+
+---
+
+## 2026-10-22 — HV shadow P1 final safety hardening (PR #2122 review)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Removed fabricated cross-session episode fallback; `PHYSICAL_EPISODE_EVIDENCE_MISSING` fail-closed; M3 observation delete on gate failure; Postgres integration for refresh/idempotency/concurrency |
+| **VALIDATION** | `hv-p1-shadow-refresh.postgres.integration.spec.ts` (4/4); episode + M3 unit regressions |
+
+---
+
+## 2026-10-22 — HV shadow P1 safety correction (episode independence, provider refresh, M3 mapper parity)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Cross-session fail-closed physical-episode independence guard (ERD E3 matcher semantics); progressive provider refresh invalidates shadow metadata + M2/M3 resample via evidence fingerprint; shared `hv-capacity-m3-session-input.mapper` forwards `segmentAddedEnergyMinKwh` to M3 RESET gate |
+| **WHY** | FABLE audit P1: fragmented DIMO segments inflated cross-session confidence; extended sessions kept stale M2/M3; M3 service omitted added-energy min vs MQ read path |
+| **VALIDATION** | `hv-capacity-cross-session.episode-independence.spec.ts`, `hv-capacity-m3-session-input.mapper.spec.ts`, `hv-capacity-shadow-evidence.policy.spec.ts`, merge shadow lifecycle spec; full HV unit suite |
+| **NON_EFFECTS** | No boundary enrichment (#2113) edits; no publication/SOH gate formula changes; no feature-flag default changes; no migrations |
+
+---
+
 ## 2026-10-22 — HV boundary enrichment hardening (PR #2113 integration)
 
 | Field | Value |

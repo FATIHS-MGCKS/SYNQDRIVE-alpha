@@ -3,11 +3,15 @@ import {
   assessHvChargeSessionQualityFromInput,
   type HvChargeSessionQualityAssessment,
 } from '../hv-charge-session/hv-charge-session-quality.assessor';
-import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
+import {
+  HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+  type HvChargeSessionMetadata,
+} from '../hv-charge-session/hv-charge-session.types';
 import {
   computeHvM3EstimatedCapacityKwh,
   evaluateHvM3SessionGate,
 } from '../hv-capacity-shadow/hv-capacity-m3.policy';
+import { buildHvCapacityM3SessionInput } from '../hv-capacity-shadow/hv-capacity-m3-session-input.mapper';
 import type { HvCapacityM3SessionInput } from '../hv-capacity-shadow/hv-capacity-m3.types';
 import { HV_SOH_GATE_MIN_QUALIFIED_SESSIONS } from '../hv-capacity-shadow/hv-soh-gate.types';
 import {
@@ -81,23 +85,8 @@ export function mapSessionToM3Input(
   row: HvMeasurementQualitySessionInput,
   quality: HvChargeSessionQualityAssessment,
 ): HvCapacityM3SessionInput {
-  const md = row.metadata;
-  return {
-    source: row.source,
-    isOngoing: row.isOngoing,
-    startAt: row.startAt,
-    endAt: row.endAt,
-    startSocPercent: row.startSocPercent,
-    endSocPercent: row.endSocPercent,
-    startEnergyKwh: row.startEnergyKwh,
-    endEnergyKwh: row.endEnergyKwh,
-    energyAddedKwh: row.energyAddedKwh,
-    deltaSocPercent: row.deltaSocPercent,
-    capacityValidationEligible: quality.capacityValidationEligible,
-    boundaryStrength: quality.boundaryStrength,
-    qualityStatus: mdString(md, 'qualityStatus'),
-    addedEnergyMinKwh: mdNumber(md, 'segmentAddedEnergyMinKwh'),
-  };
+  const metadata = (row.metadata ?? {}) as unknown as HvChargeSessionMetadata;
+  return buildHvCapacityM3SessionInput(row, metadata, quality);
 }
 
 function isQ1Session(

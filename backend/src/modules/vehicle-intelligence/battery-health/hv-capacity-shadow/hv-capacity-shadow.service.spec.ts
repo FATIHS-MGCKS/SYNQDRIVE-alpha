@@ -10,6 +10,7 @@ import {
   TESLA_AUDIT_REFERENCE_CAPACITY_KWH,
 } from './hv-capacity-m2.fixtures';
 import { HV_M2_CAPACITY_METHOD, HV_M2_MODEL_VERSION } from './hv-capacity-m2.types';
+import { buildHvCapacityShadowEvidenceFingerprint } from './hv-capacity-shadow-evidence.policy';
 
 jest.mock('@config/battery-health-v2.config', () => ({
   isBatteryV2HvCapacityShadowEnabled: jest.fn().mockReturnValue(true),
@@ -23,11 +24,14 @@ describe('HvCapacityShadowService', () => {
   const prisma = {
     hvChargeSession: { findFirst: jest.fn() },
     vehicleBatteryReferenceCapacity: { findFirst: jest.fn() },
+    $executeRaw: jest.fn().mockResolvedValue(0),
   };
   const sampleProvider = { loadSessionSamples: jest.fn() };
   const observations = {
     hasSessionObservations: jest.fn(),
     createIdempotent: jest.fn(),
+    deleteSessionObservations: jest.fn(),
+    resampleSessionM2ObservationsTransactional: jest.fn(),
   };
 
   const sessionSummary = { summarizeSession: jest.fn() };
@@ -49,7 +53,7 @@ describe('HvCapacityShadowService', () => {
       sohGateAssessment as any,
     );
 
-    prisma.hvChargeSession.findFirst.mockResolvedValue({
+    const qualifiedSessionRow = {
       id: chargeSessionId,
       organizationId,
       vehicleId,
@@ -60,11 +64,14 @@ describe('HvCapacityShadowService', () => {
         capacityShadowEligible: true,
         qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
       },
-    });
+    };
+    prisma.hvChargeSession.findFirst.mockResolvedValue(qualifiedSessionRow);
     prisma.vehicleBatteryReferenceCapacity.findFirst.mockResolvedValue({
       capacityKwh: TESLA_AUDIT_REFERENCE_CAPACITY_KWH,
     });
     observations.hasSessionObservations.mockResolvedValue(false);
+    observations.deleteSessionObservations.mockResolvedValue(0);
+    observations.resampleSessionM2ObservationsTransactional.mockResolvedValue(undefined);
     observations.createIdempotent.mockImplementation(async (input) => ({
       id: `obs-${input.observedAt.getTime()}`,
       ...input,
@@ -153,6 +160,37 @@ describe('HvCapacityShadowService', () => {
 
   it('aggregates summary when observations already processed', async () => {
     observations.hasSessionObservations.mockResolvedValue(true);
+    const sessionScalars = {
+      startAt: new Date('2026-06-21T19:00:08.000Z'),
+      endAt: new Date('2026-06-22T05:36:49.000Z'),
+      startSocPercent: null,
+      endSocPercent: null,
+      startEnergyKwh: null,
+      endEnergyKwh: null,
+      energyAddedKwh: null,
+      deltaSocPercent: null,
+      segmentAddedEnergyMinKwh: null,
+    };
+    prisma.hvChargeSession.findFirst.mockResolvedValue({
+      id: chargeSessionId,
+      organizationId,
+      vehicleId,
+      ...sessionScalars,
+      isOngoing: false,
+      metadata: {
+        capacityShadowEligible: true,
+        qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+        m2CapacitySummary: {
+          status: 'STABLE_SHADOW',
+          shadowGatePassed: true,
+          gateReasonCodes: [],
+          stats: { medianCapacityKwh: 55.5, coefficientOfVariation: 0.002 },
+        },
+        shadowEvidenceFingerprint: buildHvCapacityShadowEvidenceFingerprint(
+          sessionScalars,
+        ),
+      },
+    });
 
     const result = await service.recomputeM2ForSession({
       organizationId,
