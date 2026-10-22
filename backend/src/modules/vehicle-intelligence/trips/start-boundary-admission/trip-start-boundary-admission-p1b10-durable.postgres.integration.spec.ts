@@ -189,7 +189,7 @@ async function probeDatabase(): Promise<boolean> {
           UPDATE vehicle_trips
           SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb)
             || jsonb_build_object('concurrentMetaKey', 'yes')
-          WHERE id = ${tripId}::uuid
+          WHERE id = ${tripId}
         `,
       ]);
 

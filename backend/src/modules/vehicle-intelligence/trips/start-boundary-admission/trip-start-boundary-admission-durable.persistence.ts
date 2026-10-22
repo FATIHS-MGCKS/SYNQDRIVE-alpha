@@ -241,7 +241,7 @@ export async function atomicMergeVehicleTripRawDetectionMetaPatch(
   await prisma.$executeRaw`
     UPDATE vehicle_trips
     SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb) || ${payload}::jsonb
-    WHERE id = ${params.tripId}::uuid
+    WHERE id = ${params.tripId}
       AND vehicle_id = ${params.vehicleId}
   `;
 }
@@ -277,7 +277,7 @@ export async function atomicInsertStartBoundaryAdmissionShadowDurable(
     UPDATE vehicle_trips
     SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb)
       || jsonb_build_object(${START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY}, ${payload}::jsonb)
-    WHERE id = ${params.tripId}::uuid
+    WHERE id = ${params.tripId}
       AND vehicle_id = ${params.vehicleId}
       AND NOT (
         COALESCE(raw_detection_meta, '{}'::jsonb) ? ${START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY}
