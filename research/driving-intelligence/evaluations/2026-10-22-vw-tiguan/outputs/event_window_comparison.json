@@ -1,0 +1,309 @@
+{
+  "ds4_motion_events_in_video_utc_window": 13,
+  "events": [
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:43:05Z",
+      "endLabel": "2026-10-22T18:43:08Z",
+      "startSpeedKmh": 3.1,
+      "endSpeedKmh": 20.5,
+      "deltaKmh": 17.4,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "DECELERATION",
+      "startLabel": "2026-10-22T18:43:58Z",
+      "endLabel": "2026-10-22T18:44:02Z",
+      "startSpeedKmh": 28.8,
+      "endSpeedKmh": 6.4,
+      "deltaKmh": 22.4,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:45:24Z",
+      "endLabel": "2026-10-22T18:45:28Z",
+      "startSpeedKmh": 44,
+      "endSpeedKmh": 72.2,
+      "deltaKmh": 28.2,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "DECELERATION",
+      "startLabel": "2026-10-22T18:46:44Z",
+      "endLabel": "2026-10-22T18:46:46Z",
+      "startSpeedKmh": 58.2,
+      "endSpeedKmh": 47.6,
+      "deltaKmh": 10.6,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:47:00Z",
+      "endLabel": "2026-10-22T18:47:04Z",
+      "startSpeedKmh": 49.2,
+      "endSpeedKmh": 80.5,
+      "deltaKmh": 31.4,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "DECELERATION",
+      "startLabel": "2026-10-22T18:47:42Z",
+      "endLabel": "2026-10-22T18:47:47Z",
+      "startSpeedKmh": 34.1,
+      "endSpeedKmh": 6.6,
+      "deltaKmh": 27.5,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:49:12Z",
+      "endLabel": "2026-10-22T18:49:18Z",
+      "startSpeedKmh": 67.3,
+      "endSpeedKmh": 1930.8,
+      "deltaKmh": 1863.5,
+      "quality": "DEGRADED",
+      "flags": [
+        "L3_DIRECT",
+        "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST",
+        "TIMING_JITTER_SUSPECT_IN_WINDOW"
+      ]
+    },
+    {
+      "kind": "DECELERATION",
+      "startLabel": "2026-10-22T18:58:16Z",
+      "endLabel": "2026-10-22T18:58:20Z",
+      "startSpeedKmh": 40.3,
+      "endSpeedKmh": 9.2,
+      "deltaKmh": 31.1,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:58:22Z",
+      "endLabel": "2026-10-22T18:58:25Z",
+      "startSpeedKmh": 8.5,
+      "endSpeedKmh": 25,
+      "deltaKmh": 16.5,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:59:00Z",
+      "endLabel": "2026-10-22T18:59:04Z",
+      "startSpeedKmh": 7.4,
+      "endSpeedKmh": 46,
+      "deltaKmh": 38.6,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "ACCELERATION",
+      "startLabel": "2026-10-22T18:59:27Z",
+      "endLabel": "2026-10-22T18:59:29Z",
+      "startSpeedKmh": 40.4,
+      "endSpeedKmh": 57.5,
+      "deltaKmh": 17,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "DECELERATION",
+      "startLabel": "2026-10-22T18:59:37Z",
+      "endLabel": "2026-10-22T18:59:40Z",
+      "startSpeedKmh": 37.6,
+      "endSpeedKmh": 19.1,
+      "deltaKmh": 18.5,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    },
+    {
+      "kind": "DECELERATION",
+      "startLabel": "2026-10-22T18:59:59Z",
+      "endLabel": "2026-10-22T19:00:01Z",
+      "startSpeedKmh": 19.6,
+      "endSpeedKmh": 6.9,
+      "deltaKmh": 12.7,
+      "quality": "OK",
+      "flags": [
+        "L3_DIRECT"
+      ]
+    }
+  ],
+  "reference_windows": [
+    {
+      "type": "SPEED_DECREASE",
+      "clip": "TC_00077.MOV",
+      "start_local": "2026-10-22T20:40:48+02:00",
+      "end_local": "2026-10-22T20:41:01+02:00",
+      "start_speed_kmh": "38",
+      "end_speed_kmh": "0",
+      "ds4_motion_events_overlapping": []
+    },
+    {
+      "type": "SPEED_DECREASE",
+      "clip": "TC_00078.MOV",
+      "start_local": "2026-10-22T20:42:46+02:00",
+      "end_local": "2026-10-22T20:43:00+02:00",
+      "start_speed_kmh": "48",
+      "end_speed_kmh": "0",
+      "ds4_motion_events_overlapping": []
+    },
+    {
+      "type": "SPEED_INCREASE",
+      "clip": "TC_00080.MOV",
+      "start_local": "2026-10-22T20:45:24+02:00",
+      "end_local": "2026-10-22T20:45:30+02:00",
+      "start_speed_kmh": "45",
+      "end_speed_kmh": "83",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "ACCELERATION",
+          "startLabel": "2026-10-22T18:45:24Z",
+          "endLabel": "2026-10-22T18:45:28Z",
+          "deltaKmh": 28.2,
+          "quality": "OK"
+        }
+      ]
+    },
+    {
+      "type": "SPEED_INCREASE",
+      "clip": "TC_00080.MOV",
+      "start_local": "2026-10-22T20:47:00+02:00",
+      "end_local": "2026-10-22T20:47:07+02:00",
+      "start_speed_kmh": "50",
+      "end_speed_kmh": "90",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "ACCELERATION",
+          "startLabel": "2026-10-22T18:47:00Z",
+          "endLabel": "2026-10-22T18:47:04Z",
+          "deltaKmh": 31.4,
+          "quality": "OK"
+        }
+      ]
+    },
+    {
+      "type": "SPEED_DECREASE",
+      "clip": "TC_00080.MOV",
+      "start_local": "2026-10-22T20:47:30+02:00",
+      "end_local": "2026-10-22T20:47:50+02:00",
+      "start_speed_kmh": "76",
+      "end_speed_kmh": "0",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "DECELERATION",
+          "startLabel": "2026-10-22T18:47:42Z",
+          "endLabel": "2026-10-22T18:47:47Z",
+          "deltaKmh": 27.5,
+          "quality": "OK"
+        }
+      ]
+    },
+    {
+      "type": "SPEED_DECREASE",
+      "clip": "TC_00084.MOV",
+      "start_local": "2026-10-22T20:58:17+02:00",
+      "end_local": "2026-10-22T20:58:22+02:00",
+      "start_speed_kmh": "44",
+      "end_speed_kmh": "5",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "DECELERATION",
+          "startLabel": "2026-10-22T18:58:16Z",
+          "endLabel": "2026-10-22T18:58:20Z",
+          "deltaKmh": 31.1,
+          "quality": "OK"
+        },
+        {
+          "kind": "ACCELERATION",
+          "startLabel": "2026-10-22T18:58:22Z",
+          "endLabel": "2026-10-22T18:58:25Z",
+          "deltaKmh": 16.5,
+          "quality": "OK"
+        }
+      ]
+    },
+    {
+      "type": "SPEED_INCREASE",
+      "clip": "TC_00084.MOV",
+      "start_local": "2026-10-22T20:59:00+02:00",
+      "end_local": "2026-10-22T20:59:07+02:00",
+      "start_speed_kmh": "0",
+      "end_speed_kmh": "53",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "ACCELERATION",
+          "startLabel": "2026-10-22T18:59:00Z",
+          "endLabel": "2026-10-22T18:59:04Z",
+          "deltaKmh": 38.6,
+          "quality": "OK"
+        }
+      ]
+    },
+    {
+      "type": "SPEED_INCREASE",
+      "clip": "TC_00084.MOV",
+      "start_local": "2026-10-22T20:59:27+02:00",
+      "end_local": "2026-10-22T20:59:31+02:00",
+      "start_speed_kmh": "38",
+      "end_speed_kmh": "65",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "ACCELERATION",
+          "startLabel": "2026-10-22T18:59:27Z",
+          "endLabel": "2026-10-22T18:59:29Z",
+          "deltaKmh": 17,
+          "quality": "OK"
+        }
+      ]
+    },
+    {
+      "type": "SPEED_DECREASE",
+      "clip": "TC_00084.MOV",
+      "start_local": "2026-10-22T20:59:31+02:00",
+      "end_local": "2026-10-22T20:59:42+02:00",
+      "start_speed_kmh": "65",
+      "end_speed_kmh": "18",
+      "ds4_motion_events_overlapping": [
+        {
+          "kind": "DECELERATION",
+          "startLabel": "2026-10-22T18:59:37Z",
+          "endLabel": "2026-10-22T18:59:40Z",
+          "deltaKmh": 18.5,
+          "quality": "OK"
+        }
+      ]
+    }
+  ]
+}
