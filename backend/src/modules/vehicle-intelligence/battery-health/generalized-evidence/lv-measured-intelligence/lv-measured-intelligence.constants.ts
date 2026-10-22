@@ -6,6 +6,14 @@ export const LV_MEASURED_INTELLIGENCE_MAX_SESSION_LIMIT = 50;
 export const LV_MEASURED_INTELLIGENCE_DEFAULT_OBSERVATION_LIMIT = 200;
 export const LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT = 500;
 
+/** Batched GE reads for N16/N14 assessment windows (not UI display caps). */
+export const LV_GE_ASSESSMENT_BATCH_SIZE = 1000;
+export const LV_GE_ASSESSMENT_MAX_ROWS = 10_000;
+
+/** Session cap for shadow assessment (decoupled from UI sessionLimit). */
+export const LV_MEASURED_INTELLIGENCE_ASSESSMENT_SESSION_LIMIT =
+  LV_MEASURED_INTELLIGENCE_MAX_SESSION_LIMIT;
+
 export const LV_MEASURED_INTELLIGENCE_MAX_FEATURE_ROWS_PER_VEHICLE = 2000;
 
 /** Max inclusive calendar span for measuredFrom/measuredTo historical browsing. */

@@ -14,6 +14,7 @@ import {
 } from './lv-measured-voltage-chart.util';
 import { fetchOrgVehiclesForBatteryV2Inspection } from './vehicle-selection';
 import type { LvMeasuredIntelligenceV1 } from './lv-measured-intelligence.types';
+import type { LvEstimatedBatteryHealthShadowAdminV1 } from './lv-estimated-health-shadow.types';
 import {
   formatMillivolts,
   formatSlope,
@@ -162,6 +163,8 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   const [inspection, setInspection] = useState<RestSessionFeatureShadowInspectionV1 | null>(null);
   const [lvMeasured, setLvMeasured] = useState<LvMeasuredIntelligenceV1 | null>(null);
   const [lvMeasuredLoading, setLvMeasuredLoading] = useState(false);
+  const [lvN16Shadow, setLvN16Shadow] = useState<LvEstimatedBatteryHealthShadowAdminV1 | null>(null);
+  const [lvN16ShadowLoading, setLvN16ShadowLoading] = useState(false);
   const [lvHistoryUseDateRange, setLvHistoryUseDateRange] = useState(false);
   const defaultHistoryTo = useMemo(() => new Date(), []);
   const defaultHistoryFrom = useMemo(() => defaultMeasuredHistoryFromDate(defaultHistoryTo), [defaultHistoryTo]);
@@ -228,6 +231,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
     setRestSessionId('');
     setInspection(null);
     setLvMeasured(null);
+    setLvN16Shadow(null);
     setPhase('idle');
     void loadSessions();
   }, [loadSessions]);
@@ -238,6 +242,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
       return;
     }
     setLvMeasuredLoading(true);
+    setLvN16ShadowLoading(true);
     try {
       const base = {
         organizationId,
@@ -245,21 +250,39 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
         sessionLimit: 40,
         observationLimit: 500,
       };
-      const data = await api.admin.batteryV2.getLvMeasuredIntelligence(
-        lvHistoryUseDateRange
-          ? {
-              ...base,
-              measuredFrom: parseDatetimeLocalInputValue(lvHistoryFromInput).toISOString(),
-              measuredTo: parseDatetimeLocalInputValue(lvHistoryToInput).toISOString(),
-            }
-          : base,
-      );
+      const shadowRange = lvHistoryUseDateRange
+        ? {
+            measuredFrom: parseDatetimeLocalInputValue(lvHistoryFromInput).toISOString(),
+            measuredTo: parseDatetimeLocalInputValue(lvHistoryToInput).toISOString(),
+          }
+        : {};
+      const [data, shadow] = await Promise.all([
+        api.admin.batteryV2.getLvMeasuredIntelligence(
+          lvHistoryUseDateRange
+            ? {
+                ...base,
+                measuredFrom: shadowRange.measuredFrom!,
+                measuredTo: shadowRange.measuredTo!,
+              }
+            : base,
+        ),
+        api.admin.batteryV2
+          .getLvEstimatedHealthShadow({
+            organizationId,
+            vehicleId,
+            ...shadowRange,
+          })
+          .catch(() => null),
+      ]);
       setLvMeasured(data);
+      setLvN16Shadow(shadow);
     } catch {
       setLvMeasured(null);
+      setLvN16Shadow(null);
       setErrorMessage(resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.loadError'));
     } finally {
       setLvMeasuredLoading(false);
+      setLvN16ShadowLoading(false);
     }
   }, [organizationId, vehicleId, lvHistoryUseDateRange, lvHistoryFromInput, lvHistoryToInput]);
 
@@ -388,6 +411,8 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
           {lvMeasured ? (
             <LvMeasuredIntelligenceSection
               data={lvMeasured}
+              n16Shadow={lvN16Shadow}
+              n16ShadowLoading={lvN16ShadowLoading}
               selectedRestSessionId={restSessionId}
               onSelectRestSessionId={setRestSessionId}
               historyRange={{

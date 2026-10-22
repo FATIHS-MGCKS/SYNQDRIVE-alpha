@@ -3911,6 +3911,22 @@ export const api = {
           `/admin/battery-v2/lv-measured-intelligence?${q.toString()}`,
         );
       },
+      getLvEstimatedHealthShadow: (params: {
+        organizationId: string;
+        vehicleId: string;
+        measuredFrom?: string;
+        measuredTo?: string;
+      }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        if (params.measuredFrom) q.set('measuredFrom', params.measuredFrom);
+        if (params.measuredTo) q.set('measuredTo', params.measuredTo);
+        return get<
+          import('../master/battery-v2-shadow-inspection/lv-estimated-health-shadow.types').LvEstimatedBatteryHealthShadowAdminV1
+        >(`/admin/battery-v2/lv-estimated-health-shadow?${q.toString()}`);
+      },
     },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),

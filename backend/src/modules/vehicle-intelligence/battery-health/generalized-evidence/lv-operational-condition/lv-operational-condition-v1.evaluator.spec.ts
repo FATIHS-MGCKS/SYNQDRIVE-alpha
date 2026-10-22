@@ -24,6 +24,13 @@ function baseInput(
     historicalQueryMode: 'RECENT_DESC_LIMIT',
     inputCoverageIncomplete: false,
     historicalObservationsTruncated: false,
+    geDataSelection: {
+      rawVoltageRowCount: 0,
+      dedupedVoltageRowCount: 0,
+      eligibleRestObservationCount: 0,
+      measuredFromIso: null,
+      measuredToIso: null,
+    },
     eligibleRestObservations: [],
     latestGlobalObservation: null,
     latestEligibleRestObservation: null,

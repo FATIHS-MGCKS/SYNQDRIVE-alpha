@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { MasterPageSection } from '../shell';
 import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
+import { LvEstimatedHealthShadowPanel } from './LvEstimatedHealthShadowPanel';
 import { LvMeasuredLatestEvidencePanel } from './LvMeasuredLatestEvidencePanel';
+import type { LvEstimatedBatteryHealthShadowAdminV1 } from './lv-estimated-health-shadow.types';
 import { LvMeasuredMobileEpisodeCard } from './LvMeasuredMobileEpisodeCard';
 import { LvMeasuredVoltageChart } from './LvMeasuredVoltageChart';
 import {
@@ -27,6 +29,8 @@ type HistoryRangeProps = {
 
 type Props = {
   data: LvMeasuredIntelligenceV1;
+  n16Shadow: LvEstimatedBatteryHealthShadowAdminV1 | null;
+  n16ShadowLoading: boolean;
   selectedRestSessionId: string;
   onSelectRestSessionId: (restSessionId: string) => void;
   historyRange: HistoryRangeProps;
@@ -44,6 +48,8 @@ function slopePresentation(ep: LvMeasuredRestSessionEpisodeV1) {
 
 export function LvMeasuredIntelligenceSection({
   data,
+  n16Shadow,
+  n16ShadowLoading,
   selectedRestSessionId,
   onSelectRestSessionId,
   historyRange,
@@ -142,6 +148,10 @@ export function LvMeasuredIntelligenceSection({
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.latestTitle')}>
         <LvMeasuredLatestEvidencePanel data={data} />
+      </MasterPageSection>
+
+      <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.n16Shadow.title')}>
+        <LvEstimatedHealthShadowPanel data={n16Shadow} loading={n16ShadowLoading} />
       </MasterPageSection>
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.vehicleTimelineTitle')}>

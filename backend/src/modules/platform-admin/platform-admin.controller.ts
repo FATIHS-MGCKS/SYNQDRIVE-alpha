@@ -36,6 +36,7 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
 import { BatteryV2LvMeasuredIntelligenceAdminService } from './battery-v2-lv-measured-intelligence.admin.service';
+import { BatteryV2LvEstimatedHealthShadowAdminService } from './battery-v2-lv-estimated-health-shadow.admin.service';
 import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
 import {
   PLATFORM_PRUNE_DISABLED_CODE,
@@ -63,6 +64,7 @@ export class PlatformAdminController {
     private readonly platformOpsService: PlatformOpsService,
     private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
     private readonly batteryV2LvMeasuredIntelligence: BatteryV2LvMeasuredIntelligenceAdminService,
+    private readonly batteryV2LvEstimatedHealthShadow: BatteryV2LvEstimatedHealthShadowAdminService,
     private readonly dimoR9WebhookHealthService: DimoR9WebhookHealthService,
   ) {}
 
@@ -543,6 +545,47 @@ export class PlatformAdminController {
         vehicleId,
         sessionCount: result.restSessionEpisodes.length,
         historicalPointCount: result.historicalMeasured.length,
+      },
+    });
+    return result;
+  }
+
+  // GET /admin/battery-v2/lv-estimated-health-shadow — G5C-N16 read-only shadow assessment (Master Admin).
+  @Get('battery-v2/lv-estimated-health-shadow')
+  async getBatteryV2LvEstimatedHealthShadow(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('measuredFrom') measuredFrom?: string,
+    @Query('measuredTo') measuredTo?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const parsedMeasuredFrom = measuredFrom ? new Date(measuredFrom) : undefined;
+    const parsedMeasuredTo = measuredTo ? new Date(measuredTo) : undefined;
+    if (parsedMeasuredFrom && Number.isNaN(parsedMeasuredFrom.getTime())) {
+      throw new BadRequestException('measuredFrom is not a valid ISO timestamp');
+    }
+    if (parsedMeasuredTo && Number.isNaN(parsedMeasuredTo.getTime())) {
+      throw new BadRequestException('measuredTo is not a valid ISO timestamp');
+    }
+    const result = await this.batteryV2LvEstimatedHealthShadow.evaluateVehicleShadowAssessment({
+      organizationId,
+      vehicleId,
+      measuredFrom: parsedMeasuredFrom,
+      measuredTo: parsedMeasuredTo,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin Battery V2 LV estimated health shadow read (G5C-N16)',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        estimatedHealthStatus: result.assessment.estimatedHealthStatus,
+        eligibleRestCount: result.dataSelection.eligibleRestObservationCount,
       },
     });
     return result;

@@ -136,7 +136,8 @@ async function main(): Promise<void> {
       const row: Record<string, unknown> = {
         vehicleId,
         licensePlate: vehicle.licensePlate,
-        geRowsLoaded: healthInput.conditionInput.eligibleRestObservations.length,
+        geDataSelection: healthInput.conditionInput.geDataSelection,
+        eligibleRestObservations: healthInput.conditionInput.eligibleRestObservations.length,
         postRestoreGeCount: healthInput.postRestoreObservationCount,
         n14: {
           operationalRiskStatus: n14.operationalRiskStatus,

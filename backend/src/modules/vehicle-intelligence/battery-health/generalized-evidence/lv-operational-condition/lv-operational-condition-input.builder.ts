@@ -13,6 +13,12 @@ import {
 import { dedupeObservationsBySourceMeasurementId } from '../lv-measured-intelligence/lv-measured-intelligence-dedup.policy';
 import { mapEvidenceClassToOperationalContext } from '../lv-measured-intelligence/lv-measured-intelligence-context.policy';
 import { LvMeasuredIntelligenceReadService } from '../lv-measured-intelligence/lv-measured-intelligence-read.service';
+import {
+  LV_GE_ASSESSMENT_MAX_ROWS,
+  LV_MEASURED_INTELLIGENCE_ASSESSMENT_SESSION_LIMIT,
+  LV_MEASURED_INTELLIGENCE_MAX_HISTORICAL_RANGE_DAYS,
+} from '../lv-measured-intelligence/lv-measured-intelligence.constants';
+import { loadGeHistoricalObservationsForAssessment } from '../lv-measured-intelligence/lv-ge-historical-observations.loader';
 import { LV_OPERATIONAL_CONDITION_MODEL_VERSION } from './lv-operational-condition-v1.constants';
 import type {
   LvOperationalConditionInputV1,
@@ -24,20 +30,13 @@ import {
   selectLatestEligibleRestObservation,
 } from './lv-operational-condition-observation.policy';
 
-const GE_LOAD_SELECT = {
-  id: true,
-  sourceMeasurementId: true,
-  restSessionId: true,
-  voltage: true,
-  voltageObservedAt: true,
-  providerObservationAt: true,
-  evidenceClass: true,
-  actualRestAgeMs: true,
-  isLvCharging: true,
-  engineRunning: true,
-  temperatureC: true,
-  createdAt: true,
-} as const;
+function defaultAssessmentWindow(): { measuredFrom: Date; measuredTo: Date } {
+  const measuredTo = new Date();
+  const measuredFrom = new Date(
+    measuredTo.getTime() - LV_MEASURED_INTELLIGENCE_MAX_HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000,
+  );
+  return { measuredFrom, measuredTo };
+}
 
 export async function buildLvOperationalConditionInputV1(
   deps: {
@@ -49,20 +48,28 @@ export async function buildLvOperationalConditionInputV1(
     vehicleId: string;
     measuredFrom?: Date;
     measuredTo?: Date;
+    /** UI display cap — does not bound N16 GE assessment load. */
     observationLimit?: number;
+    /** UI session cap — assessment uses LV_MEASURED_INTELLIGENCE_ASSESSMENT_SESSION_LIMIT. */
     sessionLimit?: number;
+    assessmentMaxGeRows?: number;
   },
 ): Promise<LvOperationalConditionInputV1> {
+  const assessmentWindow =
+    input.measuredFrom != null && input.measuredTo != null
+      ? { measuredFrom: input.measuredFrom, measuredTo: input.measuredTo }
+      : defaultAssessmentWindow();
+
   const measured = await deps.readModel.readVehicleIntelligence({
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
-    measuredFrom: input.measuredFrom,
-    measuredTo: input.measuredTo,
+    measuredFrom: assessmentWindow.measuredFrom,
+    measuredTo: assessmentWindow.measuredTo,
     observationLimit: input.observationLimit,
-    sessionLimit: input.sessionLimit,
+    sessionLimit: input.sessionLimit ?? LV_MEASURED_INTELLIGENCE_ASSESSMENT_SESSION_LIMIT,
   });
 
-  const [specs, batteryFeatures] = await Promise.all([
+  const [specs, batteryFeatures, geLoad] = await Promise.all([
     deps.prisma.vehicleBatterySpec.findMany({
       where: { vehicleId: input.vehicleId },
     }),
@@ -79,22 +86,18 @@ export async function buildLvOperationalConditionInputV1(
         crankObservationCount: true,
       },
     }),
+    loadGeHistoricalObservationsForAssessment(deps.prisma, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      measuredFrom: assessmentWindow.measuredFrom,
+      measuredTo: assessmentWindow.measuredTo,
+      maxRows: input.assessmentMaxGeRows ?? LV_GE_ASSESSMENT_MAX_ROWS,
+    }),
   ]);
   const bestSpec = selectBestBatterySpec(specs);
   const normalizedType = normalizeBatteryType(bestSpec?.batteryType);
 
-  const geRows = await deps.prisma.batteryGeneralizedEvidenceObservation.findMany({
-    where: {
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      voltage: { not: null },
-    },
-    orderBy: { voltageObservedAt: 'desc' },
-    take: input.observationLimit ?? 500,
-    select: GE_LOAD_SELECT,
-  });
-
-  const dedupedRows = dedupeObservationsBySourceMeasurementId(geRows);
+  const dedupedRows = dedupeObservationsBySourceMeasurementId(geLoad.rows);
 
   const mapRow = (row: (typeof dedupedRows)[number]): LvOperationalConditionObservationV1 => ({
     observationId: row.id,
@@ -122,6 +125,10 @@ export async function buildLvOperationalConditionInputV1(
   const wakeVoltageObservations = dedupedObservations.filter(
     (o) => o.evidenceClass === BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
   );
+
+  const historicalObservationsTruncated = geLoad.hasMoreRowsInQuery;
+  const inputCoverageIncomplete =
+    historicalObservationsTruncated || measured.provenance.openProviderObservabilityGapCount > 0;
 
   const latestGlobalObservation = measured.latestMeasured
     ? {
@@ -167,9 +174,16 @@ export async function buildLvOperationalConditionInputV1(
       restingThresholdAuthority: 'BATTERY_STATUS_CLASSIFY_RESTING_VOLTAGE_V1',
     },
     openProviderObservabilityGapCount: measured.provenance.openProviderObservabilityGapCount,
-    historicalQueryMode: measured.provenance.historicalQueryMode,
-    inputCoverageIncomplete: measured.provenance.inputCoverageIncomplete,
-    historicalObservationsTruncated: measured.provenance.historicalObservationsTruncated,
+    historicalQueryMode: geLoad.queryMode,
+    inputCoverageIncomplete,
+    historicalObservationsTruncated,
+    geDataSelection: {
+      rawVoltageRowCount: geLoad.rawRowsFetched,
+      dedupedVoltageRowCount: dedupedRows.length,
+      eligibleRestObservationCount: eligibleRestObservations.length,
+      measuredFromIso: geLoad.measuredFrom?.toISOString() ?? null,
+      measuredToIso: geLoad.measuredTo?.toISOString() ?? null,
+    },
     eligibleRestObservations,
     latestGlobalObservation,
     latestEligibleRestObservation,

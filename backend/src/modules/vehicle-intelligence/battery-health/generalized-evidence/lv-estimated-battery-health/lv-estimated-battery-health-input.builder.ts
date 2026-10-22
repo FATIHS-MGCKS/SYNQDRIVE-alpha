@@ -16,6 +16,7 @@ export async function buildLvEstimatedBatteryHealthInputV1(
     measuredTo?: Date;
     observationLimit?: number;
     sessionLimit?: number;
+    assessmentMaxGeRows?: number;
     restoreCutoffIso?: string;
   },
 ): Promise<LvEstimatedBatteryHealthInputV1> {
@@ -29,6 +30,7 @@ export async function buildLvEstimatedBatteryHealthInputV1(
     measuredTo: input.measuredTo,
     observationLimit: input.observationLimit,
     sessionLimit: input.sessionLimit,
+    assessmentMaxGeRows: input.assessmentMaxGeRows,
   });
 
   const postRestoreObservationCount = await deps.prisma.batteryGeneralizedEvidenceObservation.count({
