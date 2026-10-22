@@ -10,10 +10,8 @@ import {
   HV_CROSS_SESSION_GATE_REASONS,
   type HvCrossSessionInputSession,
 } from './hv-capacity-cross-session.types';
-import {
-  TESLA_AUDIT_CROSS_SESSION_STABLE_INPUT,
-  TESLA_AUDIT_CROSS_SESSION_VEHICLE_CONTEXT,
-} from './hv-capacity-cross-session.fixtures';
+import { TESLA_AUDIT_CROSS_SESSION_STABLE_INPUT } from './hv-capacity-cross-session.fixtures';
+import { TESLA_AUDIT_CROSS_SESSION_VEHICLE_CONTEXT } from './hv-capacity-cross-session.fixtures';
 
 function stableSummary(medianKwh: number, validSampleCount = 40) {
   const observations = STABLE_SESSION_SUMMARY_OBSERVATIONS.map((row, index) => ({
@@ -106,6 +104,26 @@ describe('hv-capacity-cross-session physical episode independence (P1-1)', () =>
       HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_NOT_INDEPENDENT,
     );
     expect(result.sessionCount).toBeLessThan(3);
+  });
+
+  it('fails closed when physical episode evidence is missing (no fabricated fallback)', () => {
+    const withoutEpisode: HvCrossSessionInputSession[] =
+      TESLA_AUDIT_CROSS_SESSION_STABLE_INPUT.map((row) => ({
+        ...row,
+        physicalEpisode: undefined,
+      }));
+
+    const result = computeHvCrossSessionAssessment({
+      sessions: withoutEpisode,
+      context: TESLA_AUDIT_CROSS_SESSION_VEHICLE_CONTEXT,
+    });
+
+    expect(result.shadowGatePassed).toBe(false);
+    expect(result.confidence).toBe(HV_CROSS_SESSION_CONFIDENCE.INSUFFICIENT);
+    expect(result.gateReasonCodes).toContain(
+      HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_EVIDENCE_MISSING,
+    );
+    expect(result.sessionCount).toBe(0);
   });
 
   it('still passes for four truly independent stable sessions', () => {

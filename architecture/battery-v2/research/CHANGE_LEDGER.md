@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-22 — HV shadow P1 final safety hardening (PR #2122 review)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Removed fabricated cross-session episode fallback; `PHYSICAL_EPISODE_EVIDENCE_MISSING` fail-closed; M3 observation delete on gate failure; Postgres integration for refresh/idempotency/concurrency |
+| **VALIDATION** | `hv-p1-shadow-refresh.postgres.integration.spec.ts` (4/4); episode + M3 unit regressions |
+
+---
+
 ## 2026-10-22 — HV shadow P1 safety correction (episode independence, provider refresh, M3 mapper parity)
 
 | Field | Value |

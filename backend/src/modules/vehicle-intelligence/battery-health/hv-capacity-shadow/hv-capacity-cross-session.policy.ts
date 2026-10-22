@@ -131,22 +131,20 @@ function filterQualifiedSessions(
   return { qualified: freshQualified, reasonCodes };
 }
 
-function resolvePhysicalEpisodeContext(
-  session: HvCrossSessionInputSession,
-): HvCrossSessionPhysicalEpisodeContext {
-  if (session.physicalEpisode) {
-    return session.physicalEpisode;
+export function isHvCrossSessionPhysicalEpisodeEvidenceSufficient(
+  episode: HvCrossSessionPhysicalEpisodeContext | undefined | null,
+): boolean {
+  if (!episode) return false;
+  if (
+    episode.sessionEndAt.getTime() <= episode.sessionStartAt.getTime()
+  ) {
+    return false;
   }
-  const end = session.sessionEndAt;
-  return {
-    sessionStartAt: new Date(end.getTime() - 2 * 60 * 60 * 1000),
-    sessionEndAt: end,
-    startSocPercent: 20,
-    endSocPercent: 80,
-    startEnergyKwh: 15,
-    endEnergyKwh: 45,
-    isOngoing: false,
-  };
+  const hasSoc =
+    episode.startSocPercent != null && episode.endSocPercent != null;
+  const hasEnergy =
+    episode.startEnergyKwh != null && episode.endEnergyKwh != null;
+  return hasSoc || hasEnergy;
 }
 
 function toNativeEpisodeSide(
@@ -176,6 +174,21 @@ export function applyCrossSessionPhysicalEpisodeIndependence(input: {
 } {
   const reasonCodes: HvCrossSessionGateReasonCode[] = [];
   const { sessions, evaluatedAt } = input;
+  if (sessions.length === 0) {
+    return { sessions, reasonCodes };
+  }
+
+  const missingEvidence = sessions.some(
+    (session) =>
+      !isHvCrossSessionPhysicalEpisodeEvidenceSufficient(session.physicalEpisode),
+  );
+  if (missingEvidence) {
+    return {
+      sessions: [],
+      reasonCodes: [HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_EVIDENCE_MISSING],
+    };
+  }
+
   if (sessions.length <= 1) {
     return { sessions, reasonCodes };
   }
@@ -204,8 +217,8 @@ export function applyCrossSessionPhysicalEpisodeIndependence(input: {
       const a = sessions[i];
       const b = sessions[j];
       const match = matchNativeHvChargeSessionPhysicalEpisode(
-        toNativeEpisodeSide(resolvePhysicalEpisodeContext(a)),
-        toNativeEpisodeSide(resolvePhysicalEpisodeContext(b)),
+        toNativeEpisodeSide(a.physicalEpisode!),
+        toNativeEpisodeSide(b.physicalEpisode!),
         evaluatedAt,
       );
       if (match.result === ERD_PHYSICAL_MATCH_RESULT.AMBIGUOUS) {
@@ -385,6 +398,8 @@ function buildReasons(
       'Mehrere native Segmente gehören vermutlich zu einem physischen Ladevorgang',
     [HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_AMBIGUOUS]:
       'Physische Episode-Zuordnung zwischen Sessions mehrdeutig',
+    [HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_EVIDENCE_MISSING]:
+      'Physische Episode-Evidenz für Cross-Session-Unabhängigkeit fehlt',
   };
 
   const reasons: HvCrossSessionAssessmentReason[] = gateReasonCodes.map((code) => ({
@@ -419,7 +434,14 @@ export function computeHvCrossSessionAssessment(input: {
   );
 
   const independence = applyCrossSessionPhysicalEpisodeIndependence({
-    sessions: qualified,
+    sessions:
+      qualified.length > 0
+        ? qualified
+        : input.sessions.filter(
+            (session) =>
+              session.summary.status === HV_M2_SESSION_SUMMARY_STATUSES.STABLE_SHADOW &&
+              session.summary.shadowGatePassed,
+          ),
     evaluatedAt: context.now ?? new Date(),
   });
   const episodeQualified = independence.sessions;

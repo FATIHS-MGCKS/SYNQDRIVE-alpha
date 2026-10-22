@@ -74,6 +74,7 @@ export class HvCapacityM3ValidationService {
 
     const gate = evaluateHvM3SessionGate(sessionInput);
     if (!gate.eligible) {
+      await this.invalidatePersistedM3Observations(sessionRow.id);
       await this.persistSessionValidation(
         sessionRow,
         metadata,
@@ -133,11 +134,7 @@ export class HvCapacityM3ValidationService {
     }
 
     if (alreadyProcessed && m3ValidationStale) {
-      await this.observations.deleteSessionObservations({
-        chargeSessionId: sessionRow.id,
-        methods: [HV_M3_CAPACITY_METHOD],
-        modelVersion: HV_M3_MODEL_VERSION,
-      });
+      await this.invalidatePersistedM3Observations(sessionRow.id);
     }
 
     const estimate = buildHvM3Estimate({
@@ -254,6 +251,16 @@ export class HvCapacityM3ValidationService {
       data: {
         metadata: nextMetadata as unknown as Prisma.InputJsonValue,
       },
+    });
+  }
+
+  private async invalidatePersistedM3Observations(
+    chargeSessionId: string,
+  ): Promise<void> {
+    await this.observations.deleteSessionObservations({
+      chargeSessionId,
+      methods: [HV_M3_CAPACITY_METHOD],
+      modelVersion: HV_M3_MODEL_VERSION,
     });
   }
 

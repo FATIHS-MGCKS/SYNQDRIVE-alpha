@@ -48,6 +48,7 @@ export const HV_CROSS_SESSION_GATE_REASONS = {
   INSUFFICIENT_FRESH_SESSIONS: 'INSUFFICIENT_FRESH_SESSIONS',
   PHYSICAL_EPISODE_NOT_INDEPENDENT: 'PHYSICAL_EPISODE_NOT_INDEPENDENT',
   PHYSICAL_EPISODE_AMBIGUOUS: 'PHYSICAL_EPISODE_AMBIGUOUS',
+  PHYSICAL_EPISODE_EVIDENCE_MISSING: 'PHYSICAL_EPISODE_EVIDENCE_MISSING',
 } as const;
 
 export type HvCrossSessionGateReasonCode =
@@ -68,7 +69,7 @@ export interface HvCrossSessionInputSession {
   sessionEndAt: Date;
   summary: HvCapacitySessionSummary;
   m3Validation?: HvCapacityM3SessionValidation | null;
-  /** When omitted, policy derives a non-overlapping placeholder from sessionEndAt (legacy fixtures). */
+  /** Required for cross-session independence; missing evidence fails closed in policy. */
   physicalEpisode?: HvCrossSessionPhysicalEpisodeContext;
 }
 
