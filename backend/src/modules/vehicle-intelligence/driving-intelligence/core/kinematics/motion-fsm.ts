@@ -84,6 +84,8 @@ export interface MotionFsmLabel {
   flags: string[];
   /** Sparse vehicle-speed sample at this label (additive; null when none). */
   sparseSpeedKmh: number | null;
+  /** Whether sparse may count as point-level FSM/stop evidence (false for interval-only R1 labels). */
+  sparseFsmPointAuthority: boolean;
   /** Quality of the consumed C4 speed sample (additive; null when no numeric speed was used). */
   speedQuality: MotionCoreSpeedQuality | null;
 }
@@ -536,6 +538,7 @@ export function runMotionFsm(
       mode,
       flags,
       sparseSpeedKmh: sparseKmh,
+      sparseFsmPointAuthority: sparseAuthoritative,
       speedQuality: v != null ? s!.quality : null,
     });
   }
@@ -551,12 +554,13 @@ export function extractMotionFsmStopEpisodes(
   params: typeof MOTION_FSM_PARAMS_V0_2_DEV = MOTION_FSM_PARAMS_V0_2_DEV,
 ): MotionFsmStopEpisode[] {
   const eps: MotionFsmStopEpisode[] = [];
-  const hasEvidence = (l: MotionFsmLabel): boolean =>
-    l.positionPresent || l.sparseSpeedKmh != null;
+  const sparsePointEvidence = (l: MotionFsmLabel): boolean =>
+    l.sparseSpeedKmh != null && l.sparseFsmPointAuthority;
+  const hasEvidence = (l: MotionFsmLabel): boolean => l.positionPresent || sparsePointEvidence(l);
   const firstStationarySourceOf = (
     l: MotionFsmLabel,
   ): MotionFsmStopEpisode['firstStationarySource'] => {
-    if (l.sparseSpeedKmh != null) {
+    if (sparsePointEvidence(l)) {
       return 'SPARSE_VEHICLE_SPEED';
     }
     if (l.speedQuality === 'OK') {

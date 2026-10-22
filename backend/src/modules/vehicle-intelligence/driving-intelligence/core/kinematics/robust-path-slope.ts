@@ -42,10 +42,16 @@ function windowPoints(
  */
 export function robustPathSlopeC1(
   buckets: MotionCorePositionBucket[],
-  options?: { half?: number; rejectedLabels?: Set<string> },
+  options?: {
+    half?: number;
+    rejectedLabels?: Set<string>;
+    /** 1 s legs that must not be used as C1 support chords (prevents bridging over quarantined hops). */
+    blockedLegStartLabels?: Set<string>;
+  },
 ): MotionCoreSpeedSample[] {
   const half = options?.half ?? MOTION_CORE_C4_C1_WINDOW_HALF_S;
   const rejected = options?.rejectedLabels ?? new Set<string>();
+  const blockedLegs = options?.blockedLegStartLabels ?? new Set<string>();
   const ordered = orderMotionCoreGrid(buckets);
   const pm = presentBucketMap(ordered);
   for (const lab of rejected) {
@@ -102,13 +108,28 @@ export function robustPathSlopeC1(
     }
     const ks = pts.map((p) => p.k);
     const slopes: number[] = [];
-    for (let i = 0; i < pts.length; i++) {
-      for (let j = i + 1; j < pts.length; j++) {
-        const dt = ks[j]! - ks[i]!;
-        if (dt > 0) {
-          slopes.push((cum[j]! - cum[i]!) / dt);
-        }
+    for (let i = 0; i < pts.length - 1; i++) {
+      const dt = ks[i + 1]! - ks[i]!;
+      if (dt !== 1) {
+        continue;
       }
+      const legStart = pts[i]!.bucket.bucketLabelUtc;
+      if (blockedLegs.has(legStart)) {
+        continue;
+      }
+      slopes.push((cum[i + 1]! - cum[i]!) / dt);
+    }
+    if (slopes.length === 0) {
+      out.push({
+        label: lab,
+        valueKmh: null,
+        quality: 'NO_SUPPORT',
+        supportLabels: pts.map((p) => p.bucket.bucketLabelUtc),
+        supportSpanS: null,
+        flags: ['BLOCKED_LEG_CHAIN_IN_WINDOW'],
+        estimator: MOTION_CORE_SPEED_C1_VERSION,
+      });
+      continue;
     }
     const valueKmh = median(slopes) * 3.6;
     const flags: string[] = [];

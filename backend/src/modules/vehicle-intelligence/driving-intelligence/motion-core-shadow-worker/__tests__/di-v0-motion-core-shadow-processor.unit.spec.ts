@@ -66,8 +66,8 @@ describe('di-v0-motion-core-shadow processor parity', () => {
     const { events, episodes, fsm } = replayRecommendedStack(grid, loadSparse(1));
     expect(fsm.length).toBe(grid.length);
     expect(episodes.length).toBe(3);
-    expect(events.filter((e) => e.quality === 'ARTEFACT_SUSPECT').length).toBe(1);
-    expect(fsm.filter((l) => l.evidenceQuality === 'DIRECT').length).toBe(74);
+    expect(events.filter((e) => e.quality === 'ARTEFACT_SUSPECT').length).toBe(0);
+    expect(fsm.filter((l) => l.evidenceQuality === 'DIRECT').length).toBe(66);
   });
 
   it('matches Fable-review Tesla TRIP_2 counts when fixtures are present', () => {
@@ -76,6 +76,6 @@ describe('di-v0-motion-core-shadow processor parity', () => {
     const { events, episodes, fsm } = replayRecommendedStack(grid, loadSparse(2));
     expect(fsm.length).toBe(grid.length);
     expect(episodes.length).toBe(5);
-    expect(fsm.filter((l) => l.evidenceQuality === 'DIRECT').length).toBe(175);
+    expect(fsm.filter((l) => l.evidenceQuality === 'DIRECT').length).toBe(173);
   });
 });

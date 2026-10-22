@@ -13,18 +13,13 @@ import {
 export const MOTION_CORE_JITTER_RATIO = 1.5;
 export const MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH = 5.0;
 export const MOTION_CORE_OUTLIER_CHORD_DEVIATION_M = 8.0;
-export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_3_DEV';
+export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_4_DEV';
 
 /**
  * Absolute backstop for 1 s leg speed when neighbour legs are missing or also corrupted.
  * Not a legal speeding limit — catches teleports when local median is inflated by jumps.
  */
 export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH = 400;
-/** Extreme 1 s chord speeds treated as teleports regardless of a corrupted local median. */
-export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH = 1000;
-/** When neighbour median exceeds this, only the spike tier may reject (avoids jump-cluster collateral). */
-export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_LOCAL_MEDIAN_TRUST_CEILING_KMH = 120;
-
 export type MotionCoreLegGateOptions = {
   /** When false, 1 s leg quarantine is disabled (baseline replay only). */
   enabled?: boolean;
@@ -235,26 +230,64 @@ function buildOneSecondLegSpeedMap(buckets: MotionCorePositionBucket[]): Map<str
   return legs;
 }
 
-/** Relative + absolute threshold for a 1 s leg speed (pre-hoc jitter ratio, not trip-tuned). */
+/**
+ * Physical plausibility for a single 1 s chord speed.
+ * Absolute backstop always applies; a corrupted neighbour median cannot waive it.
+ * Below the backstop, a jitter-ratio excess vs local median catches spike legs in sane corridors.
+ */
 export function implausibleOneSecondLegSpeedKmh(
   legSpeedKmh: number,
   neighbourLegSpeedsKmh: number[],
 ): boolean {
-  if (legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH) {
+  if (legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH) {
     return true;
   }
   if (neighbourLegSpeedsKmh.length < 2) {
-    return legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH;
-  }
-  const med = median(neighbourLegSpeedsKmh);
-  if (med > MOTION_CORE_IMPLAUSIBLE_1S_LEG_LOCAL_MEDIAN_TRUST_CEILING_KMH) {
     return false;
   }
+  const med = median(neighbourLegSpeedsKmh);
   const relativeCap =
     Math.max(MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH, med) * MOTION_CORE_JITTER_RATIO;
-  return (
-    legSpeedKmh > relativeCap && legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH
-  );
+  return legSpeedKmh > relativeCap;
+}
+
+/** Leg start labels whose 1 s chord is implausible (used to block C1 window bridging). */
+export function detectImplausibleOneSecondLegStartLabels(
+  buckets: MotionCorePositionBucket[],
+  options?: MotionCoreLegGateOptions,
+): Set<string> {
+  if (options?.enabled === false) {
+    return new Set();
+  }
+  const ordered = orderMotionCoreGrid(buckets);
+  const legs = buildOneSecondLegSpeedMap(buckets);
+  const blocked = new Set<string>();
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1]!;
+    const b = ordered[i]!;
+    if (a.availability !== 'PRESENT' || b.availability !== 'PRESENT') {
+      continue;
+    }
+    if (
+      a.latitude == null ||
+      a.longitude == null ||
+      b.latitude == null ||
+      b.longitude == null
+    ) {
+      continue;
+    }
+    const dtS = (parseBucketLabelMs(b.bucketLabelUtc) - parseBucketLabelMs(a.bucketLabelUtc)) / 1000;
+    if (dtS !== 1) {
+      continue;
+    }
+    const legStart = a.bucketLabelUtc;
+    const speedKmh = legs.get(legStart)!;
+    const neigh = neighbourLegSpeedsKmh(legStart, legs);
+    if (implausibleOneSecondLegSpeedKmh(speedKmh, neigh)) {
+      blocked.add(legStart);
+    }
+  }
+  return blocked;
 }
 
 export function withImplausibleLegEndpointsQuarantined(

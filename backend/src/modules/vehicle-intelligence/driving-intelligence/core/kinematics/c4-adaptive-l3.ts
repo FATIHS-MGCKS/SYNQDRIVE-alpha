@@ -1,6 +1,7 @@
 import { coordsEqual } from '../position/coord-key';
 import {
   detectImplausibleOneSecondLegEndpointLabels,
+  detectImplausibleOneSecondLegStartLabels,
   detectPositionOutliers,
   detectTimingJitterSuspectLegs,
   type MotionCoreLegGateOptions,
@@ -15,7 +16,7 @@ import {
 import { robustPathSlopeC1 } from './robust-path-slope';
 import type { MotionCoreSpeedSample } from './speed-sample.types';
 
-export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_3_DEV';
+export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_4_DEV';
 
 function sampleMap(samples: MotionCoreSpeedSample[]): Map<string, MotionCoreSpeedSample> {
   return new Map(samples.map((s) => [s.label, s]));
@@ -33,6 +34,7 @@ export function computeC4AdaptiveL3(
   const ordered = orderMotionCoreGrid(buckets);
   const outliers = detectPositionOutliers(ordered);
   const implausibleLeg = detectImplausibleOneSecondLegEndpointLabels(ordered, legGate);
+  const blockedLegStarts = detectImplausibleOneSecondLegStartLabels(ordered, legGate);
   const rejected = new Set([...outliers.keys(), ...implausibleLeg]);
   const pm = presentBucketMap(ordered);
   for (const lab of rejected) {
@@ -42,7 +44,9 @@ export function computeC4AdaptiveL3(
   const l3ByLabel = new Map(
     replayFrozenL3OnGrid(ordered).map((r) => [r.bucketLabelUtc, r]),
   );
-  const c1 = sampleMap(robustPathSlopeC1(ordered, { rejectedLabels: rejected }));
+  const c1 = sampleMap(
+    robustPathSlopeC1(ordered, { rejectedLabels: rejected, blockedLegStartLabels: blockedLegStarts }),
+  );
   const out: MotionCoreSpeedSample[] = [];
 
   for (const b of ordered) {

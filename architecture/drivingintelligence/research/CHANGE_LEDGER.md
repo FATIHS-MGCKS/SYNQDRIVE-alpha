@@ -2141,3 +2141,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest `motion-core-tiguan-gps-obd-hardening.spec.ts`, `motion-core-review-robustness.spec.ts`, `di-v0-motion-core-shadow-processor.unit.spec.ts`; hardening summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/` |
 | OPEN | Full sparse ablation B not adopted (creep vs tacho-zero tradeoff); stop episodes 11 vs audit 12 on replay; audit `run_audit.sh` needs Node 24 |
 | NON_EFFECTS | No deploy, reprocessing, flag ON, M7A/Mapbox/scoring changes; raw snapshots unchanged |
+
+### DS4 motion — GPS C1 quarantine + leg backstop + OBD stop metadata (2026-10-22, PR #2134 gap fix)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `leg-consistency` V0_4: absolute 400 km/h 1 s leg backstop always; `detectImplausibleOneSecondLegStartLabels` blocks C1 chords; `robust-path-slope` adjacent-only slopes + `BLOCKED_LEG_CHAIN_IN_WINDOW`; C4 V0_4; FSM stop episodes ignore sparse without `sparseFsmPointAuthority`; R1 authority aligns measurement via `Date.parse` bucket window, rejects bucket label as instant; bundle `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V3`; Tiguan integration tests moved to `motion-core-shadow-worker/__tests__` |
+| WHY | C1 bridged over quarantined teleports (481–2281 km/h); corrupted neighbour median waived 900 km/h; INTERVAL_ONLY OBD still counted as stop evidence; S4 dormant audit broken by core test importing `s4a-foundation` |
+| VALIDATION | Jest `motion-core-leg-gate`, `motion-core-tiguan-gps-obd-hardening` (shadow-worker), `r1-obd-fsm-point-authority`, `di-v0-s4a-dormant-audit`; `npm run build`; summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/BEFORE_AFTER_SUMMARY.json` |
+| NON_EFFECTS | No deploy/reprocessing/flags; M7A paused; frozen audit package unchanged |
