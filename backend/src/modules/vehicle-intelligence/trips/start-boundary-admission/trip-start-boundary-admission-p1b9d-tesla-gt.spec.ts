@@ -1,6 +1,9 @@
 import {
+  P1B9D_FIXTURE_PROVENANCE,
   P1B9D_TESLA_FIXTURES,
   P1B9D_TESLA_TRIP_1,
+  trip1CoreWithoutWeakSpeedEvidence,
+  trip1RouteWithoutWeakSpeedEvidence,
   type P1b9dTeslaGroundTruthFixture,
 } from './fixtures/p1b9d-tesla-oct21-ground-truth.fixture';
 import { compareStartBoundaryAdmissionShadow } from './trip-start-boundary-admission.shadow';
@@ -153,6 +156,82 @@ describe('P1B.9D — Tesla Oct 21 ground-truth start boundary (offline)', () => 
     expect(proposed.canonicalStartAt).toEqual(
       new Date(fixture.candidateStartAtUtc),
     );
+  });
+
+  describe('fixture provenance (offline only — not live shadow proof)', () => {
+    it('documents archived vs constructed fields', () => {
+      expect(P1B9D_FIXTURE_PROVENANCE.archivedFromProduction.length).toBeGreaterThan(
+        0,
+      );
+      expect(P1B9D_FIXTURE_PROVENANCE.constructedForOfflineReplay).toContain(
+        'candidateStartAtUtc (POSSIBLE_START_VALIDATION run; not on trip row)',
+      );
+      expect(P1B9D_FIXTURE_PROVENANCE.notClaimed[0]).toMatch(/live P1B shadow/);
+    });
+  });
+
+  describe('TESLA_GT_TRIP_1 — weak speed robustness (EV 0.5 km/h threshold)', () => {
+    const gtMs = new Date(P1B9D_TESLA_TRIP_1.groundTruthStartUtc).getTime();
+
+    function proposeWith(
+      corePoints: P1b9dTeslaGroundTruthFixture['corePoints'],
+      routePoints: P1b9dTeslaGroundTruthFixture['routePoints'],
+    ) {
+      return resolveEvidenceBackedStartBoundary({
+        candidateStartAt: new Date(P1B9D_TESLA_TRIP_1.candidateStartAtUtc),
+        confirmedAt: new Date(P1B9D_TESLA_TRIP_1.confirmedAtUtc),
+        segments: P1B9D_TESLA_TRIP_1.segments,
+        corePoints,
+        routePoints,
+        profile: P1B9D_TESLA_TRIP_1.profile,
+        integrationModality: P1B9D_TESLA_TRIP_1.integrationModality,
+      });
+    }
+
+    it('baseline uses 12:03:08Z ROUTE_SPEED=1 km/h (margin above 0.5 km/h)', () => {
+      const baseline = proposeWith(
+        P1B9D_TESLA_TRIP_1.corePoints,
+        P1B9D_TESLA_TRIP_1.routePoints,
+      );
+      expect(baseline.canonicalStartAt.toISOString()).toBe(
+        '2026-10-21T12:03:08.000Z',
+      );
+      expect(baseline.provenance.movementEvidenceSources).toContain(
+        'ROUTE_SPEED',
+      );
+    });
+
+    it('without weak route speed, core HF sample at 12:03:11Z still bounds near GT', () => {
+      const routes = trip1RouteWithoutWeakSpeedEvidence();
+      const proposed = proposeWith(P1B9D_TESLA_TRIP_1.corePoints, routes);
+      expect(proposed.canonicalStartAt.toISOString()).toBe(
+        '2026-10-21T12:03:11.000Z',
+      );
+      expect(proposed.provenance.movementEvidenceSources).toContain(
+        'CORE_SPEED',
+      );
+      expect(Math.abs(proposed.canonicalStartAt.getTime() - gtMs)).toBeLessThanOrEqual(
+        MAX_P1B_GT_ABS_DELTA_MS,
+      );
+    });
+
+    it('without weak route and core speed=1, stronger samples still bound near GT', () => {
+      const routes = trip1RouteWithoutWeakSpeedEvidence();
+      const core = trip1CoreWithoutWeakSpeedEvidence();
+      const proposed = proposeWith(core, routes);
+      expect(proposed.canonicalStartAt.toISOString()).toBe(
+        '2026-10-21T12:03:29.000Z',
+      );
+      expect(['ROUTE_SPEED', 'CORE_SPEED']).toContain(
+        proposed.provenance.movementEvidenceSources[0],
+      );
+      expect(Math.abs(proposed.canonicalStartAt.getTime() - gtMs)).toBeLessThanOrEqual(
+        MAX_P1B_GT_ABS_DELTA_MS,
+      );
+      expect(
+        Math.abs(proposed.canonicalStartAt.getTime() - gtMs),
+      ).toBeLessThan(Math.abs(new Date('2026-10-21T11:58:00.000Z').getTime() - gtMs));
+    });
   });
 
   it('P1B fallback remains candidate when movement cannot be corroborated', () => {

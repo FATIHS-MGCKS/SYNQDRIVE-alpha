@@ -10,6 +10,26 @@ import type { RoutePoint, TripCoreDataPoint } from '../../../../dimo/dimo-segmen
 export const TESLA_P1B9D_VEHICLE_ID = '68868291-5478-42cd-b0c4-cc77b2a78e21';
 export const TESLA_P1B9D_DIMO_TOKEN = 186946;
 
+/** What is archived Production telemetry vs offline reconstruction context. */
+export const P1B9D_FIXTURE_PROVENANCE = {
+  archivedFromProduction: [
+    'vehicle_trips.start_time / created_at / dimo_segment_id',
+    'vehicle_trip_waypoints (lat/lon/speed_kmh timestamps)',
+    'CH HF speed sample timestamps summarized in TDL P1B.9A/9B audits',
+  ],
+  constructedForOfflineReplay: [
+    'candidateStartAtUtc (POSSIBLE_START_VALIDATION run; not on trip row)',
+    'segment endTime/distance/maxSpeed placeholders',
+    'sparse CH corePoints excerpt (not full live confirmation batch)',
+    'driver groundTruthStartUtc / groundTruthEndUtc (human GT, not in DB)',
+    's4SpeedQcTrust label from prior audit',
+  ],
+  notClaimed: [
+    'Original live P1B shadow JSON or exact core batch at confirmation',
+    '±7s accuracy as proof of 21.10 live shadow decision',
+  ],
+} as const;
+
 export type P1b9dTeslaGroundTruthFixture = {
   tripId: string;
   label: string;
@@ -161,3 +181,25 @@ export const P1B9D_TESLA_TRIP_2: P1b9dTeslaGroundTruthFixture = {
 };
 
 export const P1B9D_TESLA_FIXTURES = [P1B9D_TESLA_TRIP_1, P1B9D_TESLA_TRIP_2];
+
+/** Trip 1 — strip 12:03:08Z route speed=1 (weak EV threshold margin); keep archived positions. */
+export function trip1RouteWithoutWeakSpeedEvidence(
+  fixture: P1b9dTeslaGroundTruthFixture = P1B9D_TESLA_TRIP_1,
+): RoutePoint[] {
+  return fixture.routePoints.map((p) =>
+    p.timestamp === '2026-10-21T12:03:08.000Z'
+      ? { ...p, speedKmh: null }
+      : p,
+  );
+}
+
+/** Trip 1 — additionally strip 12:03:11Z core speed=1 (HF excerpt); positions unchanged. */
+export function trip1CoreWithoutWeakSpeedEvidence(
+  fixture: P1b9dTeslaGroundTruthFixture = P1B9D_TESLA_TRIP_1,
+): TripCoreDataPoint[] {
+  return fixture.corePoints.map((p) =>
+    p.timestamp === '2026-10-21T12:03:11.000Z'
+      ? { ...p, speed: null }
+      : p,
+  );
+}

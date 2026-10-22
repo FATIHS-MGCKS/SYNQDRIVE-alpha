@@ -33,6 +33,28 @@ Vehicle: Tesla Model 3 · `68868291-5478-42cd-b0c4-cc77b2a78e21` · DIMO **18694
 
 Sparse fixtures: `fixtures/p1b9d-tesla-oct21-ground-truth.fixture.ts` (CH + waypoint excerpts; gaps documented).
 
+### Fixture provenance
+
+| Class | Examples |
+|-------|----------|
+| **Archived (Production read-only)** | `vehicle_trips` times/segment id; waypoint lat/lon/speed timestamps; CH HF times from P1B.9A/9B audits |
+| **Constructed (offline replay)** | `candidateStartAtUtc`; minimal segment metadata; sparse `corePoints` excerpt; driver GT timestamps |
+| **Not claimed** | Live P1B shadow JSON; ±7 s as proof of 21.10 live decision |
+
+See `P1B9D_FIXTURE_PROVENANCE` in the fixture module.
+
+### Weak speed robustness (Trip 1, EV `speedMotionKmh=0.5`)
+
+Baseline proposed start **12:03:08Z** uses waypoint `speed_kmh=1` (ROUTE_SPEED). Deterministic negatives **without resolver changes**:
+
+| Scenario | P1B proposed | Δ vs GT 12:03:15 | Evidence |
+|----------|--------------|------------------|----------|
+| Baseline | 12:03:08 | −7 s | `ROUTE_SPEED` @ 1 km/h |
+| Route speed nulled @ 12:03:08 (positions kept) | **12:03:11** | **−4 s** | `CORE_SPEED` @ 1 km/h (HF excerpt) |
+| Route + core weak speed nulled | **12:03:29** | **+14 s** | `ROUTE_SPEED` @ 4 km/h |
+
+Conclusion: Trip 1 offline bound is **not** a single-point artifact at the 0.5 km/h margin; multiple archived samples still land within **±15 s** of GT. Trip 2 already used core speed **6 km/h** (separate row in main table).
+
 | Trip | Legacy start | FSM confirm | Earliest trusted movement (fixture) | P1B proposed | Δ P1B vs GT | Decision | Coverage |
 |------|--------------|---------------|-------------------------------------|--------------|-------------|----------|----------|
 | 1 | 11:58:00 | 12:04:10.951 | **12:03:08** (route speed) | **12:03:08** | **−7 s** | `PROVIDER_START_BOUNDED` | `TRUSTED_MOVEMENT_PRESENT` |
