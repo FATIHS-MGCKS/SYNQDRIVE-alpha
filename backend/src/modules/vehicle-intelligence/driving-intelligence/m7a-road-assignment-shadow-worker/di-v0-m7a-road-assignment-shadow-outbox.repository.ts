@@ -1,6 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-m7a-road-assignment-shadow.bundle.version';
-import { frozenM7aAlgorithmFingerprint } from './di-v0-m7a-road-assignment-shadow-intent';
+import {
+  frozenM7aAlgorithmFingerprint,
+  m7aDiscoveryIntentDigestPayloadSqlFragment,
+  m7aDiscoveryIntentKeyPrefixFromDigestSql,
+} from './di-v0-m7a-road-assignment-shadow-intent';
 import { DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING } from './di-v0-m7a-road-assignment-shadow.config';
 
 export type DiV0M7aRoadAssignmentShadowOutboxStatus =
@@ -46,8 +50,17 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
     const bundleVersion = DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_BUNDLE_VERSION_V1;
     const algorithmFingerprint = frozenM7aAlgorithmFingerprint();
     const osmDataVersion = input.osmDataVersion;
+    const digestPayloadSql = m7aDiscoveryIntentDigestPayloadSqlFragment({
+      bundleVersionParam: '$1',
+      algorithmFingerprintParam: '$2',
+      osmDataVersionParam: '$3',
+      combinedInputIdentitySql: "coalesce(wi.combined_input_identity, '')",
+      pinnedSnapshotHashSql: 'wi.pinned_snapshot_hash',
+    });
+    const shadowIntentKeySql = m7aDiscoveryIntentKeyPrefixFromDigestSql(digestPayloadSql);
 
-    const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ outbox_id: string }>>(
+      `
       WITH active_primary AS (
         SELECT DISTINCT ON (organization_id, trip_id)
           id, organization_id, trip_id
@@ -66,21 +79,7 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
           wi.pinned_snapshot_hash,
           coalesce(wi.combined_input_identity, '') AS combined_input_identity,
           wi.completed_at,
-          (
-            'DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_INTENT_V1:sha256:' || encode(
-              digest(
-                json_build_object(
-                  'b', ${bundleVersion},
-                  'a', ${algorithmFingerprint},
-                  'c', coalesce(wi.combined_input_identity, ''),
-                  'o', ${osmDataVersion},
-                  'p', wi.pinned_snapshot_hash
-                )::text,
-                'sha256'
-              ),
-              'hex'
-            )
-          ) AS shadow_intent_key
+          (${shadowIntentKeySql}) AS shadow_intent_key
         FROM di_v0_s4_work_items wi
         INNER JOIN active_primary ap
           ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
@@ -90,9 +89,9 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
           AND wi.pinned_snapshot_hash IS NOT NULL
           AND wi.shadow_run_id IS NOT NULL
           AND wi.completed_at IS NOT NULL
-          AND wi.completed_at >= ${input.enabledSince}
-          AND wi.organization_id = ANY(${orgs}::text[])
-          AND wi.vehicle_id = ANY(${vehicles}::text[])
+          AND wi.completed_at >= $4
+          AND wi.organization_id = ANY($5::text[])
+          AND wi.vehicle_id = ANY($6::text[])
       )
       INSERT INTO di_v0_m7a_road_assignment_shadow_outbox_v1 (
         work_item_id, shadow_intent_key, organization_id, trip_id, vehicle_id,
@@ -104,9 +103,9 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
         e.organization_id,
         e.trip_id,
         e.vehicle_id,
-        ${bundleVersion},
+        $1,
         'PENDING',
-        ${input.now}
+        $7
       FROM eligible e
       WHERE NOT EXISTS (
         SELECT 1 FROM di_v0_m7a_road_assignment_shadow_runs_v1 r
@@ -120,9 +119,19 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
           AND o.shadow_intent_key = e.shadow_intent_key
       )
       ORDER BY e.completed_at ASC
-      LIMIT ${input.limit}
+      LIMIT $8
       ON CONFLICT (work_item_id, shadow_intent_key) DO NOTHING
-      RETURNING outbox_id`;
+      RETURNING outbox_id
+      `,
+      bundleVersion,
+      algorithmFingerprint,
+      osmDataVersion,
+      input.enabledSince,
+      orgs,
+      vehicles,
+      input.now,
+      input.limit,
+    );
 
     return rows.length;
   }

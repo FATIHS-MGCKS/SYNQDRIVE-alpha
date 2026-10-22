@@ -43,6 +43,36 @@ export function m7aRoadAssignmentShadowDiscoveryIntentDigestPayload(input: {
   });
 }
 
+/**
+ * PostgreSQL digest payload byte-identical to {@link m7aRoadAssignmentShadowDiscoveryIntentDigestPayload}.
+ * Uses per-field `to_json(text)::text` + concat — NOT `json_build_object(...)::text` (differs from JSON.stringify).
+ *
+ * @param combinedInputIdentitySql column or parameter reference, e.g. `coalesce(wi.combined_input_identity, '')`
+ * @param pinnedSnapshotHashSql column reference, e.g. `wi.pinned_snapshot_hash`
+ */
+export function m7aDiscoveryIntentDigestPayloadSqlFragment(input: {
+  bundleVersionParam: string;
+  algorithmFingerprintParam: string;
+  osmDataVersionParam: string;
+  combinedInputIdentitySql: string;
+  pinnedSnapshotHashSql: string;
+}): string {
+  const { bundleVersionParam, algorithmFingerprintParam, osmDataVersionParam, combinedInputIdentitySql, pinnedSnapshotHashSql } =
+    input;
+  return `(
+    '{"b":' || to_json(${bundleVersionParam}::text)::text ||
+    ',"a":' || to_json(${algorithmFingerprintParam}::text)::text ||
+    ',"c":' || to_json(${combinedInputIdentitySql})::text ||
+    ',"o":' || to_json(${osmDataVersionParam}::text)::text ||
+    ',"p":' || to_json(${pinnedSnapshotHashSql}::text)::text ||
+    '}'
+  )`;
+}
+
+export function m7aDiscoveryIntentKeyPrefixFromDigestSql(digestPayloadSql: string): string {
+  return `'DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_INTENT_V1:sha256:' || encode(digest(${digestPayloadSql}, 'sha256'), 'hex')`;
+}
+
 /** Discovery intent (graph not yet resolved). */
 export function buildM7aRoadAssignmentShadowDiscoveryIntentKey(input: {
   pinnedSnapshotHash: string;
