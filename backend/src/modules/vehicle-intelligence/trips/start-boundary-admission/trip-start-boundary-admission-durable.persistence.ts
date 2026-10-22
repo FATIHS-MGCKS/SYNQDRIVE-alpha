@@ -227,10 +227,6 @@ export type PersistStartBoundaryAdmissionShadowDurableParams = {
 type AtomicShadowInsertOutcome = 'inserted' | 'skipped' | 'not_found' | 'vehicle_mismatch';
 
 /**
- * Single-statement JSONB merge: adds startBoundaryAdmissionShadowV1 only when absent.
- * Preserves all other keys on raw_detection_meta.
- */
-/**
  * Merges top-level JSON keys into raw_detection_meta without removing existing keys.
  */
 export async function atomicMergeVehicleTripRawDetectionMetaPatch(
@@ -246,7 +242,7 @@ export async function atomicMergeVehicleTripRawDetectionMetaPatch(
     UPDATE vehicle_trips
     SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb) || ${payload}::jsonb
     WHERE id = ${params.tripId}::uuid
-      AND vehicle_id = ${params.vehicleId}::uuid
+      AND vehicle_id = ${params.vehicleId}
   `;
 }
 
@@ -282,7 +278,7 @@ export async function atomicInsertStartBoundaryAdmissionShadowDurable(
     SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb)
       || jsonb_build_object(${START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY}, ${payload}::jsonb)
     WHERE id = ${params.tripId}::uuid
-      AND vehicle_id = ${params.vehicleId}::uuid
+      AND vehicle_id = ${params.vehicleId}
       AND NOT (
         COALESCE(raw_detection_meta, '{}'::jsonb) ? ${START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY}
       )
