@@ -1,0 +1,1829 @@
+{
+  "-2": {
+    "coverage": {
+      "reference_rows": 1464,
+      "reference_speed_readable": 1417,
+      "ds4_l3_speed_numeric": 1312,
+      "paired_speed_rows": 1285
+    },
+    "speed_ds4_l3_vs_tacho": {
+      "n": 1285,
+      "mae": 14.87551075724561,
+      "median_abs": 2.9245011914930927,
+      "rmse": 132.0660691462382,
+      "bias": 8.955925741460772,
+      "p90_abs": 6.212137607941991,
+      "p95_abs": 8.090927902612755,
+      "within_3_kmh": 0.5229571984435798,
+      "within_5_kmh": 0.8178988326848249,
+      "within_10_kmh": 0.9719844357976654
+    },
+    "speed_ds4_l3_vs_tacho_trimmed_abs_error_le_100_kmh": {
+      "n": 1274,
+      "mae": 3.361140334660054,
+      "median_abs": 2.914923727943812,
+      "rmse": 4.134740372037896,
+      "bias": -2.609555697744589,
+      "p90_abs": 5.972300460984254,
+      "p95_abs": 7.617827096819601,
+      "within_3_kmh": 0.5274725274725275,
+      "within_5_kmh": 0.8249607535321821,
+      "within_10_kmh": 0.9803767660910518
+    },
+    "segments": {
+      "by_clip": {
+        "TC_00077.MOV": {
+          "n": 136,
+          "mae": 2.9124195602875607,
+          "median_abs": 2.6657103487213973,
+          "rmse": 3.412439093871548,
+          "bias": -2.3012127374097306,
+          "p90_abs": 4.850195778041632,
+          "p95_abs": 6.534600050126398,
+          "within_3_kmh": 0.625,
+          "within_5_kmh": 0.9044117647058824,
+          "within_10_kmh": 1.0
+        },
+        "TC_00078.MOV": {
+          "n": 144,
+          "mae": 4.255696906701057,
+          "median_abs": 3.3525983461367055,
+          "rmse": 4.966301291586113,
+          "bias": -1.9514389811811474,
+          "p90_abs": 8.489636317289754,
+          "p95_abs": 9.148382547155482,
+          "within_3_kmh": 0.4097222222222222,
+          "within_5_kmh": 0.7152777777777778,
+          "within_10_kmh": 0.9652777777777778
+        },
+        "TC_00079.MOV": {
+          "n": 34,
+          "mae": 3.1795408936146616,
+          "median_abs": 3.4774098241981513,
+          "rmse": 3.443951324378709,
+          "bias": -3.0375718109008685,
+          "p90_abs": 4.524603096469,
+          "p95_abs": 4.691433680772849,
+          "within_3_kmh": 0.35294117647058826,
+          "within_5_kmh": 0.9705882352941176,
+          "within_10_kmh": 1.0
+        },
+        "TC_00080.MOV": {
+          "n": 158,
+          "mae": 4.125139563223041,
+          "median_abs": 3.040380839381559,
+          "rmse": 5.606919626467121,
+          "bias": -2.662452063934445,
+          "p90_abs": 8.033364360384635,
+          "p95_abs": 11.261773328248802,
+          "within_3_kmh": 0.4810126582278481,
+          "within_5_kmh": 0.7848101265822784,
+          "within_10_kmh": 0.930379746835443
+        },
+        "TC_00081.MOV": {
+          "n": 170,
+          "mae": 90.94927018467071,
+          "median_abs": 3.6768378753339164,
+          "rmse": 362.9442881492894,
+          "bias": 83.7212015162598,
+          "p90_abs": 8.69228030756906,
+          "p95_abs": 906.2584965697905,
+          "within_3_kmh": 0.37058823529411766,
+          "within_5_kmh": 0.6705882352941176,
+          "within_10_kmh": 0.9058823529411765
+        },
+        "TC_00082.MOV": {
+          "n": 180,
+          "mae": 3.470906089209944,
+          "median_abs": 3.452710443235169,
+          "rmse": 3.973802075188238,
+          "bias": -3.305778813118735,
+          "p90_abs": 5.720150271950224,
+          "p95_abs": 6.144382165846387,
+          "within_3_kmh": 0.40555555555555556,
+          "within_5_kmh": 0.75,
+          "within_10_kmh": 1.0
+        },
+        "TC_00083.MOV": {
+          "n": 180,
+          "mae": 2.8784316296432944,
+          "median_abs": 2.586298404851469,
+          "rmse": 3.3795634250207964,
+          "bias": -2.7328698573794026,
+          "p90_abs": 5.197674334532252,
+          "p95_abs": 5.842499140246311,
+          "within_3_kmh": 0.55,
+          "within_5_kmh": 0.8888888888888888,
+          "within_10_kmh": 1.0
+        },
+        "TC_00084.MOV": {
+          "n": 157,
+          "mae": 2.9447638596916015,
+          "median_abs": 2.436297961513091,
+          "rmse": 3.7409548677520954,
+          "bias": -2.0018509099348325,
+          "p90_abs": 5.779360305377985,
+          "p95_abs": 7.551369102899327,
+          "within_3_kmh": 0.6942675159235668,
+          "within_5_kmh": 0.8662420382165605,
+          "within_10_kmh": 0.9745222929936306
+        },
+        "TC_00085.MOV": {
+          "n": 126,
+          "mae": 2.219530318771621,
+          "median_abs": 2.1608789401592325,
+          "rmse": 2.524765315353948,
+          "bias": -1.6275818506949098,
+          "p90_abs": 3.6660812468193242,
+          "p95_abs": 4.27395755914459,
+          "within_3_kmh": 0.7619047619047619,
+          "within_5_kmh": 0.9761904761904762,
+          "within_10_kmh": 1.0
+        }
+      },
+      "by_band": {
+        "1_29": {
+          "n": 126,
+          "mae": 4.106548051466189,
+          "median_abs": 3.621984406430375,
+          "rmse": 5.042064361396144,
+          "bias": 0.1296566719078545,
+          "p90_abs": 8.14475126666024,
+          "p95_abs": 10.077896936280734,
+          "within_3_kmh": 0.4126984126984127,
+          "within_5_kmh": 0.6984126984126984,
+          "within_10_kmh": 0.9444444444444444
+        },
+        "30_59": {
+          "n": 598,
+          "mae": 2.9628231366940816,
+          "median_abs": 2.578261104521623,
+          "rmse": 3.59789454537657,
+          "bias": -2.3835413679968616,
+          "p90_abs": 5.6000496183322515,
+          "p95_abs": 7.10713053917419,
+          "within_3_kmh": 0.6471571906354515,
+          "within_5_kmh": 0.8812709030100334,
+          "within_10_kmh": 0.9866220735785953
+        },
+        "60_99": {
+          "n": 560,
+          "mae": 30.034746539260862,
+          "median_abs": 3.408734547790832,
+          "rmse": 200.00568724453996,
+          "bias": 23.05536715059304,
+          "p90_abs": 6.165622704647683,
+          "p95_abs": 8.023180375242278,
+          "within_3_kmh": 0.4160714285714286,
+          "within_5_kmh": 0.7785714285714286,
+          "within_10_kmh": 0.9625
+        },
+        "tacho_0": {
+          "n": 1,
+          "mae": 6.379970846725178,
+          "median_abs": 6.379970846725178,
+          "rmse": 6.379970846725178,
+          "bias": 6.379970846725178,
+          "p90_abs": 6.379970846725178,
+          "p95_abs": 6.379970846725178,
+          "within_3_kmh": 0.0,
+          "within_5_kmh": 0.0,
+          "within_10_kmh": 1.0
+        }
+      }
+    },
+    "stillstand_l3": {
+      "ref_still_rows": {
+        "still|still": 65,
+        "still|unknown": 30,
+        "still|moving": 1
+      },
+      "ref_moving_rows": {
+        "moving|still": 12,
+        "moving|moving": 1284,
+        "moving|unknown": 25
+      }
+    },
+    "rpm_r1_vs_ref_estimate": {
+      "paired": 366,
+      "mae": 536.275956284153,
+      "within_500": 0.6147540983606558
+    },
+    "worst_abs_errors": [
+      {
+        "match_utc": "2026-10-22T18:49:22Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "72",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1971.939491074034,
+        "error": 1903.939491074034,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1773.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:21Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "71",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1965.89963552464,
+        "error": 1897.89963552464,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1774.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:18Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "68",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1930.826899068869,
+        "error": 1864.826899068869,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1777.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:17Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "67",
+        "ref_speed_kmh": 65.0,
+        "ds4_l3_speed_kmh": 1909.48460895223,
+        "error": 1844.48460895223,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1778.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:14Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 70.0,
+        "ds4_l3_speed_kmh": 1840.359202084191,
+        "error": 1770.359202084191,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1781.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:20Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "70",
+        "ref_speed_kmh": 67.0,
+        "ds4_l3_speed_kmh": 1055.78522461537,
+        "error": 988.78522461537,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1775.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:23Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "73",
+        "ref_speed_kmh": 69.0,
+        "ds4_l3_speed_kmh": 1040.20930113819,
+        "error": 971.2093011381901,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1772.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:19Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "69",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 998.4164863973839,
+        "error": 932.4164863973839,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1776.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:15Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 987.1113333290868,
+        "error": 919.1113333290868,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1780.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:16Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 956.5494738639849,
+        "error": 890.5494738639849,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1779.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:13Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "63",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 920.3568806557197,
+        "error": 849.3568806557197,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1782.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:45:25Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "15",
+        "ref_speed_kmh": 72.0,
+        "ds4_l3_speed_kmh": 49.42976506432607,
+        "error": -22.57023493567393,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "2010.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:47:01Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "111",
+        "ref_speed_kmh": 76.0,
+        "ds4_l3_speed_kmh": 55.40109831941486,
+        "error": -20.598901680585143,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1914.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:47:02Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "112",
+        "ref_speed_kmh": 85.0,
+        "ds4_l3_speed_kmh": 64.42057466316213,
+        "error": -20.579425336837872,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1913.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:45:26Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "16",
+        "ref_speed_kmh": 75.0,
+        "ds4_l3_speed_kmh": 58.13822514133007,
+        "error": -16.861774858669932,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "2009.5"
+      }
+    ],
+    "exclusion_counts": {
+      "DS4_SPEED_NULL": 152,
+      "REF_SPEED_MISSING": 27,
+      "OK": 1285
+    }
+  },
+  "-1": {
+    "coverage": {
+      "reference_rows": 1464,
+      "reference_speed_readable": 1417,
+      "ds4_l3_speed_numeric": 1312,
+      "paired_speed_rows": 1284
+    },
+    "speed_ds4_l3_vs_tacho": {
+      "n": 1284,
+      "mae": 14.367708873646786,
+      "median_abs": 2.741834059931535,
+      "rmse": 132.08415874577378,
+      "bias": 8.930014311622312,
+      "p90_abs": 4.847335322147549,
+      "p95_abs": 5.697314026141245,
+      "within_3_kmh": 0.5919003115264797,
+      "within_5_kmh": 0.9096573208722741,
+      "within_10_kmh": 0.9867601246105919
+    },
+    "speed_ds4_l3_vs_tacho_trimmed_abs_error_le_100_kmh": {
+      "n": 1273,
+      "mae": 2.8414765569982503,
+      "median_abs": 2.728525626968789,
+      "rmse": 3.254494125637575,
+      "bias": -2.64320515363759,
+      "p90_abs": 4.746710348950058,
+      "p95_abs": 5.544538732072664,
+      "within_3_kmh": 0.5970149253731343,
+      "within_5_kmh": 0.9175176747839748,
+      "within_10_kmh": 0.99528672427337
+    },
+    "segments": {
+      "by_clip": {
+        "TC_00077.MOV": {
+          "n": 137,
+          "mae": 2.205134088244429,
+          "median_abs": 2.2741800287135234,
+          "rmse": 2.4728203241896685,
+          "bias": -2.0689954896734832,
+          "p90_abs": 3.5158785958688656,
+          "p95_abs": 4.075935685359325,
+          "within_3_kmh": 0.781021897810219,
+          "within_5_kmh": 0.9854014598540146,
+          "within_10_kmh": 1.0
+        },
+        "TC_00078.MOV": {
+          "n": 144,
+          "mae": 2.857353691307482,
+          "median_abs": 2.754157803413772,
+          "rmse": 3.2725159394966092,
+          "bias": -2.1043746797106717,
+          "p90_abs": 4.345805729218035,
+          "p95_abs": 5.42101885384373,
+          "within_3_kmh": 0.6319444444444444,
+          "within_5_kmh": 0.9375,
+          "within_10_kmh": 0.9930555555555556
+        },
+        "TC_00079.MOV": {
+          "n": 34,
+          "mae": 2.9043431251044294,
+          "median_abs": 3.0343367202519573,
+          "rmse": 3.04192545355485,
+          "bias": -2.9043431251044294,
+          "p90_abs": 3.946225492391856,
+          "p95_abs": 4.066931227532216,
+          "within_3_kmh": 0.4411764705882353,
+          "within_5_kmh": 1.0,
+          "within_10_kmh": 1.0
+        },
+        "TC_00080.MOV": {
+          "n": 157,
+          "mae": 3.4162700018331673,
+          "median_abs": 3.186303639404258,
+          "rmse": 3.9729899124717845,
+          "bias": -3.0444794526170984,
+          "p90_abs": 4.823139056589608,
+          "p95_abs": 6.880143378847323,
+          "within_3_kmh": 0.4585987261146497,
+          "within_5_kmh": 0.910828025477707,
+          "within_10_kmh": 0.9681528662420382
+        },
+        "TC_00081.MOV": {
+          "n": 171,
+          "mae": 89.91364400950712,
+          "median_abs": 3.3183539347362867,
+          "rmse": 361.8475958825535,
+          "bias": 83.56805134595942,
+          "p90_abs": 6.219447956502982,
+          "p95_abs": 902.8304035965359,
+          "within_3_kmh": 0.39766081871345027,
+          "within_5_kmh": 0.7953216374269005,
+          "within_10_kmh": 0.935672514619883
+        },
+        "TC_00082.MOV": {
+          "n": 180,
+          "mae": 3.382493463083722,
+          "median_abs": 3.4098438595490137,
+          "rmse": 3.8708886907890756,
+          "bias": -3.2403122796831036,
+          "p90_abs": 5.61316677440992,
+          "p95_abs": 6.092949403623111,
+          "within_3_kmh": 0.45555555555555555,
+          "within_5_kmh": 0.7722222222222223,
+          "within_10_kmh": 1.0
+        },
+        "TC_00083.MOV": {
+          "n": 180,
+          "mae": 2.9642106826316934,
+          "median_abs": 3.0037879587104754,
+          "rmse": 3.301910366445474,
+          "bias": -2.9326790759380073,
+          "p90_abs": 4.845204022344676,
+          "p95_abs": 5.538587424866125,
+          "within_3_kmh": 0.5,
+          "within_5_kmh": 0.9166666666666666,
+          "within_10_kmh": 1.0
+        },
+        "TC_00084.MOV": {
+          "n": 156,
+          "mae": 2.2826527910002805,
+          "median_abs": 2.3677165757864955,
+          "rmse": 2.4521846757066426,
+          "bias": -2.2145827574945915,
+          "p90_abs": 3.398054959051685,
+          "p95_abs": 3.6240964123602257,
+          "within_3_kmh": 0.8012820512820513,
+          "within_5_kmh": 1.0,
+          "within_10_kmh": 1.0
+        },
+        "TC_00085.MOV": {
+          "n": 125,
+          "mae": 1.8059210266625159,
+          "median_abs": 1.7197104446480793,
+          "rmse": 2.0452131409635665,
+          "bias": -1.633374188616136,
+          "p90_abs": 3.1148861320748655,
+          "p95_abs": 3.461942017649059,
+          "within_3_kmh": 0.88,
+          "within_5_kmh": 1.0,
+          "within_10_kmh": 1.0
+        }
+      },
+      "by_band": {
+        "1_29": {
+          "n": 126,
+          "mae": 2.0711052826784977,
+          "median_abs": 1.6104424136860445,
+          "rmse": 2.5898454908131012,
+          "bias": -0.8714128404302957,
+          "p90_abs": 4.15149530866416,
+          "p95_abs": 4.546354148669867,
+          "within_3_kmh": 0.7142857142857143,
+          "within_5_kmh": 0.9682539682539683,
+          "within_10_kmh": 1.0
+        },
+        "30_59": {
+          "n": 598,
+          "mae": 2.441116159659778,
+          "median_abs": 2.3972328976710138,
+          "rmse": 2.722389873524913,
+          "bias": -2.3261035350080883,
+          "p90_abs": 3.5828886179313524,
+          "p95_abs": 4.5214610150016314,
+          "within_3_kmh": 0.7642140468227425,
+          "within_5_kmh": 0.9682274247491639,
+          "within_10_kmh": 0.9983277591973244
+        },
+        "60_99": {
+          "n": 560,
+          "mae": 29.870341901193633,
+          "median_abs": 3.3560791378015367,
+          "rmse": 199.98069437300134,
+          "bias": 23.15526126420018,
+          "p90_abs": 5.598769628606916,
+          "p95_abs": 6.815533091627064,
+          "within_3_kmh": 0.38035714285714284,
+          "within_5_kmh": 0.8339285714285715,
+          "within_10_kmh": 0.9714285714285714
+        }
+      }
+    },
+    "stillstand_l3": {
+      "ref_still_rows": {
+        "still|still": 67,
+        "still|unknown": 29
+      },
+      "ref_moving_rows": {
+        "moving|still": 10,
+        "moving|moving": 1284,
+        "moving|unknown": 27
+      }
+    },
+    "rpm_r1_vs_ref_estimate": {
+      "paired": 363,
+      "mae": 490.55922865013775,
+      "within_500": 0.6859504132231405
+    },
+    "worst_abs_errors": [
+      {
+        "match_utc": "2026-10-22T18:49:22Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "71",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1971.939491074034,
+        "error": 1903.939491074034,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1774.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:21Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "70",
+        "ref_speed_kmh": 67.0,
+        "ds4_l3_speed_kmh": 1965.89963552464,
+        "error": 1898.89963552464,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1775.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:18Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "67",
+        "ref_speed_kmh": 65.0,
+        "ds4_l3_speed_kmh": 1930.826899068869,
+        "error": 1865.826899068869,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1778.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:17Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1909.48460895223,
+        "error": 1843.48460895223,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1779.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:14Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "63",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 1840.359202084191,
+        "error": 1769.359202084191,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1782.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:20Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "69",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1055.78522461537,
+        "error": 989.78522461537,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1776.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:23Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "72",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1040.20930113819,
+        "error": 972.2093011381901,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1773.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:19Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "68",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 998.4164863973839,
+        "error": 932.4164863973839,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1777.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:15Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 70.0,
+        "ds4_l3_speed_kmh": 987.1113333290868,
+        "error": 917.1113333290868,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1781.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:16Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 956.5494738639849,
+        "error": 888.5494738639849,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1780.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:13Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "62",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 920.3568806557197,
+        "error": 849.3568806557197,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1783.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:45:26Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "15",
+        "ref_speed_kmh": 72.0,
+        "ds4_l3_speed_kmh": 58.13822514133007,
+        "error": -13.861774858669932,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "2010.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:41:48Z",
+        "source_clip": "TC_00078.MOV",
+        "video_second": "15",
+        "ref_speed_kmh": 51.0,
+        "ds4_l3_speed_kmh": 63.39840747000337,
+        "error": 12.39840747000337,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "2228.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:47:02Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "111",
+        "ref_speed_kmh": 76.0,
+        "ds4_l3_speed_kmh": 64.42057466316213,
+        "error": -11.579425336837872,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1914.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:47:03Z",
+        "source_clip": "TC_00080.MOV",
+        "video_second": "112",
+        "ref_speed_kmh": 85.0,
+        "ds4_l3_speed_kmh": 73.73714994152422,
+        "error": -11.262850058475777,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1913.5"
+      }
+    ],
+    "exclusion_counts": {
+      "DS4_SPEED_NULL": 152,
+      "OK": 1284,
+      "REF_SPEED_MISSING": 28
+    }
+  },
+  "0": {
+    "coverage": {
+      "reference_rows": 1464,
+      "reference_speed_readable": 1417,
+      "ds4_l3_speed_numeric": 1312,
+      "paired_speed_rows": 1284
+    },
+    "speed_ds4_l3_vs_tacho": {
+      "n": 1284,
+      "mae": 14.512779633150528,
+      "median_abs": 2.863809972961338,
+      "rmse": 132.06823172564373,
+      "bias": 8.931979609066351,
+      "p90_abs": 4.98551527001378,
+      "p95_abs": 6.130866148268753,
+      "within_3_kmh": 0.5404984423676013,
+      "within_5_kmh": 0.9003115264797508,
+      "within_10_kmh": 0.9867601246105919
+    },
+    "speed_ds4_l3_vs_tacho_trimmed_abs_error_le_100_kmh": {
+      "n": 1273,
+      "mae": 2.9901575115958985,
+      "median_abs": 2.8529585537237665,
+      "rmse": 3.443150973138045,
+      "bias": -2.6388662361842146,
+      "p90_abs": 4.916838631289246,
+      "p95_abs": 5.896780781831958,
+      "within_3_kmh": 0.5451688923802043,
+      "within_5_kmh": 0.9080911233307148,
+      "within_10_kmh": 0.99528672427337
+    },
+    "segments": {
+      "by_clip": {
+        "TC_00077.MOV": {
+          "n": 138,
+          "mae": 2.393525957261559,
+          "median_abs": 2.2526748902734006,
+          "rmse": 2.763061917003511,
+          "bias": -1.730237897354561,
+          "p90_abs": 3.933685373377651,
+          "p95_abs": 4.727707003586266,
+          "within_3_kmh": 0.7101449275362319,
+          "within_5_kmh": 0.9710144927536232,
+          "within_10_kmh": 1.0
+        },
+        "TC_00078.MOV": {
+          "n": 144,
+          "mae": 2.3476873272629293,
+          "median_abs": 2.26531520987556,
+          "rmse": 2.736316996925744,
+          "bias": -2.1654695162917825,
+          "p90_abs": 3.489895899295612,
+          "p95_abs": 4.448552881175272,
+          "within_3_kmh": 0.8541666666666666,
+          "within_5_kmh": 0.9791666666666666,
+          "within_10_kmh": 0.9861111111111112
+        },
+        "TC_00079.MOV": {
+          "n": 34,
+          "mae": 2.8083905546401873,
+          "median_abs": 2.82809252763159,
+          "rmse": 2.864640877361508,
+          "bias": -2.8083905546401873,
+          "p90_abs": 3.481251480593066,
+          "p95_abs": 3.8182548427344463,
+          "within_3_kmh": 0.6176470588235294,
+          "within_5_kmh": 1.0,
+          "within_10_kmh": 1.0
+        },
+        "TC_00080.MOV": {
+          "n": 156,
+          "mae": 3.386595379186921,
+          "median_abs": 3.541956634793852,
+          "rmse": 3.5177271627938356,
+          "bias": -3.386595379186921,
+          "p90_abs": 4.504625386033197,
+          "p95_abs": 4.678785118288676,
+          "within_3_kmh": 0.28205128205128205,
+          "within_5_kmh": 0.9871794871794872,
+          "within_10_kmh": 1.0
+        },
+        "TC_00081.MOV": {
+          "n": 172,
+          "mae": 89.00488252016075,
+          "median_abs": 3.0480701719476286,
+          "rmse": 360.73368564314643,
+          "bias": 83.43968578183423,
+          "p90_abs": 5.053552959398212,
+          "p95_abs": 899.8523106232805,
+          "within_3_kmh": 0.46511627906976744,
+          "within_5_kmh": 0.8953488372093024,
+          "within_10_kmh": 0.936046511627907
+        },
+        "TC_00082.MOV": {
+          "n": 180,
+          "mae": 3.378129880436877,
+          "median_abs": 3.2609490718146503,
+          "rmse": 3.84871694403683,
+          "bias": -3.1729585416474557,
+          "p90_abs": 5.563596527392559,
+          "p95_abs": 6.092949403623111,
+          "within_3_kmh": 0.45,
+          "within_5_kmh": 0.8,
+          "within_10_kmh": 1.0
+        },
+        "TC_00083.MOV": {
+          "n": 180,
+          "mae": 3.1365469561984702,
+          "median_abs": 3.121019606456091,
+          "rmse": 3.384506002532314,
+          "bias": -3.1339203791899486,
+          "p90_abs": 4.845204022344676,
+          "p95_abs": 5.33169244944366,
+          "within_3_kmh": 0.42777777777777776,
+          "within_5_kmh": 0.9111111111111111,
+          "within_10_kmh": 1.0
+        },
+        "TC_00084.MOV": {
+          "n": 155,
+          "mae": 3.595845327233152,
+          "median_abs": 2.9893588648558875,
+          "rmse": 4.471072294530916,
+          "bias": -2.37169597109156,
+          "p90_abs": 7.582606318026754,
+          "p95_abs": 9.105223585302632,
+          "within_3_kmh": 0.5096774193548387,
+          "within_5_kmh": 0.7741935483870968,
+          "within_10_kmh": 0.9741935483870968
+        },
+        "TC_00085.MOV": {
+          "n": 125,
+          "mae": 2.427229471545965,
+          "median_abs": 2.09589438262325,
+          "rmse": 3.1379394847621107,
+          "bias": -1.6457476557799764,
+          "p90_abs": 5.466141454241625,
+          "p95_abs": 6.8869711701349186,
+          "within_3_kmh": 0.728,
+          "within_5_kmh": 0.888,
+          "within_10_kmh": 1.0
+        }
+      },
+      "by_band": {
+        "1_29": {
+          "n": 125,
+          "mae": 2.916802104127796,
+          "median_abs": 2.0683818097710116,
+          "rmse": 3.9160876522657615,
+          "bias": -0.794492393226578,
+          "p90_abs": 7.255429157861041,
+          "p95_abs": 8.81254569481238,
+          "within_3_kmh": 0.656,
+          "within_5_kmh": 0.848,
+          "within_10_kmh": 0.984
+        },
+        "30_59": {
+          "n": 598,
+          "mae": 2.5869504884020396,
+          "median_abs": 2.3821222513156055,
+          "rmse": 3.047057927794091,
+          "bias": -2.371974135358875,
+          "p90_abs": 4.292740937267105,
+          "p95_abs": 5.210205291710495,
+          "within_3_kmh": 0.7157190635451505,
+          "within_5_kmh": 0.9448160535117057,
+          "within_10_kmh": 0.9933110367892977
+        },
+        "60_99": {
+          "n": 560,
+          "mae": 29.84899249017228,
+          "median_abs": 3.451739102678797,
+          "rmse": 199.9465435036208,
+          "bias": 23.176852322769136,
+          "p90_abs": 5.312971339361468,
+          "p95_abs": 6.06488580200315,
+          "within_3_kmh": 0.32857142857142857,
+          "within_5_kmh": 0.8660714285714286,
+          "within_10_kmh": 0.9803571428571428
+        },
+        "tacho_0": {
+          "n": 1,
+          "mae": 7.376599388408317,
+          "median_abs": 7.376599388408317,
+          "rmse": 7.376599388408317,
+          "bias": 7.376599388408317,
+          "p90_abs": 7.376599388408317,
+          "p95_abs": 7.376599388408317,
+          "within_3_kmh": 0.0,
+          "within_5_kmh": 0.0,
+          "within_10_kmh": 1.0
+        }
+      }
+    },
+    "stillstand_l3": {
+      "ref_still_rows": {
+        "still|still": 66,
+        "still|unknown": 29,
+        "still|moving": 1
+      },
+      "ref_moving_rows": {
+        "moving|moving": 1283,
+        "moving|unknown": 26,
+        "moving|still": 12
+      }
+    },
+    "rpm_r1_vs_ref_estimate": {
+      "paired": 363,
+      "mae": 461.11570247933884,
+      "within_500": 0.7024793388429752
+    },
+    "worst_abs_errors": [
+      {
+        "match_utc": "2026-10-22T18:49:22Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "70",
+        "ref_speed_kmh": 67.0,
+        "ds4_l3_speed_kmh": 1971.939491074034,
+        "error": 1904.939491074034,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1775.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:21Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "69",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1965.89963552464,
+        "error": 1899.89963552464,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1776.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:18Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1930.826899068869,
+        "error": 1864.826899068869,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1779.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:17Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1909.48460895223,
+        "error": 1841.48460895223,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1780.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:14Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "62",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 1840.359202084191,
+        "error": 1769.359202084191,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1783.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:20Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "68",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1055.78522461537,
+        "error": 989.78522461537,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1777.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:23Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "71",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1040.20930113819,
+        "error": 972.2093011381901,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1774.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:19Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "67",
+        "ref_speed_kmh": 65.0,
+        "ds4_l3_speed_kmh": 998.4164863973839,
+        "error": 933.4164863973839,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1778.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:15Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "63",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 987.1113333290868,
+        "error": 916.1113333290868,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1782.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:16Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 70.0,
+        "ds4_l3_speed_kmh": 956.5494738639849,
+        "error": 886.5494738639849,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1781.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:13Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "61",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 920.3568806557197,
+        "error": 849.3568806557197,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1784.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:59:01Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "108",
+        "ref_speed_kmh": 4.0,
+        "ds4_l3_speed_kmh": 18.3814510103193,
+        "error": 14.3814510103193,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1196.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:18Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 37.0,
+        "ds4_l3_speed_kmh": 25.33125904234466,
+        "error": -11.668740957655341,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1239.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:41:48Z",
+        "source_clip": "TC_00078.MOV",
+        "video_second": "14",
+        "ref_speed_kmh": 52.0,
+        "ds4_l3_speed_kmh": 63.39840747000337,
+        "error": 11.39840747000337,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "2229.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:19Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 28.0,
+        "ds4_l3_speed_kmh": 16.61998961028539,
+        "error": -11.38001038971461,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1238.5"
+      }
+    ],
+    "exclusion_counts": {
+      "DS4_SPEED_NULL": 152,
+      "OK": 1284,
+      "REF_SPEED_MISSING": 28
+    }
+  },
+  "1": {
+    "coverage": {
+      "reference_rows": 1464,
+      "reference_speed_readable": 1417,
+      "ds4_l3_speed_numeric": 1312,
+      "paired_speed_rows": 1286
+    },
+    "speed_ds4_l3_vs_tacho": {
+      "n": 1286,
+      "mae": 15.138944157799498,
+      "median_abs": 3.171295076296527,
+      "rmse": 131.96736898779517,
+      "bias": 8.961377561222983,
+      "p90_abs": 6.9584403697646415,
+      "p95_abs": 9.3138234313728,
+      "within_3_kmh": 0.4665629860031104,
+      "within_5_kmh": 0.797045101088647,
+      "within_10_kmh": 0.9572317262830482
+    },
+    "speed_ds4_l3_vs_tacho_trimmed_abs_error_le_100_kmh": {
+      "n": 1275,
+      "mae": 3.6421518825305528,
+      "median_abs": 3.1533577173979666,
+      "rmse": 4.5543521352188225,
+      "bias": -2.5887113670360336,
+      "p90_abs": 6.6959045330133815,
+      "p95_abs": 8.79838938669672,
+      "within_3_kmh": 0.47058823529411764,
+      "within_5_kmh": 0.803921568627451,
+      "within_10_kmh": 0.9654901960784313
+    },
+    "segments": {
+      "by_clip": {
+        "TC_00077.MOV": {
+          "n": 139,
+          "mae": 3.207571154797714,
+          "median_abs": 2.7376162612370365,
+          "rmse": 4.049079861009149,
+          "bias": -1.3263200648444238,
+          "p90_abs": 6.393246763216851,
+          "p95_abs": 8.157517849957069,
+          "within_3_kmh": 0.539568345323741,
+          "within_5_kmh": 0.841726618705036,
+          "within_10_kmh": 0.9784172661870504
+        },
+        "TC_00078.MOV": {
+          "n": 144,
+          "mae": 3.129705778151226,
+          "median_abs": 2.3590183335401704,
+          "rmse": 3.998160251276538,
+          "bias": -2.0535489249123033,
+          "p90_abs": 6.901642371377486,
+          "p95_abs": 7.752337337581968,
+          "within_3_kmh": 0.6736111111111112,
+          "within_5_kmh": 0.7847222222222222,
+          "within_10_kmh": 0.9791666666666666
+        },
+        "TC_00079.MOV": {
+          "n": 34,
+          "mae": 2.7275409292069033,
+          "median_abs": 2.538671419559705,
+          "rmse": 2.9553478332895184,
+          "bias": -2.7275409292069033,
+          "p90_abs": 4.179633064276733,
+          "p95_abs": 4.351680461347045,
+          "within_3_kmh": 0.5588235294117647,
+          "within_5_kmh": 0.9705882352941176,
+          "within_10_kmh": 1.0
+        },
+        "TC_00080.MOV": {
+          "n": 155,
+          "mae": 4.302357157902598,
+          "median_abs": 4.191554048743896,
+          "rmse": 4.706785365641587,
+          "bias": -3.7014595643373966,
+          "p90_abs": 6.772855447262517,
+          "p95_abs": 8.070217513200001,
+          "within_3_kmh": 0.23225806451612904,
+          "within_5_kmh": 0.7290322580645161,
+          "within_10_kmh": 0.9935483870967742
+        },
+        "TC_00081.MOV": {
+          "n": 173,
+          "mae": 88.66766904899852,
+          "median_abs": 3.197819971776255,
+          "rmse": 359.60603430959145,
+          "bias": 83.33443347686864,
+          "p90_abs": 6.945338360858371,
+          "p95_abs": 897.7742176500259,
+          "within_3_kmh": 0.4393063583815029,
+          "within_5_kmh": 0.8670520231213873,
+          "within_10_kmh": 0.9364161849710982
+        },
+        "TC_00082.MOV": {
+          "n": 180,
+          "mae": 3.4367272470431756,
+          "median_abs": 3.3056072109797086,
+          "rmse": 3.939965547873738,
+          "bias": -3.115901871575404,
+          "p90_abs": 5.938759374578569,
+          "p95_abs": 6.736298754371872,
+          "within_3_kmh": 0.45,
+          "within_5_kmh": 0.8055555555555556,
+          "within_10_kmh": 1.0
+        },
+        "TC_00083.MOV": {
+          "n": 180,
+          "mae": 3.3331795129037416,
+          "median_abs": 3.3939341538551773,
+          "rmse": 3.6211068277846787,
+          "bias": -3.326377273835262,
+          "p90_abs": 5.18758701312053,
+          "p95_abs": 5.575084456094349,
+          "within_3_kmh": 0.4,
+          "within_5_kmh": 0.8555555555555555,
+          "within_10_kmh": 1.0
+        },
+        "TC_00084.MOV": {
+          "n": 154,
+          "mae": 5.196063288385254,
+          "median_abs": 3.581812138183089,
+          "rmse": 7.195153237112155,
+          "bias": -2.449688498853148,
+          "p90_abs": 13.151063673541346,
+          "p95_abs": 16.070347817990235,
+          "within_3_kmh": 0.45454545454545453,
+          "within_5_kmh": 0.6688311688311688,
+          "within_10_kmh": 0.8376623376623377
+        },
+        "TC_00085.MOV": {
+          "n": 127,
+          "mae": 3.5769031859294445,
+          "median_abs": 2.5011634523330315,
+          "rmse": 4.855292825596078,
+          "bias": -1.6467009015916123,
+          "p90_abs": 9.10529458792258,
+          "p95_abs": 10.555951489390349,
+          "within_3_kmh": 0.5826771653543307,
+          "within_5_kmh": 0.7637795275590551,
+          "within_10_kmh": 0.905511811023622
+        }
+      },
+      "by_band": {
+        "1_29": {
+          "n": 122,
+          "mae": 5.1538766379582635,
+          "median_abs": 4.175736806569409,
+          "rmse": 6.748096637847402,
+          "bias": 0.17405266062233574,
+          "p90_abs": 11.306469072619972,
+          "p95_abs": 13.171189657925648,
+          "within_3_kmh": 0.36885245901639346,
+          "within_5_kmh": 0.5901639344262295,
+          "within_10_kmh": 0.8688524590163934
+        },
+        "30_59": {
+          "n": 598,
+          "mae": 3.300663631003074,
+          "median_abs": 2.4526766326594966,
+          "rmse": 4.3838679378442285,
+          "bias": -2.51839759438506,
+          "p90_abs": 7.240702161262882,
+          "p95_abs": 9.217153867536217,
+          "within_3_kmh": 0.6103678929765887,
+          "within_5_kmh": 0.8277591973244147,
+          "within_10_kmh": 0.9581939799331104
+        },
+        "60_99": {
+          "n": 560,
+          "mae": 30.008315756315454,
+          "median_abs": 3.6311595049964396,
+          "rmse": 199.90364093862365,
+          "bias": 23.120791639922043,
+          "p90_abs": 5.83165105176028,
+          "p95_abs": 7.018880122957857,
+          "within_3_kmh": 0.3392857142857143,
+          "within_5_kmh": 0.8178571428571428,
+          "within_10_kmh": 0.9785714285714285
+        },
+        "tacho_0": {
+          "n": 6,
+          "mae": 10.24259370379239,
+          "median_abs": 8.50975195105046,
+          "rmse": 10.940805781720206,
+          "bias": 10.24259370379239,
+          "p90_abs": 14.6944509874031,
+          "p95_abs": 16.5379509988612,
+          "within_3_kmh": 0.0,
+          "within_5_kmh": 0.0,
+          "within_10_kmh": 0.6666666666666666
+        }
+      }
+    },
+    "stillstand_l3": {
+      "ref_still_rows": {
+        "still|still": 58,
+        "still|unknown": 32,
+        "still|moving": 6
+      },
+      "ref_moving_rows": {
+        "moving|moving": 1280,
+        "moving|unknown": 23,
+        "moving|still": 18
+      }
+    },
+    "rpm_r1_vs_ref_estimate": {
+      "paired": 364,
+      "mae": 445.5659340659341,
+      "within_500": 0.7087912087912088
+    },
+    "worst_abs_errors": [
+      {
+        "match_utc": "2026-10-22T18:49:22Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "69",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1971.939491074034,
+        "error": 1905.939491074034,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1776.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:21Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "68",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1965.89963552464,
+        "error": 1899.89963552464,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1777.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:18Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 1930.826899068869,
+        "error": 1862.826899068869,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1780.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:17Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 70.0,
+        "ds4_l3_speed_kmh": 1909.48460895223,
+        "error": 1839.48460895223,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1781.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:14Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "61",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 1840.359202084191,
+        "error": 1769.359202084191,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1784.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:20Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "67",
+        "ref_speed_kmh": 65.0,
+        "ds4_l3_speed_kmh": 1055.78522461537,
+        "error": 990.78522461537,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1778.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:23Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "70",
+        "ref_speed_kmh": 67.0,
+        "ds4_l3_speed_kmh": 1040.20930113819,
+        "error": 973.2093011381901,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1775.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:19Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 998.4164863973839,
+        "error": 932.4164863973839,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1779.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:15Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "62",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 987.1113333290868,
+        "error": 916.1113333290868,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1783.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:16Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "63",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 956.5494738639849,
+        "error": 885.5494738639849,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1782.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:13Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "60",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 920.3568806557197,
+        "error": 849.3568806557197,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1785.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:59:02Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "108",
+        "ref_speed_kmh": 4.0,
+        "ds4_l3_speed_kmh": 29.69577886862922,
+        "error": 25.69577886862922,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1196.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:19Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 37.0,
+        "ds4_l3_speed_kmh": 16.61998961028539,
+        "error": -20.38001038971461,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1239.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:20Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 28.0,
+        "ds4_l3_speed_kmh": 9.15738933128211,
+        "error": -18.84261066871789,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1238.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:18Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 44.0,
+        "ds4_l3_speed_kmh": 25.33125904234466,
+        "error": -18.66874095765534,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1240.5"
+      }
+    ],
+    "exclusion_counts": {
+      "DS4_SPEED_NULL": 152,
+      "OK": 1286,
+      "REF_SPEED_MISSING": 26
+    }
+  },
+  "2": {
+    "coverage": {
+      "reference_rows": 1464,
+      "reference_speed_readable": 1417,
+      "ds4_l3_speed_numeric": 1312,
+      "paired_speed_rows": 1285
+    },
+    "speed_ds4_l3_vs_tacho": {
+      "n": 1285,
+      "mae": 15.935752867331686,
+      "median_abs": 3.5571354486709197,
+      "rmse": 132.03658935772668,
+      "bias": 9.041083573958366,
+      "p90_abs": 9.75388595989134,
+      "p95_abs": 13.46710505890896,
+      "within_3_kmh": 0.42490272373540855,
+      "within_5_kmh": 0.6980544747081712,
+      "within_10_kmh": 0.9042801556420234
+    },
+    "speed_ds4_l3_vs_tacho_trimmed_abs_error_le_100_kmh": {
+      "n": 1274,
+      "mae": 4.440740893106372,
+      "median_abs": 3.5210907718778888,
+      "rmse": 5.962632218081626,
+      "bias": -2.513458511905181,
+      "p90_abs": 9.348981406157966,
+      "p95_abs": 12.317531027437916,
+      "within_3_kmh": 0.42857142857142855,
+      "within_5_kmh": 0.7040816326530612,
+      "within_10_kmh": 0.9120879120879121
+    },
+    "segments": {
+      "by_clip": {
+        "TC_00077.MOV": {
+          "n": 140,
+          "mae": 4.228668918550303,
+          "median_abs": 3.1768442206670144,
+          "rmse": 5.564899269401111,
+          "bias": -0.9344114054675601,
+          "p90_abs": 9.898354474089611,
+          "p95_abs": 12.154715583492083,
+          "within_3_kmh": 0.4642857142857143,
+          "within_5_kmh": 0.6642857142857143,
+          "within_10_kmh": 0.9071428571428571
+        },
+        "TC_00078.MOV": {
+          "n": 144,
+          "mae": 4.459447599355948,
+          "median_abs": 2.5683342417401107,
+          "rmse": 5.996267296557433,
+          "bias": -1.8177629939841018,
+          "p90_abs": 10.36115909709698,
+          "p95_abs": 11.848767510120378,
+          "within_3_kmh": 0.5902777777777778,
+          "within_5_kmh": 0.6875,
+          "within_10_kmh": 0.8819444444444444
+        },
+        "TC_00079.MOV": {
+          "n": 34,
+          "mae": 2.627566440250753,
+          "median_abs": 2.699542194723687,
+          "rmse": 3.200869587743369,
+          "bias": -2.627566440250753,
+          "p90_abs": 4.500975884290322,
+          "p95_abs": 5.515793034812528,
+          "within_3_kmh": 0.5294117647058824,
+          "within_5_kmh": 0.9117647058823529,
+          "within_10_kmh": 1.0
+        },
+        "TC_00080.MOV": {
+          "n": 154,
+          "mae": 5.4955003885978995,
+          "median_abs": 4.658880026295826,
+          "rmse": 6.577980417953201,
+          "bias": -3.9752170655401557,
+          "p90_abs": 10.859372481974837,
+          "p95_abs": 14.248649022922274,
+          "within_3_kmh": 0.23376623376623376,
+          "within_5_kmh": 0.5844155844155844,
+          "within_10_kmh": 0.8766233766233766
+        },
+        "TC_00081.MOV": {
+          "n": 173,
+          "mae": 88.98362193969706,
+          "median_abs": 3.1744275836122426,
+          "rmse": 359.5108715184662,
+          "bias": 83.64867323023209,
+          "p90_abs": 8.174206803779008,
+          "p95_abs": 897.7742176500259,
+          "within_3_kmh": 0.4624277456647399,
+          "within_5_kmh": 0.7283236994219653,
+          "within_10_kmh": 0.9132947976878613
+        },
+        "TC_00082.MOV": {
+          "n": 180,
+          "mae": 3.5317360806516476,
+          "median_abs": 3.5166996733120186,
+          "rmse": 4.110977850229413,
+          "bias": -3.0600883342794263,
+          "p90_abs": 6.140335402325351,
+          "p95_abs": 7.557696967976083,
+          "within_3_kmh": 0.40555555555555556,
+          "within_5_kmh": 0.8111111111111111,
+          "within_10_kmh": 0.9944444444444445
+        },
+        "TC_00083.MOV": {
+          "n": 180,
+          "mae": 3.5517440534128593,
+          "median_abs": 3.724425210753438,
+          "rmse": 3.9707422486128343,
+          "bias": -3.5135378416905474,
+          "p90_abs": 5.699342488411279,
+          "p95_abs": 6.631512524178865,
+          "within_3_kmh": 0.37777777777777777,
+          "within_5_kmh": 0.7777777777777778,
+          "within_10_kmh": 1.0
+        },
+        "TC_00084.MOV": {
+          "n": 153,
+          "mae": 6.738779266538537,
+          "median_abs": 4.462184780923408,
+          "rmse": 9.71519532067482,
+          "bias": -2.4665476697182087,
+          "p90_abs": 18.416401673978857,
+          "p95_abs": 20.51880146581879,
+          "within_3_kmh": 0.38562091503267976,
+          "within_5_kmh": 0.5686274509803921,
+          "within_10_kmh": 0.7450980392156863
+        },
+        "TC_00085.MOV": {
+          "n": 127,
+          "mae": 4.7826595694859675,
+          "median_abs": 3.0764506708305603,
+          "rmse": 6.57650500007895,
+          "bias": -1.5645465841834019,
+          "p90_abs": 12.093949530326771,
+          "p95_abs": 14.524352944918952,
+          "within_3_kmh": 0.4881889763779528,
+          "within_5_kmh": 0.6692913385826772,
+          "within_10_kmh": 0.8503937007874016
+        }
+      },
+      "by_band": {
+        "1_29": {
+          "n": 115,
+          "mae": 7.137403378522177,
+          "median_abs": 6.075498808506907,
+          "rmse": 9.090158200107322,
+          "bias": 1.810542048228591,
+          "p90_abs": 13.993413461965094,
+          "p95_abs": 17.10895884672741,
+          "within_3_kmh": 0.25217391304347825,
+          "within_5_kmh": 0.40869565217391307,
+          "within_10_kmh": 0.7478260869565218
+        },
+        "30_59": {
+          "n": 598,
+          "mae": 4.246974920622902,
+          "median_abs": 2.660166703392754,
+          "rmse": 6.061120682426654,
+          "bias": -2.751458862348076,
+          "p90_abs": 10.265952539225644,
+          "p95_abs": 13.377181707527091,
+          "within_3_kmh": 0.5518394648829431,
+          "within_5_kmh": 0.7274247491638796,
+          "within_10_kmh": 0.8929765886287625
+        },
+        "60_99": {
+          "n": 560,
+          "mae": 30.260978448099983,
+          "median_abs": 3.852612013028427,
+          "rmse": 199.85686538688716,
+          "bias": 23.007411328842284,
+          "p90_abs": 6.550594991088749,
+          "p95_abs": 8.565097296954393,
+          "within_3_kmh": 0.3339285714285714,
+          "within_5_kmh": 0.7410714285714286,
+          "within_10_kmh": 0.9625
+        },
+        "tacho_0": {
+          "n": 12,
+          "mae": 14.233509376890076,
+          "median_abs": 13.542524257897249,
+          "rmse": 15.366565806581464,
+          "bias": 14.233509376890076,
+          "p90_abs": 18.258290326180074,
+          "p95_abs": 23.472898546558756,
+          "within_3_kmh": 0.0,
+          "within_5_kmh": 0.0,
+          "within_10_kmh": 0.25
+        }
+      }
+    },
+    "stillstand_l3": {
+      "ref_still_rows": {
+        "still|unknown": 31,
+        "still|still": 53,
+        "still|moving": 12
+      },
+      "ref_moving_rows": {
+        "moving|moving": 1273,
+        "moving|unknown": 27,
+        "moving|still": 21
+      }
+    },
+    "rpm_r1_vs_ref_estimate": {
+      "paired": 364,
+      "mae": 450.36813186813185,
+      "within_500": 0.6923076923076923
+    },
+    "worst_abs_errors": [
+      {
+        "match_utc": "2026-10-22T18:49:22Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "68",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1971.939491074034,
+        "error": 1905.939491074034,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1777.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:21Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "67",
+        "ref_speed_kmh": 65.0,
+        "ds4_l3_speed_kmh": 1965.89963552464,
+        "error": 1900.89963552464,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1778.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:18Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 70.0,
+        "ds4_l3_speed_kmh": 1930.826899068869,
+        "error": 1860.826899068869,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1781.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:17Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "63",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 1909.48460895223,
+        "error": 1838.48460895223,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1782.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:14Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "60",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 1840.359202084191,
+        "error": 1769.359202084191,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1785.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:20Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "66",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1055.78522461537,
+        "error": 989.78522461537,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1779.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:23Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "69",
+        "ref_speed_kmh": 66.0,
+        "ds4_l3_speed_kmh": 1040.20930113819,
+        "error": 974.2093011381901,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1776.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:19Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 68.0,
+        "ds4_l3_speed_kmh": 998.4164863973839,
+        "error": 930.4164863973839,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1780.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:15Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "61",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 987.1113333290868,
+        "error": 916.1113333290868,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1784.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:16Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "62",
+        "ref_speed_kmh": 71.0,
+        "ds4_l3_speed_kmh": 956.5494738639849,
+        "error": 885.5494738639849,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1783.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:49:13Z",
+        "source_clip": "TC_00081.MOV",
+        "video_second": "59",
+        "ref_speed_kmh": 72.0,
+        "ds4_l3_speed_kmh": 920.3568806557197,
+        "error": 848.3568806557197,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1786.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:59:03Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "108",
+        "ref_speed_kmh": 4.0,
+        "ds4_l3_speed_kmh": 39.12508149988818,
+        "error": 35.12508149988818,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1196.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:59:02Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "107",
+        "ref_speed_kmh": 0.0,
+        "ds4_l3_speed_kmh": 29.69577886862922,
+        "error": 29.69577886862922,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1197.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:20Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "65",
+        "ref_speed_kmh": 37.0,
+        "ds4_l3_speed_kmh": 9.15738933128211,
+        "error": -27.84261066871789,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1239.5"
+      },
+      {
+        "match_utc": "2026-10-22T18:58:19Z",
+        "source_clip": "TC_00084.MOV",
+        "video_second": "64",
+        "ref_speed_kmh": 44.0,
+        "ds4_l3_speed_kmh": 16.61998961028539,
+        "error": -27.38001038971461,
+        "ds4_l3_motion_state": "MOVING_SPEED_ESTIMATED",
+        "source_age_s": "1240.5"
+      }
+    ],
+    "exclusion_counts": {
+      "DS4_SPEED_NULL": 152,
+      "OK": 1285,
+      "REF_SPEED_MISSING": 27
+    }
+  }
+}
