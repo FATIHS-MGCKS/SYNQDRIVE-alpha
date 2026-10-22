@@ -2,6 +2,7 @@ import { TripDetectionOrchestrationService } from '../trip-detection-orchestrati
 import { TRIP_TRACKING_TRIGGERS } from '../trip-detection.types';
 import * as modality from './trip-start-boundary-integration-modality';
 import * as shadowRuntime from './trip-start-boundary-admission-shadow.runtime';
+import * as durablePersistence from './trip-start-boundary-admission-durable.persistence';
 import {
   TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV,
   TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV,
@@ -19,6 +20,9 @@ const VEHICLE = P1B_ORCH_TEST_VEHICLE_ID;
 describe('P1B orchestration — shadow gate wiring', () => {
   let modalitySpy: jest.SpiedFunction<typeof modality.resolveTripStartIntegrationModality>;
   let shadowSpy: jest.SpiedFunction<typeof shadowRuntime.runStartBoundaryAdmissionShadow>;
+  let durableSpy: jest.SpiedFunction<
+    typeof durablePersistence.persistStartBoundaryAdmissionShadowDurable
+  >;
 
   const originalEnv = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
   const originalAllowlist = process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_VEHICLE_IDS_ENV];
@@ -27,6 +31,9 @@ describe('P1B orchestration — shadow gate wiring', () => {
     jest.useFakeTimers({ now: P1B_ORCH_NOW });
     modalitySpy = jest.spyOn(modality, 'resolveTripStartIntegrationModality');
     shadowSpy = jest.spyOn(shadowRuntime, 'runStartBoundaryAdmissionShadow');
+    durableSpy = jest
+      .spyOn(durablePersistence, 'persistStartBoundaryAdmissionShadowDurable')
+      .mockResolvedValue('WRITTEN');
     modalitySpy.mockResolvedValue('SOFTWARE_INTEGRATION');
     shadowSpy.mockResolvedValue({
       vehicleId: VEHICLE,
@@ -58,6 +65,7 @@ describe('P1B orchestration — shadow gate wiring', () => {
     jest.useRealTimers();
     modalitySpy?.mockRestore();
     shadowSpy?.mockRestore();
+    durableSpy?.mockRestore();
     if (originalEnv === undefined) {
       delete process.env[TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED_ENV];
     } else {
@@ -113,6 +121,9 @@ describe('P1B orchestration — shadow gate wiring', () => {
     >;
     expect(summary.confirmedStartAt).toBe(P1B_ORCH_LEGACY_START.toISOString());
     expect(summary.shadowStartBoundaryAdmission).toBeUndefined();
+    expect(durableSpy).toHaveBeenCalledTimes(1);
+    expect(durableSpy.mock.calls[0][0].shadowSummary).toBeNull();
+    expect(durableSpy.mock.calls[0][0].shadowEnabled).toBe(false);
   });
 
   it('Shadow ON + allowlisted vehicle — modality once, shadow runs, legacy canonical unchanged', async () => {
@@ -133,6 +144,9 @@ describe('P1B orchestration — shadow gate wiring', () => {
     >;
     expect(summary.confirmedStartAt).toBe(P1B_ORCH_LEGACY_START.toISOString());
     expect(summary.shadowStartBoundaryAdmission).toBeDefined();
+    expect(durableSpy).toHaveBeenCalledTimes(1);
+    expect(durableSpy.mock.calls[0][0].tripId).toBe('trip-p1b');
+    expect(durableSpy.mock.calls[0][0].shadowSummary).toBeDefined();
   });
 
   it('Shadow ON without allowlist — no shadow work (fail-closed)', async () => {
