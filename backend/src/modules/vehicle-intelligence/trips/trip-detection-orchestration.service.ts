@@ -114,11 +114,12 @@ import {
   buildMidGapRejectedForensics,
   classifyLiveMidGapDriftDecision,
   computeMidGapDriftEvidence,
-  findLargestQualifyingMidGapFromCoreTimeline,
   selectRoutePointAtOrAfter,
   selectRoutePointAtOrBefore,
   type MidGapSplitCommitPhase,
 } from './trip-mid-gap-split.util';
+import { findMidTripGapCandidateWithPolicy } from './trip-mid-gap-detection.util';
+import { isTripMidGapTelemetrySilenceHardeningEnabledForVehicle } from './trip-mid-gap-telemetry-silence.config';
 import { resolveMaxSameTripQualifiedStopMs } from './trip-qualified-stop-duration.config';
 import {
   buildMidGapCommitAmbiguityForensics,
@@ -2265,7 +2266,7 @@ export class TripDetectionOrchestrationService {
       // Detected here on the LIVE path so the split happens as soon as the
       // new data arrives; a parallel retroactive scan lives in
       // TripReconciliationService.repairIntraTripGapSplits.
-      const midGap = this.findMidTripGap(corePoints, det);
+      const midGap = this.findMidTripGap(corePoints, det, vehicleId);
       if (midGap) {
         const tripAge =
           new Date().getTime() - det.possibleStartAt!.getTime();
@@ -5040,6 +5041,7 @@ export class TripDetectionOrchestrationService {
   private findMidTripGap(
     corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>,
     det: DetState,
+    vehicleId: string,
   ): {
     gapMs: number;
     firstEndAt: Date;
@@ -5062,38 +5064,32 @@ export class TripDetectionOrchestrationService {
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    type TP = { ts: Date; speed: number | null; ign: boolean | null };
-    const timeline: TP[] = [];
+    const telemetrySilenceHardeningEnabled =
+      isTripMidGapTelemetrySilenceHardeningEnabledForVehicle(vehicleId);
 
-    // Prepend synthetic anchor (stationary assumption since no motion was
-    // recorded between that timestamp and now).
-    if (anchorAt) {
-      timeline.push({ ts: anchorAt, speed: 0, ign: null });
-    }
-    for (const p of sorted) {
-      timeline.push({
-        ts: new Date(p.timestamp),
+    const candidate = findMidTripGapCandidateWithPolicy({
+      corePoints: sorted.map((p) => ({
+        timestamp: p.timestamp,
         speed: p.speed ?? null,
-        ign: p.isIgnitionOn ?? null,
-      });
-    }
-
-    if (timeline.length < 2) return null;
-
-    const selected = findLargestQualifyingMidGapFromCoreTimeline({
-      timeline,
+        isIgnitionOn: p.isIgnitionOn ?? null,
+      })),
+      anchorAt: anchorAt ? new Date(anchorAt) : null,
       maxSameTripQualifiedStopMs: this.maxSameTripQualifiedStopMs,
+      stoppedSpeedKmh: 5,
+      telemetrySilenceHardeningEnabled,
     });
-    if (!selected) return null;
+    if (!candidate) {
+      return null;
+    }
 
     return {
-      gapMs: selected.gapMs,
-      firstEndAt: selected.firstEndAt,
-      firstEndLatitude: null,
-      firstEndLongitude: null,
-      secondStartAt: selected.secondStartAt,
-      secondStartLatitude: null,
-      secondStartLongitude: null,
+      gapMs: candidate.gapMs,
+      firstEndAt: candidate.firstEndAt,
+      firstEndLatitude: candidate.firstEndLatitude,
+      firstEndLongitude: candidate.firstEndLongitude,
+      secondStartAt: candidate.secondStartAt,
+      secondStartLatitude: candidate.secondStartLatitude,
+      secondStartLongitude: candidate.secondStartLongitude,
     };
   }
 
