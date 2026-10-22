@@ -5,6 +5,12 @@ export type LvEstimatedBatteryHealthShadowAdminV1 = {
   organizationId: string;
   vehicleId: string;
   evaluatedAtIso: string;
+  temporalSemantics: {
+    observationAsOfAuthority: 'PROVIDER_OBSERVATION_TIMESTAMP';
+    ingestionTimeAsOfGuarantee: false;
+    preStartFollowUpWindowMs: number;
+    note: string;
+  };
   measuredIntelligenceBoundaryNote: 'MEASURED_INTELLIGENCE_NOT_ASSESSED_IS_NOT_N16_RESULT';
   dataSelection: {
     rawVoltageRowCount: number;
@@ -24,6 +30,7 @@ export type LvEstimatedBatteryHealthShadowAdminV1 = {
     measuredSOH: 'UNKNOWN';
     decisionTrace: {
       finalRuleId: string | null;
+      p11ShadowRuleId?: string | null;
       qualifiedEpisodeCount: number;
       bandCounts: Record<string, number>;
       longitudinalTrend: string;
@@ -34,4 +41,5 @@ export type LvEstimatedBatteryHealthShadowAdminV1 = {
       eligibleRestObservations: number;
     };
   };
+  p11ShadowAssessment?: LvEstimatedBatteryHealthShadowAdminV1['assessment'];
 };

@@ -585,6 +585,7 @@ export class PlatformAdminController {
         organizationId,
         vehicleId,
         estimatedHealthStatus: result.assessment.estimatedHealthStatus,
+        p11ShadowHealthStatus: result.p11ShadowAssessment.estimatedHealthStatus,
         eligibleRestCount: result.dataSelection.eligibleRestObservationCount,
       },
     });

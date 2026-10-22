@@ -162,7 +162,10 @@ export async function buildLvOperationalConditionInputV1(
     modelVersion: LV_OPERATIONAL_CONDITION_MODEL_VERSION,
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
-    evaluatedAtIso: new Date().toISOString(),
+    /** As-of instant for recency / P11 follow-up: end of assessment window (provider-time semantics in evaluators). */
+    evaluatedAtIso: new Date(
+      Math.min(assessmentWindow.measuredTo.getTime(), Date.now()),
+    ).toISOString(),
     chemistry: {
       normalizedType,
       batterySpecId: bestSpec?.id ?? null,

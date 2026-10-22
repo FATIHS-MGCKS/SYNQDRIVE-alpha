@@ -10,7 +10,10 @@ function rest(
     restSessionId: partial.restSessionId ?? 's1',
     voltageV: partial.voltageV,
     voltageObservedAt: partial.voltageObservedAt ?? '2026-10-01T10:00:00.000Z',
-    providerObservationAt: partial.providerObservationAt ?? '2026-10-01T10:00:00.000Z',
+    providerObservationAt:
+      partial.providerObservationAt ??
+      partial.voltageObservedAt ??
+      '2026-10-01T10:00:00.000Z',
     operationalContext: 'REST',
     evidenceClass: 'PARKED_REST_CANDIDATE',
     actualRestAgeHours: partial.actualRestAgeHours ?? 8,

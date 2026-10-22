@@ -32,6 +32,7 @@ function baseInput(
       measuredToIso: null,
     },
     eligibleRestObservations: [],
+    assessmentTimelineObservations: [],
     latestGlobalObservation: null,
     latestEligibleRestObservation: null,
     wakeVoltageObservations: [],
