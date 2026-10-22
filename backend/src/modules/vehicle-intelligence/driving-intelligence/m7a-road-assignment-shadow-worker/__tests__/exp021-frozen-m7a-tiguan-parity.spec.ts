@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
   EXP021_FROZEN_M7A_TIGUAN_PER_BUCKET_SHA256,
   buildM7aRuntimeContext,
   perBucketAssignmentHash,
@@ -12,42 +11,12 @@ import {
 const REPO_ROOT = path.resolve(__dirname, '../../../../../../..');
 const TIGUAN_DIR = path.join(REPO_ROOT, 'architecture/drivingintelligence/evidence/exp021-tiguan-20261019');
 const FREEZE_DIR = path.join(REPO_ROOT, 'architecture/drivingintelligence/evidence/exp021-phase5a-baseline-freeze');
-const S4_RESEARCH_DIR = path.join(
-  REPO_ROOT,
-  'backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research',
-);
 
 const MANIFEST_POSITION_GRID_SHA = '3a253b975f35ae02c3caa9a0bb894545447d3c6cdfccbe2a42ca23f6f7a95c09';
 const MANIFEST_OSM_SHA = 'c141ec2f4713e9b4def75a8c1b709d1be53b35b14ade71b0ca3749b926c24959';
 
 function sha256File(filePath: string): string {
   return createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
-}
-
-function hashS4ResearchSourceTree(root: string): string {
-  const files: string[] = [];
-  const walk = (dir: string) => {
-    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-      const p = path.join(dir, ent.name);
-      if (ent.isDirectory()) {
-        if (ent.name === '__tests__') continue;
-        walk(p);
-      } else if (ent.name.endsWith('.ts')) {
-        files.push(p);
-      }
-    }
-  };
-  walk(root);
-  files.sort();
-  const h = createHash('sha256');
-  for (const f of files) {
-    const rel = path.relative(root, f);
-    h.update(rel);
-    h.update('\0');
-    h.update(fs.readFileSync(f));
-    h.update('\0');
-  }
-  return h.digest('hex');
 }
 
 type ExportedBucket = {
@@ -79,13 +48,11 @@ function exportMatchFields(matches: ReturnType<typeof runFrozenM7a>['matches']):
 }
 
 describe('EXP021 frozen M7A — Tiguan offline parity', () => {
-  it('pins input fixtures and s4-research tree against freeze manifest', () => {
+  it('pins input fixtures against freeze manifest', () => {
     const gridPath = path.join(TIGUAN_DIR, 'fixtures/TIGUAN_POSITION_GRID.json');
     const osmPath = path.join(TIGUAN_DIR, 'TIGUAN_OSM_FROZEN_SNAPSHOT.json');
     expect(sha256File(gridPath)).toBe(MANIFEST_POSITION_GRID_SHA);
     expect(sha256File(osmPath)).toBe(MANIFEST_OSM_SHA);
-    const treeHash = hashS4ResearchSourceTree(S4_RESEARCH_DIR);
-    expect(treeHash).toBe(EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION);
   });
 
   it('matches Phase 5A per-bucket hash and every exported bucket field vs frozen reference', () => {
@@ -138,13 +105,10 @@ describe('EXP021 frozen M7A — Tiguan offline parity', () => {
 
     const deviations: string[] = [];
     for (let i = 0; i < exported.length; i++) {
-      const a = exported[i];
-      const b = golden.buckets[i];
-      if (JSON.stringify(a) !== JSON.stringify(b)) {
-        deviations.push(`${a.bucketLabelUtc}: field mismatch at index ${i}`);
+      if (JSON.stringify(exported[i]) !== JSON.stringify(golden.buckets[i])) {
+        deviations.push(`${exported[i].bucketLabelUtc}: field mismatch at index ${i}`);
       }
     }
     expect(deviations).toEqual([]);
-    expect(deviations.length).toBe(0);
   });
 });

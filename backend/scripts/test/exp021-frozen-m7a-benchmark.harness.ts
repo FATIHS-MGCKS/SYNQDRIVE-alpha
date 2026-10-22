@@ -45,9 +45,13 @@ function main(): void {
     corridorMarginM: 75,
     decodeWallMs: wallEnd - wallStart,
     processCpuUsageMs: cpuMs,
-    heapDeltaBytes: heapAfter - heapBefore,
-    heapDeltaMb: (heapAfter - heapBefore) / 1048576,
-    rssAfterMb: process.memoryUsage().rss / 1048576,
+    /** Not peak memory — delta of V8 heapUsed before/after decode in this process. */
+    heapUsedDeltaBytes: heapAfter - heapBefore,
+    heapUsedDeltaMb: (heapAfter - heapBefore) / 1048576,
+    /** Snapshot RSS after decode; not peak RSS (no external sampler). */
+    rssBytesAfterDecode: process.memoryUsage().rss,
+    rssMbAfterDecode: process.memoryUsage().rss / 1048576,
+    peakMemoryMeasured: false,
     perBucketAssignmentHash: perBucketAssignmentHash(matches),
     confirmedCount: matches.filter((m) => m.outcome === 'CONFIRMED').length,
   };

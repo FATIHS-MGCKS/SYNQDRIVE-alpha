@@ -20,7 +20,6 @@ import {
   EXP021_FROZEN_M7A_RESEARCH_SHA,
   EXP021_FROZEN_M7A_HARNESS_MODEL_ID,
   EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256,
-  EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
   perBucketAssignmentHash,
   runFrozenM7aIsolated,
 } from '../exp021-frozen-m7a';
@@ -262,7 +261,7 @@ export async function processDiV0M7aRoadAssignmentShadowTrip(
       harnessModelId: EXP021_FROZEN_M7A_HARNESS_MODEL_ID,
       researchSha: EXP021_FROZEN_M7A_RESEARCH_SHA,
       phase3LibSnapshotSha256: EXP021_FROZEN_M7A_PHASE3_LIB_SNAPSHOT_SHA256,
-      s4ResearchTreeSha256: EXP021_FROZEN_M7A_S4_RESEARCH_TREE_SHA256_INTEGRATION,
+      researchFreezeSha: EXP021_FROZEN_M7A_RESEARCH_SHA,
       osmSnapshotSha256: osm.osmSnapshotSha256,
       osmContextKey: osm.osmContextKey,
       pinnedSnapshotHash: input.snapshotHash,

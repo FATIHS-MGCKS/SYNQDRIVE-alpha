@@ -131,8 +131,11 @@ export class DiV0M7aRoadAssignmentShadowOutboxRepository {
         WITH pick AS (
           SELECT outbox_id
           FROM di_v0_m7a_road_assignment_shadow_outbox_v1
-          WHERE status IN ('PENDING', 'FAILED_RETRYABLE')
-            AND next_attempt_at <= ${now}
+          WHERE (
+            status IN ('PENDING', 'FAILED_RETRYABLE') AND next_attempt_at <= ${now}
+          ) OR (
+            status = 'PROCESSING' AND claim_expires_at IS NOT NULL AND claim_expires_at <= ${now}
+          )
           ORDER BY next_attempt_at ASC, created_at ASC
           LIMIT ${limit}
           FOR UPDATE SKIP LOCKED

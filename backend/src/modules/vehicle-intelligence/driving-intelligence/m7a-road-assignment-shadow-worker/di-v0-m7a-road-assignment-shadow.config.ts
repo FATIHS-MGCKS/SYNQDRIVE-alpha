@@ -16,6 +16,8 @@ export const DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING = {
   baseRetryDelayMs: 60_000,
   maxRetryDelayMs: 30 * 60_000,
   claimLeaseMs: 5 * 60_000,
+  /** Renew PROCESSING lease during long decode (must be < claimLeaseMs). */
+  claimLeaseRenewIntervalMs: 60_000,
   maxProcessingAttempts: 5,
   maxPayloadUncompressedBytes: 8 * 1024 * 1024,
   /** Hard per-trip M7A decode budget (worker thread terminated on exceed). */

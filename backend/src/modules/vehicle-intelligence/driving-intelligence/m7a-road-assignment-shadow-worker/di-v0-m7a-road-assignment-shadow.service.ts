@@ -85,10 +85,14 @@ export class DiV0M7aRoadAssignmentShadowService {
       now,
     });
 
-    const claimed = await this.outbox.claimBatch(this.runtimeConfig.batchLimit, now);
-    const result = { ...empty, configured: true, discovered, claimed: claimed.length };
+    const result = { ...empty, configured: true, discovered, claimed: 0 };
 
-    for (const row of claimed) {
+    /** One active decode per tick — avoids stacked PROCESSING leases while earlier trips decode. */
+    for (let i = 0; i < this.runtimeConfig.batchLimit; i++) {
+      const claimed = await this.outbox.claimBatch(1, now);
+      if (claimed.length === 0) break;
+      const row = claimed[0];
+      result.claimed += 1;
       try {
         const processed = await this.processClaimedRow(row, now);
         if (processed === 'SUCCEEDED') result.succeeded += 1;
@@ -180,6 +184,9 @@ export class DiV0M7aRoadAssignmentShadowService {
     }
 
     let processed;
+    const leaseRenew = setInterval(() => {
+      void this.outbox.renewClaimLease(row.outboxId, row.claimToken, new Date());
+    }, DI_V0_M7A_ROAD_ASSIGNMENT_SHADOW_TUNING.claimLeaseRenewIntervalMs);
     try {
       processed = await processDiV0M7aRoadAssignmentShadowTrip({
         organizationId: row.organizationId,
@@ -217,6 +224,8 @@ export class DiV0M7aRoadAssignmentShadowService {
         next,
       );
       return 'FAILED';
+    } finally {
+      clearInterval(leaseRenew);
     }
 
     if (processed.kind === 'SNAPSHOT_INVALID') {

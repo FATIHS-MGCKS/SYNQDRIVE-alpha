@@ -19,7 +19,7 @@ export type DiV0M7aRoadAssignmentShadowPayloadV1 = {
     harnessModelId: string;
     researchSha: string;
     phase3LibSnapshotSha256: string;
-    s4ResearchTreeSha256: string;
+    researchFreezeSha: string;
     osmSnapshotSha256: string;
     osmContextKey: string;
     pinnedSnapshotHash: string;
