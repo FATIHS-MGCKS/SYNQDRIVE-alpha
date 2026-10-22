@@ -1,6 +1,7 @@
 {
-  "measuredAtUtc": "2026-10-22T23:45:46.795Z",
-  "productHead": "271976e7a8e29bcc8f5ef16b2251f45eae19526d",
+  "measuredAtUtc": "2026-10-22T23:46:54.110Z",
+  "productHead": "e68c8aff4706e5dcbe7368f5ea6cc4fb9659eb89",
+  "priorHead": "271976e7a8e29bcc8f5ef16b2251f45eae19526d",
   "algorithmVersions": {
     "leg": "MOTION_CORE_LEG_CONSISTENCY_V0_4_DEV",
     "c4": "MOTION_CORE_SPEED_C4_V0_4_DEV"
@@ -381,7 +382,7 @@
     "bundleVersion": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V3",
     "eventAcceptedCount": 16,
     "stopEpisodeCount": 12,
-    "contentFingerprint": "e6bd0710b3c44ddadd4642ee31926850700aa5ee2f2ee1c598ad68fd350b527e",
+    "contentFingerprint": "0f243e6654903d9023bccdfead208411771df90f4f1f8428fe759c9e2e56b270",
     "limitations": [
       "SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN",
       "SPARSE_R1_BUCKET_ONLY_NO_FSM_POINT_AUTHORITY"
@@ -416,7 +417,7 @@
   "repro81Point": {
     "t21": "OUTLIER_REJECTED",
     "t22KmhApprox": 36,
-    "note": "C1 no longer bridges quarantined 1s legs; resumed line ~36 km/h"
+    "note": "No C1 bridge over quarantined hop; resumed chord ~36 km/h not 481/2281"
   },
   "frozenAuditRun": {
     "node": "v22.14.0",
