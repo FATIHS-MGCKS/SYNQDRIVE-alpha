@@ -102,12 +102,15 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           TRIP_FINALIZE_POSTGRES_INTEGRATION: '1'
           TRIP_FINALIZE_POSTGRES_REQUIRED: '1'
-      - run: npm run test:trip-p1b10-durable:postgres:ci
+      - name: P1B.10 durable start-shadow PostgreSQL integration (required)
         working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           TRIP_P1B10_DURABLE_POSTGRES_INTEGRATION: '1'
           TRIP_P1B10_DURABLE_POSTGRES_REQUIRED: '1'
+        run: >
+          npx jest trip-start-boundary-admission-p1b10-durable.postgres.integration
+          --runInBand --verbose
 
   backend-r11-unit:
     name: Backend R11 unit + scaling probe

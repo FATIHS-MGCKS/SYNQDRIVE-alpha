@@ -54,3 +54,10 @@ Orchestration wiring extended in `trip-start-boundary-admission-p1b-orchestratio
 ## Production
 
 No flag activation, no deploy, no historical trip backfill.
+
+## CI / governance (PR #2121)
+
+| Check | Action |
+|-------|--------|
+| Production DB guard | `backend/package.json` must stay byte-identical to the pinned guard bundle — P1B.10 PostgreSQL test runs via `npx jest` in `trip-fsm-production-readiness.yml` (no new npm script). |
+| i18n-authority-protection | Workflow change to add the P1B.10 PostgreSQL step requires **manual** trusted-owner approval: apply GitHub label `i18n-governance-authority-change` on PR #2121 (agents do not set this label). |
