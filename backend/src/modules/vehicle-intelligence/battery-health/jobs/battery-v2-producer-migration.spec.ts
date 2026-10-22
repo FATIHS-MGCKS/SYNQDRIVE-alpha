@@ -403,6 +403,8 @@ describe('BatteryV2TripStartProducer', () => {
 
     const prev = process.env.BATTERY_V2_START_PROXY_ENABLED;
     const prevCrank = process.env.BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED;
+    const prevPilot = process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
     process.env.BATTERY_V2_START_PROXY_ENABLED = 'true';
     process.env.BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED = 'false';
 
@@ -429,6 +431,8 @@ describe('BatteryV2TripStartProducer', () => {
 
     process.env.BATTERY_V2_START_PROXY_ENABLED = prev;
     process.env.BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED = prevCrank;
+    if (prevPilot === undefined) delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    else process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED = prevPilot;
   });
 
   it('does not enqueue for BEV profiles', async () => {
@@ -443,6 +447,8 @@ describe('BatteryV2TripStartProducer', () => {
     );
 
     const prev = process.env.BATTERY_V2_START_PROXY_ENABLED;
+    const prevPilot = process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
     process.env.BATTERY_V2_START_PROXY_ENABLED = 'true';
 
     const result = await tripProducer.enqueueStartProxy({
@@ -456,6 +462,8 @@ describe('BatteryV2TripStartProducer', () => {
     expect(queueAdd).not.toHaveBeenCalled();
 
     process.env.BATTERY_V2_START_PROXY_ENABLED = prev;
+    if (prevPilot === undefined) delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    else process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED = prevPilot;
   });
 
   it('applies configured provider delay before job execution', async () => {
@@ -474,6 +482,8 @@ describe('BatteryV2TripStartProducer', () => {
 
     const prevDelay = process.env.BATTERY_V2_START_PROXY_DELAY_MS;
     const prevFlag = process.env.BATTERY_V2_START_PROXY_ENABLED;
+    const prevPilot = process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
     process.env.BATTERY_V2_START_PROXY_ENABLED = 'true';
     process.env.BATTERY_V2_START_PROXY_DELAY_MS = '120000';
 
@@ -488,6 +498,8 @@ describe('BatteryV2TripStartProducer', () => {
 
     process.env.BATTERY_V2_START_PROXY_DELAY_MS = prevDelay;
     process.env.BATTERY_V2_START_PROXY_ENABLED = prevFlag;
+    if (prevPilot === undefined) delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    else process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED = prevPilot;
   });
 });
 

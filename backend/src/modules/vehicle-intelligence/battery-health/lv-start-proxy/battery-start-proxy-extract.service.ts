@@ -1,3 +1,9 @@
+import {
+  evaluateBatteryV2StartProxyPilotScope,
+  getBatteryV2StartProxyPilotForwardCaptureConfig,
+  isBatteryV2StartProxyPilotScopeEnabled,
+  isStartProxyPilotForwardCaptureRuntimeReady,
+} from '@config/battery-health-v2.config';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BatteryMeasurementSessionStatus,
@@ -37,6 +43,7 @@ import {
   recordBatteryStartInsufficientCoverage,
   recordBatteryStartProxy,
 } from '../observability/battery-v2-prometheus.metrics';
+import { StartProxyPilotForwardCaptureService } from './start-proxy-pilot-forward-capture.service';
 
 export type BatteryStartProxyExtractResult =
   | { ok: true; measurementIds: string[]; skipped: false }
@@ -54,6 +61,8 @@ export class BatteryStartProxyExtractService {
     private readonly sessions: BatteryMeasurementSessionService,
     private readonly measurements: BatteryMeasurementService,
     @Optional() private readonly metrics?: TripMetricsService,
+    @Optional()
+    private readonly pilotForwardCapture?: StartProxyPilotForwardCaptureService,
   ) {}
 
   async extractAndPersist(input: {
@@ -62,6 +71,18 @@ export class BatteryStartProxyExtractService {
     tripId: string;
     tripStartedAt: Date;
   }): Promise<BatteryStartProxyExtractResult> {
+    const pilotScope = evaluateBatteryV2StartProxyPilotScope({
+      vehicleId: input.vehicleId,
+      tripStartedAt: input.tripStartedAt,
+    });
+    if (!pilotScope.allowed) {
+      return {
+        ok: true,
+        skipped: true,
+        skipReason: pilotScope.reasonCode,
+      };
+    }
+
     const policyWithoutIce = await this.policyProfiles.resolveForVehicle(
       input.vehicleId,
     );
@@ -94,12 +115,125 @@ export class BatteryStartProxyExtractService {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
     });
-    const points = await this.fetchCrankWindowStrict(
-      dimoTokenId,
-      from,
-      to,
-      providerContext,
-    );
+
+    const processingStartedAt = new Date();
+    let queryFingerprint = '';
+    let pilotBudgetReserved = false;
+
+    if (isBatteryV2StartProxyPilotScopeEnabled()) {
+      const forwardConfig = getBatteryV2StartProxyPilotForwardCaptureConfig();
+      if (forwardConfig.kind === 'misconfigured' || !this.pilotForwardCapture) {
+        return {
+          ok: true,
+          skipped: true,
+          skipReason: 'pilot_forward_capture_misconfigured',
+        };
+      }
+
+      const reserve = await this.pilotForwardCapture.reserveProviderAttempt({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        tripId: input.tripId,
+        dimoTokenId,
+        windowFrom: from,
+        windowTo: to,
+      });
+      if (!reserve.proceed) {
+        return {
+          ok: true,
+          skipped: true,
+          skipReason: reserve.skipReason,
+        };
+      }
+      queryFingerprint = reserve.queryFingerprint;
+      pilotBudgetReserved = isStartProxyPilotForwardCaptureRuntimeReady();
+    }
+
+    const queryStartedAt = new Date();
+    const timingEvidence =
+      this.pilotForwardCapture && isBatteryV2StartProxyPilotScopeEnabled()
+        ? await this.pilotForwardCapture.loadTimingEvidence({
+            vehicleId: input.vehicleId,
+            tripId: input.tripId,
+            tripStartedAt: input.tripStartedAt,
+            processingStartedAt,
+            queryStartedAt,
+          })
+        : null;
+
+    let points: BatteryStartProxyCrankPoint[] = [];
+    let fetchError: string | null = null;
+    try {
+      points = await this.fetchCrankWindowStrict(
+        dimoTokenId,
+        from,
+        to,
+        providerContext,
+      );
+    } catch (err: unknown) {
+      fetchError = err instanceof Error ? err.message : String(err);
+      if (this.pilotForwardCapture && pilotBudgetReserved) {
+        await this.pilotForwardCapture.finalizeProviderAttempt({
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          tripId: input.tripId,
+          outcome: 'unknown',
+          detail: fetchError,
+        });
+      }
+      throw err;
+    }
+
+    if (this.pilotForwardCapture && pilotBudgetReserved) {
+      const rawPersist = await this.pilotForwardCapture.persistRawArchive({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        tripId: input.tripId,
+        tripStartedAt: input.tripStartedAt,
+        dimoTokenId,
+        queryFingerprint,
+        windowFrom: from,
+        windowTo: to,
+        points,
+        httpStatus: fetchError ? null : 200,
+        requestStatus: fetchError ? 'error' : 'ok',
+        errorMessage: fetchError,
+        providerRetries: 0,
+        pilotBudgetReserved: true,
+        timing: timingEvidence ?? {
+          tripFsmStartUtc: input.tripStartedAt.toISOString(),
+          dimoSegmentStartUtc: null,
+          lvSnapshotProviderTimestampUtc: null,
+          ignitionProviderTimestampUtc: null,
+          snapshotProviderFetchedAtUtc: null,
+          startProxyQueryStartedAtUtc: queryStartedAt.toISOString(),
+          processingStartedAtUtc: processingStartedAt.toISOString(),
+          processingCompletedAtUtc: null,
+        },
+      });
+      if (!rawPersist.ok) {
+        await this.pilotForwardCapture.finalizeProviderAttempt({
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          tripId: input.tripId,
+          outcome: 'unknown',
+          detail: rawPersist.skipReason,
+        });
+        return {
+          ok: true,
+          skipped: true,
+          skipReason: rawPersist.skipReason,
+        };
+      }
+
+      await this.pilotForwardCapture.finalizeProviderAttempt({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        tripId: input.tripId,
+        outcome: 'completed',
+        detail: 'raw_archive_persisted',
+      });
+    }
 
     const confirmedIceStart = detectConfirmedIceStart(points, input.tripStartedAt);
     const policy = await this.policyProfiles.resolveForVehicle(input.vehicleId, {
