@@ -74,6 +74,13 @@ describe('m7a-map.utils', () => {
     expect(binding.reasonKey).toBe('trips.m7aMap.bindingSnapshotMismatch');
   });
 
+  it('requires exact bucket label for time alignment', () => {
+    const m7a = baseM7a();
+    const compatible = resolveM7aMotionBinding(baseMotion(), m7a);
+    expect(findM7aPointForBucketLabel(m7a, '2026-01-01T10:00:01.000Z', compatible)).toBeNull();
+    expect(findM7aPointForBucketLabel(m7a, '2026-01-01T10:00:00.000Z', compatible)?.osmWayId).toBe(42);
+  });
+
   it('returns m7a point only when binding is compatible', () => {
     const m7a = baseM7a();
     const compatible = resolveM7aMotionBinding(baseMotion(), m7a);

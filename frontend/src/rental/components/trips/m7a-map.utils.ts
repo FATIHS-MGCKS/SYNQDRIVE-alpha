@@ -36,9 +36,9 @@ export function resolveM7aMotionBinding(
   if (motion.pinnedSnapshotHash !== m7a.pinnedSnapshotHash) {
     return { compatible: false, reasonKey: 'trips.m7aMap.bindingSnapshotMismatch' };
   }
-  if (motion.combinedInputIdentity && m7a.combinedInputIdentity && motion.combinedInputIdentity !== m7a.combinedInputIdentity) {
-    return { compatible: false, reasonKey: 'trips.m7aMap.bindingInputMismatch' };
-  }
+  // Zeitliche Kopplung erfolgt über identisches bucketLabelUtc je Sekunde; combinedInputIdentity
+  // ist pro Shadow-Worker dieselbe Trip-Eingabe-Spalte, aber in unterschiedlichen Intent-Keys
+  // eingebettet (Motion-Bundle vs. M7A+OSM-Fingerprint) — kein harter Gleichheitsgate.
   return { compatible: true, reasonKey: null };
 }
 

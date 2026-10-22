@@ -48,6 +48,7 @@ export function TripM7aMapStatusBanner({
     return (
       <div className="pointer-events-none absolute top-3 right-3 z-20 max-w-[min(100%,18rem)] rounded-lg border border-violet-500/25 bg-background/90 px-2.5 py-1.5 text-[10px] text-foreground backdrop-blur-sm">
         <span className="font-semibold text-violet-700 dark:text-violet-300">{payload.previewLabel}</span>
+        <span className="mt-0.5 block text-muted-foreground">{t('trips.m7aMap.anchorPointsHint')}</span>
         <span className="mt-0.5 block text-muted-foreground">{t('trips.m7aMap.modelDecisionHint')}</span>
       </div>
     );

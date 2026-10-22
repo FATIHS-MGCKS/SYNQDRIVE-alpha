@@ -8,7 +8,9 @@ export const tripsM7aMapTR = {
   'trips.m7aMap.noMapGeometry': 'Bu çalıştırmada haritalanabilir konum çapası yok',
   'trips.m7aMap.legacyNoAnchors': 'Kayıtlı noktası olmayan eski çalıştırma — yeniden değerlendirme gerekli',
   'trips.m7aMap.modelDecisionHint': 'CONFIRMED = model kararı, kanıtlanmış doğruluk değil',
-  'trips.m7aMap.layerRoadAssignment': 'M7A yollar',
+  'trips.m7aMap.anchorPointsHint':
+    'Points show road assignment at GPS positions per second — not an M7A-reconstructed road line.',
+  'trips.m7aMap.layerRoadAssignment': 'M7A-Straßenzuordnung',
   'trips.m7aMap.outcomeConfirmed': 'Atandı (model)',
   'trips.m7aMap.outcomeAmbiguous': 'Belirsiz',
   'trips.m7aMap.outcomeUnknown': 'Bilinmiyor',
@@ -19,7 +21,6 @@ export const tripsM7aMapTR = {
   'trips.m7aMap.bindingMotionUnverified': 'Motion ızgarası doğrulanmadı — birleşik görünüm kapalı',
   'trips.m7aMap.bindingSnapshotMismatch': 'Motion ve M7A farklı snapshot kullanıyor',
   'trips.m7aMap.bindingSnapshotMissing': 'Snapshot bağlantısı eksik',
-  'trips.m7aMap.bindingInputMismatch': 'Motion ve M7A giriş kimliği uyuşmuyor',
   'trips.m7aMap.bindingM7aUnavailable': 'Bu kombinasyon için M7A ataması yok',
   'trips.m7aMap.combinedUnavailable': 'Birleşik Motion/M7A görünümü kullanılamıyor',
   'trips.m7aMap.pickListTitle': 'Tekrarlanan geçiş',
