@@ -68,7 +68,12 @@ export function buildP11RecencyEpisodeSet<T extends { episode: P11QualifiedEpiso
   const windowMs = P11_RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
   const inWindow = episodesWithBands.filter((row) => {
     const t = observationProviderEventTimeMs(row.episode);
-    return Number.isFinite(evalMs) && evalMs - t <= windowMs;
+    return (
+      Number.isFinite(evalMs) &&
+      Number.isFinite(t) &&
+      t <= evalMs &&
+      evalMs - t <= windowMs
+    );
   });
   if (inWindow.length >= 2) {
     return inWindow;

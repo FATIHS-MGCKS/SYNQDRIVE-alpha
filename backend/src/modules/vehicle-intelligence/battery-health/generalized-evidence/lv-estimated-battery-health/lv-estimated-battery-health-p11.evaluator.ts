@@ -5,6 +5,7 @@ import {
 import {
   isEligibleRestObservationForConditionV1,
   medianRestVoltageMv,
+  observationProviderEventTimeMs,
 } from '../lv-operational-condition/lv-operational-condition-observation.policy';
 import { evaluateLvOperationalConditionV1 } from '../lv-operational-condition/lv-operational-condition-v1.evaluator';
 import {
@@ -101,14 +102,22 @@ export function evaluateLvEstimatedBatteryHealthP11V1(
     'Low-voltage REST events may be retained as evidence without defining stable baseline.',
   ];
 
-  const eligible = input.conditionInput.eligibleRestObservations.filter(
-    isEligibleRestObservationForConditionV1,
+  const evalMs = Date.parse(input.conditionInput.evaluatedAtIso);
+  const visibleAsOfEvaluation = (obs: { providerObservationAt: string | null; voltageObservedAt: string }) => {
+    const t = observationProviderEventTimeMs(obs as Parameters<typeof observationProviderEventTimeMs>[0]);
+    return Number.isFinite(evalMs) ? Number.isFinite(t) && t <= evalMs : true;
+  };
+  const eligible = input.conditionInput.eligibleRestObservations
+    .filter(isEligibleRestObservationForConditionV1)
+    .filter(visibleAsOfEvaluation);
+  const timeline = (input.conditionInput.assessmentTimelineObservations ?? eligible).filter(
+    visibleAsOfEvaluation,
   );
-  const timeline = input.conditionInput.assessmentTimelineObservations ?? eligible;
 
   const selection = selectP11EpisodeRepresentatives({
     eligibleRestObservations: eligible,
     assessmentTimelineObservations: timeline,
+    evaluatedAtIso: input.conditionInput.evaluatedAtIso,
   });
   const episodes = selection.episodes;
   if (selection.lowVoltageEvents.length > 0) {

@@ -65,12 +65,17 @@ function isNearHeartbeatRung(restAgeHours: number): boolean {
 function followUpIndicatesPreStartWake(
   restPoint: LvOperationalConditionObservationV1,
   timeline: LvOperationalConditionObservationV1[],
+  evaluationHorizonMs: number,
 ): boolean {
   const t0 = observationProviderEventTimeMs(restPoint);
+  if (!Number.isFinite(t0) || !Number.isFinite(evaluationHorizonMs) || t0 > evaluationHorizonMs) {
+    return false;
+  }
+  const followEndMs = Math.min(t0 + P11_PRE_START_FOLLOW_UP_MS, evaluationHorizonMs);
   for (const next of timeline) {
-    const dt = observationProviderEventTimeMs(next) - t0;
-    if (dt <= 0) continue;
-    if (dt > P11_PRE_START_FOLLOW_UP_MS) break;
+    const tNext = observationProviderEventTimeMs(next);
+    if (tNext <= t0) continue;
+    if (tNext > followEndMs) break;
     if (next.isLvCharging === true) return true;
     if (next.engineRunning === true) return true;
     if (next.evidenceClass === 'CHARGING_CONTAMINATED') return true;
@@ -118,16 +123,25 @@ function classifyStability(
 export function selectP11EpisodeRepresentatives(input: {
   eligibleRestObservations: LvOperationalConditionObservationV1[];
   assessmentTimelineObservations: LvOperationalConditionObservationV1[];
+  /** Provider-event horizon for as-of integrity (inclusive). Required for shadow replay. */
+  evaluatedAtIso?: string;
   lowVoltageThresholdV?: number;
 }): {
   episodes: P11QualifiedEpisodeV1[];
   lowVoltageEvents: P11LowVoltageRestEventV1[];
   trace: P11EpisodeSelectionTraceV1;
 } {
-  const timeline = [...input.assessmentTimelineObservations].sort(
-    (a, b) => observationProviderEventTimeMs(a) - observationProviderEventTimeMs(b),
-  );
-  const eligible = input.eligibleRestObservations.filter(isEligibleRestObservationForConditionV1);
+  const evalMs = input.evaluatedAtIso ? Date.parse(input.evaluatedAtIso) : Number.POSITIVE_INFINITY;
+  const visibleAtEval = (obs: LvOperationalConditionObservationV1): boolean => {
+    const t = observationProviderEventTimeMs(obs);
+    return Number.isFinite(evalMs) ? Number.isFinite(t) && t <= evalMs : true;
+  };
+  const timeline = [...input.assessmentTimelineObservations]
+    .filter(visibleAtEval)
+    .sort((a, b) => observationProviderEventTimeMs(a) - observationProviderEventTimeMs(b));
+  const eligible = input.eligibleRestObservations
+    .filter(isEligibleRestObservationForConditionV1)
+    .filter(visibleAtEval);
   const lowVoltageThresholdV = input.lowVoltageThresholdV ?? 12.2;
 
   const bySession = new Map<string, LvOperationalConditionObservationV1[]>();
@@ -150,7 +164,7 @@ export function selectP11EpisodeRepresentatives(input: {
       (a, b) => observationProviderEventTimeMs(a) - observationProviderEventTimeMs(b),
     );
     const annotated = sorted.map((obs) => {
-      const preStart = followUpIndicatesPreStartWake(obs, timeline);
+      const preStart = followUpIndicatesPreStartWake(obs, timeline, evalMs);
       return { obs, preStart };
     });
 
