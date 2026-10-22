@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
-import { gzipSync } from 'zlib';
+import { gunzipSync, gzipSync } from 'zlib';
 import { DI_V0_MOTION_CORE_SHADOW_TUNING } from './di-v0-motion-core-shadow.config';
 import type { DiV0MotionCoreShadowPayloadV1, DiV0MotionCoreShadowSummaryJson } from './di-v0-motion-core-shadow.types';
 
@@ -28,8 +28,66 @@ function isIdempotentUniqueViolation(error: unknown): boolean {
   return false;
 }
 
+export type DiV0MotionCoreShadowRunTripRow = {
+  id: string;
+  workItemId: string;
+  shadowStatus: string;
+  pinnedSnapshotHash: string;
+  combinedInputIdentity: string;
+  shadowBundleVersion: string;
+  summaryJson: DiV0MotionCoreShadowSummaryJson;
+  payloadGzip: Buffer;
+  createdAt: Date;
+};
+
 export class DiV0MotionCoreShadowRunRepository {
   constructor(private readonly prisma: PrismaClient) {}
+
+  async findLatestRunForTrip(scope: {
+    organizationId: string;
+    vehicleId: string;
+    tripId: string;
+  }): Promise<DiV0MotionCoreShadowRunTripRow | null> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        work_item_id: string;
+        shadow_status: string;
+        pinned_snapshot_hash: string;
+        combined_input_identity: string;
+        shadow_bundle_version: string;
+        summary_json: DiV0MotionCoreShadowSummaryJson;
+        payload_gzip: Buffer;
+        created_at: Date;
+      }>
+    >`
+      SELECT id, work_item_id, shadow_status, pinned_snapshot_hash, combined_input_identity,
+        shadow_bundle_version, summary_json, payload_gzip, created_at
+      FROM di_v0_motion_core_shadow_runs_v1
+      WHERE organization_id = ${scope.organizationId}
+        AND vehicle_id = ${scope.vehicleId}
+        AND trip_id = ${scope.tripId}
+      ORDER BY created_at DESC
+      LIMIT 1`;
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      workItemId: row.work_item_id,
+      shadowStatus: row.shadow_status,
+      pinnedSnapshotHash: row.pinned_snapshot_hash,
+      combinedInputIdentity: row.combined_input_identity,
+      shadowBundleVersion: row.shadow_bundle_version,
+      summaryJson: row.summary_json,
+      payloadGzip: Buffer.from(row.payload_gzip),
+      createdAt: row.created_at,
+    };
+  }
+
+  decodePayload(payloadGzip: Buffer): DiV0MotionCoreShadowPayloadV1 {
+    const json = gunzipSync(payloadGzip).toString('utf8');
+    return JSON.parse(json) as DiV0MotionCoreShadowPayloadV1;
+  }
 
   async findSucceededForIntent(workItemId: string, shadowIntentKey: string): Promise<{ id: string } | null> {
     const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
