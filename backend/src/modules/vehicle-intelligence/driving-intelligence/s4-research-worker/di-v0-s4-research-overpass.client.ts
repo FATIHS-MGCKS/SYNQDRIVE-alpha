@@ -26,6 +26,7 @@ export async function fetchBoundedOverpassJson(
   bbox: DiV0S4ResearchBbox,
   input: {
     endpoint: string;
+    userAgent: string;
     timeoutMs: number;
     maxResponseBytes: number;
   },
@@ -36,7 +37,10 @@ export async function fetchBoundedOverpassJson(
   try {
     const res = await fetch(input.endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': input.userAgent,
+      },
       body: `data=${encodeURIComponent(query)}`,
       signal: controller.signal,
     });

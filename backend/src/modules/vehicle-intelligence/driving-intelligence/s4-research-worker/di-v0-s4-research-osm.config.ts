@@ -1,6 +1,7 @@
 export const DI_V0_S4_RESEARCH_OSM_ENV = {
   overpassEnabled: 'DI_V0_S4_RESEARCH_OSM_OVERPASS_ENABLED',
   overpassEndpoint: 'DI_V0_S4_RESEARCH_OSM_OVERPASS_ENDPOINT',
+  overpassUserAgent: 'DI_V0_S4_RESEARCH_OSM_OVERPASS_USER_AGENT',
   maxBboxSpanDeg: 'DI_V0_S4_RESEARCH_OSM_MAX_BBOX_SPAN_DEG',
   requestTimeoutMs: 'DI_V0_S4_RESEARCH_OSM_REQUEST_TIMEOUT_MS',
   maxUncompressedBytes: 'DI_V0_S4_RESEARCH_OSM_MAX_UNCOMPRESSED_BYTES',
@@ -11,6 +12,8 @@ export const DI_V0_S4_RESEARCH_OSM_ENV = {
 
 export const DI_V0_S4_RESEARCH_OSM_TUNING = {
   defaultOverpassEndpoint: 'https://overpass-api.de/api/interpreter',
+  /** OSM Overpass etiquette: requests without User-Agent are rejected (HTTP 406) by public instances. */
+  defaultOverpassUserAgent: 'SynqDrive-DI-Research/1.0 (+https://synqdrive.eu; fleet OSM corridor fetch)',
   defaultMaxBboxSpanDeg: 0.08,
   defaultRequestTimeoutMs: 25_000,
   defaultMaxUncompressedBytes: 8_000_000,
@@ -23,6 +26,7 @@ export const DI_V0_S4_RESEARCH_OSM_TUNING = {
 export interface DiV0S4ResearchOsmRuntimeConfig {
   overpassEnabled: boolean;
   overpassEndpoint: string;
+  overpassUserAgent: string;
   maxBboxSpanDeg: number;
   requestTimeoutMs: number;
   maxUncompressedBytes: number;
@@ -37,6 +41,8 @@ export function parseDiV0S4ResearchOsmRuntimeConfig(
   const flag = env[DI_V0_S4_RESEARCH_OSM_ENV.overpassEnabled]?.trim().toLowerCase();
   const overpassEnabled = flag === '1' || flag === 'true' || flag === 'yes';
   const endpoint = env[DI_V0_S4_RESEARCH_OSM_ENV.overpassEndpoint]?.trim() || DI_V0_S4_RESEARCH_OSM_TUNING.defaultOverpassEndpoint;
+  const userAgent =
+    env[DI_V0_S4_RESEARCH_OSM_ENV.overpassUserAgent]?.trim() || DI_V0_S4_RESEARCH_OSM_TUNING.defaultOverpassUserAgent;
   const span = Number.parseFloat(env[DI_V0_S4_RESEARCH_OSM_ENV.maxBboxSpanDeg] ?? '');
   const timeout = Number.parseInt(env[DI_V0_S4_RESEARCH_OSM_ENV.requestTimeoutMs] ?? '', 10);
   const maxUncompressed = Number.parseInt(env[DI_V0_S4_RESEARCH_OSM_ENV.maxUncompressedBytes] ?? '', 10);
@@ -46,6 +52,7 @@ export function parseDiV0S4ResearchOsmRuntimeConfig(
   return {
     overpassEnabled,
     overpassEndpoint: endpoint,
+    overpassUserAgent: userAgent,
     maxBboxSpanDeg: Number.isFinite(span) ? span : DI_V0_S4_RESEARCH_OSM_TUNING.defaultMaxBboxSpanDeg,
     requestTimeoutMs: Number.isFinite(timeout) ? timeout : DI_V0_S4_RESEARCH_OSM_TUNING.defaultRequestTimeoutMs,
     maxUncompressedBytes: Number.isFinite(maxUncompressed)
