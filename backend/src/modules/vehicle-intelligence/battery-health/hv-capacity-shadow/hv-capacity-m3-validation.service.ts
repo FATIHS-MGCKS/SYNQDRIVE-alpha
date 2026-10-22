@@ -1,9 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { HvChargeSession, Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { isBatteryV2HvCapacityShadowEnabled } from '@config/battery-health-v2.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
-import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
+import {
+  buildHvCapacityShadowEvidenceFingerprint,
+  shadowEvidenceFromChargeSessionRow,
+} from './hv-capacity-shadow-evidence.policy';
+import { mapHvChargeSessionRowToM3Input } from './hv-capacity-m3-session-input.mapper';
 import {
   buildHvM3CapacityObservationIdempotencyKey,
   HvCapacityObservationRepository,
@@ -64,23 +68,33 @@ export class HvCapacityM3ValidationService {
     const sessionInput =
       input.sessionOverride ?? mapHvChargeSessionRowToM3Input(sessionRow, metadata);
 
+    const evidenceFingerprint = buildHvCapacityShadowEvidenceFingerprint(
+      shadowEvidenceFromChargeSessionRow(sessionRow, metadata),
+    );
+
     const gate = evaluateHvM3SessionGate(sessionInput);
     if (!gate.eligible) {
-      await this.persistSessionValidation(sessionRow.id, metadata, {
-        method: HV_M3_CAPACITY_METHOD,
-        modelVersion: HV_M3_MODEL_VERSION,
-        methodRole: HV_M3_METHOD_ROLE,
-        estimatedCapacityKwh: null,
-        segmentAddedEnergyKwh: sessionInput.energyAddedKwh,
-        deltaSocPercent: sessionInput.deltaSocPercent,
-        gateEligible: false,
-        gateReasonCodes: gate.reasonCodes,
-        methodConflict: false,
-        methodConflictDeviationRatio: null,
-        m2MedianCapacityKwh: input.m2MedianCapacityKwh ?? null,
-        persisted: false,
-        validatedAt: new Date().toISOString(),
-      });
+      await this.invalidatePersistedM3Observations(sessionRow.id);
+      await this.persistSessionValidation(
+        sessionRow,
+        metadata,
+        {
+          method: HV_M3_CAPACITY_METHOD,
+          modelVersion: HV_M3_MODEL_VERSION,
+          methodRole: HV_M3_METHOD_ROLE,
+          estimatedCapacityKwh: null,
+          segmentAddedEnergyKwh: sessionInput.energyAddedKwh,
+          deltaSocPercent: sessionInput.deltaSocPercent,
+          gateEligible: false,
+          gateReasonCodes: gate.reasonCodes,
+          methodConflict: false,
+          methodConflictDeviationRatio: null,
+          m2MedianCapacityKwh: input.m2MedianCapacityKwh ?? null,
+          persisted: false,
+          validatedAt: new Date().toISOString(),
+        },
+        evidenceFingerprint,
+      );
 
       return {
         sessionId: sessionRow.id,
@@ -98,7 +112,13 @@ export class HvCapacityM3ValidationService {
       modelVersion: HV_M3_MODEL_VERSION,
     });
 
-    if (alreadyProcessed) {
+    const m3ValidationStale =
+      metadata.m3Validation == null ||
+      metadata.shadowEvidenceFingerprint !== evidenceFingerprint ||
+      metadata.m3Validation.deltaSocPercent !== sessionInput.deltaSocPercent ||
+      metadata.m3Validation.segmentAddedEnergyKwh !== sessionInput.energyAddedKwh;
+
+    if (alreadyProcessed && !m3ValidationStale) {
       this.logger.debug(`M3 validation already present session=${sessionRow.id}`);
       return {
         sessionId: sessionRow.id,
@@ -111,6 +131,10 @@ export class HvCapacityM3ValidationService {
         persisted: false,
         skippedReason: 'already_processed',
       };
+    }
+
+    if (alreadyProcessed && m3ValidationStale) {
+      await this.invalidatePersistedM3Observations(sessionRow.id);
     }
 
     const estimate = buildHvM3Estimate({
@@ -161,21 +185,26 @@ export class HvCapacityM3ValidationService {
       metadata: observationMetadata,
     });
 
-    await this.persistSessionValidation(sessionRow.id, metadata, {
-      method: HV_M3_CAPACITY_METHOD,
-      modelVersion: HV_M3_MODEL_VERSION,
-      methodRole: HV_M3_METHOD_ROLE,
-      estimatedCapacityKwh: estimate.estimatedCapacityKwh,
-      segmentAddedEnergyKwh: estimate.segmentAddedEnergyKwh,
-      deltaSocPercent: estimate.deltaSocPercent,
-      gateEligible: true,
-      gateReasonCodes: estimate.gate.reasonCodes,
-      methodConflict: estimate.methodConflict,
-      methodConflictDeviationRatio: estimate.methodConflictDeviationRatio,
-      m2MedianCapacityKwh: estimate.m2MedianCapacityKwh,
-      persisted: true,
-      validatedAt: new Date().toISOString(),
-    });
+    await this.persistSessionValidation(
+      sessionRow,
+      metadata,
+      {
+        method: HV_M3_CAPACITY_METHOD,
+        modelVersion: HV_M3_MODEL_VERSION,
+        methodRole: HV_M3_METHOD_ROLE,
+        estimatedCapacityKwh: estimate.estimatedCapacityKwh,
+        segmentAddedEnergyKwh: estimate.segmentAddedEnergyKwh,
+        deltaSocPercent: estimate.deltaSocPercent,
+        gateEligible: true,
+        gateReasonCodes: estimate.gate.reasonCodes,
+        methodConflict: estimate.methodConflict,
+        methodConflictDeviationRatio: estimate.methodConflictDeviationRatio,
+        m2MedianCapacityKwh: estimate.m2MedianCapacityKwh,
+        persisted: true,
+        validatedAt: new Date().toISOString(),
+      },
+      evidenceFingerprint,
+    );
 
     this.logger.debug(
       `M3 validation persisted session=${sessionRow.id} capacity=${estimate.estimatedCapacityKwh.toFixed(2)} kWh conflict=${estimate.methodConflict}`,
@@ -191,20 +220,47 @@ export class HvCapacityM3ValidationService {
   }
 
   private async persistSessionValidation(
-    sessionId: string,
+    session: {
+      id: string;
+      startAt: Date;
+      endAt: Date | null;
+      startSocPercent: number | null;
+      endSocPercent: number | null;
+      startEnergyKwh: number | null;
+      endEnergyKwh: number | null;
+      energyAddedKwh: number | null;
+      deltaSocPercent: number | null;
+    },
     metadata: HvChargeSessionMetadata,
     validation: HvCapacityM3SessionValidation,
+    evidenceFingerprint?: string,
   ): Promise<void> {
+    const fingerprint =
+      evidenceFingerprint ??
+      buildHvCapacityShadowEvidenceFingerprint(
+        shadowEvidenceFromChargeSessionRow(session, metadata),
+      );
     const nextMetadata: HvChargeSessionMetadata = {
       ...metadata,
       m3Validation: validation,
+      shadowEvidenceFingerprint: fingerprint,
     };
 
     await this.prisma.hvChargeSession.update({
-      where: { id: sessionId },
+      where: { id: session.id },
       data: {
         metadata: nextMetadata as unknown as Prisma.InputJsonValue,
       },
+    });
+  }
+
+  private async invalidatePersistedM3Observations(
+    chargeSessionId: string,
+  ): Promise<void> {
+    await this.observations.deleteSessionObservations({
+      chargeSessionId,
+      methods: [HV_M3_CAPACITY_METHOD],
+      modelVersion: HV_M3_MODEL_VERSION,
     });
   }
 
@@ -223,51 +279,4 @@ export class HvCapacityM3ValidationService {
   }
 }
 
-export function mapHvChargeSessionRowToM3Input(
-  session: Pick<
-    HvChargeSession,
-    | 'source'
-    | 'isOngoing'
-    | 'startAt'
-    | 'endAt'
-    | 'startSocPercent'
-    | 'endSocPercent'
-    | 'startEnergyKwh'
-    | 'endEnergyKwh'
-    | 'energyAddedKwh'
-    | 'deltaSocPercent'
-  >,
-  metadata: HvChargeSessionMetadata,
-): HvCapacityM3SessionInput {
-  return {
-    source: session.source,
-    isOngoing: session.isOngoing,
-    startAt: session.startAt,
-    endAt: session.endAt,
-    startSocPercent: session.startSocPercent,
-    endSocPercent: session.endSocPercent,
-    startEnergyKwh: session.startEnergyKwh,
-    endEnergyKwh: session.endEnergyKwh,
-    energyAddedKwh: session.energyAddedKwh,
-    deltaSocPercent: session.deltaSocPercent,
-    capacityValidationEligible: metadata.capacityValidationEligible === true,
-    qualityStatus: metadata.qualityStatus ?? null,
-    boundaryStrength: resolveM3BoundaryStrength(session),
-  };
-}
-
-function resolveM3BoundaryStrength(
-  session: Pick<HvChargeSession, 'source' | 'startAt' | 'endAt'>,
-): HvCapacityM3SessionInput['boundaryStrength'] {
-  if (
-    session.source === HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE &&
-    session.startAt &&
-    session.endAt
-  ) {
-    return 'strong';
-  }
-  if (session.startAt && session.endAt) {
-    return 'weak';
-  }
-  return 'invalid';
-}
+export { mapHvChargeSessionRowToM3Input } from './hv-capacity-m3-session-input.mapper';

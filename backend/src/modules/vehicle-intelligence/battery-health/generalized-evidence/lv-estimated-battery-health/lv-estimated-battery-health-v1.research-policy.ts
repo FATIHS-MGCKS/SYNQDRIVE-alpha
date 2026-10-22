@@ -17,7 +17,8 @@ import type {
 export type LvEstimatedBatteryHealthResearchPolicyVariant =
   | 'P1_BASELINE'
   | 'P2_LOAD_REQUIRED_GREEN'
-  | 'P3_CONSERVATIVE_GREEN';
+  | 'P3_CONSERVATIVE_GREEN'
+  | 'P11_CONDITION_POLICY_V2';
 
 export type ResearchHealthDecisionRuleIdV1 =
   | 'RESEARCH_P2_GREEN_REQUIRES_VALIDATED_LOAD'

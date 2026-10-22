@@ -34,6 +34,7 @@ describe('HvCapacityM3ValidationService', () => {
   const observations = {
     hasSessionObservations: jest.fn(),
     createIdempotent: jest.fn(),
+    deleteSessionObservations: jest.fn(),
   };
 
   let service: HvCapacityM3ValidationService;
@@ -62,6 +63,7 @@ describe('HvCapacityM3ValidationService', () => {
       },
     });
     observations.hasSessionObservations.mockResolvedValue(false);
+    observations.deleteSessionObservations.mockResolvedValue(0);
     observations.createIdempotent.mockImplementation(async (input) => ({
       id: 'obs-m3',
       ...input,
@@ -145,6 +147,52 @@ describe('HvCapacityM3ValidationService', () => {
 
   it('skips when session observations already exist', async () => {
     observations.hasSessionObservations.mockResolvedValue(true);
+    prisma.hvChargeSession.findFirst.mockResolvedValue({
+      id: chargeSessionId,
+      organizationId,
+      vehicleId,
+      source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+      isOngoing: false,
+      startAt: TESLA_AUDIT_M3_SESSION_4_INPUT.startAt,
+      endAt: TESLA_AUDIT_M3_SESSION_4_INPUT.endAt,
+      startSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.startSocPercent,
+      endSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.endSocPercent,
+      startEnergyKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.startEnergyKwh,
+      endEnergyKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.endEnergyKwh,
+      energyAddedKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.energyAddedKwh,
+      deltaSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.deltaSocPercent,
+      metadata: {
+        capacityValidationEligible: true,
+        qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+        segmentAddedEnergyMinKwh: 0,
+        m3Validation: {
+          method: HV_M3_CAPACITY_METHOD,
+          modelVersion: HV_M3_MODEL_VERSION,
+          methodRole: 'VALIDATION_ONLY',
+          estimatedCapacityKwh: TESLA_AUDIT_M3_SESSION_4_EXPECTED_CAPACITY_KWH,
+          segmentAddedEnergyKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.energyAddedKwh,
+          deltaSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.deltaSocPercent,
+          gateEligible: true,
+          gateReasonCodes: [],
+          methodConflict: false,
+          methodConflictDeviationRatio: null,
+          m2MedianCapacityKwh: TESLA_AUDIT_M2_MEDIAN_FOR_CONFLICT_KWH,
+          persisted: true,
+          validatedAt: new Date().toISOString(),
+        },
+        shadowEvidenceFingerprint: [
+          TESLA_AUDIT_M3_SESSION_4_INPUT.startAt.getTime(),
+          TESLA_AUDIT_M3_SESSION_4_INPUT.endAt?.getTime() ?? 'ongoing',
+          TESLA_AUDIT_M3_SESSION_4_INPUT.startSocPercent,
+          TESLA_AUDIT_M3_SESSION_4_INPUT.endSocPercent,
+          TESLA_AUDIT_M3_SESSION_4_INPUT.startEnergyKwh,
+          TESLA_AUDIT_M3_SESSION_4_INPUT.endEnergyKwh,
+          TESLA_AUDIT_M3_SESSION_4_INPUT.energyAddedKwh,
+          TESLA_AUDIT_M3_SESSION_4_INPUT.deltaSocPercent,
+          0,
+        ].join(':'),
+      },
+    });
 
     const result = await service.validateSession({
       organizationId,
@@ -155,6 +203,47 @@ describe('HvCapacityM3ValidationService', () => {
 
     expect(result.persisted).toBe(false);
     expect(result.skippedReason).toBe('already_processed');
+    expect(observations.createIdempotent).not.toHaveBeenCalled();
+  });
+
+  it('invalidates persisted M3 observation when gate later fails (FABLE D2 / provider correction)', async () => {
+    observations.hasSessionObservations.mockResolvedValue(true);
+    prisma.hvChargeSession.findFirst.mockResolvedValue({
+      id: chargeSessionId,
+      organizationId,
+      vehicleId,
+      source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+      isOngoing: false,
+      startAt: TESLA_AUDIT_M3_SESSION_4_INPUT.startAt,
+      endAt: TESLA_AUDIT_M3_SESSION_4_INPUT.endAt,
+      startSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.startSocPercent,
+      endSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.endSocPercent,
+      startEnergyKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.startEnergyKwh,
+      endEnergyKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.endEnergyKwh,
+      energyAddedKwh: TESLA_AUDIT_M3_SESSION_4_INPUT.energyAddedKwh,
+      deltaSocPercent: TESLA_AUDIT_M3_SESSION_4_INPUT.deltaSocPercent,
+      metadata: {
+        capacityValidationEligible: true,
+        qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+        segmentAddedEnergyMinKwh: 5,
+        segmentAddedEnergyMaxKwh: 36,
+      },
+    });
+
+    const result = await service.validateSession({
+      organizationId,
+      vehicleId,
+      chargeSessionId,
+      m2MedianCapacityKwh: TESLA_AUDIT_M2_MEDIAN_FOR_CONFLICT_KWH,
+    });
+
+    expect(result.persisted).toBe(false);
+    expect(result.skippedReason).toContain(HV_M3_GATE_REASONS.ADDED_ENERGY_RESET);
+    expect(observations.deleteSessionObservations).toHaveBeenCalledWith({
+      chargeSessionId,
+      methods: [HV_M3_CAPACITY_METHOD],
+      modelVersion: HV_M3_MODEL_VERSION,
+    });
     expect(observations.createIdempotent).not.toHaveBeenCalled();
   });
 });

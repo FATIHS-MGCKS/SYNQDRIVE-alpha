@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildLvEstimatedBatteryHealthInputV1 } from '../vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-input.builder';
-import { evaluateLvEstimatedBatteryHealthV1 } from '../vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-v1.evaluator';
+import {
+  evaluateLvEstimatedBatteryHealthV1,
+  evaluateLvEstimatedBatteryHealthV1WithResearchPolicy,
+} from '../vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-v1.evaluator';
+import { P11_PRE_START_FOLLOW_UP_MS } from '../vehicle-intelligence/battery-health/generalized-evidence/lv-estimated-battery-health/lv-estimated-battery-health-p11.constants';
 import { LvMeasuredIntelligenceReadService } from '../vehicle-intelligence/battery-health/generalized-evidence/lv-measured-intelligence/lv-measured-intelligence-read.service';
 import {
   LV_GE_ASSESSMENT_MAX_ROWS,
@@ -53,6 +57,10 @@ export class BatteryV2LvEstimatedHealthShadowAdminService {
     );
 
     const assessment = evaluateLvEstimatedBatteryHealthV1(healthInput);
+    const p11ShadowAssessment = evaluateLvEstimatedBatteryHealthV1WithResearchPolicy(
+      healthInput,
+      'P11_CONDITION_POLICY_V2',
+    );
     const condition = healthInput.conditionInput;
 
     return {
@@ -60,6 +68,13 @@ export class BatteryV2LvEstimatedHealthShadowAdminService {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       evaluatedAtIso: assessment.evaluatedAtIso,
+      temporalSemantics: {
+        observationAsOfAuthority: 'PROVIDER_OBSERVATION_TIMESTAMP',
+        ingestionTimeAsOfGuarantee: false,
+        preStartFollowUpWindowMs: P11_PRE_START_FOLLOW_UP_MS,
+        note:
+          'Assessments use GE rows loaded for measuredFrom–measuredTo with provider timestamps <= evaluatedAtIso. Ingest lag is not modeled on LvOperationalConditionObservationV1.',
+      },
       measuredIntelligenceBoundaryNote: 'MEASURED_INTELLIGENCE_NOT_ASSESSED_IS_NOT_N16_RESULT',
       dataSelection: {
         ...condition.geDataSelection,
@@ -68,6 +83,7 @@ export class BatteryV2LvEstimatedHealthShadowAdminService {
         historicalQueryMode: condition.historicalQueryMode,
       },
       assessment,
+      p11ShadowAssessment,
     };
   }
 }

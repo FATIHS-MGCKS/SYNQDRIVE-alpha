@@ -711,3 +711,81 @@ describe('mergeHvChargeSessionUpdate — R16.1 mixed measurement & chronology ha
     expect(sourceRevisionFingerprint(afterRow)).not.toBe(fpBefore);
   });
 });
+
+describe('mergeHvChargeSessionUpdate — shadow artifact lifecycle (P1-2)', () => {
+  const reconciledAt = new Date('2026-10-13T17:02:00.000Z');
+
+  it('clears M2/M3 shadow metadata on progressive completed refresh (FABLE G5)', () => {
+    const existing: HvChargeSessionRow = {
+      ...completedRow(VEH_A, ORG, {
+      endAt: new Date('2026-10-13T14:56:00.000Z'),
+      endSocPercent: 94.02,
+      energyAddedKwh: 5.14,
+      endEnergyKwh: 51.76,
+      deltaSocPercent: 10.02,
+    }),
+      metadata: baseMeta({
+      m2CapacitySummary: {
+        method: 'CURRENT_ENERGY_OVER_SOC',
+        gateVersion: 1,
+        modelVersion: 1,
+        computedAt: '2026-10-13T15:00:00.000Z',
+        status: 'STABLE_SHADOW',
+        shadowGatePassed: true,
+        gateReasonCodes: [],
+        stats: {
+          validSampleCount: 120,
+          totalSampleCount: 120,
+          outlierCount: 0,
+          medianCapacityKwh: 72,
+          p10CapacityKwh: 71,
+          p90CapacityKwh: 73,
+          madKwh: 0.1,
+          robustSpreadKwh: 0.15,
+          coefficientOfVariation: 0.001,
+          minSocPercent: 30,
+          maxSocPercent: 80,
+          preferredBandSampleCount: 80,
+          socSpanPercent: 50,
+          temporalCoverageRatio: 1,
+          temporalSpanMs: 7200000,
+          providerGapCount: 0,
+          maxProviderGapMs: null,
+          dominantDuplicateRatio: 0,
+        },
+      },
+      m3Validation: {
+        method: 'SEGMENT_ADDED_ENERGY_OVER_SOC',
+        modelVersion: 1,
+        methodRole: 'VALIDATION_ONLY',
+        estimatedCapacityKwh: 72,
+        segmentAddedEnergyKwh: 27,
+        deltaSocPercent: 37.5,
+        gateEligible: true,
+        gateReasonCodes: [],
+        methodConflict: false,
+        methodConflictDeviationRatio: null,
+        m2MedianCapacityKwh: 72,
+        persisted: true,
+        validatedAt: '2026-10-13T15:00:00.000Z',
+      },
+      shadowEvidenceFingerprint: 'stale-fp',
+    }) as object,
+    };
+
+    const incoming = incomingDraft(VEH_A, ORG, {
+      endAt: new Date('2026-10-13T16:12:09.193Z'),
+      endSocPercent: 100,
+      endEnergyKwh: 54.74,
+      energyAddedKwh: 8.64,
+      deltaSocPercent: 16,
+    });
+
+    const merged = mergeHvChargeSessionUpdate({ existing, incoming, reconciledAt });
+    const meta = merged.update?.metadata as HvChargeSessionMetadata;
+    expect(merged.changed).toBe(true);
+    expect(meta.m2CapacitySummary).toBeUndefined();
+    expect(meta.m3Validation).toBeUndefined();
+    expect(meta.shadowEvidenceFingerprint).toBeUndefined();
+  });
+});

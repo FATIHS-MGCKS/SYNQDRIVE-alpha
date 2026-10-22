@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import type { HvCapacityObservation, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
+import {
+  buildHvCapacityShadowEvidenceFingerprint,
+  shadowEvidenceFromChargeSessionRow,
+} from './hv-capacity-shadow-evidence.policy';
 import { aggregateHvCapacitySessionSummary } from './hv-capacity-session-summary.aggregator';
 import {
   HV_M2_CAPACITY_METHOD,
@@ -48,7 +52,7 @@ export class HvCapacitySessionSummaryService {
       },
     });
 
-    await this.persistSummary(session.id, metadata, summary);
+    await this.persistSummary(session, metadata, summary);
     return summary;
   }
 
@@ -85,17 +89,30 @@ export class HvCapacitySessionSummaryService {
   }
 
   private async persistSummary(
-    sessionId: string,
+    session: {
+      id: string;
+      startAt: Date;
+      endAt: Date | null;
+      startSocPercent: number | null;
+      endSocPercent: number | null;
+      startEnergyKwh: number | null;
+      endEnergyKwh: number | null;
+      energyAddedKwh: number | null;
+      deltaSocPercent: number | null;
+    },
     metadata: HvChargeSessionMetadata,
     summary: HvCapacitySessionSummary,
   ): Promise<void> {
     const nextMetadata: HvChargeSessionMetadata = {
       ...metadata,
       m2CapacitySummary: summary,
+      shadowEvidenceFingerprint: buildHvCapacityShadowEvidenceFingerprint(
+        shadowEvidenceFromChargeSessionRow(session, metadata),
+      ),
     };
 
     await this.prisma.hvChargeSession.update({
-      where: { id: sessionId },
+      where: { id: session.id },
       data: {
         metadata: nextMetadata as unknown as Prisma.InputJsonValue,
       },
