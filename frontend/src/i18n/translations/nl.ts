@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapNL } from './rental-legacy-gap.nl';
 import { tripsMotionMapNL } from './trips-motion-map.nl';
+import { tripsM7aMapNL } from './trips-m7a-map.nl';
 import { rentalTripGpsSpeedEvaluationNl } from './rental.tripGpsSpeedEvaluation.nl';
 import { dimoWebhookHealthNl } from './dimo-webhook-health.nl';
 import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
@@ -158,6 +159,7 @@ export const nl = {
   'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities',   'customerDetail.drivingScore': 'Rijscore',
   ...rentalLegacyGapNL,
   ...tripsMotionMapNL,
+  ...tripsM7aMapNL,
   ...rentalTripGpsSpeedEvaluationNl,
   ...dimoWebhookHealthNl,
   ...masterPlatformOpsDiS4Nl,

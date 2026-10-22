@@ -58,6 +58,7 @@ import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 import { rentalLegacyGapDE } from './rental-legacy-gap.de';
 import { tripsMotionMapDE } from './trips-motion-map.de';
+import { tripsM7aMapDE } from './trips-m7a-map.de';
 import { masterPlatformOpsDiS4De } from './master.platformOps.diS4.de';
 import { masterPhysicalDeviceInventoryDe } from './master.physicalDeviceInventory.de';
 
@@ -5960,6 +5961,7 @@ export const de: Record<TranslationKey, string> = {
   ...rentalHostPresentationDe,
   ...rentalLegacyGapDE,
   ...tripsMotionMapDE,
+  ...tripsM7aMapDE,
   ...masterPlatformOpsDiS4De,
   ...masterPhysicalDeviceInventoryDe,
 } satisfies CompleteTranslationDictionary;

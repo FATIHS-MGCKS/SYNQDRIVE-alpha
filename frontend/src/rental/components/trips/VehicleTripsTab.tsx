@@ -59,6 +59,9 @@ export function TripsView(props: TripsViewProps) {
             motionMapPayload={tab.motionMapPayload}
             motionMapLoading={tab.motionMapLoading}
             motionMapError={tab.motionMapError}
+            m7aMapPayload={tab.m7aMapPayload}
+            m7aMapLoading={tab.m7aMapLoading}
+            m7aMapError={tab.m7aMapError}
           />
         </div>
 

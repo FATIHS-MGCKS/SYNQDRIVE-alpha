@@ -7,6 +7,7 @@ import { useTripDetail } from './useTripDetail';
 import { useTripRoute } from './useTripRoute';
 import { useTripsRentalContext } from './useTripsRentalContext';
 import { useRequestGuard } from './useRequestGuard';
+import { useTripM7aMap } from './useTripM7aMap';
 import { useTripMotionMap } from './useTripMotionMap';
 import { useVehicleTrips } from './useVehicleTrips';
 
@@ -32,6 +33,7 @@ export function useTripsTab({
   const route = useTripRoute(vehicleId, orgId ?? undefined);
   const tripDetail = useTripDetail(vehicleId);
   const motionMap = useTripMotionMap(vehicleId, selectedTrip?.id ?? null);
+  const m7aMap = useTripM7aMap(vehicleId, selectedTrip?.id ?? null);
 
   const rental = useTripsRentalContext({
     orgId: orgId ?? undefined,
@@ -57,6 +59,7 @@ export function useTripsTab({
     behavior.resetBehaviorState();
     tripDetail.clearDetailCache();
     motionMap.clear();
+    m7aMap.clear();
   }, [vehicleId, selectedDate, selectedDriver]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep selected trip in sync after timeline reload (e.g. reconcile) without dropping selection.
@@ -177,5 +180,8 @@ export function useTripsTab({
     motionMapPayload: motionMap.payload,
     motionMapLoading: motionMap.loading,
     motionMapError: motionMap.error,
+    m7aMapPayload: m7aMap.payload,
+    m7aMapLoading: m7aMap.loading,
+    m7aMapError: m7aMap.error,
   };
 }

@@ -68,6 +68,7 @@ export interface TripMapLayerState {
   showStops: boolean;
   showDrivingEvents: boolean;
   showAbuseEvents: boolean;
+  showM7aRoadAssignment: boolean;
 }
 
 export interface TripMapQualityFlags {

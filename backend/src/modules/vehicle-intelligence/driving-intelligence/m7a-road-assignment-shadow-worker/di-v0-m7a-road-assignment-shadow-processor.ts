@@ -30,6 +30,7 @@ import {
   buildM7aRoadAssignmentShadowRunIntentKey,
 } from './di-v0-m7a-road-assignment-shadow-intent';
 import {
+  enrichM7aBucketDtosWithPositionAnchors,
   mapFrozenMatchToBucketDto,
   type DiV0M7aRoadAssignmentShadowPayloadV1,
   type DiV0M7aRoadAssignmentShadowSummaryJson,
@@ -248,7 +249,10 @@ export async function processDiV0M7aRoadAssignmentShadowTrip(
       },
     };
   }
-  const bucketDtos = matches.map(mapFrozenMatchToBucketDto);
+  const bucketDtos = enrichM7aBucketDtosWithPositionAnchors(
+    matches.map(mapFrozenMatchToBucketDto),
+    buckets,
+  );
   const assignmentHash = perBucketAssignmentHash(matches);
   const presentCount = buckets.filter((b) => b.availability === 'PRESENT').length;
   const confirmedCount = bucketDtos.filter((b) => b.outcome === 'CONFIRMED').length;

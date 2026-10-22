@@ -19,6 +19,9 @@ import { TripMotionMapStatusBanner } from './TripMotionMapStatusBanner';
 import type { TripMotionMapPayload, TripMotionMapPopoverState } from './motion-map.types';
 import { isMotionMapActive, motionEventLabelKey, resolveMotionSamplesForMap } from './motion-map.utils';
 import type { TripMotionMapEvent, TripMotionMapPickListItem } from './motion-map.types';
+import { TripM7aMapStatusBanner } from './TripM7aMapStatusBanner';
+import type { TripM7aMapPayload } from './m7a-map.types';
+import { isM7aMapActive, isM7aMapEvaluationPresent, resolveM7aMotionBinding } from './m7a-map.utils';
 import { useTripsRouteMap } from './useTripsRouteMap';
 
 export interface TripsMapCardProps {
@@ -47,6 +50,9 @@ export interface TripsMapCardProps {
   motionMapPayload?: TripMotionMapPayload | null;
   motionMapLoading?: boolean;
   motionMapError?: boolean;
+  m7aMapPayload?: TripM7aMapPayload | null;
+  m7aMapLoading?: boolean;
+  m7aMapError?: boolean;
 }
 
 const DEFAULT_LAYERS = DEFAULT_TRIP_MAP_LAYERS;
@@ -77,6 +83,9 @@ export function TripsMapCard({
   motionMapPayload = null,
   motionMapLoading = false,
   motionMapError = false,
+  m7aMapPayload = null,
+  m7aMapLoading = false,
+  m7aMapError = false,
 }: TripsMapCardProps) {
   const isDark = isDarkMode;
   const { t } = useLanguage();
@@ -86,6 +95,16 @@ export function TripsMapCard({
   const [selectedMotionEventId, setSelectedMotionEventId] = useState<string | null>(null);
 
   const motionActive = isMotionMapActive(motionMapPayload);
+  const m7aActive = isM7aMapActive(m7aMapPayload);
+  const m7aLayerAvailable = isM7aMapEvaluationPresent(m7aMapPayload) && m7aActive;
+  const m7aBinding = useMemo(
+    () => resolveM7aMotionBinding(motionMapPayload, m7aMapPayload),
+    [motionMapPayload, m7aMapPayload],
+  );
+  const m7aBindingNote = useMemo(() => {
+    if (m7aBinding.compatible || !m7aBinding.reasonKey) return null;
+    return t(m7aBinding.reasonKey as never);
+  }, [m7aBinding, t]);
   const resolvedMotion = useMemo(() => {
     if (!motionMapPayload || !motionActive) return null;
     return resolveMotionSamplesForMap(motionMapPayload, routePoints);
@@ -188,6 +207,9 @@ export function TripsMapCard({
     },
     selectedMotionEventId,
     motionEventAriaLabel,
+    m7aMapPayload,
+    motionMapPayload,
+    m7aBindingNote,
   });
 
   // Keep popover anchored on map move/zoom
@@ -317,6 +339,16 @@ export function TripsMapCard({
               loading={motionMapLoading}
               error={motionMapError}
             />
+            <TripM7aMapStatusBanner
+              payload={m7aMapPayload}
+              loading={m7aMapLoading}
+              error={m7aMapError}
+            />
+            {layers.showM7aRoadAssignment && m7aActive && motionActive && !m7aBinding.compatible && m7aBindingNote && (
+              <div className="pointer-events-none absolute top-12 left-3 z-20 max-w-[min(100%,18rem)] rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[10px] text-amber-900 dark:text-amber-200 backdrop-blur-sm">
+                {t('trips.m7aMap.combinedUnavailable')}: {m7aBindingNote}
+              </div>
+            )}
           </>
         )}
 
@@ -325,6 +357,7 @@ export function TripsMapCard({
             <TripMapLayerControls
               layers={layers}
               hasRoute={hasRoute}
+              m7aLayerAvailable={m7aLayerAvailable}
               onToggle={toggleLayer}
             />
             <TripMapLegend />
@@ -339,6 +372,13 @@ export function TripsMapCard({
               setSelectedMotionEventId(null);
             }}
             onPickListSelect={handleMotionPickListSelect}
+            onM7aPointSelect={(point) => {
+              setMotionPopover((prev) =>
+                prev
+                  ? { kind: 'm7aPoint', point, x: prev.x, y: prev.y }
+                  : null,
+              );
+            }}
           />
         )}
 

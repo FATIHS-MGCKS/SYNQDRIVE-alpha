@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapES } from './rental-legacy-gap.es';
 import { tripsMotionMapES } from './trips-motion-map.es';
+import { tripsM7aMapES } from './trips-m7a-map.es';
 import { rentalTripGpsSpeedEvaluationEs } from './rental.tripGpsSpeedEvaluation.es';
 import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
 import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
@@ -157,6 +158,7 @@ export const es = {
   'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente',   'customerDetail.drivingScore': 'Puntuacion de conduccion',
   ...rentalLegacyGapES,
   ...tripsMotionMapES,
+  ...tripsM7aMapES,
   ...rentalTripGpsSpeedEvaluationEs,
   ...dimoWebhookHealthEs,
   ...masterPlatformOpsDiS4Es,

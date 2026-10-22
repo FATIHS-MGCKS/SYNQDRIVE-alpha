@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapPL } from './rental-legacy-gap.pl';
 import { tripsMotionMapPL } from './trips-motion-map.pl';
+import { tripsM7aMapPL } from './trips-m7a-map.pl';
 import { rentalTripGpsSpeedEvaluationPl } from './rental.tripGpsSpeedEvaluation.pl';
 import { dimoWebhookHealthPl } from './dimo-webhook-health.pl';
 import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
@@ -157,6 +158,7 @@ export const pl = {
   'customerDetail.title': 'Szczegoly klienta', 'customerDetail.customerDocuments': 'Dokumenty klienta', 'customerDetail.customerAlerts': 'Alerty klienta', 'customerDetail.customerNotes': 'Notatki klienta',   'customerDetail.drivingScore': 'Wynik jazdy',
   ...rentalLegacyGapPL,
   ...tripsMotionMapPL,
+  ...tripsM7aMapPL,
   ...rentalTripGpsSpeedEvaluationPl,
   ...dimoWebhookHealthPl,
   ...masterPlatformOpsDiS4Pl,

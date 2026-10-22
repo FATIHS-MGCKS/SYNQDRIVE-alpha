@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapFR } from './rental-legacy-gap.fr';
 import { tripsMotionMapFR } from './trips-motion-map.fr';
+import { tripsM7aMapFR } from './trips-m7a-map.fr';
 import { rentalTripGpsSpeedEvaluationFr } from './rental.tripGpsSpeedEvaluation.fr';
 import { dimoWebhookHealthFr } from './dimo-webhook-health.fr';
 import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
@@ -898,6 +899,7 @@ export const fr = {
   'support.replyPlaceholder': 'Tapez votre reponse...',
   ...rentalLegacyGapFR,
   ...tripsMotionMapFR,
+  ...tripsM7aMapFR,
   ...rentalTripGpsSpeedEvaluationFr,
   ...dimoWebhookHealthFr,
   ...masterPlatformOpsDiS4Fr,

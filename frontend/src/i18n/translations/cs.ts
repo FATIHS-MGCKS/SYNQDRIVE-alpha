@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapCS } from './rental-legacy-gap.cs';
 import { tripsMotionMapCS } from './trips-motion-map.cs';
+import { tripsM7aMapCS } from './trips-m7a-map.cs';
 import { rentalTripGpsSpeedEvaluationCs } from './rental.tripGpsSpeedEvaluation.cs';
 import { dimoWebhookHealthCs } from './dimo-webhook-health.cs';
 import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
@@ -157,6 +158,7 @@ export const cs = {
   'customerDetail.title': 'Detail zakaznika', 'customerDetail.customerDocuments': 'Dokumenty zakaznika', 'customerDetail.customerAlerts': 'Upozorneni zakaznika', 'customerDetail.customerNotes': 'Poznamky zakaznika',   'customerDetail.drivingScore': 'Skore jizdy',
   ...rentalLegacyGapCS,
   ...tripsMotionMapCS,
+  ...tripsM7aMapCS,
   ...rentalTripGpsSpeedEvaluationCs,
   ...dimoWebhookHealthCs,
   ...masterPlatformOpsDiS4Cs,
