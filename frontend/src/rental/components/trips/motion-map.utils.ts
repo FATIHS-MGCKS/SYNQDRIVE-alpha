@@ -8,6 +8,89 @@ import type {
 const ROUTE_ALIGN_TOLERANCE_MS = 2500;
 const ROUTE_ALIGN_MIN_RATIO = 0.45;
 const GAP_BREAK_SECONDS = 3;
+export const MOTION_ROUTE_HIT_PX = 28;
+const COORD_GROUP_EPSILON = 1e-5;
+
+export type MotionMapPickProjector = {
+  project: (lngLat: [number, number]) => { x: number; y: number };
+};
+
+export function motionCoordKey(latitude: number, longitude: number): string {
+  const lat = Math.round(latitude / COORD_GROUP_EPSILON);
+  const lng = Math.round(longitude / COORD_GROUP_EPSILON);
+  return `${lat}:${lng}`;
+}
+
+export function groupMotionEventsByCoordinate(events: TripMotionMapEvent[]): Map<string, TripMotionMapEvent[]> {
+  const map = new Map<string, TripMotionMapEvent[]>();
+  for (const ev of events) {
+    if (!ev.positionResolved || ev.latitude == null || ev.longitude == null) continue;
+    const key = motionCoordKey(ev.latitude, ev.longitude);
+    const list = map.get(key) ?? [];
+    list.push(ev);
+    map.set(key, list);
+  }
+  return map;
+}
+
+export function groupMotionStopsByCoordinate(stops: TripMotionMapStop[]): Map<string, TripMotionMapStop[]> {
+  const map = new Map<string, TripMotionMapStop[]>();
+  for (const stop of stops) {
+    if (!stop.positionResolved || stop.latitude == null || stop.longitude == null) continue;
+    const key = motionCoordKey(stop.latitude, stop.longitude);
+    const list = map.get(key) ?? [];
+    list.push(stop);
+    map.set(key, list);
+  }
+  return map;
+}
+
+export type MotionRoutePickMap = {
+  queryRenderedFeatures: (
+    point: { x: number; y: number },
+    options: { layers: string[] },
+  ) => Array<{ properties?: Record<string, unknown> }>;
+  unproject: (point: { x: number; y: number }) => { lng: number; lat: number };
+  project: (lngLat: [number, number]) => { x: number; y: number };
+};
+
+export function pickMotionSampleAtPoint(
+  map: MotionRoutePickMap,
+  motionSamples: TripMotionMapSample[],
+  point: { x: number; y: number },
+  hitRadiusPx = MOTION_ROUTE_HIT_PX,
+): TripMotionMapSample | null {
+  const features = map.queryRenderedFeatures(point, { layers: ['speed-route-layer'] });
+  const label = features[0]?.properties?.bucketLabelUtc as string | undefined;
+  if (label) {
+    const sample =
+      findNearestMotionSample(motionSamples, label) ??
+      motionSamples.find((s) => s.bucketLabelUtc === label);
+    if (sample) return sample;
+  }
+  if (motionSamples.length === 0) return null;
+  let best: TripMotionMapSample | null = null;
+  let bestDist = Infinity;
+  for (const s of motionSamples) {
+    if (s.latitude == null || s.longitude == null) continue;
+    const p = map.project([s.longitude, s.latitude]);
+    const d = Math.hypot(p.x - point.x, p.y - point.y);
+    if (d < bestDist) {
+      bestDist = d;
+      best = s;
+    }
+  }
+  if (best && bestDist < hitRadiusPx) return best;
+  return null;
+}
+
+export function isMotionRouteHitAtPoint(
+  map: MotionRoutePickMap,
+  motionSamples: TripMotionMapSample[],
+  point: { x: number; y: number },
+): boolean {
+  return pickMotionSampleAtPoint(map, motionSamples, point) != null;
+}
 
 export function resolveMotionSamplesForMap(
   payload: TripMotionMapPayload,
@@ -147,16 +230,28 @@ export function findNearestMotionSample(
   return best;
 }
 
+export type MotionEventLabelKey =
+  | 'trips.motionMap.eventStart'
+  | 'trips.motionMap.eventAcceleration'
+  | 'trips.motionMap.eventDeceleration';
+
+export function motionEventLabelKey(event: TripMotionMapEvent): MotionEventLabelKey {
+  if (event.displayKind === 'START') return 'trips.motionMap.eventStart';
+  if (event.displayKind === 'DECELERATION') return 'trips.motionMap.eventDeceleration';
+  return 'trips.motionMap.eventAcceleration';
+}
+
+/** @deprecated use motionEventLabelKey + i18n t() in UI */
 export function motionEventLabel(event: TripMotionMapEvent): string {
   if (event.displayKind === 'START') return 'Anfahren';
   if (event.displayKind === 'DECELERATION') return 'Bremsen';
   return 'Beschleunigen';
 }
 
-export function formatMotionBucketTime(labelUtc: string): string {
+export function formatMotionBucketTime(labelUtc: string, locale = 'de-DE'): string {
   const d = new Date(labelUtc);
   if (Number.isNaN(d.getTime())) return labelUtc;
-  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 export function isMotionMapActive(payload: TripMotionMapPayload | null): boolean {
@@ -168,6 +263,7 @@ export function createMotionEventMarkerElement(
   isDark: boolean,
   onClick: () => void,
   isSelected = false,
+  ariaLabel?: string,
 ): HTMLButtonElement {
   const isStart = event.displayKind === 'START';
   const isAccel = event.displayKind === 'ACCELERATION';
@@ -180,7 +276,7 @@ export function createMotionEventMarkerElement(
   }`;
   el.style.width = event.artefactSuspect ? '18px' : '16px';
   el.style.height = event.artefactSuspect ? '18px' : '16px';
-  el.setAttribute('aria-label', motionEventLabel(event));
+  el.setAttribute('aria-label', ariaLabel ?? motionEventLabel(event));
   el.innerHTML = isStart ? '▶' : isAccel ? '▲' : '▼';
   if (isDark) el.classList.add('trips-map-event-marker--dark');
   el.addEventListener('click', (e) => {

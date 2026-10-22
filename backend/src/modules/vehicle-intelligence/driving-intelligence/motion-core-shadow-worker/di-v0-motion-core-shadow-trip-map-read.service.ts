@@ -30,6 +30,9 @@ const EMPTY_RESPONSE: DiV0MotionCoreShadowTripMapReadResponse = {
   stopEpisodes: [],
   limitations: [],
   failureCode: null,
+  snapshotBindingVerified: false,
+  newerFailedRunId: null,
+  newerFailedRunStatus: null,
 };
 
 @Injectable()
@@ -56,35 +59,42 @@ export class DiV0MotionCoreShadowTripMapReadService {
       return { ...EMPTY_RESPONSE, failureCode: 'TRIP_NOT_FOUND' };
     }
 
-    const run = await this.runs.findLatestRunForTrip({ organizationId, vehicleId, tripId });
+    const latestAny = await this.runs.findLatestRunForTrip({ organizationId, vehicleId, tripId });
+    const run = await this.runs.findLatestSucceededRunForTrip({ organizationId, vehicleId, tripId });
+
     if (!run) {
       const pending = await this.detectPendingOutbox(organizationId, vehicleId, tripId);
       if (pending) {
         return { ...EMPTY_RESPONSE, status: 'PENDING', failureCode: null };
       }
+      if (latestAny && latestAny.shadowStatus !== 'SUCCEEDED') {
+        return {
+          ...EMPTY_RESPONSE,
+          status: 'FAILED',
+          runId: latestAny.id,
+          workItemId: latestAny.workItemId,
+          pinnedSnapshotHash: latestAny.pinnedSnapshotHash,
+          combinedInputIdentity: latestAny.combinedInputIdentity,
+          failureCode: latestAny.shadowStatus,
+        };
+      }
       return { ...EMPTY_RESPONSE };
     }
 
-    if (run.shadowStatus !== 'SUCCEEDED') {
-      return {
-        ...EMPTY_RESPONSE,
-        status: 'FAILED',
-        runId: run.id,
-        workItemId: run.workItemId,
-        pinnedSnapshotHash: run.pinnedSnapshotHash,
-        combinedInputIdentity: run.combinedInputIdentity,
-        failureCode: run.shadowStatus,
-      };
-    }
+    const newerFailed =
+      latestAny && latestAny.id !== run.id && latestAny.shadowStatus !== 'SUCCEEDED'
+        ? { id: latestAny.id, status: latestAny.shadowStatus }
+        : null;
 
     const payload = this.runs.decodePayload(run.payloadGzip);
-    const positions = await this.loadPositionGrid(
+    const positionLoad = await this.loadPositionGrid(
       organizationId,
       vehicleId,
       tripId,
       run.workItemId,
       run.pinnedSnapshotHash,
     );
+    const positions = positionLoad.rows;
     const { samples, geometrySource, geometryNote } = buildMotionTripMapSamples(payload, positions, []);
     const sampleByLabel = new Map(samples.map((s) => [s.bucketLabelUtc, s]));
     const events = mapMotionTripMapEvents(payload, sampleByLabel);
@@ -94,6 +104,14 @@ export class DiV0MotionCoreShadowTripMapReadService {
       events.length === 0 && stopEpisodes.length === 0 && samples.every((s) => s.speedKmh == null)
         ? 'SUCCEEDED_EMPTY'
         : 'SUCCEEDED';
+
+    const limitations = [
+      ...payload.contract.sparse.limitations,
+      ...run.summaryJson.limitations,
+    ];
+    if (!positionLoad.snapshotBindingVerified) {
+      limitations.push('SNAPSHOT_BINDING_UNVERIFIED');
+    }
 
     return {
       status,
@@ -109,8 +127,11 @@ export class DiV0MotionCoreShadowTripMapReadService {
       samples,
       events,
       stopEpisodes,
-      limitations: [...payload.contract.sparse.limitations, ...run.summaryJson.limitations],
+      limitations,
       failureCode: null,
+      snapshotBindingVerified: positionLoad.snapshotBindingVerified,
+      newerFailedRunId: newerFailed?.id ?? null,
+      newerFailedRunStatus: newerFailed?.status ?? null,
     };
   }
 
@@ -137,19 +158,23 @@ export class DiV0MotionCoreShadowTripMapReadService {
     tripId: string,
     workItemId: string,
     snapshotHash: string,
-  ): Promise<MotionMapPositionRow[]> {
+  ): Promise<{
+    rows: MotionMapPositionRow[];
+    snapshotBindingVerified: boolean;
+  }> {
+    const unverified = { rows: [] as MotionMapPositionRow[], snapshotBindingVerified: false };
     const wi = await this.s4Read.loadWorkItemForResearch({
       workItemId,
       organizationId,
       tripId,
     });
-    if (!wi) return [];
+    if (!wi || wi.pinnedSnapshotHash !== snapshotHash) return unverified;
     const snapshot = await this.s4Read.loadEvidenceSnapshot({
       organizationId,
       tripId,
       snapshotHash,
     });
-    if (!snapshot) return [];
+    if (!snapshot || snapshot.vehicleId !== vehicleId) return unverified;
     const verified = verifyAndParseDiV0PinnedEvidenceSnapshot(
       {
         organization_id: snapshot.organizationId,
@@ -171,16 +196,19 @@ export class DiV0MotionCoreShadowTripMapReadService {
         sourceFamily: wi.sourceFamily as DiV0S4SourceFamily,
       },
     );
-    if (!verified.ok) return [];
+    if (!verified.ok) return unverified;
     const adapted = adaptMotionCoreShadowEvidenceFromParsedContainer(
       verified.parsed,
       wi.sourceFamily as DiV0S4SourceFamily,
     );
-    return adapted.buckets.map((b) => ({
-      bucketLabelUtc: b.bucketLabelUtc,
-      latitude: b.latitude,
-      longitude: b.longitude,
-      availability: b.availability,
-    }));
+    return {
+      snapshotBindingVerified: true,
+      rows: adapted.buckets.map((b) => ({
+        bucketLabelUtc: b.bucketLabelUtc,
+        latitude: b.latitude,
+        longitude: b.longitude,
+        availability: b.availability,
+      })),
+    };
   }
 }

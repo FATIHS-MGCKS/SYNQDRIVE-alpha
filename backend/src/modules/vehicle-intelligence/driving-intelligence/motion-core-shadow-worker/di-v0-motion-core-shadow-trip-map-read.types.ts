@@ -77,4 +77,7 @@ export type DiV0MotionCoreShadowTripMapReadResponse = {
   stopEpisodes: DiV0MotionCoreShadowTripMapStopDto[];
   limitations: string[];
   failureCode: string | null;
+  snapshotBindingVerified: boolean;
+  newerFailedRunId: string | null;
+  newerFailedRunStatus: string | null;
 };

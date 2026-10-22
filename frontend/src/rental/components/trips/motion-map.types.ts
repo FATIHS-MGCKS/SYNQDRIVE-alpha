@@ -74,7 +74,14 @@ export type TripMotionMapPayload = {
   stopEpisodes: TripMotionMapStop[];
   limitations: string[];
   failureCode: string | null;
+  snapshotBindingVerified: boolean;
+  newerFailedRunId: string | null;
+  newerFailedRunStatus: string | null;
 };
+
+export type TripMotionMapPickListItem =
+  | { type: 'event'; event: TripMotionMapEvent }
+  | { type: 'stop'; stop: TripMotionMapStop };
 
 export type TripMotionMapPopoverState =
   | {
@@ -92,6 +99,12 @@ export type TripMotionMapPopoverState =
   | {
       kind: 'stop';
       stop: TripMotionMapStop;
+      x: number;
+      y: number;
+    }
+  | {
+      kind: 'pickList';
+      items: TripMotionMapPickListItem[];
       x: number;
       y: number;
     };
