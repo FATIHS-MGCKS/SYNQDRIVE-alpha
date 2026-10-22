@@ -9,7 +9,10 @@ import {
   VehicleProviderSourceTimestampProvenance,
 } from '@prisma/client';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
-import { buildProviderSourceObservationScope } from './vsi-provider-source-observation.scope';
+import {
+  buildProviderSourceObservationScope,
+  counterScopeUniqueWhere,
+} from './vsi-provider-source-observation.scope';
 import { VsiProviderSourceObservationRepository } from './vsi-provider-source-observation.repository';
 import {
   buildDimoSnapshotFetchObservationIdempotencyKey,
@@ -145,8 +148,9 @@ async function insertFetchRow(
     const scopeKey = f.linkId;
     const token = f.providerTokenReference;
     const results = await Promise.all(
-      [0, 1, 2, 3].map((attempt) =>
-        writer.recordProviderFetch({
+      [0, 1, 2, 3].map((attempt) => {
+        const fetchCorrelationId = `corr-est-${attempt}-${Date.now()}`;
+        return writer.recordProviderFetch({
           organizationId: f.organizationId,
           vehicleId: f.vehicleId,
           provider: 'DIMO',
@@ -154,16 +158,13 @@ async function insertFetchRow(
           providerTokenReference: token,
           pollJobId: `est-${attempt}-${Date.now()}`,
           bullmqAttemptNumber: attempt,
-          fetchCorrelationId: `corr-est-${attempt}-${Date.now()}`,
-          idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(
-            `est-${attempt}-${Date.now()}`,
-            attempt,
-          ),
+          fetchCorrelationId,
+          idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(fetchCorrelationId),
           providerFetchedAt: new Date(`2026-10-14T12:00:0${attempt}.000Z`),
           providerSourceTimestamp: new Date('2026-10-14T11:00:00.000Z'),
           monotonicStaleSkipped: false,
-        }),
-      ),
+        });
+      }),
     );
     const indices = results.map((r) => r?.observationIndex).filter(Boolean) as bigint[];
     expect(indices).toHaveLength(4);
@@ -322,9 +323,10 @@ async function insertFetchRow(
     expect(b).toBe(a + 1n);
   });
 
-  it('7 duplicate retry idempotent; separate attempts distinct', async () => {
+  it('7 same fetchCorrelationId idempotent; independent fetches distinct indices', async () => {
     const f = await freshFixture();
-    const job = `job-idem-${Date.now()}`;
+    const job = `snapshot-${f.vehicleId}`;
+    const correlationA = `idem-a-${Date.now()}`;
     const base = {
       organizationId: f.organizationId,
       vehicleId: f.vehicleId,
@@ -332,30 +334,124 @@ async function insertFetchRow(
       providerBindingId: f.linkId,
       providerTokenReference: f.providerTokenReference,
       pollJobId: job,
+      bullmqAttemptNumber: 0,
       providerFetchedAt: new Date(),
       providerSourceTimestamp: new Date('2026-10-14T10:00:00.000Z'),
       monotonicStaleSkipped: false,
     };
     const first = await writer.recordProviderFetch({
       ...base,
-      bullmqAttemptNumber: 0,
-      fetchCorrelationId: 'idem-a',
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(job, 0),
+      fetchCorrelationId: correlationA,
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(correlationA),
     });
     const dup = await writer.recordProviderFetch({
       ...base,
-      bullmqAttemptNumber: 0,
-      fetchCorrelationId: 'idem-a-dup',
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(job, 0),
+      fetchCorrelationId: correlationA,
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(correlationA),
     });
-    const secondAttempt = await writer.recordProviderFetch({
+    const correlationB = `idem-b-${Date.now()}`;
+    const secondPoll = await writer.recordProviderFetch({
       ...base,
-      bullmqAttemptNumber: 1,
-      fetchCorrelationId: 'idem-b',
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(job, 1),
+      fetchCorrelationId: correlationB,
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(correlationB),
     });
     expect(dup?.observationIndex).toBe(first?.observationIndex);
-    expect(secondAttempt?.observationIndex).not.toBe(first?.observationIndex);
+    expect(secondPoll?.observationIndex).not.toBe(first?.observationIndex);
+    const fetchRows = await prisma.vehicleProviderSourceObservation.count({
+      where: {
+        vehicleId: f.vehicleId,
+        recordPhase: VehicleProviderSourceObservationRecordPhase.PROVIDER_FETCH,
+        fetchCorrelationId: { in: [correlationA, correlationB] },
+      },
+    });
+    expect(fetchRows).toBe(2);
+  });
+
+  it('P2C idempotency A–D: independent snapshot polls, VLS parity, replay, counter head', async () => {
+    const f = await freshFixture();
+    const stableJobId = `snapshot-${f.vehicleId}`;
+    const pollCount = 5;
+    const correlations: string[] = [];
+    const indices: bigint[] = [];
+
+    for (let i = 0; i < pollCount; i++) {
+      const fetchCorrelationId = `poll-corr-${i}-${Date.now()}`;
+      correlations.push(fetchCorrelationId);
+      const fetch = await writer.recordProviderFetch({
+        organizationId: f.organizationId,
+        vehicleId: f.vehicleId,
+        provider: 'DIMO',
+        providerBindingId: f.linkId,
+        providerTokenReference: f.providerTokenReference,
+        pollJobId: stableJobId,
+        bullmqAttemptNumber: 0,
+        fetchCorrelationId,
+        idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(fetchCorrelationId),
+        providerFetchedAt: new Date(`2026-10-14T14:00:0${i}.000Z`),
+        providerSourceTimestamp: new Date(`2026-10-14T13:00:0${i}.000Z`),
+        monotonicStaleSkipped: false,
+      });
+      expect(fetch?.observationIndex).toBeDefined();
+      indices.push(fetch!.observationIndex);
+      await writer.recordVlsApplication({
+        organizationId: f.organizationId,
+        vehicleId: f.vehicleId,
+        provider: 'DIMO',
+        providerBindingId: f.linkId,
+        providerTokenReference: f.providerTokenReference,
+        pollJobId: stableJobId,
+        fetchCorrelationId,
+        observationIndex: fetch!.observationIndex,
+        providerFetchedAt: new Date(`2026-10-14T14:00:0${i}.000Z`),
+        providerSourceTimestamp: new Date(`2026-10-14T13:00:0${i}.000Z`),
+        idempotencyKey: buildDimoSnapshotVlsApplicationIdempotencyKey(fetchCorrelationId),
+      });
+    }
+
+    expect(new Set(indices.map(String)).size).toBe(pollCount);
+
+    const replay = await writer.recordProviderFetch({
+      organizationId: f.organizationId,
+      vehicleId: f.vehicleId,
+      provider: 'DIMO',
+      providerBindingId: f.linkId,
+      providerTokenReference: f.providerTokenReference,
+      pollJobId: stableJobId,
+      bullmqAttemptNumber: 0,
+      fetchCorrelationId: correlations[0],
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(correlations[0]),
+      providerFetchedAt: new Date(`2026-10-14T14:00:00.000Z`),
+      providerSourceTimestamp: new Date('2026-10-14T13:00:00.000Z'),
+      monotonicStaleSkipped: false,
+    });
+    expect(replay?.observationIndex).toBe(indices[0]);
+
+    const fetchRowCount = await prisma.vehicleProviderSourceObservation.count({
+      where: {
+        vehicleId: f.vehicleId,
+        recordPhase: VehicleProviderSourceObservationRecordPhase.PROVIDER_FETCH,
+      },
+    });
+    const vlsRowCount = await prisma.vehicleProviderSourceObservation.count({
+      where: {
+        vehicleId: f.vehicleId,
+        recordPhase: VehicleProviderSourceObservationRecordPhase.VLS_APPLICATION,
+      },
+    });
+    expect(fetchRowCount).toBe(pollCount);
+    expect(vlsRowCount).toBe(pollCount);
+
+    const scope = buildProviderSourceObservationScope({
+      organizationId: f.organizationId,
+      vehicleId: f.vehicleId,
+      provider: 'DIMO',
+      providerBindingId: f.linkId,
+      providerTokenReference: f.providerTokenReference,
+    });
+    const counter = await prisma.vehicleProviderSourceObservationCounter.findUnique({
+      where: counterScopeUniqueWhere(scope),
+    });
+    expect(counter?.nextObservationIndex).toBe(BigInt(pollCount) + 1n);
   });
 
   it('8 observations committed out of chronological insert order', async () => {
@@ -509,7 +605,7 @@ async function insertFetchRow(
       pollJobId: `del-c1-${Date.now()}`,
       bullmqAttemptNumber: 0,
       fetchCorrelationId: 'del-c1',
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(`del-c1-${Date.now()}`, 0),
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('del-c1'),
       providerFetchedAt: new Date('2026-10-14T10:00:01.000Z'),
       providerSourceTimestamp: new Date('2026-10-14T10:00:00.000Z'),
       monotonicStaleSkipped: false,
@@ -523,7 +619,7 @@ async function insertFetchRow(
       pollJobId: `del-c2-${Date.now()}`,
       bullmqAttemptNumber: 0,
       fetchCorrelationId: 'del-c2',
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(`del-c2-${Date.now()}`, 0),
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('del-c2'),
       providerFetchedAt: new Date('2026-10-14T11:00:01.000Z'),
       providerSourceTimestamp: new Date('2026-10-14T11:00:00.000Z'),
       monotonicStaleSkipped: false,
@@ -706,7 +802,7 @@ async function insertFetchRow(
       pollJobId: 'flag-off',
       bullmqAttemptNumber: 0,
       fetchCorrelationId: 'flag-off',
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('flag-off', 0),
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('flag-off'),
       providerFetchedAt: new Date(),
       providerSourceTimestamp: new Date(),
       monotonicStaleSkipped: false,
@@ -735,7 +831,7 @@ async function insertFetchRow(
       pollJobId: job,
       bullmqAttemptNumber: 0,
       fetchCorrelationId: correlation,
-      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(job, 0),
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(correlation),
       providerFetchedAt: new Date('2026-10-14T14:00:05.000Z'),
       providerSourceTimestamp: new Date('2026-10-14T14:00:00.000Z'),
       monotonicStaleSkipped: false,

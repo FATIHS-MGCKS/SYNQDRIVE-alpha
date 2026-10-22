@@ -242,18 +242,20 @@ export class VsiProviderSourceObservationWriterService {
   }
 }
 
+/** One durable fetch row per processor invocation; keyed by per-fetch correlation UUID. */
 export function buildDimoSnapshotFetchObservationIdempotencyKey(
-  pollJobId: string,
-  bullmqAttemptNumber: number,
+  fetchCorrelationId: string,
 ): string {
-  return `vsi03-p2c:fetch:${pollJobId}:attempt:${bullmqAttemptNumber}`;
+  return `vsi03-p2c:fetch:${fetchCorrelationId}`;
 }
 
 export function buildDimoSnapshotVlsApplicationIdempotencyKey(fetchCorrelationId: string): string {
   return `vsi03-p2c:vls-application:${fetchCorrelationId}`;
 }
 
-/** @deprecated */
-export function buildDimoSnapshotSourceObservationIdempotencyKey(pollJobId: string): string {
-  return buildDimoSnapshotFetchObservationIdempotencyKey(pollJobId, 0);
+/** @deprecated Use {@link buildDimoSnapshotFetchObservationIdempotencyKey} with fetchCorrelationId. */
+export function buildDimoSnapshotSourceObservationIdempotencyKey(
+  fetchCorrelationId: string,
+): string {
+  return buildDimoSnapshotFetchObservationIdempotencyKey(fetchCorrelationId);
 }

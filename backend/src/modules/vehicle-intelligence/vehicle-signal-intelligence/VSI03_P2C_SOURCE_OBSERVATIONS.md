@@ -47,10 +47,10 @@ Table `vehicle_provider_source_observations` — append-only fetch evidence:
 
 ### Idempotency
 
-- Fetch: `vsi03-p2c:fetch:{jobId}:attempt:{attemptsMade}`
+- Fetch: `vsi03-p2c:fetch:{fetchCorrelationId}` (one key per snapshot processor invocation; stable BullMQ `job.id` is not used for fetch idempotency)
 - VLS application: `vsi03-p2c:vls-application:{fetchCorrelationId}`
 
-Distinct BullMQ attempts on the same job ID produce distinct fetch rows.
+Replaying the same `fetchCorrelationId` is idempotent; independent polls each receive a new correlation UUID in `dimo-snapshot.processor`.
 
 ## Strict advance semantics
 
