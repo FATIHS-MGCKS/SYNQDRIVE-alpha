@@ -1,7 +1,6 @@
 import { BatteryMeasurementQuality } from '@prisma/client';
 import type { HvMeasurementQualitySessionInput } from './hv-measurement-quality.types';
-
-const M3_VALIDATION_NATIVE_PROVENANCE = 'TEMPORAL_BOUNDARY_V1';
+import { HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE } from '../hv-charge-session/hv-charge-session-boundary-snapshot.constants';
 
 export function qualifiedPartialSession(
   overrides: Partial<HvMeasurementQualitySessionInput> = {},
@@ -24,8 +23,10 @@ export function qualifiedPartialSession(
       qualityStatus: 'QUALIFIED',
       capacityValidationEligible: true,
       capacityShadowEligible: true,
-      addedEnergyProvenance: M3_VALIDATION_NATIVE_PROVENANCE,
-      socProvenance: M3_VALIDATION_NATIVE_PROVENANCE,
+      addedEnergyProvenance: 'SEGMENT_EXTREMA',
+      socProvenance: HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE,
+      currentEnergyProvenance: HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE,
+      segmentAddedEnergyMinKwh: 0,
       qualityReasonCodes: ['soc_delta_qualified'],
       isChargingObservedAny: true,
     },

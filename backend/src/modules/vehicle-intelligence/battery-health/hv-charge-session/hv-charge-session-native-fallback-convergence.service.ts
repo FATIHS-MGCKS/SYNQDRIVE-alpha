@@ -15,6 +15,7 @@ import { mapFallbackCandidateToHvChargeSessionDraft } from './hv-fallback-charge
 import { buildFallbackSupersessionUpdate } from './hv-fallback-charge-session.supersede';
 import type { HvFallbackChargeSessionCandidate } from './hv-fallback-charge-session.types';
 import { mapRechargeSegmentToHvChargeSessionDraft } from './hv-charge-session.mapper';
+import { HvChargeSessionBoundaryEnrichmentService } from './hv-charge-session-boundary-enrichment.service';
 import { mergeHvChargeSessionUpdate } from './hv-charge-session.merge';
 import { HvChargeSessionRepository } from './hv-charge-session.repository';
 import type { HvChargeSession } from '@prisma/client';
@@ -57,6 +58,7 @@ export class HvChargeSessionNativeFallbackConvergenceService {
     private readonly prisma: PrismaService,
     private readonly repository: HvChargeSessionRepository,
     private readonly metrics: TripMetricsService,
+    private readonly boundaryEnrichment: HvChargeSessionBoundaryEnrichmentService,
   ) {}
 
   async persistNativeWithFallbackConvergence(input: {
@@ -69,11 +71,17 @@ export class HvChargeSessionNativeFallbackConvergenceService {
     injectFailureAfterSupersede?: boolean;
   }): Promise<HvNativeFallbackConvergenceResult> {
     const evaluatedAt = input.evaluatedAt ?? new Date();
-    const draft = mapRechargeSegmentToHvChargeSessionDraft({
+    const baseDraft = mapRechargeSegmentToHvChargeSessionDraft({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       segment: input.segment,
       reconciledAt: evaluatedAt,
+    });
+    const draft = await this.boundaryEnrichment.enrichDraftFromSnapshots({
+      vehicleId: input.vehicleId,
+      segment: input.segment,
+      draft: baseDraft,
+      assessedAt: evaluatedAt,
     });
 
     try {

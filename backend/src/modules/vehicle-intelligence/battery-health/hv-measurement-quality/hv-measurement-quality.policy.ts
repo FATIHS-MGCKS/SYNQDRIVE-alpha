@@ -62,14 +62,14 @@ export function mapSessionToQualityAssessment(
     endEnergyKwh: row.endEnergyKwh,
     energyAddedKwh: row.energyAddedKwh,
     deltaSocPercent: row.deltaSocPercent,
-    addedEnergyMinKwh: null,
-    addedEnergyMaxKwh: null,
+    addedEnergyMinKwh: mdNumber(md, 'segmentAddedEnergyMinKwh'),
+    addedEnergyMaxKwh: mdNumber(md, 'segmentAddedEnergyMaxKwh'),
     isChargingObservedAny: mdBool(md, 'isChargingObservedAny'),
     isChargingObservedAll: mdBool(md, 'isChargingObservedAll'),
     cableConnectedObservedAny: mdBool(md, 'cableConnectedObservedAny'),
     cableConnectedObservedAll: mdBool(md, 'cableConnectedObservedAll'),
     socExtremaProxy: mdString(md, 'socProvenance') === 'SEGMENT_EXTREMA',
-    energyExtremaProxy: mdString(md, 'addedEnergyProvenance') === 'SEGMENT_EXTREMA',
+    energyExtremaProxy: mdString(md, 'currentEnergyProvenance') === 'SEGMENT_EXTREMA',
     startedBeforeRange: mdBool(md, 'startedBeforeRange'),
     providerObservedAt: null,
     receivedAt: null,
@@ -96,6 +96,7 @@ export function mapSessionToM3Input(
     capacityValidationEligible: quality.capacityValidationEligible,
     boundaryStrength: quality.boundaryStrength,
     qualityStatus: mdString(md, 'qualityStatus'),
+    addedEnergyMinKwh: mdNumber(md, 'segmentAddedEnergyMinKwh'),
   };
 }
 

@@ -1,12 +1,17 @@
 import type { NormalizedDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.types';
 import { buildHvSessionJobIdempotencyKey } from '../jobs/battery-v2-job-idempotency.policy';
-import { assessHvChargeSessionQualityFromDimoSegment } from './hv-charge-session-quality.assessor';
+import {
+  assessHvChargeSessionQualityFromDimoSegment,
+  assessHvChargeSessionQualityFromInput,
+} from './hv-charge-session-quality.assessor';
 import {
   HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
   type HvChargeSessionDraft,
   type HvChargeSessionMetadata,
 } from './hv-charge-session.types';
 import { mapDimoSegmentToAuthoritativeSessionLocations } from '@modules/vehicle-intelligence/energy-events/erd-recharge-location-provenance/erd-recharge-session-location.policy';
+import type { HvChargeSessionResolvedBoundaryEvidence } from './hv-charge-session-boundary-snapshot.policy';
+import { HV_CHARGE_SESSION_BOUNDARY_ENRICHMENT_VERSION } from './hv-charge-session-boundary-snapshot.constants';
 
 export function mapRechargeSegmentToHvChargeSessionDraft(input: {
   organizationId: string;
@@ -35,6 +40,8 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     socProvenance: segment.soc.provenance,
     currentEnergyProvenance: segment.currentEnergyKwh.provenance,
     addedEnergyProvenance: segment.addedEnergyKwh.provenance,
+    segmentAddedEnergyMinKwh: segment.addedEnergyKwh.min,
+    segmentAddedEnergyMaxKwh: segment.addedEnergyKwh.max,
     startedBeforeRange: segment.startedBeforeRange,
     odometerStartKm: segment.odometerKm.min,
     odometerEndKm: segment.odometerKm.max,
@@ -70,6 +77,72 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     providerObservedAt: segment.endAt
       ? new Date(segment.endAt)
       : new Date(segment.startAt),
+    metadata,
+  };
+}
+
+export function applyHvChargeSessionBoundaryEvidenceToDraft(input: {
+  draft: HvChargeSessionDraft;
+  segment: NormalizedDimoRechargeSegment;
+  evidence: HvChargeSessionResolvedBoundaryEvidence;
+  assessedAt?: Date;
+}): HvChargeSessionDraft {
+  const assessedAt = input.assessedAt ?? new Date();
+  const { draft, segment, evidence } = input;
+
+  const qualityAssessment = assessHvChargeSessionQualityFromInput({
+    source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+    isOngoing: draft.isOngoing,
+    startAt: draft.startAt,
+    endAt: draft.endAt,
+    durationSeconds: segment.durationSeconds,
+    startSocPercent: evidence.start.socPercent,
+    endSocPercent: evidence.end.socPercent,
+    startEnergyKwh: evidence.start.energyUsedKwh,
+    endEnergyKwh: evidence.end.energyUsedKwh,
+    energyAddedKwh: segment.addedEnergyKwh.delta,
+    deltaSocPercent: evidence.deltaSocPercent,
+    addedEnergyMinKwh: segment.addedEnergyKwh.min,
+    addedEnergyMaxKwh: segment.addedEnergyKwh.max,
+    isChargingObservedAny: segment.isCharging.anyTrue,
+    isChargingObservedAll: segment.isCharging.allTrue,
+    cableConnectedObservedAny: segment.cableConnected.anyTrue,
+    cableConnectedObservedAll: segment.cableConnected.allTrue,
+    socExtremaProxy: false,
+    energyExtremaProxy: false,
+    startedBeforeRange: segment.startedBeforeRange,
+    providerObservedAt: draft.providerObservedAt,
+    assessedAt,
+  });
+
+  const metadata: HvChargeSessionMetadata = {
+    ...draft.metadata,
+    socProvenance: evidence.provenance,
+    currentEnergyProvenance: evidence.provenance,
+    addedEnergyProvenance: segment.addedEnergyKwh.provenance,
+    boundaryEnrichmentVersion: HV_CHARGE_SESSION_BOUNDARY_ENRICHMENT_VERSION,
+    boundaryStartSocObservedAt: evidence.start.socObservedAt.toISOString(),
+    boundaryEndSocObservedAt: evidence.end.socObservedAt.toISOString(),
+    boundaryStartEnergyObservedAt: evidence.start.energyObservedAt.toISOString(),
+    boundaryEndEnergyObservedAt: evidence.end.energyObservedAt.toISOString(),
+    boundaryStartOffsetMs: evidence.start.offsetFromBoundaryMs,
+    boundaryEndOffsetMs: evidence.end.offsetFromBoundaryMs,
+    qualityStatus: qualityAssessment.status,
+    qualityReasonCodes: qualityAssessment.reasonCodes,
+    capacityShadowEligible: qualityAssessment.capacityShadowEligible,
+    capacityValidationEligible: qualityAssessment.capacityValidationEligible,
+    lastReconciledAt: assessedAt.toISOString(),
+  };
+
+  return {
+    ...draft,
+    startSocPercent: evidence.start.socPercent,
+    endSocPercent: evidence.end.socPercent,
+    startEnergyKwh: evidence.start.energyUsedKwh,
+    endEnergyKwh: evidence.end.energyUsedKwh,
+    deltaSocPercent: evidence.deltaSocPercent,
+    energyAddedKwh: segment.addedEnergyKwh.delta,
+    quality: qualityAssessment.measurementQuality,
     metadata,
   };
 }
