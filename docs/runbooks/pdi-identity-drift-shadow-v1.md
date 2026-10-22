@@ -28,15 +28,20 @@ Provider registry serial change is **not** proof of physical device swap.
 
 ## Dual confirmation (V1)
 
-Uses **`dimo_poll_logs.metaJson.pdiIdentityDriftShadowV1`** (existing table) to remember observation fingerprints between sync runs:
+Uses **`dimo_poll_logs.metaJson.pdiIdentityDriftShadowV1`** (existing table) to remember observation fingerprints between sync runs for deduplicated logging.
 
-- First independent drift observation → `CANDIDATE`
-- Second drift observation with **different** `observationSnapshotFingerprint` → `CONFIRMED`
-- Re-reading the same mirror snapshot does **not** count twice
-- Stale mirror → `UNCONFIRMED` (no confirmation)
-- Return to `MATCH` clears persisted candidates for that drift
+- Drift → **`CANDIDATE` only** (no `CONFIRMED` in V1)
+- `observationSnapshotFingerprint` = hash(token + observed serial + rawJson SHA256); **excludes** `syncedAt`
+- Stale mirror → `UNCONFIRMED`
+- Return to `MATCH` clears persisted candidates
 
-**Limitation:** No historical serial time series beyond poll-log fingerprints; confirmation requires two successful vehicle syncs with distinct mirror snapshots.
+**Limitation:** No serial time-series; registry serial change ≠ physical swap proof.
+
+## Prisma / loader
+
+Loader soft-fails **only** when `physical_devices` / `physical_device_assignments` relations are missing (`42P01`). Other SQL errors propagate.
+
+PostgreSQL integration: `bash backend/scripts/test/pdi-identity-drift-shadow-postgres-ci.sh`
 
 ## Logging
 

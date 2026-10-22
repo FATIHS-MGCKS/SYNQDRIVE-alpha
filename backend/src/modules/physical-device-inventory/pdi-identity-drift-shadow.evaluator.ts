@@ -108,7 +108,6 @@ export function evaluateInstalledDeviceRow(
   const observationSnapshotFingerprint = fingerprintMirrorSnapshot({
     dimoTokenId: device.dimoTokenId,
     observedSerial: device.observedSerial,
-    mirrorSyncedAt: device.mirrorSyncedAt,
     mirrorRawJsonSha256: device.mirrorRawJsonSha256,
   });
 

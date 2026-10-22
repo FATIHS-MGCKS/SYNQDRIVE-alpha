@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
+import { isPdiInventoryRelationMissingError } from './pdi-identity-drift-shadow.data-loader.errors';
 import type { PdiInstalledDeviceObservationInput } from './pdi-identity-drift-shadow.types';
 
 export type PdiIdentityDriftDataLoadResult = {
@@ -12,7 +13,9 @@ function sha256Json(value: unknown): string {
 }
 
 /**
- * Read-only load from PDI + DIMO mirror. Fails soft when inventory tables are absent (pre-PDI deploys).
+ * Read-only load from PDI + DIMO mirror.
+ * Soft-fail only when `physical_devices` / `physical_device_assignments` relations are missing (pre-PDI schema).
+ * All other SQL/connection errors propagate (fail-closed).
  */
 export async function loadPdiIdentityDriftObservationData(
   prisma: PrismaClient,
@@ -83,11 +86,7 @@ export async function loadPdiIdentityDriftObservationData(
 
     return { devices, knownInventorySerials };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (
-      message.includes('physical_devices') &&
-      (message.includes('does not exist') || message.includes('relation'))
-    ) {
+    if (isPdiInventoryRelationMissingError(error)) {
       return { devices: [], knownInventorySerials: [] };
     }
     throw error;

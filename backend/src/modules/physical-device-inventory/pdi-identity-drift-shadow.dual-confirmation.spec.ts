@@ -51,7 +51,7 @@ describe('pdi-identity-drift-shadow.dual-confirmation', () => {
     expect(rows[0].confidence).toBe(PdiIdentityDriftConfidence.CANDIDATE);
   });
 
-  it('8. two independent observations → CONFIRMED', () => {
+  it('8. second distinct fingerprint without identity change → remains CANDIDATE (no CONFIRMED in V1)', () => {
     const row = driftRow({
       provenance: {
         source: 'DIMO_VEHICLE_MIRROR',
@@ -73,7 +73,7 @@ describe('pdi-identity-drift-shadow.dual-confirmation', () => {
       evaluatedAt,
       syncRunId: 'run-2',
     });
-    expect(rows[0].confidence).toBe(PdiIdentityDriftConfidence.CONFIRMED);
+    expect(rows[0].confidence).toBe(PdiIdentityDriftConfidence.CANDIDATE);
   });
 
   it('9. deviation disappears (MATCH) → prior candidate not carried forward', () => {

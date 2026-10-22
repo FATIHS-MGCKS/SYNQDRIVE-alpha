@@ -25,8 +25,9 @@ export function parsePersistedState(raw: unknown): PdiIdentityDriftShadowPersist
 }
 
 /**
- * Applies dual-confirmation using prior VEHICLE_SYNC poll meta only (no new tables).
- * CONFIRMED requires two distinct observationSnapshotFingerprints for the same driftSignature.
+ * Tracks drift candidates in prior VEHICLE_SYNC poll meta (no new tables).
+ * V1 does **not** emit CONFIRMED: independent provider identity observations cannot be proven
+ * without a persisted serial time-series; distinct fingerprints from sync time alone are rejected.
  */
 export function applyDualConfirmationPolicy(input: {
   rows: PdiIdentityDriftEvaluationRow[];
@@ -59,10 +60,7 @@ export function applyDualConfirmationPolicy(input: {
     const priorFingerprints = prior?.observationFingerprints ?? [];
     const isDuplicateSnapshot = priorFingerprints.includes(fingerprint);
 
-    let confidence: DriftConfidenceLevel = PdiIdentityDriftConfidence.CANDIDATE;
-    if (!isDuplicateSnapshot && priorFingerprints.length >= 1) {
-      confidence = PdiIdentityDriftConfidence.CONFIRMED;
-    }
+    const confidence: DriftConfidenceLevel = PdiIdentityDriftConfidence.CANDIDATE;
 
     const mergedFingerprints = isDuplicateSnapshot
       ? priorFingerprints
@@ -93,10 +91,7 @@ export function shouldEmitShadowLogLine(
   if (row.confidence === PdiIdentityDriftConfidence.UNCONFIRMED) {
     return row.detailCodes.includes('PROVIDER_MIRROR_STALE_OR_MISSING') === false;
   }
-  return (
-    row.confidence === PdiIdentityDriftConfidence.CANDIDATE ||
-    row.confidence === PdiIdentityDriftConfidence.CONFIRMED
-  );
+  return row.confidence === PdiIdentityDriftConfidence.CANDIDATE;
 }
 
 export function formatShadowLogLine(row: PdiIdentityDriftEvaluationRow): string {

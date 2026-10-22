@@ -17,17 +17,19 @@ export function sha256Hex(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
+/**
+ * Identity observation fingerprint — excludes poll/sync timestamps so a re-read of the same
+ * registry payload cannot count as an independent provider observation.
+ */
 export function fingerprintMirrorSnapshot(input: {
   dimoTokenId: number | null;
   observedSerial: string | null;
-  mirrorSyncedAt: Date | null;
   mirrorRawJsonSha256: string | null;
 }): string {
-  const synced = input.mirrorSyncedAt?.toISOString() ?? 'null';
   const serial = normalizeR1Serial(input.observedSerial) ?? 'null';
   const token = input.dimoTokenId ?? 'null';
   const raw = input.mirrorRawJsonSha256 ?? 'null';
-  return sha256Hex(`v1|token:${token}|serial:${serial}|synced:${synced}|raw:${raw}`);
+  return sha256Hex(`v1|identity|token:${token}|serial:${serial}|raw:${raw}`);
 }
 
 export function buildDriftSignature(input: {
