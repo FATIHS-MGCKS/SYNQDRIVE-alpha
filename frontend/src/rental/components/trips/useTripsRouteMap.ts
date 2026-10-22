@@ -2,6 +2,17 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { TripBehaviorEvent } from '../../../lib/api';
+import type { TripMotionMapEvent, TripMotionMapPopoverState, TripMotionMapSample, TripMotionMapStop } from './motion-map.types';
+import {
+  buildMotionSpeedLineFeatures,
+  createMotionEventMarkerElement,
+  groupMotionEventsByCoordinate,
+  groupMotionStopsByCoordinate,
+  isMotionRouteHitAtPoint,
+  motionCoordKey,
+  pickMotionSampleAtPoint,
+  type MotionRoutePickMap,
+} from './motion-map.utils';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
 import {
   bearingBetween,
@@ -25,6 +36,13 @@ export interface UseTripsRouteMapOptions {
   onEventSelect: (state: TripMapPopoverState | null) => void;
   selectedBehaviorEventId?: string | null;
   endpointLabels?: { start?: string | null; end?: string | null };
+  motionMapActive?: boolean;
+  motionSamples?: TripMotionMapSample[];
+  motionEvents?: TripMotionMapEvent[];
+  motionStops?: TripMotionMapStop[];
+  onMotionPopover?: (state: TripMotionMapPopoverState | null) => void;
+  selectedMotionEventId?: string | null;
+  motionEventAriaLabel?: (event: TripMotionMapEvent) => string;
 }
 
 function buildSegmentLineFeatures(
@@ -52,12 +70,20 @@ export function useTripsRouteMap({
   onEventSelect,
   selectedBehaviorEventId,
   endpointLabels,
+  motionMapActive = false,
+  motionSamples = [],
+  motionEvents = [],
+  motionStops = [],
+  onMotionPopover,
+  selectedMotionEventId,
+  motionEventAriaLabel,
 }: UseTripsRouteMapOptions) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const eventMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const endpointMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const directionMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const motionMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const lastRouteFitKeyRef = useRef<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(
@@ -236,6 +262,21 @@ export function useTripsRouteMap({
           'circle-color': isDarkMode ? '#cbd5e1' : '#64748b',
         },
       });
+      map.addSource('motion-scrub-point', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+      map.addLayer({
+        id: 'motion-scrub-point-layer',
+        type: 'circle',
+        source: 'motion-scrub-point',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#38bdf8',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      });
       setMapLoaded(true);
     });
 
@@ -277,44 +318,80 @@ export function useTripsRouteMap({
 
     if (hasLines) {
       routeSrc.setData(geo.lines);
-      if (speedSrc && routePoints.length >= 2) {
-        speedSrc.setData({
-          type: 'FeatureCollection',
-          features: buildMeasuredSpeedLineFeatures(routePoints, hasUnknownGaps),
-        });
-      }
-      if (stopsSrc && routePoints.length >= 2) {
-        const stopFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
-        let stopStart = -1;
-        for (let i = 0; i < routePoints.length; i++) {
-          const isLowSpeed = (routePoints[i].speedKmh ?? 0) < 3;
-          if (isLowSpeed && stopStart < 0) stopStart = i;
-          if ((!isLowSpeed || i === routePoints.length - 1) && stopStart >= 0) {
-            const stopEnd = isLowSpeed ? i : i - 1;
-            if (stopEnd - stopStart + 1 >= 3) {
-              const mid = Math.floor((stopStart + stopEnd) / 2);
-              const p = routePoints[mid];
-              const startT = new Date(routePoints[stopStart].timestamp).getTime();
-              const endT = new Date(routePoints[stopEnd].timestamp).getTime();
-              if (p.latitude && p.longitude) {
-                stopFeatures.push({
-                  type: 'Feature',
-                  geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
-                  properties: { duration: Math.max(1, Math.round((endT - startT) / 1000)) },
-                });
-              }
-            }
-            stopStart = -1;
-          }
+      if (speedSrc) {
+        if (motionMapActive && motionSamples.length > 0) {
+          speedSrc.setData({
+            type: 'FeatureCollection',
+            features: buildMotionSpeedLineFeatures(motionSamples),
+          });
+        } else if (routePoints.length >= 2) {
+          speedSrc.setData({
+            type: 'FeatureCollection',
+            features: buildMeasuredSpeedLineFeatures(routePoints, hasUnknownGaps),
+          });
+        } else {
+          speedSrc.setData({ type: 'FeatureCollection', features: [] });
         }
-        stopsSrc.setData({ type: 'FeatureCollection', features: stopFeatures });
+      }
+      if (stopsSrc) {
+        if (motionMapActive) {
+          const stopFeatures: GeoJSON.Feature<GeoJSON.Point>[] = motionStops
+            .filter((s) => s.positionResolved && s.latitude != null && s.longitude != null)
+            .map((s) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [s.longitude!, s.latitude!] },
+              properties: {
+                duration: s.minDurationS,
+                stopId: s.id,
+                observed: s.observed ? 1 : 0,
+                inferred: s.inferred ? 1 : 0,
+              },
+            }));
+          stopsSrc.setData({ type: 'FeatureCollection', features: stopFeatures });
+        } else if (routePoints.length >= 2) {
+          const stopFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
+          let stopStart = -1;
+          for (let i = 0; i < routePoints.length; i++) {
+            const isLowSpeed = (routePoints[i].speedKmh ?? 0) < 3;
+            if (isLowSpeed && stopStart < 0) stopStart = i;
+            if ((!isLowSpeed || i === routePoints.length - 1) && stopStart >= 0) {
+              const stopEnd = isLowSpeed ? i : i - 1;
+              if (stopEnd - stopStart + 1 >= 3) {
+                const mid = Math.floor((stopStart + stopEnd) / 2);
+                const p = routePoints[mid];
+                const startT = new Date(routePoints[stopStart].timestamp).getTime();
+                const endT = new Date(routePoints[stopEnd].timestamp).getTime();
+                if (p.latitude && p.longitude) {
+                  stopFeatures.push({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
+                    properties: { duration: Math.max(1, Math.round((endT - startT) / 1000)) },
+                  });
+                }
+              }
+              stopStart = -1;
+            }
+          }
+          stopsSrc.setData({ type: 'FeatureCollection', features: stopFeatures });
+        } else {
+          stopsSrc.setData({ type: 'FeatureCollection', features: [] });
+        }
       }
     } else {
       routeSrc.setData({ type: 'FeatureCollection', features: [] });
       speedSrc?.setData({ type: 'FeatureCollection', features: [] });
       stopsSrc?.setData({ type: 'FeatureCollection', features: [] });
     }
-  }, [mapGeoJson, routePoints, hasUnknownGaps, mapLoaded, selectedTrip?.id]);
+  }, [
+    mapGeoJson,
+    routePoints,
+    hasUnknownGaps,
+    mapLoaded,
+    selectedTrip?.id,
+    motionMapActive,
+    motionSamples,
+    motionStops,
+  ]);
 
   useEffect(() => {
     fitMapToRoute(false);
@@ -405,6 +482,7 @@ export function useTripsRouteMap({
       if (ev.latitude == null || ev.longitude == null) return;
       const isAbuse = ev.eventCategory === 'ABUSE';
       if (isAbuse && !layers.showAbuseEvents) return;
+      if (!isAbuse && layers.showDrivingEvents && motionMapActive) return;
       if (!isAbuse && !layers.showDrivingEvents) return;
 
       const openPopover = () => {
@@ -423,7 +501,172 @@ export function useTripsRouteMap({
         .addTo(map);
       eventMarkersRef.current.push(marker);
     });
-  }, [behaviorEvents, selectedTrip?.id, layers.showDrivingEvents, layers.showAbuseEvents, mapLoaded, isDarkMode, onEventSelect, selectedBehaviorEventId]);
+  }, [
+    behaviorEvents,
+    selectedTrip?.id,
+    layers.showDrivingEvents,
+    layers.showAbuseEvents,
+    mapLoaded,
+    isDarkMode,
+    onEventSelect,
+    selectedBehaviorEventId,
+    motionMapActive,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !selectedTrip || !motionMapActive) return;
+    motionMarkersRef.current.forEach((m) => m.remove());
+    motionMarkersRef.current = [];
+
+    if (!layers.showDrivingEvents) return;
+    const grouped = groupMotionEventsByCoordinate(motionEvents);
+    grouped.forEach((eventsAtPoint) => {
+      const ev = eventsAtPoint[0];
+      if (!ev || ev.latitude == null || ev.longitude == null) return;
+      const open = () => {
+        const point = map.project([ev.longitude!, ev.latitude!]);
+        if (eventsAtPoint.length > 1) {
+          onMotionPopover?.({
+            kind: 'pickList',
+            items: eventsAtPoint.map((item) => ({ type: 'event', event: item })),
+            x: point.x,
+            y: point.y,
+          });
+        } else {
+          onMotionPopover?.({ kind: 'event', event: ev, x: point.x, y: point.y });
+        }
+      };
+      const el = createMotionEventMarkerElement(
+        ev,
+        isDarkMode,
+        open,
+        eventsAtPoint.some((item) => selectedMotionEventId === item.id),
+        motionEventAriaLabel?.(ev),
+      );
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([ev.longitude!, ev.latitude!])
+        .addTo(map);
+      motionMarkersRef.current.push(marker);
+    });
+  }, [
+    motionEvents,
+    motionMapActive,
+    layers.showDrivingEvents,
+    mapLoaded,
+    selectedTrip?.id,
+    isDarkMode,
+    onMotionPopover,
+    selectedMotionEventId,
+    motionEventAriaLabel,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !motionMapActive || !layers.showSpeed) return;
+
+    const showSampleAt = (sample: TripMotionMapSample, x: number, y: number) => {
+      const scrubSrc = map.getSource('motion-scrub-point') as mapboxgl.GeoJSONSource | undefined;
+      if (scrubSrc && sample.latitude != null && sample.longitude != null) {
+        scrubSrc.setData({
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [sample.longitude, sample.latitude] },
+            properties: {},
+          }],
+        });
+      }
+      onMotionPopover?.({ kind: 'sample', sample, x, y });
+    };
+
+    const pickFromPoint = (point: mapboxgl.Point) => {
+      const sample = pickMotionSampleAtPoint(
+        map as unknown as MotionRoutePickMap,
+        motionSamples,
+        { x: point.x, y: point.y },
+      );
+      if (sample) showSampleAt(sample, point.x, point.y);
+    };
+
+    let scrubActive = false;
+    const endScrub = () => {
+      if (!scrubActive) return;
+      scrubActive = false;
+      try {
+        map.dragPan.enable();
+      } catch {
+        /* noop */
+      }
+    };
+
+    const onMove = (e: mapboxgl.MapMouseEvent) => {
+      if (e.originalEvent instanceof MouseEvent && e.originalEvent.buttons !== 0) return;
+      if (e.originalEvent instanceof MouseEvent) pickFromPoint(e.point);
+    };
+    const onTouchStart = (e: mapboxgl.MapTouchEvent) => {
+      if (e.points.length !== 1) return;
+      if (isMotionRouteHitAtPoint(
+        map as unknown as MotionRoutePickMap,
+        motionSamples,
+        { x: e.point.x, y: e.point.y },
+      )) {
+        scrubActive = true;
+        try {
+          map.dragPan.disable();
+        } catch {
+          /* noop */
+        }
+        pickFromPoint(e.point);
+      }
+    };
+    const onTouchMove = (e: mapboxgl.MapTouchEvent) => {
+      if (!scrubActive || e.points.length !== 1) return;
+      if (e.originalEvent.cancelable) e.originalEvent.preventDefault();
+      pickFromPoint(e.point);
+    };
+    const onTouchEnd = () => endScrub();
+    const onTouchCancel = () => endScrub();
+
+    const stopsByCoord = groupMotionStopsByCoordinate(motionStops);
+    const onStopClick = (e: mapboxgl.MapMouseEvent) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['stop-points-ring', 'stop-points-center'] });
+      const stopId = features[0]?.properties?.stopId as string | undefined;
+      if (!stopId) return;
+      const stop = motionStops.find((s) => s.id === stopId);
+      if (!stop || stop.latitude == null || stop.longitude == null) return;
+      const key = motionCoordKey(stop.latitude, stop.longitude);
+      const atPoint = stopsByCoord.get(key) ?? [stop];
+      if (atPoint.length > 1) {
+        onMotionPopover?.({
+          kind: 'pickList',
+          items: atPoint.map((item) => ({ type: 'stop', stop: item })),
+          x: e.point.x,
+          y: e.point.y,
+        });
+      } else {
+        onMotionPopover?.({ kind: 'stop', stop, x: e.point.x, y: e.point.y });
+      }
+    };
+
+    map.on('mousemove', onMove);
+    map.on('touchstart', onTouchStart);
+    map.on('touchmove', onTouchMove);
+    map.on('touchend', onTouchEnd);
+    map.on('touchcancel', onTouchCancel);
+    map.on('click', onStopClick);
+    return () => {
+      map.off('mousemove', onMove);
+      map.off('touchstart', onTouchStart);
+      map.off('touchmove', onTouchMove);
+      map.off('touchend', onTouchEnd);
+      map.off('touchcancel', onTouchCancel);
+      map.off('click', onStopClick);
+      endScrub();
+      const scrubSrc = map.getSource('motion-scrub-point') as mapboxgl.GeoJSONSource | undefined;
+      scrubSrc?.setData({ type: 'FeatureCollection', features: [] });
+    };
+  }, [mapLoaded, motionMapActive, layers.showSpeed, motionSamples, motionStops, onMotionPopover]);
 
   return {
     mapContainerRef,

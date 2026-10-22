@@ -7395,6 +7395,10 @@ export const api = {
       get<TripGpsSpeedEvaluationProductV1>(
         `/vehicles/${vehicleId}/trips/${tripId}/gps-speed-evaluation-v2`,
       ),
+    tripMotionShadowMap: (vehicleId: string, tripId: string) =>
+      get<TripMotionShadowMapReadResponse>(
+        `/vehicles/${vehicleId}/trips/${tripId}/motion-shadow-map`,
+      ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
     getVehicleDamages: (vehicleId: string) =>
@@ -10346,6 +10350,71 @@ export type TripGpsSpeedEvaluationAvailability =
   | 'PENDING'
   | 'UNAVAILABLE'
   | 'NOT_ASSESSABLE';
+
+export type TripMotionShadowMapReadStatus =
+  | 'NOT_AVAILABLE'
+  | 'PENDING'
+  | 'FAILED'
+  | 'SUCCEEDED'
+  | 'SUCCEEDED_EMPTY';
+
+export interface TripMotionShadowMapReadResponse {
+  status: TripMotionShadowMapReadStatus;
+  previewLabel: 'S4 Motion · vorläufig';
+  runId: string | null;
+  workItemId: string | null;
+  pinnedSnapshotHash: string | null;
+  combinedInputIdentity: string | null;
+  algorithmVersions: { c4: string; fsm: string; events: string; bundle: string } | null;
+  computedAtUtc: string | null;
+  geometrySource: 'NONE' | 'MOTION_POSITION_GRID' | 'MAPBOX_ROUTE_ALIGNED';
+  geometryNote: string | null;
+  samples: Array<{
+    bucketLabelUtc: string;
+    speedKmh: number | null;
+    motionState: string;
+    evidenceQuality: string;
+    latitude: number | null;
+    longitude: null | number;
+    positionAvailability: string | null;
+  }>;
+  events: Array<{
+    id: string;
+    kind: string;
+    displayKind: 'START' | 'ACCELERATION' | 'DECELERATION';
+    startLabelUtc: string;
+    endLabelUtc: string;
+    startSpeedKmh: number;
+    endSpeedKmh: number;
+    deltaKmh: number;
+    peakAccel1sMps2: number | null;
+    quality: string;
+    artefactSuspect: boolean;
+    latitude: number | null;
+    longitude: number | null;
+    positionResolved: boolean;
+  }>;
+  stopEpisodes: Array<{
+    id: string;
+    startEarliestUtc: string;
+    startLatestUtc: string;
+    endEarliestUtc: string | null;
+    endLatestUtc: string | null;
+    minDurationS: number;
+    maxDurationS: number | null;
+    evidenceQuality: string;
+    observedLabels: number;
+    gapLabels: number;
+    firstStationarySource: string;
+    observed: boolean;
+    inferred: boolean;
+    latitude: number | null;
+    longitude: number | null;
+    positionResolved: boolean;
+  }>;
+  limitations: string[];
+  failureCode: string | null;
+}
 
 export interface TripGpsSpeedEvaluationProductV1 {
   contractVersion: string;
