@@ -19,6 +19,7 @@ import { ArchitekturView } from './components/ArchitekturView';
 import { ChangesView } from './components/ChangesView';
 import VehicleLogbookView from './components/VehicleLogbookView';
 import BatteryV2ShadowInspectionView from './battery-v2-shadow-inspection/BatteryV2ShadowInspectionView';
+import HvBatteryInspectionView from './battery-v2-hv-inspection/HvBatteryInspectionView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
 import { PlatformOpsHub } from './platform-ops/PlatformOpsHub';
 import { migratePlatformHealthParams, syncPlatformOpsUrl } from './platform-ops/platform-ops-url';
@@ -562,6 +563,14 @@ export default function App() {
           <PageContainer variant="wide">
             <BatteryV2ShadowInspectionView
               isDarkMode={isDarkMode}
+              organizations={organizations.map((o) => ({ id: o.id, companyName: o.company_name }))}
+            />
+          </PageContainer>
+        )}
+
+        {currentView === 'battery-v2-hv-inspection' && (
+          <PageContainer variant="wide">
+            <HvBatteryInspectionView
               organizations={organizations.map((o) => ({ id: o.id, companyName: o.company_name }))}
             />
           </PageContainer>

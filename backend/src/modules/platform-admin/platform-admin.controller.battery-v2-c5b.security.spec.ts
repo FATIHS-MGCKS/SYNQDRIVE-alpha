@@ -10,6 +10,11 @@ const ROUTES = {
   inspect: 'getBatteryV2RestSessionFeatureInspection',
   lvMeasuredIntelligence: 'getBatteryV2LvMeasuredIntelligence',
   lvEstimatedHealthShadow: 'getBatteryV2LvEstimatedHealthShadow',
+  hvVehicleContext: 'getBatteryV2HvVehicleContext',
+  hvOverview: 'getBatteryV2HvOverview',
+  hvChargeEpisodes: 'listBatteryV2HvChargeEpisodes',
+  hvChargeEpisodeDetail: 'getBatteryV2HvChargeEpisodeDetail',
+  hvTechnicalDetails: 'getBatteryV2HvTechnicalDetails',
 } as const;
 
 function contextFor(user: unknown, route: keyof typeof ROUTES): ExecutionContext {

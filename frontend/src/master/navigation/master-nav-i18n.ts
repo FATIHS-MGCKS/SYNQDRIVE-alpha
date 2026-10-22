@@ -26,6 +26,7 @@ const DE: Record<string, string> = {
   'master.nav.support': 'Support',
   'master.nav.activityLog': 'Aktivitätsprotokoll',
   'master.nav.batteryV2ShadowInspection': 'Battery V2 Shadow Inspection',
+  'master.nav.batteryV2HvInspection': 'HV-Batterie',
   'master.nav.architecture': 'Architektur',
   'master.nav.changes': 'Änderungsprotokoll',
   'master.nav.systemStatus': 'Systemstatus',

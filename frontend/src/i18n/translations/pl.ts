@@ -5,6 +5,7 @@ import { tripsM7aMapPL } from './trips-m7a-map.pl';
 import { rentalTripGpsSpeedEvaluationPl } from './rental.tripGpsSpeedEvaluation.pl';
 import { dimoWebhookHealthPl } from './dimo-webhook-health.pl';
 import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
+import { batteryV2HvInspectionPL } from './battery-v2-hv-inspection.pl';
 import { masterPhysicalDeviceInventoryPl } from './master.physicalDeviceInventory.pl';
 
 export const pl = {
@@ -163,4 +164,5 @@ export const pl = {
   ...dimoWebhookHealthPl,
   ...masterPlatformOpsDiS4Pl,
   ...masterPhysicalDeviceInventoryPl,
+  ...batteryV2HvInspectionPL,
 } satisfies PartialTranslationDictionary;
