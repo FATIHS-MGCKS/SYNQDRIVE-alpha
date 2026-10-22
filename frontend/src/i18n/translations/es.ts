@@ -5,6 +5,7 @@ import { tripsM7aMapES } from './trips-m7a-map.es';
 import { rentalTripGpsSpeedEvaluationEs } from './rental.tripGpsSpeedEvaluation.es';
 import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
 import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
+import { batteryV2HvInspectionES } from './battery-v2-hv-inspection.es';
 import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
 
 export const es = {

@@ -37,6 +37,7 @@ import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
 import { BatteryV2LvMeasuredIntelligenceAdminService } from './battery-v2-lv-measured-intelligence.admin.service';
 import { BatteryV2LvEstimatedHealthShadowAdminService } from './battery-v2-lv-estimated-health-shadow.admin.service';
+import { BatteryV2HvBatteryAdminService } from './battery-v2-hv-battery.admin.service';
 import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
 import {
   PLATFORM_PRUNE_DISABLED_CODE,
@@ -65,6 +66,7 @@ export class PlatformAdminController {
     private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
     private readonly batteryV2LvMeasuredIntelligence: BatteryV2LvMeasuredIntelligenceAdminService,
     private readonly batteryV2LvEstimatedHealthShadow: BatteryV2LvEstimatedHealthShadowAdminService,
+    private readonly batteryV2HvBattery: BatteryV2HvBatteryAdminService,
     private readonly dimoR9WebhookHealthService: DimoR9WebhookHealthService,
   ) {}
 
@@ -588,6 +590,139 @@ export class PlatformAdminController {
         p11ShadowHealthStatus: result.p11ShadowAssessment.estimatedHealthStatus,
         eligibleRestCount: result.dataSelection.eligibleRestObservationCount,
       },
+    });
+    return result;
+  }
+
+  @Get('battery-v2/hv/vehicle-context')
+  async getBatteryV2HvVehicleContext(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const result = await this.batteryV2HvBattery.getVehicleContext({
+      organizationId,
+      vehicleId,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin HV battery vehicle context read',
+      metaJson: { organizationId, vehicleId, hvSupported: result.hvSupported },
+    });
+    return result;
+  }
+
+  @Get('battery-v2/hv/overview')
+  async getBatteryV2HvOverview(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const result = await this.batteryV2HvBattery.getOverview({
+      organizationId,
+      vehicleId,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin HV battery overview read',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        physicalChargeEpisodeCount: result.physicalChargeEpisodeCount,
+      },
+    });
+    return result;
+  }
+
+  @Get('battery-v2/hv/charge-episodes')
+  async listBatteryV2HvChargeEpisodes(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const parsedPage = page ? Number(page) : undefined;
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const result = await this.batteryV2HvBattery.listChargeEpisodes({
+      organizationId,
+      vehicleId,
+      page: Number.isFinite(parsedPage) ? parsedPage : undefined,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin HV battery charge episode list read',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        page: result.page,
+        episodeCount: result.episodes.length,
+      },
+    });
+    return result;
+  }
+
+  @Get('battery-v2/hv/charge-episodes/:episodeId')
+  async getBatteryV2HvChargeEpisodeDetail(
+    @Param('episodeId') episodeId: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId || !episodeId) {
+      throw new BadRequestException('organizationId, vehicleId, and episodeId are required');
+    }
+    const result = await this.batteryV2HvBattery.getChargeEpisodeDetail({
+      organizationId,
+      vehicleId,
+      episodeId,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      entityId: episodeId,
+      description: 'Master Admin HV battery charge episode detail read',
+      metaJson: { organizationId, vehicleId, episodeId },
+    });
+    return result;
+  }
+
+  @Get('battery-v2/hv/technical-details')
+  async getBatteryV2HvTechnicalDetails(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const result = await this.batteryV2HvBattery.getTechnicalDetails({
+      organizationId,
+      vehicleId,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin HV battery technical details read',
+      metaJson: { organizationId, vehicleId },
     });
     return result;
   }

@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-22 — Master Admin HV Battery inspection P1 (read-only)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Master Admin `battery-v2-hv-inspection` UI + `GET /admin/battery-v2/hv/*` read endpoints (overview, paginated physical charge episodes, episode detail, technical details); physical-episode clustering for provider segment dedupe |
+| **WHY** | Operator visibility for HV charge history, M2/M3 shadow artifacts, measurement quality, cross-session/SOH evidence without customer API or pipeline mutations |
+| **VALIDATION** | `hv-battery-admin-physical-episode.policy.spec.ts`, `battery-v2-hv-battery.admin.service.spec.ts`, `platform-admin.controller.battery-v2-c5b.security.spec.ts`, `master-nav-hv-battery.test.ts` |
+| **NON_EFFECTS** | No DIMO calls, jobs, flags, migrations, or customer `hv-battery-status` contract changes |
+
+---
+
 ## 2026-10-22 — HV shadow P1 refresh consistency gate (PR #2122)
 
 | Field | Value |

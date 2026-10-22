@@ -25,6 +25,7 @@ export type MasterView =
   | 'changes'
   | 'vehicle-logbook'
   | 'battery-v2-shadow-inspection'
+  | 'battery-v2-hv-inspection'
   /** @deprecated URL redirect only */
   | 'hm-compatibility'
   /** @deprecated URL redirect only */

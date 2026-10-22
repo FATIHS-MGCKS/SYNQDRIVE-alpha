@@ -5,6 +5,7 @@ import { tripsM7aMapIT } from './trips-m7a-map.it';
 import { rentalTripGpsSpeedEvaluationIt } from './rental.tripGpsSpeedEvaluation.it';
 import { dimoWebhookHealthIt } from './dimo-webhook-health.it';
 import { masterPlatformOpsDiS4It } from './master.platformOps.diS4.it';
+import { batteryV2HvInspectionIT } from './battery-v2-hv-inspection.it';
 import { masterPhysicalDeviceInventoryIt } from './master.physicalDeviceInventory.it';
 
 export const it = {

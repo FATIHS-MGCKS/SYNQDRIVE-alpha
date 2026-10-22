@@ -60,6 +60,7 @@ import { rentalLegacyGapDE } from './rental-legacy-gap.de';
 import { tripsMotionMapDE } from './trips-motion-map.de';
 import { tripsM7aMapDE } from './trips-m7a-map.de';
 import { masterPlatformOpsDiS4De } from './master.platformOps.diS4.de';
+import { batteryV2HvInspectionDE } from './battery-v2-hv-inspection.de';
 import { masterPhysicalDeviceInventoryDe } from './master.physicalDeviceInventory.de';
 
 export const de: Record<TranslationKey, string> = {

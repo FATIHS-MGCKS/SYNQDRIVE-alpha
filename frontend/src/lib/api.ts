@@ -3931,6 +3931,53 @@ export const api = {
           import('../master/battery-v2-shadow-inspection/lv-estimated-health-shadow.types').LvEstimatedBatteryHealthShadowAdminV1
         >(`/admin/battery-v2/lv-estimated-health-shadow?${q.toString()}`);
       },
+      getHvVehicleContext: (params: { organizationId: string; vehicleId: string }) => {
+        const q = new URLSearchParams(params);
+        return get<import('../master/battery-v2-hv-inspection/hv-battery-inspection.types').HvBatteryAdminVehicleContextV1>(
+          `/admin/battery-v2/hv/vehicle-context?${q.toString()}`,
+        );
+      },
+      getHvOverview: (params: { organizationId: string; vehicleId: string }) => {
+        const q = new URLSearchParams(params);
+        return get<import('../master/battery-v2-hv-inspection/hv-battery-inspection.types').HvBatteryAdminOverviewV1>(
+          `/admin/battery-v2/hv/overview?${q.toString()}`,
+        );
+      },
+      listHvChargeEpisodes: (params: {
+        organizationId: string;
+        vehicleId: string;
+        page?: number;
+        limit?: number;
+      }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        if (params.page != null) q.set('page', String(params.page));
+        if (params.limit != null) q.set('limit', String(params.limit));
+        return get<import('../master/battery-v2-hv-inspection/hv-battery-inspection.types').HvBatteryAdminChargeEpisodeListV1>(
+          `/admin/battery-v2/hv/charge-episodes?${q.toString()}`,
+        );
+      },
+      getHvChargeEpisodeDetail: (params: {
+        organizationId: string;
+        vehicleId: string;
+        episodeId: string;
+      }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        return get<import('../master/battery-v2-hv-inspection/hv-battery-inspection.types').HvBatteryAdminChargeEpisodeDetailV1>(
+          `/admin/battery-v2/hv/charge-episodes/${params.episodeId}?${q.toString()}`,
+        );
+      },
+      getHvTechnicalDetails: (params: { organizationId: string; vehicleId: string }) => {
+        const q = new URLSearchParams(params);
+        return get<import('../master/battery-v2-hv-inspection/hv-battery-inspection.types').HvBatteryAdminTechnicalDetailsV1>(
+          `/admin/battery-v2/hv/technical-details?${q.toString()}`,
+        );
+      },
     },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),

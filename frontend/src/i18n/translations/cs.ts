@@ -5,6 +5,7 @@ import { tripsM7aMapCS } from './trips-m7a-map.cs';
 import { rentalTripGpsSpeedEvaluationCs } from './rental.tripGpsSpeedEvaluation.cs';
 import { dimoWebhookHealthCs } from './dimo-webhook-health.cs';
 import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
+import { batteryV2HvInspectionCS } from './battery-v2-hv-inspection.cs';
 import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 
 export const cs = {
