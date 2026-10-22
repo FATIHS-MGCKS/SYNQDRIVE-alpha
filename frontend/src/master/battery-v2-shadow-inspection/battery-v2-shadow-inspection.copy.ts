@@ -150,6 +150,11 @@ const COPY: Record<string, string> = {
     '{{count}} open provider observability gap(s) — coverage may be incomplete between measurements.',
   'master.batteryV2Shadow.lvMeasured.boundary.batteryHealthNotAssessed': 'Not available (NOT_ASSESSED)',
   'master.batteryV2Shadow.lvMeasured.n16Shadow.title': 'N16 estimated health (shadow, read-only)',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.p1Title': 'P1 baseline (production decision path)',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.p11Title':
+    'P11 condition policy (shadow-only, default off in product)',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.temporalNote':
+    'Provider-time as-of at evaluatedAtIso — no ingestion-time availability guarantee.',
   'master.batteryV2Shadow.lvMeasured.n16Shadow.boundaryNote':
     'Separate from measured-intelligence NOT_ASSESSED boundary — internal shadow classification only; not customer publication.',
   'master.batteryV2Shadow.lvMeasured.n16Shadow.status': 'Estimated status',

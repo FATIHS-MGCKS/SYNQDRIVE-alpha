@@ -65,6 +65,7 @@ function baseCondition(
       measuredToIso: null,
     },
     eligibleRestObservations: [],
+    assessmentTimelineObservations: [],
     latestGlobalObservation: null,
     latestEligibleRestObservation: null,
     wakeVoltageObservations: [],

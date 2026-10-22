@@ -158,6 +158,8 @@ describe('buildLvOperationalConditionInputV1 — GE assessment selection', () =>
     );
     expect(input.geDataSelection.rawVoltageRowCount).toBe(600);
     expect(input.historicalObservationsTruncated).toBe(false);
+    const expectedEvalMs = Math.min(measuredTo.getTime(), Date.now());
+    expect(Date.parse(input.evaluatedAtIso)).toBe(expectedEvalMs);
   });
 
   it('deterministic re-evaluation for identical assessment input', async () => {
