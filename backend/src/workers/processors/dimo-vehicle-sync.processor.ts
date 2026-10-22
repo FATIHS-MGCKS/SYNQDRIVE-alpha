@@ -5,6 +5,10 @@ import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { DimoApiSyncService } from '@modules/dimo/dimo-api-sync.service';
+import {
+  mergeDimoVehicleSyncMetaJson,
+  PdiIdentityDriftShadowService,
+} from '@modules/physical-device-inventory/pdi-identity-drift-shadow.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
 @Processor(QUEUE_NAMES.DIMO_VEHICLE_SYNC)
@@ -14,6 +18,7 @@ export class DimoVehicleSyncProcessor extends WorkerHost {
   constructor(
     private readonly dimoApiSync: DimoApiSyncService,
     private readonly prisma: PrismaService,
+    private readonly pdiIdentityDriftShadow: PdiIdentityDriftShadowService,
   ) {
     super();
   }
@@ -27,6 +32,17 @@ export class DimoVehicleSyncProcessor extends WorkerHost {
       const finishedAt = new Date();
       const durationMs = finishedAt.getTime() - startedAt.getTime();
 
+      let shadowMeta: Record<string, unknown> | null = null;
+      try {
+        const shadowResult = await this.pdiIdentityDriftShadow.runAfterSuccessfulDimoVehicleSync({
+          syncedCount: synced,
+        });
+        shadowMeta = shadowResult?.metaJsonFragment ?? null;
+      } catch (shadowError) {
+        const message = shadowError instanceof Error ? shadowError.message : String(shadowError);
+        this.logger.warn(`PDI identity drift shadow hook failed (sync continues): ${message}`);
+      }
+
       await this.prisma.dimoPollLog.create({
         data: {
           vehicleId: null,
@@ -35,7 +51,7 @@ export class DimoVehicleSyncProcessor extends WorkerHost {
           startedAt,
           finishedAt,
           durationMs,
-          metaJson: { syncedCount: synced },
+          metaJson: mergeDimoVehicleSyncMetaJson({ syncedCount: synced }, shadowMeta),
         },
       });
 

@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 
 import { QUEUE_NAMES } from './queues/queue-names';
 import { DimoModule } from '@modules/dimo/dimo.module';
+import { PdiIdentityDriftShadowModule } from '@modules/physical-device-inventory/pdi-identity-drift-shadow.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
@@ -114,6 +115,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
     DimoModule,
+    PdiIdentityDriftShadowModule,
     SnapshotWakeModule,
     AdaptivePollingShadowModule,
     VsiReadonlySignalComposerModule,
