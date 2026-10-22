@@ -19,7 +19,7 @@ describe('VsiProviderSourceObservationWriterService — P2D capture gates', () =
     pollJobId: 'job-1',
     bullmqAttemptNumber: 0,
     fetchCorrelationId: 'corr-1',
-    idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('job-1', 0),
+    idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('corr-1'),
     providerFetchedAt: new Date('2026-10-14T12:00:00.000Z'),
     providerSourceTimestamp: new Date('2026-10-14T11:59:00.000Z'),
     monotonicStaleSkipped: false,

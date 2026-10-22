@@ -376,10 +376,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         pollJobId: String(job.id),
         bullmqAttemptNumber,
         fetchCorrelationId,
-        idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(
-          String(job.id),
-          bullmqAttemptNumber,
-        ),
+        idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(fetchCorrelationId),
         providerFetchedAt: fetchedAt,
         providerSourceTimestamp: normalized.lastSeenAt ?? null,
         monotonicStaleSkipped: monotonicStale,
