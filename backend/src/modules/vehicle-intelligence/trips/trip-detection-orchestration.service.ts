@@ -233,6 +233,7 @@ import {
   resolveFinalizeEndTime,
 } from './trip-finalize-quality.util';
 import { TripDiBoundaryAdmissionService } from './di-boundary-admission/trip-di-boundary-admission.service';
+import { TripReconciliationService } from './reconciliation/trip-reconciliation.service';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -348,6 +349,8 @@ export class TripDetectionOrchestrationService {
     @Inject(forwardRef(() => TripLifecycleRecoveryService))
     private readonly lifecycleRecovery: TripLifecycleRecoveryService,
     private readonly diBoundaryAdmission: TripDiBoundaryAdmissionService,
+    @Optional()
+    private readonly tripReconciliation?: TripReconciliationService,
     @Optional()
     private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
@@ -3959,7 +3962,7 @@ export class TripDetectionOrchestrationService {
     // Set when a trip is persisted as COMPLETED — after the RESTING transition
     // commits we hand the finalized trip to Battery V2 so the LV rest window
     // opens without requiring another provider observation.
-    let finalizedTripForRestWindow: { tripId: string; endTime: Date } | null =
+    let finalizedTripForRestWindow: { tripId: string; startTime: Date; endTime: Date } | null =
       null;
     let terminalLifecycleCommit: TerminalLifecycleCommit = 'NONE';
     let terminalLifecycleIntent: TerminalLifecycleIntent = 'NONE';
@@ -4279,7 +4282,7 @@ export class TripDetectionOrchestrationService {
             });
             terminalLifecycleCommit = 'COMPLETED';
             terminalTripId = tripId;
-            finalizedTripForRestWindow = { tripId, endTime };
+            finalizedTripForRestWindow = { tripId, startTime: trip.startTime, endTime };
             runTripObservabilitySafely(
               this.logger,
               'finalize_post_commit_observability',
@@ -4407,8 +4410,11 @@ export class TripDetectionOrchestrationService {
       // Durable + idempotent (lv-rest-open:{vehicleId}:{anchorMs}); failures
       // never affect the trip lifecycle — reconciliation self-heals misses.
       if (finalizedTripForRestWindow && organizationId) {
-        const { tripId: finalizedTripId, endTime: finalizedEndTime } =
-          finalizedTripForRestWindow;
+        const {
+          tripId: finalizedTripId,
+          startTime: finalizedStartTime,
+          endTime: finalizedEndTime,
+        } = finalizedTripForRestWindow;
         try {
           await this.batteryLvRestSessionProducer.enqueueSessionOpenForFinalizedTrip({
             organizationId,
@@ -4445,6 +4451,20 @@ export class TripDetectionOrchestrationService {
           } catch (e) {
             this.logger.warn(
               `V2 finalize: DI boundary admission LIVE_FSM settlement release failed for vehicle ${vehicleId}: ${e}`,
+            );
+          }
+        }
+
+        if (this.tripReconciliation) {
+          try {
+            await this.tripReconciliation.reconcileAdmissionAfterFinalization(
+              vehicleId,
+              finalizedStartTime,
+              finalizedEndTime,
+            );
+          } catch (e) {
+            this.logger.warn(
+              `V2 finalize: post-finalize DI admission reconcile failed for vehicle ${vehicleId} trip ${finalizedTripId}: ${e}`,
             );
           }
         }
