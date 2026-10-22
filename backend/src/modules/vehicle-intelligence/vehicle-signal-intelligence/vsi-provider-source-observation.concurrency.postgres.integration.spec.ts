@@ -56,8 +56,9 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
       });
 
       const results = await Promise.all(
-        [0, 1, 2, 3].map((attempt) =>
-          writer.recordProviderFetch({
+        [0, 1, 2, 3].map((attempt) => {
+          const fetchCorrelationId = `corr-${attempt}-${Date.now()}`;
+          return writer.recordProviderFetch({
             organizationId: f.organizationId,
             vehicleId: f.vehicleId,
             provider: 'DIMO',
@@ -65,16 +66,13 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
             providerTokenReference: f.providerTokenReference,
             pollJobId: `job-conc-${attempt}-${Date.now()}`,
             bullmqAttemptNumber: attempt,
-            fetchCorrelationId: `corr-${attempt}-${Date.now()}`,
-            idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(
-              `job-conc-${attempt}-${Date.now()}`,
-              attempt,
-            ),
+            fetchCorrelationId,
+            idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(fetchCorrelationId),
             providerFetchedAt: new Date(),
             providerSourceTimestamp: new Date('2026-10-14T10:00:00.000Z'),
             monotonicStaleSkipped: false,
-          }),
-        ),
+          });
+        }),
       );
 
       const indices = results.map((r) => r?.observationIndex).filter(Boolean) as bigint[];
