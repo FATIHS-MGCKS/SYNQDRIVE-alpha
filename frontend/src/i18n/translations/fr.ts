@@ -905,4 +905,5 @@ export const fr = {
   ...dimoWebhookHealthFr,
   ...masterPlatformOpsDiS4Fr,
   ...masterPhysicalDeviceInventoryFr,
+  ...batteryV2HvInspectionFR,
 } satisfies PartialTranslationDictionary;

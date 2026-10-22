@@ -164,4 +164,5 @@ export const it = {
   ...dimoWebhookHealthIt,
   ...masterPlatformOpsDiS4It,
   ...masterPhysicalDeviceInventoryIt,
+  ...batteryV2HvInspectionIT,
 } satisfies PartialTranslationDictionary;

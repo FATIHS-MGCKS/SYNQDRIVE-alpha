@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BatteryCharging, RefreshCw, Search } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { Button } from '../../components/ui/button';
 import { MasterEmptyState, MasterErrorState, MasterLoadingState } from '../shell/MasterPageStates';
 import { MasterPageHeader, MasterPageSection } from '../shell';
@@ -28,10 +29,11 @@ type Props = {
 type TabId = 'overview' | 'history' | 'technical';
 
 function formatAvailability(
-  t: (key: string) => string,
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string,
   code: HvBatteryAdminAvailability,
 ): string {
-  return t(`master.hvBattery.availability.${code}`);
+  const key = `master.hvBattery.availability.${code}` as TranslationKey;
+  return t(key);
 }
 
 function formatDuration(seconds: number | null): string {
@@ -176,7 +178,7 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
       <MasterPageHeader
         title={t('master.hvBattery.pageTitle')}
         description={t('master.hvBattery.pageDescription')}
-        icon={BatteryCharging}
+        icon={<BatteryCharging className="w-6 h-6 text-status-info" />}
         actions={
           <Button
             type="button"
@@ -259,7 +261,7 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
                 variant={tab === id ? 'default' : 'ghost'}
                 onClick={() => setTab(id)}
               >
-                {t(`master.hvBattery.tab.${id}`)}
+                {t(`master.hvBattery.tab.${id}` as TranslationKey)}
               </Button>
             ))}
           </div>

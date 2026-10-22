@@ -165,4 +165,5 @@ export const nl = {
   ...dimoWebhookHealthNl,
   ...masterPlatformOpsDiS4Nl,
   ...masterPhysicalDeviceInventoryNl,
+  ...batteryV2HvInspectionNL,
 } satisfies PartialTranslationDictionary;

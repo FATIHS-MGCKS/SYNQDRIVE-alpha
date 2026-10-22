@@ -5965,4 +5965,5 @@ export const de: Record<TranslationKey, string> = {
   ...tripsM7aMapDE,
   ...masterPlatformOpsDiS4De,
   ...masterPhysicalDeviceInventoryDe,
+  ...batteryV2HvInspectionDE,
 } satisfies CompleteTranslationDictionary;

@@ -5955,6 +5955,7 @@ export const en = {
   ...tripsM7aMapEN,
   ...masterPlatformOpsDiS4En,
   ...masterPhysicalDeviceInventoryEn,
+  ...batteryV2HvInspectionEN,
 } as const;
 
 export type TranslationKey = keyof typeof en;
