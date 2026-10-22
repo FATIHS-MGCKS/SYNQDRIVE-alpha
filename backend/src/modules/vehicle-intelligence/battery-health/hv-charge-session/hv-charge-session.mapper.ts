@@ -40,6 +40,8 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     socProvenance: segment.soc.provenance,
     currentEnergyProvenance: segment.currentEnergyKwh.provenance,
     addedEnergyProvenance: segment.addedEnergyKwh.provenance,
+    segmentAddedEnergyMinKwh: segment.addedEnergyKwh.min,
+    segmentAddedEnergyMaxKwh: segment.addedEnergyKwh.max,
     startedBeforeRange: segment.startedBeforeRange,
     odometerStartKm: segment.odometerKm.min,
     odometerEndKm: segment.odometerKm.max,

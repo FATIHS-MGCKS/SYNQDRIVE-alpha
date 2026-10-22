@@ -160,6 +160,7 @@ function mergeMetadata(
     existingEndEnergyKwh: number | null;
     existingDeltaSocPercent: number | null;
     acceptIncomingQuality: boolean;
+    boundaryProvenanceUpgrade?: boolean;
   },
 ): HvChargeSessionMetadata {
   const history = [...(existing?.changeHistory ?? [])];
@@ -198,18 +199,31 @@ function mergeMetadata(
     const deltaSocUnchanged =
       scalarCoherence.deltaSocPercent === scalarCoherence.existingDeltaSocPercent;
 
-    if (energyUnchanged && existing?.addedEnergyProvenance != null) {
+    if (
+      energyUnchanged &&
+      existing?.addedEnergyProvenance != null &&
+      !scalarCoherence.boundaryProvenanceUpgrade
+    ) {
       merged.addedEnergyProvenance = existing.addedEnergyProvenance;
     }
-    if (socUnchanged && existing?.socProvenance != null) {
+    if (
+      socUnchanged &&
+      existing?.socProvenance != null &&
+      !scalarCoherence.boundaryProvenanceUpgrade
+    ) {
       merged.socProvenance = existing.socProvenance;
     }
-    if (packEnergyUnchanged && existing?.currentEnergyProvenance != null) {
+    if (
+      packEnergyUnchanged &&
+      existing?.currentEnergyProvenance != null &&
+      !scalarCoherence.boundaryProvenanceUpgrade
+    ) {
       merged.currentEnergyProvenance = existing.currentEnergyProvenance;
     }
     if (
-      (energyUnchanged && socUnchanged && packEnergyUnchanged && deltaSocUnchanged) ||
-      !scalarCoherence.acceptIncomingQuality
+      !scalarCoherence.boundaryProvenanceUpgrade &&
+      ((energyUnchanged && socUnchanged && packEnergyUnchanged && deltaSocUnchanged) ||
+        !scalarCoherence.acceptIncomingQuality)
     ) {
       if (existing?.qualityStatus != null) {
         merged.qualityStatus = existing.qualityStatus;
@@ -385,40 +399,58 @@ export function mergeHvChargeSessionUpdate(input: {
     incoming.metadata.socProvenance,
     existingMeta?.socProvenance,
   );
+  const boundaryProvenanceUpgrade =
+    upgradeSnapshotBoundary &&
+    incoming.metadata.boundaryEnrichmentVersion != null &&
+    incoming.metadata.socProvenance != null &&
+    incoming.metadata.currentEnergyProvenance != null;
 
   let startSocPercent = existing.startSocPercent;
   let startEnergyKwh = existing.startEnergyKwh;
-  if (upgradeSnapshotBoundary) {
+  let endSocPercent = existing.endSocPercent;
+  let endEnergyKwh = existing.endEnergyKwh;
+  let deltaSocPercent = existing.deltaSocPercent;
+
+  if (boundaryProvenanceUpgrade) {
     if (incoming.startSocPercent != null) startSocPercent = incoming.startSocPercent;
     if (incoming.startEnergyKwh != null) startEnergyKwh = incoming.startEnergyKwh;
+    if (incoming.endSocPercent != null) endSocPercent = incoming.endSocPercent;
+    if (incoming.endEnergyKwh != null) endEnergyKwh = incoming.endEnergyKwh;
+    if (incoming.deltaSocPercent != null) deltaSocPercent = incoming.deltaSocPercent;
+  } else {
+    if (upgradeSnapshotBoundary) {
+      if (incoming.startSocPercent != null) startSocPercent = incoming.startSocPercent;
+      if (incoming.startEnergyKwh != null) startEnergyKwh = incoming.startEnergyKwh;
+    }
+
+    endSocPercent = preserveSnapshotBoundary
+      ? existing.endSocPercent
+      : preferCoherentNumber(
+          existing.endSocPercent,
+          incoming.endSocPercent,
+          allowEndFieldUpdates,
+        );
+    endEnergyKwh = preserveSnapshotBoundary
+      ? existing.endEnergyKwh
+      : preferCoherentNumber(
+          existing.endEnergyKwh,
+          incoming.endEnergyKwh,
+          allowEndFieldUpdates,
+        );
+    deltaSocPercent = preserveSnapshotBoundary
+      ? existing.deltaSocPercent
+      : preferCoherentNumber(
+          existing.deltaSocPercent,
+          incoming.deltaSocPercent,
+          allowEndFieldUpdates,
+        );
   }
 
-  const endSocPercent = preserveSnapshotBoundary
-    ? existing.endSocPercent
-    : preferCoherentNumber(
-        existing.endSocPercent,
-        incoming.endSocPercent,
-        allowEndFieldUpdates,
-      );
-  const endEnergyKwh = preserveSnapshotBoundary
-    ? existing.endEnergyKwh
-    : preferCoherentNumber(
-        existing.endEnergyKwh,
-        incoming.endEnergyKwh,
-        allowEndFieldUpdates,
-      );
   const energyAddedKwh = preferCoherentNumber(
     existing.energyAddedKwh,
     incoming.energyAddedKwh,
     allowEndFieldUpdates,
   );
-  const deltaSocPercent = preserveSnapshotBoundary
-    ? existing.deltaSocPercent
-    : preferCoherentNumber(
-        existing.deltaSocPercent,
-        incoming.deltaSocPercent,
-        allowEndFieldUpdates,
-      );
 
   const isOngoing =
     existingCompleted && endAt != null
@@ -430,7 +462,8 @@ export function mergeHvChargeSessionUpdate(input: {
           : incoming.isOngoing;
 
   const acceptIncomingQuality =
-    allowEndFieldUpdates && snapshot.coherent && (qualityImproved || !existingCompleted);
+    boundaryProvenanceUpgrade ||
+    (allowEndFieldUpdates && snapshot.coherent && (qualityImproved || !existingCompleted));
 
   const quality: BatteryMeasurementQuality | null =
     acceptIncomingQuality && incomingQuality
@@ -477,6 +510,7 @@ export function mergeHvChargeSessionUpdate(input: {
     existingEndEnergyKwh: existing.endEnergyKwh,
     existingDeltaSocPercent: existing.deltaSocPercent,
     acceptIncomingQuality,
+    boundaryProvenanceUpgrade,
   };
 
   const provisionalMetadata = mergeMetadata(

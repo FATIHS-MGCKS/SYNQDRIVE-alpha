@@ -7,6 +7,22 @@ import {
 import { qualifiedPartialSession } from './hv-measurement-quality.policy.spec-helpers';
 
 describe('hv-measurement-quality.policy', () => {
+  it('uses currentEnergyProvenance (not addedEnergyProvenance) for energy extrema proxy', () => {
+    const row = qualifiedPartialSession({
+      metadata: {
+        durationSeconds: 23_871,
+        qualityStatus: 'QUALIFIED',
+        socProvenance: 'SNAPSHOT_TEMPORAL_BOUNDARY_V1',
+        currentEnergyProvenance: 'SNAPSHOT_TEMPORAL_BOUNDARY_V1',
+        addedEnergyProvenance: 'SEGMENT_EXTREMA',
+        segmentAddedEnergyMinKwh: 0,
+        isChargingObservedAny: true,
+      },
+    });
+    const assessment = evaluateHvMeasurementQualitySession(row, new Set());
+    expect(assessment.m3GateEligible).toBe(true);
+  });
+
   it('never promotes to Q3 when M3 validation gate fails (fail-closed)', () => {
     const row = qualifiedPartialSession({
       metadata: {

@@ -20,6 +20,7 @@ import {
   HV_CHARGE_SESSION_QUALITY_STATUS,
   type HvChargeSessionQualityStatus,
 } from './hv-charge-session-quality.status';
+import { HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE } from './hv-charge-session-boundary-snapshot.constants';
 
 const ORG = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 const VEH_A = '68868291-5478-42cd-b0c4-cc77b2a78e21';
@@ -92,6 +93,8 @@ function incomingDraft(
     endEnergyKwh: number;
     energyAddedKwh: number;
     deltaSocPercent: number;
+    startSocPercent?: number;
+    startEnergyKwh?: number;
   },
 ): HvChargeSessionDraft {
   return {
@@ -102,9 +105,9 @@ function incomingDraft(
     source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
     startAt: new Date('2026-10-13T13:06:30.000Z'),
     endAt: values.endAt,
-    startSocPercent: 84,
+    startSocPercent: values.startSocPercent ?? 84,
     endSocPercent: values.endSocPercent,
-    startEnergyKwh: 46.62,
+    startEnergyKwh: values.startEnergyKwh ?? 46.62,
     endEnergyKwh: values.endEnergyKwh,
     energyAddedKwh: values.energyAddedKwh,
     deltaSocPercent: values.deltaSocPercent,
@@ -555,6 +558,54 @@ describe('mergeHvChargeSessionUpdate — R16.1 mixed measurement & chronology ha
     expect(merged.changed).toBe(true);
     expect(merged.update?.energyAddedKwh).toBe(8.64);
     expect(merged.update?.endAt).toEqual(incoming.endAt);
+  });
+
+  it('applies full snapshot boundary upgrade on completed EXTREMA session', () => {
+    const endAt = new Date('2026-06-22T05:36:49.000Z');
+    const existing = completedRow(VEH_A, ORG, {
+      endAt,
+      endSocPercent: 62.4,
+      endEnergyKwh: 34,
+      energyAddedKwh: 15.18,
+      deltaSocPercent: 27.4,
+    });
+    existing.startSocPercent = 35;
+    existing.startEnergyKwh = 19.5;
+    existing.metadata = baseMeta({
+      socProvenance: 'SEGMENT_EXTREMA',
+      currentEnergyProvenance: 'SEGMENT_EXTREMA',
+      qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.PARTIAL,
+      capacityValidationEligible: false,
+    }) as object;
+
+    const incoming = incomingDraft(VEH_A, ORG, {
+      endAt,
+      startSocPercent: 36,
+      endSocPercent: 61,
+      startEnergyKwh: 20,
+      endEnergyKwh: 33.5,
+      energyAddedKwh: 15.18,
+      deltaSocPercent: 25,
+    });
+    incoming.metadata = baseMeta({
+      socProvenance: HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE,
+      currentEnergyProvenance: HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE,
+      addedEnergyProvenance: 'SEGMENT_EXTREMA',
+      boundaryEnrichmentVersion: 1,
+      qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+      capacityValidationEligible: true,
+      capacityShadowEligible: true,
+    });
+    incoming.quality = BatteryMeasurementQuality.VALID;
+
+    const merged = mergeHvChargeSessionUpdate({ existing, incoming, reconciledAt: FIXED_CLOCK });
+    expect(merged.changed).toBe(true);
+    expect(merged.update?.startSocPercent).toBe(36);
+    expect(merged.update?.endSocPercent).toBe(61);
+    const meta = merged.update?.metadata as HvChargeSessionMetadata;
+    expect(meta.socProvenance).toBe(HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE);
+    expect(meta.qualityStatus).toBe(HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED);
+    expect(meta.capacityValidationEligible).toBe(true);
   });
 
   it('retains provenance and quality metadata when scalars rejected but incoming claims INVALID', () => {

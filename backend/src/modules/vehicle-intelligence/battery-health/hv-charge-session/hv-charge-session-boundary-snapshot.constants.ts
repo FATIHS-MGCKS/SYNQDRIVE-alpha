@@ -11,8 +11,8 @@ export const HV_CHARGE_SESSION_BOUNDARY_MAX_OFFSET_MS = 20 * 60 * 1000;
 /** Extra window padding when loading snapshots (bounded query). */
 export const HV_CHARGE_SESSION_BOUNDARY_QUERY_PADDING_MS = 30 * 60 * 1000;
 
-/** Hard cap on rows loaded per session boundary enrichment. */
-export const HV_CHARGE_SESSION_BOUNDARY_SNAPSHOT_QUERY_LIMIT = 500;
+/** Per-anchor cap (start window + end window); avoids truncating the end on long sessions. */
+export const HV_CHARGE_SESSION_BOUNDARY_ANCHOR_QUERY_LIMIT = 250;
 
 export const HV_CHARGE_SESSION_BOUNDARY_ENRICHMENT_VERSION = 1;
 

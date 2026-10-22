@@ -23,15 +23,23 @@ function segmentFour() {
 }
 
 function row(partial: Partial<HvChargeSessionBoundarySnapshotRow> & Pick<HvChargeSessionBoundarySnapshotRow, 'recordedAt'>): HvChargeSessionBoundarySnapshotRow {
+  const energyUsedKwh = partial.energyUsedKwh ?? 25;
+  const energyObservedAt =
+    'energyObservedAt' in partial
+      ? partial.energyObservedAt ?? null
+      : energyUsedKwh != null
+        ? partial.recordedAt
+        : null;
   return {
-    providerReceivedAt: partial.recordedAt,
+    ...partial,
+    providerReceivedAt: partial.providerReceivedAt ?? partial.recordedAt,
     socPercent: partial.socPercent ?? 50,
-    energyUsedKwh: partial.energyUsedKwh ?? 25,
-    energyObservedAt: partial.energyObservedAt ?? partial.recordedAt,
+    energyUsedKwh,
+    energyObservedAt,
     isCharging: partial.isCharging ?? true,
     chargingCableConnected: partial.chargingCableConnected ?? true,
     idempotencyKey: partial.idempotencyKey ?? `snap-${partial.recordedAt.toISOString()}`,
-    ...partial,
+    recordedAt: partial.recordedAt,
   };
 }
 
@@ -68,6 +76,33 @@ describe('resolveHvChargeSessionBoundaryFromSnapshots', () => {
     if (resolution.kind === 'full') {
       expect(resolution.evidence.provenance).toBe(HV_CHARGE_SESSION_SNAPSHOT_BOUNDARY_PROVENANCE);
       expect(resolution.evidence.deltaSocPercent).toBeCloseTo(27.4, 1);
+    }
+  });
+
+  it('2b. missing energyObservedAt on start snapshot → none (fail-closed)', () => {
+    const snapshots = [
+      row({
+        recordedAt: new Date('2026-06-21T19:01:00.000Z'),
+        socPercent: 35,
+        energyUsedKwh: 19.5,
+        energyObservedAt: null,
+      }),
+      row({
+        recordedAt: new Date('2026-06-22T05:35:00.000Z'),
+        socPercent: 62.4,
+        energyUsedKwh: 34,
+      }),
+    ];
+    const resolution = resolveHvChargeSessionBoundaryFromSnapshots({
+      snapshots,
+      sessionStartAt,
+      sessionEndAt,
+      isOngoing: false,
+      assessedAt,
+    });
+    expect(resolution.kind).toBe('none');
+    if (resolution.kind === 'none') {
+      expect(resolution.reason).toBe('start_energy_gap');
     }
   });
 

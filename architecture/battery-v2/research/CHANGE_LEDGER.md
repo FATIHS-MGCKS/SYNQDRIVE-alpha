@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-22 — HV boundary enrichment hardening (PR #2113 integration)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Measurement quality uses `currentEnergyProvenance` for energy extrema proxy; pack-energy boundary requires `energyObservedAt`; dual-anchor snapshot queries; merge preserves snapshot provenance on upgrade; e2e spec through MQ + M3 gate |
+| **NON_EFFECTS** | No M3 threshold edits; no migrations |
+
+---
+
 ## 2026-10-21 — HV charge session snapshot boundary enrichment (native DIMO ingest)
 
 | Field | Value |

@@ -48,9 +48,17 @@ export type HvChargeSessionBoundaryResolution =
   | { kind: 'full'; evidence: HvChargeSessionResolvedBoundaryEvidence }
   | { kind: 'none'; reason: HvChargeSessionBoundaryResolutionReason };
 
-function resolveEnergyObservedAt(row: HvChargeSessionBoundarySnapshotRow): Date | null {
+/**
+ * Pack-energy observation time for boundary matching.
+ * Fail-closed: requires explicit `energyObservedAt` from HV snapshot persistence
+ * (`hv-battery-health.service` sets this from provider current-energy signal time).
+ */
+export function resolvePackEnergyObservedAtForBoundary(
+  row: HvChargeSessionBoundarySnapshotRow,
+): Date | null {
   if (row.energyUsedKwh == null) return null;
-  return row.energyObservedAt ?? row.recordedAt;
+  if (row.energyObservedAt == null) return null;
+  return row.energyObservedAt;
 }
 
 function observationFreshAtBoundary(input: {
@@ -129,7 +137,7 @@ function pickBoundarySnapshot(
   const sorted = [...candidates].sort((a, b) => compareSnapshotCandidates(a, b, boundaryAt));
   const best = sorted[0]!;
 
-  const energyObservedAt = resolveEnergyObservedAt(best);
+  const energyObservedAt = resolvePackEnergyObservedAtForBoundary(best);
   if (energyObservedAt == null) {
     return { row: best, reason: boundaryAt.getTime() === sessionStartAt.getTime() ? 'start_energy_gap' : 'end_energy_gap' };
   }
@@ -161,7 +169,7 @@ function toObservation(
   row: HvChargeSessionBoundarySnapshotRow,
   boundaryAt: Date,
 ): HvChargeSessionBoundaryObservation | null {
-  const energyObservedAt = resolveEnergyObservedAt(row);
+  const energyObservedAt = resolvePackEnergyObservedAtForBoundary(row);
   if (energyObservedAt == null || row.energyUsedKwh == null) return null;
   return {
     socPercent: row.socPercent,

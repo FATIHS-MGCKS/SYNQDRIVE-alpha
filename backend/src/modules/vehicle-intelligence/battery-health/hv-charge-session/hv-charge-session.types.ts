@@ -41,6 +41,8 @@ export interface HvChargeSessionMetadata {
   socProvenance?: string | null;
   currentEnergyProvenance?: string | null;
   addedEnergyProvenance?: string | null;
+  segmentAddedEnergyMinKwh?: number | null;
+  segmentAddedEnergyMaxKwh?: number | null;
   isChargingStart?: boolean | null;
   isChargingEnd?: boolean | null;
   cableConnectedStart?: boolean | null;
