@@ -1,3 +1,4 @@
+import type { TripDetectionState } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
 import type { Dtc02ObservabilityService } from '../observability/dtc02-observability.service';
 import {
@@ -9,6 +10,9 @@ import {
   isDtc02AdaptiveSchedulerShadowConfigValid,
   shouldRunDtc02AdaptiveSchedulerShadowForVehicle,
 } from './dtc-02-adaptive-shadow.config';
+import { DTC02_TRIP_FSM_TRANSITION_MAX_AGE_MS } from './dtc-02-adaptive-planner.constants';
+import { extractVsiDiagnosticTroubleCodeLastSourceTimestamp } from './dtc-02-adaptive-vsi-snapshot.util';
+import { buildDtc02TripVsiPlannerContext } from './dtc-02-adaptive-trip-vsi.resolver';
 
 function mapProviderErrorState(
   pollStatus: string | null | undefined,
@@ -40,18 +44,57 @@ export type Dtc02AdaptiveShadowVehicleRow = {
   lastPartialWebhookSourceAt: Date | null;
   lastPollFetchAt: Date | null;
   activeDtcCount: number;
+  tripDetectionState: string | null;
+  possibleStartEnteredAt: Date | null;
+  possibleEndEnteredAt: Date | null;
+  lastActivityAt: Date | null;
+  inTripInterval: boolean;
+  vsiDtcLastSourceTimestamp: string | null;
 };
 
 /**
  * Read-only batch load for shadow allowlisted vehicles on an existing fan-out tick.
  */
+async function loadInTripVehicleIdSet(
+  prisma: PrismaService,
+  vehicleIds: string[],
+  atMs: number,
+): Promise<Set<string>> {
+  if (vehicleIds.length === 0) return new Set();
+  const at = new Date(atMs);
+  const trips = await prisma.vehicleTrip.findMany({
+    where: {
+      vehicleId: { in: vehicleIds },
+      startTime: { lte: at },
+      OR: [{ endTime: null }, { endTime: { gte: at } }],
+    },
+    select: { vehicleId: true },
+  });
+  return new Set(trips.map((t) => t.vehicleId));
+}
+
+function pickLatestVsiDtcTimestampByVehicle(
+  profiles: Array<{ vehicleId: string; signalsSnapshot: unknown }>,
+): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const row of profiles) {
+    if (map.has(row.vehicleId)) continue;
+    map.set(
+      row.vehicleId,
+      extractVsiDiagnosticTroubleCodeLastSourceTimestamp(row.signalsSnapshot),
+    );
+  }
+  return map;
+}
+
 export async function loadDtc02AdaptiveShadowVehicleRows(
   prisma: PrismaService,
   vehicleIds: string[],
+  evaluatedAtMs: number,
 ): Promise<Dtc02AdaptiveShadowVehicleRow[]> {
   if (vehicleIds.length === 0) return [];
 
-  const [vehicles, activeCounts, heads] = await Promise.all([
+  const [vehicles, activeCounts, heads, tripStates, inTripSet, vsiProfiles] = await Promise.all([
     prisma.vehicle.findMany({
       where: { id: { in: vehicleIds } },
       select: {
@@ -82,13 +125,32 @@ export async function loadDtc02AdaptiveShadowVehicleRows(
         lastPollFetchAt: true,
       },
     }),
+    prisma.vehicleTripDetectionState.findMany({
+      where: { vehicleId: { in: vehicleIds } },
+      select: {
+        vehicleId: true,
+        state: true,
+        possibleStartEnteredAt: true,
+        possibleEndEnteredAt: true,
+        lastActivityAt: true,
+      },
+    }),
+    loadInTripVehicleIdSet(prisma, vehicleIds, evaluatedAtMs),
+    prisma.vehicleSignalCapabilityProfile.findMany({
+      where: { vehicleId: { in: vehicleIds } },
+      orderBy: { evaluatedAt: 'desc' },
+      select: { vehicleId: true, signalsSnapshot: true },
+    }),
   ]);
 
   const activeMap = new Map(activeCounts.map((r) => [r.vehicleId, r._count._all]));
   const headMap = new Map(heads.map((h) => [h.vehicleId, h]));
+  const tripMap = new Map(tripStates.map((t) => [t.vehicleId, t]));
+  const vsiMap = pickLatestVsiDtcTimestampByVehicle(vsiProfiles);
 
   return vehicles.map((v) => {
     const head = headMap.get(v.id);
+    const trip = tripMap.get(v.id);
     const vls = v.latestState;
     return {
       vehicleId: v.id,
@@ -102,6 +164,12 @@ export async function loadDtc02AdaptiveShadowVehicleRows(
       lastPartialWebhookSourceAt: head?.lastPartialWebhookSourceAt ?? null,
       lastPollFetchAt: head?.lastPollFetchAt ?? null,
       activeDtcCount: activeMap.get(v.id) ?? 0,
+      tripDetectionState: trip?.state ?? null,
+      possibleStartEnteredAt: trip?.possibleStartEnteredAt ?? null,
+      possibleEndEnteredAt: trip?.possibleEndEnteredAt ?? null,
+      lastActivityAt: trip?.lastActivityAt ?? null,
+      inTripInterval: inTripSet.has(v.id),
+      vsiDtcLastSourceTimestamp: vsiMap.get(v.id) ?? null,
     };
   });
 }
@@ -116,17 +184,33 @@ export function runDtc02AdaptiveShadowPlanForRow(
     evaluatedAtMs,
   });
 
+  const lastPollOrIntentAtMs =
+    row.lastPollFetchAt?.getTime() ?? row.lastDtcPollAt?.getTime() ?? null;
+
+  const tripVsiContext = buildDtc02TripVsiPlannerContext({
+    evaluatedAtMs,
+    inTripInterval: row.inTripInterval,
+    tripDetectionState: row.tripDetectionState as TripDetectionState | null,
+    lastActivityAtMs: row.lastActivityAt?.getTime() ?? null,
+    possibleStartEnteredAtMs: row.possibleStartEnteredAt?.getTime() ?? null,
+    possibleEndEnteredAtMs: row.possibleEndEnteredAt?.getTime() ?? null,
+    vsiDtcLastSourceTimestamp: row.vsiDtcLastSourceTimestamp,
+    tripFsmTransitionMaxAgeMs: DTC02_TRIP_FSM_TRANSITION_MAX_AGE_MS,
+    lastPollOrIntentAtMs,
+  });
+
   return planDtc02AdaptivePollCheck({
     registryLifecycle: row.registryLifecycle ?? 'ACTIVE',
     providerCapability: row.dimoTokenId != null ? 'dimo_linked' : 'unknown',
     lastSuccessfulDtcCheckAtMs: row.lastSuccessfulDtcCheckAt?.getTime() ?? null,
-    lastPollFetchAtMs: row.lastPollFetchAt?.getTime() ?? row.lastDtcPollAt?.getTime() ?? null,
+    lastPollFetchAtMs: lastPollOrIntentAtMs,
     lastConfirmedCompleteSourceAtMs: row.lastConfirmedCompleteSourceAt?.getTime() ?? null,
     lastPartialWebhookSourceAtMs: row.lastPartialWebhookSourceAt?.getTime() ?? null,
     webhookEvidenceQuality,
     hasActiveDtc: row.activeDtcCount > 0,
     providerErrorState: mapProviderErrorState(row.dtcPollStatus, row.dtcPollError),
     evaluatedAtMs,
+    tripVsiContext,
   });
 }
 
@@ -154,7 +238,11 @@ export async function runDtc02AdaptiveSchedulerShadowBatch(input: {
     }
 
     input.observability?.recordAdaptiveShadowPhase('run');
-    const rows = await loadDtc02AdaptiveShadowVehicleRows(input.prisma, allowlisted);
+    const rows = await loadDtc02AdaptiveShadowVehicleRows(
+      input.prisma,
+      allowlisted,
+      input.evaluatedAtMs,
+    );
     for (const row of rows) {
       const plan = runDtc02AdaptiveShadowPlanForRow(row, input.evaluatedAtMs);
       input.observability?.recordAdaptiveShadowPlan(plan);
