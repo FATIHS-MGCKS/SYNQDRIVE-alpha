@@ -43,6 +43,7 @@ import {
   recordHvCapacityMethodConflict,
   recordHvCapacitySessionQualified,
 } from '../observability/battery-v2-prometheus.metrics';
+import { withHvShadowSessionAdvisoryLock } from './hv-capacity-shadow-session-advisory-lock';
 
 export interface RecomputeHvM2ShadowInput {
   organizationId: string;
@@ -107,29 +108,37 @@ export class HvCapacityShadowService {
       return this.emptyResult(session.id);
     }
 
-    const evidenceFingerprint = buildHvCapacityShadowEvidenceFingerprint(
-      shadowEvidenceFromChargeSessionRow(session, metadata),
-    );
+    return await withHvShadowSessionAdvisoryLock(this.prisma, session.id, async () => {
+      const lockedSession =
+        (await this.prisma.hvChargeSession.findFirst({
+          where: { id: session.id },
+        })) ?? session;
+      const lockedMetadata = (lockedSession.metadata ??
+        {}) as unknown as HvChargeSessionMetadata;
 
-    const alreadyProcessed = await this.observations.hasSessionObservations({
-      chargeSessionId: session.id,
-      method: HV_M2_CAPACITY_METHOD,
-      modelVersion: HV_M2_MODEL_VERSION,
-    });
+      const evidenceFingerprint = buildHvCapacityShadowEvidenceFingerprint(
+        shadowEvidenceFromChargeSessionRow(lockedSession, lockedMetadata),
+      );
 
-    const shadowEvidenceStale =
-      metadata.m2CapacitySummary == null ||
-      metadata.shadowEvidenceFingerprint !== evidenceFingerprint;
+      const alreadyProcessed = await this.observations.hasSessionObservations({
+        chargeSessionId: lockedSession.id,
+        method: HV_M2_CAPACITY_METHOD,
+        modelVersion: HV_M2_MODEL_VERSION,
+      });
 
-    let estimates: HvCapacityM2PointEstimate[] = [];
-    let persistedCount = 0;
-    let skippedCount = 0;
-    let sessionMedianKwh: number | null = null;
-    let summaryObservations: HvCapacitySessionSummaryInputObservation[] | undefined;
+      const shadowEvidenceStale =
+        lockedMetadata.m2CapacitySummary == null ||
+        lockedMetadata.shadowEvidenceFingerprint !== evidenceFingerprint;
 
-    const shouldResample = !alreadyProcessed || shadowEvidenceStale;
+      let estimates: HvCapacityM2PointEstimate[] = [];
+      let persistedCount = 0;
+      let skippedCount = 0;
+      let sessionMedianKwh: number | null = null;
+      let summaryObservations: HvCapacitySessionSummaryInputObservation[] | undefined;
 
-    if (shouldResample) {
+      const shouldResample = !alreadyProcessed || shadowEvidenceStale;
+
+      if (shouldResample) {
       const reference = await this.prisma.vehicleBatteryReferenceCapacity.findFirst({
         where: {
           organizationId: input.organizationId,
@@ -148,8 +157,8 @@ export class HvCapacityShadowService {
         input.samplesOverride ??
         (await this.sampleProvider.loadSessionSamples({
           vehicleId: input.vehicleId,
-          startAt: session.startAt,
-          endAt: session.endAt,
+          startAt: lockedSession.startAt,
+          endAt: lockedSession.endAt,
         }));
 
       estimates = buildHvM2PointEstimates({
@@ -190,9 +199,9 @@ export class HvCapacityShadowService {
 
       if (alreadyProcessed) {
         await this.observations.resampleSessionM2ObservationsTransactional({
-          sessionId: session.id,
-          chargeSessionId: session.id,
-          metadata,
+          sessionId: lockedSession.id,
+          chargeSessionId: lockedSession.id,
+          metadata: lockedMetadata,
           creates: createInputs,
         });
         persistedCount = createInputs.length;
@@ -306,6 +315,7 @@ export class HvCapacityShadowService {
       crossSessionAssessment: crossSessionResult,
       sohGateAssessment: sohGateResult,
     };
+    });
   }
 
   private emptyResult(sessionId: string): HvCapacityM2SessionResult {

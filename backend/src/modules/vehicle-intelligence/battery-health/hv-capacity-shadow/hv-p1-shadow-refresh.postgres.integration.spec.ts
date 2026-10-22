@@ -35,6 +35,10 @@ import {
 } from './hv-capacity-m2.fixtures';
 import type { HvCapacityM2Sample } from './hv-capacity-m2.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
+import {
+  assertHvP1PostgresIntegrationTarget,
+  assertHvP1PostgresServerIdentity,
+} from './hv-p1-shadow-refresh.postgres.guard';
 
 const LIVE = process.env.HV_P1_POSTGRES_INTEGRATION === '1';
 
@@ -65,11 +69,13 @@ async function probeDatabase(): Promise<boolean> {
     let observations: HvCapacityObservationRepository;
 
     beforeAll(async () => {
+      assertHvP1PostgresIntegrationTarget();
       const ok = await probeDatabase();
       if (!ok) {
         throw new Error('HV_P1_POSTGRES_INTEGRATION=1 requires reachable DATABASE_URL');
       }
       prisma = new PrismaClient();
+      await assertHvP1PostgresServerIdentity(prisma);
       const prismaService = prisma as unknown as PrismaService;
       observations = new HvCapacityObservationRepository(prismaService);
       m3 = new HvCapacityM3ValidationService(prismaService, observations);
@@ -340,7 +346,14 @@ async function probeDatabase(): Promise<boolean> {
             }),
           ),
         );
-        expect(workers.every((w) => w.status === 'fulfilled')).toBe(true);
+        const rejected = workers.filter(
+          (worker): worker is PromiseRejectedResult => worker.status === 'rejected',
+        );
+        if (rejected.length > 0) {
+          throw new Error(
+            rejected.map((worker) => String(worker.reason)).join(' | '),
+          );
+        }
 
         const m2Count = await prisma.hvCapacityObservation.count({
           where: {
@@ -512,10 +525,6 @@ async function probeDatabase(): Promise<boolean> {
         expect(metadata.m2CapacitySummary).toBeTruthy();
 
         const observedAt = new Date(endAt.getTime() - 60_000);
-        const duplicateKey = buildHvCapacityObservationIdempotencyKey({
-          chargeSessionId: session.id,
-          observedAt,
-        });
         const baseCreate = {
           organizationId: org.id,
           vehicleId: vehicle.id,
@@ -526,7 +535,10 @@ async function probeDatabase(): Promise<boolean> {
           quality: BatteryMeasurementQuality.SHADOW,
           modelVersion: HV_M2_MODEL_VERSION,
           observedAt,
-          idempotencyKey: duplicateKey,
+          idempotencyKey: buildHvCapacityObservationIdempotencyKey({
+            chargeSessionId: session.id,
+            observedAt,
+          }),
           metadata: withHvCapacityShadowMetadata({
             socPercent: 50,
             currentEnergyKwh: 28,
@@ -545,7 +557,12 @@ async function probeDatabase(): Promise<boolean> {
             metadata: metadata as never,
             creates: [
               baseCreate,
-              { ...baseCreate, estimatedCapacityKwh: 55, observedAt: new Date(endAt.getTime() - 30_000) },
+              {
+                ...baseCreate,
+                chargeSessionId: '00000000-0000-0000-0000-000000000000',
+                idempotencyKey: `${baseCreate.idempotencyKey}:abort`,
+                observedAt: new Date(endAt.getTime() - 30_000),
+              },
             ],
           }),
         ).rejects.toThrow();

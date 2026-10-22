@@ -166,9 +166,27 @@ export class HvCapacityObservationRepository {
       });
 
       for (const createInput of input.creates) {
-        await tx.hvCapacityObservation.create({
-          data: toObservationCreateData(createInput),
-        });
+        try {
+          await tx.hvCapacityObservation.create({
+            data: toObservationCreateData(createInput),
+          });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2002'
+          ) {
+            const existing = await tx.hvCapacityObservation.findUnique({
+              where: {
+                vehicleId_idempotencyKey: {
+                  vehicleId: createInput.vehicleId,
+                  idempotencyKey: createInput.idempotencyKey,
+                },
+              },
+            });
+            if (existing) continue;
+          }
+          throw error;
+        }
       }
     });
   }

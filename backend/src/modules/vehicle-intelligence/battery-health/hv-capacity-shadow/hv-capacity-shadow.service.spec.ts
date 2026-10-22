@@ -24,6 +24,7 @@ describe('HvCapacityShadowService', () => {
   const prisma = {
     hvChargeSession: { findFirst: jest.fn() },
     vehicleBatteryReferenceCapacity: { findFirst: jest.fn() },
+    $executeRaw: jest.fn().mockResolvedValue(0),
   };
   const sampleProvider = { loadSessionSamples: jest.fn() };
   const observations = {
@@ -52,7 +53,7 @@ describe('HvCapacityShadowService', () => {
       sohGateAssessment as any,
     );
 
-    prisma.hvChargeSession.findFirst.mockResolvedValue({
+    const qualifiedSessionRow = {
       id: chargeSessionId,
       organizationId,
       vehicleId,
@@ -63,7 +64,8 @@ describe('HvCapacityShadowService', () => {
         capacityShadowEligible: true,
         qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
       },
-    });
+    };
+    prisma.hvChargeSession.findFirst.mockResolvedValue(qualifiedSessionRow);
     prisma.vehicleBatteryReferenceCapacity.findFirst.mockResolvedValue({
       capacityKwh: TESLA_AUDIT_REFERENCE_CAPACITY_KWH,
     });
