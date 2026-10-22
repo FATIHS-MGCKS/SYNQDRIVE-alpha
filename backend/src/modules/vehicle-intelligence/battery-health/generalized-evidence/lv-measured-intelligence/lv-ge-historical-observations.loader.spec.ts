@@ -88,4 +88,28 @@ describe('lv-ge-historical-observations.loader', () => {
       }),
     );
   });
+
+  it('assessment mode: marks truncated when window exceeds maxRows cap', async () => {
+    const from = new Date('2026-10-01T00:00:00Z');
+    const to = new Date('2026-10-30T00:00:00Z');
+    const findMany = jest.fn().mockImplementation(({ take }: { take: number }) => {
+      const n = Math.min(take, 3);
+      return Promise.resolve(
+        Array.from({ length: n }, (_, i) =>
+          row(`cap-${i}`, new Date(from.getTime() + i * 3600_000)),
+        ),
+      );
+    });
+    const prisma = { batteryGeneralizedEvidenceObservation: { findMany } };
+    const result = await loadGeHistoricalObservationsForAssessment(prisma, {
+      organizationId: 'org',
+      vehicleId: 'veh',
+      measuredFrom: from,
+      measuredTo: to,
+      maxRows: 2,
+      batchSize: 1,
+    });
+    expect(result.rows).toHaveLength(2);
+    expect(result.hasMoreRowsInQuery).toBe(true);
+  });
 });
