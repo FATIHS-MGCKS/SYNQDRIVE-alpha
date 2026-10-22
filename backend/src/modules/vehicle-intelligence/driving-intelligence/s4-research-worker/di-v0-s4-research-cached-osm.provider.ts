@@ -70,6 +70,7 @@ export class DiV0S4ResearchCachedOsmProvider implements DiV0S4ResearchOsmProvide
         const body = await overpassGlobalConcurrency.withSlot(this.config.maxConcurrentFetches, () =>
           fetchBoundedOverpassJson(input.bbox, {
             endpoint: this.config.overpassEndpoint,
+            userAgent: this.config.overpassUserAgent,
             timeoutMs: this.config.requestTimeoutMs,
             maxResponseBytes: this.config.maxResponseBytes,
           }),

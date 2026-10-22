@@ -210,7 +210,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npx playwright install --with-deps chromium
+      - run: bash ../backend/scripts/test/ci-playwright-install-chromium.sh
         working-directory: frontend
       - run: npm run test:vehicle-detail:e2e
         working-directory: frontend
@@ -238,7 +238,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npx playwright install --with-deps chromium
+      - run: bash ../backend/scripts/test/ci-playwright-install-chromium.sh
         working-directory: frontend
       - run: npm run test:vehicle-detail:a11y
         working-directory: frontend
