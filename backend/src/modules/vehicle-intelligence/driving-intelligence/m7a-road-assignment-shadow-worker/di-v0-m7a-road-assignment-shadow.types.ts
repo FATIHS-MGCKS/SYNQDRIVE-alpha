@@ -11,6 +11,9 @@ export type DiV0M7aRoadAssignmentShadowBucketDto = {
   candidateWayIds: number[];
   ambiguityReasons: string[];
   pathMargin: number | null;
+  /** Position anchor from pinned snapshot grid at persist time (not OSM way geometry). */
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type DiV0M7aRoadAssignmentShadowPayloadV1 = {
@@ -62,5 +65,26 @@ export function mapFrozenMatchToBucketDto(m: Match): DiV0M7aRoadAssignmentShadow
     candidateWayIds: m.candidateWayIds,
     ambiguityReasons: m.ambiguityReasons,
     pathMargin: m.pathMargin ?? null,
+    latitude: null,
+    longitude: null,
   };
+}
+
+export function enrichM7aBucketDtosWithPositionAnchors(
+  dtos: DiV0M7aRoadAssignmentShadowBucketDto[],
+  buckets: ReadonlyArray<{ bucketLabelUtc: string; availability: string; latitude: number | null; longitude: number | null }>,
+): DiV0M7aRoadAssignmentShadowBucketDto[] {
+  const byLabel = new Map(buckets.map((b) => [b.bucketLabelUtc, b]));
+  return dtos.map((dto) => {
+    const gps = byLabel.get(dto.bucketLabelUtc);
+    if (!gps || gps.availability !== 'PRESENT') {
+      return { ...dto, latitude: null, longitude: null };
+    }
+    const lat = gps.latitude;
+    const lon = gps.longitude;
+    if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return { ...dto, latitude: null, longitude: null };
+    }
+    return { ...dto, latitude: lat, longitude: lon };
+  });
 }

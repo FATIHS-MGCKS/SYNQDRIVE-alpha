@@ -2,7 +2,21 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { TripBehaviorEvent } from '../../../lib/api';
-import type { TripMotionMapEvent, TripMotionMapPopoverState, TripMotionMapSample, TripMotionMapStop } from './motion-map.types';
+import type { TripM7aMapPayload, TripM7aMapPoint } from './m7a-map.types';
+import {
+  buildM7aPointFeatures,
+  findM7aPointForBucketLabel,
+  groupM7aPointsByCoordinate,
+  isM7aMapActive,
+  resolveM7aMotionBinding,
+} from './m7a-map.utils';
+import type {
+  TripMotionMapEvent,
+  TripMotionMapPayload,
+  TripMotionMapPopoverState,
+  TripMotionMapSample,
+  TripMotionMapStop,
+} from './motion-map.types';
 import {
   buildMotionSpeedLineFeatures,
   createMotionEventMarkerElement,
@@ -43,6 +57,9 @@ export interface UseTripsRouteMapOptions {
   onMotionPopover?: (state: TripMotionMapPopoverState | null) => void;
   selectedMotionEventId?: string | null;
   motionEventAriaLabel?: (event: TripMotionMapEvent) => string;
+  m7aMapPayload?: TripM7aMapPayload | null;
+  motionMapPayload?: TripMotionMapPayload | null;
+  m7aBindingNote?: string | null;
 }
 
 function buildSegmentLineFeatures(
@@ -77,7 +94,13 @@ export function useTripsRouteMap({
   onMotionPopover,
   selectedMotionEventId,
   motionEventAriaLabel,
+  m7aMapPayload = null,
+  motionMapPayload = null,
+  m7aBindingNote = null,
 }: UseTripsRouteMapOptions) {
+  const m7aMapActive = isM7aMapActive(m7aMapPayload);
+  const m7aPoints = m7aMapActive ? m7aMapPayload!.mapPoints.filter((p) => p.positionResolved) : [];
+  const m7aBinding = resolveM7aMotionBinding(motionMapPayload, m7aMapPayload);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const eventMarkersRef = useRef<mapboxgl.Marker[]>([]);
@@ -277,6 +300,30 @@ export function useTripsRouteMap({
           'circle-stroke-color': '#ffffff',
         },
       });
+      map.addSource('m7a-assignment-points', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+      map.addLayer({
+        id: 'm7a-assignment-points-layer',
+        type: 'circle',
+        source: 'm7a-assignment-points',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 7],
+          'circle-color': [
+            'match',
+            ['get', 'outcome'],
+            'CONFIRMED',
+            isDarkMode ? '#34d399' : '#059669',
+            'AMBIGUOUS',
+            isDarkMode ? '#fbbf24' : '#d97706',
+            isDarkMode ? '#94a3b8' : '#64748b',
+          ],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': isDarkMode ? '#0f172a' : '#ffffff',
+          'circle-opacity': 0.92,
+        },
+      });
       setMapLoaded(true);
     });
 
@@ -410,7 +457,20 @@ export function useTripsRouteMap({
     setVis('trips-routes-casing', true);
     setVis('stop-points-ring', layers.showStops);
     setVis('stop-points-center', layers.showStops);
-  }, [layers.showSpeed, layers.showStops, mapLoaded]);
+    setVis('m7a-assignment-points-layer', layers.showM7aRoadAssignment && m7aMapActive);
+  }, [layers.showSpeed, layers.showStops, layers.showM7aRoadAssignment, mapLoaded, m7aMapActive]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const src = map.getSource('m7a-assignment-points') as mapboxgl.GeoJSONSource | undefined;
+    if (!src) return;
+    if (!layers.showM7aRoadAssignment || !m7aMapActive) {
+      src.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+    src.setData({ type: 'FeatureCollection', features: buildM7aPointFeatures(m7aPoints) });
+  }, [mapLoaded, layers.showM7aRoadAssignment, m7aMapActive, m7aPoints, selectedTrip?.id]);
 
   // Endpoint + direction markers
   useEffect(() => {
@@ -577,7 +637,15 @@ export function useTripsRouteMap({
           }],
         });
       }
-      onMotionPopover?.({ kind: 'sample', sample, x, y });
+      const m7aPoint =
+        layers.showM7aRoadAssignment && m7aMapActive
+          ? findM7aPointForBucketLabel(m7aMapPayload, sample.bucketLabelUtc, m7aBinding)
+          : null;
+      const bindingNote =
+        layers.showM7aRoadAssignment && m7aMapActive && !m7aBinding.compatible
+          ? m7aBindingNote
+          : null;
+      onMotionPopover?.({ kind: 'sample', sample, m7aPoint, m7aBindingNote: bindingNote, x, y });
     };
 
     const pickFromPoint = (point: mapboxgl.Point) => {
@@ -666,7 +734,45 @@ export function useTripsRouteMap({
       const scrubSrc = map.getSource('motion-scrub-point') as mapboxgl.GeoJSONSource | undefined;
       scrubSrc?.setData({ type: 'FeatureCollection', features: [] });
     };
-  }, [mapLoaded, motionMapActive, layers.showSpeed, motionSamples, motionStops, onMotionPopover]);
+  }, [
+    mapLoaded,
+    motionMapActive,
+    layers.showSpeed,
+    layers.showM7aRoadAssignment,
+    motionSamples,
+    motionStops,
+    onMotionPopover,
+    m7aMapActive,
+    m7aMapPayload,
+    m7aBinding,
+    m7aBindingNote,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !m7aMapActive || !layers.showM7aRoadAssignment) return;
+
+    const grouped = groupM7aPointsByCoordinate(m7aPoints);
+    const onM7aClick = (e: mapboxgl.MapMouseEvent) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['m7a-assignment-points-layer'] });
+      const label = features[0]?.properties?.bucketLabelUtc as string | undefined;
+      if (!label) return;
+      const point = m7aPoints.find((p) => p.bucketLabelUtc === label);
+      if (!point || point.latitude == null || point.longitude == null) return;
+      const key = `${Math.round(point.latitude * 1e5)}:${Math.round(point.longitude * 1e5)}`;
+      const atPoint = grouped.get(key) ?? [point];
+      if (atPoint.length > 1) {
+        onMotionPopover?.({ kind: 'm7aPickList', points: atPoint, x: e.point.x, y: e.point.y });
+      } else {
+        onMotionPopover?.({ kind: 'm7aPoint', point, x: e.point.x, y: e.point.y });
+      }
+    };
+
+    map.on('click', onM7aClick);
+    return () => {
+      map.off('click', onM7aClick);
+    };
+  }, [mapLoaded, m7aMapActive, layers.showM7aRoadAssignment, m7aPoints, onMotionPopover]);
 
   return {
     mapContainerRef,

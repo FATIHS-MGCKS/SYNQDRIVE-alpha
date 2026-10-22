@@ -56,6 +56,7 @@ import { rentalMicroChromeEn } from './rental.microChrome.en';
 import { rentalHostPresentationEn } from './rental.hostPresentation.en';
 import { rentalLegacyGapEN } from './rental-legacy-gap.en';
 import { tripsMotionMapEN } from './trips-motion-map.en';
+import { tripsM7aMapEN } from './trips-m7a-map.en';
 import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
 import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
 
@@ -5950,6 +5951,7 @@ export const en = {
   ...rentalHostPresentationEn,
   ...rentalLegacyGapEN,
   ...tripsMotionMapEN,
+  ...tripsM7aMapEN,
   ...masterPlatformOpsDiS4En,
   ...masterPhysicalDeviceInventoryEn,
 } as const;

@@ -7419,6 +7419,10 @@ export const api = {
       get<TripMotionShadowMapReadResponse>(
         `/vehicles/${vehicleId}/trips/${tripId}/motion-shadow-map`,
       ),
+    tripM7aRoadAssignmentShadow: (vehicleId: string, tripId: string) =>
+      get<Record<string, unknown>>(
+        `/vehicles/${vehicleId}/trips/${tripId}/m7a-road-assignment-shadow`,
+      ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
     getVehicleDamages: (vehicleId: string) =>

@@ -5,11 +5,40 @@ import { LiquidGlassLens } from '../../../components/surface';
 import { tv } from './trips-view-ui';
 import type { TripMotionMapPickListItem, TripMotionMapPopoverState } from './motion-map.types';
 import { formatMotionBucketTime, motionEventLabelKey } from './motion-map.utils';
+import type { TripM7aMapPoint } from './m7a-map.types';
+import { m7aOutcomeLabelKey } from './m7a-map.utils';
 
 interface TripMotionMapPopoverProps {
   state: TripMotionMapPopoverState;
   onClose: () => void;
   onPickListSelect?: (item: TripMotionMapPickListItem) => void;
+  onM7aPointSelect?: (point: TripM7aMapPoint) => void;
+}
+
+function m7aPointSummary(
+  point: TripM7aMapPoint,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): ReactNode {
+  return (
+    <>
+      <p className="mt-2 text-[10px] font-semibold text-violet-700 dark:text-violet-300">
+        {t(m7aOutcomeLabelKey(point.outcome))}
+      </p>
+      <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+        {point.osmWayId != null ? t('trips.m7aMap.osmWay', { wayId: point.osmWayId }) : t('trips.m7aMap.noWay')}
+      </p>
+      {point.candidateWayIds.length > 1 && (
+        <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+          {t('trips.m7aMap.candidates', { ids: point.candidateWayIds.join(', ') })}
+        </p>
+      )}
+      {point.ambiguityReasons.length > 0 && (
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          {t('trips.m7aMap.ambiguity', { reasons: point.ambiguityReasons.join(', ') })}
+        </p>
+      )}
+    </>
+  );
 }
 
 function pickListItemLabel(
@@ -23,7 +52,7 @@ function pickListItemLabel(
   return `${t('trips.motionMap.stopTitle')} · ${formatMotionBucketTime(item.stop.startLatestUtc, locale)}`;
 }
 
-export function TripMotionMapPopover({ state, onClose, onPickListSelect }: TripMotionMapPopoverProps) {
+export function TripMotionMapPopover({ state, onClose, onPickListSelect, onM7aPointSelect }: TripMotionMapPopoverProps) {
   const { t, locale } = useLanguage();
   const left = Math.min(Math.max(state.x, 120), window.innerWidth - 120);
   const top = Math.max(state.y - 8, 72);
@@ -31,7 +60,37 @@ export function TripMotionMapPopover({ state, onClose, onPickListSelect }: TripM
   let title = '';
   let body: ReactNode = null;
 
-  if (state.kind === 'pickList') {
+  if (state.kind === 'm7aPickList') {
+    title = t('trips.m7aMap.pickListTitle');
+    body = (
+      <>
+        <p className="text-[10px] text-muted-foreground mb-1.5">{t('trips.m7aMap.pickListHint')}</p>
+        <ul className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+          {state.points.map((point, index) => (
+            <li key={`${point.bucketLabelUtc}-${index}`}>
+              <button
+                type="button"
+                className="w-full rounded-md px-2 py-1 text-left text-[10px] font-medium text-foreground hover:bg-muted/60 tabular-nums"
+                onClick={() => onM7aPointSelect?.(point)}
+              >
+                {formatMotionBucketTime(point.bucketLabelUtc, locale)} · {t(m7aOutcomeLabelKey(point.outcome) as never)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  } else if (state.kind === 'm7aPoint') {
+    title = t(m7aOutcomeLabelKey(state.point.outcome) as never);
+    body = (
+      <>
+        <p className="text-[10px] text-muted-foreground tabular-nums">
+          {formatMotionBucketTime(state.point.bucketLabelUtc, locale)}
+        </p>
+        {m7aPointSummary(state.point, (key, vars) => t(key as never, vars))}
+      </>
+    );
+  } else if (state.kind === 'pickList') {
     title = t('trips.motionMap.pickListTitle');
     body = (
       <>
@@ -66,6 +125,10 @@ export function TripMotionMapPopover({ state, onClose, onPickListSelect }: TripM
         <p className="mt-0.5 text-[10px] text-muted-foreground">
           {t('trips.motionMap.motionState', { state: state.sample.motionState })}
         </p>
+        {state.m7aBindingNote && (
+          <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{state.m7aBindingNote}</p>
+        )}
+        {state.m7aPoint && m7aPointSummary(state.m7aPoint, (key, vars) => t(key as never, vars))}
       </>
     );
   } else if (state.kind === 'event') {

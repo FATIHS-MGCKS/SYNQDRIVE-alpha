@@ -1,3 +1,4 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { TRIPS_COPY, tv } from './trips-view-ui';
@@ -6,6 +7,7 @@ import type { TripMapLayerState } from './trips-map.types';
 interface TripMapLayerControlsProps {
   layers: TripMapLayerState;
   hasRoute: boolean;
+  m7aLayerAvailable?: boolean;
   onToggle: (key: keyof TripMapLayerState) => void;
 }
 
@@ -26,9 +28,23 @@ const CHIPS: LayerChip[] = [
 export function TripMapLayerControls({
   layers,
   hasRoute,
+  m7aLayerAvailable = false,
   onToggle,
 }: TripMapLayerControlsProps) {
+  const { t } = useLanguage();
   if (!hasRoute) return null;
+
+  const chips: LayerChip[] = [
+    ...CHIPS,
+    ...(m7aLayerAvailable
+      ? [{
+          key: 'showM7aRoadAssignment' as const,
+          label: t('trips.m7aMap.layerRoadAssignment'),
+          icon: 'map-pin',
+          activeClass: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/25',
+        }]
+      : []),
+  ];
 
   return (
     <div className="pointer-events-none absolute bottom-[4.75rem] left-2.5 right-2.5 z-20 flex justify-center sm:bottom-[5.25rem] sm:left-11 sm:right-11">
@@ -39,7 +55,7 @@ export function TripMapLayerControls({
         className="pointer-events-auto w-full max-w-full sm:max-w-none"
       >
         <div className="liquid-glass-lens__layer-bar">
-          {CHIPS.map((chip) => {
+          {chips.map((chip) => {
             const active = layers[chip.key];
             return (
               <button

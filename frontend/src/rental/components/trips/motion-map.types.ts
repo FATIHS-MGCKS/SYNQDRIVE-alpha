@@ -1,3 +1,5 @@
+import type { TripM7aMapPoint } from './m7a-map.types';
+
 export type TripMotionMapReadStatus =
   | 'NOT_AVAILABLE'
   | 'PENDING'
@@ -87,6 +89,20 @@ export type TripMotionMapPopoverState =
   | {
       kind: 'sample';
       sample: TripMotionMapSample;
+      m7aPoint?: TripM7aMapPoint | null;
+      m7aBindingNote?: string | null;
+      x: number;
+      y: number;
+    }
+  | {
+      kind: 'm7aPickList';
+      points: TripM7aMapPoint[];
+      x: number;
+      y: number;
+    }
+  | {
+      kind: 'm7aPoint';
+      point: TripM7aMapPoint;
       x: number;
       y: number;
     }
