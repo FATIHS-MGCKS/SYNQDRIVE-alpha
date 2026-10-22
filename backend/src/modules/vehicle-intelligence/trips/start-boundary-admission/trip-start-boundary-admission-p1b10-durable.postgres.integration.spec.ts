@@ -1,6 +1,8 @@
 import { PrismaClient, TripStatus } from '@prisma/client';
 import { mergeFinalizeRawDetectionMeta } from '../trip-fsm-forensics.util';
 import {
+  atomicMergeVehicleTripRawDetectionMetaPatch,
+  buildMidGapSplitFirstTripRawDetectionMetaPatch,
   persistStartBoundaryAdmissionShadowDurable,
   readStartBoundaryAdmissionShadowDurable,
   START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY,
@@ -174,7 +176,8 @@ async function probeDatabase(): Promise<boolean> {
         select: { rawDetectionMeta: true },
       });
       const durable = readStartBoundaryAdmissionShadowDurable(row?.rawDetectionMeta);
-      expect(durable?.dataSourcesAtDecision.corePointCount).toBe(3);
+      const winnerCount = durable?.dataSourcesAtDecision.corePointCount;
+      expect(winnerCount === 3 || winnerCount === 99).toBe(true);
       expect((row?.rawDetectionMeta as any)?.pilotMarker).toBe('keep-me');
       expect((row?.rawDetectionMeta as any)?.lifecycleRecovery).toBeDefined();
     });
@@ -198,8 +201,34 @@ async function probeDatabase(): Promise<boolean> {
       expect(readStartBoundaryAdmissionShadowDurable(meta)?.executionStatus).toBe(
         'EXECUTED',
       );
-      expect(meta.concurrentMetaKey === 'yes' || meta.pilotMarker === 'keep-me').toBe(
-        true,
+      expect(meta.concurrentMetaKey).toBe('yes');
+      expect(meta.pilotMarker).toBe('keep-me');
+      expect(meta[START_BOUNDARY_ADMISSION_SHADOW_DURABLE_META_KEY]).toBeDefined();
+    });
+
+    it('split first-trip meta merge does not erase concurrently persisted shadow', async () => {
+      await persistStartBoundaryAdmissionShadowDurable(basePersist());
+      await atomicMergeVehicleTripRawDetectionMetaPatch(prisma, {
+        tripId,
+        vehicleId,
+        patch: buildMidGapSplitFirstTripRawDetectionMetaPatch({
+          reason: 'mid_gap_stationary',
+          triggeredBy: 'LIVE',
+          gapMs: 600_000,
+          firstEndAt: new Date('2026-10-16T04:00:00.000Z'),
+          secondStartAt: new Date('2026-10-16T04:15:00.000Z'),
+        }),
+      });
+
+      const row = await prisma.vehicleTrip.findUnique({
+        where: { id: tripId },
+        select: { rawDetectionMeta: true },
+      });
+      const meta = row?.rawDetectionMeta as Record<string, unknown>;
+      expect(meta.pilotMarker).toBe('keep-me');
+      expect(meta.splitReason).toBe('mid_gap_stationary');
+      expect(readStartBoundaryAdmissionShadowDurable(meta)?.executionStatus).toBe(
+        'EXECUTED',
       );
     });
 

@@ -37,8 +37,8 @@ Every start confirmation still performs one best-effort durable persist (records
 | Finalize | `mergeFinalizeRawDetectionMeta` spreads prior + explicit shadow key guard |
 | RESTING | Detection `lastEvidenceSummary` only — trip row untouched |
 | Reconciliation boundary refresh | spreads `priorMeta` |
-| Mid-gap split (first trip) | prior meta spread before split fields |
-| Mid-gap split (follow-on) | atomic shadow insert after create |
+| Mid-gap split (first trip) | atomic `jsonb` patch merge (no stale read overwrite) |
+| Mid-gap split (follow-on) | `NOT_EXECUTED` embedded in `create` `rawDetectionMeta` (no extra SQL in txn) |
 | `discardTrip` | replaces meta (CANCELLED — intentional) |
 
 ## Record fields (summary)

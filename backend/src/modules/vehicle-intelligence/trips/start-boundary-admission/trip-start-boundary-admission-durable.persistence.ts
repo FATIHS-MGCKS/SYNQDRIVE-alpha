@@ -230,6 +230,44 @@ type AtomicShadowInsertOutcome = 'inserted' | 'skipped' | 'not_found' | 'vehicle
  * Single-statement JSONB merge: adds startBoundaryAdmissionShadowV1 only when absent.
  * Preserves all other keys on raw_detection_meta.
  */
+/**
+ * Merges top-level JSON keys into raw_detection_meta without removing existing keys.
+ */
+export async function atomicMergeVehicleTripRawDetectionMetaPatch(
+  prisma: PrismaService | Prisma.TransactionClient,
+  params: {
+    tripId: string;
+    vehicleId: string;
+    patch: Record<string, unknown>;
+  },
+): Promise<void> {
+  const payload = JSON.stringify(params.patch);
+  await prisma.$executeRaw`
+    UPDATE vehicle_trips
+    SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb) || ${payload}::jsonb
+    WHERE id = ${params.tripId}::uuid
+      AND vehicle_id = ${params.vehicleId}::uuid
+  `;
+}
+
+export function buildMidGapSplitFirstTripRawDetectionMetaPatch(params: {
+  reason: string;
+  triggeredBy: string;
+  gapMs: number;
+  firstEndAt: Date;
+  secondStartAt: Date;
+  splitDriftM?: number | null;
+}): Record<string, unknown> {
+  return {
+    splitReason: params.reason,
+    splitTriggeredBy: params.triggeredBy,
+    splitGapMs: params.gapMs,
+    splitFirstEndAt: params.firstEndAt.toISOString(),
+    splitSecondStartAt: params.secondStartAt.toISOString(),
+    ...(params.splitDriftM != null ? { splitDriftM: params.splitDriftM } : {}),
+  };
+}
+
 export async function atomicInsertStartBoundaryAdmissionShadowDurable(
   prisma: PrismaService | Prisma.TransactionClient,
   params: {
