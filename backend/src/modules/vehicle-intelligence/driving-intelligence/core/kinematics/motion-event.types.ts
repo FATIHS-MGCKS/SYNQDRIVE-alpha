@@ -1,7 +1,11 @@
 /** Neutral manoeuvre events (Fable `event_detector.MotionEvent`). */
 export type MotionManoeuvreKind = 'ACCELERATION' | 'DECELERATION';
 
-export type MotionEventQuality = 'OK' | 'DEGRADED' | 'LIMITED';
+/**
+ * `ARTEFACT_SUSPECT` is only produced by the review-round candidate `spikeReversionCheck`
+ * (see `motion-event-detector.ts`); Fable V0.1 emits OK / DEGRADED / LIMITED only.
+ */
+export type MotionEventQuality = 'OK' | 'DEGRADED' | 'LIMITED' | 'ARTEFACT_SUSPECT';
 
 export interface MotionManoeuvreEvent {
   trip: number;

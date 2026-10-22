@@ -28,6 +28,38 @@ export const MOTION_CORE_EVENT_GUARDS_V0_1_DEV = {
   ] as MotionCoreSpeedQuality[],
 };
 
+/**
+ * Review-round candidate switches (EXP021 Fable review). All `false` reproduces Fable V0.1 exactly.
+ */
+export interface MotionEventCandidateOptions {
+  /**
+   * K3 — spike reversion: an event whose speed returns to within `minDeltaKmh[kind]` of its start
+   * speed at the next usable sample(s) after `endLabel` (same segment, ≤ `spikeReversionWindowS`)
+   * is a single-sample excursion, not a manoeuvre — unless an opposite-kind event starts at or after
+   * `endLabel` within the window (real accel→decel). Quality becomes `ARTEFACT_SUSPECT`; the event is
+   * kept so coverage is not silently reduced. Adds `spikeReversionWindowS` to event finalization.
+   */
+  spikeReversionCheck: boolean;
+}
+
+export const MOTION_EVENT_FABLE_V0_1_OPTIONS: Readonly<MotionEventCandidateOptions> = {
+  spikeReversionCheck: false,
+};
+
+export const MOTION_EVENT_V0_2_CANDIDATE_OPTIONS: Readonly<MotionEventCandidateOptions> = {
+  spikeReversionCheck: true,
+};
+
+/** Same horizon as the post-gap guard: reversion is only checked inside the current segment. */
+export const MOTION_EVENT_SPIKE_REVERSION_WINDOW_S = 2;
+
+export function motionEventVersionId(options: Readonly<MotionEventCandidateOptions>): string {
+  const base = `${MOTION_EVENT_HF_THRESHOLDS_V1.version} + ${MOTION_CORE_EVENT_GUARDS_V0_1_DEV.version}`;
+  return options.spikeReversionCheck
+    ? `${base} + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]`
+    : base;
+}
+
 const UNCERTAINTY_LABEL = '±1 s label + unvalidated clock offset';
 
 function secSinceEpoch(label: string): number {
@@ -76,16 +108,18 @@ export function detectMotionManoeuvreEvents(
   samples: MotionCoreSpeedSample[],
   source: string,
   usableQualities: readonly MotionCoreSpeedQuality[] = MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
+  options: Readonly<MotionEventCandidateOptions> = MOTION_EVENT_FABLE_V0_1_OPTIONS,
 ): MotionManoeuvreEvent[] {
   const usable = new Set<string>(usableQualities);
   const events: MotionManoeuvreEvent[] = [];
-  const algoVersion = `${MOTION_EVENT_HF_THRESHOLDS_V1.version} + ${MOTION_CORE_EVENT_GUARDS_V0_1_DEV.version}`;
+  const algoVersion = motionEventVersionId(options);
 
   for (const seg of buildSegments(samples, usable)) {
     if (seg.length < 3) {
       continue;
     }
     const segStart = secSinceEpoch(seg[0]!.label);
+    const segEvents: Array<{ ev: MotionManoeuvreEvent; s0: number; s1: number }> = [];
 
     for (const kind of ['ACCELERATION', 'DECELERATION'] as const) {
       const sign = kind === 'ACCELERATION' ? 1 : -1;
@@ -162,7 +196,7 @@ export function detectMotionManoeuvreEvents(
         }
         const flags = [...flagSet].sort();
 
-        events.push({
+        const ev: MotionManoeuvreEvent = {
           trip,
           kind,
           startLabel: seg[s0]!.label,
@@ -182,13 +216,67 @@ export function detectMotionManoeuvreEvents(
           source,
           algorithmVersion: algoVersion,
           flags,
-        });
+        };
+        events.push(ev);
+        segEvents.push({ ev, s0, s1 });
       }
+    }
+
+    if (options.spikeReversionCheck) {
+      applySpikeReversionCheck(seg, segEvents);
     }
   }
 
   events.sort((a, b) => a.startLabel.localeCompare(b.startLabel));
   return events;
+}
+
+/**
+ * K3: mark events whose speed reverts to the start level right after the event end (same segment,
+ * within `MOTION_EVENT_SPIKE_REVERSION_WINDOW_S`) and that are not followed by an opposite-kind
+ * event starting at/after the end label within the same window.
+ */
+function applySpikeReversionCheck(
+  seg: MotionCoreSpeedSample[],
+  segEvents: Array<{ ev: MotionManoeuvreEvent; s0: number; s1: number }>,
+): void {
+  const win = MOTION_EVENT_SPIKE_REVERSION_WINDOW_S;
+  for (const { ev, s0, s1 } of segEvents) {
+    const endSec = secSinceEpoch(seg[s1]!.label);
+    const startSpeed = seg[s0]!.valueKmh!;
+    const tol = MOTION_EVENT_HF_THRESHOLDS_V1.minDeltaKmh[ev.kind];
+    let revertLabel: string | null = null;
+    let revertSpeed: number | null = null;
+    for (let j = s1 + 1; j < seg.length; j++) {
+      const dt = secSinceEpoch(seg[j]!.label) - endSec;
+      if (dt > win) {
+        break;
+      }
+      if (Math.abs(seg[j]!.valueKmh! - startSpeed) < tol) {
+        revertLabel = seg[j]!.label;
+        revertSpeed = seg[j]!.valueKmh!;
+        break;
+      }
+    }
+    if (revertLabel == null) {
+      continue;
+    }
+    const oppositeFollows = segEvents.some(
+      (o) =>
+        o.ev.kind !== ev.kind &&
+        o.s0 >= s1 &&
+        secSinceEpoch(seg[o.s0]!.label) - endSec <= win,
+    );
+    if (oppositeFollows) {
+      ev.flags = [...ev.flags, `REVERSION_EXPLAINED_BY_OPPOSITE_EVENT`].sort();
+      continue;
+    }
+    ev.quality = 'ARTEFACT_SUSPECT';
+    ev.flags = [
+      ...ev.flags,
+      `SPIKE_REVERSION_WITHIN_${win}S=${revertLabel}:${round1(revertSpeed!)}`,
+    ].sort();
+  }
 }
 
 function round1(x: number): number {
@@ -203,6 +291,13 @@ function round3(x: number): number {
 export function detectMotionManoeuvreEventsFromC4(
   trip: number,
   buckets: MotionCorePositionBucket[],
+  options: Readonly<MotionEventCandidateOptions> = MOTION_EVENT_FABLE_V0_1_OPTIONS,
 ): MotionManoeuvreEvent[] {
-  return detectMotionManoeuvreEvents(trip, computeC4AdaptiveL3(buckets), 'C4_ADAPTIVE_L3');
+  return detectMotionManoeuvreEvents(
+    trip,
+    computeC4AdaptiveL3(buckets),
+    'C4_ADAPTIVE_L3',
+    MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
+    options,
+  );
 }
