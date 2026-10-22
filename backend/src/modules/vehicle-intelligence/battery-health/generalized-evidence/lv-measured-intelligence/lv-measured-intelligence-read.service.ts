@@ -28,6 +28,7 @@ import {
   nominalRestIntervalIndexToLadderLabel,
 } from './lv-measured-intelligence-context.policy';
 import { dedupeObservationsBySourceMeasurementId } from './lv-measured-intelligence-dedup.policy';
+import { loadGeHistoricalObservationsForDisplay } from './lv-ge-historical-observations.loader';
 import type {
   LvMeasuredIntelligenceReadInput,
   LvMeasuredIntelligenceV1,
@@ -103,21 +104,7 @@ export class LvMeasuredIntelligenceReadService {
       }
     }
 
-    const historicalWhere = {
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      voltage: { not: null },
-      ...(dateRangeMode
-        ? {
-            voltageObservedAt: {
-              gte: dateRangeMode.from,
-              lte: dateRangeMode.to,
-            },
-          }
-        : {}),
-    };
-
-    const [sessions, rawObservations, globalLatestRow, featureRowCount, openGapCount, latestD3] =
+    const [sessions, historicalLoad, globalLatestRow, featureRowCount, openGapCount, latestD3] =
       await Promise.all([
       this.prisma.batteryRestSession.findMany({
         where: {
@@ -127,11 +114,12 @@ export class LvMeasuredIntelligenceReadService {
         orderBy: { openedAt: 'desc' },
         take: sessionLimit,
       }),
-      this.prisma.batteryGeneralizedEvidenceObservation.findMany({
-        where: historicalWhere,
-        orderBy: { voltageObservedAt: dateRangeMode ? 'asc' : 'desc' },
-        take: observationLimit,
-        select: GE_SELECT,
+      loadGeHistoricalObservationsForDisplay(this.prisma, {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        observationLimit,
+        measuredFrom: dateRangeMode?.from,
+        measuredTo: dateRangeMode?.to,
       }),
       this.prisma.batteryGeneralizedEvidenceObservation.findFirst({
         where: {
@@ -194,6 +182,7 @@ export class LvMeasuredIntelligenceReadService {
             orderBy: { computedAt: 'desc' },
           });
 
+    const rawObservations = historicalLoad.rows;
     const dedupedRows = dedupeObservationsBySourceMeasurementId(rawObservations);
     const orderedHistoricalRows = dateRangeMode
       ? [...dedupedRows].sort((a, b) => {
@@ -209,7 +198,7 @@ export class LvMeasuredIntelligenceReadService {
       dateRangeMode && dedupedHistorical.length > 0
         ? dedupedHistorical[dedupedHistorical.length - 1]
         : null;
-    const historicalObservationsTruncated = rawObservations.length >= observationLimit;
+    const historicalObservationsTruncated = historicalLoad.hasMoreRowsInQuery;
     const inputCoverageIncomplete =
       historicalObservationsTruncated || openGapCount > 0;
 
@@ -253,7 +242,7 @@ export class LvMeasuredIntelligenceReadService {
       provenance: {
         openProviderObservabilityGapCount: openGapCount,
         deduplicationPolicy: 'ONE_ROW_PER_SOURCE_MEASUREMENT_ID',
-        historicalQueryMode: dateRangeMode ? 'DATE_RANGE_ASC' : 'RECENT_DESC_LIMIT',
+        historicalQueryMode: historicalLoad.queryMode,
         historicalMeasuredFrom: dateRangeMode?.from.toISOString() ?? null,
         historicalMeasuredTo: dateRangeMode?.to.toISOString() ?? null,
         historicalObservationsTruncated,

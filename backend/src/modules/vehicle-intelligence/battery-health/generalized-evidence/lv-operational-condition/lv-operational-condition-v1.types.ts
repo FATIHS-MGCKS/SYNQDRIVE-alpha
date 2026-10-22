@@ -88,6 +88,14 @@ export type LvOperationalConditionSessionFeatureV1 = {
   observationSpanMs: number | null;
 };
 
+export type LvOperationalGeDataSelectionV1 = {
+  rawVoltageRowCount: number;
+  dedupedVoltageRowCount: number;
+  eligibleRestObservationCount: number;
+  measuredFromIso: string | null;
+  measuredToIso: string | null;
+};
+
 export type LvOperationalConditionInputV1 = {
   modelVersion: string;
   organizationId: string;
@@ -98,6 +106,7 @@ export type LvOperationalConditionInputV1 = {
   historicalQueryMode: LvMeasuredHistoricalQueryModeV1;
   inputCoverageIncomplete: boolean;
   historicalObservationsTruncated: boolean;
+  geDataSelection: LvOperationalGeDataSelectionV1;
   eligibleRestObservations: LvOperationalConditionObservationV1[];
   latestGlobalObservation: LvOperationalConditionObservationV1 | null;
   latestEligibleRestObservation: LvOperationalConditionObservationV1 | null;

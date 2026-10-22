@@ -68,6 +68,33 @@ describe('LvMeasuredIntelligenceReadService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('does not mark truncated when exactly max observation rows exist (take+1)', async () => {
+    const at = new Date('2026-10-01T00:00:00Z');
+    const observations = Array.from({ length: LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT }, (_, i) => ({
+      id: `o-${i}`,
+      sourceMeasurementId: `m-${i}`,
+      voltage: 12.4,
+      voltageObservedAt: at,
+      providerObservationAt: at,
+      providerTimestampSource: 'PROVIDER_FIELD_TIMESTAMP',
+      evidenceClass: BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
+      restSessionId: null,
+      actualRestAgeMs: null,
+      nominalRestIntervalIndex: null,
+      isLvCharging: false,
+      engineRunning: false,
+      createdAt: at,
+    }));
+    const { service } = buildService({ vehicleExists: true, observations });
+    const result = await service.readVehicleIntelligence({
+      organizationId: org,
+      vehicleId: vehicle,
+      observationLimit: LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT,
+    });
+    expect(result.provenance.historicalObservationsTruncated).toBe(false);
+    expect(result.historicalMeasured).toHaveLength(LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT);
+  });
+
   it('clamps session and observation limits to configured maximums', async () => {
     const { service, prisma } = buildService({ vehicleExists: true });
     await service.readVehicleIntelligence({
@@ -80,7 +107,7 @@ describe('LvMeasuredIntelligenceReadService', () => {
       expect.objectContaining({ take: LV_MEASURED_INTELLIGENCE_MAX_SESSION_LIMIT }),
     );
     expect(prisma.batteryGeneralizedEvidenceObservation.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT }),
+      expect.objectContaining({ take: LV_MEASURED_INTELLIGENCE_MAX_OBSERVATION_LIMIT + 1 }),
     );
   });
 

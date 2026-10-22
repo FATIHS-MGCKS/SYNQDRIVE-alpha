@@ -9,6 +9,7 @@ const ROUTES = {
   listSessions: 'listBatteryV2RestSessions',
   inspect: 'getBatteryV2RestSessionFeatureInspection',
   lvMeasuredIntelligence: 'getBatteryV2LvMeasuredIntelligence',
+  lvEstimatedHealthShadow: 'getBatteryV2LvEstimatedHealthShadow',
 } as const;
 
 function contextFor(user: unknown, route: keyof typeof ROUTES): ExecutionContext {

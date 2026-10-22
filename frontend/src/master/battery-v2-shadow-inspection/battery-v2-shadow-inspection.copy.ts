@@ -149,6 +149,18 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.lvMeasured.evidence.openGapsDetail':
     '{{count}} open provider observability gap(s) — coverage may be incomplete between measurements.',
   'master.batteryV2Shadow.lvMeasured.boundary.batteryHealthNotAssessed': 'Not available (NOT_ASSESSED)',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.title': 'N16 estimated health (shadow, read-only)',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.boundaryNote':
+    'Separate from measured-intelligence NOT_ASSESSED boundary — internal shadow classification only; not customer publication.',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.status': 'Estimated status',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.confidence': 'Confidence',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.eligibility': 'Eligibility',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.episodes': 'Qualified episodes',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.dataSelection':
+    'GE window: {{raw}} raw voltage rows · {{eligible}} eligible REST · truncated={{truncated}}',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.rule': 'Decision rule',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.loading': 'Loading N16 shadow assessment…',
+  'master.batteryV2Shadow.lvMeasured.n16Shadow.unavailable': 'N16 shadow assessment could not be loaded.',
   'master.batteryV2Shadow.lvMeasured.cranking.unknown': 'UNKNOWN',
   'master.batteryV2Shadow.lvMeasured.cranking.notInReadModel':
     'No confirmed cranking capture in LV_MEASURED_INTELLIGENCE_V1 — do not infer startability from voltage alone.',
