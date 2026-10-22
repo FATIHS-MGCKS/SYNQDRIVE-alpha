@@ -6,6 +6,7 @@ import {
   type HvCapacityObservation,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import {
   HV_M2_CAPACITY_METHOD,
   HV_M2_MODEL_VERSION,
@@ -38,14 +39,10 @@ export interface CreateHvCapacityObservationInput {
   metadata: HvCapacityObservationPersistMetadata;
 }
 
-@Injectable()
-export class HvCapacityObservationRepository {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async createIdempotent(
-    input: CreateHvCapacityObservationInput,
-  ): Promise<HvCapacityObservation> {
-    const data: Prisma.HvCapacityObservationUncheckedCreateInput = {
+function toObservationCreateData(
+  input: CreateHvCapacityObservationInput,
+): Prisma.HvCapacityObservationUncheckedCreateInput {
+  return {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       chargeSessionId: input.chargeSessionId,
@@ -63,6 +60,16 @@ export class HvCapacityObservationRepository {
       idempotencyKey: input.idempotencyKey,
       metadata: input.metadata as unknown as Prisma.InputJsonValue,
     };
+}
+
+@Injectable()
+export class HvCapacityObservationRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async createIdempotent(
+    input: CreateHvCapacityObservationInput,
+  ): Promise<HvCapacityObservation> {
+    const data = toObservationCreateData(input);
 
     try {
       return await this.prisma.hvCapacityObservation.create({ data });
@@ -125,6 +132,45 @@ export class HvCapacityObservationRepository {
       },
     });
     return result.count;
+  }
+
+  /**
+   * Fail-closed resample: commit metadata clear first, then delete M2/M3 rows and insert new M2
+   * rows in one transaction. On transaction failure, observation deletes roll back but metadata
+   * stays cleared so readers do not treat stale summaries as current.
+   */
+  async resampleSessionM2ObservationsTransactional(input: {
+    sessionId: string;
+    chargeSessionId: string;
+    metadata: HvChargeSessionMetadata;
+    creates: CreateHvCapacityObservationInput[];
+  }): Promise<void> {
+    const clearedMetadata: HvChargeSessionMetadata = { ...input.metadata };
+    delete clearedMetadata.m2CapacitySummary;
+    delete clearedMetadata.m3Validation;
+    clearedMetadata.shadowEvidenceFingerprint = null;
+
+    await this.prisma.hvChargeSession.update({
+      where: { id: input.sessionId },
+      data: {
+        metadata: clearedMetadata as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.hvCapacityObservation.deleteMany({
+        where: {
+          chargeSessionId: input.chargeSessionId,
+          method: { in: [HV_M2_CAPACITY_METHOD, HV_M3_CAPACITY_METHOD] },
+        },
+      });
+
+      for (const createInput of input.creates) {
+        await tx.hvCapacityObservation.create({
+          data: toObservationCreateData(createInput),
+        });
+      }
+    });
   }
 }
 

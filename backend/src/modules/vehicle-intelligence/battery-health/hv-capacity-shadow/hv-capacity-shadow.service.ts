@@ -5,6 +5,7 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import {
   buildHvCapacityObservationIdempotencyKey,
+  type CreateHvCapacityObservationInput,
   HvCapacityObservationRepository,
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
@@ -128,13 +129,6 @@ export class HvCapacityShadowService {
 
     const shouldResample = !alreadyProcessed || shadowEvidenceStale;
 
-    if (shouldResample && alreadyProcessed) {
-      await this.observations.deleteSessionObservations({
-        chargeSessionId: session.id,
-        methods: [HV_M2_CAPACITY_METHOD, HV_M3_CAPACITY_METHOD],
-      });
-    }
-
     if (shouldResample) {
       const reference = await this.prisma.vehicleBatteryReferenceCapacity.findFirst({
         where: {
@@ -164,36 +158,57 @@ export class HvCapacityShadowService {
       });
       sessionMedianKwh = medianHvM2Estimates(estimates);
 
-      for (const estimate of estimates) {
-        const quality = resolveHvM2ObservationQuality(estimate);
-        await this.observations.createIdempotent({
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          chargeSessionId: session.id,
-          method: HV_M2_CAPACITY_METHOD,
-          estimatedCapacityKwh: estimate.valueKwh,
-          referenceCapacityKwh: capacityBand.referenceCapacityKwh,
-          quality,
-          modelVersion: HV_M2_MODEL_VERSION,
-          observedAt: estimate.sample.observedAt,
-          metadata: withHvCapacityShadowMetadata({
-            socPercent: estimate.sample.socPercent,
-            currentEnergyKwh: estimate.sample.currentEnergyKwh,
-            timestampDeltaMs: estimate.gate.timestampDeltaMs,
-            preferredSocBand: estimate.gate.preferredSocBand,
-            outlier: estimate.outlier,
-            gateReasonCodes: estimate.gate.reasonCodes,
-            sessionMedianKwh,
-          }),
-          idempotencyKey: buildHvCapacityObservationIdempotencyKey({
+      const createInputs: CreateHvCapacityObservationInput[] = estimates.map(
+        (estimate) => {
+          const quality = resolveHvM2ObservationQuality(estimate);
+          return {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
             chargeSessionId: session.id,
+            method: HV_M2_CAPACITY_METHOD,
+            estimatedCapacityKwh: estimate.valueKwh,
+            referenceCapacityKwh: capacityBand.referenceCapacityKwh,
+            quality,
+            modelVersion: HV_M2_MODEL_VERSION,
             observedAt: estimate.sample.observedAt,
-          }),
+            metadata: withHvCapacityShadowMetadata({
+              socPercent: estimate.sample.socPercent,
+              currentEnergyKwh: estimate.sample.currentEnergyKwh,
+              timestampDeltaMs: estimate.gate.timestampDeltaMs,
+              preferredSocBand: estimate.gate.preferredSocBand,
+              outlier: estimate.outlier,
+              gateReasonCodes: estimate.gate.reasonCodes,
+              sessionMedianKwh,
+            }),
+            idempotencyKey: buildHvCapacityObservationIdempotencyKey({
+              chargeSessionId: session.id,
+              observedAt: estimate.sample.observedAt,
+            }),
+          };
+        },
+      );
+
+      if (alreadyProcessed) {
+        await this.observations.resampleSessionM2ObservationsTransactional({
+          sessionId: session.id,
+          chargeSessionId: session.id,
+          metadata,
+          creates: createInputs,
         });
+        persistedCount = createInputs.length;
         if (this.metrics) {
-          recordHvCapacityObservation(this.metrics, { quality });
+          for (const row of createInputs) {
+            recordHvCapacityObservation(this.metrics, { quality: row.quality });
+          }
         }
-        persistedCount += 1;
+      } else {
+        for (const createInput of createInputs) {
+          await this.observations.createIdempotent(createInput);
+          if (this.metrics) {
+            recordHvCapacityObservation(this.metrics, { quality: createInput.quality });
+          }
+          persistedCount += 1;
+        }
       }
 
       skippedCount = Math.max(0, samples.length - persistedCount);

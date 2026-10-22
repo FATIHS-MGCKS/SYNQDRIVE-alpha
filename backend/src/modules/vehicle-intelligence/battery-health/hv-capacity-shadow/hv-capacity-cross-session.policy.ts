@@ -10,6 +10,10 @@ import {
 import { HV_M2_SESSION_SUMMARY_STATUSES } from './hv-capacity-session-summary.types';
 import { HV_M2_MODEL_VERSION } from './hv-capacity-m2.types';
 import {
+  buildHvCrossSessionEvidenceIdentityDigest,
+  hashHvCrossSessionEvidenceIdentityDigest,
+} from './hv-cross-session-evidence-identity.policy';
+import {
   HV_CROSS_SESSION_ASSESSMENT_MODEL_VERSION,
   HV_CROSS_SESSION_CONFIDENCE,
   HV_CROSS_SESSION_GATE_REASONS,
@@ -59,13 +63,18 @@ export function buildHvCrossSessionAssessmentIdempotencyKey(input: {
   vehicleId: string;
   modelVersion?: number;
   latestSessionEndAt: Date;
+  evidenceIdentityDigest: string;
 }): string {
   const version = input.modelVersion ?? HV_CROSS_SESSION_ASSESSMENT_MODEL_VERSION;
+  const evidenceHash = hashHvCrossSessionEvidenceIdentityDigest(
+    input.evidenceIdentityDigest,
+  );
   return [
     'hv-cap-shadow-assess',
     input.vehicleId,
     `m${version}`,
     String(input.latestSessionEndAt.getTime()),
+    evidenceHash,
   ].join(':');
 }
 
@@ -544,6 +553,7 @@ export function computeHvCrossSessionAssessment(input: {
       modelVersion,
       latestSessionEndAt:
         latestSessionEndAt.getTime() > 0 ? latestSessionEndAt : context.now ?? new Date(),
+      evidenceIdentityDigest: buildHvCrossSessionEvidenceIdentityDigest(episodeQualified),
     }),
     inputSummary,
   };

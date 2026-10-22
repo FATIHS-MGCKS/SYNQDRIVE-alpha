@@ -30,6 +30,7 @@ describe('HvCapacityShadowService', () => {
     hasSessionObservations: jest.fn(),
     createIdempotent: jest.fn(),
     deleteSessionObservations: jest.fn(),
+    resampleSessionM2ObservationsTransactional: jest.fn(),
   };
 
   const sessionSummary = { summarizeSession: jest.fn() };
@@ -68,6 +69,7 @@ describe('HvCapacityShadowService', () => {
     });
     observations.hasSessionObservations.mockResolvedValue(false);
     observations.deleteSessionObservations.mockResolvedValue(0);
+    observations.resampleSessionM2ObservationsTransactional.mockResolvedValue(undefined);
     observations.createIdempotent.mockImplementation(async (input) => ({
       id: `obs-${input.observedAt.getTime()}`,
       ...input,

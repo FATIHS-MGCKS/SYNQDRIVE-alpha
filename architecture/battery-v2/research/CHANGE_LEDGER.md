@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-22 — HV shadow P1 refresh consistency gate (PR #2122)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Cross-session assessment idempotency includes deterministic evidence-identity digest (session medians/M3 flags); transactional M2 resample clears metadata before delete+insert with fail-closed metadata on abort |
+| **WHY** | Same `latestSessionEndAt` suppressed cross-session/SOH refresh after M2 correction; delete-then-create without transaction could leave stale valid capacity |
+| **VALIDATION** | `hv-cross-session-evidence-identity.policy.spec.ts`; `hv-p1-shadow-refresh.postgres.integration.spec.ts` (+cross-session/SOH refresh, +resample abort safety) |
+| **NON_EFFECTS** | No flags, deploy, or non-HV modules |
+
+---
+
 ## 2026-10-22 — HV shadow P1 final safety hardening (PR #2122 review)
 
 | Field | Value |
