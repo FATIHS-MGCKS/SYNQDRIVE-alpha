@@ -111,6 +111,21 @@ export class HvCapacityObservationRepository {
       })
       .then((row) => row != null);
   }
+
+  async deleteSessionObservations(input: {
+    chargeSessionId: string;
+    methods: HvCapacityMethod[];
+    modelVersion?: number;
+  }): Promise<number> {
+    const result = await this.prisma.hvCapacityObservation.deleteMany({
+      where: {
+        chargeSessionId: input.chargeSessionId,
+        method: { in: input.methods },
+        ...(input.modelVersion != null ? { modelVersion: input.modelVersion } : {}),
+      },
+    });
+    return result.count;
+  }
 }
 
 export function buildHvCapacityObservationIdempotencyKey(input: {

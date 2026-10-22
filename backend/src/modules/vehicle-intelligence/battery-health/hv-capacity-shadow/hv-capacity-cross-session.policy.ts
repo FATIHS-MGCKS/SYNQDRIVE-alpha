@@ -1,4 +1,12 @@
 import { HvCapacityMethod } from '../battery-v2-domain';
+import {
+  ERD_PHYSICAL_MATCH_RESULT,
+} from '../hv-charge-session/erd-physical-episode-matcher';
+import {
+  matchNativeHvChargeSessionPhysicalEpisode,
+  pickCanonicalNativeEpisodeSession,
+  type HvNativeChargeSessionEpisodeSide,
+} from '../hv-charge-session/hv-native-physical-episode.policy';
 import { HV_M2_SESSION_SUMMARY_STATUSES } from './hv-capacity-session-summary.types';
 import { HV_M2_MODEL_VERSION } from './hv-capacity-m2.types';
 import {
@@ -19,6 +27,7 @@ import {
   type HvCrossSessionGateReasonCode,
   type HvCrossSessionInputSession,
   type HvCrossSessionMethodAgreement,
+  type HvCrossSessionPhysicalEpisodeContext,
   type HvCrossSessionSpreadStats,
   type HvCrossSessionVehicleContext,
 } from './hv-capacity-cross-session.types';
@@ -120,6 +129,119 @@ function filterQualifiedSessions(
   }
 
   return { qualified: freshQualified, reasonCodes };
+}
+
+function resolvePhysicalEpisodeContext(
+  session: HvCrossSessionInputSession,
+): HvCrossSessionPhysicalEpisodeContext {
+  if (session.physicalEpisode) {
+    return session.physicalEpisode;
+  }
+  const end = session.sessionEndAt;
+  return {
+    sessionStartAt: new Date(end.getTime() - 2 * 60 * 60 * 1000),
+    sessionEndAt: end,
+    startSocPercent: 20,
+    endSocPercent: 80,
+    startEnergyKwh: 15,
+    endEnergyKwh: 45,
+    isOngoing: false,
+  };
+}
+
+function toNativeEpisodeSide(
+  context: HvCrossSessionPhysicalEpisodeContext,
+): HvNativeChargeSessionEpisodeSide {
+  return {
+    startAt: context.sessionStartAt,
+    endAt: context.sessionEndAt,
+    startSocPercent: context.startSocPercent,
+    endSocPercent: context.endSocPercent,
+    startEnergyKwh: context.startEnergyKwh,
+    endEnergyKwh: context.endEnergyKwh,
+    isOngoing: context.isOngoing ?? false,
+  };
+}
+
+/**
+ * Fail-closed independence guard: overlapping native segments of one physical charge
+ * must not count as multiple cross-session inputs.
+ */
+export function applyCrossSessionPhysicalEpisodeIndependence(input: {
+  sessions: HvCrossSessionInputSession[];
+  evaluatedAt: Date;
+}): {
+  sessions: HvCrossSessionInputSession[];
+  reasonCodes: HvCrossSessionGateReasonCode[];
+} {
+  const reasonCodes: HvCrossSessionGateReasonCode[] = [];
+  const { sessions, evaluatedAt } = input;
+  if (sessions.length <= 1) {
+    return { sessions, reasonCodes };
+  }
+
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    const p = parent.get(id);
+    if (!p || p === id) return id;
+    const root = find(p);
+    parent.set(id, root);
+    return root;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(rb, ra);
+  };
+
+  for (const session of sessions) {
+    parent.set(session.sessionId, session.sessionId);
+  }
+
+  let hasAmbiguous = false;
+  for (let i = 0; i < sessions.length; i += 1) {
+    for (let j = i + 1; j < sessions.length; j += 1) {
+      const a = sessions[i];
+      const b = sessions[j];
+      const match = matchNativeHvChargeSessionPhysicalEpisode(
+        toNativeEpisodeSide(resolvePhysicalEpisodeContext(a)),
+        toNativeEpisodeSide(resolvePhysicalEpisodeContext(b)),
+        evaluatedAt,
+      );
+      if (match.result === ERD_PHYSICAL_MATCH_RESULT.AMBIGUOUS) {
+        hasAmbiguous = true;
+      } else if (match.result === ERD_PHYSICAL_MATCH_RESULT.SAME) {
+        union(a.sessionId, b.sessionId);
+      }
+    }
+  }
+
+  if (hasAmbiguous) {
+    return {
+      sessions: [],
+      reasonCodes: [HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_AMBIGUOUS],
+    };
+  }
+
+  const clusters = new Map<string, HvCrossSessionInputSession[]>();
+  for (const session of sessions) {
+    const root = find(session.sessionId);
+    const list = clusters.get(root) ?? [];
+    list.push(session);
+    clusters.set(root, list);
+  }
+
+  const representatives = [...clusters.values()].map((cluster) =>
+    pickCanonicalNativeEpisodeSession(cluster, (row) =>
+      row.summary.stats.validSampleCount ?? 0,
+    ),
+  );
+
+  if (representatives.length < sessions.length) {
+    reasonCodes.push(HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_NOT_INDEPENDENT);
+  }
+
+  return { sessions: representatives, reasonCodes };
 }
 
 function computeSpreadStats(sessionMedians: number[]): HvCrossSessionSpreadStats {
@@ -259,6 +381,10 @@ function buildReasons(
       'Inkompatible Referenzkapazität',
     [HV_CROSS_SESSION_GATE_REASONS.INSUFFICIENT_FRESH_SESSIONS]:
       'Zu wenige frische qualifizierte Sessions',
+    [HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_NOT_INDEPENDENT]:
+      'Mehrere native Segmente gehören vermutlich zu einem physischen Ladevorgang',
+    [HV_CROSS_SESSION_GATE_REASONS.PHYSICAL_EPISODE_AMBIGUOUS]:
+      'Physische Episode-Zuordnung zwischen Sessions mehrdeutig',
   };
 
   const reasons: HvCrossSessionAssessmentReason[] = gateReasonCodes.map((code) => ({
@@ -292,38 +418,45 @@ export function computeHvCrossSessionAssessment(input: {
     context,
   );
 
-  const sessionMedians = qualified
+  const independence = applyCrossSessionPhysicalEpisodeIndependence({
+    sessions: qualified,
+    evaluatedAt: context.now ?? new Date(),
+  });
+  const episodeQualified = independence.sessions;
+  const episodeReasons = independence.reasonCodes;
+
+  const sessionMedians = episodeQualified
     .map((session) => session.summary.stats.medianCapacityKwh)
     .filter((value): value is number => value != null);
 
-  const observationCount = qualified.reduce(
+  const observationCount = episodeQualified.reduce(
     (sum, session) => sum + (session.summary.stats.validSampleCount ?? 0),
     0,
   );
 
   const spread = computeSpreadStats(sessionMedians);
-  const methodAgreement = computeMethodAgreement(qualified);
+  const methodAgreement = computeMethodAgreement(episodeQualified);
   const gateReasonCodes = evaluateCrossSessionGates({
-    qualifiedSessions: qualified,
+    qualifiedSessions: episodeQualified,
     spread,
     methodAgreement,
     observationCount,
-    priorReasonCodes: filterReasons,
+    priorReasonCodes: [...filterReasons, ...episodeReasons],
   });
 
   const shadowGatePassed =
     gateReasonCodes.length === 0 &&
     spread.sessionMedianKwh != null &&
-    qualified.length >= HV_CROSS_SESSION_MIN_QUALIFIED_SESSIONS;
+    episodeQualified.length >= HV_CROSS_SESSION_MIN_QUALIFIED_SESSIONS;
 
   const confidence = resolveConfidence({
     shadowGatePassed,
-    sessionCount: qualified.length,
+    sessionCount: episodeQualified.length,
     spread,
     methodAgreement,
   });
 
-  const latestSessionEndAt = qualified.reduce(
+  const latestSessionEndAt = episodeQualified.reduce(
     (latest, session) =>
       session.sessionEndAt.getTime() > latest.getTime()
         ? session.sessionEndAt
@@ -339,7 +472,7 @@ export function computeHvCrossSessionAssessment(input: {
     maturity: HV_CROSS_SESSION_MATURITY_SHADOW,
     method: HvCapacityMethod.SHADOW_ROLLING_MEDIAN,
     m2ModelVersion: HV_M2_MODEL_VERSION,
-    sessionCount: qualified.length,
+    sessionCount: episodeQualified.length,
     observationCount,
     crossSessionMedianKwh,
     spread,
@@ -348,7 +481,7 @@ export function computeHvCrossSessionAssessment(input: {
     shadowGatePassed,
     publicationEligible: false,
     sohEligible: false,
-    sessions: qualified.map((session) => ({
+    sessions: episodeQualified.map((session) => ({
       sessionId: session.sessionId,
       sessionEndAt: session.sessionEndAt.toISOString(),
       medianCapacityKwh: session.summary.stats.medianCapacityKwh,
@@ -368,7 +501,7 @@ export function computeHvCrossSessionAssessment(input: {
     method: HvCapacityMethod.SHADOW_ROLLING_MEDIAN,
     modelVersion,
     estimatedUsableCapacityKwh: crossSessionMedianKwh,
-    sessionCount: qualified.length,
+    sessionCount: episodeQualified.length,
     observationCount,
     crossSessionMedianKwh,
     spread,
@@ -380,7 +513,7 @@ export function computeHvCrossSessionAssessment(input: {
     reasons: buildReasons(gateReasonCodes, shadowGatePassed),
     publicationEligible: false,
     sohEligible: false,
-    sessionIds: qualified.map((session) => session.sessionId),
+    sessionIds: episodeQualified.map((session) => session.sessionId),
     referenceCapacityKwh: context.referenceCapacityKwh,
     referenceCapacityId: context.referenceCapacityId,
     computedAt,

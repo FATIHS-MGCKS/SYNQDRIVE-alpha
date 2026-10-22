@@ -46,16 +46,30 @@ export const HV_CROSS_SESSION_GATE_REASONS = {
   MODEL_VERSION_MISMATCH: 'MODEL_VERSION_MISMATCH',
   INCOMPATIBLE_REFERENCE_CAPACITY: 'INCOMPATIBLE_REFERENCE_CAPACITY',
   INSUFFICIENT_FRESH_SESSIONS: 'INSUFFICIENT_FRESH_SESSIONS',
+  PHYSICAL_EPISODE_NOT_INDEPENDENT: 'PHYSICAL_EPISODE_NOT_INDEPENDENT',
+  PHYSICAL_EPISODE_AMBIGUOUS: 'PHYSICAL_EPISODE_AMBIGUOUS',
 } as const;
 
 export type HvCrossSessionGateReasonCode =
   (typeof HV_CROSS_SESSION_GATE_REASONS)[keyof typeof HV_CROSS_SESSION_GATE_REASONS];
+
+export interface HvCrossSessionPhysicalEpisodeContext {
+  sessionStartAt: Date;
+  sessionEndAt: Date;
+  startSocPercent: number | null;
+  endSocPercent: number | null;
+  startEnergyKwh: number | null;
+  endEnergyKwh: number | null;
+  isOngoing?: boolean;
+}
 
 export interface HvCrossSessionInputSession {
   sessionId: string;
   sessionEndAt: Date;
   summary: HvCapacitySessionSummary;
   m3Validation?: HvCapacityM3SessionValidation | null;
+  /** When omitted, policy derives a non-overlapping placeholder from sessionEndAt (legacy fixtures). */
+  physicalEpisode?: HvCrossSessionPhysicalEpisodeContext;
 }
 
 export interface HvCrossSessionVehicleContext {

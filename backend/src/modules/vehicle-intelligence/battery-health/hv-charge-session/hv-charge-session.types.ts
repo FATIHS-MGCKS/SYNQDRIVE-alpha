@@ -66,6 +66,8 @@ export interface HvChargeSessionMetadata {
   capacityValidationEligible?: boolean;
   m2CapacitySummary?: HvCapacitySessionSummary;
   m3Validation?: HvCapacityM3SessionValidation;
+  /** Fingerprint of material session scalars when M2/M3 shadow artifacts were last derived. */
+  shadowEvidenceFingerprint?: string | null;
   changeHistory?: Array<{
     at: string;
     kind: HvChargeSessionChangeKind;

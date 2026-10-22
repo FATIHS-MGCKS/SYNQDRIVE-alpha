@@ -567,6 +567,30 @@ export function mergeHvChargeSessionUpdate(input: {
     scalarCoherence,
   );
 
+  const shadowArtifactsInvalidated =
+    changeKind === 'provider_refresh' &&
+    completedRefreshAccepted &&
+    snapshot.progressive;
+
+  if (shadowArtifactsInvalidated) {
+    delete finalMetadata.m2CapacitySummary;
+    delete finalMetadata.m3Validation;
+    delete finalMetadata.shadowEvidenceFingerprint;
+  } else if (existingMeta) {
+    if (existingMeta.m2CapacitySummary && !incoming.metadata.m2CapacitySummary) {
+      finalMetadata.m2CapacitySummary = existingMeta.m2CapacitySummary;
+    }
+    if (existingMeta.m3Validation && !incoming.metadata.m3Validation) {
+      finalMetadata.m3Validation = existingMeta.m3Validation;
+    }
+    if (
+      existingMeta.shadowEvidenceFingerprint &&
+      incoming.metadata.shadowEvidenceFingerprint == null
+    ) {
+      finalMetadata.shadowEvidenceFingerprint = existingMeta.shadowEvidenceFingerprint;
+    }
+  }
+
   return {
     changed: true,
     changeKind,

@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-22 — HV shadow P1 safety correction (episode independence, provider refresh, M3 mapper parity)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Cross-session fail-closed physical-episode independence guard (ERD E3 matcher semantics); progressive provider refresh invalidates shadow metadata + M2/M3 resample via evidence fingerprint; shared `hv-capacity-m3-session-input.mapper` forwards `segmentAddedEnergyMinKwh` to M3 RESET gate |
+| **WHY** | FABLE audit P1: fragmented DIMO segments inflated cross-session confidence; extended sessions kept stale M2/M3; M3 service omitted added-energy min vs MQ read path |
+| **VALIDATION** | `hv-capacity-cross-session.episode-independence.spec.ts`, `hv-capacity-m3-session-input.mapper.spec.ts`, `hv-capacity-shadow-evidence.policy.spec.ts`, merge shadow lifecycle spec; full HV unit suite |
+| **NON_EFFECTS** | No boundary enrichment (#2113) edits; no publication/SOH gate formula changes; no feature-flag default changes; no migrations |
+
+---
+
 ## 2026-10-22 — HV boundary enrichment hardening (PR #2113 integration)
 
 | Field | Value |

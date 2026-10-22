@@ -30,7 +30,12 @@ import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-ses
 import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
 import type { HvSohGateAssessmentResult } from './hv-soh-gate.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
+import {
+  buildHvCapacityShadowEvidenceFingerprint,
+  shadowEvidenceFromChargeSessionRow,
+} from './hv-capacity-shadow-evidence.policy';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
+import { HV_M3_CAPACITY_METHOD } from './hv-capacity-m3.types';
 import {
   recordHvCapacityObservation,
   recordHvCapacityM2SessionCv,
@@ -101,11 +106,19 @@ export class HvCapacityShadowService {
       return this.emptyResult(session.id);
     }
 
+    const evidenceFingerprint = buildHvCapacityShadowEvidenceFingerprint(
+      shadowEvidenceFromChargeSessionRow(session, metadata),
+    );
+
     const alreadyProcessed = await this.observations.hasSessionObservations({
       chargeSessionId: session.id,
       method: HV_M2_CAPACITY_METHOD,
       modelVersion: HV_M2_MODEL_VERSION,
     });
+
+    const shadowEvidenceStale =
+      metadata.m2CapacitySummary == null ||
+      metadata.shadowEvidenceFingerprint !== evidenceFingerprint;
 
     let estimates: HvCapacityM2PointEstimate[] = [];
     let persistedCount = 0;
@@ -113,7 +126,16 @@ export class HvCapacityShadowService {
     let sessionMedianKwh: number | null = null;
     let summaryObservations: HvCapacitySessionSummaryInputObservation[] | undefined;
 
-    if (!alreadyProcessed) {
+    const shouldResample = !alreadyProcessed || shadowEvidenceStale;
+
+    if (shouldResample && alreadyProcessed) {
+      await this.observations.deleteSessionObservations({
+        chargeSessionId: session.id,
+        methods: [HV_M2_CAPACITY_METHOD, HV_M3_CAPACITY_METHOD],
+      });
+    }
+
+    if (shouldResample) {
       const reference = await this.prisma.vehicleBatteryReferenceCapacity.findFirst({
         where: {
           organizationId: input.organizationId,
