@@ -1,0 +1,138 @@
+{
+  "schema": "SYNQDRIVE_VIDEO_REFERENCE_V1",
+  "vehicle_label": "VW Tiguan (user supplied; production identity not verified)",
+  "date_local": "2026-10-22",
+  "timezone": "Europe/Berlin",
+  "user_trip_window_local": [
+    "20:30",
+    "21:04"
+  ],
+  "reference": "Digital vehicle speedometer and approximate tachometer, visually reviewed 1 Hz samples",
+  "wall_time_uncertainty_s": 1,
+  "external_phone_clock_accuracy": "NOT_CALIBRATED",
+  "no_interpolation": true,
+  "summary": {
+    "rows": 1464,
+    "speed_values": 1417,
+    "rpm_values": 1419,
+    "speed_max_kmh": 97,
+    "rpm_max": 4750,
+    "first_time_local_estimated": "2026-10-22T20:38:34+02:00",
+    "last_time_local_estimated": "2026-10-22T21:03:02+02:00",
+    "total_media_duration_s": 1463.434999,
+    "visible_stop_runs": 11,
+    "zero_speed_samples": 96,
+    "clock_observed_samples": 1381
+  },
+  "sources": [
+    {
+      "clip": "TC_00077.MOV",
+      "drive_file_id": "1N1wXdLYFpO_1ZGhJ9VQ4NhrTq7VRRAY1",
+      "duration_s": 179.858333,
+      "quicktime_creation_time_utc": "2026-10-22T18:38:33.000000Z",
+      "overlay_mode_offset_s": 1,
+      "anchor_local_estimated": "2026-10-22T20:38:34+02:00",
+      "sha256": "2164e117d772a0163987e67e947a205122d2ea702ea0017fb88e0f989f4d75cd",
+      "size_bytes": 131103997,
+      "source_url": "https://drive.google.com/file/d/1N1wXdLYFpO_1ZGhJ9VQ4NhrTq7VRRAY1/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00078.MOV",
+      "drive_file_id": "1QuamJVGfnYgLw6b5VheD_GNNfrwMiAzR",
+      "duration_s": 179.978333,
+      "quicktime_creation_time_utc": "2026-10-22T18:41:34.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:41:34+02:00",
+      "sha256": "01576e655eba6f6621affca89a194576b495ece1a2cca4923ce2663dabbd4de0",
+      "size_bytes": 134224343,
+      "source_url": "https://drive.google.com/file/d/1QuamJVGfnYgLw6b5VheD_GNNfrwMiAzR/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00079.MOV",
+      "drive_file_id": "1DqZ6LtjUStNWcVoI7jIEeCA6z3UoME3q",
+      "duration_s": 33.883333,
+      "quicktime_creation_time_utc": "2026-10-22T18:44:34.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:44:34+02:00",
+      "sha256": "95fdd25e3970119e7acc0feb553a65dc49db642e113f7d8748c1549a57140946",
+      "size_bytes": 24898428,
+      "source_url": "https://drive.google.com/file/d/1DqZ6LtjUStNWcVoI7jIEeCA6z3UoME3q/view?usp=drivesdk",
+      "sample_count": 34
+    },
+    {
+      "clip": "TC_00080.MOV",
+      "drive_file_id": "14FLnG9hbmBxLdLM7yG0nm9EKW3JuMBRH",
+      "duration_s": 179.898333,
+      "quicktime_creation_time_utc": "2026-10-22T18:45:12.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:45:12+02:00",
+      "sha256": "ae60ed4854e44ae49609e57f1bde69c7cf35f45879b52126fd371820797595df",
+      "size_bytes": 134142925,
+      "source_url": "https://drive.google.com/file/d/14FLnG9hbmBxLdLM7yG0nm9EKW3JuMBRH/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00081.MOV",
+      "drive_file_id": "17SyYSkjJwOoxv6Do1lrOs9RZp7SSr3ni",
+      "duration_s": 179.978333,
+      "quicktime_creation_time_utc": "2026-10-22T18:48:12.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:48:12+02:00",
+      "sha256": "732e462f254480a0e1dcfb9dcf2f38a5a124a6e9a93d2508ede93decc54e2c09",
+      "size_bytes": 133785424,
+      "source_url": "https://drive.google.com/file/d/17SyYSkjJwOoxv6Do1lrOs9RZp7SSr3ni/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00082.MOV",
+      "drive_file_id": "1jLmGWR0oxs9PMhKpxb4yh_-bXAPSG_yh",
+      "duration_s": 179.976667,
+      "quicktime_creation_time_utc": "2026-10-22T18:51:12.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:51:12+02:00",
+      "sha256": "7d2ad4941fa55c0484db7f581ada788e06c63aa8f8aed0f2079338e013cbfe14",
+      "size_bytes": 133447821,
+      "source_url": "https://drive.google.com/file/d/1jLmGWR0oxs9PMhKpxb4yh_-bXAPSG_yh/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00083.MOV",
+      "drive_file_id": "1RrEoBYYXYfJCpKjr3IVLccn5Vc7NOnl-",
+      "duration_s": 180.016667,
+      "quicktime_creation_time_utc": "2026-10-22T18:54:12.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:54:12+02:00",
+      "sha256": "896762fdc8629e94ecb487a7e2b157bd6c4e0ae5bb9db35d4afc4696a1dc2988",
+      "size_bytes": 134944118,
+      "source_url": "https://drive.google.com/file/d/1RrEoBYYXYfJCpKjr3IVLccn5Vc7NOnl-/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00084.MOV",
+      "drive_file_id": "18SDMgxOod2yrs0HEUjzN2Qd017G9AULZ",
+      "duration_s": 179.978333,
+      "quicktime_creation_time_utc": "2026-10-22T18:57:13.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T20:57:13+02:00",
+      "sha256": "07880b9999d6f82f14c4fd0fcf58b48e9348b022365a3365b350e9e3bcb0e7d5",
+      "size_bytes": 134667662,
+      "source_url": "https://drive.google.com/file/d/18SDMgxOod2yrs0HEUjzN2Qd017G9AULZ/view?usp=drivesdk",
+      "sample_count": 180
+    },
+    {
+      "clip": "TC_00085.MOV",
+      "drive_file_id": "1EqvfkOo66_QXsQlFEd0OdD3iDCQHCuQG",
+      "duration_s": 169.866667,
+      "quicktime_creation_time_utc": "2026-10-22T19:00:13.000000Z",
+      "overlay_mode_offset_s": 0,
+      "anchor_local_estimated": "2026-10-22T21:00:13+02:00",
+      "sha256": "04296b17169d9860915d890ed72835fe4d44248cf1eb87499dc214d20b3184ea",
+      "size_bytes": 126218212,
+      "source_url": "https://drive.google.com/file/d/1EqvfkOo66_QXsQlFEd0OdD3iDCQHCuQG/view?usp=drivesdk",
+      "sample_count": 170
+    }
+  ]
+}
+

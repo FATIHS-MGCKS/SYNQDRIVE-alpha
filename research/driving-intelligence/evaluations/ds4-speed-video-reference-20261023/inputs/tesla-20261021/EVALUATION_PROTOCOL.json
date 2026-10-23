@@ -1,0 +1,68 @@
+{
+  "schema": "EXP021_PHASE5C_EVALUATION_PROTOCOL_V1",
+  "sealedAtUtc": "2026-10-21T13:42:00Z",
+  "researchPin": {
+    "branch": "cursor/di-master-architecture-research-20261021",
+    "algorithmSha": "477ecad737294efbf18472cf8d903d447ca1e397",
+    "harness": "/opt/cursor/artifacts/exp021-scientific-audit-phase3/scripts/phase3_lib.ts",
+    "freezeManifest": "/opt/cursor/artifacts/exp021-phase5a-baseline-freeze/FREEZE_MANIFEST.json"
+  },
+  "timeBinding": {
+    "primaryAssumption": "DISPLAY_LOCAL_CEST_UTC_PLUS_02",
+    "referenceField": "utc_candidate_assuming_offset_plus_02",
+    "bindingStatus": "EXTERNAL_CLOCK_OFFSET_UNVALIDATED",
+    "noLagOptimizationFromMatcher": true,
+    "exploratoryLagSweepSeconds": [-2, -1, 0, 1, 2],
+    "exploratoryOnly": true,
+    "validatedSecondLevelUtcClaim": false
+  },
+  "joinRules": {
+    "telemetryBucketKey": "bucketLabelUtc (1 Hz UTC label from S4 POSITION adapter)",
+    "referenceToBucket": "Floor reference utc_candidate to same 1 Hz label string used by shadowBucketKeyFromIntervalStart",
+    "maxToleranceSeconds": 0,
+    "duplicateReferenceSeconds": "KEEP_FIRST_BY_SAMPLE_ID_ORDER",
+    "clipTripBoundaryCrossing": "EXCLUDE_WITH_REASON_CLIP_TRIP_MISMATCH",
+    "backendTripEndAfterVideo": "INCLUDE_REFERENCE_ROWS_BUT_FLAG_TRIP_BOUNDARY_EXCEEDED"
+  },
+  "observationEligibility": {
+    "primarySpeedReadable": "speed_status=VISIBLE_DISPLAY_VALUE and tesla_speed_kmh_primary is number",
+    "alternateSpeed": "EXCLUDED unless alternate_time_binding=VALIDATED_INDEPENDENT (none in package)",
+    "unknownSpeed": "INCLUDE_IN_JOIN_TABLE_EXCLUDE_FROM_SPEED_METRICS",
+    "zeroDisplay": "primary_motion_observation=DISPLAY_ZERO; not interpreted as confirmed standstill duration",
+    "iphoneGpsProxy": "overlay_latitude/longitude transcribed; not accuracy ground truth"
+  },
+  "speedMetrics": {
+    "statusWhenUtcUnvalidated": "NOT_ASSESSABLE_FOR_CLAIMS",
+    "exploratoryUnderAssumedOffset": {
+      "metrics": ["MAE", "bias", "p50_abs_error", "p90_abs_error"],
+      "unit": "km/h",
+      "pairing": "reference primary speed vs matcher-implied speed proxy only where protocol defines",
+      "note": "L3/shadow estimatedSpeedKmh and decoder outputs reported separately; not merged without label"
+    },
+    "thresholdsFromPriorProtocols": "Phase 3 gap/margin unchanged; no new promotion thresholds"
+  },
+  "spatialProxyMetrics": {
+    "geometry": "haversine_m between iPhone overlay lat/lon and native POSITION bucket lat/lon at joined second",
+    "statusWhenUtcUnvalidated": "EXPLORATORY_ONLY",
+    "notRoadAccuracy": true
+  },
+  "matcherComparison": {
+    "models": ["M5", "M7A", "M7"],
+    "identicalInputs": true,
+    "preprocessFrozen": true,
+    "reportSections": ["coverage", "speed_exploratory", "spatial_proxy_exploratory", "variant_deltas", "regressions"]
+  },
+  "nullDisplayPositionAudit": {
+    "question": "Native POSITION row present during DISPLAY_ZERO samples?",
+    "classifications": [
+      "ROW_ABSENT",
+      "SOURCE_VALUE_NULL",
+      "SOURCE_GAP",
+      "EXPORT_OMISSION",
+      "DECODER_ABSTENTION",
+      "TEMPORAL_MODE_INCOMPATIBILITY",
+      "PRESENT_FINITE"
+    ]
+  },
+  "exclusionsDenominator": "All 492 reference rows appear in JOINED_REFERENCE_TABLE with inclusion_flag and exclusion_reason"
+}
