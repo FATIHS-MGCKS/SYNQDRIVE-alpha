@@ -32,6 +32,16 @@ describe('di-v0-motion-core-shadow processor C5.1 integration', () => {
     expect(out.payload.c4Speeds).toBeUndefined();
   });
 
+  it('keeps C4-only when C5.1 flag on but vehicle not C5.1-eligible (admission gate)', () => {
+    const out = processDiV0MotionCoreShadowFromEvidenceAdaptation(evidenceFromGrid([0, 1, 2, 3, 4].map(mk)), {
+      pinnedSnapshotHash: 'abc',
+      combinedInputIdentity: 'id',
+      c5_1PreferredSpeedEnabled: false,
+    });
+    expect(out.payload.contract.speedAuthority).toBe('C4_ONLY');
+    expect(out.payload.contract.algorithmVersions.c5_1AlgorithmFileSha256).toBeNull();
+  });
+
   it('emits versioned C5.1 preferred payload with C4 baseline rows', () => {
     const out = processDiV0MotionCoreShadowFromEvidenceAdaptation(evidenceFromGrid([0, 1, 2, 3, 4].map(mk)), {
       pinnedSnapshotHash: 'abc',
@@ -40,6 +50,7 @@ describe('di-v0-motion-core-shadow processor C5.1 integration', () => {
       vehiclePlausibilityClass: 'TESLA',
     });
     expect(out.payload.contract.speedAuthority).toBe('C5_1_PREFERRED');
+    expect(out.payload.contract.algorithmVersions.c5_1AlgorithmFileSha256).toMatch(/^[0-9a-f]{64}$/);
     expect(out.payload.contract.algorithmVersions.bundle).toBe(DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V2_C5_1);
     expect(out.payload.c4Speeds?.length).toBe(out.payload.speeds.length);
     expect(out.payload.speedRepairs?.length).toBe(out.payload.speeds.length);

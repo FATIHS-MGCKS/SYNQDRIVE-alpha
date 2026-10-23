@@ -8,6 +8,7 @@ export type DiV0S4ResearchWorkItemRead = {
   boundaryFingerprint: string;
   sourceFamily: DiV0S4SourceFamily;
   shadowRunId: string | null;
+  completedAt: Date | null;
 };
 
 export type DiV0S4ResearchEvidenceSnapshotRead = {
@@ -59,10 +60,11 @@ export class DiV0S4ResearchS4ReadRepository {
         boundary_fingerprint: string;
         source_family: string;
         shadow_run_id: string | null;
+        completed_at: Date | null;
       }>
     >`
       SELECT status, pinned_snapshot_hash, combined_input_identity, boundary_fingerprint,
-        source_family, shadow_run_id
+        source_family, shadow_run_id, completed_at
       FROM di_v0_s4_work_items
       WHERE id = ${scope.workItemId}
         AND organization_id = ${scope.organizationId}
@@ -77,6 +79,7 @@ export class DiV0S4ResearchS4ReadRepository {
       boundaryFingerprint: row.boundary_fingerprint,
       sourceFamily: row.source_family as DiV0S4SourceFamily,
       shadowRunId: row.shadow_run_id,
+      completedAt: row.completed_at,
     };
   }
 

@@ -5,9 +5,12 @@
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED` | unset / false | C4-only shadow bundle `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_*` |
-| `DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED=true` | — | C5.1 preferred speed + C4 baseline rows in payload (`BUNDLE_V2_C5_1_*`) |
+| `DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED=true` | — | Enables C5.1 path only for admitted vehicles and trips after activation cutoff |
+| `DI_V0_MOTION_CORE_C5_1_ACTIVATION_SINCE` | required when C5.1 flag true | ISO-8601 cutoff; completed trips before this stay on V1 C4 bundle (no historical V2 backlog) |
 
-Existing motion-core shadow gates (`DI_V0_MOTION_CORE_SHADOW_*`) still apply. Rollback: set C5.1 flag false (immediate C4-only intent on new runs).
+Existing motion-core shadow gates (`DI_V0_MOTION_CORE_SHADOW_*`) still apply. Shadow vehicle allowlist is unchanged; C5.1 admission is explicit (Tesla + Tiguan make/model match only). Rollback: set C5.1 flag false (immediate C4-only intent on new runs).
+
+Algorithm fingerprint at runtime hashes the compiled `c5-1-gated-repair-v1-2.js` in dist (`.ts` fallback in dev).
 
 ## Behaviour
 

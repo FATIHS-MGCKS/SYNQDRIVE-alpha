@@ -7,6 +7,7 @@ import {
   type DiV0S4EnablementScope,
   type DiV0S4KillEvaluation,
 } from '../s4a-foundation/di-v0-s4a-control-plane';
+import { parseC5_1ActivationSince } from './di-v0-motion-core-c5-1-admission';
 
 export const DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS = {
   enabled: 'DI_V0_MOTION_CORE_SHADOW_ENABLED',
@@ -24,6 +25,8 @@ export interface DiV0MotionCoreShadowControlPlaneConfig {
   shadowEnabled: boolean;
   workerEnabled: boolean;
   c5_1PreferredSpeedEnabled: boolean;
+  /** Trips completed before this instant stay on C4 V1 bundle even when C5.1 flag is on. */
+  c5_1ActivationSince: Date | null;
   organizationAllowlist: ReadonlySet<string>;
   vehicleAllowlist: ReadonlySet<string>;
 }
@@ -31,10 +34,19 @@ export interface DiV0MotionCoreShadowControlPlaneConfig {
 export function parseDiV0MotionCoreShadowControlPlaneConfig(
   env: Readonly<Record<string, string | undefined>>,
 ): DiV0MotionCoreShadowControlPlaneConfig {
+  const c5_1PreferredSpeedEnabled = parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.c5_1PreferredSpeed]);
+  const c5_1ActivationSince = parseC5_1ActivationSince(env);
+  if (c5_1PreferredSpeedEnabled && !c5_1ActivationSince) {
+    throw new Error(
+      'DI_V0_MOTION_CORE_C5_1_ACTIVATION_SINCE is required when DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED is true',
+    );
+  }
+
   return {
     shadowEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.enabled]),
     workerEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.worker]),
-    c5_1PreferredSpeedEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.c5_1PreferredSpeed]),
+    c5_1PreferredSpeedEnabled,
+    c5_1ActivationSince,
     organizationAllowlist: parseDiV0S4Allowlist(env[DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS.organization]),
     vehicleAllowlist: parseDiV0S4Allowlist(env[DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS.vehicle]),
   };
