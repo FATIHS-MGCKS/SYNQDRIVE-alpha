@@ -6,9 +6,17 @@
 const path = require('node:path');
 const E = require('../../ds4-accel-brake-video-reference-20261023/scripts/event_eval_lib.cjs');
 
-const MOTION_CORE_SPEED_C5_1_VERSION = 'MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_1_SAFETY_HARDENED';
-const HARDENING_TAG = 'C5_1_SAFETY_HARDENING_V1';
+const MOTION_CORE_SPEED_C5_1_VERSION = 'MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_2_NULL_NEIGHBOR_FAIL_CLOSED';
+const PRIOR_VERSION_V1_1 = 'MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_1_SAFETY_HARDENED';
+const HARDENING_TAG = 'C5_1_SAFETY_PATCH_C1_C3';
 const F2_MAX_NUMERIC_KMH = 250;
+
+/** Tri-state evidence status for the Q5/Q6 triple-acceleration check (Fable signoff condition C1). */
+const EVIDENCE = Object.freeze({
+  VALID: 'VALID',
+  VIOLATION: 'VIOLATION',
+  INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+});
 
 const FROZEN = Object.freeze({
   aAttrMps2: 6,
@@ -268,18 +276,62 @@ function presentNeighbors(pm, tSec, dir, maxGap) {
   return null;
 }
 
-function tripleAccelViolation(tSec, centerKmh, pm, speedAtSec, aPlaus) {
+/**
+ * Triple-acceleration evidence around `tSec` (C1 tri-state, fail-closed).
+ *
+ * Neighbours are the nearest PRESENT buckets within `FROZEN.maxNeighborGapS` on each side; the
+ * evidence horizon is never widened past them and no later numeric neighbour is substituted.
+ * A missing neighbour, or a present neighbour whose speed is null (OUTLIER_REJECTED, numeric
+ * null), yields `INSUFFICIENT_EVIDENCE`; it is never interpreted as 0 m/s².
+ *
+ * @returns {{status:string, aMaxMps2:number|null, a1Mps2:number|null, a2Mps2:number|null,
+ *            aPlausMps2:number, reason:string|null, neighbors:object[]}}
+ */
+function tripleAccelEvidence(tSec, centerKmh, pm, speedAtSec, aPlaus, qualityAtSec = () => null) {
   const prev = presentNeighbors(pm, tSec, -1, FROZEN.maxNeighborGapS);
   const next = presentNeighbors(pm, tSec, 1, FROZEN.maxNeighborGapS);
-  if (!prev || !next) return 0;
-  const vPrev = speedAtSec(prev.sec);
-  const vNext = speedAtSec(next.sec);
-  if (vPrev == null || vNext == null || centerKmh == null) return 0;
+  const describe = (side, nb) => {
+    if (!nb) {
+      return { side, label: null, offsetS: null, present: false, speedKmh: null, c4Quality: null, usable: false };
+    }
+    const v = speedAtSec(nb.sec);
+    return {
+      side,
+      label: labelOf(nb.sec),
+      offsetS: nb.sec - tSec,
+      present: true,
+      speedKmh: v,
+      c4Quality: qualityAtSec(nb.sec),
+      usable: v != null,
+    };
+  };
+  const neighbors = [describe('prev', prev), describe('next', next)];
+  const base = { aMaxMps2: null, a1Mps2: null, a2Mps2: null, aPlausMps2: aPlaus, neighbors };
+
+  if (centerKmh == null) {
+    return { status: EVIDENCE.INSUFFICIENT_EVIDENCE, reason: 'center_speed_null', ...base };
+  }
+  if (!prev || !next) {
+    return { status: EVIDENCE.INSUFFICIENT_EVIDENCE, reason: 'neighbor_absent_within_gap', ...base };
+  }
+  const vPrev = neighbors[0].speedKmh;
+  const vNext = neighbors[1].speedKmh;
+  if (vPrev == null || vNext == null) {
+    return { status: EVIDENCE.INSUFFICIENT_EVIDENCE, reason: 'neighbor_speed_null', ...base };
+  }
   const dt1 = tSec - prev.sec;
   const dt2 = next.sec - tSec;
   const a1 = Math.abs((centerKmh - vPrev) / 3.6 / dt1);
   const a2 = Math.abs((vNext - centerKmh) / 3.6 / dt2);
-  return Math.max(a1, a2);
+  const aMax = Math.max(a1, a2);
+  return {
+    status: aMax > aPlaus + 1e-6 ? EVIDENCE.VIOLATION : EVIDENCE.VALID,
+    reason: null,
+    ...base,
+    aMaxMps2: aMax,
+    a1Mps2: a1,
+    a2Mps2: a2,
+  };
 }
 
 /** Q4 pre/post level test on the LOO triple around attributed point P (spec §3.3). */
@@ -411,8 +463,8 @@ function headingRateReject(tSec, pm) {
 }
 
 function physicalPlausibilityQ5(tSec, cand, pm, dist, c4ByLabel, hardRejected, aPlaus, hardQuarantineLeg) {
-  if (cand == null) return { pass: false, detail: 'no_candidate' };
-  if (cand > F2_MAX_NUMERIC_KMH) return { pass: false, detail: 'exceeds_f2_cap' };
+  if (cand == null) return { pass: false, evidence: null, detail: { reason: 'no_candidate' } };
+  if (cand > F2_MAX_NUMERIC_KMH) return { pass: false, evidence: null, detail: { reason: 'exceeds_f2_cap', cand } };
 
   const c4s = c4ByLabel.get(labelOf(tSec));
   const c4Kmh = c4s?.valueKmh ?? null;
@@ -420,21 +472,49 @@ function physicalPlausibilityQ5(tSec, cand, pm, dist, c4ByLabel, hardRejected, a
     if (sec === tSec) return override;
     return c4ByLabel.get(labelOf(sec))?.valueKmh ?? null;
   };
+  const qualityAt = (sec) => c4ByLabel.get(labelOf(sec))?.quality ?? null;
 
-  const vC4 = tripleAccelViolation(tSec, c4Kmh, pm, (s) => speedAt(s, c4Kmh), aPlaus);
-  const vCand = tripleAccelViolation(tSec, cand, pm, (s) => speedAt(s, cand), aPlaus);
-  if (vCand > aPlaus + 1e-6 && vC4 <= aPlaus + 1e-6) {
-    return { pass: false, detail: { reason: 'new_triple_accel_violation', vCand, vC4 } };
+  const evC4 = tripleAccelEvidence(tSec, c4Kmh, pm, (s) => speedAt(s, c4Kmh), aPlaus, qualityAt);
+  const evCand = tripleAccelEvidence(tSec, cand, pm, (s) => speedAt(s, cand), aPlaus, qualityAt);
+  if (evCand.status === EVIDENCE.INSUFFICIENT_EVIDENCE) {
+    return {
+      pass: false,
+      evidence: EVIDENCE.INSUFFICIENT_EVIDENCE,
+      detail: {
+        reason: 'insufficient_evidence_fail_closed',
+        evidenceReason: evCand.reason,
+        neighborsExamined: evCand.neighbors,
+        candKmh: cand,
+        c4Kmh,
+      },
+    };
+  }
+  const vCand = evCand.aMaxMps2;
+  const vC4 = evC4.aMaxMps2;
+  if (evCand.status === EVIDENCE.VIOLATION && evC4.status !== EVIDENCE.VIOLATION) {
+    return {
+      pass: false,
+      evidence: EVIDENCE.VIOLATION,
+      detail: { reason: 'new_triple_accel_violation', vCand, vC4, neighborsExamined: evCand.neighbors },
+    };
   }
   if (vCand > vC4 + 0.05) {
-    return { pass: false, detail: { reason: 'worsens_triple_accel', vCand, vC4 } };
+    return {
+      pass: false,
+      evidence: evCand.status,
+      detail: { reason: 'worsens_triple_accel', vCand, vC4, neighborsExamined: evCand.neighbors },
+    };
   }
 
   for (const pair of [[tSec - 1, tSec], [tSec, tSec + 1]]) {
     const leg = legSpeedKmhBetween(pm, dist, pair[0], pair[1]);
     if (leg == null) continue;
     if (hardQuarantineLeg(leg)) {
-      return { pass: false, detail: { reason: 'hard_leg_quarantine', legKmh: leg, endpoints: pair.map(labelOf) } };
+      return {
+        pass: false,
+        evidence: evCand.status,
+        detail: { reason: 'hard_leg_quarantine', legKmh: leg, endpoints: pair.map(labelOf) },
+      };
     }
   }
 
@@ -444,11 +524,41 @@ function physicalPlausibilityQ5(tSec, cand, pm, dist, c4ByLabel, hardRejected, a
     if (hardRejected.has(lab)) continue;
     const v = speedAt(sec, cand);
     if (v != null && v > F2_MAX_NUMERIC_KMH) {
-      return { pass: false, detail: { reason: 'neighbor_numeric_cap', label: lab, v } };
+      return { pass: false, evidence: evCand.status, detail: { reason: 'neighbor_numeric_cap', label: lab, v } };
     }
   }
 
-  return { pass: true, detail: { vCand, vC4 } };
+  return { pass: true, evidence: EVIDENCE.VALID, detail: { vCand, vC4, neighborsExamined: evCand.neighbors } };
+}
+
+/** Q6 local consistency on the sequentially repaired series (C1 tri-state, fail-closed). */
+function localConsistencyQ6(tSec, cand, c4Kmh, pm, c4SpeedAt, effectiveSpeedAt, aPlaus, qualityAt) {
+  if (cand == null) return { pass: false, evidence: null, detail: { reason: 'no_candidate' } };
+  const evC4 = tripleAccelEvidence(tSec, c4Kmh, pm, c4SpeedAt, aPlaus, qualityAt);
+  const evCand = tripleAccelEvidence(tSec, cand, pm, effectiveSpeedAt, aPlaus, qualityAt);
+  if (evCand.status === EVIDENCE.INSUFFICIENT_EVIDENCE || evC4.status === EVIDENCE.INSUFFICIENT_EVIDENCE) {
+    return {
+      pass: false,
+      evidence: EVIDENCE.INSUFFICIENT_EVIDENCE,
+      detail: {
+        reason: 'insufficient_evidence_fail_closed',
+        evidenceReason: evCand.reason ?? evC4.reason,
+        neighborsExamined: evCand.neighbors,
+      },
+    };
+  }
+  const pass = evCand.aMaxMps2 <= evC4.aMaxMps2 + 1e-6;
+  return {
+    pass,
+    evidence: evCand.status,
+    detail: {
+      reason: pass ? null : 'worsens_effective_triple_accel',
+      vCandEffective: evCand.aMaxMps2,
+      vC4: evC4.aMaxMps2,
+      c4Evidence: evC4.status,
+      neighborsExamined: evCand.neighbors,
+    },
+  };
 }
 
 function passThroughSample(c4s, repairState, extra = {}) {
@@ -516,6 +626,7 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
   let maxSupportOffset = 0;
   let maxAttributionOffsetS = 0;
   let maxTimeSuspectSpanS = 0;
+  let insufficientEvidenceRejections = 0;
   const acceptedKmhByLabel = new Map();
 
   for (const b of ordered) {
@@ -607,13 +718,20 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
       if (acceptedKmhByLabel.has(l)) return acceptedKmhByLabel.get(l);
       return c4ByLabel.get(l)?.valueKmh ?? null;
     };
+    const q6 = localConsistencyQ6(
+      tSec,
+      cand,
+      c4s.valueKmh,
+      pm,
+      (s) => c4ByLabel.get(labelOf(s))?.valueKmh ?? null,
+      effectiveSpeedAt,
+      aPlaus,
+      (s) => c4ByLabel.get(labelOf(s))?.quality ?? null,
+    );
+    q.Q6 = q6.pass;
 
-    if (cand != null) {
-      const vC4 = tripleAccelViolation(tSec, c4s.valueKmh, pm, (s) => c4ByLabel.get(labelOf(s))?.valueKmh ?? null, aPlaus);
-      const vCand = tripleAccelViolation(tSec, cand, pm, effectiveSpeedAt, aPlaus);
-      q.Q6 = vCand <= vC4 + 1e-6;
-    } else {
-      q.Q6 = false;
+    if (cand != null && (q5.evidence === EVIDENCE.INSUFFICIENT_EVIDENCE || q6.evidence === EVIDENCE.INSUFFICIENT_EVIDENCE)) {
+      insufficientEvidenceRejections++;
     }
 
     const heading = headingRateReject(tSec, pm);
@@ -643,6 +761,9 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
       candidateKmh: cand,
       q,
       q5Detail: q5.detail,
+      q5Evidence: q5.evidence,
+      q6Detail: q6.detail,
+      q6Evidence: q6.evidence,
       heading,
       headingReject,
     };
@@ -701,6 +822,8 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
       maxSupportOffset,
       maxAttributionOffsetS,
       maxTimeSuspectSpanS,
+      insufficientEvidenceRejections,
+      evidenceModel: 'Q5_Q6_TRI_STATE_FAIL_CLOSED',
       supportHalfSMax: FROZEN.maxSupportHalfS,
       eligibilityHorizonNote:
         'Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s.',
@@ -713,7 +836,9 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
 module.exports = {
   computeC5_1GatedRepair,
   MOTION_CORE_SPEED_C5_1_VERSION,
+  PRIOR_VERSION_V1_1,
   HARDENING_TAG,
+  EVIDENCE,
   FROZEN,
   F2_MAX_NUMERIC_KMH,
   loadCore,
@@ -725,4 +850,7 @@ module.exports = {
   headingRateReject,
   upwardTroughManoeuvreGuard,
   physicalPlausibilityQ5,
+  localConsistencyQ6,
+  tripleAccelEvidence,
+  presentNeighbors,
 };

@@ -92,12 +92,82 @@ function cornerHeadingBuckets({ t0Sec, latBumpM = 0.0002, baseLat = 48.1, baseLo
   return buckets;
 }
 
+/** Start from standstill: 2 stationary seconds, then constant acceleration (s = ½·a·t²). */
+function startFromStopBuckets({ t0Sec, n = 16, accelMps2 = 2.0, stillSeconds = 2, baseLat = 48.1, baseLon = 11.5 }) {
+  const lab = (i) => L.labelOf((t0Sec + i) * 1000);
+  return Array.from({ length: n }, (_, i) => {
+    const t = Math.max(0, i - stillSeconds);
+    return {
+      bucketLabelUtc: lab(i),
+      availability: 'PRESENT',
+      latitude: baseLat + (0.5 * accelMps2 * t * t) / 111320,
+      longitude: baseLon,
+    };
+  });
+}
+
+/** Timing-jitter model: one fix displaced along-track by `meters` (negative = lagging fix). */
+function jitterAlongTrack(buckets, idx, meters) {
+  const out = [...buckets];
+  out[idx] = { ...out[idx], latitude: out[idx].latitude + meters / 111320 };
+  return out;
+}
+
+/** Position-outlier model: one fix displaced along-track far enough for C4 to quarantine only that fix. */
+function singleFixOutlier(buckets, idx, meters) {
+  return jitterAlongTrack(buckets, idx, meters);
+}
+
+/** Strip C5.1-only flags so the production event detector sees a plain motion-core series. */
+function toMotionSamples(samples) {
+  return samples.map((s) => ({
+    label: s.label,
+    valueKmh: s.valueKmh,
+    quality: s.quality,
+    supportLabels: s.supportLabels,
+    supportSpanS: s.supportSpanS,
+    flags: (s.flags || []).filter((f) => !f.startsWith('C5_1_')),
+    estimator: s.estimator,
+  }));
+}
+
+/**
+ * Proof that the repair path actually ran: counts of eligibility, candidates and Q4/Q5/Q6
+ * evaluations. A scenario must not be green merely because `eligible === 0` or `candidates === 0`.
+ */
+function repairPathActivity(result) {
+  const inWindow = result.samples.filter((s) => s.trace?.inWindow);
+  const withCand = inWindow.filter((s) => s.trace.candidateKmh != null);
+  const states = {};
+  for (const s of result.samples) states[s.repairState] = (states[s.repairState] || 0) + 1;
+  return {
+    eligible: result.meta.eligibleLabelCount,
+    inWindow: inWindow.length,
+    candidates: withCand.length,
+    attributed: inWindow.filter((s) => s.trace.attributionP != null).length,
+    q4Evaluated: withCand.filter((s) => s.trace.manoeuvreGuard && typeof s.trace.manoeuvreGuard.pass === 'boolean').length,
+    q5Evaluated: withCand.filter((s) => s.trace.q5Evidence != null).length,
+    q6Evaluated: withCand.filter((s) => s.trace.q6Evidence != null).length,
+    q5Insufficient: withCand.filter((s) => s.trace.q5Evidence === C51.EVIDENCE.INSUFFICIENT_EVIDENCE).length,
+    accepted: result.meta.repairAccepted,
+    rejected: result.meta.repairRejected,
+    uncertain: result.meta.uncertain,
+    insufficientEvidenceRejections: result.meta.insufficientEvidenceRejections,
+    states,
+  };
+}
+
 module.exports = {
   legSpeedKmh,
   meanAlongTrackAccelMps2,
   decelProfileBuckets,
   accelProfileBuckets,
   cornerHeadingBuckets,
+  startFromStopBuckets,
+  jitterAlongTrack,
+  singleFixOutlier,
+  toMotionSamples,
+  repairPathActivity,
   C51,
   L,
 };
