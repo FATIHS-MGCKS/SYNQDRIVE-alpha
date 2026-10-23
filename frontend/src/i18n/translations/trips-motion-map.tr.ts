@@ -33,4 +33,5 @@ export const tripsMotionMapTR = {
   'trips.motionMap.segmentUnavailable': 'Bu zaman aralığı için rota bölümü yok',
   'trips.motionMap.segmentApproximate': 'Rota bölümü yaklaşık (zaman aralığında konum boşluğu)',
   'trips.motionMap.summaryEvents': 'Hareket olayları: {count}',
+  'trips.motionMap.kinematicImplausible': 'Olası ölçüm artefaktı (fiziksel olarak olanaksız)',
 } as const;

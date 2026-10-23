@@ -33,4 +33,5 @@ export const tripsMotionMapPL = {
   'trips.motionMap.segmentUnavailable': 'Brak odcinka trasy dla tego przedziału czasu',
   'trips.motionMap.segmentApproximate': 'Odcinek trasy przybliżony (luka pozycji w przedziale czasu)',
   'trips.motionMap.summaryEvents': 'Zdarzenia ruchu: {count}',
+  'trips.motionMap.kinematicImplausible': 'Prawdopodobny artefakt pomiaru (fizycznie nieprawdopodobne)',
 } as const;

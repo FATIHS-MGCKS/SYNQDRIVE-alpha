@@ -33,4 +33,5 @@ export const tripsMotionMapFR = {
   'trips.motionMap.segmentUnavailable': 'Aucun tronçon d’itinéraire disponible pour cette fenêtre temporelle',
   'trips.motionMap.segmentApproximate': 'Tronçon d’itinéraire approximé (lacune de position dans la fenêtre)',
   'trips.motionMap.summaryEvents': 'Événements de mouvement : {count}',
+  'trips.motionMap.kinematicImplausible': 'Artefact de mesure probable (physiquement invraisemblable)',
 } as const;

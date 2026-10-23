@@ -65,6 +65,33 @@ describe('TripMotionMapPopover event body', () => {
     expect(html).not.toContain('approximated');
   });
 
+  it('marks the 52→142 km/h IMG_7780 event as a probable measurement artefact', () => {
+    const html = wrap(
+      <TripMotionMapPopover
+        state={{
+          kind: 'event',
+          event: {
+            ...tiguanDecel,
+            id: 'motion-ev-20-2026-10-22T19:04:49Z',
+            kind: 'ACCELERATION',
+            displayKind: 'ACCELERATION',
+            startLabelUtc: '2026-10-22T19:04:49Z',
+            endLabelUtc: '2026-10-22T19:04:52Z',
+            startSpeedKmh: 52.3,
+            endSpeedKmh: 142.1,
+            deltaKmh: 89.8,
+          },
+          x: 200,
+          y: 200,
+        }}
+        onClose={() => undefined}
+      />,
+    );
+    expect(html).toContain('52 → 142 km/h (+90)');
+    expect(html).toContain('+8.3 m/s²');
+    expect(html).toContain('Probable measurement artefact');
+  });
+
   it('explains missing or approximated route segments', () => {
     const none = wrap(
       <TripMotionMapPopover
@@ -106,6 +133,7 @@ describe('trips.motionMap event detail keys exist in all 9 locales', () => {
     'trips.motionMap.segmentUnavailable',
     'trips.motionMap.segmentApproximate',
     'trips.motionMap.summaryEvents',
+    'trips.motionMap.kinematicImplausible',
   ] as const;
 
   it('has every key with a non-empty value and identical key sets', () => {

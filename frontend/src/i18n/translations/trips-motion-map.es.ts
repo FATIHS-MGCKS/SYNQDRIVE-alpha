@@ -33,4 +33,5 @@ export const tripsMotionMapES = {
   'trips.motionMap.segmentUnavailable': 'No hay tramo de ruta disponible para esta ventana temporal',
   'trips.motionMap.segmentApproximate': 'Tramo de ruta aproximado (hueco de posición en la ventana)',
   'trips.motionMap.summaryEvents': 'Eventos de movimiento: {count}',
+  'trips.motionMap.kinematicImplausible': 'Probable artefacto de medición (físicamente inverosímil)',
 } as const;

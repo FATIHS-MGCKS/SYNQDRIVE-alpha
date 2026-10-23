@@ -9,6 +9,7 @@ import {
   formatMotionBucketTime,
   formatSignedKmh,
   formatSignedMps2,
+  isMotionEventKinematicallyImplausible,
   motionEventLabelKey,
   motionEventQualityLabelKey,
 } from './motion-map.utils';
@@ -176,6 +177,11 @@ export function TripMotionMapPopover({ state, onClose, onPickListSelect, onM7aPo
         {state.event.artefactSuspect && (
           <p className="mt-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
             {t('trips.motionMap.artefactSuspect')}
+          </p>
+        )}
+        {!state.event.artefactSuspect && isMotionEventKinematicallyImplausible(state.event) && (
+          <p className="mt-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+            {t('trips.motionMap.kinematicImplausible')}
           </p>
         )}
       </>

@@ -326,6 +326,29 @@ export function deriveMotionEventMetrics(event: Pick<
   return { signedDeltaKmh, durationS, meanAccelMps2 };
 }
 
+/**
+ * Display-level kinematic envelope (offline candidate K-E/G1, audit 2026-10-23):
+ * passenger-car mean acceleration above 5 m/s², mean deceleration below −9 m/s² or an
+ * endpoint speed above 250 km/h cannot be driver behaviour and is shown as a measurement artefact.
+ */
+export const MOTION_EVENT_KINEMATIC_ENVELOPE = {
+  accelMaxMps2: 5.0,
+  decelMinMps2: -9.0,
+  speedMaxKmh: 250,
+} as const;
+
+export function isMotionEventKinematicallyImplausible(event: Pick<
+  TripMotionMapEvent,
+  'startLabelUtc' | 'endLabelUtc' | 'startSpeedKmh' | 'endSpeedKmh' | 'deltaKmh' | 'displayKind'
+>): boolean {
+  if (Math.max(event.startSpeedKmh, event.endSpeedKmh) > MOTION_EVENT_KINEMATIC_ENVELOPE.speedMaxKmh) return true;
+  const { meanAccelMps2 } = deriveMotionEventMetrics(event);
+  if (meanAccelMps2 == null) return false;
+  if (meanAccelMps2 > MOTION_EVENT_KINEMATIC_ENVELOPE.accelMaxMps2) return true;
+  if (meanAccelMps2 < MOTION_EVENT_KINEMATIC_ENVELOPE.decelMinMps2) return true;
+  return false;
+}
+
 export function formatSignedKmh(value: number): string {
   const rounded = Math.round(value);
   if (rounded > 0) return `+${rounded}`;
@@ -441,15 +464,16 @@ export function createMotionEventMarkerElement(
 ): HTMLButtonElement {
   const isStart = event.displayKind === 'START';
   const isAccel = event.displayKind === 'ACCELERATION';
+  const artefact = event.artefactSuspect || isMotionEventKinematicallyImplausible(event);
   const el = document.createElement('button');
   el.type = 'button';
   el.className = `trips-map-event-marker trips-map-event-marker--motion${
-    event.artefactSuspect ? ' trips-map-event-marker--artefact' : ''
+    artefact ? ' trips-map-event-marker--artefact' : ''
   }${isAccel || isStart ? ' trips-map-event-marker--accel' : ' trips-map-event-marker--brake'}${
     isSelected ? ' trips-map-event-marker--selected' : ''
   }`;
-  el.style.width = event.artefactSuspect ? '18px' : '16px';
-  el.style.height = event.artefactSuspect ? '18px' : '16px';
+  el.style.width = artefact ? '18px' : '16px';
+  el.style.height = artefact ? '18px' : '16px';
   el.setAttribute('aria-label', ariaLabel ?? motionEventLabel(event));
   el.innerHTML = isStart ? '▶' : isAccel ? '▲' : '▼';
   if (isDark) el.classList.add('trips-map-event-marker--dark');

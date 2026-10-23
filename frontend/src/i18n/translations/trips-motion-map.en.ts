@@ -34,4 +34,5 @@ export const tripsMotionMapEN = {
   'trips.motionMap.segmentUnavailable': 'No route segment available for this time window',
   'trips.motionMap.segmentApproximate': 'Route segment approximated (position gap in time window)',
   'trips.motionMap.summaryEvents': 'Motion events: {count}',
+  'trips.motionMap.kinematicImplausible': 'Probable measurement artefact (physically implausible)',
 } as const;
