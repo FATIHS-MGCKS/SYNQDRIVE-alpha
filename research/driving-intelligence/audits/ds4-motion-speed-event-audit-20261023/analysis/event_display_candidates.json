@@ -1,0 +1,869 @@
+{
+  "schema": "DS4_MOTION_EVENT_DISPLAY_CANDIDATES_V1",
+  "status": "RESEARCH_CANDIDATE_NOT_RUNTIME_INTEGRATED",
+  "generatedAtUtc": "2026-10-23T00:55:18.742Z",
+  "frozenBaseline": {
+    "algorithmVersions": {
+      "c4": "MOTION_CORE_SPEED_C4_V0_1_DEV",
+      "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+      "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+      "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_FABLE_REVIEW_RECOMMENDED"
+    },
+    "reproduced": true,
+    "tiguan22": {
+      "labels": 2094,
+      "events": 21
+    },
+    "tiguan19": {
+      "labels": 1480,
+      "events": 21
+    }
+  },
+  "gates": {
+    "G1_envelope": {
+      "accelMaxMps2": 5,
+      "decelMinMps2": -9,
+      "speedMaxKmh": 250
+    },
+    "G2_timingSupport": "JITTER_SUSPECT in window OR (label gap in window AND both endpoints sparse-support)",
+    "G3_chord": "C4 endpoint speed deviates from positioned-leg chord speed by > max(20 km/h, 50 %)",
+    "K_E": "G1 ∪ G2 (recommended display gate)",
+    "K_E3": "G1 ∪ G2 ∪ G3 (aggressive; evaluated for comparison only)"
+  },
+  "tiguan22": {
+    "summary": {
+      "totalEvents": 21,
+      "videoCoveredEvents": 13,
+      "referenceWindowsMatched": 7,
+      "referenceWindowsTotal": 9,
+      "K_E": {
+        "flaggedTotal": 4,
+        "flaggedInVideo": 1,
+        "flaggedOutsideVideo": 3,
+        "referenceMatchedEventsFlagged": 0,
+        "flaggedIndexes": [
+          10,
+          17,
+          18,
+          20
+        ]
+      },
+      "K_E3": {
+        "flaggedTotal": 4,
+        "referenceMatchedEventsFlagged": 0,
+        "flaggedIndexes": [
+          10,
+          17,
+          18,
+          20
+        ]
+      }
+    },
+    "events": [
+      {
+        "index": 0,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:31:33Z",
+        "end": "2026-10-22T18:31:36Z",
+        "startSpeedKmh": 32.3,
+        "endSpeedKmh": 48.8,
+        "deltaKmh": 16.6,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 1,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:33:04Z",
+        "end": "2026-10-22T18:33:08Z",
+        "startSpeedKmh": 29,
+        "endSpeedKmh": 6.2,
+        "deltaKmh": 22.8,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 2,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:33:49Z",
+        "end": "2026-10-22T18:33:51Z",
+        "startSpeedKmh": 5.5,
+        "endSpeedKmh": 16.5,
+        "deltaKmh": 11,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 3,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:38:25Z",
+        "end": "2026-10-22T18:38:30Z",
+        "startSpeedKmh": 33.3,
+        "endSpeedKmh": 5,
+        "deltaKmh": 28.3,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 4,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:43:05Z",
+        "end": "2026-10-22T18:43:08Z",
+        "startSpeedKmh": 3.1,
+        "endSpeedKmh": 20.5,
+        "deltaKmh": 17.4,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 5,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:43:58Z",
+        "end": "2026-10-22T18:44:02Z",
+        "startSpeedKmh": 28.8,
+        "endSpeedKmh": 6.4,
+        "deltaKmh": 22.4,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 6,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:45:24Z",
+        "end": "2026-10-22T18:45:28Z",
+        "startSpeedKmh": 44,
+        "endSpeedKmh": 72.2,
+        "deltaKmh": 28.2,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 7,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:46:44Z",
+        "end": "2026-10-22T18:46:46Z",
+        "startSpeedKmh": 58.2,
+        "endSpeedKmh": 47.6,
+        "deltaKmh": 10.6,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 8,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:47:00Z",
+        "end": "2026-10-22T18:47:04Z",
+        "startSpeedKmh": 49.2,
+        "endSpeedKmh": 80.5,
+        "deltaKmh": 31.4,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 9,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:47:42Z",
+        "end": "2026-10-22T18:47:47Z",
+        "startSpeedKmh": 34.1,
+        "endSpeedKmh": 6.6,
+        "deltaKmh": 27.5,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 10,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:49:12Z",
+        "end": "2026-10-22T18:49:18Z",
+        "startSpeedKmh": 67.3,
+        "endSpeedKmh": 1930.8,
+        "deltaKmh": 1863.5,
+        "quality": "DEGRADED",
+        "G1_envelope": [
+          "mean 86.27 > 5 m/s²",
+          "endpoint > 250 km/h"
+        ],
+        "G2_timingSupport": [
+          "JITTER_SUSPECT sample in window"
+        ],
+        "G3_chord": [],
+        "K_E_combined_uncertain": true,
+        "K_E3_uncertain": true
+      },
+      {
+        "index": 11,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:58:16Z",
+        "end": "2026-10-22T18:58:20Z",
+        "startSpeedKmh": 40.3,
+        "endSpeedKmh": 9.2,
+        "deltaKmh": 31.1,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 12,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:58:22Z",
+        "end": "2026-10-22T18:58:25Z",
+        "startSpeedKmh": 8.5,
+        "endSpeedKmh": 25,
+        "deltaKmh": 16.5,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 13,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:59:00Z",
+        "end": "2026-10-22T18:59:04Z",
+        "startSpeedKmh": 7.4,
+        "endSpeedKmh": 46,
+        "deltaKmh": 38.6,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 14,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T18:59:27Z",
+        "end": "2026-10-22T18:59:29Z",
+        "startSpeedKmh": 40.4,
+        "endSpeedKmh": 57.5,
+        "deltaKmh": 17,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 15,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:59:37Z",
+        "end": "2026-10-22T18:59:40Z",
+        "startSpeedKmh": 37.6,
+        "endSpeedKmh": 19.1,
+        "deltaKmh": 18.5,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 16,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T18:59:59Z",
+        "end": "2026-10-22T19:00:01Z",
+        "startSpeedKmh": 19.6,
+        "endSpeedKmh": 6.9,
+        "deltaKmh": 12.7,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 17,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T19:04:26Z",
+        "end": "2026-10-22T19:04:29Z",
+        "startSpeedKmh": 34.7,
+        "endSpeedKmh": 5.5,
+        "deltaKmh": 29.2,
+        "quality": "DEGRADED",
+        "G1_envelope": [],
+        "G2_timingSupport": [
+          "JITTER_SUSPECT sample in window"
+        ],
+        "G3_chord": [],
+        "K_E_combined_uncertain": true,
+        "K_E3_uncertain": true
+      },
+      {
+        "index": 18,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T19:04:34Z",
+        "end": "2026-10-22T19:04:38Z",
+        "startSpeedKmh": 5.5,
+        "endSpeedKmh": 100.1,
+        "deltaKmh": 94.6,
+        "quality": "LIMITED",
+        "G1_envelope": [
+          "mean 6.57 > 5 m/s²"
+        ],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": true,
+        "K_E3_uncertain": true
+      },
+      {
+        "index": 19,
+        "kind": "DECELERATION",
+        "start": "2026-10-22T19:04:39Z",
+        "end": "2026-10-22T19:04:42Z",
+        "startSpeedKmh": 98.2,
+        "endSpeedKmh": 68.6,
+        "deltaKmh": 29.5,
+        "quality": "LIMITED",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 20,
+        "kind": "ACCELERATION",
+        "start": "2026-10-22T19:04:49Z",
+        "end": "2026-10-22T19:04:52Z",
+        "startSpeedKmh": 52.3,
+        "endSpeedKmh": 142.1,
+        "deltaKmh": 89.8,
+        "quality": "DEGRADED",
+        "G1_envelope": [
+          "mean 8.31 > 5 m/s²"
+        ],
+        "G2_timingSupport": [
+          "JITTER_SUSPECT sample in window"
+        ],
+        "G3_chord": [],
+        "K_E_combined_uncertain": true,
+        "K_E3_uncertain": true
+      }
+    ],
+    "referenceWindows": [
+      {
+        "id": 1,
+        "direction": "DECELERATION",
+        "startUtc": "2026-10-22T18:40:48Z",
+        "endUtc": "2026-10-22T18:41:01Z",
+        "refStartKmh": 38,
+        "refEndKmh": 0,
+        "refMeanAccelMps2": -0.8118,
+        "matchedEventIndexes": [],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 2,
+        "direction": "DECELERATION",
+        "startUtc": "2026-10-22T18:42:46Z",
+        "endUtc": "2026-10-22T18:43:00Z",
+        "refStartKmh": 48,
+        "refEndKmh": 0,
+        "refMeanAccelMps2": -0.9523,
+        "matchedEventIndexes": [],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 3,
+        "direction": "ACCELERATION",
+        "startUtc": "2026-10-22T18:45:24Z",
+        "endUtc": "2026-10-22T18:45:30Z",
+        "refStartKmh": 45,
+        "refEndKmh": 83,
+        "refMeanAccelMps2": 1.7593,
+        "matchedEventIndexes": [
+          6
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 4,
+        "direction": "ACCELERATION",
+        "startUtc": "2026-10-22T18:47:00Z",
+        "endUtc": "2026-10-22T18:47:07Z",
+        "refStartKmh": 50,
+        "refEndKmh": 90,
+        "refMeanAccelMps2": 1.5873,
+        "matchedEventIndexes": [
+          8
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 5,
+        "direction": "DECELERATION",
+        "startUtc": "2026-10-22T18:47:30Z",
+        "endUtc": "2026-10-22T18:47:50Z",
+        "refStartKmh": 76,
+        "refEndKmh": 0,
+        "refMeanAccelMps2": -1.0555,
+        "matchedEventIndexes": [
+          9
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 6,
+        "direction": "DECELERATION",
+        "startUtc": "2026-10-22T18:58:17Z",
+        "endUtc": "2026-10-22T18:58:22Z",
+        "refStartKmh": 44,
+        "refEndKmh": 5,
+        "refMeanAccelMps2": -2.1667,
+        "matchedEventIndexes": [
+          11
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 7,
+        "direction": "ACCELERATION",
+        "startUtc": "2026-10-22T18:59:00Z",
+        "endUtc": "2026-10-22T18:59:07Z",
+        "refStartKmh": 0,
+        "refEndKmh": 53,
+        "refMeanAccelMps2": 2.1032,
+        "matchedEventIndexes": [
+          13
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 8,
+        "direction": "ACCELERATION",
+        "startUtc": "2026-10-22T18:59:27Z",
+        "endUtc": "2026-10-22T18:59:31Z",
+        "refStartKmh": 38,
+        "refEndKmh": 65,
+        "refMeanAccelMps2": 1.875,
+        "matchedEventIndexes": [
+          14
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      },
+      {
+        "id": 9,
+        "direction": "DECELERATION",
+        "startUtc": "2026-10-22T18:59:31Z",
+        "endUtc": "2026-10-22T18:59:42Z",
+        "refStartKmh": 65,
+        "refEndKmh": 18,
+        "refMeanAccelMps2": -1.1867,
+        "matchedEventIndexes": [
+          15
+        ],
+        "matchedFlaggedByKE": [],
+        "matchedFlaggedByKE3": []
+      }
+    ]
+  },
+  "tiguan19": {
+    "summary": {
+      "totalEvents": 21,
+      "K_E_flagged": [],
+      "K_E3_flagged": []
+    },
+    "events": [
+      {
+        "index": 0,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:16:18Z",
+        "end": "2026-10-19T10:16:20Z",
+        "startSpeedKmh": 14.3,
+        "endSpeedKmh": 4.3,
+        "deltaKmh": 10.1,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 1,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:16:41Z",
+        "end": "2026-10-19T10:16:43Z",
+        "startSpeedKmh": 16.8,
+        "endSpeedKmh": 6.1,
+        "deltaKmh": 10.7,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 2,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:16:55Z",
+        "end": "2026-10-19T10:16:57Z",
+        "startSpeedKmh": 7.9,
+        "endSpeedKmh": 20.9,
+        "deltaKmh": 13,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 3,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:17:55Z",
+        "end": "2026-10-19T10:17:57Z",
+        "startSpeedKmh": 19,
+        "endSpeedKmh": 6.1,
+        "deltaKmh": 12.8,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 4,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:18:12Z",
+        "end": "2026-10-19T10:18:14Z",
+        "startSpeedKmh": 11.1,
+        "endSpeedKmh": 21.1,
+        "deltaKmh": 10.1,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 5,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:19:56Z",
+        "end": "2026-10-19T10:19:58Z",
+        "startSpeedKmh": 38,
+        "endSpeedKmh": 27,
+        "deltaKmh": 11,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 6,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:20:46Z",
+        "end": "2026-10-19T10:20:50Z",
+        "startSpeedKmh": 49.7,
+        "endSpeedKmh": 21.8,
+        "deltaKmh": 27.9,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 7,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:21:35Z",
+        "end": "2026-10-19T10:21:37Z",
+        "startSpeedKmh": 11.4,
+        "endSpeedKmh": 21.9,
+        "deltaKmh": 10.5,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 8,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:22:15Z",
+        "end": "2026-10-19T10:22:18Z",
+        "startSpeedKmh": 25.6,
+        "endSpeedKmh": 10.3,
+        "deltaKmh": 15.3,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 9,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:23:00Z",
+        "end": "2026-10-19T10:23:04Z",
+        "startSpeedKmh": 27.8,
+        "endSpeedKmh": 50.7,
+        "deltaKmh": 22.9,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 10,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:24:56Z",
+        "end": "2026-10-19T10:25:04Z",
+        "startSpeedKmh": 65.9,
+        "endSpeedKmh": 1.9,
+        "deltaKmh": 64,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 11,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:27:54Z",
+        "end": "2026-10-19T10:27:56Z",
+        "startSpeedKmh": 26.1,
+        "endSpeedKmh": 14,
+        "deltaKmh": 12.1,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 12,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:28:38Z",
+        "end": "2026-10-19T10:28:40Z",
+        "startSpeedKmh": 39.7,
+        "endSpeedKmh": 26.2,
+        "deltaKmh": 13.5,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 13,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:30:04Z",
+        "end": "2026-10-19T10:30:09Z",
+        "startSpeedKmh": 48.7,
+        "endSpeedKmh": 5,
+        "deltaKmh": 43.7,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 14,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:30:47Z",
+        "end": "2026-10-19T10:30:49Z",
+        "startSpeedKmh": 3.7,
+        "endSpeedKmh": 16.2,
+        "deltaKmh": 12.5,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 15,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:32:01Z",
+        "end": "2026-10-19T10:32:03Z",
+        "startSpeedKmh": 18.4,
+        "endSpeedKmh": 6.3,
+        "deltaKmh": 12.1,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 16,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:32:24Z",
+        "end": "2026-10-19T10:32:26Z",
+        "startSpeedKmh": 13.7,
+        "endSpeedKmh": 24.1,
+        "deltaKmh": 10.4,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 17,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:32:30Z",
+        "end": "2026-10-19T10:32:33Z",
+        "startSpeedKmh": 23.2,
+        "endSpeedKmh": 6.2,
+        "deltaKmh": 17,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 18,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:32:38Z",
+        "end": "2026-10-19T10:32:40Z",
+        "startSpeedKmh": 5.9,
+        "endSpeedKmh": 18.1,
+        "deltaKmh": 12.2,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 19,
+        "kind": "DECELERATION",
+        "start": "2026-10-19T10:33:25Z",
+        "end": "2026-10-19T10:33:27Z",
+        "startSpeedKmh": 24.1,
+        "endSpeedKmh": 11.8,
+        "deltaKmh": 12.3,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      },
+      {
+        "index": 20,
+        "kind": "ACCELERATION",
+        "start": "2026-10-19T10:37:56Z",
+        "end": "2026-10-19T10:37:58Z",
+        "startSpeedKmh": 8.3,
+        "endSpeedKmh": 20,
+        "deltaKmh": 11.7,
+        "quality": "OK",
+        "G1_envelope": [],
+        "G2_timingSupport": [],
+        "G3_chord": [],
+        "K_E_combined_uncertain": false,
+        "K_E3_uncertain": false
+      }
+    ]
+  },
+  "robustness": [
+    {
+      "check": "data_loss_yields_no_events",
+      "pass": true,
+      "detail": "events=0"
+    },
+    {
+      "check": "horizon_stability_10s",
+      "pass": true,
+      "detail": "full=17 truncated=17"
+    },
+    {
+      "check": "idempotent_rerun",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "gates_deterministic",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "runtime": {
+    "wallMs": 1318.826606,
+    "heapUsedDeltaMb": 19.5,
+    "rssMb": 176.1,
+    "node": "v24.22.1"
+  }
+}

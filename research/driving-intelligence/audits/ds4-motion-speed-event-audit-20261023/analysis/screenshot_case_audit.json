@@ -1,0 +1,1436 @@
+{
+  "schema": "DS4_MOTION_SCREENSHOT_CASE_AUDIT_V1",
+  "generatedAtUtc": "2026-10-23T00:52:38.758Z",
+  "pinned": {
+    "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+    "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+    "motionRunId": "8ec6306e-606b-4507-ab03-ea058c5d810d",
+    "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+    "tripEndUtc": "2026-10-22T19:04:53.233Z",
+    "videoWindowUtc": {
+      "first": "2026-10-22T18:38:34Z",
+      "last": "2026-10-22T19:03:02Z",
+      "source": "reference/TIGUAN_2026-10-22_1Hz.csv"
+    }
+  },
+  "algorithmVersions": {
+    "c4": "MOTION_CORE_SPEED_C4_V0_1_DEV",
+    "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+    "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+    "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_FABLE_REVIEW_RECOMMENDED"
+  },
+  "timeSemantics": {
+    "processingMode": "POST_TRIP_RETROSPECTIVE",
+    "c4ValueSupportForwardS": 2,
+    "c4FullFinalizationForwardS": 6,
+    "fsmMode": "RETROSPECTIVE",
+    "eventFinalizationNote": "Post-trip batch; event detector is retrospective; K3 may add up to 2s within-segment finalization.",
+    "computedAtUtc": "2026-10-22T19:20:04.139Z"
+  },
+  "positionChannel": {
+    "labelCount": 2094,
+    "availability": {
+      "ROW_ABSENT": 89,
+      "PRESENT": 2005
+    },
+    "positionedLegLabelGapHistogram": {
+      "1": 1980,
+      "2": 14,
+      "3": 6,
+      "7": 1,
+      "8": 1,
+      "20": 1,
+      "30": 1
+    }
+  },
+  "cases": [
+    {
+      "screenshot": "IMG_7778",
+      "eventIndex": 17,
+      "frontendEventId": "motion-ev-17-2026-10-22T19:04:26Z",
+      "event": {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T19:04:26Z",
+        "endLabel": "2026-10-22T19:04:29Z",
+        "startSpeedKmh": 34.7,
+        "endSpeedKmh": 5.5,
+        "deltaKmh": 29.2,
+        "quality": "DEGRADED",
+        "flags": [
+          "L3_DIRECT",
+          "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST",
+          "L3_SUPPORT_MISSING_FALLBACK_ROBUST",
+          "TIMING_JITTER_SUSPECT_IN_WINDOW"
+        ]
+      },
+      "uiTextObserved": "35 → 6 km/h (+29)",
+      "uiTextLegacyFormatter": "35 → 6 km/h (+29)",
+      "uiTextReproduced": true,
+      "uiTextPrototype": "35 → 6 km/h (−29)",
+      "verdict": "PLAUSIBLE_MAGNITUDE_UNCERTAIN_TIMING_DISPLAY_BUG",
+      "videoCoverage": "NOT_VIDEO_COVERED",
+      "issues": [
+        "DISPLAY_SIGN_BUG: deltaKmh persisted as unsigned magnitude; popover forced \"+\" prefix (braking shown as gain)",
+        "TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts",
+        "TRIP_END_EDGE: event ends 24.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
+        "LEG_GAP: max positioned-leg label gap 2 s inside window"
+      ],
+      "metrics": {
+        "signedDeltaKmh": -29.2,
+        "durationS": 3,
+        "meanAccelMps2": -2.7,
+        "impliedChordKmhInWindow": [
+          32,
+          42.2,
+          29.3,
+          9.3
+        ],
+        "maxPositionedLegGapS": 2,
+        "rowAbsentInWindow": 0,
+        "secondsBeforeTripEnd": 24.23300004005432
+      },
+      "windowRows": [
+        {
+          "label": "2026-10-22T19:04:23Z",
+          "inEvent": false,
+          "speedKmh": 34.8663929655407,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "MIN_SUPPORT_3_POINTS",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.32827,
+          "lon": 9.52234,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:21Z",
+            "to": "2026-10-22T19:04:23Z",
+            "labelGapS": 2,
+            "chordM": 15,
+            "impliedKmh": 27
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:24Z",
+          "inEvent": false,
+          "speedKmh": 38.21363404303871,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "MIN_SUPPORT_3_POINTS",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3283233,
+          "lon": 9.5221566,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:23Z",
+            "to": "2026-10-22T19:04:24Z",
+            "labelGapS": 1,
+            "chordM": 14.1,
+            "impliedKmh": 50.6
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:25Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:26Z",
+          "inEvent": true,
+          "speedKmh": 34.66057467701883,
+          "c4Quality": "JITTER_SUSPECT",
+          "c4Flags": [
+            "TIMING_JITTER_SUSPECT_IN_WINDOW",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284016,
+          "lon": 9.5219333,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:24Z",
+            "to": "2026-10-22T19:04:26Z",
+            "labelGapS": 2,
+            "chordM": 17.8,
+            "impliedKmh": 32
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:27Z",
+          "inEvent": true,
+          "speedKmh": 28.111764276416668,
+          "c4Quality": "JITTER_SUSPECT",
+          "c4Flags": [
+            "TIMING_JITTER_SUSPECT_IN_WINDOW",
+            "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284383,
+          "lon": 9.521775,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:26Z",
+            "to": "2026-10-22T19:04:27Z",
+            "labelGapS": 1,
+            "chordM": 11.7,
+            "impliedKmh": 42.2
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:28Z",
+          "inEvent": true,
+          "speedKmh": 19.27544112801832,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284566,
+          "lon": 9.5216616,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:27Z",
+            "to": "2026-10-22T19:04:28Z",
+            "labelGapS": 1,
+            "chordM": 8.1,
+            "impliedKmh": 29.3
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:29Z",
+          "inEvent": true,
+          "speedKmh": 5.465634635573585,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.32846,
+          "lon": 9.521625,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:28Z",
+            "to": "2026-10-22T19:04:29Z",
+            "labelGapS": 1,
+            "chordM": 2.6,
+            "impliedKmh": 9.3
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:30Z",
+          "inEvent": false,
+          "speedKmh": 4.298777439046029,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STOP_CANDIDATE",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.32846,
+          "lon": 9.5216183,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:29Z",
+            "to": "2026-10-22T19:04:30Z",
+            "labelGapS": 1,
+            "chordM": 0.5,
+            "impliedKmh": 1.7
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:31Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STOP_CANDIDATE",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:32Z",
+          "inEvent": false,
+          "speedKmh": 4.346715763181277,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STATIONARY",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284683,
+          "lon": 9.52159,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:30Z",
+            "to": "2026-10-22T19:04:32Z",
+            "labelGapS": 2,
+            "chordM": 2.2,
+            "impliedKmh": 3.9
+          }
+        }
+      ]
+    },
+    {
+      "screenshot": "IMG_7779",
+      "eventIndex": 19,
+      "frontendEventId": "motion-ev-19-2026-10-22T19:04:39Z",
+      "event": {
+        "kind": "DECELERATION",
+        "startLabel": "2026-10-22T19:04:39Z",
+        "endLabel": "2026-10-22T19:04:42Z",
+        "startSpeedKmh": 98.2,
+        "endSpeedKmh": 68.6,
+        "deltaKmh": 29.5,
+        "quality": "LIMITED",
+        "flags": [
+          "L3_DIRECT",
+          "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+        ]
+      },
+      "uiTextObserved": "98 → 69 km/h (+30)",
+      "uiTextLegacyFormatter": "98 → 69 km/h (+30)",
+      "uiTextReproduced": true,
+      "uiTextPrototype": "98 → 69 km/h (−29)",
+      "verdict": "PLAUSIBLE_EVENT_DISPLAY_BUG",
+      "videoCoverage": "NOT_VIDEO_COVERED",
+      "issues": [
+        "DISPLAY_SIGN_BUG: deltaKmh persisted as unsigned magnitude; popover forced \"+\" prefix (braking shown as gain)",
+        "POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)",
+        "SPARSE_ENDPOINTS: 1/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT",
+        "TRIP_END_EDGE: event ends 11.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
+        "LEG_GAP: max positioned-leg label gap 2 s inside window"
+      ],
+      "metrics": {
+        "signedDeltaKmh": -29.5,
+        "durationS": 3,
+        "meanAccelMps2": -2.73,
+        "impliedChordKmhInWindow": [
+          100.8,
+          95.6,
+          58.7
+        ],
+        "maxPositionedLegGapS": 2,
+        "rowAbsentInWindow": 1,
+        "secondsBeforeTripEnd": 11.233000040054321
+      },
+      "windowRows": [
+        {
+          "label": "2026-10-22T19:04:36Z",
+          "inEvent": false,
+          "speedKmh": 54.05766767195516,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "MIN_SUPPORT_3_POINTS",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284783,
+          "lon": 9.521495,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:34Z",
+            "to": "2026-10-22T19:04:36Z",
+            "labelGapS": 2,
+            "chordM": 4.1,
+            "impliedKmh": 7.4
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:37Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "OUTLIER_REJECTED",
+          "c4Flags": [
+            "POSITION_OUTLIER_CHORD_DEVIATION",
+            "{\"signatureKind\":\"CHORD_DEVIATION_FROM_NEIGHBOUR_MIDPOINT\",\"chordDeviationM\":10.9,\"chordSpeedKmh\":100.8,\"localMedianLegSpeedKmh\":95.6,\"provenCause\":false}"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3285133,
+          "lon": 9.5212483,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:36Z",
+            "to": "2026-10-22T19:04:37Z",
+            "labelGapS": 1,
+            "chordM": 17.6,
+            "impliedKmh": 63.3
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:38Z",
+          "inEvent": false,
+          "speedKmh": 100.10595401668607,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3286566,
+          "lon": 9.5207416,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:37Z",
+            "to": "2026-10-22T19:04:38Z",
+            "labelGapS": 1,
+            "chordM": 38.6,
+            "impliedKmh": 139.1
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:39Z",
+          "inEvent": true,
+          "speedKmh": 98.16216281501156,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3287716,
+          "lon": 9.5203833,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:38Z",
+            "to": "2026-10-22T19:04:39Z",
+            "labelGapS": 1,
+            "chordM": 28,
+            "impliedKmh": 100.8
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:40Z",
+          "inEvent": true,
+          "speedKmh": 86.9990300101405,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3288516,
+          "lon": 9.5200233,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:39Z",
+            "to": "2026-10-22T19:04:40Z",
+            "labelGapS": 1,
+            "chordM": 26.5,
+            "impliedKmh": 95.6
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:41Z",
+          "inEvent": true,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:42Z",
+          "inEvent": true,
+          "speedKmh": 68.61509224732079,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3288983,
+          "lon": 9.51956,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:40Z",
+            "to": "2026-10-22T19:04:42Z",
+            "labelGapS": 2,
+            "chordM": 32.6,
+            "impliedKmh": 58.7
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:43Z",
+          "inEvent": false,
+          "speedKmh": 73.48116189448788,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3289166,
+          "lon": 9.5192583,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:42Z",
+            "to": "2026-10-22T19:04:43Z",
+            "labelGapS": 1,
+            "chordM": 21.1,
+            "impliedKmh": 75.8
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:44Z",
+          "inEvent": false,
+          "speedKmh": 70.00037261605796,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3289533,
+          "lon": 9.51898,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:43Z",
+            "to": "2026-10-22T19:04:44Z",
+            "labelGapS": 1,
+            "chordM": 19.8,
+            "impliedKmh": 71.1
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:45Z",
+          "inEvent": false,
+          "speedKmh": 69.8349200419198,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3290033,
+          "lon": 9.5187166,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:44Z",
+            "to": "2026-10-22T19:04:45Z",
+            "labelGapS": 1,
+            "chordM": 19.1,
+            "impliedKmh": 68.9
+          }
+        }
+      ]
+    },
+    {
+      "screenshot": "IMG_7780",
+      "eventIndex": 20,
+      "frontendEventId": "motion-ev-20-2026-10-22T19:04:49Z",
+      "event": {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T19:04:49Z",
+        "endLabel": "2026-10-22T19:04:52Z",
+        "startSpeedKmh": 52.3,
+        "endSpeedKmh": 142.1,
+        "deltaKmh": 89.8,
+        "quality": "DEGRADED",
+        "flags": [
+          "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST",
+          "L3_SUPPORT_MISSING_FALLBACK_ROBUST",
+          "MIN_SUPPORT_3_POINTS",
+          "TIMING_JITTER_SUSPECT_IN_WINDOW"
+        ]
+      },
+      "uiTextObserved": "52 → 142 km/h (+90)",
+      "uiTextLegacyFormatter": "52 → 142 km/h (+90)",
+      "uiTextReproduced": true,
+      "uiTextPrototype": "52 → 142 km/h (+90)",
+      "verdict": "MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR",
+      "videoCoverage": "NOT_VIDEO_COVERED",
+      "issues": [
+        "KINEMATIC_IMPLAUSIBLE: mean 8.31 m/s² exceeds passenger-car envelope (|a| > 5 m/s²)",
+        "TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts",
+        "POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)",
+        "SPARSE_ENDPOINTS: 2/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT",
+        "TRIP_END_EDGE: event ends 1.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
+        "LEG_GAP: max positioned-leg label gap 2 s inside window"
+      ],
+      "metrics": {
+        "signedDeltaKmh": 89.8,
+        "durationS": 3,
+        "meanAccelMps2": 8.31,
+        "impliedChordKmhInWindow": [
+          76.1,
+          40.4,
+          169.4
+        ],
+        "maxPositionedLegGapS": 2,
+        "rowAbsentInWindow": 1,
+        "secondsBeforeTripEnd": 1.2330000400543213
+      },
+      "windowRows": [
+        {
+          "label": "2026-10-22T19:04:46Z",
+          "inEvent": false,
+          "speedKmh": 65.5362065292514,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3290733,
+          "lon": 9.5184566,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:45Z",
+            "to": "2026-10-22T19:04:46Z",
+            "labelGapS": 1,
+            "chordM": 19.7,
+            "impliedKmh": 70.8
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:47Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:48Z",
+          "inEvent": false,
+          "speedKmh": 61.75793968946232,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "MIN_SUPPORT_3_POINTS",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3292,
+          "lon": 9.51807,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:46Z",
+            "to": "2026-10-22T19:04:48Z",
+            "labelGapS": 2,
+            "chordM": 30.3,
+            "impliedKmh": 54.6
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:49Z",
+          "inEvent": true,
+          "speedKmh": 52.30430027629488,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "MIN_SUPPORT_3_POINTS",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3292833,
+          "lon": 9.5177966,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:48Z",
+            "to": "2026-10-22T19:04:49Z",
+            "labelGapS": 1,
+            "chordM": 21.1,
+            "impliedKmh": 76.1
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:50Z",
+          "inEvent": true,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:51Z",
+          "inEvent": true,
+          "speedKmh": 103.03336628209804,
+          "c4Quality": "JITTER_SUSPECT",
+          "c4Flags": [
+            "TIMING_JITTER_SUSPECT_IN_WINDOW",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3293766,
+          "lon": 9.51751,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:49Z",
+            "to": "2026-10-22T19:04:51Z",
+            "labelGapS": 2,
+            "chordM": 22.5,
+            "impliedKmh": 40.4
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:52Z",
+          "inEvent": true,
+          "speedKmh": 142.08802935867215,
+          "c4Quality": "JITTER_SUSPECT",
+          "c4Flags": [
+            "TIMING_JITTER_SUSPECT_IN_WINDOW",
+            "MIN_SUPPORT_3_POINTS",
+            "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3296033,
+          "lon": 9.5169383,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:51Z",
+            "to": "2026-10-22T19:04:52Z",
+            "labelGapS": 1,
+            "chordM": 47,
+            "impliedKmh": 169.4
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:53Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "NO_SUPPORT",
+          "c4Flags": [
+            "INSUFFICIENT_WINDOW_SUPPORT",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3297716,
+          "lon": 9.5165666,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:52Z",
+            "to": "2026-10-22T19:04:53Z",
+            "labelGapS": 1,
+            "chordM": 31.9,
+            "impliedKmh": 114.8
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:54Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": null,
+          "c4Flags": [],
+          "fsmState": null,
+          "fsmEvidence": null,
+          "positionAvailability": null,
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:55Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": null,
+          "c4Flags": [],
+          "fsmState": null,
+          "fsmEvidence": null,
+          "positionAvailability": null,
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        }
+      ]
+    },
+    {
+      "screenshot": "IMG_7781",
+      "eventIndex": 18,
+      "frontendEventId": "motion-ev-18-2026-10-22T19:04:34Z",
+      "event": {
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-22T19:04:34Z",
+        "endLabel": "2026-10-22T19:04:38Z",
+        "startSpeedKmh": 5.5,
+        "endSpeedKmh": 100.1,
+        "deltaKmh": 94.6,
+        "quality": "LIMITED",
+        "flags": [
+          "L3_SUPPORT_MISSING_FALLBACK_ROBUST",
+          "MIN_SUPPORT_3_POINTS"
+        ]
+      },
+      "uiTextObserved": "6 → 100 km/h (+95)",
+      "uiTextLegacyFormatter": "6 → 100 km/h (+95)",
+      "uiTextReproduced": true,
+      "uiTextPrototype": "6 → 100 km/h (+95)",
+      "verdict": "MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR",
+      "videoCoverage": "NOT_VIDEO_COVERED",
+      "issues": [
+        "KINEMATIC_IMPLAUSIBLE: mean 6.57 m/s² exceeds passenger-car envelope (|a| > 5 m/s²)",
+        "POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)",
+        "SPARSE_ENDPOINTS: 2/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT",
+        "TRIP_END_EDGE: event ends 15.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
+        "LEG_GAP: max positioned-leg label gap 2 s inside window"
+      ],
+      "metrics": {
+        "signedDeltaKmh": 94.6,
+        "durationS": 4,
+        "meanAccelMps2": 6.57,
+        "impliedChordKmhInWindow": [
+          5,
+          7.4,
+          63.3,
+          139.1
+        ],
+        "maxPositionedLegGapS": 2,
+        "rowAbsentInWindow": 1,
+        "secondsBeforeTripEnd": 15.233000040054321
+      },
+      "windowRows": [
+        {
+          "label": "2026-10-22T19:04:31Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STOP_CANDIDATE",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:32Z",
+          "inEvent": false,
+          "speedKmh": 4.346715763181277,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STATIONARY",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284683,
+          "lon": 9.52159,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:30Z",
+            "to": "2026-10-22T19:04:32Z",
+            "labelGapS": 2,
+            "chordM": 2.2,
+            "impliedKmh": 3.9
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:33Z",
+          "inEvent": false,
+          "speedKmh": 4.714880531559138,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "STATIONARY",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284716,
+          "lon": 9.5215733,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:32Z",
+            "to": "2026-10-22T19:04:33Z",
+            "labelGapS": 1,
+            "chordM": 1.2,
+            "impliedKmh": 4.4
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:34Z",
+          "inEvent": true,
+          "speedKmh": 5.542976241068864,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STARTING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284733,
+          "lon": 9.5215533,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:33Z",
+            "to": "2026-10-22T19:04:34Z",
+            "labelGapS": 1,
+            "chordM": 1.4,
+            "impliedKmh": 5
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:35Z",
+          "inEvent": true,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "STOP_CANDIDATE",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        },
+        {
+          "label": "2026-10-22T19:04:36Z",
+          "inEvent": true,
+          "speedKmh": 54.05766767195516,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "MIN_SUPPORT_3_POINTS",
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3284783,
+          "lon": 9.521495,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:34Z",
+            "to": "2026-10-22T19:04:36Z",
+            "labelGapS": 2,
+            "chordM": 4.1,
+            "impliedKmh": 7.4
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:37Z",
+          "inEvent": true,
+          "speedKmh": null,
+          "c4Quality": "OUTLIER_REJECTED",
+          "c4Flags": [
+            "POSITION_OUTLIER_CHORD_DEVIATION",
+            "{\"signatureKind\":\"CHORD_DEVIATION_FROM_NEIGHBOUR_MIDPOINT\",\"chordDeviationM\":10.9,\"chordSpeedKmh\":100.8,\"localMedianLegSpeedKmh\":95.6,\"provenCause\":false}"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3285133,
+          "lon": 9.5212483,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:36Z",
+            "to": "2026-10-22T19:04:37Z",
+            "labelGapS": 1,
+            "chordM": 17.6,
+            "impliedKmh": 63.3
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:38Z",
+          "inEvent": true,
+          "speedKmh": 100.10595401668607,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3286566,
+          "lon": 9.5207416,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:37Z",
+            "to": "2026-10-22T19:04:38Z",
+            "labelGapS": 1,
+            "chordM": 38.6,
+            "impliedKmh": 139.1
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:39Z",
+          "inEvent": false,
+          "speedKmh": 98.16216281501156,
+          "c4Quality": "OK",
+          "c4Flags": [
+            "L3_DIRECT"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3287716,
+          "lon": 9.5203833,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:38Z",
+            "to": "2026-10-22T19:04:39Z",
+            "labelGapS": 1,
+            "chordM": 28,
+            "impliedKmh": 100.8
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:40Z",
+          "inEvent": false,
+          "speedKmh": 86.9990300101405,
+          "c4Quality": "SPARSE_SUPPORT",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "DIRECT",
+          "positionAvailability": "PRESENT",
+          "lat": 51.3288516,
+          "lon": 9.5200233,
+          "legFromPrevPositioned": {
+            "from": "2026-10-22T19:04:39Z",
+            "to": "2026-10-22T19:04:40Z",
+            "labelGapS": 1,
+            "chordM": 26.5,
+            "impliedKmh": 95.6
+          }
+        },
+        {
+          "label": "2026-10-22T19:04:41Z",
+          "inEvent": false,
+          "speedKmh": null,
+          "c4Quality": "NO_POSITION",
+          "c4Flags": [
+            "L3_SUPPORT_MISSING_FALLBACK_ROBUST"
+          ],
+          "fsmState": "MOVING",
+          "fsmEvidence": "INFERRED",
+          "positionAvailability": "ROW_ABSENT",
+          "lat": null,
+          "lon": null,
+          "legFromPrevPositioned": null
+        }
+      ]
+    }
+  ],
+  "allEvents": [
+    {
+      "index": 0,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:31:33Z",
+      "end": "2026-10-22T18:31:36Z",
+      "startSpeedKmh": 32.3,
+      "endSpeedKmh": 48.8,
+      "deltaKmhPersisted": 16.6,
+      "signedDeltaKmh": 16.6,
+      "durationS": 3,
+      "meanAccelMps2": 1.54,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "32 → 49 km/h (+17)",
+      "prototypeDisplay": "32 → 49 km/h (+17)",
+      "videoCovered": false
+    },
+    {
+      "index": 1,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:33:04Z",
+      "end": "2026-10-22T18:33:08Z",
+      "startSpeedKmh": 29,
+      "endSpeedKmh": 6.2,
+      "deltaKmhPersisted": 22.8,
+      "signedDeltaKmh": -22.8,
+      "durationS": 4,
+      "meanAccelMps2": -1.58,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "29 → 6 km/h (+23)",
+      "prototypeDisplay": "29 → 6 km/h (−23)",
+      "videoCovered": false
+    },
+    {
+      "index": 2,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:33:49Z",
+      "end": "2026-10-22T18:33:51Z",
+      "startSpeedKmh": 5.5,
+      "endSpeedKmh": 16.5,
+      "deltaKmhPersisted": 11,
+      "signedDeltaKmh": 11,
+      "durationS": 2,
+      "meanAccelMps2": 1.53,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "6 → 17 km/h (+11)",
+      "prototypeDisplay": "6 → 17 km/h (+11)",
+      "videoCovered": false
+    },
+    {
+      "index": 3,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:38:25Z",
+      "end": "2026-10-22T18:38:30Z",
+      "startSpeedKmh": 33.3,
+      "endSpeedKmh": 5,
+      "deltaKmhPersisted": 28.3,
+      "signedDeltaKmh": -28.3,
+      "durationS": 5,
+      "meanAccelMps2": -1.57,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "33 → 5 km/h (+28)",
+      "prototypeDisplay": "33 → 5 km/h (−28)",
+      "videoCovered": false
+    },
+    {
+      "index": 4,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:43:05Z",
+      "end": "2026-10-22T18:43:08Z",
+      "startSpeedKmh": 3.1,
+      "endSpeedKmh": 20.5,
+      "deltaKmhPersisted": 17.4,
+      "signedDeltaKmh": 17.4,
+      "durationS": 3,
+      "meanAccelMps2": 1.61,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "3 → 21 km/h (+17)",
+      "prototypeDisplay": "3 → 21 km/h (+17)",
+      "videoCovered": true
+    },
+    {
+      "index": 5,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:43:58Z",
+      "end": "2026-10-22T18:44:02Z",
+      "startSpeedKmh": 28.8,
+      "endSpeedKmh": 6.4,
+      "deltaKmhPersisted": 22.4,
+      "signedDeltaKmh": -22.4,
+      "durationS": 4,
+      "meanAccelMps2": -1.56,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "29 → 6 km/h (+22)",
+      "prototypeDisplay": "29 → 6 km/h (−22)",
+      "videoCovered": true
+    },
+    {
+      "index": 6,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:45:24Z",
+      "end": "2026-10-22T18:45:28Z",
+      "startSpeedKmh": 44,
+      "endSpeedKmh": 72.2,
+      "deltaKmhPersisted": 28.2,
+      "signedDeltaKmh": 28.2,
+      "durationS": 4,
+      "meanAccelMps2": 1.96,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "44 → 72 km/h (+28)",
+      "prototypeDisplay": "44 → 72 km/h (+28)",
+      "videoCovered": true
+    },
+    {
+      "index": 7,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:46:44Z",
+      "end": "2026-10-22T18:46:46Z",
+      "startSpeedKmh": 58.2,
+      "endSpeedKmh": 47.6,
+      "deltaKmhPersisted": 10.6,
+      "signedDeltaKmh": -10.6,
+      "durationS": 2,
+      "meanAccelMps2": -1.47,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "58 → 48 km/h (+11)",
+      "prototypeDisplay": "58 → 48 km/h (−11)",
+      "videoCovered": true
+    },
+    {
+      "index": 8,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:47:00Z",
+      "end": "2026-10-22T18:47:04Z",
+      "startSpeedKmh": 49.2,
+      "endSpeedKmh": 80.5,
+      "deltaKmhPersisted": 31.4,
+      "signedDeltaKmh": 31.4,
+      "durationS": 4,
+      "meanAccelMps2": 2.18,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "49 → 81 km/h (+31)",
+      "prototypeDisplay": "49 → 81 km/h (+31)",
+      "videoCovered": true
+    },
+    {
+      "index": 9,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:47:42Z",
+      "end": "2026-10-22T18:47:47Z",
+      "startSpeedKmh": 34.1,
+      "endSpeedKmh": 6.6,
+      "deltaKmhPersisted": 27.5,
+      "signedDeltaKmh": -27.5,
+      "durationS": 5,
+      "meanAccelMps2": -1.53,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "34 → 7 km/h (+28)",
+      "prototypeDisplay": "34 → 7 km/h (−27)",
+      "videoCovered": true
+    },
+    {
+      "index": 10,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:49:12Z",
+      "end": "2026-10-22T18:49:18Z",
+      "startSpeedKmh": 67.3,
+      "endSpeedKmh": 1930.8,
+      "deltaKmhPersisted": 1863.5,
+      "signedDeltaKmh": 1863.5,
+      "durationS": 6,
+      "meanAccelMps2": 86.27,
+      "quality": "DEGRADED",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": true,
+      "legacyDisplay": "67 → 1931 km/h (+1864)",
+      "prototypeDisplay": "67 → 1931 km/h (+1864)",
+      "videoCovered": true
+    },
+    {
+      "index": 11,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:58:16Z",
+      "end": "2026-10-22T18:58:20Z",
+      "startSpeedKmh": 40.3,
+      "endSpeedKmh": 9.2,
+      "deltaKmhPersisted": 31.1,
+      "signedDeltaKmh": -31.1,
+      "durationS": 4,
+      "meanAccelMps2": -2.16,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "40 → 9 km/h (+31)",
+      "prototypeDisplay": "40 → 9 km/h (−31)",
+      "videoCovered": true
+    },
+    {
+      "index": 12,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:58:22Z",
+      "end": "2026-10-22T18:58:25Z",
+      "startSpeedKmh": 8.5,
+      "endSpeedKmh": 25,
+      "deltaKmhPersisted": 16.5,
+      "signedDeltaKmh": 16.5,
+      "durationS": 3,
+      "meanAccelMps2": 1.53,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "9 → 25 km/h (+17)",
+      "prototypeDisplay": "9 → 25 km/h (+17)",
+      "videoCovered": true
+    },
+    {
+      "index": 13,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:59:00Z",
+      "end": "2026-10-22T18:59:04Z",
+      "startSpeedKmh": 7.4,
+      "endSpeedKmh": 46,
+      "deltaKmhPersisted": 38.6,
+      "signedDeltaKmh": 38.6,
+      "durationS": 4,
+      "meanAccelMps2": 2.68,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "7 → 46 km/h (+39)",
+      "prototypeDisplay": "7 → 46 km/h (+39)",
+      "videoCovered": true
+    },
+    {
+      "index": 14,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:59:27Z",
+      "end": "2026-10-22T18:59:29Z",
+      "startSpeedKmh": 40.4,
+      "endSpeedKmh": 57.5,
+      "deltaKmhPersisted": 17,
+      "signedDeltaKmh": 17,
+      "durationS": 2,
+      "meanAccelMps2": 2.36,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "40 → 58 km/h (+17)",
+      "prototypeDisplay": "40 → 58 km/h (+17)",
+      "videoCovered": true
+    },
+    {
+      "index": 15,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:59:37Z",
+      "end": "2026-10-22T18:59:40Z",
+      "startSpeedKmh": 37.6,
+      "endSpeedKmh": 19.1,
+      "deltaKmhPersisted": 18.5,
+      "signedDeltaKmh": -18.5,
+      "durationS": 3,
+      "meanAccelMps2": -1.71,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "38 → 19 km/h (+19)",
+      "prototypeDisplay": "38 → 19 km/h (−18)",
+      "videoCovered": true
+    },
+    {
+      "index": 16,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:59:59Z",
+      "end": "2026-10-22T19:00:01Z",
+      "startSpeedKmh": 19.6,
+      "endSpeedKmh": 6.9,
+      "deltaKmhPersisted": 12.7,
+      "signedDeltaKmh": -12.7,
+      "durationS": 2,
+      "meanAccelMps2": -1.76,
+      "quality": "OK",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "20 → 7 km/h (+13)",
+      "prototypeDisplay": "20 → 7 km/h (−13)",
+      "videoCovered": true
+    },
+    {
+      "index": 17,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T19:04:26Z",
+      "end": "2026-10-22T19:04:29Z",
+      "startSpeedKmh": 34.7,
+      "endSpeedKmh": 5.5,
+      "deltaKmhPersisted": 29.2,
+      "signedDeltaKmh": -29.2,
+      "durationS": 3,
+      "meanAccelMps2": -2.7,
+      "quality": "DEGRADED",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "35 → 6 km/h (+29)",
+      "prototypeDisplay": "35 → 6 km/h (−29)",
+      "videoCovered": false
+    },
+    {
+      "index": 18,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T19:04:34Z",
+      "end": "2026-10-22T19:04:38Z",
+      "startSpeedKmh": 5.5,
+      "endSpeedKmh": 100.1,
+      "deltaKmhPersisted": 94.6,
+      "signedDeltaKmh": 94.6,
+      "durationS": 4,
+      "meanAccelMps2": 6.57,
+      "quality": "LIMITED",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": true,
+      "legacyDisplay": "6 → 100 km/h (+95)",
+      "prototypeDisplay": "6 → 100 km/h (+95)",
+      "videoCovered": false
+    },
+    {
+      "index": 19,
+      "kind": "DECELERATION",
+      "start": "2026-10-22T19:04:39Z",
+      "end": "2026-10-22T19:04:42Z",
+      "startSpeedKmh": 98.2,
+      "endSpeedKmh": 68.6,
+      "deltaKmhPersisted": 29.5,
+      "signedDeltaKmh": -29.5,
+      "durationS": 3,
+      "meanAccelMps2": -2.73,
+      "quality": "LIMITED",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": false,
+      "legacyDisplay": "98 → 69 km/h (+30)",
+      "prototypeDisplay": "98 → 69 km/h (−29)",
+      "videoCovered": false
+    },
+    {
+      "index": 20,
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T19:04:49Z",
+      "end": "2026-10-22T19:04:52Z",
+      "startSpeedKmh": 52.3,
+      "endSpeedKmh": 142.1,
+      "deltaKmhPersisted": 89.8,
+      "signedDeltaKmh": 89.8,
+      "durationS": 3,
+      "meanAccelMps2": 8.31,
+      "quality": "DEGRADED",
+      "artefactSuspectFlagInMapper": false,
+      "kinematicallyImplausible": true,
+      "legacyDisplay": "52 → 142 km/h (+90)",
+      "prototypeDisplay": "52 → 142 km/h (+90)",
+      "videoCovered": false
+    }
+  ],
+  "zeroEventsFinding": {
+    "observed": "TripMapSummaryOverlay shows \"0 Ereignisse\" while 21 motion markers are rendered",
+    "cause": "countTripEvents(trip) reads legacy VehicleTrip counters (totalAccelerationEvents/totalBrakingEvents/abuseEvents or harsh*Count) — the S4 Motion shadow payload (payload.events, n=21) is a separate read path (motion-map payload) and was never fed into the HUD.",
+    "motionEventCount": 21,
+    "motionEventAcceptedCount": 21,
+    "prototypeFix": "TripsMapCard passes motionEventCount={motionMapPayload.events.length} when the motion map is active; TripMapSummaryOverlay renders trips.motionMap.summaryEvents instead of the legacy counter."
+  }
+}
