@@ -1,0 +1,2928 @@
+{
+  "schema": "C5_1_EXPERIMENT_SUMMARY_V1",
+  "generatedAt": "2026-10-23T16:03:01.169Z",
+  "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
+  "codeSha": "30b3f29b855d777838263e219f57cc71e425d64d",
+  "productionPin": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "c51Version": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_RESEARCH",
+  "c4Version": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+  "frozen": {
+    "aAttrMps2": 6,
+    "crossTrackMaxM": 6,
+    "maxSupportHalfS": 4,
+    "minSupportTotal": 5,
+    "minSupportPerSide": 2,
+    "maxNeighborGapS": 3,
+    "stationaryChordMps": 3,
+    "headingRejectDegPerS": 25,
+    "maxWindowLabels": 15
+  },
+  "drives": [
+    {
+      "id": "TIG22",
+      "vehicleClass": "TIGUAN",
+      "eligibility": {
+        "velocitySeeds": 11,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-22T18:30:38Z",
+            "end": "2026-10-22T18:30:45Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-22T18:41:44Z",
+            "end": "2026-10-22T18:41:52Z",
+            "width": 9
+          },
+          {
+            "start": "2026-10-22T19:04:23Z",
+            "end": "2026-10-22T19:04:30Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-22T19:04:34Z",
+            "end": "2026-10-22T19:04:40Z",
+            "width": 7
+          },
+          {
+            "start": "2026-10-22T19:04:48Z",
+            "end": "2026-10-22T19:04:55Z",
+            "width": 8
+          }
+        ],
+        "eligibleLabels": 38,
+        "gridLabels": 2094,
+        "eligiblePct": 1.81,
+        "repairAccepted": 2,
+        "repairRejected": 33,
+        "uncertain": 3,
+        "passOutside": 2056,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 1364,
+          "maeKmh": 2.905,
+          "medianAbsKmh": 2.766,
+          "p95AbsKmh": 5.918,
+          "maxAbsKmh": 14.381,
+          "biasKmh": -2.424,
+          "rmseKmh": 3.41,
+          "within3": 0.567,
+          "within5": 0.909
+        },
+        "c51All": {
+          "n": 1364,
+          "maeKmh": 2.9,
+          "medianAbsKmh": 2.762,
+          "p95AbsKmh": 5.903,
+          "maxAbsKmh": 14.381,
+          "biasKmh": -2.418,
+          "rmseKmh": 3.399,
+          "within3": 0.568,
+          "within5": 0.91
+        },
+        "common": {
+          "n": 1364,
+          "a": {
+            "n": 1364,
+            "maeKmh": 2.905,
+            "medianAbsKmh": 2.766,
+            "p95AbsKmh": 5.918,
+            "maxAbsKmh": 14.381,
+            "biasKmh": -2.424,
+            "rmseKmh": 3.41,
+            "within3": 0.567,
+            "within5": 0.909
+          },
+          "b": {
+            "n": 1364,
+            "maeKmh": 2.9,
+            "medianAbsKmh": 2.762,
+            "p95AbsKmh": 5.903,
+            "maxAbsKmh": 14.381,
+            "biasKmh": -2.418,
+            "rmseKmh": 3.399,
+            "within3": 0.568,
+            "within5": 0.91
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 1464,
+            "readable": 1417,
+            "paired": 1364,
+            "pairedShareOfReadable": 0.963,
+            "missingEstimateOnReadable": 53,
+            "exclusions": {
+              "REF_SPEED_MISSING": 47,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 53
+            }
+          },
+          "c51": {
+            "referenceRows": 1464,
+            "readable": 1417,
+            "paired": 1364,
+            "pairedShareOfReadable": 0.963,
+            "missingEstimateOnReadable": 53,
+            "exclusions": {
+              "REF_SPEED_MISSING": 47,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 53
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 20,
+          "acceptedEvents": 20,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "UNVERIFIZIERBAR": 8,
+                "TREFFER": 12
+              },
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              }
+            }
+          },
+          "accepted": {
+            "events": 20,
+            "ds4ByClass": {
+              "UNVERIFIZIERBAR": 8,
+              "TREFFER": 12
+            },
+            "oracleByStatus": {
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+              "VERPASST_GRENZWERTIG": 4,
+              "ERKANNT": 12,
+              "VERPASST": 1
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 4,
+            "offsets": {
+              "start": {
+                "n": 12,
+                "medianS": -1,
+                "meanS": -0.58,
+                "minS": -1,
+                "maxS": 0,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 12,
+                "medianS": -0.5,
+                "meanS": -0.17,
+                "minS": -1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "ds4ByQuality": {
+            "OK": 16,
+            "DEGRADED": 2,
+            "LIMITED": 2
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 10,
+            "DECELERATION": 10
+          },
+          "verifiableEvents": 12,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracleBorderline": 7,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 6,
+            "ERKANNT": 12
+          },
+          "operatorWindowsByStatus": {
+            "VERPASST_OBERHALB_SCHWELLE": 2,
+            "ERKANNT": 7
+          },
+          "offsets": {
+            "start": {
+              "n": 12,
+              "medianS": -1,
+              "meanS": -0.58,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 12,
+              "medianS": -0.5,
+              "meanS": -0.17,
+              "minS": -1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 12,
+              "medianS": 0,
+              "meanS": 0.42,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 12,
+            "maeKmh": 2.808,
+            "medianAbsKmh": 2.4,
+            "p95AbsKmh": 5.495,
+            "maxAbsKmh": 6.1,
+            "biasKmh": -0.592,
+            "rmseKmh": 3.287,
+            "within3": 0.583,
+            "within5": 0.917
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1,
+              "UNVERIFIZIERBAR": 3
+            },
+            "total": 4
+          },
+          "implausible": [
+            "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z|5.5->100.1|UNVERIFIZIERBAR",
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "overReferenceMax": [
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "byQualityAndClass": {
+            "OK|UNVERIFIZIERBAR": 4,
+            "OK|TREFFER": 12,
+            "DEGRADED|UNVERIFIZIERBAR": 2,
+            "LIMITED|UNVERIFIZIERBAR": 2
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-22T18:38:34Z",
+              "2026-10-22T19:03:02Z"
+            ],
+            "referenceRows": 1464,
+            "referenceReadable": 1417,
+            "referenceMaxKmh": 97,
+            "gridLabels": 2094,
+            "c4Numeric": 1908,
+            "c4Usable": 1908,
+            "detectorSegments": 19,
+            "quarantinedSecs": 12,
+            "eventsInsideReferenceWindow": 12
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 20,
+              "accepted": 20,
+              "verifiable": 12,
+              "notEvaluable": 8
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 11,
+              "detectedWithOracleMatch": 12,
+              "acceptedWithOracleMatch": 12,
+              "correctTreffer": 12,
+              "acceptedCorrectTreffer": 12,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": {
+              "windows": 9,
+              "byStatus": {
+                "VERPASST_OBERHALB_SCHWELLE": 2,
+                "ERKANNT": 7
+              }
+            },
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 6,
+                "ERKANNT": 12
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 8,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 8
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 20,
+          "acceptedEvents": 20,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "UNVERIFIZIERBAR": 8,
+                "TREFFER": 12
+              },
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              }
+            }
+          },
+          "accepted": {
+            "events": 20,
+            "ds4ByClass": {
+              "UNVERIFIZIERBAR": 8,
+              "TREFFER": 12
+            },
+            "oracleByStatus": {
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+              "VERPASST_GRENZWERTIG": 4,
+              "ERKANNT": 12,
+              "VERPASST": 1
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 4,
+            "offsets": {
+              "start": {
+                "n": 12,
+                "medianS": -1,
+                "meanS": -0.58,
+                "minS": -1,
+                "maxS": 0,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 12,
+                "medianS": -0.5,
+                "meanS": -0.17,
+                "minS": -1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "ds4ByQuality": {
+            "OK": 16,
+            "DEGRADED": 3,
+            "LIMITED": 1
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 10,
+            "DECELERATION": 10
+          },
+          "verifiableEvents": 12,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracleBorderline": 7,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 6,
+            "ERKANNT": 12
+          },
+          "operatorWindowsByStatus": {
+            "VERPASST_OBERHALB_SCHWELLE": 2,
+            "ERKANNT": 7
+          },
+          "offsets": {
+            "start": {
+              "n": 12,
+              "medianS": -1,
+              "meanS": -0.58,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 12,
+              "medianS": -0.5,
+              "meanS": -0.17,
+              "minS": -1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 12,
+              "medianS": 0,
+              "meanS": 0.42,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 12,
+            "maeKmh": 2.808,
+            "medianAbsKmh": 2.4,
+            "p95AbsKmh": 5.495,
+            "maxAbsKmh": 6.1,
+            "biasKmh": -0.592,
+            "rmseKmh": 3.287,
+            "within3": 0.583,
+            "within5": 0.917
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1,
+              "UNVERIFIZIERBAR": 3
+            },
+            "total": 4
+          },
+          "implausible": [
+            "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:39Z|5.5->98.2|UNVERIFIZIERBAR",
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "overReferenceMax": [
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "byQualityAndClass": {
+            "OK|UNVERIFIZIERBAR": 4,
+            "OK|TREFFER": 12,
+            "DEGRADED|UNVERIFIZIERBAR": 3,
+            "LIMITED|UNVERIFIZIERBAR": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-22T18:38:34Z",
+              "2026-10-22T19:03:02Z"
+            ],
+            "referenceRows": 1464,
+            "referenceReadable": 1417,
+            "referenceMaxKmh": 97,
+            "gridLabels": 2094,
+            "c4Numeric": 1908,
+            "c4Usable": 1908,
+            "detectorSegments": 19,
+            "quarantinedSecs": 12,
+            "eventsInsideReferenceWindow": 12
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 20,
+              "accepted": 20,
+              "verifiable": 12,
+              "notEvaluable": 8
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 11,
+              "detectedWithOracleMatch": 12,
+              "acceptedWithOracleMatch": 12,
+              "correctTreffer": 12,
+              "acceptedCorrectTreffer": 12,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": {
+              "windows": 9,
+              "byStatus": {
+                "VERPASST_OBERHALB_SCHWELLE": 2,
+                "ERKANNT": 7
+              }
+            },
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 6,
+                "ERKANNT": 12
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 8,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 8
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    },
+    {
+      "id": "TES21-1",
+      "vehicleClass": "TESLA",
+      "eligibility": {
+        "velocitySeeds": 13,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-21T12:04:13Z",
+            "end": "2026-10-21T12:04:20Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:04:51Z",
+            "end": "2026-10-21T12:04:58Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:04:59Z",
+            "end": "2026-10-21T12:05:06Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:05:17Z",
+            "end": "2026-10-21T12:05:24Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:06:15Z",
+            "end": "2026-10-21T12:06:20Z",
+            "width": 6
+          },
+          {
+            "start": "2026-10-21T12:06:24Z",
+            "end": "2026-10-21T12:06:31Z",
+            "width": 8
+          }
+        ],
+        "eligibleLabels": 46,
+        "gridLabels": 533,
+        "eligiblePct": 8.63,
+        "repairAccepted": 1,
+        "repairRejected": 15,
+        "uncertain": 30,
+        "passOutside": 487,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 150,
+          "maeKmh": 2.292,
+          "medianAbsKmh": 1.212,
+          "p95AbsKmh": 8.562,
+          "maxAbsKmh": 13.553,
+          "biasKmh": -0.594,
+          "rmseKmh": 3.596,
+          "within3": 0.74,
+          "within5": 0.847
+        },
+        "c51All": {
+          "n": 150,
+          "maeKmh": 2.333,
+          "medianAbsKmh": 1.221,
+          "p95AbsKmh": 8.562,
+          "maxAbsKmh": 13.553,
+          "biasKmh": -0.552,
+          "rmseKmh": 3.642,
+          "within3": 0.733,
+          "within5": 0.84
+        },
+        "common": {
+          "n": 150,
+          "a": {
+            "n": 150,
+            "maeKmh": 2.292,
+            "medianAbsKmh": 1.212,
+            "p95AbsKmh": 8.562,
+            "maxAbsKmh": 13.553,
+            "biasKmh": -0.594,
+            "rmseKmh": 3.596,
+            "within3": 0.74,
+            "within5": 0.847
+          },
+          "b": {
+            "n": 150,
+            "maeKmh": 2.333,
+            "medianAbsKmh": 1.221,
+            "p95AbsKmh": 8.562,
+            "maxAbsKmh": 13.553,
+            "biasKmh": -0.552,
+            "rmseKmh": 3.642,
+            "within3": 0.733,
+            "within5": 0.84
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 240,
+            "readable": 229,
+            "paired": 150,
+            "pairedShareOfReadable": 0.655,
+            "missingEstimateOnReadable": 79,
+            "exclusions": {
+              "REF_SPEED_MISSING": 11,
+              "OUTSIDE_GRID": 13,
+              "DS4_NULL": 66
+            }
+          },
+          "c51": {
+            "referenceRows": 240,
+            "readable": 229,
+            "paired": 150,
+            "pairedShareOfReadable": 0.655,
+            "missingEstimateOnReadable": 79,
+            "exclusions": {
+              "REF_SPEED_MISSING": 11,
+              "OUTSIDE_GRID": 13,
+              "DS4_NULL": 66
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 4,
+          "acceptedEvents": 3,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "WEICHER_FEHLALARM": 1,
+                "TREFFER": 2,
+                "FEHLALARM": 1
+              },
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 3,
+            "ds4ByClass": {
+              "WEICHER_FEHLALARM": 1,
+              "TREFFER": 2
+            },
+            "oracleByStatus": {
+              "VERPASST": 1,
+              "ERKANNT": 2,
+              "VERPASST_GRENZWERTIG": 2
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 2,
+            "offsets": {
+              "start": {
+                "n": 2,
+                "medianS": 1,
+                "meanS": 1,
+                "minS": 0,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 2,
+                "medianS": 0.5,
+                "meanS": 0.5,
+                "minS": 0,
+                "maxS": 1,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "ds4ByQuality": {
+            "DEGRADED": 1,
+            "LIMITED": 1,
+            "OK": 1,
+            "ARTEFACT_SUSPECT": 1
+          },
+          "ds4ByKind": {
+            "DECELERATION": 3,
+            "ACCELERATION": 1
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 5,
+          "oracleByStatus": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracleBorderline": 4,
+          "visibleRuns": 17,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT_UNTERHALB_SCHWELLE": 1,
+            "ERKANNT": 2
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 2,
+              "medianS": 1,
+              "meanS": 1,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 2,
+              "medianS": 0.5,
+              "meanS": 0.5,
+              "minS": 0,
+              "maxS": 1,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 2,
+              "medianS": -0.5,
+              "meanS": -0.5,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 6.075,
+            "medianAbsKmh": 5.55,
+            "p95AbsKmh": 11.905,
+            "maxAbsKmh": 12.4,
+            "biasKmh": 5.075,
+            "rmseKmh": 7.765,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "DEGRADED|WEICHER_FEHLALARM": 1,
+            "LIMITED|TREFFER": 1,
+            "OK|TREFFER": 1,
+            "ARTEFACT_SUSPECT|FEHLALARM": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:03:06Z",
+              "2026-10-21T12:07:05Z"
+            ],
+            "referenceRows": 240,
+            "referenceReadable": 229,
+            "referenceMaxKmh": 46,
+            "gridLabels": 533,
+            "c4Numeric": 158,
+            "c4Usable": 158,
+            "detectorSegments": 3,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 3,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 5,
+              "oracleHardManoeuvres": 1,
+              "detectedWithOracleMatch": 2,
+              "acceptedWithOracleMatch": 2,
+              "correctTreffer": 2,
+              "acceptedCorrectTreffer": 2,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              },
+              "hardFalseAlarms": 1,
+              "softOrIntensityFalse": 1
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 17,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT_UNTERHALB_SCHWELLE": 1,
+                "ERKANNT": 2
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 3,
+          "acceptedEvents": 2,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 2,
+                "FEHLALARM": 1
+              },
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 2,
+            "ds4ByClass": {
+              "TREFFER": 2
+            },
+            "oracleByStatus": {
+              "VERPASST": 1,
+              "ERKANNT": 2,
+              "VERPASST_GRENZWERTIG": 2
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 2,
+            "offsets": {
+              "start": {
+                "n": 2,
+                "medianS": 1,
+                "meanS": 1,
+                "minS": 0,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 2,
+                "medianS": 0.5,
+                "meanS": 0.5,
+                "minS": 0,
+                "maxS": 1,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "ds4ByQuality": {
+            "LIMITED": 1,
+            "OK": 1,
+            "ARTEFACT_SUSPECT": 1
+          },
+          "ds4ByKind": {
+            "DECELERATION": 2,
+            "ACCELERATION": 1
+          },
+          "verifiableEvents": 3,
+          "oracleEvents": 5,
+          "oracleByStatus": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracleBorderline": 4,
+          "visibleRuns": 17,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 12,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT": 2
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 2,
+              "medianS": 1,
+              "meanS": 1,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 2,
+              "medianS": 0.5,
+              "meanS": 0.5,
+              "minS": 0,
+              "maxS": 1,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 2,
+              "medianS": -0.5,
+              "meanS": -0.5,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 3,
+            "maeKmh": 5.067,
+            "medianAbsKmh": 2,
+            "p95AbsKmh": 11.36,
+            "maxAbsKmh": 12.4,
+            "biasKmh": 3.733,
+            "rmseKmh": 7.266,
+            "within3": 0.667,
+            "within5": 0.667
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "LIMITED|TREFFER": 1,
+            "OK|TREFFER": 1,
+            "ARTEFACT_SUSPECT|FEHLALARM": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:03:06Z",
+              "2026-10-21T12:07:05Z"
+            ],
+            "referenceRows": 240,
+            "referenceReadable": 229,
+            "referenceMaxKmh": 46,
+            "gridLabels": 533,
+            "c4Numeric": 158,
+            "c4Usable": 158,
+            "detectorSegments": 3,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 3
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 3,
+              "accepted": 2,
+              "verifiable": 3,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 5,
+              "oracleHardManoeuvres": 1,
+              "detectedWithOracleMatch": 2,
+              "acceptedWithOracleMatch": 2,
+              "correctTreffer": 2,
+              "acceptedCorrectTreffer": 2,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              },
+              "hardFalseAlarms": 1,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 17,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 12,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT": 2
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    },
+    {
+      "id": "TES21-2",
+      "vehicleClass": "TESLA",
+      "eligibility": {
+        "velocitySeeds": 5,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-21T12:20:09Z",
+            "end": "2026-10-21T12:20:15Z",
+            "width": 7
+          },
+          {
+            "start": "2026-10-21T12:20:17Z",
+            "end": "2026-10-21T12:20:27Z",
+            "width": 11
+          }
+        ],
+        "eligibleLabels": 18,
+        "gridLabels": 535,
+        "eligiblePct": 3.36,
+        "repairAccepted": 0,
+        "repairRejected": 18,
+        "uncertain": 0,
+        "passOutside": 517,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 179,
+          "maeKmh": 3.605,
+          "medianAbsKmh": 2.316,
+          "p95AbsKmh": 10.954,
+          "maxAbsKmh": 20.649,
+          "biasKmh": -0.616,
+          "rmseKmh": 5.046,
+          "within3": 0.581,
+          "within5": 0.749
+        },
+        "c51All": {
+          "n": 179,
+          "maeKmh": 3.605,
+          "medianAbsKmh": 2.316,
+          "p95AbsKmh": 10.954,
+          "maxAbsKmh": 20.649,
+          "biasKmh": -0.616,
+          "rmseKmh": 5.046,
+          "within3": 0.581,
+          "within5": 0.749
+        },
+        "common": {
+          "n": 179,
+          "a": {
+            "n": 179,
+            "maeKmh": 3.605,
+            "medianAbsKmh": 2.316,
+            "p95AbsKmh": 10.954,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.616,
+            "rmseKmh": 5.046,
+            "within3": 0.581,
+            "within5": 0.749
+          },
+          "b": {
+            "n": 179,
+            "maeKmh": 3.605,
+            "medianAbsKmh": 2.316,
+            "p95AbsKmh": 10.954,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.616,
+            "rmseKmh": 5.046,
+            "within3": 0.581,
+            "within5": 0.749
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 252,
+            "readable": 240,
+            "paired": 179,
+            "pairedShareOfReadable": 0.746,
+            "missingEstimateOnReadable": 61,
+            "exclusions": {
+              "REF_SPEED_MISSING": 12,
+              "OUTSIDE_GRID": 14,
+              "DS4_NULL": 47
+            }
+          },
+          "c51": {
+            "referenceRows": 252,
+            "readable": 240,
+            "paired": 179,
+            "pairedShareOfReadable": 0.746,
+            "missingEstimateOnReadable": 61,
+            "exclusions": {
+              "REF_SPEED_MISSING": 12,
+              "OUTSIDE_GRID": 14,
+              "DS4_NULL": 47
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 4,
+          "acceptedEvents": 4,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 4
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 4,
+            "ds4ByClass": {
+              "TREFFER": 4
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 4,
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 4
+          },
+          "ds4ByQuality": {
+            "OK": 4
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 2,
+            "DECELERATION": 2
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 9,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracleBorderline": 5,
+          "visibleRuns": 19,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+            "VERPASST_OBERHALB_SCHWELLE": 5,
+            "ERKANNT": 4
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 4,
+              "medianS": 0,
+              "meanS": 0,
+              "minS": -1,
+              "maxS": 1,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 8,
+            "medianAbsKmh": 6.85,
+            "p95AbsKmh": 13.91,
+            "maxAbsKmh": 14.9,
+            "biasKmh": 8,
+            "rmseKmh": 9.105,
+            "within3": 0,
+            "within5": 0.25
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 4
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:19:59Z",
+              "2026-10-21T12:24:11Z"
+            ],
+            "referenceRows": 252,
+            "referenceReadable": 240,
+            "referenceMaxKmh": 53,
+            "gridLabels": 535,
+            "c4Numeric": 184,
+            "c4Usable": 184,
+            "detectorSegments": 6,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 4,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 9,
+              "oracleHardManoeuvres": 2,
+              "detectedWithOracleMatch": 4,
+              "acceptedWithOracleMatch": 4,
+              "correctTreffer": 4,
+              "acceptedCorrectTreffer": 4,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 19,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+                "VERPASST_OBERHALB_SCHWELLE": 5,
+                "ERKANNT": 4
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 4,
+          "acceptedEvents": 4,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 4
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 4,
+            "ds4ByClass": {
+              "TREFFER": 4
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 4,
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 4
+          },
+          "ds4ByQuality": {
+            "OK": 4
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 2,
+            "DECELERATION": 2
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 9,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracleBorderline": 5,
+          "visibleRuns": 19,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+            "VERPASST_OBERHALB_SCHWELLE": 5,
+            "ERKANNT": 4
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 4,
+              "medianS": 0,
+              "meanS": 0,
+              "minS": -1,
+              "maxS": 1,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 8,
+            "medianAbsKmh": 6.85,
+            "p95AbsKmh": 13.91,
+            "maxAbsKmh": 14.9,
+            "biasKmh": 8,
+            "rmseKmh": 9.105,
+            "within3": 0,
+            "within5": 0.25
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 4
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:19:59Z",
+              "2026-10-21T12:24:11Z"
+            ],
+            "referenceRows": 252,
+            "referenceReadable": 240,
+            "referenceMaxKmh": 53,
+            "gridLabels": 535,
+            "c4Numeric": 184,
+            "c4Usable": 184,
+            "detectorSegments": 6,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 4,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 9,
+              "oracleHardManoeuvres": 2,
+              "detectedWithOracleMatch": 4,
+              "acceptedWithOracleMatch": 4,
+              "correctTreffer": 4,
+              "acceptedCorrectTreffer": 4,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 19,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+                "VERPASST_OBERHALB_SCHWELLE": 5,
+                "ERKANNT": 4
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    },
+    {
+      "id": "TES16",
+      "vehicleClass": "TESLA",
+      "eligibility": {
+        "velocitySeeds": 5,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-16T03:50:18Z",
+            "end": "2026-10-16T03:50:26Z",
+            "width": 9
+          },
+          {
+            "start": "2026-10-16T03:54:29Z",
+            "end": "2026-10-16T03:54:36Z",
+            "width": 8
+          }
+        ],
+        "eligibleLabels": 17,
+        "gridLabels": 1136,
+        "eligiblePct": 1.5,
+        "repairAccepted": 2,
+        "repairRejected": 15,
+        "uncertain": 0,
+        "passOutside": 1119,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 808,
+          "maeKmh": 2.272,
+          "medianAbsKmh": 2.088,
+          "p95AbsKmh": 4.485,
+          "maxAbsKmh": 19.895,
+          "biasKmh": -1.977,
+          "rmseKmh": 2.727,
+          "within3": 0.71,
+          "within5": 0.979
+        },
+        "c51All": {
+          "n": 808,
+          "maeKmh": 2.239,
+          "medianAbsKmh": 2.088,
+          "p95AbsKmh": 4.478,
+          "maxAbsKmh": 6.104,
+          "biasKmh": -1.984,
+          "rmseKmh": 2.584,
+          "within3": 0.71,
+          "within5": 0.98
+        },
+        "common": {
+          "n": 808,
+          "a": {
+            "n": 808,
+            "maeKmh": 2.272,
+            "medianAbsKmh": 2.088,
+            "p95AbsKmh": 4.485,
+            "maxAbsKmh": 19.895,
+            "biasKmh": -1.977,
+            "rmseKmh": 2.727,
+            "within3": 0.71,
+            "within5": 0.979
+          },
+          "b": {
+            "n": 808,
+            "maeKmh": 2.239,
+            "medianAbsKmh": 2.088,
+            "p95AbsKmh": 4.478,
+            "maxAbsKmh": 6.104,
+            "biasKmh": -1.984,
+            "rmseKmh": 2.584,
+            "within3": 0.71,
+            "within5": 0.98
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 1136,
+            "readable": 973,
+            "paired": 808,
+            "pairedShareOfReadable": 0.83,
+            "missingEstimateOnReadable": 165,
+            "exclusions": {
+              "REF_SPEED_MISSING": 163,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 165
+            }
+          },
+          "c51": {
+            "referenceRows": 1136,
+            "readable": 973,
+            "paired": 808,
+            "pairedShareOfReadable": 0.83,
+            "missingEstimateOnReadable": 165,
+            "exclusions": {
+              "REF_SPEED_MISSING": 163,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 165
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 17,
+          "acceptedEvents": 17,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 15,
+                "FEHLALARM_UNBESTIMMT": 1,
+                "FEHLALARM": 1
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              }
+            }
+          },
+          "accepted": {
+            "events": 17,
+            "ds4ByClass": {
+              "TREFFER": 15,
+              "FEHLALARM_UNBESTIMMT": 1,
+              "FEHLALARM": 1
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 15
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 15,
+                "medianS": 1,
+                "meanS": 0.93,
+                "minS": -2,
+                "maxS": 5,
+                "withinTolShare": 0.87
+              },
+              "end": {
+                "n": 15,
+                "medianS": 0,
+                "meanS": 0.53,
+                "minS": 0,
+                "maxS": 3,
+                "withinTolShare": 0.93
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "ds4ByQuality": {
+            "OK": 16,
+            "DEGRADED": 1
+          },
+          "ds4ByKind": {
+            "DECELERATION": 8,
+            "ACCELERATION": 9
+          },
+          "verifiableEvents": 16,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracleBorderline": 12,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT": 15
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 15,
+              "medianS": 1,
+              "meanS": 0.93,
+              "minS": -2,
+              "maxS": 5,
+              "withinTolShare": 0.87
+            },
+            "end": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": 0.53,
+              "minS": 0,
+              "maxS": 3,
+              "withinTolShare": 0.93
+            },
+            "duration": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": -0.4,
+              "minS": -4,
+              "maxS": 3,
+              "withinTolShare": 0.87
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 15,
+            "maeKmh": 3.4,
+            "medianAbsKmh": 1.2,
+            "p95AbsKmh": 12.75,
+            "maxAbsKmh": 36.2,
+            "biasKmh": 1.693,
+            "rmseKmh": 9.432,
+            "within3": 0.933,
+            "within5": 0.933
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 3
+            },
+            "total": 3
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 15,
+            "OK|FEHLALARM_UNBESTIMMT": 1,
+            "DEGRADED|FEHLALARM": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-16T03:36:00Z",
+              "2026-10-16T03:54:55Z"
+            ],
+            "referenceRows": 1136,
+            "referenceReadable": 973,
+            "referenceMaxKmh": 134,
+            "gridLabels": 1136,
+            "c4Numeric": 848,
+            "c4Usable": 848,
+            "detectorSegments": 8,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 17
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 17,
+              "accepted": 17,
+              "verifiable": 16,
+              "notEvaluable": 1
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 6,
+              "detectedWithOracleMatch": 15,
+              "acceptedWithOracleMatch": 15,
+              "correctTreffer": 15,
+              "acceptedCorrectTreffer": 15,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              },
+              "hardFalseAlarms": 1,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT": 15
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 1,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 16,
+          "acceptedEvents": 16,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 15,
+                "FEHLALARM_UNBESTIMMT": 1
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              }
+            }
+          },
+          "accepted": {
+            "events": 16,
+            "ds4ByClass": {
+              "TREFFER": 15,
+              "FEHLALARM_UNBESTIMMT": 1
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 15
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 15,
+                "medianS": 1,
+                "meanS": 0.93,
+                "minS": -2,
+                "maxS": 5,
+                "withinTolShare": 0.87
+              },
+              "end": {
+                "n": 15,
+                "medianS": 0,
+                "meanS": 0.53,
+                "minS": 0,
+                "maxS": 3,
+                "withinTolShare": 0.93
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "ds4ByQuality": {
+            "OK": 16
+          },
+          "ds4ByKind": {
+            "DECELERATION": 8,
+            "ACCELERATION": 8
+          },
+          "verifiableEvents": 15,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracleBorderline": 12,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT": 15
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 15,
+              "medianS": 1,
+              "meanS": 0.93,
+              "minS": -2,
+              "maxS": 5,
+              "withinTolShare": 0.87
+            },
+            "end": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": 0.53,
+              "minS": 0,
+              "maxS": 3,
+              "withinTolShare": 0.93
+            },
+            "duration": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": -0.4,
+              "minS": -4,
+              "maxS": 3,
+              "withinTolShare": 0.87
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 14,
+            "maeKmh": 1.057,
+            "medianAbsKmh": 1.1,
+            "p95AbsKmh": 2.31,
+            "maxAbsKmh": 2.7,
+            "biasKmh": -0.771,
+            "rmseKmh": 1.309,
+            "within3": 1,
+            "within5": 1
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 3
+            },
+            "total": 3
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 15,
+            "OK|FEHLALARM_UNBESTIMMT": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-16T03:36:00Z",
+              "2026-10-16T03:54:55Z"
+            ],
+            "referenceRows": 1136,
+            "referenceReadable": 973,
+            "referenceMaxKmh": 134,
+            "gridLabels": 1136,
+            "c4Numeric": 848,
+            "c4Usable": 848,
+            "detectorSegments": 8,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 16
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 16,
+              "accepted": 16,
+              "verifiable": 15,
+              "notEvaluable": 1
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 6,
+              "detectedWithOracleMatch": 15,
+              "acceptedWithOracleMatch": 15,
+              "correctTreffer": 15,
+              "acceptedCorrectTreffer": 15,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT": 15
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 1,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 0,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 0,
+          "confirmedMotionSecs": 0,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 0,
+          "motionNoClaim": 0,
+          "ambiguousSecs": 0,
+          "ambiguousStill": 0,
+          "ambiguousMoving": 0,
+          "ambiguousNoClaim": 0,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    }
+  ],
+  "tes16SecondTrace": [
+    {
+      "label": "2026-10-16T03:50:20Z",
+      "refKmh": 133,
+      "c4Kmh": 113.10468732349274,
+      "c51Kmh": 129.584682365988,
+      "repairState": "REPAIR_ACCEPTED",
+      "eligibilitySignals": [
+        "S3"
+      ],
+      "trace": {
+        "label": "2026-10-16T03:50:20Z",
+        "eligibilitySignals": [
+          "S3"
+        ],
+        "inWindow": true,
+        "timeSuspects": [
+          "2026-10-16T03:50:22Z"
+        ],
+        "attributionP": "2026-10-16T03:50:22Z",
+        "looDetail": {
+          "v1Kmh": 64.51306933814512,
+          "v2Kmh": 255.9605404619024,
+          "crossM": 0.16932214692751835,
+          "vAbKmh": 128.3281733406095
+        },
+        "manoeuvreGuard": {
+          "pass": true,
+          "detail": {
+            "vAbKmh": 128.3281733406095,
+            "vPreKmh": 129.23934981289565,
+            "vPostKmh": 126.92532305839849
+          }
+        },
+        "support": {
+          "h": 4,
+          "totalForRule": 8,
+          "left": 4,
+          "right": 2,
+          "slopeSupportLabels": [
+            "2026-10-16T03:50:16Z",
+            "2026-10-16T03:50:17Z",
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z"
+          ],
+          "centerIncludedInCount": true
+        },
+        "candidateKmh": 129.584682365988,
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": true,
+          "Q6": true
+        },
+        "headingReject": false
+      },
+      "q": {
+        "Q1": true,
+        "Q2": true,
+        "Q3": true,
+        "Q4": true,
+        "Q5": true,
+        "Q6": true
+      }
+    },
+    {
+      "label": "2026-10-16T03:50:22Z",
+      "refKmh": 132,
+      "c4Kmh": 128.15344679760602,
+      "c51Kmh": 128.15344679760602,
+      "repairState": "REPAIR_REJECTED",
+      "eligibilitySignals": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "trace": {
+        "label": "2026-10-16T03:50:22Z",
+        "eligibilitySignals": [
+          "S2",
+          "S3",
+          "S4"
+        ],
+        "inWindow": true,
+        "timeSuspects": [
+          "2026-10-16T03:50:22Z"
+        ],
+        "attributionP": "2026-10-16T03:50:22Z",
+        "looDetail": {
+          "v1Kmh": 64.51306933814512,
+          "v2Kmh": 255.9605404619024,
+          "crossM": 0.16932214692751835,
+          "vAbKmh": 128.3281733406095
+        },
+        "manoeuvreGuard": {
+          "pass": true,
+          "detail": {
+            "vAbKmh": 128.3281733406095,
+            "vPreKmh": 129.23934981289565,
+            "vPostKmh": 126.92532305839849
+          }
+        },
+        "support": {
+          "h": 4,
+          "totalForRule": 7,
+          "left": 3,
+          "right": 4,
+          "slopeSupportLabels": [
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z"
+          ],
+          "centerIncludedInCount": true
+        },
+        "candidateKmh": 126.71268354059747,
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": true,
+          "Q6": false
+        },
+        "headingReject": false
+      },
+      "q": {
+        "Q1": true,
+        "Q2": true,
+        "Q3": true,
+        "Q4": true,
+        "Q5": true,
+        "Q6": false
+      }
+    },
+    {
+      "label": "2026-10-16T03:50:23Z",
+      "refKmh": 132,
+      "c4Kmh": 148.2894329471151,
+      "c51Kmh": 125.89577000351147,
+      "repairState": "REPAIR_ACCEPTED",
+      "eligibilitySignals": [
+        "S1",
+        "S2",
+        "S4"
+      ],
+      "trace": {
+        "label": "2026-10-16T03:50:23Z",
+        "eligibilitySignals": [
+          "S1",
+          "S2",
+          "S4"
+        ],
+        "inWindow": true,
+        "timeSuspects": [
+          "2026-10-16T03:50:22Z"
+        ],
+        "attributionP": "2026-10-16T03:50:22Z",
+        "looDetail": {
+          "v1Kmh": 64.51306933814512,
+          "v2Kmh": 255.9605404619024,
+          "crossM": 0.16932214692751835,
+          "vAbKmh": 128.3281733406095
+        },
+        "manoeuvreGuard": {
+          "pass": true,
+          "detail": {
+            "vAbKmh": 128.3281733406095,
+            "vPreKmh": 129.23934981289565,
+            "vPostKmh": 126.92532305839849
+          }
+        },
+        "support": {
+          "h": 4,
+          "totalForRule": 8,
+          "left": 2,
+          "right": 4,
+          "slopeSupportLabels": [
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z",
+            "2026-10-16T03:50:27Z"
+          ],
+          "centerIncludedInCount": true
+        },
+        "candidateKmh": 125.89577000351147,
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": true,
+          "Q6": true
+        },
+        "headingReject": false
+      },
+      "q": {
+        "Q1": true,
+        "Q2": true,
+        "Q3": true,
+        "Q4": true,
+        "Q5": true,
+        "Q6": true
+      }
+    }
+  ],
+  "tes16FalseAccel": {
+    "c4": [
+      {
+        "trip": 0,
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-16T03:50:20Z",
+        "endLabel": "2026-10-16T03:50:23Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 113.1,
+        "endSpeedKmh": 148.3,
+        "deltaKmh": 35.2,
+        "meanAccelMps2": 3.258,
+        "peakAccel1sMps2": 5.593,
+        "peakAccel2sMps2": 3.258,
+        "durationS": 3,
+        "steps": 2,
+        "coverageRatio": 0.75,
+        "quality": "DEGRADED",
+        "source": "C4_ADAPTIVE_L3",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [
+          "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST",
+          "L3_SUPPORT_MISSING_FALLBACK_ROBUST",
+          "TIMING_JITTER_SUSPECT_IN_WINDOW"
+        ]
+      }
+    ],
+    "c51": []
+  },
+  "validationGates": {
+    "gates": [
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "covC4": 0.963,
+          "covC51": 0.963
+        }
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "violations": 0
+        }
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {}
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "max": 4
+        }
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "pct": 1.81,
+          "eligible": 38,
+          "grid": 2094
+        }
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "maeC4": 2.905,
+          "maeC51": 2.9,
+          "n": 1364
+        }
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "p95C4": 5.918,
+          "p95C51": 5.903
+        }
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "oracleHardMissedC4": 1,
+          "oracleHardMissedC51": 1
+        }
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "hardFalseAlarmsC4": 0,
+          "hardFalseAlarmsC51": 0
+        }
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TIG22",
+        "pass": true,
+        "detail": {
+          "mismatches": 0
+        }
+      },
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "covC4": 0.655,
+          "covC51": 0.655
+        }
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "violations": 0
+        }
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {}
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "max": 4
+        }
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "pct": 8.63,
+          "eligible": 46,
+          "grid": 533
+        }
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "maeC4": 2.292,
+          "maeC51": 2.333,
+          "n": 150
+        }
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "p95C4": 8.562,
+          "p95C51": 8.562
+        }
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "oracleHardMissedC4": 1,
+          "oracleHardMissedC51": 1
+        }
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "hardFalseAlarmsC4": 1,
+          "hardFalseAlarmsC51": 1
+        }
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TES21-1",
+        "pass": true,
+        "detail": {
+          "mismatches": 0
+        }
+      },
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "covC4": 0.746,
+          "covC51": 0.746
+        }
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "violations": 0
+        }
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {}
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "max": 4
+        }
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "pct": 3.36,
+          "eligible": 18,
+          "grid": 535
+        }
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "maeC4": 3.605,
+          "maeC51": 3.605,
+          "n": 179
+        }
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "p95C4": 10.954,
+          "p95C51": 10.954
+        }
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "oracleHardMissedC4": 0,
+          "oracleHardMissedC51": 0
+        }
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "hardFalseAlarmsC4": 0,
+          "hardFalseAlarmsC51": 0
+        }
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TES21-2",
+        "pass": true,
+        "detail": {
+          "mismatches": 0
+        }
+      },
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "covC4": 0.83,
+          "covC51": 0.83
+        }
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "violations": 0
+        }
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {}
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "max": 4
+        }
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "pct": 1.5,
+          "eligible": 17,
+          "grid": 1136
+        }
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "maeC4": 2.272,
+          "maeC51": 2.239,
+          "n": 808
+        }
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "p95C4": 4.485,
+          "p95C51": 4.478
+        }
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "oracleHardMissedC4": 0,
+          "oracleHardMissedC51": 0
+        }
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "hardFalseAlarmsC4": 1,
+          "hardFalseAlarmsC51": 0
+        }
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        }
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "mismatches": 0
+        }
+      },
+      {
+        "gate": "D4_tes16_false_accel_removed",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "c4Events": 1,
+          "c51Events": 0
+        }
+      },
+      {
+        "gate": "C3_tes16_critical_max_err",
+        "drive": "TES16",
+        "pass": true,
+        "detail": {
+          "maxErrKmh": 6.1
+        }
+      },
+      {
+        "gate": "H_synthetics",
+        "drive": "ALL",
+        "pass": true,
+        "detail": {}
+      }
+    ],
+    "allPass": true
+  },
+  "finalVerdict": "PROVEN_FOR_LOCAL_REPAIR",
+  "independentGeneralization": "NOT_YET_PROVEN"
+}
