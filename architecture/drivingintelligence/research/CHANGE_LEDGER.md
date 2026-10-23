@@ -2196,3 +2196,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | PR #2148 / Fable review: UNKNOWN during GPS quarantine (TIG22 18:49) and delayed stop at frozen position (18:41) without inventing speed |
 | VALIDATION | Jest `motion-fsm-gap-bridge-v1.spec.ts`; offline replay `run_v2_native_fsm` on TIG22/TES16/TES21-1/2 — false-claim Δ=0, events parity; long-gap guard blocks 19:03:33–55 unscored bridge |
 | NON_EFFECTS | Shadow processor still V0_3 (flag OFF); no C4/C5.1 change; no deploy/backfill/DB |
+
+### DS4 motion FSM — gap bridge V1.1 safety hardening (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `MOTION_FSM_GAP_BRIDGE_V1_V1_1`: stop-feasibility from independent DIRECT anchor speeds; `FROZEN_POSITION` in-gap vetoes bridge without aux; `retrospectiveGapBridgeV1` optional (default OFF); harness TS2741 fix; `motion-fsm-gap-bridge-v1.safety.spec.ts` |
+| WHY | Fable independent safety review PR #2150 — B1 build, B2 hidden embedded stops, B3 frozen veto without aux |
+| VALIDATION | `tsc --noEmit`, `nest build`, `test:nest:boot-check:ci`, Jest gap-bridge + safety specs; 4-drive replay false-claim Δ=0 |
+| NON_EFFECTS | Shadow processor still V0_3; no deploy/flag ON |
