@@ -218,6 +218,7 @@ No historical row, ledger row, misuse case, score or ClickHouse data is modified
 5. `profilesComparable()` rolling aggregate defect (pre-existing, open)
 6. Fleet HF request rate / cost: **NOT BENCHMARKED**
 7. R1 historical OBD record time is uncertain (EXP-021 C0.1); point-in-time claims are **contained**, not corrected (DI-DEF-020 OPEN)
+8. DS4 speed vs. video references (2026-10-23, `DI-EVID-DS4-SPEED-VIDEO-001`): on the independent Tesla reference (TES16) C4 reaches MAE 2.27 / P95 4.49 km/h with a −2 km/h tacho-over-read bias and 0 false motion / 0 false standstill; on the RUPTELA_R1 Tiguan reference the **raw** L3 shadow path and C4 (`main`) emit 11 / 7 seconds > 900 km/h at a GPS-jump cluster (no plausibility guard of their own; speed-QC V2 withholds the L3 values, PR #2134 — unmerged — the C4 values), and the pinned R1 OBD `speed` channel is not second-aligned (held values), causing 16 s FSM false motion (`main`) and 307 s `CROSS_SOURCE_CONFLICT` coverage loss on the QC product path (69.7 % vs 90.6 %). Only one independent reference drive exists; `READY_FOR_ACCEL_BRAKE: NO` (DI-OQ-R1-007/-008)
 
 ## Unresolved validation items
 
