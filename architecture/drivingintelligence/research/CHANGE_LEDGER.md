@@ -2122,6 +2122,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest Tiguan per-bucket hash parity vs Phase 5A manifest; control-plane + schema specs |
 | NON_EFFECTS | Flags default OFF; no production backfill; no algorithm retuning |
 
+### DS4 product — R1 OBD vehicle speed excluded from kinematics / QC / FSM (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | `origin/main` `dea2555bb` — R1 speed in pinned evidence could affect L3 `sourceRelation`, speed-QC `CROSS_SOURCE_CONFLICT`, motion-core-shadow FSM sparse input |
+| CHANGE | `di-v0-r1-vehicle-speed-ds4-boundary.ts`; wired in `compute-trip-intervals`, `evaluate-di-v0-speed-qc-interval`, motion-core-shadow processor/adapter; comparison series retained |
+| WHY | Video-reference eval (#2136) + offline strip candidate: OBD speed mis-sync drives QC veto and false FSM motion without improving L3 numerics on TIG22 |
+| VALIDATION | Jest boundary + speed-qc + motion-core-shadow specs; four-drive replay parity `prod_code` vs `no_obd_speed` (`identical: true`) — evidence under `research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/` |
+| NON_EFFECTS | R1 acquisition/pinning; non-speed OBD; trip lifecycle; C4 GPS path; **not** PR #2134 leg-gate/C4-V0.5; no deploy in workstream |
+| OPEN | Fleet-wide R1 speed prevalence; independent EVAL beyond TIG22+TES16 |
+
 ### EXP-021 motion core — shadow integration (post-S4 comparison wiring) (2026-10-21)
 
 | Event | Detail |

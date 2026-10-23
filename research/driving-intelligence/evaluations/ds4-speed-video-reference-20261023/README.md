@@ -18,6 +18,9 @@ Entwicklung von Beschleunigungs-/Bremsdetektoren.
 | [`REPORT_OBD_SPEED_CANDIDATE.md`](REPORT_OBD_SPEED_CANDIDATE.md) | Offline-Kandidat „kein OBD-Speed-Einfluss“ vs. main |
 | [`outputs/no_obd_speed/`](outputs/no_obd_speed/) | Replay mit `--strip-obd-speed-influence` |
 | [`outputs/candidate_no_obd_speed_vs_main_obd_strip.json`](outputs/candidate_no_obd_speed_vs_main_obd_strip.json) | Vergleich Baseline vs. OBD-Strip-Kandidat |
+| [`REPORT_PROD_OBD_STRIP.md`](REPORT_PROD_OBD_STRIP.md) | Produktcode-Übernahme + Parität `prod_code` vs. `no_obd_speed` |
+| [`outputs/prod_code/`](outputs/prod_code/) | Replay mit Produkt-Checkout (OBD-Speed-Grenzschicht im Code) |
+| [`outputs/prod_code_vs_no_obd_speed_parity.json`](outputs/prod_code_vs_no_obd_speed_parity.json) | Mechanische Paritätsprüfung |
 
 ## Versionen
 

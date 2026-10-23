@@ -56,9 +56,17 @@ const core = req('core/index.ts');
 // It never replaces the primary metrics; it only names which seconds carry such values.
 const IMPLAUSIBLE_KMH = 250;
 
+const hasDs4ObdSpeedProductBoundary = fs.existsSync(
+  path.join(codeRoot, DI, 'r1-obd-acquisition/di-v0-r1-vehicle-speed-ds4-boundary.ts'),
+);
+const obdSpeedInfluence = stripObdSpeedInfluence
+  ? 'STRIPPED_OFFLINE_CANDIDATE'
+  : hasDs4ObdSpeedProductBoundary
+    ? 'EXCLUDED_IN_PRODUCT_CODE'
+    : 'BASELINE_PINNED_AS_DEPLOYED';
 const versions = {
   tag, codeRoot, codeSha,
-  obdSpeedInfluence: stripObdSpeedInfluence ? 'STRIPPED_OFFLINE_CANDIDATE' : 'BASELINE_PINNED_AS_DEPLOYED',
+  obdSpeedInfluence,
   c4: core.MOTION_CORE_SPEED_C4_VERSION,
   legConsistency: core.MOTION_CORE_LEG_CONSISTENCY_VERSION ?? null,
   fsm: core.motionFsmVersionId(core.MOTION_FSM_V0_3_CANDIDATE_OPTIONS),
