@@ -2,6 +2,7 @@
   "reportStatus": "current",
   "measuredAtUtc": "2026-10-23T00:15:00.000Z",
   "productHead": "fcd005d67fadfbae25e453767c54869453faf101",
+  "evidenceReportHead": "9bc5cbfbaee5c9dca88884b6ec92666373e01f42",
   "trueBaselineGit": "dea2555bb746550c632f4315dabe08b9481be0df",
   "algorithmVersions": {
     "leg": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
