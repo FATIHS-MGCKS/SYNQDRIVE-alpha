@@ -1,0 +1,194 @@
+{
+  "key": "TRIP_2",
+  "tripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+  "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+  "videoTrip": 2,
+  "snapshot": {
+    "id": "a327bac4-cb1a-46de-a68e-dca81be7a25c",
+    "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+    "payloadBytes": 3551,
+    "uncompressedBytes": 40769,
+    "acquisitionWindowStart": "2026-10-21T12:15:00.000Z",
+    "acquisitionWindowEnd": "2026-10-21T12:23:55.000Z",
+    "channelManifest": [
+      {
+        "channel": "NATIVE_EVENT",
+        "outcome": "DISABLED",
+        "reasonCode": "FLAG_OFF",
+        "formatVersion": null,
+        "payloadSha256": null,
+        "attestationRef": null,
+        "channelEvidenceHash": null
+      },
+      {
+        "channel": "POSITION",
+        "outcome": "PRESENT",
+        "reasonCode": null,
+        "formatVersion": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+        "payloadSha256": "90556e5f8700f1cf7bf2ef67f81b02644b0b72cd9d6296f3b0457c1d7f6b1ac4",
+        "attestationRef": null,
+        "channelEvidenceHash": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:90556e5f8700f1cf7bf2ef67f81b02644b0b72cd9d6296f3b0457c1d7f6b1ac4"
+      },
+      {
+        "channel": "R1_OBD",
+        "outcome": "NOT_APPLICABLE",
+        "reasonCode": "SOURCE_FAMILY",
+        "formatVersion": null,
+        "payloadSha256": null,
+        "attestationRef": null,
+        "channelEvidenceHash": null
+      }
+    ],
+    "payloadGzipSha256": "508450980f979e13135d18164ef094cff431b5e87642716486e606cdbf831dbe",
+    "uncompressedSha256": "0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+    "createdAt": "2026-10-21T12:40:30.016Z"
+  },
+  "trip": {
+    "id": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+    "start_time": "2026-10-21T12:15:00.000Z",
+    "end_time": "2026-10-21T12:23:54.825Z",
+    "trip_status": "COMPLETED",
+    "start_detection_mode": "MOTION_PRIMARY",
+    "end_detection_mode": "COMPOSITE_INACTIVITY",
+    "dimo_segment_id": "dimo-seg-186946-1792584900000",
+    "distance_km": 1.5,
+    "duration_minutes": 8.91375,
+    "raw_detection_meta": {
+      "startEvSoc": 92.76363636363637,
+      "endConfidence": "LOW",
+      "endTimeSource": "movement_extent",
+      "endValidation": {
+        "startedAt": "2026-10-21T12:31:24.409Z",
+        "completedAt": "2026-10-21T12:31:24.697Z",
+        "scheduledAt": "2026-10-21T12:31:23.999Z",
+        "completedAttempt": 3,
+        "resumeCheckOutcome": "NO_RESUME_EVIDENCE",
+        "completedAttemptCount": 3,
+        "endCandidateClockSource": "PROVIDER_EVENT_TIME",
+        "maxAttemptFallbackReason": "max_completed_cusum_attempts"
+      },
+      "possibleEndAt": "2026-10-21T12:23:54.825Z",
+      "lastActivityAt": "2026-10-21T12:26:25.360Z",
+      "startFuelLevel": null,
+      "cusumSegmentEnd": null,
+      "endRecognizedAt": "2026-10-21T12:31:36.148Z",
+      "possibleStartAt": "2026-10-21T12:15:00.000Z",
+      "startConfidence": "MEDIUM",
+      "startOdometerKm": 180074.029553057,
+      "cusumValidatedAt": null,
+      "detectionProfile": "EV",
+      "emptyCoreEndGate": {
+        "reason": "empty_core_corroborated_inactivity",
+        "decision": "POSSIBLE_END",
+        "routeMotion": false,
+        "vlsEvidenceState": "INACTIVE",
+        "performanceActivity": false,
+        "vlsObservationAgeMs": 90231,
+        "operationalInactiveMs": 209175,
+        "vlsProviderObservedAt": "2026-10-21T12:25:53.769Z"
+      },
+      "endDetectionMode": "COMPOSITE_INACTIVITY",
+      "startCandidateAt": "2026-10-21T12:20:16.769Z",
+      "tripFsmForensics": {
+        "end": {
+          "confidence": "LOW",
+          "candidateAt": "2026-10-21T12:23:54.825Z",
+          "recognizedAt": "2026-10-21T12:31:36.148Z",
+          "detectionMode": "COMPOSITE_INACTIVITY",
+          "boundarySource": "movement_extent",
+          "candidateClock": "EVENT_TIME",
+          "recognizedClock": "WORKER_TIME",
+          "candidateEnteredAt": "2026-10-21T12:27:24.000Z",
+          "canonicalBoundaryAt": "2026-10-21T12:23:54.825Z",
+          "boundaryAdjustmentMs": 0,
+          "candidateClockSource": "PROVIDER_EVENT_TIME",
+          "candidateEnteredClock": "WORKER_TIME",
+          "canonicalBoundaryClock": "EVENT_TIME"
+        },
+        "start": {
+          "candidateAt": "2026-10-21T12:20:16.769Z",
+          "evidencePath": "CLICKHOUSE_ASSISTED",
+          "recognizedAt": "2026-10-21T12:20:19.991Z",
+          "boundarySource": "DIMO_SEGMENT",
+          "candidateClock": "EVENT_TIME",
+          "recognizedClock": "WORKER_TIME",
+          "candidateEnteredAt": "2026-10-21T12:20:19.424Z",
+          "canonicalBoundaryAt": "2026-10-21T12:15:00.000Z",
+          "boundaryAdjustmentMs": -316769,
+          "candidateClockSource": "PROVIDER_EVENT_TIME",
+          "tripCanonicalStartAt": null,
+          "candidateEnteredClock": "WORKER_TIME",
+          "canonicalBoundaryClock": "EVENT_TIME"
+        },
+        "version": "R8_V1"
+      },
+      "cusumSegmentStart": null,
+      "lifecycleRecovery": {
+        "startEpisode": {
+          "type": "start_episode",
+          "version": "r2a-v1",
+          "episodeId": "68868291-5478-42cd-b0c4-cc77b2a78e21:1792585216769",
+          "dimoSegmentId": "dimo-seg-186946-1792584900000",
+          "candidateStartAt": "2026-10-21T12:20:16.769Z",
+          "effectiveStartAt": "2026-10-21T12:15:00.000Z"
+        }
+      },
+      "startEvidencePath": "CLICKHOUSE_ASSISTED",
+      "startDetectionMode": "MOTION_PRIMARY",
+      "endCoordinateSource": "WAYPOINT_AT_OR_BEFORE_BOUNDARY",
+      "startBoundarySource": "DIMO_SEGMENT",
+      "endValidationAttempts": 3,
+      "diV0BoundaryAdmissionV1": {
+        "releasedBy": "RECONCILIATION",
+        "revisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:0fe5b2e9ee1375042508d189b89a4cbc7a24cb7ce14b9adf3d2bdd968c35547d",
+        "releasedAtUtc": "2026-10-21T12:35:24.980Z",
+        "contractVersion": 1
+      },
+      "endCoordinateObservedAt": "2026-10-21T12:23:53.451Z",
+      "startBoundaryAdjustedMs": -316769,
+      "lastMeaningfulMovementAt": "2026-10-21T12:23:54.825Z"
+    }
+  },
+  "legacy": {
+    "vehicleTripWaypointCount": 34,
+    "vehiclePositionUpdatesInTripWindow": 0
+  },
+  "shadow": {
+    "workItem": {
+      "id": "b7b67b16-49fa-49bc-b079-ed068b2cad9e",
+      "shadow_run_id": "6cd5a06d-6d9d-44ce-8028-f9e35f3ac0f1",
+      "pinned_snapshot_hash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-21T12:40:30.530Z"
+    },
+    "shadowRun": {
+      "id": "6cd5a06d-6d9d-44ce-8028-f9e35f3ac0f1",
+      "organization_id": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+      "vehicle_id": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "trip_id": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+      "source_family": "API_SYNTHETIC",
+      "structural_version": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+      "estimator_version": "DI_KINEMATIC_ESTIMATE_V0_1",
+      "calibration_version": "CALIBRATION_UNSET_V0",
+      "source_family_policy_version": "SOURCE_FAMILY_POLICY_V0_1",
+      "input_evidence_version": "DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:ca47bd1c671d82cbea5d398e12ec674f9faa6f38c80dd10cde78bf5cc2b0fca5",
+      "status": "COMPLETED",
+      "interval_count": 535,
+      "started_at": "2026-10-21T12:40:30.100Z",
+      "completed_at": "2026-10-21T12:40:30.100Z"
+    },
+    "intervalCount": 535,
+    "jsonlPath": "/tmp/exp021-phase5c-export/shadow/TRIP_2_shadow_intervals.jsonl",
+    "jsonlSha256": "1cc4ac6fd6aeae03a136e62658c7fc802cae693509095f8c6b3fa559ea4e9361",
+    "positionStateCounts": {
+      "ROW_ABSENT": 338,
+      "FRESH": 197
+    },
+    "motionStateCounts": {
+      "NO_MOTION_EVIDENCE": 357,
+      "TRANSITION_UNCERTAIN": 4,
+      "MOVING_SPEED_ESTIMATED": 171,
+      "STATIONARY_SUPPORTED": 3
+    }
+  }
+}

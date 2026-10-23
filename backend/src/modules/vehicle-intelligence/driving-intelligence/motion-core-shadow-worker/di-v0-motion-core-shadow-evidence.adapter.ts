@@ -67,6 +67,7 @@ export function adaptMotionCoreShadowEvidenceFromParsedContainer(
   }
   if (sparseSpeed.length > 0) {
     limitations.push('SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN');
+    limitations.push('R1_VEHICLE_SPEED_EXCLUDED_FROM_DS4_FSM');
   }
 
   return {

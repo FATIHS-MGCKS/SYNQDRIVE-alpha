@@ -1,0 +1,38 @@
+{
+  "schema": "SYNQDRIVE_VIDEO_EVAL_TRIP_IDENTITY_V1",
+  "verified_at_utc": "2026-10-22T21:55:00Z",
+  "verification_method": "Production PostgreSQL read-only (sudo -u postgres psql), cross-check license plate + trip window + video UTC anchors",
+  "organization_id": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "vehicle": {
+    "id": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+    "make": "Volkswagen",
+    "model": "Tiguan",
+    "license_plate": "WOB L  7503"
+  },
+  "trip": {
+    "id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+    "start_time_utc": "2026-10-22T18:30:00Z",
+    "end_time_utc": "2026-10-22T19:04:53.233Z",
+    "distance_km": 24
+  },
+  "user_stated_window_local_berlin": "2026-10-22T20:30–21:04",
+  "video_reference_window_utc": {
+    "first": "2026-10-22T18:38:34Z",
+    "last": "2026-10-22T19:03:02Z",
+    "source": "reference/TIGUAN_2026-10-22_1Hz.csv"
+  },
+  "relationship": "Single DIMO-backed VehicleTrip covers the user drive; video captures a subset (20:38:34–21:03:02 local) inside trip bounds. Trip start/end are segment boundaries, not video boundaries.",
+  "di_artifacts": {
+    "shadow_run_id": "dd11867c-1b7c-4c86-be7b-5cc7f50da1ea",
+    "shadow_run_created_at_utc": "2026-10-22T19:18:57.472Z",
+    "s4_work_item_id": "63c73afa-debf-473d-b770-30acec388774",
+    "s4_work_item_completed_at_utc": "2026-10-22T19:18:58.822534Z",
+    "pinned_snapshot_hash": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+    "motion_core_shadow_run_id": "8ec6306e-606b-4507-ab03-ea058c5d810d",
+    "motion_core_shadow_created_at_utc": "2026-10-22T19:20:07.505947Z"
+  },
+  "production_release_at_export_read": {
+    "symlink": "/opt/synqdrive/releases/20261022201308_v4994",
+    "note": "Shadow processing timestamps precede this release; exact binary SHA at 19:18 UTC not attested in this package — see PROVENANCE_MANIFEST.json"
+  }
+}

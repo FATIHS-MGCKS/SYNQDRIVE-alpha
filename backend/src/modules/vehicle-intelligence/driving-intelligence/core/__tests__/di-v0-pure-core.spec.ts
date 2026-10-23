@@ -131,7 +131,7 @@ describe('DI V0 pure core', () => {
     expect(out.intervals[2].abstentionReason).toBe('INVALID_POSITION');
   });
 
-  it('15–16. R1 cannot override L3; remains INTERVAL_ONLY', () => {
+  it('15–16. R1 vehicle speed does not affect DS4 interval metadata (comparison-only)', () => {
     const positions = pilotFreshL3Triple();
     const out = computeDiV0TripIntervals(
       {
@@ -150,8 +150,8 @@ describe('DI V0 pure core', () => {
     );
     const center = out.intervals.find((r) => r.referenceTime.includes('09:57:21'));
     expect(center?.estimatedSpeedKmh).not.toBe(120);
-    expect(center?.sourceQualityFlags).toContain('R1_INTERVAL_ONLY');
-    expect(center?.sourceRelation).not.toBe('SUPPORTED');
+    expect(center?.sourceQualityFlags).not.toContain('R1_INTERVAL_ONLY');
+    expect(center?.sourceRelation).toBe('SUPPORTED');
   });
 
   it('17. uncalibrated native events do not raise interval claim', () => {

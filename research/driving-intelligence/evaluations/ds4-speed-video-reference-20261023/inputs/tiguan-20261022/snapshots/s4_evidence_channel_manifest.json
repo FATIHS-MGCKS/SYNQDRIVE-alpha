@@ -1,0 +1,29 @@
+[
+  {
+    "channel": "NATIVE_EVENT",
+    "outcome": "DISABLED",
+    "reasonCode": "FLAG_OFF",
+    "formatVersion": null,
+    "payloadSha256": null,
+    "channelEvidenceHash": null,
+    "attestationRef": null
+  },
+  {
+    "channel": "POSITION",
+    "outcome": "PRESENT",
+    "reasonCode": null,
+    "formatVersion": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+    "payloadSha256": "787c0aba65c9fd25b525c00787f2b86081657ee1998011936d189425793e67c3",
+    "channelEvidenceHash": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:787c0aba65c9fd25b525c00787f2b86081657ee1998011936d189425793e67c3",
+    "attestationRef": null
+  },
+  {
+    "channel": "R1_OBD",
+    "outcome": "PRESENT",
+    "reasonCode": null,
+    "formatVersion": "DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3",
+    "payloadSha256": "cd8bff971c179d5fe29746d72a180dc2c67b5387a4f7d4e3fe5243f16f948230",
+    "channelEvidenceHash": "DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3:sha256:cd8bff971c179d5fe29746d72a180dc2c67b5387a4f7d4e3fe5243f16f948230",
+    "attestationRef": null
+  }
+]
