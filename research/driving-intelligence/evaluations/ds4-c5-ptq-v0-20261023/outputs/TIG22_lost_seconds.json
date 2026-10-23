@@ -1,0 +1,182 @@
+[
+  {
+    "sec": 1792694454,
+    "label": "2026-10-22T18:40:54Z",
+    "ref": 24,
+    "c4": 20.909900753636503,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694455,
+    "label": "2026-10-22T18:40:55Z",
+    "ref": 22,
+    "c4": 20.522275145056703,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694466,
+    "label": "2026-10-22T18:41:06Z",
+    "ref": 0,
+    "c4": 0.40028560675405706,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694505,
+    "label": "2026-10-22T18:41:45Z",
+    "ref": 54,
+    "c4": 43.56220401178661,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694507,
+    "label": "2026-10-22T18:41:47Z",
+    "ref": 53,
+    "c4": 42.32491532717825,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "TIME_SUSPECT",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=TIME_SUSPECT"
+    ]
+  },
+  {
+    "sec": 1792694508,
+    "label": "2026-10-22T18:41:48Z",
+    "ref": 52,
+    "c4": 63.39840747000337,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "INCONSISTENT_UNATTRIBUTED",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=INCONSISTENT_UNATTRIBUTED"
+    ]
+  },
+  {
+    "sec": 1792694509,
+    "label": "2026-10-22T18:41:49Z",
+    "ref": 51,
+    "c4": 37.9160252914713,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694515,
+    "label": "2026-10-22T18:41:55Z",
+    "ref": 52,
+    "c4": 41.436725059432355,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694516,
+    "label": "2026-10-22T18:41:56Z",
+    "ref": 51,
+    "c4": 48.67171346524829,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694950,
+    "label": "2026-10-22T18:49:10Z",
+    "ref": 72,
+    "c4": 68.96092186167158,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694951,
+    "label": "2026-10-22T18:49:11Z",
+    "ref": 72,
+    "c4": 68.25674743138255,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694965,
+    "label": "2026-10-22T18:49:25Z",
+    "ref": 69,
+    "c4": 64.67470030301132,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792694966,
+    "label": "2026-10-22T18:49:26Z",
+    "ref": 67,
+    "c4": 64.10351776629282,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792695777,
+    "label": "2026-10-22T19:02:57Z",
+    "ref": 1,
+    "c4": 0.9913858235079485,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792695778,
+    "label": "2026-10-22T19:02:58Z",
+    "ref": 0,
+    "c4": 1.702935257033237,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  }
+]
