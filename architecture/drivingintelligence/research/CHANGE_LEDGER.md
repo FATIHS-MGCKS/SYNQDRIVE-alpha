@@ -2155,6 +2155,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | OPEN | Quality-split counters in shadow `summary_json` (observability, no behaviour change); additional reference drive with pull-aways + in-video trip end; K-B as non-default option pending evidence; trip-tail C4 ≈ 2× OBD belongs to the speed workstream |
 | NON_EFFECTS | No flag change, no job start, no production mutation, no merge, no deploy, no speed-path tuning, no threshold change, no wear / intensity scores, no time shift of references |
 
+### DS4 events — evaluation methodology correction (match2s / §12 N4, 2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | First run `outputs/main` + `REPORT_v1_main.md` (`matchingMode=v1_bilateral`, bilateral ±2 s on both intervals) |
+| CHANGE | `EVALUATION_RULES.md` §12 N4; `event_eval_lib.cjs` `intervalGapS` / `v2_gap2s`; `outputs/match2s/` + `REPORT_v2_match2s.md`; `metricsLayers` (T1/T2/T3 vs non-evaluable; detected/accepted/correct); TES16 03:50:20 reclassified `TREFFER_FRAGMENT` → `FEHLALARM`; `TIG22_TRIP_END_FORENSIC.md`; K-A2/K-B on match2s with `knownErrorCaseEffect` (§10 still NOT_PROVEN) |
+| WHY | PR review: total tolerance ±2 s must not double-expand intervals; separate metric layers; clarify NOT_PROVEN vs in-sample effect on F1–F4 |
+| VALIDATION | Replay `match2s`; candidates `--only K-A2,K-B`; forensic script; v1 outputs preserved under `outputs/main` |
+| NON_EFFECTS | No detector/C4/threshold/production change |
+
 ### EXP-021 motion core — shadow integration (post-S4 comparison wiring) (2026-10-21)
 
 | Event | Detail |

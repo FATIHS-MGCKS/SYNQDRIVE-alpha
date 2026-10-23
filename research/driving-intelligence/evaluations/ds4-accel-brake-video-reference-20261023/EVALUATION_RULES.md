@@ -192,3 +192,26 @@ Produktion zählt `eventAcceptedCount` ohne `ARTEFACT_SUSPECT` (Prüfgegenstand 
 (`accepted = quality ≠ ARTEFACT_SUSPECT` bzw. die Akzeptanzregel des Kandidaten). Ein Kandidat, der ein Ereignis
 nur de-akzeptiert statt entfernt, wird auf dieser Teilmenge gegen die Baseline-Teilmenge verglichen. §10 Kriterium 3
 gilt dabei für akzeptierte `TREFFER`.
+
+### N4 (2026-10-23, nach Methodik-Review) — Zeitzuordnung: Gesamttoleranz ±2 s ohne doppelte Intervallerweiterung
+
+**Befund (erster Lauf `outputs/main`):** §5.2 wurde im Skript als beidseitige Erweiterung **beider** Intervalle um jeweils
+`MATCH_TOL_S` (2 s) auf **jeder** Seite umgesetzt (`overlapS` mit `aStart−tol`, `bStart−tol`, `aEnd+tol`, `bEnd+tol`).
+Damit können Intervalle mit bis zu **4 s** effektivem Zwischenraum noch als überlappend gelten — widerspricht der in §3
+gemeinten **Gesamttoleranz** ±2 s (±1 s Uhr + ±1 s Label-Semantik als **ein** Budget, nicht zweimal angewendet).
+
+**Korrigierte Primärzuordnung (ab `outputs/match2s`, Schema V2):** Zwei Intervalle (inklusive Sekundenindizes) gelten als
+zuordenbar, wenn der **Lückenabstand** `intervalGapS` ≤ `MATCH_TOL_S` ist (0 bei echter Überlappung). Tie-Breaker =
+Überlappungslänge in Sekunden, sonst `MATCH_TOL_S − gap`. Der erste Lauf bleibt unter `outputs/main` mit
+`matchingMode=v1_bilateral` eingefroren; `REPORT_v1_main.md` dokumentiert ihn unverändert.
+
+**Auswirkung (Beispiel):** TES16 `ACCELERATION 03:50:20–03:50:23` war unter v1 ein `TREFFER_FRAGMENT` zum Orakel
+`03:50:14–03:50:16` (Lücke 3 s); unter v2 **keine** Orakelzuordnung → `FEHLALARM` bzw. Intensitätsklasse nach §5.3
+(Referenz im Fenster flach ≈ 133 km/h, C4 113→148).
+
+**Kennzahlen-Schichten (V2):** `summary.metricsLayers` trennt explizit
+`ds4.{detected,accepted,verifiable}`, `t2_sameDetectorOnVideoSpeed` (Orakel-Treffer/VERPASST),
+`t1_operatorWindows`, `t3_visibleRuns`, `nonEvaluable` — ohne Vermischung der Referenzstufen.
+
+**§10 unverändert;** Kandidaten auf `match2s` werden zusätzlich gegen **bekannte Fehlerfälle** F1–F4 berichtet
+(Wirkung auf dokumentierte Mechanismen ≠ unabhängige Validierung).

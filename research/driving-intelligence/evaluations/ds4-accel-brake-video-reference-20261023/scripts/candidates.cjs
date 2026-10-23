@@ -13,8 +13,24 @@ const path = require('node:path');
 const R = require('./replay_event_eval.cjs');
 const E = require('./event_eval_lib.cjs');
 
-const { loadDrives, evaluateDrive, core, GUARDS, THR, eventKey, codeSha, tag, outDir } = R;
+const { loadDrives, evaluateDrive, core, GUARDS, THR, eventKey, codeSha, tag, matching, outDir } = R;
 const WINDOW_S = core.MOTION_EVENT_SPIKE_REVERSION_WINDOW_S;
+
+/** Documented defect anchors (F1–F4); effect here ≠ §10 independent proof. */
+const KNOWN_ERROR_CASES = [
+  { defect: 'F2', drive: 'TES16', kind: 'ACCELERATION', start: '2026-10-16T03:50:20Z', note: 'Jitter/sparse über 1-s-Lücke; Referenz flach' },
+  { defect: 'F2', drive: 'TES21-1', kind: 'ACCELERATION', start: '2026-10-21T12:05:20Z', note: 'weicher FA, JITTER-Start' },
+  { defect: 'F3', drive: 'TIG22', kind: 'ACCELERATION', start: '2026-10-22T19:04:34Z', note: 'Trip-Ende C4≈2×OBD, außerhalb Video' },
+  { defect: 'F3', drive: 'TIG22', kind: 'ACCELERATION', start: '2026-10-22T19:04:49Z', note: 'Trip-Ende C4≈2×OBD, außerhalb Video' },
+  { defect: 'F1', drive: 'TIG22', kind: 'ACCELERATION', start: '2026-10-22T18:44:16Z', note: 'Anfahrt nach FROZEN_POSITION (hart verpasst)' },
+  { defect: 'F1', drive: 'TES16', kind: 'ACCELERATION', start: '2026-10-16T03:44:35Z', note: 'Anfahrt +5 s nach NO_POSITION' },
+];
+
+const CANDIDATE_FILTER = (() => {
+  const i = process.argv.indexOf('--only');
+  if (i < 0) return null;
+  return new Set(process.argv[i + 1].split(',').map((s) => s.trim()));
+})();
 
 const CANDIDATES = [
   {
@@ -92,15 +108,37 @@ function criteria(baseline, cand, drives) {
   return { perDrive, c1_hardFalseDownOnEval_noIncrease: c1, c2_noNewHardMiss_borderlineLe1: c2, c3_hitsKept_noMoreFragments: c3, c4_medianOffsetsStable: c4 };
 }
 
+function knownCaseRows(baseline, res, drives) {
+  const rows = [];
+  for (const k of KNOWN_ERROR_CASES) {
+    const d = drives.find((x) => x.id === k.drive);
+    if (!d) continue;
+    const key = `${k.kind}|${k.start}`;
+    const b = baseline[k.drive].events.find((r) => r.kind === k.kind && r.start_utc === k.start);
+    const c = res[k.drive].events.find((r) => r.kind === k.kind && r.start_utc === k.start);
+    if (!b && !c) continue;
+    rows.push({
+      defect: k.defect, drive: k.drive, event: key, note: k.note,
+      baseline: b ? { cls: b.cls, accepted: b.accepted, quality: b.quality } : null,
+      candidate: c ? { cls: c.cls, accepted: c.accepted, quality: c.quality } : null,
+    });
+  }
+  return rows;
+}
+
 function main() {
   const drives = loadDrives();
   const baseline = {};
-  for (const d of drives) baseline[d.id] = evaluateDrive(d, { write: false });
+  for (const d of drives) baseline[d.id] = evaluateDrive(d, { write: false, matching });
 
   const report = [];
-  const out = { schema: 'DS4_ACCEL_BRAKE_EVENT_CANDIDATES_V1', codeSha, tag, generatedAtUtc: new Date().toISOString(), spikeReversionWindowS: WINDOW_S, candidates: [] };
+  const out = {
+    schema: 'DS4_ACCEL_BRAKE_EVENT_CANDIDATES_V2', codeSha, tag, matchingMode: matching,
+    generatedAtUtc: new Date().toISOString(), spikeReversionWindowS: WINDOW_S, knownErrorCases: KNOWN_ERROR_CASES, candidates: [],
+  };
 
-  for (const cand of CANDIDATES) {
+  const candidateList = CANDIDATE_FILTER ? CANDIDATES.filter((c) => CANDIDATE_FILTER.has(c.id)) : CANDIDATES;
+  for (const cand of candidateList) {
     const res = {};
     const extras = {};
     for (const d of drives) {
@@ -109,7 +147,7 @@ function main() {
       const baseKeys = d.events.map(eventKey).join('\n');
       const candKeys = applied.events.map(eventKey).join('\n');
       if (baseKeys !== candKeys) throw new Error(`candidate ${cand.id} changed the event set on ${d.id}`);
-      res[d.id] = evaluateDrive(d, { events: applied.events, isAccepted: applied.isAccepted, write: false });
+      res[d.id] = evaluateDrive(d, { events: applied.events, isAccepted: applied.isAccepted, write: false, matching });
       if (applied.extra) extras[d.id] = applied.extra;
     }
     const crit = criteria(baseline, res, drives);
@@ -128,7 +166,11 @@ function main() {
         if (b && b.accepted !== r.accepted) changed.push({ drive: d.id, event: `${r.kind} ${r.start_utc.slice(11, 19)}–${r.end_utc.slice(11, 19)} (${r.start_utc.slice(0, 10)})`, speeds: `${r.start_kmh}->${r.end_kmh}`, quality: r.quality, baselineClass: b.cls, note: b.note, accepted: [b.accepted, r.accepted], implausible: b.implausible, artefactSuspectView: b.artefact_suspect_view, nearBoundary: b.near_boundary });
       }
     }
-    const entry = { ...cand, apply: undefined, criteria: crit, c5_noExtraLookahead: c5, independentDrives: independent, c1OnIndependentEval: c1Independent, verdict, changedAcceptance: changed, extras };
+    const knownCases = knownCaseRows(baseline, res, drives);
+    const entry = {
+      ...cand, apply: undefined, criteria: crit, c5_noExtraLookahead: c5, independentDrives: independent, c1OnIndependentEval: c1Independent,
+      verdict, changedAcceptance: changed, knownErrorCaseEffect: knownCases, extras,
+    };
     out.candidates.push(entry);
 
     report.push(`## ${cand.id} — ${cand.title}`);
@@ -142,7 +184,17 @@ function main() {
       report.push(`| ${p.id} | ${p.role} | ${pair(p.acceptedEvents)} | ${pair(p.hardFalse)} | ${pair(p.softFalse)} | ${pair(p.hits)} | ${pair(p.fragments)} | ${pair(p.hardMissed)} | ${pair(p.borderlineMissed)} | ${pair(p.startMedian.map((x) => x ?? '–'))} | ${pair(p.endMedian.map((x) => x ?? '–'))} |`);
     }
     report.push('');
-    report.push(`Kriterien §10: 1 (harte FA ↓ auf EVAL, nirgends ↑): ${crit.c1_hardFalseDownOnEval_noIncrease ? 'erfüllt' : 'nicht erfüllt'}; 1 auf unabhängiger EVAL-Fahrt: ${c1Independent ? 'erfüllt' : 'nicht erfüllt'}; 2: ${crit.c2_noNewHardMiss_borderlineLe1 ? 'erfüllt' : 'nicht erfüllt'}; 3: ${crit.c3_hitsKept_noMoreFragments ? 'erfüllt' : 'nicht erfüllt'}; 4: ${crit.c4_medianOffsetsStable ? 'erfüllt' : 'nicht erfüllt'}; 5: ${c5 ? 'erfüllt' : 'nicht erfüllt'}; 7: erfüllt (C4/Ereignismenge unverändert, Paritäts-Assert). **Ergebnis: ${verdict}.**`);
+    report.push(`Kriterien §10: 1 (harte FA ↓ auf EVAL, nirgends ↑): ${crit.c1_hardFalseDownOnEval_noIncrease ? 'erfüllt' : 'nicht erfüllt'}; 1 auf unabhängiger EVAL-Fahrt: ${c1Independent ? 'erfüllt' : 'nicht erfüllt'}; 2: ${crit.c2_noNewHardMiss_borderlineLe1 ? 'erfüllt' : 'nicht erfüllt'}; 3: ${crit.c3_hitsKept_noMoreFragments ? 'erfüllt' : 'nicht erfüllt'}; 4: ${crit.c4_medianOffsetsStable ? 'erfüllt' : 'nicht erfüllt'}; 5: ${c5 ? 'erfüllt' : 'nicht erfüllt'}; 7: erfüllt (C4/Ereignismenge unverändert, Paritäts-Assert). **Ergebnis §10: ${verdict}.**`);
+    report.push('');
+    report.push('`NOT_PROVEN` heißt: die vorab fixierten §10-Kriterien für **unabhängige** Validierung sind nicht erfüllt — nicht „keine Wirkung“. Bekannte Fehlerfälle (F1–F4) separat:');
+    report.push('');
+    report.push('| Defekt | Fahrt | Ereignis | Baseline Klasse/akz. | Kandidat Klasse/akz. | Hinweis |');
+    report.push('| --- | --- | --- | --- | --- | --- |');
+    for (const row of knownCases) {
+      const b = row.baseline ? `${row.baseline.cls}/akz=${row.baseline.accepted}` : '—';
+      const c = row.candidate ? `${row.candidate.cls}/akz=${row.candidate.accepted}` : '—';
+      report.push(`| ${row.defect} | ${row.drive} | ${row.event} | ${b} | ${c} | ${row.note} |`);
+    }
     report.push('');
     if (changed.length) {
       report.push('Geänderte Akzeptanz gegenüber Baseline (Klasse = Baseline-Klassifikation, §5):');
@@ -161,7 +213,7 @@ function main() {
   const head = [
     '# Offline-Kandidaten (Ereignisebene) — Vergleich gegen Baseline',
     '',
-    `Code \`${tag}\` @ \`${codeSha}\`. Baseline = Akzeptanzsicht §12 N3 (alles außer \`ARTEFACT_SUSPECT\`). B = Baseline, K = Kandidat. Klassen nach §5/§12; VERPASST-Zähler aus dem Orakelstatus der akzeptierten Teilmenge.`,
+    `Code \`${tag}\` @ \`${codeSha}\`; Zuordnung \`${matching}\` (§12 N4 ab \`match2s\`). Baseline = Akzeptanzsicht §12 N3 (alles außer \`ARTEFACT_SUSPECT\`). B = Baseline, K = Kandidat. Klassen nach §5/§12 N4; VERPASST-Zähler aus dem Orakelstatus der akzeptierten Teilmenge.`,
     '',
     'Kein Kandidat verändert C4, Schwellen, Guards oder die Ereignismenge; geprüft wird ausschließlich Akzeptanz bzw. `ARTEFACT_SUSPECT`-Markierung (§10 Kriterium 7, Paritäts-Assert im Skript).',
     '',

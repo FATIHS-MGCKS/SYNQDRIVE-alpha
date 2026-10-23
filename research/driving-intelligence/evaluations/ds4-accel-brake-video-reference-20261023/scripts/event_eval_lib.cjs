@@ -121,10 +121,50 @@ function visibleRuns(refRows) {
   return runs;
 }
 
-function overlapS(aStart, aEnd, bStart, bEnd, tol) {
+/** Legacy §5.2 / outputs/main: expand **both** intervals by `tol` on each side (superseded by §12 N4 for primary scoring). */
+function overlapS_bilateral(aStart, aEnd, bStart, bEnd, tol) {
   const s = Math.max(aStart - tol, bStart - tol);
   const e = Math.min(aEnd + tol, bEnd + tol);
   return e >= s ? e - s + 1 : 0;
+}
+
+/** Inclusive-second indices: gap between disjoint intervals (0 when overlapping). */
+function intervalGapS(aStart, aEnd, bStart, bEnd) {
+  if (aEnd >= bStart && bEnd >= aStart) return 0;
+  if (aEnd < bStart) return bStart - aEnd - 1;
+  return aStart - bEnd - 1;
+}
+
+/** §12 N4: total tolerance `tol` = maximum allowed gap (no bilateral expansion). */
+function intervalsWithinTol(aStart, aEnd, bStart, bEnd, tol) {
+  return intervalGapS(aStart, aEnd, bStart, bEnd) <= tol;
+}
+
+/** Match score for tie-breaking: overlap length, or a small score when matched only via gap tolerance. */
+function matchScoreGap(aStart, aEnd, bStart, bEnd, tol) {
+  const gap = intervalGapS(aStart, aEnd, bStart, bEnd);
+  if (gap > tol) return 0;
+  const s = Math.max(aStart, bStart);
+  const e = Math.min(aEnd, bEnd);
+  if (e >= s) return e - s + 1;
+  return tol - gap + 0.001;
+}
+
+const MATCHING_MODES = Object.freeze({
+  v1_bilateral: {
+    id: 'v1_bilateral',
+    rulesRef: '§5.2 (first run outputs/main)',
+    score(aStart, aEnd, bStart, bEnd, tol) { return overlapS_bilateral(aStart, aEnd, bStart, bEnd, tol); },
+  },
+  v2_gap2s: {
+    id: 'v2_gap2s',
+    rulesRef: '§12 N4',
+    score(aStart, aEnd, bStart, bEnd, tol) { return matchScoreGap(aStart, aEnd, bStart, bEnd, tol); },
+  },
+});
+
+function overlapS(aStart, aEnd, bStart, bEnd, tol) {
+  return matchScoreGap(aStart, aEnd, bStart, bEnd, tol);
 }
 
 /** Detector segments over a C4 series (same semantics as buildSegments in motion-event-detector.ts). */
@@ -235,7 +275,14 @@ function readablePairs(refBySec, fromSec, toSec) {
  */
 function classifyEvents(ds4, oracle, refRows, minDeltaKmh, opts = {}) {
   const tol = EVENT_RULES.matchTolS;
-  const ov2 = (s, e, os, oe) => (opts.strict ? overlapS(s, e, os - tol, oe + tol, 0) : overlapS(s, e, os, oe, tol));
+  const mode = MATCHING_MODES[opts.matching ?? 'v2_gap2s'] ?? MATCHING_MODES.v2_gap2s;
+  const score = (s, e, os, oe) => {
+    if (opts.strict) {
+      if (mode.id === 'v1_bilateral') return overlapS_bilateral(s, e, os - tol, oe + tol, 0);
+      return matchScoreGap(s, e, os, oe, 0);
+    }
+    return mode.score(s, e, os, oe, tol);
+  };
   const refBySec = new Map(refRows.map((r) => [r.sec, r.ref]));
   const refSecs = refRows.map((r) => r.sec);
   const refFirst = refSecs[0];
@@ -257,7 +304,7 @@ function classifyEvents(ds4, oracle, refRows, minDeltaKmh, opts = {}) {
     let best = null;
     for (const orow of oracleRows) {
       if (orow.o.kind !== ev.kind) continue;
-      const ov = ov2(s, e, orow.s, orow.e);
+      const ov = score(s, e, orow.s, orow.e);
       if (ov > 0 && (best == null || ov > best.ov)) best = { orow, ov };
     }
     if (best) {
@@ -267,7 +314,7 @@ function classifyEvents(ds4, oracle, refRows, minDeltaKmh, opts = {}) {
       // merged coverage: other oracle events of same kind overlapping this DS4 event
       for (const orow of oracleRows) {
         if (orow === best.orow || orow.o.kind !== ev.kind) continue;
-        if (ov2(s, e, orow.s, orow.e) > 0) orow.coveredBy = orow.coveredBy ?? out;
+        if (score(s, e, orow.s, orow.e) > 0) orow.coveredBy = orow.coveredBy ?? out;
       }
       return out;
     }
@@ -391,7 +438,8 @@ function offsetStats(vals) {
 }
 
 module.exports = {
-  EVENT_RULES, UNVERIFIED_CLASSES, sign, referenceAsSpeedSamples, referenceIntensity, referenceDirectionalDelta, visibleRuns, overlapS,
+  EVENT_RULES, UNVERIFIED_CLASSES, MATCHING_MODES, sign, referenceAsSpeedSamples, referenceIntensity, referenceDirectionalDelta, visibleRuns,
+  overlapS, overlapS_bilateral, intervalGapS, intervalsWithinTol, matchScoreGap,
   usableSegments, segmentSamples, boundaryContext, boundaryFeatures, plausibility, classifyEvents, oracleStatus, offsetStats, medianOf,
   readablePairs, isAcceptedBaseline, candidatePreBaselineReversion,
 };

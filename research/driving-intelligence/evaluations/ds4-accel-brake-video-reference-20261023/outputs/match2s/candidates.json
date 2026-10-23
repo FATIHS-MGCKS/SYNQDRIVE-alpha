@@ -1,0 +1,629 @@
+{
+  "schema": "DS4_ACCEL_BRAKE_EVENT_CANDIDATES_V2",
+  "codeSha": "a20641cc6d7e7908abd6514bcf8c191f08b03ead",
+  "tag": "match2s",
+  "matchingMode": "v2_gap2s",
+  "generatedAtUtc": "2026-10-23T12:50:01.638Z",
+  "spikeReversionWindowS": 2,
+  "knownErrorCases": [
+    {
+      "defect": "F2",
+      "drive": "TES16",
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:50:20Z",
+      "note": "Jitter/sparse über 1-s-Lücke; Referenz flach"
+    },
+    {
+      "defect": "F2",
+      "drive": "TES21-1",
+      "kind": "ACCELERATION",
+      "start": "2026-10-21T12:05:20Z",
+      "note": "weicher FA, JITTER-Start"
+    },
+    {
+      "defect": "F3",
+      "drive": "TIG22",
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T19:04:34Z",
+      "note": "Trip-Ende C4≈2×OBD, außerhalb Video"
+    },
+    {
+      "defect": "F3",
+      "drive": "TIG22",
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T19:04:49Z",
+      "note": "Trip-Ende C4≈2×OBD, außerhalb Video"
+    },
+    {
+      "defect": "F1",
+      "drive": "TIG22",
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:44:16Z",
+      "note": "Anfahrt nach FROZEN_POSITION (hart verpasst)"
+    },
+    {
+      "defect": "F1",
+      "drive": "TES16",
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:44:35Z",
+      "note": "Anfahrt +5 s nach NO_POSITION"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "K-A2",
+      "title": "Akzeptanz ohne DEGRADED (JITTER_SUSPECT/REPAIRED im Ereignisfenster)",
+      "level": "Processor-Akzeptanz (eventAcceptedCount)",
+      "derivedFrom": [
+        "TIG22",
+        "TES21-1",
+        "TES16"
+      ],
+      "lookaheadS": 0,
+      "criteria": {
+        "perDrive": [
+          {
+            "id": "TIG22",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              12,
+              12
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              4,
+              4
+            ],
+            "startMedian": [
+              -1,
+              -1
+            ],
+            "endMedian": [
+              -0.5,
+              -0.5
+            ],
+            "acceptedEvents": [
+              20,
+              18
+            ]
+          },
+          {
+            "id": "TES21-1",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              1,
+              0
+            ],
+            "hits": [
+              2,
+              2
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              2,
+              2
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0.5,
+              0.5
+            ],
+            "acceptedEvents": [
+              3,
+              2
+            ]
+          },
+          {
+            "id": "TES21-2",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              4,
+              4
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              2,
+              2
+            ],
+            "endMedian": [
+              2,
+              2
+            ],
+            "acceptedEvents": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "TES16",
+            "role": "EVAL",
+            "hardFalse": [
+              1,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              15,
+              15
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0,
+              0
+            ],
+            "acceptedEvents": [
+              17,
+              16
+            ]
+          }
+        ],
+        "c1_hardFalseDownOnEval_noIncrease": true,
+        "c2_noNewHardMiss_borderlineLe1": true,
+        "c3_hitsKept_noMoreFragments": true,
+        "c4_medianOffsetsStable": true
+      },
+      "c5_noExtraLookahead": true,
+      "independentDrives": [
+        "TES21-2"
+      ],
+      "c1OnIndependentEval": false,
+      "verdict": "NOT_PROVEN",
+      "changedAcceptance": [
+        {
+          "drive": "TIG22",
+          "event": "DECELERATION 19:04:26–19:04:29 (2026-10-22)",
+          "speeds": "34.7->5.5",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        },
+        {
+          "drive": "TIG22",
+          "event": "ACCELERATION 19:04:49–19:04:52 (2026-10-22)",
+          "speeds": "52.3->142.1",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 1,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TES21-1",
+          "event": "DECELERATION 12:05:20–12:05:23 (2026-10-21)",
+          "speeds": "34->14.9",
+          "quality": "DEGRADED",
+          "baselineClass": "WEICHER_FEHLALARM",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        },
+        {
+          "drive": "TES16",
+          "event": "ACCELERATION 03:50:20–03:50:23 (2026-10-16)",
+          "speeds": "113.1->148.3",
+          "quality": "DEGRADED",
+          "baselineClass": "FEHLALARM",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        }
+      ],
+      "knownErrorCaseEffect": [
+        {
+          "defect": "F2",
+          "drive": "TES16",
+          "event": "ACCELERATION|2026-10-16T03:50:20Z",
+          "note": "Jitter/sparse über 1-s-Lücke; Referenz flach",
+          "baseline": {
+            "cls": "FEHLALARM",
+            "accepted": 1,
+            "quality": "DEGRADED"
+          },
+          "candidate": {
+            "cls": "FEHLALARM",
+            "accepted": 0,
+            "quality": "DEGRADED"
+          }
+        },
+        {
+          "defect": "F3",
+          "drive": "TIG22",
+          "event": "ACCELERATION|2026-10-22T19:04:34Z",
+          "note": "Trip-Ende C4≈2×OBD, außerhalb Video",
+          "baseline": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "LIMITED"
+          },
+          "candidate": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "LIMITED"
+          }
+        },
+        {
+          "defect": "F3",
+          "drive": "TIG22",
+          "event": "ACCELERATION|2026-10-22T19:04:49Z",
+          "note": "Trip-Ende C4≈2×OBD, außerhalb Video",
+          "baseline": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "DEGRADED"
+          },
+          "candidate": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 0,
+            "quality": "DEGRADED"
+          }
+        }
+      ],
+      "extras": {}
+    },
+    {
+      "id": "K-B",
+      "title": "K3-Erweiterung: Rückkehr auf Vor-Ereignis-Niveau (letzte nutzbare Probe vor Beginn)",
+      "level": "Detektor-Option (wie spikeReversionCheck), Fenster unverändert",
+      "derivedFrom": [
+        "TES16"
+      ],
+      "lookaheadS": 2,
+      "criteria": {
+        "perDrive": [
+          {
+            "id": "TIG22",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              12,
+              12
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              4,
+              4
+            ],
+            "startMedian": [
+              -1,
+              -1
+            ],
+            "endMedian": [
+              -0.5,
+              -0.5
+            ],
+            "acceptedEvents": [
+              20,
+              20
+            ]
+          },
+          {
+            "id": "TES21-1",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              1,
+              1
+            ],
+            "hits": [
+              2,
+              2
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              2,
+              2
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0.5,
+              0.5
+            ],
+            "acceptedEvents": [
+              3,
+              3
+            ]
+          },
+          {
+            "id": "TES21-2",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              4,
+              4
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              2,
+              2
+            ],
+            "endMedian": [
+              2,
+              2
+            ],
+            "acceptedEvents": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "TES16",
+            "role": "EVAL",
+            "hardFalse": [
+              1,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              15,
+              15
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0,
+              0
+            ],
+            "acceptedEvents": [
+              17,
+              16
+            ]
+          }
+        ],
+        "c1_hardFalseDownOnEval_noIncrease": true,
+        "c2_noNewHardMiss_borderlineLe1": true,
+        "c3_hitsKept_noMoreFragments": true,
+        "c4_medianOffsetsStable": true
+      },
+      "c5_noExtraLookahead": true,
+      "independentDrives": [
+        "TIG22",
+        "TES21-1",
+        "TES21-2"
+      ],
+      "c1OnIndependentEval": false,
+      "verdict": "NOT_PROVEN",
+      "changedAcceptance": [
+        {
+          "drive": "TES16",
+          "event": "ACCELERATION 03:50:20–03:50:23 (2026-10-16)",
+          "speeds": "113.1->148.3",
+          "quality": "ARTEFACT_SUSPECT",
+          "baselineClass": "FEHLALARM",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        }
+      ],
+      "knownErrorCaseEffect": [
+        {
+          "defect": "F2",
+          "drive": "TES16",
+          "event": "ACCELERATION|2026-10-16T03:50:20Z",
+          "note": "Jitter/sparse über 1-s-Lücke; Referenz flach",
+          "baseline": {
+            "cls": "FEHLALARM",
+            "accepted": 1,
+            "quality": "DEGRADED"
+          },
+          "candidate": {
+            "cls": "FEHLALARM",
+            "accepted": 0,
+            "quality": "ARTEFACT_SUSPECT"
+          }
+        },
+        {
+          "defect": "F3",
+          "drive": "TIG22",
+          "event": "ACCELERATION|2026-10-22T19:04:34Z",
+          "note": "Trip-Ende C4≈2×OBD, außerhalb Video",
+          "baseline": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "LIMITED"
+          },
+          "candidate": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "LIMITED"
+          }
+        },
+        {
+          "defect": "F3",
+          "drive": "TIG22",
+          "event": "ACCELERATION|2026-10-22T19:04:49Z",
+          "note": "Trip-Ende C4≈2×OBD, außerhalb Video",
+          "baseline": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "DEGRADED"
+          },
+          "candidate": {
+            "cls": "UNVERIFIZIERBAR",
+            "accepted": 1,
+            "quality": "DEGRADED"
+          }
+        }
+      ],
+      "extras": {
+        "TIG22": {
+          "flagged": []
+        },
+        "TES21-1": {
+          "flagged": []
+        },
+        "TES21-2": {
+          "flagged": []
+        },
+        "TES16": {
+          "flagged": [
+            {
+              "event": "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z",
+              "revert": "2026-10-16T03:50:24Z:126.50004402279643",
+              "preSpeedKmh": 129.42698033003452,
+              "preLabel": "2026-10-16T03:50:19Z"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

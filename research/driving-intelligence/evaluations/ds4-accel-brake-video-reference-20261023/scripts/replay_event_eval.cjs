@@ -21,7 +21,8 @@ const thisRepo = path.resolve(evalRoot, '../../../..');
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
 const codeRoot = path.resolve(opt('--code-root', thisRepo));
-const tag = opt('--tag', 'main');
+const tag = opt('--tag', 'match2s');
+const matching = opt('--matching', tag === 'main' ? 'v1_bilateral' : 'v2_gap2s');
 const expectSha = opt('--expect-sha', null);
 const DI = 'backend/src/modules/vehicle-intelligence/driving-intelligence';
 const outDir = path.join(evalRoot, 'outputs', tag);
@@ -131,7 +132,43 @@ function tesla16() {
  * Evaluate one drive. `events` defaults to the drive's baseline detector output; candidates pass their own list
  * (same C4 — parity is asserted by the caller). `isAccepted` defines the accepted subset (§12 N3).
  */
-function evaluateDrive(d, { events = d.events, isAccepted = E.isAcceptedBaseline, write = true } = {}) {
+function buildMetricsLayers(eventRows, oracleRows, windowRows, runRows) {
+  const accepted = eventRows.filter((r) => r.accepted);
+  const verifiable = eventRows.filter((r) => !E.UNVERIFIED_CLASSES.includes(r.cls));
+  const oracleHard = oracleRows.filter((o) => !o.borderline && o.status !== 'VERPASST_KEINE_DS4_GESCHWINDIGKEIT');
+  const countStatus = (rows, key) => rows.reduce((m, r) => { m[r[key]] = (m[r[key]] ?? 0) + 1; return m; }, {});
+  return {
+    ds4: {
+      detected: eventRows.length,
+      accepted: accepted.length,
+      verifiable: verifiable.length,
+      notEvaluable: eventRows.length - verifiable.length,
+    },
+    t2_sameDetectorOnVideoSpeed: {
+      oracleManoeuvres: oracleRows.length,
+      oracleHardManoeuvres: oracleHard.length,
+      detectedWithOracleMatch: eventRows.filter((r) => r.oracle_start_utc).length,
+      acceptedWithOracleMatch: accepted.filter((r) => r.oracle_start_utc).length,
+      correctTreffer: eventRows.filter((r) => r.cls === 'TREFFER').length,
+      acceptedCorrectTreffer: accepted.filter((r) => r.cls === 'TREFFER').length,
+      fragments: eventRows.filter((r) => r.cls === 'TREFFER_FRAGMENT').length,
+      oracleByStatus: countStatus(oracleRows, 'status'),
+      hardFalseAlarms: eventRows.filter((r) => r.cls === 'FEHLALARM').length,
+      softOrIntensityFalse: eventRows.filter((r) => r.cls === 'WEICHER_FEHLALARM' || r.cls === 'FEHLALARM_INTENSITAET').length,
+    },
+    t1_operatorWindows: windowRows
+      ? { windows: windowRows.length, byStatus: countStatus(windowRows, 'status') }
+      : null,
+    t3_visibleRuns: { runs: runRows.length, byStatus: countStatus(runRows, 'status') },
+    nonEvaluable: {
+      unverifizierbar: eventRows.filter((r) => r.cls === 'UNVERIFIZIERBAR').length,
+      fehlalarmUnbestimmt: eventRows.filter((r) => r.cls === 'FEHLALARM_UNBESTIMMT').length,
+      outsideReferenceWindowNotes: eventRows.filter((r) => (r.note || []).includes('AUSSERHALB_REFERENZFENSTER')).length,
+    },
+  };
+}
+
+function evaluateDrive(d, { events = d.events, isAccepted = E.isAcceptedBaseline, write = true, matching: matchingMode = matching } = {}) {
   const refBySec = new Map(d.refRows.map((r) => [r.sec, r.ref]));
   const readable = d.refRows.filter((r) => r.ref != null);
   const refMax = Math.max(...readable.map((r) => r.ref));
@@ -144,7 +181,7 @@ function evaluateDrive(d, { events = d.events, isAccepted = E.isAcceptedBaseline
   const runs = E.visibleRuns(d.refRows);
 
   const minDelta = THR.minDeltaKmh;
-  const cls = E.classifyEvents(events, oracle, d.refRows, minDelta);
+  const cls = E.classifyEvents(events, oracle, d.refRows, minDelta, { matching: matchingMode });
   const ctx = E.boundaryContext(d.c4, d.buckets, GUARDS.usableQualities, GUARDS.maxGapS);
   const acceptedKeys = new Set(events.filter(isAccepted).map(eventKey));
 
@@ -254,11 +291,11 @@ function evaluateDrive(d, { events = d.events, isAccepted = E.isAcceptedBaseline
   const verifiable = eventRows.filter((r) => !E.UNVERIFIED_CLASSES.includes(r.cls));
   const hits = eventRows.filter((r) => r.cls === 'TREFFER');
   // §12 N1 sensitivity: one-sided tolerance
-  const strictCls = E.classifyEvents(events, oracle, d.refRows, minDelta, { strict: true });
+  const strictCls = E.classifyEvents(events, oracle, d.refRows, minDelta, { matching: 'v1_bilateral', strict: true });
   const strictView = { ds4ByClass: count(strictCls.ds4, 'cls'), oracleByStatus: count(strictCls.oracleRows.map((orow) => ({ status: E.oracleStatus(orow, ctx.c4BySec, GUARDS.usableQualities) })), 'status') };
   // §12 N3 accepted subset (production eventAcceptedCount semantics or candidate acceptance rule)
   const acceptedEvents = events.filter((e) => acceptedKeys.has(eventKey(e)));
-  const accCls = E.classifyEvents(acceptedEvents, oracle, d.refRows, minDelta);
+  const accCls = E.classifyEvents(acceptedEvents, oracle, d.refRows, minDelta, { matching: matchingMode });
   const accOracle = accCls.oracleRows.map((orow) => ({ status: E.oracleStatus(orow, ctx.c4BySec, GUARDS.usableQualities), borderline: orow.o.peakAccel1sMps2 < THR.entryMps2 + E.EVENT_RULES.borderlineBandMps2 }));
   const accHits = accCls.ds4.filter((r) => r.cls === 'TREFFER');
   const acceptedView = {
@@ -305,6 +342,8 @@ function evaluateDrive(d, { events = d.events, isAccepted = E.isAcceptedBaseline
       detectorSegments: ctx.segments.length, quarantinedSecs: ctx.quarantineSecs.length,
       eventsInsideReferenceWindow: eventRows.filter((r) => L.secOf(r.end_utc) >= refFirst && L.secOf(r.start_utc) <= refLast).length,
     },
+    matchingMode: matchingMode,
+    metricsLayers: buildMetricsLayers(eventRows, oracleRows, windowRows, runRows),
   };
 
   const writeCsv = (name, rows) => { if (write && rows && rows.length) fs.writeFileSync(path.join(outDir, `${d.id}_${name}.csv`), L.toCsv(rows, Object.keys(rows[0]))); };
@@ -350,7 +389,8 @@ function main() {
 const drives = loadDrives();
 const results = drives.map((d) => evaluateDrive(d));
 const summary = {
-  schema: 'DS4_ACCEL_BRAKE_VIDEO_REFERENCE_EVAL_V1', generatedAtUtc: new Date().toISOString(), versions, rulesFile: 'EVALUATION_RULES.md',
+  schema: matching === 'v2_gap2s' ? 'DS4_ACCEL_BRAKE_VIDEO_REFERENCE_EVAL_V2' : 'DS4_ACCEL_BRAKE_VIDEO_REFERENCE_EVAL_V1',
+  generatedAtUtc: new Date().toISOString(), matchingMode: matching, versions, rulesFile: 'EVALUATION_RULES.md',
   drives: results.map((r) => ({ id: r.id, identity: r.identity, summary: r.summary, production: r.production })),
   pooled: { EVAL_TIG22_TES16: pool(results, ['TIG22', 'TES16']), DEV_TES21: pool(results, ['TES21-1', 'TES21-2']), ALL: pool(results, results.map((r) => r.id)) },
   inputs: inputManifest,
@@ -374,4 +414,4 @@ console.log(`\nwritten: ${path.relative(thisRepo, outDir)} (code ${tag} @ ${code
 
 if (require.main === module) main();
 
-module.exports = { loadDrives, evaluateDrive, pool, core, GUARDS, THR, OPTIONS, versions, inputManifest, eventKey, persistedView, codeSha, tag, outDir, thisRepo };
+module.exports = { loadDrives, evaluateDrive, pool, core, GUARDS, THR, OPTIONS, versions, inputManifest, eventKey, persistedView, codeSha, tag, matching, outDir, thisRepo };

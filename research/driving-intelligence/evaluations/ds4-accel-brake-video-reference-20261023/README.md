@@ -7,7 +7,10 @@ Deploy-Änderung, keine Änderung am Geschwindigkeitspfad.
 
 | Dokument | Inhalt |
 | --- | --- |
-| [`REPORT.md`](REPORT.md) | Ergebnisbericht: Kurzfassung, Baseline, belegte Fehler F1–F6, Kandidaten, Grenzen, Empfehlung, Abschlussblock |
+| [`REPORT.md`](REPORT.md) | Index der versionierten Berichte (v1 + v2) |
+| [`REPORT_v1_main.md`](REPORT_v1_main.md) | Erster Lauf (`outputs/main`, Zuordnung v1) |
+| [`REPORT_v2_match2s.md`](REPORT_v2_match2s.md) | Korrigierte Zuordnung N4 (`outputs/match2s`) |
+| [`outputs/match2s/TIG22_TRIP_END_FORENSIC.md`](outputs/match2s/TIG22_TRIP_END_FORENSIC.md) | Trip-Ende 19:04: Positionen, C4, OBD-Vergleich, bestätigt vs. Verdacht |
 | [`EVALUATION_RULES.md`](EVALUATION_RULES.md) | Bewertungsregeln, **vor** der ersten Metrik fixiert; §10 Kandidatenkriterien; §12 datierte Nachträge N1–N3 |
 | [`DETECTOR_INVENTORY.md`](DETECTOR_INVENTORY.md) | Inventar der Beschleunigungs-/Bremsdetektoren (Motion-Core-Pfad A = Prüfgegenstand; HF-Pfade B/C; Auslöser/Steuerung) |
 | [`PRODUCTION_RUN_EVIDENCE.md`](PRODUCTION_RUN_EVIDENCE.md) | 21 `SUCCEEDED`-Läufe seit Deploy, Auslöser im Code, Parität Replay ↔ Produktionslauf `15cdc8ae` |
@@ -23,10 +26,14 @@ Voraussetzung: Checkout mit sauberem DI-Verzeichnis und installiertem `backend/n
 
 ```bash
 cd research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023
-node scripts/replay_event_eval.cjs --tag main --expect-sha 579ee8b2fed06593d7d2aa57cffb6036dbf53a24
-node scripts/candidates.cjs      --tag main --expect-sha 579ee8b2fed06593d7d2aa57cffb6036dbf53a24
-node scripts/probe_windows.cjs   --tag main
-node scripts/render_tables.cjs   --tag main
+# v2 (Primär, §12 N4):
+node scripts/replay_event_eval.cjs --tag match2s --matching v2_gap2s
+node scripts/candidates.cjs --tag match2s --only K-A2,K-B
+node scripts/tiguan_trip_end_forensic.cjs
+node scripts/probe_windows.cjs --tag match2s
+node scripts/render_tables.cjs --tag match2s
+# v1 (eingefroren, nur Reproduktion des ersten Laufs):
+node scripts/replay_event_eval.cjs --tag main --matching v1_bilateral
 ```
 
 `--code-root <pfad>` erlaubt den Replay gegen einen anderen Checkout; der HEAD-SHA wird in jede Ausgabe geschrieben.
