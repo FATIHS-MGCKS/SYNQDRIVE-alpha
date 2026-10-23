@@ -8,7 +8,7 @@ import { presentObs } from '../../core/__tests__/test-helpers';
 import { DI_V0_SPEED_QC_POLICY_V2 } from '../di-v0-speed-qc-policy.version';
 import { DI_V0_SPEED_QC_REASON } from '../di-v0-speed-qc-reason-codes';
 import { evaluateDiV0SpeedQcInterval } from '../evaluate-di-v0-speed-qc-interval';
-import type { DiV0SpeedQcPositionSample } from '../di-v0-speed-qc.types';
+import type { DiV0SpeedQcPositionSample, DiV0SpeedQcR1Sample } from '../di-v0-speed-qc.types';
 import { pilotHoldThenRelease303m } from '../../core/__tests__/fixtures/wob-pilot-golden.fixture';
 import { signalNullObs } from '../../core/__tests__/test-helpers';
 import { buildDiV0TripSpeedQualityProjectionV1 } from '../../trip-speed-quality/build-di-v0-trip-speed-quality-projection.v1';
@@ -32,7 +32,7 @@ function positionsForQc(observations: ReturnType<typeof presentObs>[]): DiV0Spee
 function qcFromS1Interval(
   interval: ReturnType<typeof computeDiV0TripIntervals>['intervals'][number],
   qcPositions: DiV0SpeedQcPositionSample[],
-  r1Obd: { bucketLabel: string; speedKmh: number }[] = [],
+  r1Obd: DiV0SpeedQcR1Sample[] = [],
 ) {
   return evaluateDiV0SpeedQcInterval({
     centerBucketLabel: interval.referenceTime,
@@ -99,7 +99,7 @@ describe('S1 shadow output composed through P1 speed QC', () => {
         estimatedSpeedKmh: 36,
         sourceRelation: 'CONFLICTING',
       },
-      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 80 }],
+      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 80, temporalConfidence: 'INTERVAL_ONLY' }],
     });
     expect(v.originalEstimatedSpeedKmh).toBe(36);
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.CROSS_SOURCE_CONFLICT);
@@ -185,7 +185,7 @@ describe('S1 shadow output composed through P1 speed QC', () => {
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.NO_NUMERIC);
   });
 
-  it('S1 R1 vs GPS conflict flows to P1 CROSS_SOURCE_CONFLICT and P2 counter', () => {
+  it('S1 R1 vs GPS conflict does not affect DS4 intervals or QC (R1 speed comparison-only)', () => {
     const observations = [
       presentObs('2026-01-01T00:00:00Z', 52, 9, 'RUPTELA_R1'),
       presentObs('2026-01-01T00:00:01Z', 52.0003, 9, 'RUPTELA_R1'),
@@ -207,9 +207,9 @@ describe('S1 shadow output composed through P1 speed QC', () => {
     const moving = s1.intervals.find(
       (r) => r.referenceTime === '2026-01-01T00:00:02Z' && r.motionState === 'MOVING_SPEED_ESTIMATED',
     );
-    expect(moving?.sourceRelation).toMatch(/CONFLICT/);
+    expect(moving?.sourceRelation).toBe('SUPPORTED');
     const qc = qcFromS1Interval(moving!, positionsForQc(observations), r1);
-    expect(qc.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.CROSS_SOURCE_CONFLICT);
+    expect(qc.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.CROSS_SOURCE_CONFLICT);
     const projection = buildDiV0TripSpeedQualityProjectionV1({
       organizationId: 'o',
       vehicleId: 'v',
@@ -239,7 +239,7 @@ describe('S1 shadow output composed through P1 speed QC', () => {
         sourceQualityFlags: r.sourceQualityFlags,
       })),
     });
-    expect(projection.quality.reasonCodeBreakdown.CROSS_SOURCE_CONFLICT).toBeGreaterThanOrEqual(1);
+    expect(projection.quality.reasonCodeBreakdown.CROSS_SOURCE_CONFLICT ?? 0).toBe(0);
   });
 
   it('ROW_ABSENT with null S1 speed yields NO_NUMERIC before MISSING_POSITION_EVIDENCE', () => {

@@ -153,6 +153,8 @@ Detail: [reference-capture/REFERENCE_DRIVES.md](./reference-capture/REFERENCE_DR
 | DI-EVID-EXP021-P21-R3B-001 | REFERENCE_DRIVE | 2026-10-14 | P2.1 R3B acquisition `[start,end)`, WI snapshot bind, RR read, live RO replay artifact `exp021-p21-r3b-forensic.json` | `evidence/EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md` | P2.1 R3B | CONFIRMED | Live `synqdrive_exp021_p21_ro` replay; gap reclassification 1 false internal → edge | Production behavior change; P1 implementation |
 | DI-EVID-EXP021-P1-V2-001 | REFERENCE_DRIVE | 2026-10-14 | P1 `DI_V0_SPEED_QC_POLICY_V2` stationary null-speed; 118/144 accepted on pinned trip | `evidence/EXP021_P1_V2_STATIONARY_SEMANTICS.md` | P2.1 P1 V2 | CONFIRMED | Live V1/V2 compare; trusted numeric unchanged | Production activation; default policy switch |
 | DI-TEST-P21-R3-COMPOSED-001 | TEST | 2026-10-14 | S1 output composed through P1 speed QC | `backend/.../di-v0-speed-qc-s1-p1-composed.spec.ts` | P2.1 R3 | CONFIRMED | Stationary null → NO_NUMERIC contract documented | Full S1 integration matrix |
+| DI-EVID-DS4-OBD-SPEED-STRIP-PROD-001 | TEST+REFERENCE_DRIVE | 2026-10-23 | Prod boundary module + four-drive replay parity vs offline strip | `research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/REPORT_PROD_OBD_STRIP.md`, `outputs/prod_code_vs_no_obd_speed_parity.json` | DS4-OBD-strip | CONFIRMED | Bit-identical harness parity on sealed fixtures (TIG22/TES21/TES16) | Fleet coverage; #2134 protections; video re-watch |
+| DI-TEST-DS4-R1-SPEED-BOUNDARY-001 | TEST | 2026-10-23 | R1 speed DS4 product boundary unit tests | `backend/.../di-v0-r1-vehicle-speed-ds4-boundary.spec.ts` | DS4-OBD-strip | CONFIRMED | L3/QC/FSM wiring contracts | Production deploy attestation |
 
 ---
 

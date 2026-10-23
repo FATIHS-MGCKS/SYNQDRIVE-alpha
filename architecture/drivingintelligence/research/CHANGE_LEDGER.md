@@ -2122,6 +2122,26 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest Tiguan per-bucket hash parity vs Phase 5A manifest; control-plane + schema specs |
 | NON_EFFECTS | Flags default OFF; no production backfill; no algorithm retuning |
 
+### DS4 integration — OBD speed boundary + GPS leg hardening (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | Open PR #2134 `f95420593` + PR #2137 `84c155c1e` on `main` `dea2555bb` |
+| CHANGE | Branch `cursor/ds4-obd-gps-integrate-192d` = merge #2137 into #2134; adapter limitations union; test expectations for combined behavior |
+| VALIDATION | Four-drive replay `integrate_obd_gps`; vs main/pr2134/prod_code compares; Jest motion-core + speed-qc + boundary 108/108 |
+| NON_EFFECTS | Does not replace #2134 or #2137 branches; no deploy |
+
+### DS4 product — R1 OBD vehicle speed excluded from kinematics / QC / FSM (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | `origin/main` `dea2555bb` — R1 speed in pinned evidence could affect L3 `sourceRelation`, speed-QC `CROSS_SOURCE_CONFLICT`, motion-core-shadow FSM sparse input |
+| CHANGE | `di-v0-r1-vehicle-speed-ds4-boundary.ts`; wired in `compute-trip-intervals`, `evaluate-di-v0-speed-qc-interval`, motion-core-shadow processor/adapter; comparison series retained |
+| WHY | Video-reference eval (#2136) + offline strip candidate: OBD speed mis-sync drives QC veto and false FSM motion without improving L3 numerics on TIG22 |
+| VALIDATION | Jest boundary + speed-qc + motion-core-shadow specs; four-drive replay parity `prod_code` vs `no_obd_speed` (`identical: true`) — evidence under `research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/` |
+| NON_EFFECTS | R1 acquisition/pinning; non-speed OBD; trip lifecycle; C4 GPS path; **not** PR #2134 leg-gate/C4-V0.5; no deploy in workstream |
+| OPEN | Fleet-wide R1 speed prevalence; independent EVAL beyond TIG22+TES16 |
+
 ### EXP-021 motion core — shadow integration (post-S4 comparison wiring) (2026-10-21)
 
 | Event | Detail |
@@ -2130,3 +2150,40 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Parallel comparison vs existing S4 shadow without mutating published intervals, scores, or customer surfaces |
 | VALIDATION | Jest `motion-core` 68/68 incl. shadow control/processor/schema; offline harness `scripts/test/motion-core-shadow-replay.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-shadow-integration/` |
 | NON_EFFECTS | S4C completion unchanged; no production flag ON; no DIMO polling; migration not applied on Production in this workstream |
+
+### DS4 motion — Tiguan GPS leg gate + OBD point authority (2026-10-22)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | Audit package `research/driving-intelligence/audits/ds4-motion-tiguan-20261022-compact/` (code SHA `dea2555bb`, research export PR #2133 `36cbd982`); trip `98d2a8e0-8b7d-4529-bf76-acee44d61fbe` |
+| CHANGE | `leg-consistency.ts`: tiered 1 s leg gate (spike teleport + median-trust ceiling + backstop); stale-hold landing-only quarantine; C4 on raw buckets, FSM on quarantined view; `r1-obd-fsm-point-authority.ts` + `DiV0SpeedQcR1Sample.temporalConfidence`; bundle `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V2` |
+| WHY | Extreme GPS teleports produced OK C4 ~1930 km/h and false ACCELERATION; 560/560 sparse OBD samples lacked point time authority but drove DIRECT FSM (e.g. 84 km/h STARTING at tacho 0) |
+| VALIDATION | Jest `motion-core-tiguan-gps-obd-hardening.spec.ts`, `motion-core-review-robustness.spec.ts`, `di-v0-motion-core-shadow-processor.unit.spec.ts`; hardening summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/` |
+| OPEN | Full sparse ablation B not adopted (creep vs tacho-zero tradeoff); stop episodes 11 vs audit 12 on replay; audit `run_audit.sh` needs Node 24 |
+| NON_EFFECTS | No deploy, reprocessing, flag ON, M7A/Mapbox/scoring changes; raw snapshots unchanged |
+
+### DS4 motion — R1 Z/.000Z authority without string equality (2026-10-23, PR #2134 closeout)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `resolveR1ObdFsmPointAuthority`: drop `instant === bucketLabel` rejection; alignment + `R1_DEVICE_MEASUREMENT` only; BEFORE_AFTER_SUMMARY current report |
+| WHY | Same proven instant must accept `Z` and `.000Z`; bucket synthesis blocked via provenance not string compare |
+| VALIDATION | `r1-obd-fsm-point-authority.spec.ts` |
+
+### DS4 motion — hard-quarantine vs jitter + C1 path block + OBD provenance (2026-10-22, PR #2134 correction)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Leg gate V0_5: hard quarantine = absolute 400 + spike 1000 only; jitter ratio not quarantine; C1 restores all window slopes, skips pairs crossing blocked 1 s legs; FSM `frozenLegacySparsePointAuthority` for frozen baseline replay; R1 requires `R1_DEVICE_MEASUREMENT` provenance; bundle V4; restored `tiguan-20261019-c4-baseline.json` |
+| WHY | V0_4 relative jitter quarantine rejected plausible low-speed accel; global C1 adjacent-only broke leg-gate-off baseline; OBD authority needed explicit provenance |
+| VALIDATION | Jest leg-gate, tiguan hardening, r1 authority; `TRUE_BASELINE_COMPARISON.json` |
+| NON_EFFECTS | No deploy/flags/M7A |
+
+### DS4 motion — GPS C1 quarantine + leg backstop + OBD stop metadata (2026-10-22, PR #2134 gap fix)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `leg-consistency` V0_4: absolute 400 km/h 1 s leg backstop always; `detectImplausibleOneSecondLegStartLabels` blocks C1 chords; `robust-path-slope` adjacent-only slopes + `BLOCKED_LEG_CHAIN_IN_WINDOW`; C4 V0_4; FSM stop episodes ignore sparse without `sparseFsmPointAuthority`; R1 authority aligns measurement via `Date.parse` bucket window, rejects bucket label as instant; bundle `DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V3`; Tiguan integration tests moved to `motion-core-shadow-worker/__tests__` |
+| WHY | C1 bridged over quarantined teleports (481–2281 km/h); corrupted neighbour median waived 900 km/h; INTERVAL_ONLY OBD still counted as stop evidence; S4 dormant audit broken by core test importing `s4a-foundation` |
+| VALIDATION | Jest `motion-core-leg-gate`, `motion-core-tiguan-gps-obd-hardening` (shadow-worker), `r1-obd-fsm-point-authority`, `di-v0-s4a-dormant-audit`; `npm run build`; summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/BEFORE_AFTER_SUMMARY.json` |
+| NON_EFFECTS | No deploy/reprocessing/flags; M7A paused; frozen audit package unchanged |

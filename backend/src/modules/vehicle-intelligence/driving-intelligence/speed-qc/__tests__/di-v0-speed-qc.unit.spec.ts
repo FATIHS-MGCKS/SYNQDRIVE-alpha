@@ -19,15 +19,16 @@ describe('DI_V0_SPEED_QC_POLICY_V1 unit / edge cases', () => {
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.SUPPORT_WINDOW_COMPROMISED);
   });
 
-  it('R1 present but disagreeing → R1_DISAGREEMENT (not treated as corroboration)', () => {
+  it('R1 vehicle speed in input does not affect verdict (DS4 product boundary)', () => {
     const base = syntheticHighway130Input();
+    const withoutR1 = evaluateDiV0SpeedQcInterval(base);
     const v = evaluateDiV0SpeedQcInterval({
       ...base,
-      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 40 }],
+      r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 40, temporalConfidence: 'INTERVAL_ONLY' }],
     });
-    expect(v.trustLevel).toBe('UNTRUSTED');
-    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.R1_DISAGREEMENT);
-    expect(v.sourceCorroboration.r1IndependentWitness).toBe(false);
+    expect(v).toEqual(withoutR1);
+    expect(v.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.R1_DISAGREEMENT);
+    expect(v.sourceCorroboration.r1CorroboratesL3).toBe(false);
   });
 
   it('missing position triple → MISSING_POSITION_EVIDENCE', () => {

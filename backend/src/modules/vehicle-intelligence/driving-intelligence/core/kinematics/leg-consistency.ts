@@ -1,8 +1,10 @@
 import { haversineMeters } from '../geo/haversine';
+import { coordsEqual } from '../position/coord-key';
 import {
   availabilityByLabel,
   bucketLabelPlusSeconds,
   orderMotionCoreGrid,
+  parseBucketLabelMs,
   presentBucketMap,
   type MotionCorePositionBucket,
 } from './motion-core-grid';
@@ -11,7 +13,19 @@ import {
 export const MOTION_CORE_JITTER_RATIO = 1.5;
 export const MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH = 5.0;
 export const MOTION_CORE_OUTLIER_CHORD_DEVIATION_M = 8.0;
-export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_1_DEV';
+export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV';
+
+/**
+ * Absolute backstop for 1 s leg speed (hard quarantine only — not jitter suspicion).
+ * Not a legal speeding limit — catches teleports when local median is inflated by jumps.
+ */
+export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH = 400;
+/** Closed teleport signature (1 s chord); separate from jitter-ratio diagnostics. */
+export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH = 1000;
+export type MotionCoreLegGateOptions = {
+  /** When false, 1 s leg quarantine is disabled (baseline replay only). */
+  enabled?: boolean;
+};
 
 /**
  * Neighbour legs used for the local median in {@link detectTimingJitterSuspectLegs}.
@@ -182,6 +196,165 @@ export function detectPositionOutliers(
     }
   }
   return out;
+}
+
+/**
+ * Labels whose PRESENT coordinates participate in an implausible 1 s leg (both endpoints quarantined).
+ * Raw buckets are unchanged; kinematics must treat these labels as unavailable (see C4).
+ */
+/** Derived kinematics view: quarantined endpoints become ROW_ABSENT (raw snapshot unchanged). */
+function neighbourLegSpeedsKmh(
+  legStartLabel: string,
+  legs: Map<string, number>,
+): number[] {
+  const neigh: number[] = [];
+  for (const k of MOTION_CORE_JITTER_NEIGHBOUR_OFFSETS_S) {
+    const v = legs.get(bucketLabelPlusSeconds(legStartLabel, k));
+    if (v != null) {
+      neigh.push(v);
+    }
+  }
+  return neigh;
+}
+
+function buildOneSecondLegSpeedMap(buckets: MotionCorePositionBucket[]): Map<string, number> {
+  const ordered = orderMotionCoreGrid(buckets);
+  const legs = new Map<string, number>();
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1]!;
+    const b = ordered[i]!;
+    if (a.availability !== 'PRESENT' || b.availability !== 'PRESENT') continue;
+    if (a.latitude == null || a.longitude == null || b.latitude == null || b.longitude == null) continue;
+    const dtS = (parseBucketLabelMs(b.bucketLabelUtc) - parseBucketLabelMs(a.bucketLabelUtc)) / 1000;
+    if (dtS !== 1) continue;
+    legs.set(a.bucketLabelUtc, haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude) * 3.6 / dtS);
+  }
+  return legs;
+}
+
+/**
+ * Hard 1 s leg quarantine (endpoint rejection + C1 chord blocking).
+ * Jitter-ratio suspicion lives in {@link detectTimingJitterSuspectLegs} only — not quarantine.
+ */
+export function hardQuarantineOneSecondLegSpeedKmh(legSpeedKmh: number): boolean {
+  return (
+    legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH ||
+    legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH
+  );
+}
+
+/** @deprecated Use {@link hardQuarantineOneSecondLegSpeedKmh}; neighbour args ignored (hard quarantine only). */
+export function implausibleOneSecondLegSpeedKmh(
+  legSpeedKmh: number,
+  _neighbourLegSpeedsKmh: number[] = [],
+): boolean {
+  return hardQuarantineOneSecondLegSpeedKmh(legSpeedKmh);
+}
+
+/** Leg start labels whose 1 s chord is implausible (used to block C1 window bridging). */
+export function detectImplausibleOneSecondLegStartLabels(
+  buckets: MotionCorePositionBucket[],
+  options?: MotionCoreLegGateOptions,
+): Set<string> {
+  if (options?.enabled === false) {
+    return new Set();
+  }
+  const ordered = orderMotionCoreGrid(buckets);
+  const legs = buildOneSecondLegSpeedMap(buckets);
+  const blocked = new Set<string>();
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1]!;
+    const b = ordered[i]!;
+    if (a.availability !== 'PRESENT' || b.availability !== 'PRESENT') {
+      continue;
+    }
+    if (
+      a.latitude == null ||
+      a.longitude == null ||
+      b.latitude == null ||
+      b.longitude == null
+    ) {
+      continue;
+    }
+    const dtS = (parseBucketLabelMs(b.bucketLabelUtc) - parseBucketLabelMs(a.bucketLabelUtc)) / 1000;
+    if (dtS !== 1) {
+      continue;
+    }
+    const legStart = a.bucketLabelUtc;
+    const speedKmh = legs.get(legStart)!;
+    if (hardQuarantineOneSecondLegSpeedKmh(speedKmh)) {
+      blocked.add(legStart);
+    }
+  }
+  return blocked;
+}
+
+export function withImplausibleLegEndpointsQuarantined(
+  buckets: MotionCorePositionBucket[],
+  options?: MotionCoreLegGateOptions,
+): MotionCorePositionBucket[] {
+  const rejected = detectImplausibleOneSecondLegEndpointLabels(buckets, options);
+  if (rejected.size === 0) {
+    return buckets;
+  }
+  return buckets.map((b) =>
+    rejected.has(b.bucketLabelUtc)
+      ? { ...b, availability: 'ROW_ABSENT', latitude: null, longitude: null }
+      : b,
+  );
+}
+
+export function detectImplausibleOneSecondLegEndpointLabels(
+  buckets: MotionCorePositionBucket[],
+  options?: MotionCoreLegGateOptions,
+): Set<string> {
+  if (options?.enabled === false) {
+    return new Set();
+  }
+  const ordered = orderMotionCoreGrid(buckets);
+  const pm = presentBucketMap(ordered);
+  const legs = buildOneSecondLegSpeedMap(buckets);
+  const rejected = new Set<string>();
+  for (let i = 1; i < ordered.length; i++) {
+    const a = ordered[i - 1]!;
+    const b = ordered[i]!;
+    if (a.availability !== 'PRESENT' || b.availability !== 'PRESENT') {
+      continue;
+    }
+    if (
+      a.latitude == null ||
+      a.longitude == null ||
+      b.latitude == null ||
+      b.longitude == null
+    ) {
+      continue;
+    }
+    const dtS = (parseBucketLabelMs(b.bucketLabelUtc) - parseBucketLabelMs(a.bucketLabelUtc)) / 1000;
+    if (dtS !== 1) {
+      continue;
+    }
+    const legStart = a.bucketLabelUtc;
+    const speedKmh = legs.get(legStart)!;
+    if (!hardQuarantineOneSecondLegSpeedKmh(speedKmh)) {
+      continue;
+    }
+    const aPrev = pm.get(bucketLabelPlusSeconds(a.bucketLabelUtc, -1));
+    const legStartsAtStaleHold =
+      aPrev != null &&
+      aPrev.latitude != null &&
+      aPrev.longitude != null &&
+      coordsEqual(
+        { latitude: aPrev.latitude, longitude: aPrev.longitude },
+        { latitude: a.latitude, longitude: a.longitude },
+      );
+    if (legStartsAtStaleHold) {
+      rejected.add(b.bucketLabelUtc);
+    } else {
+      rejected.add(a.bucketLabelUtc);
+      rejected.add(b.bucketLabelUtc);
+    }
+  }
+  return rejected;
 }
 
 export function analyzeOneSecondLegs(buckets: MotionCorePositionBucket[]): OneSecondLegRecord[] {

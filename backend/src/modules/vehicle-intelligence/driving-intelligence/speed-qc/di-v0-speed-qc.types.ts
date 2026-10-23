@@ -5,6 +5,7 @@ import type {
   PositionState,
   SourceRelation,
   SpeedEvidenceState,
+  TemporalConfidence,
   ValueConfidence,
 } from '../core/types';
 import type { DiV0SpeedQcReasonCode } from './di-v0-speed-qc-reason-codes';
@@ -34,6 +35,7 @@ export interface DiV0SpeedQcPositionSample {
 export interface DiV0SpeedQcR1Sample {
   bucketLabel: string;
   speedKmh: number | null;
+  temporalConfidence: TemporalConfidence;
 }
 
 /** Shadow interval fields required for QC (S1 output / S2 row semantics unchanged). */

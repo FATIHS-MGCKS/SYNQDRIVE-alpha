@@ -1,5 +1,11 @@
 import { coordsEqual } from '../position/coord-key';
-import { detectPositionOutliers, detectTimingJitterSuspectLegs } from './leg-consistency';
+import {
+  detectImplausibleOneSecondLegEndpointLabels,
+  detectImplausibleOneSecondLegStartLabels,
+  detectPositionOutliers,
+  detectTimingJitterSuspectLegs,
+  type MotionCoreLegGateOptions,
+} from './leg-consistency';
 import { replayFrozenL3OnGrid } from './frozen-l3-replay';
 import {
   bucketLabelPlusSeconds,
@@ -10,7 +16,7 @@ import {
 import { robustPathSlopeC1 } from './robust-path-slope';
 import type { MotionCoreSpeedSample } from './speed-sample.types';
 
-export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_1_DEV';
+export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_5_DEV';
 
 function sampleMap(samples: MotionCoreSpeedSample[]): Map<string, MotionCoreSpeedSample> {
   return new Map(samples.map((s) => [s.label, s]));
@@ -21,10 +27,15 @@ function sampleMap(samples: MotionCoreSpeedSample[]): Map<string, MotionCoreSpee
  * carries the timing-jitter spike signature; otherwise C1 robust path slope fallback.
  * Unchanged L3-direct paths reuse the replayed production L3 numeric value (no duplicate haversine).
  */
-export function computeC4AdaptiveL3(buckets: MotionCorePositionBucket[]): MotionCoreSpeedSample[] {
+export function computeC4AdaptiveL3(
+  buckets: MotionCorePositionBucket[],
+  legGate?: MotionCoreLegGateOptions,
+): MotionCoreSpeedSample[] {
   const ordered = orderMotionCoreGrid(buckets);
   const outliers = detectPositionOutliers(ordered);
-  const rejected = new Set([...outliers.keys()]);
+  const implausibleLeg = detectImplausibleOneSecondLegEndpointLabels(ordered, legGate);
+  const blockedLegStarts = detectImplausibleOneSecondLegStartLabels(ordered, legGate);
+  const rejected = new Set([...outliers.keys(), ...implausibleLeg]);
   const pm = presentBucketMap(ordered);
   for (const lab of rejected) {
     pm.delete(lab);
@@ -33,20 +44,28 @@ export function computeC4AdaptiveL3(buckets: MotionCorePositionBucket[]): Motion
   const l3ByLabel = new Map(
     replayFrozenL3OnGrid(ordered).map((r) => [r.bucketLabelUtc, r]),
   );
-  const c1 = sampleMap(robustPathSlopeC1(ordered, { rejectedLabels: rejected }));
+  const c1 = sampleMap(
+    robustPathSlopeC1(ordered, { rejectedLabels: rejected, blockedLegStartLabels: blockedLegStarts }),
+  );
   const out: MotionCoreSpeedSample[] = [];
 
   for (const b of ordered) {
     const lab = b.bucketLabelUtc;
     if (rejected.has(lab)) {
-      const detail = outliers.get(lab)!;
+      const flags: string[] = [];
+      if (implausibleLeg.has(lab)) {
+        flags.push('IMPLAUSIBLE_1S_LEG_ENDPOINT_UNCERTAIN');
+      }
+      if (outliers.has(lab)) {
+        flags.push('POSITION_OUTLIER_CHORD_DEVIATION', JSON.stringify(outliers.get(lab)));
+      }
       out.push({
         label: lab,
         valueKmh: null,
         quality: 'OUTLIER_REJECTED',
         supportLabels: [lab],
         supportSpanS: null,
-        flags: ['POSITION_OUTLIER_CHORD_DEVIATION', JSON.stringify(detail)],
+        flags,
         estimator: MOTION_CORE_SPEED_C4_VERSION,
       });
       continue;

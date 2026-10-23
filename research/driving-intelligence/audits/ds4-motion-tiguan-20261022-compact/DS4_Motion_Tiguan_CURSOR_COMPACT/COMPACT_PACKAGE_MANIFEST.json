@@ -1,0 +1,28 @@
+{
+  "schema": "SYNQDRIVE_DS4_CURSOR_COMPACT_V1",
+  "archive_limit_bytes": 2000000,
+  "source_archive_sha256": "25cbddafeb13e83164803674d05c9c23845c775e1ecf4da010ddf7ea8a5f4bf7",
+  "removed_only_for_size_or_compact_entrypoint": [
+    "DS4_Motion_Tiguan_Intensivpruefung.html",
+    "PACKAGE_SHA256.json",
+    "README.md",
+    "analysis/motion_fsm_audit.png",
+    "analysis/motion_speed_audit.png",
+    "build_report.py",
+    "frames/TC_00080_166.png",
+    "frames/TC_00081_066.png",
+    "frames/TC_00084_100.png",
+    "plots.py",
+    "run_audit.sh"
+  ],
+  "preserved": [
+    "input evidence bytes",
+    "reference CSV files",
+    "replay source",
+    "numeric results",
+    "research candidates",
+    "all text report tables"
+  ],
+  "runtime_changes_in_repository": false,
+  "prompt": "CURSOR_PROMPT.md"
+}

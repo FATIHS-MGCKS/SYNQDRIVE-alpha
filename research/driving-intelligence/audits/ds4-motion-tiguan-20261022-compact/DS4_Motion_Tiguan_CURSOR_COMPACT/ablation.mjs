@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { runMotionFsm, extractMotionFsmStopEpisodes, MOTION_FSM_PARAMS_V0_2_DEV, MOTION_FSM_V0_3_CANDIDATE_OPTIONS } from './backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm.ts';
+const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url),'utf8'));
+const base=read('./analysis/baseline_replay.json');
+const candidate=read('./analysis/candidate_experiment.json').candidate;
+const persisted=read('./evaluation/snapshots/di_v0_motion_core_shadow_payload.json');
+const grid=read('./evaluation/snapshots/position_grid_verified.json');
+const samples=persisted.contract.sparse.samples;
+assert(samples.every(s=>s.measurementTimeUtc===null&&s.arrivalTimestampUtc===null));
+const run=(g,s)=>runMotionFsm(g,s,'RETROSPECTIVE',null,MOTION_FSM_PARAMS_V0_2_DEV,MOTION_FSM_V0_3_CANDIDATE_OPTIONS);
+const variants={B_unattested_sparse_not_point_authority:run(grid,base.c4),AB_leg_quarantine_and_temporal_gate:run(candidate.grid,candidate.c4)};
+const report={status:'RESEARCH_ABLATION_NOT_RUNTIME_INTEGRATED',reason:'All 560 sparse samples carry aggregation labels only; provider measurement and arrival timestamps are null. No clock shift inferred.',unattestedSamples:samples.length,variants:Object.fromEntries(Object.entries(variants).map(([key,fsm])=>[key,{fsm,stops:extractMotionFsmStopEpisodes(0,fsm,'RETROSPECTIVE'),changedStatesVsPersisted:fsm.filter((s,i)=>s.state!==persisted.fsmLabels[i].state).length}]))};
+fs.writeFileSync(new URL('./analysis/temporal_ablation.json',import.meta.url),JSON.stringify(report,null,2));
+console.log(Object.fromEntries(Object.entries(report.variants).map(([k,v])=>[k,{labels:v.fsm.length,stops:v.stops.length,changedStates:v.changedStatesVsPersisted}])));

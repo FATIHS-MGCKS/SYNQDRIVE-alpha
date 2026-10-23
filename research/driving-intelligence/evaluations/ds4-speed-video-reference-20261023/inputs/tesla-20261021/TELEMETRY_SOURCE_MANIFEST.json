@@ -1,0 +1,59 @@
+{
+  "schema": "EXP021_PHASE5C_TELEMETRY_SOURCE_MANIFEST_V1",
+  "exportedAtUtc": "2026-10-21T13:44:19.510002+00:00",
+  "productionAccess": "READ_ONLY_VPS_POSTGRES",
+  "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+  "dimoTokenId": 186946,
+  "licensePlate": "KS FH 660E",
+  "hardwareType": "LTE_R1",
+  "sourceFamily": "API_SYNTHETIC",
+  "nativePositionChannel": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+  "trips": [
+    {
+      "replayKey": "TRIP_1",
+      "videoTrip": 1,
+      "backendTripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+      "dimoSegmentId": "dimo-seg-186946-1792583880000",
+      "s4SnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+      "evidenceGzipSha256": "4c6c95e0c0230cc5a38b59d31644f10bc95bb7047a67dfc080244d1743475e5a",
+      "shadowIntervalCount": 533,
+      "shadowJsonlSha256": "12c35e1cb190819bafbbed83ca601d2143cd15bb9d23ac0124d7a7325692e276",
+      "legacyVehicleTripWaypoints": 33,
+      "legacyVehiclePositionUpdatesInWindow": 0,
+      "shadowPositionStateCounts": {
+        "ROW_ABSENT": 368,
+        "FRESH": 165
+      },
+      "shadowMotionStateCounts": {
+        "NO_MOTION_EVIDENCE": 450,
+        "STATIONARY_SUPPORTED": 7,
+        "TRANSITION_UNCERTAIN": 9,
+        "MOVING_SPEED_ESTIMATED": 67
+      },
+      "osmSnapshot": "telemetry/osm/TRIP_1_OSM_FROZEN_SNAPSHOT.json"
+    },
+    {
+      "replayKey": "TRIP_2",
+      "videoTrip": 2,
+      "backendTripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+      "dimoSegmentId": "dimo-seg-186946-1792584900000",
+      "s4SnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+      "evidenceGzipSha256": "508450980f979e13135d18164ef094cff431b5e87642716486e606cdbf831dbe",
+      "shadowIntervalCount": 535,
+      "shadowJsonlSha256": "1cc4ac6fd6aeae03a136e62658c7fc802cae693509095f8c6b3fa559ea4e9361",
+      "legacyVehicleTripWaypoints": 34,
+      "legacyVehiclePositionUpdatesInWindow": 0,
+      "shadowPositionStateCounts": {
+        "ROW_ABSENT": 338,
+        "FRESH": 197
+      },
+      "shadowMotionStateCounts": {
+        "NO_MOTION_EVIDENCE": 357,
+        "TRANSITION_UNCERTAIN": 4,
+        "MOVING_SPEED_ESTIMATED": 171,
+        "STATIONARY_SUPPORTED": 3
+      },
+      "osmSnapshot": "telemetry/osm/TRIP_2_OSM_FROZEN_SNAPSHOT.json"
+    }
+  ]
+}

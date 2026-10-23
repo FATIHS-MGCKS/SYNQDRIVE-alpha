@@ -1,0 +1,134 @@
+{
+  "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+  "code_ref": "dea2555bb746550c632f4315dabe08b9481be0df",
+  "evaluation_ref": "36cbd9825364081ad389795c29e98420e74d0292",
+  "evaluation_pr": 2133,
+  "scope": "READONLY_REPO_OFFLINE_REPLAY_RESEARCH_CANDIDATES",
+  "sources": [
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/c4-adaptive-l3.ts",
+      "git_blob_sha": "143e969025cbab80d5ace9b2732a90831714a11f",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/c4-adaptive-l3.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/c4-time-semantics.ts",
+      "git_blob_sha": "2b661b78c3d025b1e605dd408eb3ccb2db65ec5d",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/c4-time-semantics.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/frozen-l3-replay.ts",
+      "git_blob_sha": "071ec5bcb2b00a1f3a55573eae0fc54cb64b6455",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/frozen-l3-replay.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/l3-eligibility.ts",
+      "git_blob_sha": "110bc58f02c99aa73660c33a62ec3f333dea8e28",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/l3-eligibility.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/leg-consistency.ts",
+      "git_blob_sha": "a5507761d0d26bef82ff2155fd7ddd313a4fad4e",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/leg-consistency.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-core-grid.ts",
+      "git_blob_sha": "97e8dfe4a980b0bea04b54ebd126487f69d864d4",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-core-grid.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-evaluation.ts",
+      "git_blob_sha": "087a1ac30529f45fd9a6b922129e3f8bc131304a",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-evaluation.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-detector.ts",
+      "git_blob_sha": "2fd7bda70ac0e641bf33bcb40ccf13cb2b1a9d6e",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-detector.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event.types.ts",
+      "git_blob_sha": "121bfe274072a9781bc61823b914a106d1554d95",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event.types.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm-zero-run-eval.ts",
+      "git_blob_sha": "89ecbb93b9066017dccf2457fff105157eae1aef",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm-zero-run-eval.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm.ts",
+      "git_blob_sha": "d671315be3ec01381687aea36acfb04300146539",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-fsm.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/robust-path-slope.ts",
+      "git_blob_sha": "84498d10d50aeded093f1e535c4bedd950f47090",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/robust-path-slope.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/shadow-gating-reconciliation.ts",
+      "git_blob_sha": "53870d9cc42a85ab3b42ab54281382c8642f844c",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/shadow-gating-reconciliation.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/speed-sample.types.ts",
+      "git_blob_sha": "da737df568fa904a86fc3074d66b8a8b243e813a",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/speed-sample.types.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/types.ts",
+      "git_blob_sha": "01052e412de6eb2af06918e01db40c227fac0a3f",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/types.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/versions.ts",
+      "git_blob_sha": "cad046d8937fed71792b1ea05789c6fd10c79993",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/versions.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/geo/haversine.ts",
+      "git_blob_sha": "7503620e1ef151349ebcccf7c97f8de61f4e725c",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/geo/haversine.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/position/coord-key.ts",
+      "git_blob_sha": "06e075d61e455ea2802f45896f0376e0251efbdf",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/position/coord-key.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/position/hold-release.ts",
+      "git_blob_sha": "62fb1de743ca371647dceafe28553b688ef9ae55",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/position/hold-release.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/calibration/CALIBRATION_UNSET_V0.ts",
+      "git_blob_sha": "a3b062835089cc7e1cfa40c33783dd13fb417106",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/calibration/CALIBRATION_UNSET_V0.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/calibration/types.ts",
+      "git_blob_sha": "cf8084b539d883a840e7fe86a2e9b6f0719689dd",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/calibration/types.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/grid/densify-grid.ts",
+      "git_blob_sha": "2a016373b28848d3ee12d56300c16a69dd09c653",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/grid/densify-grid.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/motion-core-step2.spec.ts",
+      "git_blob_sha": "8b1a48524990853315746b2feea4417a150e9c6f",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/motion-core-step2.spec.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/motion-core-review-robustness.spec.ts",
+      "git_blob_sha": "14c74369e193aae9be1ba312fe8e7fab757bc235",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/motion-core-review-robustness.spec.ts"
+    },
+    {
+      "path": "backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-evidence.adapter.ts",
+      "git_blob_sha": "7d3cb85463dc999d74fdff5f5e23ce27c55dff42",
+      "url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/blob/dea2555bb746550c632f4315dabe08b9481be0df/backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-evidence.adapter.ts"
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "schema": "DS4_SPEED_VIDEO_REFERENCE_INPUT_MANIFEST_V1",
+  "generatedAtUtc": "2026-10-23T08:52:43.974Z",
+  "note": "Identical input set for both replay tags (main, pr2134). Paths relative to repository root. No video files are included; reference tables are the sealed 1 Hz transcriptions from the prior evaluations.",
+  "videosInRepository": false,
+  "inputs": [
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/TIGUAN_2026-10-22_1Hz.csv",
+      "sha256": "9c8933c223e58706d1cc1ce82fe8c623e2429d3bd1f4f570e10353f9f3b9aaa2",
+      "bytes": 191132
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_shadow_intervals.csv",
+      "sha256": "e28f5d38d0e1ffc39edd3f6a88ac5c633b5884d70f5d0646b3ba2cff6ea70c77",
+      "bytes": 331603
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_motion_core_shadow_payload.json",
+      "sha256": "fca7baef63b3ef84e2cd0f1f44f08f0b6ced2294738ba65a5a1b74eca99f7c8a",
+      "bytes": 875907
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_motion_core_shadow_run_meta.json",
+      "sha256": "451eaaf76886e56e596f8a314ab6b7c61bd58751b4bfb4bc1d4ab7a209590e9d",
+      "bytes": 1503
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_shadow_run.json",
+      "sha256": "d183748a29e882366df5011defa3e743b4c9b55c57a648ced18b9715d070a8d4",
+      "bytes": 991
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/manifest.json",
+      "sha256": "e20d6f735e0b82611fb8a5db01c2ee6fba29b3a22b8c4a7d08728533911350e4",
+      "bytes": 5795
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/PROVENANCE_MANIFEST.json",
+      "sha256": "0d27b311d765f9f93f46d4c3a49afe2070df859c3e18ea94f672f0b317778f6a",
+      "bytes": 3236
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_s4_evidence_container.bin",
+      "sha256": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "bytes": 886052
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/JOINED_REFERENCE_TABLE.csv",
+      "sha256": "dfa4ccd3aec1f1e3065c2c3307ba609a3278afbdf534c303ca279fd17d336ce6",
+      "bytes": 145974
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/shadow/TRIP_1_shadow_intervals.jsonl",
+      "sha256": "12c35e1cb190819bafbbed83ca601d2143cd15bb9d23ac0124d7a7325692e276",
+      "bytes": 267568
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/s4_evidence/TRIP_1_evidence_payload.gz",
+      "sha256": "4c6c95e0c0230cc5a38b59d31644f10bc95bb7047a67dfc080244d1743475e5a",
+      "bytes": 3352
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/JOINED_REFERENCE_TABLE.csv",
+      "sha256": "dfa4ccd3aec1f1e3065c2c3307ba609a3278afbdf534c303ca279fd17d336ce6",
+      "bytes": 145974
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/shadow/TRIP_2_shadow_intervals.jsonl",
+      "sha256": "1cc4ac6fd6aeae03a136e62658c7fc802cae693509095f8c6b3fa559ea4e9361",
+      "bytes": 270438
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/s4_evidence/TRIP_2_evidence_payload.gz",
+      "sha256": "508450980f979e13135d18164ef094cff431b5e87642716486e606cdbf831dbe",
+      "bytes": 3551
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/VIDEO_TACHO_REFERENCE.json",
+      "sha256": "4fa007f94284f31d962d7f8c33cc870e99d9dd992025da9a38ca0c135af1689f",
+      "bytes": 307735
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/TESLA_POSITION_GRID.json",
+      "sha256": "5e198ee9b48a2af223423f1f0086989ff36fa31ff072235e3fc421f4310090b4",
+      "bytes": 575801
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/POSITION_CHANNEL_SNAPSHOT_V0_1.txt",
+      "sha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2",
+      "bytes": 85192
+    }
+  ],
+  "drives": [
+    {
+      "id": "TIG22",
+      "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "sourceFamily": "RUPTELA_R1",
+      "limitations": [
+        "SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN"
+      ],
+      "referenceWindowUtc": [
+        "2026-10-22T18:38:34Z",
+        "2026-10-22T19:03:02Z"
+      ],
+      "gridWindowUtc": [
+        "2026-10-22T18:30:00Z",
+        "2026-10-22T19:04:53Z"
+      ]
+    },
+    {
+      "id": "TES21-1",
+      "tripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+      "sourceFamily": "API_SYNTHETIC",
+      "limitations": [
+        "SPARSE_VEHICLE_SPEED_UNAVAILABLE_IN_PINNED_SNAPSHOT"
+      ],
+      "referenceWindowUtc": [
+        "2026-10-21T12:03:06Z",
+        "2026-10-21T12:07:05Z"
+      ],
+      "gridWindowUtc": [
+        "2026-10-21T11:58:00Z",
+        "2026-10-21T12:06:52Z"
+      ]
+    },
+    {
+      "id": "TES21-2",
+      "tripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+      "sourceFamily": "API_SYNTHETIC",
+      "limitations": [
+        "SPARSE_VEHICLE_SPEED_UNAVAILABLE_IN_PINNED_SNAPSHOT"
+      ],
+      "referenceWindowUtc": [
+        "2026-10-21T12:19:59Z",
+        "2026-10-21T12:24:11Z"
+      ],
+      "gridWindowUtc": [
+        "2026-10-21T12:15:00Z",
+        "2026-10-21T12:23:54Z"
+      ]
+    },
+    {
+      "id": "TES16",
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+      "sourceFamily": "API_SYNTHETIC",
+      "limitations": [
+        "NO_R1_OBD_CHANNEL",
+        "DI_V0_REPLAY_FROM_POSITION_SNAPSHOT_FIXTURE"
+      ],
+      "referenceWindowUtc": [
+        "2026-10-16T03:36:00Z",
+        "2026-10-16T03:54:55Z"
+      ],
+      "gridWindowUtc": [
+        "2026-10-16T03:36:00Z",
+        "2026-10-16T03:54:55Z"
+      ]
+    }
+  ]
+}

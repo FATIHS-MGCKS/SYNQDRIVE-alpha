@@ -24,6 +24,7 @@ import type {
   DiV0SpeedQcPositionSample,
   DiV0SpeedQcTrustLevel,
 } from './di-v0-speed-qc.types';
+import { r1ObdVehicleSpeedForSpeedQcVerdict } from '../r1-obd-acquisition/di-v0-r1-vehicle-speed-ds4-boundary';
 
 const SUPPORT_COMPROMISED_FLAGS = new Set([
   'L3_SUPPORT_CROSSES_GAP',
@@ -148,7 +149,8 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
   }
   const posMap = positionIndex.byLabel;
 
-  const r1Index = buildDiV0SpeedQcR1Index(input.r1Obd);
+  const r1ObdForVerdict = r1ObdVehicleSpeedForSpeedQcVerdict(input.r1Obd);
+  const r1Index = buildDiV0SpeedQcR1Index(r1ObdForVerdict);
   if (!r1Index.ok) {
     return untrusted([DI_V0_SPEED_QC_REASON.DUPLICATE_R1_BUCKET_LABEL], basePartial());
   }

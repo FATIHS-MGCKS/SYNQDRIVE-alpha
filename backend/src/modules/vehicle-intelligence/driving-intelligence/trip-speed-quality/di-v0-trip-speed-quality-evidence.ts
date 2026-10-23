@@ -50,7 +50,11 @@ export function buildDiV0TripSpeedQualityEvidenceFromParsedContainer(
   if (r1Entry?.formatVersion === DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3 && parsed.channelPayloads.R1_OBD) {
     const observations = diV0R1SnapshotToS1Observations(parseDiV0R1ObdSnapshot(parsed.channelPayloads.R1_OBD));
     for (const obs of observations) {
-      r1Obd.push({ bucketLabel: obs.bucketLabel, speedKmh: obs.speedKmh ?? null });
+      r1Obd.push({
+        bucketLabel: obs.bucketLabel,
+        speedKmh: obs.speedKmh ?? null,
+        temporalConfidence: obs.temporalConfidence,
+      });
     }
   } else if (r1Entry?.payloadSha256 != null) {
     throw new Error('R1_OBD channel pinned but payload missing or unsupported format');

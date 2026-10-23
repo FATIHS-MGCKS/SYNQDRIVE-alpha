@@ -1,0 +1,91 @@
+{
+  "reportStatus": "current",
+  "measuredAtUtc": "2026-10-23T00:15:00.000Z",
+  "productHead": "fcd005d67fadfbae25e453767c54869453faf101",
+  "evidenceReportHead": "9bc5cbfbaee5c9dca88884b6ec92666373e01f42",
+  "trueBaselineGit": "dea2555bb746550c632f4315dabe08b9481be0df",
+  "algorithmVersions": {
+    "leg": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+    "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+    "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V4"
+  },
+  "authoritativeComparison": {
+    "frozenTrueBaseline": {
+      "description": "Tiguan 22 Oct replay without 1 s leg quarantine (dea2555bb parity)",
+      "events": 21,
+      "numericC4": 1916,
+      "legGateEnabled": false
+    },
+    "hardenedCombinedProduct": {
+      "description": "Leg gate + OBD point authority on pinned evidence (processor path)",
+      "events": 20,
+      "numericC4": 1908,
+      "stops": 11,
+      "legGateEnabled": true
+    },
+    "eventDelta": {
+      "removedCount": 1,
+      "removedKind": "ACCELERATION",
+      "removedWindowUtc": "2026-10-22T18:49:12Z–2026-10-22T18:49:18Z",
+      "reason": "False acceleration from GPS jump C4; jump second OUTLIER_REJECTED",
+      "post1904UtcAdditionalLoss": false,
+      "remainingTwentyEventsIdenticalToFrozenExceptJumpFix": true
+    },
+    "c4Delta": {
+      "numericLabelsRemoved": 8,
+      "reason": "Quarantined endpoints at 18:49:18Z jump"
+    },
+    "jumpSecond": {
+      "label": "2026-10-22T18:49:18Z",
+      "frozenValueKmh": 1930.8268990688694,
+      "hardenedValueKmh": null,
+      "hardenedQuality": "OUTLIER_REJECTED"
+    }
+  },
+  "videoReferenceCreepSeconds": {
+    "sourceCsv": "research/driving-intelligence/audits/ds4-motion-tiguan-20261022-compact/DS4_Motion_Tiguan_CURSOR_COMPACT/evaluation/reference/TIGUAN_2026-10-22_1Hz.csv",
+    "field": "speed_display_kmh",
+    "seconds": [
+      { "label": "2026-10-22T18:44:07Z", "videoDisplayKmh": 4 },
+      { "label": "2026-10-22T18:44:08Z", "videoDisplayKmh": 5 },
+      { "label": "2026-10-22T18:44:09Z", "videoDisplayKmh": 2 },
+      { "label": "2026-10-22T18:58:52Z", "videoDisplayKmh": 1 },
+      { "label": "2026-10-22T19:00:04Z", "videoDisplayKmh": 1 },
+      { "label": "2026-10-22T19:02:57Z", "videoDisplayKmh": 1 }
+    ],
+    "note": "Video tacho display reference; not OBD sparse speed"
+  },
+  "processorPath": {
+    "bundleVersion": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V4",
+    "eventAcceptedCount": 20,
+    "stopEpisodeCount": 11,
+    "limitations": [
+      "SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN",
+      "SPARSE_R1_BUCKET_ONLY_NO_FSM_POINT_AUTHORITY"
+    ]
+  },
+  "validation": {
+    "jest": [
+      "motion-core-leg-gate.spec.ts",
+      "motion-core-tiguan-gps-obd-hardening.spec.ts",
+      "r1-obd-fsm-point-authority.spec.ts",
+      "di-v0-s4a-dormant-audit.spec.ts"
+    ],
+    "build": "npm run build (backend)"
+  },
+  "historicalArchive": {
+    "label": "V0_4_gap_fix_intermediate (superseded — do not use for merge decisions)",
+    "priorHead": "271976e7a8e29bcc8f5ef16b2251f45eae19526d",
+    "productHead": "e68c8aff4706e5dcbe7368f5ea6cc4fb9659eb89",
+    "algorithmVersions": {
+      "leg": "MOTION_CORE_LEG_CONSISTENCY_V0_4_DEV",
+      "c4": "MOTION_CORE_SPEED_C4_V0_4_DEV"
+    },
+    "processorPath": {
+      "bundleVersion": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V3",
+      "eventAcceptedCount": 16,
+      "stopEpisodeCount": 12
+    },
+    "note": "Included relative jitter quarantine and global C1 adjacent-only; creepSeconds used sparseRefKmh not video CSV"
+  }
+}
