@@ -1,0 +1,12 @@
+{
+  "evaluationId": "ds4-fsm-retrospective-gap-bridge-research-20261023",
+  "inputBundle": {
+    "path": "../ds4-speed-video-reference-20261023/inputs",
+    "manifest": "../ds4-speed-video-reference-20261023/INPUT_MANIFEST.json"
+  },
+  "drives": ["TIG22", "TES16", "TES21-1", "TES21-2"],
+  "evidence": [
+    "research/driving-intelligence/evaluations/ds4-tig22-deep-validation-20261023/ (PR #2148)",
+    "Fable independent TIG22 review 2026-10-23"
+  ]
+}
