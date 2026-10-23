@@ -8,7 +8,7 @@ import { presentObs } from '../../core/__tests__/test-helpers';
 import { DI_V0_SPEED_QC_POLICY_V2 } from '../di-v0-speed-qc-policy.version';
 import { DI_V0_SPEED_QC_REASON } from '../di-v0-speed-qc-reason-codes';
 import { evaluateDiV0SpeedQcInterval } from '../evaluate-di-v0-speed-qc-interval';
-import type { DiV0SpeedQcPositionSample } from '../di-v0-speed-qc.types';
+import type { DiV0SpeedQcPositionSample, DiV0SpeedQcR1Sample } from '../di-v0-speed-qc.types';
 import { pilotHoldThenRelease303m } from '../../core/__tests__/fixtures/wob-pilot-golden.fixture';
 import { signalNullObs } from '../../core/__tests__/test-helpers';
 import { buildDiV0TripSpeedQualityProjectionV1 } from '../../trip-speed-quality/build-di-v0-trip-speed-quality-projection.v1';
@@ -32,7 +32,7 @@ function positionsForQc(observations: ReturnType<typeof presentObs>[]): DiV0Spee
 function qcFromS1Interval(
   interval: ReturnType<typeof computeDiV0TripIntervals>['intervals'][number],
   qcPositions: DiV0SpeedQcPositionSample[],
-  r1Obd: { bucketLabel: string; speedKmh: number }[] = [],
+  r1Obd: DiV0SpeedQcR1Sample[] = [],
 ) {
   return evaluateDiV0SpeedQcInterval({
     centerBucketLabel: interval.referenceTime,
