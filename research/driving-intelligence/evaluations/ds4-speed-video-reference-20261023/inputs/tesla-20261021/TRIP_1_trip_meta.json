@@ -1,0 +1,180 @@
+{
+  "key": "TRIP_1",
+  "tripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+  "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+  "videoTrip": 1,
+  "snapshot": {
+    "id": "8a27bf8e-ea17-46a0-bda0-b5f999d50cc5",
+    "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+    "payloadBytes": 3352,
+    "uncompressedBytes": 40588,
+    "acquisitionWindowStart": "2026-10-21T11:58:00.000Z",
+    "acquisitionWindowEnd": "2026-10-21T12:06:53.000Z",
+    "channelManifest": [
+      {
+        "channel": "NATIVE_EVENT",
+        "outcome": "DISABLED",
+        "reasonCode": "FLAG_OFF",
+        "formatVersion": null,
+        "payloadSha256": null,
+        "attestationRef": null,
+        "channelEvidenceHash": null
+      },
+      {
+        "channel": "POSITION",
+        "outcome": "PRESENT",
+        "reasonCode": null,
+        "formatVersion": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+        "payloadSha256": "9111c4e4b483f0cd23ce2d3298d1b2300c7f84a91b0b97d9bbfdb147fd46cc4f",
+        "attestationRef": null,
+        "channelEvidenceHash": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:9111c4e4b483f0cd23ce2d3298d1b2300c7f84a91b0b97d9bbfdb147fd46cc4f"
+      },
+      {
+        "channel": "R1_OBD",
+        "outcome": "NOT_APPLICABLE",
+        "reasonCode": "SOURCE_FAMILY",
+        "formatVersion": null,
+        "payloadSha256": null,
+        "attestationRef": null,
+        "channelEvidenceHash": null
+      }
+    ],
+    "payloadGzipSha256": "4c6c95e0c0230cc5a38b59d31644f10bc95bb7047a67dfc080244d1743475e5a",
+    "uncompressedSha256": "03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+    "createdAt": "2026-10-21T12:40:24.254Z"
+  },
+  "trip": {
+    "id": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+    "start_time": "2026-10-21T11:58:00.000Z",
+    "end_time": "2026-10-21T12:06:52.103Z",
+    "trip_status": "COMPLETED",
+    "start_detection_mode": "FREQUENCY_FALLBACK",
+    "end_detection_mode": "COMPOSITE_INACTIVITY",
+    "dimo_segment_id": "dimo-seg-186946-1792583880000",
+    "distance_km": 1.4,
+    "duration_minutes": 8.868383333333334,
+    "raw_detection_meta": {
+      "startEvSoc": 93.78181818181818,
+      "endConfidence": "LOW",
+      "endTimeSource": "persisted_route_movement",
+      "endValidation": {
+        "resumeCheckOutcome": "NO_RESUME_EVIDENCE",
+        "completedAttemptCount": 3,
+        "endCandidateClockSource": "PROVIDER_EVENT_TIME",
+        "maxAttemptFallbackReason": "max_completed_cusum_attempts"
+      },
+      "possibleEndAt": "2026-10-21T12:06:35.103Z",
+      "lastActivityAt": "2026-10-21T12:16:25.377Z",
+      "startFuelLevel": null,
+      "cusumSegmentEnd": null,
+      "endRecognizedAt": "2026-10-21T12:19:34.414Z",
+      "possibleStartAt": "2026-10-21T11:58:00.000Z",
+      "startConfidence": "MEDIUM",
+      "startOdometerKm": 180072.6795529929,
+      "cusumValidatedAt": null,
+      "detectionProfile": "EV",
+      "endDetectionMode": "COMPOSITE_INACTIVITY",
+      "startCandidateAt": "2026-10-21T12:03:36.718Z",
+      "tripFsmForensics": {
+        "end": {
+          "confidence": "LOW",
+          "candidateAt": "2026-10-21T12:06:35.103Z",
+          "recognizedAt": "2026-10-21T12:19:34.414Z",
+          "detectionMode": "COMPOSITE_INACTIVITY",
+          "boundarySource": "persisted_route_movement",
+          "candidateClock": "EVENT_TIME",
+          "recognizedClock": "WORKER_TIME",
+          "candidateEnteredAt": "2026-10-21T12:16:55.733Z",
+          "canonicalBoundaryAt": "2026-10-21T12:06:52.103Z",
+          "boundaryAdjustmentMs": 17000,
+          "candidateClockSource": "PROVIDER_EVENT_TIME",
+          "candidateEnteredClock": "WORKER_TIME",
+          "canonicalBoundaryClock": "EVENT_TIME"
+        },
+        "start": {
+          "candidateAt": "2026-10-21T12:03:36.718Z",
+          "evidencePath": "DIMO_PLUS_CLICKHOUSE",
+          "recognizedAt": "2026-10-21T12:04:10.943Z",
+          "boundarySource": "DIMO_SEGMENT",
+          "candidateClock": "EVENT_TIME",
+          "recognizedClock": "WORKER_TIME",
+          "candidateEnteredAt": "2026-10-21T12:03:39.399Z",
+          "canonicalBoundaryAt": "2026-10-21T11:58:00.000Z",
+          "boundaryAdjustmentMs": -336718,
+          "candidateClockSource": "PROVIDER_EVENT_TIME",
+          "tripCanonicalStartAt": null,
+          "candidateEnteredClock": "WORKER_TIME",
+          "canonicalBoundaryClock": "EVENT_TIME"
+        },
+        "version": "R8_V1"
+      },
+      "cusumSegmentStart": null,
+      "lifecycleRecovery": {
+        "startEpisode": {
+          "type": "start_episode",
+          "version": "r2a-v1",
+          "episodeId": "68868291-5478-42cd-b0c4-cc77b2a78e21:1792584216718",
+          "dimoSegmentId": "dimo-seg-186946-1792583880000",
+          "candidateStartAt": "2026-10-21T12:03:36.718Z",
+          "effectiveStartAt": "2026-10-21T11:58:00.000Z"
+        }
+      },
+      "startEvidencePath": "DIMO_PLUS_CLICKHOUSE",
+      "startDetectionMode": "FREQUENCY_FALLBACK",
+      "endCoordinateSource": "WAYPOINT_AT_OR_BEFORE_BOUNDARY",
+      "startBoundarySource": "DIMO_SEGMENT",
+      "endValidationAttempts": 3,
+      "diV0BoundaryAdmissionV1": {
+        "releasedBy": "RECONCILIATION",
+        "revisionKey": "DI_V0_S4_BOUNDARY_FP_V1:sha256:7bdd58a92fa59b64296ad769a771aaca44abbb213f542cd0fc501ea46c8d22bc",
+        "releasedAtUtc": "2026-10-21T12:35:24.972Z",
+        "contractVersion": 1
+      },
+      "endCoordinateObservedAt": "2026-10-21T12:06:52.103Z",
+      "startBoundaryAdjustedMs": -336718,
+      "lastMeaningfulMovementAt": "2026-10-21T12:06:35.103Z"
+    }
+  },
+  "legacy": {
+    "vehicleTripWaypointCount": 33,
+    "vehiclePositionUpdatesInTripWindow": 0
+  },
+  "shadow": {
+    "workItem": {
+      "id": "87fb3238-f8fb-40d6-b409-e64eb72bc6be",
+      "shadow_run_id": "38fa3071-c8bd-463d-8ff2-e26c8a344bde",
+      "pinned_snapshot_hash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-21T12:40:24.862Z"
+    },
+    "shadowRun": {
+      "id": "38fa3071-c8bd-463d-8ff2-e26c8a344bde",
+      "organization_id": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+      "vehicle_id": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "trip_id": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+      "source_family": "API_SYNTHETIC",
+      "structural_version": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+      "estimator_version": "DI_KINEMATIC_ESTIMATE_V0_1",
+      "calibration_version": "CALIBRATION_UNSET_V0",
+      "source_family_policy_version": "SOURCE_FAMILY_POLICY_V0_1",
+      "input_evidence_version": "DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:8fff3e495671c5cd47660abb3b4a1cdd819fcce8a19d148d1e5aab3b256f1cf6",
+      "status": "COMPLETED",
+      "interval_count": 533,
+      "started_at": "2026-10-21T12:40:24.363Z",
+      "completed_at": "2026-10-21T12:40:24.363Z"
+    },
+    "intervalCount": 533,
+    "jsonlPath": "/tmp/exp021-phase5c-export/shadow/TRIP_1_shadow_intervals.jsonl",
+    "jsonlSha256": "12c35e1cb190819bafbbed83ca601d2143cd15bb9d23ac0124d7a7325692e276",
+    "positionStateCounts": {
+      "ROW_ABSENT": 368,
+      "FRESH": 165
+    },
+    "motionStateCounts": {
+      "NO_MOTION_EVIDENCE": 450,
+      "STATIONARY_SUPPORTED": 7,
+      "TRANSITION_UNCERTAIN": 9,
+      "MOVING_SPEED_ESTIMATED": 67
+    }
+  }
+}

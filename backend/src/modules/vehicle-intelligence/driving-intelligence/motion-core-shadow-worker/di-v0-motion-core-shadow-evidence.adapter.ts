@@ -76,6 +76,7 @@ export function adaptMotionCoreShadowEvidenceFromParsedContainer(
   }
   if (sparseSpeed.length > 0) {
     limitations.push('SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN');
+    limitations.push('R1_VEHICLE_SPEED_EXCLUDED_FROM_DS4_FSM');
     if (sparseSpeed.every((s) => s.fsmPointAuthority === false)) {
       limitations.push('SPARSE_R1_BUCKET_ONLY_NO_FSM_POINT_AUTHORITY');
     }

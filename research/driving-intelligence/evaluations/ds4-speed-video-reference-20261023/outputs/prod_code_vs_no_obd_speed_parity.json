@@ -1,0 +1,704 @@
+{
+  "schema": "DS4_PROD_VS_OFFLINE_OBD_STRIP_PARITY_V1",
+  "generatedAtUtc": "2026-10-23T09:35:30.042Z",
+  "prodCodeSha": "fdf398f971e069c0cf9ef03d8f25e6dab4d4bbfe",
+  "offlineCodeSha": "2f9a8a323e8414664006ecf57edcc41d25b40989",
+  "prodObdInfluence": "EXCLUDED_IN_PRODUCT_CODE",
+  "offlineObdInfluence": "STRIPPED_OFFLINE_CANDIDATE",
+  "identical": true,
+  "perDrive": {
+    "TIG22": {
+      "speed": {
+        "replay_l3": {
+          "prod": {
+            "n": 1284,
+            "maeKmh": 14.513,
+            "medianAbsKmh": 2.864,
+            "p95AbsKmh": 6.131,
+            "maxAbsKmh": 1904.939,
+            "biasKmh": 8.932,
+            "rmseKmh": 132.068,
+            "within3": 0.54,
+            "within5": 0.9
+          },
+          "offline": {
+            "n": 1284,
+            "maeKmh": 14.513,
+            "medianAbsKmh": 2.864,
+            "p95AbsKmh": 6.131,
+            "maxAbsKmh": 1904.939,
+            "biasKmh": 8.932,
+            "rmseKmh": 132.068,
+            "within3": 0.54,
+            "within5": 0.9
+          },
+          "identical": true
+        },
+        "replay_l3_qc": {
+          "prod": {
+            "n": 1272,
+            "maeKmh": 2.984,
+            "medianAbsKmh": 2.853,
+            "p95AbsKmh": 5.81,
+            "maxAbsKmh": 14.381,
+            "biasKmh": -2.65,
+            "rmseKmh": 3.43,
+            "within3": 0.546,
+            "within5": 0.909
+          },
+          "offline": {
+            "n": 1272,
+            "maeKmh": 2.984,
+            "medianAbsKmh": 2.853,
+            "p95AbsKmh": 5.81,
+            "maxAbsKmh": 14.381,
+            "biasKmh": -2.65,
+            "rmseKmh": 3.43,
+            "within3": 0.546,
+            "within5": 0.909
+          },
+          "identical": true
+        },
+        "replay_c4": {
+          "prod": {
+            "n": 1372,
+            "maeKmh": 9.223,
+            "medianAbsKmh": 2.78,
+            "p95AbsKmh": 6.038,
+            "maxAbsKmh": 1864.827,
+            "biasKmh": 3.92,
+            "rmseKmh": 93.365,
+            "within3": 0.564,
+            "within5": 0.905
+          },
+          "offline": {
+            "n": 1372,
+            "maeKmh": 9.223,
+            "medianAbsKmh": 2.78,
+            "p95AbsKmh": 6.038,
+            "maxAbsKmh": 1864.827,
+            "biasKmh": 3.92,
+            "rmseKmh": 93.365,
+            "within3": 0.564,
+            "within5": 0.905
+          },
+          "identical": true
+        }
+      },
+      "motion": {
+        "replay_c4": {
+          "prod": {
+            "confirmedStillCoreSecs": 73,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 49,
+            "stillNoClaim": 24,
+            "confirmedMotionSecs": 1254,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 1240,
+            "motionNoClaim": 14,
+            "ambiguousSecs": 90,
+            "ambiguousStill": 25,
+            "ambiguousMoving": 46,
+            "ambiguousNoClaim": 19,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 73,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 49,
+            "stillNoClaim": 24,
+            "confirmedMotionSecs": 1254,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 1240,
+            "motionNoClaim": 14,
+            "ambiguousSecs": 90,
+            "ambiguousStill": 25,
+            "ambiguousMoving": 46,
+            "ambiguousNoClaim": 19,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "identical": true
+        },
+        "replay_fsm": {
+          "prod": {
+            "confirmedStillCoreSecs": 73,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 69,
+            "stillNoClaim": 4,
+            "confirmedMotionSecs": 1254,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 1254,
+            "motionNoClaim": 0,
+            "ambiguousSecs": 90,
+            "ambiguousStill": 35,
+            "ambiguousMoving": 53,
+            "ambiguousNoClaim": 2,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 73,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 69,
+            "stillNoClaim": 4,
+            "confirmedMotionSecs": 1254,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 1254,
+            "motionNoClaim": 0,
+            "ambiguousSecs": 90,
+            "ambiguousStill": 35,
+            "ambiguousMoving": 53,
+            "ambiguousNoClaim": 2,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "identical": true
+        }
+      },
+      "timing": {
+        "replay_fsm": {
+          "stopMed": [
+            -2,
+            -2
+          ],
+          "startMed": [
+            0,
+            0
+          ]
+        }
+      },
+      "implausibleC4": {
+        "prod": 7,
+        "offline": 7
+      }
+    },
+    "TES21-1": {
+      "speed": {
+        "replay_l3": {
+          "prod": {
+            "n": 62,
+            "maeKmh": 2.809,
+            "medianAbsKmh": 1.284,
+            "p95AbsKmh": 14.993,
+            "maxAbsKmh": 20.035,
+            "biasKmh": 0.573,
+            "rmseKmh": 5.192,
+            "within3": 0.79,
+            "within5": 0.855
+          },
+          "offline": {
+            "n": 62,
+            "maeKmh": 2.809,
+            "medianAbsKmh": 1.284,
+            "p95AbsKmh": 14.993,
+            "maxAbsKmh": 20.035,
+            "biasKmh": 0.573,
+            "rmseKmh": 5.192,
+            "within3": 0.79,
+            "within5": 0.855
+          },
+          "identical": true
+        },
+        "replay_l3_qc": {
+          "prod": {
+            "n": 61,
+            "maeKmh": 2.527,
+            "medianAbsKmh": 1.27,
+            "p95AbsKmh": 12.642,
+            "maxAbsKmh": 17.231,
+            "biasKmh": 0.254,
+            "rmseKmh": 4.563,
+            "within3": 0.803,
+            "within5": 0.869
+          },
+          "offline": {
+            "n": 61,
+            "maeKmh": 2.527,
+            "medianAbsKmh": 1.27,
+            "p95AbsKmh": 12.642,
+            "maxAbsKmh": 17.231,
+            "biasKmh": 0.254,
+            "rmseKmh": 4.563,
+            "within3": 0.803,
+            "within5": 0.869
+          },
+          "identical": true
+        },
+        "replay_c4": {
+          "prod": {
+            "n": 150,
+            "maeKmh": 2.292,
+            "medianAbsKmh": 1.212,
+            "p95AbsKmh": 8.562,
+            "maxAbsKmh": 13.553,
+            "biasKmh": -0.594,
+            "rmseKmh": 3.596,
+            "within3": 0.74,
+            "within5": 0.847
+          },
+          "offline": {
+            "n": 150,
+            "maeKmh": 2.292,
+            "medianAbsKmh": 1.212,
+            "p95AbsKmh": 8.562,
+            "maxAbsKmh": 13.553,
+            "biasKmh": -0.594,
+            "rmseKmh": 3.596,
+            "within3": 0.74,
+            "within5": 0.847
+          },
+          "identical": true
+        }
+      },
+      "motion": {
+        "replay_c4": {
+          "prod": {
+            "confirmedStillCoreSecs": 8,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 0,
+            "stillNoClaim": 8,
+            "confirmedMotionSecs": 160,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 114,
+            "motionNoClaim": 46,
+            "ambiguousSecs": 61,
+            "ambiguousStill": 11,
+            "ambiguousMoving": 14,
+            "ambiguousNoClaim": 36,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 8,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 0,
+            "stillNoClaim": 8,
+            "confirmedMotionSecs": 160,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 114,
+            "motionNoClaim": 46,
+            "ambiguousSecs": 61,
+            "ambiguousStill": 11,
+            "ambiguousMoving": 14,
+            "ambiguousNoClaim": 36,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "identical": true
+        },
+        "replay_fsm": {
+          "prod": {
+            "confirmedStillCoreSecs": 8,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 4,
+            "stillNoClaim": 4,
+            "confirmedMotionSecs": 160,
+            "falseStillInConfirmedMotion": 2,
+            "motionCorrect": 150,
+            "motionNoClaim": 8,
+            "ambiguousSecs": 61,
+            "ambiguousStill": 30,
+            "ambiguousMoving": 22,
+            "ambiguousNoClaim": 9,
+            "falseMotionLabels": [],
+            "falseStillLabels": [
+              "2026-10-21T12:04:05Z",
+              "2026-10-21T12:06:41Z"
+            ]
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 8,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 4,
+            "stillNoClaim": 4,
+            "confirmedMotionSecs": 160,
+            "falseStillInConfirmedMotion": 2,
+            "motionCorrect": 150,
+            "motionNoClaim": 8,
+            "ambiguousSecs": 61,
+            "ambiguousStill": 30,
+            "ambiguousMoving": 22,
+            "ambiguousNoClaim": 9,
+            "falseMotionLabels": [],
+            "falseStillLabels": [
+              "2026-10-21T12:04:05Z",
+              "2026-10-21T12:06:41Z"
+            ]
+          },
+          "identical": true
+        }
+      },
+      "timing": {
+        "replay_fsm": {
+          "stopMed": [
+            0,
+            0
+          ],
+          "startMed": [
+            2,
+            2
+          ]
+        }
+      },
+      "implausibleC4": {
+        "prod": 0,
+        "offline": 0
+      }
+    },
+    "TES21-2": {
+      "speed": {
+        "replay_l3": {
+          "prod": {
+            "n": 169,
+            "maeKmh": 3.705,
+            "medianAbsKmh": 2.537,
+            "p95AbsKmh": 11.251,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.574,
+            "rmseKmh": 5.171,
+            "within3": 0.574,
+            "within5": 0.74
+          },
+          "offline": {
+            "n": 169,
+            "maeKmh": 3.705,
+            "medianAbsKmh": 2.537,
+            "p95AbsKmh": 11.251,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.574,
+            "rmseKmh": 5.171,
+            "within3": 0.574,
+            "within5": 0.74
+          },
+          "identical": true
+        },
+        "replay_l3_qc": {
+          "prod": {
+            "n": 169,
+            "maeKmh": 3.705,
+            "medianAbsKmh": 2.537,
+            "p95AbsKmh": 11.251,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.574,
+            "rmseKmh": 5.171,
+            "within3": 0.574,
+            "within5": 0.74
+          },
+          "offline": {
+            "n": 169,
+            "maeKmh": 3.705,
+            "medianAbsKmh": 2.537,
+            "p95AbsKmh": 11.251,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.574,
+            "rmseKmh": 5.171,
+            "within3": 0.574,
+            "within5": 0.74
+          },
+          "identical": true
+        },
+        "replay_c4": {
+          "prod": {
+            "n": 179,
+            "maeKmh": 3.605,
+            "medianAbsKmh": 2.316,
+            "p95AbsKmh": 10.954,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.616,
+            "rmseKmh": 5.046,
+            "within3": 0.581,
+            "within5": 0.749
+          },
+          "offline": {
+            "n": 179,
+            "maeKmh": 3.605,
+            "medianAbsKmh": 2.316,
+            "p95AbsKmh": 10.954,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.616,
+            "rmseKmh": 5.046,
+            "within3": 0.581,
+            "within5": 0.749
+          },
+          "identical": true
+        }
+      },
+      "motion": {
+        "replay_c4": {
+          "prod": {
+            "confirmedStillCoreSecs": 15,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 0,
+            "stillNoClaim": 15,
+            "confirmedMotionSecs": 170,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 157,
+            "motionNoClaim": 13,
+            "ambiguousSecs": 55,
+            "ambiguousStill": 2,
+            "ambiguousMoving": 15,
+            "ambiguousNoClaim": 38,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 15,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 0,
+            "stillNoClaim": 15,
+            "confirmedMotionSecs": 170,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 157,
+            "motionNoClaim": 13,
+            "ambiguousSecs": 55,
+            "ambiguousStill": 2,
+            "ambiguousMoving": 15,
+            "ambiguousNoClaim": 38,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "identical": true
+        },
+        "replay_fsm": {
+          "prod": {
+            "confirmedStillCoreSecs": 15,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 13,
+            "stillNoClaim": 2,
+            "confirmedMotionSecs": 170,
+            "falseStillInConfirmedMotion": 5,
+            "motionCorrect": 158,
+            "motionNoClaim": 7,
+            "ambiguousSecs": 55,
+            "ambiguousStill": 24,
+            "ambiguousMoving": 18,
+            "ambiguousNoClaim": 13,
+            "falseMotionLabels": [],
+            "falseStillLabels": [
+              "2026-10-21T12:20:15Z",
+              "2026-10-21T12:20:16Z",
+              "2026-10-21T12:20:34Z",
+              "2026-10-21T12:22:14Z",
+              "2026-10-21T12:23:54Z"
+            ]
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 15,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 13,
+            "stillNoClaim": 2,
+            "confirmedMotionSecs": 170,
+            "falseStillInConfirmedMotion": 5,
+            "motionCorrect": 158,
+            "motionNoClaim": 7,
+            "ambiguousSecs": 55,
+            "ambiguousStill": 24,
+            "ambiguousMoving": 18,
+            "ambiguousNoClaim": 13,
+            "falseMotionLabels": [],
+            "falseStillLabels": [
+              "2026-10-21T12:20:15Z",
+              "2026-10-21T12:20:16Z",
+              "2026-10-21T12:20:34Z",
+              "2026-10-21T12:22:14Z",
+              "2026-10-21T12:23:54Z"
+            ]
+          },
+          "identical": true
+        }
+      },
+      "timing": {
+        "replay_fsm": {
+          "stopMed": [
+            0,
+            0
+          ],
+          "startMed": [
+            3,
+            3
+          ]
+        }
+      },
+      "implausibleC4": {
+        "prod": 0,
+        "offline": 0
+      }
+    },
+    "TES16": {
+      "speed": {
+        "replay_l3": {
+          "prod": {
+            "n": 749,
+            "maeKmh": 2.379,
+            "medianAbsKmh": 2.142,
+            "p95AbsKmh": 4.487,
+            "maxAbsKmh": 59.443,
+            "biasKmh": -1.985,
+            "rmseKmh": 3.403,
+            "within3": 0.702,
+            "within5": 0.979
+          },
+          "offline": {
+            "n": 749,
+            "maeKmh": 2.379,
+            "medianAbsKmh": 2.142,
+            "p95AbsKmh": 4.487,
+            "maxAbsKmh": 59.443,
+            "biasKmh": -1.985,
+            "rmseKmh": 3.403,
+            "within3": 0.702,
+            "within5": 0.979
+          },
+          "identical": true
+        },
+        "replay_l3_qc": {
+          "prod": {
+            "n": 748,
+            "maeKmh": 2.303,
+            "medianAbsKmh": 2.138,
+            "p95AbsKmh": 4.485,
+            "maxAbsKmh": 6.08,
+            "biasKmh": -2.068,
+            "rmseKmh": 2.621,
+            "within3": 0.703,
+            "within5": 0.98
+          },
+          "offline": {
+            "n": 748,
+            "maeKmh": 2.303,
+            "medianAbsKmh": 2.138,
+            "p95AbsKmh": 4.485,
+            "maxAbsKmh": 6.08,
+            "biasKmh": -2.068,
+            "rmseKmh": 2.621,
+            "within3": 0.703,
+            "within5": 0.98
+          },
+          "identical": true
+        },
+        "replay_c4": {
+          "prod": {
+            "n": 808,
+            "maeKmh": 2.272,
+            "medianAbsKmh": 2.088,
+            "p95AbsKmh": 4.485,
+            "maxAbsKmh": 19.895,
+            "biasKmh": -1.977,
+            "rmseKmh": 2.727,
+            "within3": 0.71,
+            "within5": 0.979
+          },
+          "offline": {
+            "n": 808,
+            "maeKmh": 2.272,
+            "medianAbsKmh": 2.088,
+            "p95AbsKmh": 4.485,
+            "maxAbsKmh": 19.895,
+            "biasKmh": -1.977,
+            "rmseKmh": 2.727,
+            "within3": 0.71,
+            "within5": 0.979
+          },
+          "identical": true
+        }
+      },
+      "motion": {
+        "replay_c4": {
+          "prod": {
+            "confirmedStillCoreSecs": 116,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 0,
+            "stillNoClaim": 116,
+            "confirmedMotionSecs": 739,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 730,
+            "motionNoClaim": 9,
+            "ambiguousSecs": 118,
+            "ambiguousStill": 17,
+            "ambiguousMoving": 36,
+            "ambiguousNoClaim": 65,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 116,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 0,
+            "stillNoClaim": 116,
+            "confirmedMotionSecs": 739,
+            "falseStillInConfirmedMotion": 0,
+            "motionCorrect": 730,
+            "motionNoClaim": 9,
+            "ambiguousSecs": 118,
+            "ambiguousStill": 17,
+            "ambiguousMoving": 36,
+            "ambiguousNoClaim": 65,
+            "falseMotionLabels": [],
+            "falseStillLabels": []
+          },
+          "identical": true
+        },
+        "replay_fsm": {
+          "prod": {
+            "confirmedStillCoreSecs": 116,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 116,
+            "stillNoClaim": 0,
+            "confirmedMotionSecs": 739,
+            "falseStillInConfirmedMotion": 2,
+            "motionCorrect": 737,
+            "motionNoClaim": 0,
+            "ambiguousSecs": 118,
+            "ambiguousStill": 72,
+            "ambiguousMoving": 46,
+            "ambiguousNoClaim": 0,
+            "falseMotionLabels": [],
+            "falseStillLabels": [
+              "2026-10-16T03:42:31Z",
+              "2026-10-16T03:44:37Z"
+            ]
+          },
+          "offline": {
+            "confirmedStillCoreSecs": 116,
+            "falseMotionInConfirmedStill": 0,
+            "stillCorrect": 116,
+            "stillNoClaim": 0,
+            "confirmedMotionSecs": 739,
+            "falseStillInConfirmedMotion": 2,
+            "motionCorrect": 737,
+            "motionNoClaim": 0,
+            "ambiguousSecs": 118,
+            "ambiguousStill": 72,
+            "ambiguousMoving": 46,
+            "ambiguousNoClaim": 0,
+            "falseMotionLabels": [],
+            "falseStillLabels": [
+              "2026-10-16T03:42:31Z",
+              "2026-10-16T03:44:37Z"
+            ]
+          },
+          "identical": true
+        }
+      },
+      "timing": {
+        "replay_fsm": {
+          "stopMed": [
+            -1.5,
+            -1.5
+          ],
+          "startMed": [
+            2,
+            2
+          ]
+        }
+      },
+      "implausibleC4": {
+        "prod": 0,
+        "offline": 0
+      }
+    }
+  },
+  "note": "#2134 not merged — prod parity is against harness --strip-obd-speed-influence only"
+}

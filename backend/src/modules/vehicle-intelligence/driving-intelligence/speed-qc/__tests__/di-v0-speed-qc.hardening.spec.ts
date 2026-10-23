@@ -53,7 +53,7 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.REFERENCE_TIME_MISMATCH);
   });
 
-  it('duplicate R1 bucket labels with conflicting speeds fail closed (no independent witness)', () => {
+  it('duplicate R1 bucket labels do not affect QC when R1 speed is comparison-only', () => {
     const base = syntheticHighway130Input();
     const v = evaluateDiV0SpeedQcInterval({
       ...base,
@@ -62,8 +62,8 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
         { bucketLabel: base.centerBucketLabel, speedKmh: 50, temporalConfidence: 'INTERVAL_ONLY' },
       ],
     });
-    expect(v.trustLevel).toBe('UNTRUSTED');
-    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.DUPLICATE_R1_BUCKET_LABEL);
+    expect(v.trustLevel).toBe('TRUSTED');
+    expect(v.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.DUPLICATE_R1_BUCKET_LABEL);
     expect(v.sourceCorroboration.r1IndependentWitness).toBe(false);
   });
 
@@ -84,7 +84,7 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
     expect(v.qcTrustedSpeedKmh).toBeNull();
   });
 
-  it('does not treat R1_INTERVAL_ONLY as independent corroboration', () => {
+  it('ignores R1 vehicle speed for QC corroboration (comparison-only boundary)', () => {
     const base = syntheticHighway130Input();
     const v = evaluateDiV0SpeedQcInterval({
       ...base,
@@ -94,7 +94,7 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
       },
       r1Obd: [{ bucketLabel: base.centerBucketLabel, speedKmh: 130, temporalConfidence: 'INTERVAL_ONLY' }],
     });
-    expect(v.sourceCorroboration.r1CorroboratesL3).toBe(true);
+    expect(v.sourceCorroboration.r1CorroboratesL3).toBe(false);
     expect(v.sourceCorroboration.r1IndependentWitness).toBe(false);
     expect(v.physicalPlausibility.maxLegSpeedMpsApplied).toBeLessThanOrEqual(50);
   });

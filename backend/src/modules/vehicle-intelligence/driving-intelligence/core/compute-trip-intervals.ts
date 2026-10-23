@@ -22,6 +22,7 @@ import type {
 } from './types';
 import type { DiV0VersionTuple } from './versions';
 import { DI_KINEMATIC_ESTIMATE_V0_1, DI_SOURCE_QUALITY_CONTRACT_V0_1 } from './versions';
+import { r1ObdVehicleSpeedForDiV0IntervalCompute } from '../r1-obd-acquisition/di-v0-r1-vehicle-speed-ds4-boundary';
 
 export interface DiV0ComputeContext {
   versions: DiV0VersionTuple;
@@ -82,7 +83,7 @@ export function computeDiV0TripIntervals(
   }
 
   const classified = classifyPositionRows(input.positions, ctx.calibration);
-  const r1Map = r1ByLabel(input.r1Obd);
+  const r1Map = r1ByLabel(r1ObdVehicleSpeedForDiV0IntervalCompute(input.r1Obd));
   const intervals: DiV0IntervalSpeedResult[] = [];
 
   for (let i = 0; i < classified.length; i++) {

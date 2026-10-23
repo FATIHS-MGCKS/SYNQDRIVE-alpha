@@ -90,7 +90,7 @@ describe('S3B R1 OBD acquisition', () => {
     const out = computeDiV0TripIntervals({ sourceFamily: 'RUPTELA_R1', positions, r1Obd: r1 }, ctx);
     const center = out.intervals.find((i) => i.referenceTime.includes('09:57:20'));
     expect(center?.estimatedSpeedKmh).not.toBe(145);
-    expect(center?.sourceQualityFlags).toContain('R1_INTERVAL_ONLY');
+    expect(center?.sourceQualityFlags).not.toContain('R1_INTERVAL_ONLY');
   });
 
   it('engine ignition dropout does not add shutdown authority fields', () => {

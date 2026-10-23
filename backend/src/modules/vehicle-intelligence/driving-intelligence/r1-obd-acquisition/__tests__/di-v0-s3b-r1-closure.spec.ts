@@ -244,7 +244,7 @@ describe('S3B closure — FULL-R1-002 golden binding: R1 never creates or overri
     expect(typeof a.estimatedSpeedKmh).toBe('number');
     expect(b.estimatedSpeedKmh).toBe(a.estimatedSpeedKmh);
     expect(b.estimatedSpeedKmh).not.toBe(140);
-    expect(b.sourceQualityFlags).toContain('R1_INTERVAL_ONLY');
+    expect(b.sourceQualityFlags).not.toContain('R1_INTERVAL_ONLY');
   });
 
   it('every golden interval: R1 never changes numeric speed', async () => {

@@ -30,6 +30,7 @@ import type {
   DiV0MotionCoreShadowSummaryJson,
 } from './di-v0-motion-core-shadow.types';
 import { mapMotionManoeuvreEventToPersisted as mapEvent } from './di-v0-motion-core-shadow.types';
+import { motionFsmSparseVehicleSpeedFromR1 } from '../r1-obd-acquisition/di-v0-r1-vehicle-speed-ds4-boundary';
 
 export const DI_V0_MOTION_CORE_SHADOW_DEFAULT_FSM_MODE: MotionFsmMode = 'RETROSPECTIVE';
 export const DI_V0_MOTION_CORE_SHADOW_PROCESSING_MODE: DiV0MotionCoreShadowProcessingMode =
@@ -69,7 +70,7 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
   const computedAt = meta.computedAt ?? new Date();
   const kinBuckets = withImplausibleLegEndpointsQuarantined(evidence.buckets);
   const c4 = computeC4AdaptiveL3(evidence.buckets);
-  const sparseArg = evidence.sparseComparable ? evidence.sparseSpeed : null;
+  const sparseArg = motionFsmSparseVehicleSpeedFromR1(evidence.sparseSpeed, evidence.sparseComparable);
   const fsmLabels = runMotionFsm(
     kinBuckets,
     c4,

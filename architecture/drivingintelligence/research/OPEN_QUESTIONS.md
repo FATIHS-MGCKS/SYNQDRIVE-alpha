@@ -67,3 +67,4 @@ Explicit **UNKNOWN** items. Absence of an answer here is not a documentation fai
 | DI-OQ-R1-004 | Should historical R1 misuse cases / trip counters / stress scores be reviewed or recomputed (authorized backfill)? | C0.3 contains reads only; persisted history unchanged |
 | DI-OQ-R1-005 | Can SMART5 / UNKNOWN-family OBD records be shown to have reliable record time, or do they need the same containment? | Containment is R1-only by evidence scope |
 | DI-OQ-R1-006 | Should context misuse rules stop reading persisted anchor-relative values (`coolantAtAnchor`, `preSpeed`) for R1? | Escalation capped, but candidate generation still uses them |
+| DI-OQ-R1-007 | Should R1 **vehicle speed** ever influence DS4 L3 metadata, speed-QC verdicts, or motion-FSM sparse input after video-reference evidence? | **PARTIALLY_CLOSED (2026-10-23):** product boundary excludes speed from those paths; comparison series retained; fleet prevalence + #2134 C4 protections still open |
