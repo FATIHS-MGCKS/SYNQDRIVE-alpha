@@ -1,7 +1,7 @@
 # DS4 — Integration OBD-Entkopplung (#2137) + GPS-Ausreißerschutz (#2134)
 
 **Integrationsbranch:** `cursor/ds4-obd-gps-integrate-192d` (neu; **überschreibt nicht** `#2134` / `#2137`).  
-**Replay-Tag:** `integrate_obd_gps` @ `98a6e21f3` (+ Test-Fixes im Folgecommit).
+**Replay-Tag:** `integrate_obd_gps` @ `19cc86916` (Merge + Test-/Evidence-Commit; Replay-Code gleich `98a6e21f3` DI-Verhalten).
 
 | PR | Head (Stand Prüfung) | Inhalt |
 | --- | --- | --- |
