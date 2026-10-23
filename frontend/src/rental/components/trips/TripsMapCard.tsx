@@ -177,8 +177,13 @@ export function TripsMapCard({
     (eventId: string, segment: MotionEventSegment) => {
       setMotionPopover((prev) => {
         if (!prev || prev.kind !== 'event' || prev.event.id !== eventId) return prev;
-        const next = { sampleCount: segment.samples.length, extended: segment.extended };
-        if (prev.segment && prev.segment.sampleCount === next.sampleCount && prev.segment.extended === next.extended) {
+        const next = {
+          sampleCount: segment.samples.length,
+          lineCount: segment.parts.filter((part) => part.length >= 2).length,
+          hasGaps: segment.hasGaps,
+        };
+        if (prev.segment && prev.segment.sampleCount === next.sampleCount &&
+            prev.segment.lineCount === next.lineCount && prev.segment.hasGaps === next.hasGaps) {
           return prev;
         }
         return { ...prev, segment: next };

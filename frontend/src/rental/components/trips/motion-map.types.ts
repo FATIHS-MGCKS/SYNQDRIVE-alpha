@@ -83,7 +83,8 @@ export type TripMotionMapPayload = {
 
 export type TripMotionMapEventSegmentInfo = {
   sampleCount: number;
-  extended: boolean;
+  lineCount: number;
+  hasGaps: boolean;
 };
 
 export type TripMotionMapPickListItem =

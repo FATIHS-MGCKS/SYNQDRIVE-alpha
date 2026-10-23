@@ -1,6 +1,6 @@
 {
   "schema": "DS4_MOTION_SCREENSHOT_CASE_AUDIT_V1",
-  "generatedAtUtc": "2026-10-23T00:52:38.758Z",
+  "generatedAtUtc": "2026-10-23T06:51:37.507Z",
   "pinned": {
     "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
     "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
@@ -71,7 +71,7 @@
       "videoCoverage": "NOT_VIDEO_COVERED",
       "issues": [
         "DISPLAY_SIGN_BUG: deltaKmh persisted as unsigned magnitude; popover forced \"+\" prefix (braking shown as gain)",
-        "TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts",
+        "TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — timing support is uncertain; not independent proof of an artefact",
         "TRIP_END_EDGE: event ends 24.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
         "LEG_GAP: max positioned-leg label gap 2 s inside window"
       ],
@@ -314,7 +314,7 @@
       "uiTextObserved": "98 → 69 km/h (+30)",
       "uiTextLegacyFormatter": "98 → 69 km/h (+30)",
       "uiTextReproduced": true,
-      "uiTextPrototype": "98 → 69 km/h (−29)",
+      "uiTextPrototype": "98 → 69 km/h (−30)",
       "verdict": "PLAUSIBLE_EVENT_DISPLAY_BUG",
       "videoCoverage": "NOT_VIDEO_COVERED",
       "issues": [
@@ -569,11 +569,11 @@
       "uiTextLegacyFormatter": "52 → 142 km/h (+90)",
       "uiTextReproduced": true,
       "uiTextPrototype": "52 → 142 km/h (+90)",
-      "verdict": "MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR",
+      "verdict": "SUSPECTED_MEASUREMENT_ARTEFACT_NOT_VIDEO_VERIFIED",
       "videoCoverage": "NOT_VIDEO_COVERED",
       "issues": [
-        "KINEMATIC_IMPLAUSIBLE: mean 8.31 m/s² exceeds passenger-car envelope (|a| > 5 m/s²)",
-        "TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts",
+        "EXPERIMENTAL_ENVELOPE_WARNING: mean 8.31 m/s² exceeds unvalidated research threshold (|a| > 5 m/s²); not a physical impossibility boundary",
+        "TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — timing support is uncertain; not independent proof of an artefact",
         "POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)",
         "SPARSE_ENDPOINTS: 2/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT",
         "TRIP_END_EDGE: event ends 1.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
@@ -804,10 +804,10 @@
       "uiTextLegacyFormatter": "6 → 100 km/h (+95)",
       "uiTextReproduced": true,
       "uiTextPrototype": "6 → 100 km/h (+95)",
-      "verdict": "MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR",
+      "verdict": "SUSPECTED_MEASUREMENT_ARTEFACT_NOT_VIDEO_VERIFIED",
       "videoCoverage": "NOT_VIDEO_COVERED",
       "issues": [
-        "KINEMATIC_IMPLAUSIBLE: mean 6.57 m/s² exceeds passenger-car envelope (|a| > 5 m/s²)",
+        "EXPERIMENTAL_ENVELOPE_WARNING: mean 6.57 m/s² exceeds unvalidated research threshold (|a| > 5 m/s²); not a physical impossibility boundary",
         "POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)",
         "SPARSE_ENDPOINTS: 2/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT",
         "TRIP_END_EDGE: event ends 15.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support",
@@ -1224,7 +1224,7 @@
       "artefactSuspectFlagInMapper": false,
       "kinematicallyImplausible": false,
       "legacyDisplay": "34 → 7 km/h (+28)",
-      "prototypeDisplay": "34 → 7 km/h (−27)",
+      "prototypeDisplay": "34 → 7 km/h (−28)",
       "videoCovered": true
     },
     {
@@ -1332,7 +1332,7 @@
       "artefactSuspectFlagInMapper": false,
       "kinematicallyImplausible": false,
       "legacyDisplay": "38 → 19 km/h (+19)",
-      "prototypeDisplay": "38 → 19 km/h (−18)",
+      "prototypeDisplay": "38 → 19 km/h (−19)",
       "videoCovered": true
     },
     {
@@ -1404,7 +1404,7 @@
       "artefactSuspectFlagInMapper": false,
       "kinematicallyImplausible": false,
       "legacyDisplay": "98 → 69 km/h (+30)",
-      "prototypeDisplay": "98 → 69 km/h (−29)",
+      "prototypeDisplay": "98 → 69 km/h (−30)",
       "videoCovered": false
     },
     {

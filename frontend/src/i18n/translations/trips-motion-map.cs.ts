@@ -31,7 +31,7 @@ export const tripsMotionMapCS = {
   'trips.motionMap.qualityLimited': 'omezená',
   'trips.motionMap.qualityDegraded': 'nejistá',
   'trips.motionMap.segmentUnavailable': 'Pro toto časové okno není k dispozici úsek trasy',
-  'trips.motionMap.segmentApproximate': 'Úsek trasy přibližný (mezera v pozicích v časovém okně)',
+  'trips.motionMap.segmentApproximate': 'Úsek trasy je neúplný (mezera v polohách v časovém okně)',
   'trips.motionMap.summaryEvents': 'Pohybové události: {count}',
   'trips.motionMap.kinematicImplausible': 'Pravděpodobný artefakt měření (fyzikálně nepravděpodobné)',
 } as const;

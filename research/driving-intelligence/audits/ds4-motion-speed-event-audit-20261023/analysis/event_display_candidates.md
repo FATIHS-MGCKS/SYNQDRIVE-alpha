@@ -1,6 +1,6 @@
 # Event-Display-Kandidaten (offline, nicht integriert)
 
-Baseline reproduziert: Tiguan-22 21 Events / Tiguan-19 21 Events · Node v24.22.1 · 1319 ms · Heap Δ 19.5 MB · RSS 176.1 MB
+Baseline reproduziert: Tiguan-22 21 Events / Tiguan-19 21 Events · Node v24.19.0 · 1748 ms · Heap Δ 38.03 MB · RSS 158.2 MB
 
 | Kandidat | Tiguan-22 geflaggt (gesamt) | davon im Video | davon außerhalb | referenz-gematchte Events geflaggt | Tiguan-19 geflaggt |
 |---|---|---|---|---|---|

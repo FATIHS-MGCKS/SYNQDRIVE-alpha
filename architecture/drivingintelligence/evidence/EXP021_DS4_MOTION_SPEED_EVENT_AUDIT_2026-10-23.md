@@ -1,5 +1,20 @@
 # EXP-021 DS4 Motion — Speed / Event / Trip-Map Audit (2026-10-23)
 
+## Review correction — current draft behavior (2026-10-23)
+
+**Epistemic:** CONFIRMED for pinned processor replay and focused tests; NOT_PRODUCTION_VALIDATED. The initial audit below is historical where it conflicts with this correction.
+
+- Actual #2134 runtime SHA `f95420593…` is replayed through `processDiV0MotionCoreShadowTrip`; snapshot hash and empty runtime diff enforced. Events 21→20, numeric C4 1916→1908, stops 12→11; remaining 20 event payloads unchanged.
+- Video: A n=1372 / MAE 9.2232; B n=1364 / MAE 2.9053 km/h. Common n=1364: values identical, MAE 2.9053 both. Eight quarantined numeric seconds explain the raw-MAE drop.
+- Research gates leave three hypotheses on B, all outside video coverage. No incremental videoproven detector improvement. G1 removed from customer classification; thresholds are not universal physical bounds.
+- Highlight splits at missing positions/labels, never widens event time, and only anchors endpoints at exact event labels; incomplete coverage propagated to popover (all nine locales).
+- Symmetric signed rounding fixes −29.5→−30. Mean acceleration uses the documented persisted magnitude and valid duration.
+- Evidence/reproducer: `research/driving-intelligence/audits/ds4-motion-speed-event-audit-20261023/compare_hardened.cjs`, `analysis/hardened_comparison.json`, current section of `REPORT.md`.
+- No backend algorithm, flag, deployment or reprocessing change. Live Mapbox QA and screenshot filename attribution remain unverified in this correction scope.
+
+## Historical initial audit (superseded in points above)
+
+
 **Status:** Research audit + isolated frontend prototype (Draft PR; no merge/deploy)  
 **Base:** PR #2134 HEAD `3f3c4a516` · branch `cursor/ds4-motion-speed-event-audit-192d`  
 **Epistemic state:** `CONFIRMED` for pipeline/display findings (reproduced from frozen payload + code); `INFERRED` for the 19:04 UTC case verdicts (outside video coverage)  

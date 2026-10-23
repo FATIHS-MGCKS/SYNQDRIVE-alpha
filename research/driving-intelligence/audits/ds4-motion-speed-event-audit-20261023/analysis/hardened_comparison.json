@@ -1,0 +1,668 @@
+{
+  "schema": "DS4_HARDENED_COMPARISON_V1",
+  "source": {
+    "originalReplaySha": "dea2555bb746550c632f4315dabe08b9481be0df",
+    "productRuntimeSha": "f95420593ecae98d54d1d3185476c66427d2aede",
+    "runtimeDiffAgainstProductSha": "EMPTY",
+    "pin": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+    "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:5d9ff3cbe66fec0f3973d3cc160cfa2d150f5882b03711109e3abbc42f11be83",
+    "evidenceSha256": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+    "referenceSha256": "9c8933c223e58706d1cc1ce82fe8c623e2429d3bd1f4f570e10353f9f3b9aaa2",
+    "originalVersions": {
+      "c4": "MOTION_CORE_SPEED_C4_V0_1_DEV",
+      "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+      "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+      "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_FABLE_REVIEW_RECOMMENDED"
+    },
+    "hardenedVersions": {
+      "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+      "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+      "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+      "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V4"
+    }
+  },
+  "primaryShiftS": 0,
+  "original": {
+    "events": 21,
+    "numericC4": 1916,
+    "stops": 12,
+    "coverage": {
+      "referenceRows": 1464,
+      "readableReference": 1417,
+      "missingReference": 47,
+      "pairedReadable": 1372,
+      "missingEstimateOnReadable": 45
+    },
+    "speed": {
+      "n": 1372,
+      "maeKmh": 9.223191356566653,
+      "medianAbsKmh": 2.779543708092387,
+      "p95AbsKmh": 6.0379711618154674,
+      "rmseKmh": 93.36503571519798,
+      "biasKmh": 3.919827140894901,
+      "maxAbsKmh": 1864.8268990688694
+    }
+  },
+  "hardened": {
+    "labelCount": 2094,
+    "speedNumericCount": 1908,
+    "eventCount": 20,
+    "eventAcceptedCount": 20,
+    "eventArtefactSuspectCount": 0,
+    "stopEpisodeCount": 11,
+    "coverage": {
+      "referenceRows": 1464,
+      "readableReference": 1417,
+      "missingReference": 47,
+      "pairedReadable": 1364,
+      "missingEstimateOnReadable": 53
+    },
+    "speed": {
+      "n": 1364,
+      "maeKmh": 2.905283581933284,
+      "medianAbsKmh": 2.7657232618949976,
+      "p95AbsKmh": 5.9180839021601255,
+      "rmseKmh": 3.40997293557351,
+      "biasKmh": -2.423790195417395,
+      "maxAbsKmh": 14.381451010319296
+    }
+  },
+  "commonReadableSeconds": {
+    "n": 1364,
+    "original": {
+      "n": 1364,
+      "maeKmh": 2.905283581933284,
+      "medianAbsKmh": 2.7657232618949976,
+      "p95AbsKmh": 5.9180839021601255,
+      "rmseKmh": 3.40997293557351,
+      "biasKmh": -2.423790195417395,
+      "maxAbsKmh": 14.381451010319296
+    },
+    "hardened": {
+      "n": 1364,
+      "maeKmh": 2.905283581933284,
+      "medianAbsKmh": 2.7657232618949976,
+      "p95AbsKmh": 5.9180839021601255,
+      "rmseKmh": 3.40997293557351,
+      "biasKmh": -2.423790195417395,
+      "maxAbsKmh": 14.381451010319296
+    },
+    "note": "Shared numeric values unchanged. Reduced raw MAE includes withholding eight quarantined seconds, not more accurate common values."
+  },
+  "preservation": {
+    "removedEventKeys": [
+      "ACCELERATION|2026-10-22T18:49:12Z|2026-10-22T18:49:18Z"
+    ],
+    "unchangedRetainedEvents": 20,
+    "lostNumericLabels": [
+      "2026-10-22T18:49:12Z",
+      "2026-10-22T18:49:13Z",
+      "2026-10-22T18:49:14Z",
+      "2026-10-22T18:49:15Z",
+      "2026-10-22T18:49:16Z",
+      "2026-10-22T18:49:17Z",
+      "2026-10-22T18:49:18Z",
+      "2026-10-22T18:49:19Z"
+    ]
+  },
+  "offlineGates": {
+    "status": "EXPERIMENTAL_NOT_CUSTOMER_CLASSIFICATION",
+    "parameters": {
+      "accelMaxMps2": 5,
+      "decelMinMps2": -9,
+      "speedMaxKmh": 250
+    },
+    "original": [
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:36Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:08Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:33:49Z|2026-10-22T18:33:51Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:38:25Z|2026-10-22T18:38:30Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:08Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:02Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:46:44Z|2026-10-22T18:46:46Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:49:12Z|2026-10-22T18:49:18Z",
+        "reasons": {
+          "G1": [
+            "mean 86.27 > 5 m/s²",
+            "endpoint > 250 km/h"
+          ],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:25Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:59:59Z|2026-10-22T19:00:01Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z",
+        "reasons": {
+          "G1": [],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z",
+        "reasons": {
+          "G1": [
+            "mean 6.57 > 5 m/s²"
+          ],
+          "G2": []
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T19:04:39Z|2026-10-22T19:04:42Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z",
+        "reasons": {
+          "G1": [
+            "mean 8.31 > 5 m/s²"
+          ],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      }
+    ],
+    "hardened": [
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:36Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:08Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:33:49Z|2026-10-22T18:33:51Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:38:25Z|2026-10-22T18:38:30Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:08Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:02Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:46:44Z|2026-10-22T18:46:46Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:25Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T18:59:59Z|2026-10-22T19:00:01Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z",
+        "reasons": {
+          "G1": [],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z",
+        "reasons": {
+          "G1": [
+            "mean 6.57 > 5 m/s²"
+          ],
+          "G2": []
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "DECELERATION|2026-10-22T19:04:39Z|2026-10-22T19:04:42Z",
+        "reasons": {
+          "G1": [],
+          "G2": []
+        },
+        "experimentalFlag": false,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z",
+        "reasons": {
+          "G1": [
+            "mean 8.31 > 5 m/s²"
+          ],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      }
+    ],
+    "excludedAlreadyRemovedBy2134": [
+      "ACCELERATION|2026-10-22T18:49:12Z|2026-10-22T18:49:18Z"
+    ],
+    "remainingHypothesesOnHardened": [
+      {
+        "eventKey": "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z",
+        "reasons": {
+          "G1": [],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z",
+        "reasons": {
+          "G1": [
+            "mean 6.57 > 5 m/s²"
+          ],
+          "G2": []
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      },
+      {
+        "eventKey": "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z",
+        "reasons": {
+          "G1": [
+            "mean 8.31 > 5 m/s²"
+          ],
+          "G2": [
+            "JITTER_SUSPECT sample in window"
+          ]
+        },
+        "experimentalFlag": true,
+        "videoCoverage": "NOT_VIDEO_COVERED"
+      }
+    ],
+    "note": "Flags are hypotheses, not proven detector improvements. G2 label-gap branch does not detect missing positions in a continuous 1 Hz grid."
+  },
+  "selectedReferenceWindows": [
+    {
+      "start": "2026-10-22T18:40:48.000Z",
+      "end": "2026-10-22T18:41:01.000Z",
+      "kind": "DECELERATION",
+      "original": [],
+      "hardened": [],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:42:46.000Z",
+      "end": "2026-10-22T18:43:00.000Z",
+      "kind": "DECELERATION",
+      "original": [],
+      "hardened": [],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:45:24.000Z",
+      "end": "2026-10-22T18:45:30.000Z",
+      "kind": "ACCELERATION",
+      "original": [
+        "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z"
+      ],
+      "hardened": [
+        "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:47:00.000Z",
+      "end": "2026-10-22T18:47:07.000Z",
+      "kind": "ACCELERATION",
+      "original": [
+        "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z"
+      ],
+      "hardened": [
+        "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:47:30.000Z",
+      "end": "2026-10-22T18:47:50.000Z",
+      "kind": "DECELERATION",
+      "original": [
+        "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z"
+      ],
+      "hardened": [
+        "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:58:17.000Z",
+      "end": "2026-10-22T18:58:22.000Z",
+      "kind": "DECELERATION",
+      "original": [
+        "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z"
+      ],
+      "hardened": [
+        "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:59:00.000Z",
+      "end": "2026-10-22T18:59:07.000Z",
+      "kind": "ACCELERATION",
+      "original": [
+        "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z"
+      ],
+      "hardened": [
+        "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:59:27.000Z",
+      "end": "2026-10-22T18:59:31.000Z",
+      "kind": "ACCELERATION",
+      "original": [
+        "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z"
+      ],
+      "hardened": [
+        "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    },
+    {
+      "start": "2026-10-22T18:59:31.000Z",
+      "end": "2026-10-22T18:59:42.000Z",
+      "kind": "DECELERATION",
+      "original": [
+        "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z"
+      ],
+      "hardened": [
+        "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z"
+      ],
+      "scope": "Selected window direction/overlap only; not full-trip precision/recall or pedal evidence"
+    }
+  ],
+  "olderDrivePreservation": {
+    "scope": "Tiguan-19 position-only C4/event core; no independent video claim",
+    "labels": 1480,
+    "numericC4": 1182,
+    "events": 21,
+    "valueQualityAndEventParity": true,
+    "experimentalFlagged": 0
+  },
+  "limits": [
+    "single_partial_development_drive",
+    "tacho_not_calibrated_ground_truth",
+    "no_1904_video_reference",
+    "no_new_speed_estimator_or_event_detector",
+    "no_production_or_authenticated_mapbox_execution"
+  ]
+}

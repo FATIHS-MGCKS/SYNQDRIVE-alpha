@@ -168,3 +168,10 @@ Detail: [reference-capture/REFERENCE_DRIVES.md](./reference-capture/REFERENCE_DR
 | Workstream narrative | `WORKSTREAM_HISTORY.md` |
 
 **Total indexed evidence items (this authority):** 40+ primary IDs; 53 DI-EV registry rows; 100+ repository artifact paths.
+
+
+## DS4 Motion review corrections (2026-10-23)
+
+| ID | Source | Date | Scope | Artifact | Epistemic | Limits |
+|---|---|---|---|---|---|---|
+| DI-EVID-DS4-MOTION-AUDIT-CORRECTIONS-001 | PINNED_REPLAY_AND_TESTS | 2026-10-23 | #2134 actual processor A/B, gap-safe map and signed metrics | [correction record](EXP021_DS4_MOTION_SPEED_EVENT_AUDIT_2026-10-23.md) | CONFIRMED | No live Mapbox or independent 19:04/video validation; no new detector |

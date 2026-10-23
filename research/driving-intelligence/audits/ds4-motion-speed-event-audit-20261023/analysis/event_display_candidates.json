@@ -1,7 +1,7 @@
 {
   "schema": "DS4_MOTION_EVENT_DISPLAY_CANDIDATES_V1",
-  "status": "RESEARCH_CANDIDATE_NOT_RUNTIME_INTEGRATED",
-  "generatedAtUtc": "2026-10-23T00:55:18.742Z",
+  "status": "HISTORICAL_FROZEN_BASELINE_ONLY_SEE_HARDENED_COMPARISON",
+  "generatedAtUtc": "2026-10-23T06:51:39.440Z",
   "frozenBaseline": {
     "algorithmVersions": {
       "c4": "MOTION_CORE_SPEED_C4_V0_1_DEV",
@@ -27,7 +27,7 @@
     },
     "G2_timingSupport": "JITTER_SUSPECT in window OR (label gap in window AND both endpoints sparse-support)",
     "G3_chord": "C4 endpoint speed deviates from positioned-leg chord speed by > max(20 km/h, 50 %)",
-    "K_E": "G1 ∪ G2 (recommended display gate)",
+    "K_E": "G1 ∪ G2 (experimental hypothesis; not customer classification)",
     "K_E3": "G1 ∪ G2 ∪ G3 (aggressive; evaluated for comparison only)"
   },
   "tiguan22": {
@@ -861,9 +861,9 @@
     }
   ],
   "runtime": {
-    "wallMs": 1318.826606,
-    "heapUsedDeltaMb": 19.5,
-    "rssMb": 176.1,
-    "node": "v24.22.1"
+    "wallMs": 1748.196153,
+    "heapUsedDeltaMb": 38.03,
+    "rssMb": 158.2,
+    "node": "v24.19.0"
   }
 }

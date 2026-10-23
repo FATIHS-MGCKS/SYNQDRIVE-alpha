@@ -312,51 +312,32 @@ export function deriveMotionEventMetrics(event: Pick<
   'startLabelUtc' | 'endLabelUtc' | 'startSpeedKmh' | 'endSpeedKmh' | 'deltaKmh' | 'displayKind'
 >): MotionEventMetrics {
   const diff = event.endSpeedKmh - event.startSpeedKmh;
+  // The persisted magnitude is computed before the endpoint values are rounded
+  // independently. Preserve that magnitude; derive only its sign from endpoint order.
   const magnitude = Math.abs(Number.isFinite(event.deltaKmh) ? event.deltaKmh : diff);
-  let sign = Math.sign(diff);
-  if (sign === 0) sign = event.displayKind === 'DECELERATION' ? -1 : 1;
-  const signedDeltaKmh = sign * magnitude;
+  const validEndpoints = Number.isFinite(event.startSpeedKmh) && Number.isFinite(event.endSpeedKmh) &&
+    event.startSpeedKmh >= 0 && event.endSpeedKmh >= 0;
+  const signedDeltaKmh = !validEndpoints ? NaN : diff === 0 ? 0 : Math.sign(diff) * magnitude;
 
   const startT = Date.parse(event.startLabelUtc);
   const endT = Date.parse(event.endLabelUtc);
   const durationS =
     Number.isFinite(startT) && Number.isFinite(endT) && endT >= startT ? (endT - startT) / 1000 : null;
   const meanAccelMps2 =
-    durationS != null && durationS > 0 ? (signedDeltaKmh / 3.6) / durationS : null;
+    durationS != null && durationS > 0 && Number.isFinite(signedDeltaKmh)
+      ? (signedDeltaKmh / 3.6) / durationS : null;
   return { signedDeltaKmh, durationS, meanAccelMps2 };
 }
 
-/**
- * Display-level kinematic envelope (offline candidate K-E/G1, audit 2026-10-23):
- * passenger-car mean acceleration above 5 m/s², mean deceleration below −9 m/s² or an
- * endpoint speed above 250 km/h cannot be driver behaviour and is shown as a measurement artefact.
- */
-export const MOTION_EVENT_KINEMATIC_ENVELOPE = {
-  accelMaxMps2: 5.0,
-  decelMinMps2: -9.0,
-  speedMaxKmh: 250,
-} as const;
-
-export function isMotionEventKinematicallyImplausible(event: Pick<
-  TripMotionMapEvent,
-  'startLabelUtc' | 'endLabelUtc' | 'startSpeedKmh' | 'endSpeedKmh' | 'deltaKmh' | 'displayKind'
->): boolean {
-  if (Math.max(event.startSpeedKmh, event.endSpeedKmh) > MOTION_EVENT_KINEMATIC_ENVELOPE.speedMaxKmh) return true;
-  const { meanAccelMps2 } = deriveMotionEventMetrics(event);
-  if (meanAccelMps2 == null) return false;
-  if (meanAccelMps2 > MOTION_EVENT_KINEMATIC_ENVELOPE.accelMaxMps2) return true;
-  if (meanAccelMps2 < MOTION_EVENT_KINEMATIC_ENVELOPE.decelMinMps2) return true;
-  return false;
-}
-
 export function formatSignedKmh(value: number): string {
-  const rounded = Math.round(value);
-  if (rounded > 0) return `+${rounded}`;
-  if (rounded < 0) return `−${Math.abs(rounded)}`;
+  if (!Number.isFinite(value)) return '—';
+  const rounded = Math.round(Math.abs(value));
+  if (rounded > 0) return `${value < 0 ? '−' : '+'}${rounded}`;
   return '0';
 }
 
 export function formatSignedMps2(value: number): string {
+  if (!Number.isFinite(value)) return '—';
   const fixed = Math.abs(value).toFixed(1);
   if (value > 0.05) return `+${fixed}`;
   if (value < -0.05) return `−${fixed}`;
@@ -368,48 +349,61 @@ export type MotionEventSegment = {
   samples: TripMotionMapSample[];
   start: TripMotionMapSample | null;
   end: TripMotionMapSample | null;
-  /** True when the window had to be extended by nearest neighbours to obtain 2 positioned samples. */
-  extended: boolean;
+  /** Contiguous positioned parts; missing positions/labels always break the highlight. */
+  parts: TripMotionMapSample[][];
+  /** Missing coverage or either exact event boundary is not positioned. */
+  hasGaps: boolean;
 };
 
 /**
  * Resolves the route segment belonging to a motion event by its time window.
- * Samples without a position inside the window are skipped; if fewer than two
- * positioned samples remain, the nearest positioned neighbours outside the
- * window (within `maxExtendS`) are used so the segment still has a visible extent.
+ * Never extends the event window. Missing positions/1 Hz labels split the line;
+ * endpoint markers require a position at the actual start/end label.
  */
 export function resolveMotionEventSegment(
   event: Pick<TripMotionMapEvent, 'startLabelUtc' | 'endLabelUtc'>,
   samples: TripMotionMapSample[],
-  maxExtendS = 2,
 ): MotionEventSegment {
   const startT = Date.parse(event.startLabelUtc);
   const endT = Date.parse(event.endLabelUtc);
-  const empty: MotionEventSegment = { samples: [], start: null, end: null, extended: false };
+  const empty: MotionEventSegment = { samples: [], parts: [], start: null, end: null, hasGaps: true };
   if (!Number.isFinite(startT) || !Number.isFinite(endT) || endT < startT) return empty;
 
-  const positioned = samples
+  const inWindow = samples
     .map((s) => ({ s, t: Date.parse(s.bucketLabelUtc) }))
-    .filter((x) => Number.isFinite(x.t) && x.s.latitude != null && x.s.longitude != null)
+    .filter((x) => Number.isFinite(x.t) && x.t >= startT && x.t <= endT)
     .sort((a, b) => a.t - b.t);
-
-  let inWindow = positioned.filter((x) => x.t >= startT && x.t <= endT);
-  let extended = false;
-  if (inWindow.length < 2) {
-    const lo = startT - maxExtendS * 1000;
-    const hi = endT + maxExtendS * 1000;
-    const widened = positioned.filter((x) => x.t >= lo && x.t <= hi);
-    if (widened.length >= 2) {
-      inWindow = widened;
-      extended = true;
+  const parts: TripMotionMapSample[][] = [];
+  let part: TripMotionMapSample[] = [];
+  let previousT: number | null = null;
+  let hasGaps = false;
+  const flush = () => {
+    if (part.length) parts.push(part);
+    part = [];
+  };
+  for (const { s, t } of inWindow) {
+    if (previousT != null && t - previousT !== 1000) {
+      flush();
+      hasGaps = true;
+    }
+    previousT = t;
+    if (s.latitude == null || s.longitude == null || !Number.isFinite(s.latitude) || !Number.isFinite(s.longitude)) {
+      flush();
+      hasGaps = true;
+    } else {
+      part.push(s);
     }
   }
-  const list = inWindow.map((x) => x.s);
+  flush();
+  const list = parts.flat();
+  const start = list.find((s) => Date.parse(s.bucketLabelUtc) === startT) ?? null;
+  const end = list.find((s) => Date.parse(s.bucketLabelUtc) === endT) ?? null;
   return {
     samples: list,
-    start: list[0] ?? null,
-    end: list[list.length - 1] ?? null,
-    extended,
+    parts,
+    start,
+    end,
+    hasGaps: hasGaps || start == null || end == null,
   };
 }
 
@@ -420,16 +414,13 @@ export function buildMotionEventSegmentFeatures(
   line: GeoJSON.Feature<GeoJSON.LineString>[];
   endpoints: GeoJSON.Feature<GeoJSON.Point>[];
 } {
-  const coords = segment.samples
-    .filter((s) => s.latitude != null && s.longitude != null)
-    .map((s) => [s.longitude!, s.latitude!] as [number, number]);
-  const line: GeoJSON.Feature<GeoJSON.LineString>[] = coords.length >= 2
-    ? [{
+  const line: GeoJSON.Feature<GeoJSON.LineString>[] = segment.parts
+    .filter((part) => part.length >= 2)
+    .map((part) => ({
         type: 'Feature',
-        geometry: { type: 'LineString', coordinates: coords },
+        geometry: { type: 'LineString', coordinates: part.map((s) => [s.longitude!, s.latitude!]) },
         properties: { eventId: event.id, displayKind: event.displayKind },
-      }]
-    : [];
+      }));
   const endpoints: GeoJSON.Feature<GeoJSON.Point>[] = [];
   if (segment.start?.latitude != null && segment.start.longitude != null) {
     endpoints.push({
@@ -464,7 +455,7 @@ export function createMotionEventMarkerElement(
 ): HTMLButtonElement {
   const isStart = event.displayKind === 'START';
   const isAccel = event.displayKind === 'ACCELERATION';
-  const artefact = event.artefactSuspect || isMotionEventKinematicallyImplausible(event);
+  const artefact = event.artefactSuspect;
   const el = document.createElement('button');
   el.type = 'button';
   el.className = `trips-map-event-marker trips-map-event-marker--motion${

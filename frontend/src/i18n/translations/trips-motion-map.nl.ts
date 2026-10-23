@@ -31,7 +31,7 @@ export const tripsMotionMapNL = {
   'trips.motionMap.qualityLimited': 'beperkt',
   'trips.motionMap.qualityDegraded': 'onzeker',
   'trips.motionMap.segmentUnavailable': 'Geen routesegment beschikbaar voor dit tijdvenster',
-  'trips.motionMap.segmentApproximate': 'Routesegment benaderd (positiegat in tijdvenster)',
+  'trips.motionMap.segmentApproximate': 'Routedeel onvolledig (positiegat in tijdvenster)',
   'trips.motionMap.summaryEvents': 'Bewegingsgebeurtenissen: {count}',
   'trips.motionMap.kinematicImplausible': 'Waarschijnlijk meetartefact (fysiek onwaarschijnlijk)',
 } as const;

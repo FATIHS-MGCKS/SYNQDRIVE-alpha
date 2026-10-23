@@ -32,7 +32,7 @@ export const tripsMotionMapDE = {
   'trips.motionMap.qualityLimited': 'eingeschränkt',
   'trips.motionMap.qualityDegraded': 'unsicher',
   'trips.motionMap.segmentUnavailable': 'Kein Routenabschnitt für dieses Zeitfenster verfügbar',
-  'trips.motionMap.segmentApproximate': 'Routenabschnitt angenähert (Positionslücke im Zeitfenster)',
+  'trips.motionMap.segmentApproximate': 'Routenabschnitt unvollständig (Positionslücke im Zeitfenster)',
   'trips.motionMap.summaryEvents': 'Motion-Ereignisse: {count}',
   'trips.motionMap.kinematicImplausible': 'Messartefakt wahrscheinlich (physikalisch unplausibel)',
 } as const;

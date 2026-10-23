@@ -88,7 +88,7 @@ const signedDelta = (ev) => {
   return sign * Math.abs(ev.deltaKmh);
 };
 const fmtSigned = (v) => {
-  const r = Math.round(v);
+  const r = Math.sign(v) * Math.round(Math.abs(v));
   return r > 0 ? `+${r}` : r < 0 ? `−${Math.abs(r)}` : '0';
 };
 const newDisplay = (ev) =>
@@ -140,10 +140,10 @@ const classifyCase = (ev, rows, c) => {
     issues.push('DISPLAY_SIGN_BUG: deltaKmh persisted as unsigned magnitude; popover forced "+" prefix (braking shown as gain)');
   }
   if (Math.abs(meanAccel) > 5) {
-    issues.push(`KINEMATIC_IMPLAUSIBLE: mean ${meanAccel.toFixed(2)} m/s² exceeds passenger-car envelope (|a| > 5 m/s²)`);
+    issues.push(`EXPERIMENTAL_ENVELOPE_WARNING: mean ${meanAccel.toFixed(2)} m/s² exceeds unvalidated research threshold (|a| > 5 m/s²); not a physical impossibility boundary`);
   }
   if (jitterInWindow) {
-    issues.push('TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts');
+    issues.push('TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — timing support is uncertain; not independent proof of an artefact');
   }
   if (absentInWindow > 0) {
     issues.push(`POSITION_GAP: ${absentInWindow} ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)`);
@@ -166,7 +166,7 @@ const classifyCase = (ev, rows, c) => {
   } else if (ev.kind === 'DECELERATION' && Math.abs(meanAccel) <= 5) {
     verdict = 'PLAUSIBLE_MAGNITUDE_UNCERTAIN_TIMING_DISPLAY_BUG';
   } else if (Math.abs(meanAccel) > 5) {
-    verdict = 'MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR';
+    verdict = 'SUSPECTED_MEASUREMENT_ARTEFACT_NOT_VIDEO_VERIFIED';
   } else {
     verdict = 'UNCERTAIN';
   }

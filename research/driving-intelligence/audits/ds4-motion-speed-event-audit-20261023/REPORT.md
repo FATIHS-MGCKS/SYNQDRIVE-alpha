@@ -1,3 +1,51 @@
+# DS4 Motion — aktueller Korrekturstand zu PR #2135
+
+Die vier Review-Mängel werden hier vom **historischen Ausgangsaudit** getrennt. Quelle der aktuellen Zahlen: `analysis/hardened_comparison.json`, reproduziert mit `node compare_hardened.cjs`. Runtime-Basis B ist #2134 `f95420593ecae98d54d1d3185476c66427d2aede`, nicht der alte Compact-Code. Der Reproducer verlangt einen leeren Runtime-Diff gegen diesen SHA und ruft `processDiV0MotionCoreShadowTrip` auf dem hash-verifizierten Container auf.
+
+## 1. Original A und gehärteter Processor B
+
+| Größe | Original A (historisch) | Processor B (#2134) |
+|---|---:|---:|
+| Ereignisse | 21 | 20 |
+| Numerische C4-Werte ganze Fahrt | 1916 | 1908 |
+| Stillstandsintervalle | 12 | 11 |
+| Lesbare Videoreferenz-Sekunden | 1417 | 1417 |
+| Vergleichbare Sekunden | 1372 | 1364 |
+| Fehlende C4-Werte bei lesbarem Video | 45 | 53 |
+| MAE km/h | 9,2232 | 2,9053 |
+| Median absolut km/h | 2,7795 | 2,7657 |
+| P95 absolut km/h | 6,0380 | 5,9181 |
+| RMSE km/h | 93,3650 | 3,4100 |
+| Bias km/h | +3,9198 | −2,4238 |
+
+Gesamt: 1464 Referenzzeilen, 47 ohne lesbaren Geschwindigkeitswert. Primärversatz 0 s. Auf den **gemeinsamen 1364 Sekunden** sind A und B exakt gleich (MAE beide 2,9053). Die niedrigere Roh-MAE folgt dem Zurückhalten von acht Ausreißerwerten; eine genauere Berechnung der übrigen Werte ist damit nicht bewiesen. Alle 20 erhaltenen Event-Payloads sind feldgleich. Nur ACCELERATION 18:49:12–18:49:18 UTC entfällt. Die sieben Matches der neun ausgewählten Referenzfenster bleiben erhalten; keine globale Precision/Recall-Aussage.
+
+K-E markiert historisch vier Ereignisse, auf B noch drei (19:04:26, 19:04:34, 19:04:49 UTC). Diese drei liegen **außerhalb des Videos**. Der bereits durch #2134 beseitigte Fehler zählt nicht als zusätzlicher Gate-Erfolg. Kein neuer videobestätigter Artefaktfund gegenüber #2134. G1/G2 bleiben experimentelle Hypothesen. Die bisherige G2-Label-Gap-Bedingung erkennt keine Positionslücken in einem lückenlosen 1-Hz-Labelraster; dafür wird kein Wirksamkeitsnachweis behauptet.
+
+Tiguan-19: 1480 Labels, 1182 numerische C4-Werte und 21 Events im Position-only-Core feldgleich erhalten; null experimentelle Gate-Markierungen. Das ist ein Erhaltungscheck, kein unabhängiger Genauigkeitsnachweis.
+
+## 2. Klassifikation und Darstellung
+
+G1 wurde aus Marker-Stilisierung und Kunden-Popover entfernt und liegt ausschließlich in `event_quality_research.cjs`. 5 m/s², −9 m/s² und 250 km/h sind **keine validierten allgemeinen physikalischen Grenzen**. Keine automatische Messartefaktbehauptung aufgrund dieser Zahlen. Bestehende serverseitige Artefaktkennzeichnung und Qualitätslabels bleiben erhalten. Die 19:04-Fälle sind Artefaktverdacht beziehungsweise unbewertet, nicht video-bestätigte Messfehler.
+
+## 3. Ereignisgeometrie
+
+Das Highlight besteht aus getrennten zusammenhängenden Teilstücken innerhalb des Eventfensters. Fehlende Koordinaten und fehlende 1-Hz-Labels trennen die Linie; interne Lücken werden bis in das Popover weitergereicht. Keine automatische Erweiterung um Nachbarsekunden. Start-/Endmarker erfordern eine Position am jeweiligen tatsächlichen Zeitlabel. Fehlende Grenzpositionen werden nicht durch den nächstgelegenen Punkt ersetzt. Gleiche Koordinaten bei anderer Durchfahrt verändern die zeitliche Zuordnung nicht. Die vorhandene Hinweisübersetzung wurde in allen neun Locales auf „unvollständig“ korrigiert.
+
+## 4. Delta und Rundung
+
+Symmetrisch: Betrag runden, Vorzeichen danach anwenden, keine negative Null. +29,5→+30 und −29,5→−30. Der gespeicherte Delta-Betrag entsteht vor der unabhängigen Rundung der Endpointwerte und bleibt daher die dokumentierte Betragsquelle; nur das Vorzeichen kommt aus deren Reihenfolge. Ø m/s² verwendet dieselbe signierte Quelle und positive gültige Zeitdifferenz. 98,2→68,6 / gespeichertes Δ=29,5 zeigt −30; 34,7→5,5 zeigt −29. Ungültige Mittelwerte werden zurückgehalten.
+
+## Grenzen / nächste Arbeit
+
+Kein neuer Geschwindigkeitsschätzer oder Manöverdetektor, keine Backend-/Production-Änderung. M7A, Mapbox, Scoring und andere Workstreams unverändert. Noch keine authentifizierte Live-Mapbox-QA. Die Screenshot-Dateizuordnung des ursprünglichen Audits wurde in diesem auf Punkte 1–4 begrenzten Korrekturschritt nicht neu validiert; Fälle für den aktuellen Vergleich werden über Typ und UTC-Intervall gebunden. Entwicklung neuer Algorithmen folgt separat nach Review.
+
+---
+
+# Historisches Ausgangsaudit — superseded in den vier oben korrigierten Punkten
+
+Die folgende Erstfassung bleibt als historische Evidenz erhalten. Aussagen über aktuelle G1-Kundenklassifikation, durchgehende Geometrie, den −29-Halbwert sowie alte 21-Event-Gates sind durch die Korrektur oben ersetzt. Physikalische Unmöglichkeit und bestätigte 19:04-Messartefakte wurden damit nicht nachgewiesen.
+
 # DS4 Motion — Geschwindigkeit, Beschleunigung, Verzögerung und Kartenanzeige (Audit 2026-10-23)
 
 **Status:** Research + isolierter Frontend-Prototyp · kein Backend-Algorithmuswechsel · keine Production-Seiteneffekte

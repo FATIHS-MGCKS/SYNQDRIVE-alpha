@@ -6,9 +6,9 @@ Snapshot `DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb
 | Screenshot | Event (UTC) | UI-Text (beobachtet) | Legacy-Formatter reproduziert | Prototyp-Anzeige | Ø m/s² | Dauer | Video | Verdict |
 |---|---|---|---|---|---|---|---|---|
 | IMG_7778 | DECELERATION 19:04:26–19:04:29 | `35 → 6 km/h (+29)` | ja | `35 → 6 km/h (−29)` | -2.7 | 3 s | NOT_VIDEO_COVERED | PLAUSIBLE_MAGNITUDE_UNCERTAIN_TIMING_DISPLAY_BUG |
-| IMG_7779 | DECELERATION 19:04:39–19:04:42 | `98 → 69 km/h (+30)` | ja | `98 → 69 km/h (−29)` | -2.73 | 3 s | NOT_VIDEO_COVERED | PLAUSIBLE_EVENT_DISPLAY_BUG |
-| IMG_7780 | ACCELERATION 19:04:49–19:04:52 | `52 → 142 km/h (+90)` | ja | `52 → 142 km/h (+90)` | 8.31 | 3 s | NOT_VIDEO_COVERED | MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR |
-| IMG_7781 | ACCELERATION 19:04:34–19:04:38 | `6 → 100 km/h (+95)` | ja | `6 → 100 km/h (+95)` | 6.57 | 4 s | NOT_VIDEO_COVERED | MEASUREMENT_ARTEFACT_NOT_DRIVER_BEHAVIOUR |
+| IMG_7779 | DECELERATION 19:04:39–19:04:42 | `98 → 69 km/h (+30)` | ja | `98 → 69 km/h (−30)` | -2.73 | 3 s | NOT_VIDEO_COVERED | PLAUSIBLE_EVENT_DISPLAY_BUG |
+| IMG_7780 | ACCELERATION 19:04:49–19:04:52 | `52 → 142 km/h (+90)` | ja | `52 → 142 km/h (+90)` | 8.31 | 3 s | NOT_VIDEO_COVERED | SUSPECTED_MEASUREMENT_ARTEFACT_NOT_VIDEO_VERIFIED |
+| IMG_7781 | ACCELERATION 19:04:34–19:04:38 | `6 → 100 km/h (+95)` | ja | `6 → 100 km/h (+95)` | 6.57 | 4 s | NOT_VIDEO_COVERED | SUSPECTED_MEASUREMENT_ARTEFACT_NOT_VIDEO_VERIFIED |
 
 ## IMG_7778 — DECELERATION 2026-10-22T19:04:26Z–2026-10-22T19:04:29Z
 
@@ -16,7 +16,7 @@ Frontend-Event-ID: `motion-ev-17-2026-10-22T19:04:26Z` · Qualität: `DEGRADED` 
 
 Befunde:
 - DISPLAY_SIGN_BUG: deltaKmh persisted as unsigned magnitude; popover forced "+" prefix (braking shown as gain)
-- TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts
+- TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — timing support is uncertain; not independent proof of an artefact
 - TRIP_END_EDGE: event ends 24.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support
 - LEG_GAP: max positioned-leg label gap 2 s inside window
 
@@ -62,8 +62,8 @@ Befunde:
 Frontend-Event-ID: `motion-ev-20-2026-10-22T19:04:49Z` · Qualität: `DEGRADED` · Flags: `L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST, L3_SUPPORT_MISSING_FALLBACK_ROBUST, MIN_SUPPORT_3_POINTS, TIMING_JITTER_SUSPECT_IN_WINDOW`
 
 Befunde:
-- KINEMATIC_IMPLAUSIBLE: mean 8.31 m/s² exceeds passenger-car envelope (|a| > 5 m/s²)
-- TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — speeds in window are 1-s-label artefacts
+- EXPERIMENTAL_ENVELOPE_WARNING: mean 8.31 m/s² exceeds unvalidated research threshold (|a| > 5 m/s²); not a physical impossibility boundary
+- TIMING_JITTER: C4 marked buckets JITTER_SUSPECT (label-gap vs. fix-cadence mismatch) — timing support is uncertain; not independent proof of an artefact
 - POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)
 - SPARSE_ENDPOINTS: 2/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT
 - TRIP_END_EDGE: event ends 1.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support
@@ -87,7 +87,7 @@ Befunde:
 Frontend-Event-ID: `motion-ev-18-2026-10-22T19:04:34Z` · Qualität: `LIMITED` · Flags: `L3_SUPPORT_MISSING_FALLBACK_ROBUST, MIN_SUPPORT_3_POINTS`
 
 Befunde:
-- KINEMATIC_IMPLAUSIBLE: mean 6.57 m/s² exceeds passenger-car envelope (|a| > 5 m/s²)
+- EXPERIMENTAL_ENVELOPE_WARNING: mean 6.57 m/s² exceeds unvalidated research threshold (|a| > 5 m/s²); not a physical impossibility boundary
 - POSITION_GAP: 1 ROW_ABSENT bucket(s) inside the event window (sub-1 Hz fix cadence)
 - SPARSE_ENDPOINTS: 2/2 endpoint bucket(s) with MIN_SUPPORT_3_POINTS / SPARSE_SUPPORT
 - TRIP_END_EDGE: event ends 15.2 s before trip end (2026-10-22T19:04:53.233Z); no forward support
@@ -120,17 +120,17 @@ Befunde:
 | 6 | ACCEL | 18:45:24–18:45:28 | `44 → 72 km/h (+28)` | `44 → 72 km/h (+28)` | 1.96 | OK |  | ja |
 | 7 | DECEL | 18:46:44–18:46:46 | `58 → 48 km/h (+11)` | `58 → 48 km/h (−11)` | -1.47 | OK |  | ja |
 | 8 | ACCEL | 18:47:00–18:47:04 | `49 → 81 km/h (+31)` | `49 → 81 km/h (+31)` | 2.18 | OK |  | ja |
-| 9 | DECEL | 18:47:42–18:47:47 | `34 → 7 km/h (+28)` | `34 → 7 km/h (−27)` | -1.53 | OK |  | ja |
+| 9 | DECEL | 18:47:42–18:47:47 | `34 → 7 km/h (+28)` | `34 → 7 km/h (−28)` | -1.53 | OK |  | ja |
 | 10 | ACCEL | 18:49:12–18:49:18 | `67 → 1931 km/h (+1864)` | `67 → 1931 km/h (+1864)` | 86.27 | DEGRADED | **ja** | ja |
 | 11 | DECEL | 18:58:16–18:58:20 | `40 → 9 km/h (+31)` | `40 → 9 km/h (−31)` | -2.16 | OK |  | ja |
 | 12 | ACCEL | 18:58:22–18:58:25 | `9 → 25 km/h (+17)` | `9 → 25 km/h (+17)` | 1.53 | OK |  | ja |
 | 13 | ACCEL | 18:59:00–18:59:04 | `7 → 46 km/h (+39)` | `7 → 46 km/h (+39)` | 2.68 | OK |  | ja |
 | 14 | ACCEL | 18:59:27–18:59:29 | `40 → 58 km/h (+17)` | `40 → 58 km/h (+17)` | 2.36 | OK |  | ja |
-| 15 | DECEL | 18:59:37–18:59:40 | `38 → 19 km/h (+19)` | `38 → 19 km/h (−18)` | -1.71 | OK |  | ja |
+| 15 | DECEL | 18:59:37–18:59:40 | `38 → 19 km/h (+19)` | `38 → 19 km/h (−19)` | -1.71 | OK |  | ja |
 | 16 | DECEL | 18:59:59–19:00:01 | `20 → 7 km/h (+13)` | `20 → 7 km/h (−13)` | -1.76 | OK |  | ja |
 | 17 | DECEL | 19:04:26–19:04:29 | `35 → 6 km/h (+29)` | `35 → 6 km/h (−29)` | -2.7 | DEGRADED |  |  |
 | 18 | ACCEL | 19:04:34–19:04:38 | `6 → 100 km/h (+95)` | `6 → 100 km/h (+95)` | 6.57 | LIMITED | **ja** |  |
-| 19 | DECEL | 19:04:39–19:04:42 | `98 → 69 km/h (+30)` | `98 → 69 km/h (−29)` | -2.73 | LIMITED |  |  |
+| 19 | DECEL | 19:04:39–19:04:42 | `98 → 69 km/h (+30)` | `98 → 69 km/h (−30)` | -2.73 | LIMITED |  |  |
 | 20 | ACCEL | 19:04:49–19:04:52 | `52 → 142 km/h (+90)` | `52 → 142 km/h (+90)` | 8.31 | DEGRADED | **ja** |  |
 
 ## „0 Ereignisse“
