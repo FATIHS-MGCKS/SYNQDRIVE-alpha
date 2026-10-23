@@ -14,6 +14,20 @@ export type DiV0MotionCoreShadowPersistedSpeedRow = {
   flags: string[];
 };
 
+export type DiV0MotionCoreShadowSpeedAuthority = 'C4_ONLY' | 'C5_1_PREFERRED';
+
+export type DiV0MotionCoreShadowPersistedRepairRow = {
+  bucketLabelUtc: string;
+  repairState: string;
+  c4SpeedKmh: number | null;
+  c4Quality: string;
+  preferredSpeedKmh: number | null;
+  preferredQuality: string;
+  rejectionReason: string | null;
+  q5Evidence: string | null;
+  q6Evidence: string | null;
+};
+
 export type DiV0MotionCoreShadowPersistedFsmRow = {
   bucketLabelUtc: string;
   state: string;
@@ -45,10 +59,15 @@ export type DiV0MotionCoreShadowTimeSemantics = {
 export type DiV0MotionCoreShadowQualityContract = {
   algorithmVersions: {
     c4: string;
+    c5_1: string | null;
+    c5_1ProductionSafety: string | null;
+    c5_1AlgorithmFileSha256: string | null;
     fsm: string;
     events: string;
     bundle: string;
   };
+  speedAuthority: DiV0MotionCoreShadowSpeedAuthority;
+  knownLimitations?: string[];
   timeSemantics: DiV0MotionCoreShadowTimeSemantics;
   sparse: {
     channelOutcome: string | null;
@@ -67,6 +86,9 @@ export type DiV0MotionCoreShadowQualityContract = {
 export type DiV0MotionCoreShadowPayloadV1 = {
   contract: DiV0MotionCoreShadowQualityContract;
   speeds: DiV0MotionCoreShadowPersistedSpeedRow[];
+  /** Immutable C4 baseline when speedAuthority is C5_1_PREFERRED. */
+  c4Speeds?: DiV0MotionCoreShadowPersistedSpeedRow[];
+  speedRepairs?: DiV0MotionCoreShadowPersistedRepairRow[];
   fsmLabels: DiV0MotionCoreShadowPersistedFsmRow[];
   stopEpisodes: MotionFsmStopEpisode[];
   events: DiV0MotionCoreShadowPersistedEventRow[];

@@ -11,6 +11,8 @@ import {
 export const DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS = {
   enabled: 'DI_V0_MOTION_CORE_SHADOW_ENABLED',
   worker: 'DI_V0_MOTION_CORE_SHADOW_WORKER_ENABLED',
+  /** When true, post-trip shadow payload uses C5.1 preferred speed (C4 retained as baseline). Default false. */
+  c5_1PreferredSpeed: 'DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED',
 } as const;
 
 export const DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS = {
@@ -21,6 +23,7 @@ export const DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS = {
 export interface DiV0MotionCoreShadowControlPlaneConfig {
   shadowEnabled: boolean;
   workerEnabled: boolean;
+  c5_1PreferredSpeedEnabled: boolean;
   organizationAllowlist: ReadonlySet<string>;
   vehicleAllowlist: ReadonlySet<string>;
 }
@@ -31,6 +34,7 @@ export function parseDiV0MotionCoreShadowControlPlaneConfig(
   return {
     shadowEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.enabled]),
     workerEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.worker]),
+    c5_1PreferredSpeedEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.c5_1PreferredSpeed]),
     organizationAllowlist: parseDiV0S4Allowlist(env[DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS.organization]),
     vehicleAllowlist: parseDiV0S4Allowlist(env[DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS.vehicle]),
   };

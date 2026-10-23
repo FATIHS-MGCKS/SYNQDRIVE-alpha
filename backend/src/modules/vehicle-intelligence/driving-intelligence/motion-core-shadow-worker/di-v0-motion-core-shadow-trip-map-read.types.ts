@@ -18,6 +18,10 @@ export type DiV0MotionCoreShadowTripMapSampleDto = {
   latitude: number | null;
   longitude: number | null;
   positionAvailability: string | null;
+  /** Master-admin repair comparison when C5.1 preferred speed is active. */
+  c4SpeedKmh?: number | null;
+  repairState?: string | null;
+  repairRejectionReason?: string | null;
 };
 
 export type DiV0MotionCoreShadowTripMapEventDto = {
@@ -65,10 +69,12 @@ export type DiV0MotionCoreShadowTripMapReadResponse = {
   combinedInputIdentity: string | null;
   algorithmVersions: {
     c4: string;
+    c5_1: string | null;
     fsm: string;
     events: string;
     bundle: string;
   } | null;
+  speedAuthority: 'C4_ONLY' | 'C5_1_PREFERRED' | null;
   computedAtUtc: string | null;
   geometrySource: DiV0MotionCoreShadowTripMapGeometrySource;
   geometryNote: string | null;

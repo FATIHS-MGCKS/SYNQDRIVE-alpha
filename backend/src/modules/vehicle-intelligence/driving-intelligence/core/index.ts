@@ -12,6 +12,15 @@ export * from './kinematics/frozen-l3-replay';
 export * from './kinematics/speed-sample.types';
 export * from './kinematics/robust-path-slope';
 export * from './kinematics/c4-adaptive-l3';
+export * from './kinematics/c5-1-gated-repair';
+export {
+  EVIDENCE,
+  FROZEN,
+  MOTION_CORE_SPEED_C5_1_VERSION,
+  MOTION_CORE_SPEED_C5_1_PRODUCTION_SAFETY_VERSION,
+} from './kinematics/c5-1-gated-repair.constants';
+export type { C5_1GatedRepairOptions, C5_1GatedRepairResult, C5_1GatedRepairSample } from './kinematics/c5-1-gated-repair.constants';
+export type { C5_1VehicleClass } from './kinematics/c5-1-plausibility';
 export * from './kinematics/c4-time-semantics';
 export * from './kinematics/motion-evaluation';
 export * from './kinematics/shadow-gating-reconciliation';
