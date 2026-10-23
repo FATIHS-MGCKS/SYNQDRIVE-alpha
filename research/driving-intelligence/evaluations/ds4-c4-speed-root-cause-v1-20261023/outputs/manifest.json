@@ -1,0 +1,23 @@
+{
+  "generatedAtUtc": "2026-10-23T13:26:02.901Z",
+  "productionCodeSha": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "replayCodeSha": "6d1de00e5b0931746f3c1db72000a6cbcd153443",
+  "tripIds": {
+    "TES16": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "TIG22": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe"
+  },
+  "outputs": [
+    {
+      "file": "TES16_TRACE.csv",
+      "sha256": "33b99bf0192f8a45027feaefa18f3a960423881633c3bfcea8ef0ac4ebb4f6aa"
+    },
+    {
+      "file": "TIG22_TRACE.csv",
+      "sha256": "2f87c697828c5f3084bdb98e0db047b0c8096becd20ea30b5c000f346c5bac1d"
+    },
+    {
+      "file": "counterfactual_summary.json",
+      "sha256": "104a95958798f30e7c3cc0a0aade4876fcdafcddae3a2d667d4d0cc9c7f91721"
+    }
+  ]
+}
