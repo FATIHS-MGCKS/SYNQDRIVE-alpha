@@ -11,6 +11,7 @@ import {
   MOTION_CORE_EVENT_GUARDS_V0_1_DEV,
   MOTION_EVENT_V0_2_CANDIDATE_OPTIONS,
   MOTION_FSM_PARAMS_V0_2_DEV,
+  MOTION_FSM_FROZEN_LEGACY_SPARSE_OPTIONS,
   MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
   runMotionFsm,
   type MotionCorePositionBucket,
@@ -24,6 +25,30 @@ const TIGUAN_EVIDENCE_BIN = join(
   REPO_ROOT,
   'research/driving-intelligence/audits/ds4-motion-tiguan-20261022-compact/DS4_Motion_Tiguan_CURSOR_COMPACT/evaluation/snapshots/di_v0_s4_evidence_container.bin',
 );
+const TIGUAN_VIDEO_REF_CSV = join(
+  REPO_ROOT,
+  'research/driving-intelligence/audits/ds4-motion-tiguan-20261022-compact/DS4_Motion_Tiguan_CURSOR_COMPACT/evaluation/reference/TIGUAN_2026-10-22_1Hz.csv',
+);
+
+function loadVideoSpeedDisplayKmhByUtc(): Map<string, number> {
+  if (!existsSync(TIGUAN_VIDEO_REF_CSV)) {
+    throw new Error(`Required video reference CSV missing: ${TIGUAN_VIDEO_REF_CSV}`);
+  }
+  const lines = readFileSync(TIGUAN_VIDEO_REF_CSV, 'utf8').trim().split('\n');
+  const header = lines[0]!.split(',');
+  const utcIdx = header.indexOf('time_utc_estimated');
+  const speedIdx = header.indexOf('speed_display_kmh');
+  const map = new Map<string, number>();
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i]!.split(',');
+    const utc = cols[utcIdx];
+    const speed = Number(cols[speedIdx]);
+    if (utc && Number.isFinite(speed)) {
+      map.set(utc, speed);
+    }
+  }
+  return map;
+}
 
 function loadGrid(name: string): MotionCorePositionBucket[] {
   const raw = JSON.parse(readFileSync(join(FIXTURES, name), 'utf8')) as
@@ -69,13 +94,17 @@ function replayTiguan22(
       sparseArg = sparse;
     }
   }
+  const fsmOptions =
+    variant === 'baseline' || variant === 'gps_only'
+      ? MOTION_FSM_FROZEN_LEGACY_SPARSE_OPTIONS
+      : MOTION_FSM_V0_3_CANDIDATE_OPTIONS;
   const fsm = runMotionFsm(
     kin,
     c4,
     'RETROSPECTIVE',
     sparseArg,
     MOTION_FSM_PARAMS_V0_2_DEV,
-    MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
+    fsmOptions,
   );
   const stops = extractMotionFsmStopEpisodes(0, fsm, 'RETROSPECTIVE');
   const events = eventsOf(c4);
@@ -137,7 +166,20 @@ describe('motion core Tiguan GPS leg gate + OBD point authority (shadow adapter)
         e.endLabel >= '2026-10-22T18:49:12Z',
     );
     expect(falseAccel).toBe(false);
-    expect(events).toHaveLength(16);
+    expect(events).toHaveLength(20);
+  });
+
+  it('frozen true baseline without leg gate matches dea2555bb Tiguan 22 Oct (21 events, 1916 C4)', () => {
+    const c4 = computeC4AdaptiveL3(grid22, { enabled: false });
+    expect(eventsOf(c4)).toHaveLength(21);
+    expect(c4.filter((s) => s.valueKmh != null)).toHaveLength(1916);
+  });
+
+  it('combined hardened path: 20 events and 1908 numeric C4 (jump quarantine, no false 18:49 ACCEL)', () => {
+    const combined = replayTiguan22(grid22, sparse22, 'combined');
+    expect(combined.events).toHaveLength(20);
+    expect(combined.c4.filter((s) => s.valueKmh != null)).toHaveLength(1908);
+    expect(combined.stops).toHaveLength(11);
   });
 
   it('stop episode counts per variant on full 22 Oct grid', () => {
@@ -149,7 +191,7 @@ describe('motion core Tiguan GPS leg gate + OBD point authority (shadow adapter)
     expect(baseline.stops).toHaveLength(12);
     expect(gpsOnly.stops).toHaveLength(12);
     expect(obdOnly.stops).toHaveLength(11);
-    expect(combined.stops).toHaveLength(12);
+    expect(combined.stops).toHaveLength(11);
   });
 
   it('combined: excluded OBD (no point authority) matches removed OBD for FSM and stop time evidence', () => {
@@ -169,29 +211,27 @@ describe('motion core Tiguan GPS leg gate + OBD point authority (shadow adapter)
     expect(stopTimeEvidenceSignature(withObd.stops)).toBe(stopTimeEvidenceSignature(stopsWithout));
   });
 
-  it('documents six STATIONARY creep seconds with tacho reference, C4, and FSM evidence', () => {
+  it('documents six STATIONARY creep seconds with video display reference (separate from OBD)', () => {
+    const videoKmh = loadVideoSpeedDisplayKmhByUtc();
     const { fsm, c4 } = replayTiguan22(grid22, sparse22, 'combined');
-    const creepSeconds: Array<{ label: string; sparseRefKmh: number | null }> = [
-      { label: '2026-10-22T18:44:07Z', sparseRefKmh: 0 },
-      { label: '2026-10-22T18:44:08Z', sparseRefKmh: 5 },
-      { label: '2026-10-22T18:44:09Z', sparseRefKmh: null },
-      { label: '2026-10-22T18:58:52Z', sparseRefKmh: 64 },
-      { label: '2026-10-22T19:00:04Z', sparseRefKmh: null },
-      { label: '2026-10-22T19:02:57Z', sparseRefKmh: null },
+    const creepSeconds: Array<{ label: string; videoDisplayKmh: number }> = [
+      { label: '2026-10-22T18:44:07Z', videoDisplayKmh: 4 },
+      { label: '2026-10-22T18:44:08Z', videoDisplayKmh: 5 },
+      { label: '2026-10-22T18:44:09Z', videoDisplayKmh: 2 },
+      { label: '2026-10-22T18:58:52Z', videoDisplayKmh: 1 },
+      { label: '2026-10-22T19:00:04Z', videoDisplayKmh: 1 },
+      { label: '2026-10-22T19:02:57Z', videoDisplayKmh: 1 },
     ];
-    for (const { label, sparseRefKmh } of creepSeconds) {
+    for (const { label, videoDisplayKmh } of creepSeconds) {
       const row = fsm.find((l) => l.label === label);
-      const sparseRow = sparse22.find((s) => s.label === label);
+      const obdRow = sparse22.find((s) => s.label === label);
       const c4Row = c4.find((s) => s.label === label);
       expect(row?.state).toBe('STATIONARY');
-      if (sparseRefKmh != null) {
-        expect(sparseRow?.speedKmh).toBe(sparseRefKmh);
-      } else {
-        expect(sparseRow).toBeUndefined();
-      }
+      expect(videoKmh.get(label)).toBe(videoDisplayKmh);
       expect(row?.sparseFsmPointAuthority).toBe(false);
       expect(c4Row).toBeDefined();
       expect(row?.evidenceQuality).toBeDefined();
+      expect(row?.reason).toBeDefined();
     }
   });
 
@@ -213,9 +253,9 @@ describe('motion core Tiguan GPS leg gate + OBD point authority (shadow adapter)
       pinnedSnapshotHash: 'tiguan-20261022-hardening',
       combinedInputIdentity: 'motion-core-tiguan-gps-obd-hardening.spec',
     });
-    expect(out.payload.contract.algorithmVersions.bundle).toContain('LEG_GATE_OBD_POINT_AUTH_V3');
-    expect(out.payload.summary.eventAcceptedCount).toBe(16);
-    expect(out.payload.summary.stopEpisodeCount).toBe(12);
+    expect(out.payload.contract.algorithmVersions.bundle).toContain('LEG_GATE_OBD_POINT_AUTH_V4');
+    expect(out.payload.summary.eventAcceptedCount).toBe(20);
+    expect(out.payload.summary.stopEpisodeCount).toBe(11);
     const jump = out.payload.speeds.find((s) => s.bucketLabelUtc === '2026-10-22T18:49:18Z');
     expect(jump?.speedKmh).toBeNull();
     expect(jump?.quality).toBe('OUTLIER_REJECTED');

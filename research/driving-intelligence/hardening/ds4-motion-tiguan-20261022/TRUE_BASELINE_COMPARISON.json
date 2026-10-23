@@ -1,0 +1,18 @@
+{
+  "trueBaselineGit": "dea2555bb746550c632f4315dabe08b9481be0df",
+  "tiguan20261022WithoutLegGate": {
+    "events": 21,
+    "numericC4": 1916,
+    "note": "No 1 s leg quarantine; includes pre-fix jump C4 and false ACCELERATION near 18:49:18Z"
+  },
+  "hardenedCombinedProductPath": {
+    "events": 20,
+    "numericC4": 1908,
+    "stops": 11,
+    "jump184918Z": "OUTLIER_REJECTED",
+    "eventDeltaVsTrueBaseline": "−1 false ACCELERATION removed (18:49:12–18:49:18 window)",
+    "c4DeltaVsTrueBaseline": "−8 numeric labels quarantined at GPS jump",
+    "post1904UtcEventLoss": "Not video-validated; separate from jump fix"
+  },
+  "historicalC4Fixture": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/fixtures/tiguan-20261019-c4-baseline.json (frozen at eb4bb47a7, not overwritten)"
+}

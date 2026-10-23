@@ -2142,6 +2142,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | OPEN | Full sparse ablation B not adopted (creep vs tacho-zero tradeoff); stop episodes 11 vs audit 12 on replay; audit `run_audit.sh` needs Node 24 |
 | NON_EFFECTS | No deploy, reprocessing, flag ON, M7A/Mapbox/scoring changes; raw snapshots unchanged |
 
+### DS4 motion — hard-quarantine vs jitter + C1 path block + OBD provenance (2026-10-22, PR #2134 correction)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Leg gate V0_5: hard quarantine = absolute 400 + spike 1000 only; jitter ratio not quarantine; C1 restores all window slopes, skips pairs crossing blocked 1 s legs; FSM `frozenLegacySparsePointAuthority` for frozen baseline replay; R1 requires `R1_DEVICE_MEASUREMENT` provenance; bundle V4; restored `tiguan-20261019-c4-baseline.json` |
+| WHY | V0_4 relative jitter quarantine rejected plausible low-speed accel; global C1 adjacent-only broke leg-gate-off baseline; OBD authority needed explicit provenance |
+| VALIDATION | Jest leg-gate, tiguan hardening, r1 authority; `TRUE_BASELINE_COMPARISON.json` |
+| NON_EFFECTS | No deploy/flags/M7A |
+
 ### DS4 motion — GPS C1 quarantine + leg backstop + OBD stop metadata (2026-10-22, PR #2134 gap fix)
 
 | Event | Detail |

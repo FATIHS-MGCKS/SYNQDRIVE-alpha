@@ -287,7 +287,12 @@ describe('EXP021 review — robustness cases', () => {
     expect(cand.eps).toHaveLength(1);
     expect(cand.fsm.slice(16).every((l) => l.state === 'MOVING' || l.state === 'STARTING')).toBe(true);
     // K-A alone is sufficient for this case
-    const ka = chain(g, { staleSpeedContextFix: true, startingTimeout: false, evidencePropagation: false });
+    const ka = chain(g, {
+      staleSpeedContextFix: true,
+      startingTimeout: false,
+      evidencePropagation: false,
+      frozenLegacySparsePointAuthority: false,
+    });
     expect(ka.eps).toHaveLength(1);
     expect(motionFsmVersionId(MOTION_FSM_V0_3_CANDIDATE_OPTIONS)).toContain('V0_3_CAND');
     // the Fable path is byte-identical through the wrapper
@@ -314,7 +319,12 @@ describe('EXP021 review — robustness cases', () => {
       estimator: 'TEST',
     }));
     const base = runMotionFsm(g, speeds, 'CAUSAL', null, undefined, MOTION_FSM_FABLE_V0_2_OPTIONS);
-    const kb = runMotionFsm(g, speeds, 'CAUSAL', null, undefined, { staleSpeedContextFix: false, startingTimeout: true, evidencePropagation: false });
+    const kb = runMotionFsm(g, speeds, 'CAUSAL', null, undefined, {
+      staleSpeedContextFix: false,
+      startingTimeout: true,
+      evidencePropagation: false,
+      frozenLegacySparsePointAuthority: false,
+    });
     // baseline: STARTING never resolves (declared startingMaxS unused)
     expect(base.slice(8).every((l) => l.state === 'STARTING')).toBe(true);
     // K-B: resolves after startingMaxS labels, then stays MOVING

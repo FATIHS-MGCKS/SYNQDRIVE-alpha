@@ -108,16 +108,24 @@ export function robustPathSlopeC1(
     }
     const ks = pts.map((p) => p.k);
     const slopes: number[] = [];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const dt = ks[i + 1]! - ks[i]!;
-      if (dt !== 1) {
-        continue;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dt = ks[j]! - ks[i]!;
+        if (dt <= 0) {
+          continue;
+        }
+        let blockedPath = false;
+        for (let t = i; t < j; t++) {
+          if (blockedLegs.has(pts[t]!.bucket.bucketLabelUtc)) {
+            blockedPath = true;
+            break;
+          }
+        }
+        if (blockedPath) {
+          continue;
+        }
+        slopes.push((cum[j]! - cum[i]!) / dt);
       }
-      const legStart = pts[i]!.bucket.bucketLabelUtc;
-      if (blockedLegs.has(legStart)) {
-        continue;
-      }
-      slopes.push((cum[i + 1]! - cum[i]!) / dt);
     }
     if (slopes.length === 0) {
       out.push({

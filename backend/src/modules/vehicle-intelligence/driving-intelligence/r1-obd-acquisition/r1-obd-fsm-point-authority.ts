@@ -1,6 +1,8 @@
 import { parseBucketLabelMs } from '../core/kinematics/motion-core-grid';
 import type { TemporalConfidence } from '../core/types';
 
+export type R1ProviderMeasurementProvenance = 'R1_DEVICE_MEASUREMENT' | 'BUCKET_AGGREGATION_ONLY';
+
 export type R1ObdFsmPointAuthorityResolution = {
   fsmPointAuthority: boolean;
   /** Provider measurement instant when point-level time authority exists; never the 1 Hz bucket label. */
@@ -15,7 +17,7 @@ function parseProviderMeasurementMs(instant: string): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Measurement instant must fall inside the bucket's [start, start+1s) window (not string equality to label). */
+/** Measurement instant must fall inside the bucket's [start, start+1s) window (Z and .000Z equivalent via parse). */
 export function providerMeasurementAlignsWithBucketSecond(
   bucketLabelUtc: string,
   measurementInstantUtc: string,
@@ -39,6 +41,7 @@ export function resolveR1ObdFsmPointAuthority(
     temporalConfidence: TemporalConfidence;
     bucketLabel: string;
     providerMeasurementInstantUtc?: string | null;
+    providerMeasurementProvenance?: R1ProviderMeasurementProvenance | null;
   },
 ): R1ObdFsmPointAuthorityResolution {
   if (obs.temporalConfidence !== 'EXACT_PROVEN') {
@@ -50,6 +53,14 @@ export function resolveR1ObdFsmPointAuthority(
         obs.temporalConfidence === 'INTERVAL_ONLY'
           ? 'R1_INTERVAL_ONLY_BUCKET_NOT_MEASUREMENT_INSTANT'
           : 'TEMPORAL_CONFIDENCE_NOT_EXACT_PROVEN',
+    };
+  }
+  if (obs.providerMeasurementProvenance !== 'R1_DEVICE_MEASUREMENT') {
+    return {
+      fsmPointAuthority: false,
+      measurementTimeUtc: null,
+      temporalConfidence: obs.temporalConfidence,
+      denialReason: 'MISSING_OR_INVALID_PROVIDER_MEASUREMENT_PROVENANCE',
     };
   }
   const instant = obs.providerMeasurementInstantUtc ?? null;

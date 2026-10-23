@@ -43,18 +43,31 @@ export interface MotionFsmCandidateOptions {
    * sparse-vs-C4 contradictions and hysteresis-band creep are flagged. States are unchanged.
    */
   evidencePropagation: boolean;
+  /**
+   * Frozen baseline replay only: sparse rows without `fsmPointAuthority` may drive DIRECT like pre-authority pins.
+   * Product / shadow processor paths must leave this false.
+   */
+  frozenLegacySparsePointAuthority: boolean;
 }
 
 export const MOTION_FSM_FABLE_V0_2_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
   staleSpeedContextFix: false,
   startingTimeout: false,
   evidencePropagation: false,
+  frozenLegacySparsePointAuthority: false,
 };
 
 export const MOTION_FSM_V0_3_CANDIDATE_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
   staleSpeedContextFix: true,
   startingTimeout: true,
   evidencePropagation: true,
+  frozenLegacySparsePointAuthority: false,
+};
+
+/** Explicit frozen comparison replay (pre–point-authority sparse semantics). */
+export const MOTION_FSM_FROZEN_LEGACY_SPARSE_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
+  ...MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
+  frozenLegacySparsePointAuthority: true,
 };
 
 export function motionFsmVersionId(options: Readonly<MotionFsmCandidateOptions>): string {
@@ -134,8 +147,20 @@ export interface SparseVehicleSpeedSample {
   fsmPointAuthority?: boolean;
 }
 
-function sparseEligibleForFsmPointAuthority(sample: SparseVehicleSpeedSample | undefined): boolean {
-  return sample != null && sample.fsmPointAuthority !== false;
+function sparseEligibleForFsmPointAuthority(
+  sample: SparseVehicleSpeedSample | undefined,
+  frozenLegacySparsePointAuthority: boolean,
+): boolean {
+  if (sample == null) {
+    return false;
+  }
+  if (sample.fsmPointAuthority === true) {
+    return true;
+  }
+  if (sample.fsmPointAuthority === false) {
+    return false;
+  }
+  return frozenLegacySparsePointAuthority;
 }
 
 const FSM_NUMERIC_SPEED_QUALITIES: ReadonlySet<MotionCoreSpeedQuality | string> = new Set([
@@ -248,7 +273,10 @@ export function runMotionFsm(
       flags.push('FROZEN_POSITION_TREATED_AS_NO_EVIDENCE');
     }
     const sparseRow = sparseByLabel.get(lab);
-    const sparseAuthoritative = sparseEligibleForFsmPointAuthority(sparseRow);
+    const sparseAuthoritative = sparseEligibleForFsmPointAuthority(
+      sparseRow,
+      opt.frozenLegacySparsePointAuthority,
+    );
     const sparseKmh = sparseRow?.speedKmh ?? null;
     if (sparseRow && !sparseAuthoritative) {
       flags.push('SPARSE_AGGREGATION_LABEL_NOT_POINT_AUTHORITY');

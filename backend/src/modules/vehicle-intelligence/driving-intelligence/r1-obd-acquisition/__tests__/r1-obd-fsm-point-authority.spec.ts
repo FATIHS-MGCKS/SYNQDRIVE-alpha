@@ -16,11 +16,22 @@ describe('resolveR1ObdFsmPointAuthority', () => {
     expect(r.denialReason).toBe('R1_INTERVAL_ONLY_BUCKET_NOT_MEASUREMENT_INSTANT');
   });
 
-  it('denies EXACT_PROVEN without a provider measurement instant', () => {
+  it('denies EXACT_PROVEN without provider measurement provenance', () => {
+    const r = resolveR1ObdFsmPointAuthority({
+      temporalConfidence: 'EXACT_PROVEN',
+      bucketLabel: bucket,
+      providerMeasurementInstantUtc: '2026-10-22T18:47:58.123Z',
+    });
+    expect(r.fsmPointAuthority).toBe(false);
+    expect(r.denialReason).toBe('MISSING_OR_INVALID_PROVIDER_MEASUREMENT_PROVENANCE');
+  });
+
+  it('denies EXACT_PROVEN with invalid instant string', () => {
     const r = resolveR1ObdFsmPointAuthority({
       temporalConfidence: 'EXACT_PROVEN',
       bucketLabel: bucket,
       providerMeasurementInstantUtc: 'not-a-time',
+      providerMeasurementProvenance: 'R1_DEVICE_MEASUREMENT',
     });
     expect(r.fsmPointAuthority).toBe(false);
     expect(r.denialReason).toBe('MEASUREMENT_INSTANT_OUTSIDE_BUCKET_SECOND');
@@ -31,20 +42,31 @@ describe('resolveR1ObdFsmPointAuthority', () => {
       temporalConfidence: 'EXACT_PROVEN',
       bucketLabel: bucket,
       providerMeasurementInstantUtc: bucket,
+      providerMeasurementProvenance: 'R1_DEVICE_MEASUREMENT',
     });
     expect(r.fsmPointAuthority).toBe(false);
     expect(r.denialReason).toBe('BUCKET_LABEL_USED_AS_MEASUREMENT_INSTANT');
   });
 
-  it('accepts measurement instant inside bucket second including millisecond suffix', () => {
-    expect(providerMeasurementAlignsWithBucketSecond(bucket, `${bucket.replace('Z', '.000Z')}`)).toBe(true);
-    const r = resolveR1ObdFsmPointAuthority({
+  it('accepts Z and .000Z instants equivalently when provenance and bucket alignment hold', () => {
+    const instantZ = bucket;
+    const instantMs = '2026-10-22T18:47:58.000Z';
+    expect(providerMeasurementAlignsWithBucketSecond(bucket, instantMs)).toBe(true);
+    const rZ = resolveR1ObdFsmPointAuthority({
       temporalConfidence: 'EXACT_PROVEN',
       bucketLabel: bucket,
-      providerMeasurementInstantUtc: '2026-10-22T18:47:58.000Z',
+      providerMeasurementInstantUtc: instantZ,
+      providerMeasurementProvenance: 'R1_DEVICE_MEASUREMENT',
     });
-    expect(r.fsmPointAuthority).toBe(true);
-    expect(r.measurementTimeUtc).toBe('2026-10-22T18:47:58.000Z');
-    expect(r.denialReason).toBeNull();
+    expect(rZ.fsmPointAuthority).toBe(false);
+    const rMs = resolveR1ObdFsmPointAuthority({
+      temporalConfidence: 'EXACT_PROVEN',
+      bucketLabel: bucket,
+      providerMeasurementInstantUtc: instantMs,
+      providerMeasurementProvenance: 'R1_DEVICE_MEASUREMENT',
+    });
+    expect(rMs.fsmPointAuthority).toBe(true);
+    expect(rMs.measurementTimeUtc).toBe(instantMs);
+    expect(rMs.denialReason).toBeNull();
   });
 });

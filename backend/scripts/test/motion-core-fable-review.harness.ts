@@ -53,9 +53,24 @@ const TRIPS = [
 
 const FSM_VARIANTS: Record<string, Readonly<MotionFsmCandidateOptions>> = {
   BASE: MOTION_FSM_FABLE_V0_2_OPTIONS,
-  KA: { staleSpeedContextFix: true, startingTimeout: false, evidencePropagation: false },
-  KB: { staleSpeedContextFix: false, startingTimeout: true, evidencePropagation: false },
-  KC: { staleSpeedContextFix: false, startingTimeout: false, evidencePropagation: true },
+  KA: {
+    staleSpeedContextFix: true,
+    startingTimeout: false,
+    evidencePropagation: false,
+    frozenLegacySparsePointAuthority: false,
+  },
+  KB: {
+    staleSpeedContextFix: false,
+    startingTimeout: true,
+    evidencePropagation: false,
+    frozenLegacySparsePointAuthority: false,
+  },
+  KC: {
+    staleSpeedContextFix: false,
+    startingTimeout: false,
+    evidencePropagation: true,
+    frozenLegacySparsePointAuthority: false,
+  },
   V03: MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
 };
 const CONFIGS = [

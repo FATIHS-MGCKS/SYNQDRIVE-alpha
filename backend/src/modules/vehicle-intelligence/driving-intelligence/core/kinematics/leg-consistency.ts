@@ -13,13 +13,15 @@ import {
 export const MOTION_CORE_JITTER_RATIO = 1.5;
 export const MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH = 5.0;
 export const MOTION_CORE_OUTLIER_CHORD_DEVIATION_M = 8.0;
-export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_4_DEV';
+export const MOTION_CORE_LEG_CONSISTENCY_VERSION = 'MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV';
 
 /**
- * Absolute backstop for 1 s leg speed when neighbour legs are missing or also corrupted.
+ * Absolute backstop for 1 s leg speed (hard quarantine only — not jitter suspicion).
  * Not a legal speeding limit — catches teleports when local median is inflated by jumps.
  */
 export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH = 400;
+/** Closed teleport signature (1 s chord); separate from jitter-ratio diagnostics. */
+export const MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH = 1000;
 export type MotionCoreLegGateOptions = {
   /** When false, 1 s leg quarantine is disabled (baseline replay only). */
   enabled?: boolean;
@@ -231,24 +233,22 @@ function buildOneSecondLegSpeedMap(buckets: MotionCorePositionBucket[]): Map<str
 }
 
 /**
- * Physical plausibility for a single 1 s chord speed.
- * Absolute backstop always applies; a corrupted neighbour median cannot waive it.
- * Below the backstop, a jitter-ratio excess vs local median catches spike legs in sane corridors.
+ * Hard 1 s leg quarantine (endpoint rejection + C1 chord blocking).
+ * Jitter-ratio suspicion lives in {@link detectTimingJitterSuspectLegs} only — not quarantine.
  */
+export function hardQuarantineOneSecondLegSpeedKmh(legSpeedKmh: number): boolean {
+  return (
+    legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH ||
+    legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_SPIKE_TELEPORT_KMH
+  );
+}
+
+/** @deprecated Use {@link hardQuarantineOneSecondLegSpeedKmh}; neighbour args ignored (hard quarantine only). */
 export function implausibleOneSecondLegSpeedKmh(
   legSpeedKmh: number,
-  neighbourLegSpeedsKmh: number[],
+  _neighbourLegSpeedsKmh: number[] = [],
 ): boolean {
-  if (legSpeedKmh > MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH) {
-    return true;
-  }
-  if (neighbourLegSpeedsKmh.length < 2) {
-    return false;
-  }
-  const med = median(neighbourLegSpeedsKmh);
-  const relativeCap =
-    Math.max(MOTION_CORE_MIN_SPEED_FOR_JITTER_KMH, med) * MOTION_CORE_JITTER_RATIO;
-  return legSpeedKmh > relativeCap;
+  return hardQuarantineOneSecondLegSpeedKmh(legSpeedKmh);
 }
 
 /** Leg start labels whose 1 s chord is implausible (used to block C1 window bridging). */
@@ -282,8 +282,7 @@ export function detectImplausibleOneSecondLegStartLabels(
     }
     const legStart = a.bucketLabelUtc;
     const speedKmh = legs.get(legStart)!;
-    const neigh = neighbourLegSpeedsKmh(legStart, legs);
-    if (implausibleOneSecondLegSpeedKmh(speedKmh, neigh)) {
+    if (hardQuarantineOneSecondLegSpeedKmh(speedKmh)) {
       blocked.add(legStart);
     }
   }
@@ -336,8 +335,7 @@ export function detectImplausibleOneSecondLegEndpointLabels(
     }
     const legStart = a.bucketLabelUtc;
     const speedKmh = legs.get(legStart)!;
-    const neigh = neighbourLegSpeedsKmh(legStart, legs);
-    if (!implausibleOneSecondLegSpeedKmh(speedKmh, neigh)) {
+    if (!hardQuarantineOneSecondLegSpeedKmh(speedKmh)) {
       continue;
     }
     const aPrev = pm.get(bucketLabelPlusSeconds(a.bucketLabelUtc, -1));

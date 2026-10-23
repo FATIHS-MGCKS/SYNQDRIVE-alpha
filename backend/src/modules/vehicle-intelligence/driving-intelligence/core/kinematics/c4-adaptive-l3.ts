@@ -16,7 +16,7 @@ import {
 import { robustPathSlopeC1 } from './robust-path-slope';
 import type { MotionCoreSpeedSample } from './speed-sample.types';
 
-export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_4_DEV';
+export const MOTION_CORE_SPEED_C4_VERSION = 'MOTION_CORE_SPEED_C4_V0_5_DEV';
 
 function sampleMap(samples: MotionCoreSpeedSample[]): Map<string, MotionCoreSpeedSample> {
   return new Map(samples.map((s) => [s.label, s]));

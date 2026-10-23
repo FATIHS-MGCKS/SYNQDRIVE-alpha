@@ -84,12 +84,27 @@ describe('motion core 1 s leg gate', () => {
     expect(mid.every((s) => s.quality === 'OUTLIER_REJECTED')).toBe(true);
   });
 
-  it('uses absolute backstop when neighbour legs are insufficient', () => {
+  it('uses absolute backstop only (jitter ratio does not hard-quarantine)', () => {
     expect(implausibleOneSecondLegSpeedKmh(MOTION_CORE_IMPLAUSIBLE_1S_LEG_ABSOLUTE_BACKSTOP_KMH + 1, [])).toBe(
       true,
     );
     expect(implausibleOneSecondLegSpeedKmh(900, [900, 900, 900, 900])).toBe(true);
     expect(implausibleOneSecondLegSpeedKmh(260, [255, 258, 260, 262, 259, 261])).toBe(false);
+    expect(implausibleOneSecondLegSpeedKmh(12, [0, 0, 0, 0])).toBe(false);
+  });
+
+  it('preserves plausible low-speed accel/decel (41 s line grid, max ~10.8 km/h)', () => {
+    const dist: number[] = [];
+    for (let i = 0; i <= 18; i++) dist.push(0);
+    dist.push(0.75, 3, 5.25);
+    for (let i = 22; i < 41; i++) dist.push(6);
+    const buckets = lineGrid(dist);
+    const c4 = processorC4(buckets);
+    for (const idx of [19, 20, 21]) {
+      const row = c4[idx]!;
+      expect(row.quality).not.toBe('OUTLIER_REJECTED');
+      expect(row.valueKmh).not.toBeNull();
+    }
   });
 
   it('allows plausible 1 s leg after normal GPS gap (2 s) without quarantine', () => {
