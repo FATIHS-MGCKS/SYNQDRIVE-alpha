@@ -25,6 +25,7 @@ const EMPTY_RESPONSE: DiV0MotionCoreShadowTripMapReadResponse = {
   pinnedSnapshotHash: null,
   combinedInputIdentity: null,
   algorithmVersions: null,
+  speedAuthority: null,
   computedAtUtc: null,
   geometrySource: 'NONE',
   geometryNote: null,
