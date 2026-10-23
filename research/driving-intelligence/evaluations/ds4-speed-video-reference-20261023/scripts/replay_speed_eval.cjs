@@ -5,9 +5,13 @@
  * reference tables. No provider, DB or production access; no runtime change.
  *
  *   node scripts/replay_speed_eval.cjs [--code-root <repo-checkout>] [--tag <label>] [--expect-sha <sha>]
+ *     [--strip-obd-speed-influence]
  *
  * --code-root selects which checkout's DI code is replayed (default: this repository). The DI directory of
  * that checkout must be clean; its HEAD SHA is recorded in every output.
+ *
+ * --strip-obd-speed-influence: offline candidate — R1 OBD vehicle speed is not passed into DI-V0 compute,
+ * speed-QC, or motion-FSM sparse input. The pinned OBD samples remain in outputs as obd_kmh (comparison only).
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -22,6 +26,7 @@ const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args
 const codeRoot = path.resolve(opt('--code-root', thisRepo));
 const tag = opt('--tag', 'main');
 const expectSha = opt('--expect-sha', null);
+const stripObdSpeedInfluence = args.includes('--strip-obd-speed-influence');
 const DI = 'backend/src/modules/vehicle-intelligence/driving-intelligence';
 const outDir = path.join(evalRoot, 'outputs', tag);
 fs.mkdirSync(outDir, { recursive: true });
@@ -53,6 +58,7 @@ const IMPLAUSIBLE_KMH = 250;
 
 const versions = {
   tag, codeRoot, codeSha,
+  obdSpeedInfluence: stripObdSpeedInfluence ? 'STRIPPED_OFFLINE_CANDIDATE' : 'BASELINE_PINNED_AS_DEPLOYED',
   c4: core.MOTION_CORE_SPEED_C4_VERSION,
   legConsistency: core.MOTION_CORE_LEG_CONSISTENCY_VERSION ?? null,
   fsm: core.motionFsmVersionId(core.MOTION_FSM_V0_3_CANDIDATE_OPTIONS),
@@ -119,22 +125,37 @@ function motionCoreReplay(buckets, sparse) {
 function loadContainerDrive(id, text, family, refRows, stored) {
   const parsed = parseDiV0S4EvidenceContainer(text);
   const ad = adaptMotionCoreShadowEvidenceFromParsedContainer(parsed, family);
-  const proc = processDiV0MotionCoreShadowTrip({ parsed, sourceFamily: family, pinnedSnapshotHash: parsed.snapshotHash, combinedInputIdentity: parsed.combinedInputIdentity, computedAt: new Date('2026-10-23T00:00:00Z') });
-  // C4 comes from the core function (needed for supportSpanS); FSM/stops/events come from the processor
-  // payload so that processor-specific wiring (e.g. #2134 OBD point authority) is replayed as deployed.
+  const s1Full = buildDiV0S4dS1InputFromParsedContainer(parsed, family);
+  const s1ForDi = stripObdSpeedInfluence ? { ...s1Full, r1Obd: [] } : s1Full;
   const c4 = core.computeC4AdaptiveL3(ad.buckets);
-  if (JSON.stringify(c4.map((s) => [s.label, s.valueKmh, s.quality])) !== JSON.stringify(proc.payload.speeds.map((s) => [s.bucketLabelUtc, s.speedKmh, s.quality]))) throw new Error('C4 parity with processor broken');
-  const mc = {
-    c4,
-    fsm: proc.payload.fsmLabels.map((f) => ({ label: f.bucketLabelUtc, state: f.state, evidenceQuality: f.evidenceQuality, reason: f.reason })),
-    events: proc.payload.events,
-    stops: proc.payload.stopEpisodes,
-  };
-  const di = diV0Replay(buildDiV0S4dS1InputFromParsedContainer(parsed, family));
+  let mc;
+  let processorPayload = null;
+  if (stripObdSpeedInfluence) {
+    // C4 is GPS-only; FSM without sparse OBD (no directMoving/directZero from R1).
+    mc = motionCoreReplay(ad.buckets, null);
+    if (JSON.stringify(mc.c4.map((s) => [s.label, s.valueKmh, s.quality])) !== JSON.stringify(c4.map((s) => [s.label, s.valueKmh, s.quality]))) {
+      throw new Error('C4 parity broken in strip-obd mode');
+    }
+    mc.c4 = c4;
+  } else {
+    const proc = processDiV0MotionCoreShadowTrip({ parsed, sourceFamily: family, pinnedSnapshotHash: parsed.snapshotHash, combinedInputIdentity: parsed.combinedInputIdentity, computedAt: new Date('2026-10-23T00:00:00Z') });
+    processorPayload = proc.payload;
+    if (JSON.stringify(c4.map((s) => [s.label, s.valueKmh, s.quality])) !== JSON.stringify(proc.payload.speeds.map((s) => [s.bucketLabelUtc, s.speedKmh, s.quality]))) throw new Error('C4 parity with processor broken');
+    mc = {
+      c4,
+      fsm: proc.payload.fsmLabels.map((f) => ({ label: f.bucketLabelUtc, state: f.state, evidenceQuality: f.evidenceQuality, reason: f.reason })),
+      events: proc.payload.events,
+      stops: proc.payload.stopEpisodes,
+    };
+  }
+  const di = diV0Replay(s1ForDi);
   const qcEvidence = buildDiV0TripSpeedQualityEvidenceFromParsedContainer(parsed);
-  di.qc = qcReplay(di.intervals, qcEvidence.positions, qcEvidence.r1Obd, parsed.snapshotHash);
+  const r1ForQc = stripObdSpeedInfluence ? [] : qcEvidence.r1Obd;
+  di.qc = qcReplay(di.intervals, qcEvidence.positions, r1ForQc, parsed.snapshotHash);
   const obd = new Map(ad.sparseSpeed.map((s) => [L.secOf(s.label), s.speedKmh]));
-  return buildDrive(id, { tripId: parsed.tripId, snapshotHash: parsed.snapshotHash, sourceFamily: family, sparseComparable: ad.sparseComparable, limitations: ad.limitations }, ad.buckets, mc, di, obd, refRows, stored, proc.payload);
+  const limitations = [...ad.limitations];
+  if (stripObdSpeedInfluence) limitations.push('OFFLINE_CANDIDATE_STRIP_OBD_SPEED_INFLUENCE');
+  return buildDrive(id, { tripId: parsed.tripId, snapshotHash: parsed.snapshotHash, sourceFamily: family, sparseComparable: ad.sparseComparable, limitations }, ad.buckets, mc, di, obd, refRows, stored, processorPayload);
 }
 
 function buildDrive(id, identity, buckets, mc, di, obd, refRows, stored, processorPayload) {
@@ -200,7 +221,7 @@ function tesla16() {
   const storedL3 = new Map(grid.buckets.map((b) => [L.secOf(b.bucketLabelUtc), { speed: b.pinnedProductionL3Kmh, state: null, positionState: b.positionState, qcTrustLevel: b.qcTrustLevel }]));
   const material = parseDiV0PositionSnapshot(snapshotText);
   const positions = diV0PositionSnapshotToS1Observations(material);
-  const di = diV0Replay({ sourceFamily: 'API_SYNTHETIC', positions, r1Obd: [], nativeEvents: [] });
+  const di = diV0Replay({ sourceFamily: 'API_SYNTHETIC', positions, r1Obd: [], nativeEvents: [] }); // fixture has no R1_OBD
   // same per-bucket position/hold-release classification as buildDiV0TripSpeedQualityEvidenceFromParsedContainer
   const qcPositions = classifyPositionRows(material.buckets.map((b) => b.observation), core.CALIBRATION_UNSET_V0_BUNDLE)
     .map((row) => ({ bucketLabel: row.observation.bucketLabel, availability: row.observation.availability, latitude: row.observation.latitude, longitude: row.observation.longitude, positionState: row.positionState }));
@@ -399,7 +420,10 @@ const overall = {
   roles: { TIG22: 'EVAL for C4 main (DEV for #2134)', 'TES21-1': 'DEV (motion-core design)', 'TES21-2': 'DEV (motion-core design)', TES16: 'EVAL' },
 };
 
-const summary = { schema: 'DS4_SPEED_VIDEO_REFERENCE_EVAL_V1', generatedAtUtc: new Date().toISOString(), versions, rulesFile: 'EVALUATION_RULES.md', primaryShiftS: 0, drives: results, overall, inputs: inputManifest };
+const summary = {
+  schema: 'DS4_SPEED_VIDEO_REFERENCE_EVAL_V1', generatedAtUtc: new Date().toISOString(), versions,
+  rulesFile: 'EVALUATION_RULES.md', primaryShiftS: 0, stripObdSpeedInfluence, drives: results, overall, inputs: inputManifest,
+};
 fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
 
 // console digest

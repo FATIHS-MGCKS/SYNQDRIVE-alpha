@@ -173,3 +173,8 @@ ersetzen:
 **N5 (2026-10-23).** `scripts/compare_tags.cjs` wertet §9 mechanisch aus. Kriterium 2 wird in zwei Lesarten
 berichtet: streng (gepaarte Sekunden ≥ Baseline) und „nur physikalisch unmögliche Werte zurückgehalten“
 (alle zurückgehaltenen Baseline-Werte > 250 km/h). Beide werden ausgewiesen; die strenge Lesart ist maßgeblich.
+
+**N6 (2026-10-23, OBD-Speed-Offline-Kandidat).** Zusätzlicher Replay-Tag `no_obd_speed` mit
+`--strip-obd-speed-influence` (siehe `OBD_SPEED_INFLUENCE_MAP.md`, `REPORT_OBD_SPEED_CANDIDATE.md`).
+Vergleich gegen `main` nur über `scripts/compare_obd_strip.cjs` — **nicht** §9 (das war PR #2134).
+OBD-km/h bleibt Vergleichsserie; andere OBD-Signale werden im Harness nicht angetastet.

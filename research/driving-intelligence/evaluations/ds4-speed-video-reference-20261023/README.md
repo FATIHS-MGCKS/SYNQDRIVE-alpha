@@ -14,6 +14,10 @@ Entwicklung von Beschleunigungs-/Bremsdetektoren.
 | [`outputs/main/`](outputs/main/) | Replay mit DI-Code `origin/main` `dea2555bb` (= Produktions-DI-Code, s. u.) |
 | [`outputs/pr2134/`](outputs/pr2134/) | Replay mit PR #2134 `f95420593` (nicht gemergt, nicht in Produktion) |
 | [`outputs/candidate_pr2134_vs_main.json`](outputs/candidate_pr2134_vs_main.json) | Mechanische §9-Auswertung Kandidat #2134 gegen main |
+| [`OBD_SPEED_INFLUENCE_MAP.md`](OBD_SPEED_INFLUENCE_MAP.md) | Einflussstellen R1-OBD-Speed auf L3/QC/FSM (main) |
+| [`REPORT_OBD_SPEED_CANDIDATE.md`](REPORT_OBD_SPEED_CANDIDATE.md) | Offline-Kandidat „kein OBD-Speed-Einfluss“ vs. main |
+| [`outputs/no_obd_speed/`](outputs/no_obd_speed/) | Replay mit `--strip-obd-speed-influence` |
+| [`outputs/candidate_no_obd_speed_vs_main_obd_strip.json`](outputs/candidate_no_obd_speed_vs_main_obd_strip.json) | Vergleich Baseline vs. OBD-Strip-Kandidat |
 
 ## Versionen
 
@@ -65,6 +69,10 @@ node scripts/replay_speed_eval.cjs --code-root /tmp/pr2134 --tag pr2134 --expect
 # 3) Kandidatenbewertung nach EVALUATION_RULES.md §9 und Tabellen
 node scripts/compare_tags.cjs --baseline main --candidate pr2134
 node scripts/render_tables.cjs > outputs/TABLES.md
+
+# 4) OBD-Speed-Einfluss entfernen (Offline-Kandidat, Harness-only)
+node scripts/replay_speed_eval.cjs --tag no_obd_speed --strip-obd-speed-influence
+node scripts/compare_obd_strip.cjs
 ```
 
 Laufzeit je Replay ≈ 4 s. Die Ausgaben sind deterministisch bis auf `generatedAtUtc`.

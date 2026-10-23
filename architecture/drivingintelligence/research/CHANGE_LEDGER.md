@@ -2131,6 +2131,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest `motion-core` 68/68 incl. shadow control/processor/schema; offline harness `scripts/test/motion-core-shadow-replay.harness.ts`; artifacts `/opt/cursor/artifacts/exp021-motion-core-shadow-integration/` |
 | NON_EFFECTS | S4C completion unchanged; no production flag ON; no DIMO polling; migration not applied on Production in this workstream |
 
+### DS4 OBD-speed strip offline candidate — video reference harness (2026-10-23)
+
+| Field | Content |
+| --- | --- |
+| BEFORE | R1 OBD speed influenced Speed-QC (`CROSS_SOURCE_CONFLICT` on TIG22, 307 s) and Motion-FSM sparse (`directMoving`, 16 false-motion s on TIG22); L3/C4 numeric speeds GPS-derived only |
+| WHY | Owner follow-up on PR #2136: isolate “no OBD speed on DS4 speed trajectory” without production change |
+| CHANGE | Harness `--strip-obd-speed-influence`, `OBD_SPEED_INFLUENCE_MAP.md`, `REPORT_OBD_SPEED_CANDIDATE.md`, `compare_obd_strip.cjs`, outputs `no_obd_speed/` |
+| EVIDENCE | `research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/outputs/candidate_no_obd_speed_vs_main_obd_strip.json` |
+| DECISION | Harness-only candidate validated; production wiring unchanged; OBD speed may remain comparison-only |
+| NON_EFFECTS | Trip lifecycle, S4 acquisition, other OBD signals, C4/L3 numeric replay (bitidentical), TES16/TES21 |
+
 ### DS4 speed vs. video references — offline replay evaluation, main vs. PR #2134 (2026-10-23)
 
 | Event | Detail |
