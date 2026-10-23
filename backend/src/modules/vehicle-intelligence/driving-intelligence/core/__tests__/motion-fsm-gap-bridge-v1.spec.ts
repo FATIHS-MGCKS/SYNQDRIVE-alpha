@@ -119,7 +119,16 @@ describe('motion-fsm gap bridge V1', () => {
       sparseFsmPointAuthority: false,
       speedQuality: null,
     });
-    const forward = [0, 1, 2, 3, 8, 9, 10, 11, 12].map((s) => mk(s, 'MOVING')).concat([4, 5, 6, 7].map((s) => mk(s, 'UNKNOWN')));
+    const movingDirect = [0, 1, 2, 3, 8, 9, 10, 11, 12].map((s) => ({
+      ...mk(s, 'MOVING'),
+      evidenceQuality: 'DIRECT' as const,
+      speedKmh: 40,
+      reason: 'speed_above_moving_band',
+    }));
+    const forward: MotionFsmLabel[] = [
+      ...movingDirect,
+      ...[4, 5, 6, 7].map((s) => mk(s, 'UNKNOWN')),
+    ];
     forward.sort((a, b) => secSinceEpoch(a.label) - secSinceEpoch(b.label));
     const bridged = applyMotionFsmGapBridgeV1PostPass(forward, grid, speeds, undefined, p);
     for (const s of [4, 5, 6, 7]) {

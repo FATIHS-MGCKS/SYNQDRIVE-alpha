@@ -13,7 +13,12 @@ import {
 } from './motion-fsm-gap-bridge-v1';
 
 export type { MotionFsmGapBridgeAuxiliary } from './motion-fsm-gap-bridge-v1';
-export { MOTION_FSM_GAP_BRIDGE_V1_VERSION, gapBridgeV1LongSpanAllowed } from './motion-fsm-gap-bridge-v1';
+export {
+  GAP_BRIDGE_V1_STOP_FEASIBILITY_DECEL_MPS2,
+  MOTION_FSM_GAP_BRIDGE_V1_VERSION,
+  gapBridgeV1LongSpanAllowed,
+  gapBridgeV1StopFeasibilityAllowsBridge,
+} from './motion-fsm-gap-bridge-v1';
 
 /** Port of Fable prototype `motion_fsm.PARAMS` — not tuned on Tesla trips. */
 export const MOTION_FSM_PARAMS_V0_2_DEV = {
@@ -60,7 +65,8 @@ export interface MotionFsmCandidateOptions {
    * Default false: reproduces pre–gap-bridge FSM exactly. RETROSPECTIVE mode only; requires optional
    * {@link MotionFsmGapBridgeAuxiliary} for DI-V0 `STATIONARY_SUPPORTED` frozen-stand evidence.
    */
-  retrospectiveGapBridgeV1: boolean;
+  /** Default OFF when omitted (backward-compatible with pre–gap-bridge option objects). */
+  retrospectiveGapBridgeV1?: boolean;
 }
 
 export const MOTION_FSM_FABLE_V0_2_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
@@ -92,7 +98,12 @@ export const MOTION_FSM_FROZEN_LEGACY_SPARSE_OPTIONS: Readonly<MotionFsmCandidat
 };
 
 export function motionFsmVersionId(options: Readonly<MotionFsmCandidateOptions>): string {
-  const on = (Object.keys(options) as Array<keyof MotionFsmCandidateOptions>).filter((k) => options[k]);
+  const on = (Object.keys(options) as Array<keyof MotionFsmCandidateOptions>).filter((k) => {
+    if (k === 'retrospectiveGapBridgeV1') {
+      return options.retrospectiveGapBridgeV1 === true;
+    }
+    return Boolean(options[k]);
+  });
   return on.length === 0 ? MOTION_FSM_PARAMS_V0_2_DEV.version : `MOTION_FSM_V0_3_CAND_DEV[${on.join('+')}]`;
 }
 
@@ -593,7 +604,7 @@ export function runMotionFsm(
     });
   }
 
-  if (mode === 'RETROSPECTIVE' && opt.retrospectiveGapBridgeV1) {
+  if (mode === 'RETROSPECTIVE' && opt.retrospectiveGapBridgeV1 === true) {
     return applyMotionFsmGapBridgeV1PostPass(out, ordered, speedSamples, gapBridgeAuxiliary, p);
   }
 
