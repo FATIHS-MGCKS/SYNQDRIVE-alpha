@@ -75,7 +75,7 @@ describe('DS4 R1 vehicle speed boundary', () => {
           positionState: 'FRESH',
         },
       ],
-      r1Obd: [{ bucketLabel: '2026-01-01T00:00:02Z', speedKmh: 80 }],
+      r1Obd: [{ bucketLabel: '2026-01-01T00:00:02Z', speedKmh: 80, temporalConfidence: 'INTERVAL_ONLY' }],
       evidenceIdentity: { pinnedSnapshotHash: 'pin' },
       qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
     });

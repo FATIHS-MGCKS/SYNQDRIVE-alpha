@@ -1,0 +1,962 @@
+{
+  "schema": "DS4_SPEED_CANDIDATE_ASSESSMENT_V1",
+  "generatedAtUtc": "2026-10-23T09:40:22.874Z",
+  "baseline": {
+    "tag": "pr2134",
+    "codeSha": "f95420593ecae98d54d1d3185476c66427d2aede"
+  },
+  "candidate": {
+    "tag": "integrate_obd_gps",
+    "codeSha": "98a6e21f3545851243072dc73b93c8a7e5dca035"
+  },
+  "series": "replay_c4",
+  "rules": "EVALUATION_RULES.md §9",
+  "perDrive": {
+    "TIG22": {
+      "role": {
+        "evalDrive": true,
+        "candidateDerivedHere": false
+      },
+      "commonSupport": {
+        "n": 1364,
+        "baseline": {
+          "n": 1364,
+          "maeKmh": 2.905,
+          "medianAbsKmh": 2.766,
+          "p95AbsKmh": 5.918,
+          "maxAbsKmh": 14.381,
+          "biasKmh": -2.424,
+          "rmseKmh": 3.41,
+          "within3": 0.567,
+          "within5": 0.909
+        },
+        "candidate": {
+          "n": 1364,
+          "maeKmh": 2.905,
+          "medianAbsKmh": 2.766,
+          "p95AbsKmh": 5.918,
+          "maxAbsKmh": 14.381,
+          "biasKmh": -2.424,
+          "rmseKmh": 3.41,
+          "within3": 0.567,
+          "within5": 0.909
+        },
+        "maeDropKmh": 0,
+        "maeDropPct": 0,
+        "p95DeltaKmh": 0
+      },
+      "coverage": {
+        "baselinePaired": 1364,
+        "candidatePaired": 1364,
+        "withheldByCandidate": [],
+        "addedByCandidate": [],
+        "withheldImplausible": 0,
+        "withheldPlausible": 0
+      },
+      "motionAndTiming": {
+        "replay_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            23,
+            23
+          ],
+          "motionNoClaim": [
+            12,
+            12
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            0,
+            0
+          ]
+        },
+        "replay_c4": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            24,
+            24
+          ],
+          "motionNoClaim": [
+            22,
+            22
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            0,
+            0
+          ]
+        },
+        "replay_fsm": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            4,
+            4
+          ],
+          "motionNoClaim": [
+            8,
+            8
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            0,
+            0
+          ]
+        },
+        "stored_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            23,
+            23
+          ],
+          "motionNoClaim": [
+            12,
+            12
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            0,
+            0
+          ]
+        },
+        "stored_c4": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            24,
+            24
+          ],
+          "motionNoClaim": [
+            14,
+            14
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            0,
+            0
+          ]
+        },
+        "stored_fsm": {
+          "falseMotion": [
+            16,
+            16
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            2,
+            2
+          ],
+          "motionNoClaim": [
+            0,
+            0
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            -3,
+            -3
+          ]
+        },
+        "obd": {
+          "falseMotion": [
+            12,
+            12
+          ],
+          "falseStill": [
+            12,
+            12
+          ],
+          "stillNoClaim": [
+            56,
+            56
+          ],
+          "motionNoClaim": [
+            859,
+            859
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            1,
+            1
+          ]
+        }
+      },
+      "events": {
+        "count": [
+          20,
+          20
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "versions": {
+        "baseline": {
+          "tag": "pr2134",
+          "codeRoot": "/workspace/.worktrees/pr2134",
+          "codeSha": "f95420593ecae98d54d1d3185476c66427d2aede",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        },
+        "candidate": {
+          "tag": "integrate_obd_gps",
+          "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
+          "codeSha": "98a6e21f3545851243072dc73b93c8a7e5dca035",
+          "obdSpeedInfluence": "EXCLUDED_IN_PRODUCT_CODE",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        }
+      }
+    },
+    "TES21-1": {
+      "role": {
+        "evalDrive": false,
+        "candidateDerivedHere": false
+      },
+      "commonSupport": {
+        "n": 150,
+        "baseline": {
+          "n": 150,
+          "maeKmh": 2.292,
+          "medianAbsKmh": 1.212,
+          "p95AbsKmh": 8.562,
+          "maxAbsKmh": 13.553,
+          "biasKmh": -0.594,
+          "rmseKmh": 3.596,
+          "within3": 0.74,
+          "within5": 0.847
+        },
+        "candidate": {
+          "n": 150,
+          "maeKmh": 2.292,
+          "medianAbsKmh": 1.212,
+          "p95AbsKmh": 8.562,
+          "maxAbsKmh": 13.553,
+          "biasKmh": -0.594,
+          "rmseKmh": 3.596,
+          "within3": 0.74,
+          "within5": 0.847
+        },
+        "maeDropKmh": 0,
+        "maeDropPct": 0,
+        "p95DeltaKmh": 0
+      },
+      "coverage": {
+        "baselinePaired": 150,
+        "candidatePaired": 150,
+        "withheldByCandidate": [],
+        "addedByCandidate": [],
+        "withheldImplausible": 0,
+        "withheldPlausible": 0
+      },
+      "motionAndTiming": {
+        "replay_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            8,
+            8
+          ],
+          "motionNoClaim": [
+            107,
+            107
+          ],
+          "stopMedianOffsetS": [
+            null,
+            null
+          ],
+          "startMedianOffsetS": [
+            null,
+            null
+          ]
+        },
+        "replay_c4": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            8,
+            8
+          ],
+          "motionNoClaim": [
+            46,
+            46
+          ],
+          "stopMedianOffsetS": [
+            null,
+            null
+          ],
+          "startMedianOffsetS": [
+            null,
+            null
+          ]
+        },
+        "replay_fsm": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            2,
+            2
+          ],
+          "stillNoClaim": [
+            4,
+            4
+          ],
+          "motionNoClaim": [
+            8,
+            8
+          ],
+          "stopMedianOffsetS": [
+            0,
+            0
+          ],
+          "startMedianOffsetS": [
+            2,
+            2
+          ]
+        },
+        "stored_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            8,
+            8
+          ],
+          "motionNoClaim": [
+            107,
+            107
+          ],
+          "stopMedianOffsetS": [
+            null,
+            null
+          ],
+          "startMedianOffsetS": [
+            null,
+            null
+          ]
+        }
+      },
+      "events": {
+        "count": [
+          4,
+          4
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "versions": {
+        "baseline": {
+          "tag": "pr2134",
+          "codeRoot": "/workspace/.worktrees/pr2134",
+          "codeSha": "f95420593ecae98d54d1d3185476c66427d2aede",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        },
+        "candidate": {
+          "tag": "integrate_obd_gps",
+          "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
+          "codeSha": "98a6e21f3545851243072dc73b93c8a7e5dca035",
+          "obdSpeedInfluence": "EXCLUDED_IN_PRODUCT_CODE",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        }
+      }
+    },
+    "TES21-2": {
+      "role": {
+        "evalDrive": false,
+        "candidateDerivedHere": false
+      },
+      "commonSupport": {
+        "n": 179,
+        "baseline": {
+          "n": 179,
+          "maeKmh": 3.605,
+          "medianAbsKmh": 2.316,
+          "p95AbsKmh": 10.954,
+          "maxAbsKmh": 20.649,
+          "biasKmh": -0.616,
+          "rmseKmh": 5.046,
+          "within3": 0.581,
+          "within5": 0.749
+        },
+        "candidate": {
+          "n": 179,
+          "maeKmh": 3.605,
+          "medianAbsKmh": 2.316,
+          "p95AbsKmh": 10.954,
+          "maxAbsKmh": 20.649,
+          "biasKmh": -0.616,
+          "rmseKmh": 5.046,
+          "within3": 0.581,
+          "within5": 0.749
+        },
+        "maeDropKmh": 0,
+        "maeDropPct": 0,
+        "p95DeltaKmh": 0
+      },
+      "coverage": {
+        "baselinePaired": 179,
+        "candidatePaired": 179,
+        "withheldByCandidate": [],
+        "addedByCandidate": [],
+        "withheldImplausible": 0,
+        "withheldPlausible": 0
+      },
+      "motionAndTiming": {
+        "replay_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            15,
+            15
+          ],
+          "motionNoClaim": [
+            17,
+            17
+          ],
+          "stopMedianOffsetS": [
+            6,
+            6
+          ],
+          "startMedianOffsetS": [
+            8,
+            8
+          ]
+        },
+        "replay_c4": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            15,
+            15
+          ],
+          "motionNoClaim": [
+            13,
+            13
+          ],
+          "stopMedianOffsetS": [
+            6,
+            6
+          ],
+          "startMedianOffsetS": [
+            7,
+            7
+          ]
+        },
+        "replay_fsm": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            5,
+            5
+          ],
+          "stillNoClaim": [
+            2,
+            2
+          ],
+          "motionNoClaim": [
+            7,
+            7
+          ],
+          "stopMedianOffsetS": [
+            0,
+            0
+          ],
+          "startMedianOffsetS": [
+            3,
+            3
+          ]
+        },
+        "stored_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            15,
+            15
+          ],
+          "motionNoClaim": [
+            17,
+            17
+          ],
+          "stopMedianOffsetS": [
+            6,
+            6
+          ],
+          "startMedianOffsetS": [
+            8,
+            8
+          ]
+        }
+      },
+      "events": {
+        "count": [
+          4,
+          4
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "versions": {
+        "baseline": {
+          "tag": "pr2134",
+          "codeRoot": "/workspace/.worktrees/pr2134",
+          "codeSha": "f95420593ecae98d54d1d3185476c66427d2aede",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        },
+        "candidate": {
+          "tag": "integrate_obd_gps",
+          "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
+          "codeSha": "98a6e21f3545851243072dc73b93c8a7e5dca035",
+          "obdSpeedInfluence": "EXCLUDED_IN_PRODUCT_CODE",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        }
+      }
+    },
+    "TES16": {
+      "role": {
+        "evalDrive": true,
+        "candidateDerivedHere": false
+      },
+      "commonSupport": {
+        "n": 808,
+        "baseline": {
+          "n": 808,
+          "maeKmh": 2.272,
+          "medianAbsKmh": 2.088,
+          "p95AbsKmh": 4.485,
+          "maxAbsKmh": 19.895,
+          "biasKmh": -1.977,
+          "rmseKmh": 2.727,
+          "within3": 0.71,
+          "within5": 0.979
+        },
+        "candidate": {
+          "n": 808,
+          "maeKmh": 2.272,
+          "medianAbsKmh": 2.088,
+          "p95AbsKmh": 4.485,
+          "maxAbsKmh": 19.895,
+          "biasKmh": -1.977,
+          "rmseKmh": 2.727,
+          "within3": 0.71,
+          "within5": 0.979
+        },
+        "maeDropKmh": 0,
+        "maeDropPct": 0,
+        "p95DeltaKmh": 0
+      },
+      "coverage": {
+        "baselinePaired": 808,
+        "candidatePaired": 808,
+        "withheldByCandidate": [],
+        "addedByCandidate": [],
+        "withheldImplausible": 0,
+        "withheldPlausible": 0
+      },
+      "motionAndTiming": {
+        "replay_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            116,
+            116
+          ],
+          "motionNoClaim": [
+            23,
+            23
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            null,
+            null
+          ]
+        },
+        "replay_c4": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            116,
+            116
+          ],
+          "motionNoClaim": [
+            9,
+            9
+          ],
+          "stopMedianOffsetS": [
+            -2,
+            -2
+          ],
+          "startMedianOffsetS": [
+            1,
+            1
+          ]
+        },
+        "replay_fsm": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            2,
+            2
+          ],
+          "stillNoClaim": [
+            0,
+            0
+          ],
+          "motionNoClaim": [
+            0,
+            0
+          ],
+          "stopMedianOffsetS": [
+            -1.5,
+            -1.5
+          ],
+          "startMedianOffsetS": [
+            2,
+            2
+          ]
+        },
+        "stored_l3": {
+          "falseMotion": [
+            0,
+            0
+          ],
+          "falseStill": [
+            0,
+            0
+          ],
+          "stillNoClaim": [
+            116,
+            116
+          ],
+          "motionNoClaim": [
+            23,
+            23
+          ],
+          "stopMedianOffsetS": [
+            null,
+            null
+          ],
+          "startMedianOffsetS": [
+            null,
+            null
+          ]
+        }
+      },
+      "events": {
+        "count": [
+          17,
+          17
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "versions": {
+        "baseline": {
+          "tag": "pr2134",
+          "codeRoot": "/workspace/.worktrees/pr2134",
+          "codeSha": "f95420593ecae98d54d1d3185476c66427d2aede",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        },
+        "candidate": {
+          "tag": "integrate_obd_gps",
+          "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
+          "codeSha": "98a6e21f3545851243072dc73b93c8a7e5dca035",
+          "obdSpeedInfluence": "EXCLUDED_IN_PRODUCT_CODE",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "frozenL3Replay": "MOTION_CORE_FROZEN_L3_REPLAY_V0_1",
+          "diV0": {
+            "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1",
+            "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+            "calibrationVersion": "CALIBRATION_UNSET_V0",
+            "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1"
+          },
+          "calibration": "CALIBRATION_UNSET_V0",
+          "c4InputHorizonForwardS": 2,
+          "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2",
+          "implausibleViewThresholdKmh": 250
+        }
+      }
+    }
+  },
+  "criteria": {
+    "c1_commonSupport": {
+      "improvedEvalDrives": [],
+      "regressedDrives": [],
+      "pass": false
+    },
+    "c2_coverage": {
+      "drivesBelowBaseline": [],
+      "passStrict": true,
+      "passIfOnlyImplausibleWithheld": true
+    },
+    "c3_latency": {
+      "c4InputHorizonForwardS": [
+        2,
+        2
+      ],
+      "pass": true
+    },
+    "c4_motion": {
+      "violations": [],
+      "pass": true
+    },
+    "c5_eventParity": {
+      "TIG22": {
+        "count": [
+          20,
+          20
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "TES21-1": {
+        "count": [
+          4,
+          4
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "TES21-2": {
+        "count": [
+          4,
+          4
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      },
+      "TES16": {
+        "count": [
+          17,
+          17
+        ],
+        "onlyBaseline": [],
+        "onlyCandidate": []
+      }
+    },
+    "c6_devEval": {
+      "independentEvalDrivesForCandidate": [
+        "TIG22",
+        "TES16"
+      ],
+      "derivedOn": []
+    },
+    "verdict": {
+      "provenImprovementOnIndependentEvalDrive": false,
+      "improvementOnlyOnDerivationDrive": false,
+      "independentDrivesUnchanged": [
+        "TIG22",
+        "TES16"
+      ]
+    }
+  }
+}

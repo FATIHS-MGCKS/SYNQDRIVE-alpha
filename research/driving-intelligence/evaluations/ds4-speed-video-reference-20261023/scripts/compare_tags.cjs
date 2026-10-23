@@ -121,7 +121,7 @@ crit.verdict = {
 };
 
 const out = { schema: 'DS4_SPEED_CANDIDATE_ASSESSMENT_V1', generatedAtUtc: new Date().toISOString(), baseline: { tag: baseTag, codeSha: base.summary.versions.codeSha }, candidate: { tag: candTag, codeSha: cand.summary.versions.codeSha }, series: seriesName, rules: 'EVALUATION_RULES.md §9', perDrive, criteria: crit };
-const outFile = path.join(outDir, `candidate_${candTag}_vs_${baseTag}.json`);
+const outFile = path.join(outDir, `candidate_${candTag}_vs_${baseTag}_${seriesName}.json`);
 fs.writeFileSync(outFile, JSON.stringify(out, null, 2) + '\n');
 
 for (const [id, x] of Object.entries(perDrive)) {

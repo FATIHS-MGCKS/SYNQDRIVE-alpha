@@ -21,6 +21,8 @@ Entwicklung von Beschleunigungs-/Bremsdetektoren.
 | [`REPORT_PROD_OBD_STRIP.md`](REPORT_PROD_OBD_STRIP.md) | Produktcode-Übernahme + Parität `prod_code` vs. `no_obd_speed` |
 | [`outputs/prod_code/`](outputs/prod_code/) | Replay mit Produkt-Checkout (OBD-Speed-Grenzschicht im Code) |
 | [`outputs/prod_code_vs_no_obd_speed_parity.json`](outputs/prod_code_vs_no_obd_speed_parity.json) | Mechanische Paritätsprüfung |
+| [`REPORT_INTEGRATION_OBD_GPS.md`](REPORT_INTEGRATION_OBD_GPS.md) | Integration #2134 + #2137, Replay `integrate_obd_gps` |
+| [`outputs/integrate_obd_gps/`](outputs/integrate_obd_gps/) | Kombinierter Produktcode-Replay |
 
 ## Versionen
 

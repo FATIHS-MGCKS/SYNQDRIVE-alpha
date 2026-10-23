@@ -2122,6 +2122,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest Tiguan per-bucket hash parity vs Phase 5A manifest; control-plane + schema specs |
 | NON_EFFECTS | Flags default OFF; no production backfill; no algorithm retuning |
 
+### DS4 integration — OBD speed boundary + GPS leg hardening (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | Open PR #2134 `f95420593` + PR #2137 `84c155c1e` on `main` `dea2555bb` |
+| CHANGE | Branch `cursor/ds4-obd-gps-integrate-192d` = merge #2137 into #2134; adapter limitations union; test expectations for combined behavior |
+| VALIDATION | Four-drive replay `integrate_obd_gps`; vs main/pr2134/prod_code compares; Jest motion-core + speed-qc + boundary 108/108 |
+| NON_EFFECTS | Does not replace #2134 or #2137 branches; no deploy |
+
 ### DS4 product — R1 OBD vehicle speed excluded from kinematics / QC / FSM (2026-10-23)
 
 | Event | Detail |
