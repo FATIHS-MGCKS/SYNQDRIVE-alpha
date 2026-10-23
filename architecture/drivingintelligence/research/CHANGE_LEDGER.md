@@ -2142,6 +2142,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | OPEN | Full sparse ablation B not adopted (creep vs tacho-zero tradeoff); stop episodes 11 vs audit 12 on replay; audit `run_audit.sh` needs Node 24 |
 | NON_EFFECTS | No deploy, reprocessing, flag ON, M7A/Mapbox/scoring changes; raw snapshots unchanged |
 
+### DS4 motion — R1 Z/.000Z authority without string equality (2026-10-23, PR #2134 closeout)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `resolveR1ObdFsmPointAuthority`: drop `instant === bucketLabel` rejection; alignment + `R1_DEVICE_MEASUREMENT` only; BEFORE_AFTER_SUMMARY current report |
+| WHY | Same proven instant must accept `Z` and `.000Z`; bucket synthesis blocked via provenance not string compare |
+| VALIDATION | `r1-obd-fsm-point-authority.spec.ts` |
+
 ### DS4 motion — hard-quarantine vs jitter + C1 path block + OBD provenance (2026-10-22, PR #2134 correction)
 
 | Event | Detail |

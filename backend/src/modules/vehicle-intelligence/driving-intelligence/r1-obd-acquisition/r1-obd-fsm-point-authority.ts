@@ -72,14 +72,6 @@ export function resolveR1ObdFsmPointAuthority(
       denialReason: 'MISSING_PROVIDER_MEASUREMENT_INSTANT',
     };
   }
-  if (instant === obs.bucketLabel) {
-    return {
-      fsmPointAuthority: false,
-      measurementTimeUtc: null,
-      temporalConfidence: obs.temporalConfidence,
-      denialReason: 'BUCKET_LABEL_USED_AS_MEASUREMENT_INSTANT',
-    };
-  }
   if (!providerMeasurementAlignsWithBucketSecond(obs.bucketLabel, instant)) {
     return {
       fsmPointAuthority: false,
