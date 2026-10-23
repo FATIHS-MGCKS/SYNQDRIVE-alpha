@@ -1,0 +1,33 @@
+{
+  "schema": "EXP021_PHASE5C_PRODUCTION_EXPORT_V1",
+  "exportedAtUtc": "2026-10-21T13:40:07.409Z",
+  "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+  "outDir": "/tmp/exp021-phase5c-export",
+  "productionMutations": "NONE",
+  "trips": [
+    {
+      "key": "TRIP_1",
+      "videoTrip": 1,
+      "tripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+      "gzipPath": "/tmp/exp021-phase5c-export/s4_evidence/TRIP_1_evidence_payload.gz",
+      "gzipSha256": "4c6c95e0c0230cc5a38b59d31644f10bc95bb7047a67dfc080244d1743475e5a",
+      "gzipBytes": 3352,
+      "shadowIntervalCount": 533,
+      "shadowJsonlSha256": "12c35e1cb190819bafbbed83ca601d2143cd15bb9d23ac0124d7a7325692e276",
+      "waypointCount": 33
+    },
+    {
+      "key": "TRIP_2",
+      "videoTrip": 2,
+      "tripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+      "gzipPath": "/tmp/exp021-phase5c-export/s4_evidence/TRIP_2_evidence_payload.gz",
+      "gzipSha256": "508450980f979e13135d18164ef094cff431b5e87642716486e606cdbf831dbe",
+      "gzipBytes": 3551,
+      "shadowIntervalCount": 535,
+      "shadowJsonlSha256": "1cc4ac6fd6aeae03a136e62658c7fc802cae693509095f8c6b3fa559ea4e9361",
+      "waypointCount": 34
+    }
+  ]
+}

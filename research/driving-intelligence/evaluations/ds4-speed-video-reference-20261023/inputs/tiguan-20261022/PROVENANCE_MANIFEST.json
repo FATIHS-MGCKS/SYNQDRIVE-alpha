@@ -1,0 +1,63 @@
+{
+  "schema": "SYNQDRIVE_VIDEO_EVAL_PROVENANCE_V1",
+  "generated_at_utc": "2026-10-22T21:53:43.804336+00:00",
+  "evaluation_rules_sha256": "33a6418110ffcec02da61465931952077b544ce886975495ee6d10f2807dc1af",
+  "trip_identity": {
+    "schema": "SYNQDRIVE_VIDEO_EVAL_TRIP_IDENTITY_V1",
+    "verified_at_utc": "2026-10-22T21:55:00Z",
+    "verification_method": "Production PostgreSQL read-only (sudo -u postgres psql), cross-check license plate + trip window + video UTC anchors",
+    "organization_id": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+    "vehicle": {
+      "id": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "make": "Volkswagen",
+      "model": "Tiguan",
+      "license_plate": "WOB L  7503"
+    },
+    "trip": {
+      "id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+      "start_time_utc": "2026-10-22T18:30:00Z",
+      "end_time_utc": "2026-10-22T19:04:53.233Z",
+      "distance_km": 24
+    },
+    "user_stated_window_local_berlin": "2026-10-22T20:30\u201321:04",
+    "video_reference_window_utc": {
+      "first": "2026-10-22T18:38:34Z",
+      "last": "2026-10-22T19:03:02Z",
+      "source": "reference/TIGUAN_2026-10-22_1Hz.csv"
+    },
+    "relationship": "Single DIMO-backed VehicleTrip covers the user drive; video captures a subset (20:38:34\u201321:03:02 local) inside trip bounds. Trip start/end are segment boundaries, not video boundaries.",
+    "di_artifacts": {
+      "shadow_run_id": "dd11867c-1b7c-4c86-be7b-5cc7f50da1ea",
+      "shadow_run_created_at_utc": "2026-10-22T19:18:57.472Z",
+      "s4_work_item_id": "63c73afa-debf-473d-b770-30acec388774",
+      "s4_work_item_completed_at_utc": "2026-10-22T19:18:58.822534Z",
+      "pinned_snapshot_hash": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "motion_core_shadow_run_id": "8ec6306e-606b-4507-ab03-ea058c5d810d",
+      "motion_core_shadow_created_at_utc": "2026-10-22T19:20:07.505947Z"
+    },
+    "production_release_at_export_read": {
+      "symlink": "/opt/synqdrive/releases/20261022201308_v4994",
+      "note": "Shadow processing timestamps precede this release; exact binary SHA at 19:18 UTC not attested in this package \u2014 see PROVENANCE_MANIFEST.json"
+    }
+  },
+  "file_hashes": {
+    "reference/TIGUAN_2026-10-22_1Hz.csv": "9c8933c223e58706d1cc1ce82fe8c623e2429d3bd1f4f570e10353f9f3b9aaa2",
+    "reference/manifest.json": "3d2983bea53e9e83fdcac9a84e14c9efe659c3fd488f27fba44be429a0dc6785",
+    "snapshots/di_v0_shadow_intervals.csv": "e28f5d38d0e1ffc39edd3f6a88ac5c633b5884d70f5d0646b3ba2cff6ea70c77",
+    "snapshots/di_v0_motion_core_shadow_payload.json": "fca7baef63b3ef84e2cd0f1f44f08f0b6ced2294738ba65a5a1b74eca99f7c8a",
+    "snapshots/r1_obd_evidence_snapshot.json": "3f37bf925c040ed8282a0842e512e6b892f9b31eb1fdcd2a16c1de3265f0cb4c",
+    "snapshots/di_v0_s4_evidence_container.bin": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+    "snapshots/TRIP_IDENTITY.json": "ef0b340630ffe04b80e8997434b996cc93a0d017efb66a141294e9d3d29e1ea8"
+  },
+  "matching": {
+    "primary_shift_s": 0,
+    "sensitivity_shifts_s": [
+      -2,
+      -1,
+      0,
+      1,
+      2
+    ]
+  },
+  "repository_note": "Evaluation uses frozen snapshots only; no production DB at reproduce time."
+}
