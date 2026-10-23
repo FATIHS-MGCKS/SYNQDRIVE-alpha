@@ -6,7 +6,9 @@
 const path = require('node:path');
 const E = require('../../ds4-accel-brake-video-reference-20261023/scripts/event_eval_lib.cjs');
 
-const MOTION_CORE_SPEED_C5_1_VERSION = 'MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_RESEARCH';
+const MOTION_CORE_SPEED_C5_1_VERSION = 'MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_1_SAFETY_HARDENED';
+const HARDENING_TAG = 'C5_1_SAFETY_HARDENING_V1';
+const F2_MAX_NUMERIC_KMH = 250;
 
 const FROZEN = Object.freeze({
   aAttrMps2: 6,
@@ -63,6 +65,21 @@ function bearingDeg(A, B) {
   const y = Math.sin(dLon) * Math.cos(lat2);
   const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
   return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
+function angleDiffDeg(a, b) {
+  let d = Math.abs(a - b) % 360;
+  if (d > 180) d = 360 - d;
+  return d;
+}
+
+function legSpeedKmhBetween(pm, dist, secA, secB) {
+  const a = pm.get(labelOf(secA));
+  const b = pm.get(labelOf(secB));
+  if (!a || !b) return null;
+  const dt = secB - secA;
+  if (dt <= 0) return null;
+  return (dist(a, b) / dt) * 3.6;
 }
 
 function median(v) {
@@ -321,30 +338,117 @@ function theilSenKmh(supportPts, distFn) {
 }
 
 function buildSupport(tSec, pm, ptByLab, hardRejected, excludeLabs) {
+  const centerLab = labelOf(tSec);
   for (const h of [FROZEN.maxSupportHalfS, 3, 2]) {
-    const present = [];
+    const used = [];
     for (let k = -h; k <= h; k++) {
       const l = labelOf(tSec + k);
       if (excludeLabs.has(l)) continue;
       const b = pm.get(l);
       if (!b) continue;
       if (hardRejected.has(l)) continue;
-      const pt = ptByLab.get(l);
-      const att = pt?.attribution || 'OK';
-      if (att === 'POSITION_SUSPECT') continue;
-      if (att === 'TIME_SUSPECT') continue;
-      present.push({ t: tSec + k, l, b, attribution: att });
+      const att = ptByLab.get(l)?.attribution || 'OK';
+      if (att === 'POSITION_SUSPECT' || att === 'TIME_SUSPECT') continue;
+      used.push({ t: tSec + k, l, b, attribution: att });
     }
-    const left = present.filter((p) => p.t < tSec).length;
-    const right = present.filter((p) => p.t > tSec).length;
-    const centerPresent = pm.has(labelOf(tSec));
-    const totalForRule = present.length + (centerPresent && !excludeLabs.has(labelOf(tSec)) && !hardRejected.has(labelOf(tSec)) ? 1 : 0);
+    const left = used.filter((p) => p.t < tSec).length;
+    const right = used.filter((p) => p.t > tSec).length;
+    const centerInUsed = used.some((p) => p.l === centerLab);
+    const totalForRule = used.length;
     if (totalForRule >= FROZEN.minSupportTotal && left >= FROZEN.minSupportPerSide && right >= FROZEN.minSupportPerSide) {
-      const slopePts = [...present].sort((a, b) => a.t - b.t);
-      return { h, present, slopePts, left, right, totalForRule };
+      const slopePts = [...used].sort((a, b) => a.t - b.t);
+      return {
+        h,
+        present: used,
+        slopePts,
+        left,
+        right,
+        totalForRule,
+        centerInUsed,
+        supportLabelsUsed: used.map((p) => p.l),
+      };
     }
   }
   return null;
+}
+
+/** Reference-free: block raising speed at a C4 trough when TIME_SUSPECT lies astern of repair center. */
+function upwardTroughManoeuvreGuard(tSec, c4Kmh, cand, c4ByLabel, pSec) {
+  if (cand == null || c4Kmh == null || cand <= c4Kmh + 0.1) return { pass: true };
+  let leftMax = null;
+  let rightMax = null;
+  for (let dt = -3; dt <= 3; dt++) {
+    if (dt === 0) continue;
+    const v = c4ByLabel.get(labelOf(tSec + dt))?.valueKmh;
+    if (v == null) continue;
+    if (dt < 0) leftMax = leftMax == null ? v : Math.max(leftMax, v);
+    else rightMax = rightMax == null ? v : Math.max(rightMax, v);
+  }
+  const trough =
+    leftMax != null &&
+    rightMax != null &&
+    c4Kmh + 2 < leftMax &&
+    c4Kmh + 2 < rightMax;
+  if (!trough) return { pass: true };
+  if (pSec != null && pSec < tSec) {
+    return { pass: false, detail: { reason: 'upward_at_c4_trough_attribution_astern', leftMax, rightMax, c4Kmh, cand } };
+  }
+  return { pass: true, detail: { trough, leftMax, rightMax } };
+}
+
+function headingRateReject(tSec, pm) {
+  const centerLab = labelOf(tSec);
+  const center = pm.get(centerLab);
+  const prev = presentNeighbors(pm, tSec, -1, FROZEN.maxNeighborGapS);
+  const next = presentNeighbors(pm, tSec, 1, FROZEN.maxNeighborGapS);
+  if (!center || !prev || !next) return { reject: false };
+  const h1 = bearingDeg(prev.b, center);
+  const h2 = bearingDeg(center, next.b);
+  const dt = next.sec - prev.sec;
+  if (dt <= 0) return { reject: false };
+  const rate = angleDiffDeg(h1, h2) / dt;
+  return { reject: rate > FROZEN.headingRejectDegPerS, rateDegPerS: rate, dt };
+}
+
+function physicalPlausibilityQ5(tSec, cand, pm, dist, c4ByLabel, hardRejected, aPlaus, hardQuarantineLeg) {
+  if (cand == null) return { pass: false, detail: 'no_candidate' };
+  if (cand > F2_MAX_NUMERIC_KMH) return { pass: false, detail: 'exceeds_f2_cap' };
+
+  const c4s = c4ByLabel.get(labelOf(tSec));
+  const c4Kmh = c4s?.valueKmh ?? null;
+  const speedAt = (sec, override) => {
+    if (sec === tSec) return override;
+    return c4ByLabel.get(labelOf(sec))?.valueKmh ?? null;
+  };
+
+  const vC4 = tripleAccelViolation(tSec, c4Kmh, pm, (s) => speedAt(s, c4Kmh), aPlaus);
+  const vCand = tripleAccelViolation(tSec, cand, pm, (s) => speedAt(s, cand), aPlaus);
+  if (vCand > aPlaus + 1e-6 && vC4 <= aPlaus + 1e-6) {
+    return { pass: false, detail: { reason: 'new_triple_accel_violation', vCand, vC4 } };
+  }
+  if (vCand > vC4 + 0.05) {
+    return { pass: false, detail: { reason: 'worsens_triple_accel', vCand, vC4 } };
+  }
+
+  for (const pair of [[tSec - 1, tSec], [tSec, tSec + 1]]) {
+    const leg = legSpeedKmhBetween(pm, dist, pair[0], pair[1]);
+    if (leg == null) continue;
+    if (hardQuarantineLeg(leg)) {
+      return { pass: false, detail: { reason: 'hard_leg_quarantine', legKmh: leg, endpoints: pair.map(labelOf) } };
+    }
+  }
+
+  for (const dt of [-2, -1, 0, 1, 2]) {
+    const sec = tSec + dt;
+    const lab = labelOf(sec);
+    if (hardRejected.has(lab)) continue;
+    const v = speedAt(sec, cand);
+    if (v != null && v > F2_MAX_NUMERIC_KMH) {
+      return { pass: false, detail: { reason: 'neighbor_numeric_cap', label: lab, v } };
+    }
+  }
+
+  return { pass: true, detail: { vCand, vC4 } };
 }
 
 function passThroughSample(c4s, repairState, extra = {}) {
@@ -373,6 +477,7 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
     detectPositionOutliers,
     detectTimingJitterSuspectLegs,
     computeC4AdaptiveL3,
+    hardQuarantineOneSecondLegSpeedKmh,
   } = core;
 
   const dist = (a, b) => haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude);
@@ -409,6 +514,9 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
   let uncertain = 0;
   let passOutside = 0;
   let maxSupportOffset = 0;
+  let maxAttributionOffsetS = 0;
+  let maxTimeSuspectSpanS = 0;
+  const acceptedKmhByLabel = new Map();
 
   for (const b of ordered) {
     const label = b.bucketLabelUtc;
@@ -452,7 +560,15 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
     if (P) q.Q3 = (c4s.supportLabels || []).includes(P);
 
     const pSec = P ? secOf(P) : tSec;
+    if (P) maxAttributionOffsetS = Math.max(maxAttributionOffsetS, Math.abs(pSec - tSec));
+    if (timeSuspects.length) {
+      const span =
+        Math.max(...timeSuspects.map(secOf)) - Math.min(...timeSuspects.map(secOf));
+      maxTimeSuspectSpanS = Math.max(maxTimeSuspectSpanS, span);
+    }
+
     const q4 = manoeuvreGuardQ4(pSec, pm, dist, aPlaus);
+    const q4b = upwardTroughManoeuvreGuard(tSec, c4s.valueKmh, null, c4ByLabel, pSec);
     q.Q4 = q4.pass;
 
     const exclude = new Set(timeSuspects);
@@ -463,28 +579,45 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
       for (const p of support.present) {
         maxSupportOffset = Math.max(maxSupportOffset, Math.abs(p.t - tSec));
       }
-      if (pm.has(label)) maxSupportOffset = Math.max(maxSupportOffset, 0);
     }
 
-    q.Q5 = cand != null;
+    if (cand != null) {
+      q4b.cand = cand;
+      const q4bWithCand = upwardTroughManoeuvreGuard(tSec, c4s.valueKmh, cand, c4ByLabel, pSec);
+      q4b.pass = q4bWithCand.pass;
+      q4b.detail = q4bWithCand.detail;
+      q.Q4 = q.Q4 && q4b.pass;
+    }
+
+    const q5 = physicalPlausibilityQ5(
+      tSec,
+      cand,
+      pm,
+      dist,
+      c4ByLabel,
+      hardRejected,
+      aPlaus,
+      hardQuarantineOneSecondLegSpeedKmh,
+    );
+    q.Q5 = q5.pass;
+
+    const effectiveSpeedAt = (s) => {
+      const l = labelOf(s);
+      if (s === tSec) return cand;
+      if (acceptedKmhByLabel.has(l)) return acceptedKmhByLabel.get(l);
+      return c4ByLabel.get(l)?.valueKmh ?? null;
+    };
 
     if (cand != null) {
-      const speedAt = (s) => (s === tSec ? cand : c4ByLabel.get(labelOf(s))?.valueKmh ?? null);
       const vC4 = tripleAccelViolation(tSec, c4s.valueKmh, pm, (s) => c4ByLabel.get(labelOf(s))?.valueKmh ?? null, aPlaus);
-      const vCand = tripleAccelViolation(tSec, cand, pm, speedAt, aPlaus);
+      const vCand = tripleAccelViolation(tSec, cand, pm, effectiveSpeedAt, aPlaus);
       q.Q6 = vCand <= vC4 + 1e-6;
     } else {
       q.Q6 = false;
     }
 
-    const prevN = presentNeighbors(pm, tSec, -1, 1);
-    const nextN = presentNeighbors(pm, tSec, 1, 1);
-    let headingReject = false;
-    if (prevN && nextN && pm.has(label)) {
-      const h1 = Math.abs(bearingDeg(prevN.b, pm.get(label)) - bearingDeg(pm.get(label), nextN.b));
-      const dt = nextN.sec - prevN.sec;
-      if (dt > 0 && h1 / dt > FROZEN.headingRejectDegPerS && timeSuspects.length !== 1) headingReject = true;
-    }
+    const heading = headingRateReject(tSec, pm);
+    const headingReject = heading.reject;
 
     const trace = {
       label,
@@ -492,20 +625,25 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
       inWindow: true,
       timeSuspects,
       attributionP: P,
+      attributionOffsetS: P ? Math.abs(pSec - tSec) : null,
       looDetail: P ? ptByLab.get(P)?.detail : null,
       manoeuvreGuard: q4,
+      manoeuvreTroughGuard: q4b,
       support: support
         ? {
             h: support.h,
             totalForRule: support.totalForRule,
             left: support.left,
             right: support.right,
+            supportLabelsUsed: support.supportLabelsUsed,
             slopeSupportLabels: support.slopePts.map((p) => p.l),
-            centerIncludedInCount: pm.has(label),
+            centerInUsed: support.centerInUsed,
           }
         : null,
       candidateKmh: cand,
       q,
+      q5Detail: q5.detail,
+      heading,
       headingReject,
     };
 
@@ -524,6 +662,7 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
     }
 
     repairAccepted++;
+    acceptedKmhByLabel.set(label, cand);
     const flags = [...(c4s.flags || []), 'C5_1_REPAIR_ACCEPTED', `C5_1_ATTRIBUTION=${P}`];
     samples.push({
       ...c4s,
@@ -560,6 +699,12 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
       uncertain,
       passOutside,
       maxSupportOffset,
+      maxAttributionOffsetS,
+      maxTimeSuspectSpanS,
+      supportHalfSMax: FROZEN.maxSupportHalfS,
+      eligibilityHorizonNote:
+        'Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s.',
+      hardening: HARDENING_TAG,
       perLabelTrace,
     },
   };
@@ -568,9 +713,16 @@ function computeC5_1GatedRepair(buckets, codeRoot, opts = {}) {
 module.exports = {
   computeC5_1GatedRepair,
   MOTION_CORE_SPEED_C5_1_VERSION,
+  HARDENING_TAG,
   FROZEN,
+  F2_MAX_NUMERIC_KMH,
   loadCore,
   secOf,
   labelOf,
   aPlausMps2,
+  buildSupport,
+  angleDiffDeg,
+  headingRateReject,
+  upwardTroughManoeuvreGuard,
+  physicalPlausibilityQ5,
 };

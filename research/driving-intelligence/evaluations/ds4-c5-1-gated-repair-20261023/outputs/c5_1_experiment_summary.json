@@ -1,10 +1,11 @@
 {
-  "schema": "C5_1_EXPERIMENT_SUMMARY_V1",
-  "generatedAt": "2026-10-23T16:03:01.169Z",
+  "schema": "C5_1_EXPERIMENT_SUMMARY_V2_SAFETY_HARDENED",
+  "generatedAt": "2026-10-23T16:59:13.609Z",
   "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
-  "codeSha": "30b3f29b855d777838263e219f57cc71e425d64d",
+  "codeSha": "b2d6e300595fd68cae69621ebca715366f8bacb6",
   "productionPin": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
-  "c51Version": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_RESEARCH",
+  "hardening": "C5_1_SAFETY_HARDENING_V1",
+  "c51Version": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_1_SAFETY_HARDENED",
   "c4Version": "MOTION_CORE_SPEED_C4_V0_5_DEV",
   "frozen": {
     "aAttrMps2": 6,
@@ -568,34 +569,34 @@
       },
       "motion": {
         "c4": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 73,
           "falseMotionInConfirmedStill": 0,
-          "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillCorrect": 49,
+          "stillNoClaim": 24,
+          "confirmedMotionSecs": 1254,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 1232,
+          "motionNoClaim": 22,
+          "ambiguousSecs": 90,
+          "ambiguousStill": 25,
+          "ambiguousMoving": 46,
+          "ambiguousNoClaim": 19,
           "falseMotionLabels": [],
           "falseStillLabels": []
         },
         "c51": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 73,
           "falseMotionInConfirmedStill": 0,
-          "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillCorrect": 49,
+          "stillNoClaim": 24,
+          "confirmedMotionSecs": 1254,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 1232,
+          "motionNoClaim": 22,
+          "ambiguousSecs": 90,
+          "ambiguousStill": 25,
+          "ambiguousMoving": 46,
+          "ambiguousNoClaim": 19,
           "falseMotionLabels": [],
           "falseStillLabels": []
         }
@@ -644,8 +645,8 @@
         "eligibleLabels": 46,
         "gridLabels": 533,
         "eligiblePct": 8.63,
-        "repairAccepted": 1,
-        "repairRejected": 15,
+        "repairAccepted": 0,
+        "repairRejected": 16,
         "uncertain": 30,
         "passOutside": 487,
         "maxSupportOffset": 4
@@ -664,14 +665,14 @@
         },
         "c51All": {
           "n": 150,
-          "maeKmh": 2.333,
-          "medianAbsKmh": 1.221,
+          "maeKmh": 2.292,
+          "medianAbsKmh": 1.212,
           "p95AbsKmh": 8.562,
           "maxAbsKmh": 13.553,
-          "biasKmh": -0.552,
-          "rmseKmh": 3.642,
-          "within3": 0.733,
-          "within5": 0.84
+          "biasKmh": -0.594,
+          "rmseKmh": 3.596,
+          "within3": 0.74,
+          "within5": 0.847
         },
         "common": {
           "n": 150,
@@ -688,14 +689,14 @@
           },
           "b": {
             "n": 150,
-            "maeKmh": 2.333,
-            "medianAbsKmh": 1.221,
+            "maeKmh": 2.292,
+            "medianAbsKmh": 1.212,
             "p95AbsKmh": 8.562,
             "maxAbsKmh": 13.553,
-            "biasKmh": -0.552,
-            "rmseKmh": 3.642,
-            "within3": 0.733,
-            "within5": 0.84
+            "biasKmh": -0.594,
+            "rmseKmh": 3.596,
+            "within3": 0.74,
+            "within5": 0.847
           }
         },
         "coverage": {
@@ -930,12 +931,13 @@
           }
         },
         "c51": {
-          "ds4Events": 3,
-          "acceptedEvents": 2,
+          "ds4Events": 4,
+          "acceptedEvents": 3,
           "artefactSuspectView": [],
           "sensitivity": {
             "strict": {
               "ds4ByClass": {
+                "WEICHER_FEHLALARM": 1,
                 "TREFFER": 2,
                 "FEHLALARM": 1
               },
@@ -947,8 +949,9 @@
             }
           },
           "accepted": {
-            "events": 2,
+            "events": 3,
             "ds4ByClass": {
+              "WEICHER_FEHLALARM": 1,
               "TREFFER": 2
             },
             "oracleByStatus": {
@@ -978,19 +981,21 @@
             }
           },
           "ds4ByClass": {
+            "WEICHER_FEHLALARM": 1,
             "TREFFER": 2,
             "FEHLALARM": 1
           },
           "ds4ByQuality": {
+            "DEGRADED": 1,
             "LIMITED": 1,
             "OK": 1,
             "ARTEFACT_SUSPECT": 1
           },
           "ds4ByKind": {
-            "DECELERATION": 2,
+            "DECELERATION": 3,
             "ACCELERATION": 1
           },
-          "verifiableEvents": 3,
+          "verifiableEvents": 4,
           "oracleEvents": 5,
           "oracleByStatus": {
             "VERPASST": 1,
@@ -1000,8 +1005,9 @@
           "oracleBorderline": 4,
           "visibleRuns": 17,
           "visibleRunsByStatus": {
-            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 12,
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
             "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT_UNTERHALB_SCHWELLE": 1,
             "ERKANNT": 2
           },
           "operatorWindowsByStatus": null,
@@ -1043,15 +1049,15 @@
             "within5": 0.5
           },
           "deltaErrSameWindowKmh": {
-            "n": 3,
-            "maeKmh": 5.067,
-            "medianAbsKmh": 2,
-            "p95AbsKmh": 11.36,
+            "n": 4,
+            "maeKmh": 6.075,
+            "medianAbsKmh": 5.55,
+            "p95AbsKmh": 11.905,
             "maxAbsKmh": 12.4,
-            "biasKmh": 3.733,
-            "rmseKmh": 7.266,
-            "within3": 0.667,
-            "within5": 0.667
+            "biasKmh": 5.075,
+            "rmseKmh": 7.765,
+            "within3": 0.5,
+            "within5": 0.5
           },
           "nearBoundary": {
             "byClass": {
@@ -1062,6 +1068,7 @@
           "implausible": [],
           "overReferenceMax": [],
           "byQualityAndClass": {
+            "DEGRADED|WEICHER_FEHLALARM": 1,
             "LIMITED|TREFFER": 1,
             "OK|TREFFER": 1,
             "ARTEFACT_SUSPECT|FEHLALARM": 1
@@ -1079,14 +1086,14 @@
             "c4Usable": 158,
             "detectorSegments": 3,
             "quarantinedSecs": 0,
-            "eventsInsideReferenceWindow": 3
+            "eventsInsideReferenceWindow": 4
           },
           "matchingMode": "v2_gap2s",
           "metricsLayers": {
             "ds4": {
-              "detected": 3,
-              "accepted": 2,
-              "verifiable": 3,
+              "detected": 4,
+              "accepted": 3,
+              "verifiable": 4,
               "notEvaluable": 0
             },
             "t2_sameDetectorOnVideoSpeed": {
@@ -1103,14 +1110,15 @@
                 "VERPASST_GRENZWERTIG": 2
               },
               "hardFalseAlarms": 1,
-              "softOrIntensityFalse": 0
+              "softOrIntensityFalse": 1
             },
             "t1_operatorWindows": null,
             "t3_visibleRuns": {
               "runs": 17,
               "byStatus": {
-                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 12,
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
                 "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT_UNTERHALB_SCHWELLE": 1,
                 "ERKANNT": 2
               }
             },
@@ -1124,34 +1132,34 @@
       },
       "motion": {
         "c4": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 8,
           "falseMotionInConfirmedStill": 0,
           "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillNoClaim": 8,
+          "confirmedMotionSecs": 160,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 114,
+          "motionNoClaim": 46,
+          "ambiguousSecs": 61,
+          "ambiguousStill": 11,
+          "ambiguousMoving": 14,
+          "ambiguousNoClaim": 36,
           "falseMotionLabels": [],
           "falseStillLabels": []
         },
         "c51": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 8,
           "falseMotionInConfirmedStill": 0,
           "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillNoClaim": 8,
+          "confirmedMotionSecs": 160,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 114,
+          "motionNoClaim": 46,
+          "ambiguousSecs": 61,
+          "ambiguousStill": 11,
+          "ambiguousMoving": 14,
+          "ambiguousNoClaim": 36,
           "falseMotionLabels": [],
           "falseStillLabels": []
         }
@@ -1641,34 +1649,34 @@
       },
       "motion": {
         "c4": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 15,
           "falseMotionInConfirmedStill": 0,
           "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillNoClaim": 15,
+          "confirmedMotionSecs": 170,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 157,
+          "motionNoClaim": 13,
+          "ambiguousSecs": 55,
+          "ambiguousStill": 2,
+          "ambiguousMoving": 15,
+          "ambiguousNoClaim": 38,
           "falseMotionLabels": [],
           "falseStillLabels": []
         },
         "c51": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 15,
           "falseMotionInConfirmedStill": 0,
           "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillNoClaim": 15,
+          "confirmedMotionSecs": 170,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 157,
+          "motionNoClaim": 13,
+          "ambiguousSecs": 55,
+          "ambiguousStill": 2,
+          "ambiguousMoving": 15,
+          "ambiguousNoClaim": 38,
           "falseMotionLabels": [],
           "falseStillLabels": []
         }
@@ -2163,34 +2171,34 @@
       },
       "motion": {
         "c4": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 116,
           "falseMotionInConfirmedStill": 0,
           "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillNoClaim": 116,
+          "confirmedMotionSecs": 739,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 730,
+          "motionNoClaim": 9,
+          "ambiguousSecs": 118,
+          "ambiguousStill": 17,
+          "ambiguousMoving": 36,
+          "ambiguousNoClaim": 65,
           "falseMotionLabels": [],
           "falseStillLabels": []
         },
         "c51": {
-          "confirmedStillCoreSecs": 0,
+          "confirmedStillCoreSecs": 116,
           "falseMotionInConfirmedStill": 0,
           "stillCorrect": 0,
-          "stillNoClaim": 0,
-          "confirmedMotionSecs": 0,
+          "stillNoClaim": 116,
+          "confirmedMotionSecs": 739,
           "falseStillInConfirmedMotion": 0,
-          "motionCorrect": 0,
-          "motionNoClaim": 0,
-          "ambiguousSecs": 0,
-          "ambiguousStill": 0,
-          "ambiguousMoving": 0,
-          "ambiguousNoClaim": 0,
+          "motionCorrect": 730,
+          "motionNoClaim": 9,
+          "ambiguousSecs": 118,
+          "ambiguousStill": 17,
+          "ambiguousMoving": 36,
+          "ambiguousNoClaim": 65,
           "falseMotionLabels": [],
           "falseStillLabels": []
         }
@@ -2220,6 +2228,7 @@
           "2026-10-16T03:50:22Z"
         ],
         "attributionP": "2026-10-16T03:50:22Z",
+        "attributionOffsetS": 2,
         "looDetail": {
           "v1Kmh": 64.51306933814512,
           "v2Kmh": 255.9605404619024,
@@ -2234,11 +2243,29 @@
             "vPostKmh": 126.92532305839849
           }
         },
+        "manoeuvreTroughGuard": {
+          "pass": true,
+          "cand": 129.584682365988,
+          "detail": {
+            "trough": true,
+            "leftMax": 129.78856651286918,
+            "rightMax": 148.2894329471151
+          }
+        },
         "support": {
           "h": 4,
-          "totalForRule": 8,
+          "totalForRule": 7,
           "left": 4,
           "right": 2,
+          "supportLabelsUsed": [
+            "2026-10-16T03:50:16Z",
+            "2026-10-16T03:50:17Z",
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z"
+          ],
           "slopeSupportLabels": [
             "2026-10-16T03:50:16Z",
             "2026-10-16T03:50:17Z",
@@ -2248,7 +2275,7 @@
             "2026-10-16T03:50:23Z",
             "2026-10-16T03:50:24Z"
           ],
-          "centerIncludedInCount": true
+          "centerInUsed": true
         },
         "candidateKmh": 129.584682365988,
         "q": {
@@ -2258,6 +2285,15 @@
           "Q4": true,
           "Q5": true,
           "Q6": true
+        },
+        "q5Detail": {
+          "vCand": 0.1987827178308284,
+          "vC4": 4.53397027959494
+        },
+        "heading": {
+          "reject": false,
+          "rateDegPerS": 0.11413247114161133,
+          "dt": 3
         },
         "headingReject": false
       },
@@ -2293,6 +2329,7 @@
           "2026-10-16T03:50:22Z"
         ],
         "attributionP": "2026-10-16T03:50:22Z",
+        "attributionOffsetS": 0,
         "looDetail": {
           "v1Kmh": 64.51306933814512,
           "v2Kmh": 255.9605404619024,
@@ -2307,11 +2344,24 @@
             "vPostKmh": 126.92532305839849
           }
         },
+        "manoeuvreTroughGuard": {
+          "pass": true,
+          "cand": 126.71268354059747
+        },
         "support": {
           "h": 4,
           "totalForRule": 7,
           "left": 3,
           "right": 4,
+          "supportLabelsUsed": [
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z"
+          ],
           "slopeSupportLabels": [
             "2026-10-16T03:50:18Z",
             "2026-10-16T03:50:19Z",
@@ -2321,7 +2371,7 @@
             "2026-10-16T03:50:25Z",
             "2026-10-16T03:50:26Z"
           ],
-          "centerIncludedInCount": true
+          "centerInUsed": false
         },
         "candidateKmh": 126.71268354059747,
         "q": {
@@ -2329,8 +2379,18 @@
           "Q2": true,
           "Q3": true,
           "Q4": true,
-          "Q5": true,
+          "Q5": false,
           "Q6": false
+        },
+        "q5Detail": {
+          "reason": "worsens_triple_accel",
+          "vCand": 5.993541501810454,
+          "vC4": 5.593329485974745
+        },
+        "heading": {
+          "reject": false,
+          "rateDegPerS": 0.13563327141239748,
+          "dt": 3
         },
         "headingReject": false
       },
@@ -2339,7 +2399,7 @@
         "Q2": true,
         "Q3": true,
         "Q4": true,
-        "Q5": true,
+        "Q5": false,
         "Q6": false
       }
     },
@@ -2366,6 +2426,7 @@
           "2026-10-16T03:50:22Z"
         ],
         "attributionP": "2026-10-16T03:50:22Z",
+        "attributionOffsetS": 1,
         "looDetail": {
           "v1Kmh": 64.51306933814512,
           "v2Kmh": 255.9605404619024,
@@ -2380,11 +2441,24 @@
             "vPostKmh": 126.92532305839849
           }
         },
+        "manoeuvreTroughGuard": {
+          "pass": true,
+          "cand": 125.89577000351147
+        },
         "support": {
           "h": 4,
-          "totalForRule": 8,
+          "totalForRule": 7,
           "left": 2,
           "right": 4,
+          "supportLabelsUsed": [
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z",
+            "2026-10-16T03:50:27Z"
+          ],
           "slopeSupportLabels": [
             "2026-10-16T03:50:19Z",
             "2026-10-16T03:50:20Z",
@@ -2394,7 +2468,7 @@
             "2026-10-16T03:50:26Z",
             "2026-10-16T03:50:27Z"
           ],
-          "centerIncludedInCount": true
+          "centerInUsed": true
         },
         "candidateKmh": 125.89577000351147,
         "q": {
@@ -2404,6 +2478,15 @@
           "Q4": true,
           "Q5": true,
           "Q6": true
+        },
+        "q5Detail": {
+          "vCand": 0.6271324428040417,
+          "vC4": 6.052608034532964
+        },
+        "heading": {
+          "reject": false,
+          "rateDegPerS": 0.39627638172019175,
+          "dt": 2
         },
         "headingReject": false
       },
@@ -2447,21 +2530,88 @@
     ],
     "c51": []
   },
+  "tes21_1_12_05_23": {
+    "c4Kmh": 14.858372594105312,
+    "c51Kmh": 14.858372594105312,
+    "repairState": "REPAIR_REJECTED"
+  },
+  "tig22_18_41_45": {
+    "c4Kmh": 43.56220401178661,
+    "c51Kmh": 51.407592835199324,
+    "repairState": "REPAIR_ACCEPTED"
+  },
+  "attributionHorizons": [
+    {
+      "id": "TIG22",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 4,
+      "maxTimeSuspectSpanS": 4,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    },
+    {
+      "id": "TES21-1",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 3,
+      "maxTimeSuspectSpanS": 8,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    },
+    {
+      "id": "TES21-2",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 0,
+      "maxTimeSuspectSpanS": 0,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    },
+    {
+      "id": "TES16",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 4,
+      "maxTimeSuspectSpanS": 0,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    }
+  ],
   "validationGates": {
     "gates": [
       {
         "gate": "A/B1_coverage",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "covC4": 0.963,
           "covC51": 0.963
         }
       },
       {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 2,
+          "passOutside": 2056,
+          "repairRejected": 33,
+          "uncertain": 3
+        }
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
         "gate": "B2_no_numeric_loss",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "lost": 0
         }
@@ -2470,6 +2620,7 @@
         "gate": "A_pass_through_fields",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "violations": 0
         }
@@ -2478,20 +2629,34 @@
         "gate": "F1_quarantine_parity",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {}
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 142.08802935867215,
+          "maxC51Kmh": 142.08802935867215
+        }
       },
       {
         "gate": "F3_max_support_offset",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
-          "max": 4
+          "max": 4,
+          "maxAttributionOffsetS": 4
         }
       },
       {
         "gate": "G1_eligibility_pct",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "pct": 1.81,
           "eligible": 38,
@@ -2499,9 +2664,19 @@
         }
       },
       {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        }
+      },
+      {
         "gate": "C1_common_mae",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "maeC4": 2.905,
           "maeC51": 2.9,
@@ -2512,6 +2687,7 @@
         "gate": "C2_common_p95",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "p95C4": 5.918,
           "p95C51": 5.903
@@ -2521,24 +2697,48 @@
         "gate": "D1_confirmed_recall",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "oracleHardMissedC4": 1,
           "oracleHardMissedC51": 1
         }
       },
       {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 20,
+          "c51EventRows": 20
+        }
+      },
+      {
         "gate": "D2_hard_false_alarms",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "hardFalseAlarmsC4": 0,
           "hardFalseAlarmsC51": 0
         }
       },
       {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 20,
+          "eventsC51": 20,
+          "recallImproved": false
+        }
+      },
+      {
         "gate": "E1_false_motion_still",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2548,6 +2748,7 @@
         "gate": "E2_false_still_motion",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2557,23 +2758,57 @@
         "gate": "PRODUCTION_C4_REPLAY_PARITY",
         "drive": "TIG22",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "mismatches": 0
+        }
+      },
+      {
+        "gate": "D5_tig22_1904_unscored_gap",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "19:04 remains UNSCORED_VIDEO_GAP per video reference; not asserted in offline event rows.",
+          "unscoredCount": 0
         }
       },
       {
         "gate": "A/B1_coverage",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "covC4": 0.655,
           "covC51": 0.655
         }
       },
       {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 0,
+          "passOutside": 487,
+          "repairRejected": 16,
+          "uncertain": 30
+        }
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
         "gate": "B2_no_numeric_loss",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "lost": 0
         }
@@ -2582,6 +2817,7 @@
         "gate": "A_pass_through_fields",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "violations": 0
         }
@@ -2590,20 +2826,34 @@
         "gate": "F1_quarantine_parity",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {}
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 56.19229495903836,
+          "maxC51Kmh": 56.19229495903836
+        }
       },
       {
         "gate": "F3_max_support_offset",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
-          "max": 4
+          "max": 4,
+          "maxAttributionOffsetS": 3
         }
       },
       {
         "gate": "G1_eligibility_pct",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "pct": 8.63,
           "eligible": 46,
@@ -2611,12 +2861,22 @@
         }
       },
       {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        }
+      },
+      {
         "gate": "C1_common_mae",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "maeC4": 2.292,
-          "maeC51": 2.333,
+          "maeC51": 2.292,
           "n": 150
         }
       },
@@ -2624,6 +2884,7 @@
         "gate": "C2_common_p95",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "p95C4": 8.562,
           "p95C51": 8.562
@@ -2633,24 +2894,48 @@
         "gate": "D1_confirmed_recall",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "oracleHardMissedC4": 1,
           "oracleHardMissedC51": 1
         }
       },
       {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 4,
+          "c51EventRows": 4
+        }
+      },
+      {
         "gate": "D2_hard_false_alarms",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "hardFalseAlarmsC4": 1,
           "hardFalseAlarmsC51": 1
         }
       },
       {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 4,
+          "eventsC51": 4,
+          "recallImproved": false
+        }
+      },
+      {
         "gate": "E1_false_motion_still",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2660,6 +2945,7 @@
         "gate": "E2_false_still_motion",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2669,6 +2955,7 @@
         "gate": "PRODUCTION_C4_REPLAY_PARITY",
         "drive": "TES21-1",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "mismatches": 0
         }
@@ -2677,15 +2964,38 @@
         "gate": "A/B1_coverage",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "covC4": 0.746,
           "covC51": 0.746
         }
       },
       {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 0,
+          "passOutside": 517,
+          "repairRejected": 18,
+          "uncertain": 0
+        }
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
         "gate": "B2_no_numeric_loss",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "lost": 0
         }
@@ -2694,6 +3004,7 @@
         "gate": "A_pass_through_fields",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "violations": 0
         }
@@ -2702,20 +3013,34 @@
         "gate": "F1_quarantine_parity",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {}
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 51.74734893386582,
+          "maxC51Kmh": 51.74734893386582
+        }
       },
       {
         "gate": "F3_max_support_offset",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
-          "max": 4
+          "max": 4,
+          "maxAttributionOffsetS": 0
         }
       },
       {
         "gate": "G1_eligibility_pct",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "pct": 3.36,
           "eligible": 18,
@@ -2723,9 +3048,19 @@
         }
       },
       {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        }
+      },
+      {
         "gate": "C1_common_mae",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "maeC4": 3.605,
           "maeC51": 3.605,
@@ -2736,6 +3071,7 @@
         "gate": "C2_common_p95",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "p95C4": 10.954,
           "p95C51": 10.954
@@ -2745,24 +3081,48 @@
         "gate": "D1_confirmed_recall",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "oracleHardMissedC4": 0,
           "oracleHardMissedC51": 0
         }
       },
       {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 4,
+          "c51EventRows": 4
+        }
+      },
+      {
         "gate": "D2_hard_false_alarms",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "hardFalseAlarmsC4": 0,
           "hardFalseAlarmsC51": 0
         }
       },
       {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 4,
+          "eventsC51": 4,
+          "recallImproved": false
+        }
+      },
+      {
         "gate": "E1_false_motion_still",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2772,6 +3132,7 @@
         "gate": "E2_false_still_motion",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2781,6 +3142,7 @@
         "gate": "PRODUCTION_C4_REPLAY_PARITY",
         "drive": "TES21-2",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "mismatches": 0
         }
@@ -2789,15 +3151,38 @@
         "gate": "A/B1_coverage",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "covC4": 0.83,
           "covC51": 0.83
         }
       },
       {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 2,
+          "passOutside": 1119,
+          "repairRejected": 15,
+          "uncertain": 0
+        }
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        }
+      },
+      {
         "gate": "B2_no_numeric_loss",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "lost": 0
         }
@@ -2806,6 +3191,7 @@
         "gate": "A_pass_through_fields",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "violations": 0
         }
@@ -2814,20 +3200,34 @@
         "gate": "F1_quarantine_parity",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {}
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 148.2894329471151,
+          "maxC51Kmh": 129.78856651286918
+        }
       },
       {
         "gate": "F3_max_support_offset",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
-          "max": 4
+          "max": 4,
+          "maxAttributionOffsetS": 4
         }
       },
       {
         "gate": "G1_eligibility_pct",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "pct": 1.5,
           "eligible": 17,
@@ -2835,9 +3235,32 @@
         }
       },
       {
+        "gate": "G2_tes16_gap_window_covers_cluster",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "window": {
+            "start": "2026-10-16T03:50:18Z",
+            "end": "2026-10-16T03:50:26Z",
+            "width": 9
+          }
+        }
+      },
+      {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TES16",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        }
+      },
+      {
         "gate": "C1_common_mae",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "maeC4": 2.272,
           "maeC51": 2.239,
@@ -2848,6 +3271,7 @@
         "gate": "C2_common_p95",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "p95C4": 4.485,
           "p95C51": 4.478
@@ -2857,24 +3281,48 @@
         "gate": "D1_confirmed_recall",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "oracleHardMissedC4": 0,
           "oracleHardMissedC51": 0
         }
       },
       {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TES16",
+        "pass": true,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 17,
+          "c51EventRows": 16
+        }
+      },
+      {
         "gate": "D2_hard_false_alarms",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "hardFalseAlarmsC4": 1,
           "hardFalseAlarmsC51": 0
         }
       },
       {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 17,
+          "eventsC51": 16,
+          "recallImproved": false
+        }
+      },
+      {
         "gate": "E1_false_motion_still",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2884,6 +3332,7 @@
         "gate": "E2_false_still_motion",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4": 0,
           "c51": 0
@@ -2893,6 +3342,7 @@
         "gate": "PRODUCTION_C4_REPLAY_PARITY",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "mismatches": 0
         }
@@ -2901,6 +3351,7 @@
         "gate": "D4_tes16_false_accel_removed",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "c4Events": 1,
           "c51Events": 0
@@ -2910,19 +3361,53 @@
         "gate": "C3_tes16_critical_max_err",
         "drive": "TES16",
         "pass": true,
+        "status": "PASS",
         "detail": {
           "maxErrKmh": 6.1
+        }
+      },
+      {
+        "gate": "TES21_1_brake_120523_not_worsened",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4Kmh": 14.858372594105312,
+          "c51Kmh": 14.858372594105312,
+          "repairState": "REPAIR_REJECTED"
+        }
+      },
+      {
+        "gate": "TES21_1_real_decel_preserved",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "decelC4": 1,
+          "decelC51": 1
         }
       },
       {
         "gate": "H_synthetics",
         "drive": "ALL",
         "pass": true,
-        "detail": {}
+        "status": "PASS",
+        "detail": {
+          "syntheticsOk": true,
+          "supportOk": true
+        }
       }
     ],
-    "allPass": true
+    "allPass": true,
+    "allScoredPass": true
   },
-  "finalVerdict": "PROVEN_FOR_LOCAL_REPAIR",
+  "gateCounts": {
+    "pass": 74,
+    "fail": 0,
+    "notVerified": 9,
+    "total": 83
+  },
+  "finalVerdict": "SAFE_OFFLINE_CANDIDATE",
+  "priorV1Verdict": "PROVEN_FOR_LOCAL_REPAIR",
   "independentGeneralization": "NOT_YET_PROVEN"
 }

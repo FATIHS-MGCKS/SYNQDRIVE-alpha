@@ -111,8 +111,13 @@ function compareDrive(d) {
   const eventEvalC4 = R.evaluateDrive({ ...d, c4, events: eventsC4 }, { write: false, matching: 'v2_gap2s' });
   const eventEvalC51 = R.evaluateDrive({ ...d, c4, events: eventsC51 }, { write: false, matching: 'v2_gap2s' });
 
-  const motionC4 = L.motionClaimEvaluation(refRows, (s) => L.c4Claim(c4By(s)?.valueKmh ?? null));
-  const motionC51 = L.motionClaimEvaluation(refRows, (s) => L.c4Claim(c51By(s)?.valueKmh ?? null));
+  const refClasses = L.classifyReference(refRows);
+  const motionRows = refRows.map((r) => ({
+    ...r,
+    cls: refClasses.classes.get(r.sec)?.cls ?? 'UNREADABLE',
+  }));
+  const motionC4 = L.motionClaimEvaluation(motionRows, (s) => L.c4Claim(c4By(s)?.valueKmh ?? null));
+  const motionC51 = L.motionClaimEvaluation(motionRows, (s) => L.c4Claim(c51By(s)?.valueKmh ?? null));
 
   const repairedOnly = c51Raw.filter((s) => s.repairState === 'REPAIR_ACCEPTED');
   const passThroughOnly = c51Raw.filter((s) => s.repairState !== 'REPAIR_ACCEPTED');
@@ -171,6 +176,11 @@ function tes16FalseAccel(result) {
   return { c4: pick(result.eventsC4), c51: pick(result.eventsC51) };
 }
 
+function gateStatus(pass, verified = true) {
+  if (!verified) return 'NOT_VERIFIED';
+  return pass ? 'PASS' : 'FAIL';
+}
+
 function buildGates(results) {
   const gates = [];
   for (const r of results) {
@@ -180,41 +190,98 @@ function buildGates(results) {
       gate: 'A/B1_coverage',
       drive: r.id,
       pass: covC51 >= covC4 - 0.001,
+      status: gateStatus(covC51 >= covC4 - 0.001),
       detail: { covC4, covC51 },
+    });
+    gates.push({
+      gate: 'A3_repair_accepted_lt_pass_through',
+      drive: r.id,
+      pass: r.meta.repairAccepted < r.meta.passOutside + r.meta.repairRejected + r.meta.uncertain,
+      status: gateStatus(r.meta.repairAccepted < r.meta.passOutside + r.meta.repairRejected + r.meta.uncertain),
+      detail: {
+        repairAccepted: r.meta.repairAccepted,
+        passOutside: r.meta.passOutside,
+        repairRejected: r.meta.repairRejected,
+        uncertain: r.meta.uncertain,
+      },
+    });
+    gates.push({
+      gate: 'A4_no_c4_numeric_to_null',
+      drive: r.id,
+      pass: r.lost.length === 0,
+      status: gateStatus(r.lost.length === 0),
+      detail: { lost: r.lost.length },
     });
     gates.push({
       gate: 'B2_no_numeric_loss',
       drive: r.id,
       pass: r.lost.length === 0,
+      status: gateStatus(r.lost.length === 0),
       detail: { lost: r.lost.length },
     });
     gates.push({
       gate: 'A_pass_through_fields',
       drive: r.id,
       pass: r.passThroughViolations === 0,
+      status: gateStatus(r.passThroughViolations === 0),
       detail: { violations: r.passThroughViolations },
     });
     gates.push({
       gate: 'F1_quarantine_parity',
       drive: r.id,
       pass: r.quarantineParity,
+      status: gateStatus(r.quarantineParity),
       detail: {},
+    });
+    let maxC4 = 0;
+    let maxC51 = 0;
+    for (const s of r.c4) if (s.valueKmh != null) maxC4 = Math.max(maxC4, s.valueKmh);
+    for (const s of r.c51) if (s.valueKmh != null) maxC51 = Math.max(maxC51, s.valueKmh);
+    gates.push({
+      gate: 'F2_no_new_gt_250_kmh',
+      drive: r.id,
+      pass: maxC51 <= Math.max(maxC4, C51.F2_MAX_NUMERIC_KMH) && maxC51 <= C51.F2_MAX_NUMERIC_KMH + 1e-6,
+      status: gateStatus(maxC51 <= Math.max(maxC4, C51.F2_MAX_NUMERIC_KMH) && maxC51 <= C51.F2_MAX_NUMERIC_KMH + 1e-6),
+      detail: { maxC4Kmh: maxC4, maxC51Kmh: maxC51 },
     });
     gates.push({
       gate: 'F3_max_support_offset',
       drive: r.id,
       pass: r.meta.maxSupportOffset <= 4,
-      detail: { max: r.meta.maxSupportOffset },
+      status: gateStatus(r.meta.maxSupportOffset <= 4),
+      detail: { max: r.meta.maxSupportOffset, maxAttributionOffsetS: r.meta.maxAttributionOffsetS },
     });
     gates.push({
       gate: 'G1_eligibility_pct',
       drive: r.id,
       pass: r.meta.eligibleLabelCount / r.meta.gridLabelCount <= 0.15,
+      status: gateStatus(r.meta.eligibleLabelCount / r.meta.gridLabelCount <= 0.15),
       detail: {
         pct: L.round(100 * r.meta.eligibleLabelCount / r.meta.gridLabelCount, 2),
         eligible: r.meta.eligibleLabelCount,
         grid: r.meta.gridLabelCount,
       },
+    });
+    if (r.id === 'TES16') {
+      const win = r.meta.suspicionWindows.find(
+        (w) =>
+          L.secOf(w.start) <= L.secOf('2026-10-16T03:50:20Z') &&
+          L.secOf(w.end) >= L.secOf('2026-10-16T03:50:23Z'),
+      );
+      gates.push({
+        gate: 'G2_tes16_gap_window_covers_cluster',
+        drive: 'TES16',
+        pass: Boolean(win),
+        status: gateStatus(Boolean(win)),
+        detail: { window: win ?? null },
+      });
+    }
+    gates.push({
+      gate: 'C4_residual_pass_through_risk_documented',
+      drive: r.id,
+      pass: true,
+      status: 'NOT_VERIFIED',
+      detail: { note: 'Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate.' },
     });
     const maeC4 = r.common.a?.maeKmh;
     const maeC51 = r.common.b?.maeKmh;
@@ -222,6 +289,7 @@ function buildGates(results) {
       gate: 'C1_common_mae',
       drive: r.id,
       pass: maeC51 != null && maeC4 != null && maeC51 <= maeC4 + 0.1,
+      status: gateStatus(maeC51 != null && maeC4 != null && maeC51 <= maeC4 + 0.1),
       detail: { maeC4, maeC51, n: r.common.n },
     });
     const p95C4 = r.common.a?.p95AbsKmh;
@@ -230,6 +298,7 @@ function buildGates(results) {
       gate: 'C2_common_p95',
       drive: r.id,
       pass: p95C51 != null && p95C4 != null && p95C51 <= p95C4 + 0.2,
+      status: gateStatus(p95C51 != null && p95C4 != null && p95C51 <= p95C4 + 0.2),
       detail: { p95C4, p95C51 },
     });
 
@@ -239,7 +308,18 @@ function buildGates(results) {
       gate: 'D1_confirmed_recall',
       drive: r.id,
       pass: hardMissedC51 <= hardMissedC4,
+      status: gateStatus(hardMissedC51 <= hardMissedC4),
       detail: { oracleHardMissedC4: hardMissedC4, oracleHardMissedC51: hardMissedC51 },
+    });
+    gates.push({
+      gate: 'D3_unknown_oracle_reported',
+      drive: r.id,
+      pass: true,
+      status: 'NOT_VERIFIED',
+      detail: {
+        c4EventRows: (r.eventEvalC4.events || []).length,
+        c51EventRows: (r.eventEvalC51.events || []).length,
+      },
     });
     const hardFpC4 = (r.eventEvalC4.events || []).filter((row) => row.cls === 'FEHLALARM').length;
     const hardFpC51 = (r.eventEvalC51.events || []).filter((row) => row.cls === 'FEHLALARM').length;
@@ -247,26 +327,53 @@ function buildGates(results) {
       gate: 'D2_hard_false_alarms',
       drive: r.id,
       pass: hardFpC51 <= hardFpC4,
+      status: gateStatus(hardFpC51 <= hardFpC4),
       detail: { hardFalseAlarmsC4: hardFpC4, hardFalseAlarmsC51: hardFpC51 },
+    });
+    const evC4 = r.eventsC4.length;
+    const evC51 = r.eventsC51.length;
+    const recallImproved = hardMissedC51 < hardMissedC4;
+    gates.push({
+      gate: 'D6_no_event_drop_without_oracle_gain',
+      drive: r.id,
+      pass: evC51 >= evC4 || recallImproved || hardFpC51 < hardFpC4,
+      status: gateStatus(evC51 >= evC4 || recallImproved || hardFpC51 < hardFpC4),
+      detail: { eventsC4: evC4, eventsC51: evC51, recallImproved },
     });
     gates.push({
       gate: 'E1_false_motion_still',
       drive: r.id,
       pass: r.motionC51.falseMotionInConfirmedStill <= r.motionC4.falseMotionInConfirmedStill,
+      status: gateStatus(r.motionC51.falseMotionInConfirmedStill <= r.motionC4.falseMotionInConfirmedStill),
       detail: { c4: r.motionC4.falseMotionInConfirmedStill, c51: r.motionC51.falseMotionInConfirmedStill },
     });
     gates.push({
       gate: 'E2_false_still_motion',
       drive: r.id,
       pass: r.motionC51.falseStillInConfirmedMotion <= r.motionC4.falseStillInConfirmedMotion,
+      status: gateStatus(r.motionC51.falseStillInConfirmedMotion <= r.motionC4.falseStillInConfirmedMotion),
       detail: { c4: r.motionC4.falseStillInConfirmedMotion, c51: r.motionC51.falseStillInConfirmedMotion },
     });
     gates.push({
       gate: 'PRODUCTION_C4_REPLAY_PARITY',
       drive: r.id,
       pass: r.c4ParityMismatch === 0,
+      status: gateStatus(r.c4ParityMismatch === 0),
       detail: { mismatches: r.c4ParityMismatch },
     });
+    if (r.id === 'TIG22') {
+      const unscored = (r.eventEvalC51.events || []).filter((row) => row.cls === 'UNSCORED_VIDEO_GAP');
+      gates.push({
+        gate: 'D5_tig22_1904_unscored_gap',
+        drive: 'TIG22',
+        pass: true,
+        status: 'NOT_VERIFIED',
+        detail: {
+          note: '19:04 remains UNSCORED_VIDEO_GAP per video reference; not asserted in offline event rows.',
+          unscoredCount: unscored.length,
+        },
+      });
+    }
   }
 
   const tes = results.find((x) => x.id === 'TES16');
@@ -276,6 +383,7 @@ function buildGates(results) {
       gate: 'D4_tes16_false_accel_removed',
       drive: 'TES16',
       pass: fa.c51.length === 0 && fa.c4.length > 0,
+      status: gateStatus(fa.c51.length === 0 && fa.c4.length > 0),
       detail: { c4Events: fa.c4.length, c51Events: fa.c51.length },
     });
     const from = L.secOf('2026-10-16T03:50:16Z');
@@ -292,35 +400,85 @@ function buildGates(results) {
       gate: 'C3_tes16_critical_max_err',
       drive: 'TES16',
       pass: maxErr <= 8,
+      status: gateStatus(maxErr <= 8),
       detail: { maxErrKmh: L.round(maxErr, 2) },
     });
   }
 
-  return { gates, allPass: gates.every((g) => g.pass) };
+  const tes211 = results.find((x) => x.id === 'TES21-1');
+  if (tes211) {
+    const lab23 = '2026-10-21T12:05:23Z';
+    const c4s = tes211.c4.find((x) => x.label === lab23);
+    const c51s = tes211.c51Raw.find((x) => x.label === lab23);
+    gates.push({
+      gate: 'TES21_1_brake_120523_not_worsened',
+      drive: 'TES21-1',
+      pass: (c51s?.valueKmh ?? 0) <= (c4s?.valueKmh ?? 0) + 0.01,
+      status: gateStatus((c51s?.valueKmh ?? 0) <= (c4s?.valueKmh ?? 0) + 0.01),
+      detail: { c4Kmh: c4s?.valueKmh, c51Kmh: c51s?.valueKmh, repairState: c51s?.repairState },
+    });
+    const from = L.secOf('2026-10-21T12:05:18Z');
+    const to = L.secOf('2026-10-21T12:05:24Z');
+    const decelC4 = tes211.eventsC4.filter((e) => e.kind === 'DECELERATION' && L.secOf(e.startLabel) <= to && L.secOf(e.endLabel) >= from);
+    const decelC51 = tes211.eventsC51.filter((e) => e.kind === 'DECELERATION' && L.secOf(e.startLabel) <= to && L.secOf(e.endLabel) >= from);
+    gates.push({
+      gate: 'TES21_1_real_decel_preserved',
+      drive: 'TES21-1',
+      pass: decelC51.length >= decelC4.length,
+      status: gateStatus(decelC51.length >= decelC4.length),
+      detail: { decelC4: decelC4.length, decelC51: decelC51.length },
+    });
+  }
+
+  for (const g of gates) {
+    if (!g.status) g.status = gateStatus(g.pass);
+  }
+
+  const scored = gates.filter((g) => g.status !== 'NOT_VERIFIED');
+  return { gates, allPass: scored.every((g) => g.pass), allScoredPass: scored.every((g) => g.pass) };
 }
 
 const { execFileSync: execSynth } = require('node:child_process');
 let syntheticsOk = true;
+let supportOk = true;
+const scriptsDir = path.join(evalRoot, 'scripts');
 try {
-  execSynth('node', ['scripts/c5-1.synthetic.test.cjs'], { cwd: path.join(evalRoot, 'scripts', '..'), stdio: 'pipe' });
+  execSynth('node', ['c5-1.synthetic.test.cjs'], { cwd: scriptsDir, stdio: 'pipe' });
 } catch (e) {
   syntheticsOk = false;
+}
+try {
+  execSynth('node', ['c5-1.support.test.cjs'], { cwd: scriptsDir, stdio: 'pipe' });
+} catch (e) {
+  supportOk = false;
 }
 
 const drives = R.loadDrives();
 const results = drives.map(compareDrive);
 const gates = buildGates(results);
-gates.gates.push({ gate: 'H_synthetics', drive: 'ALL', pass: syntheticsOk, detail: {} });
-gates.allPass = gates.gates.every((g) => g.pass);
+gates.gates.push({
+  gate: 'H_synthetics',
+  drive: 'ALL',
+  pass: syntheticsOk && supportOk,
+  status: gateStatus(syntheticsOk && supportOk),
+  detail: { syntheticsOk, supportOk },
+});
+gates.allPass = gates.gates.filter((g) => g.status !== 'NOT_VERIFIED').every((g) => g.pass);
 
 const tes16Labels = tes16Trace(results.find((x) => x.id === 'TES16'));
 
+const tes211 = results.find((x) => x.id === 'TES21-1');
+const tes211_23 = tes211?.c51Raw.find((x) => x.label === '2026-10-21T12:05:23Z');
+const tig22 = results.find((x) => x.id === 'TIG22');
+const tig1845 = tig22?.c51Raw.find((x) => x.label === '2026-10-22T18:41:45Z');
+
 const summary = {
-  schema: 'C5_1_EXPERIMENT_SUMMARY_V1',
+  schema: 'C5_1_EXPERIMENT_SUMMARY_V2_SAFETY_HARDENED',
   generatedAt: new Date().toISOString(),
   codeRoot,
   codeSha,
   productionPin: expectSha,
+  hardening: C51.HARDENING_TAG,
   c51Version: C51.MOTION_CORE_SPEED_C5_1_VERSION,
   c4Version: core.MOTION_CORE_SPEED_C4_VERSION,
   frozen: C51.FROZEN,
@@ -357,8 +515,33 @@ const summary = {
   })),
   tes16SecondTrace: tes16Labels,
   tes16FalseAccel: tes16FalseAccel(results.find((x) => x.id === 'TES16')),
+  tes21_1_12_05_23: {
+    c4Kmh: tes211?.c4.find((x) => x.label === '2026-10-21T12:05:23Z')?.valueKmh,
+    c51Kmh: tes211_23?.valueKmh,
+    repairState: tes211_23?.repairState,
+  },
+  tig22_18_41_45: {
+    c4Kmh: tig22?.c4.find((x) => x.label === '2026-10-22T18:41:45Z')?.valueKmh,
+    c51Kmh: tig1845?.valueKmh,
+    repairState: tig1845?.repairState,
+  },
+  attributionHorizons: results.map((r) => ({
+    id: r.id,
+    maxSupportOffset: r.meta.maxSupportOffset,
+    maxAttributionOffsetS: r.meta.maxAttributionOffsetS,
+    maxTimeSuspectSpanS: r.meta.maxTimeSuspectSpanS,
+    supportHalfSMax: r.meta.supportHalfSMax,
+    note: r.meta.eligibilityHorizonNote,
+  })),
   validationGates: gates,
-  finalVerdict: gates.allPass ? 'PROVEN_FOR_LOCAL_REPAIR' : 'NOT_PROVEN',
+  gateCounts: {
+    pass: gates.gates.filter((g) => g.status === 'PASS').length,
+    fail: gates.gates.filter((g) => g.status === 'FAIL').length,
+    notVerified: gates.gates.filter((g) => g.status === 'NOT_VERIFIED').length,
+    total: gates.gates.length,
+  },
+  finalVerdict: gates.allPass ? 'SAFE_OFFLINE_CANDIDATE' : 'NOT_PROVEN',
+  priorV1Verdict: 'PROVEN_FOR_LOCAL_REPAIR',
   independentGeneralization: 'NOT_YET_PROVEN',
 };
 
