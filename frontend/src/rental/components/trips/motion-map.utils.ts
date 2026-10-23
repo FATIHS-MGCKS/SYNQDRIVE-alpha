@@ -264,6 +264,19 @@ export function motionEventLabelKey(event: TripMotionMapEvent): MotionEventLabel
   return 'trips.motionMap.eventAcceleration';
 }
 
+export type MotionEventQualityLabelKey =
+  | 'trips.motionMap.qualityOk'
+  | 'trips.motionMap.qualityLimited'
+  | 'trips.motionMap.qualityDegraded';
+
+/** Maps the persisted event quality to a localized label key; unknown values fall back to the raw value. */
+export function motionEventQualityLabelKey(quality: string): MotionEventQualityLabelKey | null {
+  if (quality === 'OK') return 'trips.motionMap.qualityOk';
+  if (quality === 'LIMITED') return 'trips.motionMap.qualityLimited';
+  if (quality === 'DEGRADED') return 'trips.motionMap.qualityDegraded';
+  return null;
+}
+
 /** @deprecated use motionEventLabelKey + i18n t() in UI */
 export function motionEventLabel(event: TripMotionMapEvent): string {
   if (event.displayKind === 'START') return 'Anfahren';
@@ -275,6 +288,141 @@ export function formatMotionBucketTime(labelUtc: string, locale = 'de-DE'): stri
   const d = new Date(labelUtc);
   if (Number.isNaN(d.getTime())) return labelUtc;
   return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+export type MotionEventMetrics = {
+  /** Signed speed change in km/h (negative for braking). */
+  signedDeltaKmh: number;
+  /** Bucket-label duration in seconds (endLabel − startLabel). */
+  durationS: number | null;
+  /** Mean acceleration over the event window in m/s² (signed). */
+  meanAccelMps2: number | null;
+};
+
+/**
+ * Derives display metrics from a persisted motion event.
+ *
+ * The event detector persists `deltaKmh` as an unsigned magnitude for both
+ * ACCELERATION and DECELERATION; the sign for display must be derived from the
+ * start/end speeds. Duration is derived from the bucket labels because the
+ * payload does not carry it explicitly.
+ */
+export function deriveMotionEventMetrics(event: Pick<
+  TripMotionMapEvent,
+  'startLabelUtc' | 'endLabelUtc' | 'startSpeedKmh' | 'endSpeedKmh' | 'deltaKmh' | 'displayKind'
+>): MotionEventMetrics {
+  const diff = event.endSpeedKmh - event.startSpeedKmh;
+  const magnitude = Math.abs(Number.isFinite(event.deltaKmh) ? event.deltaKmh : diff);
+  let sign = Math.sign(diff);
+  if (sign === 0) sign = event.displayKind === 'DECELERATION' ? -1 : 1;
+  const signedDeltaKmh = sign * magnitude;
+
+  const startT = Date.parse(event.startLabelUtc);
+  const endT = Date.parse(event.endLabelUtc);
+  const durationS =
+    Number.isFinite(startT) && Number.isFinite(endT) && endT >= startT ? (endT - startT) / 1000 : null;
+  const meanAccelMps2 =
+    durationS != null && durationS > 0 ? (signedDeltaKmh / 3.6) / durationS : null;
+  return { signedDeltaKmh, durationS, meanAccelMps2 };
+}
+
+export function formatSignedKmh(value: number): string {
+  const rounded = Math.round(value);
+  if (rounded > 0) return `+${rounded}`;
+  if (rounded < 0) return `−${Math.abs(rounded)}`;
+  return '0';
+}
+
+export function formatSignedMps2(value: number): string {
+  const fixed = Math.abs(value).toFixed(1);
+  if (value > 0.05) return `+${fixed}`;
+  if (value < -0.05) return `−${fixed}`;
+  return '0.0';
+}
+
+export type MotionEventSegment = {
+  /** Samples with resolved positions from startLabel to endLabel (inclusive). */
+  samples: TripMotionMapSample[];
+  start: TripMotionMapSample | null;
+  end: TripMotionMapSample | null;
+  /** True when the window had to be extended by nearest neighbours to obtain 2 positioned samples. */
+  extended: boolean;
+};
+
+/**
+ * Resolves the route segment belonging to a motion event by its time window.
+ * Samples without a position inside the window are skipped; if fewer than two
+ * positioned samples remain, the nearest positioned neighbours outside the
+ * window (within `maxExtendS`) are used so the segment still has a visible extent.
+ */
+export function resolveMotionEventSegment(
+  event: Pick<TripMotionMapEvent, 'startLabelUtc' | 'endLabelUtc'>,
+  samples: TripMotionMapSample[],
+  maxExtendS = 2,
+): MotionEventSegment {
+  const startT = Date.parse(event.startLabelUtc);
+  const endT = Date.parse(event.endLabelUtc);
+  const empty: MotionEventSegment = { samples: [], start: null, end: null, extended: false };
+  if (!Number.isFinite(startT) || !Number.isFinite(endT) || endT < startT) return empty;
+
+  const positioned = samples
+    .map((s) => ({ s, t: Date.parse(s.bucketLabelUtc) }))
+    .filter((x) => Number.isFinite(x.t) && x.s.latitude != null && x.s.longitude != null)
+    .sort((a, b) => a.t - b.t);
+
+  let inWindow = positioned.filter((x) => x.t >= startT && x.t <= endT);
+  let extended = false;
+  if (inWindow.length < 2) {
+    const lo = startT - maxExtendS * 1000;
+    const hi = endT + maxExtendS * 1000;
+    const widened = positioned.filter((x) => x.t >= lo && x.t <= hi);
+    if (widened.length >= 2) {
+      inWindow = widened;
+      extended = true;
+    }
+  }
+  const list = inWindow.map((x) => x.s);
+  return {
+    samples: list,
+    start: list[0] ?? null,
+    end: list[list.length - 1] ?? null,
+    extended,
+  };
+}
+
+export function buildMotionEventSegmentFeatures(
+  segment: MotionEventSegment,
+  event: Pick<TripMotionMapEvent, 'id' | 'displayKind'>,
+): {
+  line: GeoJSON.Feature<GeoJSON.LineString>[];
+  endpoints: GeoJSON.Feature<GeoJSON.Point>[];
+} {
+  const coords = segment.samples
+    .filter((s) => s.latitude != null && s.longitude != null)
+    .map((s) => [s.longitude!, s.latitude!] as [number, number]);
+  const line: GeoJSON.Feature<GeoJSON.LineString>[] = coords.length >= 2
+    ? [{
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: coords },
+        properties: { eventId: event.id, displayKind: event.displayKind },
+      }]
+    : [];
+  const endpoints: GeoJSON.Feature<GeoJSON.Point>[] = [];
+  if (segment.start?.latitude != null && segment.start.longitude != null) {
+    endpoints.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [segment.start.longitude, segment.start.latitude] },
+      properties: { eventId: event.id, role: 'start' },
+    });
+  }
+  if (segment.end?.latitude != null && segment.end.longitude != null && segment.end !== segment.start) {
+    endpoints.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [segment.end.longitude, segment.end.latitude] },
+      properties: { eventId: event.id, role: 'end' },
+    });
+  }
+  return { line, endpoints };
 }
 
 export function isMotionMapActive(payload: TripMotionMapPayload | null): boolean {

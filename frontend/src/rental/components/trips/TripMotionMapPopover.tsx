@@ -4,7 +4,14 @@ import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { tv } from './trips-view-ui';
 import type { TripMotionMapPickListItem, TripMotionMapPopoverState } from './motion-map.types';
-import { formatMotionBucketTime, motionEventLabelKey } from './motion-map.utils';
+import {
+  deriveMotionEventMetrics,
+  formatMotionBucketTime,
+  formatSignedKmh,
+  formatSignedMps2,
+  motionEventLabelKey,
+  motionEventQualityLabelKey,
+} from './motion-map.utils';
 import type { TripM7aMapPoint } from './m7a-map.types';
 import { m7aOutcomeLabelKey } from './m7a-map.utils';
 
@@ -133,20 +140,39 @@ export function TripMotionMapPopover({ state, onClose, onPickListSelect, onM7aPo
     );
   } else if (state.kind === 'event') {
     title = t(motionEventLabelKey(state.event));
-    const delta =
-      state.event.deltaKmh > 0 ? `+${Math.round(state.event.deltaKmh)}` : `${Math.round(state.event.deltaKmh)}`;
+    const metrics = deriveMotionEventMetrics(state.event);
+    const qualityKey = motionEventQualityLabelKey(state.event.quality);
+    const segment = state.segment;
     body = (
       <>
         <p className="text-[10px] text-muted-foreground tabular-nums">
-          {formatMotionBucketTime(state.event.startLabelUtc, locale)}
+          {t('trips.motionMap.eventWindow', {
+            start: formatMotionBucketTime(state.event.startLabelUtc, locale),
+            end: formatMotionBucketTime(state.event.endLabelUtc, locale),
+          })}
         </p>
-        <p className="mt-1 text-[11px] text-foreground tabular-nums">
+        <p className="mt-1 text-[11px] font-semibold text-foreground tabular-nums">
           {t('trips.motionMap.speedDelta', {
             from: Math.round(state.event.startSpeedKmh),
             to: Math.round(state.event.endSpeedKmh),
-            delta,
+            delta: formatSignedKmh(metrics.signedDeltaKmh),
           })}
         </p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+          {metrics.durationS != null && t('trips.motionMap.eventDuration', { seconds: metrics.durationS })}
+          {metrics.durationS != null && metrics.meanAccelMps2 != null && <span className="mx-1 opacity-40">·</span>}
+          {metrics.meanAccelMps2 != null &&
+            t('trips.motionMap.eventMeanAccel', { accel: formatSignedMps2(metrics.meanAccelMps2) })}
+        </p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          {t('trips.motionMap.eventQuality', { quality: qualityKey ? t(qualityKey) : state.event.quality })}
+        </p>
+        {segment && segment.sampleCount < 2 && (
+          <p className="mt-1 text-[10px] text-muted-foreground">{t('trips.motionMap.segmentUnavailable')}</p>
+        )}
+        {segment && segment.sampleCount >= 2 && segment.extended && (
+          <p className="mt-1 text-[10px] text-muted-foreground">{t('trips.motionMap.segmentApproximate')}</p>
+        )}
         {state.event.artefactSuspect && (
           <p className="mt-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
             {t('trips.motionMap.artefactSuspect')}

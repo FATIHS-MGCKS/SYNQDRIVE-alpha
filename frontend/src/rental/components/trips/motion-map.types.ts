@@ -81,6 +81,11 @@ export type TripMotionMapPayload = {
   newerFailedRunStatus: string | null;
 };
 
+export type TripMotionMapEventSegmentInfo = {
+  sampleCount: number;
+  extended: boolean;
+};
+
 export type TripMotionMapPickListItem =
   | { type: 'event'; event: TripMotionMapEvent }
   | { type: 'stop'; stop: TripMotionMapStop };
@@ -109,6 +114,8 @@ export type TripMotionMapPopoverState =
   | {
       kind: 'event';
       event: TripMotionMapEvent;
+      /** Route segment resolved for the event window; null until resolved, `samples: []` when none. */
+      segment?: TripMotionMapEventSegmentInfo | null;
       x: number;
       y: number;
     }

@@ -1,4 +1,5 @@
 import { LiquidGlassLens } from '../../../components/surface';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { VehicleStressBadge } from '../VehicleStressPanel';
 import { resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripMapTripData } from './trips-map.types';
@@ -15,9 +16,15 @@ import {
 interface TripMapSummaryOverlayProps {
   trip: TripMapTripData;
   isDark: boolean;
+  /**
+   * Event count of the active S4 Motion evaluation. When provided, it replaces the
+   * legacy trip counter so the HUD matches the markers rendered on the map.
+   */
+  motionEventCount?: number | null;
 }
 
-export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayProps) {
+export function TripMapSummaryOverlay({ trip, isDark, motionEventCount = null }: TripMapSummaryOverlayProps) {
+  const { t } = useLanguage();
   const displayEnd = resolveTripDisplayEndTime(trip);
   const timeRange = `${formatTripTime(trip.startTime)} – ${displayEnd ? formatTripTime(displayEnd) : '…'}`;
   const events = countTripEvents(trip);
@@ -41,13 +48,19 @@ export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayPro
             {formatTripDistance(trip.distanceKm)}
             <span className="mx-1 opacity-40">·</span>
             {formatTripDuration(trip.durationMinutes)}
-            {events != null && (
+            {motionEventCount != null && (
+              <>
+                <span className="mx-1 opacity-40">·</span>
+                {t('trips.motionMap.summaryEvents', { count: motionEventCount })}
+              </>
+            )}
+            {motionEventCount == null && events != null && (
               <>
                 <span className="mx-1 opacity-40">·</span>
                 {events} {events === 1 ? 'Ereignis' : 'Ereignisse'}
               </>
             )}
-            {events == null && trip.behaviorReady === false && (
+            {motionEventCount == null && events == null && trip.behaviorReady === false && (
               <>
                 <span className="mx-1 opacity-40">·</span>
                 Analyse läuft
