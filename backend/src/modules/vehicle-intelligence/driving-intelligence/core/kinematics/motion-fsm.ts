@@ -7,6 +7,13 @@ import {
   type MotionCorePositionBucket,
 } from './motion-core-grid';
 import type { MotionCoreSpeedQuality, MotionCoreSpeedSample } from './speed-sample.types';
+import {
+  applyMotionFsmGapBridgeV1PostPass,
+  type MotionFsmGapBridgeAuxiliary,
+} from './motion-fsm-gap-bridge-v1';
+
+export type { MotionFsmGapBridgeAuxiliary } from './motion-fsm-gap-bridge-v1';
+export { MOTION_FSM_GAP_BRIDGE_V1_VERSION, gapBridgeV1LongSpanAllowed } from './motion-fsm-gap-bridge-v1';
 
 /** Port of Fable prototype `motion_fsm.PARAMS` — not tuned on Tesla trips. */
 export const MOTION_FSM_PARAMS_V0_2_DEV = {
@@ -48,6 +55,12 @@ export interface MotionFsmCandidateOptions {
    * Product / shadow processor paths must leave this false.
    */
   frozenLegacySparsePointAuthority: boolean;
+  /**
+   * K-D — retrospective gap bridge + frozen stand in UNKNOWN (EXP021 / PR #2149 research).
+   * Default false: reproduces pre–gap-bridge FSM exactly. RETROSPECTIVE mode only; requires optional
+   * {@link MotionFsmGapBridgeAuxiliary} for DI-V0 `STATIONARY_SUPPORTED` frozen-stand evidence.
+   */
+  retrospectiveGapBridgeV1: boolean;
 }
 
 export const MOTION_FSM_FABLE_V0_2_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
@@ -55,6 +68,7 @@ export const MOTION_FSM_FABLE_V0_2_OPTIONS: Readonly<MotionFsmCandidateOptions> 
   startingTimeout: false,
   evidencePropagation: false,
   frozenLegacySparsePointAuthority: false,
+  retrospectiveGapBridgeV1: false,
 };
 
 export const MOTION_FSM_V0_3_CANDIDATE_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
@@ -62,6 +76,13 @@ export const MOTION_FSM_V0_3_CANDIDATE_OPTIONS: Readonly<MotionFsmCandidateOptio
   startingTimeout: true,
   evidencePropagation: true,
   frozenLegacySparsePointAuthority: false,
+  retrospectiveGapBridgeV1: false,
+};
+
+/** Offline / future activation: V0_3 + gap-bridge V1 (still default OFF in shadow processor). */
+export const MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS: Readonly<MotionFsmCandidateOptions> = {
+  ...MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
+  retrospectiveGapBridgeV1: true,
 };
 
 /** Explicit frozen comparison replay (pre–point-authority sparse semantics). */
@@ -214,6 +235,7 @@ export function runMotionFsm(
   sparseSpeed: SparseVehicleSpeedSample[] | null = null,
   params: typeof MOTION_FSM_PARAMS_V0_2_DEV = MOTION_FSM_PARAMS_V0_2_DEV,
   options: Readonly<MotionFsmCandidateOptions> = MOTION_FSM_FABLE_V0_2_OPTIONS,
+  gapBridgeAuxiliary: MotionFsmGapBridgeAuxiliary | undefined = undefined,
 ): MotionFsmLabel[] {
   const p = params;
   const opt = options;
@@ -569,6 +591,10 @@ export function runMotionFsm(
       sparseFsmPointAuthority: sparseAuthoritative,
       speedQuality: v != null ? s!.quality : null,
     });
+  }
+
+  if (mode === 'RETROSPECTIVE' && opt.retrospectiveGapBridgeV1) {
+    return applyMotionFsmGapBridgeV1PostPass(out, ordered, speedSamples, gapBridgeAuxiliary, p);
   }
 
   return out;

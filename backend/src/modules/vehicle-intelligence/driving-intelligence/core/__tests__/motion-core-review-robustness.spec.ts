@@ -292,6 +292,7 @@ describe('EXP021 review — robustness cases', () => {
       startingTimeout: false,
       evidencePropagation: false,
       frozenLegacySparsePointAuthority: false,
+      retrospectiveGapBridgeV1: false,
     });
     expect(ka.eps).toHaveLength(1);
     expect(motionFsmVersionId(MOTION_FSM_V0_3_CANDIDATE_OPTIONS)).toContain('V0_3_CAND');
@@ -324,6 +325,7 @@ describe('EXP021 review — robustness cases', () => {
       startingTimeout: true,
       evidencePropagation: false,
       frozenLegacySparsePointAuthority: false,
+      retrospectiveGapBridgeV1: false,
     });
     // baseline: STARTING never resolves (declared startingMaxS unused)
     expect(base.slice(8).every((l) => l.state === 'STARTING')).toBe(true);
