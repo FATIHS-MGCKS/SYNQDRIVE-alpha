@@ -1,0 +1,65 @@
+{
+  "motionC4": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "motionC5": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "eventsC4": [
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-21T12:05:20Z",
+      "end": "2026-10-21T12:05:23Z",
+      "delta": 19.1,
+      "quality": "DEGRADED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-21T12:05:43Z",
+      "end": "2026-10-21T12:05:46Z",
+      "delta": 16.8,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-21T12:06:03Z",
+      "end": "2026-10-21T12:06:05Z",
+      "delta": 12,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-21T12:06:26Z",
+      "end": "2026-10-21T12:06:28Z",
+      "delta": 12.4,
+      "quality": "ARTEFACT_SUSPECT"
+    }
+  ],
+  "eventsC5": []
+}

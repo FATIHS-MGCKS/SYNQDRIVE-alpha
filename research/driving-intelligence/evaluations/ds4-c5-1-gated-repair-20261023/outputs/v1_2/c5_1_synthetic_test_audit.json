@@ -1,0 +1,536 @@
+{
+  "schema": "C5_1_SYNTHETIC_TEST_AUDIT_V2_ACTIVE_REPAIR_PATH",
+  "c51Version": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_2_NULL_NEIGHBOR_FAIL_CLOSED",
+  "scenarios": {
+    "1_constant_cruise": {
+      "legKmh": 99.96769340357089,
+      "valueKmh": 99.9675553225025
+    },
+    "2_strong_accel": {
+      "meanAccelMps2": 2.9966334953530347,
+      "repairAccepted": 0
+    },
+    "3_strong_brake": {
+      "meanAccelMps2": -2.164235302203072,
+      "legSpeedsKmh": [
+        100.68688544228179,
+        89.89900486161817,
+        79.1111242752659,
+        68.32324369460225,
+        57.535363111094306,
+        46.74748252758635,
+        35.9596019440784,
+        25.171721360570448,
+        14.383840777062495,
+        7.1919203871090875,
+        7.191920389953408,
+        7.191920389953408,
+        7.1919203871090875
+      ]
+    },
+    "4_heading_veto": {
+      "cornerRateDegPerS": 38.490588103023256,
+      "straightRepairState": "REPAIR_ACCEPTED",
+      "gatesWithoutHeading": true,
+      "headingRejectOnCornerGeometry": true,
+      "vetoBlocksCandidacy": true
+    },
+    "5_start_from_stop": {
+      "vEarlyKmh": 0,
+      "vLateKmh": 61.131323304648845
+    },
+    "6_time_suspect": {
+      "attributed": true,
+      "accepted": 2
+    },
+    "7_quarantine": {
+      "labels": [
+        "2027-01-15T08:03:24Z",
+        "2027-01-15T08:03:25Z",
+        "2027-01-15T08:03:26Z"
+      ]
+    },
+    "8_missing_bucket": {
+      "absent": "2027-01-15T08:03:24Z"
+    },
+    "9_brake_protection": {
+      "unitGuard": {
+        "reason": "upward_at_c4_trough_attribution_astern",
+        "leftMax": 50.343373185334364,
+        "rightMax": 21.575731363924305,
+        "c4Kmh": 14.5,
+        "cand": 21
+      },
+      "integration": "VERIFIED",
+      "target": {
+        "label": "2027-01-15T08:11:46Z",
+        "c4": 46.74741795730257,
+        "c51": 46.74741795730257,
+        "state": "REPAIR_REJECTED"
+      }
+    },
+    "10_accel_time_suspect": {
+      "meanAccelMps2": 2.9966334953530347,
+      "jitterM": -5,
+      "activity": {
+        "eligible": 5,
+        "inWindow": 5,
+        "candidates": 5,
+        "attributed": 5,
+        "q4Evaluated": 5,
+        "q5Evaluated": 5,
+        "q6Evaluated": 5,
+        "q5Insufficient": 0,
+        "accepted": 3,
+        "rejected": 2,
+        "uncertain": 0,
+        "insufficientEvidenceRejections": 0,
+        "states": {
+          "PASS_THROUGH_OUTSIDE_WINDOW": 9,
+          "REPAIR_REJECTED": 2,
+          "REPAIR_ACCEPTED": 3
+        }
+      },
+      "rows": [
+        {
+          "label": "2027-01-15T08:15:05Z",
+          "truthKmh": 62.92921648131241,
+          "c4DirtyKmh": 62.92921648131241,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 62.92921648131241,
+          "repairState": "REPAIR_REJECTED",
+          "attributionP": "2027-01-15T08:15:07Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": false,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:15:06Z",
+          "truthKmh": 73.71708216256349,
+          "c4DirtyKmh": 64.72719409461723,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 73.71708216297829,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:15:07Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:15:07Z",
+          "truthKmh": 84.50494784523673,
+          "c4DirtyKmh": 84.5049478452367,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 84.50494784523671,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:15:07Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:15:08Z",
+          "truthKmh": 95.29281352790996,
+          "c4DirtyKmh": 104.2827015958562,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 95.29281352749514,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:15:07Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:15:09Z",
+          "truthKmh": 106.08067920916102,
+          "c4DirtyKmh": 106.08067920916102,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 106.08067920916102,
+          "repairState": "REPAIR_REJECTED",
+          "attributionP": "2027-01-15T08:15:07Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": false,
+            "Q4": true,
+            "Q5": true,
+            "Q6": false
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        }
+      ],
+      "accelEvents": 1
+    },
+    "11_brake_suspect_fix": {
+      "meanAccelMps2": -2.164235302203072,
+      "jitterM": 5,
+      "activity": {
+        "eligible": 5,
+        "inWindow": 5,
+        "candidates": 5,
+        "attributed": 5,
+        "q4Evaluated": 5,
+        "q5Evaluated": 5,
+        "q6Evaluated": 5,
+        "q5Insufficient": 0,
+        "accepted": 3,
+        "rejected": 2,
+        "uncertain": 0,
+        "insufficientEvidenceRejections": 0,
+        "states": {
+          "PASS_THROUGH_OUTSIDE_WINDOW": 9,
+          "REPAIR_REJECTED": 2,
+          "REPAIR_ACCEPTED": 3
+        }
+      },
+      "rows": [
+        {
+          "label": "2027-01-15T08:16:43Z",
+          "truthKmh": 73.71708216256349,
+          "c4DirtyKmh": 73.71708216256349,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 73.71708216256349,
+          "repairState": "REPAIR_REJECTED",
+          "attributionP": "2027-01-15T08:16:45Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": false,
+            "Q4": true,
+            "Q5": false,
+            "Q6": false
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:16:44Z",
+          "truthKmh": 62.92921648131241,
+          "c4DirtyKmh": 71.91910454925868,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 62.929216480719845,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:16:45Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:16:45Z",
+          "truthKmh": 52.14135079863918,
+          "c4DirtyKmh": 52.14135079863918,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 52.1413507984614,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:16:45Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:16:46Z",
+          "truthKmh": 41.353485115965945,
+          "c4DirtyKmh": 32.36359704801969,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 41.353485115965945,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:16:45Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:16:47Z",
+          "truthKmh": 30.565619433292714,
+          "c4DirtyKmh": 30.565619433292714,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 30.565619433292714,
+          "repairState": "REPAIR_REJECTED",
+          "attributionP": "2027-01-15T08:16:45Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": false,
+            "Q4": true,
+            "Q5": true,
+            "Q6": false
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        }
+      ],
+      "decelEventsC4": 1,
+      "decelEventsC51": 1
+    },
+    "12_start_from_stop_suspect": {
+      "jitterM": -5,
+      "activity": {
+        "eligible": 5,
+        "inWindow": 5,
+        "candidates": 5,
+        "attributed": 5,
+        "q4Evaluated": 5,
+        "q5Evaluated": 5,
+        "q6Evaluated": 5,
+        "q5Insufficient": 0,
+        "accepted": 3,
+        "rejected": 2,
+        "uncertain": 0,
+        "insufficientEvidenceRejections": 0,
+        "states": {
+          "PASS_THROUGH_OUTSIDE_WINDOW": 11,
+          "REPAIR_REJECTED": 2,
+          "REPAIR_ACCEPTED": 3
+        }
+      },
+      "rows": [
+        {
+          "label": "2027-01-15T08:18:27Z",
+          "truthKmh": 35.95955227462934,
+          "c4DirtyKmh": 35.95955227462934,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 35.95955227462934,
+          "repairState": "REPAIR_REJECTED",
+          "attributionP": "2027-01-15T08:18:29Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": false,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:18:28Z",
+          "truthKmh": 43.15146273069292,
+          "c4DirtyKmh": 34.16157466274667,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 43.15146272927077,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:18:29Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:18:29Z",
+          "truthKmh": 50.343373183912206,
+          "c4DirtyKmh": 50.3433731839122,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 50.343373184327,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:18:29Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:18:30Z",
+          "truthKmh": 57.535283638553636,
+          "c4DirtyKmh": 66.52517170649989,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 57.53528363938323,
+          "repairState": "REPAIR_ACCEPTED",
+          "attributionP": "2027-01-15T08:18:29Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": true,
+            "Q4": true,
+            "Q5": true,
+            "Q6": true
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        },
+        {
+          "label": "2027-01-15T08:18:31Z",
+          "truthKmh": 64.72719409461723,
+          "c4DirtyKmh": 64.72719409461723,
+          "c4DirtyQuality": "OK",
+          "c51Kmh": 64.72719409461723,
+          "repairState": "REPAIR_REJECTED",
+          "attributionP": "2027-01-15T08:18:29Z",
+          "q": {
+            "Q1": true,
+            "Q2": true,
+            "Q3": false,
+            "Q4": true,
+            "Q5": true,
+            "Q6": false
+          },
+          "q5Evidence": "VALID",
+          "q6Evidence": "VALID"
+        }
+      ]
+    },
+    "13_outlier_neighbour_fail_closed": {
+      "unit": {
+        "insufficient": {
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "neighbor_speed_null",
+          "aMaxMps2": null,
+          "a1Mps2": null,
+          "a2Mps2": null,
+          "aPlausMps2": 9,
+          "neighbors": [
+            {
+              "side": "prev",
+              "label": "2027-01-15T08:20:04Z",
+              "offsetS": -1,
+              "present": true,
+              "speedKmh": null,
+              "c4Quality": "OUTLIER_REJECTED",
+              "usable": false
+            },
+            {
+              "side": "next",
+              "label": "2027-01-15T08:20:06Z",
+              "offsetS": 1,
+              "present": true,
+              "speedKmh": 100,
+              "c4Quality": "OK",
+              "usable": true
+            }
+          ]
+        },
+        "valid": "VALID",
+        "violation": "VIOLATION",
+        "absent": "INSUFFICIENT_EVIDENCE"
+      },
+      "control": {
+        "centre": "2027-01-15T08:20:05Z",
+        "repairState": "REPAIR_REJECTED",
+        "q5Evidence": "VALID",
+        "repairAccepted": 3
+      },
+      "integration": {
+        "centre": "2027-01-15T08:20:05Z",
+        "outlier": "2027-01-15T08:20:04Z",
+        "c4Kmh": 97.72008330587147,
+        "c4Quality": "SPARSE_SUPPORT",
+        "candidateKmh": 99.96755532321356,
+        "c51Kmh": 97.72008330587147,
+        "repairState": "REPAIR_REJECTED",
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": false,
+          "Q6": false
+        },
+        "q5Evidence": "INSUFFICIENT_EVIDENCE",
+        "q6Evidence": "INSUFFICIENT_EVIDENCE",
+        "neighborsExamined": [
+          {
+            "side": "prev",
+            "label": "2027-01-15T08:20:04Z",
+            "offsetS": -1,
+            "present": true,
+            "speedKmh": null,
+            "c4Quality": "OUTLIER_REJECTED",
+            "usable": false
+          },
+          {
+            "side": "next",
+            "label": "2027-01-15T08:20:06Z",
+            "offsetS": 1,
+            "present": true,
+            "speedKmh": 90.97766725597839,
+            "c4Quality": "OK",
+            "usable": true
+          }
+        ],
+        "v1_1CounterfactualNote": "Q1–Q4 pass, heading ok, candidate present: under V1.1 (null neighbour → 0 m/s²) this centre would have been REPAIR_ACCEPTED."
+      },
+      "activity": {
+        "eligible": 7,
+        "inWindow": 6,
+        "candidates": 6,
+        "attributed": 6,
+        "q4Evaluated": 6,
+        "q5Evaluated": 6,
+        "q6Evaluated": 6,
+        "q5Insufficient": 2,
+        "accepted": 3,
+        "rejected": 4,
+        "uncertain": 0,
+        "insufficientEvidenceRejections": 2,
+        "states": {
+          "PASS_THROUGH_OUTSIDE_WINDOW": 9,
+          "REPAIR_REJECTED": 3,
+          "PASS_THROUGH_NO_REPAIR": 1,
+          "REPAIR_ACCEPTED": 3
+        }
+      }
+    }
+  }
+}

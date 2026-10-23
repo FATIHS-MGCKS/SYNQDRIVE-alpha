@@ -1,0 +1,73 @@
+{
+  "motionC4": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "motionC5": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "eventsC4": [
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-21T12:20:49Z",
+      "end": "2026-10-21T12:20:51Z",
+      "delta": 12.4,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-21T12:22:42Z",
+      "end": "2026-10-21T12:22:45Z",
+      "delta": 27.9,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-21T12:22:55Z",
+      "end": "2026-10-21T12:22:58Z",
+      "delta": 25.3,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-21T12:23:47Z",
+      "end": "2026-10-21T12:23:50Z",
+      "delta": 16.4,
+      "quality": "OK"
+    }
+  ],
+  "eventsC5": [
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-21T12:22:42Z",
+      "end": "2026-10-21T12:22:45Z",
+      "delta": 21.1,
+      "quality": "LIMITED"
+    }
+  ]
+}

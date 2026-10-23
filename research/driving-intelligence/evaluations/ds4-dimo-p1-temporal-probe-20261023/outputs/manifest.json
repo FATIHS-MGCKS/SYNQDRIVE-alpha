@@ -1,0 +1,7 @@
+{
+  "generatedAtUtc": "2026-10-23T14:29:20.309Z",
+  "sourceArtifact": "p1_probe_summary.json",
+  "sha256": "e4e9138011832b18a4af38c3bc3efbc8c228d2ebf627c3dc3369d9b4ce8294dc",
+  "fullProbeArtifactLocalOnly": "/opt/cursor/artifacts/p1_dimo_probe/p1_probe_report.json",
+  "note": "Full probe JSON retained in agent artifacts only; repo ships derived summary without coordinates."
+}

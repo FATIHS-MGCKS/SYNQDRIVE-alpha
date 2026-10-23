@@ -1,0 +1,170 @@
+{
+  "schema": "C5_1_TEST_INTEGRITY_AUDIT_V1",
+  "generatedAt": "2026-10-23T17:12:53.381Z",
+  "finalTestVerdict": "PASS",
+  "gateCounts": {
+    "pass": 74,
+    "fail": 0,
+    "notVerified": 9,
+    "scored": 74,
+    "total": 83
+  },
+  "testIntegrityAudit": {
+    "algorithmFileSha256": "6aca50a074b09f04ff67a9cdfa7b188bd79c6e18f6780af79e773f30bb171352",
+    "algorithmHeadPinned": "53f5acebc13f8ac45498b9ff7311e4152f30f1fe",
+    "productionPin": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+    "codeSha": "53f5acebc13f8ac45498b9ff7311e4152f30f1fe",
+    "commands": [
+      "node scripts/c5-1.support.test.cjs",
+      "node scripts/c5-1.synthetic.test.cjs",
+      "node scripts/run_c5_1_experiment.cjs --code-root <repo>"
+    ],
+    "syntheticAudit": {
+      "schema": "C5_1_SYNTHETIC_TEST_AUDIT_V1",
+      "scenarios": {
+        "1_constant_cruise": {
+          "legKmh": 99.96769340357089,
+          "valueKmh": 99.9675553225025
+        },
+        "2_strong_accel": {
+          "meanAccelMps2": 2.9966334953530347,
+          "repairAccepted": 0
+        },
+        "3_strong_brake": {
+          "meanAccelMps2": -2.164235302203072,
+          "legSpeedsKmh": [
+            100.68688544228179,
+            89.89900486161817,
+            79.1111242752659,
+            68.32324369460225,
+            57.535363111094306,
+            46.74748252758635,
+            35.9596019440784,
+            25.171721360570448,
+            14.383840777062495,
+            7.1919203871090875,
+            7.191920389953408,
+            7.191920389953408,
+            7.1919203871090875
+          ]
+        },
+        "4_heading_veto": {
+          "cornerRateDegPerS": 38.490588103023256,
+          "straightRepairState": "REPAIR_ACCEPTED",
+          "gatesWithoutHeading": true,
+          "headingRejectOnCornerGeometry": true,
+          "vetoBlocksCandidacy": true
+        },
+        "5_start_from_stop": {
+          "vEarlyKmh": 0,
+          "vLateKmh": 61.131323304648845
+        },
+        "6_time_suspect": {
+          "attributed": true,
+          "accepted": 2
+        },
+        "7_quarantine": {
+          "labels": [
+            "2027-01-15T08:03:24Z",
+            "2027-01-15T08:03:25Z",
+            "2027-01-15T08:03:26Z"
+          ]
+        },
+        "8_missing_bucket": {
+          "absent": "2027-01-15T08:03:24Z"
+        },
+        "9_brake_protection": {
+          "unitGuard": {
+            "reason": "upward_at_c4_trough_attribution_astern",
+            "leftMax": 50.343373185334364,
+            "rightMax": 21.575731363924305,
+            "c4Kmh": 14.5,
+            "cand": 21
+          },
+          "integration": "VERIFIED",
+          "target": {
+            "label": "2027-01-15T08:11:46Z",
+            "c4": 46.74741795730257,
+            "c51": 46.74741795730257,
+            "state": "REPAIR_REJECTED"
+          }
+        }
+      }
+    },
+    "regressionBaseline": "/workspace/.worktrees/ds4-speed-ref/research/driving-intelligence/evaluations/ds4-c5-1-gated-repair-20261023/outputs/baselines/c5_1_v1_1_regression_fingerprint_53f5acebc.json",
+    "regressionUnchanged": true,
+    "regressionMismatches": []
+  },
+  "syntheticAudit": {
+    "schema": "C5_1_SYNTHETIC_TEST_AUDIT_V1",
+    "scenarios": {
+      "1_constant_cruise": {
+        "legKmh": 99.96769340357089,
+        "valueKmh": 99.9675553225025
+      },
+      "2_strong_accel": {
+        "meanAccelMps2": 2.9966334953530347,
+        "repairAccepted": 0
+      },
+      "3_strong_brake": {
+        "meanAccelMps2": -2.164235302203072,
+        "legSpeedsKmh": [
+          100.68688544228179,
+          89.89900486161817,
+          79.1111242752659,
+          68.32324369460225,
+          57.535363111094306,
+          46.74748252758635,
+          35.9596019440784,
+          25.171721360570448,
+          14.383840777062495,
+          7.1919203871090875,
+          7.191920389953408,
+          7.191920389953408,
+          7.1919203871090875
+        ]
+      },
+      "4_heading_veto": {
+        "cornerRateDegPerS": 38.490588103023256,
+        "straightRepairState": "REPAIR_ACCEPTED",
+        "gatesWithoutHeading": true,
+        "headingRejectOnCornerGeometry": true,
+        "vetoBlocksCandidacy": true
+      },
+      "5_start_from_stop": {
+        "vEarlyKmh": 0,
+        "vLateKmh": 61.131323304648845
+      },
+      "6_time_suspect": {
+        "attributed": true,
+        "accepted": 2
+      },
+      "7_quarantine": {
+        "labels": [
+          "2027-01-15T08:03:24Z",
+          "2027-01-15T08:03:25Z",
+          "2027-01-15T08:03:26Z"
+        ]
+      },
+      "8_missing_bucket": {
+        "absent": "2027-01-15T08:03:24Z"
+      },
+      "9_brake_protection": {
+        "unitGuard": {
+          "reason": "upward_at_c4_trough_attribution_astern",
+          "leftMax": 50.343373185334364,
+          "rightMax": 21.575731363924305,
+          "c4Kmh": 14.5,
+          "cand": 21
+        },
+        "integration": "VERIFIED",
+        "target": {
+          "label": "2027-01-15T08:11:46Z",
+          "c4": 46.74741795730257,
+          "c51": 46.74741795730257,
+          "state": "REPAIR_REJECTED"
+        }
+      }
+    }
+  }
+}
