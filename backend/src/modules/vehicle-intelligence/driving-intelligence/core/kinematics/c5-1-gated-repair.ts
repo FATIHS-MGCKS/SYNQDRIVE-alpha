@@ -36,11 +36,24 @@ export function computeC5_1GatedRepairResearchV12(
   return computeC5_1GatedRepairFrozenV12(buckets, { ...opts, safetyProfile: 'frozen_v12' });
 }
 
+const C5_1_ALGORITHM_FILE_BASENAME = 'c5-1-gated-repair-v1-2';
+
 let cachedAlgorithmFileSha256: string | null = null;
+
+/** Resolves compiled .js in Nest dist; allows .ts fallback for local dev/tests. */
+export function resolveC5_1AlgorithmFilePathForFingerprint(baseDir: string = __dirname): string {
+  const jsPath = path.join(baseDir, `${C5_1_ALGORITHM_FILE_BASENAME}.js`);
+  const tsPath = path.join(baseDir, `${C5_1_ALGORITHM_FILE_BASENAME}.ts`);
+  if (fs.existsSync(jsPath)) return jsPath;
+  if (fs.existsSync(tsPath)) return tsPath;
+  throw new Error(
+    `C5.1 algorithm fingerprint source missing under ${baseDir} (expected ${C5_1_ALGORITHM_FILE_BASENAME}.js or .ts)`,
+  );
+}
 
 export function motionCoreSpeedC5_1AlgorithmFileSha256(): string {
   if (cachedAlgorithmFileSha256) return cachedAlgorithmFileSha256;
-  const filePath = path.join(__dirname, 'c5-1-gated-repair-v1-2.ts');
+  const filePath = resolveC5_1AlgorithmFilePathForFingerprint();
   const buf = fs.readFileSync(filePath);
   cachedAlgorithmFileSha256 = createHash('sha256').update(buf).digest('hex');
   return cachedAlgorithmFileSha256;

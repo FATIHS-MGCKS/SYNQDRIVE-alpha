@@ -19,7 +19,16 @@ describe('di-v0-motion-core-shadow control plane', () => {
     const cfg = parseDiV0MotionCoreShadowControlPlaneConfig({});
     expect(cfg.shadowEnabled).toBe(false);
     expect(cfg.workerEnabled).toBe(false);
+    expect(cfg.c5_1ActivationSince).toBeNull();
     expect(isDiV0MotionCoreShadowRunnable(cfg)).toBe(false);
+  });
+
+  it('requires activation cutoff when C5.1 preferred speed flag is enabled', () => {
+    expect(() =>
+      parseDiV0MotionCoreShadowControlPlaneConfig({
+        DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED: 'true',
+      }),
+    ).toThrow(/DI_V0_MOTION_CORE_C5_1_ACTIVATION_SINCE/);
   });
 
   it('fails closed when allowlists empty even if flags on', () => {

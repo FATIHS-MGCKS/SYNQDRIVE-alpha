@@ -1,5 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
 import type { DiV0MotionCoreShadowControlPlaneConfig } from './di-v0-motion-core-shadow-control-plane';
+import {
+  isC5_1PreferredSpeedEffective,
+  resolveC5_1VehicleAdmissionFromLabels,
+} from './di-v0-motion-core-c5-1-admission';
 import { resolveMotionCoreShadowBundleVersion } from './di-v0-motion-core-shadow.bundle.version';
 import { buildMotionCoreShadowIntentKey } from './di-v0-motion-core-shadow-intent';
 import { DI_V0_MOTION_CORE_SHADOW_TUNING } from './di-v0-motion-core-shadow.config';
@@ -48,6 +52,9 @@ export class DiV0MotionCoreShadowOutboxRepository {
         vehicle_id: string;
         pinned_snapshot_hash: string;
         combined_input_identity: string;
+        completed_at: Date;
+        vehicle_make: string | null;
+        vehicle_model: string | null;
       }>
     >`
       WITH active_primary AS (
@@ -65,8 +72,12 @@ export class DiV0MotionCoreShadowOutboxRepository {
         wi.trip_id,
         wi.vehicle_id,
         wi.pinned_snapshot_hash,
-        coalesce(wi.combined_input_identity, '') AS combined_input_identity
+        coalesce(wi.combined_input_identity, '') AS combined_input_identity,
+        wi.completed_at,
+        v.make AS vehicle_make,
+        v.model AS vehicle_model
       FROM di_v0_s4_work_items wi
+      INNER JOIN vehicles v ON v.id = wi.vehicle_id
       INNER JOIN active_primary ap
         ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
       WHERE wi.status = 'COMPLETED'
@@ -81,10 +92,14 @@ export class DiV0MotionCoreShadowOutboxRepository {
       ORDER BY wi.completed_at ASC
       LIMIT ${input.limit}`;
 
-    const shadowBundleVersion = resolveMotionCoreShadowBundleVersion(input.controlPlane.c5_1PreferredSpeedEnabled);
-
     let inserted = 0;
     for (const c of candidates) {
+      const vehicleAdmission = resolveC5_1VehicleAdmissionFromLabels(c.vehicle_make, c.vehicle_model);
+      const c5_1Effective = isC5_1PreferredSpeedEffective(input.controlPlane, {
+        vehicleAdmission,
+        workItemCompletedAt: c.completed_at,
+      });
+      const shadowBundleVersion = resolveMotionCoreShadowBundleVersion(c5_1Effective);
       const shadowIntentKey = buildMotionCoreShadowIntentKey({
         pinnedSnapshotHash: c.pinned_snapshot_hash,
         combinedInputIdentity: c.combined_input_identity,
