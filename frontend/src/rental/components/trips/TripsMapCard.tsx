@@ -17,7 +17,12 @@ import { DEFAULT_TRIP_MAP_LAYERS } from './utils/tripMapLayers';
 import { TripMotionMapPopover } from './TripMotionMapPopover';
 import { TripMotionMapStatusBanner } from './TripMotionMapStatusBanner';
 import type { TripMotionMapPayload, TripMotionMapPopoverState } from './motion-map.types';
-import { isMotionMapActive, motionEventLabelKey, resolveMotionSamplesForMap } from './motion-map.utils';
+import {
+  isMotionMapActive,
+  motionEventLabelKey,
+  resolveMotionSamplesForMap,
+  type MotionEventSegment,
+} from './motion-map.utils';
 import type { TripMotionMapEvent, TripMotionMapPickListItem } from './motion-map.types';
 import { TripM7aMapStatusBanner } from './TripM7aMapStatusBanner';
 import type { TripM7aMapPayload } from './m7a-map.types';
@@ -168,6 +173,25 @@ export function TripsMapCard({
     [],
   );
 
+  const handleMotionEventSegmentResolved = useCallback(
+    (eventId: string, segment: MotionEventSegment) => {
+      setMotionPopover((prev) => {
+        if (!prev || prev.kind !== 'event' || prev.event.id !== eventId) return prev;
+        const next = {
+          sampleCount: segment.samples.length,
+          lineCount: segment.parts.filter((part) => part.length >= 2).length,
+          hasGaps: segment.hasGaps,
+        };
+        if (prev.segment && prev.segment.sampleCount === next.sampleCount &&
+            prev.segment.lineCount === next.lineCount && prev.segment.hasGaps === next.hasGaps) {
+          return prev;
+        }
+        return { ...prev, segment: next };
+      });
+    },
+    [],
+  );
+
   const handleEventSelect = useCallback(
     (state: TripMapPopoverState | null) => {
       setPopover(state);
@@ -207,6 +231,7 @@ export function TripsMapCard({
     },
     selectedMotionEventId,
     motionEventAriaLabel,
+    onMotionEventSegmentResolved: handleMotionEventSegmentResolved,
     m7aMapPayload,
     motionMapPayload,
     m7aBindingNote,
@@ -332,7 +357,11 @@ export function TripsMapCard({
 
         {selectedTrip && mapLoaded && !mapError && (
           <>
-            <TripMapSummaryOverlay trip={selectedTrip} isDark={isDark} />
+            <TripMapSummaryOverlay
+              trip={selectedTrip}
+              isDark={isDark}
+              motionEventCount={motionActive ? (motionMapPayload?.events.length ?? 0) : null}
+            />
             <TripMapDataQualityOverlay quality={quality} routeLoading={routeLoading} />
             <TripMotionMapStatusBanner
               payload={motionMapPayload}

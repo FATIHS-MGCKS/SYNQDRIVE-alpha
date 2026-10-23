@@ -264,6 +264,19 @@ export function motionEventLabelKey(event: TripMotionMapEvent): MotionEventLabel
   return 'trips.motionMap.eventAcceleration';
 }
 
+export type MotionEventQualityLabelKey =
+  | 'trips.motionMap.qualityOk'
+  | 'trips.motionMap.qualityLimited'
+  | 'trips.motionMap.qualityDegraded';
+
+/** Maps the persisted event quality to a localized label key; unknown values fall back to the raw value. */
+export function motionEventQualityLabelKey(quality: string): MotionEventQualityLabelKey | null {
+  if (quality === 'OK') return 'trips.motionMap.qualityOk';
+  if (quality === 'LIMITED') return 'trips.motionMap.qualityLimited';
+  if (quality === 'DEGRADED') return 'trips.motionMap.qualityDegraded';
+  return null;
+}
+
 /** @deprecated use motionEventLabelKey + i18n t() in UI */
 export function motionEventLabel(event: TripMotionMapEvent): string {
   if (event.displayKind === 'START') return 'Anfahren';
@@ -275,6 +288,155 @@ export function formatMotionBucketTime(labelUtc: string, locale = 'de-DE'): stri
   const d = new Date(labelUtc);
   if (Number.isNaN(d.getTime())) return labelUtc;
   return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+export type MotionEventMetrics = {
+  /** Signed speed change in km/h (negative for braking). */
+  signedDeltaKmh: number;
+  /** Bucket-label duration in seconds (endLabel − startLabel). */
+  durationS: number | null;
+  /** Mean acceleration over the event window in m/s² (signed). */
+  meanAccelMps2: number | null;
+};
+
+/**
+ * Derives display metrics from a persisted motion event.
+ *
+ * The event detector persists `deltaKmh` as an unsigned magnitude for both
+ * ACCELERATION and DECELERATION; the sign for display must be derived from the
+ * start/end speeds. Duration is derived from the bucket labels because the
+ * payload does not carry it explicitly.
+ */
+export function deriveMotionEventMetrics(event: Pick<
+  TripMotionMapEvent,
+  'startLabelUtc' | 'endLabelUtc' | 'startSpeedKmh' | 'endSpeedKmh' | 'deltaKmh' | 'displayKind'
+>): MotionEventMetrics {
+  const diff = event.endSpeedKmh - event.startSpeedKmh;
+  // The persisted magnitude is computed before the endpoint values are rounded
+  // independently. Preserve that magnitude; derive only its sign from endpoint order.
+  const magnitude = Math.abs(Number.isFinite(event.deltaKmh) ? event.deltaKmh : diff);
+  const validEndpoints = Number.isFinite(event.startSpeedKmh) && Number.isFinite(event.endSpeedKmh) &&
+    event.startSpeedKmh >= 0 && event.endSpeedKmh >= 0;
+  const signedDeltaKmh = !validEndpoints ? NaN : diff === 0 ? 0 : Math.sign(diff) * magnitude;
+
+  const startT = Date.parse(event.startLabelUtc);
+  const endT = Date.parse(event.endLabelUtc);
+  const durationS =
+    Number.isFinite(startT) && Number.isFinite(endT) && endT >= startT ? (endT - startT) / 1000 : null;
+  const meanAccelMps2 =
+    durationS != null && durationS > 0 && Number.isFinite(signedDeltaKmh)
+      ? (signedDeltaKmh / 3.6) / durationS : null;
+  return { signedDeltaKmh, durationS, meanAccelMps2 };
+}
+
+export function formatSignedKmh(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  const rounded = Math.round(Math.abs(value));
+  if (rounded > 0) return `${value < 0 ? '−' : '+'}${rounded}`;
+  return '0';
+}
+
+export function formatSignedMps2(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  const fixed = Math.abs(value).toFixed(1);
+  if (value > 0.05) return `+${fixed}`;
+  if (value < -0.05) return `−${fixed}`;
+  return '0.0';
+}
+
+export type MotionEventSegment = {
+  /** Samples with resolved positions from startLabel to endLabel (inclusive). */
+  samples: TripMotionMapSample[];
+  start: TripMotionMapSample | null;
+  end: TripMotionMapSample | null;
+  /** Contiguous positioned parts; missing positions/labels always break the highlight. */
+  parts: TripMotionMapSample[][];
+  /** Missing coverage or either exact event boundary is not positioned. */
+  hasGaps: boolean;
+};
+
+/**
+ * Resolves the route segment belonging to a motion event by its time window.
+ * Never extends the event window. Missing positions/1 Hz labels split the line;
+ * endpoint markers require a position at the actual start/end label.
+ */
+export function resolveMotionEventSegment(
+  event: Pick<TripMotionMapEvent, 'startLabelUtc' | 'endLabelUtc'>,
+  samples: TripMotionMapSample[],
+): MotionEventSegment {
+  const startT = Date.parse(event.startLabelUtc);
+  const endT = Date.parse(event.endLabelUtc);
+  const empty: MotionEventSegment = { samples: [], parts: [], start: null, end: null, hasGaps: true };
+  if (!Number.isFinite(startT) || !Number.isFinite(endT) || endT < startT) return empty;
+
+  const inWindow = samples
+    .map((s) => ({ s, t: Date.parse(s.bucketLabelUtc) }))
+    .filter((x) => Number.isFinite(x.t) && x.t >= startT && x.t <= endT)
+    .sort((a, b) => a.t - b.t);
+  const parts: TripMotionMapSample[][] = [];
+  let part: TripMotionMapSample[] = [];
+  let previousT: number | null = null;
+  let hasGaps = false;
+  const flush = () => {
+    if (part.length) parts.push(part);
+    part = [];
+  };
+  for (const { s, t } of inWindow) {
+    if (previousT != null && t - previousT !== 1000) {
+      flush();
+      hasGaps = true;
+    }
+    previousT = t;
+    if (s.latitude == null || s.longitude == null || !Number.isFinite(s.latitude) || !Number.isFinite(s.longitude)) {
+      flush();
+      hasGaps = true;
+    } else {
+      part.push(s);
+    }
+  }
+  flush();
+  const list = parts.flat();
+  const start = list.find((s) => Date.parse(s.bucketLabelUtc) === startT) ?? null;
+  const end = list.find((s) => Date.parse(s.bucketLabelUtc) === endT) ?? null;
+  return {
+    samples: list,
+    parts,
+    start,
+    end,
+    hasGaps: hasGaps || start == null || end == null,
+  };
+}
+
+export function buildMotionEventSegmentFeatures(
+  segment: MotionEventSegment,
+  event: Pick<TripMotionMapEvent, 'id' | 'displayKind'>,
+): {
+  line: GeoJSON.Feature<GeoJSON.LineString>[];
+  endpoints: GeoJSON.Feature<GeoJSON.Point>[];
+} {
+  const line: GeoJSON.Feature<GeoJSON.LineString>[] = segment.parts
+    .filter((part) => part.length >= 2)
+    .map((part) => ({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: part.map((s) => [s.longitude!, s.latitude!]) },
+        properties: { eventId: event.id, displayKind: event.displayKind },
+      }));
+  const endpoints: GeoJSON.Feature<GeoJSON.Point>[] = [];
+  if (segment.start?.latitude != null && segment.start.longitude != null) {
+    endpoints.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [segment.start.longitude, segment.start.latitude] },
+      properties: { eventId: event.id, role: 'start' },
+    });
+  }
+  if (segment.end?.latitude != null && segment.end.longitude != null && segment.end !== segment.start) {
+    endpoints.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [segment.end.longitude, segment.end.latitude] },
+      properties: { eventId: event.id, role: 'end' },
+    });
+  }
+  return { line, endpoints };
 }
 
 export function isMotionMapActive(payload: TripMotionMapPayload | null): boolean {
@@ -293,15 +455,16 @@ export function createMotionEventMarkerElement(
 ): HTMLButtonElement {
   const isStart = event.displayKind === 'START';
   const isAccel = event.displayKind === 'ACCELERATION';
+  const artefact = event.artefactSuspect;
   const el = document.createElement('button');
   el.type = 'button';
   el.className = `trips-map-event-marker trips-map-event-marker--motion${
-    event.artefactSuspect ? ' trips-map-event-marker--artefact' : ''
+    artefact ? ' trips-map-event-marker--artefact' : ''
   }${isAccel || isStart ? ' trips-map-event-marker--accel' : ' trips-map-event-marker--brake'}${
     isSelected ? ' trips-map-event-marker--selected' : ''
   }`;
-  el.style.width = event.artefactSuspect ? '18px' : '16px';
-  el.style.height = event.artefactSuspect ? '18px' : '16px';
+  el.style.width = artefact ? '18px' : '16px';
+  el.style.height = artefact ? '18px' : '16px';
   el.setAttribute('aria-label', ariaLabel ?? motionEventLabel(event));
   el.innerHTML = isStart ? '▶' : isAccel ? '▲' : '▼';
   if (isDark) el.classList.add('trips-map-event-marker--dark');

@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildMotionEventSegmentFeatures,
   buildMotionSpeedLineFeatures,
+  deriveMotionEventMetrics,
+  formatSignedKmh,
+  formatSignedMps2,
   groupMotionEventsByCoordinate,
   isMotionMapActive,
   motionCoordKey,
+  motionEventQualityLabelKey,
   pickMotionSampleAtPoint,
+  resolveMotionEventSegment,
   resolveMotionSamplesForMap,
 } from './motion-map.utils';
 import type { TripMotionMapEvent } from './motion-map.types';
@@ -172,5 +178,204 @@ describe('motion map grouping and route pick', () => {
     const resolved = resolveMotionSamplesForMap(payload, routePoints);
     expect(resolved.samples[0]?.latitude).toBeNull();
     expect(isMotionMapActive(payload)).toBe(false);
+  });
+});
+
+/**
+ * Pinned Tiguan WOB L 7503 data (trip 98d2a8e0-8b7d-4529-bf76-acee44d61fbe,
+ * motion run 8ec6306e-606b-4507-ab03-ea058c5d810d, 19:04 UTC window).
+ * Values copied from the persisted shadow payload + verified position grid.
+ */
+const tiguanSample = (
+  label: string,
+  speedKmh: number | null,
+  lat: number | null,
+  lng: number | null,
+): TripMotionMapSample => ({
+  bucketLabelUtc: `2026-10-22T${label}Z`,
+  speedKmh,
+  motionState: 'MOVING',
+  evidenceQuality: speedKmh == null ? 'INFERRED' : 'DIRECT',
+  latitude: lat,
+  longitude: lng,
+  positionAvailability: lat == null ? 'ROW_ABSENT' : 'PRESENT',
+});
+
+const tiguan1904Samples: TripMotionMapSample[] = [
+  tiguanSample('19:04:25', null, null, null),
+  tiguanSample('19:04:26', 34.7, 51.3284, 9.52193),
+  tiguanSample('19:04:27', 28.1, 51.32844, 9.52177),
+  tiguanSample('19:04:28', 19.3, 51.32846, 9.52166),
+  tiguanSample('19:04:29', 5.5, 51.32846, 9.52163),
+  tiguanSample('19:04:30', 4.3, 51.32846, 9.52162),
+  tiguanSample('19:04:48', 61.8, 51.3292, 9.51807),
+  tiguanSample('19:04:49', 52.3, 51.32928, 9.5178),
+  tiguanSample('19:04:50', null, null, null),
+  tiguanSample('19:04:51', 103.0, 51.32938, 9.51751),
+  tiguanSample('19:04:52', 142.1, 51.3296, 9.51694),
+  tiguanSample('19:04:53', null, 51.32977, 9.51657),
+];
+
+const tiguanDecel190426: TripMotionMapEvent = {
+  id: 'motion-ev-17-2026-10-22T19:04:26Z',
+  kind: 'DECELERATION',
+  displayKind: 'DECELERATION',
+  startLabelUtc: '2026-10-22T19:04:26Z',
+  endLabelUtc: '2026-10-22T19:04:29Z',
+  startSpeedKmh: 34.7,
+  endSpeedKmh: 5.5,
+  deltaKmh: 29.2,
+  peakAccel1sMps2: null,
+  quality: 'DEGRADED',
+  artefactSuspect: false,
+  latitude: 51.3284,
+  longitude: 9.52193,
+  positionResolved: true,
+};
+
+const tiguanAccel190449: TripMotionMapEvent = {
+  ...tiguanDecel190426,
+  id: 'motion-ev-20-2026-10-22T19:04:49Z',
+  kind: 'ACCELERATION',
+  displayKind: 'ACCELERATION',
+  startLabelUtc: '2026-10-22T19:04:49Z',
+  endLabelUtc: '2026-10-22T19:04:52Z',
+  startSpeedKmh: 52.3,
+  endSpeedKmh: 142.1,
+  deltaKmh: 89.8,
+  latitude: 51.32928,
+  longitude: 9.5178,
+};
+
+describe('deriveMotionEventMetrics (pinned Tiguan 19:04 UTC events)', () => {
+  it('signs the persisted unsigned deltaKmh for braking (IMG_7778 case: 35→6 must not read +29)', () => {
+    const m = deriveMotionEventMetrics(tiguanDecel190426);
+    expect(m.signedDeltaKmh).toBeCloseTo(-29.2, 5);
+    expect(m.durationS).toBe(3);
+    expect(m.meanAccelMps2).toBeCloseTo(-29.2 / 3.6 / 3, 5);
+    expect(formatSignedKmh(m.signedDeltaKmh)).toBe('−29');
+    expect(formatSignedMps2(m.meanAccelMps2!)).toBe('−2.7');
+  });
+
+  it('keeps acceleration positive and exposes the implausible 8.3 m/s² mean for 52→142 km/h in 3 s', () => {
+    const m = deriveMotionEventMetrics(tiguanAccel190449);
+    expect(m.signedDeltaKmh).toBeCloseTo(89.8, 5);
+    expect(m.durationS).toBe(3);
+    expect(m.meanAccelMps2).toBeCloseTo(8.31, 2);
+    expect(formatSignedKmh(m.signedDeltaKmh)).toBe('+90');
+    expect(formatSignedMps2(m.meanAccelMps2!)).toBe('+8.3');
+  });
+
+  it('does not invent a signed change when endpoints are equal', () => {
+    const m = deriveMotionEventMetrics({
+      ...tiguanDecel190426,
+      startSpeedKmh: 10,
+      endSpeedKmh: 10,
+      deltaKmh: 0,
+    });
+    expect(m.signedDeltaKmh).toBe(0);
+    expect(formatSignedKmh(m.signedDeltaKmh)).toBe('0');
+  });
+
+  it('maps event quality to label keys and leaves unknown values unmapped', () => {
+    expect(motionEventQualityLabelKey('OK')).toBe('trips.motionMap.qualityOk');
+    expect(motionEventQualityLabelKey('LIMITED')).toBe('trips.motionMap.qualityLimited');
+    expect(motionEventQualityLabelKey('DEGRADED')).toBe('trips.motionMap.qualityDegraded');
+    expect(motionEventQualityLabelKey('ARTEFACT_SUSPECT')).toBeNull();
+  });
+});
+
+describe('resolveMotionEventSegment / buildMotionEventSegmentFeatures', () => {
+  it('selects the positioned samples inside the event window (19:04:26–19:04:29 → 4 samples, not extended)', () => {
+    const seg = resolveMotionEventSegment(tiguanDecel190426, tiguan1904Samples);
+    expect(seg.samples.map((s) => s.bucketLabelUtc.slice(11, 19))).toEqual([
+      '19:04:26',
+      '19:04:27',
+      '19:04:28',
+      '19:04:29',
+    ]);
+    expect(seg.hasGaps).toBe(false);
+    expect(seg.start?.bucketLabelUtc).toBe('2026-10-22T19:04:26Z');
+    expect(seg.end?.bucketLabelUtc).toBe('2026-10-22T19:04:29Z');
+
+    const { line, endpoints } = buildMotionEventSegmentFeatures(seg, tiguanDecel190426);
+    expect(line).toHaveLength(1);
+    expect(line[0]?.geometry.coordinates).toHaveLength(4);
+    expect(line[0]?.properties?.displayKind).toBe('DECELERATION');
+    expect(endpoints.map((f) => f.properties?.role)).toEqual(['start', 'end']);
+  });
+
+  it('splits at ROW_ABSENT inside the event window', () => {
+    const seg = resolveMotionEventSegment(tiguanAccel190449, tiguan1904Samples);
+    expect(seg.samples.map((s) => s.bucketLabelUtc.slice(11, 19))).toEqual(['19:04:49', '19:04:51', '19:04:52']);
+    expect(seg.hasGaps).toBe(true);
+    expect(buildMotionEventSegmentFeatures(seg, tiguanAccel190449).line.map((f) => f.geometry.coordinates.length)).toEqual([2]);
+  });
+
+  it('never extends beyond an event with no positioned sample inside', () => {
+    const seg = resolveMotionEventSegment(
+      { startLabelUtc: '2026-10-22T19:04:50Z', endLabelUtc: '2026-10-22T19:04:50Z' },
+      tiguan1904Samples,
+    );
+    expect(seg.samples).toEqual([]);
+    expect(seg.start).toBeNull();
+    expect(seg.end).toBeNull();
+    expect(seg.hasGaps).toBe(true);
+  });
+
+  it('returns an empty segment when no positioned samples exist nearby', () => {
+    const seg = resolveMotionEventSegment(
+      { startLabelUtc: '2026-10-22T18:30:00Z', endLabelUtc: '2026-10-22T18:30:03Z' },
+      tiguan1904Samples,
+    );
+    expect(seg.samples).toHaveLength(0);
+    const { line, endpoints } = buildMotionEventSegmentFeatures(seg, tiguanDecel190426);
+    expect(line).toHaveLength(0);
+    expect(endpoints).toHaveLength(0);
+  });
+});
+
+
+describe('motion display regression boundaries', () => {
+  it.each([[29.5, '+30'], [-29.5, '−30'], [29.2, '+29'], [-29.2, '−29'], [0.1, '0'], [-0.1, '0'], [-0, '0']])(
+    'rounds %s symmetrically to %s', (value, expected) => expect(formatSignedKmh(Number(value))).toBe(expected),
+  );
+
+  it('preserves persisted delta precision rather than subtracting rounded display endpoints', () => {
+    const event = { ...tiguanDecel190426, startSpeedKmh: 98.2, endSpeedKmh: 68.6, deltaKmh: 29.5 };
+    const metrics = deriveMotionEventMetrics(event);
+    expect(metrics.signedDeltaKmh).toBe(-29.5);
+    expect(formatSignedKmh(metrics.signedDeltaKmh)).toBe('−30');
+    expect(metrics.meanAccelMps2).toBeCloseTo(-29.5 / 3.6 / 3);
+    expect(deriveMotionEventMetrics({ ...event, endLabelUtc: event.startLabelUtc }).meanAccelMps2).toBeNull();
+    expect(deriveMotionEventMetrics({ ...event, endLabelUtc: 'invalid' }).meanAccelMps2).toBeNull();
+    expect(deriveMotionEventMetrics({ ...event, startSpeedKmh: NaN, deltaKmh: NaN }).meanAccelMps2).toBeNull();
+    expect(deriveMotionEventMetrics({ ...event, startSpeedKmh: Infinity }).meanAccelMps2).toBeNull();
+  });
+
+  it('keeps an eight-second gap split, including when the missing grid rows are omitted', () => {
+    const samples = [0, 1, 9, 10].map((second) => tiguanSample(`19:04:${String(second).padStart(2, '0')}`, 40, 51.3, 9.5 + second / 10000));
+    const event = { ...tiguanDecel190426, startLabelUtc: '2026-10-22T19:04:00Z', endLabelUtc: '2026-10-22T19:04:10Z' };
+    const segment = resolveMotionEventSegment(event, samples);
+    expect(segment.hasGaps).toBe(true);
+    expect(segment.parts.map((p) => p.length)).toEqual([2, 2]);
+    expect(buildMotionEventSegmentFeatures(segment, event).line.map((f) => f.geometry.coordinates.length)).toEqual([2, 2]);
+  });
+
+  it('does not relabel the nearest samples as missing exact event endpoints', () => {
+    const event = { ...tiguanDecel190426, startLabelUtc: '2026-10-22T19:04:25Z', endLabelUtc: '2026-10-22T19:04:31Z' };
+    const segment = resolveMotionEventSegment(event, tiguan1904Samples);
+    expect(segment.start).toBeNull();
+    expect(segment.end).toBeNull();
+    expect(segment.hasGaps).toBe(true);
+    expect(buildMotionEventSegmentFeatures(segment, event).endpoints).toEqual([]);
+  });
+
+  it('selects the correct timed passage even when another passage uses the same coordinates', () => {
+    const passage = tiguan1904Samples.slice(1, 5);
+    const earlier = passage.map((s) => ({ ...s, bucketLabelUtc: s.bucketLabelUtc.replace('19:04:', '19:03:') }));
+    const segment = resolveMotionEventSegment(tiguanDecel190426, [...earlier, ...passage]);
+    expect(segment.samples).toEqual(passage);
+    expect(segment.hasGaps).toBe(false);
   });
 });

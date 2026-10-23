@@ -36,6 +36,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ds4-motion-audit-corrections-20261023',
+    version: 'PR #2135',
+    title: 'DS4 Motion / PR #2135',
+    summary: [
+      'compare_hardened.cjs → analysis/hardened_comparison.json; f95420593; 21→20; 1916→1908',
+      'resolveMotionEventSegment → parts[] / hasGaps / exact startLabelUtc / endLabelUtc',
+      'artefactSuspect: API; G1/G2: event_quality_research.cjs; formatSignedKmh: ±29.5→±30',
+    ],
+    reason: null,
+    previousBehavior: null,
+    details: 'architecture/drivingintelligence/evidence/EXP021_DS4_MOTION_SPEED_EVENT_AUDIT_2026-10-23.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-23T06:57:54.791Z',
+  },
+  {
     id: 'hv-measurement-quality-mvp-2026-10-21',
     version: '4.9.2251',
     title: 'HV Battery — measurement quality MVP (Q1–Q4 read API)',

@@ -18,6 +18,7 @@ import type {
   TripMotionMapStop,
 } from './motion-map.types';
 import {
+  buildMotionEventSegmentFeatures,
   buildMotionSpeedLineFeatures,
   createMotionEventMarkerElement,
   groupMotionEventsByCoordinate,
@@ -25,6 +26,8 @@ import {
   isMotionRouteHitAtPoint,
   motionCoordKey,
   pickMotionSampleAtPoint,
+  resolveMotionEventSegment,
+  type MotionEventSegment,
   type MotionRoutePickMap,
 } from './motion-map.utils';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
@@ -57,6 +60,8 @@ export interface UseTripsRouteMapOptions {
   onMotionPopover?: (state: TripMotionMapPopoverState | null) => void;
   selectedMotionEventId?: string | null;
   motionEventAriaLabel?: (event: TripMotionMapEvent) => string;
+  /** Called when the highlighted segment for the selected motion event was resolved. */
+  onMotionEventSegmentResolved?: (eventId: string, segment: MotionEventSegment) => void;
   m7aMapPayload?: TripM7aMapPayload | null;
   motionMapPayload?: TripMotionMapPayload | null;
   m7aBindingNote?: string | null;
@@ -94,6 +99,7 @@ export function useTripsRouteMap({
   onMotionPopover,
   selectedMotionEventId,
   motionEventAriaLabel,
+  onMotionEventSegmentResolved,
   m7aMapPayload = null,
   motionMapPayload = null,
   m7aBindingNote = null,
@@ -300,6 +306,53 @@ export function useTripsRouteMap({
           'circle-stroke-color': '#ffffff',
         },
       });
+      map.addSource('motion-event-segment', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+      map.addLayer({
+        id: 'motion-event-segment-casing',
+        type: 'line',
+        source: 'motion-event-segment',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': isDarkMode ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.95)',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 9, 16, 14],
+          'line-opacity': 0.95,
+        },
+      });
+      map.addLayer({
+        id: 'motion-event-segment-line',
+        type: 'line',
+        source: 'motion-event-segment',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': [
+            'match',
+            ['get', 'displayKind'],
+            'DECELERATION',
+            isDarkMode ? '#fb7185' : '#e11d48',
+            isDarkMode ? '#34d399' : '#059669',
+          ],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 5, 16, 8],
+          'line-opacity': 1,
+        },
+      });
+      map.addSource('motion-event-endpoints', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+      map.addLayer({
+        id: 'motion-event-endpoints-layer',
+        type: 'circle',
+        source: 'motion-event-endpoints',
+        paint: {
+          'circle-radius': ['match', ['get', 'role'], 'start', 5, 6.5],
+          'circle-color': ['match', ['get', 'role'], 'start', '#ffffff', isDarkMode ? '#0f172a' : '#1e293b'],
+          'circle-stroke-width': 2.5,
+          'circle-stroke-color': ['match', ['get', 'role'], 'start', isDarkMode ? '#0f172a' : '#1e293b', '#ffffff'],
+        },
+      });
       map.addSource('m7a-assignment-points', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -458,7 +511,17 @@ export function useTripsRouteMap({
     setVis('stop-points-ring', layers.showStops);
     setVis('stop-points-center', layers.showStops);
     setVis('m7a-assignment-points-layer', layers.showM7aRoadAssignment && m7aMapActive);
-  }, [layers.showSpeed, layers.showStops, layers.showM7aRoadAssignment, mapLoaded, m7aMapActive]);
+    setVis('motion-event-segment-casing', layers.showDrivingEvents);
+    setVis('motion-event-segment-line', layers.showDrivingEvents);
+    setVis('motion-event-endpoints-layer', layers.showDrivingEvents);
+  }, [
+    layers.showSpeed,
+    layers.showStops,
+    layers.showM7aRoadAssignment,
+    layers.showDrivingEvents,
+    mapLoaded,
+    m7aMapActive,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -619,6 +682,41 @@ export function useTripsRouteMap({
     onMotionPopover,
     selectedMotionEventId,
     motionEventAriaLabel,
+  ]);
+
+  // Selected motion event → highlight the route segment covered by its time window
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const segSrc = map.getSource('motion-event-segment') as mapboxgl.GeoJSONSource | undefined;
+    const endSrc = map.getSource('motion-event-endpoints') as mapboxgl.GeoJSONSource | undefined;
+    if (!segSrc || !endSrc) return;
+    const clear = () => {
+      segSrc.setData({ type: 'FeatureCollection', features: [] });
+      endSrc.setData({ type: 'FeatureCollection', features: [] });
+    };
+    if (!motionMapActive || !layers.showDrivingEvents || !selectedMotionEventId) {
+      clear();
+      return;
+    }
+    const ev = motionEvents.find((e) => e.id === selectedMotionEventId);
+    if (!ev) {
+      clear();
+      return;
+    }
+    const segment = resolveMotionEventSegment(ev, motionSamples);
+    const { line, endpoints } = buildMotionEventSegmentFeatures(segment, ev);
+    segSrc.setData({ type: 'FeatureCollection', features: line });
+    endSrc.setData({ type: 'FeatureCollection', features: endpoints });
+    onMotionEventSegmentResolved?.(ev.id, segment);
+  }, [
+    mapLoaded,
+    motionMapActive,
+    layers.showDrivingEvents,
+    selectedMotionEventId,
+    motionEvents,
+    motionSamples,
+    onMotionEventSegmentResolved,
   ]);
 
   useEffect(() => {

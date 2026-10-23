@@ -291,3 +291,8 @@ Post PR #1694 three-vehicle cohort activation, WOB L 7503 trip `c0889036-db0b-4e
 | Episode V2 scoring | NOT IMPLEMENTED |
 | Fleet scalability numbers | UNKNOWN |
 | Production V2 E2E | NOT YET PRODUCTION-VALIDATED |
+
+
+### DS4 Motion map audit correction — PR #2135 (2026-10-23, draft / not deployed)
+
+The map projection does not classify artefacts from unvalidated kinematic cutoffs. Event highlights use contiguous positioned parts within exact event time; missing support never widens an event or invents boundary positions. Signed delta rounding is symmetric. Actual #2134 processor replay is separated from the historical 21-event frozen baseline, including common-sample metrics. See [audit correction evidence](evidence/EXP021_DS4_MOTION_SPEED_EVENT_AUDIT_2026-10-23.md). No change to backend algorithms, scoring, provider access or Production.

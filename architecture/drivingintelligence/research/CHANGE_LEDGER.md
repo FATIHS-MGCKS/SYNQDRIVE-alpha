@@ -2167,3 +2167,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | C1 bridged over quarantined teleports (481–2281 km/h); corrupted neighbour median waived 900 km/h; INTERVAL_ONLY OBD still counted as stop evidence; S4 dormant audit broken by core test importing `s4a-foundation` |
 | VALIDATION | Jest `motion-core-leg-gate`, `motion-core-tiguan-gps-obd-hardening` (shadow-worker), `r1-obd-fsm-point-authority`, `di-v0-s4a-dormant-audit`; `npm run build`; summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/BEFORE_AFTER_SUMMARY.json` |
 | NON_EFFECTS | No deploy/reprocessing/flags; M7A paused; frozen audit package unchanged |
+
+
+### DS4 Motion — PR #2135 review corrections 1–4 (2026-10-23)
+
+| Field | Detail |
+|---|---|
+| BEFORE | Audit only replayed frozen original; G1 customer artefact overclaim; highlight joined missing positions and widened time; negative half-value rounding asymmetric |
+| WHY | Keep current product comparison distinct from historical evidence and avoid unsupported map/physics claims |
+| CHANGE | Real #2134 processor replay with source/hash guard; G1 offline-only; bounded contiguous geometry and exact endpoint anchors; signed-magnitude rounding; nine-locale incomplete-coverage note |
+| ALTERNATIVES | Retain customer heuristic or interpolate gaps rejected: no universal-physics or position evidence |
+| EXPECTED_EFFECT | Honest coverage/metric comparison and no false route extent or half-value sign asymmetry |
+| OBSERVED_EFFECT | 21→20 events, 1916→1908 numeric, stops 12→11; shared 1364 video pairs unchanged; historical raw MAE 9.2232 vs hardened 2.9053 due to eight withheld samples |
+| VALIDATION | compare_hardened.cjs assertions; trip-map utility/component regressions; frontend typecheck; CI on final head reported separately |
+| NON_EFFECTS | No new speed estimator/detector, C4/FSM change, Production side effect, scoring/M7A/Mapbox/workstream activation |
+| TRADEOFFS | Highlight may show fewer line parts when positions are absent; exact endpoints intentionally withheld |
+| REMAINING_GAPS | Live Mapbox QA; independent 19:04 video; original screenshot file attribution; broader detector development deferred |
+| STATUS | CONFIRMED on pinned replay; frontend fixture validation only, not Production validation |
+| EVIDENCE | evidence/EXP021_DS4_MOTION_SPEED_EVENT_AUDIT_2026-10-23.md; research/driving-intelligence/audits/ds4-motion-speed-event-audit-20261023/analysis/hardened_comparison.json |
