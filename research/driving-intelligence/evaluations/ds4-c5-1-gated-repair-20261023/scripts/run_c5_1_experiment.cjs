@@ -5,6 +5,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const L = require('../../ds4-speed-video-reference-20261023/scripts/eval_lib.cjs');
 const E = require('../../ds4-accel-brake-video-reference-20261023/scripts/event_eval_lib.cjs');
@@ -179,6 +180,53 @@ function tes16FalseAccel(result) {
 function gateStatus(pass, verified = true) {
   if (!verified) return 'NOT_VERIFIED';
   return pass ? 'PASS' : 'FAIL';
+}
+
+function normalizeGateDisplay(g) {
+  if (g.status === 'NOT_VERIFIED') {
+    g.pass = null;
+    g.scored = false;
+    return g;
+  }
+  g.scored = true;
+  if (!g.status) g.status = gateStatus(g.pass);
+  return g;
+}
+
+function regressionFingerprint(results, tes16Labels, tes16Fa, tes211_23, tig1845) {
+  return {
+    c51Version: C51.MOTION_CORE_SPEED_C5_1_VERSION,
+    tes16FalseAccelC51: tes16Fa.c51.length,
+    tes16FalseAccelC4: tes16Fa.c4.length,
+    tes16Trace: tes16Labels.map((t) => ({
+      label: t.label,
+      c4Kmh: t.c4Kmh,
+      c51Kmh: t.c51Kmh,
+      repairState: t.repairState,
+    })),
+    tes21_1_12_05_23: tes211_23,
+    tig22_18_41_45: tig1845,
+    drives: results.map((r) => ({
+      id: r.id,
+      lost: r.lost.length,
+      passThroughViolations: r.passThroughViolations,
+      quarantineParity: r.quarantineParity,
+      c4ReplayParityMismatches: r.c4ParityMismatch,
+      maeC4: r.common.a?.maeKmh,
+      maeC51: r.common.b?.maeKmh,
+      p95C4: r.common.a?.p95AbsKmh,
+      p95C51: r.common.b?.p95AbsKmh,
+      maxSupportOffset: r.meta.maxSupportOffset,
+    })),
+  };
+}
+
+function compareRegression(current, baseline) {
+  const unchanged = JSON.stringify(current) === JSON.stringify(baseline);
+  return {
+    unchanged,
+    mismatches: unchanged ? [] : [{ note: 'V1.1 regression fingerprint differs from frozen baseline' }],
+  };
 }
 
 function buildGates(results) {
@@ -430,12 +478,14 @@ function buildGates(results) {
     });
   }
 
-  for (const g of gates) {
-    if (!g.status) g.status = gateStatus(g.pass);
-  }
+  for (const g of gates) normalizeGateDisplay(g);
 
-  const scored = gates.filter((g) => g.status !== 'NOT_VERIFIED');
-  return { gates, allPass: scored.every((g) => g.pass), allScoredPass: scored.every((g) => g.pass) };
+  const scored = gates.filter((g) => g.scored);
+  return {
+    gates,
+    allPass: scored.every((g) => g.pass === true),
+    scoredPass: scored.every((g) => g.pass === true),
+  };
 }
 
 const { execFileSync: execSynth } = require('node:child_process');
@@ -456,14 +506,16 @@ try {
 const drives = R.loadDrives();
 const results = drives.map(compareDrive);
 const gates = buildGates(results);
-gates.gates.push({
-  gate: 'H_synthetics',
-  drive: 'ALL',
-  pass: syntheticsOk && supportOk,
-  status: gateStatus(syntheticsOk && supportOk),
-  detail: { syntheticsOk, supportOk },
-});
-gates.allPass = gates.gates.filter((g) => g.status !== 'NOT_VERIFIED').every((g) => g.pass);
+gates.gates.push(
+  normalizeGateDisplay({
+    gate: 'H_synthetics',
+    drive: 'ALL',
+    pass: syntheticsOk && supportOk,
+    status: gateStatus(syntheticsOk && supportOk),
+    detail: { syntheticsOk, supportOk },
+  }),
+);
+gates.allPass = gates.gates.filter((g) => g.scored).every((g) => g.pass === true);
 
 const tes16Labels = tes16Trace(results.find((x) => x.id === 'TES16'));
 
@@ -472,8 +524,42 @@ const tes211_23 = tes211?.c51Raw.find((x) => x.label === '2026-10-21T12:05:23Z')
 const tig22 = results.find((x) => x.id === 'TIG22');
 const tig1845 = tig22?.c51Raw.find((x) => x.label === '2026-10-22T18:41:45Z');
 
+const tes16Fa = tes16FalseAccel(results.find((x) => x.id === 'TES16'));
+const regressionCurrent = regressionFingerprint(
+  results,
+  tes16Labels,
+  tes16Fa,
+  {
+    c4Kmh: tes211?.c4.find((x) => x.label === '2026-10-21T12:05:23Z')?.valueKmh,
+    c51Kmh: tes211_23?.valueKmh,
+    repairState: tes211_23?.repairState,
+  },
+  {
+    c4Kmh: tig22?.c4.find((x) => x.label === '2026-10-22T18:41:45Z')?.valueKmh,
+    c51Kmh: tig1845?.valueKmh,
+    repairState: tig1845?.repairState,
+  },
+);
+const baselinePath = path.join(evalRoot, 'outputs', 'baselines', 'c5_1_v1_1_regression_fingerprint_53f5acebc.json');
+const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+const regressionCompare = compareRegression(regressionCurrent, {
+  c51Version: baseline.c51Version,
+  tes16FalseAccelC51: baseline.tes16FalseAccelC51,
+  tes16FalseAccelC4: baseline.tes16FalseAccelC4,
+  tes16Trace: baseline.tes16Trace,
+  tes21_1_12_05_23: baseline.tes21_1_12_05_23,
+  tig22_18_41_45: baseline.tig22_18_41_45,
+  drives: baseline.drives,
+});
+
+const syntheticAuditPath = path.join(outDir, 'c5_1_synthetic_test_audit.json');
+const syntheticAudit = fs.existsSync(syntheticAuditPath)
+  ? JSON.parse(fs.readFileSync(syntheticAuditPath, 'utf8'))
+  : null;
+
 const summary = {
   schema: 'C5_1_EXPERIMENT_SUMMARY_V2_SAFETY_HARDENED',
+  testAuditSchema: 'C5_1_TEST_INTEGRITY_AUDIT_V1',
   generatedAt: new Date().toISOString(),
   codeRoot,
   codeSha,
@@ -514,7 +600,7 @@ const summary = {
     passThroughViolations: r.passThroughViolations,
   })),
   tes16SecondTrace: tes16Labels,
-  tes16FalseAccel: tes16FalseAccel(results.find((x) => x.id === 'TES16')),
+  tes16FalseAccel: tes16Fa,
   tes21_1_12_05_23: {
     c4Kmh: tes211?.c4.find((x) => x.label === '2026-10-21T12:05:23Z')?.valueKmh,
     c51Kmh: tes211_23?.valueKmh,
@@ -538,14 +624,59 @@ const summary = {
     pass: gates.gates.filter((g) => g.status === 'PASS').length,
     fail: gates.gates.filter((g) => g.status === 'FAIL').length,
     notVerified: gates.gates.filter((g) => g.status === 'NOT_VERIFIED').length,
+    scored: gates.gates.filter((g) => g.scored).length,
     total: gates.gates.length,
   },
-  finalVerdict: gates.allPass ? 'SAFE_OFFLINE_CANDIDATE' : 'NOT_PROVEN',
+  testIntegrityAudit: {
+    algorithmFileSha256: crypto
+      .createHash('sha256')
+      .update(fs.readFileSync(path.join(evalRoot, 'scripts', 'c5-1-gated-repair.cjs')))
+      .digest('hex'),
+    algorithmHeadPinned: '53f5acebc13f8ac45498b9ff7311e4152f30f1fe',
+    productionPin: expectSha,
+    codeSha,
+    commands: [
+      'node scripts/c5-1.support.test.cjs',
+      'node scripts/c5-1.synthetic.test.cjs',
+      'node scripts/run_c5_1_experiment.cjs --code-root <repo>',
+    ],
+    syntheticAudit,
+    regressionBaseline: baselinePath,
+    regressionUnchanged: regressionCompare.unchanged,
+    regressionMismatches: regressionCompare.mismatches,
+  },
+  finalVerdict: gates.allPass && regressionCompare.unchanged && syntheticsOk && supportOk
+    ? 'SAFE_OFFLINE_CANDIDATE'
+    : 'NOT_PROVEN',
+  finalTestVerdict:
+    gates.gates.filter((g) => g.scored).every((g) => g.pass === true) &&
+    syntheticsOk &&
+    supportOk &&
+    regressionCompare.unchanged
+      ? 'PASS'
+      : regressionCompare.unchanged
+        ? 'NOT_PROVEN'
+        : 'FAIL',
   priorV1Verdict: 'PROVEN_FOR_LOCAL_REPAIR',
   independentGeneralization: 'NOT_YET_PROVEN',
 };
 
 fs.writeFileSync(path.join(outDir, 'c5_1_experiment_summary.json'), JSON.stringify(summary, null, 2));
+fs.writeFileSync(
+  path.join(outDir, 'c5_1_test_integrity_audit.json'),
+  JSON.stringify(
+    {
+      schema: summary.testAuditSchema,
+      generatedAt: summary.generatedAt,
+      finalTestVerdict: summary.finalTestVerdict,
+      gateCounts: summary.gateCounts,
+      testIntegrityAudit: summary.testIntegrityAudit,
+      syntheticAudit,
+    },
+    null,
+    2,
+  ),
+);
 
 // Markdown report (derived only)
 const md = [];
@@ -554,12 +685,20 @@ md.push(`Generated: ${summary.generatedAt}\n`);
 md.push(`Verdict: **${summary.finalVerdict}**\n`);
 md.push('## Gates\n');
 for (const g of gates.gates) {
-  md.push(`- ${g.pass ? 'PASS' : 'FAIL'} \`${g.gate}\` (${g.drive}) ${JSON.stringify(g.detail)}`);
+  const label = g.status === 'NOT_VERIFIED' ? 'NOT_VERIFIED' : g.status;
+  md.push(`- ${label} \`${g.gate}\` (${g.drive}) ${JSON.stringify(g.detail)}`);
 }
+md.push('\n## Gate counts\n');
+md.push(JSON.stringify(summary.gateCounts, null, 2));
+md.push('\n## Test integrity\n');
+md.push(JSON.stringify(summary.testIntegrityAudit, null, 2));
 md.push('\n## TES16 trace\n');
 md.push('```json\n' + JSON.stringify(tes16Labels, null, 2) + '\n```\n');
 fs.writeFileSync(path.join(outDir, 'C5_1_REPORT.md'), md.join('\n'));
 
 console.log('Wrote', path.join(outDir, 'c5_1_experiment_summary.json'));
 console.log('FINAL_VERDICT=', summary.finalVerdict);
-console.log('gates pass', gates.gates.filter((g) => g.pass).length, '/', gates.gates.length);
+const gc = summary.gateCounts;
+console.log('gates PASS/FAIL/NOT_VERIFIED', gc.pass, gc.fail, gc.notVerified, 'scored', gc.scored);
+console.log('FINAL_TEST_VERDICT=', summary.finalTestVerdict);
+console.log('regression unchanged', regressionCompare.unchanged);

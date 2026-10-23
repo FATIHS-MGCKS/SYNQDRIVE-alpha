@@ -1,0 +1,88 @@
+{
+  "schema": "C5_1_V1_1_REGRESSION_FINGERPRINT",
+  "algorithmHead": "53f5acebc13f8ac45498b9ff7311e4152f30f1fe",
+  "productionPin": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "c51Version": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_1_SAFETY_HARDENED",
+  "tes16FalseAccelC51": 0,
+  "tes16FalseAccelC4": 1,
+  "tes16Trace": [
+    {
+      "label": "2026-10-16T03:50:20Z",
+      "c4Kmh": 113.10468732349274,
+      "c51Kmh": 129.584682365988,
+      "repairState": "REPAIR_ACCEPTED"
+    },
+    {
+      "label": "2026-10-16T03:50:22Z",
+      "c4Kmh": 128.15344679760602,
+      "c51Kmh": 128.15344679760602,
+      "repairState": "REPAIR_REJECTED"
+    },
+    {
+      "label": "2026-10-16T03:50:23Z",
+      "c4Kmh": 148.2894329471151,
+      "c51Kmh": 125.89577000351147,
+      "repairState": "REPAIR_ACCEPTED"
+    }
+  ],
+  "tes21_1_12_05_23": {
+    "c4Kmh": 14.858372594105312,
+    "c51Kmh": 14.858372594105312,
+    "repairState": "REPAIR_REJECTED"
+  },
+  "tig22_18_41_45": {
+    "c4Kmh": 43.56220401178661,
+    "c51Kmh": 51.407592835199324,
+    "repairState": "REPAIR_ACCEPTED"
+  },
+  "drives": [
+    {
+      "id": "TIG22",
+      "lost": 0,
+      "passThroughViolations": 0,
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "maeC4": 2.905,
+      "maeC51": 2.9,
+      "p95C4": 5.918,
+      "p95C51": 5.903,
+      "maxSupportOffset": 4
+    },
+    {
+      "id": "TES21-1",
+      "lost": 0,
+      "passThroughViolations": 0,
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "maeC4": 2.292,
+      "maeC51": 2.292,
+      "p95C4": 8.562,
+      "p95C51": 8.562,
+      "maxSupportOffset": 4
+    },
+    {
+      "id": "TES21-2",
+      "lost": 0,
+      "passThroughViolations": 0,
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "maeC4": 3.605,
+      "maeC51": 3.605,
+      "p95C4": 10.954,
+      "p95C51": 10.954,
+      "maxSupportOffset": 4
+    },
+    {
+      "id": "TES16",
+      "lost": 0,
+      "passThroughViolations": 0,
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "maeC4": 2.272,
+      "maeC51": 2.239,
+      "p95C4": 4.485,
+      "p95C51": 4.478,
+      "maxSupportOffset": 4
+    }
+  ]
+}
