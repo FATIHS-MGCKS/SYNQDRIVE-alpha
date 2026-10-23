@@ -1,0 +1,72 @@
+{
+  "schema": "C5_1_SYNTHETIC_TEST_AUDIT_V1",
+  "scenarios": {
+    "1_constant_cruise": {
+      "legKmh": 99.96769340357089,
+      "valueKmh": 99.9675553225025
+    },
+    "2_strong_accel": {
+      "meanAccelMps2": 2.9966334953530347,
+      "repairAccepted": 0
+    },
+    "3_strong_brake": {
+      "meanAccelMps2": -2.164235302203072,
+      "legSpeedsKmh": [
+        100.68688544228179,
+        89.89900486161817,
+        79.1111242752659,
+        68.32324369460225,
+        57.535363111094306,
+        46.74748252758635,
+        35.9596019440784,
+        25.171721360570448,
+        14.383840777062495,
+        7.1919203871090875,
+        7.191920389953408,
+        7.191920389953408,
+        7.1919203871090875
+      ]
+    },
+    "4_heading_veto": {
+      "cornerRateDegPerS": 38.490588103023256,
+      "straightRepairState": "REPAIR_ACCEPTED",
+      "gatesWithoutHeading": true,
+      "headingRejectOnCornerGeometry": true,
+      "vetoBlocksCandidacy": true
+    },
+    "5_start_from_stop": {
+      "vEarlyKmh": 0,
+      "vLateKmh": 61.131323304648845
+    },
+    "6_time_suspect": {
+      "attributed": true,
+      "accepted": 2
+    },
+    "7_quarantine": {
+      "labels": [
+        "2027-01-15T08:03:24Z",
+        "2027-01-15T08:03:25Z",
+        "2027-01-15T08:03:26Z"
+      ]
+    },
+    "8_missing_bucket": {
+      "absent": "2027-01-15T08:03:24Z"
+    },
+    "9_brake_protection": {
+      "unitGuard": {
+        "reason": "upward_at_c4_trough_attribution_astern",
+        "leftMax": 50.343373185334364,
+        "rightMax": 21.575731363924305,
+        "c4Kmh": 14.5,
+        "cand": 21
+      },
+      "integration": "VERIFIED",
+      "target": {
+        "label": "2027-01-15T08:11:46Z",
+        "c4": 46.74741795730257,
+        "c51": 46.74741795730257,
+        "state": "REPAIR_REJECTED"
+      }
+    }
+  }
+}

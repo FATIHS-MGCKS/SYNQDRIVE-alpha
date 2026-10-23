@@ -1,0 +1,255 @@
+{
+  "motionC4": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "motionC5": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "eventsC4": [
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:31:33Z",
+      "end": "2026-10-22T18:31:36Z",
+      "delta": 16.6,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:33:04Z",
+      "end": "2026-10-22T18:33:08Z",
+      "delta": 22.8,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:33:49Z",
+      "end": "2026-10-22T18:33:51Z",
+      "delta": 11,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:38:25Z",
+      "end": "2026-10-22T18:38:30Z",
+      "delta": 28.3,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:43:05Z",
+      "end": "2026-10-22T18:43:08Z",
+      "delta": 17.4,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:43:58Z",
+      "end": "2026-10-22T18:44:02Z",
+      "delta": 22.4,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:45:24Z",
+      "end": "2026-10-22T18:45:28Z",
+      "delta": 28.2,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:46:44Z",
+      "end": "2026-10-22T18:46:46Z",
+      "delta": 10.6,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:47:00Z",
+      "end": "2026-10-22T18:47:04Z",
+      "delta": 31.4,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:47:42Z",
+      "end": "2026-10-22T18:47:47Z",
+      "delta": 27.5,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:58:16Z",
+      "end": "2026-10-22T18:58:20Z",
+      "delta": 31.1,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:58:22Z",
+      "end": "2026-10-22T18:58:25Z",
+      "delta": 16.5,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:59:00Z",
+      "end": "2026-10-22T18:59:04Z",
+      "delta": 38.6,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:59:27Z",
+      "end": "2026-10-22T18:59:29Z",
+      "delta": 17,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:59:37Z",
+      "end": "2026-10-22T18:59:40Z",
+      "delta": 18.5,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:59:59Z",
+      "end": "2026-10-22T19:00:01Z",
+      "delta": 12.7,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T19:04:26Z",
+      "end": "2026-10-22T19:04:29Z",
+      "delta": 29.2,
+      "quality": "DEGRADED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T19:04:34Z",
+      "end": "2026-10-22T19:04:38Z",
+      "delta": 94.6,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T19:04:39Z",
+      "end": "2026-10-22T19:04:42Z",
+      "delta": 29.5,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T19:04:49Z",
+      "end": "2026-10-22T19:04:52Z",
+      "delta": 89.8,
+      "quality": "DEGRADED"
+    }
+  ],
+  "eventsC5": [
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:33:05Z",
+      "end": "2026-10-22T18:33:07Z",
+      "delta": 11.4,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:38:24Z",
+      "end": "2026-10-22T18:38:29Z",
+      "delta": 28.4,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:43:06Z",
+      "end": "2026-10-22T18:43:08Z",
+      "delta": 10.8,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:43:57Z",
+      "end": "2026-10-22T18:44:02Z",
+      "delta": 27.4,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:45:25Z",
+      "end": "2026-10-22T18:45:29Z",
+      "delta": 24.6,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:47:00Z",
+      "end": "2026-10-22T18:47:04Z",
+      "delta": 27.9,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:47:42Z",
+      "end": "2026-10-22T18:47:46Z",
+      "delta": 22.4,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:58:16Z",
+      "end": "2026-10-22T18:58:20Z",
+      "delta": 27.6,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:58:59Z",
+      "end": "2026-10-22T18:59:04Z",
+      "delta": 39.9,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-22T18:59:27Z",
+      "end": "2026-10-22T18:59:29Z",
+      "delta": 12,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-22T18:59:36Z",
+      "end": "2026-10-22T18:59:40Z",
+      "delta": 22,
+      "quality": "LIMITED"
+    }
+  ]
+}

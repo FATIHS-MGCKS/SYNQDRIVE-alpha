@@ -1,0 +1,220 @@
+{
+  "motionC4": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "motionC5": {
+    "confirmedStillCoreSecs": 0,
+    "falseMotionInConfirmedStill": 0,
+    "stillCorrect": 0,
+    "stillNoClaim": 0,
+    "confirmedMotionSecs": 0,
+    "falseStillInConfirmedMotion": 0,
+    "motionCorrect": 0,
+    "motionNoClaim": 0,
+    "ambiguousSecs": 0,
+    "ambiguousStill": 0,
+    "ambiguousMoving": 0,
+    "ambiguousNoClaim": 0,
+    "falseMotionLabels": [],
+    "falseStillLabels": []
+  },
+  "eventsC4": [
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:39:41Z",
+      "end": "2026-10-16T03:39:47Z",
+      "delta": 34.9,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:39:52Z",
+      "end": "2026-10-16T03:39:55Z",
+      "delta": 15.5,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:40:14Z",
+      "end": "2026-10-16T03:40:17Z",
+      "delta": 22,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:41:00Z",
+      "end": "2026-10-16T03:41:03Z",
+      "delta": 19.3,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:41:42Z",
+      "end": "2026-10-16T03:41:48Z",
+      "delta": 50.3,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:42:42Z",
+      "end": "2026-10-16T03:42:45Z",
+      "delta": 17.1,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:44:40Z",
+      "end": "2026-10-16T03:44:44Z",
+      "delta": 21.7,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:45:43Z",
+      "end": "2026-10-16T03:45:49Z",
+      "delta": 31.8,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:45:56Z",
+      "end": "2026-10-16T03:46:00Z",
+      "delta": 24.7,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:46:58Z",
+      "end": "2026-10-16T03:47:00Z",
+      "delta": 11.1,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:48:12Z",
+      "end": "2026-10-16T03:48:20Z",
+      "delta": 59.1,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:48:30Z",
+      "end": "2026-10-16T03:48:35Z",
+      "delta": 27.5,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:50:14Z",
+      "end": "2026-10-16T03:50:16Z",
+      "delta": 12,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:50:20Z",
+      "end": "2026-10-16T03:50:23Z",
+      "delta": 35.2,
+      "quality": "DEGRADED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:52:23Z",
+      "end": "2026-10-16T03:52:28Z",
+      "delta": 30.7,
+      "quality": "OK"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:52:39Z",
+      "end": "2026-10-16T03:52:41Z",
+      "delta": 10.8,
+      "quality": "OK"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:52:47Z",
+      "end": "2026-10-16T03:52:52Z",
+      "delta": 28.7,
+      "quality": "OK"
+    }
+  ],
+  "eventsC5": [
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:39:43Z",
+      "end": "2026-10-16T03:39:46Z",
+      "delta": 18.1,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:41:00Z",
+      "end": "2026-10-16T03:41:03Z",
+      "delta": 17.5,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:41:42Z",
+      "end": "2026-10-16T03:41:46Z",
+      "delta": 33.4,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:42:42Z",
+      "end": "2026-10-16T03:42:45Z",
+      "delta": 16,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:45:55Z",
+      "end": "2026-10-16T03:46:00Z",
+      "delta": 28.2,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:48:12Z",
+      "end": "2026-10-16T03:48:20Z",
+      "delta": 57.5,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:48:30Z",
+      "end": "2026-10-16T03:48:35Z",
+      "delta": 26.7,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "DECELERATION",
+      "start": "2026-10-16T03:52:23Z",
+      "end": "2026-10-16T03:52:28Z",
+      "delta": 29.4,
+      "quality": "LIMITED"
+    },
+    {
+      "kind": "ACCELERATION",
+      "start": "2026-10-16T03:52:48Z",
+      "end": "2026-10-16T03:52:52Z",
+      "delta": 22.1,
+      "quality": "LIMITED"
+    }
+  ]
+}

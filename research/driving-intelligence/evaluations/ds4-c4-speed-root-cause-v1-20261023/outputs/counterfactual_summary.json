@@ -1,0 +1,47 @@
+{
+  "schema": "DS4_C4_SPEED_ROOT_CAUSE_COUNTERFACTUAL_V1",
+  "productionCodeSha": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "replayCodeSha": "6d1de00e5b0931746f3c1db72000a6cbcd153443",
+  "TES16": {
+    "criticalSeconds": [
+      "2026-10-16T03:50:20Z",
+      "2026-10-16T03:50:22Z",
+      "2026-10-16T03:50:23Z"
+    ],
+    "production_c4_kmh": {
+      "03:50:20": 113.1,
+      "03:50:22": 128.2,
+      "03:50:23": 148.3
+    },
+    "cf_c1_no_gap_bridge_kmh": {
+      "03:50:20": 129.4,
+      "03:50:22": 191.5,
+      "03:50:23": 148.4
+    },
+    "video_ref_kmh": 133,
+    "note": "CF suppresses non-consecutive C1 chord pairs across ROW_ABSENT :21"
+  },
+  "TIG22": {
+    "criticalEvents": [
+      {
+        "event": "ACCELERATION 19:04:34–38",
+        "start_c4": 5.5,
+        "end_c4": 100.1
+      },
+      {
+        "event": "ACCELERATION 19:04:49–52",
+        "start_c4": 52.3,
+        "end_c4": 142.1
+      }
+    ],
+    "cf_c1_no_gap_bridge_kmh": {
+      "19:04:38": 98.1,
+      "19:04:52": 142
+    },
+    "obd_compare_kmh": {
+      "19:04:38": 50,
+      "19:04:52": 60
+    },
+    "video_ref": "UNAVAILABLE (ends 19:03:02Z)"
+  }
+}

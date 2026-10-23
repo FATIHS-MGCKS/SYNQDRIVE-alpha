@@ -1,0 +1,278 @@
+[
+  {
+    "sec": 1792121896,
+    "label": "2026-10-16T03:38:16Z",
+    "ref": 2,
+    "c4": 2.0171348614864093,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792121897,
+    "label": "2026-10-16T03:38:17Z",
+    "ref": 3,
+    "c4": 2.361238750684268,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792121903,
+    "label": "2026-10-16T03:38:23Z",
+    "ref": 11,
+    "c4": 9.768956628632328,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792121904,
+    "label": "2026-10-16T03:38:24Z",
+    "ref": 13,
+    "c4": 12.897150664505856,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122016,
+    "label": "2026-10-16T03:40:16Z",
+    "ref": 12,
+    "c4": 13.349443580429114,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122017,
+    "label": "2026-10-16T03:40:17Z",
+    "ref": 3,
+    "c4": 5.101907095063161,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122107,
+    "label": "2026-10-16T03:41:47Z",
+    "ref": 8,
+    "c4": 10.834211313744195,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122108,
+    "label": "2026-10-16T03:41:48Z",
+    "ref": 3,
+    "c4": 4.812804205977345,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122152,
+    "label": "2026-10-16T03:42:32Z",
+    "ref": 17,
+    "c4": 14.704191177032985,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122153,
+    "label": "2026-10-16T03:42:33Z",
+    "ref": 24,
+    "c4": 20.680174570801853,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122167,
+    "label": "2026-10-16T03:42:47Z",
+    "ref": 3,
+    "c4": 4.061987646207261,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122168,
+    "label": "2026-10-16T03:42:48Z",
+    "ref": 1,
+    "c4": 2.5465081459294248,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122179,
+    "label": "2026-10-16T03:42:59Z",
+    "ref": 14,
+    "c4": 11.185492388084215,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122180,
+    "label": "2026-10-16T03:43:00Z",
+    "ref": 19,
+    "c4": 16.503874970623876,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122220,
+    "label": "2026-10-16T03:43:40Z",
+    "ref": 5,
+    "c4": 6.437388882984098,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122221,
+    "label": "2026-10-16T03:43:41Z",
+    "ref": 2,
+    "c4": 2.619251639482777,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122278,
+    "label": "2026-10-16T03:44:38Z",
+    "ref": 19,
+    "c4": 15.220413723137295,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122279,
+    "label": "2026-10-16T03:44:39Z",
+    "ref": 27,
+    "c4": 22.377446312646498,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122859,
+    "label": "2026-10-16T03:54:19Z",
+    "ref": 8,
+    "c4": 8.676354320362286,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122866,
+    "label": "2026-10-16T03:54:26Z",
+    "ref": 4,
+    "c4": 4.316859022572471,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122867,
+    "label": "2026-10-16T03:54:27Z",
+    "ref": 4,
+    "c4": 4.612081434406142,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122881,
+    "label": "2026-10-16T03:54:41Z",
+    "ref": 1,
+    "c4": 1.5928171189348257,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  },
+  {
+    "sec": 1792122882,
+    "label": "2026-10-16T03:54:42Z",
+    "ref": 2,
+    "c4": 1.2438586488939645,
+    "reason": "PTQ_INSUFFICIENT_SUPPORT",
+    "attribution": "UNKNOWN",
+    "flags": [
+      "PTQ_INSUFFICIENT_SUPPORT",
+      "attribution=OK"
+    ]
+  }
+]

@@ -1,0 +1,3585 @@
+{
+  "schema": "C5_1_EXPERIMENT_SUMMARY_V2_SAFETY_HARDENED",
+  "testAuditSchema": "C5_1_TEST_INTEGRITY_AUDIT_V1",
+  "generatedAt": "2026-10-23T17:12:53.381Z",
+  "codeRoot": "/workspace/.worktrees/ds4-speed-ref",
+  "codeSha": "53f5acebc13f8ac45498b9ff7311e4152f30f1fe",
+  "productionPin": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "hardening": "C5_1_SAFETY_HARDENING_V1",
+  "c51Version": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_1_SAFETY_HARDENED",
+  "c4Version": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+  "frozen": {
+    "aAttrMps2": 6,
+    "crossTrackMaxM": 6,
+    "maxSupportHalfS": 4,
+    "minSupportTotal": 5,
+    "minSupportPerSide": 2,
+    "maxNeighborGapS": 3,
+    "stationaryChordMps": 3,
+    "headingRejectDegPerS": 25,
+    "maxWindowLabels": 15
+  },
+  "drives": [
+    {
+      "id": "TIG22",
+      "vehicleClass": "TIGUAN",
+      "eligibility": {
+        "velocitySeeds": 11,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-22T18:30:38Z",
+            "end": "2026-10-22T18:30:45Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-22T18:41:44Z",
+            "end": "2026-10-22T18:41:52Z",
+            "width": 9
+          },
+          {
+            "start": "2026-10-22T19:04:23Z",
+            "end": "2026-10-22T19:04:30Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-22T19:04:34Z",
+            "end": "2026-10-22T19:04:40Z",
+            "width": 7
+          },
+          {
+            "start": "2026-10-22T19:04:48Z",
+            "end": "2026-10-22T19:04:55Z",
+            "width": 8
+          }
+        ],
+        "eligibleLabels": 38,
+        "gridLabels": 2094,
+        "eligiblePct": 1.81,
+        "repairAccepted": 2,
+        "repairRejected": 33,
+        "uncertain": 3,
+        "passOutside": 2056,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 1364,
+          "maeKmh": 2.905,
+          "medianAbsKmh": 2.766,
+          "p95AbsKmh": 5.918,
+          "maxAbsKmh": 14.381,
+          "biasKmh": -2.424,
+          "rmseKmh": 3.41,
+          "within3": 0.567,
+          "within5": 0.909
+        },
+        "c51All": {
+          "n": 1364,
+          "maeKmh": 2.9,
+          "medianAbsKmh": 2.762,
+          "p95AbsKmh": 5.903,
+          "maxAbsKmh": 14.381,
+          "biasKmh": -2.418,
+          "rmseKmh": 3.399,
+          "within3": 0.568,
+          "within5": 0.91
+        },
+        "common": {
+          "n": 1364,
+          "a": {
+            "n": 1364,
+            "maeKmh": 2.905,
+            "medianAbsKmh": 2.766,
+            "p95AbsKmh": 5.918,
+            "maxAbsKmh": 14.381,
+            "biasKmh": -2.424,
+            "rmseKmh": 3.41,
+            "within3": 0.567,
+            "within5": 0.909
+          },
+          "b": {
+            "n": 1364,
+            "maeKmh": 2.9,
+            "medianAbsKmh": 2.762,
+            "p95AbsKmh": 5.903,
+            "maxAbsKmh": 14.381,
+            "biasKmh": -2.418,
+            "rmseKmh": 3.399,
+            "within3": 0.568,
+            "within5": 0.91
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 1464,
+            "readable": 1417,
+            "paired": 1364,
+            "pairedShareOfReadable": 0.963,
+            "missingEstimateOnReadable": 53,
+            "exclusions": {
+              "REF_SPEED_MISSING": 47,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 53
+            }
+          },
+          "c51": {
+            "referenceRows": 1464,
+            "readable": 1417,
+            "paired": 1364,
+            "pairedShareOfReadable": 0.963,
+            "missingEstimateOnReadable": 53,
+            "exclusions": {
+              "REF_SPEED_MISSING": 47,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 53
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 20,
+          "acceptedEvents": 20,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "UNVERIFIZIERBAR": 8,
+                "TREFFER": 12
+              },
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              }
+            }
+          },
+          "accepted": {
+            "events": 20,
+            "ds4ByClass": {
+              "UNVERIFIZIERBAR": 8,
+              "TREFFER": 12
+            },
+            "oracleByStatus": {
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+              "VERPASST_GRENZWERTIG": 4,
+              "ERKANNT": 12,
+              "VERPASST": 1
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 4,
+            "offsets": {
+              "start": {
+                "n": 12,
+                "medianS": -1,
+                "meanS": -0.58,
+                "minS": -1,
+                "maxS": 0,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 12,
+                "medianS": -0.5,
+                "meanS": -0.17,
+                "minS": -1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "ds4ByQuality": {
+            "OK": 16,
+            "DEGRADED": 2,
+            "LIMITED": 2
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 10,
+            "DECELERATION": 10
+          },
+          "verifiableEvents": 12,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracleBorderline": 7,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 6,
+            "ERKANNT": 12
+          },
+          "operatorWindowsByStatus": {
+            "VERPASST_OBERHALB_SCHWELLE": 2,
+            "ERKANNT": 7
+          },
+          "offsets": {
+            "start": {
+              "n": 12,
+              "medianS": -1,
+              "meanS": -0.58,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 12,
+              "medianS": -0.5,
+              "meanS": -0.17,
+              "minS": -1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 12,
+              "medianS": 0,
+              "meanS": 0.42,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 12,
+            "maeKmh": 2.808,
+            "medianAbsKmh": 2.4,
+            "p95AbsKmh": 5.495,
+            "maxAbsKmh": 6.1,
+            "biasKmh": -0.592,
+            "rmseKmh": 3.287,
+            "within3": 0.583,
+            "within5": 0.917
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1,
+              "UNVERIFIZIERBAR": 3
+            },
+            "total": 4
+          },
+          "implausible": [
+            "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z|5.5->100.1|UNVERIFIZIERBAR",
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "overReferenceMax": [
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "byQualityAndClass": {
+            "OK|UNVERIFIZIERBAR": 4,
+            "OK|TREFFER": 12,
+            "DEGRADED|UNVERIFIZIERBAR": 2,
+            "LIMITED|UNVERIFIZIERBAR": 2
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-22T18:38:34Z",
+              "2026-10-22T19:03:02Z"
+            ],
+            "referenceRows": 1464,
+            "referenceReadable": 1417,
+            "referenceMaxKmh": 97,
+            "gridLabels": 2094,
+            "c4Numeric": 1908,
+            "c4Usable": 1908,
+            "detectorSegments": 19,
+            "quarantinedSecs": 12,
+            "eventsInsideReferenceWindow": 12
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 20,
+              "accepted": 20,
+              "verifiable": 12,
+              "notEvaluable": 8
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 11,
+              "detectedWithOracleMatch": 12,
+              "acceptedWithOracleMatch": 12,
+              "correctTreffer": 12,
+              "acceptedCorrectTreffer": 12,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": {
+              "windows": 9,
+              "byStatus": {
+                "VERPASST_OBERHALB_SCHWELLE": 2,
+                "ERKANNT": 7
+              }
+            },
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 6,
+                "ERKANNT": 12
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 8,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 8
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 20,
+          "acceptedEvents": 20,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "UNVERIFIZIERBAR": 8,
+                "TREFFER": 12
+              },
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              }
+            }
+          },
+          "accepted": {
+            "events": 20,
+            "ds4ByClass": {
+              "UNVERIFIZIERBAR": 8,
+              "TREFFER": 12
+            },
+            "oracleByStatus": {
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+              "VERPASST_GRENZWERTIG": 4,
+              "ERKANNT": 12,
+              "VERPASST": 1
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 4,
+            "offsets": {
+              "start": {
+                "n": 12,
+                "medianS": -1,
+                "meanS": -0.58,
+                "minS": -1,
+                "maxS": 0,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 12,
+                "medianS": -0.5,
+                "meanS": -0.17,
+                "minS": -1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "ds4ByQuality": {
+            "OK": 16,
+            "DEGRADED": 3,
+            "LIMITED": 1
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 10,
+            "DECELERATION": 10
+          },
+          "verifiableEvents": 12,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracleBorderline": 7,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 6,
+            "ERKANNT": 12
+          },
+          "operatorWindowsByStatus": {
+            "VERPASST_OBERHALB_SCHWELLE": 2,
+            "ERKANNT": 7
+          },
+          "offsets": {
+            "start": {
+              "n": 12,
+              "medianS": -1,
+              "meanS": -0.58,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 12,
+              "medianS": -0.5,
+              "meanS": -0.17,
+              "minS": -1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 12,
+              "medianS": 0,
+              "meanS": 0.42,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 12,
+            "maeKmh": 2.808,
+            "medianAbsKmh": 2.4,
+            "p95AbsKmh": 5.495,
+            "maxAbsKmh": 6.1,
+            "biasKmh": -0.592,
+            "rmseKmh": 3.287,
+            "within3": 0.583,
+            "within5": 0.917
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1,
+              "UNVERIFIZIERBAR": 3
+            },
+            "total": 4
+          },
+          "implausible": [
+            "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:39Z|5.5->98.2|UNVERIFIZIERBAR",
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "overReferenceMax": [
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+          ],
+          "byQualityAndClass": {
+            "OK|UNVERIFIZIERBAR": 4,
+            "OK|TREFFER": 12,
+            "DEGRADED|UNVERIFIZIERBAR": 3,
+            "LIMITED|UNVERIFIZIERBAR": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-22T18:38:34Z",
+              "2026-10-22T19:03:02Z"
+            ],
+            "referenceRows": 1464,
+            "referenceReadable": 1417,
+            "referenceMaxKmh": 97,
+            "gridLabels": 2094,
+            "c4Numeric": 1908,
+            "c4Usable": 1908,
+            "detectorSegments": 19,
+            "quarantinedSecs": 12,
+            "eventsInsideReferenceWindow": 12
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 20,
+              "accepted": 20,
+              "verifiable": 12,
+              "notEvaluable": 8
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 11,
+              "detectedWithOracleMatch": 12,
+              "acceptedWithOracleMatch": 12,
+              "correctTreffer": 12,
+              "acceptedCorrectTreffer": 12,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+                "VERPASST_GRENZWERTIG": 4,
+                "ERKANNT": 12,
+                "VERPASST": 1
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": {
+              "windows": 9,
+              "byStatus": {
+                "VERPASST_OBERHALB_SCHWELLE": 2,
+                "ERKANNT": 7
+              }
+            },
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 6,
+                "ERKANNT": 12
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 8,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 8
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 73,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 49,
+          "stillNoClaim": 24,
+          "confirmedMotionSecs": 1254,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 1232,
+          "motionNoClaim": 22,
+          "ambiguousSecs": 90,
+          "ambiguousStill": 25,
+          "ambiguousMoving": 46,
+          "ambiguousNoClaim": 19,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 73,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 49,
+          "stillNoClaim": 24,
+          "confirmedMotionSecs": 1254,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 1232,
+          "motionNoClaim": 22,
+          "ambiguousSecs": 90,
+          "ambiguousStill": 25,
+          "ambiguousMoving": 46,
+          "ambiguousNoClaim": 19,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    },
+    {
+      "id": "TES21-1",
+      "vehicleClass": "TESLA",
+      "eligibility": {
+        "velocitySeeds": 13,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-21T12:04:13Z",
+            "end": "2026-10-21T12:04:20Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:04:51Z",
+            "end": "2026-10-21T12:04:58Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:04:59Z",
+            "end": "2026-10-21T12:05:06Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:05:17Z",
+            "end": "2026-10-21T12:05:24Z",
+            "width": 8
+          },
+          {
+            "start": "2026-10-21T12:06:15Z",
+            "end": "2026-10-21T12:06:20Z",
+            "width": 6
+          },
+          {
+            "start": "2026-10-21T12:06:24Z",
+            "end": "2026-10-21T12:06:31Z",
+            "width": 8
+          }
+        ],
+        "eligibleLabels": 46,
+        "gridLabels": 533,
+        "eligiblePct": 8.63,
+        "repairAccepted": 0,
+        "repairRejected": 16,
+        "uncertain": 30,
+        "passOutside": 487,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 150,
+          "maeKmh": 2.292,
+          "medianAbsKmh": 1.212,
+          "p95AbsKmh": 8.562,
+          "maxAbsKmh": 13.553,
+          "biasKmh": -0.594,
+          "rmseKmh": 3.596,
+          "within3": 0.74,
+          "within5": 0.847
+        },
+        "c51All": {
+          "n": 150,
+          "maeKmh": 2.292,
+          "medianAbsKmh": 1.212,
+          "p95AbsKmh": 8.562,
+          "maxAbsKmh": 13.553,
+          "biasKmh": -0.594,
+          "rmseKmh": 3.596,
+          "within3": 0.74,
+          "within5": 0.847
+        },
+        "common": {
+          "n": 150,
+          "a": {
+            "n": 150,
+            "maeKmh": 2.292,
+            "medianAbsKmh": 1.212,
+            "p95AbsKmh": 8.562,
+            "maxAbsKmh": 13.553,
+            "biasKmh": -0.594,
+            "rmseKmh": 3.596,
+            "within3": 0.74,
+            "within5": 0.847
+          },
+          "b": {
+            "n": 150,
+            "maeKmh": 2.292,
+            "medianAbsKmh": 1.212,
+            "p95AbsKmh": 8.562,
+            "maxAbsKmh": 13.553,
+            "biasKmh": -0.594,
+            "rmseKmh": 3.596,
+            "within3": 0.74,
+            "within5": 0.847
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 240,
+            "readable": 229,
+            "paired": 150,
+            "pairedShareOfReadable": 0.655,
+            "missingEstimateOnReadable": 79,
+            "exclusions": {
+              "REF_SPEED_MISSING": 11,
+              "OUTSIDE_GRID": 13,
+              "DS4_NULL": 66
+            }
+          },
+          "c51": {
+            "referenceRows": 240,
+            "readable": 229,
+            "paired": 150,
+            "pairedShareOfReadable": 0.655,
+            "missingEstimateOnReadable": 79,
+            "exclusions": {
+              "REF_SPEED_MISSING": 11,
+              "OUTSIDE_GRID": 13,
+              "DS4_NULL": 66
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 4,
+          "acceptedEvents": 3,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "WEICHER_FEHLALARM": 1,
+                "TREFFER": 2,
+                "FEHLALARM": 1
+              },
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 3,
+            "ds4ByClass": {
+              "WEICHER_FEHLALARM": 1,
+              "TREFFER": 2
+            },
+            "oracleByStatus": {
+              "VERPASST": 1,
+              "ERKANNT": 2,
+              "VERPASST_GRENZWERTIG": 2
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 2,
+            "offsets": {
+              "start": {
+                "n": 2,
+                "medianS": 1,
+                "meanS": 1,
+                "minS": 0,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 2,
+                "medianS": 0.5,
+                "meanS": 0.5,
+                "minS": 0,
+                "maxS": 1,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "ds4ByQuality": {
+            "DEGRADED": 1,
+            "LIMITED": 1,
+            "OK": 1,
+            "ARTEFACT_SUSPECT": 1
+          },
+          "ds4ByKind": {
+            "DECELERATION": 3,
+            "ACCELERATION": 1
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 5,
+          "oracleByStatus": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracleBorderline": 4,
+          "visibleRuns": 17,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT_UNTERHALB_SCHWELLE": 1,
+            "ERKANNT": 2
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 2,
+              "medianS": 1,
+              "meanS": 1,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 2,
+              "medianS": 0.5,
+              "meanS": 0.5,
+              "minS": 0,
+              "maxS": 1,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 2,
+              "medianS": -0.5,
+              "meanS": -0.5,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 6.075,
+            "medianAbsKmh": 5.55,
+            "p95AbsKmh": 11.905,
+            "maxAbsKmh": 12.4,
+            "biasKmh": 5.075,
+            "rmseKmh": 7.765,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "DEGRADED|WEICHER_FEHLALARM": 1,
+            "LIMITED|TREFFER": 1,
+            "OK|TREFFER": 1,
+            "ARTEFACT_SUSPECT|FEHLALARM": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:03:06Z",
+              "2026-10-21T12:07:05Z"
+            ],
+            "referenceRows": 240,
+            "referenceReadable": 229,
+            "referenceMaxKmh": 46,
+            "gridLabels": 533,
+            "c4Numeric": 158,
+            "c4Usable": 158,
+            "detectorSegments": 3,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 3,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 5,
+              "oracleHardManoeuvres": 1,
+              "detectedWithOracleMatch": 2,
+              "acceptedWithOracleMatch": 2,
+              "correctTreffer": 2,
+              "acceptedCorrectTreffer": 2,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              },
+              "hardFalseAlarms": 1,
+              "softOrIntensityFalse": 1
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 17,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT_UNTERHALB_SCHWELLE": 1,
+                "ERKANNT": 2
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 4,
+          "acceptedEvents": 3,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "WEICHER_FEHLALARM": 1,
+                "TREFFER": 2,
+                "FEHLALARM": 1
+              },
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 3,
+            "ds4ByClass": {
+              "WEICHER_FEHLALARM": 1,
+              "TREFFER": 2
+            },
+            "oracleByStatus": {
+              "VERPASST": 1,
+              "ERKANNT": 2,
+              "VERPASST_GRENZWERTIG": 2
+            },
+            "oracleHardMissed": 1,
+            "oracleBorderlineMissed": 2,
+            "offsets": {
+              "start": {
+                "n": 2,
+                "medianS": 1,
+                "meanS": 1,
+                "minS": 0,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 2,
+                "medianS": 0.5,
+                "meanS": 0.5,
+                "minS": 0,
+                "maxS": 1,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "ds4ByQuality": {
+            "DEGRADED": 1,
+            "LIMITED": 1,
+            "OK": 1,
+            "ARTEFACT_SUSPECT": 1
+          },
+          "ds4ByKind": {
+            "DECELERATION": 3,
+            "ACCELERATION": 1
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 5,
+          "oracleByStatus": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracleBorderline": 4,
+          "visibleRuns": 17,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT_UNTERHALB_SCHWELLE": 1,
+            "ERKANNT": 2
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 2,
+              "medianS": 1,
+              "meanS": 1,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 2,
+              "medianS": 0.5,
+              "meanS": 0.5,
+              "minS": 0,
+              "maxS": 1,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 2,
+              "medianS": -0.5,
+              "meanS": -0.5,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 6.075,
+            "medianAbsKmh": 5.55,
+            "p95AbsKmh": 11.905,
+            "maxAbsKmh": 12.4,
+            "biasKmh": 5.075,
+            "rmseKmh": 7.765,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "DEGRADED|WEICHER_FEHLALARM": 1,
+            "LIMITED|TREFFER": 1,
+            "OK|TREFFER": 1,
+            "ARTEFACT_SUSPECT|FEHLALARM": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:03:06Z",
+              "2026-10-21T12:07:05Z"
+            ],
+            "referenceRows": 240,
+            "referenceReadable": 229,
+            "referenceMaxKmh": 46,
+            "gridLabels": 533,
+            "c4Numeric": 158,
+            "c4Usable": 158,
+            "detectorSegments": 3,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 3,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 5,
+              "oracleHardManoeuvres": 1,
+              "detectedWithOracleMatch": 2,
+              "acceptedWithOracleMatch": 2,
+              "correctTreffer": 2,
+              "acceptedCorrectTreffer": 2,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST": 1,
+                "ERKANNT": 2,
+                "VERPASST_GRENZWERTIG": 2
+              },
+              "hardFalseAlarms": 1,
+              "softOrIntensityFalse": 1
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 17,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT_UNTERHALB_SCHWELLE": 1,
+                "ERKANNT": 2
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 8,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 8,
+          "confirmedMotionSecs": 160,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 114,
+          "motionNoClaim": 46,
+          "ambiguousSecs": 61,
+          "ambiguousStill": 11,
+          "ambiguousMoving": 14,
+          "ambiguousNoClaim": 36,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 8,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 8,
+          "confirmedMotionSecs": 160,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 114,
+          "motionNoClaim": 46,
+          "ambiguousSecs": 61,
+          "ambiguousStill": 11,
+          "ambiguousMoving": 14,
+          "ambiguousNoClaim": 36,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    },
+    {
+      "id": "TES21-2",
+      "vehicleClass": "TESLA",
+      "eligibility": {
+        "velocitySeeds": 5,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-21T12:20:09Z",
+            "end": "2026-10-21T12:20:15Z",
+            "width": 7
+          },
+          {
+            "start": "2026-10-21T12:20:17Z",
+            "end": "2026-10-21T12:20:27Z",
+            "width": 11
+          }
+        ],
+        "eligibleLabels": 18,
+        "gridLabels": 535,
+        "eligiblePct": 3.36,
+        "repairAccepted": 0,
+        "repairRejected": 18,
+        "uncertain": 0,
+        "passOutside": 517,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 179,
+          "maeKmh": 3.605,
+          "medianAbsKmh": 2.316,
+          "p95AbsKmh": 10.954,
+          "maxAbsKmh": 20.649,
+          "biasKmh": -0.616,
+          "rmseKmh": 5.046,
+          "within3": 0.581,
+          "within5": 0.749
+        },
+        "c51All": {
+          "n": 179,
+          "maeKmh": 3.605,
+          "medianAbsKmh": 2.316,
+          "p95AbsKmh": 10.954,
+          "maxAbsKmh": 20.649,
+          "biasKmh": -0.616,
+          "rmseKmh": 5.046,
+          "within3": 0.581,
+          "within5": 0.749
+        },
+        "common": {
+          "n": 179,
+          "a": {
+            "n": 179,
+            "maeKmh": 3.605,
+            "medianAbsKmh": 2.316,
+            "p95AbsKmh": 10.954,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.616,
+            "rmseKmh": 5.046,
+            "within3": 0.581,
+            "within5": 0.749
+          },
+          "b": {
+            "n": 179,
+            "maeKmh": 3.605,
+            "medianAbsKmh": 2.316,
+            "p95AbsKmh": 10.954,
+            "maxAbsKmh": 20.649,
+            "biasKmh": -0.616,
+            "rmseKmh": 5.046,
+            "within3": 0.581,
+            "within5": 0.749
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 252,
+            "readable": 240,
+            "paired": 179,
+            "pairedShareOfReadable": 0.746,
+            "missingEstimateOnReadable": 61,
+            "exclusions": {
+              "REF_SPEED_MISSING": 12,
+              "OUTSIDE_GRID": 14,
+              "DS4_NULL": 47
+            }
+          },
+          "c51": {
+            "referenceRows": 252,
+            "readable": 240,
+            "paired": 179,
+            "pairedShareOfReadable": 0.746,
+            "missingEstimateOnReadable": 61,
+            "exclusions": {
+              "REF_SPEED_MISSING": 12,
+              "OUTSIDE_GRID": 14,
+              "DS4_NULL": 47
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 4,
+          "acceptedEvents": 4,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 4
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 4,
+            "ds4ByClass": {
+              "TREFFER": 4
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 4,
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 4
+          },
+          "ds4ByQuality": {
+            "OK": 4
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 2,
+            "DECELERATION": 2
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 9,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracleBorderline": 5,
+          "visibleRuns": 19,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+            "VERPASST_OBERHALB_SCHWELLE": 5,
+            "ERKANNT": 4
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 4,
+              "medianS": 0,
+              "meanS": 0,
+              "minS": -1,
+              "maxS": 1,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 8,
+            "medianAbsKmh": 6.85,
+            "p95AbsKmh": 13.91,
+            "maxAbsKmh": 14.9,
+            "biasKmh": 8,
+            "rmseKmh": 9.105,
+            "within3": 0,
+            "within5": 0.25
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 4
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:19:59Z",
+              "2026-10-21T12:24:11Z"
+            ],
+            "referenceRows": 252,
+            "referenceReadable": 240,
+            "referenceMaxKmh": 53,
+            "gridLabels": 535,
+            "c4Numeric": 184,
+            "c4Usable": 184,
+            "detectorSegments": 6,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 4,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 9,
+              "oracleHardManoeuvres": 2,
+              "detectedWithOracleMatch": 4,
+              "acceptedWithOracleMatch": 4,
+              "correctTreffer": 4,
+              "acceptedCorrectTreffer": 4,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 19,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+                "VERPASST_OBERHALB_SCHWELLE": 5,
+                "ERKANNT": 4
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 4,
+          "acceptedEvents": 4,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 4
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              }
+            }
+          },
+          "accepted": {
+            "events": 4,
+            "ds4ByClass": {
+              "TREFFER": 4
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 4,
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              },
+              "end": {
+                "n": 4,
+                "medianS": 2,
+                "meanS": 1.75,
+                "minS": 1,
+                "maxS": 2,
+                "withinTolShare": 1
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 4
+          },
+          "ds4ByQuality": {
+            "OK": 4
+          },
+          "ds4ByKind": {
+            "ACCELERATION": 2,
+            "DECELERATION": 2
+          },
+          "verifiableEvents": 4,
+          "oracleEvents": 9,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracleBorderline": 5,
+          "visibleRuns": 19,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+            "VERPASST_OBERHALB_SCHWELLE": 5,
+            "ERKANNT": 4
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "duration": {
+              "n": 4,
+              "medianS": 0,
+              "meanS": 0,
+              "minS": -1,
+              "maxS": 1,
+              "withinTolShare": 1
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 4,
+            "maeKmh": 8,
+            "medianAbsKmh": 6.85,
+            "p95AbsKmh": 13.91,
+            "maxAbsKmh": 14.9,
+            "biasKmh": 8,
+            "rmseKmh": 9.105,
+            "within3": 0,
+            "within5": 0.25
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 1
+            },
+            "total": 1
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 4
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-21T12:19:59Z",
+              "2026-10-21T12:24:11Z"
+            ],
+            "referenceRows": 252,
+            "referenceReadable": 240,
+            "referenceMaxKmh": 53,
+            "gridLabels": 535,
+            "c4Numeric": 184,
+            "c4Usable": 184,
+            "detectorSegments": 6,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 4
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 4,
+              "accepted": 4,
+              "verifiable": 4,
+              "notEvaluable": 0
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 9,
+              "oracleHardManoeuvres": 2,
+              "detectedWithOracleMatch": 4,
+              "acceptedWithOracleMatch": 4,
+              "correctTreffer": 4,
+              "acceptedCorrectTreffer": 4,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 4,
+                "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 19,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+                "VERPASST_OBERHALB_SCHWELLE": 5,
+                "ERKANNT": 4
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 0,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 15,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 15,
+          "confirmedMotionSecs": 170,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 157,
+          "motionNoClaim": 13,
+          "ambiguousSecs": 55,
+          "ambiguousStill": 2,
+          "ambiguousMoving": 15,
+          "ambiguousNoClaim": 38,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 15,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 15,
+          "confirmedMotionSecs": 170,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 157,
+          "motionNoClaim": 13,
+          "ambiguousSecs": 55,
+          "ambiguousStill": 2,
+          "ambiguousMoving": 15,
+          "ambiguousNoClaim": 38,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    },
+    {
+      "id": "TES16",
+      "vehicleClass": "TESLA",
+      "eligibility": {
+        "velocitySeeds": 5,
+        "suspicionWindows": [
+          {
+            "start": "2026-10-16T03:50:18Z",
+            "end": "2026-10-16T03:50:26Z",
+            "width": 9
+          },
+          {
+            "start": "2026-10-16T03:54:29Z",
+            "end": "2026-10-16T03:54:36Z",
+            "width": 8
+          }
+        ],
+        "eligibleLabels": 17,
+        "gridLabels": 1136,
+        "eligiblePct": 1.5,
+        "repairAccepted": 2,
+        "repairRejected": 15,
+        "uncertain": 0,
+        "passOutside": 1119,
+        "maxSupportOffset": 4
+      },
+      "speed": {
+        "c4All": {
+          "n": 808,
+          "maeKmh": 2.272,
+          "medianAbsKmh": 2.088,
+          "p95AbsKmh": 4.485,
+          "maxAbsKmh": 19.895,
+          "biasKmh": -1.977,
+          "rmseKmh": 2.727,
+          "within3": 0.71,
+          "within5": 0.979
+        },
+        "c51All": {
+          "n": 808,
+          "maeKmh": 2.239,
+          "medianAbsKmh": 2.088,
+          "p95AbsKmh": 4.478,
+          "maxAbsKmh": 6.104,
+          "biasKmh": -1.984,
+          "rmseKmh": 2.584,
+          "within3": 0.71,
+          "within5": 0.98
+        },
+        "common": {
+          "n": 808,
+          "a": {
+            "n": 808,
+            "maeKmh": 2.272,
+            "medianAbsKmh": 2.088,
+            "p95AbsKmh": 4.485,
+            "maxAbsKmh": 19.895,
+            "biasKmh": -1.977,
+            "rmseKmh": 2.727,
+            "within3": 0.71,
+            "within5": 0.979
+          },
+          "b": {
+            "n": 808,
+            "maeKmh": 2.239,
+            "medianAbsKmh": 2.088,
+            "p95AbsKmh": 4.478,
+            "maxAbsKmh": 6.104,
+            "biasKmh": -1.984,
+            "rmseKmh": 2.584,
+            "within3": 0.71,
+            "within5": 0.98
+          }
+        },
+        "coverage": {
+          "c4": {
+            "referenceRows": 1136,
+            "readable": 973,
+            "paired": 808,
+            "pairedShareOfReadable": 0.83,
+            "missingEstimateOnReadable": 165,
+            "exclusions": {
+              "REF_SPEED_MISSING": 163,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 165
+            }
+          },
+          "c51": {
+            "referenceRows": 1136,
+            "readable": 973,
+            "paired": 808,
+            "pairedShareOfReadable": 0.83,
+            "missingEstimateOnReadable": 165,
+            "exclusions": {
+              "REF_SPEED_MISSING": 163,
+              "OUTSIDE_GRID": 0,
+              "DS4_NULL": 165
+            }
+          }
+        }
+      },
+      "coverageDelta": {
+        "lost": [],
+        "gained": []
+      },
+      "events": {
+        "c4": {
+          "ds4Events": 17,
+          "acceptedEvents": 17,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 15,
+                "FEHLALARM_UNBESTIMMT": 1,
+                "FEHLALARM": 1
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              }
+            }
+          },
+          "accepted": {
+            "events": 17,
+            "ds4ByClass": {
+              "TREFFER": 15,
+              "FEHLALARM_UNBESTIMMT": 1,
+              "FEHLALARM": 1
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 15
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 15,
+                "medianS": 1,
+                "meanS": 0.93,
+                "minS": -2,
+                "maxS": 5,
+                "withinTolShare": 0.87
+              },
+              "end": {
+                "n": 15,
+                "medianS": 0,
+                "meanS": 0.53,
+                "minS": 0,
+                "maxS": 3,
+                "withinTolShare": 0.93
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "ds4ByQuality": {
+            "OK": 16,
+            "DEGRADED": 1
+          },
+          "ds4ByKind": {
+            "DECELERATION": 8,
+            "ACCELERATION": 9
+          },
+          "verifiableEvents": 16,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracleBorderline": 12,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT": 15
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 15,
+              "medianS": 1,
+              "meanS": 0.93,
+              "minS": -2,
+              "maxS": 5,
+              "withinTolShare": 0.87
+            },
+            "end": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": 0.53,
+              "minS": 0,
+              "maxS": 3,
+              "withinTolShare": 0.93
+            },
+            "duration": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": -0.4,
+              "minS": -4,
+              "maxS": 3,
+              "withinTolShare": 0.87
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 15,
+            "maeKmh": 3.4,
+            "medianAbsKmh": 1.2,
+            "p95AbsKmh": 12.75,
+            "maxAbsKmh": 36.2,
+            "biasKmh": 1.693,
+            "rmseKmh": 9.432,
+            "within3": 0.933,
+            "within5": 0.933
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 3
+            },
+            "total": 3
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 15,
+            "OK|FEHLALARM_UNBESTIMMT": 1,
+            "DEGRADED|FEHLALARM": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-16T03:36:00Z",
+              "2026-10-16T03:54:55Z"
+            ],
+            "referenceRows": 1136,
+            "referenceReadable": 973,
+            "referenceMaxKmh": 134,
+            "gridLabels": 1136,
+            "c4Numeric": 848,
+            "c4Usable": 848,
+            "detectorSegments": 8,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 17
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 17,
+              "accepted": 17,
+              "verifiable": 16,
+              "notEvaluable": 1
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 6,
+              "detectedWithOracleMatch": 15,
+              "acceptedWithOracleMatch": 15,
+              "correctTreffer": 15,
+              "acceptedCorrectTreffer": 15,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              },
+              "hardFalseAlarms": 1,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT": 15
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 1,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        },
+        "c51": {
+          "ds4Events": 16,
+          "acceptedEvents": 16,
+          "artefactSuspectView": [],
+          "sensitivity": {
+            "strict": {
+              "ds4ByClass": {
+                "TREFFER": 15,
+                "FEHLALARM_UNBESTIMMT": 1
+              },
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              }
+            }
+          },
+          "accepted": {
+            "events": 16,
+            "ds4ByClass": {
+              "TREFFER": 15,
+              "FEHLALARM_UNBESTIMMT": 1
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 15
+            },
+            "oracleHardMissed": 0,
+            "oracleBorderlineMissed": 3,
+            "offsets": {
+              "start": {
+                "n": 15,
+                "medianS": 1,
+                "meanS": 0.93,
+                "minS": -2,
+                "maxS": 5,
+                "withinTolShare": 0.87
+              },
+              "end": {
+                "n": 15,
+                "medianS": 0,
+                "meanS": 0.53,
+                "minS": 0,
+                "maxS": 3,
+                "withinTolShare": 0.93
+              }
+            }
+          },
+          "ds4ByClass": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "ds4ByQuality": {
+            "OK": 16
+          },
+          "ds4ByKind": {
+            "DECELERATION": 8,
+            "ACCELERATION": 8
+          },
+          "verifiableEvents": 15,
+          "oracleEvents": 18,
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracleBorderline": 12,
+          "visibleRuns": 45,
+          "visibleRunsByStatus": {
+            "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+            "VERPASST_OBERHALB_SCHWELLE": 3,
+            "ERKANNT": 15
+          },
+          "operatorWindowsByStatus": null,
+          "offsets": {
+            "start": {
+              "n": 15,
+              "medianS": 1,
+              "meanS": 0.93,
+              "minS": -2,
+              "maxS": 5,
+              "withinTolShare": 0.87
+            },
+            "end": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": 0.53,
+              "minS": 0,
+              "maxS": 3,
+              "withinTolShare": 0.93
+            },
+            "duration": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": -0.4,
+              "minS": -4,
+              "maxS": 3,
+              "withinTolShare": 0.87
+            }
+          },
+          "deltaDiffKmh": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "deltaErrSameWindowKmh": {
+            "n": 14,
+            "maeKmh": 1.057,
+            "medianAbsKmh": 1.1,
+            "p95AbsKmh": 2.31,
+            "maxAbsKmh": 2.7,
+            "biasKmh": -0.771,
+            "rmseKmh": 1.309,
+            "within3": 1,
+            "within5": 1
+          },
+          "nearBoundary": {
+            "byClass": {
+              "TREFFER": 3
+            },
+            "total": 3
+          },
+          "implausible": [],
+          "overReferenceMax": [],
+          "byQualityAndClass": {
+            "OK|TREFFER": 15,
+            "OK|FEHLALARM_UNBESTIMMT": 1
+          },
+          "coverage": {
+            "referenceWindowUtc": [
+              "2026-10-16T03:36:00Z",
+              "2026-10-16T03:54:55Z"
+            ],
+            "referenceRows": 1136,
+            "referenceReadable": 973,
+            "referenceMaxKmh": 134,
+            "gridLabels": 1136,
+            "c4Numeric": 848,
+            "c4Usable": 848,
+            "detectorSegments": 8,
+            "quarantinedSecs": 0,
+            "eventsInsideReferenceWindow": 16
+          },
+          "matchingMode": "v2_gap2s",
+          "metricsLayers": {
+            "ds4": {
+              "detected": 16,
+              "accepted": 16,
+              "verifiable": 15,
+              "notEvaluable": 1
+            },
+            "t2_sameDetectorOnVideoSpeed": {
+              "oracleManoeuvres": 18,
+              "oracleHardManoeuvres": 6,
+              "detectedWithOracleMatch": 15,
+              "acceptedWithOracleMatch": 15,
+              "correctTreffer": 15,
+              "acceptedCorrectTreffer": 15,
+              "fragments": 0,
+              "oracleByStatus": {
+                "VERPASST_GRENZWERTIG": 3,
+                "ERKANNT": 15
+              },
+              "hardFalseAlarms": 0,
+              "softOrIntensityFalse": 0
+            },
+            "t1_operatorWindows": null,
+            "t3_visibleRuns": {
+              "runs": 45,
+              "byStatus": {
+                "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+                "VERPASST_OBERHALB_SCHWELLE": 3,
+                "ERKANNT": 15
+              }
+            },
+            "nonEvaluable": {
+              "unverifizierbar": 0,
+              "fehlalarmUnbestimmt": 1,
+              "outsideReferenceWindowNotes": 0
+            }
+          }
+        }
+      },
+      "motion": {
+        "c4": {
+          "confirmedStillCoreSecs": 116,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 116,
+          "confirmedMotionSecs": 739,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 730,
+          "motionNoClaim": 9,
+          "ambiguousSecs": 118,
+          "ambiguousStill": 17,
+          "ambiguousMoving": 36,
+          "ambiguousNoClaim": 65,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        },
+        "c51": {
+          "confirmedStillCoreSecs": 116,
+          "falseMotionInConfirmedStill": 0,
+          "stillCorrect": 0,
+          "stillNoClaim": 116,
+          "confirmedMotionSecs": 739,
+          "falseStillInConfirmedMotion": 0,
+          "motionCorrect": 730,
+          "motionNoClaim": 9,
+          "ambiguousSecs": 118,
+          "ambiguousStill": 17,
+          "ambiguousMoving": 36,
+          "ambiguousNoClaim": 65,
+          "falseMotionLabels": [],
+          "falseStillLabels": []
+        }
+      },
+      "quarantineParity": true,
+      "c4ReplayParityMismatches": 0,
+      "passThroughViolations": 0
+    }
+  ],
+  "tes16SecondTrace": [
+    {
+      "label": "2026-10-16T03:50:20Z",
+      "refKmh": 133,
+      "c4Kmh": 113.10468732349274,
+      "c51Kmh": 129.584682365988,
+      "repairState": "REPAIR_ACCEPTED",
+      "eligibilitySignals": [
+        "S3"
+      ],
+      "trace": {
+        "label": "2026-10-16T03:50:20Z",
+        "eligibilitySignals": [
+          "S3"
+        ],
+        "inWindow": true,
+        "timeSuspects": [
+          "2026-10-16T03:50:22Z"
+        ],
+        "attributionP": "2026-10-16T03:50:22Z",
+        "attributionOffsetS": 2,
+        "looDetail": {
+          "v1Kmh": 64.51306933814512,
+          "v2Kmh": 255.9605404619024,
+          "crossM": 0.16932214692751835,
+          "vAbKmh": 128.3281733406095
+        },
+        "manoeuvreGuard": {
+          "pass": true,
+          "detail": {
+            "vAbKmh": 128.3281733406095,
+            "vPreKmh": 129.23934981289565,
+            "vPostKmh": 126.92532305839849
+          }
+        },
+        "manoeuvreTroughGuard": {
+          "pass": true,
+          "cand": 129.584682365988,
+          "detail": {
+            "trough": true,
+            "leftMax": 129.78856651286918,
+            "rightMax": 148.2894329471151
+          }
+        },
+        "support": {
+          "h": 4,
+          "totalForRule": 7,
+          "left": 4,
+          "right": 2,
+          "supportLabelsUsed": [
+            "2026-10-16T03:50:16Z",
+            "2026-10-16T03:50:17Z",
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z"
+          ],
+          "slopeSupportLabels": [
+            "2026-10-16T03:50:16Z",
+            "2026-10-16T03:50:17Z",
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z"
+          ],
+          "centerInUsed": true
+        },
+        "candidateKmh": 129.584682365988,
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": true,
+          "Q6": true
+        },
+        "q5Detail": {
+          "vCand": 0.1987827178308284,
+          "vC4": 4.53397027959494
+        },
+        "heading": {
+          "reject": false,
+          "rateDegPerS": 0.11413247114161133,
+          "dt": 3
+        },
+        "headingReject": false
+      },
+      "q": {
+        "Q1": true,
+        "Q2": true,
+        "Q3": true,
+        "Q4": true,
+        "Q5": true,
+        "Q6": true
+      }
+    },
+    {
+      "label": "2026-10-16T03:50:22Z",
+      "refKmh": 132,
+      "c4Kmh": 128.15344679760602,
+      "c51Kmh": 128.15344679760602,
+      "repairState": "REPAIR_REJECTED",
+      "eligibilitySignals": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "trace": {
+        "label": "2026-10-16T03:50:22Z",
+        "eligibilitySignals": [
+          "S2",
+          "S3",
+          "S4"
+        ],
+        "inWindow": true,
+        "timeSuspects": [
+          "2026-10-16T03:50:22Z"
+        ],
+        "attributionP": "2026-10-16T03:50:22Z",
+        "attributionOffsetS": 0,
+        "looDetail": {
+          "v1Kmh": 64.51306933814512,
+          "v2Kmh": 255.9605404619024,
+          "crossM": 0.16932214692751835,
+          "vAbKmh": 128.3281733406095
+        },
+        "manoeuvreGuard": {
+          "pass": true,
+          "detail": {
+            "vAbKmh": 128.3281733406095,
+            "vPreKmh": 129.23934981289565,
+            "vPostKmh": 126.92532305839849
+          }
+        },
+        "manoeuvreTroughGuard": {
+          "pass": true,
+          "cand": 126.71268354059747
+        },
+        "support": {
+          "h": 4,
+          "totalForRule": 7,
+          "left": 3,
+          "right": 4,
+          "supportLabelsUsed": [
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z"
+          ],
+          "slopeSupportLabels": [
+            "2026-10-16T03:50:18Z",
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z"
+          ],
+          "centerInUsed": false
+        },
+        "candidateKmh": 126.71268354059747,
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": false,
+          "Q6": false
+        },
+        "q5Detail": {
+          "reason": "worsens_triple_accel",
+          "vCand": 5.993541501810454,
+          "vC4": 5.593329485974745
+        },
+        "heading": {
+          "reject": false,
+          "rateDegPerS": 0.13563327141239748,
+          "dt": 3
+        },
+        "headingReject": false
+      },
+      "q": {
+        "Q1": true,
+        "Q2": true,
+        "Q3": true,
+        "Q4": true,
+        "Q5": false,
+        "Q6": false
+      }
+    },
+    {
+      "label": "2026-10-16T03:50:23Z",
+      "refKmh": 132,
+      "c4Kmh": 148.2894329471151,
+      "c51Kmh": 125.89577000351147,
+      "repairState": "REPAIR_ACCEPTED",
+      "eligibilitySignals": [
+        "S1",
+        "S2",
+        "S4"
+      ],
+      "trace": {
+        "label": "2026-10-16T03:50:23Z",
+        "eligibilitySignals": [
+          "S1",
+          "S2",
+          "S4"
+        ],
+        "inWindow": true,
+        "timeSuspects": [
+          "2026-10-16T03:50:22Z"
+        ],
+        "attributionP": "2026-10-16T03:50:22Z",
+        "attributionOffsetS": 1,
+        "looDetail": {
+          "v1Kmh": 64.51306933814512,
+          "v2Kmh": 255.9605404619024,
+          "crossM": 0.16932214692751835,
+          "vAbKmh": 128.3281733406095
+        },
+        "manoeuvreGuard": {
+          "pass": true,
+          "detail": {
+            "vAbKmh": 128.3281733406095,
+            "vPreKmh": 129.23934981289565,
+            "vPostKmh": 126.92532305839849
+          }
+        },
+        "manoeuvreTroughGuard": {
+          "pass": true,
+          "cand": 125.89577000351147
+        },
+        "support": {
+          "h": 4,
+          "totalForRule": 7,
+          "left": 2,
+          "right": 4,
+          "supportLabelsUsed": [
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z",
+            "2026-10-16T03:50:27Z"
+          ],
+          "slopeSupportLabels": [
+            "2026-10-16T03:50:19Z",
+            "2026-10-16T03:50:20Z",
+            "2026-10-16T03:50:23Z",
+            "2026-10-16T03:50:24Z",
+            "2026-10-16T03:50:25Z",
+            "2026-10-16T03:50:26Z",
+            "2026-10-16T03:50:27Z"
+          ],
+          "centerInUsed": true
+        },
+        "candidateKmh": 125.89577000351147,
+        "q": {
+          "Q1": true,
+          "Q2": true,
+          "Q3": true,
+          "Q4": true,
+          "Q5": true,
+          "Q6": true
+        },
+        "q5Detail": {
+          "vCand": 0.6271324428040417,
+          "vC4": 6.052608034532964
+        },
+        "heading": {
+          "reject": false,
+          "rateDegPerS": 0.39627638172019175,
+          "dt": 2
+        },
+        "headingReject": false
+      },
+      "q": {
+        "Q1": true,
+        "Q2": true,
+        "Q3": true,
+        "Q4": true,
+        "Q5": true,
+        "Q6": true
+      }
+    }
+  ],
+  "tes16FalseAccel": {
+    "c4": [
+      {
+        "trip": 0,
+        "kind": "ACCELERATION",
+        "startLabel": "2026-10-16T03:50:20Z",
+        "endLabel": "2026-10-16T03:50:23Z",
+        "startUncertaintyS": "±1 s label + unvalidated clock offset",
+        "endUncertaintyS": "±1 s label + unvalidated clock offset",
+        "startSpeedKmh": 113.1,
+        "endSpeedKmh": 148.3,
+        "deltaKmh": 35.2,
+        "meanAccelMps2": 3.258,
+        "peakAccel1sMps2": 5.593,
+        "peakAccel2sMps2": 3.258,
+        "durationS": 3,
+        "steps": 2,
+        "coverageRatio": 0.75,
+        "quality": "DEGRADED",
+        "source": "C4_ADAPTIVE_L3",
+        "algorithmVersion": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+        "flags": [
+          "L3_LEG_TIMING_SUSPECT_FALLBACK_ROBUST",
+          "L3_SUPPORT_MISSING_FALLBACK_ROBUST",
+          "TIMING_JITTER_SUSPECT_IN_WINDOW"
+        ]
+      }
+    ],
+    "c51": []
+  },
+  "tes21_1_12_05_23": {
+    "c4Kmh": 14.858372594105312,
+    "c51Kmh": 14.858372594105312,
+    "repairState": "REPAIR_REJECTED"
+  },
+  "tig22_18_41_45": {
+    "c4Kmh": 43.56220401178661,
+    "c51Kmh": 51.407592835199324,
+    "repairState": "REPAIR_ACCEPTED"
+  },
+  "attributionHorizons": [
+    {
+      "id": "TIG22",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 4,
+      "maxTimeSuspectSpanS": 4,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    },
+    {
+      "id": "TES21-1",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 3,
+      "maxTimeSuspectSpanS": 8,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    },
+    {
+      "id": "TES21-2",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 0,
+      "maxTimeSuspectSpanS": 0,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    },
+    {
+      "id": "TES16",
+      "maxSupportOffset": 4,
+      "maxAttributionOffsetS": 4,
+      "maxTimeSuspectSpanS": 0,
+      "supportHalfSMax": 4,
+      "note": "Offline eligibility may depend on merged suspicion windows (seeds ±3 + gap bridge); repair support and attribution LOO remain capped at ±4 s."
+    }
+  ],
+  "validationGates": {
+    "gates": [
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "covC4": 0.963,
+          "covC51": 0.963
+        },
+        "scored": true
+      },
+      {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 2,
+          "passOutside": 2056,
+          "repairRejected": 33,
+          "uncertain": 3
+        },
+        "scored": true
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "violations": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {},
+        "scored": true
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 142.08802935867215,
+          "maxC51Kmh": 142.08802935867215
+        },
+        "scored": true
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "max": 4,
+          "maxAttributionOffsetS": 4
+        },
+        "scored": true
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "pct": 1.81,
+          "eligible": 38,
+          "grid": 2094
+        },
+        "scored": true
+      },
+      {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TIG22",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        },
+        "scored": false
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maeC4": 2.905,
+          "maeC51": 2.9,
+          "n": 1364
+        },
+        "scored": true
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "p95C4": 5.918,
+          "p95C51": 5.903
+        },
+        "scored": true
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "oracleHardMissedC4": 1,
+          "oracleHardMissedC51": 1
+        },
+        "scored": true
+      },
+      {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TIG22",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 20,
+          "c51EventRows": 20
+        },
+        "scored": false
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "hardFalseAlarmsC4": 0,
+          "hardFalseAlarmsC51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 20,
+          "eventsC51": 20,
+          "recallImproved": false
+        },
+        "scored": true
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TIG22",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "mismatches": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D5_tig22_1904_unscored_gap",
+        "drive": "TIG22",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "19:04 remains UNSCORED_VIDEO_GAP per video reference; not asserted in offline event rows.",
+          "unscoredCount": 0
+        },
+        "scored": false
+      },
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "covC4": 0.655,
+          "covC51": 0.655
+        },
+        "scored": true
+      },
+      {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 0,
+          "passOutside": 487,
+          "repairRejected": 16,
+          "uncertain": 30
+        },
+        "scored": true
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "violations": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {},
+        "scored": true
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 56.19229495903836,
+          "maxC51Kmh": 56.19229495903836
+        },
+        "scored": true
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "max": 4,
+          "maxAttributionOffsetS": 3
+        },
+        "scored": true
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "pct": 8.63,
+          "eligible": 46,
+          "grid": 533
+        },
+        "scored": true
+      },
+      {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TES21-1",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        },
+        "scored": false
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maeC4": 2.292,
+          "maeC51": 2.292,
+          "n": 150
+        },
+        "scored": true
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "p95C4": 8.562,
+          "p95C51": 8.562
+        },
+        "scored": true
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "oracleHardMissedC4": 1,
+          "oracleHardMissedC51": 1
+        },
+        "scored": true
+      },
+      {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TES21-1",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 4,
+          "c51EventRows": 4
+        },
+        "scored": false
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "hardFalseAlarmsC4": 1,
+          "hardFalseAlarmsC51": 1
+        },
+        "scored": true
+      },
+      {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 4,
+          "eventsC51": 4,
+          "recallImproved": false
+        },
+        "scored": true
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "mismatches": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "covC4": 0.746,
+          "covC51": 0.746
+        },
+        "scored": true
+      },
+      {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 0,
+          "passOutside": 517,
+          "repairRejected": 18,
+          "uncertain": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "violations": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {},
+        "scored": true
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 51.74734893386582,
+          "maxC51Kmh": 51.74734893386582
+        },
+        "scored": true
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "max": 4,
+          "maxAttributionOffsetS": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "pct": 3.36,
+          "eligible": 18,
+          "grid": 535
+        },
+        "scored": true
+      },
+      {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TES21-2",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        },
+        "scored": false
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maeC4": 3.605,
+          "maeC51": 3.605,
+          "n": 179
+        },
+        "scored": true
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "p95C4": 10.954,
+          "p95C51": 10.954
+        },
+        "scored": true
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "oracleHardMissedC4": 0,
+          "oracleHardMissedC51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TES21-2",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 4,
+          "c51EventRows": 4
+        },
+        "scored": false
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "hardFalseAlarmsC4": 0,
+          "hardFalseAlarmsC51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 4,
+          "eventsC51": 4,
+          "recallImproved": false
+        },
+        "scored": true
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TES21-2",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "mismatches": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A/B1_coverage",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "covC4": 0.83,
+          "covC51": 0.83
+        },
+        "scored": true
+      },
+      {
+        "gate": "A3_repair_accepted_lt_pass_through",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "repairAccepted": 2,
+          "passOutside": 1119,
+          "repairRejected": 15,
+          "uncertain": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A4_no_c4_numeric_to_null",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "B2_no_numeric_loss",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "lost": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "A_pass_through_fields",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "violations": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "F1_quarantine_parity",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {},
+        "scored": true
+      },
+      {
+        "gate": "F2_no_new_gt_250_kmh",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxC4Kmh": 148.2894329471151,
+          "maxC51Kmh": 129.78856651286918
+        },
+        "scored": true
+      },
+      {
+        "gate": "F3_max_support_offset",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "max": 4,
+          "maxAttributionOffsetS": 4
+        },
+        "scored": true
+      },
+      {
+        "gate": "G1_eligibility_pct",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "pct": 1.5,
+          "eligible": 17,
+          "grid": 1136
+        },
+        "scored": true
+      },
+      {
+        "gate": "G2_tes16_gap_window_covers_cluster",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "window": {
+            "start": "2026-10-16T03:50:18Z",
+            "end": "2026-10-16T03:50:26Z",
+            "width": 9
+          }
+        },
+        "scored": true
+      },
+      {
+        "gate": "C4_residual_pass_through_risk_documented",
+        "drive": "TES16",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "note": "Residual C4>|8| km/h on pass-through documented in drive speed tables; not a pass/fail gate."
+        },
+        "scored": false
+      },
+      {
+        "gate": "C1_common_mae",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maeC4": 2.272,
+          "maeC51": 2.239,
+          "n": 808
+        },
+        "scored": true
+      },
+      {
+        "gate": "C2_common_p95",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "p95C4": 4.485,
+          "p95C51": 4.478
+        },
+        "scored": true
+      },
+      {
+        "gate": "D1_confirmed_recall",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "oracleHardMissedC4": 0,
+          "oracleHardMissedC51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D3_unknown_oracle_reported",
+        "drive": "TES16",
+        "pass": null,
+        "status": "NOT_VERIFIED",
+        "detail": {
+          "c4EventRows": 17,
+          "c51EventRows": 16
+        },
+        "scored": false
+      },
+      {
+        "gate": "D2_hard_false_alarms",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "hardFalseAlarmsC4": 1,
+          "hardFalseAlarmsC51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D6_no_event_drop_without_oracle_gain",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "eventsC4": 17,
+          "eventsC51": 16,
+          "recallImproved": false
+        },
+        "scored": true
+      },
+      {
+        "gate": "E1_false_motion_still",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "E2_false_still_motion",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4": 0,
+          "c51": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "PRODUCTION_C4_REPLAY_PARITY",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "mismatches": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "D4_tes16_false_accel_removed",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4Events": 1,
+          "c51Events": 0
+        },
+        "scored": true
+      },
+      {
+        "gate": "C3_tes16_critical_max_err",
+        "drive": "TES16",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "maxErrKmh": 6.1
+        },
+        "scored": true
+      },
+      {
+        "gate": "TES21_1_brake_120523_not_worsened",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "c4Kmh": 14.858372594105312,
+          "c51Kmh": 14.858372594105312,
+          "repairState": "REPAIR_REJECTED"
+        },
+        "scored": true
+      },
+      {
+        "gate": "TES21_1_real_decel_preserved",
+        "drive": "TES21-1",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "decelC4": 1,
+          "decelC51": 1
+        },
+        "scored": true
+      },
+      {
+        "gate": "H_synthetics",
+        "drive": "ALL",
+        "pass": true,
+        "status": "PASS",
+        "detail": {
+          "syntheticsOk": true,
+          "supportOk": true
+        },
+        "scored": true
+      }
+    ],
+    "allPass": true,
+    "scoredPass": true
+  },
+  "gateCounts": {
+    "pass": 74,
+    "fail": 0,
+    "notVerified": 9,
+    "scored": 74,
+    "total": 83
+  },
+  "testIntegrityAudit": {
+    "algorithmFileSha256": "6aca50a074b09f04ff67a9cdfa7b188bd79c6e18f6780af79e773f30bb171352",
+    "algorithmHeadPinned": "53f5acebc13f8ac45498b9ff7311e4152f30f1fe",
+    "productionPin": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+    "codeSha": "53f5acebc13f8ac45498b9ff7311e4152f30f1fe",
+    "commands": [
+      "node scripts/c5-1.support.test.cjs",
+      "node scripts/c5-1.synthetic.test.cjs",
+      "node scripts/run_c5_1_experiment.cjs --code-root <repo>"
+    ],
+    "syntheticAudit": {
+      "schema": "C5_1_SYNTHETIC_TEST_AUDIT_V1",
+      "scenarios": {
+        "1_constant_cruise": {
+          "legKmh": 99.96769340357089,
+          "valueKmh": 99.9675553225025
+        },
+        "2_strong_accel": {
+          "meanAccelMps2": 2.9966334953530347,
+          "repairAccepted": 0
+        },
+        "3_strong_brake": {
+          "meanAccelMps2": -2.164235302203072,
+          "legSpeedsKmh": [
+            100.68688544228179,
+            89.89900486161817,
+            79.1111242752659,
+            68.32324369460225,
+            57.535363111094306,
+            46.74748252758635,
+            35.9596019440784,
+            25.171721360570448,
+            14.383840777062495,
+            7.1919203871090875,
+            7.191920389953408,
+            7.191920389953408,
+            7.1919203871090875
+          ]
+        },
+        "4_heading_veto": {
+          "cornerRateDegPerS": 38.490588103023256,
+          "straightRepairState": "REPAIR_ACCEPTED",
+          "gatesWithoutHeading": true,
+          "headingRejectOnCornerGeometry": true,
+          "vetoBlocksCandidacy": true
+        },
+        "5_start_from_stop": {
+          "vEarlyKmh": 0,
+          "vLateKmh": 61.131323304648845
+        },
+        "6_time_suspect": {
+          "attributed": true,
+          "accepted": 2
+        },
+        "7_quarantine": {
+          "labels": [
+            "2027-01-15T08:03:24Z",
+            "2027-01-15T08:03:25Z",
+            "2027-01-15T08:03:26Z"
+          ]
+        },
+        "8_missing_bucket": {
+          "absent": "2027-01-15T08:03:24Z"
+        },
+        "9_brake_protection": {
+          "unitGuard": {
+            "reason": "upward_at_c4_trough_attribution_astern",
+            "leftMax": 50.343373185334364,
+            "rightMax": 21.575731363924305,
+            "c4Kmh": 14.5,
+            "cand": 21
+          },
+          "integration": "VERIFIED",
+          "target": {
+            "label": "2027-01-15T08:11:46Z",
+            "c4": 46.74741795730257,
+            "c51": 46.74741795730257,
+            "state": "REPAIR_REJECTED"
+          }
+        }
+      }
+    },
+    "regressionBaseline": "/workspace/.worktrees/ds4-speed-ref/research/driving-intelligence/evaluations/ds4-c5-1-gated-repair-20261023/outputs/baselines/c5_1_v1_1_regression_fingerprint_53f5acebc.json",
+    "regressionUnchanged": true,
+    "regressionMismatches": []
+  },
+  "finalVerdict": "SAFE_OFFLINE_CANDIDATE",
+  "finalTestVerdict": "PASS",
+  "priorV1Verdict": "PROVEN_FOR_LOCAL_REPAIR",
+  "independentGeneralization": "NOT_YET_PROVEN"
+}
