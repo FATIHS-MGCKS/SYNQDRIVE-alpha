@@ -25,6 +25,7 @@ const EMPTY_RESPONSE: DiV0MotionCoreShadowTripMapReadResponse = {
   pinnedSnapshotHash: null,
   combinedInputIdentity: null,
   algorithmVersions: null,
+  speedAuthority: null,
   computedAtUtc: null,
   geometrySource: 'NONE',
   geometryNote: null,
@@ -53,6 +54,7 @@ export class DiV0MotionCoreShadowTripMapReadService {
     organizationId: string,
     vehicleId: string,
     tripId: string,
+    options?: { includeRepairAdminDetail?: boolean },
   ): Promise<DiV0MotionCoreShadowTripMapReadResponse> {
     const trip = await this.prisma.vehicleTrip.findFirst({
       where: { id: tripId, vehicleId, vehicle: { organizationId } },
@@ -98,7 +100,9 @@ export class DiV0MotionCoreShadowTripMapReadService {
       run.pinnedSnapshotHash,
     );
     const positions = positionLoad.rows;
-    let { samples, geometrySource, geometryNote } = buildMotionTripMapSamples(payload, positions, []);
+    let { samples, geometrySource, geometryNote } = buildMotionTripMapSamples(payload, positions, [], {
+      includeRepairAdminDetail: options?.includeRepairAdminDetail,
+    });
     let sampleByLabel = new Map(samples.map((s) => [s.bucketLabelUtc, s]));
     let events = mapMotionTripMapEvents(payload, sampleByLabel);
     let stopEpisodes = mapMotionTripMapStops(payload.stopEpisodes, sampleByLabel);
@@ -129,7 +133,14 @@ export class DiV0MotionCoreShadowTripMapReadService {
       workItemId: run.workItemId,
       pinnedSnapshotHash: run.pinnedSnapshotHash,
       combinedInputIdentity: run.combinedInputIdentity,
-      algorithmVersions: payload.contract.algorithmVersions,
+      algorithmVersions: {
+        c4: payload.contract.algorithmVersions.c4,
+        c5_1: payload.contract.algorithmVersions.c5_1,
+        fsm: payload.contract.algorithmVersions.fsm,
+        events: payload.contract.algorithmVersions.events,
+        bundle: payload.contract.algorithmVersions.bundle,
+      },
+      speedAuthority: payload.contract.speedAuthority,
       computedAtUtc: payload.contract.timeSemantics.computedAtUtc,
       geometrySource,
       geometryNote,

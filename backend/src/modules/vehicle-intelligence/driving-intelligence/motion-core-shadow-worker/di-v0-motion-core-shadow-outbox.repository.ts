@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import { DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-motion-core-shadow.bundle.version';
+import type { DiV0MotionCoreShadowControlPlaneConfig } from './di-v0-motion-core-shadow-control-plane';
+import { resolveMotionCoreShadowBundleVersion } from './di-v0-motion-core-shadow.bundle.version';
 import { buildMotionCoreShadowIntentKey } from './di-v0-motion-core-shadow-intent';
 import { DI_V0_MOTION_CORE_SHADOW_TUNING } from './di-v0-motion-core-shadow.config';
 
@@ -31,6 +32,7 @@ export class DiV0MotionCoreShadowOutboxRepository {
     enabledSince: Date;
     organizationAllowlist: readonly string[];
     vehicleAllowlist: readonly string[];
+    controlPlane: DiV0MotionCoreShadowControlPlaneConfig;
     limit: number;
     now: Date;
   }): Promise<number> {
@@ -79,11 +81,14 @@ export class DiV0MotionCoreShadowOutboxRepository {
       ORDER BY wi.completed_at ASC
       LIMIT ${input.limit}`;
 
+    const shadowBundleVersion = resolveMotionCoreShadowBundleVersion(input.controlPlane.c5_1PreferredSpeedEnabled);
+
     let inserted = 0;
     for (const c of candidates) {
       const shadowIntentKey = buildMotionCoreShadowIntentKey({
         pinnedSnapshotHash: c.pinned_snapshot_hash,
         combinedInputIdentity: c.combined_input_identity,
+        bundleVersion: shadowBundleVersion,
       });
       const blocked = await this.prisma.$queryRaw<Array<{ one: number }>>`
         SELECT 1 AS one FROM di_v0_motion_core_shadow_runs_v1 r
@@ -99,7 +104,7 @@ export class DiV0MotionCoreShadowOutboxRepository {
           shadow_bundle_version, status, next_attempt_at
         ) VALUES (
           ${c.work_item_id}, ${shadowIntentKey}, ${c.organization_id}, ${c.trip_id}, ${c.vehicle_id},
-          ${DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V1}, 'PENDING', ${input.now}
+          ${shadowBundleVersion}, 'PENDING', ${input.now}
         )
         ON CONFLICT (work_item_id, shadow_intent_key) DO NOTHING
         RETURNING outbox_id`;

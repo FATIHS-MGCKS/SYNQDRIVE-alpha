@@ -10,7 +10,7 @@ import {
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../s4d-replay/di-v0-s4d-verified-snapshot';
 import { DiV0S4ResearchS4ReadRepository } from '../s4-research-worker/di-v0-s4-research-s4-read.repository';
-import { DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V1 } from './di-v0-motion-core-shadow.bundle.version';
+import { resolveMotionCoreShadowBundleVersion } from './di-v0-motion-core-shadow.bundle.version';
 import {
   DI_V0_MOTION_CORE_SHADOW_TUNING,
   isDiV0MotionCoreShadowWorkerRunnable,
@@ -74,6 +74,7 @@ export class DiV0MotionCoreShadowService {
       enabledSince: this.runtimeConfig.enabledSince,
       organizationAllowlist: [...cp.organizationAllowlist],
       vehicleAllowlist: [...cp.vehicleAllowlist],
+      controlPlane: cp,
       limit: this.runtimeConfig.batchLimit * 5,
       now,
     });
@@ -196,12 +197,15 @@ export class DiV0MotionCoreShadowService {
 
     let processed;
     try {
+      const vehiclePlausibilityClass = await this.resolveVehiclePlausibilityClass(row.vehicleId);
       processed = processDiV0MotionCoreShadowTrip({
         parsed: verified.parsed,
         sourceFamily: wi.sourceFamily as DiV0S4SourceFamily,
         pinnedSnapshotHash: wi.pinnedSnapshotHash,
         combinedInputIdentity: wi.combinedInputIdentity,
         computedAt: now,
+        c5_1PreferredSpeedEnabled: this.runtimeConfig.controlPlane.c5_1PreferredSpeedEnabled,
+        vehiclePlausibilityClass,
       });
     } catch (error) {
       await this.outbox.markSkipped(
@@ -224,7 +228,9 @@ export class DiV0MotionCoreShadowService {
       tripId: row.tripId,
       workItemId: row.workItemId,
       shadowIntentKey: row.shadowIntentKey,
-      shadowBundleVersion: DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V1,
+      shadowBundleVersion: resolveMotionCoreShadowBundleVersion(
+        this.runtimeConfig.controlPlane.c5_1PreferredSpeedEnabled,
+      ),
       pinnedSnapshotHash: wi.pinnedSnapshotHash,
       combinedInputIdentity: wi.combinedInputIdentity,
       contentFingerprint: processed.payloadFingerprint,
@@ -240,5 +246,16 @@ export class DiV0MotionCoreShadowService {
 
     await this.outbox.markSucceeded(row.outboxId, row.claimToken);
     return insert.outcome === 'inserted' ? 'SUCCEEDED' : 'NEUTRAL';
+  }
+
+  /** DS4 evaluation plausibility class — conservative default TESLA when unknown. */
+  private async resolveVehiclePlausibilityClass(vehicleId: string): Promise<'TESLA' | 'TIGUAN'> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId },
+      select: { model: true, make: true },
+    });
+    const hay = `${vehicle?.make ?? ''} ${vehicle?.model ?? ''}`.toLowerCase();
+    if (hay.includes('tiguan')) return 'TIGUAN';
+    return 'TESLA';
   }
 }

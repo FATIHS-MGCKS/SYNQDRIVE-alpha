@@ -1509,7 +1509,10 @@ export class VehicleIntelligenceController {
     if (!trip || trip.vehicleId !== vehicleId) {
       throw new NotFoundException('Trip not found');
     }
-    return this.motionCoreShadowTripMapRead.readForTrip(organizationId, vehicleId, tripId);
+    const includeRepairAdminDetail = req.user?.platformRole === 'MASTER_ADMIN';
+    return this.motionCoreShadowTripMapRead.readForTrip(organizationId, vehicleId, tripId, {
+      includeRepairAdminDetail,
+    });
   }
 
   @Get('trips/:tripId/m7a-road-assignment-shadow')

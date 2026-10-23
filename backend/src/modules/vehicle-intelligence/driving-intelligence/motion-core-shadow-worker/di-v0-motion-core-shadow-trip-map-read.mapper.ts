@@ -27,6 +27,7 @@ export function buildMotionTripMapSamples(
   payload: DiV0MotionCoreShadowPayloadV1,
   positions: MotionMapPositionRow[],
   routePoints: MotionMapRoutePointForAlign[],
+  options?: { includeRepairAdminDetail?: boolean },
 ): {
   samples: DiV0MotionCoreShadowTripMapSampleDto[];
   geometrySource: DiV0MotionCoreShadowTripMapGeometrySource;
@@ -35,9 +36,15 @@ export function buildMotionTripMapSamples(
   const posByLabel = new Map(positions.map((p) => [p.bucketLabelUtc, p]));
   const fsmByLabel = new Map(payload.fsmLabels.map((l) => [l.bucketLabelUtc, l]));
 
+  const repairByLabel = new Map((payload.speedRepairs ?? []).map((r) => [r.bucketLabelUtc, r]));
+  const c4ByLabel = new Map((payload.c4Speeds ?? []).map((s) => [s.bucketLabelUtc, s]));
+  const includeAdmin = options?.includeRepairAdminDetail === true;
+
   const baseSamples: DiV0MotionCoreShadowTripMapSampleDto[] = payload.speeds.map((speed) => {
     const pos = posByLabel.get(speed.bucketLabelUtc);
     const fsm = fsmByLabel.get(speed.bucketLabelUtc);
+    const repair = repairByLabel.get(speed.bucketLabelUtc);
+    const c4 = c4ByLabel.get(speed.bucketLabelUtc);
     return {
       bucketLabelUtc: speed.bucketLabelUtc,
       speedKmh: speed.speedKmh,
@@ -46,6 +53,13 @@ export function buildMotionTripMapSamples(
       latitude: pos?.latitude ?? null,
       longitude: pos?.longitude ?? null,
       positionAvailability: pos?.availability ?? null,
+      ...(includeAdmin && payload.contract.speedAuthority === 'C5_1_PREFERRED'
+        ? {
+            c4SpeedKmh: c4?.speedKmh ?? repair?.c4SpeedKmh ?? null,
+            repairState: repair?.repairState ?? null,
+            repairRejectionReason: repair?.rejectionReason ?? null,
+          }
+        : {}),
     };
   });
 
