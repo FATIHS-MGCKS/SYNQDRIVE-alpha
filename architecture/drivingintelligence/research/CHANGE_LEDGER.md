@@ -2187,3 +2187,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | C1 bridged over quarantined teleports (481–2281 km/h); corrupted neighbour median waived 900 km/h; INTERVAL_ONLY OBD still counted as stop evidence; S4 dormant audit broken by core test importing `s4a-foundation` |
 | VALIDATION | Jest `motion-core-leg-gate`, `motion-core-tiguan-gps-obd-hardening` (shadow-worker), `r1-obd-fsm-point-authority`, `di-v0-s4a-dormant-audit`; `npm run build`; summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/BEFORE_AFTER_SUMMARY.json` |
 | NON_EFFECTS | No deploy/reprocessing/flags; M7A paused; frozen audit package unchanged |
+
+### DS4 motion FSM — retrospective gap bridge V1 (2026-10-23, research + isolated impl)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-fsm-gap-bridge-v1.ts`; `MotionFsmCandidateOptions.retrospectiveGapBridgeV1` (default false), `MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS`, optional `MotionFsmGapBridgeAuxiliary`; research eval `ds4-fsm-retrospective-gap-bridge-research-20261023` |
+| WHY | PR #2148 / Fable review: UNKNOWN during GPS quarantine (TIG22 18:49) and delayed stop at frozen position (18:41) without inventing speed |
+| VALIDATION | Jest `motion-fsm-gap-bridge-v1.spec.ts`; offline replay `run_v2_native_fsm` on TIG22/TES16/TES21-1/2 — false-claim Δ=0, events parity; long-gap guard blocks 19:03:33–55 unscored bridge |
+| NON_EFFECTS | Shadow processor still V0_3 (flag OFF); no C4/C5.1 change; no deploy/backfill/DB |
