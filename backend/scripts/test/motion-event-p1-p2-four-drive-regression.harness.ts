@@ -1,23 +1,40 @@
 #!/usr/bin/env npx ts-node --transpile-only
 /**
- * Four-drive regression gate for P1 (spike bracket) + P2 (physics envelope).
- * Compares processor-equivalent event outputs to Fable baseline CSVs (allowed deltas only).
+ * Four-drive regression gate for P1 (spike bracket) + P2 (universal plausibility).
+ * Compares processor-equivalent event outputs to Fable baseline CSVs (`fable_base_7340637`).
  *
  *   cd backend && npx ts-node --transpile-only scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts
+ *
+ * Optional env: DS4_ACCEL_EVAL_ROOT, FABLE_BASELINE_DIR (see Fable review `scripts/paths.cjs`).
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  applyMotionEventPhysicsEnvelope,
+  applyMotionEventUniversalPlausibility,
   computeC4AdaptiveL3,
   detectMotionManoeuvreEvents,
   MOTION_CORE_EVENT_GUARDS_V0_1_DEV,
   MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/core';
 
-const REPLAY = process.env.DS4_ACCEL_EVAL_ROOT
-  ? path.join(process.env.DS4_ACCEL_EVAL_ROOT, 'scripts/replay_event_eval.cjs')
-  : '/tmp/research/ds4-accel-brake-video-eval-192d/research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023/scripts/replay_event_eval.cjs';
+function resolveReplayScript(): string {
+  const evalsDir = path.resolve(__dirname, '../../../research/driving-intelligence/evaluations');
+  const candidates = [
+    process.env.DS4_ACCEL_EVAL_ROOT,
+    path.join(evalsDir, 'ds4-accel-brake-video-reference-20261023'),
+    path.join(process.cwd(), '../.worktrees/ds4-speed-ref/research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023'),
+    '/tmp/research/ds4-accel-brake-video-eval-192d/research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023',
+  ].filter(Boolean) as string[];
+  for (const root of candidates) {
+    const script = path.join(root, 'scripts/replay_event_eval.cjs');
+    if (fs.existsSync(script)) {
+      return script;
+    }
+  }
+  return path.join(candidates[0] ?? '', 'scripts/replay_event_eval.cjs');
+}
+
+const REPLAY = resolveReplayScript();
 
 const BASELINE_DIR =
   process.env.FABLE_BASELINE_DIR ??
@@ -40,11 +57,15 @@ const R = require(REPLAY) as {
   eventKey: (e: { kind: string; startLabel: string; endLabel: string }) => string;
 };
 
-const ALLOWED = new Set([
-  'ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z',
-  'ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z',
-  'ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z',
-]);
+/** P1-only quality delta vs production baseline (universal P2 does not force TIG22 nameplate marks). */
+const P1_QUALITY_DELTA_KEYS = new Set(['ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z']);
+
+const BASELINE_TREFFER: Record<string, number> = {
+  TIG22: 12,
+  TES16: 15,
+  'TES21-1': 2,
+  'TES21-2': 4,
+};
 
 type Row = {
   kind: string;
@@ -72,7 +93,6 @@ function parseCsv(text: string): Row[] {
 }
 
 function eventsViaProcessorStack(d: (ReturnType<typeof R.loadDrives>)[0]) {
-  const vehicleClass = d.identity.vehicleClass === 'TIGUAN' ? 'TIGUAN' : 'TESLA';
   const events = detectMotionManoeuvreEvents(
     0,
     d.c4,
@@ -80,7 +100,7 @@ function eventsViaProcessorStack(d: (ReturnType<typeof R.loadDrives>)[0]) {
     MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
     MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
   );
-  applyMotionEventPhysicsEnvelope(events, vehicleClass);
+  applyMotionEventUniversalPlausibility(events);
   return events;
 }
 
@@ -142,19 +162,36 @@ function main() {
       if (c.startsWith('REMOVED') || c.startsWith('ADDED')) return true;
       const m = c.match(/^(\S+\|\S+\|\S+) quality /);
       const k = m?.[1];
-      if (k && ALLOWED.has(k) && c.includes('ARTEFACT_SUSPECT')) return false;
+      if (k && P1_QUALITY_DELTA_KEYS.has(k) && c.includes('ARTEFACT_SUSPECT')) return false;
+      if (c.match(/^(\S+\|\S+\|\S+) quality /)) return true;
       return c.length > 0;
     });
+
+    const p1Key = 'ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z';
+    if (d.id === 'TES16' && !changes.some((c) => c.startsWith(p1Key) && c.includes('ARTEFACT_SUSPECT'))) {
+      console.error('TES16 P1 spike-bracket mark missing');
+      failed += 1;
+    }
 
     const evalOut = R.evaluateDrive(
       { ...d, events },
       { write: false },
     );
+    const treffer =
+      (evalOut.summary as { accepted?: { ds4ByClass?: Record<string, number> } }).accepted?.ds4ByClass?.TREFFER ??
+      (evalOut.summary as { ds4ByClass?: Record<string, number> }).ds4ByClass?.TREFFER;
+    const expectedTreffer = BASELINE_TREFFER[d.id];
+    if (expectedTreffer != null && treffer !== expectedTreffer) {
+      console.error(`TREFFER drift ${d.id}: expected ${expectedTreffer}, got ${treffer}`);
+      failed += 1;
+    }
+
     report[d.id] = {
       changes,
       disallowed,
       summary: evalOut.summary,
-      treffer: (evalOut.summary as { ds4ByClass?: Record<string, number> }).ds4ByClass?.TREFFER,
+      treffer,
+      expectedTreffer,
     };
     console.log(`\n== ${d.id} ==`);
     console.log('changes:', changes.length ? changes : '(none)');

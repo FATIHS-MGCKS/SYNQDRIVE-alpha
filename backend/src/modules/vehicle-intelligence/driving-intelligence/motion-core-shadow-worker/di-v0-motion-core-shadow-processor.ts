@@ -3,7 +3,7 @@ import {
   computeC4AdaptiveL3,
   computeC5_1GatedRepair,
   withImplausibleLegEndpointsQuarantined,
-  applyMotionEventPhysicsEnvelope,
+  applyMotionEventUniversalPlausibility,
   detectMotionManoeuvreEvents,
   extractMotionFsmStopEpisodes,
   MOTION_CORE_C4_FULL_FINALIZATION_HORIZON_FORWARD_S,
@@ -12,7 +12,7 @@ import {
   MOTION_CORE_SPEED_C4_VERSION,
   MOTION_CORE_SPEED_C5_1_PRODUCTION_SAFETY_VERSION,
   MOTION_CORE_SPEED_C5_1_VERSION,
-  MOTION_EVENT_PHYSICS_ENVELOPE_V0_1,
+  MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2,
   MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
   MOTION_FSM_PARAMS_V0_2_DEV,
   MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
@@ -193,7 +193,7 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
     MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
     MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
   );
-  applyMotionEventPhysicsEnvelope(events, meta.vehiclePlausibilityClass ?? 'TESLA');
+  applyMotionEventUniversalPlausibility(events);
 
   const intentKey = buildMotionCoreShadowIntentKey({
     pinnedSnapshotHash: meta.pinnedSnapshotHash,
@@ -210,7 +210,7 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
         sourceFamilyPolicyVersion: meta.gapBridgeAuxBindingVersions.sourceFamilyPolicyVersion,
       }
     : null;
-  const eventVersion = `${motionEventVersionId(MOTION_EVENT_V0_3_CANDIDATE_OPTIONS)} + ${MOTION_EVENT_PHYSICS_ENVELOPE_V0_1}`;
+  const eventVersion = `${motionEventVersionId(MOTION_EVENT_V0_3_CANDIDATE_OPTIONS)} + ${MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2}`;
   const preferredRows = c5_1PreferredSpeedEnabled
     ? preferredSpeedSamples.map(mapPreferredFromC5Sample)
     : c4SpeedRows;

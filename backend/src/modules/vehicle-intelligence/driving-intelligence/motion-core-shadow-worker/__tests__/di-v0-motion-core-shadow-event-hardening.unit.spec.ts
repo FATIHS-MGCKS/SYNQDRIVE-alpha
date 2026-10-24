@@ -1,5 +1,5 @@
 import {
-  MOTION_EVENT_PHYSICS_ENVELOPE_V0_1,
+  MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2,
   MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
   motionEventVersionId,
   type MotionCorePositionBucket,
@@ -25,7 +25,7 @@ describe('motion-core shadow event hardening (P1+P2)', () => {
     longitude: 11.5,
   });
 
-  it('records V0.3 detector + physics envelope in contract event version', () => {
+  it('records V0.3 detector + universal plausibility in contract event version', () => {
     const out = processDiV0MotionCoreShadowFromEvidenceAdaptation(evidenceFromGrid([0, 1, 2, 3, 4].map(mk)), {
       pinnedSnapshotHash: 'abc',
       combinedInputIdentity: 'id',
@@ -33,8 +33,8 @@ describe('motion-core shadow event hardening (P1+P2)', () => {
     });
     const expectedDetector = motionEventVersionId(MOTION_EVENT_V0_3_CANDIDATE_OPTIONS);
     expect(out.payload.contract.algorithmVersions.events).toBe(
-      `${expectedDetector} + ${MOTION_EVENT_PHYSICS_ENVELOPE_V0_1}`,
+      `${expectedDetector} + ${MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2}`,
     );
-    expect(out.payload.contract.algorithmVersions.bundle).toContain('EVENT_V0_3_PHYS_V0_1');
+    expect(out.payload.contract.algorithmVersions.bundle).toContain('EVENT_V0_3_PLAUS_V0_2');
   });
 });

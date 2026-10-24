@@ -2251,11 +2251,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Gap-bridge safety 17/17; integration + sealed four-drive summary specs; `nest build` |
 | NON_EFFECTS | Flag default OFF; no deploy/activation; trip-FSM/C5.1/events unchanged |
 
-### DS4 motion events — P1 spike bracket + P2 physics envelope (2026-10-24)
+### DS4 acceleration & braking — Fable independent read-only algorithm review (2026-10-24)
 
 | Event | Detail |
 |-------|--------|
-| CHANGE | `MOTION_EVENT_V0_3_CANDIDATE_OPTIONS[spikeBracketCheck]` in `motion-event-detector.ts`; `motion-event-physics-envelope.ts` (`MOTION_EVENT_PHYSICS_ENVELOPE_V0_1`); shadow processor applies physics after detection; `vehiclePlausibilityClass` resolved for all trips (C5.1 resolver, permissive TESLA fallback); bundle strings suffixed `_EVENT_V0_3_PHYS_V0_1` |
-| WHY | Fable review `ds4-accel-brake-fable-review-20261024` Option A: mark dip→spike artefacts (TES16 03:50:20) and impossible mean accelerations (TIG22 19:04:34/49) as `ARTEFACT_SUSPECT` without threshold changes or event deletion |
-| VALIDATION | `motion-event-p1-p2-hardening.spec.ts`; `di-v0-motion-core-shadow-event-hardening.unit.spec.ts`; `scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts` (3 allowed quality deltas, 27/27 TREFFER accepted unchanged) |
-| NON_EFFECTS | No DB migration, no UI/i18n, no FSM/C4/C5.1 threshold changes; events retained in payload, excluded from accepted counts via existing `ARTEFACT_SUSPECT` semantics |
+| CHANGE | Research evidence only: `research/driving-intelligence/evaluations/ds4-accel-brake-fable-review-20261024/` (REPORT, A/B harness `candidates_ab.cjs` with production-parity check, probes, baseline replay `fable_base_7340637` identical to PR #2139 `match2s`) |
+| WHY | Adversarial review of `motion-event-detector.ts` on production SHA `7340637` across TIG22/TES16 (EVAL) and TES21-1/TES21-2 (DEV); assess real C5.1 V1.2 and FSM Gap Bridge V1.3.1 benefit for events; evaluate alternatives without threshold shifts |
+| FINDINGS | B1 K3 spike check blind when start sample is the artefact (TES16 03:50:20 FA); B2 no physics envelope — TIG22 19:04:34 (5.5→100.1 km/h/4 s) and 19:04:49 (52.3→142.1 km/h/3 s) accepted unmarked; B3 systematic intensity attenuation −0.13…−0.55 m/s² (implicit 3-s kernel of C4 differences); B4/B5 hard miss 18:44:16 and four borderline misses are kernel-bound, post-gap guard not causal; 18:49 GPS outlier quarantine correct. C5.1 removes only the TES16 FA (dev-set, not independent); FSM is C4-fed → no independent event evidence |
+| RECOMMENDATION | Option A: two additive marking guards (spike-bracket/K-B → `ARTEFACT_SUSPECT`; physics envelope on event mean, class via C5.1 resolver, permissive fallback) — in-sample exactly 3 events change, 0 TREFFER loss, DEV unchanged. No new detector, no ML, no FSM coupling, no speed from gap bridge. LEG/REG3 alternatives rejected (new hard FAs / EVAL regression) |
+| VALIDATION | `node scripts/candidates_ab.cjs --code-root <7340637> --tag fable_base_7340637` → parity OK on 4 drives; outputs byte-identical across runs except timestamp |
+| NON_EFFECTS | No code, flag, DB, deploy or activation change; detector/C4/C5.1/FSM untouched; proposals P1–P3 are PROPOSED, not implemented |
+
+### DS4 motion events — P1 spike bracket + P2 universal plausibility (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `MOTION_EVENT_V0_3_CANDIDATE_OPTIONS[spikeBracketCheck]`; `motion-event-physics-envelope.ts` exports `MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2` + `applyMotionEventUniversalPlausibility` (kinematic/sign consistency only, no vehicle nameplates); shadow processor applies after detection; bundle suffix `_EVENT_V0_3_PLAUS_V0_2`; C5.1 class resolution unchanged (only when C5.1 preferred speed effective) |
+| WHY | Fleet-universal shadow hardening: P1 closes K3 blind spot (TES16 03:50:20); P2 marks only internally contradictory event fields — high acceleration without contradiction is not flagged (TIG22 19:04:34/49 may remain LIMITED/DEGRADED vs Fable nameplate proposal) |
+| VALIDATION | `motion-event-p1-p2-hardening.spec.ts`; `di-v0-motion-core-shadow-event-hardening.unit.spec.ts`; `scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts` (P1-only quality delta vs `fable_base_7340637` baseline, TREFFER parity) |
+| NON_EFFECTS | No DB migration, no UI/i18n, no FSM/C4/C5.1 threshold or admission changes; events retained; `ARTEFACT_SUSPECT` excluded from accepted counts via existing semantics |

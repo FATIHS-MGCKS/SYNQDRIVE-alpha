@@ -1,0 +1,3205 @@
+{
+  "codeSha": "7340637274c40d4fc03d968cdb943f16171a4a39",
+  "generatedAtUtc": "2026-10-24T10:25:42.873Z",
+  "physics": {
+    "TIGUAN": {
+      "massKg": 1800,
+      "wheelPowerW": 150000,
+      "launchMps2": 4.5,
+      "decelMps2": 9,
+      "note": "ICE SUV ≤ 2.0 TSI/TDI; 0–100 ≥ 6 s"
+    },
+    "TESLA": {
+      "massKg": 2000,
+      "wheelPowerW": 400000,
+      "launchMps2": 9,
+      "decelMps2": 9,
+      "note": "upper envelope incl. Performance variants"
+    }
+  },
+  "candidates": [
+    {
+      "id": "BASE",
+      "title": "Production detector on C4 (HF_THRESHOLDS_V1 + GUARDS_V0_1 + K3)",
+      "level": "baseline",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 20,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 17,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 1,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          }
+        }
+      },
+      "changedEvents": {}
+    },
+    {
+      "id": "C51",
+      "title": "Production detector on C5.1 V1.2 preferred series (bundle V2/V4 wiring)",
+      "level": "speed input",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 20,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "extra": {
+            "repairStates": {
+              "PASS_THROUGH_OUTSIDE_WINDOW": 2056,
+              "PASS_THROUGH_NO_REPAIR": 12,
+              "REPAIR_REJECTED": 22,
+              "REPAIR_ACCEPTED": 1,
+              "UNCERTAIN": 3
+            }
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:36Z 32.3->48.8 q=OK cls=UNVERIFIZIERBAR mean=1.533",
+            "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:08Z 29->6.2 q=OK cls=UNVERIFIZIERBAR mean=1.583",
+            "ACCELERATION|2026-10-22T18:33:49Z|2026-10-22T18:33:51Z 5.5->16.5 q=OK cls=UNVERIFIZIERBAR mean=1.528",
+            "DECELERATION|2026-10-22T18:38:25Z|2026-10-22T18:38:30Z 33.3->5 q=OK cls=UNVERIFIZIERBAR mean=1.575",
+            "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:08Z 3.1->20.5 q=OK cls=TREFFER mean=1.612",
+            "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:02Z 28.8->6.4 q=OK cls=TREFFER mean=1.558",
+            "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z 44->72.2 q=OK cls=TREFFER mean=1.957",
+            "DECELERATION|2026-10-22T18:46:44Z|2026-10-22T18:46:46Z 58.2->47.6 q=OK cls=TREFFER mean=1.479",
+            "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z 49.2->80.5 q=OK cls=TREFFER mean=2.177",
+            "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z 34.1->6.6 q=OK cls=TREFFER mean=1.527",
+            "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z 40.3->9.2 q=OK cls=TREFFER mean=2.16",
+            "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:25Z 8.5->25 q=OK cls=TREFFER mean=1.53",
+            "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z 7.4->46 q=OK cls=TREFFER mean=2.684",
+            "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z 40.4->57.5 q=OK cls=TREFFER mean=2.367",
+            "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z 37.6->19.1 q=OK cls=TREFFER mean=1.712",
+            "DECELERATION|2026-10-22T18:59:59Z|2026-10-22T19:00:01Z 19.6->6.9 q=OK cls=TREFFER mean=1.769",
+            "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z 34.7->5.5 q=DEGRADED cls=UNVERIFIZIERBAR mean=2.703",
+            "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z 5.5->100.1 q=LIMITED cls=UNVERIFIZIERBAR mean=6.567",
+            "DECELERATION|2026-10-22T19:04:39Z|2026-10-22T19:04:42Z 98.2->68.6 q=LIMITED cls=UNVERIFIZIERBAR mean=2.736",
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z 52.3->142.1 q=DEGRADED cls=UNVERIFIZIERBAR mean=8.313"
+          ]
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "extra": {
+            "repairStates": {
+              "PASS_THROUGH_OUTSIDE_WINDOW": 487,
+              "PASS_THROUGH_NO_REPAIR": 10,
+              "UNCERTAIN": 30,
+              "REPAIR_REJECTED": 6
+            }
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-21T12:05:20Z|2026-10-21T12:05:23Z 34->14.9 q=DEGRADED cls=WEICHER_FEHLALARM mean=1.771",
+            "DECELERATION|2026-10-21T12:05:43Z|2026-10-21T12:05:46Z 20.1->3.3 q=LIMITED cls=TREFFER mean=1.559",
+            "DECELERATION|2026-10-21T12:06:03Z|2026-10-21T12:06:05Z 33.4->21.3 q=OK cls=TREFFER mean=1.669",
+            "ACCELERATION|2026-10-21T12:06:26Z|2026-10-21T12:06:28Z 43.8->56.2 q=ARTEFACT_SUSPECT cls=FEHLALARM mean=1.725"
+          ]
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "extra": {
+            "repairStates": {
+              "PASS_THROUGH_OUTSIDE_WINDOW": 517,
+              "PASS_THROUGH_NO_REPAIR": 7,
+              "REPAIR_REJECTED": 11
+            }
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-21T12:20:49Z|2026-10-21T12:20:51Z 21.5->33.9 q=OK cls=TREFFER mean=1.722",
+            "ACCELERATION|2026-10-21T12:22:42Z|2026-10-21T12:22:45Z 20->47.9 q=OK cls=TREFFER mean=2.584",
+            "DECELERATION|2026-10-21T12:22:55Z|2026-10-21T12:22:58Z 30.5->5.2 q=OK cls=TREFFER mean=2.345",
+            "DECELERATION|2026-10-21T12:23:47Z|2026-10-21T12:23:50Z 26.1->9.7 q=OK cls=TREFFER mean=1.516"
+          ]
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 16,
+          "accepted": 16,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "extra": {
+            "repairStates": {
+              "PASS_THROUGH_OUTSIDE_WINDOW": 1119,
+              "REPAIR_REJECTED": 10,
+              "REPAIR_ACCEPTED": 2,
+              "PASS_THROUGH_NO_REPAIR": 5
+            }
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": [
+              "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z"
+            ]
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-16T03:39:41Z|2026-10-16T03:39:47Z 38.1->3.3 q=OK cls=TREFFER mean=1.614",
+            "ACCELERATION|2026-10-16T03:39:52Z|2026-10-16T03:39:55Z 22.1->37.5 q=OK cls=TREFFER mean=1.431",
+            "DECELERATION|2026-10-16T03:40:14Z|2026-10-16T03:40:17Z 27.1->5.1 q=OK cls=TREFFER mean=2.041",
+            "ACCELERATION|2026-10-16T03:41:00Z|2026-10-16T03:41:03Z 33->52.2 q=OK cls=FEHLALARM_UNBESTIMMT mean=1.782",
+            "DECELERATION|2026-10-16T03:41:42Z|2026-10-16T03:41:48Z 55.1->4.8 q=OK cls=TREFFER mean=2.328",
+            "DECELERATION|2026-10-16T03:42:42Z|2026-10-16T03:42:45Z 28.4->11.3 q=OK cls=TREFFER mean=1.581",
+            "ACCELERATION|2026-10-16T03:44:40Z|2026-10-16T03:44:44Z 30.1->51.8 q=OK cls=TREFFER mean=1.506",
+            "DECELERATION|2026-10-16T03:45:43Z|2026-10-16T03:45:49Z 40->8.2 q=OK cls=TREFFER mean=1.471",
+            "ACCELERATION|2026-10-16T03:45:56Z|2026-10-16T03:46:00Z 13.5->38.2 q=OK cls=TREFFER mean=1.714",
+            "ACCELERATION|2026-10-16T03:46:58Z|2026-10-16T03:47:00Z 51.3->62.3 q=OK cls=TREFFER mean=1.535",
+            "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:20Z 77.3->18.3 q=OK cls=TREFFER mean=2.052",
+            "ACCELERATION|2026-10-16T03:48:30Z|2026-10-16T03:48:35Z 19.2->46.7 q=OK cls=TREFFER mean=1.528",
+            "ACCELERATION|2026-10-16T03:50:14Z|2026-10-16T03:50:16Z 115.5->127.5 q=OK cls=TREFFER mean=1.663",
+            "DECELERATION|2026-10-16T03:52:23Z|2026-10-16T03:52:28Z 97.3->66.6 q=OK cls=TREFFER mean=1.708",
+            "DECELERATION|2026-10-16T03:52:39Z|2026-10-16T03:52:41Z 53.7->42.9 q=OK cls=TREFFER mean=1.499",
+            "ACCELERATION|2026-10-16T03:52:47Z|2026-10-16T03:52:52Z 36.1->64.8 q=OK cls=TREFFER mean=1.593"
+          ]
+        }
+      },
+      "changedEvents": {}
+    },
+    {
+      "id": "KB",
+      "title": "K3 + pre-event baseline reversion (PR #2139 K-B)",
+      "level": "detector option (ARTEFACT_SUSPECT)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 20,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 16,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        }
+      },
+      "changedEvents": {
+        "TES16": [
+          "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z 113.1->148.3 q=ARTEFACT_SUSPECT cls=FEHLALARM acc=0 mean=3.258"
+        ]
+      }
+    },
+    {
+      "id": "BRACKET",
+      "title": "Spike-bracket guard (opposite ≥ entry step before start AND after end)",
+      "level": "detector option (ARTEFACT_SUSPECT)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 20,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 16,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        }
+      },
+      "changedEvents": {
+        "TES16": [
+          "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z 113.1->148.3 q=ARTEFACT_SUSPECT cls=FEHLALARM acc=0 mean=3.258"
+        ]
+      }
+    },
+    {
+      "id": "PHYS_MEAN",
+      "title": "Physics envelope on event mean (power/launch/tyre limits, nameplate constants)",
+      "level": "acceptance (vehicle-class aware)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 18,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 6,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "extra": {
+            "violations": {
+              "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z": [
+                "MEAN_6.567>4.5"
+              ],
+              "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z": [
+                "MEAN_8.313>4.5"
+              ]
+            }
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "extra": {
+            "violations": {}
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "extra": {
+            "violations": {}
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 17,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 1,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "extra": {
+            "violations": {}
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        }
+      },
+      "changedEvents": {
+        "TIG22": [
+          "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z 5.5->100.1 q=LIMITED cls=UNVERIFIZIERBAR acc=0 mean=6.567",
+          "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z 52.3->142.1 q=DEGRADED cls=UNVERIFIZIERBAR acc=0 mean=8.313"
+        ]
+      }
+    },
+    {
+      "id": "PHYS_PEAK2",
+      "title": "Physics envelope on event mean OR 2-s peak",
+      "level": "acceptance (vehicle-class aware)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 18,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 6,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "extra": {
+            "violations": {
+              "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z": [
+                "MEAN_6.567>4.5",
+                "PEAK2S_6.567>4.5"
+              ],
+              "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z": [
+                "MEAN_8.313>4.5",
+                "PEAK2S_8.313>4.5"
+              ]
+            }
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "extra": {
+            "violations": {}
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "extra": {
+            "violations": {}
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 17,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 1,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "extra": {
+            "violations": {}
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        }
+      },
+      "changedEvents": {
+        "TIG22": [
+          "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z 5.5->100.1 q=LIMITED cls=UNVERIFIZIERBAR acc=0 mean=6.567",
+          "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z 52.3->142.1 q=DEGRADED cls=UNVERIFIZIERBAR acc=0 mean=8.313"
+        ]
+      }
+    },
+    {
+      "id": "KA2",
+      "title": "Accept only OK/LIMITED (no DEGRADED) — PR #2139 K-A2",
+      "level": "acceptance",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 18,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 6,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 2,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 16,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        }
+      },
+      "changedEvents": {}
+    },
+    {
+      "id": "COMBO",
+      "title": "KB + BRACKET (ARTEFACT_SUSPECT) + PHYS_MEAN (acceptance)",
+      "level": "combined small fix",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 18,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 6,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 16,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          }
+        }
+      },
+      "changedEvents": {
+        "TIG22": [
+          "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z 5.5->100.1 q=LIMITED cls=UNVERIFIZIERBAR acc=0 mean=6.567",
+          "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z 52.3->142.1 q=DEGRADED cls=UNVERIFIZIERBAR acc=0 mean=8.313"
+        ],
+        "TES16": [
+          "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z 113.1->148.3 q=ARTEFACT_SUSPECT cls=FEHLALARM acc=0 mean=3.258"
+        ]
+      }
+    },
+    {
+      "id": "LEG",
+      "title": "HYPOTHESIS: detector on quality-gated 1-s leg chords (2-s accel kernel)",
+      "level": "speed input (hypothesis)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 18,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 5,
+            "TREFFER": 13,
+            "FEHLALARM": 2
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 4,
+            "TREFFER": 13,
+            "FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 13,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 13,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 1,
+          "softFA_accepted": 0,
+          "treffer_accepted": 13,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -1,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 13,
+            "maeKmh": 3.946,
+            "medianAbsKmh": 3.1,
+            "p95AbsKmh": 8.82,
+            "maxAbsKmh": 9,
+            "biasKmh": -2.254,
+            "rmseKmh": 4.932,
+            "within3": 0.462,
+            "within5": 0.692
+          },
+          "implausible": 0,
+          "unverifiable": 5,
+          "hitsN": 13,
+          "intensity": {
+            "n": 13,
+            "meanMae": 0.281,
+            "meanBias": -0.262,
+            "peak2Mae": 0.307,
+            "peak2Bias": -0.307,
+            "peak1Mae": 0.325,
+            "peak1Bias": -0.325
+          },
+          "extra": {
+            "legUsable": 1886
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "DECELERATION|2026-10-22T18:31:01Z|2026-10-22T18:31:03Z",
+              "ACCELERATION|2026-10-22T18:32:33Z|2026-10-22T18:32:35Z",
+              "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:07Z",
+              "ACCELERATION|2026-10-22T18:33:48Z|2026-10-22T18:33:50Z",
+              "DECELERATION|2026-10-22T18:38:24Z|2026-10-22T18:38:29Z",
+              "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:07Z",
+              "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:00Z",
+              "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:27Z",
+              "DECELERATION|2026-10-22T18:46:43Z|2026-10-22T18:46:45Z",
+              "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:03Z",
+              "DECELERATION|2026-10-22T18:47:41Z|2026-10-22T18:47:45Z",
+              "DECELERATION|2026-10-22T18:48:45Z|2026-10-22T18:48:47Z",
+              "DECELERATION|2026-10-22T18:49:00Z|2026-10-22T18:49:02Z",
+              "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:24Z",
+              "DECELERATION|2026-10-22T18:58:46Z|2026-10-22T18:58:48Z",
+              "ACCELERATION|2026-10-22T18:58:59Z|2026-10-22T18:59:04Z",
+              "ACCELERATION|2026-10-22T18:59:26Z|2026-10-22T18:59:29Z",
+              "DECELERATION|2026-10-22T18:59:36Z|2026-10-22T18:59:39Z"
+            ],
+            "onlyBase": [
+              "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:36Z",
+              "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:08Z",
+              "ACCELERATION|2026-10-22T18:33:49Z|2026-10-22T18:33:51Z",
+              "DECELERATION|2026-10-22T18:38:25Z|2026-10-22T18:38:30Z",
+              "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:08Z",
+              "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:02Z",
+              "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z",
+              "DECELERATION|2026-10-22T18:46:44Z|2026-10-22T18:46:46Z",
+              "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z",
+              "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z",
+              "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:25Z",
+              "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z",
+              "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z",
+              "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z",
+              "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z",
+              "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z",
+              "DECELERATION|2026-10-22T19:04:39Z|2026-10-22T19:04:42Z",
+              "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z"
+            ]
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-22T18:31:01Z|2026-10-22T18:31:03Z 24.9->12.8 q=OK cls=UNVERIFIZIERBAR mean=1.684",
+            "ACCELERATION|2026-10-22T18:32:33Z|2026-10-22T18:32:35Z 39.6->49.6 q=ARTEFACT_SUSPECT cls=UNVERIFIZIERBAR mean=1.391",
+            "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:07Z 26.7->7.8 q=OK cls=UNVERIFIZIERBAR mean=1.751",
+            "ACCELERATION|2026-10-22T18:33:48Z|2026-10-22T18:33:50Z 2.4->15 q=OK cls=UNVERIFIZIERBAR mean=1.749",
+            "DECELERATION|2026-10-22T18:38:24Z|2026-10-22T18:38:29Z 36.4->7.1 q=OK cls=UNVERIFIZIERBAR mean=1.628",
+            "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:07Z 5.5->18.5 q=OK cls=TREFFER mean=1.803",
+            "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:00Z 26.1->12.8 q=OK cls=TREFFER mean=1.853",
+            "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:27Z 45.3->70.4 q=OK cls=TREFFER mean=2.324",
+            "DECELERATION|2026-10-22T18:46:43Z|2026-10-22T18:46:45Z 61.4->49.6 q=OK cls=TREFFER mean=1.643",
+            "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:03Z 50.9->78.5 q=OK cls=TREFFER mean=2.554",
+            "DECELERATION|2026-10-22T18:47:41Z|2026-10-22T18:47:45Z 36.8->13.1 q=OK cls=TREFFER mean=1.649",
+            "DECELERATION|2026-10-22T18:48:45Z|2026-10-22T18:48:47Z 75.1->61.5 q=OK cls=FEHLALARM mean=1.892",
+            "DECELERATION|2026-10-22T18:49:00Z|2026-10-22T18:49:02Z 73.7->60.4 q=ARTEFACT_SUSPECT cls=FEHLALARM mean=1.843",
+            "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z 38.8->5.8 q=OK cls=TREFFER mean=2.294",
+            "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:24Z 11.2->22.9 q=OK cls=TREFFER mean=1.627",
+            "DECELERATION|2026-10-22T18:58:46Z|2026-10-22T18:58:48Z 18->6.4 q=OK cls=TREFFER mean=1.606",
+            "ACCELERATION|2026-10-22T18:58:59Z|2026-10-22T18:59:04Z 2.9->48.3 q=OK cls=TREFFER mean=2.518",
+            "ACCELERATION|2026-10-22T18:59:26Z|2026-10-22T18:59:29Z 37.3->61.2 q=OK cls=TREFFER mean=2.211",
+            "DECELERATION|2026-10-22T18:59:36Z|2026-10-22T18:59:39Z 40.3->21.1 q=OK cls=TREFFER mean=1.778",
+            "DECELERATION|2026-10-22T18:59:59Z|2026-10-22T19:00:01Z 17.2->4.7 q=OK cls=TREFFER mean=1.737"
+          ]
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 1,
+          "accepted": 1,
+          "cls_all": {
+            "TREFFER": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 1
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 1
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 1,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": 0,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 1,
+            "maeKmh": 4.1,
+            "medianAbsKmh": 4.1,
+            "p95AbsKmh": 4.1,
+            "maxAbsKmh": 4.1,
+            "biasKmh": 4.1,
+            "rmseKmh": 4.1,
+            "within3": 0,
+            "within5": 1
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 1,
+          "intensity": {
+            "n": 1,
+            "meanMae": 0.269,
+            "meanBias": -0.269,
+            "peak2Mae": 0.217,
+            "peak2Bias": -0.217,
+            "peak1Mae": 0.144,
+            "peak1Bias": -0.144
+          },
+          "extra": {
+            "legUsable": 110
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "DECELERATION|2026-10-21T12:06:02Z|2026-10-21T12:06:05Z"
+            ],
+            "onlyBase": [
+              "DECELERATION|2026-10-21T12:05:20Z|2026-10-21T12:05:23Z",
+              "DECELERATION|2026-10-21T12:05:43Z|2026-10-21T12:05:46Z",
+              "DECELERATION|2026-10-21T12:06:03Z|2026-10-21T12:06:05Z",
+              "ACCELERATION|2026-10-21T12:06:26Z|2026-10-21T12:06:28Z"
+            ]
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-21T12:06:02Z|2026-10-21T12:06:05Z 36.6->18.5 q=OK cls=TREFFER mean=1.675"
+          ]
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 6,
+          "accepted": 6,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 5
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 5
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 5,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 5,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 5,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 1,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 2,
+          "startWithin2": 0.8,
+          "deltaDiff": {
+            "n": 5,
+            "maeKmh": 5.62,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 9.28,
+            "maxAbsKmh": 10,
+            "biasKmh": -2.02,
+            "rmseKmh": 6.16,
+            "within3": 0.2,
+            "within5": 0.4
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 5,
+          "intensity": {
+            "n": 5,
+            "meanMae": 0.341,
+            "meanBias": -0.303,
+            "peak2Mae": 0.239,
+            "peak2Bias": -0.157,
+            "peak1Mae": 0.192,
+            "peak1Bias": -0.057
+          },
+          "extra": {
+            "legUsable": 182
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "ACCELERATION|2026-10-21T12:20:37Z|2026-10-21T12:20:39Z",
+              "ACCELERATION|2026-10-21T12:20:48Z|2026-10-21T12:20:51Z",
+              "ACCELERATION|2026-10-21T12:22:16Z|2026-10-21T12:22:18Z",
+              "DECELERATION|2026-10-21T12:23:46Z|2026-10-21T12:23:49Z"
+            ],
+            "onlyBase": [
+              "ACCELERATION|2026-10-21T12:20:49Z|2026-10-21T12:20:51Z",
+              "DECELERATION|2026-10-21T12:23:47Z|2026-10-21T12:23:50Z"
+            ]
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-21T12:20:37Z|2026-10-21T12:20:39Z 16.6->27 q=OK cls=WEICHER_FEHLALARM mean=1.447",
+            "ACCELERATION|2026-10-21T12:20:48Z|2026-10-21T12:20:51Z 17.9->36.3 q=OK cls=TREFFER mean=1.704",
+            "ACCELERATION|2026-10-21T12:22:16Z|2026-10-21T12:22:18Z 19.3->31.3 q=OK cls=TREFFER mean=1.671",
+            "ACCELERATION|2026-10-21T12:22:42Z|2026-10-21T12:22:45Z 22.6->50.6 q=OK cls=TREFFER mean=2.593",
+            "DECELERATION|2026-10-21T12:22:55Z|2026-10-21T12:22:58Z 29.1->2.5 q=OK cls=TREFFER mean=2.459",
+            "DECELERATION|2026-10-21T12:23:46Z|2026-10-21T12:23:49Z 29.1->11.3 q=OK cls=TREFFER mean=1.657"
+          ]
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 17,
+          "cls_all": {
+            "TREFFER": 15,
+            "UNVERIFIZIERBAR": 1,
+            "WEICHER_FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "UNVERIFIZIERBAR": 1,
+            "WEICHER_FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 0,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.8,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.76,
+            "medianAbsKmh": 2.3,
+            "p95AbsKmh": 21.82,
+            "maxAbsKmh": 27.7,
+            "biasKmh": -5.507,
+            "rmseKmh": 10.433,
+            "within3": 0.533,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 1,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.082,
+            "meanBias": -0.071,
+            "peak2Mae": 0.101,
+            "peak2Bias": -0.097,
+            "peak1Mae": 0.151,
+            "peak1Bias": -0.084
+          },
+          "extra": {
+            "legUsable": 840
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "DECELERATION|2026-10-16T03:39:41Z|2026-10-16T03:39:46Z",
+              "ACCELERATION|2026-10-16T03:39:51Z|2026-10-16T03:39:55Z",
+              "ACCELERATION|2026-10-16T03:40:59Z|2026-10-16T03:41:03Z",
+              "DECELERATION|2026-10-16T03:41:41Z|2026-10-16T03:41:47Z",
+              "ACCELERATION|2026-10-16T03:42:33Z|2026-10-16T03:42:35Z",
+              "DECELERATION|2026-10-16T03:42:41Z|2026-10-16T03:42:45Z",
+              "ACCELERATION|2026-10-16T03:44:39Z|2026-10-16T03:44:41Z",
+              "DECELERATION|2026-10-16T03:45:42Z|2026-10-16T03:45:49Z",
+              "ACCELERATION|2026-10-16T03:45:57Z|2026-10-16T03:45:59Z",
+              "ACCELERATION|2026-10-16T03:46:57Z|2026-10-16T03:47:00Z",
+              "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:19Z",
+              "ACCELERATION|2026-10-16T03:48:29Z|2026-10-16T03:48:34Z",
+              "ACCELERATION|2026-10-16T03:50:13Z|2026-10-16T03:50:15Z",
+              "DECELERATION|2026-10-16T03:52:22Z|2026-10-16T03:52:27Z",
+              "DECELERATION|2026-10-16T03:54:17Z|2026-10-16T03:54:19Z"
+            ],
+            "onlyBase": [
+              "DECELERATION|2026-10-16T03:39:41Z|2026-10-16T03:39:47Z",
+              "ACCELERATION|2026-10-16T03:39:52Z|2026-10-16T03:39:55Z",
+              "ACCELERATION|2026-10-16T03:41:00Z|2026-10-16T03:41:03Z",
+              "DECELERATION|2026-10-16T03:41:42Z|2026-10-16T03:41:48Z",
+              "DECELERATION|2026-10-16T03:42:42Z|2026-10-16T03:42:45Z",
+              "ACCELERATION|2026-10-16T03:44:40Z|2026-10-16T03:44:44Z",
+              "DECELERATION|2026-10-16T03:45:43Z|2026-10-16T03:45:49Z",
+              "ACCELERATION|2026-10-16T03:45:56Z|2026-10-16T03:46:00Z",
+              "ACCELERATION|2026-10-16T03:46:58Z|2026-10-16T03:47:00Z",
+              "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:20Z",
+              "ACCELERATION|2026-10-16T03:48:30Z|2026-10-16T03:48:35Z",
+              "ACCELERATION|2026-10-16T03:50:14Z|2026-10-16T03:50:16Z",
+              "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z",
+              "DECELERATION|2026-10-16T03:52:23Z|2026-10-16T03:52:28Z",
+              "DECELERATION|2026-10-16T03:52:39Z|2026-10-16T03:52:41Z"
+            ]
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-16T03:39:41Z|2026-10-16T03:39:46Z 35.5->4.1 q=OK cls=TREFFER mean=1.742",
+            "ACCELERATION|2026-10-16T03:39:51Z|2026-10-16T03:39:55Z 19.4->39.8 q=OK cls=TREFFER mean=1.418",
+            "DECELERATION|2026-10-16T03:40:14Z|2026-10-16T03:40:17Z 24.7->1.8 q=OK cls=TREFFER mean=2.124",
+            "ACCELERATION|2026-10-16T03:40:59Z|2026-10-16T03:41:03Z 29.9->54.8 q=OK cls=UNVERIFIZIERBAR mean=1.73",
+            "DECELERATION|2026-10-16T03:41:41Z|2026-10-16T03:41:47Z 58.1->6.8 q=OK cls=TREFFER mean=2.373",
+            "ACCELERATION|2026-10-16T03:42:33Z|2026-10-16T03:42:35Z 23.6->34.3 q=OK cls=TREFFER mean=1.485",
+            "DECELERATION|2026-10-16T03:42:41Z|2026-10-16T03:42:45Z 31.3->8.8 q=OK cls=TREFFER mean=1.562",
+            "ACCELERATION|2026-10-16T03:44:39Z|2026-10-16T03:44:41Z 26.3->40.7 q=OK cls=TREFFER mean=1.993",
+            "DECELERATION|2026-10-16T03:45:42Z|2026-10-16T03:45:49Z 43.1->5 q=OK cls=TREFFER mean=1.51",
+            "ACCELERATION|2026-10-16T03:45:57Z|2026-10-16T03:45:59Z 23.7->36.1 q=OK cls=TREFFER mean=1.724",
+            "ACCELERATION|2026-10-16T03:46:57Z|2026-10-16T03:47:00Z 48.4->64.8 q=OK cls=TREFFER mean=1.517",
+            "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:19Z 75->19.5 q=OK cls=TREFFER mean=2.202",
+            "ACCELERATION|2026-10-16T03:48:29Z|2026-10-16T03:48:34Z 16->44.6 q=OK cls=TREFFER mean=1.592",
+            "ACCELERATION|2026-10-16T03:50:13Z|2026-10-16T03:50:15Z 112.7->125.6 q=OK cls=TREFFER mean=1.786",
+            "DECELERATION|2026-10-16T03:52:22Z|2026-10-16T03:52:27Z 100.6->68.5 q=OK cls=TREFFER mean=1.782",
+            "ACCELERATION|2026-10-16T03:52:47Z|2026-10-16T03:52:52Z 38.2->67 q=OK cls=TREFFER mean=1.598",
+            "DECELERATION|2026-10-16T03:54:17Z|2026-10-16T03:54:19Z 17.8->6 q=OK cls=WEICHER_FEHLALARM mean=1.641"
+          ]
+        }
+      },
+      "changedEvents": {}
+    },
+    {
+      "id": "REG3",
+      "title": "HYPOTHESIS: 3-point least-squares slope acceleration on C4 (same thresholds)",
+      "level": "detector estimator (hypothesis)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 18,
+          "accepted": 18,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 7,
+            "TREFFER": 11
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 7,
+            "TREFFER": 11
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 5,
+            "ERKANNT": 11,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 5,
+            "ERKANNT": 11,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 11,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 5,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -1,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 11,
+            "maeKmh": 3.873,
+            "medianAbsKmh": 3.6,
+            "p95AbsKmh": 7.15,
+            "maxAbsKmh": 8.1,
+            "biasKmh": 0.473,
+            "rmseKmh": 4.406,
+            "within3": 0.364,
+            "within5": 0.727
+          },
+          "implausible": 2,
+          "unverifiable": 7,
+          "hitsN": 11,
+          "intensity": {
+            "n": 11,
+            "meanMae": 0.477,
+            "meanBias": -0.477,
+            "peak2Mae": 0.376,
+            "peak2Bias": -0.376,
+            "peak1Mae": 0.629,
+            "peak1Bias": -0.629
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:35Z",
+              "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:07Z",
+              "DECELERATION|2026-10-22T18:38:24Z|2026-10-22T18:38:29Z",
+              "DECELERATION|2026-10-22T18:43:57Z|2026-10-22T18:44:02Z",
+              "DECELERATION|2026-10-22T18:47:41Z|2026-10-22T18:47:46Z",
+              "ACCELERATION|2026-10-22T18:58:59Z|2026-10-22T18:59:04Z",
+              "ACCELERATION|2026-10-22T18:59:26Z|2026-10-22T18:59:29Z",
+              "DECELERATION|2026-10-22T18:59:36Z|2026-10-22T18:59:39Z",
+              "DECELERATION|2026-10-22T18:59:58Z|2026-10-22T19:00:01Z",
+              "ACCELERATION|2026-10-22T19:04:33Z|2026-10-22T19:04:38Z",
+              "DECELERATION|2026-10-22T19:04:38Z|2026-10-22T19:04:42Z",
+              "ACCELERATION|2026-10-22T19:04:48Z|2026-10-22T19:04:52Z"
+            ],
+            "onlyBase": [
+              "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:36Z",
+              "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:08Z",
+              "ACCELERATION|2026-10-22T18:33:49Z|2026-10-22T18:33:51Z",
+              "DECELERATION|2026-10-22T18:38:25Z|2026-10-22T18:38:30Z",
+              "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:02Z",
+              "DECELERATION|2026-10-22T18:46:44Z|2026-10-22T18:46:46Z",
+              "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z",
+              "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z",
+              "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z",
+              "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z",
+              "DECELERATION|2026-10-22T18:59:59Z|2026-10-22T19:00:01Z",
+              "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z",
+              "DECELERATION|2026-10-22T19:04:39Z|2026-10-22T19:04:42Z",
+              "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z"
+            ]
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:35Z 32.3->44.3 q=OK cls=UNVERIFIZIERBAR mean=1.667",
+            "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:07Z 29->10.8 q=OK cls=UNVERIFIZIERBAR mean=1.689",
+            "DECELERATION|2026-10-22T18:38:24Z|2026-10-22T18:38:29Z 38.6->9.4 q=OK cls=UNVERIFIZIERBAR mean=1.627",
+            "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:08Z 3.1->20.5 q=OK cls=TREFFER mean=1.612",
+            "DECELERATION|2026-10-22T18:43:57Z|2026-10-22T18:44:02Z 34.2->6.4 q=OK cls=TREFFER mean=1.543",
+            "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z 44->72.2 q=OK cls=TREFFER mean=1.957",
+            "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z 49.2->80.5 q=OK cls=TREFFER mean=2.177",
+            "DECELERATION|2026-10-22T18:47:41Z|2026-10-22T18:47:46Z 39.1->11 q=OK cls=TREFFER mean=1.562",
+            "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z 40.3->9.2 q=OK cls=TREFFER mean=2.16",
+            "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:25Z 8.5->25 q=OK cls=TREFFER mean=1.53",
+            "ACCELERATION|2026-10-22T18:58:59Z|2026-10-22T18:59:04Z 2.1->46 q=OK cls=TREFFER mean=2.441",
+            "ACCELERATION|2026-10-22T18:59:26Z|2026-10-22T18:59:29Z 36.8->57.5 q=OK cls=TREFFER mean=1.917",
+            "DECELERATION|2026-10-22T18:59:36Z|2026-10-22T18:59:39Z 42.8->24.8 q=OK cls=TREFFER mean=1.666",
+            "DECELERATION|2026-10-22T18:59:58Z|2026-10-22T19:00:01Z 24->6.9 q=OK cls=TREFFER mean=1.582",
+            "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z 34.7->5.5 q=DEGRADED cls=UNVERIFIZIERBAR mean=2.703",
+            "ACCELERATION|2026-10-22T19:04:33Z|2026-10-22T19:04:38Z 4.7->100.1 q=LIMITED cls=UNVERIFIZIERBAR mean=5.3",
+            "DECELERATION|2026-10-22T19:04:38Z|2026-10-22T19:04:42Z 100.1->68.6 q=LIMITED cls=UNVERIFIZIERBAR mean=2.187",
+            "ACCELERATION|2026-10-22T19:04:48Z|2026-10-22T19:04:52Z 61.8->142.1 q=DEGRADED cls=UNVERIFIZIERBAR mean=5.578"
+          ]
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 3,
+          "accepted": 3,
+          "cls_all": {
+            "TREFFER": 3
+          },
+          "cls_accepted": {
+            "TREFFER": 3
+          },
+          "oracle_all": {
+            "ERKANNT": 3,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "ERKANNT": 3,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 3,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 0,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.67,
+          "deltaDiff": {
+            "n": 3,
+            "maeKmh": 4.7,
+            "medianAbsKmh": 3.9,
+            "p95AbsKmh": 7.77,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -2.1,
+            "rmseKmh": 5.368,
+            "within3": 0.333,
+            "within5": 0.667
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 3,
+          "intensity": {
+            "n": 3,
+            "meanMae": 0.324,
+            "meanBias": -0.324,
+            "peak2Mae": 0.347,
+            "peak2Bias": -0.347,
+            "peak1Mae": 0.688,
+            "peak1Bias": -0.688
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "ACCELERATION|2026-10-21T12:04:37Z|2026-10-21T12:04:40Z"
+            ],
+            "onlyBase": [
+              "DECELERATION|2026-10-21T12:05:20Z|2026-10-21T12:05:23Z",
+              "ACCELERATION|2026-10-21T12:06:26Z|2026-10-21T12:06:28Z"
+            ]
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-21T12:04:37Z|2026-10-21T12:04:40Z 9.9->32.8 q=LIMITED cls=TREFFER mean=2.12",
+            "DECELERATION|2026-10-21T12:05:43Z|2026-10-21T12:05:46Z 20.1->3.3 q=LIMITED cls=TREFFER mean=1.559",
+            "DECELERATION|2026-10-21T12:06:03Z|2026-10-21T12:06:05Z 33.4->21.3 q=OK cls=TREFFER mean=1.669"
+          ]
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 4.275,
+            "medianAbsKmh": 4.8,
+            "p95AbsKmh": 6.095,
+            "maxAbsKmh": 6.2,
+            "biasKmh": -0.875,
+            "rmseKmh": 4.669,
+            "within3": 0.25,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.365,
+            "meanBias": -0.364,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.346,
+            "peak1Bias": -0.318
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "ACCELERATION|2026-10-21T12:20:48Z|2026-10-21T12:20:51Z",
+              "DECELERATION|2026-10-21T12:23:46Z|2026-10-21T12:23:49Z"
+            ],
+            "onlyBase": [
+              "ACCELERATION|2026-10-21T12:20:49Z|2026-10-21T12:20:51Z",
+              "DECELERATION|2026-10-21T12:23:47Z|2026-10-21T12:23:50Z"
+            ]
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-21T12:20:48Z|2026-10-21T12:20:51Z 16.4->33.9 q=OK cls=TREFFER mean=1.621",
+            "ACCELERATION|2026-10-21T12:22:42Z|2026-10-21T12:22:45Z 20->47.9 q=OK cls=TREFFER mean=2.584",
+            "DECELERATION|2026-10-21T12:22:55Z|2026-10-21T12:22:58Z 30.5->5.2 q=OK cls=TREFFER mean=2.345",
+            "DECELERATION|2026-10-21T12:23:46Z|2026-10-21T12:23:49Z 31->14.2 q=OK cls=TREFFER mean=1.552"
+          ]
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 16,
+          "accepted": 16,
+          "cls_all": {
+            "TREFFER": 14,
+            "UNVERIFIZIERBAR": 1,
+            "WEICHER_FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 14,
+            "UNVERIFIZIERBAR": 1,
+            "WEICHER_FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 14
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 14
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 14,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 0,
+          "startOffsetMedian": 0,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.79,
+          "deltaDiff": {
+            "n": 14,
+            "maeKmh": 8.221,
+            "medianAbsKmh": 5.3,
+            "p95AbsKmh": 25.81,
+            "maxAbsKmh": 27.5,
+            "biasKmh": -7.45,
+            "rmseKmh": 12.025,
+            "within3": 0.429,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 1,
+          "hitsN": 14,
+          "intensity": {
+            "n": 14,
+            "meanMae": 0.132,
+            "meanBias": -0.124,
+            "peak2Mae": 0.139,
+            "peak2Bias": -0.138,
+            "peak1Mae": 0.246,
+            "peak1Bias": -0.245
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [
+              "DECELERATION|2026-10-16T03:39:43Z|2026-10-16T03:39:46Z",
+              "ACCELERATION|2026-10-16T03:40:59Z|2026-10-16T03:41:03Z",
+              "DECELERATION|2026-10-16T03:41:41Z|2026-10-16T03:41:48Z",
+              "DECELERATION|2026-10-16T03:42:41Z|2026-10-16T03:42:45Z",
+              "ACCELERATION|2026-10-16T03:44:40Z|2026-10-16T03:44:43Z",
+              "DECELERATION|2026-10-16T03:45:47Z|2026-10-16T03:45:49Z",
+              "ACCELERATION|2026-10-16T03:45:55Z|2026-10-16T03:45:59Z",
+              "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:19Z",
+              "ACCELERATION|2026-10-16T03:48:29Z|2026-10-16T03:48:34Z",
+              "ACCELERATION|2026-10-16T03:50:13Z|2026-10-16T03:50:15Z",
+              "DECELERATION|2026-10-16T03:52:22Z|2026-10-16T03:52:27Z",
+              "ACCELERATION|2026-10-16T03:52:47Z|2026-10-16T03:52:51Z",
+              "DECELERATION|2026-10-16T03:54:17Z|2026-10-16T03:54:19Z"
+            ],
+            "onlyBase": [
+              "DECELERATION|2026-10-16T03:39:41Z|2026-10-16T03:39:47Z",
+              "ACCELERATION|2026-10-16T03:41:00Z|2026-10-16T03:41:03Z",
+              "DECELERATION|2026-10-16T03:41:42Z|2026-10-16T03:41:48Z",
+              "DECELERATION|2026-10-16T03:42:42Z|2026-10-16T03:42:45Z",
+              "ACCELERATION|2026-10-16T03:44:40Z|2026-10-16T03:44:44Z",
+              "DECELERATION|2026-10-16T03:45:43Z|2026-10-16T03:45:49Z",
+              "ACCELERATION|2026-10-16T03:45:56Z|2026-10-16T03:46:00Z",
+              "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:20Z",
+              "ACCELERATION|2026-10-16T03:48:30Z|2026-10-16T03:48:35Z",
+              "ACCELERATION|2026-10-16T03:50:14Z|2026-10-16T03:50:16Z",
+              "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z",
+              "DECELERATION|2026-10-16T03:52:23Z|2026-10-16T03:52:28Z",
+              "DECELERATION|2026-10-16T03:52:39Z|2026-10-16T03:52:41Z",
+              "ACCELERATION|2026-10-16T03:52:47Z|2026-10-16T03:52:52Z"
+            ]
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-16T03:39:43Z|2026-10-16T03:39:46Z 27.4->7.7 q=OK cls=TREFFER mean=1.824",
+            "ACCELERATION|2026-10-16T03:39:52Z|2026-10-16T03:39:55Z 22.1->37.5 q=OK cls=TREFFER mean=1.431",
+            "DECELERATION|2026-10-16T03:40:14Z|2026-10-16T03:40:17Z 27.1->5.1 q=OK cls=TREFFER mean=2.041",
+            "ACCELERATION|2026-10-16T03:40:59Z|2026-10-16T03:41:03Z 28->52.2 q=OK cls=UNVERIFIZIERBAR mean=1.685",
+            "DECELERATION|2026-10-16T03:41:41Z|2026-10-16T03:41:48Z 58.5->4.8 q=OK cls=TREFFER mean=2.13",
+            "DECELERATION|2026-10-16T03:42:41Z|2026-10-16T03:42:45Z 33.3->11.3 q=OK cls=TREFFER mean=1.53",
+            "ACCELERATION|2026-10-16T03:44:40Z|2026-10-16T03:44:43Z 30.1->47.2 q=OK cls=TREFFER mean=1.585",
+            "DECELERATION|2026-10-16T03:45:47Z|2026-10-16T03:45:49Z 19.7->8.2 q=OK cls=TREFFER mean=1.601",
+            "ACCELERATION|2026-10-16T03:45:55Z|2026-10-16T03:45:59Z 9->33.8 q=LIMITED cls=TREFFER mean=1.718",
+            "ACCELERATION|2026-10-16T03:46:58Z|2026-10-16T03:47:00Z 51.3->62.3 q=OK cls=TREFFER mean=1.535",
+            "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:19Z 77.3->22.6 q=OK cls=TREFFER mean=2.172",
+            "ACCELERATION|2026-10-16T03:48:29Z|2026-10-16T03:48:34Z 13.8->42.3 q=OK cls=TREFFER mean=1.582",
+            "ACCELERATION|2026-10-16T03:50:13Z|2026-10-16T03:50:15Z 111.1->122 q=OK cls=TREFFER mean=1.511",
+            "DECELERATION|2026-10-16T03:52:22Z|2026-10-16T03:52:27Z 102.6->71.1 q=OK cls=TREFFER mean=1.751",
+            "ACCELERATION|2026-10-16T03:52:47Z|2026-10-16T03:52:51Z 36.1->59.9 q=OK cls=TREFFER mean=1.654",
+            "DECELERATION|2026-10-16T03:54:17Z|2026-10-16T03:54:19Z 19.6->8.7 q=OK cls=WEICHER_FEHLALARM mean=1.514"
+          ]
+        }
+      },
+      "changedEvents": {}
+    },
+    {
+      "id": "NOGUARD_STANDSTILL",
+      "title": "HYPOTHESIS: waive post-gap guard when segment starts from standstill (<5 km/h)",
+      "level": "detector guard (hypothesis)",
+      "drives": {
+        "TIG22": {
+          "role": "EVAL",
+          "detected": 20,
+          "accepted": 20,
+          "cls_all": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "cls_accepted": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "oracle_all": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracle_accepted": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 12,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 4,
+          "noSpeed": 1,
+          "startOffsetMedian": -1,
+          "endOffsetMedian": -0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 12,
+            "maeKmh": 3.692,
+            "medianAbsKmh": 3.3,
+            "p95AbsKmh": 6.895,
+            "maxAbsKmh": 7.5,
+            "biasKmh": -1.342,
+            "rmseKmh": 4.224,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 2,
+          "unverifiable": 8,
+          "hitsN": 12,
+          "intensity": {
+            "n": 12,
+            "meanMae": 0.389,
+            "meanBias": -0.389,
+            "peak2Mae": 0.372,
+            "peak2Bias": -0.372,
+            "peak1Mae": 0.553,
+            "peak1Bias": -0.553
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-22T18:31:33Z|2026-10-22T18:31:36Z 32.3->48.8 q=OK cls=UNVERIFIZIERBAR mean=1.533",
+            "DECELERATION|2026-10-22T18:33:04Z|2026-10-22T18:33:08Z 29->6.2 q=OK cls=UNVERIFIZIERBAR mean=1.583",
+            "ACCELERATION|2026-10-22T18:33:49Z|2026-10-22T18:33:51Z 5.5->16.5 q=OK cls=UNVERIFIZIERBAR mean=1.528",
+            "DECELERATION|2026-10-22T18:38:25Z|2026-10-22T18:38:30Z 33.3->5 q=OK cls=UNVERIFIZIERBAR mean=1.575",
+            "ACCELERATION|2026-10-22T18:43:05Z|2026-10-22T18:43:08Z 3.1->20.5 q=OK cls=TREFFER mean=1.612",
+            "DECELERATION|2026-10-22T18:43:58Z|2026-10-22T18:44:02Z 28.8->6.4 q=OK cls=TREFFER mean=1.558",
+            "ACCELERATION|2026-10-22T18:45:24Z|2026-10-22T18:45:28Z 44->72.2 q=OK cls=TREFFER mean=1.957",
+            "DECELERATION|2026-10-22T18:46:44Z|2026-10-22T18:46:46Z 58.2->47.6 q=OK cls=TREFFER mean=1.479",
+            "ACCELERATION|2026-10-22T18:47:00Z|2026-10-22T18:47:04Z 49.2->80.5 q=OK cls=TREFFER mean=2.177",
+            "DECELERATION|2026-10-22T18:47:42Z|2026-10-22T18:47:47Z 34.1->6.6 q=OK cls=TREFFER mean=1.527",
+            "DECELERATION|2026-10-22T18:58:16Z|2026-10-22T18:58:20Z 40.3->9.2 q=OK cls=TREFFER mean=2.16",
+            "ACCELERATION|2026-10-22T18:58:22Z|2026-10-22T18:58:25Z 8.5->25 q=OK cls=TREFFER mean=1.53",
+            "ACCELERATION|2026-10-22T18:59:00Z|2026-10-22T18:59:04Z 7.4->46 q=OK cls=TREFFER mean=2.684",
+            "ACCELERATION|2026-10-22T18:59:27Z|2026-10-22T18:59:29Z 40.4->57.5 q=OK cls=TREFFER mean=2.367",
+            "DECELERATION|2026-10-22T18:59:37Z|2026-10-22T18:59:40Z 37.6->19.1 q=OK cls=TREFFER mean=1.712",
+            "DECELERATION|2026-10-22T18:59:59Z|2026-10-22T19:00:01Z 19.6->6.9 q=OK cls=TREFFER mean=1.769",
+            "DECELERATION|2026-10-22T19:04:26Z|2026-10-22T19:04:29Z 34.7->5.5 q=DEGRADED cls=UNVERIFIZIERBAR mean=2.703",
+            "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z 5.5->100.1 q=LIMITED cls=UNVERIFIZIERBAR mean=6.567",
+            "DECELERATION|2026-10-22T19:04:39Z|2026-10-22T19:04:42Z 98.2->68.6 q=LIMITED cls=UNVERIFIZIERBAR mean=2.736",
+            "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z 52.3->142.1 q=DEGRADED cls=UNVERIFIZIERBAR mean=8.313"
+          ]
+        },
+        "TES21-1": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 3,
+          "cls_all": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracle_all": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracle_accepted": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 1,
+          "treffer_accepted": 2,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 1,
+          "missedBorderline_accepted": 2,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0.5,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 2,
+            "maeKmh": 5.1,
+            "medianAbsKmh": 5.1,
+            "p95AbsKmh": 7.89,
+            "maxAbsKmh": 8.2,
+            "biasKmh": -5.1,
+            "rmseKmh": 5.968,
+            "within3": 0.5,
+            "within5": 0.5
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 2,
+          "intensity": {
+            "n": 2,
+            "meanMae": 0.226,
+            "meanBias": -0.226,
+            "peak2Mae": 0.261,
+            "peak2Bias": -0.261,
+            "peak1Mae": 0.235,
+            "peak1Bias": -0.235
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-21T12:05:20Z|2026-10-21T12:05:23Z 34->14.9 q=DEGRADED cls=WEICHER_FEHLALARM mean=1.771",
+            "DECELERATION|2026-10-21T12:05:43Z|2026-10-21T12:05:46Z 20.1->3.3 q=LIMITED cls=TREFFER mean=1.559",
+            "DECELERATION|2026-10-21T12:06:03Z|2026-10-21T12:06:05Z 33.4->21.3 q=OK cls=TREFFER mean=1.669",
+            "ACCELERATION|2026-10-21T12:06:26Z|2026-10-21T12:06:28Z 43.8->56.2 q=ARTEFACT_SUSPECT cls=FEHLALARM mean=1.725"
+          ]
+        },
+        "TES21-2": {
+          "role": "DEV",
+          "detected": 4,
+          "accepted": 4,
+          "cls_all": {
+            "TREFFER": 4
+          },
+          "cls_accepted": {
+            "TREFFER": 4
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "hardFA_accepted": 0,
+          "softFA_accepted": 0,
+          "treffer_accepted": 4,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 2,
+          "startOffsetMedian": 2,
+          "endOffsetMedian": 2,
+          "startWithin2": 1,
+          "deltaDiff": {
+            "n": 4,
+            "maeKmh": 3.1,
+            "medianAbsKmh": 2.7,
+            "p95AbsKmh": 6.225,
+            "maxAbsKmh": 6.6,
+            "biasKmh": -2.25,
+            "rmseKmh": 3.944,
+            "within3": 0.5,
+            "within5": 0.75
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 4,
+          "intensity": {
+            "n": 4,
+            "meanMae": 0.376,
+            "meanBias": -0.348,
+            "peak2Mae": 0.346,
+            "peak2Bias": -0.318,
+            "peak1Mae": 0.196,
+            "peak1Bias": -0.094
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "ACCELERATION|2026-10-21T12:20:49Z|2026-10-21T12:20:51Z 21.5->33.9 q=OK cls=TREFFER mean=1.722",
+            "ACCELERATION|2026-10-21T12:22:42Z|2026-10-21T12:22:45Z 20->47.9 q=OK cls=TREFFER mean=2.584",
+            "DECELERATION|2026-10-21T12:22:55Z|2026-10-21T12:22:58Z 30.5->5.2 q=OK cls=TREFFER mean=2.345",
+            "DECELERATION|2026-10-21T12:23:47Z|2026-10-21T12:23:50Z 26.1->9.7 q=OK cls=TREFFER mean=1.516"
+          ]
+        },
+        "TES16": {
+          "role": "EVAL",
+          "detected": 17,
+          "accepted": 17,
+          "cls_all": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "cls_accepted": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "oracle_all": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracle_accepted": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "hardFA_accepted": 1,
+          "softFA_accepted": 0,
+          "treffer_accepted": 15,
+          "fragments_accepted": 0,
+          "missedHard_accepted": 0,
+          "missedBorderline_accepted": 3,
+          "noSpeed": 0,
+          "startOffsetMedian": 1,
+          "endOffsetMedian": 0,
+          "startWithin2": 0.87,
+          "deltaDiff": {
+            "n": 15,
+            "maeKmh": 6.687,
+            "medianAbsKmh": 4.7,
+            "p95AbsKmh": 20.36,
+            "maxAbsKmh": 20.5,
+            "biasKmh": -4.34,
+            "rmseKmh": 9.087,
+            "within3": 0.333,
+            "within5": 0.533
+          },
+          "implausible": 0,
+          "unverifiable": 0,
+          "hitsN": 15,
+          "intensity": {
+            "n": 15,
+            "meanMae": 0.147,
+            "meanBias": -0.147,
+            "peak2Mae": 0.131,
+            "peak2Bias": -0.13,
+            "peak1Mae": 0.186,
+            "peak1Bias": -0.171
+          },
+          "eventSetDiff": {
+            "onlyCandidate": [],
+            "onlyBase": []
+          },
+          "candidateEventRows": [
+            "DECELERATION|2026-10-16T03:39:41Z|2026-10-16T03:39:47Z 38.1->3.3 q=OK cls=TREFFER mean=1.614",
+            "ACCELERATION|2026-10-16T03:39:52Z|2026-10-16T03:39:55Z 22.1->37.5 q=OK cls=TREFFER mean=1.431",
+            "DECELERATION|2026-10-16T03:40:14Z|2026-10-16T03:40:17Z 27.1->5.1 q=OK cls=TREFFER mean=2.041",
+            "ACCELERATION|2026-10-16T03:41:00Z|2026-10-16T03:41:03Z 33->52.2 q=OK cls=FEHLALARM_UNBESTIMMT mean=1.782",
+            "DECELERATION|2026-10-16T03:41:42Z|2026-10-16T03:41:48Z 55.1->4.8 q=OK cls=TREFFER mean=2.328",
+            "DECELERATION|2026-10-16T03:42:42Z|2026-10-16T03:42:45Z 28.4->11.3 q=OK cls=TREFFER mean=1.581",
+            "ACCELERATION|2026-10-16T03:44:40Z|2026-10-16T03:44:44Z 30.1->51.8 q=OK cls=TREFFER mean=1.506",
+            "DECELERATION|2026-10-16T03:45:43Z|2026-10-16T03:45:49Z 40->8.2 q=OK cls=TREFFER mean=1.471",
+            "ACCELERATION|2026-10-16T03:45:56Z|2026-10-16T03:46:00Z 13.5->38.2 q=OK cls=TREFFER mean=1.714",
+            "ACCELERATION|2026-10-16T03:46:58Z|2026-10-16T03:47:00Z 51.3->62.3 q=OK cls=TREFFER mean=1.535",
+            "DECELERATION|2026-10-16T03:48:12Z|2026-10-16T03:48:20Z 77.3->18.3 q=OK cls=TREFFER mean=2.052",
+            "ACCELERATION|2026-10-16T03:48:30Z|2026-10-16T03:48:35Z 19.2->46.7 q=OK cls=TREFFER mean=1.528",
+            "ACCELERATION|2026-10-16T03:50:14Z|2026-10-16T03:50:16Z 115.5->127.5 q=OK cls=TREFFER mean=1.663",
+            "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z 113.1->148.3 q=DEGRADED cls=FEHLALARM mean=3.258",
+            "DECELERATION|2026-10-16T03:52:23Z|2026-10-16T03:52:28Z 97.3->66.6 q=OK cls=TREFFER mean=1.708",
+            "DECELERATION|2026-10-16T03:52:39Z|2026-10-16T03:52:41Z 53.7->42.9 q=OK cls=TREFFER mean=1.499",
+            "ACCELERATION|2026-10-16T03:52:47Z|2026-10-16T03:52:52Z 36.1->64.8 q=OK cls=TREFFER mean=1.593"
+          ]
+        }
+      },
+      "changedEvents": {}
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 import {
-  applyMotionEventPhysicsEnvelope,
+  applyMotionEventUniversalPlausibility,
+  assessMotionEventUniversalPlausibility,
   detectMotionManoeuvreEvents,
   MOTION_CORE_EVENT_GUARDS_V0_1_DEV,
   MOTION_EVENT_HF_THRESHOLDS_V1,
   MOTION_EVENT_V0_2_CANDIDATE_OPTIONS,
   MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
-  motionEventPhysicsEnvelopeForEvent,
   type MotionCoreSpeedSample,
   type MotionManoeuvreEvent,
 } from '../index';
@@ -19,6 +19,31 @@ function sample(label: string, valueKmh: number, quality: MotionCoreSpeedSample[
     supportLabels: [],
     supportSpanS: null,
     flags: [],
+  };
+}
+
+function baseEvent(overrides: Partial<MotionManoeuvreEvent>): MotionManoeuvreEvent {
+  return {
+    trip: 0,
+    kind: 'ACCELERATION',
+    startLabel: 'a',
+    endLabel: 'b',
+    startUncertaintyS: '',
+    endUncertaintyS: '',
+    startSpeedKmh: 50,
+    endSpeedKmh: 80,
+    deltaKmh: 30,
+    meanAccelMps2: 2.5,
+    peakAccel1sMps2: 2.8,
+    peakAccel2sMps2: 2.6,
+    durationS: 3.33,
+    steps: 3,
+    coverageRatio: 0.9,
+    quality: 'OK',
+    source: 'TEST',
+    algorithmVersion: 'TEST',
+    flags: [],
+    ...overrides,
   };
 }
 
@@ -61,87 +86,80 @@ describe('motion event P1 spike bracket (V0.3)', () => {
   });
 });
 
-describe('motion event P2 physics envelope', () => {
-  it('uses Tiguan launch limit for low-speed impossible mean acceleration', () => {
-    const ev: MotionManoeuvreEvent = {
-      trip: 0,
-      kind: 'ACCELERATION',
-      startLabel: 'a',
-      endLabel: 'b',
-      startUncertaintyS: '',
-      endUncertaintyS: '',
+describe('motion event P2 universal plausibility (vehicle-independent)', () => {
+  const fleetContexts = [
+    { label: 'Audi A4 (unknown class)' },
+    { label: 'VW Arteon' },
+    { label: 'unlisted OEM' },
+    { label: 'strong BEV' },
+    { label: 'ordinary ICE' },
+  ];
+
+  it('does not flag kinematically consistent high acceleration for any fleet context', () => {
+    const ev = baseEvent({
+      startSpeedKmh: 52.3,
+      endSpeedKmh: 142.1,
+      deltaKmh: 89.8,
+      meanAccelMps2: 8.313,
+      peakAccel1sMps2: 10.849,
+      durationS: 3,
+      quality: 'DEGRADED',
+      flags: ['MIN_SUPPORT_3_POINTS'],
+    });
+    for (const ctx of fleetContexts) {
+      const copy = { ...ev, flags: [...ev.flags] };
+      applyMotionEventUniversalPlausibility([copy]);
+      expect(copy.quality).toBe('DEGRADED');
+      expect(assessMotionEventUniversalPlausibility(copy)).toBeNull();
+    }
+  });
+
+  it('flags internal mean vs Δv/t contradiction (same for all contexts)', () => {
+    const ev = baseEvent({
+      deltaKmh: 30,
+      meanAccelMps2: 9,
+      durationS: 3,
+      quality: 'LIMITED',
+    });
+    for (const _ctx of fleetContexts) {
+      const copy = { ...ev };
+      applyMotionEventUniversalPlausibility([copy]);
+      expect(copy.quality).toBe('ARTEFACT_SUSPECT');
+      expect(copy.flags.some((f) => f.includes('kinematic_mean_mismatch'))).toBe(true);
+    }
+  });
+
+  it('flags non-positive delta magnitude (detector contract)', () => {
+    const ev = baseEvent({ kind: 'ACCELERATION', deltaKmh: -5 });
+    applyMotionEventUniversalPlausibility([ev]);
+    expect(ev.quality).toBe('ARTEFACT_SUSPECT');
+    expect(ev.flags.some((f) => f.includes('kind_delta_sign_mismatch'))).toBe(true);
+  });
+
+  it('skips already ARTEFACT_SUSPECT (P1 precedence)', () => {
+    const ev = baseEvent({
+      quality: 'ARTEFACT_SUSPECT',
+      meanAccelMps2: 99,
+      flags: ['SPIKE_BRACKET_PRE=1'],
+    });
+    applyMotionEventUniversalPlausibility([ev]);
+    expect(ev.flags.filter((f) => f.startsWith('MOTION_PLAUSIBILITY_VIOLATION='))).toHaveLength(0);
+  });
+
+  it('does not flag TIG22-like consistent implausible intensity (documented non-effect of universal P2)', () => {
+    const ev = baseEvent({
       startSpeedKmh: 5.5,
       endSpeedKmh: 100.1,
       deltaKmh: 94.6,
       meanAccelMps2: 6.567,
-      peakAccel1sMps2: 6.7,
-      peakAccel2sMps2: 6.5,
+      peakAccel1sMps2: 6.738,
       durationS: 4,
       steps: 2,
-      coverageRatio: 0.6,
       quality: 'LIMITED',
-      source: 'TEST',
-      algorithmVersion: 'TEST',
-      flags: [],
-    };
-    const env = motionEventPhysicsEnvelopeForEvent(ev, 'TIGUAN');
-    expect(env.boundMps2).toBe(4.5);
-    expect(env.basis).toBe('launch_limit');
-    applyMotionEventPhysicsEnvelope([ev], 'TIGUAN');
-    expect(ev.quality).toBe('ARTEFACT_SUSPECT');
-    expect(ev.flags.some((f) => f.startsWith('PHYSICS_ENVELOPE_VIOLATION='))).toBe(true);
-  });
-
-  it('does not mark Tesla-class envelope for TES16-like mean at highway speed', () => {
-    const ev: MotionManoeuvreEvent = {
-      trip: 0,
-      kind: 'ACCELERATION',
-      startLabel: 'a',
-      endLabel: 'b',
-      startUncertaintyS: '',
-      endUncertaintyS: '',
-      startSpeedKmh: 113.1,
-      endSpeedKmh: 148.3,
-      deltaKmh: 35.2,
-      meanAccelMps2: 3.258,
-      peakAccel1sMps2: 5.5,
-      peakAccel2sMps2: 3.2,
-      durationS: 3,
-      steps: 2,
-      coverageRatio: 0.67,
-      quality: 'DEGRADED',
-      source: 'TEST',
-      algorithmVersion: 'TEST',
-      flags: [],
-    };
-    applyMotionEventPhysicsEnvelope([ev], 'TESLA');
-    expect(ev.quality).toBe('DEGRADED');
-  });
-
-  it('skips events shorter than 2 s', () => {
-    const ev: MotionManoeuvreEvent = {
-      trip: 0,
-      kind: 'ACCELERATION',
-      startLabel: 'a',
-      endLabel: 'b',
-      startUncertaintyS: '',
-      endUncertaintyS: '',
-      startSpeedKmh: 5.5,
-      endSpeedKmh: 100.1,
-      deltaKmh: 94.6,
-      meanAccelMps2: 20,
-      peakAccel1sMps2: 20,
-      peakAccel2sMps2: null,
-      durationS: 1,
-      steps: 1,
-      coverageRatio: 1,
-      quality: 'OK',
-      source: 'TEST',
-      algorithmVersion: 'TEST',
-      flags: [],
-    };
-    applyMotionEventPhysicsEnvelope([ev], 'TIGUAN');
-    expect(ev.quality).toBe('OK');
+      flags: ['L3_SUPPORT_MISSING_FALLBACK_ROBUST', 'MIN_SUPPORT_3_POINTS'],
+    });
+    applyMotionEventUniversalPlausibility([ev]);
+    expect(ev.quality).toBe('LIMITED');
   });
 });
 
