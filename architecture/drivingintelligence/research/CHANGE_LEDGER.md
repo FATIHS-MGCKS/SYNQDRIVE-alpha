@@ -2270,3 +2270,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Fleet-universal shadow hardening: P1 closes K3 blind spot (TES16 03:50:20); P2 marks only internally contradictory event fields — high acceleration without contradiction is not flagged (TIG22 19:04:34/49 may remain LIMITED/DEGRADED vs Fable nameplate proposal) |
 | VALIDATION | `motion-event-p1-p2-hardening.spec.ts`; `di-v0-motion-core-shadow-event-hardening.unit.spec.ts`; `scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts` (P1-only quality delta vs `fable_base_7340637` baseline, TREFFER parity) |
 | NON_EFFECTS | No DB migration, no UI/i18n, no FSM/C4/C5.1 threshold or admission changes; events retained; `ARTEFACT_SUSPECT` excluded from accepted counts via existing semantics |
+
+### Vehicle Physics Phase 2 — binding implementation plan (2026-10-24, design; Fable-remediated on `main`)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `research/driving-intelligence/VEHICLE_PHYSICS_PHASE2_IMPLEMENTATION_PLAN.md` (remediated); VO pointer `architecture/vehicle-onboarding/research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md`; VO-GAP-016 |
+| WHY | Single-path motion reference via Mistral AI-Spec + `VehicleMotionPhysicsReference` (HV pattern); informative DI shadow only; Universal P2 V0.2 fallback; supersedes doc-only PR #2158 on `cursor/exp021-ev-ground-truth-7d78` |
+| NON_EFFECTS | No runtime/DI detector/C4/C5.1/FSM changes; no mandatory external VIN decoder; Phase 2 does not mark events `ARTEFACT_SUSPECT` from derived vehicle physics |
