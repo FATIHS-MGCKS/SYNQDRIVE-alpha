@@ -1,0 +1,168 @@
+# Tires Health Knowledge Graph — Edges (bootstrap V0.1)
+
+edges:
+  # Current V2 input chain
+  - from: TIRE-EXT-DI-VEHICLE-IMPACT-CURRENT-001
+    relation: input_to
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+    notes: usageFactor (road shares) and behaviorFactor (stress scores 0–100)
+  - from: TIRE-EXT-TRIP-AMBIENT-PRESSURE-001
+    relation: input_to
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+    notes: temperatureFactor (90-day trip start temperature), pressureFactor
+  - from: TIRE-PERSIST-SETUP-001
+    relation: input_to
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+  - from: TIRE-PERSIST-TRIP-USAGE-LEDGER-001
+    relation: input_to
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+    notes: attributed km / usage windows
+  - from: TIRE-ORCH-WEAR-MODEL-V2-001
+    relation: consumed_by
+    to: TIRE-ORCH-HEALTH-SERVICE-001
+  - from: TIRE-ORCH-HEALTH-SERVICE-001
+    relation: persists
+    to: TIRE-PERSIST-HEALTH-SNAPSHOT-001
+  - from: TIRE-POL-SNAPSHOT-FINGERPRINT-DEDUPE-001
+    relation: governs
+    to: TIRE-PERSIST-HEALTH-SNAPSHOT-001
+  - from: TIRE-ORCH-HEALTH-SERVICE-001
+    relation: persists
+    to: TIRE-PERSIST-HEALTH-ALERT-001
+
+  # Recalculation execution
+  - from: TIRE-WORK-RECALCULATION-SCHEDULER-001
+    relation: enqueues
+    to: TIRE-QUEUE-RECALCULATION-001
+  - from: TIRE-QUEUE-RECALCULATION-001
+    relation: consumed_by
+    to: TIRE-WORK-RECALCULATION-PROCESSOR-001
+  - from: TIRE-WORK-RECALCULATION-PROCESSOR-001
+    relation: processes
+    to: TIRE-ORCH-HEALTH-SERVICE-001
+
+  # Trip usage attribution
+  - from: TIRE-EXT-DI-TRIP-IMPACT-001
+    relation: input_to
+    to: TIRE-PIPE-TRIP-USAGE-ATTRIBUTION-001
+  - from: TIRE-EXT-TRIP-HARSH-COUNTERS-001
+    relation: input_to
+    to: TIRE-PIPE-TRIP-USAGE-ATTRIBUTION-001
+  - from: TIRE-PIPE-TRIP-USAGE-ATTRIBUTION-001
+    relation: persists
+    to: TIRE-PERSIST-TRIP-USAGE-LEDGER-001
+  - from: TIRE-POL-LEDGER-IDEMPOTENCY-001
+    relation: governs
+    to: TIRE-PERSIST-TRIP-USAGE-LEDGER-001
+
+  # Lifecycle / ground truth
+  - from: TIRE-AUTH-LIFECYCLE-001
+    relation: governs
+    to: TIRE-PERSIST-SETUP-001
+  - from: TIRE-PERSIST-TREAD-MEASUREMENT-001
+    relation: input_to
+    to: TIRE-AUTH-GROUND-TRUTH-001
+  - from: TIRE-AUTH-GROUND-TRUTH-001
+    relation: gates
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+    notes: prediction validation against measurements
+
+  # Projections / consumers
+  - from: TIRE-ORCH-HEALTH-SERVICE-001
+    relation: projects_to
+    to: TIRE-API-VEHICLE-TIRES-001
+  - from: TIRE-API-VEHICLE-TIRES-001
+    relation: consumed_by
+    to: TIRE-CONS-FRONTEND-001
+  - from: TIRE-ORCH-HEALTH-SERVICE-001
+    relation: consumed_by
+    to: TIRE-CONS-RENTAL-HEALTH-001
+  - from: TIRE-POL-RENTAL-HEALTH-001
+    relation: gates
+    to: TIRE-CONS-RENTAL-HEALTH-001
+
+  # DS4 dependency chain (future shadow consumer; no runtime edge exists today)
+  - from: TIRE-EXT-DS4-SPEED-AUTHORITY-001
+    relation: input_to
+    to: TIRE-EXT-DS4-MOTION-EVENTS-001
+  - from: TIRE-EXT-DS4-SHADOW-CONTROL-PLANE-001
+    relation: gates
+    to: TIRE-EXT-DS4-MOTION-EVENTS-001
+  - from: TIRE-EXT-DS4-MOTION-EVENTS-001
+    relation: projects_to
+    to: TIRE-EXT-DS4-TRIP-MAP-READ-001
+  - from: TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001
+    relation: depends_on
+    to: TIRE-EXT-DS4-TRIP-MAP-READ-001
+  - from: TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001
+    relation: must_not_influence
+    to: TIRE-POL-RENTAL-HEALTH-001
+  - from: TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001
+    relation: must_not_influence
+    to: TIRE-PERSIST-HEALTH-SNAPSHOT-001
+  - from: TIRE-DEC-DS4-CONSERVATIVE-ADMISSION-POLICY-001
+    relation: gates
+    to: TIRE-EXT-DS4-MOTION-EVENTS-001
+  - from: TIRE-DEC-NO-DOUBLE-COUNTING-001
+    relation: governs
+    to: TIRE-EXT-DI-VEHICLE-IMPACT-CURRENT-001
+  - from: TIRE-DEC-NO-DOUBLE-COUNTING-001
+    relation: governs
+    to: TIRE-EXT-DS4-MOTION-EVENTS-001
+
+  # Decisions
+  - from: TIRE-DEC-V2-FROZEN-TO-BE-SUPERSEDED-001
+    relation: governs
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+  - from: TIRE-DEC-PRESERVE-EXISTING-STACK-001
+    relation: governs
+    to: TIRE-AUTH-LIFECYCLE-001
+  - from: TIRE-REJECT-IMMEDIATE-V2-REPLACEMENT-001
+    relation: rejected_in_favour_of
+    to: TIRE-DEC-V2-FROZEN-TO-BE-SUPERSEDED-001
+  - from: TIRE-REJECT-DS4-INTO-V2-BEHAVIOR-FACTOR-001
+    relation: rejected_in_favour_of
+    to: TIRE-DEC-NO-DOUBLE-COUNTING-001
+
+  # Contradictions
+  - from: TIRE-CONTRA-TWO-ACCEL-BRAKE-SOURCES-001
+    relation: contradicts
+    to: TIRE-EXT-TRIP-HARSH-COUNTERS-001
+  - from: TIRE-CONTRA-HARSH-COUNTERS-DEPRECATED-ALIAS-001
+    relation: contradicts
+    to: TIRE-EXT-TRIP-HARSH-COUNTERS-001
+
+  # Evidence support
+  - from: TIRE-EVID-CODE-WEAR-MODEL-V2-001
+    relation: supports
+    to: TIRE-ORCH-WEAR-MODEL-V2-001
+  - from: TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+    relation: supports
+    to: TIRE-EXT-DI-VEHICLE-IMPACT-CURRENT-001
+  - from: TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+    relation: supports
+    to: TIRE-PIPE-TRIP-USAGE-ATTRIBUTION-001
+  - from: TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+    relation: supports
+    to: TIRE-EXT-DS4-MOTION-EVENTS-001
+  - from: TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+    relation: supports
+    to: TIRE-EXT-DS4-TRIP-MAP-READ-001
+  - from: TIRE-EVID-CODE-DS4-CONTROL-PLANE-001
+    relation: supports
+    to: TIRE-EXT-DS4-SHADOW-CONTROL-PLANE-001
+  - from: TIRE-EVID-PROD-BASELINE-2026-10-24-001
+    relation: supports
+    to: TIRE-DOM-TIRES-HEALTH-001
+  - from: TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+    relation: supports
+    to: TIRE-EXT-DS4-MOTION-EVENTS-001
+  - from: TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+    relation: supports
+    to: TIRE-DEC-DS4-CONSERVATIVE-ADMISSION-POLICY-001
+  - from: TIRE-ORCH-WEAR-MODEL-V2-001
+    relation: tested_by
+    to: TIRE-TEST-REGRESSION-MATRIX-001
+  - from: TIRE-EXT-DS4-MOTION-EVENTS-001
+    relation: tested_by
+    to: TIRE-TEST-DS4-P1-P2-HARNESS-001
