@@ -1,0 +1,46 @@
+export const MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS = {
+  CREATED: 'CREATED',
+  SUPERSEDED: 'SUPERSEDED',
+  CONFIRMED: 'CONFIRMED',
+  VERIFIED: 'VERIFIED',
+  NOTES_UPDATED: 'NOTES_UPDATED',
+} as const;
+
+export type MotionPhysicsReferenceChangeAction =
+  (typeof MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS)[keyof typeof MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS];
+
+export const MOTION_PHYSICS_POLICY_REASONS = {
+  VEHICLE_NOT_FOUND: 'VEHICLE_NOT_FOUND',
+  IDENTITY_MISMATCH: 'IDENTITY_MISMATCH',
+  ACTIVE_VERIFIED_PROTECTED: 'ACTIVE_VERIFIED_PROTECTED',
+  TIER_DOWNGRADE_FORBIDDEN: 'TIER_DOWNGRADE_FORBIDDEN',
+  MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
+  INVALID_NUMERIC: 'INVALID_NUMERIC',
+  VERIFY_NOT_ALLOWED: 'VERIFY_NOT_ALLOWED',
+  MISSING_EVIDENCE_FOR_VERIFY: 'MISSING_EVIDENCE_FOR_VERIFY',
+  DOCUMENT_NOT_VALIDATED: 'DOCUMENT_NOT_VALIDATED',
+  NOT_ACTIVE: 'NOT_ACTIVE',
+  ALREADY_VERIFIED: 'ALREADY_VERIFIED',
+  SUPERSEDED: 'SUPERSEDED',
+  VERIFY_EVIDENCE_PIPELINE_NOT_READY: 'VERIFY_EVIDENCE_PIPELINE_NOT_READY',
+  VIN_IDENTITY_MISMATCH: 'VIN_IDENTITY_MISMATCH',
+} as const;
+
+export type MotionPhysicsPolicyReasonCode =
+  (typeof MOTION_PHYSICS_POLICY_REASONS)[keyof typeof MOTION_PHYSICS_POLICY_REASONS];
+
+export interface MotionPhysicsIdentityFingerprint {
+  vinHash?: string | null;
+  make: string;
+  model: string;
+  modelYear: number;
+  variantLabel?: string | null;
+}
+
+export interface MotionPhysicsReferencePayload {
+  curbMassKg?: number | null;
+  systemMotorPowerKw?: number | null;
+  systemPowerDefinition?: string | null;
+  accel0To100S?: number | null;
+  variantAssumption?: string | null;
+}

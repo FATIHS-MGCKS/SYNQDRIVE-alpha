@@ -2279,6 +2279,23 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Single-path motion reference via Mistral AI-Spec + `VehicleMotionPhysicsReference` (HV pattern); informative DI shadow only; Universal P2 V0.2 fallback; supersedes doc-only PR #2158 on `cursor/exp021-ev-ground-truth-7d78` |
 | NON_EFFECTS | No runtime/DI detector/C4/C5.1/FSM changes; no mandatory external VIN decoder; Phase 2 does not mark events `ARTEFACT_SUSPECT` from derived vehicle physics |
 
+### Vehicle Physics Phase A — VO/Master implementation (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Prisma `VehicleMotionPhysicsReference` + change log; motion-physics-reference module; Mistral `systemMotorPowerKw` / `accel0To100S` / `variantAssumption` + plausibility; AI-Spec MASTER_ADMIN auth; VO baseline V2 materialization; Master modal merge-safe `applySpecs` + legacy reference API |
+| WHY | Phase A of Fable-remediated plan (#2159): one stammdaten path without DI behavior changes |
+| NON_EFFECTS | No DI shadow/resolver/bundle changes; no production deploy; VERIFIED requires document validation endpoint |
+
+### Vehicle Physics Phase A — Fable BLOCK remediation (2026-10-24, PR #2161)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | VO capture allowlist `motionPhysicsReference`; partial unique index one-active-per-vehicle; atomic supersede+audit repository tx; `verify()` fail-closed (`VERIFY_EVIDENCE_PIPELINE_NOT_READY`); AI-Spec org-scoped DIMO resolution; merge-safe Master `applySpecs`; legacy backfill error surfacing; PostgreSQL integration tests (VO master DIMO, concurrency, audit) |
+| WHY | Close Fable pre-merge BLOCK findings without Phase B/C scope expansion |
+| VALIDATION | `vo2-vehicle-onboarding-postgres-ci.sh`; `motion-physics-reference.postgres.integration.spec.ts`; policy/plausibility/security unit specs; `npm run i18n:check` |
+| NON_EFFECTS | No DI/C4/C5.1/FSM/detector changes; no production migration apply |
+
 ### Cross-module — Tires Health declares DS4 Motion Events as future shadow consumer (2026-10-24)
 
 | Event | Detail |

@@ -7,6 +7,7 @@ import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
 import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
 import { batteryV2HvInspectionES } from './battery-v2-hv-inspection.es';
 import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
+import { masterMotionPhysicsEs } from './master.motionPhysics.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -164,5 +165,6 @@ export const es = {
   ...dimoWebhookHealthEs,
   ...masterPlatformOpsDiS4Es,
   ...masterPhysicalDeviceInventoryEs,
+  ...masterMotionPhysicsEs,
   ...batteryV2HvInspectionES,
 } satisfies PartialTranslationDictionary;

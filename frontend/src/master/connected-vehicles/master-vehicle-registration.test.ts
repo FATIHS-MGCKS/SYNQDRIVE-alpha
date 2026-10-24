@@ -116,6 +116,23 @@ describe('master-vehicle-registration payloads', () => {
     expect(mapped.connectionStatus).toBe('Connected');
   });
 
+  it('includes motion physics fields in extraData when set', () => {
+    const extra = buildVehicleExtraData(
+      minimalRv({
+        curbWeight: '1800',
+        systemMotorPowerKw: '150',
+        accel0To100S: '5.4',
+        motionPhysicsVariantAssumption: 'base variant',
+      }),
+    );
+    expect(extra).toMatchObject({
+      curbWeightKg: 1800,
+      systemMotorPowerKw: 150,
+      accel0To100S: 5.4,
+      motionPhysicsVariantAssumption: 'base variant',
+    });
+  });
+
   it('builds extraData with org-scoped mileage and hardware', () => {
     const extra = buildVehicleExtraData(minimalRv({ hardwareType: 'LTE_R1', mileage: 1500 }));
     expect(extra.mileageKm).toBe(1500);

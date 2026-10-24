@@ -1,11 +1,15 @@
-import { Controller, Get, Post, Query, Param, Body, Logger, Res } from '@nestjs/common';
+import { Controller, Get, Post, Query, Param, Body, Logger, Res, UseGuards, ForbiddenException } from '@nestjs/common';
 import { Response } from 'express';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
 import { VehicleSpecAiService } from './vehicle-spec-ai.service';
 import { TireSpecAiService } from './tire-spec-ai.service';
 import { AiTireSpecJobService, StartAiTireSpecJobInput } from './ai-tire-spec-job.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
 @Controller('vehicles/register')
+@UseGuards(RolesGuard)
+@Roles('MASTER_ADMIN')
 export class VehicleSpecsController {
   private readonly logger = new Logger(VehicleSpecsController.name);
 
@@ -24,6 +28,8 @@ export class VehicleSpecsController {
     @Query('make') make?: string,
     @Query('model') model?: string,
     @Query('year') yearParam?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
   ) {
     if (!this.vehicleSpecAi.isConfigured()) {
       return {
@@ -37,7 +43,16 @@ export class VehicleSpecsController {
     }
 
     const { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain } =
-      await this.resolveVehicleParams(vin, tokenIdParam, dimoVehicleId, make, model, yearParam);
+      await this.resolveVehicleParams(
+        vin,
+        tokenIdParam,
+        dimoVehicleId,
+        make,
+        model,
+        yearParam,
+        organizationId,
+        vehicleId,
+      );
 
     const result = await this.vehicleSpecAi.getVehicleSpecs(
       tokenIds.length > 0 ? tokenIds : undefined,
@@ -85,6 +100,8 @@ export class VehicleSpecsController {
     @Query('year') yearParam?: string,
     @Query('powertrainType') powertrainType?: string,
     @Query('fuelType') fuelType?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -103,7 +120,16 @@ export class VehicleSpecsController {
     }
 
     const { tokenIds, resolvedVin, resolvedMake, resolvedModel, resolvedYear, drivetrain } =
-      await this.resolveVehicleParams(vin, tokenIdParam, dimoVehicleId, make, model, yearParam);
+      await this.resolveVehicleParams(
+        vin,
+        tokenIdParam,
+        dimoVehicleId,
+        make,
+        model,
+        yearParam,
+        organizationId,
+        vehicleId,
+      );
 
     const closed = { value: false };
     res.on('close', () => {
@@ -206,6 +232,8 @@ export class VehicleSpecsController {
     make?: string,
     model?: string,
     yearParam?: string,
+    organizationId?: string,
+    vehicleId?: string,
   ) {
     const tokenIds: number[] = [];
     let resolvedVin = vin;
@@ -219,8 +247,45 @@ export class VehicleSpecsController {
       if (!isNaN(n)) tokenIds.push(n);
     }
 
+    if (organizationId && vehicleId) {
+      const scoped = await this.prisma.vehicle.findFirst({
+        where: { id: vehicleId, organizationId },
+        select: {
+          vin: true,
+          make: true,
+          model: true,
+          year: true,
+          dimoVehicleId: true,
+          dimoVehicle: { select: { tokenId: true, vin: true, make: true, model: true, year: true } },
+        },
+      });
+      if (!scoped) {
+        throw new ForbiddenException('Vehicle not in organization scope');
+      }
+      if (!resolvedVin) resolvedVin = scoped.vin ?? undefined;
+      if (!resolvedMake) resolvedMake = scoped.make;
+      if (!resolvedModel) resolvedModel = scoped.model;
+      if (!resolvedYear) resolvedYear = scoped.year;
+      const token = scoped.dimoVehicle?.tokenId;
+      if (token != null && tokenIds.length === 0) tokenIds.push(token);
+    }
+
+    if (dimoVehicleId && !organizationId) {
+      throw new ForbiddenException('organizationId is required when dimoVehicleId is used');
+    }
+
     if (tokenIds.length === 0 && (dimoVehicleId || vin)) {
       try {
+        if (organizationId && dimoVehicleId) {
+          const linked = await this.prisma.vehicle.findFirst({
+            where: { organizationId, dimoVehicleId },
+            select: { id: true },
+          });
+          if (!linked) {
+            throw new ForbiddenException('DIMO vehicle not linked to organization');
+          }
+        }
+
         const where: Record<string, unknown> = {};
         if (dimoVehicleId) where.id = dimoVehicleId;
         else if (vin) where.vin = vin;
@@ -238,6 +303,9 @@ export class VehicleSpecsController {
         if (dv?.model && !resolvedModel) resolvedModel = dv.model as string;
         if (dv?.year && !resolvedYear) resolvedYear = dv.year as number;
       } catch (err: unknown) {
+        if (err instanceof ForbiddenException) {
+          throw err;
+        }
         const message = err instanceof Error ? err.message : String(err);
         this.logger.warn(`[VehicleSpecAI] DB lookup failed: ${message}`);
       }

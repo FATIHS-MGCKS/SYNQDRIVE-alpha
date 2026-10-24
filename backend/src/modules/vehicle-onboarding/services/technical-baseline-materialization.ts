@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma, VehicleOnboardingCase } from '@prisma/client';
-import { ReferenceCapacityVerificationStatus } from '@prisma/client';
+import {
+  MotionPhysicsEvidenceTier,
+  MotionPhysicsReferenceSource,
+  ReferenceCapacityVerificationStatus,
+} from '@prisma/client';
+import { resolveMotionPhysicsAuditActorUserId } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-audit.util';
+import { buildMotionPhysicsIdentityFingerprint } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-identity.util';
+import { MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-reference.domain';
 import { normalizeReferenceSpecWriteInput } from '@modules/vehicle-intelligence/brakes/brake-reference-spec.domain';
 import type { SpecVehicleFitContext } from '@modules/vehicle-intelligence/brakes/brake-reference-spec.types';
 import { validateOnboardingBrakeReference } from '../policy/technical-baseline-brake.validation';
@@ -80,6 +87,13 @@ export async function materializeTechnicalBaselineInActivationTx(
     actorUserId: input.actorUserId,
     caseId: input.caseRow.id,
     draft,
+  });
+  await materializeMotionPhysicsIfPresent(tx, {
+    organizationId: input.organizationId,
+    vehicleId: input.vehicleId,
+    actorUserId: input.actorUserId,
+    draft,
+    caseRow: input.caseRow,
   });
 
   if (input.caseRow.readinessSnapshotVersion === READINESS_SNAPSHOT_VERSION_V2) {
@@ -286,6 +300,83 @@ async function materializeHvBatteryIfPresent(
         provenance: 'VEHICLE_ONBOARDING_ACTIVATION',
         onboardingCaseId: input.caseId,
       },
+    },
+  });
+}
+
+async function materializeMotionPhysicsIfPresent(
+  tx: Prisma.TransactionClient,
+  input: {
+    organizationId: string;
+    vehicleId: string;
+    actorUserId: string | null;
+    draft: VehicleTechnicalBaselineDraftV2;
+    caseRow: VehicleOnboardingCase;
+  },
+): Promise<void> {
+  const motion = input.draft.motionPhysicsReference;
+  if (!motion) return;
+  const hasValue =
+    motion.curbMassKg != null ||
+    motion.systemMotorPowerKw != null ||
+    motion.accel0To100S != null;
+  if (!hasValue) return;
+
+  const existing = await tx.vehicleMotionPhysicsReference.findFirst({
+    where: {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      isActive: true,
+      supersededById: null,
+    },
+  });
+  if (existing) return;
+
+  const identity = parseValidatedIdentityDraft(input.caseRow);
+  const fingerprint = buildMotionPhysicsIdentityFingerprint({
+    vin: identity.vin,
+    make: identity.make ?? 'Unknown',
+    model: identity.model ?? 'Unknown',
+    modelYear: identity.year ?? new Date().getFullYear(),
+    variantLabel: motion.variantAssumption,
+  });
+
+  const tier =
+    motion.evidenceTier === 'CONFIRMED'
+      ? MotionPhysicsEvidenceTier.CONFIRMED
+      : MotionPhysicsEvidenceTier.ESTIMATED;
+
+  const created = await tx.vehicleMotionPhysicsReference.create({
+    data: {
+      id: randomUUID(),
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      identityFingerprintJson: fingerprint as object,
+      curbMassKg: motion.curbMassKg ?? null,
+      systemMotorPowerKw: motion.systemMotorPowerKw ?? null,
+      systemPowerDefinition:
+        motion.systemPowerDefinition ??
+        (motion.systemMotorPowerKw != null ? 'OEM_RATED_SYSTEM_KW_ESTIMATED' : null),
+      accel0To100S: motion.accel0To100S ?? null,
+      variantAssumption: motion.variantAssumption ?? null,
+      evidenceTier: tier,
+      source: MotionPhysicsReferenceSource.ONBOARDING_ACTIVATION,
+      notes: null,
+      isActive: true,
+    },
+  });
+
+  const actorUserId = await resolveMotionPhysicsAuditActorUserId(tx, input.actorUserId);
+  await tx.vehicleMotionPhysicsReferenceChange.create({
+    data: {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      referenceId: created.id,
+      action: MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS.CREATED,
+      previousTier: null,
+      newTier: tier,
+      actorUserId,
+      metadata: { provenance: 'VEHICLE_ONBOARDING_ACTIVATION' },
     },
   });
 }

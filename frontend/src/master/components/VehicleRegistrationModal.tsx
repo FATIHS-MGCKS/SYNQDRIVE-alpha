@@ -6,6 +6,10 @@ import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabil
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
 import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
 import {
+  isMotionPhysicsTierLockedForAiMerge,
+  shouldApplyAiSpecToEmptyField,
+} from '../connected-vehicles/ai-spec-field-merge.util';
+import {
   ExteriorImagesEditor,
   flushBufferedExteriorImages,
   type ExteriorImageBufferEntry,
@@ -86,6 +90,15 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   // Technical
   const [drivetrain, setDrivetrain] = useState('');
   const [curbWeight, setCurbWeight] = useState('');
+  const [systemMotorPowerKw, setSystemMotorPowerKw] = useState('');
+  const [accel0To100S, setAccel0To100S] = useState('');
+  const [motionPhysicsVariantAssumption, setMotionPhysicsVariantAssumption] = useState('');
+  const [motionPhysicsReferenceId, setMotionPhysicsReferenceId] = useState<string | null>(null);
+  const [motionPhysicsEvidenceTier, setMotionPhysicsEvidenceTier] = useState<
+    'ESTIMATED' | 'CONFIRMED' | 'VERIFIED' | null
+  >(null);
+  const [motionPhysicsConfirming, setMotionPhysicsConfirming] = useState(false);
+  const [motionPhysicsSyncError, setMotionPhysicsSyncError] = useState('');
   const [idleRpm, setIdleRpm] = useState('');
   const [maxRpm, setMaxRpm] = useState('');
   const [brakeForceDistribution, setBrakeForceDistribution] = useState('');
@@ -200,6 +213,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setNotes(v.notes);
     setDrivetrain(v.drivetrain || '');
     setCurbWeight(v.curbWeight);
+    setSystemMotorPowerKw(v.systemMotorPowerKw ?? '');
+    setAccel0To100S(v.accel0To100S ?? '');
+    setMotionPhysicsVariantAssumption(v.motionPhysicsVariantAssumption ?? '');
     setIdleRpm(v.idleRpm);
     setMaxRpm(v.maxRpm);
     setBrakeForceDistribution(v.brakeForceDistribution || '');
@@ -291,59 +307,166 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const aiAbortRef = useRef<AbortController | null>(null);
   const aiGenerationRef = useRef(0);
 
+  const curbWeightRef = useRef(curbWeight);
+  const systemMotorPowerKwRef = useRef(systemMotorPowerKw);
+  const accel0To100SRef = useRef(accel0To100S);
+  const motionPhysicsVariantAssumptionRef = useRef(motionPhysicsVariantAssumption);
+  const motionPhysicsEvidenceTierRef = useRef(motionPhysicsEvidenceTier);
+  const lvBatteryChemistryRef = useRef(lvBatteryChemistry);
+  const hvBatteryPresentRef = useRef(hvBatteryPresent);
+  const hvBatteryChemistryRef = useRef(hvBatteryChemistry);
+  const hvBatteryCellFormatRef = useRef(hvBatteryCellFormat);
+  const hvBatteryGrossCapacityKwhRef = useRef(hvBatteryGrossCapacityKwh);
+  const hvBatteryUsableCapacityKwhRef = useRef(hvBatteryUsableCapacityKwh);
+  const hvBatteryNominalVoltageRef = useRef(hvBatteryNominalVoltage);
+  const hvBatteryArchitectureRef = useRef(hvBatteryArchitecture);
+  const hvBatteryThermalManagementRef = useRef(hvBatteryThermalManagement);
+  const hvBatteryWarrantyYearsRef = useRef(hvBatteryWarrantyYears);
+  const hvBatteryWarrantyKmRef = useRef(hvBatteryWarrantyKm);
+  const hvBatteryCapacityKwhRef = useRef(hvBatteryCapacityKwh);
+  const acOnboardChargerKwRef = useRef(acOnboardChargerKw);
+  const dcFastChargeMaxKwRef = useRef(dcFastChargeMaxKw);
+  const tankCapacityLitersRef = useRef(tankCapacityLiters);
+  const engineDisplacementCcRef = useRef(engineDisplacementCc);
+  const cylinderCountRef = useRef(cylinderCount);
+  const batteryTypeRef = useRef(batteryType);
+  const batteryAmpereRef = useRef(batteryAmpere);
+  const batteryVoltRef = useRef(batteryVolt);
+  const drivetrainRef = useRef(drivetrain);
+  const idleRpmRef = useRef(idleRpm);
+  const maxRpmRef = useRef(maxRpm);
+  const brakeForceDistributionRef = useRef(brakeForceDistribution);
+  const frontToRearWeightDistributionRef = useRef(frontToRearWeightDistribution);
+  const serviceIntervalManufacturerKmRef = useRef(serviceIntervalManufacturerKm);
+  const serviceIntervalManufacturerMonthsRef = useRef(serviceIntervalManufacturerMonths);
+  const oilChangeIntervalKmRef = useRef(oilChangeIntervalKm);
+  const oilChangeIntervalMonthsRef = useRef(oilChangeIntervalMonths);
+  const serviceIntervalsRef = useRef(serviceIntervals);
+  const brakeFrontRotorDiameterRef = useRef(brakeFrontRotorDiameter);
+  const brakeFrontRotorWidthRef = useRef(brakeFrontRotorWidth);
+  const brakeFrontPadThicknessRef = useRef(brakeFrontPadThickness);
+  const brakeBackRotorDiameterRef = useRef(brakeBackRotorDiameter);
+  const brakeBackRotorWidthRef = useRef(brakeBackRotorWidth);
+  const brakeBackPadThicknessRef = useRef(brakeBackPadThickness);
+
+  curbWeightRef.current = curbWeight;
+  systemMotorPowerKwRef.current = systemMotorPowerKw;
+  accel0To100SRef.current = accel0To100S;
+  motionPhysicsVariantAssumptionRef.current = motionPhysicsVariantAssumption;
+  motionPhysicsEvidenceTierRef.current = motionPhysicsEvidenceTier;
+  lvBatteryChemistryRef.current = lvBatteryChemistry;
+  hvBatteryPresentRef.current = hvBatteryPresent;
+  hvBatteryChemistryRef.current = hvBatteryChemistry;
+  hvBatteryCellFormatRef.current = hvBatteryCellFormat;
+  hvBatteryGrossCapacityKwhRef.current = hvBatteryGrossCapacityKwh;
+  hvBatteryUsableCapacityKwhRef.current = hvBatteryUsableCapacityKwh;
+  hvBatteryNominalVoltageRef.current = hvBatteryNominalVoltage;
+  hvBatteryArchitectureRef.current = hvBatteryArchitecture;
+  hvBatteryThermalManagementRef.current = hvBatteryThermalManagement;
+  hvBatteryWarrantyYearsRef.current = hvBatteryWarrantyYears;
+  hvBatteryWarrantyKmRef.current = hvBatteryWarrantyKm;
+  hvBatteryCapacityKwhRef.current = hvBatteryCapacityKwh;
+  acOnboardChargerKwRef.current = acOnboardChargerKw;
+  dcFastChargeMaxKwRef.current = dcFastChargeMaxKw;
+  tankCapacityLitersRef.current = tankCapacityLiters;
+  engineDisplacementCcRef.current = engineDisplacementCc;
+  cylinderCountRef.current = cylinderCount;
+  batteryTypeRef.current = batteryType;
+  batteryAmpereRef.current = batteryAmpere;
+  batteryVoltRef.current = batteryVolt;
+  drivetrainRef.current = drivetrain;
+  idleRpmRef.current = idleRpm;
+  maxRpmRef.current = maxRpm;
+  brakeForceDistributionRef.current = brakeForceDistribution;
+  frontToRearWeightDistributionRef.current = frontToRearWeightDistribution;
+  serviceIntervalManufacturerKmRef.current = serviceIntervalManufacturerKm;
+  serviceIntervalManufacturerMonthsRef.current = serviceIntervalManufacturerMonths;
+  oilChangeIntervalKmRef.current = oilChangeIntervalKm;
+  oilChangeIntervalMonthsRef.current = oilChangeIntervalMonths;
+  serviceIntervalsRef.current = serviceIntervals;
+  brakeFrontRotorDiameterRef.current = brakeFrontRotorDiameter;
+  brakeFrontRotorWidthRef.current = brakeFrontRotorWidth;
+  brakeFrontPadThicknessRef.current = brakeFrontPadThickness;
+  brakeBackRotorDiameterRef.current = brakeBackRotorDiameter;
+  brakeBackRotorWidthRef.current = brakeBackRotorWidth;
+  brakeBackPadThicknessRef.current = brakeBackPadThickness;
+
   const applySpecs = (specs: Record<string, string | number | null>) => {
     const str = (v: string | number | null | undefined) => (v != null ? String(v) : '');
-    const maybeSet = (setter: (v: string) => void, v: string | number | null | undefined) => { if (v != null) setter(str(v)); };
+    const maybeSetIfEmpty = (
+      current: () => string,
+      setter: (v: string) => void,
+      v: string | number | null | undefined,
+    ) => {
+      if (!shouldApplyAiSpecToEmptyField(current(), v)) return;
+      setter(str(v as string | number));
+    };
+    const motionLocked = isMotionPhysicsTierLockedForAiMerge(motionPhysicsEvidenceTierRef.current);
     // LV battery — support both new lvBattery* names and legacy names
-    setBatteryType(str(specs.lvBatteryType ?? specs.batteryType));
-    setBatteryAmpere(str(specs.lvBatteryAmpere ?? specs.batteryAmpere));
-    setBatteryVolt(str(specs.lvBatteryVolt ?? specs.batteryVolt));
-    maybeSet(setLvBatteryChemistry, specs.lvBatteryChemistry);
+    maybeSetIfEmpty(() => batteryTypeRef.current, setBatteryType, specs.lvBatteryType ?? specs.batteryType);
+    maybeSetIfEmpty(() => batteryAmpereRef.current, setBatteryAmpere, specs.lvBatteryAmpere ?? specs.batteryAmpere);
+    maybeSetIfEmpty(() => batteryVoltRef.current, setBatteryVolt, specs.lvBatteryVolt ?? specs.batteryVolt);
+    maybeSetIfEmpty(() => lvBatteryChemistryRef.current, setLvBatteryChemistry, specs.lvBatteryChemistry);
     // HV battery
-    maybeSet(setHvBatteryPresent, specs.hvBatteryPresent != null ? String(specs.hvBatteryPresent) : null);
-    maybeSet(setHvBatteryChemistry, specs.hvBatteryChemistry);
-    maybeSet(setHvBatteryCellFormat, specs.hvBatteryCellFormat);
-    maybeSet(setHvBatteryGrossCapacityKwh, specs.hvBatteryGrossCapacityKwh);
-    maybeSet(setHvBatteryUsableCapacityKwh, specs.hvBatteryUsableCapacityKwh);
-    maybeSet(setHvBatteryNominalVoltage, specs.hvBatteryNominalVoltage);
-    maybeSet(setHvBatteryArchitecture, specs.hvBatteryArchitecture);
-    maybeSet(setHvBatteryThermalManagement, specs.hvBatteryThermalManagement);
-    maybeSet(setHvBatteryWarrantyYears, specs.hvBatteryWarrantyYears);
-    maybeSet(setHvBatteryWarrantyKm, specs.hvBatteryWarrantyKm);
-    maybeSet(setAcOnboardChargerKw, specs.acOnboardChargerKw);
-    maybeSet(setDcFastChargeMaxKw, specs.dcFastChargeMaxKw);
-    // Usable kWh → legacy hvBatteryCapacityKwh field
+    maybeSetIfEmpty(
+      () => hvBatteryPresentRef.current,
+      setHvBatteryPresent,
+      specs.hvBatteryPresent != null ? String(specs.hvBatteryPresent) : null,
+    );
+    maybeSetIfEmpty(() => hvBatteryChemistryRef.current, setHvBatteryChemistry, specs.hvBatteryChemistry);
+    maybeSetIfEmpty(() => hvBatteryCellFormatRef.current, setHvBatteryCellFormat, specs.hvBatteryCellFormat);
+    maybeSetIfEmpty(() => hvBatteryGrossCapacityKwhRef.current, setHvBatteryGrossCapacityKwh, specs.hvBatteryGrossCapacityKwh);
+    maybeSetIfEmpty(() => hvBatteryUsableCapacityKwhRef.current, setHvBatteryUsableCapacityKwh, specs.hvBatteryUsableCapacityKwh);
+    maybeSetIfEmpty(() => hvBatteryNominalVoltageRef.current, setHvBatteryNominalVoltage, specs.hvBatteryNominalVoltage);
+    maybeSetIfEmpty(() => hvBatteryArchitectureRef.current, setHvBatteryArchitecture, specs.hvBatteryArchitecture);
+    maybeSetIfEmpty(() => hvBatteryThermalManagementRef.current, setHvBatteryThermalManagement, specs.hvBatteryThermalManagement);
+    maybeSetIfEmpty(() => hvBatteryWarrantyYearsRef.current, setHvBatteryWarrantyYears, specs.hvBatteryWarrantyYears);
+    maybeSetIfEmpty(() => hvBatteryWarrantyKmRef.current, setHvBatteryWarrantyKm, specs.hvBatteryWarrantyKm);
+    maybeSetIfEmpty(() => acOnboardChargerKwRef.current, setAcOnboardChargerKw, specs.acOnboardChargerKw);
+    maybeSetIfEmpty(() => dcFastChargeMaxKwRef.current, setDcFastChargeMaxKw, specs.dcFastChargeMaxKw);
     const usableKwh = specs.hvBatteryUsableCapacityKwh ?? specs.hvBatteryCapacityKwh;
-    if (usableKwh != null) setHvBatteryCapacityKwh(str(usableKwh));
-    // Fuel tank
-    maybeSet(setTankCapacityLiters, specs.tankCapacityLiters ?? specs.fuelTankCapacityLiters);
-    // Engine
-    maybeSet(setEngineDisplacementCc, specs.engineDisplacementCc);
-    maybeSet(setCylinderCount, specs.cylinderCount);
-    setBrakeFrontRotorDiameter(str(specs.frontRotorDiameterMm ?? specs.brakeFrontRotorDiameter));
-    setBrakeFrontRotorWidth(str(specs.frontRotorWidthMm ?? specs.brakeFrontRotorWidth));
-    setBrakeFrontPadThickness(str(specs.frontPadThicknessMm ?? specs.brakeFrontPadThickness));
-    setBrakeBackRotorDiameter(str(specs.rearRotorDiameterMm ?? specs.brakeBackRotorDiameter));
-    setBrakeBackRotorWidth(str(specs.rearRotorWidthMm ?? specs.brakeBackRotorWidth));
-    setBrakeBackPadThickness(str(specs.rearPadThicknessMm ?? specs.brakeBackPadThickness));
-    setIdleRpm(str(specs.idleRpm));
-    setMaxRpm(str(specs.maxRpm));
-    setCurbWeight(str(specs.curbWeightKg ?? specs.curbWeight));
-    setDrivetrain(str(specs.drivetrain));
-    setBrakeForceDistribution(str(specs.brakeForceDistribution));
-    setFrontToRearWeightDistribution(str(specs.frontToRearWeightDistribution));
+    maybeSetIfEmpty(() => hvBatteryCapacityKwhRef.current, setHvBatteryCapacityKwh, usableKwh);
+    maybeSetIfEmpty(() => tankCapacityLitersRef.current, setTankCapacityLiters, specs.tankCapacityLiters ?? specs.fuelTankCapacityLiters);
+    maybeSetIfEmpty(() => engineDisplacementCcRef.current, setEngineDisplacementCc, specs.engineDisplacementCc);
+    maybeSetIfEmpty(() => cylinderCountRef.current, setCylinderCount, specs.cylinderCount);
+    maybeSetIfEmpty(() => brakeFrontRotorDiameterRef.current, setBrakeFrontRotorDiameter, specs.frontRotorDiameterMm ?? specs.brakeFrontRotorDiameter);
+    maybeSetIfEmpty(() => brakeFrontRotorWidthRef.current, setBrakeFrontRotorWidth, specs.frontRotorWidthMm ?? specs.brakeFrontRotorWidth);
+    maybeSetIfEmpty(() => brakeFrontPadThicknessRef.current, setBrakeFrontPadThickness, specs.frontPadThicknessMm ?? specs.brakeFrontPadThickness);
+    maybeSetIfEmpty(() => brakeBackRotorDiameterRef.current, setBrakeBackRotorDiameter, specs.rearRotorDiameterMm ?? specs.brakeBackRotorDiameter);
+    maybeSetIfEmpty(() => brakeBackRotorWidthRef.current, setBrakeBackRotorWidth, specs.rearRotorWidthMm ?? specs.brakeBackRotorWidth);
+    maybeSetIfEmpty(() => brakeBackPadThicknessRef.current, setBrakeBackPadThickness, specs.rearPadThicknessMm ?? specs.brakeBackPadThickness);
+    maybeSetIfEmpty(() => idleRpmRef.current, setIdleRpm, specs.idleRpm);
+    maybeSetIfEmpty(() => maxRpmRef.current, setMaxRpm, specs.maxRpm);
+    if (!motionLocked) {
+      maybeSetIfEmpty(() => curbWeightRef.current, setCurbWeight, specs.curbWeightKg ?? specs.curbWeight);
+      maybeSetIfEmpty(() => systemMotorPowerKwRef.current, setSystemMotorPowerKw, specs.systemMotorPowerKw);
+      maybeSetIfEmpty(() => accel0To100SRef.current, setAccel0To100S, specs.accel0To100S);
+      maybeSetIfEmpty(
+        () => motionPhysicsVariantAssumptionRef.current,
+        setMotionPhysicsVariantAssumption,
+        specs.variantAssumption,
+      );
+    }
+    maybeSetIfEmpty(() => drivetrainRef.current, setDrivetrain, specs.drivetrain);
+    maybeSetIfEmpty(() => brakeForceDistributionRef.current, setBrakeForceDistribution, specs.brakeForceDistribution);
+    maybeSetIfEmpty(
+      () => frontToRearWeightDistributionRef.current,
+      setFrontToRearWeightDistribution,
+      specs.frontToRearWeightDistribution,
+    );
     const svcKm = str(specs.manufacturerServiceIntervalKm);
     const svcMo = str(specs.manufacturerServiceIntervalMonths);
-    setServiceIntervalManufacturerKm(svcKm);
-    setServiceIntervalManufacturerMonths(svcMo);
+    if (!serviceIntervalManufacturerKmRef.current.trim() && svcKm) setServiceIntervalManufacturerKm(svcKm);
+    if (!serviceIntervalManufacturerMonthsRef.current.trim() && svcMo) setServiceIntervalManufacturerMonths(svcMo);
     const oilKm = str(specs.oilchangeIntervalKm);
     const oilMo = str(specs.oilchangeIntervalMonths);
-    setOilChangeIntervalKm(oilKm);
-    setOilChangeIntervalMonths(oilMo);
+    if (!oilChangeIntervalKmRef.current.trim() && oilKm) setOilChangeIntervalKm(oilKm);
+    if (!oilChangeIntervalMonthsRef.current.trim() && oilMo) setOilChangeIntervalMonths(oilMo);
     const parts: string[] = [];
     if (svcKm || svcMo) parts.push(`Service: ${[svcKm && `${svcKm} km`, svcMo && `${svcMo} months`].filter(Boolean).join(' / ')}`);
     if (oilKm || oilMo) parts.push(`Oil: ${[oilKm && `${oilKm} km`, oilMo && `${oilMo} months`].filter(Boolean).join(' / ')}`);
-    setServiceIntervals(parts.join('; ') || str(specs.serviceIntervals));
+    const svcSummary = parts.join('; ') || str(specs.serviceIntervals);
+    if (!serviceIntervalsRef.current.trim() && svcSummary) setServiceIntervals(svcSummary);
   };
 
   const handleFetchAi = () => {
@@ -366,6 +489,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     };
     if (dimoVehicle?.id) streamParams.dimoVehicleId = dimoVehicle.id;
     if (dimoVehicle?.tokenId != null) streamParams.tokenId = String(dimoVehicle.tokenId);
+    if (organizationId) streamParams.organizationId = organizationId;
+    if (isEditMode && existingVehicle?.id) streamParams.vehicleId = existingVehicle.id;
 
     const isStale = () => gen !== aiGenerationRef.current;
 
@@ -440,6 +565,65 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       tireAiAbortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen || !isEditMode || !existingVehicle?.id || !organizationId) {
+      setMotionPhysicsReferenceId(null);
+      setMotionPhysicsEvidenceTier(null);
+      return;
+    }
+    api.vehicles.motionPhysicsReference
+      .getActive(organizationId, existingVehicle.id)
+      .then((ref) => {
+        if (!ref) return;
+        setMotionPhysicsReferenceId(ref.id);
+        setMotionPhysicsEvidenceTier(ref.evidenceTier);
+        if (ref.curbMassKg != null) setCurbWeight(String(ref.curbMassKg));
+        if (ref.systemMotorPowerKw != null) setSystemMotorPowerKw(String(ref.systemMotorPowerKw));
+        if (ref.accel0To100S != null) setAccel0To100S(String(ref.accel0To100S));
+        if (ref.variantAssumption) setMotionPhysicsVariantAssumption(ref.variantAssumption);
+      })
+      .catch(() => {
+        setMotionPhysicsReferenceId(null);
+        setMotionPhysicsEvidenceTier(null);
+      });
+  }, [isOpen, isEditMode, existingVehicle?.id, organizationId]);
+
+  const handleConfirmMotionReference = async () => {
+    if (!motionPhysicsReferenceId || !organizationId || !existingVehicle?.id || motionPhysicsConfirming) return;
+    setMotionPhysicsConfirming(true);
+    try {
+      const updated = await api.vehicles.motionPhysicsReference.confirm(
+        organizationId,
+        existingVehicle.id,
+        motionPhysicsReferenceId,
+      );
+      setMotionPhysicsEvidenceTier(updated.evidenceTier);
+    } catch {
+      setAiErrorDetail(t('master.motionPhysics.confirmError'));
+    } finally {
+      setMotionPhysicsConfirming(false);
+    }
+  };
+
+  const syncLegacyMotionPhysicsReference = async (vehicleId: string, orgId: string) => {
+    if (motionPhysicsEvidenceTier === 'VERIFIED' || motionPhysicsEvidenceTier === 'CONFIRMED') return;
+    if (motionPhysicsReferenceId && motionPhysicsEvidenceTier === 'ESTIMATED') return;
+    const curb = curbWeight.trim() ? Number(curbWeight.replace(/[^\d.-]/g, '')) : null;
+    const power = systemMotorPowerKw.trim() ? Number(systemMotorPowerKw.replace(',', '.')) : null;
+    const accel = accel0To100S.trim() ? Number(accel0To100S.replace(',', '.')) : null;
+    if (curb == null && power == null && accel == null) return;
+    const created = await api.vehicles.motionPhysicsReference.create(orgId, vehicleId, {
+      curbMassKg: Number.isFinite(curb!) ? curb : null,
+      systemMotorPowerKw: Number.isFinite(power!) ? power : null,
+      accel0To100S: Number.isFinite(accel!) ? accel : null,
+      variantAssumption: motionPhysicsVariantAssumption.trim() || null,
+      source: 'OPERATOR_CONFIRMED',
+    });
+    setMotionPhysicsReferenceId(created.id);
+    setMotionPhysicsEvidenceTier(created.evidenceTier);
+    setMotionPhysicsSyncError('');
+  };
 
   // Check HM Health availability when modal opens with a known VIN
   useEffect(() => {
@@ -585,7 +769,11 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     brakeFrontRotorDiameter, brakeFrontRotorWidth, brakeFrontPadThickness,
     brakeBackRotorDiameter, brakeBackRotorWidth, brakeBackPadThickness,
     idleRpm, maxRpm, drivetrain, brakeForceDistribution, frontToRearWeightDistribution,
-    curbWeight, serviceIntervals,
+    curbWeight,
+    systemMotorPowerKw,
+    accel0To100S,
+    motionPhysicsVariantAssumption,
+    serviceIntervals,
     serviceIntervalManufacturerKm, serviceIntervalManufacturerMonths,
     oilChangeIntervalKm, oilChangeIntervalMonths,
     lastTuev, lastBokraft, lastInspection, lastOilChange, lastBrakePadChange, lastBrakeRotorChange,
@@ -599,6 +787,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     try {
       if (isEditMode && onUpdate) {
         await Promise.resolve(onUpdate(rv));
+        if (organizationId && rv.id) {
+          try {
+            await syncLegacyMotionPhysicsReference(rv.id, organizationId);
+          } catch {
+            setMotionPhysicsSyncError(t('master.motionPhysics.backfillError'));
+            return;
+          }
+        }
       } else {
         await Promise.resolve(onRegister(rv));
         // V4.7.50 — flush buffered exterior photos (best-effort) once we
@@ -922,6 +1118,53 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 </select>
               </div>
               <div><label className={labelClass}>Curb Weight (kg) {aiTag}</label><input value={curbWeight} onChange={e => setCurbWeight(e.target.value)} className={inputClass} placeholder="e.g. 1500" /></div>
+              <div className="col-span-2 lg:col-span-3 border-t border-border/40 pt-3 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className={`text-xs font-bold text-muted-foreground`}>{t('master.motionPhysics.sectionTitle')}</span>
+                  {motionPhysicsEvidenceTier && (
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                      motionPhysicsEvidenceTier === 'VERIFIED'
+                        ? 'bg-status-success-soft text-status-success'
+                        : motionPhysicsEvidenceTier === 'CONFIRMED'
+                          ? 'bg-status-info-soft text-status-info'
+                          : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {motionPhysicsEvidenceTier === 'VERIFIED'
+                        ? t('master.motionPhysics.evidence.verified')
+                        : motionPhysicsEvidenceTier === 'CONFIRMED'
+                          ? t('master.motionPhysics.evidence.confirmed')
+                          : t('master.motionPhysics.evidence.estimated')}
+                    </span>
+                  )}
+                  {isEditMode && motionPhysicsReferenceId && motionPhysicsEvidenceTier === 'ESTIMATED' && (
+                    <button
+                      type="button"
+                      disabled={motionPhysicsConfirming}
+                      onClick={handleConfirmMotionReference}
+                      className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 disabled:opacity-50"
+                    >
+                      {t('master.motionPhysics.confirmAction')}
+                    </button>
+                  )}
+                  {motionPhysicsSyncError && (
+                    <p className="text-[11px] text-status-danger w-full">{motionPhysicsSyncError}</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div>
+                    <label className={labelClass}>{t('master.motionPhysics.systemMotorPowerKw')} {aiTag}</label>
+                    <input value={systemMotorPowerKw} onChange={e => setSystemMotorPowerKw(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.systemMotorPowerKw')} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t('master.motionPhysics.accel0To100S')} {aiTag}</label>
+                    <input value={accel0To100S} onChange={e => setAccel0To100S(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.accel0To100S')} />
+                  </div>
+                  <div className="col-span-2 lg:col-span-1">
+                    <label className={labelClass}>{t('master.motionPhysics.variantAssumption')} {aiTag}</label>
+                    <input value={motionPhysicsVariantAssumption} onChange={e => setMotionPhysicsVariantAssumption(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.variantAssumption')} />
+                  </div>
+                </div>
+              </div>
               <div><label className={labelClass}>Tank Capacity (L)</label><input type="number" value={tankCapacityLiters} onChange={e => setTankCapacityLiters(e.target.value)} className={inputClass} placeholder="e.g. 54" /></div>
               <div><label className={labelClass}>Engine Displacement (cc) {aiTag}</label><input value={engineDisplacementCc} onChange={e => setEngineDisplacementCc(e.target.value)} className={inputClass} placeholder="e.g. 1998" /></div>
               <div><label className={labelClass}>Cylinder Count {aiTag}</label><input value={cylinderCount} onChange={e => setCylinderCount(e.target.value)} className={inputClass} placeholder="e.g. 4" /></div>

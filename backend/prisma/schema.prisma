@@ -1846,6 +1846,8 @@ model Organization {
   vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities                         VehicleBatteryReferenceCapacity[]
   vehicleBatteryReferenceCapacityChanges                    VehicleBatteryReferenceCapacityChange[]
+  vehicleMotionPhysicsReferences                            VehicleMotionPhysicsReference[]
+  vehicleMotionPhysicsReferenceChanges                      VehicleMotionPhysicsReferenceChange[]
   hvChargeSessions                                          HvChargeSession[]
   batteryHvChargingCounterIngestionBatches                  BatteryHvChargingCounterIngestionBatch[]
   batteryHvChargingCounterObservations                      BatteryHvChargingCounterObservation[]
@@ -2006,6 +2008,8 @@ model User {
   tireRentalHealthReviewGrants         TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities   VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges      VehicleBatteryReferenceCapacityChange[]
+  verifiedMotionPhysicsReferences      VehicleMotionPhysicsReference[]
+  motionPhysicsReferenceChanges        VehicleMotionPhysicsReferenceChange[]
   batteryGroundTruthEventsConfirmed    BatteryGroundTruthEvent[]             @relation("BatteryGroundTruthConfirmedBy")
   batteryGroundTruthRevocationsPerformed BatteryGroundTruthRevocation[]      @relation("BatteryGroundTruthRevokedBy")
   brakeRentalHealthReviewGrants        BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
@@ -3079,6 +3083,8 @@ model Vehicle {
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
   vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
+  vehicleMotionPhysicsReferences         VehicleMotionPhysicsReference[]
+  vehicleMotionPhysicsReferenceChanges   VehicleMotionPhysicsReferenceChange[]
   hvChargeSessions                       HvChargeSession[]
   batteryHvChargingCounterIngestionBatches BatteryHvChargingCounterIngestionBatch[]
   batteryHvChargingCounterObservations   BatteryHvChargingCounterObservation[]
@@ -4191,6 +4197,7 @@ model VehicleDocumentExtraction {
   batteryGroundTruthEvents          BatteryGroundTruthEvent[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  vehicleMotionPhysicsReferences    VehicleMotionPhysicsReference[]
   fines                             Fine[]
   orgInvoices                       OrgInvoice[]
   serviceEvents                     VehicleServiceEvent[]
@@ -8985,6 +8992,21 @@ enum ReferenceCapacityVerificationStatus {
   WEAK_SOURCE_ONLY
 }
 
+enum MotionPhysicsEvidenceTier {
+  ESTIMATED
+  CONFIRMED
+  VERIFIED
+}
+
+enum MotionPhysicsReferenceSource {
+  MISTRAL_AI
+  OPERATOR_CONFIRMED
+  MANUAL_ENTRY
+  ONBOARDING_ACTIVATION
+  REGISTRATION_CERTIFICATE
+  MANUFACTURER_VERIFIED
+}
+
 enum BatteryReferenceCapacitySource {
   WORKSHOP_MEASUREMENT
   DOCUMENT_CONFIRMED
@@ -9698,6 +9720,70 @@ model VehicleBatteryReferenceCapacityChange {
   @@index([vehicleId, changedAt(sort: Desc)])
   @@index([referenceCapacityId])
   @@map("vehicle_battery_reference_capacity_changes")
+}
+
+/// Vehicle motion physics reference (mass, system power, 0–100 s) for onboarding and DI shadow (Phase A).
+model VehicleMotionPhysicsReference {
+  id                     String                      @id @default(uuid())
+  organizationId         String                      @map("organization_id")
+  vehicleId              String                      @map("vehicle_id")
+  identityFingerprintJson Json                       @map("identity_fingerprint_json")
+  curbMassKg             Float?                      @map("curb_mass_kg")
+  systemMotorPowerKw     Float?                      @map("system_motor_power_kw")
+  /// OEM/document semantics for systemMotorPowerKw (e.g. rated system kW; ZB P.2 is not peak EV traction without review).
+  systemPowerDefinition  String?                     @map("system_power_definition")
+  accel0To100S           Float?                      @map("accel_0_to_100_s")
+  variantAssumption      String?                     @map("variant_assumption")
+  evidenceTier           MotionPhysicsEvidenceTier   @map("evidence_tier")
+  source                 MotionPhysicsReferenceSource
+  documentExtractionId   String?                     @map("document_extraction_id")
+  verifiedByUserId       String?                     @map("verified_by_user_id")
+  verifiedAt             DateTime?                   @map("verified_at")
+  effectiveFrom          DateTime                    @default(now()) @map("effective_from")
+  effectiveTo            DateTime?                   @map("effective_to")
+  isActive               Boolean                     @default(true) @map("is_active")
+  supersededById         String?                     @map("superseded_by_id")
+  notes                  String?                     @map("notes")
+  createdAt              DateTime                    @default(now()) @map("created_at")
+
+  organization         Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  verifiedByUser       User?                             @relation(fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  documentExtraction   VehicleDocumentExtraction?        @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  supersededBy         VehicleMotionPhysicsReference?    @relation("VehicleMotionPhysicsReferenceSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes           VehicleMotionPhysicsReference[]   @relation("VehicleMotionPhysicsReferenceSupersede")
+  changes              VehicleMotionPhysicsReferenceChange[]
+
+  @@index([organizationId])
+  @@index([vehicleId, effectiveFrom(sort: Desc)])
+  @@index([evidenceTier])
+  @@index([isActive])
+  @@index([documentExtractionId])
+  @@index([supersededById])
+  @@map("vehicle_motion_physics_references")
+}
+
+model VehicleMotionPhysicsReferenceChange {
+  id                String                     @id @default(uuid())
+  organizationId    String                     @map("organization_id")
+  vehicleId         String                     @map("vehicle_id")
+  referenceId       String?                    @map("reference_id")
+  action            String                     @map("action")
+  previousTier      MotionPhysicsEvidenceTier? @map("previous_tier")
+  newTier           MotionPhysicsEvidenceTier? @map("new_tier")
+  actorUserId       String?                    @map("actor_user_id")
+  metadata          Json?                      @map("metadata")
+  changedAt         DateTime                   @default(now()) @map("changed_at")
+
+  organization Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  reference    VehicleMotionPhysicsReference? @relation(fields: [referenceId], references: [id], onDelete: SetNull)
+  actorUser    User?                          @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([vehicleId, changedAt(sort: Desc)])
+  @@index([referenceId])
+  @@map("vehicle_motion_physics_reference_changes")
 }
 
 /// HV charge session from DIMO recharge segment or poll fallback.
