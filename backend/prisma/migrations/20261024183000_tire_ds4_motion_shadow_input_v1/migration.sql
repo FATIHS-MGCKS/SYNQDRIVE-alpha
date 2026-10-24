@@ -17,7 +17,8 @@ CREATE TABLE "tire_ds4_motion_shadow_input_v1" (
     "events_algorithm_version" TEXT NOT NULL,
     "adapter_version" TEXT NOT NULL,
     "source" TEXT NOT NULL DEFAULT 'DS4',
-    "coverage" TEXT NOT NULL,
+    "event_quality_coverage" TEXT NOT NULL,
+    "temporal_coverage" TEXT NOT NULL,
     "ds4_read_status" TEXT NOT NULL,
     "input_payload" JSONB NOT NULL,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -40,4 +41,4 @@ CREATE INDEX "tire_ds4_shadow_input_setup_idx"
 
 ALTER TABLE "tire_ds4_motion_shadow_input_v1"
     ADD CONSTRAINT "tire_ds4_motion_shadow_input_v1_tire_trip_usage_ledger_id_fkey"
-    FOREIGN KEY ("tire_trip_usage_ledger_id") REFERENCES "tire_trip_usage_ledger"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    FOREIGN KEY ("tire_trip_usage_ledger_id") REFERENCES "tire_trip_usage_ledger"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

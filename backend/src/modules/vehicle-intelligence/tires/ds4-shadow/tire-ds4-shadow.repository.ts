@@ -1,15 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  isTireDs4ShadowTerminalRunId,
+  TIRE_DS4_SHADOW_TERMINAL_RUN_DS4_NOT_AVAILABLE,
+  TIRE_DS4_SHADOW_TERMINAL_RUN_RETRY_EXHAUSTED,
+  TIRE_DS4_SHADOW_TERMINAL_RUN_IDS,
+} from './tire-ds4-shadow-terminal-runs';
 import type { TireDs4ShadowPersistInput } from './tire-ds4-shadow.types';
 
-export type TireDs4ShadowUpsertResult = 'inserted' | 'unchanged';
+export type TireDs4ShadowPersistResult =
+  | 'inserted'
+  | 'unchanged'
+  | 'evidence_immutable_conflict';
 
 @Injectable()
 export class TireDs4ShadowRepository {
+  private readonly logger = new Logger(TireDs4ShadowRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  async upsertShadowInput(input: TireDs4ShadowPersistInput): Promise<TireDs4ShadowUpsertResult> {
+  async insertShadowInputImmutable(input: TireDs4ShadowPersistInput): Promise<TireDs4ShadowPersistResult> {
     const existing = await this.prisma.tireDs4MotionShadowInputV1.findUnique({
       where: {
         tireTripUsageLedgerId_diV0MotionCoreShadowRunId_adapterVersion: {
@@ -18,24 +29,26 @@ export class TireDs4ShadowRepository {
           adapterVersion: input.adapterVersion,
         },
       },
-      select: { id: true, contentFingerprint: true, inputPayload: true },
+      select: { id: true, contentFingerprint: true },
     });
 
-    if (existing?.contentFingerprint === input.contentFingerprint) {
-      return 'unchanged';
+    if (existing) {
+      if (existing.contentFingerprint === input.contentFingerprint) {
+        return 'unchanged';
+      }
+      this.logger.warn(
+        JSON.stringify({
+          event: 'tire_ds4_shadow_evidence_immutable_conflict',
+          ledgerId: input.tireTripUsageLedgerId,
+          runId: input.diV0MotionCoreShadowRunId,
+          adapterVersion: input.adapterVersion,
+        }),
+      );
+      return 'evidence_immutable_conflict';
     }
 
-    const isCreate = !existing;
-
-    await this.prisma.tireDs4MotionShadowInputV1.upsert({
-      where: {
-        tireTripUsageLedgerId_diV0MotionCoreShadowRunId_adapterVersion: {
-          tireTripUsageLedgerId: input.tireTripUsageLedgerId,
-          diV0MotionCoreShadowRunId: input.diV0MotionCoreShadowRunId,
-          adapterVersion: input.adapterVersion,
-        },
-      },
-      create: {
+    await this.prisma.tireDs4MotionShadowInputV1.create({
+      data: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         tripId: input.tripId,
@@ -51,60 +64,162 @@ export class TireDs4ShadowRepository {
         eventsAlgorithmVersion: input.eventsAlgorithmVersion,
         adapterVersion: input.adapterVersion,
         source: 'DS4',
-        coverage: input.coverage,
+        eventQualityCoverage: input.eventQualityCoverage,
+        temporalCoverage: input.temporalCoverage,
         ds4ReadStatus: input.ds4ReadStatus,
         inputPayload: input.inputPayload as Prisma.InputJsonValue,
-      },
-      update: {
-        combinedInputIdentity: input.combinedInputIdentity,
-        pinnedSnapshotHash: input.pinnedSnapshotHash,
-        contentFingerprint: input.contentFingerprint,
-        shadowBundleVersion: input.shadowBundleVersion,
-        speedAuthority: input.speedAuthority,
-        eventsAlgorithmVersion: input.eventsAlgorithmVersion,
-        coverage: input.coverage,
-        ds4ReadStatus: input.ds4ReadStatus,
-        inputPayload: input.inputPayload as Prisma.InputJsonValue,
-        workItemId: input.workItemId,
       },
     });
 
-    return isCreate ? 'inserted' : 'unchanged';
+    return 'inserted';
   }
 
-  async findLedgerIdsMissingShadow(adapterVersion: string, limit: number): Promise<
+  async hasTerminalMarker(tireTripUsageLedgerId: string, adapterVersion: string): Promise<boolean> {
+    const row = await this.prisma.tireDs4MotionShadowInputV1.findFirst({
+      where: {
+        tireTripUsageLedgerId,
+        adapterVersion,
+        diV0MotionCoreShadowRunId: { in: [...TIRE_DS4_SHADOW_TERMINAL_RUN_IDS] },
+      },
+      select: { id: true },
+    });
+    return row != null;
+  }
+
+  async persistTerminalMarker(input: {
+    organizationId: string;
+    vehicleId: string;
+    tripId: string;
+    tireSetupId: string;
+    tireTripUsageLedgerId: string;
+    adapterVersion: string;
+    kind: 'retry_exhausted' | 'ds4_not_available';
+    reason: string;
+  }): Promise<TireDs4ShadowPersistResult> {
+    const runId =
+      input.kind === 'retry_exhausted'
+        ? TIRE_DS4_SHADOW_TERMINAL_RUN_RETRY_EXHAUSTED
+        : TIRE_DS4_SHADOW_TERMINAL_RUN_DS4_NOT_AVAILABLE;
+
+    const fingerprint = `terminal:${input.kind}:${input.reason}`;
+
+    return this.insertShadowInputImmutable({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      tripId: input.tripId,
+      tireSetupId: input.tireSetupId,
+      tireTripUsageLedgerId: input.tireTripUsageLedgerId,
+      diV0MotionCoreShadowRunId: runId,
+      workItemId: null,
+      combinedInputIdentity: fingerprint,
+      pinnedSnapshotHash: fingerprint,
+      contentFingerprint: fingerprint,
+      shadowBundleVersion: 'n/a',
+      speedAuthority: 'n/a',
+      eventsAlgorithmVersion: 'n/a',
+      adapterVersion: input.adapterVersion,
+      eventQualityCoverage: 'NONE',
+      temporalCoverage: 'NONE',
+      ds4ReadStatus: input.kind === 'retry_exhausted' ? 'RETRY_EXHAUSTED' : 'NOT_AVAILABLE',
+      inputPayload: {
+        schemaVersion: 2,
+        neutral: true,
+        shadowBundleVersion: null,
+        acceleration: {
+          okCount: 0,
+          okDurationS: 0,
+          okDeltaKmhAbsSum: 0,
+          degradedCount: 0,
+          limitedCount: 0,
+          excludedArtefactCount: 0,
+          excludedOtherQualityCount: 0,
+        },
+        deceleration: {
+          okCount: 0,
+          okDurationS: 0,
+          okDeltaKmhAbsSum: 0,
+          degradedCount: 0,
+          limitedCount: 0,
+          excludedArtefactCount: 0,
+          excludedOtherQualityCount: 0,
+        },
+        eventQualityCoverage: 'NONE',
+        temporalCoverage: 'NONE',
+        limitations: [input.reason],
+        newerFailedRunId: null,
+        newerFailedRunStatus: null,
+      },
+    });
+  }
+
+  async findCatchupCandidates(
+    adapterVersion: string,
+    limit: number,
+  ): Promise<
     Array<{
       tireTripUsageLedgerId: string;
       organizationId: string;
       vehicleId: string;
       tripId: string;
+      reason: 'missing_shadow' | 'newer_ds4_run';
     }>
   > {
+    const terminalIds = [...TIRE_DS4_SHADOW_TERMINAL_RUN_IDS];
     const rows = await this.prisma.$queryRaw<
       Array<{
         tire_trip_usage_ledger_id: string;
         organization_id: string;
         vehicle_id: string;
         trip_id: string;
+        catchup_reason: string;
       }>
     >`
+      WITH latest_succeeded AS (
+        SELECT DISTINCT ON (r.organization_id, r.vehicle_id, r.trip_id)
+          r.organization_id,
+          r.vehicle_id,
+          r.trip_id,
+          r.id AS run_id,
+          r.created_at
+        FROM di_v0_motion_core_shadow_runs_v1 r
+        WHERE r.shadow_status = 'SUCCEEDED'
+        ORDER BY r.organization_id, r.vehicle_id, r.trip_id, r.created_at DESC
+      ),
+      terminal AS (
+        SELECT DISTINCT tire_trip_usage_ledger_id
+        FROM tire_ds4_motion_shadow_input_v1
+        WHERE adapter_version = ${adapterVersion}
+          AND di_v0_motion_core_shadow_run_id = ANY(${terminalIds}::text[])
+      )
       SELECT l.id AS tire_trip_usage_ledger_id,
              l.organization_id,
              l.vehicle_id,
-             l.trip_id
+             l.trip_id,
+             'newer_ds4_run' AS catchup_reason
       FROM tire_trip_usage_ledger l
-      LEFT JOIN tire_ds4_motion_shadow_input_v1 s
-        ON s.tire_trip_usage_ledger_id = l.id
-       AND s.adapter_version = ${adapterVersion}
+      INNER JOIN latest_succeeded ls
+        ON ls.organization_id = l.organization_id
+       AND ls.vehicle_id = l.vehicle_id
+       AND ls.trip_id = l.trip_id
+      LEFT JOIN terminal t ON t.tire_trip_usage_ledger_id = l.id
+      LEFT JOIN tire_ds4_motion_shadow_input_v1 mat
+        ON mat.tire_trip_usage_ledger_id = l.id
+       AND mat.adapter_version = ${adapterVersion}
+       AND mat.di_v0_motion_core_shadow_run_id = ls.run_id
       WHERE l.invalidated_at IS NULL
-        AND s.id IS NULL
+        AND t.tire_trip_usage_ledger_id IS NULL
+        AND mat.id IS NULL
       ORDER BY l.processed_at ASC
       LIMIT ${limit}`;
+
     return rows.map((r) => ({
       tireTripUsageLedgerId: r.tire_trip_usage_ledger_id,
       organizationId: r.organization_id,
       vehicleId: r.vehicle_id,
       tripId: r.trip_id,
+      reason: r.catchup_reason === 'newer_ds4_run' ? 'newer_ds4_run' : 'missing_shadow',
     }));
   }
 }
+
+export { isTireDs4ShadowTerminalRunId };

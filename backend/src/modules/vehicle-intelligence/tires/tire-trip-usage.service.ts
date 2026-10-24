@@ -527,14 +527,26 @@ export class TireTripUsageService {
         select: { id: true },
       })
       .then((ledger) => {
-        if (!ledger) return;
-        void this.ds4ShadowProducer?.enqueueMaterialize({
-          organizationId,
-          vehicleId: result.vehicleId,
-          tripId: result.tripId,
-          tireTripUsageLedgerId: ledger.id,
-          attempt: 0,
-        });
+        if (!ledger || !this.ds4ShadowProducer) return;
+        return this.ds4ShadowProducer
+          .enqueueMaterialize({
+            organizationId,
+            vehicleId: result.vehicleId,
+            tripId: result.tripId,
+            tireTripUsageLedgerId: ledger.id,
+            attempt: 0,
+          })
+          .catch((enqueueErr: unknown) => {
+            const message = enqueueErr instanceof Error ? enqueueErr.message : String(enqueueErr);
+            this.logger.warn(
+              JSON.stringify({
+                event: 'tire_ds4_shadow_enqueue_failed',
+                tripId: result.tripId,
+                phase: 'producer',
+                message,
+              }),
+            );
+          });
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);

@@ -8,28 +8,30 @@ export type TireDs4ShadowJobData = {
   attempt: number;
 };
 
-export type TireDs4ShadowCoverage = 'NONE' | 'PARTIAL' | 'FULL';
+/** Event-quality signal only (not temporal trip coverage). Never FULL in v1. */
+export type TireDs4ShadowEventQualityCoverage = 'NONE' | 'PARTIAL';
+
+/** Temporal manoeuvre coverage vs trip window — conservative until proven. */
+export type TireDs4ShadowTemporalCoverage = 'UNVERIFIED' | 'NONE';
 
 export type TireDs4ShadowChannelSummary = {
   okCount: number;
   okDurationS: number;
+  okDeltaKmhAbsSum: number;
   degradedCount: number;
   limitedCount: number;
   excludedArtefactCount: number;
   excludedOtherQualityCount: number;
-  ordinalDeltaKmhBuckets: {
-    low: number;
-    medium: number;
-    high: number;
-  };
 };
 
-export type TireDs4ShadowInputPayloadV1 = {
-  schemaVersion: 1;
+export type TireDs4ShadowInputPayloadV2 = {
+  schemaVersion: 2;
   neutral: boolean;
-  intensityAdmissible: boolean;
+  shadowBundleVersion: string | null;
   acceleration: TireDs4ShadowChannelSummary;
   deceleration: TireDs4ShadowChannelSummary;
+  eventQualityCoverage: TireDs4ShadowEventQualityCoverage;
+  temporalCoverage: TireDs4ShadowTemporalCoverage;
   limitations: string[];
   newerFailedRunId: string | null;
   newerFailedRunStatus: string | null;
@@ -50,7 +52,8 @@ export type TireDs4ShadowPersistInput = {
   speedAuthority: string;
   eventsAlgorithmVersion: string;
   adapterVersion: string;
-  coverage: TireDs4ShadowCoverage;
+  eventQualityCoverage: TireDs4ShadowEventQualityCoverage;
+  temporalCoverage: TireDs4ShadowTemporalCoverage;
   ds4ReadStatus: string;
-  inputPayload: TireDs4ShadowInputPayloadV1;
+  inputPayload: TireDs4ShadowInputPayloadV2;
 };

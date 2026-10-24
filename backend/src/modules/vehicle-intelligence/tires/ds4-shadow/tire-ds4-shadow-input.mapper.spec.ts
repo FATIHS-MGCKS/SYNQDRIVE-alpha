@@ -80,10 +80,12 @@ describe('tire-ds4-shadow-input.mapper', () => {
 
     expect(payload.acceleration.okCount).toBe(1);
     expect(payload.acceleration.okDurationS).toBe(2);
-    expect(payload.acceleration.ordinalDeltaKmhBuckets.medium).toBe(1);
+    expect(payload.acceleration.okDeltaKmhAbsSum).toBe(10);
     expect(payload.deceleration.limitedCount).toBe(1);
     expect(payload.neutral).toBe(false);
-    expect(payload.intensityAdmissible).toBe(true);
+    expect(payload.eventQualityCoverage).toBe('PARTIAL');
+    expect(payload.temporalCoverage).toBe('UNVERIFIED');
+    expect(payload.schemaVersion).toBe(2);
   });
 
   it('marks neutral when no admissible manoeuvre counts', () => {

@@ -3947,13 +3947,14 @@ model TireDs4MotionShadowInputV1 {
   eventsAlgorithmVersion    String   @map("events_algorithm_version")
   adapterVersion            String   @map("adapter_version")
   source                    String   @default("DS4") @map("source")
-  coverage                  String   @map("coverage")
+  eventQualityCoverage      String   @map("event_quality_coverage")
+  temporalCoverage          String   @map("temporal_coverage")
   ds4ReadStatus             String   @map("ds4_read_status")
   inputPayload              Json     @map("input_payload")
   createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tireTripUsageLedger TireTripUsageLedger @relation(fields: [tireTripUsageLedgerId], references: [id], onDelete: Cascade)
+  tireTripUsageLedger TireTripUsageLedger @relation(fields: [tireTripUsageLedgerId], references: [id], onDelete: Restrict)
 
   @@unique([tireTripUsageLedgerId, diV0MotionCoreShadowRunId, adapterVersion], map: "tire_ds4_shadow_input_ledger_run_adapter_uq")
   @@index([organizationId, vehicleId], map: "tire_ds4_shadow_input_org_vehicle_idx")

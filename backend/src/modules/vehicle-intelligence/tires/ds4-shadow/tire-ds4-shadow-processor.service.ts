@@ -1,19 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
+import tireDs4ShadowConfig from '@config/tire-ds4-shadow.config';
 import { DiV0MotionCoreShadowTripMapReadService } from '../../driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service';
 import { TIRE_DS4_SHADOW_ADAPTER_VERSION } from './tire-ds4-shadow-adapter.version';
-import { coverageFromPayload, mapDs4TripMapToTireShadowInput } from './tire-ds4-shadow-input.mapper';
+import {
+  eventQualityCoverageFromPayload,
+  mapDs4TripMapToTireShadowInput,
+} from './tire-ds4-shadow-input.mapper';
 import { TireDs4ShadowProducerService } from './tire-ds4-shadow-producer.service';
 import { TireDs4ShadowRepository } from './tire-ds4-shadow.repository';
 import type { TireDs4ShadowJobData } from './tire-ds4-shadow.types';
-import tireDs4ShadowConfig from '@config/tire-ds4-shadow.config';
-import { ConfigType } from '@nestjs/config';
-import { Inject } from '@nestjs/common';
 
 export type TireDs4ShadowProcessOutcome =
   | { status: 'skipped'; reason: string }
   | { status: 'deferred'; reason: string; nextAttempt: number }
-  | { status: 'persisted'; upsert: 'inserted' | 'unchanged' }
+  | {
+      status: 'persisted';
+      result: 'inserted' | 'unchanged' | 'evidence_immutable_conflict';
+    }
   | { status: 'exhausted'; reason: string; nextAttempt: number };
 
 @Injectable()
@@ -55,12 +60,8 @@ export class TireDs4ShadowProcessorService {
       return { status: 'skipped', reason: 'ledger_not_found_or_invalidated' };
     }
 
-    if (
-      ledger.organizationId !== data.organizationId ||
-      ledger.vehicleId !== data.vehicleId ||
-      ledger.tripId !== data.tripId
-    ) {
-      return { status: 'skipped', reason: 'tenant_scope_mismatch' };
+    if (await this.repository.hasTerminalMarker(ledger.id, TIRE_DS4_SHADOW_ADAPTER_VERSION)) {
+      return { status: 'skipped', reason: 'terminal_marker_present' };
     }
 
     const read = await this.tripMapRead.readForTrip(
@@ -70,14 +71,24 @@ export class TireDs4ShadowProcessorService {
     );
 
     if (read.status === 'PENDING') {
-      return this.defer(data, 'ds4_pending');
+      return this.defer(data, ledger, 'ds4_pending');
     }
 
     if (read.status === 'FAILED') {
-      return this.defer(data, 'ds4_failed_no_succeeded_run');
+      return this.defer(data, ledger, 'ds4_failed_no_succeeded_run');
     }
 
     if (read.status === 'NOT_AVAILABLE') {
+      await this.repository.persistTerminalMarker({
+        organizationId: ledger.organizationId,
+        vehicleId: ledger.vehicleId,
+        tripId: ledger.tripId,
+        tireSetupId: ledger.tireSetupId,
+        tireTripUsageLedgerId: ledger.id,
+        adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
+        kind: 'ds4_not_available',
+        reason: 'ds4_not_available',
+      });
       return { status: 'skipped', reason: 'ds4_not_available' };
     }
 
@@ -86,7 +97,7 @@ export class TireDs4ShadowProcessorService {
     }
 
     if (!read.runId || !read.combinedInputIdentity || !read.pinnedSnapshotHash) {
-      return this.defer(data, 'ds4_succeeded_missing_identity');
+      return this.defer(data, ledger, 'ds4_succeeded_missing_identity');
     }
 
     const runRow = await this.prisma.diV0MotionCoreShadowRunV1.findFirst({
@@ -100,16 +111,16 @@ export class TireDs4ShadowProcessorService {
     });
 
     if (!runRow) {
-      return this.defer(data, 'ds4_run_row_missing');
+      return this.defer(data, ledger, 'ds4_run_row_missing');
     }
 
     const inputPayload = mapDs4TripMapToTireShadowInput(read);
-    const coverage = coverageFromPayload(inputPayload);
+    const eventQualityCoverage = eventQualityCoverageFromPayload(inputPayload);
     const eventsAlgorithmVersion = read.algorithmVersions?.events ?? 'unknown';
     const speedAuthority = read.speedAuthority ?? 'unknown';
     const shadowBundleVersion = read.algorithmVersions?.bundle ?? runRow.shadowBundleVersion;
 
-    const upsert = await this.repository.upsertShadowInput({
+    const result = await this.repository.insertShadowInputImmutable({
       organizationId: ledger.organizationId,
       vehicleId: ledger.vehicleId,
       tripId: ledger.tripId,
@@ -124,7 +135,8 @@ export class TireDs4ShadowProcessorService {
       speedAuthority,
       eventsAlgorithmVersion,
       adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
-      coverage,
+      eventQualityCoverage,
+      temporalCoverage: inputPayload.temporalCoverage,
       ds4ReadStatus: read.status,
       inputPayload,
     });
@@ -135,20 +147,38 @@ export class TireDs4ShadowProcessorService {
         tripId: ledger.tripId,
         ledgerId: ledger.id,
         runId: read.runId,
-        coverage,
-        upsert,
+        eventQualityCoverage,
+        temporalCoverage: inputPayload.temporalCoverage,
+        result,
       }),
     );
 
-    return { status: 'persisted', upsert };
+    return { status: 'persisted', result };
   }
 
   private async defer(
     data: TireDs4ShadowJobData,
+    ledger: {
+      id: string;
+      organizationId: string;
+      vehicleId: string;
+      tripId: string;
+      tireSetupId: string;
+    },
     reason: string,
   ): Promise<TireDs4ShadowProcessOutcome> {
     const nextAttempt = data.attempt + 1;
     if (nextAttempt >= this.config.maxAttempts) {
+      await this.repository.persistTerminalMarker({
+        organizationId: ledger.organizationId,
+        vehicleId: ledger.vehicleId,
+        tripId: ledger.tripId,
+        tireSetupId: ledger.tireSetupId,
+        tireTripUsageLedgerId: ledger.id,
+        adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
+        kind: 'retry_exhausted',
+        reason,
+      });
       this.logger.warn(
         JSON.stringify({
           event: 'tire_ds4_shadow_retry_exhausted',

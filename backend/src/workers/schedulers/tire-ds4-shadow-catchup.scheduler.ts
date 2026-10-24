@@ -46,7 +46,7 @@ export class TireDs4ShadowCatchupScheduler implements OnModuleInit, OnModuleDest
 
     this.inProgress = true;
     try {
-      const missing = await this.repository.findLedgerIdsMissingShadow(
+      const missing = await this.repository.findCatchupCandidates(
         TIRE_DS4_SHADOW_ADAPTER_VERSION,
         this.config.catchupBatchSize,
       );
