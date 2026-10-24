@@ -38,6 +38,7 @@ import type {
 } from './adaptive-polling-shadow.types';
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
 import type { ApdShadowActiveEpochView } from './apd-shadow-activation-epoch.types';
+import { ApdShadowVsiLvAvailabilityLoader } from './apd-shadow-vsi-lv-availability.loader';
 
 @Injectable()
 export class AdaptivePollingShadowService {
@@ -48,6 +49,7 @@ export class AdaptivePollingShadowService {
     private readonly repository: AdaptivePollingShadowRepository,
     private readonly activationEpochService: ApdShadowActivationEpochService,
     @Optional() private readonly metrics?: AdaptivePollingShadowMetricsService,
+    @Optional() private readonly vsiLvAvailability?: ApdShadowVsiLvAvailabilityLoader,
   ) {
     this.refreshRuntimeMetrics();
   }
@@ -429,6 +431,15 @@ export class AdaptivePollingShadowService {
       });
     }
 
+    void this.observeParallelVsiLvAvailability({
+      organizationId: ctx.organizationId,
+      vehicleId: ctx.vehicleId,
+      decisionAtMs,
+      opportunityId,
+      profileEligibleGapCount: profile.sampleCount,
+      baselineProfileInvalidationReason: profile.invalidationReason,
+    });
+
     return opportunityId;
   }
 
@@ -513,6 +524,61 @@ export class AdaptivePollingShadowService {
         realPollVisibleLvSourceAt: persistVisibleLv,
         patch,
       });
+    }
+  }
+
+  /**
+   * Parallel observability only — scheduled after B2/B4 pre-poll rows persist.
+   * Failures must not block baseline shadow persistence or poll-start return.
+   */
+  private async observeParallelVsiLvAvailability(input: {
+    organizationId: string;
+    vehicleId: string;
+    decisionAtMs: number;
+    opportunityId: string;
+    profileEligibleGapCount: number;
+    baselineProfileInvalidationReason: string | null;
+  }): Promise<void> {
+    if (!this.vsiLvAvailability) {
+      return;
+    }
+    try {
+      const lvAvailability = await this.vsiLvAvailability.projectForDecision({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        decisionAtMs: input.decisionAtMs,
+        profileEligibleGapCount: input.profileEligibleGapCount,
+        baselineProfileInvalidationReason: input.baselineProfileInvalidationReason,
+      });
+      this.metrics?.recordShadowLvAvailability(lvAvailability.classification);
+      if (lvAvailability.signalAvailabilityLimitsProfileCadence) {
+        this.metrics?.recordShadowLvSignalAvailabilityCadenceParity();
+      }
+      this.logger.debug(
+        JSON.stringify({
+          event: 'APD_SHADOW_VSI_LV_AVAILABILITY',
+          vehicleId: input.vehicleId,
+          organizationId: input.organizationId,
+          opportunityId: input.opportunityId,
+          classification: lvAvailability.classification,
+          providerSourceLinkId: lvAvailability.providerSourceLinkId,
+          profileLvLoaderVisibleMeasurementCount:
+            lvAvailability.profileLvLoaderVisibleMeasurementCount,
+          profileEligibleGapCount: lvAvailability.profileEligibleGapCount,
+          baselineProfileInvalidationReason: lvAvailability.baselineProfileInvalidationReason,
+          signalAvailabilityLimitsProfileCadence:
+            lvAvailability.signalAvailabilityLimitsProfileCadence,
+          reasonCodes: lvAvailability.reasonCodes,
+        }),
+      );
+    } catch (err) {
+      this.metrics?.recordFailure('vsi_lv_availability');
+      this.metrics?.recordShadowVsiLvAvailabilityFailure(
+        err instanceof Error ? err.name : 'UNKNOWN',
+      );
+      this.logger.warn(
+        `APD shadow VSI LV availability failed (non-blocking): ${err instanceof Error ? err.message : err}`,
+      );
     }
   }
 }

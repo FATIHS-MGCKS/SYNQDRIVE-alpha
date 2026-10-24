@@ -62,4 +62,16 @@ export class AdaptivePollingShadowMetricsService {
   recordLegacyTripEvidenceExclusion(reason: string): void {
     this.tripMetrics?.apdShadowLegacyTripEvidenceExclusionTotal?.inc({ reason });
   }
+
+  recordShadowLvAvailability(classification: string): void {
+    this.tripMetrics?.apdShadowVsiLvAvailabilityTotal?.inc({ classification });
+  }
+
+  recordShadowLvSignalAvailabilityCadenceParity(): void {
+    this.tripMetrics?.apdShadowVsiLvAvailabilityCadenceParityTotal?.inc();
+  }
+
+  recordShadowVsiLvAvailabilityFailure(reason: string): void {
+    this.tripMetrics?.apdShadowVsiLvAvailabilityFailureTotal?.inc({ reason });
+  }
 }
