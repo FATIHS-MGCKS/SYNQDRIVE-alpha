@@ -21,6 +21,7 @@ import {
   extractProfileSignalEmpirical,
   isProfileEmpiricalExtractorImplemented,
 } from './vsi-profile-empirical-extractor';
+import type { VsiDtcConfirmedCompleteEvidence } from './vsi-dtc-complete-evidence.util';
 import {
   VSI_LIMITATION_EMPIRICAL_EXTRACTOR_NOT_IMPLEMENTED,
   VSI_LIMITATION_PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT,
@@ -48,6 +49,7 @@ export type VsiProfileEvaluatorInput = {
   priorAggregatedSourceTimestamp?: Date | null;
   priorProvenStrictSourceAdvanceAt?: Date | null;
   projectionAsOf?: Date;
+  dtcConfirmedComplete?: VsiDtcConfirmedCompleteEvidence | null;
 };
 
 function isoOrNull(
@@ -66,6 +68,8 @@ function mergeEmpiricalRow(
     latestState: VsiLatestStateSnapshot | null;
     stateAttributed: boolean;
     projectionAsOf: Date;
+    providerSourceLinkId: string;
+    dtcConfirmedComplete: VsiDtcConfirmedCompleteEvidence | null;
   },
 ): VsiProfileSignalSnapshotV1 {
   const def = getVsiCanonicalSignalDefinition(key);
@@ -122,6 +126,8 @@ function mergeEmpiricalRow(
       latestState: empiricalContext.latestState,
       stateAttributed: empiricalContext.stateAttributed,
       projectionAsOf: empiricalContext.projectionAsOf,
+      providerSourceLinkId: empiricalContext.providerSourceLinkId,
+      dtcConfirmedComplete: empiricalContext.dtcConfirmedComplete,
     });
     if (extracted) {
       row = {
@@ -211,6 +217,8 @@ export function evaluateVsiSignalProfile(
         latestState: stateAttributed ? input.latestState : null,
         stateAttributed,
         projectionAsOf,
+        providerSourceLinkId: input.link.id,
+        dtcConfirmedComplete: input.dtcConfirmedComplete ?? null,
       },
     );
     if (key === 'provider_source_timestamp') {

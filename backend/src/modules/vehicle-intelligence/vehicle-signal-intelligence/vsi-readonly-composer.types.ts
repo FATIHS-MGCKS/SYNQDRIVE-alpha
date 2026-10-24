@@ -61,6 +61,9 @@ export type VsiLatestStateSnapshot = {
   providerFetchedAt: Date | null;
   updatedAt: Date;
   rawPayloadJson: unknown;
+  /** Operational DTC list from DTC apply (not necessarily mirrored in rawPayloadJson). */
+  obdDtcList?: string[] | null;
+  lastDtcSuccessfulCheckAt?: Date | null;
 };
 
 export type VsiSourceLinkRow = {
