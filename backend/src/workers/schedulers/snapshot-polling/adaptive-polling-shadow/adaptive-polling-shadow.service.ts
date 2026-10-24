@@ -347,15 +347,6 @@ export class AdaptivePollingShadowService {
       this.metrics?.recordProfileInvalidated(profile.invalidationReason);
     }
 
-    await this.observeParallelVsiLvAvailability({
-      organizationId: ctx.organizationId,
-      vehicleId: ctx.vehicleId,
-      decisionAtMs,
-      opportunityId,
-      profileEligibleGapCount: profile.sampleCount,
-      baselineProfileInvalidationReason: profile.invalidationReason,
-    });
-
     const medianIntervalMs = profile.medianCadenceMs;
 
     const overlayBase = {
@@ -439,6 +430,15 @@ export class AdaptivePollingShadowService {
         wakeCorrelationId: ctx.wakeCorrelationId,
       });
     }
+
+    void this.observeParallelVsiLvAvailability({
+      organizationId: ctx.organizationId,
+      vehicleId: ctx.vehicleId,
+      decisionAtMs,
+      opportunityId,
+      profileEligibleGapCount: profile.sampleCount,
+      baselineProfileInvalidationReason: profile.invalidationReason,
+    });
 
     return opportunityId;
   }
@@ -527,7 +527,10 @@ export class AdaptivePollingShadowService {
     }
   }
 
-  /** Parallel observability only — failures must not block B2/B4 shadow persistence. */
+  /**
+   * Parallel observability only — scheduled after B2/B4 pre-poll rows persist.
+   * Failures must not block baseline shadow persistence or poll-start return.
+   */
   private async observeParallelVsiLvAvailability(input: {
     organizationId: string;
     vehicleId: string;

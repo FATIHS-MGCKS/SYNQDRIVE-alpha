@@ -90,6 +90,11 @@ describe('AdaptivePollingShadowService', () => {
     providerReconnectRecent: false,
   };
 
+  async function flushDeferredVsiObservation(): Promise<void> {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+
   afterEach(() => {
     jest.resetModules();
     delete process.env.WORKER_APD_SHADOW_ENABLED;
@@ -191,9 +196,54 @@ describe('AdaptivePollingShadowService', () => {
     });
     expect(opportunityId).toBeTruthy();
     expect(repository.upsertPrePollDecision).toHaveBeenCalledTimes(2);
+    await flushDeferredVsiObservation();
     expect(metrics.recordFailure).toHaveBeenCalledWith('vsi_lv_availability');
     expect(metrics.recordShadowVsiLvAvailabilityFailure).toHaveBeenCalled();
     expect(metrics.recordShadowLvAvailability).not.toHaveBeenCalled();
+  });
+
+  it('delayed VSI LV loader does not block B2/B4 pre-poll persistence', async () => {
+    enableShadowWithCohort();
+    let rejectLoader!: (reason: unknown) => void;
+    const loaderDeferred = new Promise((resolve, reject) => {
+      rejectLoader = reject;
+    });
+    const vsiLoader = {
+      projectForDecision: jest.fn().mockReturnValue(loaderDeferred),
+    };
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      activationEpochAllowing(),
+      metrics,
+      vsiLoader as never,
+    );
+    const opportunityId = await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
+    expect(opportunityId).toBeTruthy();
+    expect(repository.upsertPrePollDecision).toHaveBeenCalledTimes(2);
+    expect(vsiLoader.projectForDecision).toHaveBeenCalled();
+    expect(metrics.recordShadowLvAvailability).not.toHaveBeenCalled();
+    expect(metrics.recordFailure).not.toHaveBeenCalled();
+
+    rejectLoader(new Error('delayed vsi failure'));
+    await flushDeferredVsiObservation();
+    expect(metrics.recordFailure).toHaveBeenCalledWith('vsi_lv_availability');
+    expect(metrics.recordShadowVsiLvAvailabilityFailure).toHaveBeenCalled();
+    expect(metrics.recordShadowLvAvailability).not.toHaveBeenCalled();
+    expect(repository.upsertPrePollDecision).toHaveBeenCalledTimes(2);
   });
 
   it('flag ON → actual poll start persists B2 and B4 rows', async () => {
