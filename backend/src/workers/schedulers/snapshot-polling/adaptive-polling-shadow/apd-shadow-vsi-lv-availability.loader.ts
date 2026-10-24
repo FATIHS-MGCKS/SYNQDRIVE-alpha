@@ -61,7 +61,7 @@ export class ApdShadowVsiLvAvailabilityLoader {
       (s) => s.canonicalSignalKey === 'lv_voltage',
     );
 
-    const strictRestCount = await this.prisma.batteryMeasurement.count({
+    const profileLvLoaderVisibleMeasurementCount = await this.prisma.batteryMeasurement.count({
       where: buildP25ApdProfileLvLoaderWhere(input.vehicleId, input.decisionAtMs),
     });
 
@@ -83,9 +83,11 @@ export class ApdShadowVsiLvAvailabilityLoader {
       tenantScopeMatch: linkContext?.organizationId === input.organizationId,
       activeSourceLinkCountAtDecision: historicalUniqueness.historicalActiveLinkCount ?? 0,
       historicalLinkAttributionComplete: historicalUniqueness.evidenceComplete,
+      vsiProfilePresent: profileBundle?.profile != null,
       lvDeclaredSupport: lvSignal?.declaredSupport ?? null,
       lvEmpiricalObservation: lvSignal?.empiricalObservation ?? null,
-      strictRestLiveVoltageMeasurementCount: strictRestCount,
+      lvFreshnessClassification: lvSignal?.freshnessClassification ?? null,
+      profileLvLoaderVisibleMeasurementCount,
       profileEligibleGapCount: input.profileEligibleGapCount,
       baselineProfileInvalidationReason: input.baselineProfileInvalidationReason,
     });

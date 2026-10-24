@@ -70,4 +70,8 @@ export class AdaptivePollingShadowMetricsService {
   recordShadowLvSignalAvailabilityCadenceParity(): void {
     this.tripMetrics?.apdShadowVsiLvAvailabilityCadenceParityTotal?.inc();
   }
+
+  recordShadowVsiLvAvailabilityFailure(reason: string): void {
+    this.tripMetrics?.apdShadowVsiLvAvailabilityFailureTotal?.inc({ reason });
+  }
 }

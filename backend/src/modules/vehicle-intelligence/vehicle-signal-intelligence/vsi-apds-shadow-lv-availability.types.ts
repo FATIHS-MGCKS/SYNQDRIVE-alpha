@@ -18,7 +18,11 @@ export type VsiApdsShadowLvAvailabilityProjectionV1 = {
   providerSourceLinkId: string | null;
   evaluationTimeMs: number;
   classification: VsiApdsShadowLvAvailabilityClass;
-  strictRestLiveVoltageMeasurementCount: number;
+  /**
+   * Rows matching `buildP25ApdProfileLvLoaderWhere` at decision time (same corpus as B2/B4 profile LV loader;
+   * decision-time visibility — not PS1 offline strict-rest session filtering).
+   */
+  profileLvLoaderVisibleMeasurementCount: number;
   profileEligibleGapCount: number;
   baselineProfileInvalidationReason: string | null;
   signalAvailabilityLimitsProfileCadence: boolean;

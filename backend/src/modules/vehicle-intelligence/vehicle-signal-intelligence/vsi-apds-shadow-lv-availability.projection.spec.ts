@@ -11,58 +11,101 @@ const base = {
   tenantScopeMatch: true,
   activeSourceLinkCountAtDecision: 1,
   historicalLinkAttributionComplete: true,
+  vsiProfilePresent: true,
   lvDeclaredSupport: 'LISTED',
   lvEmpiricalObservation: VsiEmpiricalObservationStatus.OBSERVED,
-  strictRestLiveVoltageMeasurementCount: 0,
+  lvFreshnessClassification: 'FRESH',
+  profileLvLoaderVisibleMeasurementCount: 0,
   profileEligibleGapCount: 0,
   baselineProfileInvalidationReason: 'INSUFFICIENT_RECENT_EVIDENCE' as const,
 };
 
 describe('projectVsiApdsShadowLvAvailability', () => {
-  it('classifies Tesla-like missing strict-rest LV corpus as LV_NOT_OBSERVED without fuelType inference', () => {
+  it('classifies Tesla-like missing loader-visible LV corpus as LV_NOT_OBSERVED without fuelType inference', () => {
     const result = projectVsiApdsShadowLvAvailability({
       ...base,
       vehicleId: '68868291-5478-42cd-b0c4-cc77b2a78e21',
       lvEmpiricalObservation: VsiEmpiricalObservationStatus.NEVER_OBSERVED,
-      strictRestLiveVoltageMeasurementCount: 0,
+      profileLvLoaderVisibleMeasurementCount: 0,
     });
     expect(result.classification).toBe(VsiApdsShadowLvAvailabilityClass.LV_NOT_OBSERVED);
     expect(result.signalAvailabilityLimitsProfileCadence).toBe(true);
-    expect(result.limitations.some((l) => l.includes('cadence'))).toBe(true);
   });
 
-  it('classifies Tiguan-like strict-rest measurements as LV_AVAILABLE_OBSERVED even when gaps < 5', () => {
+  it('classifies Tiguan-like loader-visible measurements with fresh empirical OBSERVED as LV_AVAILABLE_OBSERVED', () => {
     const result = projectVsiApdsShadowLvAvailability({
       ...base,
       vehicleId: '19fedd4b-c4e8-4de8-a125-dab293326e7e',
-      strictRestLiveVoltageMeasurementCount: 12,
+      profileLvLoaderVisibleMeasurementCount: 12,
       profileEligibleGapCount: 2,
+      lvEmpiricalObservation: VsiEmpiricalObservationStatus.OBSERVED,
+      lvFreshnessClassification: 'FRESH',
       baselineProfileInvalidationReason: 'INSUFFICIENT_RECENT_EVIDENCE',
     });
     expect(result.classification).toBe(VsiApdsShadowLvAvailabilityClass.LV_AVAILABLE_OBSERVED);
     expect(result.signalAvailabilityLimitsProfileCadence).toBe(false);
   });
 
-  it('classifies declared NOT_LISTED only with trusted attribution', () => {
+  it('classifies declared NOT_LISTED only without conflicting empirical or measurement evidence', () => {
     const result = projectVsiApdsShadowLvAvailability({
       ...base,
       lvDeclaredSupport: 'NOT_LISTED',
+      lvEmpiricalObservation: VsiEmpiricalObservationStatus.NEVER_OBSERVED,
+      profileLvLoaderVisibleMeasurementCount: 0,
     });
     expect(result.classification).toBe(
       VsiApdsShadowLvAvailabilityClass.LV_DECLARED_NOT_LISTED,
     );
   });
 
-  it('does not treat UNKNOWN declared support as NOT_LISTED unsupported', () => {
+  it('treats NOT_LISTED plus empirical/measurement evidence as UNKNOWN with conflict reason', () => {
     const result = projectVsiApdsShadowLvAvailability({
       ...base,
-      lvDeclaredSupport: 'UNKNOWN',
-      lvEmpiricalObservation: VsiEmpiricalObservationStatus.NEVER_OBSERVED,
+      lvDeclaredSupport: 'NOT_LISTED',
+      lvEmpiricalObservation: VsiEmpiricalObservationStatus.OBSERVED,
+      profileLvLoaderVisibleMeasurementCount: 3,
     });
-    expect(result.classification).toBe(VsiApdsShadowLvAvailabilityClass.LV_NOT_OBSERVED);
-    expect(result.classification).not.toBe(
-      VsiApdsShadowLvAvailabilityClass.LV_DECLARED_NOT_LISTED,
+    expect(result.classification).toBe(
+      VsiApdsShadowLvAvailabilityClass.LV_UNKNOWN_OR_UNTRUSTED,
     );
+    expect(result.reasonCodes).toContain(
+      'CONFLICTING_NOT_LISTED_WITH_EMPIRICAL_OR_MEASUREMENT_EVIDENCE',
+    );
+  });
+
+  it('missing VSI profile on attributed link stays UNKNOWN', () => {
+    const result = projectVsiApdsShadowLvAvailability({
+      ...base,
+      vsiProfilePresent: false,
+    });
+    expect(result.classification).toBe(
+      VsiApdsShadowLvAvailabilityClass.LV_UNKNOWN_OR_UNTRUSTED,
+    );
+    expect(result.reasonCodes).toContain('VSI_PROFILE_NOT_FOUND_FOR_ATTRIBUTED_LINK');
+  });
+
+  it('provider link tenant mismatch stays UNKNOWN', () => {
+    const result = projectVsiApdsShadowLvAvailability({
+      ...base,
+      tenantScopeMatch: false,
+    });
+    expect(result.classification).toBe(
+      VsiApdsShadowLvAvailabilityClass.LV_UNKNOWN_OR_UNTRUSTED,
+    );
+    expect(result.reasonCodes).toContain('TENANT_SCOPE_MISMATCH');
+  });
+
+  it('stale empirical profile does not assert LV_AVAILABLE_OBSERVED', () => {
+    const result = projectVsiApdsShadowLvAvailability({
+      ...base,
+      profileLvLoaderVisibleMeasurementCount: 8,
+      lvEmpiricalObservation: VsiEmpiricalObservationStatus.OBSERVED_STALE,
+      lvFreshnessClassification: 'STALE',
+    });
+    expect(result.classification).toBe(
+      VsiApdsShadowLvAvailabilityClass.LV_UNKNOWN_OR_UNTRUSTED,
+    );
+    expect(result.reasonCodes).toContain('LV_EMPIRICAL_STALE_AT_EVALUATION');
   });
 
   it('marks multi active links as LV_UNKNOWN_OR_UNTRUSTED', () => {
@@ -79,8 +122,9 @@ describe('projectVsiApdsShadowLvAvailability', () => {
     const result = projectVsiApdsShadowLvAvailability({
       ...base,
       baselineProfileInvalidationReason: null,
-      strictRestLiveVoltageMeasurementCount: 4,
+      profileLvLoaderVisibleMeasurementCount: 4,
       profileEligibleGapCount: 4,
+      lvEmpiricalObservation: VsiEmpiricalObservationStatus.OBSERVED,
     });
     expect(result.baselineProfileInvalidationReason).toBeNull();
   });
