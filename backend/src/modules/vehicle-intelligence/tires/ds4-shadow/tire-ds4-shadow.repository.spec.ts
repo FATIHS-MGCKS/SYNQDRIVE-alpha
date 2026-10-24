@@ -134,7 +134,7 @@ describe('TireDs4ShadowRepository', () => {
       ]),
     };
     const repo = new TireDs4ShadowRepository(prisma as never);
-    const rows = await repo.findCatchupCandidates('tire-ds4-shadow-input-v1.0.1', 10);
+    const rows = await repo.findCatchupCandidates('tire-ds4-shadow-input-v1.0.1', 10, ['veh-1']);
     expect(rows).toEqual([
       {
         tireTripUsageLedgerId: 'ledger-9',
@@ -145,5 +145,16 @@ describe('TireDs4ShadowRepository', () => {
       },
     ]);
     expect(prisma.$queryRaw).toHaveBeenCalled();
+  });
+
+  it('returns no catch-up candidates when vehicle allowlist is empty', async () => {
+    const prisma = {
+      tireDs4MotionShadowInputV1: { findUnique: jest.fn(), create: jest.fn(), findFirst: jest.fn() },
+      $queryRaw: jest.fn(),
+    };
+    const repo = new TireDs4ShadowRepository(prisma as never);
+    const rows = await repo.findCatchupCandidates('tire-ds4-shadow-input-v1.0.1', 10, []);
+    expect(rows).toEqual([]);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
   });
 });

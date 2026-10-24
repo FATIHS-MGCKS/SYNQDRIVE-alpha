@@ -214,7 +214,11 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
     await seedDs4Run(runNew, new Date('2026-10-01T13:00:00.000Z'));
     await seedTerminalMarker('ds4_not_available');
 
-    const candidates = await repository.findCatchupCandidates(TIRE_DS4_SHADOW_ADAPTER_VERSION, 20);
+    const candidates = await repository.findCatchupCandidates(
+      TIRE_DS4_SHADOW_ADAPTER_VERSION,
+      20,
+      [vehicleId],
+    );
     expect(candidates.some((c) => c.tireTripUsageLedgerId === ledgerId)).toBe(true);
   });
 
@@ -243,7 +247,11 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
       },
     });
 
-    const candidates = await repository.findCatchupCandidates(TIRE_DS4_SHADOW_ADAPTER_VERSION, 50);
+    const candidates = await repository.findCatchupCandidates(
+      TIRE_DS4_SHADOW_ADAPTER_VERSION,
+      50,
+      [vehicleId],
+    );
     const forLedger = candidates.filter((c) => c.tireTripUsageLedgerId === ledgerId);
     expect(forLedger.every((c) => c.reason === 'newer_ds4_run')).toBe(true);
     expect(forLedger.length).toBe(0);

@@ -9,6 +9,7 @@ describe('TireDs4ShadowCatchupScheduler', () => {
   const config = {
     enabled: true,
     catchupEnabled: true,
+    vehicleAllowlist: { kind: 'allow_set' as const, vehicleIds: new Set(['veh-1']) },
     catchupIntervalMs: 60_000,
     catchupBatchSize: 2,
     maxAttempts: 3,
@@ -43,10 +44,32 @@ describe('TireDs4ShadowCatchupScheduler', () => {
 
     await scheduler.runCatchup();
 
-    expect(repository.findCatchupCandidates).toHaveBeenCalled();
+    expect(repository.findCatchupCandidates).toHaveBeenCalledWith(
+      expect.any(String),
+      2,
+      ['veh-1'],
+    );
     expect(producer.enqueueMaterialize).toHaveBeenCalledWith(
       expect.objectContaining({ tireTripUsageLedgerId: 'ledger-1', attempt: 0 }),
     );
+  });
+
+  it('does nothing when vehicle allowlist is deny-all', async () => {
+    const producer = { enqueueMaterialize: jest.fn(), isEnabled: jest.fn() };
+    const repository = { findCatchupCandidates: jest.fn() };
+    const scheduler = new TireDs4ShadowCatchupScheduler(
+      {
+        ...config,
+        vehicleAllowlist: { kind: 'deny_all' as const, reason: 'missing_or_empty' as const },
+      } as never,
+      { shouldRun: jest.fn().mockReturnValue(true) } as never,
+      producer as never,
+      repository as never,
+    );
+
+    await scheduler.runCatchup();
+    expect(repository.findCatchupCandidates).not.toHaveBeenCalled();
+    expect(producer.enqueueMaterialize).not.toHaveBeenCalled();
   });
 
   it('does nothing when catch-up disabled', async () => {
