@@ -29,6 +29,7 @@ import {
   withTripUsageReplayRetry,
 } from './tire-trip-usage-replay';
 import { TireHealthObservabilityService } from './tire-health-observability.service';
+import { TireDs4ShadowProducerService } from './ds4-shadow/tire-ds4-shadow-producer.service';
 
 export interface TireTripUsageProcessResult {
   tripId: string;
@@ -53,6 +54,7 @@ export class TireTripUsageService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly observability?: TireHealthObservabilityService,
+    @Optional() private readonly ds4ShadowProducer?: TireDs4ShadowProducerService,
   ) {}
 
   /**
@@ -332,6 +334,7 @@ export class TireTripUsageService {
       );
 
       this.observability?.recordTripUsageProcessed(result);
+      this.enqueueDs4ShadowAfterLedgerWrite(organizationId, result);
       this.logger.log(
         JSON.stringify({
           event: 'tire_trip_usage_processed',
@@ -501,6 +504,48 @@ export class TireTripUsageService {
 
   private emitMetric(name: TireTripUsageMetricName, labels?: Record<string, string>): void {
     this.observability?.recordMetric?.(name, labels);
+  }
+
+  /** Fire-and-forget enqueue; never blocks canonical finalization. */
+  private enqueueDs4ShadowAfterLedgerWrite(
+    organizationId: string,
+    result: TireTripUsageProcessResult,
+  ): void {
+    if (!this.ds4ShadowProducer?.isEnabled()) return;
+    if (result.attributionStatus !== 'APPLIED') return;
+    if (result.ledgerAction !== 'CREATED' && result.ledgerAction !== 'UPDATED') return;
+    if (!result.tireSetupId) return;
+
+    void this.prisma.tireTripUsageLedger
+      .findFirst({
+        where: {
+          tripId: result.tripId,
+          tireSetupId: result.tireSetupId,
+          invalidatedAt: null,
+          organizationId,
+        },
+        select: { id: true },
+      })
+      .then((ledger) => {
+        if (!ledger) return;
+        void this.ds4ShadowProducer?.enqueueMaterialize({
+          organizationId,
+          vehicleId: result.vehicleId,
+          tripId: result.tripId,
+          tireTripUsageLedgerId: ledger.id,
+          attempt: 0,
+        });
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          JSON.stringify({
+            event: 'tire_ds4_shadow_enqueue_failed',
+            tripId: result.tripId,
+            message,
+          }),
+        );
+      });
   }
 
   private async persistSkippedStatus(

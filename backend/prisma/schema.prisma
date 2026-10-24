@@ -3924,7 +3924,42 @@ model TireTripUsageLedger {
   @@index([organizationId, vehicleId])
   @@index([tripId])
   @@index([sourceFingerprint])
+  tireDs4MotionShadowInputs TireDs4MotionShadowInputV1[]
+
   @@map("tire_trip_usage_ledger")
+}
+
+/// DS4 → tire shadow driving-load input (shadow only; not read by productive tire health).
+model TireDs4MotionShadowInputV1 {
+  id                        String   @id @default(uuid())
+  organizationId            String   @map("organization_id")
+  vehicleId                 String   @map("vehicle_id")
+  tripId                    String   @map("trip_id")
+  tireSetupId               String   @map("tire_setup_id")
+  tireTripUsageLedgerId     String   @map("tire_trip_usage_ledger_id")
+  diV0MotionCoreShadowRunId String   @map("di_v0_motion_core_shadow_run_id")
+  workItemId                String?  @map("work_item_id")
+  combinedInputIdentity     String   @map("combined_input_identity")
+  pinnedSnapshotHash        String   @map("pinned_snapshot_hash")
+  contentFingerprint        String   @map("content_fingerprint")
+  shadowBundleVersion       String   @map("shadow_bundle_version")
+  speedAuthority            String   @map("speed_authority")
+  eventsAlgorithmVersion    String   @map("events_algorithm_version")
+  adapterVersion            String   @map("adapter_version")
+  source                    String   @default("DS4") @map("source")
+  coverage                  String   @map("coverage")
+  ds4ReadStatus             String   @map("ds4_read_status")
+  inputPayload              Json     @map("input_payload")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tireTripUsageLedger TireTripUsageLedger @relation(fields: [tireTripUsageLedgerId], references: [id], onDelete: Cascade)
+
+  @@unique([tireTripUsageLedgerId, diV0MotionCoreShadowRunId, adapterVersion], map: "tire_ds4_shadow_input_ledger_run_adapter_uq")
+  @@index([organizationId, vehicleId], map: "tire_ds4_shadow_input_org_vehicle_idx")
+  @@index([tripId], map: "tire_ds4_shadow_input_trip_idx")
+  @@index([tireSetupId], map: "tire_ds4_shadow_input_setup_idx")
+  @@map("tire_ds4_motion_shadow_input_v1")
 }
 
 // ------------------------------------------------

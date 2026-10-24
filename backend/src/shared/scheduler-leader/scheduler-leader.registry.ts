@@ -12,6 +12,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'snapshot_wake_handoff_recovery',
   'trip_analysis_recovery',
   'tire_recalculation',
+  'tire_ds4_shadow_catchup',
   'brake_recalculation',
   'payment_connect_reconciliation',
   'billing_reconciliation',

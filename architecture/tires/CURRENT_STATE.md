@@ -59,7 +59,7 @@ Driving-Impact stress scores are **HF-derived** (hardAccel/hardBrake per 100 km 
 | Speed basis | `speedAuthority` C4_ONLY or C5_1_PREFERRED (C5.1 admitted for explicit make/model only) |
 | Read interface | `DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId)` — returns `runId`, `combinedInputIdentity`, `pinnedSnapshotHash`, `status` (`PENDING` \| `FAILED` \| `SUCCEEDED` \| `SUCCEEDED_EMPTY`), `newerFailedRunId` / `newerFailedRunStatus` (org-scoped) |
 | Validation state | Fable review B1–B7; P1/P2 hardening merged (#2154); numeric intensities **not** physically validated (B3) |
-| Tire consumer | **none** (no runtime edge). **Target (PROPOSED):** async retryable BullMQ consumer in `tires/` — enqueue on ledger existence, **not** sync with trip finalization; bind tire shadow rows to `diV0MotionCoreShadowRunId` + input identity (see `integration/DS4_MOTION_INTEGRATION_AUDIT.md` §4.1) |
+| Tire consumer | **P2 implemented (EXPERIMENTAL, `TIRE_DS4_SHADOW_ENABLED=false` default):** queue `dimo.tire.ds4-shadow`, processor + catch-up scheduler, table `tire_ds4_motion_shadow_input_v1`; enqueue on ledger CREATED/UPDATED only; terminal markers block retry loops only (not later succeeded DS4 runs); contract [`integration/TIRE_DS4_SHADOW_DATA_CONTRACT.md`](integration/TIRE_DS4_SHADOW_DATA_CONTRACT.md) |
 
 Full comparison and target architecture: [`integration/DS4_MOTION_INTEGRATION_AUDIT.md`](integration/DS4_MOTION_INTEGRATION_AUDIT.md).
 
