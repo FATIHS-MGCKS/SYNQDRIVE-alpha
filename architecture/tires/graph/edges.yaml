@@ -91,6 +91,20 @@ edges:
   - from: TIRE-EXT-DS4-MOTION-EVENTS-001
     relation: projects_to
     to: TIRE-EXT-DS4-TRIP-MAP-READ-001
+  - from: TIRE-PERSIST-TRIP-USAGE-LEDGER-001
+    relation: enqueues
+    to: TIRE-PIPE-DS4-SHADOW-CONSUMER-001
+    notes: enqueue only; not synchronous with finalization transaction
+  - from: TIRE-PIPE-DS4-SHADOW-CONSUMER-001
+    relation: consumed_by
+    to: TIRE-EXT-DS4-TRIP-MAP-READ-001
+    notes: readForTrip with retry on PENDING
+  - from: TIRE-DEC-DS4-ASYNC-RETRY-CONSUMER-001
+    relation: governs
+    to: TIRE-PIPE-DS4-SHADOW-CONSUMER-001
+  - from: TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001
+    relation: depends_on
+    to: TIRE-PIPE-DS4-SHADOW-CONSUMER-001
   - from: TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001
     relation: depends_on
     to: TIRE-EXT-DS4-TRIP-MAP-READ-001

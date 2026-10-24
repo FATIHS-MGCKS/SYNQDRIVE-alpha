@@ -25,8 +25,9 @@
 2. Admission follows `TIRE-DEC-DS4-CONSERVATIVE-ADMISSION-POLICY-001`; never use `peakAccel1sMps2`; intensities ordinal only.
 3. One acceleration/braking source per factor (`TIRE-DEC-NO-DOUBLE-COUNTING-001`).
 4. Neutral fallback for missing/non-admissible data (`TIRE-INV-NEUTRAL-FALLBACK-001`).
-5. Every shadow row carries `source`, `bundle`, `speedAuthority`, `adapterVersion`, `organizationId`.
-6. Tenant scope resolved from the vehicle; use the org-scoped `readForTrip` interface; no DI module changes without updating the Driving Intelligence authority.
+5. Every shadow row carries DS4 run/input identity: `diV0MotionCoreShadowRunId`, `combinedInputIdentity`, `pinnedSnapshotHash`, `shadowBundleVersion`, `speedAuthority`, `eventsAlgorithmVersion`, `adapterVersion`, `organizationId`, plus `tireTripUsageLedgerId` / `tireSetupId` / `tripId`. Idempotent upsert on `(tireTripUsageLedgerId, diV0MotionCoreShadowRunId, adapterVersion)`; DS4 replays create new rows, never silent overwrite.
+6. The DS4 → tire path is an **asynchronous, retry-capable consumer** (queue + processor). **No synchronous call** from trip canonical finalization, ledger write, or productive recalculation. `readForTrip` statuses `PENDING` / not-yet-`SUCCEEDED` → backoff retry; work must not be dropped because DS4 is still running. Honor `newerFailedRunId` semantics from `readForTrip` (see `integration/DS4_MOTION_INTEGRATION_AUDIT.md` §4.1).
+7. Tenant scope resolved from the vehicle; use the org-scoped `readForTrip` interface; no DI module changes without updating the Driving Intelligence authority.
 
 ## Validation levels (`decision_status`)
 

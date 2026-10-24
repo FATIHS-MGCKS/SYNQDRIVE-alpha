@@ -57,9 +57,9 @@ Driving-Impact stress scores are **HF-derived** (hardAccel/hardBrake per 100 km 
 | What | `ACCELERATION` / `DECELERATION` events with `quality` OK/DEGRADED/LIMITED/ARTEFACT_SUSPECT and `flags` |
 | Persisted fields | kind, startLabel, endLabel, startSpeedKmh, endSpeedKmh, deltaKmh, quality, flags — **no** meanAccelMps2 / durationS / peak |
 | Speed basis | `speedAuthority` C4_ONLY or C5_1_PREFERRED (C5.1 admitted for explicit make/model only) |
-| Read interface | `DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId)` (org-scoped) |
+| Read interface | `DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId)` — returns `runId`, `combinedInputIdentity`, `pinnedSnapshotHash`, `status` (`PENDING` \| `FAILED` \| `SUCCEEDED` \| `SUCCEEDED_EMPTY`), `newerFailedRunId` / `newerFailedRunStatus` (org-scoped) |
 | Validation state | Fable review B1–B7; P1/P2 hardening merged (#2154); numeric intensities **not** physically validated (B3) |
-| Tire consumer | **none** (no runtime edge) |
+| Tire consumer | **none** (no runtime edge). **Target (PROPOSED):** async retryable BullMQ consumer in `tires/` — enqueue on ledger existence, **not** sync with trip finalization; bind tire shadow rows to `diV0MotionCoreShadowRunId` + input identity (see `integration/DS4_MOTION_INTEGRATION_AUDIT.md` §4.1) |
 
 Full comparison and target architecture: [`integration/DS4_MOTION_INTEGRATION_AUDIT.md`](integration/DS4_MOTION_INTEGRATION_AUDIT.md).
 

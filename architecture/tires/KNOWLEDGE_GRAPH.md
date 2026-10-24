@@ -18,20 +18,23 @@ flowchart LR
 
   subgraph tires [Tires Health]
     LED[(tire_trip_usage_ledger)]
+    Q[future tire DS4-shadow queue]
+    SHP[future async shadow processor]
     V2[TireWearModelService tire-wear-v2]
     HS[TireHealthService]
     SNAP[(tire_health_snapshots)]
     AL[(tire_health_alerts)]
     MEAS[(tread measurements = ground truth)]
     API[/vehicles/:id/tires/*]
-    SH[future tire shadow adapter + store]
+    TSH[(future tire shadow store)]
     TDI --> LED
+    LED -.enqueue only.-> Q --> SHP
+    RD -.readForTrip, retry.-> SHP --> TSH
     VDI --> V2 --> HS --> SNAP
     HS --> AL
     HS --> API
     MEAS -.validates.-> V2
-    RD -.future, read-only.-> SH
-    MEAS -.validates.-> SH
+    MEAS -.validates.-> TSH
   end
 
   subgraph rh [Rental Health — consumer]
@@ -64,6 +67,7 @@ flowchart LR
 | TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001 | DS4 future load basis, shadow only | PROPOSED |
 | TIRE-DEC-DS4-CONSERVATIVE-ADMISSION-POLICY-001 | Quality-gated DS4 admission | PROPOSED |
 | TIRE-DEC-NO-DOUBLE-COUNTING-001 | One source per factor | PROPOSED |
+| TIRE-DEC-DS4-ASYNC-RETRY-CONSUMER-001 | DS4 → tire via async retryable consumer, not sync with finalization | PROPOSED |
 | TIRE-REJECT-IMMEDIATE-V2-REPLACEMENT-001 | Immediate V2 replacement | REJECTED |
 | TIRE-REJECT-DS4-INTO-V2-BEHAVIOR-FACTOR-001 | DS4 into V2 behaviour factor | REJECTED |
 

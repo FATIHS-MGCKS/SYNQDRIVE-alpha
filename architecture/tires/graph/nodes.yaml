@@ -121,6 +121,21 @@ nodes:
     evidence:
       - TIRE-EVID-CODE-WEAR-MODEL-V2-001
 
+  - id: TIRE-PIPE-DS4-SHADOW-CONSUMER-001
+    type: pipeline
+    title: Async retryable DS4 → tire shadow consumer (proposed)
+    epistemic_status: INFERRED
+    summary: >
+      Dedicated BullMQ queue + processor in tires/: enqueue when a tire_trip_usage_ledger row exists (or
+      catch-up scan); call readForTrip; PENDING or no SUCCEEDED DS4 run → backoff retry; persist tire shadow
+      row only on SUCCEEDED/SUCCEEDED_EMPTY with diV0MotionCoreShadowRunId and combinedInputIdentity. Not
+      invoked synchronously from trip canonical finalization.
+    source_paths:
+      - architecture/tires/integration/DS4_MOTION_INTEGRATION_AUDIT.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+
   - id: TIRE-PIPE-TRIP-USAGE-ATTRIBUTION-001
     type: pipeline
     title: TireTripUsageService — canonical-finalization trip attribution
@@ -383,9 +398,10 @@ nodes:
     epistemic_status: CONFIRMED
     owner_module: Driving Intelligence
     summary: >
-      DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId) — the only existing
-      org-scoped read interface over shadow payloads; wired into VehicleIntelligenceController. Candidate
-      smallest adapter boundary for a tire shadow consumer (read-only, no DI change).
+      DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId) — org-scoped read
+      interface returning runId, combinedInputIdentity, pinnedSnapshotHash, status PENDING|FAILED|SUCCEEDED|SUCCEEDED_EMPTY,
+      and newerFailedRunId when a later DS4 attempt failed after a succeeded run. Tire consumer must be async
+      with retry on PENDING; not called from trip finalization.
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service.ts
       - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.types.ts
@@ -439,6 +455,17 @@ nodes:
     evidence:
       - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
       - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+
+  - id: TIRE-DEC-DS4-ASYNC-RETRY-CONSUMER-001
+    type: decision
+    title: DS4 → tire shadow via async retryable consumer, not synchronous with trip finalization
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Enqueue tire shadow work when ledger row exists; processor retries until readForTrip succeeds or policy
+      limit; bind rows to diV0MotionCoreShadowRunId + combinedInputIdentity + shadowBundleVersion + adapterVersion.
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
 
   - id: TIRE-DEC-NO-DOUBLE-COUNTING-001
     type: decision
@@ -544,8 +571,8 @@ nodes:
     source_type: CURRENT_CODE
     summary: >
       DiV0MotionCoreShadowPersistedEventRow = {kind, startLabel, endLabel, startSpeedKmh, endSpeedKmh,
-      deltaKmh, quality, flags}; comparisonHints.artefactSuspectExcludedFromAcceptedManoeuvreCounts = true;
-      trip-map read types expose peakAccel1sMps2: number | null (null for persisted rows).
+      deltaKmh, quality, flags}; run row fields id, combinedInputIdentity, pinnedSnapshotHash, contentFingerprint,
+      shadowBundleVersion, shadowStatus; trip-map read returns runId, PENDING/FAILED/SUCCEEDED, newerFailedRunId.
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.types.ts
       - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.types.ts

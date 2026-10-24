@@ -78,6 +78,24 @@ All decisions in this bootstrap are **owner decisions recorded 2026-10-24** for 
 
 ---
 
+## TIRE-DEC-DS4-ASYNC-RETRY-CONSUMER-001 — DS4 → tire shadow via async retryable consumer (not synchronous with trip finalization)
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | P1 draft text suggested invoking the adapter immediately after `attributeTireUsageOnCanonicalFinalization` |
+| **WHY** | DS4 is post-trip retrospective with outbox retries; trip finalization and ledger write must not block on shadow latency; missing or in-flight DS4 runs must be retried, not dropped |
+| **CHANGE** | Target architecture: ledger existence enqueues a tire-side BullMQ job; processor calls `readForTrip`; `PENDING` / no `SUCCEEDED` yet → backoff requeue; persist only on `SUCCEEDED`/`SUCCEEDED_EMPTY` with DS4 run/input identity (§4.1 in `integration/DS4_MOTION_INTEGRATION_AUDIT.md`) |
+| **EXPECTED_EFFECT** | No synchronous DS4 dependency on the trip FSM; tire shadow rows appear after DS4 succeeds; replays produce additional versioned rows |
+| **VALIDATION** | Future: processor tests for PENDING→retry, SUCCEEDED persist, idempotent upsert on `(ledgerId, runId, adapterVersion)`; finalization path has no `readForTrip` call |
+| **OBSERVED_EFFECT** | UNKNOWN |
+| **NON_EFFECTS** | Does not change DS4 worker/outbox; does not change ledger attribution timing |
+| **TRADEOFFS** | Extra queue operational surface; catch-up scan may be needed for historical trips |
+| **REMAINING_GAPS** | Exact give-up policy after max attempts (document in implementation PR) |
+| **EVIDENCE** | TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001 |
+
+---
+
 ## TIRE-DEC-NO-DOUBLE-COUNTING-001 — One acceleration/braking evidence source per factor — no double counting
 
 | Field | Value |

@@ -15,7 +15,7 @@ Owner frame: keep the existing tire stack; V2 is frozen and will be superseded i
 | **DS4 braking** | `kind='DECELERATION'`, same thresholds on negative acceleration, same field set and persistence limits. Production sample: 262 events / 34 trips (braking dominates). Same B3 caveat. |
 | **Data availability** | **Main:** detector + shadow worker + P1/P2 merged (#2154). **Production:** deployed (`c169ddfab`), shadow + C5.1 + FSM gap-bridge flags ON for allowlisted org/vehicles; 85 SUCCEEDED runs, 34 trips, **4 of 6 vehicles**. **Shadow only:** events exist solely inside gzip payloads of `di_v0_motion_core_shadow_runs_v1` (+ `summary_json`); no product table, no productive consumer. **Replay:** post-trip retrospective; reprocessing per bundle version creates additional runs per trip (latest SUCCEEDED per trip must be selected). |
 | **Data quality** | Quality labels persisted: OK 394 · DEGRADED 21 · LIMITED 32 · ARTEFACT_SUSPECT 2 (latest run per trip). `quality` encodes **speed-sample provenance and internal consistency**, not physical validation (`TIRE-INV-DS4-QUALITY-IS-NOT-PLAUSIBILITY-001`). Suitable as model input **only ordinally / as counts and durations** after admission gating; absolute m/s² thresholds are not defensible (B3, `TIRE-GAP-DS4-INTENSITY-ATTENUATION-B3-001`). Speed authority differs between trips (C4_ONLY 29 vs C5_1_PREFERRED 5) → version by bundle (`TIRE-GAP-DS4-SPEED-AUTHORITY-MIX-001`). |
-| **Integration — smallest adapter** | Read-only tire-side adapter on top of `DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId)` (already org-scoped; exported by `DiV0MotionCoreShadowModule` and already injected into `VehicleIntelligenceController`), invoked from the tire side **after** `attributeTireUsageOnCanonicalFinalization` for the same trip, writing to a **new tire shadow table** keyed by (ledgerRowId / tripId, tireSetupId, bundleVersion, adapterVersion). No DI module change, no Nest DI-container change, no new DI export; the adapter lives in `tires/` and depends only on an existing public read service. Scheduling can reuse the hourly recalculation tick (shadow branch) or a dedicated low-frequency scheduler; it must never run inside the productive recalculation transaction. |
+| **Integration — smallest adapter** | Read-only tire-side adapter on `DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId)` (org-scoped; exported by `DiV0MotionCoreShadowModule`). **Not** invoked synchronously inside `attributeTireUsageOnCanonicalFinalization` or any trip-finalization transaction — that path must stay fast and must not block on DS4 latency or retries. Instead: an **asynchronous, retry-capable tire shadow consumer** (dedicated BullMQ queue + processor in `tires/`, leader-guarded scheduler or outbox drain) enqueues work when a ledger row exists (or on periodic catch-up for trips with ledger but no tire-shadow row yet). Processor calls `readForTrip`; on `status=PENDING` or missing `SUCCEEDED` run it **re-schedules with backoff** (same pattern as `di_v0_motion_core_shadow_outbox_v1.attemptCount` / `nextAttemptAt`) until DS4 completes or a terminal tire-side give-up policy applies — work is never silently dropped because DS4 was still running. On `SUCCEEDED` / `SUCCEEDED_EMPTY`, apply admission §2 and persist to the tire shadow table (identity §4.1). No DI module change, no new DI export; must never run inside the productive recalculation transaction or rental-health path. |
 | **Fallback** | **Neutral**, mirroring V2 (`impact === null → 1.0`): vehicles/trips without admissible DS4 events contribute **no** load delta and are flagged `coverage=NONE|PARTIAL`. Conservative means "do not claim load you cannot evidence", never "assume worst case". A conservative *penalising* fallback is explicitly rejected (`TIRE-INV-NEUTRAL-FALLBACK-001`). |
 
 ---
@@ -48,24 +48,57 @@ Additional rules: never use `peakAccel1sMps2`; derive intensity only from `delta
 ## 4. Minimal target architecture (documentation only)
 
 ```
-DS4 shadow run (DI, allowlisted)      ── existing ──▶ di_v0_motion_core_shadow_runs_v1 (gzip payload)
-                                                              │
-                      DiV0MotionCoreShadowTripMapReadService.readForTrip(org, vehicle, trip)   [existing, org-scoped]
-                                                              │
-  Tire shadow adapter (tires/, new, read-only on DI) ── admission policy §2 ── per-trip quality-gated tire input
-                                                              │
-                      new tire shadow table (tripId, tireSetupId, bundle, adapterVersion, source='DS4', …)
-                                                              │
-  Future Tire Wear Model (successor, not in this PR)  ──▶  shadow prediction  ──▶ shadow comparison vs V2 snapshot
-                                                                                   and vs tread measurements (ground truth)
+Trip canonical finalization (existing) ──▶ tire_trip_usage_ledger row (existing, sync)
+        │
+        │ enqueue only (no await on DS4)
+        ▼
+  Tire DS4-shadow queue (new, tires/) ── retry/backoff ──▶ Tire shadow processor
+        │                                                      │
+        │                                                      ▼
+        │                              DiV0MotionCoreShadowTripMapReadService.readForTrip(org, vehicle, trip)
+        │                                 PENDING → requeue (DS4 outbox/worker still running)
+        │                                 FAILED (no SUCCEEDED yet) → requeue until policy limit / newer SUCCEEDED
+        │                                 SUCCEEDED* → admission §2 → persist tire shadow row (identity §4.1)
+        ▼
+DS4 shadow run (DI) ── existing ──▶ di_v0_motion_core_shadow_runs_v1 (+ outbox)
+
+Future successor model (not this PR) ──▶ shadow prediction ──▶ compare vs V2 snapshot + tread measurements
 ```
+
+### 4.1 Shadow row identity (DS4 run + input binding)
+
+Each tire shadow row must be attributable to **one concrete DS4 evaluation**, not merely “latest events for trip”. Minimum stored identity (from `readForTrip` / `DiV0MotionCoreShadowRunV1`):
+
+| Field | Role |
+|-------|------|
+| `diV0MotionCoreShadowRunId` | `runId` — primary DS4 run row (`di_v0_motion_core_shadow_runs_v1.id`) whose payload was consumed |
+| `combinedInputIdentity` | DI-computed input binding for that run (detects re-run with different upstream inputs) |
+| `pinnedSnapshotHash` | S4 evidence snapshot pin used for the run |
+| `contentFingerprint` | Run-level content fingerprint (from DS4 run row; aids dedupe across re-materializations) |
+| `shadowBundleVersion` | `algorithmVersions.bundle` / `shadow_bundle_version` — **version-bound** adapter target |
+| `workItemId` | Optional trace to S4 work item |
+| `speedAuthority`, `eventsAlgorithmVersion` | Contract slice used for admission |
+| `adapterVersion` | Tire adapter semver/hash (independent of DS4 bundle) |
+| `tireTripUsageLedgerId` (or stable ledger fingerprint) | Links to productive attribution without re-deriving setup |
+| `tireSetupId`, `tripId`, `organizationId`, `vehicleId` | Tenant + attribution |
+
+**Uniqueness (idempotent upsert):** `(tireTripUsageLedgerId, diV0MotionCoreShadowRunId, adapterVersion)` — same DS4 run + adapter version → one row; a **new** DS4 run (replay, bundle bump, new `combinedInputIdentity`) → **new** row; older rows retained for audit.
+
+**DS4 run selection (version-bound, mirrors trip-map read):**
+
+1. Consumer calls `readForTrip`, which already selects `findLatestSucceededRunForTrip` for event payload.
+2. Persist only when `status` is `SUCCEEDED` or `SUCCEEDED_EMPTY`; store returned `runId`, `combinedInputIdentity`, `pinnedSnapshotHash`, `algorithmVersions.bundle`, `speedAuthority`.
+3. `status=PENDING` → DS4 outbox/worker still active → **retry**, do not write a terminal tire row.
+4. `status=FAILED` with no succeeded run → **retry** (DS4 may succeed on a later attempt); optional observability row with `coverage=AWAITING_DS4` is allowed, but must not be treated as load input.
+5. When `status=SUCCEEDED` but `newerFailedRunId` is set (a later DS4 attempt failed) → **keep** the succeeded row already bound; do **not** delete tire shadow input; optionally enqueue a reconciliation job to refresh if a newer **SUCCEEDED** run appears with a higher `createdAt` and matching adapter bundle policy.
+6. When a **newer SUCCEEDED** DS4 run exists for the same trip with a **different** `shadowBundleVersion` or `combinedInputIdentity` → new tire shadow row (replay comparison), never overwrite in place.
 
 | Check | Assessment |
 |-------|------------|
 | Trip / tire-setup attribution | Reuse the ledger row's `tireSetupId` for the trip (single ACTIVE setup invariant); shadow rows reference the ledger row, never re-derive the setup. |
 | Tenant isolation | `readForTrip` requires `organizationId`; adapter resolves org from the vehicle (same as controller `resolveOrganizationId`), never from the job payload alone; shadow table carries `organizationId`. |
-| Dedupe / replay | Key (tripId, tireSetupId, bundle, adapterVersion); re-runs with a newer bundle create a new versioned row, older rows retained; latest-per-trip selection mirrors the DS4 run semantics. |
-| Model / source versioning | Columns `source='DS4'`, `bundle`, `speedAuthority`, `eventsAlgorithmVersion`, `adapterVersion`; V2 side already stamps `tire-wear-v2`. |
+| Dedupe / replay | Idempotent on `(ledgerId, diV0MotionCoreShadowRunId, adapterVersion)`; DS4 replays and bundle changes create **additional** rows; productive ledger idempotency (`sourceFingerprint`) remains independent. |
+| Model / source versioning | Columns `source='DS4'`, `shadowBundleVersion`, `combinedInputIdentity`, `speedAuthority`, `eventsAlgorithmVersion`, `adapterVersion`; V2 side already stamps `tire-wear-v2`. |
 | Data gaps / fallback | Neutral contribution + `coverage` flag; uncovered vehicles (not allowlisted) produce no rows. |
 | Ground truth | Successor and V2 are both validated against `vehicle_tire_tread_measurements`; V2 output is never ground truth. |
 | Rental safety | `tire-rental-health.policy.ts`, `TireHealthSummary`, snapshots and alerts read **no** shadow table; proven by a negative test in the implementation PR. |
@@ -90,4 +123,4 @@ DS4 shadow run (DI, allowlisted)      ── existing ──▶ di_v0_motion_cor
 
 ## 7. Fable requirement
 
-**FABLE_REQUIRED: NO** for the next (adapter + shadow store) PR — it consumes already reviewed outputs under a conservative admission policy and changes no DS4 algorithm. **YES** before any successor wear formula uses DS4 intensities numerically (B3 attenuation, out-of-sample validity) or before DS4 persistence is extended with intensity fields.
+**FABLE_REQUIRED: NO** for the next (async consumer + shadow store) PR — it consumes already reviewed `readForTrip` outcomes under a conservative admission policy, uses existing DS4 run/input identity fields, and changes no DS4 algorithm. **YES** before any successor wear formula uses DS4 intensities numerically (B3 attenuation, out-of-sample validity) or before DS4 persistence is extended with intensity fields.
