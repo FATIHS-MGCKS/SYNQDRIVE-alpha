@@ -22,7 +22,7 @@ import {
   resolveVsiMaterializationProjectionAsOf,
   type VsiDtcConfirmedCompleteEvidence,
 } from './vsi-dtc-complete-evidence.util';
-import { normalizeVlsObdDtcListJson, parseConfirmedObdCodesFromHeadJson } from './vsi-vls-obd-dtc-normalize.util';
+import { parseConfirmedObdCodesFromHeadJson } from './vsi-vls-obd-dtc-normalize.util';
 
 const DEFAULT_POLL_LOG_LIMIT = 5;
 
@@ -129,8 +129,6 @@ export class VsiSignalProfileMaterializationService {
         providerFetchedAt: true,
         updatedAt: true,
         rawPayloadJson: true,
-        obdDtcList: true,
-        lastDtcSuccessfulCheckAt: true,
       },
     });
 
@@ -251,11 +249,13 @@ export class VsiSignalProfileMaterializationService {
       }
     }
 
-    const normalizedObdDtc = boundLatestState
-      ? normalizeVlsObdDtcListJson(boundLatestState.obdDtcList)
-      : { kind: 'absent' as const };
     const obdDtcListForVsi =
-      normalizedObdDtc.kind === 'codes' ? normalizedObdDtc.codes : null;
+      dtcConfirmedComplete &&
+      (dtcConfirmedComplete.codesParse.status === 'valid' ||
+        dtcConfirmedComplete.codesParse.status === 'valid_empty')
+        ? dtcConfirmedComplete.codes
+        : null;
+    const lastDtcSuccessfulCheckAtForVsi = dtcConfirmedComplete?.fetchObservedAt ?? null;
 
     const projectionAsOf = resolveVsiMaterializationProjectionAsOf({
       bundleProviderFetchedAt: boundLatestState?.providerFetchedAt ?? null,
@@ -285,7 +285,7 @@ export class VsiSignalProfileMaterializationService {
               updatedAt: boundLatestState.updatedAt,
               rawPayloadJson: boundLatestState.rawPayloadJson,
               obdDtcList: obdDtcListForVsi,
-              lastDtcSuccessfulCheckAt: boundLatestState.lastDtcSuccessfulCheckAt,
+              lastDtcSuccessfulCheckAt: lastDtcSuccessfulCheckAtForVsi,
             }
           : null,
         pollLogs,
