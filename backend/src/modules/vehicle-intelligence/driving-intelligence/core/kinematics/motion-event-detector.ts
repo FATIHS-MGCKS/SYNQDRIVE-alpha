@@ -40,6 +40,12 @@ export interface MotionEventCandidateOptions {
    * kept so coverage is not silently reduced. Adds `spikeReversionWindowS` to event finalization.
    */
   spikeReversionCheck: boolean;
+  /**
+   * P1 — spike bracket: when the start sample itself is the artefact, K3 compares reversion to the
+   * dip. Bracket marks V/Λ excursions when the step into the start sample and the step out of the end
+   * sample (within `spikeReversionWindowS`) both exceed the entry threshold in the opposite direction.
+   */
+  spikeBracketCheck?: boolean;
 }
 
 export const MOTION_EVENT_FABLE_V0_1_OPTIONS: Readonly<MotionEventCandidateOptions> = {
@@ -48,6 +54,13 @@ export const MOTION_EVENT_FABLE_V0_1_OPTIONS: Readonly<MotionEventCandidateOptio
 
 export const MOTION_EVENT_V0_2_CANDIDATE_OPTIONS: Readonly<MotionEventCandidateOptions> = {
   spikeReversionCheck: true,
+  spikeBracketCheck: false,
+};
+
+/** Production shadow stack: K3 + spike bracket (P1). Physics envelope (P2) is applied after detection. */
+export const MOTION_EVENT_V0_3_CANDIDATE_OPTIONS: Readonly<MotionEventCandidateOptions> = {
+  spikeReversionCheck: true,
+  spikeBracketCheck: true,
 };
 
 /** Same horizon as the post-gap guard: reversion is only checked inside the current segment. */
@@ -55,9 +68,14 @@ export const MOTION_EVENT_SPIKE_REVERSION_WINDOW_S = 2;
 
 export function motionEventVersionId(options: Readonly<MotionEventCandidateOptions>): string {
   const base = `${MOTION_EVENT_HF_THRESHOLDS_V1.version} + ${MOTION_CORE_EVENT_GUARDS_V0_1_DEV.version}`;
-  return options.spikeReversionCheck
-    ? `${base} + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]`
-    : base;
+  let id = base;
+  if (options.spikeReversionCheck) {
+    id += ' + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]';
+  }
+  if (options.spikeBracketCheck) {
+    id += ' + MOTION_EVENT_V0_3_CAND_DEV[spikeBracketCheck]';
+  }
+  return id;
 }
 
 const UNCERTAINTY_LABEL = '±1 s label + unvalidated clock offset';
@@ -225,6 +243,9 @@ export function detectMotionManoeuvreEvents(
     if (options.spikeReversionCheck) {
       applySpikeReversionCheck(seg, segEvents);
     }
+    if (options.spikeBracketCheck) {
+      applySpikeBracketCheck(seg, segEvents);
+    }
   }
 
   events.sort((a, b) => a.startLabel.localeCompare(b.startLabel));
@@ -276,6 +297,60 @@ function applySpikeReversionCheck(
       ...ev.flags,
       `SPIKE_REVERSION_WITHIN_${win}S=${revertLabel}:${round1(revertSpeed!)}`,
     ].sort();
+  }
+}
+
+function stepAccelMps2(
+  seg: MotionCoreSpeedSample[],
+  kind: MotionManoeuvreEvent['kind'],
+  i: number,
+): number | null {
+  if (i < 1) {
+    return null;
+  }
+  const dt = secSinceEpoch(seg[i]!.label) - secSinceEpoch(seg[i - 1]!.label);
+  if (dt <= 0) {
+    return null;
+  }
+  const sign = kind === 'ACCELERATION' ? 1 : -1;
+  return (sign * (seg[i]!.valueKmh! - seg[i - 1]!.valueKmh!)) / 3.6 / dt;
+}
+
+function applySpikeBracketCheck(
+  seg: MotionCoreSpeedSample[],
+  segEvents: Array<{ ev: MotionManoeuvreEvent; s0: number; s1: number }>,
+): void {
+  const win = MOTION_EVENT_SPIKE_REVERSION_WINDOW_S;
+  const entry = MOTION_EVENT_HF_THRESHOLDS_V1.entryMps2;
+  for (const { ev, s0, s1 } of segEvents) {
+    if (ev.quality === 'ARTEFACT_SUSPECT') {
+      continue;
+    }
+    const endSec = secSinceEpoch(seg[s1]!.label);
+    const oppositeFollows = segEvents.some(
+      (o) =>
+        o.ev.kind !== ev.kind &&
+        o.s0 >= s1 &&
+        secSinceEpoch(seg[o.s0]!.label) - endSec <= win,
+    );
+    if (oppositeFollows) {
+      continue;
+    }
+    const pre = stepAccelMps2(seg, ev.kind, s0);
+    const post =
+      s1 + 1 < seg.length && secSinceEpoch(seg[s1 + 1]!.label) - endSec <= win
+        ? stepAccelMps2(seg, ev.kind, s1 + 1)
+        : null;
+    if (pre == null || post == null) {
+      continue;
+    }
+    if (pre <= -entry && post <= -entry) {
+      ev.quality = 'ARTEFACT_SUSPECT';
+      ev.flags = [
+        ...ev.flags,
+        `SPIKE_BRACKET_PRE=${round3(pre)}_POST=${round3(post)}`,
+      ].sort();
+    }
   }
 }
 

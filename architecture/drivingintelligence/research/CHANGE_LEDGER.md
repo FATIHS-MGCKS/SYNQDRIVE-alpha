@@ -2261,3 +2261,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | RECOMMENDATION | Option A: two additive marking guards (spike-bracket/K-B → `ARTEFACT_SUSPECT`; physics envelope on event mean, class via C5.1 resolver, permissive fallback) — in-sample exactly 3 events change, 0 TREFFER loss, DEV unchanged. No new detector, no ML, no FSM coupling, no speed from gap bridge. LEG/REG3 alternatives rejected (new hard FAs / EVAL regression) |
 | VALIDATION | `node scripts/candidates_ab.cjs --code-root <7340637> --tag fable_base_7340637` → parity OK on 4 drives; outputs byte-identical across runs except timestamp |
 | NON_EFFECTS | No code, flag, DB, deploy or activation change; detector/C4/C5.1/FSM untouched; proposals P1–P3 are PROPOSED, not implemented |
+
+### DS4 motion events — P1 spike bracket + P2 universal plausibility (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `MOTION_EVENT_V0_3_CANDIDATE_OPTIONS[spikeBracketCheck]`; `motion-event-physics-envelope.ts` exports `MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2` + `applyMotionEventUniversalPlausibility` (kinematic/sign consistency only, no vehicle nameplates); shadow processor applies after detection; bundle suffix `_EVENT_V0_3_PLAUS_V0_2`; C5.1 class resolution unchanged (only when C5.1 preferred speed effective) |
+| WHY | Fleet-universal shadow hardening: P1 closes K3 blind spot (TES16 03:50:20); P2 marks only internally contradictory event fields — high acceleration without contradiction is not flagged (TIG22 19:04:34/49 may remain LIMITED/DEGRADED vs Fable nameplate proposal) |
+| VALIDATION | `motion-event-p1-p2-hardening.spec.ts`; `di-v0-motion-core-shadow-event-hardening.unit.spec.ts`; `scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts` (P1-only quality delta vs `fable_base_7340637` baseline, TREFFER parity) |
+| NON_EFFECTS | No DB migration, no UI/i18n, no FSM/C4/C5.1 threshold or admission changes; events retained; `ARTEFACT_SUSPECT` excluded from accepted counts via existing semantics |
