@@ -28,6 +28,7 @@ export function evaluateMotionPhysicsReferenceCreate(input: {
   proposedTier: MotionPhysicsEvidenceTier;
   proposedSource: MotionPhysicsReferenceSource;
   activeTier?: MotionPhysicsEvidenceTier | null;
+  manualOperatorConfirm?: boolean;
 }): MotionPhysicsPolicyEvaluation {
   const reasonCodes: MotionPhysicsPolicyReasonCode[] = [];
 
@@ -62,6 +63,14 @@ export function evaluateMotionPhysicsReferenceCreate(input: {
 
   if (input.proposedSource === MotionPhysicsReferenceSource.OPERATOR_CONFIRMED) {
     reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN);
+  }
+
+  if (
+    input.proposedSource === MotionPhysicsReferenceSource.MANUAL_ENTRY &&
+    input.proposedTier === MotionPhysicsEvidenceTier.CONFIRMED &&
+    !input.manualOperatorConfirm
+  ) {
+    reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.IMPLICIT_MANUAL_CONFIRM_FORBIDDEN);
   }
 
   return { ok: reasonCodes.length === 0, reasonCodes };

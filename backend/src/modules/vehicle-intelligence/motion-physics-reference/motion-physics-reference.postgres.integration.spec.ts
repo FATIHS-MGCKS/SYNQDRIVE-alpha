@@ -87,6 +87,24 @@ const run = process.env.MOTION_PHYSICS_REFERENCE_PG === '1' || process.env.VO4_R
     expect(active?.evidenceTier).toBe(MotionPhysicsEvidenceTier.CONFIRMED);
   });
 
+  it('creates MANUAL_ENTRY CONFIRMED when manualOperatorConfirm is set', async () => {
+    const { orgId, vehicleId } = await seedVehicle();
+    const created = await service.create(
+      orgId,
+      vehicleId,
+      {
+        curbMassKg: 1650,
+        systemMotorPowerKw: 110,
+        systemPowerDefinition: 'OEM_RATED_MOTOR_KW',
+        source: MotionPhysicsReferenceSource.MANUAL_ENTRY,
+        manualOperatorConfirm: true,
+      },
+      'u-manual',
+    );
+    expect(created.evidenceTier).toBe(MotionPhysicsEvidenceTier.CONFIRMED);
+    expect(created.source).toBe(MotionPhysicsReferenceSource.MANUAL_ENTRY);
+  });
+
   it('rejects OPERATOR_CONFIRMED on create (use confirm endpoint)', async () => {
     const { orgId, vehicleId } = await seedVehicle();
     try {

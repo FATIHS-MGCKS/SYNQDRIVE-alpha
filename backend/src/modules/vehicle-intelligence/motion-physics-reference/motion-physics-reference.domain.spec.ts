@@ -5,13 +5,21 @@ import {
 import { resolveMotionPhysicsEvidenceTierForCreate } from './motion-physics-reference.domain';
 
 describe('resolveMotionPhysicsEvidenceTierForCreate', () => {
-  it('maps Mistral and manual entry to ESTIMATED', () => {
+  it('maps Mistral to ESTIMATED', () => {
     expect(resolveMotionPhysicsEvidenceTierForCreate(MotionPhysicsReferenceSource.MISTRAL_AI)).toBe(
       MotionPhysicsEvidenceTier.ESTIMATED,
     );
+  });
+
+  it('maps MANUAL_ENTRY to ESTIMATED unless explicit manualOperatorConfirm', () => {
     expect(resolveMotionPhysicsEvidenceTierForCreate(MotionPhysicsReferenceSource.MANUAL_ENTRY)).toBe(
       MotionPhysicsEvidenceTier.ESTIMATED,
     );
+    expect(
+      resolveMotionPhysicsEvidenceTierForCreate(MotionPhysicsReferenceSource.MANUAL_ENTRY, {
+        manualOperatorConfirm: true,
+      }),
+    ).toBe(MotionPhysicsEvidenceTier.CONFIRMED);
   });
 
   it('maps document and onboarding sources to CONFIRMED', () => {

@@ -2305,6 +2305,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `motion-physics-reference.{domain,policy}.spec.ts`; `motion-physics-reference-sync.util.test.ts`; updated postgres integration spec |
 | NON_EFFECTS | No deploy/backfill; no DI/DS4/tire changes; Tiguan VIN correction remains owner-gated |
 
+### Vehicle Physics Phase A.1 — manual specs + confirm (2026-10-24, follow-up)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Master modal: `systemPowerDefinition` select + power-type hints; **Manuelle Werte bestätigen** → `MANUAL_ENTRY` + `manualOperatorConfirm` → CONFIRMED (versioned create); VERIFIED read-only; 9-locale i18n |
+| WHY | Bind manual Master entry to explicit CONFIRMED without implicit save; distinguish motor vs system kW |
+| VALIDATION | Extended sync util + policy/domain specs; postgres manual confirm case |
+| NON_EFFECTS | No new modules; no deploy |
+
 ### Cross-module — Tires Health declares DS4 Motion Events as future shadow consumer (2026-10-24)
 
 | Event | Detail |

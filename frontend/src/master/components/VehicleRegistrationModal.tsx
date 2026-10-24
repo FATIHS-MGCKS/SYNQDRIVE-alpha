@@ -10,10 +10,15 @@ import {
   shouldApplyAiSpecToEmptyField,
 } from '../connected-vehicles/ai-spec-field-merge.util';
 import {
+  buildMotionPhysicsReferenceCreateBody,
+  canConfirmManualMotionValues,
   hasMotionPhysicsFormValues,
+  isMotionPhysicsReferenceReadOnly,
+  MOTION_SYSTEM_POWER_DEFINITION_OPTIONS,
   motionPhysicsReferenceSourceForSave,
   shouldSyncMotionPhysicsReferenceOnSave,
   type MotionPhysicsPendingCreateSource,
+  type MotionSystemPowerDefinitionOption,
 } from '../connected-vehicles/motion-physics-reference-sync.util';
 import {
   ExteriorImagesEditor,
@@ -104,6 +109,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     'ESTIMATED' | 'CONFIRMED' | 'VERIFIED' | null
   >(null);
   const [motionPhysicsConfirming, setMotionPhysicsConfirming] = useState(false);
+  const [motionPhysicsManualConfirming, setMotionPhysicsManualConfirming] = useState(false);
+  const [systemPowerDefinition, setSystemPowerDefinition] = useState<MotionSystemPowerDefinitionOption | ''>('');
   const [motionPhysicsSyncError, setMotionPhysicsSyncError] = useState('');
   const motionPhysicsPendingCreateSourceRef = useRef<MotionPhysicsPendingCreateSource>(null);
   const [idleRpm, setIdleRpm] = useState('');
@@ -603,12 +610,72 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         if (ref.systemMotorPowerKw != null) setSystemMotorPowerKw(String(ref.systemMotorPowerKw));
         if (ref.accel0To100S != null) setAccel0To100S(String(ref.accel0To100S));
         if (ref.variantAssumption) setMotionPhysicsVariantAssumption(ref.variantAssumption);
+        if (ref.systemPowerDefinition) {
+          const def = ref.systemPowerDefinition as MotionSystemPowerDefinitionOption;
+          if ((MOTION_SYSTEM_POWER_DEFINITION_OPTIONS as readonly string[]).includes(def)) {
+            setSystemPowerDefinition(def);
+          }
+        }
       })
       .catch(() => {
         setMotionPhysicsReferenceId(null);
         setMotionPhysicsEvidenceTier(null);
       });
   }, [isOpen, isEditMode, existingVehicle?.id, organizationId]);
+
+  const motionPhysicsFieldsDisabled = isMotionPhysicsReferenceReadOnly(motionPhysicsEvidenceTier);
+
+  const motionPhysicsPowerHintKey =
+    systemPowerDefinition === 'OEM_RATED_MOTOR_KW'
+      ? 'master.motionPhysics.systemMotorPowerKw.hintMotor'
+      : systemPowerDefinition === 'OEM_RATED_SYSTEM_KW' ||
+          systemPowerDefinition === 'OEM_RATED_SYSTEM_KW_ESTIMATED'
+        ? 'master.motionPhysics.systemMotorPowerKw.hintSystem'
+        : 'master.motionPhysics.systemPowerDefinition.hint';
+
+  const handleConfirmManualMotionReference = async () => {
+    if (
+      !organizationId ||
+      !existingVehicle?.id ||
+      motionPhysicsManualConfirming ||
+      !canConfirmManualMotionValues(motionPhysicsEvidenceTier)
+    ) {
+      return;
+    }
+    const hasMotionValues = hasMotionPhysicsFormValues({
+      curbWeight,
+      systemMotorPowerKw,
+      accel0To100S,
+      variantAssumption: motionPhysicsVariantAssumption,
+      systemPowerDefinition,
+    });
+    if (!hasMotionValues) return;
+
+    setMotionPhysicsManualConfirming(true);
+    setMotionPhysicsSyncError('');
+    try {
+      const created = await api.vehicles.motionPhysicsReference.create(
+        organizationId,
+        existingVehicle.id,
+        buildMotionPhysicsReferenceCreateBody({
+          curbWeight,
+          systemMotorPowerKw,
+          accel0To100S,
+          variantAssumption: motionPhysicsVariantAssumption,
+          systemPowerDefinition,
+          source: 'MANUAL_ENTRY',
+          manualOperatorConfirm: true,
+        }),
+      );
+      setMotionPhysicsReferenceId(created.id);
+      setMotionPhysicsEvidenceTier(created.evidenceTier);
+      motionPhysicsPendingCreateSourceRef.current = null;
+    } catch {
+      setMotionPhysicsSyncError(t('master.motionPhysics.manualConfirmError'));
+    } finally {
+      setMotionPhysicsManualConfirming(false);
+    }
+  };
 
   const handleConfirmMotionReference = async () => {
     if (!motionPhysicsReferenceId || !organizationId || !existingVehicle?.id || motionPhysicsConfirming) return;
@@ -632,6 +699,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       curbWeight,
       systemMotorPowerKw,
       accel0To100S,
+      variantAssumption: motionPhysicsVariantAssumption,
+      systemPowerDefinition,
     });
     if (
       !shouldSyncMotionPhysicsReferenceOnSave({
@@ -646,16 +715,18 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     const source = motionPhysicsReferenceSourceForSave(motionPhysicsPendingCreateSourceRef.current);
     if (!source) return;
 
-    const curb = curbWeight.trim() ? Number(curbWeight.replace(/[^\d.-]/g, '')) : null;
-    const power = systemMotorPowerKw.trim() ? Number(systemMotorPowerKw.replace(',', '.')) : null;
-    const accel = accel0To100S.trim() ? Number(accel0To100S.replace(',', '.')) : null;
-    const created = await api.vehicles.motionPhysicsReference.create(orgId, vehicleId, {
-      curbMassKg: Number.isFinite(curb!) ? curb : null,
-      systemMotorPowerKw: Number.isFinite(power!) ? power : null,
-      accel0To100S: Number.isFinite(accel!) ? accel : null,
-      variantAssumption: motionPhysicsVariantAssumption.trim() || null,
-      source,
-    });
+    const created = await api.vehicles.motionPhysicsReference.create(
+      orgId,
+      vehicleId,
+      buildMotionPhysicsReferenceCreateBody({
+        curbWeight,
+        systemMotorPowerKw,
+        accel0To100S,
+        variantAssumption: motionPhysicsVariantAssumption,
+        systemPowerDefinition,
+        source,
+      }),
+    );
     setMotionPhysicsReferenceId(created.id);
     setMotionPhysicsEvidenceTier(created.evidenceTier);
     motionPhysicsPendingCreateSourceRef.current = null;
@@ -1154,7 +1225,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                   <option value="">Unknown</option><option value="FWD">FWD</option><option value="RWD">RWD</option><option value="AWD">AWD</option><option value="4WD">4WD</option>
                 </select>
               </div>
-              <div><label className={labelClass}>Curb Weight (kg) {aiTag}</label><input value={curbWeight} onChange={e => setCurbWeight(e.target.value)} className={inputClass} placeholder="e.g. 1500" /></div>
+              <div><label className={labelClass}>Curb Weight (kg) {aiTag}</label><input value={curbWeight} onChange={e => setCurbWeight(e.target.value)} className={inputClass} placeholder="e.g. 1500" disabled={motionPhysicsFieldsDisabled} /></div>
               <div className="col-span-2 lg:col-span-3 border-t border-border/40 pt-3 mt-1">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className={`text-xs font-bold text-muted-foreground`}>{t('master.motionPhysics.sectionTitle')}</span>
@@ -1183,22 +1254,69 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       {t('master.motionPhysics.confirmAction')}
                     </button>
                   )}
+                  {isEditMode && canConfirmManualMotionValues(motionPhysicsEvidenceTier) && (
+                    <button
+                      type="button"
+                      disabled={motionPhysicsManualConfirming || motionPhysicsFieldsDisabled}
+                      onClick={handleConfirmManualMotionReference}
+                      className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-status-info-soft text-status-info hover:opacity-90 disabled:opacity-50"
+                    >
+                      {t('master.motionPhysics.manualConfirmAction')}
+                    </button>
+                  )}
                   {motionPhysicsSyncError && (
                     <p className="text-[11px] text-status-danger w-full">{motionPhysicsSyncError}</p>
                   )}
                 </div>
+                <p className="text-[10px] text-muted-foreground col-span-2 lg:col-span-3 mb-1">
+                  {t(motionPhysicsPowerHintKey)}
+                </p>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>
+                    <label className={labelClass}>{t('master.motionPhysics.systemPowerDefinition')}</label>
+                    <select
+                      value={systemPowerDefinition}
+                      onChange={e => setSystemPowerDefinition(e.target.value as MotionSystemPowerDefinitionOption | '')}
+                      className={inputClass}
+                      disabled={motionPhysicsFieldsDisabled}
+                    >
+                      <option value="">—</option>
+                      <option value="OEM_RATED_MOTOR_KW">{t('master.motionPhysics.systemPowerDefinition.option.motor')}</option>
+                      <option value="OEM_RATED_SYSTEM_KW">{t('master.motionPhysics.systemPowerDefinition.option.system')}</option>
+                      <option value="OEM_RATED_SYSTEM_KW_ESTIMATED">
+                        {t('master.motionPhysics.systemPowerDefinition.option.estimated')}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
                     <label className={labelClass}>{t('master.motionPhysics.systemMotorPowerKw')} {aiTag}</label>
-                    <input value={systemMotorPowerKw} onChange={e => setSystemMotorPowerKw(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.systemMotorPowerKw')} />
+                    <input
+                      value={systemMotorPowerKw}
+                      onChange={e => setSystemMotorPowerKw(e.target.value)}
+                      className={inputClass}
+                      placeholder={t('master.motionPhysics.placeholder.systemMotorPowerKw')}
+                      disabled={motionPhysicsFieldsDisabled}
+                    />
                   </div>
                   <div>
                     <label className={labelClass}>{t('master.motionPhysics.accel0To100S')} {aiTag}</label>
-                    <input value={accel0To100S} onChange={e => setAccel0To100S(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.accel0To100S')} />
+                    <input
+                      value={accel0To100S}
+                      onChange={e => setAccel0To100S(e.target.value)}
+                      className={inputClass}
+                      placeholder={t('master.motionPhysics.placeholder.accel0To100S')}
+                      disabled={motionPhysicsFieldsDisabled}
+                    />
                   </div>
                   <div className="col-span-2 lg:col-span-1">
                     <label className={labelClass}>{t('master.motionPhysics.variantAssumption')} {aiTag}</label>
-                    <input value={motionPhysicsVariantAssumption} onChange={e => setMotionPhysicsVariantAssumption(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.variantAssumption')} />
+                    <input
+                      value={motionPhysicsVariantAssumption}
+                      onChange={e => setMotionPhysicsVariantAssumption(e.target.value)}
+                      className={inputClass}
+                      placeholder={t('master.motionPhysics.placeholder.variantAssumption')}
+                      disabled={motionPhysicsFieldsDisabled}
+                    />
                   </div>
                 </div>
               </div>

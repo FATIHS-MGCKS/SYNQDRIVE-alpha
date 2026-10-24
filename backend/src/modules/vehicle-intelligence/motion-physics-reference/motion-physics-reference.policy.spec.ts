@@ -108,4 +108,25 @@ describe('motion-physics-reference.policy', () => {
     expect(result.ok).toBe(false);
     expect(result.reasonCodes).toContain('IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN');
   });
+
+  it('rejects MANUAL_ENTRY CONFIRMED without manualOperatorConfirm flag', () => {
+    const result = evaluateMotionPhysicsReferenceCreate({
+      payload: { curbMassKg: 1800 },
+      proposedTier: MotionPhysicsEvidenceTier.CONFIRMED,
+      proposedSource: MotionPhysicsReferenceSource.MANUAL_ENTRY,
+      manualOperatorConfirm: false,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reasonCodes).toContain('IMPLICIT_MANUAL_CONFIRM_FORBIDDEN');
+  });
+
+  it('allows MANUAL_ENTRY CONFIRMED with explicit manualOperatorConfirm', () => {
+    const result = evaluateMotionPhysicsReferenceCreate({
+      payload: { curbMassKg: 1800 },
+      proposedTier: MotionPhysicsEvidenceTier.CONFIRMED,
+      proposedSource: MotionPhysicsReferenceSource.MANUAL_ENTRY,
+      manualOperatorConfirm: true,
+    });
+    expect(result.ok).toBe(true);
+  });
 });

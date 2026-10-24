@@ -4213,9 +4213,11 @@ export const api = {
         body: {
           curbMassKg?: number | null;
           systemMotorPowerKw?: number | null;
+          systemPowerDefinition?: string | null;
           accel0To100S?: number | null;
           variantAssumption?: string | null;
           source: string;
+          manualOperatorConfirm?: boolean;
           notes?: string | null;
         },
       ) =>

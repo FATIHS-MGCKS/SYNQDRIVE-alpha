@@ -73,7 +73,9 @@ export class VehicleMotionPhysicsReferenceService {
     });
 
     const active = await this.repository.findActiveForVehicle({ organizationId, vehicleId });
-    const proposedTier = resolveMotionPhysicsEvidenceTierForCreate(body.source);
+    const proposedTier = resolveMotionPhysicsEvidenceTierForCreate(body.source, {
+      manualOperatorConfirm: body.manualOperatorConfirm === true,
+    });
     if (proposedTier == null) {
       throw new BadRequestException({
         message: 'Motion physics reference validation failed',
@@ -86,6 +88,7 @@ export class VehicleMotionPhysicsReferenceService {
       proposedTier,
       proposedSource: body.source,
       activeTier: active?.evidenceTier,
+      manualOperatorConfirm: body.manualOperatorConfirm === true,
     });
     if (!policy.ok) {
       throw new BadRequestException({
