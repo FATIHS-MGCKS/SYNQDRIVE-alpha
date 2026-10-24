@@ -63,6 +63,13 @@ export type DiV0MotionCoreShadowQualityContract = {
     c5_1ProductionSafety: string | null;
     c5_1AlgorithmFileSha256: string | null;
     fsm: string;
+    gapBridgeV1: string | null;
+    fsmAuxBinding: {
+      structuralVersion: string;
+      estimatorVersion: string;
+      calibrationVersion: string;
+      sourceFamilyPolicyVersion: string;
+    } | null;
     events: string;
     bundle: string;
   };

@@ -67,7 +67,15 @@ describe('DiV0MotionCoreShadowTripMapReadService — run selection', () => {
     });
     jest.spyOn(runs, 'decodePayload').mockReturnValue({
       contract: {
-        algorithmVersions: { c4: '1', c5_1: null, fsm: '1', events: '1', bundle: '1' },
+        algorithmVersions: {
+          c4: '1',
+          c5_1: null,
+          fsm: '1',
+          gapBridgeV1: null,
+          fsmAuxBinding: null,
+          events: '1',
+          bundle: '1',
+        },
         speedAuthority: 'C4_ONLY',
         timeSemantics: { computedAtUtc: '2026-01-01T00:00:00Z' },
         sparse: { limitations: [] },
@@ -105,7 +113,15 @@ describe('DiV0MotionCoreShadowTripMapReadService — run selection', () => {
     });
     jest.spyOn(runs, 'decodePayload').mockReturnValue({
       contract: {
-        algorithmVersions: { c4: '1', c5_1: null, fsm: '1', events: '1', bundle: '1' },
+        algorithmVersions: {
+          c4: '1',
+          c5_1: null,
+          fsm: '1',
+          gapBridgeV1: null,
+          fsmAuxBinding: null,
+          events: '1',
+          bundle: '1',
+        },
         speedAuthority: 'C4_ONLY',
         timeSemantics: { computedAtUtc: '2026-01-01T00:00:00Z' },
         sparse: { limitations: [] },

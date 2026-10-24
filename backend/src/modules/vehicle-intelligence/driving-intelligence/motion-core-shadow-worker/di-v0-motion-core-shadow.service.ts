@@ -15,6 +15,8 @@ import {
   resolveC5_1PlausibilityClassForEligibleVehicle,
   resolveC5_1VehicleAdmissionFromLabels,
 } from './di-v0-motion-core-c5-1-admission';
+import { isFsmGapBridgeV1Effective } from './di-v0-motion-core-fsm-gap-bridge-v1-admission';
+import { buildMotionFsmGapBridgeAuxiliaryFromPinnedTrip } from './di-v0-motion-core-fsm-gap-bridge-auxiliary';
 import { resolveMotionCoreShadowBundleVersion } from './di-v0-motion-core-shadow.bundle.version';
 import {
   DI_V0_MOTION_CORE_SHADOW_TUNING,
@@ -212,6 +214,30 @@ export class DiV0MotionCoreShadowService {
       vehicleAdmission,
       workItemCompletedAt: wi.completedAt,
     });
+    const fsmGapBridgeV1Effective = isFsmGapBridgeV1Effective(this.runtimeConfig.controlPlane, {
+      workItemCompletedAt: wi.completedAt,
+    });
+
+    let gapBridgeAuxiliary;
+    let gapBridgeAuxBindingVersions;
+    if (fsmGapBridgeV1Effective) {
+      const auxBuild = buildMotionFsmGapBridgeAuxiliaryFromPinnedTrip(
+        verified.parsed,
+        wi.sourceFamily as DiV0S4SourceFamily,
+        wi.pipelineVersionManifest,
+        this.s4ControlPlane,
+      );
+      if (!auxBuild.ok) {
+        await this.outbox.markSkipped(
+          row.outboxId,
+          row.claimToken,
+          `FSM_GAP_BRIDGE_AUX_${auxBuild.code}`,
+        );
+        return 'FAILED';
+      }
+      gapBridgeAuxiliary = auxBuild.auxiliary;
+      gapBridgeAuxBindingVersions = auxBuild.bindingVersions;
+    }
 
     let processed;
     try {
@@ -226,6 +252,9 @@ export class DiV0MotionCoreShadowService {
         combinedInputIdentity: wi.combinedInputIdentity,
         computedAt: now,
         c5_1PreferredSpeedEnabled: c5_1Effective,
+        fsmGapBridgeV1Enabled: fsmGapBridgeV1Effective,
+        gapBridgeAuxiliary,
+        gapBridgeAuxBindingVersions,
         vehiclePlausibilityClass,
       });
     } catch (error) {
@@ -249,7 +278,10 @@ export class DiV0MotionCoreShadowService {
       tripId: row.tripId,
       workItemId: row.workItemId,
       shadowIntentKey: row.shadowIntentKey,
-      shadowBundleVersion: resolveMotionCoreShadowBundleVersion(c5_1Effective),
+      shadowBundleVersion: resolveMotionCoreShadowBundleVersion({
+        c5_1PreferredSpeedEnabled: c5_1Effective,
+        fsmGapBridgeV1Enabled: fsmGapBridgeV1Effective,
+      }),
       pinnedSnapshotHash: wi.pinnedSnapshotHash,
       combinedInputIdentity: wi.combinedInputIdentity,
       contentFingerprint: processed.payloadFingerprint,
