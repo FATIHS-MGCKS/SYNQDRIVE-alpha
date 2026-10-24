@@ -2314,6 +2314,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Extended sync util + policy/domain specs; postgres manual confirm case |
 | NON_EFFECTS | No new modules; no deploy |
 
+### Vehicle Physics Phase A.1 — Mistral provenance guard (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `mistral_live` vs `local_fallback` apply provenance; no `MISTRAL_AI` auto-reference on fallback/mixed/manual-edit; regression tests |
+| WHY | PR #2163 merge gate — prevent misleading reference source attribution |
+| NON_EFFECTS | No deploy; no DS4/tire changes |
+
 ### Cross-module — Tires Health declares DS4 Motion Events as future shadow consumer (2026-10-24)
 
 | Event | Detail |
