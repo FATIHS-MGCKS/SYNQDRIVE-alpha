@@ -1,0 +1,788 @@
+# Tires Health Knowledge Graph — Nodes (bootstrap V0.1, AUDIT_IN_PROGRESS)
+# Validate: bash architecture/tires/scripts/validate-graph.sh
+# Repository baseline: origin/main 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25 (2026-10-24)
+# Production baseline: c169ddfab5a180ba93d0dbd09eaf7bd02c59be7d (VERIFIED_READ_ONLY 2026-10-24)
+
+nodes:
+  # --- Domain ---
+  - id: TIRE-DOM-TIRES-HEALTH-001
+    type: domain
+    title: Tires Health domain boundary
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      Tire setups, lifecycle (mount/rotate/store/retire), tread/pressure measurements, Tire Wear Model V2
+      predictions and snapshots, trip-usage ledger, health alerts, rental-health policy input, and
+      vehicle-level API/UI projections. Does not own driving-behaviour event detection (→ Driving Intelligence)
+      and does not own rental booking gates (→ Rental Health consumes tire health).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/
+      - architecture/tires/README.md
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  # --- Persistence (owned) ---
+  - id: TIRE-PERSIST-SETUP-001
+    type: persist
+    title: vehicle_tire_setups (+ mount periods)
+    epistemic_status: CONFIRMED
+    summary: >
+      Active/stored/retired tire setups per vehicle; partial unique ACTIVE constraint; odometer anchor
+      fields; lastRecalculatedAt drives hourly recalculation scheduling.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/tires/tire-lifecycle.service.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-PERSIST-TREAD-MEASUREMENT-001
+    type: persist
+    title: vehicle_tire_tread_measurements (ground truth)
+    epistemic_status: CONFIRMED
+    summary: >
+      Manual/operator tread measurements with evidence source and provenance; ground truth for prediction
+      validation. Production 2026-10-24: 5 rows fleet-wide.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/tires/tire-ground-truth.util.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-prediction-validation.service.ts
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  - id: TIRE-PERSIST-HEALTH-SNAPSHOT-001
+    type: persist
+    title: tire_health_snapshots
+    epistemic_status: CONFIRMED
+    summary: >
+      Per-recalculation prediction snapshots stamped with TIRE_WEAR_MODEL_VERSION ('tire-wear-v2') and a
+      recalculation fingerprint for dedupe. Production 2026-10-24: 2046 rows in 30 days, 8945 total.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/tires/tire-recalculation-fingerprint.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-wear-model-version.ts
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  - id: TIRE-PERSIST-TRIP-USAGE-LEDGER-001
+    type: persist
+    title: tire_trip_usage_ledger
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical per-trip usage attribution to the active tire setup (distance, road split, deprecated harsh
+      counters, Driving-Impact summary); idempotent via sourceFingerprint. Production 2026-10-24: 1308 rows,
+      all with Driving-Impact summary.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-ledger.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-ledger.repository.ts
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  - id: TIRE-PERSIST-HEALTH-ALERT-001
+    type: persist
+    title: tire_health_alerts
+    epistemic_status: CONFIRMED
+    summary: Structured, deduplicated tire health alerts. Production 2026-10-24 — 7 open alerts.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/tires/tire-health-alert.service.ts
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  # --- Orchestration / pipelines (owned) ---
+  - id: TIRE-ORCH-WEAR-MODEL-V2-001
+    type: orchestrator
+    title: TireWearModelService — Tire Wear Model V2 ('tire-wear-v2')
+    epistemic_status: CONFIRMED
+    summary: >
+      Multiplicative wear-rate model: baseWearMmPerKm × axle × usage × behavior × temperature × pressure ×
+      load × seasonMismatch × k × regen × interactionPenalty. Usage and behavior factors are derived from
+      Driving Impact Engine aggregates (vehicle_driving_impact_current). Owner decision 2026-10-24: frozen as
+      future calculation basis, unchanged until controlled replacement (TIRE-DEC-V2-FROZEN-TO-BE-SUPERSEDED-001).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-wear-model.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-health.config.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+      - TIRE-TEST-REGRESSION-MATRIX-001
+
+  - id: TIRE-ORCH-HEALTH-SERVICE-001
+    type: orchestrator
+    title: TireHealthService — recalculation, snapshots, summary projection
+    epistemic_status: CONFIRMED
+    summary: >
+      Runs the wear model per active setup, persists fingerprint-deduped snapshots, derives status and
+      summary used by API, Rental Health and observability.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-health.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-status.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-PIPE-DS4-SHADOW-CONSUMER-001
+    type: pipeline
+    title: Async retryable DS4 → tire shadow consumer (proposed)
+    epistemic_status: INFERRED
+    summary: >
+      Dedicated BullMQ queue + processor in tires/: enqueue when a tire_trip_usage_ledger row exists (or
+      catch-up scan); call readForTrip; PENDING or no SUCCEEDED DS4 run → backoff retry; persist tire shadow
+      row only on SUCCEEDED/SUCCEEDED_EMPTY with diV0MotionCoreShadowRunId and combinedInputIdentity. Not
+      invoked synchronously from trip canonical finalization.
+    source_paths:
+      - architecture/tires/integration/DS4_MOTION_INTEGRATION_AUDIT.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+
+  - id: TIRE-PIPE-TRIP-USAGE-ATTRIBUTION-001
+    type: pipeline
+    title: TireTripUsageService — canonical-finalization trip attribution
+    epistemic_status: CONFIRMED
+    summary: >
+      Invoked from TripAnalysisCoordinator on terminal canonical finalization (COMPLETED|SKIPPED); writes
+      ledger rows (trigger 'canonical_finalization') and increments setup counters; replay/backfill paths
+      exist with safety guards.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-attribution.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-analysis-coordinator.service.ts
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+
+  - id: TIRE-QUEUE-RECALCULATION-001
+    type: queue
+    title: BullMQ queue dimo.tire.recalculation
+    epistemic_status: CONFIRMED
+    summary: Async recalculation entry; jobId includes an hourly bucket for natural dedupe.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-WORK-RECALCULATION-SCHEDULER-001
+    type: worker
+    title: TireRecalculationScheduler (hourly, leader-guarded)
+    epistemic_status: CONFIRMED
+    summary: >
+      @Interval(3600000); SchedulerLeaderGuardService 'tire_recalculation'; enqueues vehicles with ACTIVE
+      setups whose lastRecalculatedAt is null or older than one hour.
+    source_paths:
+      - backend/src/workers/schedulers/tire-recalculation.scheduler.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-WORK-RECALCULATION-PROCESSOR-001
+    type: worker
+    title: TireRecalculationProcessor
+    epistemic_status: CONFIRMED
+    summary: Consumes the recalculation queue and calls TireHealthService recalculation per vehicle.
+    source_paths:
+      - backend/src/workers/processors/tire-recalculation.processor.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  # --- Authorities / policies (owned) ---
+  - id: TIRE-AUTH-LIFECYCLE-001
+    type: authority
+    title: Tire lifecycle state authority
+    epistemic_status: CONFIRMED
+    summary: >
+      TireLifecycleService + lifecycle invariants (single ACTIVE setup per vehicle, mount periods, odometer
+      anchor). Owner decision: preserve unchanged.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-lifecycle.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-lifecycle-state.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-odometer-anchor.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-AUTH-GROUND-TRUTH-001
+    type: authority
+    title: Measurements are ground truth; predictions are validated against them
+    epistemic_status: CONFIRMED
+    summary: >
+      tire-ground-truth.util + TirePredictionValidationService compare model predictions with tread
+      measurements. Any future DS4-based model must be validated against the same ground truth.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-ground-truth.util.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-prediction-validation.service.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-POL-SNAPSHOT-FINGERPRINT-DEDUPE-001
+    type: policy
+    title: Snapshot recalculation fingerprint dedupe
+    epistemic_status: CONFIRMED
+    summary: Identical inputs/config/model version do not create duplicate snapshots.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-recalculation-fingerprint.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-POL-LEDGER-IDEMPOTENCY-001
+    type: policy
+    title: Ledger idempotency via sourceFingerprint
+    epistemic_status: CONFIRMED
+    summary: Re-finalization or replay of the same trip must not double-attribute usage.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-ledger.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-replay.ts
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+
+  - id: TIRE-POL-RENTAL-HEALTH-001
+    type: policy
+    title: Tire rental-health policy (hard block / review overrides)
+    epistemic_status: CONFIRMED
+    owner_module: Rental Health
+    summary: >
+      buildTireModuleHealth / isTireRentalHardBlocked consume TireHealthSummary; review overrides persisted in
+      tire_rental_health_review_overrides. Hosted in rental-health module; consumes tire output and must not
+      be influenced by any shadow calculation.
+    source_paths:
+      - backend/src/modules/rental-health/tire-rental-health.policy.ts
+      - backend/src/modules/rental-health/tire-rental-health-review.service.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  # --- API / consumers ---
+  - id: TIRE-API-VEHICLE-TIRES-001
+    type: api
+    title: VehicleIntelligenceController /vehicles/:vehicleId/tires/*
+    epistemic_status: CONFIRMED
+    summary: >
+      Setup CRUD, measurements, rotate/change/store/retire, AI spec apply, recalculate, summary/detail.
+      Tenant scope enforced by VehicleOwnershipGuard on the controller; services are vehicleId-scoped.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-CONS-RENTAL-HEALTH-001
+    type: consumer
+    title: RentalHealthService (fleet aggregation)
+    epistemic_status: CONFIRMED
+    owner_module: Rental Health
+    summary: Consumes TireHealthService summary and TireHealthObservabilityService without recalculating.
+    source_paths:
+      - backend/src/modules/rental-health/rental-health.service.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-CONS-FRONTEND-001
+    type: consumer
+    title: Frontend tire surfaces (rental insights, fleet condition, operator measure flow)
+    epistemic_status: CONFIRMED
+    summary: VehicleInsightsCard, FleetConditionDetailView, operator tire-measure flow consume tire API.
+    source_paths:
+      - frontend/src/rental/components/VehicleInsightsCard.tsx
+      - frontend/src/rental/components/FleetConditionDetailView.tsx
+      - frontend/src/operator/tire-measure/OperatorTireMeasureFlow.tsx
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  # --- External inputs (not owned) ---
+  - id: TIRE-EXT-DI-VEHICLE-IMPACT-CURRENT-001
+    type: external_input
+    title: Driving Impact — vehicle_driving_impact_current via getVehicleImpactForTire()
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      windowDays, distanceKmWindow, city/highway/countryRoad share %, longitudinalStressScore,
+      brakingStressScore, stopGoStressScore, highSpeedStressScore, drivingStressScore (0–100). Current V2
+      source for usage and behavior factors. Stress scores are derived from HF hardAccel/hardBrake per 100 km,
+      not from DS4 motion events. Production 2026-10-24: 6 vehicles with current impact.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact.service.ts
+    evidence:
+      - TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  - id: TIRE-EXT-DI-TRIP-IMPACT-001
+    type: external_input
+    title: Driving Impact — trip_driving_impact (per-trip summary into ledger)
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      drivingStressScore, longitudinalStressScore, brakingStressScore, hardAccelPer100Km, hardBrakePer100Km
+      copied into tire_trip_usage_ledger.drivingImpactSummary at attribution time.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage.service.ts
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+
+  - id: TIRE-EXT-TRIP-HARSH-COUNTERS-001
+    type: external_input
+    title: vehicleTrip.harshAccelCount / harshBrakeCount / harshCornerCount (deprecated aliases)
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      Ledger copies these per trip; in trip-behavior-enrichment they are DEPRECATED aliases of HF-derived
+      hardAccel/hardBrake counts. Same underlying evidence as the DI stress scores → double-counting hazard.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+
+  - id: TIRE-EXT-TRIP-AMBIENT-PRESSURE-001
+    type: external_input
+    title: Trip start temperature and tire pressure context
+    epistemic_status: CONFIRMED
+    summary: >
+      Temperature factor from 90-day vehicleTrip.outsideTemperatureStartC; pressure factor from pressure
+      context builder (DIMO/latest-state signals, canonicalised). Unchanged by DS4 integration.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-ambient-context.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-pressure-context.builder.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-EXT-DS4-MOTION-EVENTS-001
+    type: external_input
+    title: DS4 Motion Events (ACCELERATION / DECELERATION) — shadow payloads
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      motion-event-detector.ts (HF_THRESHOLDS_V1 entry 1.5 / continue 1.2 m/s², minSteps 2, Δv 4.0/3.0 km/h)
+      on C4 (or C5.1-preferred) 1 Hz speed; quality OK|DEGRADED|LIMITED|ARTEFACT_SUSPECT (K3 spike reversion,
+      P1 spike bracket, P2 universal plausibility V0.2). Persisted only inside gzip payloads of
+      di_v0_motion_core_shadow_runs_v1; persisted event rows carry kind, start/end label, start/end speed,
+      deltaKmh, quality, flags — NOT meanAccelMps2, durationS or peak values.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-detector.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event.types.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-physics-envelope.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.types.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+
+  - id: TIRE-EXT-DS4-SPEED-AUTHORITY-001
+    type: external_input
+    title: DS4 speed basis — C4 adaptive L3 GPS speed / C5.1 gated repair
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      Payload contract speedAuthority 'C4_ONLY' | 'C5_1_PREFERRED'; C5.1 admitted only for explicit make/model
+      matches after DI_V0_MOTION_CORE_C5_1_ACTIVATION_SINCE. Event intensity inherits C4 smoothing (Fable B3:
+      systematic attenuation −0.13…−0.55 m/s²).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-c5-1-admission.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/C5_1_PRODUCTION_ROLLOUT.md
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+      - TIRE-EVID-CODE-DS4-CONTROL-PLANE-001
+
+  - id: TIRE-EXT-DS4-SHADOW-CONTROL-PLANE-001
+    type: external_input
+    title: DS4 motion-core shadow control plane (flags, allowlists, tenancy check)
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      DI_V0_MOTION_CORE_SHADOW_ENABLED / _WORKER_ENABLED / _ORGANIZATION_ALLOWLIST / _VEHICLE_ALLOWLIST /
+      _ENABLED_SINCE; C5.1 and FSM gap-bridge flags; TENANCY_MISMATCH when vehicle org ≠ scope org. Production
+      2026-10-24: all ON for allowlisted org/vehicles; 4 of 6 fleet vehicles covered.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-control-plane.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.config.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-CONTROL-PLANE-001
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+
+  - id: TIRE-EXT-DS4-TRIP-MAP-READ-001
+    type: external_input
+    title: DS4 trip-map read service (org-scoped consumer interface)
+    epistemic_status: CONFIRMED
+    owner_module: Driving Intelligence
+    summary: >
+      DiV0MotionCoreShadowTripMapReadService.readForTrip(organizationId, vehicleId, tripId) — org-scoped read
+      interface returning runId, combinedInputIdentity, pinnedSnapshotHash, status PENDING|FAILED|SUCCEEDED|SUCCEEDED_EMPTY,
+      and newerFailedRunId when a later DS4 attempt failed after a succeeded run. Tire consumer must be async
+      with retry on PENDING; not called from trip finalization.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.types.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+
+  # --- Decisions ---
+  - id: TIRE-DEC-PRESERVE-EXISTING-STACK-001
+    type: decision
+    title: Preserve existing tire management, lifecycle, ledger, API, UI and safety mechanisms
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Owner decision 2026-10-24. No runtime change in this PR; all current production behaviour retained.
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  - id: TIRE-DEC-V2-FROZEN-TO-BE-SUPERSEDED-001
+    type: decision
+    title: Tire Wear Model V2 is obsolete as future calculation basis but remains unchanged until controlled replacement
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      V2 formula, config and snapshots stay productive and frozen; a successor is introduced only via a
+      shadow comparison that is validated against ground truth. V2 is not marked SUPERSEDED in this PR.
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001
+    type: decision
+    title: DS4 Motion Events are the future driving-load basis — shadow only, no productive influence
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Any DS4-derived tire input is computed and stored as shadow and must not influence tire status, alerts,
+      snapshots used by the API, or the rental gate. No new wear formula in this PR.
+    evidence:
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-DEC-DS4-CONSERVATIVE-ADMISSION-POLICY-001
+    type: decision
+    title: Conservative DS4 event admission policy for tire inputs (proposed, not implemented)
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: >
+      OK → admissible; DEGRADED → admissible for counts/durations only, intensity UNRATED; LIMITED → excluded
+      from intensity, counted separately for coverage reporting; ARTEFACT_SUSPECT → excluded entirely.
+      Intensity only from Δv/duration mean, never peak1s. Trips with speedAuthority mix or missing payload →
+      neutral fallback (no load contribution, coverage flag).
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+      - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+
+  - id: TIRE-DEC-DS4-ASYNC-RETRY-CONSUMER-001
+    type: decision
+    title: DS4 → tire shadow via async retryable consumer, not synchronous with trip finalization
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Enqueue tire shadow work when ledger row exists; processor retries until readForTrip succeeds or policy
+      limit; bind rows to diV0MotionCoreShadowRunId + combinedInputIdentity + shadowBundleVersion + adapterVersion.
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+
+  - id: TIRE-DEC-NO-DOUBLE-COUNTING-001
+    type: decision
+    title: One acceleration/braking evidence source per factor — no double counting
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: >
+      A future model must not combine DI HF-derived stress scores/harsh counters and DS4 motion events in the
+      same factor. Shadow comparison reports both sources side by side with explicit source versioning.
+    evidence:
+      - TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+      - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+
+  # --- Rejected approaches ---
+  - id: TIRE-REJECT-IMMEDIATE-V2-REPLACEMENT-001
+    type: rejected_approach
+    title: Replace V2 immediately with a DS4-based wear formula
+    epistemic_status: CONFIRMED
+    decision_status: REJECTED
+    summary: >
+      Rejected by owner decision: no new wear formula in this PR; DS4 intensities are not physically validated
+      (B3) and only 4 allowlisted vehicles have shadow data.
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-REJECT-DS4-INTO-V2-BEHAVIOR-FACTOR-001
+    type: rejected_approach
+    title: Feed DS4 events into the existing V2 behavior factor
+    epistemic_status: INFERRED
+    decision_status: REJECTED
+    summary: >
+      Would modify a frozen productive formula and double count with HF-derived stress scores already in the
+      behavior factor, heat stress and interaction penalty.
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+      - TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+
+  # --- Evidence ---
+  - id: TIRE-EVID-CODE-WEAR-MODEL-V2-001
+    type: evidence
+    title: Current code — Tire Wear Model V2, health service, config, lifecycle, API
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      Factor weights and anchors read from tire-health.config.ts (usageFactors city 1.12 / highway 0.95 /
+      countryRoad 1.03; behaviorFactorWeights longitudinal 0.50 / braking 0.35 / drivingStress 0.15;
+      behaviorScoreAnchors 0→0.97, 20→1.00, 50→1.08, 75→1.20, 100→1.35); composite formula in
+      tire-wear-model.service.ts; controller guards.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-wear-model.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-health.config.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-health.service.ts
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+    type: evidence
+    title: Current code — DrivingImpactService.getVehicleImpactForTire()
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Select list over vehicleDrivingImpactCurrent (table vehicle_driving_impact_current).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact.service.ts
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+    type: evidence
+    title: Current code — trip usage ledger inputs and canonical finalization hook
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      Ledger row inputs (distanceKm, road km split, harsh* counters, tripDrivingImpact summary,
+      sourceFingerprint, trigger) and attributeTireUsageOnCanonicalFinalization in the trip coordinator.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-analysis-coordinator.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+    type: evidence
+    title: Current code — DS4 motion event types, detector thresholds, plausibility V0.2
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      MotionManoeuvreEvent fields (meanAccelMps2, peakAccel1sMps2, peakAccel2sMps2, durationS, steps,
+      coverageRatio, quality, flags); MOTION_EVENT_PLAUSIBILITY_UNIVERSAL_V0_2 violations
+      kinematic_mean_mismatch | kind_delta_sign_mismatch (abs floor 1.25 m/s², rel 0.4).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event.types.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-detector.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-physics-envelope.ts
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+    type: evidence
+    title: Current code — persisted DS4 event row shape and trip-map read interface
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      DiV0MotionCoreShadowPersistedEventRow = {kind, startLabel, endLabel, startSpeedKmh, endSpeedKmh,
+      deltaKmh, quality, flags}; run row fields id, combinedInputIdentity, pinnedSnapshotHash, contentFingerprint,
+      shadowBundleVersion, shadowStatus; trip-map read returns runId, PENDING/FAILED/SUCCEEDED, newerFailedRunId.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.types.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.types.ts
+      - backend/prisma/schema.prisma
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-CODE-DS4-CONTROL-PLANE-001
+    type: evidence
+    title: Current code — DS4 shadow control plane, bundle versions, admission
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Flag names, allowlists, tenancy check, bundle constants ending _EVENT_V0_3_PLAUS_V0_2.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-control-plane.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.bundle.version.ts
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-PROD-BASELINE-2026-10-24-001
+    type: evidence
+    title: Production read-only baseline — tire tables and deployed release (2026-10-24)
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      VPS srv1374778.hstgr.cloud, release /opt/synqdrive/releases/20261024135142_v4994, deployed SHA
+      c169ddfab5a180ba93d0dbd09eaf7bd02c59be7d; 6 vehicles, 6 active setups, 5 tread measurements, 2046
+      snapshots/30d (8945 total), 1308 ledger rows (all with impact summary), 7 open alerts, 6 vehicles with
+      current driving impact; health endpoint ok. PM2 list not readable as synqdrive-admin.
+    source_paths:
+      - architecture/tires/evidence/PRODUCTION_BASELINE.md
+    verified_ref: c169ddfab5a180ba93d0dbd09eaf7bd02c59be7d
+    verified_at: "2026-10-24T17:23:00Z"
+
+  - id: TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+    type: evidence
+    title: Production read-only — DS4 motion-core shadow runs and event quality distribution (2026-10-24)
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      85 SUCCEEDED runs across 5 bundle versions; 34 trips, 4 vehicles; latest-per-trip 449 events
+      (OK 394, DEGRADED 21, LIMITED 32, ARTEFACT_SUSPECT 2; DECELERATION 262, ACCELERATION 187); 0 persisted
+      rows with meanAccelMps2; speedAuthority C4_ONLY 29 / C5_1_PREFERRED 5; shadow + C5.1 + gap-bridge flags
+      ON for allowlisted scope.
+    source_paths:
+      - architecture/tires/evidence/PRODUCTION_BASELINE.md
+    verified_ref: c169ddfab5a180ba93d0dbd09eaf7bd02c59be7d
+    verified_at: "2026-10-24T17:23:00Z"
+
+  - id: TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+    type: evidence
+    title: Fable independent read-only review of DS4 acceleration/braking detection (PR #2153)
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Findings B1 (K3 blind spot), B2 (no physics envelope), B3 (systematic intensity attenuation
+      −0.13…−0.55 m/s², do not expose peak1s, intensity from Δv/duration only, UNRATED for non-OK),
+      B7 (quality not visible downstream). P1/P2 hardening merged as PR #2154.
+    source_paths:
+      - research/driving-intelligence/evaluations/ds4-accel-brake-fable-review-20261024/REPORT.md
+      - research/driving-intelligence/evaluations/ds4-accel-brake-fable-review-20261024/P2_UNIVERSAL_PLAUSIBILITY.md
+      - architecture/drivingintelligence/research/CHANGE_LEDGER.md
+    verified_ref: 1c1e3bfa48f3a912e051fb8f1bba50397b00cf25
+    verified_at: "2026-10-24"
+
+  - id: TIRE-EVID-AUDIT-READINESS-2026-07-001
+    type: evidence
+    title: Historical tire health production-readiness audit and remediation (July 2026)
+    epistemic_status: HISTORICAL
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      NOT_READY audit (6 vehicles, 1350 snapshots, 0 wear points) followed by remediation migrations
+      (ledger, fingerprint dedupe, model versioning, alerts, rental review).
+    source_paths:
+      - docs/audits/tire-health-production-readiness-2026-07.md
+      - docs/audits/tire-health-post-remediation-readiness-2026-07.md
+
+  - id: TIRE-TEST-REGRESSION-MATRIX-001
+    type: test_evidence
+    title: Tire health regression matrix spec
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Regression matrix over wear model scenarios; guards V2 formula semantics while frozen.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-health-regression-matrix.spec.ts
+
+  - id: TIRE-TEST-DS4-P1-P2-HARNESS-001
+    type: test_evidence
+    title: DS4 P1/P2 four-drive regression harness
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    owner_module: Driving Intelligence
+    summary: Quality-delta gate vs fable_base_7340637 baseline; TREFFER parity.
+    source_paths:
+      - backend/scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts
+
+  # --- Hypotheses ---
+  - id: TIRE-HYP-DS4-EVENT-LOAD-PROXY-001
+    type: hypothesis
+    title: DS4 event Δv/duration distributions are a better tire driving-load proxy than HF per-100 km counts
+    epistemic_status: UNKNOWN
+    summary: Untested; requires shadow comparison against tread measurements on covered vehicles.
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-HYP-B3-ATTENUATION-CORRECTABLE-001
+    type: hypothesis
+    title: B3 intensity attenuation is systematic enough to be bounded by class, not corrected numerically
+    epistemic_status: UNKNOWN
+    summary: Fable recommends class/ordinal use only; no numeric correction is proposed or validated.
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  # --- Gaps ---
+  - id: TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001
+    type: gap
+    title: Persisted DS4 event rows lack meanAccelMps2, durationS, peak values
+    epistemic_status: CONFIRMED
+    summary: >
+      A tire consumer must derive duration from start/end labels and mean from Δv/duration; the detector's
+      own meanAccelMps2 and coverageRatio are not persisted (Fable B7).
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+
+  - id: TIRE-GAP-DS4-COVERAGE-ALLOWLIST-001
+    type: gap
+    title: DS4 shadow covers only allowlisted vehicles (4 of 6 in production)
+    epistemic_status: CONFIRMED
+    summary: Vehicles outside the allowlist have no DS4 events; fallback must be neutral, not conservative-penalising.
+    evidence:
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+
+  - id: TIRE-GAP-DS4-OUT-OF-SAMPLE-VALIDITY-001
+    type: gap
+    title: DS4 event validity outside the four reviewed drives is unknown
+    epistemic_status: UNKNOWN
+    summary: P1/P2 were tuned on TIG22/TES16 (EVAL) and TES21 (DEV); fleet-wide behaviour is unverified.
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-GAP-DS4-INTENSITY-ATTENUATION-B3-001
+    type: gap
+    title: DS4 numeric intensities are systematically attenuated and not physically validated
+    epistemic_status: CONFIRMED
+    summary: Any model use must be ordinal/class-based; no absolute m/s² thresholds for tire load.
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-GAP-V2-GROUND-TRUTH-SPARSE-001
+    type: gap
+    title: Ground truth is sparse (5 tread measurements, 0 wear data points fleet-wide)
+    epistemic_status: CONFIRMED
+    summary: Neither V2 nor a successor can be statistically validated until more measurements exist.
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+      - TIRE-EVID-AUDIT-READINESS-2026-07-001
+
+  - id: TIRE-GAP-DS4-SPEED-AUTHORITY-MIX-001
+    type: gap
+    title: Mixed speed authority (C4_ONLY vs C5_1_PREFERRED) across trips of the same vehicle
+    epistemic_status: CONFIRMED
+    summary: Event intensities are not directly comparable across authorities; adapter must version by bundle.
+    evidence:
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+
+  - id: TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001
+    type: gap
+    title: Driving Intelligence graph has no DS4/motion-core node for the tire consumer edge
+    epistemic_status: CONFIRMED
+    summary: >
+      drivingintelligence/graph/nodes.yaml contains DI-ADJ-TIRE-HEALTH-001 but no motion-core shadow node;
+      cross-module edge recorded here and in the DI change ledger only.
+    evidence:
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-GAP-ACTIVE-SETUP-COUNT-RECONCILE-001
+    type: gap
+    title: Active setup count read as 5 in one filter and 6 in another during the audit
+    epistemic_status: CONTRADICTED
+    summary: Re-verify status='ACTIVE' AND removed_at IS NULL vs vehicles-with-active-setup in the next read-only pass.
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  - id: TIRE-GAP-CODE-VIEWS-NOT-UPDATED-001
+    type: gap
+    title: SynqDrive Code → Changes / Architektur views not updated (documentation-only constraint)
+    epistemic_status: CONFIRMED
+    summary: frontend/src/master/components/ChangesView.tsx is a code file; deferred to the first implementation PR.
+    evidence:
+      - TIRE-EVID-PROD-BASELINE-2026-10-24-001
+
+  # --- Contradictions ---
+  - id: TIRE-CONTRA-HARSH-COUNTERS-DEPRECATED-ALIAS-001
+    type: contradiction
+    title: Ledger field names say "harsh" but values are HF-derived "hard" counts (deprecated alias)
+    epistemic_status: CONFIRMED
+    summary: Naming in tire ledger vs deprecation in trip-behavior-enrichment; semantics identical, labels differ.
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+
+  - id: TIRE-CONTRA-TWO-ACCEL-BRAKE-SOURCES-001
+    type: contradiction
+    title: Two acceleration/braking evidence sources with different semantics coexist (DI HF stress vs DS4 events)
+    epistemic_status: CONFIRMED
+    summary: >
+      DI stress scores are aggregates per 100 km from HF enrichment; DS4 events are per-manoeuvre with quality
+      labels from a GPS speed series. They are not interchangeable and must not be summed.
+    evidence:
+      - TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+      - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+
+  # --- Invariants are in graph/invariants.yaml ---

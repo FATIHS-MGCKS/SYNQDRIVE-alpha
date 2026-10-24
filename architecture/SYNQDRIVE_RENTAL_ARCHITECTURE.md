@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-10-15 (VSI product charter + master roadmap; registry entry documents)
+**Last updated:** 2026-10-24 (Tires Health `NOT_STARTED` → `AUDIT_IN_PROGRESS`; bootstrap authority `architecture/tires/`; Tire Intelligence P1)
 
 ---
 
@@ -72,7 +72,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Tankstellenerkennung | Identifies physical fuel stations after a REFUEL `VehicleEnergyEvent` has been persisted. | `AUTHORITY_ACTIVE` | Bootstrap V1 · incremental/open scientific workstream | [`architecture/tankstellenerkennung/`](tankstellenerkennung/) |
 | Tasks & Work Orders | Work orders, task domain V2, and task automation outbox processing. | `NOT_STARTED` | N/A — inventory only | — |
 | Technical Observations | Operator technical observation records feeding notifications and workflow triggers. | `NOT_STARTED` | N/A — inventory only | — |
-| Tires Health | Tire wear modeling, lifecycle, measurements, health alerts, and tire trip-usage ledger. | `NOT_STARTED` | N/A — inventory only | — |
+| Tires Health | Tire wear modeling (V2, frozen), lifecycle, measurements/ground truth, health alerts, tire trip-usage ledger, rental-health tire policy input, and future DS4 Motion Engine driving-load integration (shadow only). | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · Tire Intelligence P1 (2026-10-24) · owner decisions PROPOSED · Production VERIFIED_READ_ONLY @ `c169ddfab` · not promoted | [`architecture/tires/`](tires/) |
 | Trip Detection & Lifecycle | Live trip FSM, start/end detection, Qualified Stop V1, R9 wake ingress, reconciliation, route artifacts. | `AUTHORITY_ACTIVE` | Phase 0–5 complete · Gate A 2026-09-26 · Production VERIFIED_READ_ONLY @ `2b54a357…` | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
 | Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Phase 1–3 complete (2026-09-11): repo audit, Production LTE_R1 forensics, reconciliation/decisions/backlog · promotion deferred | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
@@ -388,6 +388,21 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Ownership boundary** | **OWNS** REFUEL detection; **ERD owns** physical EV/PHEV charging episode semantics (`HvChargeSession` semantic model; implementation code under Battery V2 tree). **OWNS** RECHARGE product projection contract (`VehicleEnergyEvent.RECHARGE` after E5 cutover). Coalescing, persist gates, fuel-rise derivation, sibling reconciliation, energy API/UI contracts. **KG-ATE** may trigger `detectEnergyEvents` only — EED owns meaning. **Battery V2** consumes canonical HV charge session evidence for battery analysis — does not own physical charging authority. Fuel station enrichment trust detail is downstream (Tankstellenerkennung consumes persisted REFUEL events). See [governance/AUTHORITY_BOUNDARIES.md](knowledge-graphs/energy-event-detection/governance/AUTHORITY_BOUNDARIES.md). |
 | **Mandatory entry documents** | [README.md](knowledge-graphs/energy-event-detection/README.md) · [GRAPH.yaml](knowledge-graphs/energy-event-detection/GRAPH.yaml) · [governance/AGENT_PROTOCOL.md](knowledge-graphs/energy-event-detection/governance/AGENT_PROTOCOL.md) · [governance/AUTHORITY_BOUNDARIES.md](knowledge-graphs/energy-event-detection/governance/AUTHORITY_BOUNDARIES.md) · [decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md](knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md) · [graph/nodes.yaml](knowledge-graphs/energy-event-detection/graph/nodes.yaml) · [graph/edges.yaml](knowledge-graphs/energy-event-detection/graph/edges.yaml) · [graph/invariants.yaml](knowledge-graphs/energy-event-detection/graph/invariants.yaml) · [open-questions/OPEN_QUESTIONS.md](knowledge-graphs/energy-event-detection/open-questions/OPEN_QUESTIONS.md) |
 | **Validation** | `node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph.mjs` |
+
+---
+
+### Tires Health
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap authority created 2026-10-24 (Tire Intelligence P1); **not** a complete usable authority; **not** promoted |
+| **Scope** | Tire setups and lifecycle, tread/pressure measurements (ground truth), Tire Wear Model V2 (`tire-wear-v2`, frozen), snapshots and fingerprint dedupe, trip-usage ledger and canonical-finalization attribution, health alerts, tire REST surface, tire UI surfaces, rental-health tire policy **input**, and the future DS4 Motion Engine driving-load integration (**shadow only**, no implementation yet). |
+| **Authority directory** | [`architecture/tires/`](tires/) |
+| **Authority-native status** | **Bootstrap V0.1** · owner decisions recorded as `PROPOSED` (preserve stack; V2 frozen/to be superseded; DS4 shadow-only; conservative admission; no double counting) · Production `VERIFIED_READ_ONLY` @ `c169ddfab` (2026-10-24) |
+| **Ownership boundary** | **Owns** tire lifecycle, measurements, V2 model/snapshots/alerts, ledger, tire API/UI, future tire shadow adapter/store. **Does NOT own** Driving-Impact aggregates or DS4 Motion Engine / Event Detector / shadow worker (→ [Driving Intelligence](drivingintelligence/)), rental gate semantics (→ Rental Health, consumes `TireHealthSummary`), trip boundaries (→ [Trip Detection & Lifecycle](trip-detection-lifecycle/)). |
+| **Reconstruction status** | Repository audit + read-only Production baseline complete for P1 scope; V2 ↔ DS4 comparison and target architecture documented; promotion gate open (setup-count reconciliation, DI graph DS4 node, post-adapter Production baseline). |
+| **Mandatory entry documents (partial)** | [README.md](tires/README.md) · [AUDIT_MANIFEST.md](tires/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](tires/CURRENT_STATE.md) · [integration/DS4_MOTION_INTEGRATION_AUDIT.md](tires/integration/DS4_MOTION_INTEGRATION_AUDIT.md) · [AGENT_CONTRACT.md](tires/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](tires/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](tires/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](tires/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](tires/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](tires/contradictions/KNOWLEDGE_GAPS.md) · [contradictions/OPEN_CONTRADICTIONS.md](tires/contradictions/OPEN_CONTRADICTIONS.md) |
+| **Validation** | `bash architecture/tires/scripts/validate-graph.sh` |
 
 ---
 

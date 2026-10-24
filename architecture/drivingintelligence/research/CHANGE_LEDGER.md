@@ -2295,3 +2295,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Close Fable pre-merge BLOCK findings without Phase B/C scope expansion |
 | VALIDATION | `vo2-vehicle-onboarding-postgres-ci.sh`; `motion-physics-reference.postgres.integration.spec.ts`; policy/plausibility/security unit specs; `npm run i18n:check` |
 | NON_EFFECTS | No DI/C4/C5.1/FSM/detector changes; no production migration apply |
+
+### Cross-module — Tires Health declares DS4 Motion Events as future shadow consumer (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Documentation only. New Tires Health authority (`architecture/tires/`, `AUDIT_IN_PROGRESS`) records `TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001`: DS4 ACCELERATION/DECELERATION events (shadow payloads in `di_v0_motion_core_shadow_runs_v1`, read via `DiV0MotionCoreShadowTripMapReadService.readForTrip`) are the intended future driving-load basis for tire wear — shadow only. Comparison V2 ↔ DS4: `architecture/tires/integration/DS4_MOTION_INTEGRATION_AUDIT.md` |
+| WHY | Owner decision; DS4 per-manoeuvre events with quality labels replace HF-derived per-100 km stress aggregates as the tire load basis in a future model; no double counting with existing Driving-Impact consumers (`getVehicleImpactForTire`) |
+| CONSUMER CONSTRAINTS (proposed, not implemented) | Read-only on DI; org-scoped `readForTrip`; conservative admission (OK admissible; DEGRADED counts only / intensity UNRATED; LIMITED coverage only; ARTEFACT_SUSPECT excluded); never `peakAccel1sMps2`; intensity ordinal from Δv/label-derived duration (Fable B3); versioned by `bundle` + `speedAuthority`; neutral fallback |
+| GAPS RAISED TO DI | Persisted event rows lack `meanAccelMps2`/`durationS`/`coverageRatio` (B7) — extension requires DI decision + Fable sign-off; DI graph has no motion-core/DS4 node to attach the tire consumer edge (`TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001`) |
+| VALIDATION | `bash architecture/tires/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh`; Production read-only 2026-10-24: 85 SUCCEEDED runs, 34 trips, 4 vehicles, latest-per-trip 449 events (OK 394 / DEGRADED 21 / LIMITED 32 / ARTEFACT_SUSPECT 2) |
+| NON_EFFECTS | No DI code, flag, allowlist, persistence, graph node or deploy change; detector/C4/C5.1/FSM/P1/P2 untouched; no tire runtime change |
