@@ -126,17 +126,11 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
     });
     tripId = trip.id;
 
-    // Migrate-deploy baseline may lag schema.prisma on tire setup columns; seed via SQL (no db push in PDB guard).
-    tireSetupId = randomUUID();
-    await prisma.$executeRaw`
-      INSERT INTO vehicle_tire_setups (id, vehicle_id, tire_season, updated_at)
-      VALUES (
-        ${tireSetupId}::text,
-        ${vehicleId}::text,
-        'ALL_SEASON'::"TireSeason",
-        NOW()
-      )
-    `;
+    const setup = await prisma.vehicleTireSetup.create({
+      data: { vehicleId, organizationId },
+      select: { id: true },
+    });
+    tireSetupId = setup.id;
 
     const ledger = await prisma.tireTripUsageLedger.create({
       data: {
