@@ -2296,6 +2296,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `vo2-vehicle-onboarding-postgres-ci.sh`; `motion-physics-reference.postgres.integration.spec.ts`; policy/plausibility/security unit specs; `npm run i18n:check` |
 | NON_EFFECTS | No DI/C4/C5.1/FSM/detector changes; no production migration apply |
 
+### Vehicle Physics Phase A.1 — evidence tier / implicit confirm fix (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Reject `OPERATOR_CONFIRMED` on reference `create`; `MISTRAL_AI`/`MANUAL_ENTRY` → `ESTIMATED`; Master save sync only after in-session Mistral `applySpecs` (`MISTRAL_AI`); manual Master Mistral live audit doc |
+| WHY | Production audit: routine vehicle edit must not create CONFIRMED references; explicit confirm endpoint only |
+| VALIDATION | `motion-physics-reference.{domain,policy}.spec.ts`; `motion-physics-reference-sync.util.test.ts`; updated postgres integration spec |
+| NON_EFFECTS | No deploy/backfill; no DI/DS4/tire changes; Tiguan VIN correction remains owner-gated |
+
 ### Cross-module — Tires Health declares DS4 Motion Events as future shadow consumer (2026-10-24)
 
 | Event | Detail |
