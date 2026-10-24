@@ -1,0 +1,151 @@
+# Tires Health Knowledge Graph — Schema
+
+version: "0.1"
+description: >
+  Schema for the Tires Health living architecture authority (bootstrap, AUDIT_IN_PROGRESS).
+  Structural reference: architecture/tankstellenerkennung/graph/schema.yaml.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - external_input
+  - orchestrator
+  - pipeline
+  - policy
+  - queue
+  - worker
+  - authority
+  - persist
+  - api
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - DOMAIN_REASONING
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - input_to
+  - persists
+  - enqueues
+  - processes
+  - governs
+  - gates
+  - projects_to
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - rejected_in_favour_of
+  - owned_by
+  - depends_on
+  - must_not_influence
+
+relation_semantics_doc: architecture/tires/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: TIRE-DOM-
+  external_input: TIRE-EXT-
+  orchestrator: TIRE-ORCH-
+  pipeline: TIRE-PIPE-
+  policy: TIRE-POL-
+  queue: TIRE-QUEUE-
+  worker: TIRE-WORK-
+  authority: TIRE-AUTH-
+  persist: TIRE-PERSIST-
+  api: TIRE-API-
+  consumer: TIRE-CONS-
+  decision: TIRE-DEC-
+  evidence: TIRE-EVID-
+  test_evidence: TIRE-TEST-
+  hypothesis: TIRE-HYP-
+  invariant: TIRE-INV-
+  gap: TIRE-GAP-
+  contradiction: TIRE-CONTRA-
+  failed_approach: TIRE-FAIL-
+  rejected_approach: TIRE-REJECT-
+  superseded_approach: TIRE-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - owner_module
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes

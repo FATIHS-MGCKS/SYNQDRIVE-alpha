@@ -1,0 +1,117 @@
+# Tires Health Knowledge Graph — Invariants (bootstrap V0.1)
+
+invariants:
+  - id: TIRE-INV-SINGLE-ACTIVE-SETUP-001
+    kind: CONFIRMED_INVARIANT
+    title: At most one ACTIVE tire setup per vehicle
+    epistemic_status: CONFIRMED
+    statement: >
+      Partial unique constraint on vehicle_tire_setups (status ACTIVE, removed_at NULL); lifecycle service
+      enforces transitions. Trip usage is attributed to the single active setup at trip time.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-lifecycle.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-lifecycle-invariants.spec.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-INV-MEASUREMENTS-ARE-GROUND-TRUTH-001
+    kind: CONFIRMED_INVARIANT
+    title: Tread measurements are ground truth; model output is a prediction
+    epistemic_status: CONFIRMED
+    statement: >
+      Predictions never overwrite measurements; prediction validation compares against measurements. A future
+      DS4-based model is validated against the same measurements and never against V2 output.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-ground-truth.util.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-prediction-validation.service.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-INV-LEDGER-IDEMPOTENT-001
+    kind: CONFIRMED_INVARIANT
+    title: Trip usage ledger is idempotent per source fingerprint
+    epistemic_status: CONFIRMED
+    statement: Re-finalization/replay of the same canonical trip does not create a second ledger row.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-ledger.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage-ledger.repository.ts
+    evidence:
+      - TIRE-EVID-CODE-TRIP-USAGE-LEDGER-001
+
+  - id: TIRE-INV-SNAPSHOT-VERSION-STAMPED-001
+    kind: CONFIRMED_INVARIANT
+    title: Every snapshot carries TIRE_WEAR_MODEL_VERSION and a recalculation fingerprint
+    epistemic_status: CONFIRMED
+    statement: Historical reproducibility; identical inputs do not produce duplicate snapshots.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/tire-wear-model-version.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-recalculation-fingerprint.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-INV-TENANT-SCOPE-API-001
+    kind: CONFIRMED_INVARIANT
+    title: Tire API is tenant-scoped through VehicleOwnershipGuard
+    epistemic_status: CONFIRMED
+    statement: >
+      /vehicles/:vehicleId/tires/* is guarded by RolesGuard, VehicleOwnershipGuard and
+      VehicleIntelligencePermissionGuard; services operate on the resolved vehicleId only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+    evidence:
+      - TIRE-EVID-CODE-WEAR-MODEL-V2-001
+
+  - id: TIRE-INV-DS4-QUALITY-IS-NOT-PLAUSIBILITY-001
+    kind: CONFIRMED_INVARIANT
+    title: DS4 event quality encodes provenance/consistency, not physical validation
+    epistemic_status: CONFIRMED
+    statement: >
+      OK/DEGRADED/LIMITED derive from speed-sample quality and coverage; ARTEFACT_SUSPECT derives from K3/P1/P2
+      consistency checks. No label asserts that meanAccelMps2 is physically correct (Fable B3).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event.types.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/kinematics/motion-event-physics-envelope.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+      - TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001
+
+  - id: TIRE-INV-DS4-ARTEFACT-SUSPECT-EXCLUDED-001
+    kind: CONFIRMED_INVARIANT
+    title: ARTEFACT_SUSPECT events are excluded from accepted manoeuvre counts
+    epistemic_status: CONFIRMED
+    statement: comparisonHints.artefactSuspectExcludedFromAcceptedManoeuvreCounts = true in the shadow payload contract.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.types.ts
+    evidence:
+      - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
+
+  - id: TIRE-INV-SHADOW-NO-PRODUCTIVE-INFLUENCE-001
+    kind: CANDIDATE_INVARIANT
+    title: DS4-derived tire inputs never influence productive status, alerts, snapshots or rental gate
+    epistemic_status: INFERRED
+    statement: >
+      Owner decision (TIRE-DEC-DS4-FUTURE-LOAD-BASIS-SHADOW-ONLY-001). Becomes CONFIRMED only when a shadow
+      store exists and tests prove the productive path reads no shadow table.
+    evidence:
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
+
+  - id: TIRE-INV-NO-DOUBLE-COUNTING-001
+    kind: CANDIDATE_INVARIANT
+    title: One acceleration/braking evidence source per factor
+    epistemic_status: INFERRED
+    statement: >
+      DI HF-derived stress scores / harsh counters and DS4 motion events are never combined within one factor;
+      each shadow output declares its source and version.
+    evidence:
+      - TIRE-EVID-CODE-DI-IMPACT-FOR-TIRE-001
+      - TIRE-EVID-CODE-DS4-EVENT-TYPES-001
+
+  - id: TIRE-INV-NEUTRAL-FALLBACK-001
+    kind: CANDIDATE_INVARIANT
+    title: Missing or non-admissible DS4 data yields a neutral, not penalising, contribution
+    epistemic_status: INFERRED
+    statement: >
+      Vehicles/trips without admissible DS4 events contribute no load delta and are flagged as uncovered; a
+      conservative fallback must never increase predicted wear on absent evidence.
+    evidence:
+      - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
