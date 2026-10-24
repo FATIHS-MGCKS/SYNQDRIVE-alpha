@@ -1,0 +1,62 @@
+label keys: label,state,evidenceQuality,reason,speedKmh,positionPresent,mode,flags,sparseSpeedKmh,sparseFsmPointAuthority,speedQuality
+
+## TIG22 2026-10-22T18:44:08Z..2026-10-22T18:44:22Z
+UTC      | ref | C4     | C4 q             | FSM V0.3         | FSM V0.4+GB(empty aux)
+18:44:08 |   5 |    4.4 | OK               | STATIONARY       | STATIONARY
+18:44:09 |   2 |    2.3 | OK               | STATIONARY       | STATIONARY
+18:44:10 |   0 |      · | FROZEN_POSITION  | STATIONARY       | STATIONARY
+18:44:11 |   0 |      · | FROZEN_POSITION  | STATIONARY       | STATIONARY
+18:44:12 |   0 |    0.6 | OK               | STATIONARY       | STATIONARY
+18:44:13 |   0 |    0.6 | OK               | STATIONARY       | STATIONARY
+18:44:14 |   0 |      · | FROZEN_POSITION  | STATIONARY       | STATIONARY
+18:44:15 |   0 |      · | FROZEN_POSITION  | STATIONARY       | STATIONARY
+18:44:16 |   0 |    4.0 | OK               | STATIONARY       | STATIONARY
+18:44:17 |   9 |    8.7 | OK               | STARTING         | STARTING
+18:44:18 |  15 |   14.0 | OK               | MOVING           | MOVING
+18:44:19 |  18 |   16.3 | OK               | MOVING           | MOVING
+18:44:20 |  20 |   17.9 | OK               | MOVING           | MOVING
+18:44:21 |  22 |   19.7 | OK               | MOVING           | MOVING
+18:44:22 |   · |   21.5 | OK               | MOVING           | MOVING
+
+## TIG22 2026-10-22T19:04:28Z..2026-10-22T19:04:53Z
+UTC      | ref | C4     | C4 q             | FSM V0.3         | FSM V0.4+GB(empty aux)
+19:04:28 |   · |   19.3 | OK               | MOVING           | MOVING
+19:04:29 |   · |    5.5 | OK               | MOVING           | MOVING
+19:04:30 |   · |    4.3 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:31 |   · |      · | NO_POSITION      | STOP_CANDIDATE   | STOP_CANDIDATE
+19:04:32 |   · |    4.3 | SPARSE_SUPPORT   | STOP_CANDIDATE   | STOP_CANDIDATE
+19:04:33 |   · |    4.7 | OK               | STOP_CANDIDATE   | STOP_CANDIDATE
+19:04:34 |   · |    5.5 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:35 |   · |      · | NO_POSITION      | STOP_CANDIDATE   | STOP_CANDIDATE
+19:04:36 |   · |   54.1 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:37 |   · |      · | OUTLIER_REJECTED | MOVING           | MOVING
+19:04:38 |   · |  100.1 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:39 |   · |   98.2 | OK               | MOVING           | MOVING
+19:04:40 |   · |   87.0 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:41 |   · |      · | NO_POSITION      | MOVING           | MOVING
+19:04:42 |   · |   68.6 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:43 |   · |   73.5 | OK               | MOVING           | MOVING
+19:04:44 |   · |   70.0 | OK               | MOVING           | MOVING
+19:04:45 |   · |   69.8 | OK               | MOVING           | MOVING
+19:04:46 |   · |   65.5 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:47 |   · |      · | NO_POSITION      | MOVING           | MOVING
+19:04:48 |   · |   61.8 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:49 |   · |   52.3 | SPARSE_SUPPORT   | MOVING           | MOVING
+19:04:50 |   · |      · | NO_POSITION      | MOVING           | MOVING
+19:04:51 |   · |  103.0 | JITTER_SUSPECT   | MOVING           | MOVING
+19:04:52 |   · |  142.1 | JITTER_SUSPECT   | MOVING           | MOVING
+19:04:53 |   · |      · | NO_SUPPORT       | MOVING           | MOVING
+
+## TES16 2026-10-16T03:50:16Z..2026-10-16T03:50:26Z
+UTC      | ref | C4     | C4 q             | FSM V0.3         | FSM V0.4+GB(empty aux)
+03:50:16 | 131 |  127.5 | OK               | MOVING           | MOVING
+03:50:17 | 134 |  129.7 | OK               | MOVING           | MOVING
+03:50:18 | 134 |  129.8 | OK               | MOVING           | MOVING
+03:50:19 | 134 |  129.4 | OK               | MOVING           | MOVING
+03:50:20 | 133 |  113.1 | SPARSE_SUPPORT   | MOVING           | MOVING
+03:50:21 | 133 |      · | NO_POSITION      | MOVING           | MOVING
+03:50:22 | 132 |  128.2 | JITTER_SUSPECT   | MOVING           | MOVING
+03:50:23 | 132 |  148.3 | JITTER_SUSPECT   | MOVING           | MOVING
+03:50:24 | 131 |  126.5 | OK               | MOVING           | MOVING
+03:50:25 | 130 |  125.7 | OK               | MOVING           | MOVING
+03:50:26 | 129 |  124.9 | OK               | MOVING           | MOVING
