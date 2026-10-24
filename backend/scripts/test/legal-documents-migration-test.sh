@@ -86,6 +86,7 @@ case "${1:-all}" in
     wait_for_postgres
     test_empty_database
     test_legacy_altbestand
+    bash scripts/test/vehicle-tire-setups-tenant-scope-migration-compat.gate.sh
     echo "==> Legal documents migration tests complete"
     ;;
   *)

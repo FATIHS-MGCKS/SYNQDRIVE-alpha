@@ -165,6 +165,9 @@ export TIRE_DS4_SHADOW_POSTGRES_INTEGRATION=1
 export TIRE_DS4_SHADOW_POSTGRES_REQUIRED=1
 npx jest tire-ds4-shadow-catchup.postgres.integration --runInBand --forceExit
 
+log "8c) vehicle_tire_setups tenant-scope migration compat (fresh + drift replay)"
+bash scripts/test/vehicle-tire-setups-tenant-scope-migration-compat.gate.sh
+
 log "8) bootstrap manifest integrity + dry-run"
 MANIFEST="${ROOT}/scripts/ops/contracts/production-database-guard-bundle.manifest.sha256"
 [[ -f "$MANIFEST" ]] || fail "missing bundle manifest sha256"
