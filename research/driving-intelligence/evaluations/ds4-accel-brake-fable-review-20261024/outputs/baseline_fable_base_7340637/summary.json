@@ -1,0 +1,1299 @@
+{
+  "schema": "DS4_ACCEL_BRAKE_VIDEO_REFERENCE_EVAL_V2",
+  "generatedAtUtc": "2026-10-24T10:08:03.511Z",
+  "matchingMode": "v2_gap2s",
+  "versions": {
+    "tag": "fable_base_7340637",
+    "codeRoot": "/workspace",
+    "codeSha": "7340637274c40d4fc03d968cdb943f16171a4a39",
+    "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+    "legConsistency": "MOTION_CORE_LEG_CONSISTENCY_V0_5_DEV",
+    "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+    "thresholds": {
+      "version": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts)",
+      "entryMps2": 1.5,
+      "continueMps2": 1.2,
+      "minSteps": 2,
+      "minDeltaKmh": {
+        "ACCELERATION": 4,
+        "DECELERATION": 3
+      },
+      "mergeGapS": {
+        "ACCELERATION": 2,
+        "DECELERATION": 1.5
+      }
+    },
+    "guards": {
+      "version": "MOTION_CORE_EVENT_GUARDS_V0_1_DEV",
+      "maxGapS": 2,
+      "postGapGuardS": 2,
+      "usableQualities": [
+        "OK",
+        "SPARSE_SUPPORT",
+        "JITTER_SUSPECT",
+        "REPAIRED",
+        "SPAN_SUPPORT",
+        "SPAN_DERIVED"
+      ]
+    },
+    "spikeReversionWindowS": 2,
+    "eventRules": {
+      "matchTolS": 2,
+      "borderlineBandMps2": 0.6,
+      "softFalseAlarmMinStepMps2": 0.9,
+      "unverifiableUnreadableShare": 0.5,
+      "noDs4SpeedShare": 0.5,
+      "visibleRunMinDeltaKmh": 10,
+      "visibleRunMinDurationS": 3,
+      "visibleRunMaxPlateauSteps": 2,
+      "nearBoundaryS": 2,
+      "overReferenceMaxMarginKmh": 20,
+      "artefactSuspectDeltaErrKmh": 15,
+      "minReadablePairsForIntensity": 2,
+      "acceptedQualities": [
+        "OK",
+        "DEGRADED",
+        "LIMITED"
+      ],
+      "plausibility": {
+        "TIGUAN": {
+          "ACCELERATION": 4.5,
+          "DECELERATION": 9
+        },
+        "TESLA": {
+          "ACCELERATION": 9,
+          "DECELERATION": 9
+        }
+      }
+    }
+  },
+  "rulesFile": "EVALUATION_RULES.md",
+  "drives": [
+    {
+      "id": "TIG22",
+      "identity": {
+        "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+        "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+        "sourceFamily": "RUPTELA_R1",
+        "limitations": [
+          "SPARSE_DECISION_ARRIVAL_LATENCY_UNKNOWN",
+          "R1_VEHICLE_SPEED_EXCLUDED_FROM_DS4_FSM",
+          "SPARSE_R1_BUCKET_ONLY_NO_FSM_POINT_AUTHORITY"
+        ],
+        "vehicleClass": "TIGUAN",
+        "role": "EVAL"
+      },
+      "summary": {
+        "ds4Events": 20,
+        "acceptedEvents": 20,
+        "artefactSuspectView": [],
+        "sensitivity": {
+          "strict": {
+            "ds4ByClass": {
+              "UNVERIFIZIERBAR": 8,
+              "TREFFER": 12
+            },
+            "oracleByStatus": {
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+              "VERPASST_GRENZWERTIG": 4,
+              "ERKANNT": 12,
+              "VERPASST": 1
+            }
+          }
+        },
+        "accepted": {
+          "events": 20,
+          "ds4ByClass": {
+            "UNVERIFIZIERBAR": 8,
+            "TREFFER": 12
+          },
+          "oracleByStatus": {
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+            "VERPASST_GRENZWERTIG": 4,
+            "ERKANNT": 12,
+            "VERPASST": 1
+          },
+          "oracleHardMissed": 1,
+          "oracleBorderlineMissed": 4,
+          "offsets": {
+            "start": {
+              "n": 12,
+              "medianS": -1,
+              "meanS": -0.58,
+              "minS": -1,
+              "maxS": 0,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 12,
+              "medianS": -0.5,
+              "meanS": -0.17,
+              "minS": -1,
+              "maxS": 2,
+              "withinTolShare": 1
+            }
+          }
+        },
+        "ds4ByClass": {
+          "UNVERIFIZIERBAR": 8,
+          "TREFFER": 12
+        },
+        "ds4ByQuality": {
+          "OK": 16,
+          "DEGRADED": 2,
+          "LIMITED": 2
+        },
+        "ds4ByKind": {
+          "ACCELERATION": 10,
+          "DECELERATION": 10
+        },
+        "verifiableEvents": 12,
+        "oracleEvents": 18,
+        "oracleByStatus": {
+          "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+          "VERPASST_GRENZWERTIG": 4,
+          "ERKANNT": 12,
+          "VERPASST": 1
+        },
+        "oracleBorderline": 7,
+        "visibleRuns": 45,
+        "visibleRunsByStatus": {
+          "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+          "VERPASST_OBERHALB_SCHWELLE": 6,
+          "ERKANNT": 12
+        },
+        "operatorWindowsByStatus": {
+          "VERPASST_OBERHALB_SCHWELLE": 2,
+          "ERKANNT": 7
+        },
+        "offsets": {
+          "start": {
+            "n": 12,
+            "medianS": -1,
+            "meanS": -0.58,
+            "minS": -1,
+            "maxS": 0,
+            "withinTolShare": 1
+          },
+          "end": {
+            "n": 12,
+            "medianS": -0.5,
+            "meanS": -0.17,
+            "minS": -1,
+            "maxS": 2,
+            "withinTolShare": 1
+          },
+          "duration": {
+            "n": 12,
+            "medianS": 0,
+            "meanS": 0.42,
+            "minS": 0,
+            "maxS": 2,
+            "withinTolShare": 1
+          }
+        },
+        "deltaDiffKmh": {
+          "n": 12,
+          "maeKmh": 3.692,
+          "medianAbsKmh": 3.3,
+          "p95AbsKmh": 6.895,
+          "maxAbsKmh": 7.5,
+          "biasKmh": -1.342,
+          "rmseKmh": 4.224,
+          "within3": 0.5,
+          "within5": 0.75
+        },
+        "deltaErrSameWindowKmh": {
+          "n": 12,
+          "maeKmh": 2.808,
+          "medianAbsKmh": 2.4,
+          "p95AbsKmh": 5.495,
+          "maxAbsKmh": 6.1,
+          "biasKmh": -0.592,
+          "rmseKmh": 3.287,
+          "within3": 0.583,
+          "within5": 0.917
+        },
+        "nearBoundary": {
+          "byClass": {
+            "TREFFER": 1,
+            "UNVERIFIZIERBAR": 3
+          },
+          "total": 4
+        },
+        "implausible": [
+          "ACCELERATION|2026-10-22T19:04:34Z|2026-10-22T19:04:38Z|5.5->100.1|UNVERIFIZIERBAR",
+          "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+        ],
+        "overReferenceMax": [
+          "ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z|52.3->142.1|UNVERIFIZIERBAR"
+        ],
+        "byQualityAndClass": {
+          "OK|UNVERIFIZIERBAR": 4,
+          "OK|TREFFER": 12,
+          "DEGRADED|UNVERIFIZIERBAR": 2,
+          "LIMITED|UNVERIFIZIERBAR": 2
+        },
+        "coverage": {
+          "referenceWindowUtc": [
+            "2026-10-22T18:38:34Z",
+            "2026-10-22T19:03:02Z"
+          ],
+          "referenceRows": 1464,
+          "referenceReadable": 1417,
+          "referenceMaxKmh": 97,
+          "gridLabels": 2094,
+          "c4Numeric": 1908,
+          "c4Usable": 1908,
+          "detectorSegments": 19,
+          "quarantinedSecs": 12,
+          "eventsInsideReferenceWindow": 12
+        },
+        "matchingMode": "v2_gap2s",
+        "metricsLayers": {
+          "ds4": {
+            "detected": 20,
+            "accepted": 20,
+            "verifiable": 12,
+            "notEvaluable": 8
+          },
+          "t2_sameDetectorOnVideoSpeed": {
+            "oracleManoeuvres": 18,
+            "oracleHardManoeuvres": 11,
+            "detectedWithOracleMatch": 12,
+            "acceptedWithOracleMatch": 12,
+            "correctTreffer": 12,
+            "acceptedCorrectTreffer": 12,
+            "fragments": 0,
+            "oracleByStatus": {
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+              "VERPASST_GRENZWERTIG": 4,
+              "ERKANNT": 12,
+              "VERPASST": 1
+            },
+            "hardFalseAlarms": 0,
+            "softOrIntensityFalse": 0
+          },
+          "t1_operatorWindows": {
+            "windows": 9,
+            "byStatus": {
+              "VERPASST_OBERHALB_SCHWELLE": 2,
+              "ERKANNT": 7
+            }
+          },
+          "t3_visibleRuns": {
+            "runs": 45,
+            "byStatus": {
+              "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+              "VERPASST_OBERHALB_SCHWELLE": 6,
+              "ERKANNT": 12
+            }
+          },
+          "nonEvaluable": {
+            "unverifizierbar": 8,
+            "fehlalarmUnbestimmt": 0,
+            "outsideReferenceWindowNotes": 8
+          }
+        }
+      },
+      "production": {
+        "runId": "15cdc8ae-35b5-44a1-9c91-2cd9120d1546",
+        "createdAtUtc": "2026-10-23T11:16:33.407468+00:00",
+        "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V4",
+        "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+        "snapshotHashMatchesReplayInput": true,
+        "prodEventCount": 20,
+        "replayEventCount": 20,
+        "identical": true,
+        "prodVersions": {
+          "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V4",
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]"
+        },
+        "replayVersions": {
+          "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+          "c5_1": null,
+          "c5_1ProductionSafety": null,
+          "c5_1AlgorithmFileSha256": null,
+          "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+          "gapBridgeV1": null,
+          "fsmAuxBinding": null,
+          "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+          "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_LEG_GATE_OBD_POINT_AUTH_V4"
+        },
+        "preDeploy": {
+          "bundle": "DI_V0_MOTION_CORE_SHADOW_BUNDLE_V1_FABLE_REVIEW_RECOMMENDED",
+          "eventCount": 21,
+          "onlyPreDeploy": [
+            "ACCELERATION|2026-10-22T18:49:12Z|2026-10-22T18:49:18Z"
+          ],
+          "onlyNow": []
+        }
+      }
+    },
+    {
+      "id": "TES21-1",
+      "identity": {
+        "tripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+        "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:03a5e17ac3533819d8c1d0c0ce1f5fb678b0600310bde3ef4e4e0f79a3a9d415",
+        "sourceFamily": "API_SYNTHETIC",
+        "limitations": [
+          "SPARSE_VEHICLE_SPEED_UNAVAILABLE_IN_PINNED_SNAPSHOT"
+        ],
+        "vehicleClass": "TESLA",
+        "role": "DEV"
+      },
+      "summary": {
+        "ds4Events": 4,
+        "acceptedEvents": 3,
+        "artefactSuspectView": [],
+        "sensitivity": {
+          "strict": {
+            "ds4ByClass": {
+              "WEICHER_FEHLALARM": 1,
+              "TREFFER": 2,
+              "FEHLALARM": 1
+            },
+            "oracleByStatus": {
+              "VERPASST": 1,
+              "ERKANNT": 2,
+              "VERPASST_GRENZWERTIG": 2
+            }
+          }
+        },
+        "accepted": {
+          "events": 3,
+          "ds4ByClass": {
+            "WEICHER_FEHLALARM": 1,
+            "TREFFER": 2
+          },
+          "oracleByStatus": {
+            "VERPASST": 1,
+            "ERKANNT": 2,
+            "VERPASST_GRENZWERTIG": 2
+          },
+          "oracleHardMissed": 1,
+          "oracleBorderlineMissed": 2,
+          "offsets": {
+            "start": {
+              "n": 2,
+              "medianS": 1,
+              "meanS": 1,
+              "minS": 0,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 2,
+              "medianS": 0.5,
+              "meanS": 0.5,
+              "minS": 0,
+              "maxS": 1,
+              "withinTolShare": 1
+            }
+          }
+        },
+        "ds4ByClass": {
+          "WEICHER_FEHLALARM": 1,
+          "TREFFER": 2,
+          "FEHLALARM": 1
+        },
+        "ds4ByQuality": {
+          "DEGRADED": 1,
+          "LIMITED": 1,
+          "OK": 1,
+          "ARTEFACT_SUSPECT": 1
+        },
+        "ds4ByKind": {
+          "DECELERATION": 3,
+          "ACCELERATION": 1
+        },
+        "verifiableEvents": 4,
+        "oracleEvents": 5,
+        "oracleByStatus": {
+          "VERPASST": 1,
+          "ERKANNT": 2,
+          "VERPASST_GRENZWERTIG": 2
+        },
+        "oracleBorderline": 4,
+        "visibleRuns": 17,
+        "visibleRunsByStatus": {
+          "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+          "VERPASST_OBERHALB_SCHWELLE": 3,
+          "ERKANNT_UNTERHALB_SCHWELLE": 1,
+          "ERKANNT": 2
+        },
+        "operatorWindowsByStatus": null,
+        "offsets": {
+          "start": {
+            "n": 2,
+            "medianS": 1,
+            "meanS": 1,
+            "minS": 0,
+            "maxS": 2,
+            "withinTolShare": 1
+          },
+          "end": {
+            "n": 2,
+            "medianS": 0.5,
+            "meanS": 0.5,
+            "minS": 0,
+            "maxS": 1,
+            "withinTolShare": 1
+          },
+          "duration": {
+            "n": 2,
+            "medianS": -0.5,
+            "meanS": -0.5,
+            "minS": -1,
+            "maxS": 0,
+            "withinTolShare": 1
+          }
+        },
+        "deltaDiffKmh": {
+          "n": 2,
+          "maeKmh": 5.1,
+          "medianAbsKmh": 5.1,
+          "p95AbsKmh": 7.89,
+          "maxAbsKmh": 8.2,
+          "biasKmh": -5.1,
+          "rmseKmh": 5.968,
+          "within3": 0.5,
+          "within5": 0.5
+        },
+        "deltaErrSameWindowKmh": {
+          "n": 4,
+          "maeKmh": 6.075,
+          "medianAbsKmh": 5.55,
+          "p95AbsKmh": 11.905,
+          "maxAbsKmh": 12.4,
+          "biasKmh": 5.075,
+          "rmseKmh": 7.765,
+          "within3": 0.5,
+          "within5": 0.5
+        },
+        "nearBoundary": {
+          "byClass": {
+            "TREFFER": 1
+          },
+          "total": 1
+        },
+        "implausible": [],
+        "overReferenceMax": [],
+        "byQualityAndClass": {
+          "DEGRADED|WEICHER_FEHLALARM": 1,
+          "LIMITED|TREFFER": 1,
+          "OK|TREFFER": 1,
+          "ARTEFACT_SUSPECT|FEHLALARM": 1
+        },
+        "coverage": {
+          "referenceWindowUtc": [
+            "2026-10-21T12:03:06Z",
+            "2026-10-21T12:07:05Z"
+          ],
+          "referenceRows": 240,
+          "referenceReadable": 229,
+          "referenceMaxKmh": 46,
+          "gridLabels": 533,
+          "c4Numeric": 158,
+          "c4Usable": 158,
+          "detectorSegments": 3,
+          "quarantinedSecs": 0,
+          "eventsInsideReferenceWindow": 4
+        },
+        "matchingMode": "v2_gap2s",
+        "metricsLayers": {
+          "ds4": {
+            "detected": 4,
+            "accepted": 3,
+            "verifiable": 4,
+            "notEvaluable": 0
+          },
+          "t2_sameDetectorOnVideoSpeed": {
+            "oracleManoeuvres": 5,
+            "oracleHardManoeuvres": 1,
+            "detectedWithOracleMatch": 2,
+            "acceptedWithOracleMatch": 2,
+            "correctTreffer": 2,
+            "acceptedCorrectTreffer": 2,
+            "fragments": 0,
+            "oracleByStatus": {
+              "VERPASST": 1,
+              "ERKANNT": 2,
+              "VERPASST_GRENZWERTIG": 2
+            },
+            "hardFalseAlarms": 1,
+            "softOrIntensityFalse": 1
+          },
+          "t1_operatorWindows": null,
+          "t3_visibleRuns": {
+            "runs": 17,
+            "byStatus": {
+              "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 11,
+              "VERPASST_OBERHALB_SCHWELLE": 3,
+              "ERKANNT_UNTERHALB_SCHWELLE": 1,
+              "ERKANNT": 2
+            }
+          },
+          "nonEvaluable": {
+            "unverifizierbar": 0,
+            "fehlalarmUnbestimmt": 0,
+            "outsideReferenceWindowNotes": 0
+          }
+        }
+      },
+      "production": null
+    },
+    {
+      "id": "TES21-2",
+      "identity": {
+        "tripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+        "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0328a021481cf29fc563d4154ef291dcbed1726859305af9111d645fc9133bec",
+        "sourceFamily": "API_SYNTHETIC",
+        "limitations": [
+          "SPARSE_VEHICLE_SPEED_UNAVAILABLE_IN_PINNED_SNAPSHOT"
+        ],
+        "vehicleClass": "TESLA",
+        "role": "DEV"
+      },
+      "summary": {
+        "ds4Events": 4,
+        "acceptedEvents": 4,
+        "artefactSuspectView": [],
+        "sensitivity": {
+          "strict": {
+            "ds4ByClass": {
+              "TREFFER": 4
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 4,
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+            }
+          }
+        },
+        "accepted": {
+          "events": 4,
+          "ds4ByClass": {
+            "TREFFER": 4
+          },
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 4,
+            "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+          },
+          "oracleHardMissed": 0,
+          "oracleBorderlineMissed": 3,
+          "offsets": {
+            "start": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            },
+            "end": {
+              "n": 4,
+              "medianS": 2,
+              "meanS": 1.75,
+              "minS": 1,
+              "maxS": 2,
+              "withinTolShare": 1
+            }
+          }
+        },
+        "ds4ByClass": {
+          "TREFFER": 4
+        },
+        "ds4ByQuality": {
+          "OK": 4
+        },
+        "ds4ByKind": {
+          "ACCELERATION": 2,
+          "DECELERATION": 2
+        },
+        "verifiableEvents": 4,
+        "oracleEvents": 9,
+        "oracleByStatus": {
+          "VERPASST_GRENZWERTIG": 3,
+          "ERKANNT": 4,
+          "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+        },
+        "oracleBorderline": 5,
+        "visibleRuns": 19,
+        "visibleRunsByStatus": {
+          "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+          "VERPASST_OBERHALB_SCHWELLE": 5,
+          "ERKANNT": 4
+        },
+        "operatorWindowsByStatus": null,
+        "offsets": {
+          "start": {
+            "n": 4,
+            "medianS": 2,
+            "meanS": 1.75,
+            "minS": 1,
+            "maxS": 2,
+            "withinTolShare": 1
+          },
+          "end": {
+            "n": 4,
+            "medianS": 2,
+            "meanS": 1.75,
+            "minS": 1,
+            "maxS": 2,
+            "withinTolShare": 1
+          },
+          "duration": {
+            "n": 4,
+            "medianS": 0,
+            "meanS": 0,
+            "minS": -1,
+            "maxS": 1,
+            "withinTolShare": 1
+          }
+        },
+        "deltaDiffKmh": {
+          "n": 4,
+          "maeKmh": 3.1,
+          "medianAbsKmh": 2.7,
+          "p95AbsKmh": 6.225,
+          "maxAbsKmh": 6.6,
+          "biasKmh": -2.25,
+          "rmseKmh": 3.944,
+          "within3": 0.5,
+          "within5": 0.75
+        },
+        "deltaErrSameWindowKmh": {
+          "n": 4,
+          "maeKmh": 8,
+          "medianAbsKmh": 6.85,
+          "p95AbsKmh": 13.91,
+          "maxAbsKmh": 14.9,
+          "biasKmh": 8,
+          "rmseKmh": 9.105,
+          "within3": 0,
+          "within5": 0.25
+        },
+        "nearBoundary": {
+          "byClass": {
+            "TREFFER": 1
+          },
+          "total": 1
+        },
+        "implausible": [],
+        "overReferenceMax": [],
+        "byQualityAndClass": {
+          "OK|TREFFER": 4
+        },
+        "coverage": {
+          "referenceWindowUtc": [
+            "2026-10-21T12:19:59Z",
+            "2026-10-21T12:24:11Z"
+          ],
+          "referenceRows": 252,
+          "referenceReadable": 240,
+          "referenceMaxKmh": 53,
+          "gridLabels": 535,
+          "c4Numeric": 184,
+          "c4Usable": 184,
+          "detectorSegments": 6,
+          "quarantinedSecs": 0,
+          "eventsInsideReferenceWindow": 4
+        },
+        "matchingMode": "v2_gap2s",
+        "metricsLayers": {
+          "ds4": {
+            "detected": 4,
+            "accepted": 4,
+            "verifiable": 4,
+            "notEvaluable": 0
+          },
+          "t2_sameDetectorOnVideoSpeed": {
+            "oracleManoeuvres": 9,
+            "oracleHardManoeuvres": 2,
+            "detectedWithOracleMatch": 4,
+            "acceptedWithOracleMatch": 4,
+            "correctTreffer": 4,
+            "acceptedCorrectTreffer": 4,
+            "fragments": 0,
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 4,
+              "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+            },
+            "hardFalseAlarms": 0,
+            "softOrIntensityFalse": 0
+          },
+          "t1_operatorWindows": null,
+          "t3_visibleRuns": {
+            "runs": 19,
+            "byStatus": {
+              "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 10,
+              "VERPASST_OBERHALB_SCHWELLE": 5,
+              "ERKANNT": 4
+            }
+          },
+          "nonEvaluable": {
+            "unverifizierbar": 0,
+            "fehlalarmUnbestimmt": 0,
+            "outsideReferenceWindowNotes": 0
+          }
+        }
+      },
+      "production": null
+    },
+    {
+      "id": "TES16",
+      "identity": {
+        "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+        "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+        "sourceFamily": "API_SYNTHETIC",
+        "limitations": [
+          "NO_R1_OBD_CHANNEL",
+          "POSITION_GRID_FIXTURE"
+        ],
+        "vehicleClass": "TESLA",
+        "role": "EVAL"
+      },
+      "summary": {
+        "ds4Events": 17,
+        "acceptedEvents": 17,
+        "artefactSuspectView": [],
+        "sensitivity": {
+          "strict": {
+            "ds4ByClass": {
+              "TREFFER": 15,
+              "FEHLALARM_UNBESTIMMT": 1,
+              "FEHLALARM": 1
+            },
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 15
+            }
+          }
+        },
+        "accepted": {
+          "events": 17,
+          "ds4ByClass": {
+            "TREFFER": 15,
+            "FEHLALARM_UNBESTIMMT": 1,
+            "FEHLALARM": 1
+          },
+          "oracleByStatus": {
+            "VERPASST_GRENZWERTIG": 3,
+            "ERKANNT": 15
+          },
+          "oracleHardMissed": 0,
+          "oracleBorderlineMissed": 3,
+          "offsets": {
+            "start": {
+              "n": 15,
+              "medianS": 1,
+              "meanS": 0.93,
+              "minS": -2,
+              "maxS": 5,
+              "withinTolShare": 0.87
+            },
+            "end": {
+              "n": 15,
+              "medianS": 0,
+              "meanS": 0.53,
+              "minS": 0,
+              "maxS": 3,
+              "withinTolShare": 0.93
+            }
+          }
+        },
+        "ds4ByClass": {
+          "TREFFER": 15,
+          "FEHLALARM_UNBESTIMMT": 1,
+          "FEHLALARM": 1
+        },
+        "ds4ByQuality": {
+          "OK": 16,
+          "DEGRADED": 1
+        },
+        "ds4ByKind": {
+          "DECELERATION": 8,
+          "ACCELERATION": 9
+        },
+        "verifiableEvents": 16,
+        "oracleEvents": 18,
+        "oracleByStatus": {
+          "VERPASST_GRENZWERTIG": 3,
+          "ERKANNT": 15
+        },
+        "oracleBorderline": 12,
+        "visibleRuns": 45,
+        "visibleRunsByStatus": {
+          "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+          "VERPASST_OBERHALB_SCHWELLE": 3,
+          "ERKANNT": 15
+        },
+        "operatorWindowsByStatus": null,
+        "offsets": {
+          "start": {
+            "n": 15,
+            "medianS": 1,
+            "meanS": 0.93,
+            "minS": -2,
+            "maxS": 5,
+            "withinTolShare": 0.87
+          },
+          "end": {
+            "n": 15,
+            "medianS": 0,
+            "meanS": 0.53,
+            "minS": 0,
+            "maxS": 3,
+            "withinTolShare": 0.93
+          },
+          "duration": {
+            "n": 15,
+            "medianS": 0,
+            "meanS": -0.4,
+            "minS": -4,
+            "maxS": 3,
+            "withinTolShare": 0.87
+          }
+        },
+        "deltaDiffKmh": {
+          "n": 15,
+          "maeKmh": 6.687,
+          "medianAbsKmh": 4.7,
+          "p95AbsKmh": 20.36,
+          "maxAbsKmh": 20.5,
+          "biasKmh": -4.34,
+          "rmseKmh": 9.087,
+          "within3": 0.333,
+          "within5": 0.533
+        },
+        "deltaErrSameWindowKmh": {
+          "n": 15,
+          "maeKmh": 3.4,
+          "medianAbsKmh": 1.2,
+          "p95AbsKmh": 12.75,
+          "maxAbsKmh": 36.2,
+          "biasKmh": 1.693,
+          "rmseKmh": 9.432,
+          "within3": 0.933,
+          "within5": 0.933
+        },
+        "nearBoundary": {
+          "byClass": {
+            "TREFFER": 3
+          },
+          "total": 3
+        },
+        "implausible": [],
+        "overReferenceMax": [],
+        "byQualityAndClass": {
+          "OK|TREFFER": 15,
+          "OK|FEHLALARM_UNBESTIMMT": 1,
+          "DEGRADED|FEHLALARM": 1
+        },
+        "coverage": {
+          "referenceWindowUtc": [
+            "2026-10-16T03:36:00Z",
+            "2026-10-16T03:54:55Z"
+          ],
+          "referenceRows": 1136,
+          "referenceReadable": 973,
+          "referenceMaxKmh": 134,
+          "gridLabels": 1136,
+          "c4Numeric": 848,
+          "c4Usable": 848,
+          "detectorSegments": 8,
+          "quarantinedSecs": 0,
+          "eventsInsideReferenceWindow": 17
+        },
+        "matchingMode": "v2_gap2s",
+        "metricsLayers": {
+          "ds4": {
+            "detected": 17,
+            "accepted": 17,
+            "verifiable": 16,
+            "notEvaluable": 1
+          },
+          "t2_sameDetectorOnVideoSpeed": {
+            "oracleManoeuvres": 18,
+            "oracleHardManoeuvres": 6,
+            "detectedWithOracleMatch": 15,
+            "acceptedWithOracleMatch": 15,
+            "correctTreffer": 15,
+            "acceptedCorrectTreffer": 15,
+            "fragments": 0,
+            "oracleByStatus": {
+              "VERPASST_GRENZWERTIG": 3,
+              "ERKANNT": 15
+            },
+            "hardFalseAlarms": 1,
+            "softOrIntensityFalse": 0
+          },
+          "t1_operatorWindows": null,
+          "t3_visibleRuns": {
+            "runs": 45,
+            "byStatus": {
+              "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 27,
+              "VERPASST_OBERHALB_SCHWELLE": 3,
+              "ERKANNT": 15
+            }
+          },
+          "nonEvaluable": {
+            "unverifizierbar": 0,
+            "fehlalarmUnbestimmt": 1,
+            "outsideReferenceWindowNotes": 0
+          }
+        }
+      },
+      "production": null
+    }
+  ],
+  "pooled": {
+    "EVAL_TIG22_TES16": {
+      "drives": [
+        "TIG22",
+        "TES16"
+      ],
+      "ds4Events": 37,
+      "verifiableEvents": 28,
+      "ds4ByClass": {
+        "UNVERIFIZIERBAR": 8,
+        "TREFFER": 27,
+        "FEHLALARM_UNBESTIMMT": 1,
+        "FEHLALARM": 1
+      },
+      "oracleEvents": 36,
+      "oracleByStatus": {
+        "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+        "VERPASST_GRENZWERTIG": 7,
+        "ERKANNT": 27,
+        "VERPASST": 1
+      },
+      "visibleRunsByStatus": {
+        "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 54,
+        "VERPASST_OBERHALB_SCHWELLE": 9,
+        "ERKANNT": 27
+      },
+      "recallHardOracle": 0.941,
+      "recallHardOracleDenominator": 17,
+      "hardFalseAlarmShareOfVerifiable": 0.036,
+      "offsets": {
+        "start": {
+          "n": 27,
+          "medianS": 0,
+          "meanS": 0.26,
+          "minS": -2,
+          "maxS": 5,
+          "withinTolShare": 0.93
+        },
+        "end": {
+          "n": 27,
+          "medianS": 0,
+          "meanS": 0.22,
+          "minS": -1,
+          "maxS": 3,
+          "withinTolShare": 0.96
+        },
+        "duration": {
+          "n": 27,
+          "medianS": 0,
+          "meanS": -0.04,
+          "minS": -4,
+          "maxS": 3,
+          "withinTolShare": 0.93
+        }
+      },
+      "deltaDiffKmh": {
+        "n": 27,
+        "maeKmh": 5.356,
+        "medianAbsKmh": 3.9,
+        "p95AbsKmh": 18.08,
+        "maxAbsKmh": 20.5,
+        "biasKmh": -3.007,
+        "rmseKmh": 7.335,
+        "within3": 0.407,
+        "within5": 0.63
+      },
+      "accepted": {
+        "events": 37,
+        "ds4ByClass": {
+          "UNVERIFIZIERBAR": 8,
+          "TREFFER": 27,
+          "FEHLALARM_UNBESTIMMT": 1,
+          "FEHLALARM": 1
+        },
+        "oracleByStatus": {
+          "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+          "VERPASST_GRENZWERTIG": 7,
+          "ERKANNT": 27,
+          "VERPASST": 1
+        }
+      },
+      "strict": {
+        "ds4ByClass": {
+          "UNVERIFIZIERBAR": 8,
+          "TREFFER": 27,
+          "FEHLALARM_UNBESTIMMT": 1,
+          "FEHLALARM": 1
+        }
+      }
+    },
+    "DEV_TES21": {
+      "drives": [
+        "TES21-1",
+        "TES21-2"
+      ],
+      "ds4Events": 8,
+      "verifiableEvents": 8,
+      "ds4ByClass": {
+        "WEICHER_FEHLALARM": 1,
+        "TREFFER": 6,
+        "FEHLALARM": 1
+      },
+      "oracleEvents": 14,
+      "oracleByStatus": {
+        "VERPASST": 1,
+        "ERKANNT": 6,
+        "VERPASST_GRENZWERTIG": 5,
+        "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+      },
+      "visibleRunsByStatus": {
+        "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 21,
+        "VERPASST_OBERHALB_SCHWELLE": 8,
+        "ERKANNT_UNTERHALB_SCHWELLE": 1,
+        "ERKANNT": 6
+      },
+      "recallHardOracle": 0.667,
+      "recallHardOracleDenominator": 3,
+      "hardFalseAlarmShareOfVerifiable": 0.125,
+      "offsets": {
+        "start": {
+          "n": 6,
+          "medianS": 2,
+          "meanS": 1.5,
+          "minS": 0,
+          "maxS": 2,
+          "withinTolShare": 1
+        },
+        "end": {
+          "n": 6,
+          "medianS": 1.5,
+          "meanS": 1.33,
+          "minS": 0,
+          "maxS": 2,
+          "withinTolShare": 1
+        },
+        "duration": {
+          "n": 6,
+          "medianS": 0,
+          "meanS": -0.17,
+          "minS": -1,
+          "maxS": 1,
+          "withinTolShare": 1
+        }
+      },
+      "deltaDiffKmh": {
+        "n": 6,
+        "maeKmh": 3.767,
+        "medianAbsKmh": 3.05,
+        "p95AbsKmh": 7.8,
+        "maxAbsKmh": 8.2,
+        "biasKmh": -3.2,
+        "rmseKmh": 4.716,
+        "within3": 0.5,
+        "within5": 0.667
+      },
+      "accepted": {
+        "events": 7,
+        "ds4ByClass": {
+          "WEICHER_FEHLALARM": 1,
+          "TREFFER": 6
+        },
+        "oracleByStatus": {
+          "VERPASST": 1,
+          "ERKANNT": 6,
+          "VERPASST_GRENZWERTIG": 5,
+          "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 2
+        }
+      },
+      "strict": {
+        "ds4ByClass": {
+          "WEICHER_FEHLALARM": 1,
+          "TREFFER": 6,
+          "FEHLALARM": 1
+        }
+      }
+    },
+    "ALL": {
+      "drives": [
+        "TIG22",
+        "TES21-1",
+        "TES21-2",
+        "TES16"
+      ],
+      "ds4Events": 45,
+      "verifiableEvents": 36,
+      "ds4ByClass": {
+        "UNVERIFIZIERBAR": 8,
+        "TREFFER": 33,
+        "WEICHER_FEHLALARM": 1,
+        "FEHLALARM": 2,
+        "FEHLALARM_UNBESTIMMT": 1
+      },
+      "oracleEvents": 50,
+      "oracleByStatus": {
+        "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 3,
+        "VERPASST_GRENZWERTIG": 12,
+        "ERKANNT": 33,
+        "VERPASST": 2
+      },
+      "visibleRunsByStatus": {
+        "NICHT_ERWARTET_UNTERHALB_SCHWELLE": 75,
+        "VERPASST_OBERHALB_SCHWELLE": 17,
+        "ERKANNT": 33,
+        "ERKANNT_UNTERHALB_SCHWELLE": 1
+      },
+      "recallHardOracle": 0.9,
+      "recallHardOracleDenominator": 20,
+      "hardFalseAlarmShareOfVerifiable": 0.056,
+      "offsets": {
+        "start": {
+          "n": 33,
+          "medianS": 0,
+          "meanS": 0.48,
+          "minS": -2,
+          "maxS": 5,
+          "withinTolShare": 0.94
+        },
+        "end": {
+          "n": 33,
+          "medianS": 0,
+          "meanS": 0.42,
+          "minS": -1,
+          "maxS": 3,
+          "withinTolShare": 0.97
+        },
+        "duration": {
+          "n": 33,
+          "medianS": 0,
+          "meanS": -0.06,
+          "minS": -4,
+          "maxS": 3,
+          "withinTolShare": 0.94
+        }
+      },
+      "deltaDiffKmh": {
+        "n": 33,
+        "maeKmh": 5.067,
+        "medianAbsKmh": 3.9,
+        "p95AbsKmh": 15.86,
+        "maxAbsKmh": 20.5,
+        "biasKmh": -3.042,
+        "rmseKmh": 6.933,
+        "within3": 0.424,
+        "within5": 0.636
+      },
+      "accepted": {
+        "events": 44,
+        "ds4ByClass": {
+          "UNVERIFIZIERBAR": 8,
+          "TREFFER": 33,
+          "WEICHER_FEHLALARM": 1,
+          "FEHLALARM_UNBESTIMMT": 1,
+          "FEHLALARM": 1
+        },
+        "oracleByStatus": {
+          "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 3,
+          "VERPASST_GRENZWERTIG": 12,
+          "ERKANNT": 33,
+          "VERPASST": 2
+        }
+      },
+      "strict": {
+        "ds4ByClass": {
+          "UNVERIFIZIERBAR": 8,
+          "TREFFER": 33,
+          "WEICHER_FEHLALARM": 1,
+          "FEHLALARM": 2,
+          "FEHLALARM_UNBESTIMMT": 1
+        }
+      }
+    }
+  },
+  "inputs": [
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/TIGUAN_2026-10-22_1Hz.csv",
+      "sha256": "9c8933c223e58706d1cc1ce82fe8c623e2429d3bd1f4f570e10353f9f3b9aaa2",
+      "bytes": 191132
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/TIGUAN_2026-10-22_analysis_windows.csv",
+      "sha256": "52255b8a7bc89be47385356d9a82650df38da32d80a8611b890dee00e3e83d2d",
+      "bytes": 1342
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/manifest.json",
+      "sha256": "e20d6f735e0b82611fb8a5db01c2ee6fba29b3a22b8c4a7d08728533911350e4",
+      "bytes": 5795
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/PROVENANCE_MANIFEST.json",
+      "sha256": "0d27b311d765f9f93f46d4c3a49afe2070df859c3e18ea94f672f0b317778f6a",
+      "bytes": 3236
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_motion_core_shadow_payload.json",
+      "sha256": "fca7baef63b3ef84e2cd0f1f44f08f0b6ced2294738ba65a5a1b74eca99f7c8a",
+      "bytes": 875907
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023/inputs/tiguan-20261022/prod_run_v4_20261023/di_v0_motion_core_shadow_payload.json",
+      "sha256": "ddcf32cd111ef21859e7df9f20915190efbe89aa416a22132e02c7d658712ccd",
+      "bytes": 1099811
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023/inputs/tiguan-20261022/prod_run_v4_20261023/di_v0_motion_core_shadow_run_meta.json",
+      "sha256": "9f465c7bb374969030709acc6696cc00f102d80a62dc56634956358caa333713",
+      "bytes": 1965
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_s4_evidence_container.bin",
+      "sha256": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "bytes": 886052
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/JOINED_REFERENCE_TABLE.csv",
+      "sha256": "dfa4ccd3aec1f1e3065c2c3307ba609a3278afbdf534c303ca279fd17d336ce6",
+      "bytes": 145974
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/s4_evidence/TRIP_1_evidence_payload.gz",
+      "sha256": "4c6c95e0c0230cc5a38b59d31644f10bc95bb7047a67dfc080244d1743475e5a",
+      "bytes": 3352
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/JOINED_REFERENCE_TABLE.csv",
+      "sha256": "dfa4ccd3aec1f1e3065c2c3307ba609a3278afbdf534c303ca279fd17d336ce6",
+      "bytes": 145974
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/s4_evidence/TRIP_2_evidence_payload.gz",
+      "sha256": "508450980f979e13135d18164ef094cff431b5e87642716486e606cdbf831dbe",
+      "bytes": 3551
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/VIDEO_TACHO_REFERENCE.json",
+      "sha256": "4fa007f94284f31d962d7f8c33cc870e99d9dd992025da9a38ca0c135af1689f",
+      "bytes": 307735
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/TESLA_POSITION_GRID.json",
+      "sha256": "5e198ee9b48a2af223423f1f0086989ff36fa31ff072235e3fc421f4310090b4",
+      "bytes": 575801
+    }
+  ]
+}

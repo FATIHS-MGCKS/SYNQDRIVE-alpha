@@ -1,0 +1,55 @@
+
+## TES16 2026-10-16T03:50:16Z..2026-10-16T03:50:26Z (class TESLA)
+UTC      | ref | C4     | C4 q           | C5.1   | C5.1 q         | repairState               | note
+03:50:16 | 131 |  127.5 | OK             |  127.5 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+03:50:17 | 134 |  129.7 | OK             |  129.7 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+03:50:18 | 134 |  129.8 | OK             |  129.8 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+03:50:19 | 134 |  129.4 | OK             |  129.4 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID"}
+03:50:20 | 133 |  113.1 | SPARSE_SUPPORT |  129.6 | REPAIRED       | REPAIR_ACCEPTED           | {"q5":"VALID","q6":"VALID"}
+03:50:21 | 133 |      · | NO_POSITION    |      · | NO_POSITION    | PASS_THROUGH_NO_REPAIR    | {}
+03:50:22 | 132 |  128.2 | JITTER_SUSPECT |  128.2 | JITTER_SUSPECT | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+03:50:23 | 132 |  148.3 | JITTER_SUSPECT |  125.9 | REPAIRED       | REPAIR_ACCEPTED           | {"q5":"VALID","q6":"VALID"}
+03:50:24 | 131 |  126.5 | OK             |  126.5 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+03:50:25 | 130 |  125.7 | OK             |  125.7 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+03:50:26 | 129 |  124.9 | OK             |  124.9 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+
+## TIG22 2026-10-22T19:04:28Z..2026-10-22T19:04:53Z (class TIGUAN)
+UTC      | ref | C4     | C4 q           | C5.1   | C5.1 q         | repairState               | note
+19:04:28 |   · |   19.3 | OK             |   19.3 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID"}
+19:04:29 |   · |    5.5 | OK             |    5.5 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID"}
+19:04:30 |   · |    4.3 | SPARSE_SUPPORT |    4.3 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+19:04:31 |   · |      · | NO_POSITION    |      · | NO_POSITION    | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:32 |   · |    4.3 | SPARSE_SUPPORT |    4.3 | SPARSE_SUPPORT | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:33 |   · |    4.7 | OK             |    4.7 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:34 |   · |    5.5 | SPARSE_SUPPORT |    5.5 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID"}
+19:04:35 |   · |      · | NO_POSITION    |      · | NO_POSITION    | PASS_THROUGH_NO_REPAIR    | {}
+19:04:36 |   · |   54.1 | SPARSE_SUPPORT |   54.1 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"INSUFFICIENT_EVIDENCE","q6":"INSUFFICIENT_EVIDENCE","r":"insufficient_evidence_fail_closed"}
+19:04:37 |   · |      · | OUTLIER_REJECTED |      · | OUTLIER_REJECTED | PASS_THROUGH_NO_REPAIR    | {}
+19:04:38 |   · |  100.1 | SPARSE_SUPPORT |  100.1 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"INSUFFICIENT_EVIDENCE","q6":"INSUFFICIENT_EVIDENCE","r":"insufficient_evidence_fail_closed"}
+19:04:39 |   · |   98.2 | OK             |   98.2 | OK             | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+19:04:40 |   · |   87.0 | SPARSE_SUPPORT |   87.0 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+19:04:41 |   · |      · | NO_POSITION    |      · | NO_POSITION    | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:42 |   · |   68.6 | SPARSE_SUPPORT |   68.6 | SPARSE_SUPPORT | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:43 |   · |   73.5 | OK             |   73.5 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:44 |   · |   70.0 | OK             |   70.0 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:45 |   · |   69.8 | OK             |   69.8 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:46 |   · |   65.5 | SPARSE_SUPPORT |   65.5 | SPARSE_SUPPORT | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:47 |   · |      · | NO_POSITION    |      · | NO_POSITION    | PASS_THROUGH_OUTSIDE_WINDOW | 
+19:04:48 |   · |   61.8 | SPARSE_SUPPORT |   61.8 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID","r":"worsens_triple_accel"}
+19:04:49 |   · |   52.3 | SPARSE_SUPPORT |   52.3 | SPARSE_SUPPORT | REPAIR_REJECTED           | {"q5":"VALID","q6":"VALID"}
+19:04:50 |   · |      · | NO_POSITION    |      · | NO_POSITION    | PASS_THROUGH_NO_REPAIR    | {}
+19:04:51 |   · |  103.0 | JITTER_SUSPECT |  103.0 | JITTER_SUSPECT | REPAIR_REJECTED           | {"q5":null,"q6":null,"r":"no_candidate"}
+19:04:52 |   · |  142.1 | JITTER_SUSPECT |  142.1 | JITTER_SUSPECT | REPAIR_REJECTED           | {"q5":null,"q6":null,"r":"no_candidate"}
+19:04:53 |   · |      · | NO_SUPPORT     |      · | NO_SUPPORT     | PASS_THROUGH_NO_REPAIR    | {}
+
+## TIG22 2026-10-22T18:44:12Z..2026-10-22T18:44:20Z (class TIGUAN)
+UTC      | ref | C4     | C4 q           | C5.1   | C5.1 q         | repairState               | note
+18:44:12 |   0 |    0.6 | OK             |    0.6 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:13 |   0 |    0.6 | OK             |    0.6 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:14 |   0 |      · | FROZEN_POSITION |      · | FROZEN_POSITION | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:15 |   0 |      · | FROZEN_POSITION |      · | FROZEN_POSITION | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:16 |   0 |    4.0 | OK             |    4.0 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:17 |   9 |    8.7 | OK             |    8.7 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:18 |  15 |   14.0 | OK             |   14.0 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:19 |  18 |   16.3 | OK             |   16.3 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 
+18:44:20 |  20 |   17.9 | OK             |   17.9 | OK             | PASS_THROUGH_OUTSIDE_WINDOW | 

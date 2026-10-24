@@ -2250,3 +2250,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Direct product readiness after Fable B2 signoff — controlled activation without historical reprocess |
 | VALIDATION | Gap-bridge safety 17/17; integration + sealed four-drive summary specs; `nest build` |
 | NON_EFFECTS | Flag default OFF; no deploy/activation; trip-FSM/C5.1/events unchanged |
+
+### DS4 acceleration & braking — Fable independent read-only algorithm review (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Research evidence only: `research/driving-intelligence/evaluations/ds4-accel-brake-fable-review-20261024/` (REPORT, A/B harness `candidates_ab.cjs` with production-parity check, probes, baseline replay `fable_base_7340637` identical to PR #2139 `match2s`) |
+| WHY | Adversarial review of `motion-event-detector.ts` on production SHA `7340637` across TIG22/TES16 (EVAL) and TES21-1/TES21-2 (DEV); assess real C5.1 V1.2 and FSM Gap Bridge V1.3.1 benefit for events; evaluate alternatives without threshold shifts |
+| FINDINGS | B1 K3 spike check blind when start sample is the artefact (TES16 03:50:20 FA); B2 no physics envelope — TIG22 19:04:34 (5.5→100.1 km/h/4 s) and 19:04:49 (52.3→142.1 km/h/3 s) accepted unmarked; B3 systematic intensity attenuation −0.13…−0.55 m/s² (implicit 3-s kernel of C4 differences); B4/B5 hard miss 18:44:16 and four borderline misses are kernel-bound, post-gap guard not causal; 18:49 GPS outlier quarantine correct. C5.1 removes only the TES16 FA (dev-set, not independent); FSM is C4-fed → no independent event evidence |
+| RECOMMENDATION | Option A: two additive marking guards (spike-bracket/K-B → `ARTEFACT_SUSPECT`; physics envelope on event mean, class via C5.1 resolver, permissive fallback) — in-sample exactly 3 events change, 0 TREFFER loss, DEV unchanged. No new detector, no ML, no FSM coupling, no speed from gap bridge. LEG/REG3 alternatives rejected (new hard FAs / EVAL regression) |
+| VALIDATION | `node scripts/candidates_ab.cjs --code-root <7340637> --tag fable_base_7340637` → parity OK on 4 drives; outputs byte-identical across runs except timestamp |
+| NON_EFFECTS | No code, flag, DB, deploy or activation change; detector/C4/C5.1/FSM untouched; proposals P1–P3 are PROPOSED, not implemented |
