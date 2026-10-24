@@ -105,6 +105,22 @@ jobs:
       - run: npm run test:vehicle-detail:verify:unit
         working-directory: backend
 
+  backend-ds4-motion-gap-bridge-safety:
+    name: DS4 motion FSM gap-bridge safety gate
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:di:motion-fsm-gap-bridge-safety
+        working-directory: backend
+
   backend-security:
     name: Backend security tests
     needs: install-lockfile
@@ -328,6 +344,7 @@ jobs:
       - lint
       - typecheck
       - backend-unit
+      - backend-ds4-motion-gap-bridge-safety
       - backend-security
       - backend-boundary-postgres
       - frontend-component

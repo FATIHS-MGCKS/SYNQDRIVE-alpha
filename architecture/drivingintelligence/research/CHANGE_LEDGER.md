@@ -2187,3 +2187,48 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | C1 bridged over quarantined teleports (481–2281 km/h); corrupted neighbour median waived 900 km/h; INTERVAL_ONLY OBD still counted as stop evidence; S4 dormant audit broken by core test importing `s4a-foundation` |
 | VALIDATION | Jest `motion-core-leg-gate`, `motion-core-tiguan-gps-obd-hardening` (shadow-worker), `r1-obd-fsm-point-authority`, `di-v0-s4a-dormant-audit`; `npm run build`; summary `research/driving-intelligence/hardening/ds4-motion-tiguan-20261022/BEFORE_AFTER_SUMMARY.json` |
 | NON_EFFECTS | No deploy/reprocessing/flags; M7A paused; frozen audit package unchanged |
+
+### DS4 motion FSM — retrospective gap bridge V1 (2026-10-23, research + isolated impl)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-fsm-gap-bridge-v1.ts`; `MotionFsmCandidateOptions.retrospectiveGapBridgeV1` (default false), `MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS`, optional `MotionFsmGapBridgeAuxiliary`; research eval `ds4-fsm-retrospective-gap-bridge-research-20261023` |
+| WHY | PR #2148 / Fable review: UNKNOWN during GPS quarantine (TIG22 18:49) and delayed stop at frozen position (18:41) without inventing speed |
+| VALIDATION | Jest `motion-fsm-gap-bridge-v1.spec.ts`; offline replay `run_v2_native_fsm` on TIG22/TES16/TES21-1/2 — false-claim Δ=0, events parity; long-gap guard blocks 19:03:33–55 unscored bridge |
+| NON_EFFECTS | Shadow processor still V0_3 (flag OFF); no C4/C5.1 change; no deploy/backfill/DB |
+
+### DS4 motion FSM — gap bridge V1.1 safety hardening (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `MOTION_FSM_GAP_BRIDGE_V1_V1_1`: stop-feasibility from independent DIRECT anchor speeds; `FROZEN_POSITION` in-gap vetoes bridge without aux; `retrospectiveGapBridgeV1` optional (default OFF); harness TS2741 fix; `motion-fsm-gap-bridge-v1.safety.spec.ts` |
+| WHY | Fable independent safety review PR #2150 — B1 build, B2 hidden embedded stops, B3 frozen veto without aux |
+| VALIDATION | `tsc --noEmit`, `nest build`, `test:nest:boot-check:ci`, Jest gap-bridge + safety specs; 4-drive replay false-claim Δ=0 |
+| NON_EFFECTS | Shadow processor still V0_3; no deploy/flag ON |
+
+### DS4 motion FSM — gap bridge V1.2 stop-feasibility physics (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `gapBridgeV1MaxDistanceWithEmbeddedStopM` (time-aware D_max with mandatory stop); `MOTION_FSM_GAP_BRIDGE_V1_V1_2`; CI job `DS4 motion FSM gap-bridge safety gate`; `SHADOW_INTEGRATION_READINESS.md` |
+| WHY | Fable B2 re-review: fixed min-stop-distance fail-open on gentle decel / lead-cruise hidden stops |
+| VALIDATION | `npm run test:di:motion-fsm-gap-bridge-safety`; four-drive replay unchanged |
+| NON_EFFECTS | No C4/C5.1/events; no shadow flag ON |
+
+### DS4 motion FSM — gap bridge V1.3 analytic stop-feasibility bound (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Replace discrete profile search with bang-bang segment optima `gapBridgeV1MaxDistanceToStopInTimeM` / `FromStopInTimeM`; `MOTION_FSM_GAP_BRIDGE_V1_V1_3`; adversarial post-stop cruise safety tests; production DB guard manifest refresh |
+| WHY | Fable final re-review B2: V1.2 D_max under-estimated post-stop cruise and cap travel (fail-open on hidden stops) |
+| VALIDATION | `npm run test:di:motion-fsm-gap-bridge-safety`; four-drive replay gate PASS; `production-database-guard-bootstrap-dry-run` PASS |
+| NON_EFFECTS | No shadow flag ON; no deploy |
+
+### DS4 motion FSM — gap bridge V1.3.1 narrow T1-band fix (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `gapBridgeV1FeasibleT1SplitCandidatesS` evaluates analytic interval endpoints when feasible T1 band &lt; grid step; `MOTION_FSM_GAP_BRIDGE_V1_V1_3_1` |
+| WHY | Fable re-review: empty grid inside non-empty feasible interval under-estimated D_max at envelope corner |
+| VALIDATION | 17/17 gap-bridge safety tests; four-drive replay PASS; 204-cell + 4082-cell adversarial scans 0 fail-open |
+| NON_EFFECTS | No C4/C5.1/events; no flag ON |

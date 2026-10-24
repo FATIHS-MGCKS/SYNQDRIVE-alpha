@@ -58,18 +58,21 @@ const FSM_VARIANTS: Record<string, Readonly<MotionFsmCandidateOptions>> = {
     startingTimeout: false,
     evidencePropagation: false,
     frozenLegacySparsePointAuthority: false,
+    retrospectiveGapBridgeV1: false,
   },
   KB: {
     staleSpeedContextFix: false,
     startingTimeout: true,
     evidencePropagation: false,
     frozenLegacySparsePointAuthority: false,
+    retrospectiveGapBridgeV1: false,
   },
   KC: {
     staleSpeedContextFix: false,
     startingTimeout: false,
     evidencePropagation: true,
     frozenLegacySparsePointAuthority: false,
+    retrospectiveGapBridgeV1: false,
   },
   V03: MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
 };
