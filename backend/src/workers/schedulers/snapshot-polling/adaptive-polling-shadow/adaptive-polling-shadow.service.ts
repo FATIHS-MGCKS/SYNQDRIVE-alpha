@@ -25,7 +25,11 @@ import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
 import { evaluateLvProviderTimestampAdmission } from './p25-apd-shadow-lv-bootstrap.contract';
 import { P25_APD_SHADOW_EXECUTION_VERSION_CURRENT } from './p25-apd-shadow-execution-versions';
 import { resolveApdShadowTripAuthority } from './apd-shadow-trip-authority';
-import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
+import { APD_SHADOW_LEGACY_TRIP_EVIDENCE_EXCLUSION_REASON } from './apd-shadow-legacy-trip-evidence-exclusion.contract';
+import {
+  apdShadowLegacyTripEvidenceExclusionRelievedReconciliationAtMs,
+  isVehicleInActiveTripAtMs,
+} from './apd-shadow-trip-reconciliation.util';
 import type {
   AdaptivePollingShadowActualPollStartContext,
   AdaptivePollingShadowPostPollContext,
@@ -281,6 +285,26 @@ export class AdaptivePollingShadowService {
       ctx.vehicleId,
       decisionAtMs,
     );
+    const legacyTripEvidenceExclusionRelieved =
+      await apdShadowLegacyTripEvidenceExclusionRelievedReconciliationAtMs(
+        this.prisma,
+        ctx.vehicleId,
+        decisionAtMs,
+      );
+    if (legacyTripEvidenceExclusionRelieved) {
+      this.metrics?.recordLegacyTripEvidenceExclusion(
+        APD_SHADOW_LEGACY_TRIP_EVIDENCE_EXCLUSION_REASON,
+      );
+      this.logger.log(
+        JSON.stringify({
+          event: 'APD_SHADOW_LEGACY_TRIP_EVIDENCE_EXCLUDED',
+          vehicleId: ctx.vehicleId,
+          organizationId: ctx.organizationId,
+          decisionAtMs,
+          reason: APD_SHADOW_LEGACY_TRIP_EVIDENCE_EXCLUSION_REASON,
+        }),
+      );
+    }
     const reconciliation = !inTripPerVehicleTrips;
     const tripAuthority = resolveApdShadowTripAuthority({
       inTripPerVehicleTripsAtDecision: inTripPerVehicleTrips,

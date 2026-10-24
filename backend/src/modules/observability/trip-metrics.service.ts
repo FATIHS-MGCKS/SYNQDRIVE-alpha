@@ -71,6 +71,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly apdShadowForcedFallbackTotal: Counter<string>;
   readonly apdShadowInformativeRealPollTotal: Counter<string>;
   readonly apdShadowSkippedInformativePollTotal: Counter<string>;
+  readonly apdShadowLegacyTripEvidenceExclusionTotal: Counter<string>;
   readonly apdShadowProfileInvalidatedTotal: Counter<string>;
   readonly apdShadowProfileRecoveredTotal: Counter<string>;
   readonly apdShadowFailureTotal: Counter<string>;
@@ -623,6 +624,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_apd_shadow_skipped_informative_poll_total',
       help: 'Shadow WOULD_SKIP but real poll was informative',
       labelNames: ['policy', 'source'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowLegacyTripEvidenceExclusionTotal = new Counter({
+      name: 'synqdrive_apd_shadow_legacy_trip_evidence_exclusion_total',
+      help: 'APD shadow reconciliation relieved by frozen legacy trip evidence exclusion',
+      labelNames: ['reason'],
       registers: [this.registry],
     });
 
