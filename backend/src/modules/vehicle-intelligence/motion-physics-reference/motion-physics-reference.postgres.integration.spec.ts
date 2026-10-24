@@ -44,7 +44,7 @@ const run = process.env.MOTION_PHYSICS_REFERENCE_PG === '1' || process.env.VO4_R
     const { orgId, vehicleId } = await seedVehicle();
     const payload = {
       systemMotorPowerKw: 150,
-      source: MotionPhysicsReferenceSource.OPERATOR_CONFIRMED,
+      source: MotionPhysicsReferenceSource.MANUAL_ENTRY,
     };
 
     const results = await Promise.allSettled([
@@ -74,7 +74,7 @@ const run = process.env.MOTION_PHYSICS_REFERENCE_PG === '1' || process.env.VO4_R
     await service.create(
       orgId,
       vehicleId,
-      { systemMotorPowerKw: 120, source: MotionPhysicsReferenceSource.OPERATOR_CONFIRMED },
+      { systemMotorPowerKw: 120, source: MotionPhysicsReferenceSource.REGISTRATION_CERTIFICATE },
       'u2',
     );
 
@@ -87,12 +87,28 @@ const run = process.env.MOTION_PHYSICS_REFERENCE_PG === '1' || process.env.VO4_R
     expect(active?.evidenceTier).toBe(MotionPhysicsEvidenceTier.CONFIRMED);
   });
 
+  it('rejects OPERATOR_CONFIRMED on create (use confirm endpoint)', async () => {
+    const { orgId, vehicleId } = await seedVehicle();
+    try {
+      await service.create(orgId, vehicleId, {
+        curbMassKg: 1800,
+        source: MotionPhysicsReferenceSource.OPERATOR_CONFIRMED,
+      });
+      throw new Error('expected create to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        reasonCodes: expect.arrayContaining(['IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN']),
+      });
+    }
+  });
+
   it('rejects verify until Phase C evidence pipeline is ready', async () => {
     const { orgId, vehicleId } = await seedVehicle();
     const ref = await service.create(
       orgId,
       vehicleId,
-      { curbMassKg: 1800, source: MotionPhysicsReferenceSource.OPERATOR_CONFIRMED },
+      { curbMassKg: 1800, source: MotionPhysicsReferenceSource.REGISTRATION_CERTIFICATE },
       'u1',
     );
     const docId = randomUUID();

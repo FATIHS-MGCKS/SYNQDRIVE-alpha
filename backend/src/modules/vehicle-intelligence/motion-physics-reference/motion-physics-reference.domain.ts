@@ -1,3 +1,8 @@
+import {
+  MotionPhysicsEvidenceTier,
+  MotionPhysicsReferenceSource,
+} from '@prisma/client';
+
 export const MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS = {
   CREATED: 'CREATED',
   SUPERSEDED: 'SUPERSEDED',
@@ -24,6 +29,7 @@ export const MOTION_PHYSICS_POLICY_REASONS = {
   SUPERSEDED: 'SUPERSEDED',
   VERIFY_EVIDENCE_PIPELINE_NOT_READY: 'VERIFY_EVIDENCE_PIPELINE_NOT_READY',
   VIN_IDENTITY_MISMATCH: 'VIN_IDENTITY_MISMATCH',
+  IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN: 'IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN',
 } as const;
 
 export type MotionPhysicsPolicyReasonCode =
@@ -43,4 +49,23 @@ export interface MotionPhysicsReferencePayload {
   systemPowerDefinition?: string | null;
   accel0To100S?: number | null;
   variantAssumption?: string | null;
+}
+
+/** Evidence tier for POST create — OPERATOR_CONFIRMED is confirm-endpoint only. */
+export function resolveMotionPhysicsEvidenceTierForCreate(
+  source: MotionPhysicsReferenceSource,
+): MotionPhysicsEvidenceTier | null {
+  switch (source) {
+    case MotionPhysicsReferenceSource.MISTRAL_AI:
+    case MotionPhysicsReferenceSource.MANUAL_ENTRY:
+      return MotionPhysicsEvidenceTier.ESTIMATED;
+    case MotionPhysicsReferenceSource.ONBOARDING_ACTIVATION:
+    case MotionPhysicsReferenceSource.REGISTRATION_CERTIFICATE:
+    case MotionPhysicsReferenceSource.MANUFACTURER_VERIFIED:
+      return MotionPhysicsEvidenceTier.CONFIRMED;
+    case MotionPhysicsReferenceSource.OPERATOR_CONFIRMED:
+      return null;
+    default:
+      return MotionPhysicsEvidenceTier.ESTIMATED;
+  }
 }

@@ -60,6 +60,10 @@ export function evaluateMotionPhysicsReferenceCreate(input: {
     reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.VERIFY_NOT_ALLOWED);
   }
 
+  if (input.proposedSource === MotionPhysicsReferenceSource.OPERATOR_CONFIRMED) {
+    reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN);
+  }
+
   return { ok: reasonCodes.length === 0, reasonCodes };
 }
 

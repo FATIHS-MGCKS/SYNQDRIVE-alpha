@@ -98,4 +98,14 @@ describe('motion-physics-reference.policy', () => {
     });
     expect(result.ok).toBe(true);
   });
+
+  it('rejects OPERATOR_CONFIRMED source on create (implicit confirm)', () => {
+    const result = evaluateMotionPhysicsReferenceCreate({
+      payload: { curbMassKg: 1800 },
+      proposedTier: MotionPhysicsEvidenceTier.CONFIRMED,
+      proposedSource: MotionPhysicsReferenceSource.OPERATOR_CONFIRMED,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reasonCodes).toContain('IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN');
+  });
 });

@@ -19,6 +19,7 @@ import {
 import {
   MOTION_PHYSICS_POLICY_REASONS,
   MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS,
+  resolveMotionPhysicsEvidenceTierForCreate,
 } from './motion-physics-reference.domain';
 import type { MotionPhysicsReferenceAuditEntry } from './motion-physics-reference.repository';
 import type { MotionPhysicsIdentityFingerprint } from './motion-physics-reference.domain';
@@ -72,10 +73,13 @@ export class VehicleMotionPhysicsReferenceService {
     });
 
     const active = await this.repository.findActiveForVehicle({ organizationId, vehicleId });
-    const proposedTier =
-      body.source === MotionPhysicsReferenceSource.MISTRAL_AI
-        ? MotionPhysicsEvidenceTier.ESTIMATED
-        : MotionPhysicsEvidenceTier.CONFIRMED;
+    const proposedTier = resolveMotionPhysicsEvidenceTierForCreate(body.source);
+    if (proposedTier == null) {
+      throw new BadRequestException({
+        message: 'Motion physics reference validation failed',
+        reasonCodes: [MOTION_PHYSICS_POLICY_REASONS.IMPLICIT_OPERATOR_CONFIRM_FORBIDDEN],
+      });
+    }
 
     const policy = evaluateMotionPhysicsReferenceCreate({
       payload: body,

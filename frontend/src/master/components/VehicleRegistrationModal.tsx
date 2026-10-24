@@ -10,6 +10,12 @@ import {
   shouldApplyAiSpecToEmptyField,
 } from '../connected-vehicles/ai-spec-field-merge.util';
 import {
+  hasMotionPhysicsFormValues,
+  motionPhysicsReferenceSourceForSave,
+  shouldSyncMotionPhysicsReferenceOnSave,
+  type MotionPhysicsPendingCreateSource,
+} from '../connected-vehicles/motion-physics-reference-sync.util';
+import {
   ExteriorImagesEditor,
   flushBufferedExteriorImages,
   type ExteriorImageBufferEntry,
@@ -99,6 +105,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   >(null);
   const [motionPhysicsConfirming, setMotionPhysicsConfirming] = useState(false);
   const [motionPhysicsSyncError, setMotionPhysicsSyncError] = useState('');
+  const motionPhysicsPendingCreateSourceRef = useRef<MotionPhysicsPendingCreateSource>(null);
   const [idleRpm, setIdleRpm] = useState('');
   const [maxRpm, setMaxRpm] = useState('');
   const [brakeForceDistribution, setBrakeForceDistribution] = useState('');
@@ -438,14 +445,27 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     maybeSetIfEmpty(() => idleRpmRef.current, setIdleRpm, specs.idleRpm);
     maybeSetIfEmpty(() => maxRpmRef.current, setMaxRpm, specs.maxRpm);
     if (!motionLocked) {
-      maybeSetIfEmpty(() => curbWeightRef.current, setCurbWeight, specs.curbWeightKg ?? specs.curbWeight);
-      maybeSetIfEmpty(() => systemMotorPowerKwRef.current, setSystemMotorPowerKw, specs.systemMotorPowerKw);
-      maybeSetIfEmpty(() => accel0To100SRef.current, setAccel0To100S, specs.accel0To100S);
-      maybeSetIfEmpty(
+      let appliedMotionFromAi = false;
+      const applyMotion = (
+        current: () => string,
+        setter: (v: string) => void,
+        v: string | number | null | undefined,
+      ) => {
+        if (!shouldApplyAiSpecToEmptyField(current(), v)) return;
+        setter(str(v as string | number));
+        appliedMotionFromAi = true;
+      };
+      applyMotion(() => curbWeightRef.current, setCurbWeight, specs.curbWeightKg ?? specs.curbWeight);
+      applyMotion(() => systemMotorPowerKwRef.current, setSystemMotorPowerKw, specs.systemMotorPowerKw);
+      applyMotion(() => accel0To100SRef.current, setAccel0To100S, specs.accel0To100S);
+      applyMotion(
         () => motionPhysicsVariantAssumptionRef.current,
         setMotionPhysicsVariantAssumption,
         specs.variantAssumption,
       );
+      if (appliedMotionFromAi) {
+        motionPhysicsPendingCreateSourceRef.current = 'MISTRAL_AI';
+      }
     }
     maybeSetIfEmpty(() => drivetrainRef.current, setDrivetrain, specs.drivetrain);
     maybeSetIfEmpty(() => brakeForceDistributionRef.current, setBrakeForceDistribution, specs.brakeForceDistribution);
@@ -570,6 +590,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     if (!isOpen || !isEditMode || !existingVehicle?.id || !organizationId) {
       setMotionPhysicsReferenceId(null);
       setMotionPhysicsEvidenceTier(null);
+      motionPhysicsPendingCreateSourceRef.current = null;
       return;
     }
     api.vehicles.motionPhysicsReference
@@ -606,22 +627,38 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     }
   };
 
-  const syncLegacyMotionPhysicsReference = async (vehicleId: string, orgId: string) => {
-    if (motionPhysicsEvidenceTier === 'VERIFIED' || motionPhysicsEvidenceTier === 'CONFIRMED') return;
-    if (motionPhysicsReferenceId && motionPhysicsEvidenceTier === 'ESTIMATED') return;
+  const syncMotionPhysicsReferenceAfterSave = async (vehicleId: string, orgId: string) => {
+    const hasMotionValues = hasMotionPhysicsFormValues({
+      curbWeight,
+      systemMotorPowerKw,
+      accel0To100S,
+    });
+    if (
+      !shouldSyncMotionPhysicsReferenceOnSave({
+        evidenceTier: motionPhysicsEvidenceTier,
+        referenceId: motionPhysicsReferenceId,
+        pendingCreateSource: motionPhysicsPendingCreateSourceRef.current,
+        hasMotionValues,
+      })
+    ) {
+      return;
+    }
+    const source = motionPhysicsReferenceSourceForSave(motionPhysicsPendingCreateSourceRef.current);
+    if (!source) return;
+
     const curb = curbWeight.trim() ? Number(curbWeight.replace(/[^\d.-]/g, '')) : null;
     const power = systemMotorPowerKw.trim() ? Number(systemMotorPowerKw.replace(',', '.')) : null;
     const accel = accel0To100S.trim() ? Number(accel0To100S.replace(',', '.')) : null;
-    if (curb == null && power == null && accel == null) return;
     const created = await api.vehicles.motionPhysicsReference.create(orgId, vehicleId, {
       curbMassKg: Number.isFinite(curb!) ? curb : null,
       systemMotorPowerKw: Number.isFinite(power!) ? power : null,
       accel0To100S: Number.isFinite(accel!) ? accel : null,
       variantAssumption: motionPhysicsVariantAssumption.trim() || null,
-      source: 'OPERATOR_CONFIRMED',
+      source,
     });
     setMotionPhysicsReferenceId(created.id);
     setMotionPhysicsEvidenceTier(created.evidenceTier);
+    motionPhysicsPendingCreateSourceRef.current = null;
     setMotionPhysicsSyncError('');
   };
 
@@ -789,7 +826,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         await Promise.resolve(onUpdate(rv));
         if (organizationId && rv.id) {
           try {
-            await syncLegacyMotionPhysicsReference(rv.id, organizationId);
+            await syncMotionPhysicsReferenceAfterSave(rv.id, organizationId);
           } catch {
             setMotionPhysicsSyncError(t('master.motionPhysics.backfillError'));
             return;
