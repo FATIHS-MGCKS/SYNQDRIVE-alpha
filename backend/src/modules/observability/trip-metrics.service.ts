@@ -72,6 +72,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly apdShadowInformativeRealPollTotal: Counter<string>;
   readonly apdShadowSkippedInformativePollTotal: Counter<string>;
   readonly apdShadowLegacyTripEvidenceExclusionTotal: Counter<string>;
+  readonly apdShadowVsiLvAvailabilityTotal: Counter<string>;
+  readonly apdShadowVsiLvAvailabilityCadenceParityTotal: Counter<string>;
+  readonly apdShadowVsiLvAvailabilityFailureTotal: Counter<string>;
   readonly apdShadowProfileInvalidatedTotal: Counter<string>;
   readonly apdShadowProfileRecoveredTotal: Counter<string>;
   readonly apdShadowFailureTotal: Counter<string>;
@@ -630,6 +633,26 @@ export class TripMetricsService implements OnModuleInit {
     this.apdShadowLegacyTripEvidenceExclusionTotal = new Counter({
       name: 'synqdrive_apd_shadow_legacy_trip_evidence_exclusion_total',
       help: 'APD shadow reconciliation relieved by frozen legacy trip evidence exclusion',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowVsiLvAvailabilityTotal = new Counter({
+      name: 'synqdrive_apd_shadow_vsi_lv_availability_total',
+      help: 'Parallel VSI→APDS shadow LV availability classification (does not change B2/B4 decisions)',
+      labelNames: ['classification'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowVsiLvAvailabilityCadenceParityTotal = new Counter({
+      name: 'synqdrive_apd_shadow_vsi_lv_availability_cadence_parity_total',
+      help: 'Shadow decisions where LV signal availability limits cadence interpretation vs baseline INSUFFICIENT_RECENT_EVIDENCE',
+      registers: [this.registry],
+    });
+
+    this.apdShadowVsiLvAvailabilityFailureTotal = new Counter({
+      name: 'synqdrive_apd_shadow_vsi_lv_availability_failure_total',
+      help: 'Parallel VSI LV availability loader/projection failures (B2/B4 baseline continues)',
       labelNames: ['reason'],
       registers: [this.registry],
     });
