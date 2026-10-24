@@ -11,4 +11,7 @@ export const masterMotionPhysicsNl = {
   'master.motionPhysics.confirmError': 'Referentie kon niet worden bevestigd',
   'master.motionPhysics.backfillError':
     'Voertuig opgeslagen, maar de bewegingsfysiek-referentie kon niet worden opgeslagen. Corrigeer de waarden en sla opnieuw op.',
+  'master.motionPhysics.placeholder.systemMotorPowerKw': 'bijv. 150',
+  'master.motionPhysics.placeholder.accel0To100S': 'bijv. 5,2',
+  'master.motionPhysics.placeholder.variantAssumption': 'bijv. basis RWD',
 };

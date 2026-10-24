@@ -11,4 +11,7 @@ export const masterMotionPhysicsDe = {
   'master.motionPhysics.confirmError': 'Referenz konnte nicht bestätigt werden',
   'master.motionPhysics.backfillError':
     'Fahrzeug gespeichert, aber die Fahrphysik-Referenz konnte nicht gespeichert werden. Werte korrigieren und erneut speichern.',
+  'master.motionPhysics.placeholder.systemMotorPowerKw': 'z. B. 150',
+  'master.motionPhysics.placeholder.accel0To100S': 'z. B. 5,2',
+  'master.motionPhysics.placeholder.variantAssumption': 'z. B. Basis RWD',
 };

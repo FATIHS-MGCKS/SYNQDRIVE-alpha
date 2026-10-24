@@ -11,4 +11,7 @@ export const masterMotionPhysicsTr = {
   'master.motionPhysics.confirmError': 'Referans onaylanamadı',
   'master.motionPhysics.backfillError':
     'Araç kaydedildi ancak hareket fiziği referansı kaydedilemedi. Değerleri düzeltip yeniden kaydedin.',
+  'master.motionPhysics.placeholder.systemMotorPowerKw': 'örn. 150',
+  'master.motionPhysics.placeholder.accel0To100S': 'örn. 5,2',
+  'master.motionPhysics.placeholder.variantAssumption': 'örn. temel RWD',
 };

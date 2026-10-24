@@ -1153,15 +1153,15 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>
                     <label className={labelClass}>{t('master.motionPhysics.systemMotorPowerKw')} {aiTag}</label>
-                    <input value={systemMotorPowerKw} onChange={e => setSystemMotorPowerKw(e.target.value)} className={inputClass} placeholder="e.g. 150" />
+                    <input value={systemMotorPowerKw} onChange={e => setSystemMotorPowerKw(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.systemMotorPowerKw')} />
                   </div>
                   <div>
                     <label className={labelClass}>{t('master.motionPhysics.accel0To100S')} {aiTag}</label>
-                    <input value={accel0To100S} onChange={e => setAccel0To100S(e.target.value)} className={inputClass} placeholder="e.g. 5.2" />
+                    <input value={accel0To100S} onChange={e => setAccel0To100S(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.accel0To100S')} />
                   </div>
                   <div className="col-span-2 lg:col-span-1">
                     <label className={labelClass}>{t('master.motionPhysics.variantAssumption')} {aiTag}</label>
-                    <input value={motionPhysicsVariantAssumption} onChange={e => setMotionPhysicsVariantAssumption(e.target.value)} className={inputClass} placeholder="e.g. base RWD" />
+                    <input value={motionPhysicsVariantAssumption} onChange={e => setMotionPhysicsVariantAssumption(e.target.value)} className={inputClass} placeholder={t('master.motionPhysics.placeholder.variantAssumption')} />
                   </div>
                 </div>
               </div>

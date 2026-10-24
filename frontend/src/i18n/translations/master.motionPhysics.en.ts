@@ -11,4 +11,7 @@ export const masterMotionPhysicsEn = {
   'master.motionPhysics.confirmError': 'Could not confirm motion reference',
   'master.motionPhysics.backfillError':
     'Vehicle saved, but motion physics reference could not be stored. Fix the values and save again.',
+  'master.motionPhysics.placeholder.systemMotorPowerKw': 'e.g. 150',
+  'master.motionPhysics.placeholder.accel0To100S': 'e.g. 5.2',
+  'master.motionPhysics.placeholder.variantAssumption': 'e.g. base RWD',
 };

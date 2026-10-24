@@ -11,4 +11,7 @@ export const masterMotionPhysicsCs = {
   'master.motionPhysics.confirmError': 'Referenci se nepodařilo potvrdit',
   'master.motionPhysics.backfillError':
     'Vozidlo uloženo, ale referenční data pohybové fyziky se nepodařilo uložit. Opravte hodnoty a uložte znovu.',
+  'master.motionPhysics.placeholder.systemMotorPowerKw': 'např. 150',
+  'master.motionPhysics.placeholder.accel0To100S': 'např. 5,2',
+  'master.motionPhysics.placeholder.variantAssumption': 'např. základní RWD',
 };
