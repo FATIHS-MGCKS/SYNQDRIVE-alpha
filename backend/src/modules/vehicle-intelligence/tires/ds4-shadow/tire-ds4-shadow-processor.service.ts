@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
-import tireDs4ShadowConfig from '@config/tire-ds4-shadow.config';
+import tireDs4ShadowConfig, { isTireDs4ShadowVehicleAllowlisted } from '@config/tire-ds4-shadow.config';
 import { DiV0MotionCoreShadowTripMapReadService } from '../../driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service';
 import { TIRE_DS4_SHADOW_ADAPTER_VERSION } from './tire-ds4-shadow-adapter.version';
 import {
@@ -37,6 +37,10 @@ export class TireDs4ShadowProcessorService {
   async processJob(data: TireDs4ShadowJobData): Promise<TireDs4ShadowProcessOutcome> {
     if (!this.config.enabled) {
       return { status: 'skipped', reason: 'feature_disabled' };
+    }
+
+    if (!isTireDs4ShadowVehicleAllowlisted(this.config.vehicleAllowlist, data.vehicleId)) {
+      return { status: 'skipped', reason: 'vehicle_not_allowlisted' };
     }
 
     const ledger = await this.prisma.tireTripUsageLedger.findFirst({

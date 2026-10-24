@@ -155,6 +155,7 @@ export class TireDs4ShadowRepository {
   async findCatchupCandidates(
     adapterVersion: string,
     limit: number,
+    allowedVehicleIds: readonly string[],
   ): Promise<
     Array<{
       tireTripUsageLedgerId: string;
@@ -164,6 +165,10 @@ export class TireDs4ShadowRepository {
       reason: 'missing_shadow' | 'newer_ds4_run';
     }>
   > {
+    if (allowedVehicleIds.length === 0) {
+      return [];
+    }
+
     const rows = await this.prisma.$queryRaw<
       Array<{
         tire_trip_usage_ledger_id: string;
@@ -200,6 +205,7 @@ export class TireDs4ShadowRepository {
        AND mat.di_v0_motion_core_shadow_run_id = ls.run_id
       WHERE l.invalidated_at IS NULL
         AND mat.id IS NULL
+        AND l.vehicle_id = ANY(${allowedVehicleIds}::text[])
       ORDER BY l.processed_at ASC
       LIMIT ${limit}`;
 

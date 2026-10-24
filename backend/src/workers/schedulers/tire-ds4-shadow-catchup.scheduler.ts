@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import tireDs4ShadowConfig from '@config/tire-ds4-shadow.config';
+import { tireDs4ShadowAllowedVehicleIdsForCatchupV1 } from '@modules/vehicle-intelligence/tires/ds4-shadow/tire-ds4-shadow-vehicle-allowlist.v1';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { TireDs4ShadowProducerService } from '@modules/vehicle-intelligence/tires/ds4-shadow/tire-ds4-shadow-producer.service';
@@ -46,9 +47,17 @@ export class TireDs4ShadowCatchupScheduler implements OnModuleInit, OnModuleDest
 
     this.inProgress = true;
     try {
+      const allowedVehicleIds = tireDs4ShadowAllowedVehicleIdsForCatchupV1(
+        this.config.vehicleAllowlist,
+      );
+      if (allowedVehicleIds == null) {
+        return;
+      }
+
       const missing = await this.repository.findCatchupCandidates(
         TIRE_DS4_SHADOW_ADAPTER_VERSION,
         this.config.catchupBatchSize,
+        allowedVehicleIds,
       );
       for (const row of missing) {
         await this.producer.enqueueMaterialize({

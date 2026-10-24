@@ -8,7 +8,8 @@ import {
 describe('TireDs4ShadowProcessorService', () => {
   const config = {
     enabled: true,
-    catchupEnabled: true,
+    catchupEnabled: false,
+    vehicleAllowlist: { kind: 'allow_set' as const, vehicleIds: new Set(['veh-1']) },
     catchupIntervalMs: 300_000,
     catchupBatchSize: 50,
     maxAttempts: 3,
@@ -31,6 +32,34 @@ describe('TireDs4ShadowProcessorService', () => {
       ...overrides,
     };
   }
+
+  it('skips non-allowlisted vehicles before ledger read', async () => {
+    const prisma = {
+      tireTripUsageLedger: { findFirst: jest.fn() },
+      diV0MotionCoreShadowRunV1: { findFirst: jest.fn() },
+    };
+    const svc = new TireDs4ShadowProcessorService(
+      prisma as never,
+      { readForTrip: jest.fn() } as never,
+      makeRepository() as never,
+      { enqueueMaterialize: jest.fn(), computeRetryDelayMs: jest.fn() } as never,
+      {
+        ...config,
+        vehicleAllowlist: { kind: 'deny_all' as const, reason: 'missing_or_empty' as const },
+      } as never,
+    );
+
+    const outcome = await svc.processJob({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      tireTripUsageLedgerId: 'ledger-1',
+      attempt: 0,
+    });
+
+    expect(outcome).toEqual({ status: 'skipped', reason: 'vehicle_not_allowlisted' });
+    expect(prisma.tireTripUsageLedger.findFirst).not.toHaveBeenCalled();
+  });
 
   it('defers when DS4 read is PENDING and re-enqueues with backoff', async () => {
     const prisma = {

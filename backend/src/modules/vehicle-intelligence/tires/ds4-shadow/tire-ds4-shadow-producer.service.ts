@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigType } from '@nestjs/config';
-import tireDs4ShadowConfig from '@config/tire-ds4-shadow.config';
+import tireDs4ShadowConfig, { isTireDs4ShadowVehicleAllowlisted } from '@config/tire-ds4-shadow.config';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
@@ -43,6 +43,9 @@ export class TireDs4ShadowProducerService {
 
   async enqueueMaterialize(input: TireDs4ShadowEnqueueInput): Promise<string | null> {
     if (!this.config.enabled) return null;
+    if (!isTireDs4ShadowVehicleAllowlisted(this.config.vehicleAllowlist, input.vehicleId)) {
+      return null;
+    }
     if (!canEnqueueQueue(this.logger, 'tire-ds4-shadow')) return null;
 
     const attempt = input.attempt ?? 0;
