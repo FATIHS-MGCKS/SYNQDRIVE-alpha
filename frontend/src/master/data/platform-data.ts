@@ -162,6 +162,9 @@ export interface RegisteredVehicle {
   brakeForceDistribution: string;
   frontToRearWeightDistribution: string;
   curbWeight: string;
+  systemMotorPowerKw?: string;
+  accel0To100S?: string;
+  motionPhysicsVariantAssumption?: string;
   serviceIntervals: string;
   // Service Intervals
   serviceIntervalManufacturerKm: string;

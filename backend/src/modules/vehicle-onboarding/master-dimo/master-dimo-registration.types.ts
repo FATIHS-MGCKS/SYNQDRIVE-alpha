@@ -14,6 +14,9 @@ export interface MasterDimoRegistrationInput {
     /** Master form drivetrain label (mapped to `vehicles.drive_type`). */
     drivetrain?: string | null;
     curbWeightKg?: number | null;
+    systemMotorPowerKw?: number | null;
+    accel0To100S?: number | null;
+    motionPhysicsVariantAssumption?: string | null;
     idleRpm?: number | null;
     maxRpm?: number | null;
     brakeForceFrontPercent?: number | null;

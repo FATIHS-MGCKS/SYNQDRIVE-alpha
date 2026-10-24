@@ -10,6 +10,7 @@ import { assertExactObjectKeys } from './capture-strict-keys.util';
 import type {
   VehicleOnboardingBrakeReferenceDraft,
   VehicleOnboardingHvBatteryReferenceDraft,
+  VehicleOnboardingMotionPhysicsReferenceDraft,
   VehicleOnboardingTireInstalledConfigDraft,
   VehicleOnboardingTireReferenceSpecDraft,
   VehicleTechnicalBaselineDraftV2,
@@ -342,6 +343,53 @@ export function strictParseHvBatteryReference(
   };
 }
 
+const MOTION_PHYSICS_ALLOWED_KEYS = [
+  'curbMassKg',
+  'systemMotorPowerKw',
+  'systemPowerDefinition',
+  'accel0To100S',
+  'variantAssumption',
+  'evidenceTier',
+  'source',
+] as const;
+
+export function strictParseMotionPhysicsReference(
+  raw: unknown,
+): StrictSectionParse<VehicleOnboardingMotionPhysicsReferenceDraft> {
+  if (raw === undefined || raw === null) return { kind: 'absent' };
+  if (!isPlainObject(raw)) return { kind: 'invalid' };
+  try {
+    assertExactObjectKeys(raw, MOTION_PHYSICS_ALLOWED_KEYS, 'motionPhysicsReference');
+  } catch {
+    return { kind: 'invalid' };
+  }
+  const tier = optionalString(raw.evidenceTier);
+  if (tier != null && tier !== 'ESTIMATED' && tier !== 'CONFIRMED') {
+    return { kind: 'invalid' };
+  }
+  const curb = optionalFinitePositive(raw.curbMassKg);
+  const power = optionalFinitePositive(raw.systemMotorPowerKw);
+  const accel = optionalFinitePositive(raw.accel0To100S);
+  if (curb === undefined || power === undefined || accel === undefined) {
+    return { kind: 'invalid' };
+  }
+  if (curb == null && power == null && accel == null) {
+    return { kind: 'absent' };
+  }
+  return {
+    kind: 'valid',
+    value: {
+      curbMassKg: curb,
+      systemMotorPowerKw: power,
+      systemPowerDefinition: optionalString(raw.systemPowerDefinition),
+      accel0To100S: accel,
+      variantAssumption: optionalString(raw.variantAssumption),
+      evidenceTier: (tier as 'ESTIMATED' | 'CONFIRMED') ?? 'ESTIMATED',
+      source: optionalString(raw.source),
+    },
+  };
+}
+
 export function buildTechnicalBaselineDraftV2FromRaw(raw: Record<string, unknown>): {
   draft: VehicleTechnicalBaselineDraftV2;
   hasInvalidSection: boolean;
@@ -350,12 +398,14 @@ export function buildTechnicalBaselineDraftV2FromRaw(raw: Record<string, unknown
   const tireInstalledConfig = strictParseTireInstalledConfig(raw.tireInstalledConfig);
   const brakeReference = strictParseBrakeReference(raw.brakeReference);
   const hvBatteryReference = strictParseHvBatteryReference(raw.hvBatteryReference);
+  const motionPhysicsReference = strictParseMotionPhysicsReference(raw.motionPhysicsReference);
 
   const hasInvalidSection =
     tireReferenceSpec.kind === 'invalid' ||
     tireInstalledConfig.kind === 'invalid' ||
     brakeReference.kind === 'invalid' ||
-    hvBatteryReference.kind === 'invalid';
+    hvBatteryReference.kind === 'invalid' ||
+    motionPhysicsReference.kind === 'invalid';
 
   return {
     hasInvalidSection,
@@ -366,6 +416,8 @@ export function buildTechnicalBaselineDraftV2FromRaw(raw: Record<string, unknown
         tireInstalledConfig.kind === 'valid' ? tireInstalledConfig.value : null,
       brakeReference: brakeReference.kind === 'valid' ? brakeReference.value : null,
       hvBatteryReference: hvBatteryReference.kind === 'valid' ? hvBatteryReference.value : null,
+      motionPhysicsReference:
+        motionPhysicsReference.kind === 'valid' ? motionPhysicsReference.value : null,
     },
   };
 }

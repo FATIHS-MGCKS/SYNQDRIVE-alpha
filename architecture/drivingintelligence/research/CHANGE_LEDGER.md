@@ -2278,3 +2278,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `research/driving-intelligence/VEHICLE_PHYSICS_PHASE2_IMPLEMENTATION_PLAN.md` (remediated); VO pointer `architecture/vehicle-onboarding/research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md`; VO-GAP-016 |
 | WHY | Single-path motion reference via Mistral AI-Spec + `VehicleMotionPhysicsReference` (HV pattern); informative DI shadow only; Universal P2 V0.2 fallback; supersedes doc-only PR #2158 on `cursor/exp021-ev-ground-truth-7d78` |
 | NON_EFFECTS | No runtime/DI detector/C4/C5.1/FSM changes; no mandatory external VIN decoder; Phase 2 does not mark events `ARTEFACT_SUSPECT` from derived vehicle physics |
+
+### Vehicle Physics Phase A — VO/Master implementation (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Prisma `VehicleMotionPhysicsReference` + change log; motion-physics-reference module; Mistral `systemMotorPowerKw` / `accel0To100S` / `variantAssumption` + plausibility; AI-Spec MASTER_ADMIN auth; VO baseline V2 materialization; Master modal merge-safe `applySpecs` + legacy reference API |
+| WHY | Phase A of Fable-remediated plan (#2159): one stammdaten path without DI behavior changes |
+| NON_EFFECTS | No DI shadow/resolver/bundle changes; no production deploy; VERIFIED requires document validation endpoint |

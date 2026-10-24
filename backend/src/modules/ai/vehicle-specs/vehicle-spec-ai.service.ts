@@ -12,6 +12,7 @@ import {
   parseVehicleSpecJson,
   resolveVehicleSpecsScope,
 } from './vehicle-spec-ai.schema.util';
+import { applyVehicleSpecMotionPlausibility } from './vehicle-spec-ai.plausibility.util';
 
 const CONFIG_ERROR =
   'AI provider not configured (set MISTRAL_API_KEY and AI_PROVIDER=mistral)';
@@ -82,7 +83,8 @@ export class VehicleSpecAiService {
       };
       steps.push(parseStep);
 
-      const specs = parseVehicleSpecJson(result.data);
+      const parsed = parseVehicleSpecJson(result.data);
+      const { specs } = applyVehicleSpecMotionPlausibility(parsed, vehicle);
       const hasData = Object.values(specs).some((v) => v !== null);
 
       if (!hasData) {
@@ -148,7 +150,8 @@ export class VehicleSpecAiService {
       emit('step', { step: 'Fahrzeugdaten abfragen', status: 'done', detail: 'Antwort empfangen' });
       emit('step', { step: 'Daten verarbeiten', status: 'working' });
 
-      const specs = parseVehicleSpecJson(result.data);
+      const parsed = parseVehicleSpecJson(result.data);
+      const { specs } = applyVehicleSpecMotionPlausibility(parsed, vehicle);
       const hasData = Object.values(specs).some((v) => v !== null);
 
       if (hasData) {

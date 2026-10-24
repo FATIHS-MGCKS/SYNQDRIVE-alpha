@@ -91,6 +91,25 @@ export function buildTechnicalBaselineDraftFromMasterManualSpecs(
     }
   }
 
+  const extra = input.extraData ?? {};
+  const curbMassKg = (extra as { curbWeightKg?: number }).curbWeightKg;
+  const systemMotorPowerKw = (extra as { systemMotorPowerKw?: number }).systemMotorPowerKw;
+  const accel0To100S = (extra as { accel0To100S?: number }).accel0To100S;
+  const variantAssumption = (extra as { motionPhysicsVariantAssumption?: string })
+    .motionPhysicsVariantAssumption;
+  if (curbMassKg != null || systemMotorPowerKw != null || accel0To100S != null) {
+    draft.motionPhysicsReference = {
+      curbMassKg: curbMassKg ?? null,
+      systemMotorPowerKw: systemMotorPowerKw ?? null,
+      systemPowerDefinition:
+        systemMotorPowerKw != null ? 'OEM_RATED_SYSTEM_KW_ESTIMATED' : null,
+      accel0To100S: accel0To100S ?? null,
+      variantAssumption: variantAssumption ?? null,
+      evidenceTier: 'ESTIMATED',
+      source: 'ONBOARDING_ACTIVATION',
+    };
+  }
+
   return draft;
 }
 

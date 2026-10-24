@@ -32,6 +32,9 @@ export const VEHICLE_SPEC_FIELD_KEYS = [
   'idleRpm',
   'maxRpm',
   'curbWeightKg',
+  'systemMotorPowerKw',
+  'accel0To100S',
+  'variantAssumption',
   'drivetrain',
   'frontToRearWeightDistribution',
   'manufacturerServiceIntervalKm',
@@ -74,6 +77,7 @@ export function buildVehicleSpecJsonSchema(): Record<string, unknown> {
       key.includes('Cc') ||
       key.includes('Rpm') ||
       key.includes('Kg') ||
+      key === 'accel0To100S' ||
       key.includes('Months') ||
       key === 'brakeForceDistribution'
     ) {
@@ -144,7 +148,11 @@ Rules:
 - lvBattery* = low-voltage auxiliary 12V battery
 - hvBatteryPresent=true only for HEV/PHEV/EV, false for pure ICE
 - for ICE vehicles, set all hvBattery* to null and hvBatteryPresent=false
-- for pure EV, engineDisplacementCc and cylinderCount must be null`;
+- for pure EV, engineDisplacementCc and cylinderCount must be null
+- systemMotorPowerKw: OEM rated system/motor power in kW (not wheel power); null if unknown
+- accel0To100S: published 0-100 km/h time in seconds; null if unknown
+- variantAssumption: short text when variant/trim is uncertain but other fields are filled; null only if all motion fields are null
+- Zulassungsbescheinigung field P.2 must not be treated as EV peak traction power without explicit variant context`;
 
   return { system, user };
 }

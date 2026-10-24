@@ -60,6 +60,7 @@ import { tripsM7aMapEN } from './trips-m7a-map.en';
 import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
 import { batteryV2HvInspectionEN } from './battery-v2-hv-inspection.en';
 import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
+import { masterMotionPhysicsEn } from './master.motionPhysics.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5955,6 +5956,7 @@ export const en = {
   ...tripsM7aMapEN,
   ...masterPlatformOpsDiS4En,
   ...masterPhysicalDeviceInventoryEn,
+  ...masterMotionPhysicsEn,
   ...batteryV2HvInspectionEN,
 } as const;
 

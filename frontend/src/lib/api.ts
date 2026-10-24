@@ -456,8 +456,33 @@ export type AiSpecsStreamEvent =
  * Connect to the SSE ai-specs-stream endpoint.
  * Returns an AbortController the caller can use to cancel.
  */
+export interface VehicleMotionPhysicsReferenceDto {
+  id: string;
+  organizationId: string;
+  vehicleId: string;
+  curbMassKg: number | null;
+  systemMotorPowerKw: number | null;
+  systemPowerDefinition: string | null;
+  accel0To100S: number | null;
+  variantAssumption: string | null;
+  evidenceTier: 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED';
+  source: string;
+  isActive: boolean;
+}
+
 export function streamAiSpecs(
-  params: { vin?: string; tokenId?: string; dimoVehicleId?: string; make?: string; model?: string; year?: string; powertrainType?: string; fuelType?: string },
+  params: {
+    vin?: string;
+    tokenId?: string;
+    dimoVehicleId?: string;
+    make?: string;
+    model?: string;
+    year?: string;
+    powertrainType?: string;
+    fuelType?: string;
+    organizationId?: string;
+    vehicleId?: string;
+  },
   onEvent: (evt: AiSpecsStreamEvent) => void,
   onDone: () => void,
 ): AbortController {
@@ -4177,6 +4202,33 @@ export const api = {
       treadFL?: number | null; treadFR?: number | null;
       treadBL?: number | null; treadBR?: number | null;
     }) => put<any>(`/organizations/${orgId}/vehicles/${vehicleId}/tires`, data),
+    motionPhysicsReference: {
+      getActive: (orgId: string, vehicleId: string) =>
+        get<VehicleMotionPhysicsReferenceDto | null>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/motion-physics-reference`,
+        ),
+      create: (
+        orgId: string,
+        vehicleId: string,
+        body: {
+          curbMassKg?: number | null;
+          systemMotorPowerKw?: number | null;
+          accel0To100S?: number | null;
+          variantAssumption?: string | null;
+          source: string;
+          notes?: string | null;
+        },
+      ) =>
+        post<VehicleMotionPhysicsReferenceDto>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/motion-physics-reference`,
+          body,
+        ),
+      confirm: (orgId: string, vehicleId: string, referenceId: string, body?: { notes?: string }) =>
+        post<VehicleMotionPhysicsReferenceDto>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/motion-physics-reference/${referenceId}/confirm`,
+          body ?? {},
+        ),
+    },
     telemetry: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}/telemetry`),
     liveGps: (orgId: string, id: string) => get<{
       latitude: number | null;

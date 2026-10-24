@@ -30,7 +30,7 @@ VO-0B gap register · **VO-1 disposition** (2026-09-30). IDs use **`VO-GAP-*`** 
 | **VO-GAP-013** | Non-resumable onboarding | CONFIRMED | **PARTIAL** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | Idempotent resume for **Master DIMO** completed cases; HM/manual + re-onboard workflow still open |
 | **VO-GAP-014** | Implicit candidate model | CONFIRMED | **STILL_OPEN** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | Projection + case VO-Q-001 |
 | **VO-GAP-015** | Async capability vs readiness | CONFIRMED | **STILL_OPEN** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | Readiness contract VO-Q-010/012 |
-| **VO-GAP-016** | Motion physics reference for DI shadow (informative only) | CONFIRMED | **STILL_OPEN** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | No `VehicleMotionPhysicsReference` table yet; AI-Spec lacks `systemMotorPowerKw` / `accel0To100S`; post-activation path for legacy fleet — [VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md](../research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md) (Fable-remediated plan on `main`) |
+| **VO-GAP-016** | Motion physics reference for DI shadow (informative only) | CONFIRMED | **PARTIALLY_CLOSED** | **PHASE_A_SHIPPED** | Phase A: `VehicleMotionPhysicsReference` + Mistral fields + VO activation materialization + Master legacy API path; Phase B DI shadow still open — [VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md](../research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md) |
 
 **Summary:** 13 runtime **STILL_OPEN** · 3 **PARTIAL** (VO-GAP-007, 008, 013 — P2 DIMO progress only) · 12 **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** · 3 **CROSS_MODULE** · 0 falsely closed
 

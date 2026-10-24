@@ -134,6 +134,9 @@ import {
   VehicleBatteryReferenceCapacityRepository,
   VehicleBatteryReferenceCapacityService,
 } from './battery-health/reference-capacity';
+import { VehicleMotionPhysicsReferenceController } from './motion-physics-reference/vehicle-motion-physics-reference.controller';
+import { VehicleMotionPhysicsReferenceRepository } from './motion-physics-reference/motion-physics-reference.repository';
+import { VehicleMotionPhysicsReferenceService } from './motion-physics-reference/vehicle-motion-physics-reference.service';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
@@ -347,7 +350,7 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, HvMeasurementQualityController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, VehicleMotionPhysicsReferenceController, HvCapacityShadowEvaluationController, HvMeasurementQualityController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
   providers: [
     VsiCapabilityResolverRepository,
     VsiApdsP5ReadonlyService,
@@ -478,6 +481,8 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
     HvMeasurementQualityService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
+    VehicleMotionPhysicsReferenceRepository,
+    VehicleMotionPhysicsReferenceService,
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
@@ -731,6 +736,8 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
     HvMeasurementQualityService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
+    VehicleMotionPhysicsReferenceRepository,
+    VehicleMotionPhysicsReferenceService,
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,

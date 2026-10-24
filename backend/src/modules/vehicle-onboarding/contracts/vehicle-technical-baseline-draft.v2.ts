@@ -47,10 +47,23 @@ export interface VehicleOnboardingHvBatteryReferenceDraft {
   notes?: string | null;
 }
 
+export type MotionPhysicsBaselineEvidenceTier = 'ESTIMATED' | 'CONFIRMED';
+
+export interface VehicleOnboardingMotionPhysicsReferenceDraft {
+  curbMassKg?: number | null;
+  systemMotorPowerKw?: number | null;
+  systemPowerDefinition?: string | null;
+  accel0To100S?: number | null;
+  variantAssumption?: string | null;
+  evidenceTier?: MotionPhysicsBaselineEvidenceTier | null;
+  source?: string | null;
+}
+
 export interface VehicleTechnicalBaselineDraftV2 {
   version: typeof VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2;
   tireReferenceSpec?: VehicleOnboardingTireReferenceSpecDraft | null;
   tireInstalledConfig?: VehicleOnboardingTireInstalledConfigDraft | null;
   brakeReference?: VehicleOnboardingBrakeReferenceDraft | null;
   hvBatteryReference?: VehicleOnboardingHvBatteryReferenceDraft | null;
+  motionPhysicsReference?: VehicleOnboardingMotionPhysicsReferenceDraft | null;
 }

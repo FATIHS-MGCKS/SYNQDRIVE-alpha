@@ -35,7 +35,6 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
  * Keep this list as short as possible.
  */
 const PUBLIC_PATH_PREFIXES: string[] = [
-  '/api/v1/vehicles/register/ai-specs',
   '/api/v1/vehicles/register/ai-tire-specs',
   // HM webhooks are routed under /integrations/ and guarded by their own HMAC verification
   '/api/v1/integrations/high-mobility/webhook',
