@@ -1,6 +1,6 @@
 # DS4 motion FSM gap-bridge V1 — shadow integration readiness (pre-activation)
 
-**Not activated in this workstream.** Flag remains default OFF in `di-v0-motion-core-shadow-processor.ts`.
+**Worker wiring landed in integration PR; production flag default OFF.** `DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ENABLED=false` until owner activation.
 
 ## Versioning (required before flag ON)
 
@@ -8,7 +8,7 @@
 |----------|---------|-------------------|
 | `MOTION_FSM_GAP_BRIDGE_V1_VERSION` | `MOTION_FSM_GAP_BRIDGE_V1_V1_3_1` | Must appear in `payload.contract.algorithmVersions` (or dedicated field) when bridge enabled |
 | `motionFsmVersionId(V0_4)` | Appends `+retrospectiveGapBridgeV1` | Must match persisted `algorithmVersions.fsm` |
-| `resolveMotionCoreShadowBundleVersion` | Unchanged while flag OFF | Bump bundle when FSM output contract changes |
+| `resolveMotionCoreShadowBundleVersion` | V3/V4 bundles when gap bridge effective | Distinct intent per C5.1 × gap-bridge combo |
 
 ## DI-V0 auxiliary (`STATIONARY_SUPPORTED`)
 

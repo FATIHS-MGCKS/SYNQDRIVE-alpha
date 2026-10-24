@@ -23,6 +23,14 @@ describe('di-v0-motion-core-shadow control plane', () => {
     expect(isDiV0MotionCoreShadowRunnable(cfg)).toBe(false);
   });
 
+  it('requires activation cutoff when FSM gap-bridge flag is enabled', () => {
+    expect(() =>
+      parseDiV0MotionCoreShadowControlPlaneConfig({
+        DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ENABLED: 'true',
+      }),
+    ).toThrow(/DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ACTIVATION_SINCE/);
+  });
+
   it('requires activation cutoff when C5.1 preferred speed flag is enabled', () => {
     expect(() =>
       parseDiV0MotionCoreShadowControlPlaneConfig({

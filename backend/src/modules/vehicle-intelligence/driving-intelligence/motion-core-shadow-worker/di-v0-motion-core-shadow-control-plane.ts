@@ -8,12 +8,18 @@ import {
   type DiV0S4KillEvaluation,
 } from '../s4a-foundation/di-v0-s4a-control-plane';
 import { parseC5_1ActivationSince } from './di-v0-motion-core-c5-1-admission';
+import {
+  DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ENV,
+  parseFsmGapBridgeV1ActivationSince,
+} from './di-v0-motion-core-fsm-gap-bridge-v1-admission';
 
 export const DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS = {
   enabled: 'DI_V0_MOTION_CORE_SHADOW_ENABLED',
   worker: 'DI_V0_MOTION_CORE_SHADOW_WORKER_ENABLED',
   /** When true, post-trip shadow payload uses C5.1 preferred speed (C4 retained as baseline). Default false. */
   c5_1PreferredSpeed: 'DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED',
+  /** When true, post-trip shadow uses FSM gap-bridge V1.3.1 (C4/C5.1 speed paths unchanged). Default false. */
+  fsmGapBridgeV1: DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ENV.enabled,
 } as const;
 
 export const DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS = {
@@ -27,6 +33,9 @@ export interface DiV0MotionCoreShadowControlPlaneConfig {
   c5_1PreferredSpeedEnabled: boolean;
   /** Trips completed before this instant stay on C4 V1 bundle even when C5.1 flag is on. */
   c5_1ActivationSince: Date | null;
+  fsmGapBridgeV1Enabled: boolean;
+  /** Trips completed before this instant keep V0.3 FSM bundle even when gap-bridge flag is on. */
+  fsmGapBridgeV1ActivationSince: Date | null;
   organizationAllowlist: ReadonlySet<string>;
   vehicleAllowlist: ReadonlySet<string>;
 }
@@ -41,12 +50,21 @@ export function parseDiV0MotionCoreShadowControlPlaneConfig(
       'DI_V0_MOTION_CORE_C5_1_ACTIVATION_SINCE is required when DI_V0_MOTION_CORE_C5_1_PREFERRED_SPEED_ENABLED is true',
     );
   }
+  const fsmGapBridgeV1Enabled = parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.fsmGapBridgeV1]);
+  const fsmGapBridgeV1ActivationSince = parseFsmGapBridgeV1ActivationSince(env);
+  if (fsmGapBridgeV1Enabled && !fsmGapBridgeV1ActivationSince) {
+    throw new Error(
+      `${DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ENV.activationSince} is required when ${DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_ENV.enabled} is true`,
+    );
+  }
 
   return {
     shadowEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.enabled]),
     workerEnabled: parseDiV0S4BooleanFlag(env[DI_V0_MOTION_CORE_SHADOW_ENV_FLAGS.worker]),
     c5_1PreferredSpeedEnabled,
     c5_1ActivationSince,
+    fsmGapBridgeV1Enabled,
+    fsmGapBridgeV1ActivationSince,
     organizationAllowlist: parseDiV0S4Allowlist(env[DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS.organization]),
     vehicleAllowlist: parseDiV0S4Allowlist(env[DI_V0_MOTION_CORE_SHADOW_ENV_ALLOWLISTS.vehicle]),
   };

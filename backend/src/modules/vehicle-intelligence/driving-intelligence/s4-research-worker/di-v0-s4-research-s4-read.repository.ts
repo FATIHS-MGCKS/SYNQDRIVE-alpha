@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+import type { DiV0S4PipelineManifest, DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 
 export type DiV0S4ResearchWorkItemRead = {
   status: string;
@@ -9,6 +9,7 @@ export type DiV0S4ResearchWorkItemRead = {
   sourceFamily: DiV0S4SourceFamily;
   shadowRunId: string | null;
   completedAt: Date | null;
+  pipelineVersionManifest: DiV0S4PipelineManifest;
 };
 
 export type DiV0S4ResearchEvidenceSnapshotRead = {
@@ -61,10 +62,11 @@ export class DiV0S4ResearchS4ReadRepository {
         source_family: string;
         shadow_run_id: string | null;
         completed_at: Date | null;
+        pipeline_version_manifest: DiV0S4PipelineManifest;
       }>
     >`
       SELECT status, pinned_snapshot_hash, combined_input_identity, boundary_fingerprint,
-        source_family, shadow_run_id, completed_at
+        source_family, shadow_run_id, completed_at, pipeline_version_manifest
       FROM di_v0_s4_work_items
       WHERE id = ${scope.workItemId}
         AND organization_id = ${scope.organizationId}
@@ -80,6 +82,7 @@ export class DiV0S4ResearchS4ReadRepository {
       sourceFamily: row.source_family as DiV0S4SourceFamily,
       shadowRunId: row.shadow_run_id,
       completedAt: row.completed_at,
+      pipelineVersionManifest: row.pipeline_version_manifest,
     };
   }
 

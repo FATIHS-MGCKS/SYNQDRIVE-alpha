@@ -14,6 +14,7 @@ import {
   MOTION_EVENT_V0_2_CANDIDATE_OPTIONS,
   MOTION_FSM_PARAMS_V0_2_DEV,
   MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
+  MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS,
   motionCoreSpeedC5_1AlgorithmFileSha256,
   motionEventVersionId,
   motionFsmVersionId,
@@ -41,6 +42,9 @@ import type {
 } from './di-v0-motion-core-shadow.types';
 import { mapMotionManoeuvreEventToPersisted as mapEvent } from './di-v0-motion-core-shadow.types';
 import { motionFsmSparseVehicleSpeedFromR1 } from '../r1-obd-acquisition/di-v0-r1-vehicle-speed-ds4-boundary';
+import { MOTION_FSM_GAP_BRIDGE_V1_VERSION } from '../core/kinematics/motion-fsm-gap-bridge-v1';
+import type { MotionFsmGapBridgeAuxiliary } from '../core/kinematics/motion-fsm-gap-bridge-v1';
+import type { DiV0VersionTuple } from '../core/versions';
 
 export const DI_V0_MOTION_CORE_SHADOW_DEFAULT_FSM_MODE: MotionFsmMode = 'RETROSPECTIVE';
 export const DI_V0_MOTION_CORE_SHADOW_PROCESSING_MODE: DiV0MotionCoreShadowProcessingMode =
@@ -53,6 +57,9 @@ export type DiV0MotionCoreShadowProcessInput = {
   combinedInputIdentity: string;
   computedAt?: Date;
   c5_1PreferredSpeedEnabled?: boolean;
+  fsmGapBridgeV1Enabled?: boolean;
+  gapBridgeAuxiliary?: MotionFsmGapBridgeAuxiliary;
+  gapBridgeAuxBindingVersions?: DiV0VersionTuple;
   vehiclePlausibilityClass?: C5_1VehicleClass;
 };
 
@@ -127,12 +134,19 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
     combinedInputIdentity: string;
     computedAt?: Date;
     c5_1PreferredSpeedEnabled?: boolean;
+    fsmGapBridgeV1Enabled?: boolean;
+    gapBridgeAuxiliary?: MotionFsmGapBridgeAuxiliary;
+    gapBridgeAuxBindingVersions?: DiV0VersionTuple;
     vehiclePlausibilityClass?: C5_1VehicleClass;
   },
 ): DiV0MotionCoreShadowProcessResult {
   const computedAt = meta.computedAt ?? new Date();
   const c5_1PreferredSpeedEnabled = meta.c5_1PreferredSpeedEnabled === true;
-  const bundleVersion = resolveMotionCoreShadowBundleVersion(c5_1PreferredSpeedEnabled);
+  const fsmGapBridgeV1Enabled = meta.fsmGapBridgeV1Enabled === true;
+  const bundleVersion = resolveMotionCoreShadowBundleVersion({
+    c5_1PreferredSpeedEnabled,
+    fsmGapBridgeV1Enabled,
+  });
   const kinBuckets = withImplausibleLegEndpointsQuarantined(evidence.buckets);
   const c4 = computeC4AdaptiveL3(evidence.buckets);
   const c4SpeedRows = c4.map(mapC4SpeedRow);
@@ -148,13 +162,20 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
   }
 
   const sparseArg = motionFsmSparseVehicleSpeedFromR1(evidence.sparseSpeed, evidence.sparseComparable);
+  const fsmOptions = fsmGapBridgeV1Enabled
+    ? MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS
+    : MOTION_FSM_V0_3_CANDIDATE_OPTIONS;
+  const gapBridgeAuxiliary = fsmGapBridgeV1Enabled
+    ? (meta.gapBridgeAuxiliary ?? { stationarySupportedLabels: new Set<string>() })
+    : undefined;
   const fsmLabels = runMotionFsm(
     kinBuckets,
     c4,
     DI_V0_MOTION_CORE_SHADOW_DEFAULT_FSM_MODE,
     sparseArg,
     MOTION_FSM_PARAMS_V0_2_DEV,
-    MOTION_FSM_V0_3_CANDIDATE_OPTIONS,
+    fsmOptions,
+    gapBridgeAuxiliary,
   );
   const stopEpisodes = extractMotionFsmStopEpisodes(
     0,
@@ -177,7 +198,15 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
     bundleVersion,
   });
 
-  const fsmVersion = motionFsmVersionId(MOTION_FSM_V0_3_CANDIDATE_OPTIONS);
+  const fsmVersion = motionFsmVersionId(fsmOptions);
+  const auxBinding = fsmGapBridgeV1Enabled && meta.gapBridgeAuxBindingVersions
+    ? {
+        structuralVersion: meta.gapBridgeAuxBindingVersions.structuralVersion,
+        estimatorVersion: meta.gapBridgeAuxBindingVersions.estimatorVersion,
+        calibrationVersion: meta.gapBridgeAuxBindingVersions.calibrationVersion,
+        sourceFamilyPolicyVersion: meta.gapBridgeAuxBindingVersions.sourceFamilyPolicyVersion,
+      }
+    : null;
   const eventVersion = motionEventVersionId(MOTION_EVENT_V0_2_CANDIDATE_OPTIONS);
   const preferredRows = c5_1PreferredSpeedEnabled
     ? preferredSpeedSamples.map(mapPreferredFromC5Sample)
@@ -191,6 +220,8 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
         c5_1ProductionSafety: c5_1PreferredSpeedEnabled ? MOTION_CORE_SPEED_C5_1_PRODUCTION_SAFETY_VERSION : null,
         c5_1AlgorithmFileSha256: c5_1PreferredSpeedEnabled ? motionCoreSpeedC5_1AlgorithmFileSha256() : null,
         fsm: fsmVersion,
+        gapBridgeV1: fsmGapBridgeV1Enabled ? MOTION_FSM_GAP_BRIDGE_V1_VERSION : null,
+        fsmAuxBinding: auxBinding,
         events: eventVersion,
         bundle: bundleVersion,
       },
@@ -263,6 +294,9 @@ export function processDiV0MotionCoreShadowTrip(input: DiV0MotionCoreShadowProce
     combinedInputIdentity: input.combinedInputIdentity,
     computedAt: input.computedAt,
     c5_1PreferredSpeedEnabled: input.c5_1PreferredSpeedEnabled,
+    fsmGapBridgeV1Enabled: input.fsmGapBridgeV1Enabled,
+    gapBridgeAuxiliary: input.gapBridgeAuxiliary,
+    gapBridgeAuxBindingVersions: input.gapBridgeAuxBindingVersions,
     vehiclePlausibilityClass: input.vehiclePlausibilityClass,
   });
 }

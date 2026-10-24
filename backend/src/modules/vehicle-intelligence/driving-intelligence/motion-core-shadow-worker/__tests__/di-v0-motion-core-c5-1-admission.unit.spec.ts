@@ -11,6 +11,8 @@ function controlPlane(overrides: Partial<DiV0MotionCoreShadowControlPlaneConfig>
     workerEnabled: true,
     c5_1PreferredSpeedEnabled: true,
     c5_1ActivationSince: new Date('2026-10-23T20:30:00.000Z'),
+    fsmGapBridgeV1Enabled: false,
+    fsmGapBridgeV1ActivationSince: null,
     organizationAllowlist: new Set(['org']),
     vehicleAllowlist: new Set(['veh']),
     ...overrides,

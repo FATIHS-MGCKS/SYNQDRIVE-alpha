@@ -71,6 +71,13 @@ export type DiV0MotionCoreShadowTripMapReadResponse = {
     c4: string;
     c5_1: string | null;
     fsm: string;
+    gapBridgeV1: string | null;
+    fsmAuxBinding: {
+      structuralVersion: string;
+      estimatorVersion: string;
+      calibrationVersion: string;
+      sourceFamilyPolicyVersion: string;
+    } | null;
     events: string;
     bundle: string;
   } | null;
