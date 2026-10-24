@@ -1,0 +1,450 @@
+{
+  "schema": "DS4_TIG22_DEEP_VALIDATION_V1",
+  "generatedAtUtc": "2026-10-23T22:06:00.252Z",
+  "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicle": {
+    "id": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+    "make": "Volkswagen",
+    "model": "Tiguan",
+    "license_plate": "WOB L  7503"
+  },
+  "codePins": {
+    "primaryProductionSha": "716f93fedd9d5408fa1db2de5b4cd1a786d9685c",
+    "replayCodeRootSha": "716f93fedd9d5408fa1db2de5b4cd1a786d9685c",
+    "originMainAtRun": "716f93fedd9d5408fa1db2de5b4cd1a786d9685c",
+    "c4": "MOTION_CORE_SPEED_C4_V0_5_DEV",
+    "c5_1": "MOTION_CORE_SPEED_C5_1_GATED_REPAIR_V1_2_NULL_NEIGHBOR_FAIL_CLOSED",
+    "c5_1_safety": "C5_1_PRODUCTION_INPUT_GUARDS_V1",
+    "c5_1_algo_file_sha256": "71516b7468615b7243f331a8c5098722bcb882496b9ba6572da47c8cd6031984",
+    "fsm": "MOTION_FSM_V0_3_CAND_DEV[staleSpeedContextFix+startingTimeout+evidencePropagation]",
+    "events": "HF_THRESHOLDS_V1_REUSED (trips/hf-acceleration.ts, trips/hf-braking.ts) + MOTION_CORE_EVENT_GUARDS_V0_1_DEV + MOTION_EVENT_V0_2_CAND_DEV[spikeReversionCheck]",
+    "speedQcPolicy": "DI_V0_SPEED_QC_POLICY_V2"
+  },
+  "provenance": {
+    "speedEvalPackage": "ds4-speed-video-reference-20261023 (PR #2136)",
+    "accelEvalRules": "ds4-accel-brake-video-reference-20261023 EVALUATION_RULES + v2_gap2s (PR #2139)",
+    "videoGtLastUtc": "2026-10-22T19:03:02Z",
+    "primaryTimeMatchingShiftS": 0
+  },
+  "coverage": {
+    "tripGridSeconds": 2094,
+    "videoGtScoredSeconds": 1417,
+    "videoReadableRowsInGtWindow": 1417,
+    "videoGtShareOfGrid": 0.6767,
+    "positionPresentSeconds": 2005
+  },
+  "speed": {
+    "l3": {
+      "n": 1284,
+      "maeKmh": 14.513,
+      "medianAbsKmh": 2.864,
+      "p95AbsKmh": 6.131,
+      "maxAbsKmh": 1904.939,
+      "biasKmh": 8.932,
+      "rmseKmh": 132.068,
+      "within3": 0.54,
+      "within5": 0.9
+    },
+    "l3_qc": {
+      "n": 1272,
+      "maeKmh": 2.984,
+      "medianAbsKmh": 2.853,
+      "p95AbsKmh": 5.81,
+      "maxAbsKmh": 14.381,
+      "biasKmh": -2.65,
+      "rmseKmh": 3.43,
+      "within3": 0.546,
+      "within5": 0.909
+    },
+    "c4": {
+      "n": 1364,
+      "maeKmh": 2.905,
+      "medianAbsKmh": 2.766,
+      "p95AbsKmh": 5.918,
+      "maxAbsKmh": 14.381,
+      "biasKmh": -2.424,
+      "rmseKmh": 3.41,
+      "within3": 0.567,
+      "within5": 0.909
+    },
+    "c5_1": {
+      "n": 1364,
+      "maeKmh": 2.9,
+      "medianAbsKmh": 2.762,
+      "p95AbsKmh": 5.903,
+      "maxAbsKmh": 14.381,
+      "biasKmh": -2.418,
+      "rmseKmh": 3.399,
+      "within3": 0.568,
+      "within5": 0.91
+    },
+    "common_scored": {
+      "l3": {
+        "n": 1284,
+        "maeKmh": 14.513,
+        "medianAbsKmh": 2.864,
+        "p95AbsKmh": 6.131,
+        "maxAbsKmh": 1904.939,
+        "biasKmh": 8.932,
+        "rmseKmh": 132.068,
+        "within3": 0.54,
+        "within5": 0.9
+      },
+      "c4": {
+        "n": 1364,
+        "maeKmh": 2.905,
+        "medianAbsKmh": 2.766,
+        "p95AbsKmh": 5.918,
+        "maxAbsKmh": 14.381,
+        "biasKmh": -2.424,
+        "rmseKmh": 3.41,
+        "within3": 0.567,
+        "within5": 0.909
+      },
+      "c5_1": {
+        "n": 1364,
+        "maeKmh": 2.9,
+        "medianAbsKmh": 2.762,
+        "p95AbsKmh": 5.903,
+        "maxAbsKmh": 14.381,
+        "biasKmh": -2.418,
+        "rmseKmh": 3.399,
+        "within3": 0.568,
+        "within5": 0.91
+      }
+    }
+  },
+  "sensitivity": {
+    "shift_-2s": {
+      "c4": {
+        "n": 1366,
+        "maeKmh": 3.288,
+        "medianAbsKmh": 2.835,
+        "p95AbsKmh": 7.747,
+        "maxAbsKmh": 22.57,
+        "biasKmh": -2.447,
+        "rmseKmh": 4.101,
+        "within3": 0.546,
+        "within5": 0.829
+      },
+      "l3": {
+        "n": 1285,
+        "maeKmh": 14.876,
+        "medianAbsKmh": 2.925,
+        "p95AbsKmh": 8.091,
+        "maxAbsKmh": 1903.939,
+        "biasKmh": 8.956,
+        "rmseKmh": 132.066,
+        "within3": 0.523,
+        "within5": 0.818
+      }
+    },
+    "shift_-1s": {
+      "c4": {
+        "n": 1365,
+        "maeKmh": 2.757,
+        "medianAbsKmh": 2.642,
+        "p95AbsKmh": 5.552,
+        "maxAbsKmh": 13.862,
+        "biasKmh": -2.438,
+        "rmseKmh": 3.213,
+        "within3": 0.618,
+        "within5": 0.919
+      },
+      "l3": {
+        "n": 1284,
+        "maeKmh": 14.368,
+        "medianAbsKmh": 2.742,
+        "p95AbsKmh": 5.697,
+        "maxAbsKmh": 1903.939,
+        "biasKmh": 8.93,
+        "rmseKmh": 132.084,
+        "within3": 0.592,
+        "within5": 0.91
+      }
+    },
+    "shift_0s": {
+      "c4": {
+        "n": 1364,
+        "maeKmh": 2.905,
+        "medianAbsKmh": 2.766,
+        "p95AbsKmh": 5.918,
+        "maxAbsKmh": 14.381,
+        "biasKmh": -2.424,
+        "rmseKmh": 3.41,
+        "within3": 0.567,
+        "within5": 0.909
+      },
+      "l3": {
+        "n": 1284,
+        "maeKmh": 14.513,
+        "medianAbsKmh": 2.864,
+        "p95AbsKmh": 6.131,
+        "maxAbsKmh": 1904.939,
+        "biasKmh": 8.932,
+        "rmseKmh": 132.068,
+        "within3": 0.54,
+        "within5": 0.9
+      }
+    },
+    "shift_1s": {
+      "c4": {
+        "n": 1364,
+        "maeKmh": 3.566,
+        "medianAbsKmh": 3.055,
+        "p95AbsKmh": 8.952,
+        "maxAbsKmh": 25.696,
+        "biasKmh": -2.411,
+        "rmseKmh": 4.524,
+        "within3": 0.491,
+        "within5": 0.807
+      },
+      "l3": {
+        "n": 1286,
+        "maeKmh": 15.139,
+        "medianAbsKmh": 3.171,
+        "p95AbsKmh": 9.314,
+        "maxAbsKmh": 1905.939,
+        "biasKmh": 8.961,
+        "rmseKmh": 131.967,
+        "within3": 0.467,
+        "within5": 0.797
+      }
+    },
+    "shift_2s": {
+      "c4": {
+        "n": 1364,
+        "maeKmh": 4.371,
+        "medianAbsKmh": 3.415,
+        "p95AbsKmh": 12.708,
+        "maxAbsKmh": 35.125,
+        "biasKmh": -2.4,
+        "rmseKmh": 5.939,
+        "within3": 0.448,
+        "within5": 0.71
+      },
+      "l3": {
+        "n": 1285,
+        "maeKmh": 15.936,
+        "medianAbsKmh": 3.557,
+        "p95AbsKmh": 13.467,
+        "maxAbsKmh": 1905.939,
+        "biasKmh": 9.041,
+        "rmseKmh": 132.037,
+        "within3": 0.425,
+        "within5": 0.698
+      }
+    }
+  },
+  "motion": {
+    "fsm_vs_video": {
+      "confirmedStillCoreSecs": 73,
+      "falseMotionInConfirmedStill": 0,
+      "stillCorrect": 69,
+      "stillNoClaim": 4,
+      "confirmedMotionSecs": 1254,
+      "falseStillInConfirmedMotion": 0,
+      "motionCorrect": 1246,
+      "motionNoClaim": 8,
+      "ambiguousSecs": 90,
+      "ambiguousStill": 35,
+      "ambiguousMoving": 53,
+      "ambiguousNoClaim": 2,
+      "falseMotionLabels": [],
+      "falseStillLabels": []
+    },
+    "l3_claim_vs_video": {
+      "confirmedStillCoreSecs": 73,
+      "falseMotionInConfirmedStill": 0,
+      "stillCorrect": 50,
+      "stillNoClaim": 23,
+      "confirmedMotionSecs": 1254,
+      "falseStillInConfirmedMotion": 0,
+      "motionCorrect": 1242,
+      "motionNoClaim": 12,
+      "ambiguousSecs": 90,
+      "ambiguousStill": 28,
+      "ambiguousMoving": 42,
+      "ambiguousNoClaim": 20,
+      "falseMotionLabels": [],
+      "falseStillLabels": []
+    },
+    "fsm_stop_start_timing": {
+      "runs": [
+        {
+          "refStopLabel": "2026-10-22T18:38:34Z",
+          "refStartLabel": "2026-10-22T18:38:53Z",
+          "refZeroLengthS": 19,
+          "refBeforeKmh": null,
+          "refAfterKmh": 4,
+          "stopOffsetS": null,
+          "startOffsetS": null,
+          "stopStatus": "REF_EDGE_UNREADABLE",
+          "startStatus": "NO_DS4_STOP"
+        },
+        {
+          "refStopLabel": "2026-10-22T18:41:01Z",
+          "refStartLabel": "2026-10-22T18:41:11Z",
+          "refZeroLengthS": 10,
+          "refBeforeKmh": 1,
+          "refAfterKmh": 2,
+          "stopOffsetS": 5,
+          "startOffsetS": -1,
+          "stopStatus": "FOUND",
+          "startStatus": "FOUND"
+        },
+        {
+          "refStopLabel": "2026-10-22T18:43:00Z",
+          "refStartLabel": "2026-10-22T18:43:06Z",
+          "refZeroLengthS": 6,
+          "refBeforeKmh": 1,
+          "refAfterKmh": 9,
+          "stopOffsetS": -1,
+          "startOffsetS": 0,
+          "stopStatus": "FOUND",
+          "startStatus": "FOUND"
+        },
+        {
+          "refStopLabel": "2026-10-22T18:44:04Z",
+          "refStartLabel": "2026-10-22T18:44:07Z",
+          "refZeroLengthS": 3,
+          "refBeforeKmh": 2,
+          "refAfterKmh": 4,
+          "stopOffsetS": -1,
+          "startOffsetS": 10,
+          "stopStatus": "FOUND",
+          "startStatus": "FOUND"
+        },
+        {
+          "refStopLabel": "2026-10-22T18:44:10Z",
+          "refStartLabel": "2026-10-22T18:44:17Z",
+          "refZeroLengthS": 7,
+          "refBeforeKmh": 2,
+          "refAfterKmh": 9,
+          "stopOffsetS": -7,
+          "startOffsetS": 0,
+          "stopStatus": "FOUND",
+          "startStatus": "FOUND"
+        },
+        {
+          "refStopLabel": "2026-10-22T18:47:50Z",
+          "refStartLabel": null,
+          "refZeroLengthS": 19,
+          "refBeforeKmh": 1,
+          "refAfterKmh": null,
+          "stopOffsetS": -2,
+          "startOffsetS": null,
+          "stopStatus": "FOUND",
+          "startStatus": "REF_EDGE_UNREADABLE"
+        },
+        {
+          "refStopLabel": "2026-10-22T18:58:53Z",
+          "refStartLabel": "2026-10-22T18:59:01Z",
+          "refZeroLengthS": 8,
+          "refBeforeKmh": 1,
+          "refAfterKmh": 4,
+          "stopOffsetS": -3,
+          "startOffsetS": -1,
+          "stopStatus": "FOUND",
+          "startStatus": "FOUND"
+        },
+        {
+          "refStopLabel": "2026-10-22T19:00:13Z",
+          "refStartLabel": null,
+          "refZeroLengthS": 14,
+          "refBeforeKmh": null,
+          "refAfterKmh": null,
+          "stopOffsetS": null,
+          "startOffsetS": null,
+          "stopStatus": "REF_EDGE_UNREADABLE",
+          "startStatus": "REF_EDGE_UNREADABLE"
+        },
+        {
+          "refStopLabel": "2026-10-22T19:00:31Z",
+          "refStartLabel": "2026-10-22T19:00:34Z",
+          "refZeroLengthS": 3,
+          "refBeforeKmh": null,
+          "refAfterKmh": 5,
+          "stopOffsetS": null,
+          "startOffsetS": null,
+          "stopStatus": "REF_EDGE_UNREADABLE",
+          "startStatus": "NO_DS4_STOP"
+        },
+        {
+          "refStopLabel": "2026-10-22T19:02:58Z",
+          "refStartLabel": null,
+          "refZeroLengthS": 4,
+          "refBeforeKmh": 1,
+          "refAfterKmh": null,
+          "stopOffsetS": -4,
+          "startOffsetS": null,
+          "stopStatus": "FOUND",
+          "startStatus": "REF_EDGE_UNREADABLE"
+        }
+      ],
+      "stop": {
+        "evaluated": 7,
+        "found": 7,
+        "missed": 0,
+        "medianOffsetS": -2,
+        "meanOffsetS": -1.86,
+        "minOffsetS": -7,
+        "maxOffsetS": 5,
+        "offsets": [
+          -7,
+          -4,
+          -3,
+          -2,
+          -1,
+          -1,
+          5
+        ]
+      },
+      "start": {
+        "evaluated": 5,
+        "found": 5,
+        "missed": 0,
+        "medianOffsetS": 0,
+        "meanOffsetS": 1.6,
+        "minOffsetS": -1,
+        "maxOffsetS": 10,
+        "offsets": [
+          -1,
+          -1,
+          0,
+          0,
+          10
+        ]
+      }
+    }
+  },
+  "events": {
+    "c4": {
+      "oracleManoeuvres": 18,
+      "oracleStatus": {
+        "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+        "VERPASST_GRENZWERTIG": 4,
+        "ERKANNT": 12,
+        "VERPASST": 1
+      }
+    },
+    "c5_1": {
+      "oracleManoeuvres": 18,
+      "oracleStatus": {
+        "VERPASST_KEINE_DS4_GESCHWINDIGKEIT": 1,
+        "VERPASST_GRENZWERTIG": 4,
+        "ERKANNT": 12,
+        "VERPASST": 1
+      }
+    },
+    "fsmUsesC4Only": true,
+    "note": "Production FSM is wired to C4 series; C5.1 affects event detector only when enabled in shadow processor."
+  },
+  "c5_1_repair_counts": {
+    "PASS_THROUGH_OUTSIDE_WINDOW": 2056,
+    "PASS_THROUGH_NO_REPAIR": 12,
+    "REPAIR_REJECTED": 22,
+    "REPAIR_ACCEPTED": 1,
+    "UNCERTAIN": 3
+  }
+}
