@@ -17,6 +17,7 @@ import {
 import type { DtcSnapshotOutboxPayload } from './dtc-snapshot-outbox.types';
 import { isDtc01aSafetyFoundationEnabled } from './dtc-01a.config';
 import { Dtc02ObservabilityService } from '../observability/dtc02-observability.service';
+import type { VsiSignalProfileMaterializationService } from '../../vehicle-signal-intelligence/vsi-profile-materialization.service';
 
 export interface DtcSnapshotApplyResult {
   decision: DtcSnapshotDecision;
@@ -36,6 +37,8 @@ export class DtcSnapshotApplyService implements OnModuleInit {
     private readonly dtcService: DtcService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
     @Optional() private readonly dtc02Observability?: Dtc02ObservabilityService,
+    @Optional()
+    private readonly vsiProfileMaterialization?: VsiSignalProfileMaterializationService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -366,6 +369,15 @@ export class DtcSnapshotApplyService implements OnModuleInit {
 
     this.observeWebhookSnapshotApply(proposal, decision.outcome);
 
+    if (
+      decision.apply &&
+      proposal.organizationId &&
+      (proposal.completeness === 'signals_latest_complete' ||
+        proposal.completeness === 'webhook_provider_confirmed_complete')
+    ) {
+      void this.projectVsiAfterConfirmedCompleteDtc(proposal);
+    }
+
     return { decision, upserted, cleared };
   }
 
@@ -515,5 +527,25 @@ export class DtcSnapshotApplyService implements OnModuleInit {
       auditRef: proposal.auditRef,
       sources,
     };
+  }
+
+  private async projectVsiAfterConfirmedCompleteDtc(
+    proposal: DtcSnapshotProposal,
+  ): Promise<void> {
+    if (!this.vsiProfileMaterialization || !proposal.organizationId) {
+      return;
+    }
+    try {
+      await this.vsiProfileMaterialization.materializeFromPersistedEvidence({
+        organizationId: proposal.organizationId,
+        vehicleId: proposal.vehicleId,
+        providerSourceLinkId: proposal.binding.providerBindingId,
+        lifecycleMode: 'DTC_CONFIRMED_COMPLETE_APPLIED',
+      });
+    } catch (err) {
+      this.logger.warn(
+        `VSI projection after confirmed DTC apply failed (non-fatal) vehicle=${proposal.vehicleId}: ${(err as Error).message}`,
+      );
+    }
   }
 }

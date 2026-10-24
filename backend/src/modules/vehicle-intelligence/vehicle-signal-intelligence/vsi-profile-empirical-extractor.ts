@@ -1,11 +1,12 @@
 import { getVsiCanonicalSignalDefinition } from './canonical-signal-keys';
 import type { VsiProfileMaterializationKey } from './vsi-profile.types';
 import {
-  readRawDtcList,
   readRawLocationCoordinates,
   readRawScalarSignal,
   resolveSignalTimestampEvidence,
 } from './vsi-raw-payload-signals.util';
+import type { VsiDtcConfirmedCompleteEvidence } from './vsi-dtc-complete-evidence.util';
+import { resolveVsiDiagnosticTroubleCodeEmpirical } from './vsi-dtc-complete-evidence.util';
 import type { VsiLatestStateSnapshot } from './vsi-readonly-composer.types';
 import { VsiEmpiricalObservationStatus } from './vehicle-signal-evidence.contract';
 
@@ -39,6 +40,8 @@ export function extractProfileSignalEmpirical(input: {
   latestState: VsiLatestStateSnapshot | null;
   stateAttributed: boolean;
   projectionAsOf: Date;
+  providerSourceLinkId?: string;
+  dtcConfirmedComplete?: VsiDtcConfirmedCompleteEvidence | null;
 }): VsiProfileEmpiricalExtraction | null {
   if (!IMPLEMENTED_EXTRACTOR_KEYS.has(input.key)) {
     return null;
@@ -159,13 +162,8 @@ export function extractProfileSignalEmpirical(input: {
       };
     }
     case 'diagnostic_trouble_code': {
-      const dtc = readRawDtcList(raw);
-      const tsEvidence = resolveSignalTimestampEvidence({
-        signalSourceMs: dtc.sourceMs,
-        projectionAsOfMs,
-      });
-      limitations.push(...tsEvidence.limitations);
-      if (!dtc.keyPresent) {
+      if (!input.providerSourceLinkId) {
+        limitations.push('DTC_EVIDENCE_REQUIRES_PROVIDER_SOURCE_LINK');
         return {
           providerNativeSignalName: native,
           empiricalObservation: VsiEmpiricalObservationStatus.NEVER_OBSERVED,
@@ -176,17 +174,15 @@ export function extractProfileSignalEmpirical(input: {
           limitations,
         };
       }
-      return {
-        providerNativeSignalName: native,
-        empiricalObservation: dtc.hasCodes
-          ? VsiEmpiricalObservationStatus.OBSERVED
-          : VsiEmpiricalObservationStatus.NEVER_OBSERVED,
-        lastValidObservationAt: dtc.hasCodes ? tsEvidence.observed : null,
-        lastSourceTimestamp: tsEvidence.source,
-        freshnessClassification: dtc.hasCodes ? tsEvidence.freshness : 'UNKNOWN',
-        evidenceProvenance: provenance,
-        limitations,
-      };
+      return resolveVsiDiagnosticTroubleCodeEmpirical({
+        providerSourceLinkId: input.providerSourceLinkId,
+        nativeSignalName: native,
+        rawPayloadJson: raw,
+        obdDtcList: input.latestState.obdDtcList,
+        lastDtcSuccessfulCheckAt: input.latestState.lastDtcSuccessfulCheckAt ?? null,
+        confirmedComplete: input.dtcConfirmedComplete ?? null,
+        projectionAsOf: input.projectionAsOf,
+      });
     }
     default:
       return null;

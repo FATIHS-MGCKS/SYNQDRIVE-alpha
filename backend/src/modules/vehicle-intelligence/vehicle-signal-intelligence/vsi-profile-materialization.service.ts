@@ -17,6 +17,11 @@ import {
 import { isVsiP5h1ProfileRevisionHistoryCaptureEnabled } from './vsi-p5h1-profile-revision-history.config';
 import type { VsiProfileRevisionMaterializationTrigger } from './vsi-profile-revision-history.types';
 import { appendVsiProfileRevisionHistoryInTransaction } from './vsi-profile-revision-history.writer';
+import {
+  parseConfirmedObdCodesFromHead,
+  readDiagnosticTroubleCodeLastSourceMsFromProfileSnapshot,
+  type VsiDtcConfirmedCompleteEvidence,
+} from './vsi-dtc-complete-evidence.util';
 
 const DEFAULT_POLL_LOG_LIMIT = 5;
 
@@ -25,7 +30,8 @@ export type VsiProfileLifecycleMaterializationMode =
   | 'SOURCE_LINK_ACTIVATED'
   | 'DECLARED_CATALOG_ADVANCED'
   | 'BACKFILL_RECONCILE'
-  | 'MANUAL_RECOVERY';
+  | 'MANUAL_RECOVERY'
+  | 'DTC_CONFIRMED_COMPLETE_APPLIED';
 
 export type VsiProfileMaterializeFromSnapshotInput = {
   organizationId: string;
@@ -122,8 +128,24 @@ export class VsiSignalProfileMaterializationService {
         providerFetchedAt: true,
         updatedAt: true,
         rawPayloadJson: true,
+        obdDtcList: true,
+        lastDtcSuccessfulCheckAt: true,
       },
     });
+
+    const dtcHead = await this.prisma.vehicleDtcSourceHead.findUnique({
+      where: { vehicleId },
+      select: {
+        providerBindingId: true,
+        lastConfirmedCompleteSourceAt: true,
+        lastConfirmedCompleteFetchAt: true,
+        confirmedObdCodes: true,
+      },
+    });
+    const dtcConfirmedComplete = this.resolveDtcConfirmedCompleteEvidence(
+      providerSourceLinkId,
+      dtcHead,
+    );
 
     const boundLatestState =
       latestState?.providerBindingId && latestState.providerBindingId !== providerSourceLinkId
@@ -200,6 +222,14 @@ export class VsiSignalProfileMaterializationService {
       link.provider,
     );
 
+    const profileDtcSourceMs = readDiagnosticTroubleCodeLastSourceMsFromProfileSnapshot(
+      existingProfile?.signalsSnapshot,
+    );
+    const headDtcSourceMs = dtcConfirmedComplete?.sourceObservedAt.getTime() ?? null;
+    const dtcEvidenceAdvanced =
+      headDtcSourceMs != null &&
+      (profileDtcSourceMs == null || headDtcSourceMs > profileDtcSourceMs);
+
     if (
       existingProfile &&
       boundLatestState?.sourceTimestamp &&
@@ -213,7 +243,9 @@ export class VsiSignalProfileMaterializationService {
         declared.checkedAt &&
         existingProfile.declaredCatalogCheckedAt &&
         declared.checkedAt > existingProfile.declaredCatalogCheckedAt;
-      if (!catalogAdvanced) {
+      const dtcTriggered =
+        input.lifecycleMode === 'DTC_CONFIRMED_COMPLETE_APPLIED' || dtcEvidenceAdvanced;
+      if (!catalogAdvanced && !dtcTriggered) {
         return null;
       }
     }
@@ -244,6 +276,8 @@ export class VsiSignalProfileMaterializationService {
               providerFetchedAt: boundLatestState.providerFetchedAt,
               updatedAt: boundLatestState.updatedAt,
               rawPayloadJson: boundLatestState.rawPayloadJson,
+              obdDtcList: boundLatestState.obdDtcList,
+              lastDtcSuccessfulCheckAt: boundLatestState.lastDtcSuccessfulCheckAt,
             }
           : null,
         pollLogs,
@@ -252,6 +286,7 @@ export class VsiSignalProfileMaterializationService {
           existingProfile?.lastProvenStrictSourceAdvanceAt ?? priorSource,
         priorProvenStrictSourceAdvanceAt:
           existingProfile?.lastProvenStrictSourceAdvanceAt ?? null,
+        dtcConfirmedComplete,
       },
       this.declaredCatalog,
     );
@@ -596,5 +631,30 @@ export class VsiSignalProfileMaterializationService {
         });
       }
     });
+  }
+
+  private resolveDtcConfirmedCompleteEvidence(
+    providerSourceLinkId: string,
+    head: {
+      providerBindingId: string;
+      lastConfirmedCompleteSourceAt: Date | null;
+      lastConfirmedCompleteFetchAt: Date | null;
+      confirmedObdCodes: unknown;
+    } | null,
+  ): VsiDtcConfirmedCompleteEvidence | null {
+    if (!head?.lastConfirmedCompleteSourceAt) {
+      return null;
+    }
+    if (head.providerBindingId !== providerSourceLinkId) {
+      return null;
+    }
+    const fetchAt =
+      head.lastConfirmedCompleteFetchAt ?? head.lastConfirmedCompleteSourceAt;
+    return {
+      providerBindingId: head.providerBindingId,
+      sourceObservedAt: head.lastConfirmedCompleteSourceAt,
+      fetchObservedAt: fetchAt,
+      codes: parseConfirmedObdCodesFromHead(head.confirmedObdCodes),
+    };
   }
 }
