@@ -6,7 +6,7 @@
 
 | Artifact | Current | Shadow requirement |
 |----------|---------|-------------------|
-| `MOTION_FSM_GAP_BRIDGE_V1_VERSION` | `MOTION_FSM_GAP_BRIDGE_V1_V1_2` | Must appear in `payload.contract.algorithmVersions` (or dedicated field) when bridge enabled |
+| `MOTION_FSM_GAP_BRIDGE_V1_VERSION` | `MOTION_FSM_GAP_BRIDGE_V1_V1_3` | Must appear in `payload.contract.algorithmVersions` (or dedicated field) when bridge enabled |
 | `motionFsmVersionId(V0_4)` | Appends `+retrospectiveGapBridgeV1` | Must match persisted `algorithmVersions.fsm` |
 | `resolveMotionCoreShadowBundleVersion` | Unchanged while flag OFF | Bump bundle when FSM output contract changes |
 

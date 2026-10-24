@@ -7,6 +7,9 @@ import {
 } from '../kinematics/motion-fsm';
 import {
   applyMotionFsmGapBridgeV1PostPass,
+  GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS,
+  gapBridgeV1MaxDistanceFromStopInTimeM,
+  gapBridgeV1MaxDistanceToStopInTimeM,
   gapBridgeV1MaxDistanceWithEmbeddedStopM,
   gapBridgeV1StopFeasibilityAllowsBridge,
 } from '../kinematics/motion-fsm-gap-bridge-v1';
@@ -72,6 +75,19 @@ function hiddenStopProfile(vKmh: number, aDec: number, stopS: number, leadCruise
   return [...cruise(20, v), ...hidden.map((x) => ({ v: x, a: 'R' as const })), ...cruise(20, v)];
 }
 
+/** Hidden ROW_ABSENT gap with post-stop cruise above `vout` (Fable B2 fail-open family). */
+function hiddenStopPostOverspeedCruiseMps(
+  vinMps: number,
+  voutMps: number,
+  hiddenMps: number[],
+): Array<number | { v: number; a: 'R' }> {
+  return [
+    ...cruise(20, vinMps),
+    ...hiddenMps.map((v) => ({ v, a: 'R' as const })),
+    ...cruise(20, voutMps),
+  ];
+}
+
 function hiddenStopAsymmetric(vinKmh: number, voutKmh: number, aDec: number, aAcc: number, stopS: number) {
   const vin = vinKmh / 3.6;
   const vout = voutKmh / 3.6;
@@ -129,6 +145,87 @@ describe('motion-fsm gap bridge V1 safety (B2/B3)', () => {
     expect(gapBridgeV1MaxDistanceWithEmbeddedStopM(12, 68.3, 64.7, p.reappearNoiseM * 2)).toBeLessThan(202.5);
     expect(gapBridgeV1StopFeasibilityAllowsBridge(202.5, 12, 68.3, 64.7, p)).toBe(true);
     expect(gapBridgeV1StopFeasibilityAllowsBridge(150, 12, 68.3, 64.7, p)).toBe(false);
+  });
+
+  it('D_max is at least the bang-bang reference on a kinematic grid (conservative bound)', () => {
+    const phys = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS;
+    const refAt = (dt: number, vi: number, vo: number, a: number, b: number) => {
+      const vin = vi / 3.6;
+      const vout = vo / 3.6;
+      const cap = Math.max(vin, vout) * (1 + phys.speedHeadroomFrac) + phys.speedHeadroomMps;
+      let best = 0;
+      for (let t1 = 0; t1 <= dt - phys.minStopHoldS; t1 += 0.001) {
+        const t2 = dt - phys.minStopHoldS - t1;
+        const d =
+          gapBridgeV1MaxDistanceToStopInTimeM(t1, vin, a, b, cap) +
+          gapBridgeV1MaxDistanceFromStopInTimeM(t2, vout, a, b, cap);
+        if (Number.isFinite(d)) {
+          best = Math.max(best, d);
+        }
+      }
+      return best;
+    };
+    for (const dt of [8, 12, 15, 20, 30, 60]) {
+      for (const [vi, vo] of [
+        [20, 20],
+        [30, 70],
+        [50, 50],
+        [68.3, 64.7],
+        [100, 50],
+      ] as const) {
+        for (const [a, b] of [
+          [2, 3],
+          [2.5, 4],
+          [4, 8],
+        ] as const) {
+          const impl = gapBridgeV1MaxDistanceWithEmbeddedStopM(dt, vi, vo, 0);
+          const ref = refAt(dt, vi, vo, a, b);
+          expect(impl + 1e-6).toBeGreaterThanOrEqual(ref);
+        }
+      }
+    }
+  });
+
+  it('rejects Fable post-stop overspeed cruise hidden stops (20 km/h and 50 km/h anchors)', () => {
+    const ce2Hidden = [
+      2.56, 0, 0, 2, 4, 6, 8, 10, 12, 14, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.3, 11.3, 8.33,
+    ];
+    const { bridged: ce2, on: ce2On } = runGapBridgeOnProfile(hiddenStopPostOverspeedCruiseMps(20 / 3.6, 30 / 3.6, ce2Hidden));
+    expect(countBridgedStillSeconds(ce2On, hiddenStopPostOverspeedCruiseMps(20 / 3.6, 30 / 3.6, ce2Hidden))).toBe(0);
+    expect(ce2.length).toBe(0);
+
+    const ce15Hidden = [
+      1.56, 0, 0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 17.5, 17.5, 17.5, 15, 11.11,
+    ];
+    const profile1540 = hiddenStopPostOverspeedCruiseMps(20 / 3.6, 40 / 3.6, ce15Hidden);
+    const { bridged: ce15, on: ce15On } = runGapBridgeOnProfile(profile1540);
+    expect(countBridgedStillSeconds(ce15On, profile1540)).toBe(0);
+    expect(ce15.length).toBe(0);
+
+    for (const v of [50, 70]) {
+      const vMps = v / 3.6;
+      const hidden = [
+        vMps,
+        vMps - 3,
+        0,
+        0,
+        3,
+        6,
+        9,
+        12,
+        15,
+        18,
+        20.5,
+        20.5,
+        20.5,
+        19,
+        15,
+      ];
+      const prof = hiddenStopPostOverspeedCruiseMps(vMps, vMps, hidden);
+      const { bridged, on } = runGapBridgeOnProfile(prof);
+      expect(countBridgedStillSeconds(on, prof)).toBe(0);
+      expect(bridged.length).toBe(0);
+    }
   });
 
   it('rejects Fable adversarial hidden-stop grid (30/50/70/100 km/h, gentle decel 1–2.5 m/s²)', () => {

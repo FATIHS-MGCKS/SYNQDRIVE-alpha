@@ -2214,3 +2214,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Fable B2 re-review: fixed min-stop-distance fail-open on gentle decel / lead-cruise hidden stops |
 | VALIDATION | `npm run test:di:motion-fsm-gap-bridge-safety`; four-drive replay unchanged |
 | NON_EFFECTS | No C4/C5.1/events; no shadow flag ON |
+
+### DS4 motion FSM — gap bridge V1.3 analytic stop-feasibility bound (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Replace discrete profile search with bang-bang segment optima `gapBridgeV1MaxDistanceToStopInTimeM` / `FromStopInTimeM`; `MOTION_FSM_GAP_BRIDGE_V1_V1_3`; adversarial post-stop cruise safety tests; production DB guard manifest refresh |
+| WHY | Fable final re-review B2: V1.2 D_max under-estimated post-stop cruise and cap travel (fail-open on hidden stops) |
+| VALIDATION | `npm run test:di:motion-fsm-gap-bridge-safety`; four-drive replay gate PASS; `production-database-guard-bootstrap-dry-run` PASS |
+| NON_EFFECTS | No shadow flag ON; no deploy |

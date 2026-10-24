@@ -3,11 +3,11 @@ import { parseBucketLabelMs, type MotionCorePositionBucket } from './motion-core
 import type { MotionCoreSpeedQuality, MotionCoreSpeedSample } from './speed-sample.types';
 import type { MotionFsmEvidenceQuality, MotionFsmLabel, MotionFsmState } from './motion-fsm';
 
-export const MOTION_FSM_GAP_BRIDGE_V1_VERSION = 'MOTION_FSM_GAP_BRIDGE_V1_V1_2';
+export const MOTION_FSM_GAP_BRIDGE_V1_VERSION = 'MOTION_FSM_GAP_BRIDGE_V1_V1_3';
 
 /**
- * Conservative kinematic envelope for “could a full stop fit inside this gap?” (not trip-tuned).
- * Uses gentle braking / moderate accel bounds so D_max is not underestimated (fail-closed).
+ * Kinematic envelope for “could a full stop fit inside this gap?” (not trip-tuned).
+ * {@link gapBridgeV1MaxDistanceWithEmbeddedStopM} uses bang-bang optimal segment bounds per (a,b).
  */
 export const GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS = {
   minStopHoldS: 1.0,
@@ -17,8 +17,8 @@ export const GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS = {
   maxAccelMps2: 4.0,
   speedHeadroomFrac: 0.15,
   speedHeadroomMps: 5.0,
-  searchStepS: 0.05,
-  postStopSpeedStepMps: 0.25,
+  /** T1 split search step (s); {@link gapBridgeV1StopFeasibilityDiscretizationMarginM} pads the bound. */
+  stopSplitSearchStepS: 0.01,
 } as const;
 
 /** @deprecated Use {@link gapBridgeV1MaxDistanceWithEmbeddedStopM}; kept for audit references. */
@@ -133,10 +133,88 @@ function nearestDirectMovingAnchor(
   return null;
 }
 
+/** Conservative padding for T1 split discretization (two segment time quanta at speed cap). */
+export function gapBridgeV1StopFeasibilityDiscretizationMarginM(vCapMps: number): number {
+  const step = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS.stopSplitSearchStepS;
+  return 2 * vCapMps * step;
+}
+
 /**
- * Maximum path length (m) achievable in `dtS` from `vinKmh` to `voutKmh` while including a full
- * stop of at least {@link GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS.minStopHoldS}. Searched over
- * plausible accel/brake rates, hidden cruise before/after stop, and asymmetric profiles.
+ * Maximum distance (m) in time `tS` from `vStartMps` to a full stop using |accel|≤`aAccel`, |brake|≤`aBrake`,
+ * peak speed ≤ `vCapMps`. Bang-bang optimum: accel (cruise at cap) then brake to zero.
+ */
+export function gapBridgeV1MaxDistanceToStopInTimeM(
+  tS: number,
+  vStartMps: number,
+  aAccel: number,
+  aBrake: number,
+  vCapMps: number,
+): number {
+  if (tS <= 0 || vStartMps <= 0) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  if (tS < vStartMps / aBrake - 1e-9) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  const vp = (tS + vStartMps / aAccel) / (1 / aAccel + 1 / aBrake);
+  if (vp <= vCapMps) {
+    const tAcc = (vp - vStartMps) / aAccel;
+    return ((vStartMps + vp) / 2) * tAcc + (vp * vp) / (2 * aBrake);
+  }
+  const tAccCap = (vCapMps - vStartMps) / aAccel;
+  const tBrakeCap = vCapMps / aBrake;
+  const tCruise = tS - tAccCap - tBrakeCap;
+  if (tCruise < -1e-9) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  return ((vStartMps + vCapMps) / 2) * tAccCap + vCapMps * tCruise + (vCapMps * vCapMps) / (2 * aBrake);
+}
+
+/**
+ * Maximum distance (m) in time `tS` from a full stop to `vEndMps` (symmetric bang-bang optimum).
+ */
+export function gapBridgeV1MaxDistanceFromStopInTimeM(
+  tS: number,
+  vEndMps: number,
+  aAccel: number,
+  aBrake: number,
+  vCapMps: number,
+): number {
+  if (tS <= 0 || vEndMps <= 0) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  if (tS < vEndMps / aAccel - 1e-9) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  const vp = (tS + vEndMps / aBrake) / (1 / aAccel + 1 / aBrake);
+  if (vp <= vCapMps) {
+    return (vp * vp) / (2 * aAccel) + (vp * vp - vEndMps * vEndMps) / (2 * aBrake);
+  }
+  const tAccCap = vCapMps / aAccel;
+  const tBrakeCap = (vCapMps - vEndMps) / aBrake;
+  const tCruise = tS - tAccCap - tBrakeCap;
+  if (tCruise < -1e-9) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  return (vCapMps * vCapMps) / (2 * aAccel) + vCapMps * tCruise + (vCapMps * vCapMps - vEndMps * vEndMps) / (2 * aBrake);
+}
+
+function gapBridgeV1PhysicsAccelBrakeGrid(): { aAccel: number; aBrake: number }[] {
+  const phys = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS;
+  const pairs: { aAccel: number; aBrake: number }[] = [];
+  for (let a = phys.minAccelMps2; a <= phys.maxAccelMps2 + 1e-9; a += 0.5) {
+    for (let b = phys.minBrakeMps2; b <= phys.maxBrakeMps2 + 1e-9; b += 0.5) {
+      pairs.push({ aAccel: a, aBrake: b });
+    }
+  }
+  pairs.push({ aAccel: phys.maxAccelMps2, aBrake: phys.minBrakeMps2 });
+  return pairs;
+}
+
+/**
+ * Conservative upper bound on path length (m) in `dtS` from `vinKmh` to `voutKmh` while including a
+ * full stop of at least {@link GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS.minStopHoldS}, over the declared
+ * accel/brake envelope and speed cap. Includes discretization margin and `positionUncertaintyM`.
  */
 export function gapBridgeV1MaxDistanceWithEmbeddedStopM(
   dtS: number,
@@ -150,75 +228,27 @@ export function gapBridgeV1MaxDistanceWithEmbeddedStopM(
   const phys = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS;
   const vin = vinKmh / 3.6;
   const vout = voutKmh / 3.6;
-  const vCap =
-    Math.max(vin, vout) * (1 + phys.speedHeadroomFrac) + phys.speedHeadroomMps;
-  const dt = dtS;
+  const vCap = Math.max(vin, vout) * (1 + phys.speedHeadroomFrac) + phys.speedHeadroomMps;
   const tsMin = phys.minStopHoldS;
-  const aAccValues = [1, 1.5, 2, 2.5, 3, 4];
-  const aBrkValues = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
+  const step = phys.stopSplitSearchStepS;
   let best = 0;
 
-  for (const aAcc of aAccValues) {
-    if (aAcc < phys.minAccelMps2 || aAcc > phys.maxAccelMps2) {
-      continue;
-    }
-    for (const aBrk of aBrkValues) {
-      if (aBrk < phys.minBrakeMps2 || aBrk > phys.maxBrakeMps2) {
+  for (const { aAccel, aBrake } of gapBridgeV1PhysicsAccelBrakeGrid()) {
+    for (let t1 = 0; t1 <= dtS - tsMin + 1e-9; t1 += step) {
+      const t2 = dtS - tsMin - t1;
+      if (t2 < 0) {
         continue;
       }
-      for (let t1 = 0; t1 <= dt; t1 += phys.searchStepS) {
-        const v1 = Math.min(vin + aAcc * t1, vCap);
-        const d1 = ((vin + v1) / 2) * t1;
-        const tBrake = v1 / aBrk;
-        if (t1 + tBrake + tsMin > dt) {
-          continue;
-        }
-        const dBrake = (v1 * v1) / (2 * aBrk);
-        const tUsed = t1 + tBrake + tsMin;
-        const dPre = d1 + dBrake;
-
-        for (let v2 = vout; v2 <= vCap + 0.01; v2 += phys.postStopSpeedStepMps) {
-          const tAcc = v2 / aAcc;
-          let dPost = 0;
-          let tTail = 0;
-          let vEnd = v2;
-
-          if (v2 > vout + 0.01) {
-            const tDecel = (v2 - vout) / aBrk;
-            if (tUsed + tAcc + tDecel > dt) {
-              continue;
-            }
-            dPost = (v2 * v2) / (2 * aAcc) + (v2 * v2 - vout * vout) / (2 * aBrk);
-            tTail = tAcc + tDecel;
-            vEnd = vout;
-          } else if (v2 + 0.01 < vout) {
-            const tExtra = (vout - v2) / aAcc;
-            if (tUsed + tAcc + tExtra > dt) {
-              continue;
-            }
-            dPost = (v2 * v2) / (2 * aAcc) + ((vout + v2) / 2) * tExtra;
-            tTail = tAcc + tExtra;
-            vEnd = vout;
-          } else {
-            if (tUsed + tAcc > dt) {
-              continue;
-            }
-            dPost = (v2 * v2) / (2 * aAcc);
-            tTail = tAcc;
-          }
-
-          const tRemain = dt - tUsed - tTail;
-          if (tRemain < -0.001) {
-            continue;
-          }
-          const dCruise = Math.max(0, tRemain) * vEnd;
-          best = Math.max(best, dPre + dPost + dCruise);
-        }
+      const d1 = gapBridgeV1MaxDistanceToStopInTimeM(t1, vin, aAccel, aBrake, vCap);
+      const d2 = gapBridgeV1MaxDistanceFromStopInTimeM(t2, vout, aAccel, aBrake, vCap);
+      if (!Number.isFinite(d1) || !Number.isFinite(d2)) {
+        continue;
       }
+      best = Math.max(best, d1 + d2);
     }
   }
 
-  return best + positionUncertaintyM;
+  return best + positionUncertaintyM + gapBridgeV1StopFeasibilityDiscretizationMarginM(vCap);
 }
 
 /**
