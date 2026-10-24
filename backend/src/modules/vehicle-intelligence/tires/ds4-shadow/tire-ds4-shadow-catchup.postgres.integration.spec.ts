@@ -45,6 +45,68 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
   let tireSetupId = '';
   let ledgerId = '';
 
+  /** Migrate-deploy columns only (Prisma model includes unmigrated tire-setup fields). */
+  async function insertVehicleTireSetupRow(orgId: string, vehId: string): Promise<string> {
+    const id = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO vehicle_tire_setups (id, vehicle_id, organization_id, tire_season, updated_at, status)
+      VALUES (
+        ${id}::text,
+        ${vehId}::text,
+        ${orgId}::text,
+        'ALL_SEASON'::"TireSeason",
+        NOW(),
+        'ACTIVE'::"TireSetupStatus"
+      )
+    `;
+    return id;
+  }
+
+  async function insertTireTripUsageLedgerRow(input: {
+    organizationId: string;
+    vehicleId: string;
+    tripId: string;
+    tireSetupId: string;
+    tripStartedAt: Date;
+    tripEndedAt: Date;
+    distanceKm: number;
+    sourceFingerprint: string;
+    processedAt: Date;
+  }): Promise<string> {
+    const id = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO tire_trip_usage_ledger (
+        id,
+        organization_id,
+        vehicle_id,
+        trip_id,
+        tire_setup_id,
+        trip_started_at,
+        trip_ended_at,
+        distance_km,
+        source_version,
+        source_fingerprint,
+        processed_at,
+        updated_at
+      )
+      VALUES (
+        ${id}::text,
+        ${input.organizationId}::text,
+        ${input.vehicleId}::text,
+        ${input.tripId}::text,
+        ${input.tireSetupId}::text,
+        ${input.tripStartedAt}::timestamp,
+        ${input.tripEndedAt}::timestamp,
+        ${input.distanceKm}::double precision,
+        'test',
+        ${input.sourceFingerprint}::text,
+        ${input.processedAt}::timestamp,
+        NOW()
+      )
+    `;
+    return id;
+  }
+
   async function seedDs4Run(runId: string, createdAt: Date, status = 'SUCCEEDED') {
     await prisma.diV0MotionCoreShadowRunV1.create({
       data: {
@@ -126,28 +188,19 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
     });
     tripId = trip.id;
 
-    const setup = await prisma.vehicleTireSetup.create({
-      data: { vehicleId, organizationId },
-      select: { id: true },
-    });
-    tireSetupId = setup.id;
+    tireSetupId = await insertVehicleTireSetupRow(organizationId, vehicleId);
 
-    const ledger = await prisma.tireTripUsageLedger.create({
-      data: {
-        organizationId,
-        vehicleId,
-        tripId,
-        tireSetupId,
-        tripStartedAt: new Date('2026-10-01T10:00:00.000Z'),
-        tripEndedAt: new Date('2026-10-01T11:00:00.000Z'),
-        distanceKm: 10,
-        sourceVersion: 'test',
-        sourceFingerprint: `fp-ledger-${randomUUID()}`,
-        processedAt: new Date('2026-10-01T12:00:00.000Z'),
-      },
-      select: { id: true },
+    ledgerId = await insertTireTripUsageLedgerRow({
+      organizationId,
+      vehicleId,
+      tripId,
+      tireSetupId,
+      tripStartedAt: new Date('2026-10-01T10:00:00.000Z'),
+      tripEndedAt: new Date('2026-10-01T11:00:00.000Z'),
+      distanceKm: 10,
+      sourceFingerprint: `fp-ledger-${randomUUID()}`,
+      processedAt: new Date('2026-10-01T12:00:00.000Z'),
     });
-    ledgerId = ledger.id;
   });
 
   afterAll(async () => {
@@ -197,20 +250,16 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
   });
 
   it('enforces ON DELETE RESTRICT from shadow rows to ledger', async () => {
-    const shadowOnlyLedger = await prisma.tireTripUsageLedger.create({
-      data: {
-        organizationId,
-        vehicleId,
-        tripId,
-        tireSetupId,
-        tripStartedAt: new Date('2026-10-03T10:00:00.000Z'),
-        tripEndedAt: new Date('2026-10-03T11:00:00.000Z'),
-        distanceKm: 1,
-        sourceVersion: 'test',
-        sourceFingerprint: `fp-restrict-${randomUUID()}`,
-        processedAt: new Date(),
-      },
-      select: { id: true },
+    const shadowOnlyLedgerId = await insertTireTripUsageLedgerRow({
+      organizationId,
+      vehicleId,
+      tripId,
+      tireSetupId,
+      tripStartedAt: new Date('2026-10-03T10:00:00.000Z'),
+      tripEndedAt: new Date('2026-10-03T11:00:00.000Z'),
+      distanceKm: 1,
+      sourceFingerprint: `fp-restrict-${randomUUID()}`,
+      processedAt: new Date(),
     });
 
     await prisma.tireDs4MotionShadowInputV1.create({
@@ -219,7 +268,7 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
         vehicleId,
         tripId,
         tireSetupId,
-        tireTripUsageLedgerId: shadowOnlyLedger.id,
+        tireTripUsageLedgerId: shadowOnlyLedgerId,
         diV0MotionCoreShadowRunId: randomUUID(),
         combinedInputIdentity: 'ci',
         pinnedSnapshotHash: 'pin',
@@ -235,6 +284,8 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
       },
     });
 
-    await expect(prisma.tireTripUsageLedger.delete({ where: { id: shadowOnlyLedger.id } })).rejects.toThrow();
+    await expect(
+      prisma.tireTripUsageLedger.delete({ where: { id: shadowOnlyLedgerId } }),
+    ).rejects.toThrow();
   });
 });
