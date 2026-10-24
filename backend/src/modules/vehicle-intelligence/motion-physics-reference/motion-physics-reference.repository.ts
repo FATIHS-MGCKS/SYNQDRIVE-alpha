@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import type { MotionPhysicsReferenceChangeAction } from './motion-physics-reference.domain';
 import type { MotionPhysicsIdentityFingerprint } from './motion-physics-reference.domain';
+import { resolveMotionPhysicsAuditActorUserId } from './motion-physics-audit.util';
 
 export interface CreateMotionPhysicsReferenceInput {
   organizationId: string;
@@ -24,6 +25,15 @@ export interface CreateMotionPhysicsReferenceInput {
   documentExtractionId?: string | null;
   notes?: string | null;
   supersedeActiveId?: string | null;
+}
+
+export interface MotionPhysicsReferenceAuditEntry {
+  referenceId?: string | null;
+  action: MotionPhysicsReferenceChangeAction;
+  previousTier?: MotionPhysicsEvidenceTier | null;
+  newTier?: MotionPhysicsEvidenceTier | null;
+  actorUserId?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 @Injectable()
@@ -75,8 +85,9 @@ export class VehicleMotionPhysicsReferenceRepository {
     });
   }
 
-  async createWithSupersede(
+  async createWithSupersedeAndAudit(
     input: CreateMotionPhysicsReferenceInput,
+    auditEntries: MotionPhysicsReferenceAuditEntry[],
   ): Promise<VehicleMotionPhysicsReference> {
     return this.prisma.$transaction(async (tx) => {
       if (input.supersedeActiveId) {
@@ -86,6 +97,7 @@ export class VehicleMotionPhysicsReferenceRepository {
             organizationId: input.organizationId,
             vehicleId: input.vehicleId,
             isActive: true,
+            supersededById: null,
           },
         });
         if (active) {
@@ -121,11 +133,27 @@ export class VehicleMotionPhysicsReferenceRepository {
         });
       }
 
+      for (const entry of auditEntries) {
+        const actorUserId = await resolveMotionPhysicsAuditActorUserId(tx, entry.actorUserId);
+        await tx.vehicleMotionPhysicsReferenceChange.create({
+          data: {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            referenceId: entry.referenceId ?? created.id,
+            action: entry.action,
+            previousTier: entry.previousTier ?? null,
+            newTier: entry.newTier ?? null,
+            actorUserId,
+            metadata: (entry.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+          },
+        });
+      }
+
       return created;
     });
   }
 
-  appendChange(input: {
+  async appendChange(input: {
     organizationId: string;
     vehicleId: string;
     referenceId?: string | null;
@@ -135,6 +163,10 @@ export class VehicleMotionPhysicsReferenceRepository {
     actorUserId?: string | null;
     metadata?: Record<string, unknown> | null;
   }): Promise<VehicleMotionPhysicsReferenceChange> {
+    const actorUserId = await resolveMotionPhysicsAuditActorUserId(
+      this.prisma,
+      input.actorUserId,
+    );
     return this.prisma.vehicleMotionPhysicsReferenceChange.create({
       data: {
         organizationId: input.organizationId,
@@ -143,7 +175,7 @@ export class VehicleMotionPhysicsReferenceRepository {
         action: input.action,
         previousTier: input.previousTier ?? null,
         newTier: input.newTier ?? null,
-        actorUserId: input.actorUserId ?? null,
+        actorUserId,
         metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });

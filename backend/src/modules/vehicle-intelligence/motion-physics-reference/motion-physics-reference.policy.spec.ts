@@ -54,19 +54,47 @@ describe('motion-physics-reference.policy', () => {
   it('requires validated document for verify', () => {
     const result = evaluateMotionPhysicsVerify({
       isActive: true,
+      isSuperseded: false,
       currentTier: MotionPhysicsEvidenceTier.CONFIRMED,
       documentExtractionId: 'doc-1',
       documentValidated: false,
       identityMatch: true,
+      vinIdentityMatch: true,
     });
     expect(result.ok).toBe(false);
     expect(result.reasonCodes).toContain('DOCUMENT_NOT_VALIDATED');
+    expect(result.reasonCodes).toContain('VERIFY_EVIDENCE_PIPELINE_NOT_READY');
+  });
+
+  it('blocks verify until Phase C evidence pipeline is ready even with validated document', () => {
+    const result = evaluateMotionPhysicsVerify({
+      isActive: true,
+      isSuperseded: false,
+      currentTier: MotionPhysicsEvidenceTier.CONFIRMED,
+      documentExtractionId: 'doc-1',
+      documentValidated: true,
+      identityMatch: true,
+      vinIdentityMatch: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reasonCodes).toContain('VERIFY_EVIDENCE_PIPELINE_NOT_READY');
+  });
+
+  it('rejects confirm on superseded reference', () => {
+    const result = evaluateMotionPhysicsConfirm({
+      currentTier: MotionPhysicsEvidenceTier.ESTIMATED,
+      isActive: false,
+      isSuperseded: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reasonCodes).toContain('SUPERSEDED');
   });
 
   it('allows confirm on active ESTIMATED row', () => {
     const result = evaluateMotionPhysicsConfirm({
       currentTier: MotionPhysicsEvidenceTier.ESTIMATED,
       isActive: true,
+      isSuperseded: false,
     });
     expect(result.ok).toBe(true);
   });

@@ -9,4 +9,6 @@ export const masterMotionPhysicsFr = {
   'master.motionPhysics.confirmAction': 'Confirmer la référence',
   'master.motionPhysics.confirmSuccess': 'Référence de mouvement confirmée',
   'master.motionPhysics.confirmError': 'Impossible de confirmer la référence',
+  'master.motionPhysics.backfillError':
+    'Véhicule enregistré, mais la référence de physique de mouvement n’a pas pu être enregistrée. Corrigez les valeurs et enregistrez à nouveau.',
 };

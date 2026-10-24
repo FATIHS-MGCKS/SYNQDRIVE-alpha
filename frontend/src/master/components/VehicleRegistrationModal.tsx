@@ -6,6 +6,10 @@ import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabil
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
 import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
 import {
+  isMotionPhysicsTierLockedForAiMerge,
+  shouldApplyAiSpecToEmptyField,
+} from '../connected-vehicles/ai-spec-field-merge.util';
+import {
   ExteriorImagesEditor,
   flushBufferedExteriorImages,
   type ExteriorImageBufferEntry,
@@ -94,6 +98,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     'ESTIMATED' | 'CONFIRMED' | 'VERIFIED' | null
   >(null);
   const [motionPhysicsConfirming, setMotionPhysicsConfirming] = useState(false);
+  const [motionPhysicsSyncError, setMotionPhysicsSyncError] = useState('');
   const [idleRpm, setIdleRpm] = useState('');
   const [maxRpm, setMaxRpm] = useState('');
   const [brakeForceDistribution, setBrakeForceDistribution] = useState('');
@@ -308,6 +313,22 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const motionPhysicsVariantAssumptionRef = useRef(motionPhysicsVariantAssumption);
   const motionPhysicsEvidenceTierRef = useRef(motionPhysicsEvidenceTier);
   const lvBatteryChemistryRef = useRef(lvBatteryChemistry);
+  const hvBatteryPresentRef = useRef(hvBatteryPresent);
+  const hvBatteryChemistryRef = useRef(hvBatteryChemistry);
+  const hvBatteryCellFormatRef = useRef(hvBatteryCellFormat);
+  const hvBatteryGrossCapacityKwhRef = useRef(hvBatteryGrossCapacityKwh);
+  const hvBatteryUsableCapacityKwhRef = useRef(hvBatteryUsableCapacityKwh);
+  const hvBatteryNominalVoltageRef = useRef(hvBatteryNominalVoltage);
+  const hvBatteryArchitectureRef = useRef(hvBatteryArchitecture);
+  const hvBatteryThermalManagementRef = useRef(hvBatteryThermalManagement);
+  const hvBatteryWarrantyYearsRef = useRef(hvBatteryWarrantyYears);
+  const hvBatteryWarrantyKmRef = useRef(hvBatteryWarrantyKm);
+  const hvBatteryCapacityKwhRef = useRef(hvBatteryCapacityKwh);
+  const acOnboardChargerKwRef = useRef(acOnboardChargerKw);
+  const dcFastChargeMaxKwRef = useRef(dcFastChargeMaxKw);
+  const tankCapacityLitersRef = useRef(tankCapacityLiters);
+  const engineDisplacementCcRef = useRef(engineDisplacementCc);
+  const cylinderCountRef = useRef(cylinderCount);
   const batteryTypeRef = useRef(batteryType);
   const batteryAmpereRef = useRef(batteryAmpere);
   const batteryVoltRef = useRef(batteryVolt);
@@ -334,6 +355,22 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   motionPhysicsVariantAssumptionRef.current = motionPhysicsVariantAssumption;
   motionPhysicsEvidenceTierRef.current = motionPhysicsEvidenceTier;
   lvBatteryChemistryRef.current = lvBatteryChemistry;
+  hvBatteryPresentRef.current = hvBatteryPresent;
+  hvBatteryChemistryRef.current = hvBatteryChemistry;
+  hvBatteryCellFormatRef.current = hvBatteryCellFormat;
+  hvBatteryGrossCapacityKwhRef.current = hvBatteryGrossCapacityKwh;
+  hvBatteryUsableCapacityKwhRef.current = hvBatteryUsableCapacityKwh;
+  hvBatteryNominalVoltageRef.current = hvBatteryNominalVoltage;
+  hvBatteryArchitectureRef.current = hvBatteryArchitecture;
+  hvBatteryThermalManagementRef.current = hvBatteryThermalManagement;
+  hvBatteryWarrantyYearsRef.current = hvBatteryWarrantyYears;
+  hvBatteryWarrantyKmRef.current = hvBatteryWarrantyKm;
+  hvBatteryCapacityKwhRef.current = hvBatteryCapacityKwh;
+  acOnboardChargerKwRef.current = acOnboardChargerKw;
+  dcFastChargeMaxKwRef.current = dcFastChargeMaxKw;
+  tankCapacityLitersRef.current = tankCapacityLiters;
+  engineDisplacementCcRef.current = engineDisplacementCc;
+  cylinderCountRef.current = cylinderCount;
   batteryTypeRef.current = batteryType;
   batteryAmpereRef.current = batteryAmpere;
   batteryVoltRef.current = batteryVolt;
@@ -361,38 +398,37 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       setter: (v: string) => void,
       v: string | number | null | undefined,
     ) => {
-      if (v == null) return;
-      if (current().trim() !== '') return;
-      setter(str(v));
+      if (!shouldApplyAiSpecToEmptyField(current(), v)) return;
+      setter(str(v as string | number));
     };
-    const motionTier = motionPhysicsEvidenceTierRef.current;
-    const motionLocked = motionTier === 'CONFIRMED' || motionTier === 'VERIFIED';
-    const maybeSet = (setter: (v: string) => void, v: string | number | null | undefined) => {
-      if (v != null) setter(str(v));
-    };
+    const motionLocked = isMotionPhysicsTierLockedForAiMerge(motionPhysicsEvidenceTierRef.current);
     // LV battery — support both new lvBattery* names and legacy names
     maybeSetIfEmpty(() => batteryTypeRef.current, setBatteryType, specs.lvBatteryType ?? specs.batteryType);
     maybeSetIfEmpty(() => batteryAmpereRef.current, setBatteryAmpere, specs.lvBatteryAmpere ?? specs.batteryAmpere);
     maybeSetIfEmpty(() => batteryVoltRef.current, setBatteryVolt, specs.lvBatteryVolt ?? specs.batteryVolt);
     maybeSetIfEmpty(() => lvBatteryChemistryRef.current, setLvBatteryChemistry, specs.lvBatteryChemistry);
     // HV battery
-    maybeSet(setHvBatteryPresent, specs.hvBatteryPresent != null ? String(specs.hvBatteryPresent) : null);
-    maybeSet(setHvBatteryChemistry, specs.hvBatteryChemistry);
-    maybeSet(setHvBatteryCellFormat, specs.hvBatteryCellFormat);
-    maybeSet(setHvBatteryGrossCapacityKwh, specs.hvBatteryGrossCapacityKwh);
-    maybeSet(setHvBatteryUsableCapacityKwh, specs.hvBatteryUsableCapacityKwh);
-    maybeSet(setHvBatteryNominalVoltage, specs.hvBatteryNominalVoltage);
-    maybeSet(setHvBatteryArchitecture, specs.hvBatteryArchitecture);
-    maybeSet(setHvBatteryThermalManagement, specs.hvBatteryThermalManagement);
-    maybeSet(setHvBatteryWarrantyYears, specs.hvBatteryWarrantyYears);
-    maybeSet(setHvBatteryWarrantyKm, specs.hvBatteryWarrantyKm);
-    maybeSet(setAcOnboardChargerKw, specs.acOnboardChargerKw);
-    maybeSet(setDcFastChargeMaxKw, specs.dcFastChargeMaxKw);
+    maybeSetIfEmpty(
+      () => hvBatteryPresentRef.current,
+      setHvBatteryPresent,
+      specs.hvBatteryPresent != null ? String(specs.hvBatteryPresent) : null,
+    );
+    maybeSetIfEmpty(() => hvBatteryChemistryRef.current, setHvBatteryChemistry, specs.hvBatteryChemistry);
+    maybeSetIfEmpty(() => hvBatteryCellFormatRef.current, setHvBatteryCellFormat, specs.hvBatteryCellFormat);
+    maybeSetIfEmpty(() => hvBatteryGrossCapacityKwhRef.current, setHvBatteryGrossCapacityKwh, specs.hvBatteryGrossCapacityKwh);
+    maybeSetIfEmpty(() => hvBatteryUsableCapacityKwhRef.current, setHvBatteryUsableCapacityKwh, specs.hvBatteryUsableCapacityKwh);
+    maybeSetIfEmpty(() => hvBatteryNominalVoltageRef.current, setHvBatteryNominalVoltage, specs.hvBatteryNominalVoltage);
+    maybeSetIfEmpty(() => hvBatteryArchitectureRef.current, setHvBatteryArchitecture, specs.hvBatteryArchitecture);
+    maybeSetIfEmpty(() => hvBatteryThermalManagementRef.current, setHvBatteryThermalManagement, specs.hvBatteryThermalManagement);
+    maybeSetIfEmpty(() => hvBatteryWarrantyYearsRef.current, setHvBatteryWarrantyYears, specs.hvBatteryWarrantyYears);
+    maybeSetIfEmpty(() => hvBatteryWarrantyKmRef.current, setHvBatteryWarrantyKm, specs.hvBatteryWarrantyKm);
+    maybeSetIfEmpty(() => acOnboardChargerKwRef.current, setAcOnboardChargerKw, specs.acOnboardChargerKw);
+    maybeSetIfEmpty(() => dcFastChargeMaxKwRef.current, setDcFastChargeMaxKw, specs.dcFastChargeMaxKw);
     const usableKwh = specs.hvBatteryUsableCapacityKwh ?? specs.hvBatteryCapacityKwh;
-    if (usableKwh != null && !hvBatteryCapacityKwh.trim()) setHvBatteryCapacityKwh(str(usableKwh));
-    maybeSet(setTankCapacityLiters, specs.tankCapacityLiters ?? specs.fuelTankCapacityLiters);
-    maybeSet(setEngineDisplacementCc, specs.engineDisplacementCc);
-    maybeSet(setCylinderCount, specs.cylinderCount);
+    maybeSetIfEmpty(() => hvBatteryCapacityKwhRef.current, setHvBatteryCapacityKwh, usableKwh);
+    maybeSetIfEmpty(() => tankCapacityLitersRef.current, setTankCapacityLiters, specs.tankCapacityLiters ?? specs.fuelTankCapacityLiters);
+    maybeSetIfEmpty(() => engineDisplacementCcRef.current, setEngineDisplacementCc, specs.engineDisplacementCc);
+    maybeSetIfEmpty(() => cylinderCountRef.current, setCylinderCount, specs.cylinderCount);
     maybeSetIfEmpty(() => brakeFrontRotorDiameterRef.current, setBrakeFrontRotorDiameter, specs.frontRotorDiameterMm ?? specs.brakeFrontRotorDiameter);
     maybeSetIfEmpty(() => brakeFrontRotorWidthRef.current, setBrakeFrontRotorWidth, specs.frontRotorWidthMm ?? specs.brakeFrontRotorWidth);
     maybeSetIfEmpty(() => brakeFrontPadThicknessRef.current, setBrakeFrontPadThickness, specs.frontPadThicknessMm ?? specs.brakeFrontPadThickness);
@@ -577,19 +613,16 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     const power = systemMotorPowerKw.trim() ? Number(systemMotorPowerKw.replace(',', '.')) : null;
     const accel = accel0To100S.trim() ? Number(accel0To100S.replace(',', '.')) : null;
     if (curb == null && power == null && accel == null) return;
-    try {
-      const created = await api.vehicles.motionPhysicsReference.create(orgId, vehicleId, {
-        curbMassKg: Number.isFinite(curb!) ? curb : null,
-        systemMotorPowerKw: Number.isFinite(power!) ? power : null,
-        accel0To100S: Number.isFinite(accel!) ? accel : null,
-        variantAssumption: motionPhysicsVariantAssumption.trim() || null,
-        source: 'OPERATOR_CONFIRMED',
-      });
-      setMotionPhysicsReferenceId(created.id);
-      setMotionPhysicsEvidenceTier(created.evidenceTier);
-    } catch {
-      /* best-effort legacy backfill */
-    }
+    const created = await api.vehicles.motionPhysicsReference.create(orgId, vehicleId, {
+      curbMassKg: Number.isFinite(curb!) ? curb : null,
+      systemMotorPowerKw: Number.isFinite(power!) ? power : null,
+      accel0To100S: Number.isFinite(accel!) ? accel : null,
+      variantAssumption: motionPhysicsVariantAssumption.trim() || null,
+      source: 'OPERATOR_CONFIRMED',
+    });
+    setMotionPhysicsReferenceId(created.id);
+    setMotionPhysicsEvidenceTier(created.evidenceTier);
+    setMotionPhysicsSyncError('');
   };
 
   // Check HM Health availability when modal opens with a known VIN
@@ -755,7 +788,12 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       if (isEditMode && onUpdate) {
         await Promise.resolve(onUpdate(rv));
         if (organizationId && rv.id) {
-          await syncLegacyMotionPhysicsReference(rv.id, organizationId);
+          try {
+            await syncLegacyMotionPhysicsReference(rv.id, organizationId);
+          } catch {
+            setMotionPhysicsSyncError(t('master.motionPhysics.backfillError'));
+            return;
+          }
         }
       } else {
         await Promise.resolve(onRegister(rv));
@@ -1107,6 +1145,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                     >
                       {t('master.motionPhysics.confirmAction')}
                     </button>
+                  )}
+                  {motionPhysicsSyncError && (
+                    <p className="text-[11px] text-status-danger w-full">{motionPhysicsSyncError}</p>
                   )}
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">

@@ -9,4 +9,6 @@ export const masterMotionPhysicsIt = {
   'master.motionPhysics.confirmAction': 'Conferma riferimento',
   'master.motionPhysics.confirmSuccess': 'Riferimento movimento confermato',
   'master.motionPhysics.confirmError': 'Impossibile confermare il riferimento',
+  'master.motionPhysics.backfillError':
+    'Veicolo salvato, ma non è stato possibile salvare il riferimento di fisica del movimento. Correggi i valori e salva di nuovo.',
 };

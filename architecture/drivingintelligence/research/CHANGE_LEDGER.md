@@ -2286,3 +2286,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Prisma `VehicleMotionPhysicsReference` + change log; motion-physics-reference module; Mistral `systemMotorPowerKw` / `accel0To100S` / `variantAssumption` + plausibility; AI-Spec MASTER_ADMIN auth; VO baseline V2 materialization; Master modal merge-safe `applySpecs` + legacy reference API |
 | WHY | Phase A of Fable-remediated plan (#2159): one stammdaten path without DI behavior changes |
 | NON_EFFECTS | No DI shadow/resolver/bundle changes; no production deploy; VERIFIED requires document validation endpoint |
+
+### Vehicle Physics Phase A — Fable BLOCK remediation (2026-10-24, PR #2161)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | VO capture allowlist `motionPhysicsReference`; partial unique index one-active-per-vehicle; atomic supersede+audit repository tx; `verify()` fail-closed (`VERIFY_EVIDENCE_PIPELINE_NOT_READY`); AI-Spec org-scoped DIMO resolution; merge-safe Master `applySpecs`; legacy backfill error surfacing; PostgreSQL integration tests (VO master DIMO, concurrency, audit) |
+| WHY | Close Fable pre-merge BLOCK findings without Phase B/C scope expansion |
+| VALIDATION | `vo2-vehicle-onboarding-postgres-ci.sh`; `motion-physics-reference.postgres.integration.spec.ts`; policy/plausibility/security unit specs; `npm run i18n:check` |
+| NON_EFFECTS | No DI/C4/C5.1/FSM/detector changes; no production migration apply |

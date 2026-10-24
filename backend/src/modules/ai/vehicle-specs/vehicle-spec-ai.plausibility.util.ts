@@ -20,12 +20,44 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeIdentityToken(value: string | undefined | null): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+export function rejectMotionFieldsForIdentityMismatch(
+  specs: Record<string, string | number | boolean | null>,
+  context?: VehicleSpecContext,
+): string[] {
+  if (!context?.make || !context?.model || !context?.year) return [];
+  const rejected: string[] = [];
+  const specMake = specs.make != null ? normalizeIdentityToken(String(specs.make)) : '';
+  const specModel = specs.model != null ? normalizeIdentityToken(String(specs.model)) : '';
+  const specYear = specs.year != null ? Number(specs.year) : null;
+  const ctxMake = normalizeIdentityToken(context.make);
+  const ctxModel = normalizeIdentityToken(context.model);
+  if (
+    (specMake && specMake !== ctxMake) ||
+    (specModel && specModel !== ctxModel) ||
+    (specYear != null && Number.isFinite(specYear) && specYear !== context.year)
+  ) {
+    rejected.push('motion_fields:identity_mmy_mismatch');
+    specs.curbWeightKg = null;
+    specs.systemMotorPowerKw = null;
+    specs.accel0To100S = null;
+    specs.variantAssumption = null;
+  }
+  return rejected;
+}
+
 export function applyVehicleSpecMotionPlausibility(
   specs: Record<string, string | number | boolean | null>,
   context?: VehicleSpecContext,
 ): MotionSpecPlausibilityResult {
   const out = { ...specs };
-  const rejected: string[] = [];
+  const rejected: string[] = rejectMotionFieldsForIdentityMismatch(out, context);
 
   const curb = num(out.curbWeightKg);
   if (curb != null && (curb < CURB_MIN || curb > CURB_MAX)) {

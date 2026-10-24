@@ -9,4 +9,6 @@ export const masterMotionPhysicsDe = {
   'master.motionPhysics.confirmAction': 'Referenz bestätigen',
   'master.motionPhysics.confirmSuccess': 'Fahrphysik-Referenz bestätigt',
   'master.motionPhysics.confirmError': 'Referenz konnte nicht bestätigt werden',
+  'master.motionPhysics.backfillError':
+    'Fahrzeug gespeichert, aber die Fahrphysik-Referenz konnte nicht gespeichert werden. Werte korrigieren und erneut speichern.',
 };

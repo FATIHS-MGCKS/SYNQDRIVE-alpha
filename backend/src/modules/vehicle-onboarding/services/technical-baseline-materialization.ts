@@ -5,6 +5,7 @@ import {
   MotionPhysicsReferenceSource,
   ReferenceCapacityVerificationStatus,
 } from '@prisma/client';
+import { resolveMotionPhysicsAuditActorUserId } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-audit.util';
 import { buildMotionPhysicsIdentityFingerprint } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-identity.util';
 import { MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-reference.domain';
 import { normalizeReferenceSpecWriteInput } from '@modules/vehicle-intelligence/brakes/brake-reference-spec.domain';
@@ -365,6 +366,7 @@ async function materializeMotionPhysicsIfPresent(
     },
   });
 
+  const actorUserId = await resolveMotionPhysicsAuditActorUserId(tx, input.actorUserId);
   await tx.vehicleMotionPhysicsReferenceChange.create({
     data: {
       organizationId: input.organizationId,
@@ -373,7 +375,7 @@ async function materializeMotionPhysicsIfPresent(
       action: MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS.CREATED,
       previousTier: null,
       newTier: tier,
-      actorUserId: input.actorUserId,
+      actorUserId,
       metadata: { provenance: 'VEHICLE_ONBOARDING_ACTIVATION' },
     },
   });

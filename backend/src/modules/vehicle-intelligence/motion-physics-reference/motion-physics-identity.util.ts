@@ -30,6 +30,9 @@ export function identityFingerprintsMatch(
   if (stored.make.toLowerCase() !== current.make.toLowerCase()) return false;
   if (stored.model.toLowerCase() !== current.model.toLowerCase()) return false;
   if (stored.modelYear !== current.modelYear) return false;
-  if (stored.vinHash && current.vinHash && stored.vinHash !== current.vinHash) return false;
+  if (stored.vinHash || current.vinHash) {
+    if (!stored.vinHash || !current.vinHash) return false;
+    if (stored.vinHash !== current.vinHash) return false;
+  }
   return true;
 }

@@ -9,4 +9,6 @@ export const masterMotionPhysicsNl = {
   'master.motionPhysics.confirmAction': 'Referentie bevestigen',
   'master.motionPhysics.confirmSuccess': 'Bewegingsreferentie bevestigd',
   'master.motionPhysics.confirmError': 'Referentie kon niet worden bevestigd',
+  'master.motionPhysics.backfillError':
+    'Voertuig opgeslagen, maar de bewegingsfysiek-referentie kon niet worden opgeslagen. Corrigeer de waarden en sla opnieuw op.',
 };

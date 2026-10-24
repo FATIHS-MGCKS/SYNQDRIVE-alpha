@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +8,7 @@ import {
   DocumentExtractionStatus,
   MotionPhysicsEvidenceTier,
   MotionPhysicsReferenceSource,
+  Prisma,
   type VehicleMotionPhysicsReference,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -15,8 +17,10 @@ import {
   identityFingerprintsMatch,
 } from './motion-physics-identity.util';
 import {
+  MOTION_PHYSICS_POLICY_REASONS,
   MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS,
 } from './motion-physics-reference.domain';
+import type { MotionPhysicsReferenceAuditEntry } from './motion-physics-reference.repository';
 import type { MotionPhysicsIdentityFingerprint } from './motion-physics-reference.domain';
 import {
   evaluateMotionPhysicsConfirm,
@@ -86,27 +90,9 @@ export class VehicleMotionPhysicsReferenceService {
       });
     }
 
-    const created = await this.repository.createWithSupersede({
-      organizationId,
-      vehicleId,
-      identityFingerprintJson: fingerprint,
-      curbMassKg: body.curbMassKg ?? null,
-      systemMotorPowerKw: body.systemMotorPowerKw ?? null,
-      systemPowerDefinition:
-        body.systemPowerDefinition ??
-        (body.systemMotorPowerKw != null ? 'OEM_RATED_SYSTEM_KW_ESTIMATED' : null),
-      accel0To100S: body.accel0To100S ?? null,
-      variantAssumption: body.variantAssumption ?? null,
-      evidenceTier: proposedTier,
-      source: body.source,
-      notes: body.notes ?? null,
-      supersedeActiveId: active?.id ?? null,
-    });
-
+    const auditEntries: MotionPhysicsReferenceAuditEntry[] = [];
     if (active) {
-      await this.repository.appendChange({
-        organizationId,
-        vehicleId,
+      auditEntries.push({
         referenceId: active.id,
         action: MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS.SUPERSEDED,
         previousTier: active.evidenceTier,
@@ -114,18 +100,46 @@ export class VehicleMotionPhysicsReferenceService {
         actorUserId: actorUserId ?? null,
       });
     }
-
-    await this.repository.appendChange({
-      organizationId,
-      vehicleId,
-      referenceId: created.id,
+    auditEntries.push({
       action: MOTION_PHYSICS_REFERENCE_CHANGE_ACTIONS.CREATED,
       previousTier: null,
-      newTier: created.evidenceTier,
+      newTier: proposedTier,
       actorUserId: actorUserId ?? null,
     });
 
-    return this.toDto(created);
+    try {
+      const created = await this.repository.createWithSupersedeAndAudit(
+        {
+          organizationId,
+          vehicleId,
+          identityFingerprintJson: fingerprint,
+          curbMassKg: body.curbMassKg ?? null,
+          systemMotorPowerKw: body.systemMotorPowerKw ?? null,
+          systemPowerDefinition:
+            body.systemPowerDefinition ??
+            (body.systemMotorPowerKw != null ? 'OEM_RATED_SYSTEM_KW_ESTIMATED' : null),
+          accel0To100S: body.accel0To100S ?? null,
+          variantAssumption: body.variantAssumption ?? null,
+          evidenceTier: proposedTier,
+          source: body.source,
+          notes: body.notes ?? null,
+          supersedeActiveId: active?.id ?? null,
+        },
+        auditEntries,
+      );
+      return this.toDto(created);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException({
+          message: 'Active motion physics reference already exists',
+          reasonCodes: ['ACTIVE_REFERENCE_CONFLICT'],
+        });
+      }
+      throw error;
+    }
   }
 
   async confirm(
@@ -136,11 +150,12 @@ export class VehicleMotionPhysicsReferenceService {
     actorUserId: string,
   ) {
     await this.assertVehicleInOrg(organizationId, vehicleId);
-    const row = await this.findScopedReference(organizationId, vehicleId, referenceId);
+    const row = await this.findMutableReference(organizationId, vehicleId, referenceId);
 
     const policy = evaluateMotionPhysicsConfirm({
       currentTier: row.evidenceTier,
       isActive: row.isActive,
+      isSuperseded: row.supersededById != null,
     });
     if (!policy.ok) {
       throw new BadRequestException({ reasonCodes: policy.reasonCodes });
@@ -174,7 +189,7 @@ export class VehicleMotionPhysicsReferenceService {
     actorUserId: string,
   ) {
     const vehicle = await this.assertVehicleInOrg(organizationId, vehicleId);
-    const row = await this.findScopedReference(organizationId, vehicleId, referenceId);
+    const row = await this.findMutableReference(organizationId, vehicleId, referenceId);
 
     const storedFp = row.identityFingerprintJson as unknown as MotionPhysicsIdentityFingerprint;
     const currentFp = buildMotionPhysicsIdentityFingerprint({
@@ -197,12 +212,21 @@ export class VehicleMotionPhysicsReferenceService {
       (doc.status === DocumentExtractionStatus.APPLIED ||
         doc.status === DocumentExtractionStatus.CONFIRMED);
 
+    const identityMatch = identityFingerprintsMatch(storedFp, currentFp);
+    const vinIdentityMatch =
+      !vehicle.vin?.trim() ||
+      (Boolean(storedFp.vinHash) &&
+        Boolean(currentFp.vinHash) &&
+        storedFp.vinHash === currentFp.vinHash);
+
     const policy = evaluateMotionPhysicsVerify({
       isActive: row.isActive,
+      isSuperseded: row.supersededById != null,
       currentTier: row.evidenceTier,
       documentExtractionId: body.documentExtractionId,
       documentValidated,
-      identityMatch: identityFingerprintsMatch(storedFp, currentFp),
+      identityMatch,
+      vinIdentityMatch,
     });
     if (!policy.ok) {
       throw new BadRequestException({ reasonCodes: policy.reasonCodes });
@@ -243,7 +267,7 @@ export class VehicleMotionPhysicsReferenceService {
     return vehicle;
   }
 
-  private async findScopedReference(
+  private async findMutableReference(
     organizationId: string,
     vehicleId: string,
     referenceId: string,
@@ -253,6 +277,11 @@ export class VehicleMotionPhysicsReferenceService {
     });
     if (!row) {
       throw new NotFoundException('Motion physics reference not found');
+    }
+    if (!row.isActive || row.supersededById != null) {
+      throw new BadRequestException({
+        reasonCodes: [MOTION_PHYSICS_POLICY_REASONS.SUPERSEDED],
+      });
     }
     return row;
   }

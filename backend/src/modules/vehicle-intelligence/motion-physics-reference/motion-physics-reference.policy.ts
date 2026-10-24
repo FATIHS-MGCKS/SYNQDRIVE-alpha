@@ -66,8 +66,12 @@ export function evaluateMotionPhysicsReferenceCreate(input: {
 export function evaluateMotionPhysicsConfirm(input: {
   currentTier: MotionPhysicsEvidenceTier;
   isActive: boolean;
+  isSuperseded: boolean;
 }): MotionPhysicsPolicyEvaluation {
   const reasonCodes: MotionPhysicsPolicyReasonCode[] = [];
+  if (input.isSuperseded) {
+    reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.SUPERSEDED);
+  }
   if (!input.isActive) {
     reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.NOT_ACTIVE);
   }
@@ -79,12 +83,18 @@ export function evaluateMotionPhysicsConfirm(input: {
 
 export function evaluateMotionPhysicsVerify(input: {
   isActive: boolean;
+  isSuperseded: boolean;
   currentTier: MotionPhysicsEvidenceTier;
   documentExtractionId?: string | null;
   documentValidated?: boolean;
   identityMatch: boolean;
+  vinIdentityMatch: boolean;
 }): MotionPhysicsPolicyEvaluation {
   const reasonCodes: MotionPhysicsPolicyReasonCode[] = [];
+  reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.VERIFY_EVIDENCE_PIPELINE_NOT_READY);
+  if (input.isSuperseded) {
+    reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.SUPERSEDED);
+  }
   if (!input.isActive) {
     reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.NOT_ACTIVE);
   }
@@ -93,6 +103,9 @@ export function evaluateMotionPhysicsVerify(input: {
   }
   if (!input.identityMatch) {
     reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.IDENTITY_MISMATCH);
+  }
+  if (!input.vinIdentityMatch) {
+    reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.VIN_IDENTITY_MISMATCH);
   }
   if (!input.documentExtractionId) {
     reasonCodes.push(MOTION_PHYSICS_POLICY_REASONS.MISSING_EVIDENCE_FOR_VERIFY);

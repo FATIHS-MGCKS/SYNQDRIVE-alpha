@@ -270,6 +270,10 @@ export class VehicleSpecsController {
       if (token != null && tokenIds.length === 0) tokenIds.push(token);
     }
 
+    if (dimoVehicleId && !organizationId) {
+      throw new ForbiddenException('organizationId is required when dimoVehicleId is used');
+    }
+
     if (tokenIds.length === 0 && (dimoVehicleId || vin)) {
       try {
         if (organizationId && dimoVehicleId) {
@@ -299,6 +303,9 @@ export class VehicleSpecsController {
         if (dv?.model && !resolvedModel) resolvedModel = dv.model as string;
         if (dv?.year && !resolvedYear) resolvedYear = dv.year as number;
       } catch (err: unknown) {
+        if (err instanceof ForbiddenException) {
+          throw err;
+        }
         const message = err instanceof Error ? err.message : String(err);
         this.logger.warn(`[VehicleSpecAI] DB lookup failed: ${message}`);
       }

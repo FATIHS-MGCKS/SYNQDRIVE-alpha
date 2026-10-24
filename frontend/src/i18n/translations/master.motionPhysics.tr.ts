@@ -9,4 +9,6 @@ export const masterMotionPhysicsTr = {
   'master.motionPhysics.confirmAction': 'Referansı onayla',
   'master.motionPhysics.confirmSuccess': 'Hareket referansı onaylandı',
   'master.motionPhysics.confirmError': 'Referans onaylanamadı',
+  'master.motionPhysics.backfillError':
+    'Araç kaydedildi ancak hareket fiziği referansı kaydedilemedi. Değerleri düzeltip yeniden kaydedin.',
 };

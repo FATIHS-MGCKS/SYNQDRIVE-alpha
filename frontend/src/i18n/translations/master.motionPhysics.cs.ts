@@ -9,4 +9,6 @@ export const masterMotionPhysicsCs = {
   'master.motionPhysics.confirmAction': 'Potvrdit referenci',
   'master.motionPhysics.confirmSuccess': 'Referenční data potvrzena',
   'master.motionPhysics.confirmError': 'Referenci se nepodařilo potvrdit',
+  'master.motionPhysics.backfillError':
+    'Vozidlo uloženo, ale referenční data pohybové fyziky se nepodařilo uložit. Opravte hodnoty a uložte znovu.',
 };

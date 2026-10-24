@@ -9,4 +9,6 @@ export const masterMotionPhysicsEn = {
   'master.motionPhysics.confirmAction': 'Confirm reference',
   'master.motionPhysics.confirmSuccess': 'Motion reference confirmed',
   'master.motionPhysics.confirmError': 'Could not confirm motion reference',
+  'master.motionPhysics.backfillError':
+    'Vehicle saved, but motion physics reference could not be stored. Fix the values and save again.',
 };

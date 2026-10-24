@@ -9,4 +9,6 @@ export const masterMotionPhysicsPl = {
   'master.motionPhysics.confirmAction': 'Potwierdź referencję',
   'master.motionPhysics.confirmSuccess': 'Referencja fizyki ruchu potwierdzona',
   'master.motionPhysics.confirmError': 'Nie udało się potwierdzić referencji',
+  'master.motionPhysics.backfillError':
+    'Pojazd zapisany, ale nie udało się zapisać referencji fizyki ruchu. Popraw wartości i zapisz ponownie.',
 };

@@ -12,6 +12,7 @@ const TECHNICAL_BASELINE_TOP_LEVEL_KEYS = [
   'tireInstalledConfig',
   'brakeReference',
   'hvBatteryReference',
+  'motionPhysicsReference',
 ] as const;
 import {
   assessBrakeBaselineState,
