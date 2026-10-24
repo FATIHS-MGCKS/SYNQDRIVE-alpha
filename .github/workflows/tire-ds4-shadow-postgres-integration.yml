@@ -1,0 +1,52 @@
+name: Tire DS4 shadow — PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/tires/ds4-shadow/**'
+      - 'backend/prisma/migrations/*tire_ds4*'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - '.github/workflows/tire-ds4-shadow-postgres-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_ci_tire_ds4_shadow?schema=public
+
+jobs:
+  tire-ds4-shadow-postgres:
+    name: Tire DS4 shadow PostgreSQL integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start ephemeral PostgreSQL
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: tire-ds4-shadow-ci-postgres
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Apply Prisma migrations (ephemeral)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          npm ci
+          npx prisma generate
+          PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+      - name: Tire DS4 shadow catch-up PostgreSQL tests (required)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TIRE_DS4_SHADOW_POSTGRES_INTEGRATION: '1'
+          TIRE_DS4_SHADOW_POSTGRES_REQUIRED: '1'
+        run: >
+          npx jest tire-ds4-shadow-catchup.postgres.integration
+          --runInBand --verbose --forceExit
