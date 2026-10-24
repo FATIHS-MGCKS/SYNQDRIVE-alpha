@@ -2,8 +2,8 @@
 export type MotionManoeuvreKind = 'ACCELERATION' | 'DECELERATION';
 
 /**
- * `ARTEFACT_SUSPECT` is only produced by the review-round candidate `spikeReversionCheck`
- * (see `motion-event-detector.ts`); Fable V0.1 emits OK / DEGRADED / LIMITED only.
+ * `ARTEFACT_SUSPECT` is produced by spike reversion (K3), spike bracket (P1), or the physics
+ * envelope post-pass (P2) in the shadow processor; Fable V0.1 emits OK / DEGRADED / LIMITED only.
  */
 export type MotionEventQuality = 'OK' | 'DEGRADED' | 'LIMITED' | 'ARTEFACT_SUSPECT';
 

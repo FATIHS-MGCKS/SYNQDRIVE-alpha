@@ -2250,3 +2250,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Direct product readiness after Fable B2 signoff — controlled activation without historical reprocess |
 | VALIDATION | Gap-bridge safety 17/17; integration + sealed four-drive summary specs; `nest build` |
 | NON_EFFECTS | Flag default OFF; no deploy/activation; trip-FSM/C5.1/events unchanged |
+
+### DS4 motion events — P1 spike bracket + P2 physics envelope (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `MOTION_EVENT_V0_3_CANDIDATE_OPTIONS[spikeBracketCheck]` in `motion-event-detector.ts`; `motion-event-physics-envelope.ts` (`MOTION_EVENT_PHYSICS_ENVELOPE_V0_1`); shadow processor applies physics after detection; `vehiclePlausibilityClass` resolved for all trips (C5.1 resolver, permissive TESLA fallback); bundle strings suffixed `_EVENT_V0_3_PHYS_V0_1` |
+| WHY | Fable review `ds4-accel-brake-fable-review-20261024` Option A: mark dip→spike artefacts (TES16 03:50:20) and impossible mean accelerations (TIG22 19:04:34/49) as `ARTEFACT_SUSPECT` without threshold changes or event deletion |
+| VALIDATION | `motion-event-p1-p2-hardening.spec.ts`; `di-v0-motion-core-shadow-event-hardening.unit.spec.ts`; `scripts/test/motion-event-p1-p2-four-drive-regression.harness.ts` (3 allowed quality deltas, 27/27 TREFFER accepted unchanged) |
+| NON_EFFECTS | No DB migration, no UI/i18n, no FSM/C4/C5.1 threshold changes; events retained in payload, excluded from accepted counts via existing `ARTEFACT_SUSPECT` semantics |

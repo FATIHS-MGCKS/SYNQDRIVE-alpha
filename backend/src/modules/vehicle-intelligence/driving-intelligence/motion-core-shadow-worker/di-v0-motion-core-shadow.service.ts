@@ -241,10 +241,10 @@ export class DiV0MotionCoreShadowService {
 
     let processed;
     try {
-      const vehiclePlausibilityClass =
-        c5_1Effective
-          ? resolveC5_1PlausibilityClassForEligibleVehicle(vehicleRecord?.make, vehicleRecord?.model)
-          : 'TESLA';
+      const vehiclePlausibilityClass = resolveC5_1PlausibilityClassForEligibleVehicle(
+        vehicleRecord?.make,
+        vehicleRecord?.model,
+      );
       processed = processDiV0MotionCoreShadowTrip({
         parsed: verified.parsed,
         sourceFamily: wi.sourceFamily as DiV0S4SourceFamily,
