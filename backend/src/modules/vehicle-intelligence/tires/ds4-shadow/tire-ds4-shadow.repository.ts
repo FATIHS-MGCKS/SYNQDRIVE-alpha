@@ -164,7 +164,6 @@ export class TireDs4ShadowRepository {
       reason: 'missing_shadow' | 'newer_ds4_run';
     }>
   > {
-    const terminalIds = [...TIRE_DS4_SHADOW_TERMINAL_RUN_IDS];
     const rows = await this.prisma.$queryRaw<
       Array<{
         tire_trip_usage_ledger_id: string;
@@ -184,12 +183,6 @@ export class TireDs4ShadowRepository {
         FROM di_v0_motion_core_shadow_runs_v1 r
         WHERE r.shadow_status = 'SUCCEEDED'
         ORDER BY r.organization_id, r.vehicle_id, r.trip_id, r.created_at DESC
-      ),
-      terminal AS (
-        SELECT DISTINCT tire_trip_usage_ledger_id
-        FROM tire_ds4_motion_shadow_input_v1
-        WHERE adapter_version = ${adapterVersion}
-          AND di_v0_motion_core_shadow_run_id = ANY(${terminalIds}::text[])
       )
       SELECT l.id AS tire_trip_usage_ledger_id,
              l.organization_id,
@@ -201,13 +194,11 @@ export class TireDs4ShadowRepository {
         ON ls.organization_id = l.organization_id
        AND ls.vehicle_id = l.vehicle_id
        AND ls.trip_id = l.trip_id
-      LEFT JOIN terminal t ON t.tire_trip_usage_ledger_id = l.id
       LEFT JOIN tire_ds4_motion_shadow_input_v1 mat
         ON mat.tire_trip_usage_ledger_id = l.id
        AND mat.adapter_version = ${adapterVersion}
        AND mat.di_v0_motion_core_shadow_run_id = ls.run_id
       WHERE l.invalidated_at IS NULL
-        AND t.tire_trip_usage_ledger_id IS NULL
         AND mat.id IS NULL
       ORDER BY l.processed_at ASC
       LIMIT ${limit}`;

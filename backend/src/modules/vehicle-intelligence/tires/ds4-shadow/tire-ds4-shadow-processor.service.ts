@@ -60,10 +60,6 @@ export class TireDs4ShadowProcessorService {
       return { status: 'skipped', reason: 'ledger_not_found_or_invalidated' };
     }
 
-    if (await this.repository.hasTerminalMarker(ledger.id, TIRE_DS4_SHADOW_ADAPTER_VERSION)) {
-      return { status: 'skipped', reason: 'terminal_marker_present' };
-    }
-
     const read = await this.tripMapRead.readForTrip(
       ledger.organizationId,
       ledger.vehicleId,
@@ -167,6 +163,10 @@ export class TireDs4ShadowProcessorService {
     },
     reason: string,
   ): Promise<TireDs4ShadowProcessOutcome> {
+    if (await this.repository.hasTerminalMarker(ledger.id, TIRE_DS4_SHADOW_ADAPTER_VERSION)) {
+      return { status: 'skipped', reason: 'terminal_marker_blocks_retry' };
+    }
+
     const nextAttempt = data.attempt + 1;
     if (nextAttempt >= this.config.maxAttempts) {
       await this.repository.persistTerminalMarker({

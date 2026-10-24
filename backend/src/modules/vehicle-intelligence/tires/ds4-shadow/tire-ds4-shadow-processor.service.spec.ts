@@ -213,21 +213,25 @@ describe('TireDs4ShadowProcessorService', () => {
     expect(producer.enqueueMaterialize).not.toHaveBeenCalled();
   });
 
-  it('skips when terminal marker already present', async () => {
+  it('blocks defer/retry when terminal marker already present', async () => {
     const prisma = {
       tireTripUsageLedger: { findFirst: jest.fn().mockResolvedValue(ledgerRow) },
       diV0MotionCoreShadowRunV1: { findFirst: jest.fn() },
     };
-    const tripMapRead = { readForTrip: jest.fn() };
+    const tripMapRead = { readForTrip: jest.fn().mockResolvedValue({ status: 'PENDING' }) };
     const repository = makeRepository({
       hasTerminalMarker: jest.fn().mockResolvedValue(true),
     });
+    const producer = {
+      enqueueMaterialize: jest.fn().mockResolvedValue('job-1'),
+      computeRetryDelayMs: jest.fn().mockReturnValue(2000),
+    };
 
     const svc = new TireDs4ShadowProcessorService(
       prisma as never,
       tripMapRead as never,
       repository as never,
-      { enqueueMaterialize: jest.fn(), computeRetryDelayMs: jest.fn() } as never,
+      producer as never,
       config as never,
     );
 
@@ -239,8 +243,8 @@ describe('TireDs4ShadowProcessorService', () => {
       attempt: 0,
     });
 
-    expect(outcome).toEqual({ status: 'skipped', reason: 'terminal_marker_present' });
-    expect(tripMapRead.readForTrip).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ status: 'skipped', reason: 'terminal_marker_blocks_retry' });
+    expect(producer.enqueueMaterialize).not.toHaveBeenCalled();
   });
 
   it('allows a second row for a newer DS4 run id (replay)', async () => {

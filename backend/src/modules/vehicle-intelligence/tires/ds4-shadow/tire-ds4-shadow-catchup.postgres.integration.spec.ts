@@ -250,10 +250,20 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
   });
 
   it('enforces ON DELETE RESTRICT from shadow rows to ledger', async () => {
+    const restrictTrip = await prisma.vehicleTrip.create({
+      data: {
+        vehicleId,
+        startTime: new Date('2026-10-03T10:00:00.000Z'),
+        endTime: new Date('2026-10-03T11:00:00.000Z'),
+        tripStatus: TripStatus.COMPLETED,
+      },
+      select: { id: true },
+    });
+
     const shadowOnlyLedgerId = await insertTireTripUsageLedgerRow({
       organizationId,
       vehicleId,
-      tripId,
+      tripId: restrictTrip.id,
       tireSetupId,
       tripStartedAt: new Date('2026-10-03T10:00:00.000Z'),
       tripEndedAt: new Date('2026-10-03T11:00:00.000Z'),
