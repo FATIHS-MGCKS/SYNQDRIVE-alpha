@@ -1,4 +1,7 @@
-import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
+import {
+  buildApdShadowReconciliationTripIntervalWhere,
+  isVehicleInActiveTripAtMs,
+} from './apd-shadow-trip-reconciliation.util';
 
 describe('isVehicleInActiveTripAtMs (frozen interval contract)', () => {
   const vehicleId = 'arteon-veh';
@@ -13,11 +16,9 @@ describe('isVehicleInActiveTripAtMs (frozen interval contract)', () => {
     const inTrip = await isVehicleInActiveTripAtMs(prisma as never, vehicleId, atMs);
     expect(inTrip).toBe(true);
     expect(prisma.vehicleTrip.findFirst).toHaveBeenCalledWith({
-      where: {
-        vehicleId,
-        startTime: { lte: new Date(atMs) },
-        OR: [{ endTime: null }, { endTime: { gte: new Date(atMs) } }],
-      },
+      where: buildApdShadowReconciliationTripIntervalWhere(vehicleId, new Date(atMs), {
+        applyLegacyTripEvidenceExclusion: true,
+      }),
       select: { id: true },
     });
   });

@@ -58,4 +58,8 @@ export class AdaptivePollingShadowMetricsService {
   recordSkippedInformative(policy: string, source: string): void {
     this.tripMetrics?.apdShadowSkippedInformativePollTotal?.inc({ policy, source });
   }
+
+  recordLegacyTripEvidenceExclusion(reason: string): void {
+    this.tripMetrics?.apdShadowLegacyTripEvidenceExclusionTotal?.inc({ reason });
+  }
 }
