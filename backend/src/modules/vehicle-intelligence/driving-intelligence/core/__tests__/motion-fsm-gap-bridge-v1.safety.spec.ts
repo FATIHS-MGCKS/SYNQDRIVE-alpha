@@ -10,6 +10,7 @@ import {
   GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS,
   gapBridgeV1MaxDistanceFromStopInTimeM,
   gapBridgeV1MaxDistanceToStopInTimeM,
+  gapBridgeV1FeasibleT1SplitCandidatesS,
   gapBridgeV1MaxDistanceWithEmbeddedStopM,
   gapBridgeV1StopFeasibilityAllowsBridge,
 } from '../kinematics/motion-fsm-gap-bridge-v1';
@@ -184,6 +185,115 @@ describe('motion-fsm gap bridge V1 safety (B2/B3)', () => {
         }
       }
     }
+  });
+
+  it('rejects Fable narrow-band envelope-corner stop profiles (204-cell family)', () => {
+    const phys = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS;
+    let failOpen = 0;
+    for (let dt = 2; dt <= 60; dt += 1) {
+      for (let vi = 5; vi <= 130; vi += 0.5) {
+        for (const s of [0.0005, 0.002, 0.005, 0.009, 0.0099]) {
+          const vin = vi / 3.6;
+          const vout = (dt - phys.minStopHoldS - vin / phys.maxBrakeMps2 - s) * phys.maxAccelMps2;
+          if (vout <= 1.3 || vout > 130 / 3.6) {
+            continue;
+          }
+          const vo = vout * 3.6;
+          const cap = Math.max(vin, vout) * (1 + phys.speedHeadroomFrac) + phys.speedHeadroomMps;
+          let refBest = 0;
+          for (let t1 = vin / phys.maxBrakeMps2; t1 <= dt - phys.minStopHoldS - vout / phys.maxAccelMps2; t1 += 0.0005) {
+            const t2 = dt - phys.minStopHoldS - t1;
+            const d =
+              gapBridgeV1MaxDistanceToStopInTimeM(t1, vin, phys.maxAccelMps2, phys.maxBrakeMps2, cap) +
+              gapBridgeV1MaxDistanceFromStopInTimeM(t2, vout, phys.maxAccelMps2, phys.maxBrakeMps2, cap);
+            if (Number.isFinite(d)) {
+              refBest = Math.max(refBest, d);
+            }
+          }
+          if (refBest <= 0) {
+            continue;
+          }
+          if (gapBridgeV1StopFeasibilityAllowsBridge(refBest, dt, vi, vo, p)) {
+            failOpen += 1;
+          }
+        }
+      }
+    }
+    expect(failOpen).toBe(0);
+  });
+
+  it('evaluates analytic T1 interval endpoints when feasible band is narrower than the grid step', () => {
+    const phys = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS;
+    const dt = 6;
+    const s = 0.002;
+    const v = ((dt - phys.minStopHoldS - s) * phys.maxBrakeMps2) / 3;
+    const vK = v * 3.6;
+    const vin = v;
+    const vout = v;
+    const tLo = vin / phys.maxBrakeMps2;
+    const tHi = dt - phys.minStopHoldS - vout / phys.maxAccelMps2;
+    expect(tHi - tLo).toBeLessThan(phys.stopSplitSearchStepS);
+    const candidates = gapBridgeV1FeasibleT1SplitCandidatesS(
+      dt,
+      vin,
+      vout,
+      phys.maxAccelMps2,
+      phys.maxBrakeMps2,
+      phys.minStopHoldS,
+      phys.stopSplitSearchStepS,
+    );
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates).toContain(tLo);
+    expect(candidates).toContain(tHi);
+    const thr = gapBridgeV1MaxDistanceWithEmbeddedStopM(dt, vK, vK, p.reappearNoiseM * 2);
+    expect(thr).toBeGreaterThan(30);
+    expect(gapBridgeV1StopFeasibilityAllowsBridge(33.3, dt, vK, vK, p)).toBe(false);
+
+    const N = 40;
+    const gapStart = 20;
+    const gapEnd = 24;
+    const dispM = 33.3;
+    const buckets: MotionCorePositionBucket[] = [];
+    let x = 0;
+    for (let i = 0; i < N; i++) {
+      if (i >= gapStart && i <= gapEnd) {
+        buckets.push({ bucketLabelUtc: lab(i), availability: 'ROW_ABSENT', latitude: null, longitude: null });
+        continue;
+      }
+      if (i === 25) {
+        x += dispM;
+      } else if (i > 0) {
+        x += v;
+      }
+      buckets.push({ bucketLabelUtc: lab(i), availability: 'PRESENT', latitude: LAT, longitude: x / M_PER_DEG_LON });
+    }
+    const speeds: MotionCoreSpeedSample[] = buckets.map((b) => ({
+      label: b.bucketLabelUtc,
+      valueKmh: b.availability === 'PRESENT' ? vK : null,
+      quality: b.availability === 'PRESENT' ? 'OK' : 'NO_POSITION',
+      estimator: 'C4',
+      supportLabels: [],
+      supportSpanS: null,
+      flags: [],
+    }));
+    const forward: MotionFsmLabel[] = buckets.map((b, i) => {
+      const unk = i >= gapStart && i <= gapEnd;
+      return {
+        label: b.bucketLabelUtc,
+        state: unk ? 'UNKNOWN' : 'MOVING',
+        evidenceQuality: unk ? 'INDETERMINATE' : 'DIRECT',
+        reason: unk ? 'gap_without_context' : 'speed_above_moving_band',
+        speedKmh: unk ? null : vK,
+        positionPresent: b.availability === 'PRESENT',
+        mode: 'RETROSPECTIVE',
+        flags: [],
+        sparseSpeedKmh: null,
+        sparseFsmPointAuthority: false,
+        speedQuality: unk ? null : 'OK',
+      };
+    });
+    const out = applyMotionFsmGapBridgeV1PostPass(forward, buckets, speeds, undefined, p);
+    expect(out.filter((l) => l.flags.some((f) => f.startsWith('GAP_BRIDGE_V1_BRIDGE'))).length).toBe(0);
   });
 
   it('rejects Fable post-stop overspeed cruise hidden stops (20 km/h and 50 km/h anchors)', () => {

@@ -2223,3 +2223,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Fable final re-review B2: V1.2 D_max under-estimated post-stop cruise and cap travel (fail-open on hidden stops) |
 | VALIDATION | `npm run test:di:motion-fsm-gap-bridge-safety`; four-drive replay gate PASS; `production-database-guard-bootstrap-dry-run` PASS |
 | NON_EFFECTS | No shadow flag ON; no deploy |
+
+### DS4 motion FSM — gap bridge V1.3.1 narrow T1-band fix (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `gapBridgeV1FeasibleT1SplitCandidatesS` evaluates analytic interval endpoints when feasible T1 band &lt; grid step; `MOTION_FSM_GAP_BRIDGE_V1_V1_3_1` |
+| WHY | Fable re-review: empty grid inside non-empty feasible interval under-estimated D_max at envelope corner |
+| VALIDATION | 17/17 gap-bridge safety tests; four-drive replay PASS; 204-cell + 4082-cell adversarial scans 0 fail-open |
+| NON_EFFECTS | No C4/C5.1/events; no flag ON |
