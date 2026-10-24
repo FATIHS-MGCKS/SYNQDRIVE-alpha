@@ -6,41 +6,49 @@ import {
   isMotionPhysicsReferenceReadOnly,
   motionPhysicsReferenceSourceForSave,
   parseMotionPhysicsNumericField,
+  resolveMotionPhysicsPendingAfterAiApply,
   shouldSyncMotionPhysicsReferenceOnSave,
 } from './motion-physics-reference-sync.util';
 import { shouldApplyAiSpecToEmptyField } from './ai-spec-field-merge.util';
 
+const baseSyncInput = {
+  evidenceTier: null as const,
+  referenceId: null,
+  pendingCreateSource: 'MISTRAL_AI' as const,
+  hasMotionValues: true,
+  manualMotionEdited: false,
+};
+
 describe('motion-physics-reference-sync.util', () => {
-  it('does not sync on routine edit without in-session Mistral apply', () => {
+  it('does not sync on routine edit without eligible live Mistral pending', () => {
     expect(
       shouldSyncMotionPhysicsReferenceOnSave({
-        evidenceTier: null,
-        referenceId: null,
+        ...baseSyncInput,
         pendingCreateSource: null,
-        hasMotionValues: true,
       }),
     ).toBe(false);
   });
 
-  it('syncs ESTIMATED reference only after Mistral fields were applied in session', () => {
+  it('syncs ESTIMATED reference only after eligible live Mistral apply', () => {
+    expect(shouldSyncMotionPhysicsReferenceOnSave(baseSyncInput)).toBe(true);
+    expect(motionPhysicsReferenceSourceForSave('MISTRAL_AI')).toBe('MISTRAL_AI');
+  });
+
+  it('does not sync when user edited motion fields after Mistral apply', () => {
     expect(
       shouldSyncMotionPhysicsReferenceOnSave({
-        evidenceTier: null,
-        referenceId: null,
-        pendingCreateSource: 'MISTRAL_AI',
-        hasMotionValues: true,
+        ...baseSyncInput,
+        manualMotionEdited: true,
       }),
-    ).toBe(true);
-    expect(motionPhysicsReferenceSourceForSave('MISTRAL_AI')).toBe('MISTRAL_AI');
+    ).toBe(false);
   });
 
   it('does not overwrite an existing ESTIMATED reference on save', () => {
     expect(
       shouldSyncMotionPhysicsReferenceOnSave({
+        ...baseSyncInput,
         evidenceTier: 'ESTIMATED',
         referenceId: 'ref-1',
-        pendingCreateSource: 'MISTRAL_AI',
-        hasMotionValues: true,
       }),
     ).toBe(false);
   });
@@ -48,20 +56,64 @@ describe('motion-physics-reference-sync.util', () => {
   it('protects CONFIRMED and VERIFIED tiers from save-side sync', () => {
     expect(
       shouldSyncMotionPhysicsReferenceOnSave({
+        ...baseSyncInput,
         evidenceTier: 'CONFIRMED',
         referenceId: 'ref-1',
-        pendingCreateSource: 'MISTRAL_AI',
-        hasMotionValues: true,
       }),
     ).toBe(false);
     expect(
       shouldSyncMotionPhysicsReferenceOnSave({
+        ...baseSyncInput,
         evidenceTier: 'VERIFIED',
         referenceId: 'ref-1',
-        pendingCreateSource: 'MISTRAL_AI',
-        hasMotionValues: true,
       }),
     ).toBe(false);
+  });
+
+  describe('resolveMotionPhysicsPendingAfterAiApply (provenance)', () => {
+    it('queues MISTRAL_AI only for successful live apply into previously empty motion fields', () => {
+      expect(
+        resolveMotionPhysicsPendingAfterAiApply({
+          provenance: 'mistral_live',
+          appliedMotionFromAi: true,
+          motionFieldsHadValuesBeforeApply: false,
+          manualEditedAfterApply: false,
+        }),
+      ).toBe('MISTRAL_AI');
+    });
+
+    it('never queues MISTRAL_AI for local fallback data', () => {
+      expect(
+        resolveMotionPhysicsPendingAfterAiApply({
+          provenance: 'local_fallback',
+          appliedMotionFromAi: true,
+          motionFieldsHadValuesBeforeApply: false,
+          manualEditedAfterApply: false,
+        }),
+      ).toBeNull();
+    });
+
+    it('does not queue MISTRAL_AI when stock/mixed values existed before AI fill', () => {
+      expect(
+        resolveMotionPhysicsPendingAfterAiApply({
+          provenance: 'mistral_live',
+          appliedMotionFromAi: true,
+          motionFieldsHadValuesBeforeApply: true,
+          manualEditedAfterApply: false,
+        }),
+      ).toBeNull();
+    });
+
+    it('does not queue MISTRAL_AI after manual correction post-apply', () => {
+      expect(
+        resolveMotionPhysicsPendingAfterAiApply({
+          provenance: 'mistral_live',
+          appliedMotionFromAi: true,
+          motionFieldsHadValuesBeforeApply: false,
+          manualEditedAfterApply: true,
+        }),
+      ).toBeNull();
+    });
   });
 
   it('detects motion form values including power definition', () => {

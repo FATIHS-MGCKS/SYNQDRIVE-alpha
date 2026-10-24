@@ -2,6 +2,9 @@ export type MotionPhysicsEvidenceTierUi = 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED'
 
 export type MotionPhysicsPendingCreateSource = 'MISTRAL_AI' | null;
 
+/** How vehicle AI specs were applied to the form (reference auto-create eligibility). */
+export type AiSpecsApplyProvenance = 'mistral_live' | 'local_fallback';
+
 /** Canonical stored values for systemPowerDefinition (matches backend semantics). */
 export const MOTION_SYSTEM_POWER_DEFINITION_OPTIONS = [
   'OEM_RATED_MOTOR_KW',
@@ -36,12 +39,30 @@ export function canConfirmManualMotionValues(tier: MotionPhysicsEvidenceTierUi):
   return tier !== 'VERIFIED';
 }
 
-/** Routine vehicle edit must not create or upgrade motion references without an explicit AI apply in-session. */
+/**
+ * After AI apply: only successful live Mistral may queue MISTRAL_AI auto-reference.
+ * Local fallback, mixed pre-existing + AI, or post-apply manual edits → no auto provenance.
+ */
+export function resolveMotionPhysicsPendingAfterAiApply(input: {
+  provenance: AiSpecsApplyProvenance;
+  appliedMotionFromAi: boolean;
+  motionFieldsHadValuesBeforeApply: boolean;
+  manualEditedAfterApply: boolean;
+}): MotionPhysicsPendingCreateSource {
+  if (!input.appliedMotionFromAi) return null;
+  if (input.provenance !== 'mistral_live') return null;
+  if (input.motionFieldsHadValuesBeforeApply) return null;
+  if (input.manualEditedAfterApply) return null;
+  return 'MISTRAL_AI';
+}
+
+/** Routine vehicle edit must not create or upgrade motion references without eligible live Mistral apply. */
 export function shouldSyncMotionPhysicsReferenceOnSave(input: {
   evidenceTier: MotionPhysicsEvidenceTierUi;
   referenceId: string | null;
   pendingCreateSource: MotionPhysicsPendingCreateSource;
   hasMotionValues: boolean;
+  manualMotionEdited: boolean;
 }): boolean {
   if (input.evidenceTier === 'VERIFIED' || input.evidenceTier === 'CONFIRMED') {
     return false;
@@ -50,6 +71,9 @@ export function shouldSyncMotionPhysicsReferenceOnSave(input: {
     return false;
   }
   if (input.pendingCreateSource !== 'MISTRAL_AI') {
+    return false;
+  }
+  if (input.manualMotionEdited) {
     return false;
   }
   return input.hasMotionValues;
@@ -67,6 +91,16 @@ export function parseMotionPhysicsNumericField(raw: string): number | null {
   const normalized = trimmed.replace(/[^\d.,-]/g, '').replace(',', '.');
   const n = Number(normalized);
   return Number.isFinite(n) ? n : null;
+}
+
+export function snapshotMotionPhysicsFormFields(input: {
+  curbWeight: string;
+  systemMotorPowerKw: string;
+  accel0To100S: string;
+  variantAssumption: string;
+  systemPowerDefinition: string;
+}) {
+  return { ...input };
 }
 
 export function buildMotionPhysicsReferenceCreateBody(input: {
