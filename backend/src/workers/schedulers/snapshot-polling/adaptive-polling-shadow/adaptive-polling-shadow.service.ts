@@ -38,6 +38,7 @@ import type {
 } from './adaptive-polling-shadow.types';
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
 import type { ApdShadowActiveEpochView } from './apd-shadow-activation-epoch.types';
+import { ApdShadowVsiLvAvailabilityLoader } from './apd-shadow-vsi-lv-availability.loader';
 
 @Injectable()
 export class AdaptivePollingShadowService {
@@ -48,6 +49,7 @@ export class AdaptivePollingShadowService {
     private readonly repository: AdaptivePollingShadowRepository,
     private readonly activationEpochService: ApdShadowActivationEpochService,
     @Optional() private readonly metrics?: AdaptivePollingShadowMetricsService,
+    @Optional() private readonly vsiLvAvailability?: ApdShadowVsiLvAvailabilityLoader,
   ) {
     this.refreshRuntimeMetrics();
   }
@@ -343,6 +345,37 @@ export class AdaptivePollingShadowService {
 
     if (profile.invalidated && profile.invalidationReason) {
       this.metrics?.recordProfileInvalidated(profile.invalidationReason);
+    }
+
+    if (this.vsiLvAvailability) {
+      const lvAvailability = await this.vsiLvAvailability.projectForDecision({
+        organizationId: ctx.organizationId,
+        vehicleId: ctx.vehicleId,
+        decisionAtMs,
+        profileEligibleGapCount: profile.sampleCount,
+        baselineProfileInvalidationReason: profile.invalidationReason,
+      });
+      this.metrics?.recordShadowLvAvailability(lvAvailability.classification);
+      if (lvAvailability.signalAvailabilityLimitsProfileCadence) {
+        this.metrics?.recordShadowLvSignalAvailabilityCadenceParity();
+      }
+      this.logger.debug(
+        JSON.stringify({
+          event: 'APD_SHADOW_VSI_LV_AVAILABILITY',
+          vehicleId: ctx.vehicleId,
+          organizationId: ctx.organizationId,
+          opportunityId,
+          classification: lvAvailability.classification,
+          providerSourceLinkId: lvAvailability.providerSourceLinkId,
+          strictRestLiveVoltageMeasurementCount:
+            lvAvailability.strictRestLiveVoltageMeasurementCount,
+          profileEligibleGapCount: lvAvailability.profileEligibleGapCount,
+          baselineProfileInvalidationReason: lvAvailability.baselineProfileInvalidationReason,
+          signalAvailabilityLimitsProfileCadence:
+            lvAvailability.signalAvailabilityLimitsProfileCadence,
+          reasonCodes: lvAvailability.reasonCodes,
+        }),
+      );
     }
 
     const medianIntervalMs = profile.medianCadenceMs;

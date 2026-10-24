@@ -5,6 +5,7 @@ import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repos
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { AdaptivePollingShadowService } from './adaptive-polling-shadow.service';
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
+import { ApdShadowVsiLvAvailabilityLoader } from './apd-shadow-vsi-lv-availability.loader';
 
 @Module({
   imports: [PrismaModule, ObservabilityModule],
@@ -12,6 +13,7 @@ import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.s
     AdaptivePollingShadowRepository,
     AdaptivePollingShadowMetricsService,
     ApdShadowActivationEpochService,
+    ApdShadowVsiLvAvailabilityLoader,
     AdaptivePollingShadowService,
   ],
   exports: [AdaptivePollingShadowService, ApdShadowActivationEpochService],

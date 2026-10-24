@@ -65,7 +65,8 @@
 ## Implemented (P5A — merged #2049 @ `f48070508`, P5B runtime OFF)
 
 - **P5A read-only adapter** — `buildVsiApdsReadonlyCapabilityObservation`, demand vector from `VSI_CONSUMER_REQUIREMENTS_V1`, pure `correlateApdsShadowWithVsiCapability`.
-- **P5B gate** — `VSI_P5_APDS_CORRELATION_ENABLED` (default false); independent of `WORKER_APD_SHADOW_ENABLED`; **not** wired into `adaptive-polling-shadow`.
+- **P5B gate** — `VSI_P5_APDS_CORRELATION_ENABLED` (default false); independent of `WORKER_APD_SHADOW_ENABLED`; full P5B correlation **not** wired into live shadow decisioning.
+- **Shadow LV availability (2026-10-24)** — parallel `projectVsiApdsShadowLvAvailability` + `ApdShadowVsiLvAvailabilityLoader` emit `LV_*` classes alongside frozen B2/B4 baseline (observability only; no policy activation).
 - **Production deploy** — attested Production release `c1013265b` (2026-10-16 read-only VPS check) includes P5A code path on disk; P5B/P5B.1 runtime flags absent → correlation remains OFF.
 - **Service** — `VsiApdsP5ReadonlyService` (profile + link load only; no VSI write-back, no DIMO).
 - **Evidence-time** — `VERIFIED_DECISION_TIME_SNAPSHOT` vs `CURRENT_PROFILE_REVIEW` vs `HISTORICAL_PROFILE_UNAVAILABLE` (no profile history table; fail closed).
