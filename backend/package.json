@@ -176,6 +176,7 @@
     "test:vehicle-detail:observability": "jest vehicle-detail-prometheus.metrics vehicle-detail-log.util",
     "test:vehicle-detail:verify": "bash scripts/test/vehicle-detail-backend-verify.sh all",
     "test:vehicle-detail:verify:unit": "bash scripts/test/vehicle-detail-backend-verify.sh unit",
+    "test:di:motion-fsm-gap-bridge-safety": "jest motion-fsm-gap-bridge-v1 --runInBand",
     "test:nest:boot-check:ci": "bash scripts/test/synqdrive-nest-boot-check-ci.sh",
     "test:boundary-repair:postgres": "bash scripts/test/boundary-repair-postgres-ci.sh",
     "test:erd-e4:bullmq-redis": "bash scripts/test/erd-e4-bullmq-redis-ci.sh",

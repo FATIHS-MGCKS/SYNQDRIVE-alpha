@@ -2205,3 +2205,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Fable independent safety review PR #2150 — B1 build, B2 hidden embedded stops, B3 frozen veto without aux |
 | VALIDATION | `tsc --noEmit`, `nest build`, `test:nest:boot-check:ci`, Jest gap-bridge + safety specs; 4-drive replay false-claim Δ=0 |
 | NON_EFFECTS | Shadow processor still V0_3; no deploy/flag ON |
+
+### DS4 motion FSM — gap bridge V1.2 stop-feasibility physics (2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `gapBridgeV1MaxDistanceWithEmbeddedStopM` (time-aware D_max with mandatory stop); `MOTION_FSM_GAP_BRIDGE_V1_V1_2`; CI job `DS4 motion FSM gap-bridge safety gate`; `SHADOW_INTEGRATION_READINESS.md` |
+| WHY | Fable B2 re-review: fixed min-stop-distance fail-open on gentle decel / lead-cruise hidden stops |
+| VALIDATION | `npm run test:di:motion-fsm-gap-bridge-safety`; four-drive replay unchanged |
+| NON_EFFECTS | No C4/C5.1/events; no shadow flag ON |

@@ -15,8 +15,10 @@ import {
 export type { MotionFsmGapBridgeAuxiliary } from './motion-fsm-gap-bridge-v1';
 export {
   GAP_BRIDGE_V1_STOP_FEASIBILITY_DECEL_MPS2,
+  GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS,
   MOTION_FSM_GAP_BRIDGE_V1_VERSION,
   gapBridgeV1LongSpanAllowed,
+  gapBridgeV1MaxDistanceWithEmbeddedStopM,
   gapBridgeV1StopFeasibilityAllowsBridge,
 } from './motion-fsm-gap-bridge-v1';
 

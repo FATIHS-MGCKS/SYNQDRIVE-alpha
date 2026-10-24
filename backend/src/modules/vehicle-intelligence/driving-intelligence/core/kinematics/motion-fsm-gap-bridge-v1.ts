@@ -3,9 +3,25 @@ import { parseBucketLabelMs, type MotionCorePositionBucket } from './motion-core
 import type { MotionCoreSpeedQuality, MotionCoreSpeedSample } from './speed-sample.types';
 import type { MotionFsmEvidenceQuality, MotionFsmLabel, MotionFsmState } from './motion-fsm';
 
-export const MOTION_FSM_GAP_BRIDGE_V1_VERSION = 'MOTION_FSM_GAP_BRIDGE_V1_V1_1';
+export const MOTION_FSM_GAP_BRIDGE_V1_VERSION = 'MOTION_FSM_GAP_BRIDGE_V1_V1_2';
 
-/** Conservative peak decel/accel used for stop-feasibility (not trip-tuned). */
+/**
+ * Conservative kinematic envelope for “could a full stop fit inside this gap?” (not trip-tuned).
+ * Uses gentle braking / moderate accel bounds so D_max is not underestimated (fail-closed).
+ */
+export const GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS = {
+  minStopHoldS: 1.0,
+  minBrakeMps2: 1.0,
+  maxBrakeMps2: 8.0,
+  minAccelMps2: 1.0,
+  maxAccelMps2: 4.0,
+  speedHeadroomFrac: 0.15,
+  speedHeadroomMps: 5.0,
+  searchStepS: 0.05,
+  postStopSpeedStepMps: 0.25,
+} as const;
+
+/** @deprecated Use {@link gapBridgeV1MaxDistanceWithEmbeddedStopM}; kept for audit references. */
 export const GAP_BRIDGE_V1_STOP_FEASIBILITY_DECEL_MPS2 = 3.0;
 
 export type MotionFsmGapBridgeParamSlice = {
@@ -118,7 +134,95 @@ function nearestDirectMovingAnchor(
 }
 
 /**
- * True when endpoint displacement is too small to exclude a full stop between DIRECT cruise speeds.
+ * Maximum path length (m) achievable in `dtS` from `vinKmh` to `voutKmh` while including a full
+ * stop of at least {@link GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS.minStopHoldS}. Searched over
+ * plausible accel/brake rates, hidden cruise before/after stop, and asymmetric profiles.
+ */
+export function gapBridgeV1MaxDistanceWithEmbeddedStopM(
+  dtS: number,
+  vinKmh: number,
+  voutKmh: number,
+  positionUncertaintyM = 0,
+): number {
+  if (dtS < 1 || vinKmh <= 0 || voutKmh <= 0) {
+    return 0;
+  }
+  const phys = GAP_BRIDGE_V1_STOP_FEASIBILITY_PHYSICS;
+  const vin = vinKmh / 3.6;
+  const vout = voutKmh / 3.6;
+  const vCap =
+    Math.max(vin, vout) * (1 + phys.speedHeadroomFrac) + phys.speedHeadroomMps;
+  const dt = dtS;
+  const tsMin = phys.minStopHoldS;
+  const aAccValues = [1, 1.5, 2, 2.5, 3, 4];
+  const aBrkValues = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
+  let best = 0;
+
+  for (const aAcc of aAccValues) {
+    if (aAcc < phys.minAccelMps2 || aAcc > phys.maxAccelMps2) {
+      continue;
+    }
+    for (const aBrk of aBrkValues) {
+      if (aBrk < phys.minBrakeMps2 || aBrk > phys.maxBrakeMps2) {
+        continue;
+      }
+      for (let t1 = 0; t1 <= dt; t1 += phys.searchStepS) {
+        const v1 = Math.min(vin + aAcc * t1, vCap);
+        const d1 = ((vin + v1) / 2) * t1;
+        const tBrake = v1 / aBrk;
+        if (t1 + tBrake + tsMin > dt) {
+          continue;
+        }
+        const dBrake = (v1 * v1) / (2 * aBrk);
+        const tUsed = t1 + tBrake + tsMin;
+        const dPre = d1 + dBrake;
+
+        for (let v2 = vout; v2 <= vCap + 0.01; v2 += phys.postStopSpeedStepMps) {
+          const tAcc = v2 / aAcc;
+          let dPost = 0;
+          let tTail = 0;
+          let vEnd = v2;
+
+          if (v2 > vout + 0.01) {
+            const tDecel = (v2 - vout) / aBrk;
+            if (tUsed + tAcc + tDecel > dt) {
+              continue;
+            }
+            dPost = (v2 * v2) / (2 * aAcc) + (v2 * v2 - vout * vout) / (2 * aBrk);
+            tTail = tAcc + tDecel;
+            vEnd = vout;
+          } else if (v2 + 0.01 < vout) {
+            const tExtra = (vout - v2) / aAcc;
+            if (tUsed + tAcc + tExtra > dt) {
+              continue;
+            }
+            dPost = (v2 * v2) / (2 * aAcc) + ((vout + v2) / 2) * tExtra;
+            tTail = tAcc + tExtra;
+            vEnd = vout;
+          } else {
+            if (tUsed + tAcc > dt) {
+              continue;
+            }
+            dPost = (v2 * v2) / (2 * aAcc);
+            tTail = tAcc;
+          }
+
+          const tRemain = dt - tUsed - tTail;
+          if (tRemain < -0.001) {
+            continue;
+          }
+          const dCruise = Math.max(0, tRemain) * vEnd;
+          best = Math.max(best, dPre + dPost + dCruise);
+        }
+      }
+    }
+  }
+
+  return best + positionUncertaintyM;
+}
+
+/**
+ * Bridge only if observed displacement exceeds every kinematically plausible stop-inclusive path.
  * Uses vin/vout from independent DIRECT anchors (km/h).
  */
 export function gapBridgeV1StopFeasibilityAllowsBridge(
@@ -127,7 +231,6 @@ export function gapBridgeV1StopFeasibilityAllowsBridge(
   vinKmh: number | null,
   voutKmh: number | null,
   p: MotionFsmGapBridgeParamSlice,
-  decelMps2: number = GAP_BRIDGE_V1_STOP_FEASIBILITY_DECEL_MPS2,
 ): boolean {
   if (dtS < 1 || dispM <= 0) {
     return false;
@@ -138,13 +241,9 @@ export function gapBridgeV1StopFeasibilityAllowsBridge(
   if (vinKmh < p.movingBandMinKmh || voutKmh < p.movingBandMinKmh) {
     return false;
   }
-  const vin = vinKmh / 3.6;
-  const vout = voutKmh / 3.6;
-  const minStopDistanceM = (vin * vin + vout * vout) / (2 * decelMps2);
-  const endpointTravelM = vin + vout;
   const uncertaintyM = p.reappearNoiseM * 2;
-  const requiredMinDispM = minStopDistanceM + endpointTravelM + uncertaintyM;
-  return dispM > requiredMinDispM;
+  const dMax = gapBridgeV1MaxDistanceWithEmbeddedStopM(dtS, vinKmh, voutKmh, uncertaintyM);
+  return dispM > dMax;
 }
 
 function lastPresentBefore(ordered: MotionCorePositionBucket[], beforeSec: number): MotionCorePositionBucket | null {

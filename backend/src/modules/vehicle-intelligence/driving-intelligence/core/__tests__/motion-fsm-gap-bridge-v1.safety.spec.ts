@@ -7,6 +7,7 @@ import {
 } from '../kinematics/motion-fsm';
 import {
   applyMotionFsmGapBridgeV1PostPass,
+  gapBridgeV1MaxDistanceWithEmbeddedStopM,
   gapBridgeV1StopFeasibilityAllowsBridge,
 } from '../kinematics/motion-fsm-gap-bridge-v1';
 import { computeC4AdaptiveL3 } from '../kinematics/c4-adaptive-l3';
@@ -60,15 +61,59 @@ function cruise(n: number, v: number) {
   return Array.from({ length: n }, () => v);
 }
 
-function hiddenStopProfile(vKmh: number, aDec: number, stopS: number) {
+function hiddenStopProfile(vKmh: number, aDec: number, stopS: number, leadCruiseS = 0) {
   const v = vKmh / 3.6;
   const dec: number[] = [];
   for (let u = v - aDec; u > 0; u -= aDec) {
     dec.push(u);
   }
   const acc = [...dec].reverse();
-  const hidden = [...dec, ...cruise(stopS, 0), ...acc];
+  const hidden = [...cruise(leadCruiseS, v), ...dec, ...cruise(stopS, 0), ...acc];
   return [...cruise(20, v), ...hidden.map((x) => ({ v: x, a: 'R' as const })), ...cruise(20, v)];
+}
+
+function hiddenStopAsymmetric(vinKmh: number, voutKmh: number, aDec: number, aAcc: number, stopS: number) {
+  const vin = vinKmh / 3.6;
+  const vout = voutKmh / 3.6;
+  const dec: number[] = [];
+  for (let u = vin - aDec; u > 0; u -= aDec) {
+    dec.push(u);
+  }
+  const acc: number[] = [];
+  for (let u = aAcc; u < vout; u += aAcc) {
+    acc.push(u);
+  }
+  if (acc.length === 0 || acc[acc.length - 1]! < vout) {
+    acc.push(vout);
+  }
+  const hidden = [...dec, ...cruise(stopS, 0), ...acc];
+  return [...cruise(20, vin), ...hidden.map((x) => ({ v: x, a: 'R' as const })), ...cruise(20, vout)];
+}
+
+function countBridgedStillSeconds(
+  on: MotionFsmLabel[],
+  profile: Array<number | { v: number; a?: 'P' | 'R' | 'N' }>,
+): number {
+  const bridged = on.filter((l) => l.flags.some((f) => f.startsWith('GAP_BRIDGE_V1_BRIDGE')));
+  return bridged.filter((l) => {
+    const s = Math.round((Date.parse(l.label) - base) / 1000);
+    const row = profile[s];
+    if (typeof row === 'number') {
+      return row === 0;
+    }
+    if (row && typeof row === 'object') {
+      return row.v === 0;
+    }
+    return false;
+  }).length;
+}
+
+function runGapBridgeOnProfile(profile: Array<number | { v: number; a?: 'P' | 'R' | 'N' }>) {
+  const buckets = buildProfile(profile);
+  const kin = withImplausibleLegEndpointsQuarantined(buckets);
+  const c4 = computeC4AdaptiveL3(buckets);
+  const on = runMotionFsm(kin, c4, 'RETROSPECTIVE', null, p, MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS);
+  return { on, profile, bridged: on.filter((l) => l.flags.some((f) => f.startsWith('GAP_BRIDGE_V1_BRIDGE'))) };
 }
 
 function fsmSig(labels: MotionFsmLabel[]): string {
@@ -78,34 +123,68 @@ function fsmSig(labels: MotionFsmLabel[]): string {
 }
 
 describe('motion-fsm gap bridge V1 safety (B2/B3)', () => {
+  jest.setTimeout(120_000);
+
   it('gapBridgeV1StopFeasibilityAllowsBridge accepts TIG22-class displacement', () => {
+    expect(gapBridgeV1MaxDistanceWithEmbeddedStopM(12, 68.3, 64.7, p.reappearNoiseM * 2)).toBeLessThan(202.5);
     expect(gapBridgeV1StopFeasibilityAllowsBridge(202.5, 12, 68.3, 64.7, p)).toBe(true);
+    expect(gapBridgeV1StopFeasibilityAllowsBridge(150, 12, 68.3, 64.7, p)).toBe(false);
   });
 
-  it('rejects hidden embedded stops at 50–100 km/h anchors (ROW_ABSENT, integrated motion)', () => {
-    const cases: Array<{ v: number; aDec: number; stopS: number }> = [];
+  it('rejects Fable adversarial hidden-stop grid (30/50/70/100 km/h, gentle decel 1–2.5 m/s²)', () => {
+    for (const v of [30, 50, 70, 100]) {
+      for (const a of [1, 1.5, 2, 2.5]) {
+        for (const stopS of [3, 5, 10, 20]) {
+          const profile = hiddenStopProfile(v, a, stopS);
+          const { bridged, on } = runGapBridgeOnProfile(profile);
+          expect(countBridgedStillSeconds(on, profile)).toBe(0);
+          expect(bridged.length).toBe(0);
+        }
+      }
+    }
+  });
+
+  it('rejects asymmetric accel/brake hidden stops and lead-cruise-before-stop', () => {
+    for (const v of [30, 50, 70, 100]) {
+      for (const [ad, aa] of [[6, 1.5], [6, 2], [8, 2], [1, 4], [1.5, 1.5]] as const) {
+        for (const stopS of [3, 5, 10]) {
+          const profile = hiddenStopAsymmetric(v, v, ad, aa, stopS);
+          const { bridged, on } = runGapBridgeOnProfile(profile);
+          expect(countBridgedStillSeconds(on, profile)).toBe(0);
+          expect(bridged.length).toBe(0);
+        }
+      }
+    }
     for (const v of [50, 70, 100]) {
-      for (const aDec of [2, 3]) {
-        for (const stopS of [5, 10, 20]) {
-          cases.push({ v, aDec, stopS });
+      for (const lead of [3, 5, 10]) {
+        for (const stopS of [3, 5, 10]) {
+          const profile = hiddenStopProfile(v, 3, stopS, lead);
+          const { bridged, on } = runGapBridgeOnProfile(profile);
+          expect(countBridgedStillSeconds(on, profile)).toBe(0);
+          expect(bridged.length).toBe(0);
         }
       }
     }
-    for (const v of [30]) {
-      for (const aDec of [2, 3]) {
-        for (const stopS of [5, 10, 20]) {
-          cases.push({ v, aDec, stopS });
+    for (const [vi, vo] of [[70, 30], [30, 70], [100, 50], [50, 100]] as const) {
+      for (const a of [2, 3]) {
+        for (const stopS of [3, 5]) {
+          const profile = hiddenStopAsymmetric(vi, vo, a, a, stopS);
+          const { bridged, on } = runGapBridgeOnProfile(profile);
+          expect(countBridgedStillSeconds(on, profile)).toBe(0);
+          expect(bridged.length).toBe(0);
         }
       }
     }
-    for (const { v, aDec, stopS } of cases) {
-      const buckets = buildProfile(hiddenStopProfile(v, aDec, stopS));
-      const kin = withImplausibleLegEndpointsQuarantined(buckets);
-      const c4 = computeC4AdaptiveL3(buckets);
-      const on = runMotionFsm(kin, c4, 'RETROSPECTIVE', null, p, MOTION_FSM_V0_4_GAP_BRIDGE_OPTIONS);
-      const bridged = on.filter((l) => l.flags.some((f) => f.startsWith('GAP_BRIDGE_V1_BRIDGE')));
-      expect(bridged.length).toBe(0);
-    }
+  });
+
+  it('allows hidden continuous cruise when stop-inclusive D_max is below displacement (positive control)', () => {
+    const v = 50 / 3.6;
+    const shortGap = [...cruise(20, v), ...absentV(12, v), ...cruise(20, v)];
+    const { bridged: shortBridged } = runGapBridgeOnProfile(shortGap);
+    expect(shortBridged.length).toBeGreaterThan(0);
+    const longGap = [...cruise(20, v), ...absentV(40, v), ...cruise(20, v)];
+    const { bridged: longBridged } = runGapBridgeOnProfile(longGap);
+    expect(longBridged.length).toBe(0);
   });
 
   it('FROZEN_POSITION inside UNKNOWN window vetoes bridge without aux', () => {
