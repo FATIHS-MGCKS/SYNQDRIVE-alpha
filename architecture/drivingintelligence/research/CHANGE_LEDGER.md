@@ -2232,3 +2232,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Fable re-review: empty grid inside non-empty feasible interval under-estimated D_max at envelope corner |
 | VALIDATION | 17/17 gap-bridge safety tests; four-drive replay PASS; 204-cell + 4082-cell adversarial scans 0 fail-open |
 | NON_EFFECTS | No C4/C5.1/events; no flag ON |
+
+### DS4 motion FSM — gap bridge V1.3.1 shadow worker integration (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_*` control plane; bundle V3/V4; processor aux from work-item `pipeline_version_manifest`; contract `gapBridgeV1` + `fsmAuxBinding`; `FSM_GAP_BRIDGE_V1_PRODUCTION_ROLLOUT.md` |
+| WHY | Controlled post-trip activation after Fable algorithm signoff without historical reprocess |
+| VALIDATION | Gap-bridge safety 17/17; integration + sealed four-drive summary specs; `nest build` |
+| NON_EFFECTS | Flag default OFF; no deploy/activation; trip-FSM/C5.1/events unchanged |
+
+### DS4 motion FSM — gap bridge V1.3.1 shadow worker integration (2026-10-24)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `DI_V0_MOTION_CORE_FSM_GAP_BRIDGE_V1_*` control plane; bundle V3/V4; processor aux from work-item `pipeline_version_manifest`; contract `gapBridgeV1` + `fsmAuxBinding`; rollout doc |
+| WHY | Direct product readiness after Fable B2 signoff — controlled activation without historical reprocess |
+| VALIDATION | Gap-bridge safety 17/17; integration + sealed four-drive summary specs; `nest build` |
+| NON_EFFECTS | Flag default OFF; no deploy/activation; trip-FSM/C5.1/events unchanged |

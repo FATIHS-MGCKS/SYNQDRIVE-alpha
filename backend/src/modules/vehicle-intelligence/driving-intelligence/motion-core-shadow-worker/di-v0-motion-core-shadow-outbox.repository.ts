@@ -4,6 +4,7 @@ import {
   isC5_1PreferredSpeedEffective,
   resolveC5_1VehicleAdmissionFromLabels,
 } from './di-v0-motion-core-c5-1-admission';
+import { isFsmGapBridgeV1Effective } from './di-v0-motion-core-fsm-gap-bridge-v1-admission';
 import { resolveMotionCoreShadowBundleVersion } from './di-v0-motion-core-shadow.bundle.version';
 import { buildMotionCoreShadowIntentKey } from './di-v0-motion-core-shadow-intent';
 import { DI_V0_MOTION_CORE_SHADOW_TUNING } from './di-v0-motion-core-shadow.config';
@@ -99,7 +100,13 @@ export class DiV0MotionCoreShadowOutboxRepository {
         vehicleAdmission,
         workItemCompletedAt: c.completed_at,
       });
-      const shadowBundleVersion = resolveMotionCoreShadowBundleVersion(c5_1Effective);
+      const fsmGapBridgeV1Effective = isFsmGapBridgeV1Effective(input.controlPlane, {
+        workItemCompletedAt: c.completed_at,
+      });
+      const shadowBundleVersion = resolveMotionCoreShadowBundleVersion({
+        c5_1PreferredSpeedEnabled: c5_1Effective,
+        fsmGapBridgeV1Enabled: fsmGapBridgeV1Effective,
+      });
       const shadowIntentKey = buildMotionCoreShadowIntentKey({
         pinnedSnapshotHash: c.pinned_snapshot_hash,
         combinedInputIdentity: c.combined_input_identity,

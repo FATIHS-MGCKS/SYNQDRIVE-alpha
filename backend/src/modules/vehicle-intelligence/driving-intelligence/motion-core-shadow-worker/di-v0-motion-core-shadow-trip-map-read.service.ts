@@ -137,6 +137,8 @@ export class DiV0MotionCoreShadowTripMapReadService {
         c4: payload.contract.algorithmVersions.c4,
         c5_1: payload.contract.algorithmVersions.c5_1,
         fsm: payload.contract.algorithmVersions.fsm,
+        gapBridgeV1: payload.contract.algorithmVersions.gapBridgeV1,
+        fsmAuxBinding: payload.contract.algorithmVersions.fsmAuxBinding,
         events: payload.contract.algorithmVersions.events,
         bundle: payload.contract.algorithmVersions.bundle,
       },
