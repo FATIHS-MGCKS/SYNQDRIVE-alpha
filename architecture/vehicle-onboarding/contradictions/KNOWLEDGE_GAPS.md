@@ -30,7 +30,8 @@ VO-0B gap register · **VO-1 disposition** (2026-09-30). IDs use **`VO-GAP-*`** 
 | **VO-GAP-013** | Non-resumable onboarding | CONFIRMED | **PARTIAL** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | Idempotent resume for **Master DIMO** completed cases; HM/manual + re-onboard workflow still open |
 | **VO-GAP-014** | Implicit candidate model | CONFIRMED | **STILL_OPEN** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | Projection + case VO-Q-001 |
 | **VO-GAP-015** | Async capability vs readiness | CONFIRMED | **STILL_OPEN** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | Readiness contract VO-Q-010/012 |
+| **VO-GAP-016** | Motion physics stammdaten for DI shadow | CONFIRMED | **STILL_OPEN** | **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** | No structured VIN decode service; no `motionPhysicsReference` on Technical Baseline V2; AI-Spec lacks `systemMotorPowerKw` — [VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md](../research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md) |
 
-**Summary:** 12 runtime **STILL_OPEN** · 3 **PARTIAL** (VO-GAP-007, 008, 013 — P2 DIMO progress only) · 11 **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** · 3 **CROSS_MODULE** · 0 falsely closed
+**Summary:** 13 runtime **STILL_OPEN** · 3 **PARTIAL** (VO-GAP-007, 008, 013 — P2 DIMO progress only) · 12 **ARCHITECTURE_RESOLVED_IMPLEMENTATION_OPEN** · 3 **CROSS_MODULE** · 0 falsely closed
 
 **Production evidence gap (not a VO-GAP row):** natural E2E Master DIMO registration on production **pending** — [VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md](../evidence/VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md).

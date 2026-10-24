@@ -2050,3 +2050,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `EXP021_EV_GROUND_TRUTH_SCOPED_ADMISSION_RECOVERY_RUNBOOK_2026-10-16.md`; `post-deploy/CURRENT_V2_AUTOMATIC_REACHABILITY_2026-10-16.json`; ops/product read gate correction on `c1013265` |
 | WHY | Execution-ready single-vehicle reconcileWindow without batch release; classify 13 CURRENT V2 periodic reachability |
 | NON_EFFECTS | No production reconcile executed; no provider calls |
+
+### Vehicle Physics Phase 2 — binding implementation plan (2026-10-24, design)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `research/driving-intelligence/VEHICLE_PHYSICS_PHASE2_IMPLEMENTATION_PLAN.md`; VO pointer `architecture/vehicle-onboarding/research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md` |
+| WHY | Owner binding: motion physics (`systemMotorPowerKw`, mass, optional envelope) via existing VIN identity + Mistral AI-Spec + Technical Baseline V2 → `Vehicle`; no parallel profile system; Universal P2 V0.2 fallback |
+| NON_EFFECTS | No runtime/DI detector/C4/C5.1/FSM changes in this doc-only slice; VIN decode provider still TBD |
