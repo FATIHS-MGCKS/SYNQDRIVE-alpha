@@ -260,6 +260,7 @@ export class PlatformAdminService {
       TRIP_TRACKING: 'V2 Trip Tracking',
       TRIP_BEHAVIOR_ENRICHMENT: 'Trip Behavior Enrichment',
       TIRE_RECALCULATION: 'Tire Recalculation',
+      TIRE_DS4_SHADOW: 'Tire DS4 Shadow',
     };
     const workerStats = workerNames.map((name) => {
       const byJob = pollLogs.filter((p) => jobTypeToWorker[p.jobType] === name);
@@ -377,6 +378,10 @@ export class PlatformAdminService {
       TRIP_TRACKING: { name: 'V2 Trip Tracking', description: 'Per-vehicle dynamic trip detection + tracking' },
       TRIP_BEHAVIOR_ENRICHMENT: { name: 'Trip Behavior Enrichment', description: 'Post-trip high-frequency behavior analysis' },
       TIRE_RECALCULATION: { name: 'Tire Recalculation', description: 'Hourly tire wear recalculation' },
+      TIRE_DS4_SHADOW: {
+        name: 'Tire DS4 Shadow',
+        description: 'Async DS4 motion → tire shadow input materialization (OFF by default)',
+      },
     };
     const workers = Object.entries(jobTypeToWorker).map(([key, meta]) => ({
       queueKey: key,

@@ -5,6 +5,8 @@ export const QUEUE_NAMES = {
   DIMO_VEHICLE_SYNC: 'dimo.vehicle.sync',
   DTC_POLL: 'dimo.dtc.poll',
   TIRE_RECALCULATION: 'dimo.tire.recalculation',
+  /** Tire Intelligence P2 — DS4 motion shadow input materialization (OFF by default). */
+  TIRE_DS4_SHADOW: 'dimo.tire.ds4-shadow',
   BRAKE_RECALCULATION: 'dimo.brake.recalculation',
   TRIP_TRACKING: 'dimo.trip-tracking',
   TRIP_BEHAVIOR_ENRICHMENT: 'trip.behavior.enrichment',

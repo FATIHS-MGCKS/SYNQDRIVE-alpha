@@ -26,6 +26,9 @@ import { SnapshotWakeHandoffProcessor } from './processors/snapshot-wake-handoff
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
 import { DimoDtcProcessor } from './processors/dimo-dtc.processor';
 import { TireRecalculationProcessor } from './processors/tire-recalculation.processor';
+import { TireDs4ShadowProcessor } from './processors/tire-ds4-shadow.processor';
+import { TireDs4ShadowCatchupScheduler } from './schedulers/tire-ds4-shadow-catchup.scheduler';
+import { TireDs4ShadowModule } from '@modules/vehicle-intelligence/tires/ds4-shadow/tire-ds4-shadow.module';
 import { BrakeRecalculationProcessor } from './processors/brake-recalculation.processor';
 import { TripTrackingProcessor } from './processors/trip-tracking.processor';
 import { TripBehaviorEnrichmentProcessor } from './processors/trip-behavior-enrichment.processor';
@@ -93,6 +96,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
       { name: QUEUE_NAMES.DIMO_VEHICLE_SYNC },
       { name: QUEUE_NAMES.DTC_POLL },
       { name: QUEUE_NAMES.TIRE_RECALCULATION },
+      { name: QUEUE_NAMES.TIRE_DS4_SHADOW },
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
@@ -120,6 +124,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
     AdaptivePollingShadowModule,
     VsiReadonlySignalComposerModule,
     VehicleIntelligenceModule,
+    TireDs4ShadowModule,
     HighMobilityModule,
     NotificationsModule,
     PaymentsModule,
@@ -143,6 +148,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
     DimoVehicleSyncProcessor,
     DimoDtcProcessor,
     TireRecalculationProcessor,
+    TireDs4ShadowProcessor,
     BrakeRecalculationProcessor,
     TripTrackingProcessor,
     TripBehaviorEnrichmentProcessor,
@@ -170,6 +176,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
     DimoDtcScheduler,
     DimoVehicleSyncScheduler,
     TireRecalculationScheduler,
+    TireDs4ShadowCatchupScheduler,
     BrakeRecalculationScheduler,
     TripTrackingRecoveryScheduler,
     TripAnalysisRecoveryScheduler,

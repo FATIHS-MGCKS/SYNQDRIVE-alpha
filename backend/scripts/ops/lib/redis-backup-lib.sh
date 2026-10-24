@@ -426,6 +426,7 @@ dimo.snapshot.poll
 dimo.vehicle.sync
 dimo.dtc.poll
 dimo.tire.recalculation
+dimo.tire.ds4-shadow
 dimo.brake.recalculation
 dimo.trip-tracking
 trip.behavior.enrichment

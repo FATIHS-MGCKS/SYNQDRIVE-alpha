@@ -63,7 +63,7 @@ describe('TireTripUsageService', () => {
     recordTripUsageProcessed: jest.fn(),
     recordMetric: jest.fn(),
   };
-  const svc = new TireTripUsageService(mockPrisma, metrics as never);
+  let svc = new TireTripUsageService(mockPrisma, metrics as never);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -456,5 +456,35 @@ describe('TireTripUsageService', () => {
     expect(metrics.recordTripUsageProcessed).toHaveBeenCalledWith(
       expect.objectContaining({ attributionStatus: 'APPLIED' }),
     );
+  });
+
+  describe('DS4 shadow enqueue (fire-and-forget)', () => {
+    it('does not reject finalization when enqueue fails', async () => {
+      const ds4Producer = {
+        isEnabled: () => true,
+        enqueueMaterialize: jest.fn().mockRejectedValue(new Error('queue down')),
+      };
+      svc = new TireTripUsageService(mockPrisma, metrics as never, ds4Producer as never);
+      mockPrisma.tireTripUsageLedger.findFirst.mockResolvedValue({ id: 'ledger-1' });
+
+      const result = await svc.processCanonicalTripFinalization(tripId);
+      expect(result.attributionStatus).toBe('APPLIED');
+      await new Promise((r) => setImmediate(r));
+      expect(ds4Producer.enqueueMaterialize).toHaveBeenCalled();
+    });
+
+    it('logs when ledger lookup fails before enqueue', async () => {
+      const ds4Producer = {
+        isEnabled: () => true,
+        enqueueMaterialize: jest.fn().mockResolvedValue('job-1'),
+      };
+      svc = new TireTripUsageService(mockPrisma, metrics as never, ds4Producer as never);
+      mockPrisma.tireTripUsageLedger.findFirst.mockRejectedValue(new Error('db read failed'));
+
+      const result = await svc.processCanonicalTripFinalization(tripId);
+      expect(result.attributionStatus).toBe('APPLIED');
+      await new Promise((r) => setImmediate(r));
+      expect(ds4Producer.enqueueMaterialize).not.toHaveBeenCalled();
+    });
   });
 });
