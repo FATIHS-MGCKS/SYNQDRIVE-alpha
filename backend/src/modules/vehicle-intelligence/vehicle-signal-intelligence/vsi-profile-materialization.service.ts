@@ -257,11 +257,17 @@ export class VsiSignalProfileMaterializationService {
         : null;
     const lastDtcSuccessfulCheckAtForVsi = dtcConfirmedComplete?.fetchObservedAt ?? null;
 
-    const projectionAsOf = resolveVsiMaterializationProjectionAsOf({
-      bundleProviderFetchedAt: boundLatestState?.providerFetchedAt ?? null,
-      bundleUpdatedAt: boundLatestState?.updatedAt ?? null,
-      dtcConfirmedComplete,
-    });
+    const projectionAsOf =
+      dtcConfirmedComplete != null
+        ? resolveVsiMaterializationProjectionAsOf({
+            bundleProviderFetchedAt: boundLatestState?.providerFetchedAt ?? null,
+            bundleUpdatedAt: boundLatestState?.updatedAt ?? null,
+            dtcConfirmedComplete,
+            materializationWallClock: new Date(),
+          })
+        : boundLatestState?.providerFetchedAt ??
+          boundLatestState?.updatedAt ??
+          new Date();
 
     const evaluationDraft = evaluateVsiSignalProfile(
       {
