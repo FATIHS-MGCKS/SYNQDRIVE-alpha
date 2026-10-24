@@ -18,10 +18,11 @@ import { isVsiP5h1ProfileRevisionHistoryCaptureEnabled } from './vsi-p5h1-profil
 import type { VsiProfileRevisionMaterializationTrigger } from './vsi-profile-revision-history.types';
 import { appendVsiProfileRevisionHistoryInTransaction } from './vsi-profile-revision-history.writer';
 import {
-  parseConfirmedObdCodesFromHead,
   readDiagnosticTroubleCodeLastSourceMsFromProfileSnapshot,
+  resolveVsiMaterializationProjectionAsOf,
   type VsiDtcConfirmedCompleteEvidence,
 } from './vsi-dtc-complete-evidence.util';
+import { normalizeVlsObdDtcListJson, parseConfirmedObdCodesFromHeadJson } from './vsi-vls-obd-dtc-normalize.util';
 
 const DEFAULT_POLL_LOG_LIMIT = 5;
 
@@ -250,10 +251,17 @@ export class VsiSignalProfileMaterializationService {
       }
     }
 
-    const projectionAsOf =
-      boundLatestState?.providerFetchedAt ??
-      boundLatestState?.updatedAt ??
-      new Date();
+    const normalizedObdDtc = boundLatestState
+      ? normalizeVlsObdDtcListJson(boundLatestState.obdDtcList)
+      : { kind: 'absent' as const };
+    const obdDtcListForVsi =
+      normalizedObdDtc.kind === 'codes' ? normalizedObdDtc.codes : null;
+
+    const projectionAsOf = resolveVsiMaterializationProjectionAsOf({
+      bundleProviderFetchedAt: boundLatestState?.providerFetchedAt ?? null,
+      bundleUpdatedAt: boundLatestState?.updatedAt ?? null,
+      dtcConfirmedComplete,
+    });
 
     const evaluationDraft = evaluateVsiSignalProfile(
       {
@@ -276,7 +284,7 @@ export class VsiSignalProfileMaterializationService {
               providerFetchedAt: boundLatestState.providerFetchedAt,
               updatedAt: boundLatestState.updatedAt,
               rawPayloadJson: boundLatestState.rawPayloadJson,
-              obdDtcList: boundLatestState.obdDtcList,
+              obdDtcList: obdDtcListForVsi,
               lastDtcSuccessfulCheckAt: boundLatestState.lastDtcSuccessfulCheckAt,
             }
           : null,
@@ -648,13 +656,20 @@ export class VsiSignalProfileMaterializationService {
     if (head.providerBindingId !== providerSourceLinkId) {
       return null;
     }
+    const codesParse = parseConfirmedObdCodesFromHeadJson(head.confirmedObdCodes);
+    if (codesParse.status === 'malformed' || codesParse.status === 'absent') {
+      return null;
+    }
     const fetchAt =
       head.lastConfirmedCompleteFetchAt ?? head.lastConfirmedCompleteSourceAt;
+    const codes =
+      codesParse.status === 'valid' ? codesParse.codes : [];
     return {
       providerBindingId: head.providerBindingId,
       sourceObservedAt: head.lastConfirmedCompleteSourceAt,
       fetchObservedAt: fetchAt,
-      codes: parseConfirmedObdCodesFromHead(head.confirmedObdCodes),
+      codes,
+      codesParse,
     };
   }
 }

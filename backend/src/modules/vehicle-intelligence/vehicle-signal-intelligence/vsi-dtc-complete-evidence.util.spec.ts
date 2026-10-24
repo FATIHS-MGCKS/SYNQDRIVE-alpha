@@ -6,7 +6,19 @@ import type { VsiLatestStateSnapshot } from './vsi-readonly-composer.types';
 import {
   readDiagnosticTroubleCodeLastSourceMsFromProfileSnapshot,
   resolveVsiDiagnosticTroubleCodeEmpirical,
+  resolveVsiMaterializationProjectionAsOf,
+  type VsiDtcConfirmedCompleteEvidence,
 } from './vsi-dtc-complete-evidence.util';
+
+function confirmedComplete(
+  input: Omit<VsiDtcConfirmedCompleteEvidence, 'codesParse'>,
+): VsiDtcConfirmedCompleteEvidence {
+  const codesParse =
+    input.codes.length === 0
+      ? { status: 'valid_empty' as const }
+      : { status: 'valid' as const, codes: input.codes };
+  return { ...input, codesParse };
+}
 
 function vls(partial: Partial<VsiLatestStateSnapshot> & { rawPayloadJson: unknown }): VsiLatestStateSnapshot {
   const now = new Date('2026-10-24T06:50:00.000Z');
@@ -39,12 +51,12 @@ describe('vsi-dtc-complete-evidence', () => {
       rawPayloadJson: { speed: { value: 0, timestamp: '2026-10-24T04:51:47.000Z' } },
       obdDtcList: ['P0301'],
       lastDtcSuccessfulCheckAt: fetchAt,
-      confirmedComplete: {
+      confirmedComplete: confirmedComplete({
         providerBindingId: linkId,
         sourceObservedAt: sourceAt,
         fetchObservedAt: fetchAt,
         codes: ['P0301'],
-      },
+      }),
       projectionAsOf,
     });
     expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
@@ -61,12 +73,12 @@ describe('vsi-dtc-complete-evidence', () => {
       rawPayloadJson: {},
       obdDtcList: [],
       lastDtcSuccessfulCheckAt: new Date('2026-10-24T06:46:10.000Z'),
-      confirmedComplete: {
+      confirmedComplete: confirmedComplete({
         providerBindingId: linkId,
         sourceObservedAt: sourceAt,
         fetchObservedAt: new Date('2026-10-24T06:46:10.000Z'),
         codes: [],
-      },
+      }),
       projectionAsOf,
     });
     expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
@@ -81,12 +93,12 @@ describe('vsi-dtc-complete-evidence', () => {
       rawPayloadJson: {},
       obdDtcList: ['P0301'],
       lastDtcSuccessfulCheckAt: new Date(),
-      confirmedComplete: {
+      confirmedComplete: confirmedComplete({
         providerBindingId: 'other-link',
         sourceObservedAt: new Date('2026-10-24T06:46:08.000Z'),
         fetchObservedAt: new Date(),
         codes: ['P0301'],
-      },
+      }),
       projectionAsOf,
     });
     expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
@@ -100,20 +112,22 @@ describe('vsi-dtc-complete-evidence', () => {
       rawPayloadJson: {},
       obdDtcList: ['P0301'],
       lastDtcSuccessfulCheckAt: new Date('2030-01-01T00:00:00.000Z'),
-      confirmedComplete: {
+      confirmedComplete: confirmedComplete({
         providerBindingId: linkId,
         sourceObservedAt: new Date('2030-01-01T00:00:00.000Z'),
         fetchObservedAt: new Date('2030-01-01T00:00:00.000Z'),
         codes: ['P0301'],
-      },
-      projectionAsOf,
+      }),
+      projectionAsOf: new Date('2026-10-24T06:50:00.000Z'),
+      evaluationCeilingMs: new Date('2026-10-24T06:50:00.000Z').getTime(),
     });
     expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
     expect(result.limitations).toContain('FUTURE_SIGNAL_TIMESTAMP_REJECTED');
   });
 
-  it('prefers raw bundle obdDTCList when present (no head upgrade from partial)', () => {
+  it('prefers newer confirmed COMPLETE head over older raw bundle obdDTCList', () => {
     const bundleTs = '2026-10-22T10:00:00.000Z';
+    const headSource = new Date('2026-10-24T06:46:08.000Z');
     const result = resolveVsiDiagnosticTroubleCodeEmpirical({
       providerSourceLinkId: linkId,
       nativeSignalName: 'obdDTCList',
@@ -122,16 +136,80 @@ describe('vsi-dtc-complete-evidence', () => {
       },
       obdDtcList: ['P0301'],
       lastDtcSuccessfulCheckAt: new Date('2026-10-24T06:46:10.000Z'),
+      confirmedComplete: confirmedComplete({
+        providerBindingId: linkId,
+        sourceObservedAt: headSource,
+        fetchObservedAt: new Date('2026-10-24T06:46:10.000Z'),
+        codes: ['P0301'],
+      }),
+      projectionAsOf,
+    });
+    expect(result.lastSourceTimestamp?.toISOString()).toBe(headSource.toISOString());
+    expect(result.limitations).toContain('DTC_EVIDENCE_FROM_CONFIRMED_COMPLETE_SOURCE_HEAD');
+  });
+
+  it('production as-of: DTC COMPLETE after stale bundle fetch is not rejected as future', () => {
+    const bundleFetch = new Date('2026-10-24T04:52:00.000Z');
+    const sourceAt = new Date('2026-10-24T06:46:08.000Z');
+    const fetchAt = new Date('2026-10-24T06:46:10.000Z');
+    const projectionAsOfStaleBundle = bundleFetch;
+    const result = resolveVsiDiagnosticTroubleCodeEmpirical({
+      providerSourceLinkId: linkId,
+      nativeSignalName: 'obdDTCList',
+      rawPayloadJson: { speed: { value: 0, timestamp: '2026-10-24T04:51:47.000Z' } },
+      obdDtcList: ['P0301'],
+      lastDtcSuccessfulCheckAt: fetchAt,
+      confirmedComplete: confirmedComplete({
+        providerBindingId: linkId,
+        sourceObservedAt: sourceAt,
+        fetchObservedAt: fetchAt,
+        codes: ['P0301'],
+      }),
+      projectionAsOf: projectionAsOfStaleBundle,
+    });
+    expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(result.lastSourceTimestamp?.toISOString()).toBe(sourceAt.toISOString());
+    expect(result.limitations).not.toContain('FUTURE_SIGNAL_TIMESTAMP_REJECTED');
+  });
+
+  it('malformed confirmedObdCodes is UNKNOWN not confirmed empty', () => {
+    const result = resolveVsiDiagnosticTroubleCodeEmpirical({
+      providerSourceLinkId: linkId,
+      nativeSignalName: 'obdDTCList',
+      rawPayloadJson: {},
+      obdDtcList: ['P0301'],
+      lastDtcSuccessfulCheckAt: new Date(),
       confirmedComplete: {
         providerBindingId: linkId,
         sourceObservedAt: new Date('2026-10-24T06:46:08.000Z'),
-        fetchObservedAt: new Date('2026-10-24T06:46:10.000Z'),
-        codes: ['P0301'],
+        fetchObservedAt: new Date(),
+        codes: [],
+        codesParse: { status: 'malformed' },
       },
       projectionAsOf,
     });
-    expect(result.lastSourceTimestamp?.toISOString()).toBe(bundleTs);
-    expect(result.limitations).toContain('DTC_EVIDENCE_CHANNEL=RAW_BUNDLE_OBD_DTC_LIST');
+    expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+    expect(result.limitations).toContain('DTC_CONFIRMED_COMPLETE_CODES_MALFORMED');
+  });
+
+  it('confirmed empty COMPLETE does not resurrect stale non-empty VLS list', () => {
+    const sourceAt = new Date('2026-10-24T06:46:08.000Z');
+    const result = resolveVsiDiagnosticTroubleCodeEmpirical({
+      providerSourceLinkId: linkId,
+      nativeSignalName: 'obdDTCList',
+      rawPayloadJson: {},
+      obdDtcList: ['P0301'],
+      lastDtcSuccessfulCheckAt: new Date('2026-10-24T06:46:10.000Z'),
+      confirmedComplete: confirmedComplete({
+        providerBindingId: linkId,
+        sourceObservedAt: sourceAt,
+        fetchObservedAt: new Date('2026-10-24T06:46:10.000Z'),
+        codes: [],
+      }),
+      projectionAsOf,
+    });
+    expect(result.limitations).toContain('DTC_CONFIRMED_COMPLETE_EMPTY_LIST');
+    expect(result.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
   });
 
   it('legacy path without head stays fail-closed', () => {
@@ -186,13 +264,23 @@ describe('vsi-dtc-complete-evidence', () => {
         }),
         pollLogs: [],
         declaredCatalog: declared,
-        projectionAsOf,
-        dtcConfirmedComplete: {
+        projectionAsOf: resolveVsiMaterializationProjectionAsOf({
+          bundleProviderFetchedAt: new Date('2026-10-24T04:52:00.000Z'),
+          bundleUpdatedAt: projectionAsOf,
+          dtcConfirmedComplete: confirmedComplete({
+            providerBindingId: linkId,
+            sourceObservedAt: sourceAt,
+            fetchObservedAt: fetchAt,
+            codes: ['P0301'],
+          }),
+          materializationWallClock: projectionAsOf,
+        }),
+        dtcConfirmedComplete: confirmedComplete({
           providerBindingId: linkId,
           sourceObservedAt: sourceAt,
           fetchObservedAt: fetchAt,
           codes: ['P0301'],
-        },
+        }),
       },
       catalogResolver,
     );

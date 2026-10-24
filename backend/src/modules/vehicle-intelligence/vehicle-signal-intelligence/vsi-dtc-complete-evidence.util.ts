@@ -1,6 +1,10 @@
 import { readRawDtcList, resolveSignalTimestampEvidence } from './vsi-raw-payload-signals.util';
 import { VsiEmpiricalObservationStatus } from './vehicle-signal-evidence.contract';
 import type { VsiProfileEmpiricalExtraction } from './vsi-profile-empirical-extractor';
+import {
+  parseConfirmedObdCodesFromHeadJson,
+  type ConfirmedObdCodesParseResult,
+} from './vsi-vls-obd-dtc-normalize.util';
 
 export type VsiDtcConfirmedCompleteEvidence = {
   providerBindingId: string;
@@ -9,11 +13,32 @@ export type VsiDtcConfirmedCompleteEvidence = {
   /** Wall-clock fetch / apply observation (distinct from signal source). */
   fetchObservedAt: Date;
   codes: string[];
+  codesParse: ConfirmedObdCodesParseResult;
 };
 
+/** @deprecated use parseConfirmedObdCodesFromHeadJson */
 export function parseConfirmedObdCodesFromHead(json: unknown): string[] {
-  if (!Array.isArray(json)) return [];
-  return json.filter((c): c is string => typeof c === 'string' && c.length > 0);
+  const parsed = parseConfirmedObdCodesFromHeadJson(json);
+  if (parsed.status === 'valid') return parsed.codes;
+  if (parsed.status === 'valid_empty') return [];
+  return [];
+}
+
+export function resolveVsiMaterializationProjectionAsOf(input: {
+  bundleProviderFetchedAt: Date | null;
+  bundleUpdatedAt: Date | null;
+  dtcConfirmedComplete: VsiDtcConfirmedCompleteEvidence | null;
+  materializationWallClock?: Date;
+}): Date {
+  const wall = input.materializationWallClock ?? new Date();
+  const ms = [
+    wall.getTime(),
+    input.bundleProviderFetchedAt?.getTime(),
+    input.bundleUpdatedAt?.getTime(),
+    input.dtcConfirmedComplete?.fetchObservedAt.getTime(),
+    input.dtcConfirmedComplete?.sourceObservedAt.getTime(),
+  ].filter((v): v is number => v != null && Number.isFinite(v));
+  return new Date(Math.max(...ms));
 }
 
 /**
@@ -29,13 +54,42 @@ export function resolveVsiDiagnosticTroubleCodeEmpirical(input: {
   lastDtcSuccessfulCheckAt: Date | null;
   confirmedComplete: VsiDtcConfirmedCompleteEvidence | null;
   projectionAsOf: Date;
+  /** When set, rejects signal source timestamps after this ceiling (historical as-of). */
+  evaluationCeilingMs?: number | null;
 }): VsiProfileEmpiricalExtraction {
   const projectionAsOfMs = input.projectionAsOf.getTime();
   const limitations: string[] = [];
   const provenance: Array<'VEHICLE_LATEST_STATE'> = ['VEHICLE_LATEST_STATE'];
 
+  const confirmed =
+    input.confirmedComplete &&
+    input.confirmedComplete.providerBindingId === input.providerSourceLinkId &&
+    (input.confirmedComplete.codesParse.status === 'valid' ||
+      input.confirmedComplete.codesParse.status === 'valid_empty')
+      ? input.confirmedComplete
+      : null;
+
+  if (
+    input.confirmedComplete &&
+    input.confirmedComplete.providerBindingId === input.providerSourceLinkId &&
+    input.confirmedComplete.codesParse.status === 'malformed'
+  ) {
+    limitations.push('DTC_CONFIRMED_COMPLETE_CODES_MALFORMED');
+    return neverObserved(input.nativeSignalName, provenance, limitations);
+  }
+
   const rawDtc = readRawDtcList(input.rawPayloadJson);
-  if (rawDtc.keyPresent) {
+  const confirmedSourceMs = confirmed?.sourceObservedAt.getTime() ?? null;
+  const rawSourceMs = rawDtc.sourceMs;
+  const useConfirmedHead =
+    confirmed != null &&
+    (!rawDtc.keyPresent ||
+      (confirmedSourceMs != null &&
+        rawSourceMs != null &&
+        confirmedSourceMs >= rawSourceMs) ||
+      (confirmedSourceMs != null && rawSourceMs == null));
+
+  if (rawDtc.keyPresent && !useConfirmedHead) {
     const tsEvidence = resolveSignalTimestampEvidence({
       signalSourceMs: rawDtc.sourceMs,
       projectionAsOfMs,
@@ -57,29 +111,34 @@ export function resolveVsiDiagnosticTroubleCodeEmpirical(input: {
     });
   }
 
-  const confirmed =
-    input.confirmedComplete &&
-    input.confirmedComplete.providerBindingId === input.providerSourceLinkId
-      ? input.confirmedComplete
-      : null;
-
   if (!confirmed) {
     limitations.push('DTC_CONFIRMED_COMPLETE_EVIDENCE_UNAVAILABLE');
     return neverObserved(input.nativeSignalName, provenance, limitations);
   }
 
-  if (
-    confirmed.sourceObservedAt.getTime() > projectionAsOfMs + 60_000
-  ) {
+  const dtcProjectionMs = Math.max(
+    projectionAsOfMs,
+    confirmed.fetchObservedAt.getTime(),
+    confirmed.sourceObservedAt.getTime(),
+  );
+
+  const futureBaselineMs =
+    input.evaluationCeilingMs != null ? input.evaluationCeilingMs : dtcProjectionMs;
+  if (confirmed.sourceObservedAt.getTime() > futureBaselineMs + 60_000) {
     limitations.push('FUTURE_SIGNAL_TIMESTAMP_REJECTED');
     return neverObserved(input.nativeSignalName, provenance, limitations);
   }
 
-  const codes = confirmed.codes.length > 0 ? confirmed.codes : (input.obdDtcList ?? []);
+  const codes =
+    confirmed.codesParse.status === 'valid'
+      ? confirmed.codesParse.codes
+      : confirmed.codesParse.status === 'valid_empty'
+        ? []
+        : [];
   const hasCodes = codes.length > 0;
   const tsEvidence = resolveSignalTimestampEvidence({
     signalSourceMs: confirmed.sourceObservedAt.getTime(),
-    projectionAsOfMs,
+    projectionAsOfMs: dtcProjectionMs,
   });
   limitations.push(...tsEvidence.limitations);
   limitations.push('DTC_EVIDENCE_FROM_CONFIRMED_COMPLETE_SOURCE_HEAD');
@@ -93,7 +152,7 @@ export function resolveVsiDiagnosticTroubleCodeEmpirical(input: {
     native: input.nativeSignalName,
     hasCodes,
     keyPresent: true,
-    confirmedEmptyComplete: !hasCodes,
+    confirmedEmptyComplete: confirmed.codesParse.status === 'valid_empty',
     tsEvidence,
     fetchAt,
     provenance,

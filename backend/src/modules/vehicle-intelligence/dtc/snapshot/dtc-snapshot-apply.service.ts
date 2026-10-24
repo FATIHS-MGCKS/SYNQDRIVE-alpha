@@ -17,7 +17,7 @@ import {
 import type { DtcSnapshotOutboxPayload } from './dtc-snapshot-outbox.types';
 import { isDtc01aSafetyFoundationEnabled } from './dtc-01a.config';
 import { Dtc02ObservabilityService } from '../observability/dtc02-observability.service';
-import type { VsiSignalProfileMaterializationService } from '../../vehicle-signal-intelligence/vsi-profile-materialization.service';
+import { VsiSignalProfileMaterializationService } from '../../vehicle-signal-intelligence/vsi-profile-materialization.service';
 
 export interface DtcSnapshotApplyResult {
   decision: DtcSnapshotDecision;
@@ -43,6 +43,11 @@ export class DtcSnapshotApplyService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     if (!isDtc01aSafetyFoundationEnabled()) return;
+    if (!this.vsiProfileMaterialization) {
+      this.logger.warn(
+        'DTC-01A active but VsiSignalProfileMaterializationService is not injected — VSI projection after confirmed-complete DTC apply is disabled',
+      );
+    }
     try {
       const { processed, failed } = await this.recoverPendingOutbox();
       if (processed > 0 || failed > 0) {
