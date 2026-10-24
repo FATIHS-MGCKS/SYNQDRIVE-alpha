@@ -10,6 +10,8 @@ on:
       - 'backend/scripts/test/production-database-guard-bootstrap-dry-run.sh'
       - 'backend/scripts/test/verify-unguarded-prisma-invocations.sh'
       - 'backend/package.json'
+      - 'backend/src/modules/vehicle-intelligence/tires/ds4-shadow/**'
+      - 'backend/prisma/migrations/*tire_ds4*'
       - '.github/workflows/production-database-guard.yml'
   push:
     branches:

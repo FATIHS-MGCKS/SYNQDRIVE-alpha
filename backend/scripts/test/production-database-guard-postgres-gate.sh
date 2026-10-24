@@ -154,6 +154,17 @@ log "8a) backup capture verify + prisma-with-guard path gates"
 bash scripts/test/production-database-backup-capture-verify.gate.sh
 bash scripts/test/prisma-with-guard-path.gate.sh
 
+log "8b) tire DS4 shadow catch-up integration (ephemeral migrate deploy)"
+TIRE_DS4_DB="tire_ds4_shadow_${EPHEMERAL_DB}"
+createdb_if_needed "$TIRE_DS4_DB"
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${TIRE_DS4_DB}?schema=public"
+export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=ephemeral
+pdb_guard_assert_ephemeral_database_url "$DATABASE_URL"
+PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+export TIRE_DS4_SHADOW_POSTGRES_INTEGRATION=1
+export TIRE_DS4_SHADOW_POSTGRES_REQUIRED=1
+npx jest tire-ds4-shadow-catchup.postgres.integration --runInBand --forceExit
+
 log "8) bootstrap manifest integrity + dry-run"
 MANIFEST="${ROOT}/scripts/ops/contracts/production-database-guard-bundle.manifest.sha256"
 [[ -f "$MANIFEST" ]] || fail "missing bundle manifest sha256"

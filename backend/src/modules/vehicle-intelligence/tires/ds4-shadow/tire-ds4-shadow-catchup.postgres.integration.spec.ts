@@ -1,7 +1,7 @@
 /**
  * Tire DS4 shadow catch-up SQL + migration (disposable PostgreSQL).
  *
- * CI: `.github/workflows/tire-ds4-shadow-postgres-integration.yml` (no package.json script).
+ * CI: `production-database-guard-postgres-gate.sh` step 8b (no package.json script).
  * Local: TIRE_DS4_SHADOW_POSTGRES_INTEGRATION=1 DATABASE_URL=postgresql://127.0.0.1:5432/... \
  *   PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh && \
  *   npx jest tire-ds4-shadow-catchup.postgres.integration --runInBand
@@ -127,7 +127,7 @@ describePg('tire-ds4-shadow catch-up (PostgreSQL)', () => {
     tripId = trip.id;
 
     const setup = await prisma.vehicleTireSetup.create({
-      data: { organizationId, vehicleId },
+      data: { vehicleId },
       select: { id: true },
     });
     tireSetupId = setup.id;
