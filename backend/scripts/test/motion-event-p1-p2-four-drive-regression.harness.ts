@@ -46,7 +46,17 @@ const ALLOWED = new Set([
   'ACCELERATION|2026-10-22T19:04:49Z|2026-10-22T19:04:52Z',
 ]);
 
-type Row = { kind: string; start_utc: string; end_utc: string; quality: string; accepted: string; cls: string };
+type Row = {
+  kind: string;
+  start_utc: string;
+  end_utc: string;
+  quality: string;
+  accepted: string;
+  cls: string;
+  start_kmh?: string;
+  end_kmh?: string;
+  delta_kmh?: string;
+};
 
 function parseCsv(text: string): Row[] {
   const lines = text.trim().split('\n');
