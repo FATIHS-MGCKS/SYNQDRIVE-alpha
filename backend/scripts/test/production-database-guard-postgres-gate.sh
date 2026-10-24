@@ -161,6 +161,7 @@ export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}
 export SYNQDRIVE_DATABASE_IDENTITY_PROFILE=ephemeral
 pdb_guard_assert_ephemeral_database_url "$DATABASE_URL"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+node "$PRISMA_GUARD" db push --accept-data-loss --skip-generate --schema prisma/schema.prisma
 export TIRE_DS4_SHADOW_POSTGRES_INTEGRATION=1
 export TIRE_DS4_SHADOW_POSTGRES_REQUIRED=1
 npx jest tire-ds4-shadow-catchup.postgres.integration --runInBand --forceExit
