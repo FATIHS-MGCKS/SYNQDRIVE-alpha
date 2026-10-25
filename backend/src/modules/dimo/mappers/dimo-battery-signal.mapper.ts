@@ -476,3 +476,16 @@ export function resolveLvBatteryObservedAt(
   }
   return map.collectionLastSeenAt;
 }
+
+/**
+ * Strict LIVE_VOLTAGE provider source timestamp for scientific baseline evidence only.
+ * Never falls back to collectionLastSeenAt (bundle timestamp ≠ LV signal).
+ */
+export function resolveStrictLvBatteryProviderSourceAt(
+  map: DimoBatterySignalMap,
+): Date | null {
+  if (map.lvBatteryVoltage.status === 'valid' && map.lvBatteryVoltage.observedAt) {
+    return map.lvBatteryVoltage.observedAt;
+  }
+  return null;
+}

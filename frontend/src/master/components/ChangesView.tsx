@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'apds-scientific-evidence-p1-2026-10-25',
+    version: '4.9.4994',
+    title: 'APDS shadow — scientific baseline poll evidence repair (P1)',
+    summary: [
+      'Baseline LV advance uses live DIMO payload provider timestamps (not post-async battery_measurements reads).',
+      'Top-level advance requires known previous vehicle sourceTimestamp; UNKNOWN no longer counts as informative.',
+      'synqdrive_apd_shadow_skipped_informative_poll_total wired for WOULD_SKIP + informative real polls; discovery delay from next baseline SUCCESS snapshot.',
+      'Simulated LV admission (realPollVisibleLvSourceAt) unchanged — observational fields only.',
+    ],
+    reason:
+      'Fable independent audit: 90/90 LV false negatives, unwired skipped-informative counter, 5 reconstructed informative skips invisible to evidence path.',
+    previousBehavior:
+      'Post-poll read battery_measurements at poll completion; top-level flag true whenever snapshot had any source timestamp; counter never incremented.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-10-25T12:00:00.000Z',
+  },
+  {
     id: 'hv-measurement-quality-mvp-2026-10-21',
     version: '4.9.2251',
     title: 'HV Battery — measurement quality MVP (Q1–Q4 read API)',

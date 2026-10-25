@@ -1,4 +1,5 @@
 import { AdaptivePollingShadowService } from './adaptive-polling-shadow.service';
+import { apdShadowBaselinePollEvidenceForTests } from './apd-shadow-test-baseline-evidence.helper';
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
 import {
   buildTestActiveEpochView,
@@ -46,13 +47,13 @@ describe('AdaptivePollingShadow cold-cache / first organic poll (APDS-9.3B)', ()
     const epochService = new ApdShadowActivationEpochService({} as never);
     jest.spyOn(epochService, 'getCachedActiveEpochSnapshot').mockReturnValue(null);
     jest.spyOn(epochService, 'loadActiveEpochForScope').mockResolvedValue(null);
-    const service = new AdaptivePollingShadowService(prisma, repository as never, epochService);
+    const service = new AdaptivePollingShadowService(prisma, repository as never, epochService, apdShadowBaselinePollEvidenceForTests());
     expect(service.isEnabledForVehicle(ORG, VEH)).toBe(true);
   });
 
   it('observeActualBaselinePollStart still gates on authoritative ACTIVE epoch', async () => {
     const epochService = mockActivationEpochServiceMissing();
-    const service = new AdaptivePollingShadowService(prisma, repository as never, epochService);
+    const service = new AdaptivePollingShadowService(prisma, repository as never, epochService, apdShadowBaselinePollEvidenceForTests());
     const result = await service.observeActualBaselinePollStart({
       organizationId: ORG,
       vehicleId: VEH,
@@ -79,7 +80,7 @@ describe('AdaptivePollingShadow cold-cache / first organic poll (APDS-9.3B)', ()
     const loadSpy = jest
       .spyOn(epochService, 'loadActiveEpochForScopeAuthoritative')
       .mockResolvedValue(epoch);
-    const service = new AdaptivePollingShadowService(prisma, repository as never, epochService);
+    const service = new AdaptivePollingShadowService(prisma, repository as never, epochService, apdShadowBaselinePollEvidenceForTests());
     expect(service.isEnabledForVehicle(ORG, VEH)).toBe(true);
     await service.observeActualBaselinePollStart({
       organizationId: ORG,

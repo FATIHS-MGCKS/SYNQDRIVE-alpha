@@ -36,6 +36,7 @@ import { BatteryPublicationService } from '../battery-publication.service';
 import { HvCapacityObservationRepository } from '../hv-capacity-shadow/hv-capacity-observation.repository';
 import { VehicleIntelligenceModule } from '../../vehicle-intelligence.module';
 import { DimoModule } from '../../../dimo/dimo.module';
+import { AdaptivePollingShadowModule } from '../../../../workers/schedulers/snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.module';
 
 const BATTERY_V2_JOB_HANDLERS = [
   BatteryObservationClassifyHandler,
@@ -57,6 +58,7 @@ const BATTERY_V2_JOB_HANDLERS = [
     BatteryGeneralizedEvidenceModule,
     forwardRef(() => DimoModule),
     forwardRef(() => VehicleIntelligenceModule),
+    AdaptivePollingShadowModule,
   ],
   providers: [
     ...BATTERY_V2_JOB_HANDLERS,
