@@ -3,6 +3,14 @@ import type {
   DiV0MotionCoreShadowTripMapSampleDto,
   DiV0MotionCoreShadowTripMapStopDto,
 } from '../../driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.types';
+import {
+  classifyLegacySampleQuality,
+  isAccountableFsmDrivingSecond,
+  isAccountableFsmStationarySecond,
+  isEligibleFsmStopEpisode,
+  isMotionFsmEvidenceQualityToken,
+  normalizeMotionFsmEvidenceQuality,
+} from './tire-ds4-shadow-fsm-temporal-quality';
 import { isPlausibleSpeedKmh } from './tire-ds4-shadow-m3-dynamics';
 import type {
   TireDs4ShadowTemporalCoverage,
@@ -17,8 +25,6 @@ export type TireDs4ShadowTripWindowContext = {
 
 const MIN_MOVING_SPEED_KMH = 0.5;
 
-type SampleQualityClass = 'OK' | 'DEGRADED' | 'LIMITED' | 'ARTEFACT' | 'OTHER';
-
 function toMs(value: Date | string | null | undefined): number | null {
   if (value == null) return null;
   const ms = value instanceof Date ? value.getTime() : Date.parse(value);
@@ -31,26 +37,15 @@ function bucketSecondKey(labelUtc: string): number | null {
   return Math.floor(ms / 1000);
 }
 
-function classifySampleQuality(sample: DiV0MotionCoreShadowTripMapSampleDto): SampleQualityClass {
-  const q = sample.evidenceQuality.trim().toUpperCase();
-  if (q === 'OK') return 'OK';
-  if (q === 'DEGRADED') return 'DEGRADED';
-  if (q === 'LIMITED') return 'LIMITED';
-  if (q === 'ARTEFACT_SUSPECT' || q === 'ARTEFACT') return 'ARTEFACT';
-  return 'OTHER';
-}
-
-function isValidOkDrivingSample(sample: DiV0MotionCoreShadowTripMapSampleDto): boolean {
-  if (classifySampleQuality(sample) !== 'OK') return false;
+function isValidLegacyOkDrivingSample(sample: DiV0MotionCoreShadowTripMapSampleDto): boolean {
+  if (classifyLegacySampleQuality(sample.evidenceQuality) !== 'OK') return false;
   if (sample.speedKmh == null || !isPlausibleSpeedKmh(sample.speedKmh)) return false;
   return sample.speedKmh > MIN_MOVING_SPEED_KMH;
 }
 
-function isEligibleStopEpisode(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
+function isEligibleLegacyStopEpisode(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
   if (!stop.observed || stop.inferred) return false;
-  if (classifySampleQuality({ evidenceQuality: stop.evidenceQuality } as DiV0MotionCoreShadowTripMapSampleDto) !== 'OK') {
-    return false;
-  }
+  if (classifyLegacySampleQuality(stop.evidenceQuality) !== 'OK') return false;
   if (!stop.endEarliestUtc || !stop.endLatestUtc) return false;
   const startLatestMs = Date.parse(stop.startLatestUtc);
   const endEarliestMs = Date.parse(stop.endEarliestUtc);
@@ -58,6 +53,15 @@ function isEligibleStopEpisode(stop: DiV0MotionCoreShadowTripMapStopDto): boolea
     return false;
   }
   return true;
+}
+
+function isEligibleStopEpisode(
+  stop: DiV0MotionCoreShadowTripMapStopDto,
+): boolean {
+  if (isMotionFsmEvidenceQualityToken(stop.evidenceQuality)) {
+    return isEligibleFsmStopEpisode(stop);
+  }
+  return isEligibleLegacyStopEpisode(stop);
 }
 
 /** FSM: startEarliest/startLatest and endEarliest/endLatest bracket uncertainty; only tight bounds allow gapless imputation. */
@@ -75,8 +79,14 @@ function stopBoundariesAreCertain(stop: DiV0MotionCoreShadowTripMapStopDto): boo
   return true;
 }
 
-function isOkStationarySample(sample: DiV0MotionCoreShadowTripMapSampleDto): boolean {
-  if (classifySampleQuality(sample) !== 'OK') return false;
+function isOkStationarySample(
+  sample: DiV0MotionCoreShadowTripMapSampleDto,
+  speedAuthority: DiV0MotionCoreShadowTripMapReadResponse['speedAuthority'],
+): boolean {
+  if (isMotionFsmEvidenceQualityToken(sample.evidenceQuality)) {
+    return isAccountableFsmStationarySecond(sample, speedAuthority, MIN_MOVING_SPEED_KMH);
+  }
+  if (classifyLegacySampleQuality(sample.evidenceQuality) !== 'OK') return false;
   if (sample.speedKmh == null || !isPlausibleSpeedKmh(sample.speedKmh)) return true;
   return sample.speedKmh <= MIN_MOVING_SPEED_KMH;
 }
@@ -110,6 +120,7 @@ function addConfirmedStationarySecondsFromStop(
   windowEndSec: number,
   sampleBySecond: Map<number, DiV0MotionCoreShadowTripMapSampleDto>,
   confirmedStationaryBySecond: Set<number>,
+  speedAuthority: DiV0MotionCoreShadowTripMapReadResponse['speedAuthority'],
 ): void {
   const bounds = stopCoreBoundsSec(stop, windowStartSec, windowEndSec);
   if (!bounds) return;
@@ -117,7 +128,7 @@ function addConfirmedStationarySecondsFromStop(
   for (let t = bounds.loSec; t <= bounds.hiSec; t += 1) {
     const sample = sampleBySecond.get(t);
     if (sample != null) {
-      if (isOkStationarySample(sample)) {
+      if (isOkStationarySample(sample, speedAuthority)) {
         confirmedStationaryBySecond.add(t);
       }
       continue;
@@ -126,6 +137,33 @@ function addConfirmedStationarySecondsFromStop(
       confirmedStationaryBySecond.add(t);
     }
   }
+}
+
+function classifyLabelledSecond(
+  sample: DiV0MotionCoreShadowTripMapSampleDto,
+  speedAuthority: DiV0MotionCoreShadowTripMapReadResponse['speedAuthority'],
+  confirmedStop: boolean,
+): 'valid_driving' | 'confirmed_stationary' | 'degraded' | 'invalid' {
+  if (isMotionFsmEvidenceQualityToken(sample.evidenceQuality)) {
+    if (isAccountableFsmDrivingSecond(sample, speedAuthority, MIN_MOVING_SPEED_KMH)) {
+      return 'valid_driving';
+    }
+    const fsmQ = normalizeMotionFsmEvidenceQuality(sample.evidenceQuality);
+    if (fsmQ === 'INFERRED') return 'degraded';
+    if (fsmQ === 'INDETERMINATE') return 'invalid';
+    if (fsmQ === 'DIRECT' && confirmedStop && isOkStationarySample(sample, speedAuthority)) {
+      return 'confirmed_stationary';
+    }
+    return 'invalid';
+  }
+
+  if (isValidLegacyOkDrivingSample(sample)) return 'valid_driving';
+  const legacyQ = classifyLegacySampleQuality(sample.evidenceQuality);
+  if (legacyQ === 'DEGRADED') return 'degraded';
+  if (legacyQ === 'OK' && confirmedStop && isOkStationarySample(sample, speedAuthority)) {
+    return 'confirmed_stationary';
+  }
+  return 'invalid';
 }
 
 function emptyDetail(): TireDs4ShadowTemporalCoverageDetail {
@@ -151,6 +189,7 @@ export function computeTemporalCoverage(
 ): { temporalCoverage: TireDs4ShadowTemporalCoverage; detail: TireDs4ShadowTemporalCoverageDetail } {
   const samples = read.samples ?? [];
   const stopEpisodes = read.stopEpisodes ?? [];
+  const speedAuthority = read.speedAuthority;
 
   const tripStartMs = toMs(trip.tripStartedAt);
   const tripEndMs = toMs(trip.tripEndedAt);
@@ -187,6 +226,7 @@ export function computeTemporalCoverage(
       windowEndSec,
       sampleBySecond,
       confirmedStationaryBySecond,
+      speedAuthority,
     );
   }
 
@@ -206,16 +246,16 @@ export function computeTemporalCoverage(
     if (sample) {
       labelledSampleSeconds += 1;
       labelledKeys.push(t);
-      const q = classifySampleQuality(sample);
-      if (isValidOkDrivingSample(sample)) {
+      const bucket = classifyLabelledSecond(sample, speedAuthority, confirmedStop);
+      if (bucket === 'valid_driving') {
         validDrivingSeconds += 1;
         continue;
       }
-      if (q === 'DEGRADED') {
+      if (bucket === 'degraded') {
         degradedLabelSeconds += 1;
         continue;
       }
-      if (q === 'OK' && confirmedStop) {
+      if (bucket === 'confirmed_stationary') {
         confirmedStationarySeconds += 1;
         continue;
       }

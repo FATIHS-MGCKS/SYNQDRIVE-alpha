@@ -1,6 +1,6 @@
 # Tire Wear V3 — P3B DS4 dynamics & temporal coverage (shadow adapter)
 
-**Status:** Draft / shadow-only (adapter `tire-ds4-shadow-input-v1.1.0`, payload schema v3).
+**Status:** Draft / shadow-only (adapter `tire-ds4-shadow-input-v1.1.1`, payload schema v3).
 
 ## M3 load proxy (Fable)
 
@@ -20,9 +20,10 @@ M_3 = \sum \frac{0.5 \cdot |v_{\mathrm{end}}^2 - v_{\mathrm{start}}^2|}{\mathrm{
 Derived from DS4 speed/FSM samples, stop episodes, and tire-trip ledger window (ledger `tripStartedAt` / `tripEndedAt`):
 
 - Per-second walk inside the trip window; samples and stops clipped to window bounds; each second counted once.
-- `validDrivingSeconds`: **OK** evidence with plausible speed above minimal movement threshold (not null/NaN/invalid).
-- `confirmedStationarySeconds`: **observed**, non-inferred stops with **OK** quality; seconds only inside the certain core `startLatestUtc`…`endEarliestUtc` (not the wide earliest…latest envelope). Per-second OK stationary samples, or tight bounds with `gapLabels === 0` and `observedLabels` covering the core span (no imputation across uncertain boundaries).
-- `degradedLabelSeconds` / `invalidLabelSeconds`: **DEGRADED** vs **LIMITED**/artefact/unknown quality or invalid OK labels (e.g. null speed).
+- Sample `evidenceQuality` follows **DS4 Motion FSM** (`DIRECT` / `INFERRED` / `INDETERMINATE`) — not manoeuvre event OK/DEGRADED/LIMITED (those apply only to M3 event admission).
+- `validDrivingSeconds`: **DIRECT** FSM with **MOVING/STARTING** state, trip `speedAuthority` set, and plausible speed above minimal movement threshold.
+- `confirmedStationarySeconds`: **observed**, non-inferred stops with **DIRECT** FSM stop quality; seconds inside certain core `startLatestUtc`…`endEarliestUtc` with **DIRECT STATIONARY** samples or tight imputation rules unchanged.
+- `degradedLabelSeconds` / `invalidLabelSeconds`: **INFERRED** vs **INDETERMINATE** (and non-accountable **DIRECT** labels); legacy unit fixtures may still use event QC tokens in tests only.
 - `gapSeconds`: unlabelled seconds between labelled samples that are **not** explained by confirmed stationary; `unknownSeconds`: unlabelled seconds without confirmed stop.
 - `accountableFraction` = min(1, (valid driving + confirmed stationary) / trip window).
 - `VERIFIED` only when every trip second is accountable (valid OK movement or directly confirmed stationary), with zero unknown/gap/degraded/invalid seconds — **not** when time labels exist alone or a ratio threshold is met.

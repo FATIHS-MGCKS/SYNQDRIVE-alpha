@@ -29,6 +29,7 @@ Newest entry last. Never rewrite or delete entries.
 
 | Event | Detail |
 |-------|--------|
+| CHANGE | Adapter `tire-ds4-shadow-input-v1.1.1`: temporal coverage interprets DS4 FSM DIRECT/INFERRED/INDETERMINATE (not event OK/DEGRADED); v1.1.0 rows immutable |
 | CHANGE | Tire processor bounded defer on NOT_AVAILABLE (terminal only TRIP_NOT_FOUND / retry exhausted); shared TripMapRead contract preserved |
 | NON_EFFECTS | No catch-up flag change; no production backfill; Master/DS4 read consumers unchanged |
 
