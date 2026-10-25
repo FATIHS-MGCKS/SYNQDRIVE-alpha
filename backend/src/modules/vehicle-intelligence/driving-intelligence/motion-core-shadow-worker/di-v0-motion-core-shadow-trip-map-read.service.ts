@@ -83,14 +83,6 @@ export class DiV0MotionCoreShadowTripMapReadService {
           failureCode: latestAny.shadowStatus,
         };
       }
-      const upstreamPending = await this.detectUpstreamMotionEvidencePending(
-        organizationId,
-        vehicleId,
-        tripId,
-      );
-      if (upstreamPending) {
-        return { ...EMPTY_RESPONSE, status: 'PENDING', failureCode: null };
-      }
       return { ...EMPTY_RESPONSE };
     }
 
@@ -163,68 +155,6 @@ export class DiV0MotionCoreShadowTripMapReadService {
       newerFailedRunId: newerFailed?.id ?? null,
       newerFailedRunStatus: newerFailed?.status ?? null,
     };
-  }
-
-  /**
-   * S4 PRIMARY completion ≠ motion-core SUCCEEDED. While PRIMARY is in flight or a completed PRIMARY
-   * still awaits motion-core outbox/run materialization, consumers should treat evidence as PENDING.
-   */
-  private async detectUpstreamMotionEvidencePending(
-    organizationId: string,
-    vehicleId: string,
-    tripId: string,
-  ): Promise<boolean> {
-    const rows = await this.prisma.$queryRaw<
-      Array<{
-        status: string;
-        shadow_run_id: string | null;
-        pinned_snapshot_hash: string | null;
-      }>
-    >`
-      WITH active_primary AS (
-        SELECT DISTINCT ON (organization_id, trip_id)
-          id,
-          organization_id,
-          trip_id,
-          status,
-          shadow_run_id,
-          pinned_snapshot_hash
-        FROM di_v0_s4_work_items
-        WHERE run_purpose = 'PRIMARY'
-          AND purpose_discriminator = 'PRIMARY'
-          AND status <> 'SUPERSEDED'
-          AND organization_id = ${organizationId}
-          AND vehicle_id = ${vehicleId}
-          AND trip_id = ${tripId}
-        ORDER BY organization_id, trip_id, boundary_occurrence DESC, created_at DESC
-      )
-      SELECT status, shadow_run_id, pinned_snapshot_hash
-      FROM active_primary
-      LIMIT 1`;
-
-    const ineligible = await this.prisma.$queryRaw<Array<{ one: number }>>`
-      SELECT 1 AS one
-      FROM di_v0_motion_core_shadow_outbox_v1 o
-      WHERE o.organization_id = ${organizationId}
-        AND o.vehicle_id = ${vehicleId}
-        AND o.trip_id = ${tripId}
-        AND o.status = 'SKIPPED_INELIGIBLE'
-      LIMIT 1`;
-    if (ineligible.length > 0) {
-      return false;
-    }
-
-    const primary = rows[0];
-    if (!primary) {
-      return true;
-    }
-    if (primary.status !== 'COMPLETED') {
-      return true;
-    }
-    if (primary.shadow_run_id && primary.pinned_snapshot_hash) {
-      return true;
-    }
-    return false;
   }
 
   private async detectPendingOutbox(

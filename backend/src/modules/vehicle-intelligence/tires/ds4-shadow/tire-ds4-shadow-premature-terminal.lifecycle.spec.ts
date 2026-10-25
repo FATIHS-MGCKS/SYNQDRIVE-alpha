@@ -30,6 +30,37 @@ describe('TireDs4ShadowProcessorService — premature terminal guard', () => {
     };
   }
 
+  it('legacy trip without S4 work item: NOT_AVAILABLE read defers without terminal marker', async () => {
+    const tripMapRead = { readForTrip: jest.fn().mockResolvedValue({ status: 'NOT_AVAILABLE' }) };
+    const repository = makeRepository();
+    const producer = {
+      enqueueMaterialize: jest.fn().mockResolvedValue('job-1'),
+      computeRetryDelayMs: jest.fn().mockReturnValue(60_000),
+    };
+    const svc = new TireDs4ShadowProcessorService(
+      {
+        tireTripUsageLedger: { findFirst: jest.fn().mockResolvedValue(ledgerRow) },
+        diV0MotionCoreShadowRunV1: { findFirst: jest.fn() },
+      } as never,
+      tripMapRead as never,
+      repository as never,
+      producer as never,
+      config as never,
+    );
+
+    const outcome = await svc.processJob({
+      organizationId: 'org-1',
+      vehicleId: 'veh-tesla',
+      tripId: ledgerRow.tripId,
+      tireTripUsageLedgerId: ledgerRow.id,
+      attempt: 0,
+    });
+
+    expect(outcome.status).toBe('deferred');
+    expect(outcome).toMatchObject({ reason: 'ds4_motion_evidence_not_available_yet' });
+    expect(repository.persistTerminalMarker).not.toHaveBeenCalled();
+  });
+
   it('ledger before S4 PRIMARY completion: PENDING read defers without terminal marker', async () => {
     const prisma = {
       tireTripUsageLedger: { findFirst: jest.fn().mockResolvedValue(ledgerRow) },
