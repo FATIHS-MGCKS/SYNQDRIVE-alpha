@@ -27,7 +27,13 @@ describePg('APDS baseline poll evidence (Postgres integration)', () => {
   let organizationId = '';
   let vehicleId = '';
   let epochId = '';
+  let cohortFingerprint = '';
   const activatedAt = new Date('2026-10-25T10:00:00.000Z');
+  const cleanup: Array<{
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+  }> = [];
 
   beforeAll(async () => {
     const org = await prisma.organization.create({
@@ -35,14 +41,19 @@ describePg('APDS baseline poll evidence (Postgres integration)', () => {
         companyName: `apd-evidence-pg-${randomUUID()}`,
         businessType: BusinessType.RENTAL,
       },
+      select: { id: true },
     });
     organizationId = org.id;
     const vehicle = await prisma.vehicle.create({
       data: {
         organizationId,
-        licensePlate: `APD-${randomUUID().slice(0, 8)}`,
+        make: 'Test',
+        model: 'Evidence',
+        year: 2026,
         fuelType: FuelType.GASOLINE,
+        vehicleName: 'apd-evidence-veh',
       },
+      select: { id: true },
     });
     vehicleId = vehicle.id;
 
@@ -50,24 +61,28 @@ describePg('APDS baseline poll evidence (Postgres integration)', () => {
       version: P25_APD_LTE_R1_COHORT_V1,
       members: [{ organizationId, vehicleId }],
     };
-    const fingerprint = computeApdShadowCohortFingerprintSha256(cohort);
+    cohortFingerprint = computeApdShadowCohortFingerprintSha256(cohort);
     const epoch = await prisma.apdShadowActivationEpoch.create({
       data: {
+        activationScopeKey: buildApdShadowActivationScopeKey(cohortFingerprint),
         organizationId,
-        scopeKey: buildApdShadowActivationScopeKey(organizationId, fingerprint),
-        cohortConfigFingerprintSha256: fingerprint,
-        lifecycle: ApdShadowActivationEpochLifecycle.ACTIVE,
+        cohortConfigFingerprintSha256: cohortFingerprint,
+        cohortConfigVersion: P25_APD_LTE_R1_COHORT_V1,
+        b2PolicyVersion: P25_APD_B2_V1,
+        b4PolicyVersion: P25_APD_B4_V1,
+        lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
         activatedAt,
       },
+      select: { id: true },
     });
     epochId = epoch.id;
   });
 
   afterAll(async () => {
-    await prisma.apdShadowReconciliationDecision.deleteMany({
-      where: { organizationId },
-    });
-    await prisma.apdShadowActivationEpoch.deleteMany({ where: { organizationId } });
+    for (const key of cleanup) {
+      await prisma.apdShadowReconciliationDecision.deleteMany({ where: key });
+    }
+    await prisma.apdShadowActivationEpoch.deleteMany({ where: { id: epochId } });
     await prisma.dimoPollLog.deleteMany({ where: { vehicleId } });
     await prisma.vehicle.deleteMany({ where: { organizationId } });
     await prisma.organization.deleteMany({ where: { id: organizationId } });
@@ -76,6 +91,7 @@ describePg('APDS baseline poll evidence (Postgres integration)', () => {
 
   it('durable discovery delay backfill when next baseline poll is observed', async () => {
     const opportunityId = randomUUID();
+    cleanup.push({ organizationId, vehicleId, opportunityId });
     const priorPollId = randomUUID();
     const nextPollId = randomUUID();
     const priorCompleted = new Date('2026-10-25T10:29:05.000Z');

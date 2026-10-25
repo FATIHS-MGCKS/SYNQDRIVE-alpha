@@ -29,6 +29,14 @@
 - `apd-shadow-skipped-informative-metric.spec.ts` wires counter.
 - APDS shadow unit suite (18 suites) green excluding postgres integration env.
 
+## P1 hardening (2026-10-25, PR #2168 follow-up)
+
+- Strict LV: `resolveStrictLvBatteryProviderSourceAt` — no `collectionLastSeenAt` fallback for observational evidence.
+- LV classes: `STRICT_LV_ADVANCE` | `FIRST_VALID_LV_OBSERVATION` | `NO_ADVANCE` | `UNKNOWN`; skip-informative uses **STRICT_LV_ADVANCE** only.
+- Discovery delay: deferred until a **later** baseline poll is observed; `simulatedDiscoveryAt` = next poll **completion** time (not provider source timestamp).
+- Idempotent durable updates + conditional Prometheus counters; deferred LV uses pre-persist `providerTimestamp` authority (not `lastLvSourceAt` simulated field).
+- Bootstrap visibility restored: `pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs`.
+
 ## Remaining gap
 
 Top-level per-poll advance remains **NOT_ASSESSABLE** without VSI P2C capture rows (`vehicle_provider_source_observations`); P2C activation explicitly out of scope for P1.
