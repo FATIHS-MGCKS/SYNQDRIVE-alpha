@@ -19,6 +19,8 @@ export const masterMotionPhysicsTr = {
   'master.motionPhysics.confirmSuccess': 'Hareket referansı onaylandı',
   'master.motionPhysics.confirmError': 'Referans onaylanamadı',
   'master.motionPhysics.manualConfirmError': 'Onaylanan manuel değerler kaydedilemedi',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Manuel değerler kaydedildi ancak etkin referans yeniden yüklenemedi. Görünüm onay yanıtını kullanıyor.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Manuel hareket fiziği değerleri kayıtlı referanstan farklı. „Manuel değerleri onayla“ ile referans olarak kaydedilir.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':

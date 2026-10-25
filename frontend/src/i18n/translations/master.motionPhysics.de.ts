@@ -19,6 +19,8 @@ export const masterMotionPhysicsDe = {
   'master.motionPhysics.confirmSuccess': 'Fahrphysik-Referenz bestätigt',
   'master.motionPhysics.confirmError': 'Referenz konnte nicht bestätigt werden',
   'master.motionPhysics.manualConfirmError': 'Manuelle Werte konnten nicht bestätigt werden',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Manuelle Werte wurden gespeichert, die aktive Referenz konnte jedoch nicht neu geladen werden. Die Anzeige nutzt die Bestätigungsantwort.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Manuelle Fahrphysik-Werte weichen von der gespeicherten Referenz ab. Sie werden erst mit „Manuelle Werte bestätigen“ als Referenz gespeichert.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':

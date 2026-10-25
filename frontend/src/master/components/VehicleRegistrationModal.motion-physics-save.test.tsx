@@ -2,11 +2,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { fireEvent } from '@testing-library/react';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { VehicleRegistrationModal } from './VehicleRegistrationModal';
 import type { RegisteredVehicle } from '../data/platform-data';
-import { api } from '../../lib/api';
+import { MOTION_PHYSICS_SYNC_REASON_CODES } from '../connected-vehicles/motion-physics-reference-sync.util';
 
 const streamAiSpecsMock = vi.fn();
 const getActiveMock = vi.fn();
@@ -33,6 +32,13 @@ vi.mock('../../lib/api', () => ({
   streamAiSpecs: (...args: unknown[]) => streamAiSpecsMock(...args),
   streamAiTireSpecs: vi.fn(),
 }));
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  valueSetter?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+}
 
 function teslaVehicle(): RegisteredVehicle {
   return {
@@ -155,8 +161,8 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
     expect(powerInput).toBeTruthy();
     expect(accelInput).toBeTruthy();
     await act(async () => {
-      fireEvent.change(powerInput!, { target: { value: '208' } });
-      fireEvent.change(accelInput!, { target: { value: '6.1' } });
+      setInputValue(powerInput!, '208');
+      setInputValue(accelInput!, '6.1');
     });
     await flushPromises();
 
@@ -224,8 +230,8 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
       '[data-testid="motion-physics-accel-0-100"]',
     );
     await act(async () => {
-      fireEvent.change(powerInput!, { target: { value: '208' } });
-      fireEvent.change(accelInput!, { target: { value: '6.1' } });
+      setInputValue(powerInput!, '208');
+      setInputValue(accelInput!, '6.1');
     });
     await flushPromises();
 
@@ -244,6 +250,71 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
     expect(getActiveMock).toHaveBeenCalledTimes(2);
     expect(powerInput?.value).toBe('208');
     expect(accelInput?.value).toBe('6.1');
+
+    root.unmount();
+    container.remove();
+  });
+
+  it('hydrates from create response when GET active fails after successful manual confirm POST', async () => {
+    getActiveMock.mockResolvedValueOnce(null).mockRejectedValueOnce(new Error('GET failed'));
+    createReferenceMock.mockResolvedValueOnce({
+      id: 'ref-confirmed',
+      evidenceTier: 'CONFIRMED',
+      curbMassKg: 1760,
+      systemMotorPowerKw: 208,
+      accel0To100S: 6.1,
+    });
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(VehicleRegistrationModal, {
+            isDarkMode: false,
+            isOpen: true,
+            onClose: vi.fn(),
+            existingVehicle: teslaVehicle(),
+            organizations: [{ id: 'org-1', company_name: 'Org' }],
+            onRegister: vi.fn(),
+            onUpdate: vi.fn(),
+          }),
+        ),
+      );
+    });
+
+    await flushPromises();
+    await flushPromises();
+
+    const powerInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="motion-physics-system-power-kw"]',
+    );
+    await act(async () => {
+      setInputValue(powerInput!, '208');
+    });
+
+    const confirmBtn = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.match(/Confirm manual values|Manuelle Werte bestätigen/i),
+    );
+    await act(async () => {
+      confirmBtn!.click();
+      await flushPromises();
+      await flushPromises();
+    });
+
+    expect(createReferenceMock).toHaveBeenCalled();
+    expect(powerInput?.value).toBe('208');
+    expect(container.textContent).toContain(MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_RELOAD_FAILED);
+    expect(container.textContent).not.toMatch(
+      /Motor power, acceleration, and variant are not stored|Motorleistung, Beschleunigung und Variante werden bei/i,
+    );
+    expect(container.textContent).not.toContain(
+      MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_CONFIRM_FAILED,
+    );
 
     root.unmount();
     container.remove();
@@ -283,7 +354,7 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
       '[data-testid="motion-physics-system-power-kw"]',
     );
     await act(async () => {
-      fireEvent.change(powerInput!, { target: { value: '208' } });
+      setInputValue(powerInput!, '208');
     });
 
     const confirmBtn = Array.from(container.querySelectorAll('button')).find((b) =>

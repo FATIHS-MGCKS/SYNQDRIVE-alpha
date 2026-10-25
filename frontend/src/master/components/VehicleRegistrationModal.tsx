@@ -11,6 +11,7 @@ import {
 } from '../connected-vehicles/ai-spec-field-merge.util';
 import {
   buildMotionPhysicsReferenceCreateBody,
+  mergeMotionPhysicsReferenceFromCreateResponse,
   canConfirmEstimatedAiMotionReference,
   canConfirmManualMotionValues,
   formatMotionPhysicsUserErrorMessage,
@@ -800,7 +801,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setMotionPhysicsManualConfirming(true);
     setMotionPhysicsSyncError('');
     try {
-      await api.vehicles.motionPhysicsReference.create(
+      const created = await api.vehicles.motionPhysicsReference.create(
         organizationId,
         existingVehicle.id,
         buildMotionPhysicsReferenceCreateBody({
@@ -813,14 +814,33 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           manualOperatorConfirm: true,
         }),
       );
-      const reloaded = await api.vehicles.motionPhysicsReference.getActive(
-        organizationId,
-        existingVehicle.id,
-      );
-      if (!reloaded) {
-        throw new Error(MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_RELOAD_FAILED);
+
+      let reloaded: Awaited<ReturnType<typeof api.vehicles.motionPhysicsReference.getActive>> = null;
+      try {
+        reloaded = await api.vehicles.motionPhysicsReference.getActive(
+          organizationId,
+          existingVehicle.id,
+        );
+      } catch {
+        reloaded = null;
       }
-      applyActiveMotionPhysicsReference(reloaded);
+
+      if (reloaded) {
+        applyActiveMotionPhysicsReference(reloaded);
+      } else {
+        applyActiveMotionPhysicsReference(
+          mergeMotionPhysicsReferenceFromCreateResponse(created, {
+            curbWeight,
+            systemMotorPowerKw,
+            accel0To100S,
+            variantAssumption: motionPhysicsVariantAssumption,
+            systemPowerDefinition,
+          }),
+        );
+        setMotionPhysicsSaveInfo(
+          `${t('master.motionPhysics.manualConfirmReloadWarning')} (${MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_RELOAD_FAILED})`,
+        );
+      }
     } catch (error) {
       setMotionPhysicsSyncError(
         formatMotionPhysicsUserErrorMessage(

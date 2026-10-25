@@ -371,6 +371,40 @@ export function canConfirmEstimatedAiMotionReference(input: {
   return motionPhysicsFormMatchesSnapshot(input.currentForm, input.loadedReferenceBaseline);
 }
 
+/** When POST create succeeds but GET active fails, hydrate UI from create body + form. */
+export function mergeMotionPhysicsReferenceFromCreateResponse(
+  created: {
+    id: string;
+    evidenceTier: 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED';
+    curbMassKg?: number | null;
+    systemMotorPowerKw?: number | null;
+    accel0To100S?: number | null;
+    variantAssumption?: string | null;
+    systemPowerDefinition?: string | null;
+  },
+  form: {
+    curbWeight: string;
+    systemMotorPowerKw: string;
+    accel0To100S: string;
+    variantAssumption: string;
+    systemPowerDefinition: string;
+  },
+) {
+  return {
+    id: created.id,
+    evidenceTier: created.evidenceTier,
+    curbMassKg: created.curbMassKg ?? resolveMotionPhysicsCurbMassKg(form.curbWeight),
+    systemMotorPowerKw:
+      created.systemMotorPowerKw ?? parseMotionPhysicsDecimalField(form.systemMotorPowerKw),
+    accel0To100S: created.accel0To100S ?? parseMotionPhysicsDecimalField(form.accel0To100S),
+    variantAssumption:
+      created.variantAssumption ?? (form.variantAssumption.trim() ? form.variantAssumption.trim() : null),
+    systemPowerDefinition:
+      created.systemPowerDefinition ??
+      (form.systemPowerDefinition.trim() ? form.systemPowerDefinition.trim() : null),
+  };
+}
+
 export function snapshotMotionPhysicsFromActiveReference(ref: {
   curbMassKg?: number | null;
   systemMotorPowerKw?: number | null;

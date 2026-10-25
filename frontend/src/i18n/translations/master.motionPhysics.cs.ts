@@ -19,6 +19,8 @@ export const masterMotionPhysicsCs = {
   'master.motionPhysics.confirmSuccess': 'Referenční data potvrzena',
   'master.motionPhysics.confirmError': 'Referenci se nepodařilo potvrdit',
   'master.motionPhysics.manualConfirmError': 'Potvrzené ruční hodnoty se nepodařilo uložit',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Ruční hodnoty byly uloženy, ale aktivní referenci se nepodařilo znovu načíst. Zobrazení vychází z odpovědi na potvrzení.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Ruční hodnoty pohybové fyziky se liší od uložené reference. Uloží se jako reference až po „Potvrdit ruční hodnoty“.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':
