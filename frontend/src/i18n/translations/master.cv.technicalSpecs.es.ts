@@ -22,4 +22,14 @@ export const masterCvTechnicalSpecsEs = {
     'La capacidad útil mostrada es un dato maestro heredado del vehículo (no SOH, no referencia verificada, no medición nueva). Los campos HV no se pueden editar para vehículos existentes en esta versión.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
     'Este campo HV no se persiste en el editor de vehículos existentes.',
+  'master.cv.technicalSpecs.diRoutingSectionTitle': 'Enrutamiento de eventos de conducción (DI)',
+  'master.cv.technicalSpecs.diRoutingHint':
+    'LTE_R1 frente a SMART5 define cómo Driving Intelligence obtiene eventos de conducción. Es independiente de la modalidad de conexión verificada en onboarding (software/OEM frente a telemática física).',
+  'master.cv.technicalSpecs.connectionModalityLabel': 'Modalidad de conexión verificada',
+  'master.cv.technicalSpecs.telemetryFamilyLabel': 'Familia de telemetría',
+  'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Clasificación de enrutamiento DI (almacenada)',
+  'master.cv.technicalSpecs.diRoutingReadOnlyHint':
+    'El enrutamiento DI no se puede cambiar aquí. Cambiar la clasificación almacenada requiere una revisión DI aprobada por el operador.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Enrutamiento LTE_R1: los eventos de conducción (frenado brusco, aceleración, curvas) usan la ruta de eventos de la API de telemetría DIMO. No es el tipo de dispositivo físico a bordo.',
 };

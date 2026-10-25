@@ -725,6 +725,51 @@ export class VehiclesService {
     return String(value);
   }
 
+  private resolveAdminVehicleEnrichmentFromLinkMetadata(metadata: unknown): {
+    connectionModality: string | null;
+    telemetryConnectionFamily: string | null;
+  } {
+    if (!metadata || typeof metadata !== 'object') {
+      return { connectionModality: null, telemetryConnectionFamily: null };
+    }
+    const meta = metadata as Record<string, unknown>;
+    const connectionIdentity = meta.connectionIdentity;
+    let connectionModality: string | null = null;
+    if (connectionIdentity && typeof connectionIdentity === 'object') {
+      const ci = connectionIdentity as Record<string, unknown>;
+      const verified = ci.verifiedModality;
+      if (verified != null && String(verified).trim()) {
+        connectionModality = String(verified).trim();
+      }
+    }
+    let telemetryConnectionFamily: string | null = null;
+    const evidenceLists: unknown[] = [];
+    if (Array.isArray(meta.verificationEvidence)) {
+      evidenceLists.push(meta.verificationEvidence);
+    }
+    if (connectionIdentity && typeof connectionIdentity === 'object') {
+      const ci = connectionIdentity as Record<string, unknown>;
+      if (Array.isArray(ci.verificationEvidence)) {
+        evidenceLists.push(ci.verificationEvidence);
+      }
+    }
+    for (const evidence of evidenceLists) {
+      if (!Array.isArray(evidence)) continue;
+      const synthetic = evidence.find(
+        (e) => typeof e === 'string' && e.includes('API_SYNTHETIC'),
+      );
+      if (synthetic) {
+        telemetryConnectionFamily = 'API_SYNTHETIC';
+        break;
+      }
+      const r1 = evidence.find(
+        (e) => typeof e === 'string' && e.includes('RUPTELA'),
+      );
+      if (r1) telemetryConnectionFamily = 'RUPTELA_R1';
+    }
+    return { connectionModality, telemetryConnectionFamily };
+  }
+
   mapToRegisteredVehicle(
     v: any,
     tripStateMap?: Map<string, { state: any }>,
@@ -732,6 +777,17 @@ export class VehiclesService {
     hvReference?: {
       capacityKwh: number;
       capacityType: string;
+    } | null,
+    adminEnrichment?: {
+      motionReference?: {
+        systemMotorPowerKw: number | null;
+        accel0To100S: number | null;
+        variantAssumption: string | null;
+      } | null;
+      connectionIdentity?: {
+        connectionModality: string | null;
+        telemetryConnectionFamily: string | null;
+      } | null;
     } | null,
   ) {
     const battery = v.batterySpecs?.[0];
@@ -821,6 +877,20 @@ export class VehiclesService {
         : '',
       frontToRearWeightDistribution: '',
       curbWeight: v.curbWeightKg?.toString() ?? '',
+      systemMotorPowerKw:
+        adminEnrichment?.motionReference?.systemMotorPowerKw != null
+          ? String(adminEnrichment.motionReference.systemMotorPowerKw)
+          : '',
+      accel0To100S:
+        adminEnrichment?.motionReference?.accel0To100S != null
+          ? String(adminEnrichment.motionReference.accel0To100S)
+          : '',
+      motionPhysicsVariantAssumption:
+        adminEnrichment?.motionReference?.variantAssumption?.trim() ?? '',
+      connectionModality:
+        adminEnrichment?.connectionIdentity?.connectionModality ?? null,
+      telemetryConnectionFamily:
+        adminEnrichment?.connectionIdentity?.telemetryConnectionFamily ?? null,
       serviceIntervals: v.serviceIntervalKm
         ? `${v.serviceIntervalKm} km`
         : v.serviceIntervalMonths
@@ -1765,19 +1835,54 @@ export class VehiclesService {
       include: FULL_VEHICLE_WITH_ORG_INCLUDE,
     });
     if (!vehicle) return null;
-    const [tripStateMap, hvReference] = await Promise.all([
-      this.buildTripStateMap([vehicle.id]),
-      this.prisma.vehicleBatteryReferenceCapacity.findFirst({
-        where: {
-          organizationId: vehicle.organizationId,
-          vehicleId: vehicle.id,
-          isActive: true,
-          supersededById: null,
-        },
-        select: { capacityKwh: true, capacityType: true },
-      }),
-    ]);
-    return this.mapToRegisteredVehicle(vehicle, tripStateMap, undefined, hvReference);
+    const [tripStateMap, hvReference, motionReference, dimoSourceLink] =
+      await Promise.all([
+        this.buildTripStateMap([vehicle.id]),
+        this.prisma.vehicleBatteryReferenceCapacity.findFirst({
+          where: {
+            organizationId: vehicle.organizationId,
+            vehicleId: vehicle.id,
+            isActive: true,
+            supersededById: null,
+          },
+          select: { capacityKwh: true, capacityType: true },
+        }),
+        this.prisma.vehicleMotionPhysicsReference.findFirst({
+          where: {
+            organizationId: vehicle.organizationId,
+            vehicleId: vehicle.id,
+            isActive: true,
+            supersededById: null,
+          },
+          select: {
+            systemMotorPowerKw: true,
+            accel0To100S: true,
+            variantAssumption: true,
+          },
+        }),
+        this.prisma.vehicleDataSourceLink.findFirst({
+          where: {
+            vehicleId: vehicle.id,
+            isActive: true,
+            provider: 'DIMO',
+          },
+          orderBy: [{ activatedAt: 'desc' }, { id: 'desc' }],
+          select: { metadata: true },
+        }),
+      ]);
+    const connectionIdentity = this.resolveAdminVehicleEnrichmentFromLinkMetadata(
+      dimoSourceLink?.metadata,
+    );
+    return this.mapToRegisteredVehicle(
+      vehicle,
+      tripStateMap,
+      undefined,
+      hvReference,
+      {
+        motionReference,
+        connectionIdentity,
+      },
+    );
   }
 
   async findOne(organizationId: string, id: string) {

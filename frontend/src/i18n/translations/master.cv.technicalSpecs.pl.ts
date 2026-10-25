@@ -22,4 +22,14 @@ export const masterCvTechnicalSpecsPl = {
     'Pojemność użytkowa to legacy dane pojazdu (nie SOH, nie zweryfikowana referencja, nie nowy pomiar). Pola HV nie są edytowalne dla istniejących pojazdów w tej wersji.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
     'To pole HV nie jest zapisywane w edytorze istniejącego pojazdu.',
+  'master.cv.technicalSpecs.diRoutingSectionTitle': 'Routing zdarzeń jazdy (DI)',
+  'master.cv.technicalSpecs.diRoutingHint':
+    'LTE_R1 vs SMART5 określa źródło zdarzeń jazdy w Driving Intelligence. To jest oddzielne od zweryfikowanej modalności połączenia onboarding (software/OEM vs telematyka fizyczna).',
+  'master.cv.technicalSpecs.connectionModalityLabel': 'Zweryfikowana modalność połączenia',
+  'master.cv.technicalSpecs.telemetryFamilyLabel': 'Rodzina telemetrii',
+  'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Klasyfikacja routingu zdarzeń DI (zapisana)',
+  'master.cv.technicalSpecs.diRoutingReadOnlyHint':
+    'Routingu DI nie można zmienić w tym edytorze. Zmiana zapisanej klasyfikacji wymaga osobnej zgody właściciela i przeglądu DI.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Routing LTE_R1: zdarzenia jazdy (ostre hamowanie, przyspieszenie, pokonywanie zakrętów) korzystają ze ścieżki zdarzeń API telemetrii DIMO. To nie jest fizyczny typ urządzenia w pojeździe.',
 };

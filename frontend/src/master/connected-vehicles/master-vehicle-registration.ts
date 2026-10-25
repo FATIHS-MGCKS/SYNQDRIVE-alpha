@@ -472,6 +472,15 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
     systemMotorPowerKw: str('systemMotorPowerKw'),
     accel0To100S: str('accel0To100S'),
     motionPhysicsVariantAssumption: str('motionPhysicsVariantAssumption'),
+    connectionModality:
+      dto.connectionModality != null && String(dto.connectionModality).trim() !== ''
+        ? String(dto.connectionModality)
+        : null,
+    telemetryConnectionFamily:
+      dto.telemetryConnectionFamily != null &&
+      String(dto.telemetryConnectionFamily).trim() !== ''
+        ? String(dto.telemetryConnectionFamily)
+        : null,
     serviceIntervals: str('serviceIntervals'),
     serviceIntervalManufacturerKm: str('serviceIntervalManufacturerKm'),
     serviceIntervalManufacturerMonths: str('serviceIntervalManufacturerMonths'),

@@ -31,6 +31,11 @@ import {
   type MotionPhysicsPendingCreateSource,
   type MotionSystemPowerDefinitionOption,
 } from '../connected-vehicles/motion-physics-reference-sync.util';
+import { isMasterElectrifiedFuelType } from '../connected-vehicles/master-ev-fuel-type.util';
+import {
+  formatMasterConnectionModalityLabel,
+  formatMasterTelemetryConnectionFamilyLabel,
+} from '../connected-vehicles/master-connection-identity-display.util';
 import {
   ExteriorImagesEditor,
   flushBufferedExteriorImages,
@@ -724,10 +729,17 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         }
         applyActiveMotionPhysicsReference(ref);
       })
-      .catch(() => {
+      .catch((error) => {
         setMotionPhysicsReferenceId(null);
         setMotionPhysicsEvidenceTier(null);
         motionPhysicsLoadedBaselineRef.current = null;
+        setMotionPhysicsSyncError(
+          formatMotionPhysicsUserErrorMessage(
+            t('master.motionPhysics.activeReferenceLoadError'),
+            error,
+            MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_RELOAD_FAILED,
+          ),
+        );
       });
   }, [
     isOpen,
@@ -1098,7 +1110,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           }
         }
         if (motionPhysicsBlockedAfterSave) {
-          setMotionPhysicsSaveInfo(t('master.motionPhysics.unsavedAfterVehicleSave'));
+          setMotionPhysicsSaveInfo(
+            `${t('master.motionPhysics.unsavedAfterVehicleSave')} (${MOTION_PHYSICS_SYNC_REASON_CODES.ROUTINE_SAVE_REFERENCE_FIELDS_NOT_PERSISTED})`,
+          );
           return;
         }
       } else {
@@ -1596,22 +1610,22 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               <div>
                 <p className={`text-xs font-bold mb-2 flex items-center gap-1.5 text-muted-foreground`}>
                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                    fuelType === 'Electric' || fuelType === 'Plugin Hybrid' || fuelType === 'Hybrid'
+                    isMasterElectrifiedFuelType(fuelType)
                       ? (isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
                       : 'bg-muted text-muted-foreground'
                   }`}>HV</span>
                   High Voltage Traction Battery
-                  {!(fuelType === 'Electric' || fuelType === 'Plugin Hybrid' || fuelType === 'Hybrid') && (
+                  {!isMasterElectrifiedFuelType(fuelType) && (
                     <span className={`text-[9px] font-normal text-muted-foreground`}>— EV / PHEV / HEV only</span>
                   )}
                   {hvBatteryPresent === 'true' && <span className={`text-[9px] font-semibold ml-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>● Present</span>}
                   {hvBatteryPresent === 'false' && <span className={`text-[9px] font-semibold ml-1 text-muted-foreground`}>● Not present</span>}
                 </p>
                 {(() => {
-                  const isEv = fuelType === 'Electric' || fuelType === 'Plugin Hybrid' || fuelType === 'Hybrid';
+                  const isEv = isMasterElectrifiedFuelType(fuelType);
                   const hvExistingVehicleReadOnly = isEditMode && isEv;
-                  const hvFieldDisabled = !isEv || hvExistingVehicleReadOnly;
-                  const cls = `${inputClass} ${hvFieldDisabled ? 'opacity-40 cursor-not-allowed' : ''}`;
+                  const hvFieldDisabled = !isEv;
+                  const cls = `${inputClass} ${hvFieldDisabled ? 'opacity-40 cursor-not-allowed' : hvExistingVehicleReadOnly ? 'bg-muted/30 cursor-default' : ''}`;
                   return (
                     <div className="space-y-2">
                       {hvExistingVehicleReadOnly && (
@@ -1630,6 +1644,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                           }}
                           disabled={hvFieldDisabled}
                           readOnly={hvExistingVehicleReadOnly}
+                          aria-readonly={hvExistingVehicleReadOnly}
                           placeholder={isEv ? 'e.g. 75' : 'N/A'}
                           className={cls}
                           data-testid="hv-usable-capacity-kwh"
@@ -2017,22 +2032,54 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {/* ═══════════════════════════════════════════════
                SECTION 10 — Hardware Type (V3)
                ═══════════════════════════════════════════════ */}
-          {sectionHeader('hardware', '10', 'Hardware Type (V3)')}
+          {sectionHeader('hardware', '10', t('master.cv.technicalSpecs.diRoutingSectionTitle'))}
           {expandedSections.includes('hardware') && (
             <div className="pl-1 pb-3 space-y-3">
               <p className={`text-xs text-muted-foreground`}>
-                Determines how Driving Events are sourced for this vehicle.<br />
-                <span className="font-medium">LTE_R1</span> — Driving Events from DIMO Telemetry API Events (native harsh-event signals).<br />
-                <span className="font-medium">SMART5</span> — Driving Events reconstructed from HF time-series (local analysis).<br />
-                <span className="font-medium">Unknown</span> — Falls back to SMART5 behaviour (safe default for unclassified vehicles).
+                {t('master.cv.technicalSpecs.diRoutingHint')}
+              </p>
+              {(existingVehicle?.connectionModality ||
+                existingVehicle?.telemetryConnectionFamily) && (
+                <div
+                  className={`rounded-xl border px-3 py-2 text-xs space-y-1 ${isDarkMode ? 'border-border bg-muted/20' : 'border-border bg-muted/40'}`}
+                  data-testid="connection-identity-summary"
+                >
+                  {existingVehicle?.connectionModality && (
+                    <p>
+                      <span className="font-semibold">
+                        {t('master.cv.technicalSpecs.connectionModalityLabel')}:
+                      </span>{' '}
+                      {formatMasterConnectionModalityLabel(existingVehicle.connectionModality)}
+                    </p>
+                  )}
+                  {existingVehicle?.telemetryConnectionFamily && (
+                    <p>
+                      <span className="font-semibold">
+                        {t('master.cv.technicalSpecs.telemetryFamilyLabel')}:
+                      </span>{' '}
+                      {formatMasterTelemetryConnectionFamilyLabel(
+                        existingVehicle.telemetryConnectionFamily,
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className={`text-xs font-semibold text-muted-foreground`}>
+                {t('master.cv.technicalSpecs.diRoutingHardwareLabel')}
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {(['LTE_R1', 'SMART5', 'UNKNOWN'] as const).map((hw) => (
                   <button
                     key={hw}
                     type="button"
-                    onClick={() => setHardwareType(hw)}
+                    disabled={isEditMode}
+                    onClick={() => {
+                      if (isEditMode) return;
+                      setHardwareType(hw);
+                    }}
                     className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                      isEditMode ? 'opacity-60 cursor-not-allowed' : ''
+                    } ${
                       hardwareType === hw
                         ? isDarkMode
                           ? 'bg-brand/30 border-brand text-brand'
@@ -2046,9 +2093,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                   </button>
                 ))}
               </div>
+              {isEditMode && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('master.cv.technicalSpecs.diRoutingReadOnlyHint')}
+                </p>
+              )}
               {hardwareType === 'LTE_R1' && (
                 <div className={`rounded-xl px-3 py-2 text-xs ${isDarkMode ? 'bg-status-info-soft text-status-info border border-border' : 'bg-status-info-soft text-status-info border border-border'}`}>
-                  LTE_R1 selected: Driving Events (harsh braking, acceleration, cornering) will be sourced from DIMO Telemetry API Events. Abuse detection remains HF-based.
+                  {t('master.cv.technicalSpecs.diRoutingLteR1Info')}
                 </div>
               )}
             </div>

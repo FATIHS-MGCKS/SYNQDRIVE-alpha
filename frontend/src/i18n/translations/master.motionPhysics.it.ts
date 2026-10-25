@@ -21,6 +21,8 @@ export const masterMotionPhysicsIt = {
   'master.motionPhysics.manualConfirmError': 'Impossibile salvare i valori manuali confermati',
   'master.motionPhysics.manualConfirmReloadWarning':
     'I valori manuali sono stati salvati, ma non è stato possibile ricaricare il riferimento attivo. La visualizzazione usa la risposta di conferma.',
+  'master.motionPhysics.activeReferenceLoadError':
+    'Impossibile caricare il riferimento attivo di fisica del movimento per questo veicolo.',
   'master.motionPhysics.unsavedManualValuesHint':
     'I valori manuali differiscono dalla referenza salvata. Saranno salvati come referenza solo con «Conferma valori manuali».',
   'master.motionPhysics.confirmAiEstimateBlockedHint':

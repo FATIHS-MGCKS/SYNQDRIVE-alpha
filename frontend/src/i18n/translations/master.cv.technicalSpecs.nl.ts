@@ -22,4 +22,14 @@ export const masterCvTechnicalSpecsNl = {
     'De getoonde bruikbare capaciteit is legacy voertuigstamdata (geen SOH, geen geverifieerde referentie, geen nieuwe meting). HV-velden zijn voor bestaande voertuigen in deze release niet bewerkbaar.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
     'Dit HV-veld wordt niet opgeslagen in de bestaande-voertuig-editor.',
+  'master.cv.technicalSpecs.diRoutingSectionTitle': 'Routing rijgebeurtenissen (DI)',
+  'master.cv.technicalSpecs.diRoutingHint':
+    'LTE_R1 vs SMART5 bepaalt hoe Driving Intelligence rijgebeurtenissen ophaalt. Dit staat los van de geverifieerde onboarding-verbindingsmodaliteit (software/OEM vs fysieke telematica).',
+  'master.cv.technicalSpecs.connectionModalityLabel': 'Geverifieerde verbindingsmodaliteit',
+  'master.cv.technicalSpecs.telemetryFamilyLabel': 'Telemetriefamilie',
+  'master.cv.technicalSpecs.diRoutingHardwareLabel': 'DI-eventroutingclassificatie (opgeslagen)',
+  'master.cv.technicalSpecs.diRoutingReadOnlyHint':
+    'DI-routing kan hier niet worden gewijzigd. Wijzigen van de opgeslagen classificatie vereist een aparte DI-review met goedkeuring van de operator.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'LTE_R1-routing: rijgebeurtenissen (hard remmen, acceleratie, bochten) gebruiken het DIMO-telemetrie-API-eventpad. Dit is niet het fysieke apparaattype in het voertuig.',
 };

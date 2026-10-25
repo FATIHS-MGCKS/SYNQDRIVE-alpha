@@ -21,6 +21,8 @@ export const masterMotionPhysicsPl = {
   'master.motionPhysics.manualConfirmError': 'Nie udało się zapisać potwierdzonych wartości ręcznych',
   'master.motionPhysics.manualConfirmReloadWarning':
     'Wartości ręczne zostały zapisane, ale nie udało się ponownie załadować aktywnej referencji. Widok korzysta z odpowiedzi potwierdzenia.',
+  'master.motionPhysics.activeReferenceLoadError':
+    'Nie udało się załadować aktywnej referencji fizyki ruchu dla tego pojazdu.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Ręczne wartości fizyki ruchu różnią się od zapisanej referencji. Zostaną zapisane jako referencja dopiero po „Potwierdź wartości ręczne”.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':
