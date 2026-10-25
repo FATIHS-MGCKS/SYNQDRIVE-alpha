@@ -14,6 +14,31 @@ export const MOTION_SYSTEM_POWER_DEFINITION_OPTIONS = [
 
 export type MotionSystemPowerDefinitionOption = (typeof MOTION_SYSTEM_POWER_DEFINITION_OPTIONS)[number];
 
+export const MOTION_PHYSICS_SYNC_REASON_CODES = {
+  REFERENCE_CREATE_FAILED: 'MOTION_PHYSICS_REFERENCE_CREATE_FAILED',
+  REFERENCE_CONFIRM_FAILED: 'MOTION_PHYSICS_REFERENCE_CONFIRM_FAILED',
+  REFERENCE_RELOAD_FAILED: 'MOTION_PHYSICS_REFERENCE_RELOAD_FAILED',
+  ROUTINE_SAVE_REFERENCE_FIELDS_NOT_PERSISTED:
+    'MOTION_PHYSICS_ROUTINE_SAVE_REFERENCE_FIELDS_NOT_PERSISTED',
+} as const;
+
+export type MotionPhysicsSyncReasonCode =
+  (typeof MOTION_PHYSICS_SYNC_REASON_CODES)[keyof typeof MOTION_PHYSICS_SYNC_REASON_CODES];
+
+export function hasMotionPhysicsReferenceFieldValues(input: {
+  systemMotorPowerKw: string;
+  accel0To100S: string;
+  variantAssumption: string;
+  systemPowerDefinition: string;
+}): boolean {
+  return Boolean(
+    input.systemMotorPowerKw.trim() ||
+      input.accel0To100S.trim() ||
+      input.variantAssumption.trim() ||
+      input.systemPowerDefinition.trim(),
+  );
+}
+
 export function hasMotionPhysicsFormValues(input: {
   curbWeight: string;
   systemMotorPowerKw: string;
@@ -229,6 +254,20 @@ export function motionPhysicsFormMatchesSnapshot(
   );
 }
 
+export function motionPhysicsReferenceFieldsMatchSnapshot(
+  current: MotionPhysicsFormSnapshot,
+  baseline: MotionPhysicsFormSnapshot,
+): boolean {
+  const a = normalizeMotionPhysicsFormSnapshot(current);
+  const b = normalizeMotionPhysicsFormSnapshot(baseline);
+  return (
+    a.systemMotorPowerKw === b.systemMotorPowerKw &&
+    a.accel0To100S === b.accel0To100S &&
+    a.variantAssumption === b.variantAssumption &&
+    a.systemPowerDefinition === b.systemPowerDefinition
+  );
+}
+
 /** ESTIMATED reference loaded in form — form diverges from stored reference row. */
 export function hasUnconfirmedManualMotionPhysicsEdits(input: {
   evidenceTier: MotionPhysicsEvidenceTierUi;
@@ -241,6 +280,85 @@ export function hasUnconfirmedManualMotionPhysicsEdits(input: {
   return !motionPhysicsFormMatchesSnapshot(input.currentForm, input.loadedReferenceBaseline);
 }
 
+/**
+ * Routine “Save Changes” does not create CONFIRMED references or update CONFIRMED/ESTIMATED rows.
+ * Returns true when power/accel/variant/definition would be silently discarded on save.
+ */
+export function hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave(input: {
+  evidenceTier: MotionPhysicsEvidenceTierUi;
+  referenceId: string | null;
+  loadedReferenceBaseline: MotionPhysicsFormSnapshot | null;
+  noReferenceSessionBaseline: MotionPhysicsFormSnapshot | null;
+  currentForm: MotionPhysicsFormSnapshot;
+  pendingCreateSource: MotionPhysicsPendingCreateSource;
+  manualMotionEdited: boolean;
+}): boolean {
+  if (isMotionPhysicsReferenceReadOnly(input.evidenceTier)) return false;
+
+  if (hasUnconfirmedManualMotionPhysicsEdits(input)) return true;
+
+  if (input.referenceId && input.loadedReferenceBaseline) {
+    return !motionPhysicsFormMatchesSnapshot(
+      input.currentForm,
+      input.loadedReferenceBaseline,
+    );
+  }
+
+  if (!hasMotionPhysicsReferenceFieldValues(input.currentForm)) return false;
+
+  if (
+    shouldSyncMotionPhysicsReferenceOnSave({
+      evidenceTier: input.evidenceTier,
+      referenceId: input.referenceId,
+      pendingCreateSource: input.pendingCreateSource,
+      hasMotionValues: hasMotionPhysicsFormValues(input.currentForm),
+      manualMotionEdited: input.manualMotionEdited,
+    })
+  ) {
+    return false;
+  }
+
+  if (
+    input.noReferenceSessionBaseline &&
+    motionPhysicsReferenceFieldsMatchSnapshot(
+      input.currentForm,
+      input.noReferenceSessionBaseline,
+    )
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function resolveMotionPhysicsHttpReasonCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+  const record = error as Record<string, unknown>;
+  if (typeof record.reasonCode === 'string' && record.reasonCode.trim()) {
+    return record.reasonCode.trim();
+  }
+  const message = record.message;
+  if (typeof message === 'string' && message.includes('MOTION_PHYSICS_')) {
+    return message;
+  }
+  const response = record.response;
+  if (response && typeof response === 'object') {
+    const data = (response as { data?: { reasonCodes?: string[]; code?: string } }).data;
+    if (data?.reasonCodes?.[0]) return String(data.reasonCodes[0]);
+    if (data?.code) return String(data.code);
+  }
+  return null;
+}
+
+export function formatMotionPhysicsUserErrorMessage(
+  baseMessage: string,
+  error: unknown,
+  fallbackReason: MotionPhysicsSyncReasonCode,
+): string {
+  const code = resolveMotionPhysicsHttpReasonCode(error) ?? fallbackReason;
+  return `${baseMessage} (${code})`;
+}
+
 /** Confirm AI estimate only when form still matches the loaded ESTIMATED reference (no silent stale confirm). */
 export function canConfirmEstimatedAiMotionReference(input: {
   evidenceTier: MotionPhysicsEvidenceTierUi;
@@ -251,6 +369,40 @@ export function canConfirmEstimatedAiMotionReference(input: {
   if (!input.referenceId || input.evidenceTier !== 'ESTIMATED') return false;
   if (!input.loadedReferenceBaseline) return false;
   return motionPhysicsFormMatchesSnapshot(input.currentForm, input.loadedReferenceBaseline);
+}
+
+/** When POST create succeeds but GET active fails, hydrate UI from create body + form. */
+export function mergeMotionPhysicsReferenceFromCreateResponse(
+  created: {
+    id: string;
+    evidenceTier: 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED';
+    curbMassKg?: number | null;
+    systemMotorPowerKw?: number | null;
+    accel0To100S?: number | null;
+    variantAssumption?: string | null;
+    systemPowerDefinition?: string | null;
+  },
+  form: {
+    curbWeight: string;
+    systemMotorPowerKw: string;
+    accel0To100S: string;
+    variantAssumption: string;
+    systemPowerDefinition: string;
+  },
+) {
+  return {
+    id: created.id,
+    evidenceTier: created.evidenceTier,
+    curbMassKg: created.curbMassKg ?? resolveMotionPhysicsCurbMassKg(form.curbWeight),
+    systemMotorPowerKw:
+      created.systemMotorPowerKw ?? parseMotionPhysicsDecimalField(form.systemMotorPowerKw),
+    accel0To100S: created.accel0To100S ?? parseMotionPhysicsDecimalField(form.accel0To100S),
+    variantAssumption:
+      created.variantAssumption ?? (form.variantAssumption.trim() ? form.variantAssumption.trim() : null),
+    systemPowerDefinition:
+      created.systemPowerDefinition ??
+      (form.systemPowerDefinition.trim() ? form.systemPowerDefinition.trim() : null),
+  };
 }
 
 export function snapshotMotionPhysicsFromActiveReference(ref: {

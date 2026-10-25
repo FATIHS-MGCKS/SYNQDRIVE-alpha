@@ -9,8 +9,12 @@ import {
   parseMotionPhysicsDecimalField,
   parseMotionPhysicsNumericField,
   canConfirmEstimatedAiMotionReference,
+  hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave,
   hasUnconfirmedManualMotionPhysicsEdits,
+  formatMotionPhysicsUserErrorMessage,
+  MOTION_PHYSICS_SYNC_REASON_CODES,
   motionPhysicsFormMatchesSnapshot,
+  snapshotMotionPhysicsFormFields,
   resolveMotionPhysicsPendingAfterAiApply,
   resolveMotionPhysicsCurbMassKg,
   shouldSyncMotionPhysicsReferenceOnSave,
@@ -209,6 +213,77 @@ describe('motion-physics-reference-sync.util', () => {
       const baseline = { curbWeight: '1700' } as RegisteredVehicle;
       const current = { curbWeight: curbInput } as RegisteredVehicle;
       expect(buildMasterVehiclePhysicsSpecPatch(current, baseline)).toEqual({ curbWeightKg: 1760.5 });
+    });
+  });
+
+  describe('hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave', () => {
+    const emptyBaseline = snapshotMotionPhysicsFormFields({
+      curbWeight: '1760',
+      systemMotorPowerKw: '',
+      accel0To100S: '',
+      variantAssumption: '',
+      systemPowerDefinition: '',
+    });
+
+    it('flags Tesla-like manual power/accel when no active reference exists', () => {
+      expect(
+        hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave({
+          evidenceTier: null,
+          referenceId: null,
+          loadedReferenceBaseline: null,
+          noReferenceSessionBaseline: emptyBaseline,
+          currentForm: {
+            ...emptyBaseline,
+            systemMotorPowerKw: '208',
+            accel0To100S: '6.1',
+            systemPowerDefinition: 'OEM_RATED_MOTOR_KW',
+          },
+          pendingCreateSource: null,
+          manualMotionEdited: true,
+        }),
+      ).toBe(true);
+    });
+
+    it('does not flag when reference fields match session baseline (curb-only edits)', () => {
+      expect(
+        hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave({
+          evidenceTier: null,
+          referenceId: null,
+          loadedReferenceBaseline: null,
+          noReferenceSessionBaseline: emptyBaseline,
+          currentForm: { ...emptyBaseline, curbWeight: '1765' },
+          pendingCreateSource: null,
+          manualMotionEdited: true,
+        }),
+      ).toBe(false);
+    });
+
+    it('allows eligible live Mistral auto-create on save', () => {
+      expect(
+        hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave({
+          evidenceTier: null,
+          referenceId: null,
+          loadedReferenceBaseline: null,
+          noReferenceSessionBaseline: emptyBaseline,
+          currentForm: {
+            ...emptyBaseline,
+            systemMotorPowerKw: '150',
+            accel0To100S: '5.2',
+          },
+          pendingCreateSource: 'MISTRAL_AI',
+          manualMotionEdited: false,
+        }),
+      ).toBe(false);
+    });
+
+    it('formats API errors with fallback reason codes', () => {
+      expect(
+        formatMotionPhysicsUserErrorMessage(
+          'Could not save',
+          new Error('x'),
+          MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_CREATE_FAILED,
+        ),
+      ).toContain(MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_CREATE_FAILED);
     });
   });
 
