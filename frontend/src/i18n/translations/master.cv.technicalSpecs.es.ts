@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsEs = {
   'master.cv.technicalSpecs.editLoadError': 'No se pudieron cargar los datos del vehículo para editar.',
   'master.cv.technicalSpecs.updateSuccess': 'Especificaciones del vehículo guardadas.',
   'master.cv.technicalSpecs.secondaryDetails': 'Detalles operativos e de integración',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'La capacidad útil mostrada es un dato maestro heredado del vehículo (no SOH, no referencia verificada, no medición nueva). Los campos HV no se pueden editar para vehículos existentes en esta versión.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'Este campo HV no se persiste en el editor de vehículos existentes.',
 };

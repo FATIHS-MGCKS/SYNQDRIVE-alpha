@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsNl = {
   'master.cv.technicalSpecs.editLoadError': 'Voertuiggegevens voor bewerken konden niet worden geladen.',
   'master.cv.technicalSpecs.updateSuccess': 'Voertuigspecificaties opgeslagen.',
   'master.cv.technicalSpecs.secondaryDetails': 'Operationele en integratiedetails',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'De getoonde bruikbare capaciteit is legacy voertuigstamdata (geen SOH, geen geverifieerde referentie, geen nieuwe meting). HV-velden zijn voor bestaande voertuigen in deze release niet bewerkbaar.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'Dit HV-veld wordt niet opgeslagen in de bestaande-voertuig-editor.',
 };

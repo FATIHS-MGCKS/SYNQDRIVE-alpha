@@ -18,8 +18,6 @@ const createMock = vi.fn();
 const registerFromDimoMock = vi.fn();
 const upsertTiresMock = vi.fn();
 const updateMock = vi.fn();
-const batteryReferenceCreateMock = vi.fn();
-
 vi.mock('../../lib/api', () => ({
   api: {
     vehicles: {
@@ -27,9 +25,6 @@ vi.mock('../../lib/api', () => ({
       update: (...args: unknown[]) => updateMock(...args),
       registerFromDimo: (...args: unknown[]) => registerFromDimoMock(...args),
       upsertTires: (...args: unknown[]) => upsertTiresMock(...args),
-      batteryReferenceCapacity: {
-        create: (...args: unknown[]) => batteryReferenceCreateMock(...args),
-      },
     },
     vehicleIntelligence: {
       createBatterySpec: vi.fn().mockResolvedValue({}),
@@ -338,26 +333,21 @@ describe('master-vehicle-registration payloads', () => {
     expect(diff.usableReferenceKwh).toBe(58);
   });
 
-  it('updateMasterRegisteredVehicle syncs HV usable reference when capacity changes', async () => {
-    updateMock.mockResolvedValueOnce({});
-    batteryReferenceCreateMock.mockResolvedValueOnce({});
+  it('updateMasterRegisteredVehicle does not PATCH HV or create battery reference on spec edit', async () => {
     const baseline = minimalRv({
       fuelType: 'Electric',
       hvBatteryUsableCapacityKwh: '57',
+      curbWeight: '1760',
     });
     const current = minimalRv({
       fuelType: 'Electric',
       hvBatteryUsableCapacityKwh: '58',
+      curbWeight: '1760',
     });
 
     await updateMasterRegisteredVehicle(current, { baseline });
 
-    expect(updateMock).toHaveBeenCalledWith('org-1', 'rv-1', { hvBatteryCapacityKwh: 58 });
-    expect(batteryReferenceCreateMock).toHaveBeenCalledWith('org-1', 'rv-1', {
-      capacityKwh: 58,
-      capacityType: 'USABLE',
-      source: 'MANUAL_VERIFIED',
-    });
+    expect(updateMock).not.toHaveBeenCalled();
     expect(upsertTiresMock).not.toHaveBeenCalled();
     expect(api.vehicleIntelligence.createBatterySpec).not.toHaveBeenCalled();
   });

@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsEn = {
   'master.cv.technicalSpecs.editLoadError': 'Vehicle data could not be loaded for editing.',
   'master.cv.technicalSpecs.updateSuccess': 'Vehicle specifications saved.',
   'master.cv.technicalSpecs.secondaryDetails': 'Operational & integration details',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'Usable capacity shown here is legacy vehicle master data from registration (not SOH, not a verified reference, not a fresh measurement). HV fields cannot be edited for existing vehicles in this release.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'This HV field is not stored for existing vehicles in the current editor.',
 };

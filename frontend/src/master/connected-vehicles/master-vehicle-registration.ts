@@ -510,8 +510,6 @@ export function buildMasterVehiclePhysicsSpecPatch(
   if (nextKg != null && nextKg !== prevKg) {
     patch.curbWeightKg = nextKg;
   }
-  const hv = buildMasterVehicleHvStammdatenDiff(current, baseline);
-  Object.assign(patch, hv.vehiclePatch);
   return patch;
 }
 
@@ -533,20 +531,9 @@ export async function updateMasterRegisteredVehicle(
     throw new Error('EDIT_BASELINE_REQUIRED');
   }
 
-  assertMasterHvCapacityConsistency(rv);
-
-  const hvDiff = buildMasterVehicleHvStammdatenDiff(rv, options.baseline);
   const patch = buildMasterVehiclePhysicsSpecPatch(rv, options.baseline);
   if (Object.keys(patch).length > 0) {
     await api.vehicles.update(orgId, vehicleId, patch);
-  }
-
-  if (hvDiff.usableReferenceChanged && hvDiff.usableReferenceKwh != null) {
-    await api.vehicles.batteryReferenceCapacity.create(orgId, vehicleId, {
-      capacityKwh: hvDiff.usableReferenceKwh,
-      capacityType: 'USABLE',
-      source: 'MANUAL_VERIFIED',
-    });
   }
 }
 
