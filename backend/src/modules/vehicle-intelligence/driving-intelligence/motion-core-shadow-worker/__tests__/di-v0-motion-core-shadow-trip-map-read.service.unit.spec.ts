@@ -26,6 +26,16 @@ describe('DiV0MotionCoreShadowTripMapReadService — run selection', () => {
     return { service, runs };
   }
 
+  it('returns NOT_AVAILABLE when no motion run, outbox, or failed run (legacy trips without S4 WI)', async () => {
+    const { service } = makeService({
+      findLatestRunForTrip: jest.fn().mockResolvedValue(null),
+      findLatestSucceededRunForTrip: jest.fn().mockResolvedValue(null),
+      pendingOutbox: false,
+    });
+    const res = await service.readForTrip(organizationId, vehicleId, tripId);
+    expect(res.status).toBe('NOT_AVAILABLE');
+  });
+
   it('returns FAILED when only non-succeeded runs exist', async () => {
     const { service, runs } = makeService({
       findLatestRunForTrip: jest.fn().mockResolvedValue({

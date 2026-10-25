@@ -31,6 +31,11 @@ Derived from DS4 speed/FSM samples, stop episodes, and tire-trip ledger window (
 
 An **85%** temporal coverage threshold is recorded as `fableHypothesis85PctThreshold: 0.85` in payload metadata for research comparison only. Missing events must **not** be interpreted as gentle driving.
 
+## Tire shadow defer vs shared TripMapRead
+
+- Shared `DiV0MotionCoreShadowTripMapReadService` semantics are unchanged for Master/DS4 consumers (`PENDING` / `FAILED` / `NOT_AVAILABLE` as before).
+- **Tire DS4 shadow processor only:** bounded **defer** on `PENDING`, `FAILED`, and `NOT_AVAILABLE` (except `TRIP_NOT_FOUND`); no immediate `ds4_not_available` terminal on first `NOT_AVAILABLE`.
+
 ## Safety
 
 - Insert-only shadow rows; prior adapter `v1.0.1` / schema v2 rows immutable.

@@ -82,17 +82,20 @@ export class TireDs4ShadowProcessorService {
     }
 
     if (read.status === 'NOT_AVAILABLE') {
-      await this.repository.persistTerminalMarker({
-        organizationId: ledger.organizationId,
-        vehicleId: ledger.vehicleId,
-        tripId: ledger.tripId,
-        tireSetupId: ledger.tireSetupId,
-        tireTripUsageLedgerId: ledger.id,
-        adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
-        kind: 'ds4_not_available',
-        reason: 'ds4_not_available',
-      });
-      return { status: 'skipped', reason: 'ds4_not_available' };
+      if (read.failureCode === 'TRIP_NOT_FOUND') {
+        await this.repository.persistTerminalMarker({
+          organizationId: ledger.organizationId,
+          vehicleId: ledger.vehicleId,
+          tripId: ledger.tripId,
+          tireSetupId: ledger.tireSetupId,
+          tireTripUsageLedgerId: ledger.id,
+          adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
+          kind: 'ds4_not_available',
+          reason: 'trip_not_found',
+        });
+        return { status: 'skipped', reason: 'ds4_not_available' };
+      }
+      return this.defer(data, ledger, 'ds4_motion_evidence_not_available_yet');
     }
 
     if (read.status !== 'SUCCEEDED' && read.status !== 'SUCCEEDED_EMPTY') {
