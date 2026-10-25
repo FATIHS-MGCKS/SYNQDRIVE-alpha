@@ -37,6 +37,12 @@ function baseRead(
   };
 }
 
+const trip = {
+  tripDistanceKm: 12,
+  tripStartedAt: '2026-01-01T10:00:00.000Z',
+  tripEndedAt: '2026-01-01T10:05:00.000Z',
+};
+
 describe('tire-ds4-shadow-input.mapper', () => {
   it('aggregates OK acceleration and excludes LIMITED deceleration', () => {
     const payload = mapDs4TripMapToTireShadowInput(
@@ -76,20 +82,22 @@ describe('tire-ds4-shadow-input.mapper', () => {
           },
         ],
       }),
+      trip,
     );
 
     expect(payload.acceleration.okCount).toBe(1);
     expect(payload.acceleration.okDurationS).toBe(2);
     expect(payload.acceleration.okDeltaKmhAbsSum).toBe(10);
+    expect(payload.acceleration.okM3EventCount).toBe(1);
     expect(payload.deceleration.limitedCount).toBe(1);
     expect(payload.neutral).toBe(false);
     expect(payload.eventQualityCoverage).toBe('PARTIAL');
-    expect(payload.temporalCoverage).toBe('UNVERIFIED');
-    expect(payload.schemaVersion).toBe(2);
+    expect(payload.temporalCoverageDetail).toBeDefined();
+    expect(payload.schemaVersion).toBe(3);
   });
 
   it('marks neutral when no admissible manoeuvre counts', () => {
-    const payload = mapDs4TripMapToTireShadowInput(baseRead());
+    const payload = mapDs4TripMapToTireShadowInput(baseRead(), trip);
     expect(payload.neutral).toBe(true);
     expect(payload.acceleration.okCount).toBe(0);
     expect(payload.deceleration.okCount).toBe(0);

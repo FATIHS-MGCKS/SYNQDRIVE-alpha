@@ -7,6 +7,7 @@ import {
   TIRE_DS4_SHADOW_TERMINAL_RUN_RETRY_EXHAUSTED,
   TIRE_DS4_SHADOW_TERMINAL_RUN_IDS,
 } from './tire-ds4-shadow-terminal-runs';
+import { buildNeutralTireDs4ShadowInputPayloadV3 } from './tire-ds4-shadow-neutral-payload';
 import type { TireDs4ShadowPersistInput } from './tire-ds4-shadow.types';
 
 export type TireDs4ShadowPersistResult =
@@ -121,34 +122,7 @@ export class TireDs4ShadowRepository {
       eventQualityCoverage: 'NONE',
       temporalCoverage: 'NONE',
       ds4ReadStatus: input.kind === 'retry_exhausted' ? 'RETRY_EXHAUSTED' : 'NOT_AVAILABLE',
-      inputPayload: {
-        schemaVersion: 2,
-        neutral: true,
-        shadowBundleVersion: null,
-        acceleration: {
-          okCount: 0,
-          okDurationS: 0,
-          okDeltaKmhAbsSum: 0,
-          degradedCount: 0,
-          limitedCount: 0,
-          excludedArtefactCount: 0,
-          excludedOtherQualityCount: 0,
-        },
-        deceleration: {
-          okCount: 0,
-          okDurationS: 0,
-          okDeltaKmhAbsSum: 0,
-          degradedCount: 0,
-          limitedCount: 0,
-          excludedArtefactCount: 0,
-          excludedOtherQualityCount: 0,
-        },
-        eventQualityCoverage: 'NONE',
-        temporalCoverage: 'NONE',
-        limitations: [input.reason],
-        newerFailedRunId: null,
-        newerFailedRunStatus: null,
-      },
+      inputPayload: buildNeutralTireDs4ShadowInputPayloadV3(input.reason),
     });
   }
 

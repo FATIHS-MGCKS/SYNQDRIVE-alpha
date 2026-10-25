@@ -1,3 +1,5 @@
+import { TIRE_DS4_SHADOW_ADAPTER_VERSION } from './tire-ds4-shadow-adapter.version';
+import { buildNeutralTireDs4ShadowInputPayloadV3 } from './tire-ds4-shadow-neutral-payload';
 import { TireDs4ShadowRepository } from './tire-ds4-shadow.repository';
 import { TIRE_DS4_SHADOW_TERMINAL_RUN_RETRY_EXHAUSTED } from './tire-ds4-shadow-terminal-runs';
 import type { TireDs4ShadowPersistInput } from './tire-ds4-shadow.types';
@@ -17,37 +19,13 @@ function basePersistInput(overrides: Partial<TireDs4ShadowPersistInput> = {}): T
     shadowBundleVersion: 'bundle',
     speedAuthority: 'C4_ONLY',
     eventsAlgorithmVersion: 'ev',
-    adapterVersion: 'tire-ds4-shadow-input-v1.0.1',
+    adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
     eventQualityCoverage: 'NONE',
-    temporalCoverage: 'UNVERIFIED',
+    temporalCoverage: 'NONE',
     ds4ReadStatus: 'SUCCEEDED_EMPTY',
     inputPayload: {
-      schemaVersion: 2,
-      neutral: true,
+      ...buildNeutralTireDs4ShadowInputPayloadV3('test'),
       shadowBundleVersion: 'bundle',
-      acceleration: {
-        okCount: 0,
-        okDurationS: 0,
-        okDeltaKmhAbsSum: 0,
-        degradedCount: 0,
-        limitedCount: 0,
-        excludedArtefactCount: 0,
-        excludedOtherQualityCount: 0,
-      },
-      deceleration: {
-        okCount: 0,
-        okDurationS: 0,
-        okDeltaKmhAbsSum: 0,
-        degradedCount: 0,
-        limitedCount: 0,
-        excludedArtefactCount: 0,
-        excludedOtherQualityCount: 0,
-      },
-      eventQualityCoverage: 'NONE',
-      temporalCoverage: 'UNVERIFIED',
-      limitations: [],
-      newerFailedRunId: null,
-      newerFailedRunStatus: null,
     },
     ...overrides,
   };

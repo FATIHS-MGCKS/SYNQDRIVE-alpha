@@ -22,6 +22,9 @@ describe('TireDs4ShadowProcessorService', () => {
     vehicleId: 'veh-1',
     tripId: 'trip-1',
     tireSetupId: 'setup-1',
+    distanceKm: 12.5,
+    tripStartedAt: new Date('2026-01-01T10:00:00.000Z'),
+    tripEndedAt: new Date('2026-01-01T10:15:00.000Z'),
   };
 
   function makeRepository(overrides: Record<string, jest.Mock> = {}) {
@@ -205,7 +208,7 @@ describe('TireDs4ShadowProcessorService', () => {
         adapterVersion: TIRE_DS4_SHADOW_ADAPTER_VERSION,
         diV0MotionCoreShadowRunId: 'run-1',
         tireTripUsageLedgerId: 'ledger-1',
-        temporalCoverage: 'UNVERIFIED',
+        temporalCoverage: 'NONE',
       }),
     );
   });

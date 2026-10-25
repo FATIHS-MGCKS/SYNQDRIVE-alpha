@@ -25,6 +25,13 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | `bash architecture/tires/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 | NON_EFFECTS | No runtime, DS4, or i18n change |
 
+### Tire Wear V3 P3B — DS4 M3 dynamics & temporal coverage (2026-10-25)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Adapter `tire-ds4-shadow-input-v1.1.0`, payload schema v3: M3 J/kg/km proxy + temporal coverage detail |
+| NON_EFFECTS | DS4 core, Trip FSM, V2 wear, V3 prior β=0, production flags |
+
 ### Tire Wear V3 P3A — correctness fix (2026-10-25)
 
 | Event | Detail |
