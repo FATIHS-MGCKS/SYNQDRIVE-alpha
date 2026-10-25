@@ -4,7 +4,7 @@ import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { VehicleRegistrationModal } from './VehicleRegistrationModal';
-import type { RegisteredVehicle } from '../data/platform-data';
+import type { Organization, RegisteredVehicle } from '../data/platform-data';
 
 const streamAiSpecsMock = vi.fn();
 const vehiclesUpdateMock = vi.fn();
@@ -126,7 +126,7 @@ describe('VehicleRegistrationModal HV legacy display (Tesla 57 kWh)', () => {
             isOpen: true,
             onClose,
             existingVehicle: teslaWithLegacy57(),
-            organizations: [{ id: 'org-1', company_name: 'Org' }],
+            organizations: [{ id: 'org-1', company_name: 'Org' } as Organization],
             onRegister: vi.fn(),
             onUpdate,
           }),
