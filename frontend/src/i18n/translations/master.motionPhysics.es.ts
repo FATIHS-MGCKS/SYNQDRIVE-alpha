@@ -21,6 +21,8 @@ export const masterMotionPhysicsEs = {
   'master.motionPhysics.manualConfirmError': 'No se pudieron guardar los valores manuales confirmados',
   'master.motionPhysics.manualConfirmReloadWarning':
     'Los valores manuales se guardaron, pero no se pudo volver a cargar la referencia activa. La vista usa la respuesta de confirmación.',
+  'master.motionPhysics.activeReferenceLoadError':
+    'No se pudo cargar la referencia activa de física de movimiento de este vehículo.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Los valores manuales difieren de la referencia guardada. Solo se guardarán como referencia con «Confirmar valores manuales».',
   'master.motionPhysics.confirmAiEstimateBlockedHint':

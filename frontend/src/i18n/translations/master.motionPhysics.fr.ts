@@ -21,6 +21,8 @@ export const masterMotionPhysicsFr = {
   'master.motionPhysics.manualConfirmError': 'Impossible d’enregistrer les valeurs manuelles confirmées',
   'master.motionPhysics.manualConfirmReloadWarning':
     'Les valeurs manuelles ont été enregistrées, mais la référence active n’a pas pu être rechargée. L’affichage utilise la réponse de confirmation.',
+  'master.motionPhysics.activeReferenceLoadError':
+    'Impossible de charger la référence de physique de mouvement active pour ce véhicule.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Les valeurs manuelles diffèrent de la référence enregistrée. Elles ne seront enregistrées qu’avec « Confirmer les valeurs manuelles ».',
   'master.motionPhysics.confirmAiEstimateBlockedHint':

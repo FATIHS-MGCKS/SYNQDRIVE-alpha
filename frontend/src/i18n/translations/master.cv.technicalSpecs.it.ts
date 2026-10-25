@@ -22,4 +22,12 @@ export const masterCvTechnicalSpecsIt = {
     'La capacità utile mostrata proviene dai dati anagrafici legacy del veicolo (non SOH, non riferimento verificato, non misurazione recente). I campi HV non sono modificabili per i veicoli esistenti in questa release.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
     'Questo campo HV non viene persistito nell’editor veicoli esistenti.',
+  'master.cv.technicalSpecs.diRoutingSectionTitle': 'Instradamento eventi di guida (DI)',
+  'master.cv.technicalSpecs.diRoutingHint':
+    'LTE_R1 vs SMART5 definisce come Driving Intelligence acquisisce gli eventi di guida. È separato dalla modalità di connessione onboarding verificata (software/OEM vs telematica fisica).',
+  'master.cv.technicalSpecs.connectionModalityLabel': 'Modalità di connessione verificata',
+  'master.cv.technicalSpecs.telemetryFamilyLabel': 'Famiglia telemetria',
+  'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Classificazione routing DI (memorizzata)',
+  'master.cv.technicalSpecs.diRoutingReadOnlyHint':
+    'Il routing DI non può essere modificato qui. Modificare la classificazione memorizzata richiede una revisione DI approvata dall’operatore.',
 };

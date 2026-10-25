@@ -21,6 +21,8 @@ export const masterMotionPhysicsNl = {
   'master.motionPhysics.manualConfirmError': 'Bevestigde handmatige waarden konden niet worden opgeslagen',
   'master.motionPhysics.manualConfirmReloadWarning':
     'Handmatige waarden zijn opgeslagen, maar de actieve referentie kon niet opnieuw worden geladen. Weergave gebruikt het bevestigingsantwoord.',
+  'master.motionPhysics.activeReferenceLoadError':
+    'De actieve motion-physics-referentie voor dit voertuig kon niet worden geladen.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Handmatige bewegingsfysiek-waarden wijken af van de opgeslagen referentie. Ze worden pas als referentie opgeslagen via „Handmatige waarden bevestigen“.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':

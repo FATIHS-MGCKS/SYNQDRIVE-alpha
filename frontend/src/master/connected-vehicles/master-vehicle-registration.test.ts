@@ -352,6 +352,21 @@ describe('master-vehicle-registration payloads', () => {
     expect(api.vehicleIntelligence.createBatterySpec).not.toHaveBeenCalled();
   });
 
+  it('mapAdminVehicleDtoToRegisteredVehicle maps connection identity fields from admin GET', () => {
+    const rv = mapAdminVehicleDtoToRegisteredVehicle({
+      id: 'tesla-1',
+      organizationId: 'org-1',
+      make: 'Tesla',
+      model: 'Model 3',
+      hardwareType: 'LTE_R1',
+      connectionModality: 'SOFTWARE_INTEGRATION',
+      telemetryConnectionFamily: 'API_SYNTHETIC',
+    });
+    expect(rv.hardwareType).toBe('LTE_R1');
+    expect(rv.connectionModality).toBe('SOFTWARE_INTEGRATION');
+    expect(rv.telemetryConnectionFamily).toBe('API_SYNTHETIC');
+  });
+
   it('mapAdminVehicleDtoToRegisteredVehicle preserves motion physics form fields', () => {
     const rv = mapAdminVehicleDtoToRegisteredVehicle({
       id: 'v-1',

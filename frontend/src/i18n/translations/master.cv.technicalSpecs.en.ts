@@ -22,4 +22,12 @@ export const masterCvTechnicalSpecsEn = {
     'Usable capacity shown here is legacy vehicle master data from registration (not SOH, not a verified reference, not a fresh measurement). HV fields cannot be edited for existing vehicles in this release.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
     'This HV field is not stored for existing vehicles in the current editor.',
+  'master.cv.technicalSpecs.diRoutingSectionTitle': 'Driving Events routing (DI)',
+  'master.cv.technicalSpecs.diRoutingHint':
+    'LTE_R1 vs SMART5 controls how Driving Intelligence sources harsh-driving events. It is separate from the verified onboarding connection modality (software/OEM vs physical telematics).',
+  'master.cv.technicalSpecs.connectionModalityLabel': 'Verified connection modality',
+  'master.cv.technicalSpecs.telemetryFamilyLabel': 'Telemetry family',
+  'master.cv.technicalSpecs.diRoutingHardwareLabel': 'DI event routing classification (stored)',
+  'master.cv.technicalSpecs.diRoutingReadOnlyHint':
+    'DI routing cannot be changed from this editor. Changing stored hardware routing requires a separate owner-approved Driving Intelligence review.',
 };
