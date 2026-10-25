@@ -51,8 +51,8 @@ export interface AdaptivePollingShadowPostPollContext {
   realPollVisibleLvSourceAtMs: number | null;
   previousLvSourceMs: number | null;
   /**
-   * Authoritative LIVE_VOLTAGE provider source timestamp from the live DIMO snapshot payload
-   * (`resolveLvBatteryObservedAt`), not DB fetch-time or post-async measurement reads.
+   * Strict LIVE_VOLTAGE provider source timestamp (`resolveStrictLvBatteryProviderSourceAt` only).
+   * Never `collectionLastSeenAt` or DB read-at-poll-completion.
    */
   baselineLvProviderSourceMs: number | null;
   previousTopLevelSourceMs: number | null;

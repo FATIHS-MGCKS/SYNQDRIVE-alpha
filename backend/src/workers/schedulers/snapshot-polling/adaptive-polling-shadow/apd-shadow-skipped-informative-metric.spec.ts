@@ -23,6 +23,9 @@ describe('apd-shadow skipped-informative metric wiring', () => {
       decision: 'WOULD_SKIP',
       reconciliation: true,
     }),
+    findExistingObservationalOutcomeForOpportunity: jest
+      .fn()
+      .mockResolvedValue(null),
     updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
   } as unknown as AdaptivePollingShadowRepository;
 

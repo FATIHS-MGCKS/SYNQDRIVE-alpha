@@ -3,12 +3,11 @@ import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import {
-  baselineLvAdvanceIsInformative,
-  evaluateBaselineLvSourceAdvanceFromPayload,
+  baselineLvEvidenceIsSkipInformative,
+  evaluateBaselineLvSourceEvidence,
   evaluateBaselineSkipDiscoveryDelay,
   evaluateBaselineTopLevelSourceAdvance,
   parseSnapshotCorrelationId,
-  type BaselineLvSourceAdvanceEvidence,
 } from './p25-apd-shadow-baseline-poll-evidence';
 import type { AdaptivePollingShadowPostPollContext } from './adaptive-polling-shadow.types';
 
@@ -19,6 +18,14 @@ export type BaselinePollObservationalPatch = {
   simulatedNextPollAt: Date | null;
   simulatedDiscoveryAt: Date | null;
   additionalDiscoveryDelayMs: number | null;
+};
+
+export type ExistingObservationalOutcome = {
+  newLvSourceObserved: boolean;
+  newTopLevelSourceObserved: boolean;
+  additionalDiscoveryDelayMs: number | null;
+  simulatedNextPollAt: Date | null;
+  simulatedDiscoveryAt: Date | null;
 };
 
 @Injectable()
@@ -32,55 +39,38 @@ export class ApdShadowBaselinePollEvidenceService {
 
   buildObservationalPatch(input: {
     ctx: AdaptivePollingShadowPostPollContext;
-    prePollDecision: string;
-    nextBaselineSnapshotPollStartedAtMs: number | null;
+    existing?: ExistingObservationalOutcome | null;
   }): BaselinePollObservationalPatch {
-    const lvEvidence = evaluateBaselineLvSourceAdvanceFromPayload({
+    const lvEvidence = evaluateBaselineLvSourceEvidence({
       previousLvProviderSourceMs: input.ctx.previousLvSourceMs,
-      payloadLvProviderSourceMs: input.ctx.baselineLvProviderSourceMs,
+      strictLvProviderSourceMs: input.ctx.baselineLvProviderSourceMs,
     });
     const top = evaluateBaselineTopLevelSourceAdvance({
       previousSourceTimestampMs: input.ctx.previousTopLevelSourceMs,
       newSourceTimestampMs: input.ctx.newTopLevelSourceMs,
     });
 
-    const lvInformative = baselineLvAdvanceIsInformative(lvEvidence);
+    const lvInformative = baselineLvEvidenceIsSkipInformative(lvEvidence);
     const lvAt =
-      lvEvidence.kind === 'TRUE_ADVANCE'
+      lvEvidence.kind === 'STRICT_LV_ADVANCE' ||
+      lvEvidence.kind === 'FIRST_VALID_LV_OBSERVATION'
         ? new Date(lvEvidence.providerSourceMs)
         : null;
 
-    let simulatedNextPollAt: Date | null = null;
-    let simulatedDiscoveryAt: Date | null = null;
-    let additionalDiscoveryDelayMs: number | null = null;
-
-    if (input.prePollDecision === 'WOULD_SKIP' && (lvInformative || top.informative)) {
-      const delayEvidence = evaluateBaselineSkipDiscoveryDelay({
-        pollCompletedAtMs: input.ctx.pollCompletedAtMs,
-        informativeLvProviderSourceMs:
-          lvEvidence.kind === 'TRUE_ADVANCE' ? lvEvidence.providerSourceMs : null,
-        informativeTopLevelSourceMs: top.informative
-          ? input.ctx.newTopLevelSourceMs
-          : null,
-        nextBaselineSnapshotPollStartedAtMs: input.nextBaselineSnapshotPollStartedAtMs,
-      });
-      if (delayEvidence.kind === 'OBSERVABLE_NEXT_BASELINE_POLL') {
-        simulatedNextPollAt = new Date(delayEvidence.simulatedNextPollAtMs);
-        additionalDiscoveryDelayMs = delayEvidence.additionalDiscoveryDelayMs;
-        simulatedDiscoveryAt =
-          delayEvidence.simulatedDiscoveryAtMs != null
-            ? new Date(delayEvidence.simulatedDiscoveryAtMs)
-            : null;
-      }
-    }
+    const existing = input.existing;
+    const preserveDiscovery =
+      existing?.additionalDiscoveryDelayMs != null &&
+      existing.simulatedNextPollAt != null;
 
     return {
       newLvSourceObserved: lvInformative,
-      newLvSourceAt: lvAt,
+      newLvSourceAt: lvInformative ? lvAt : null,
       newTopLevelSourceObserved: top.informative,
-      simulatedNextPollAt,
-      simulatedDiscoveryAt,
-      additionalDiscoveryDelayMs,
+      simulatedNextPollAt: preserveDiscovery ? existing!.simulatedNextPollAt : null,
+      simulatedDiscoveryAt: preserveDiscovery ? existing!.simulatedDiscoveryAt : null,
+      additionalDiscoveryDelayMs: preserveDiscovery
+        ? existing!.additionalDiscoveryDelayMs
+        : null,
     };
   }
 
@@ -88,40 +78,87 @@ export class ApdShadowBaselinePollEvidenceService {
     policyVersion: string;
     prePollDecision: string;
     patch: BaselinePollObservationalPatch;
-    alreadyRecordedLv: boolean;
-    alreadyRecordedTop: boolean;
-  }): { recordedLv: boolean; recordedTop: boolean } {
+    existing: ExistingObservationalOutcome | null;
+  }): void {
     if (input.prePollDecision !== 'WOULD_SKIP') {
-      return { recordedLv: false, recordedTop: false };
+      return;
     }
-    let recordedLv = false;
-    let recordedTop = false;
-    if (input.patch.newLvSourceObserved && !input.alreadyRecordedLv) {
+    const lvNew =
+      input.patch.newLvSourceObserved && !input.existing?.newLvSourceObserved;
+    const topNew =
+      input.patch.newTopLevelSourceObserved &&
+      !input.existing?.newTopLevelSourceObserved;
+    if (lvNew) {
       this.metrics?.recordSkippedInformative(input.policyVersion, 'lv');
-      recordedLv = true;
     }
-    if (input.patch.newTopLevelSourceObserved && !input.alreadyRecordedTop) {
+    if (topNew) {
       this.metrics?.recordSkippedInformative(input.policyVersion, 'top_level');
-      recordedTop = true;
     }
-    return { recordedLv, recordedTop };
   }
 
-  async resolveNextBaselineSnapshotPollStartedAtMs(
-    vehicleId: string,
-    afterStartedAtMs: number,
-  ): Promise<number | null> {
-    const row = await this.prisma.dimoPollLog.findFirst({
+  /**
+   * When a later baseline poll completes, backfill discovery delay for prior
+   * WOULD_SKIP rows that already recorded informative LV/top evidence.
+   */
+  async reconcilePriorSkipDiscoveryDelayFromObservingPoll(input: {
+    organizationId: string;
+    vehicleId: string;
+    activationEpochId: string;
+    observingPollStartedAtMs: number;
+    observingPollCompletedAtMs: number;
+  }): Promise<void> {
+    const priorRows = await this.prisma.apdShadowReconciliationDecision.findMany({
       where: {
-        vehicleId,
-        jobType: DimoPollJobType.SNAPSHOT,
-        status: DimoPollStatus.SUCCESS,
-        startedAt: { gt: new Date(afterStartedAtMs) },
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        activationEpochId: input.activationEpochId,
+        decision: 'WOULD_SKIP',
+        realPollStatus: 'SUCCESS',
+        additionalDiscoveryDelayMs: null,
+        OR: [{ newLvSourceObserved: true }, { newTopLevelSourceObserved: true }],
+        realPollCompletedAt: {
+          lt: new Date(input.observingPollStartedAtMs),
+        },
       },
-      orderBy: { startedAt: 'asc' },
-      select: { startedAt: true },
+      select: {
+        opportunityId: true,
+        policyVersion: true,
+        realPollCompletedAt: true,
+      },
     });
-    return row?.startedAt?.getTime() ?? null;
+
+    for (const row of priorRows) {
+      if (!row.realPollCompletedAt) continue;
+      const delayEvidence = evaluateBaselineSkipDiscoveryDelay({
+        priorPollCompletedAtMs: row.realPollCompletedAt.getTime(),
+        nextBaselinePollStartedAtMs: input.observingPollStartedAtMs,
+        nextBaselinePollCompletedAtMs: input.observingPollCompletedAtMs,
+      });
+      if (delayEvidence.kind !== 'OBSERVABLE_NEXT_BASELINE_POLL') {
+        continue;
+      }
+
+      const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
+        where: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          opportunityId: row.opportunityId,
+          policyVersion: row.policyVersion,
+          activationEpochId: input.activationEpochId,
+          additionalDiscoveryDelayMs: null,
+        },
+        data: {
+          simulatedNextPollAt: new Date(delayEvidence.simulatedNextPollAtMs),
+          additionalDiscoveryDelayMs: delayEvidence.additionalDiscoveryDelayMs,
+          simulatedDiscoveryAt: new Date(delayEvidence.simulatedDiscoveryAtMs),
+        },
+      });
+      if (updated.count !== 1) {
+        this.logger.debug(
+          `APD discovery delay reconcile skipped row count=${updated.count} opp=${row.opportunityId}`,
+        );
+      }
+    }
   }
 
   /**
@@ -133,7 +170,7 @@ export class ApdShadowBaselinePollEvidenceService {
     vehicleId: string;
     providerTimestampMs: number;
     snapshotCorrelationId: string | null | undefined;
-    previousLvProviderSourceMsAtPersist: number | null;
+    previousLvProviderSourceMsBeforePersist: number | null;
   }): Promise<void> {
     const parsed = parseSnapshotCorrelationId(input.snapshotCorrelationId);
     if (!parsed || parsed.vehicleId !== input.vehicleId) {
@@ -168,72 +205,45 @@ export class ApdShadowBaselinePollEvidenceService {
         decision: true,
         newLvSourceObserved: true,
         newTopLevelSourceObserved: true,
-        lastLvSourceAt: true,
+        additionalDiscoveryDelayMs: true,
+        simulatedNextPollAt: true,
+        simulatedDiscoveryAt: true,
+        activationEpochId: true,
       },
     });
 
-    const nextPollMs = await this.resolveNextBaselineSnapshotPollStartedAtMs(
-      input.vehicleId,
-      poll.startedAt.getTime(),
-    );
-
     for (const row of rows) {
-      const rowEvidence = evaluateBaselineLvSourceAdvanceFromPayload({
-        previousLvProviderSourceMs:
-          row.lastLvSourceAt?.getTime() ??
-          input.previousLvProviderSourceMsAtPersist,
-        payloadLvProviderSourceMs: input.providerTimestampMs,
+      const rowEvidence = evaluateBaselineLvSourceEvidence({
+        previousLvProviderSourceMs: input.previousLvProviderSourceMsBeforePersist,
+        strictLvProviderSourceMs: input.providerTimestampMs,
       });
-      if (!baselineLvAdvanceIsInformative(rowEvidence) || row.newLvSourceObserved) {
+      if (
+        !baselineLvEvidenceIsSkipInformative(rowEvidence) ||
+        row.newLvSourceObserved
+      ) {
         continue;
       }
       const lvAt =
-        rowEvidence.kind === 'TRUE_ADVANCE'
+        rowEvidence.kind === 'STRICT_LV_ADVANCE'
           ? new Date(rowEvidence.providerSourceMs)
           : null;
-      const delayPatch =
-        row.decision === 'WOULD_SKIP'
-          ? this.buildObservationalPatch({
-              ctx: {
-                organizationId: input.organizationId,
-                vehicleId: input.vehicleId,
-                opportunityId: row.opportunityId,
-                realPollId: poll.id,
-                pollStartedAtMs: poll.startedAt.getTime(),
-                pollCompletedAtMs: poll.finishedAt!.getTime(),
-                realPollVisibleLvSourceAtMs: null,
-                previousLvSourceMs: input.previousLvProviderSourceMsAtPersist,
-                baselineLvProviderSourceMs: input.providerTimestampMs,
-                previousTopLevelSourceMs: null,
-                newTopLevelSourceMs: null,
-                providerFetchedAtMs: null,
-              },
-              prePollDecision: row.decision,
-              nextBaselineSnapshotPollStartedAtMs: nextPollMs,
-            })
-          : null;
 
-      await this.prisma.apdShadowReconciliationDecision.updateMany({
+      const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
         where: {
           organizationId: input.organizationId,
           vehicleId: input.vehicleId,
           opportunityId: row.opportunityId,
           policyVersion: row.policyVersion,
+          realPollId: poll.id,
+          newLvSourceObserved: false,
         },
         data: {
           newLvSourceObserved: true,
           newLvSourceAt: lvAt,
-          ...(delayPatch && row.decision === 'WOULD_SKIP'
-            ? {
-                simulatedNextPollAt: delayPatch.simulatedNextPollAt,
-                simulatedDiscoveryAt: delayPatch.simulatedDiscoveryAt,
-                additionalDiscoveryDelayMs: delayPatch.additionalDiscoveryDelayMs,
-              }
-            : {}),
         },
       });
 
-      if (row.decision === 'WOULD_SKIP') {
+      if (updated.count === 1 && row.decision === 'WOULD_SKIP') {
         this.metrics?.recordSkippedInformative(row.policyVersion, 'lv');
       }
     }

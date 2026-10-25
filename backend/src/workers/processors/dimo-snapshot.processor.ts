@@ -23,6 +23,7 @@ import { capRawPayload } from '@shared/utils/json-payload.util';
 import {
   mapDimoBatterySignals,
   resolveLvBatteryObservedAt,
+  resolveStrictLvBatteryProviderSourceAt,
   toVlsBatteryFields,
 } from '../../modules/dimo/mappers/dimo-battery-signal.mapper';
 import { DeviceConnectionEpisodeResolutionService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.service';
@@ -244,9 +245,9 @@ export class DimoSnapshotProcessor extends WorkerHost {
           pollStartedAtMs: startedAt.getTime(),
           pollCompletedAtMs,
           realPollVisibleLvSourceAtMs:
-            latestVisibleLvProviderMs ?? pipelineResult.lvProviderTimestampMs,
+            pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs,
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
-          baselineLvProviderSourceMs: pipelineResult.lvProviderTimestampMs,
+          baselineLvProviderSourceMs: pipelineResult.strictLvProviderTimestampMs,
           previousTopLevelSourceMs: previousVls?.sourceTimestamp?.getTime() ?? null,
           newTopLevelSourceMs: afterCtx.snapshotSourceTimestamp?.getTime() ?? null,
           providerFetchedAtMs: null,
@@ -332,6 +333,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     pollLogId: string;
     finishedAt: Date;
     lvProviderTimestampMs: number | null;
+    strictLvProviderTimestampMs: number | null;
   } | null> {
     const { vehicleId, dimoTokenId } = jobDataWithWake;
 
@@ -686,8 +688,15 @@ export class DimoSnapshotProcessor extends WorkerHost {
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
       const lvProviderTimestampMs = lvBatteryObservedAt?.getTime() ?? null;
+      const strictLvProviderTimestampMs =
+        resolveStrictLvBatteryProviderSourceAt(batteryMap)?.getTime() ?? null;
 
-      return { pollLogId: pollLog.id, finishedAt, lvProviderTimestampMs };
+      return {
+        pollLogId: pollLog.id,
+        finishedAt,
+        lvProviderTimestampMs,
+        strictLvProviderTimestampMs,
+      };
   }
 
   private async isLegacySnapshotEpisodeResolutionExcluded(

@@ -32,6 +32,9 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
       decision: 'WOULD_POLL',
       reconciliation: true,
     }),
+    findExistingObservationalOutcomeForOpportunity: jest
+      .fn()
+      .mockResolvedValue(null),
     upsertPrePollDecision: jest.fn(async (row) => {
       upsertCalls.push({
         decision: row.decision,

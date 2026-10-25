@@ -78,6 +78,18 @@ export class LvLiveVoltageIngestionService {
         payload.vehicleId,
       );
 
+    const previousLvProviderRow = await this.prisma.batteryMeasurement.findFirst({
+      where: {
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        type: BatteryMeasurementType.LIVE_VOLTAGE,
+        quality: BatteryMeasurementQuality.VALID,
+        providerTimestamp: { not: null },
+      },
+      orderBy: { providerTimestamp: 'desc' },
+      select: { providerTimestamp: true },
+    });
+
     const decision = evaluateBatteryProviderObservation({
       organizationId: payload.organizationId,
       vehicleId: payload.vehicleId,
@@ -141,7 +153,8 @@ export class LvLiveVoltageIngestionService {
           vehicleId: payload.vehicleId,
           providerTimestampMs: decision.observedAt.getTime(),
           snapshotCorrelationId: payload.correlationId ?? null,
-          previousLvProviderSourceMsAtPersist: lastStored?.observedAt?.getTime() ?? null,
+          previousLvProviderSourceMsBeforePersist:
+            previousLvProviderRow?.providerTimestamp?.getTime() ?? null,
         })
         .catch((err) => {
           this.logger.warn(

@@ -5,28 +5,62 @@
 
 export type TopLevelSourceAdvanceEvidence = 'TRUE_ADVANCE' | 'NO_ADVANCE' | 'UNKNOWN';
 
-export type BaselineLvSourceAdvanceEvidence =
-  | { kind: 'TRUE_ADVANCE'; providerSourceMs: number }
+export type BaselineLvEvidenceKind =
+  | 'STRICT_LV_ADVANCE'
+  | 'FIRST_VALID_LV_OBSERVATION'
+  | 'NO_ADVANCE'
+  | 'UNKNOWN';
+
+export type BaselineLvSourceEvidence =
+  | { kind: 'STRICT_LV_ADVANCE'; providerSourceMs: number }
+  | { kind: 'FIRST_VALID_LV_OBSERVATION'; providerSourceMs: number }
   | { kind: 'NO_ADVANCE' }
   | { kind: 'UNKNOWN' };
 
-/** Strict provider source-timestamp advance for LIVE_VOLTAGE (payload authority). */
-export function evaluateBaselineLvSourceAdvanceFromPayload(input: {
+/**
+ * Strict LV provider source timestamp from the live payload only
+ * (`resolveStrictLvBatteryProviderSourceAt` — valid LV signal observedAt).
+ */
+export function evaluateBaselineLvSourceEvidence(input: {
   previousLvProviderSourceMs: number | null;
-  payloadLvProviderSourceMs: number | null;
-}): BaselineLvSourceAdvanceEvidence {
-  const next = input.payloadLvProviderSourceMs;
+  strictLvProviderSourceMs: number | null;
+}): BaselineLvSourceEvidence {
+  const next = input.strictLvProviderSourceMs;
   if (next == null || !Number.isFinite(next)) {
     return { kind: 'UNKNOWN' };
   }
   const prev = input.previousLvProviderSourceMs;
-  if (prev == null) {
-    return { kind: 'TRUE_ADVANCE', providerSourceMs: next };
+  if (prev == null || !Number.isFinite(prev)) {
+    return { kind: 'FIRST_VALID_LV_OBSERVATION', providerSourceMs: next };
   }
   if (next > prev) {
-    return { kind: 'TRUE_ADVANCE', providerSourceMs: next };
+    return { kind: 'STRICT_LV_ADVANCE', providerSourceMs: next };
   }
   return { kind: 'NO_ADVANCE' };
+}
+
+/** @deprecated use evaluateBaselineLvSourceEvidence */
+export function evaluateBaselineLvSourceAdvanceFromPayload(input: {
+  previousLvProviderSourceMs: number | null;
+  payloadLvProviderSourceMs: number | null;
+}): BaselineLvSourceEvidence {
+  return evaluateBaselineLvSourceEvidence({
+    previousLvProviderSourceMs: input.previousLvProviderSourceMs,
+    strictLvProviderSourceMs: input.payloadLvProviderSourceMs,
+  });
+}
+
+export function baselineLvEvidenceIsSkipInformative(
+  evidence: BaselineLvSourceEvidence,
+): boolean {
+  return evidence.kind === 'STRICT_LV_ADVANCE';
+}
+
+/** @deprecated */
+export function baselineLvAdvanceIsInformative(
+  evidence: BaselineLvSourceEvidence,
+): boolean {
+  return baselineLvEvidenceIsSkipInformative(evidence);
 }
 
 /** Strict provider `sourceTimestamp` advance (vehicle telemetry), not fetch time. */
@@ -48,47 +82,35 @@ export function evaluateBaselineTopLevelSourceAdvance(input: {
   return { evidence: 'NO_ADVANCE', informative: false };
 }
 
-export function baselineLvAdvanceIsInformative(
-  evidence: BaselineLvSourceAdvanceEvidence,
-): boolean {
-  return evidence.kind === 'TRUE_ADVANCE';
-}
-
 export type BaselineSkipDiscoveryDelayEvidence =
   | {
       kind: 'OBSERVABLE_NEXT_BASELINE_POLL';
       simulatedNextPollAtMs: number;
       additionalDiscoveryDelayMs: number;
-      simulatedDiscoveryAtMs: number | null;
+      /** Wall-clock when the next baseline poll completed (discovery), not provider source time. */
+      simulatedDiscoveryAtMs: number;
     }
   | { kind: 'UNKNOWN' };
 
-/**
- * Causal discovery delay for a WOULD_SKIP that missed informative baseline evidence.
- * Uses the next actually executed baseline SUCCESS snapshot poll — not cadence estimates.
- */
 export function evaluateBaselineSkipDiscoveryDelay(input: {
-  pollCompletedAtMs: number;
-  informativeLvProviderSourceMs: number | null;
-  informativeTopLevelSourceMs: number | null;
-  nextBaselineSnapshotPollStartedAtMs: number | null;
+  priorPollCompletedAtMs: number;
+  nextBaselinePollStartedAtMs: number;
+  nextBaselinePollCompletedAtMs: number;
 }): BaselineSkipDiscoveryDelayEvidence {
-  if (input.nextBaselineSnapshotPollStartedAtMs == null) {
-    return { kind: 'UNKNOWN' };
-  }
-  const delay = input.nextBaselineSnapshotPollStartedAtMs - input.pollCompletedAtMs;
+  const delay = input.nextBaselinePollStartedAtMs - input.priorPollCompletedAtMs;
   if (!Number.isFinite(delay) || delay < 0) {
     return { kind: 'UNKNOWN' };
   }
-  const simulatedDiscoveryAtMs =
-    input.informativeLvProviderSourceMs ??
-    input.informativeTopLevelSourceMs ??
-    null;
+  if (
+    input.nextBaselinePollCompletedAtMs < input.nextBaselinePollStartedAtMs
+  ) {
+    return { kind: 'UNKNOWN' };
+  }
   return {
     kind: 'OBSERVABLE_NEXT_BASELINE_POLL',
-    simulatedNextPollAtMs: input.nextBaselineSnapshotPollStartedAtMs,
+    simulatedNextPollAtMs: input.nextBaselinePollStartedAtMs,
     additionalDiscoveryDelayMs: delay,
-    simulatedDiscoveryAtMs,
+    simulatedDiscoveryAtMs: input.nextBaselinePollCompletedAtMs,
   };
 }
 

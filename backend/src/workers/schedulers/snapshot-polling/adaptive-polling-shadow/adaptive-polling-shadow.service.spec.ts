@@ -22,6 +22,9 @@ describe('AdaptivePollingShadowService', () => {
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
     updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
     updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
+    findExistingObservationalOutcomeForOpportunity: jest
+      .fn()
+      .mockResolvedValue(null),
   } as unknown as AdaptivePollingShadowRepository;
 
   const metrics = {

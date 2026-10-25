@@ -15,9 +15,10 @@ export function apdShadowBaselinePollEvidenceForTests(
   const dimoPollLog = prisma.dimoPollLog ?? {
     findFirst: jest.fn().mockResolvedValue(null),
   };
-  const apdShadowReconciliationDecision = prisma.apdShadowReconciliationDecision ?? {
+  const apdShadowReconciliationDecision = {
     findMany: jest.fn().mockResolvedValue([]),
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    ...prisma.apdShadowReconciliationDecision,
   };
   return new ApdShadowBaselinePollEvidenceService(
     { dimoPollLog, apdShadowReconciliationDecision } as never,

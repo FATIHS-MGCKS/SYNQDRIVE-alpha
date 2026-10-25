@@ -339,6 +339,38 @@ export class AdaptivePollingShadowRepository {
     return { decision: row.decision, reconciliation: row.reconciliation };
   }
 
+  async findExistingObservationalOutcomeForOpportunity(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+  }): Promise<{
+    newLvSourceObserved: boolean;
+    newTopLevelSourceObserved: boolean;
+    additionalDiscoveryDelayMs: number | null;
+    simulatedNextPollAt: Date | null;
+    simulatedDiscoveryAt: Date | null;
+  } | null> {
+    const row = await this.prisma.apdShadowReconciliationDecision.findUnique({
+      where: {
+        organizationId_vehicleId_opportunityId_policyVersion: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          opportunityId: input.opportunityId,
+          policyVersion: input.policyVersion,
+        },
+      },
+      select: {
+        newLvSourceObserved: true,
+        newTopLevelSourceObserved: true,
+        additionalDiscoveryDelayMs: true,
+        simulatedNextPollAt: true,
+        simulatedDiscoveryAt: true,
+      },
+    });
+    return row ?? null;
+  }
+
   async updateSuccessfulPollOutcome(input: {
     organizationId: string;
     vehicleId: string;

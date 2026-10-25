@@ -469,11 +469,13 @@ export class AdaptivePollingShadowService {
       throw new Error('realPollId required for successful APD post-poll correlation');
     }
 
-    const nextBaselinePollStartedAtMs =
-      await this.baselinePollEvidence.resolveNextBaselineSnapshotPollStartedAtMs(
-        ctx.vehicleId,
-        ctx.pollStartedAtMs,
-      );
+    await this.baselinePollEvidence.reconcilePriorSkipDiscoveryDelayFromObservingPoll({
+      organizationId: ctx.organizationId,
+      vehicleId: ctx.vehicleId,
+      activationEpochId: activeEpoch.id,
+      observingPollStartedAtMs: ctx.pollStartedAtMs,
+      observingPollCompletedAtMs: ctx.pollCompletedAtMs,
+    });
 
     const visibleLvAt =
       ctx.realPollVisibleLvSourceAtMs != null
@@ -489,16 +491,29 @@ export class AdaptivePollingShadowService {
       });
       const prePollDecision = prePoll?.decision ?? 'MISSING_PRE_POLL_ROW';
 
+      const existingOutcome =
+        await this.repository.findExistingObservationalOutcomeForOpportunity({
+          organizationId: ctx.organizationId,
+          vehicleId: ctx.vehicleId,
+          opportunityId: ctx.opportunityId,
+          policyVersion,
+        });
+
       const observational = this.baselinePollEvidence.buildObservationalPatch({
         ctx,
-        prePollDecision,
-        nextBaselineSnapshotPollStartedAtMs: nextBaselinePollStartedAtMs,
+        existing: existingOutcome,
       });
 
-      if (observational.newLvSourceObserved) {
+      if (
+        observational.newLvSourceObserved &&
+        !existingOutcome?.newLvSourceObserved
+      ) {
         this.metrics?.recordInformativeRealPoll('lv');
       }
-      if (observational.newTopLevelSourceObserved) {
+      if (
+        observational.newTopLevelSourceObserved &&
+        !existingOutcome?.newTopLevelSourceObserved
+      ) {
         this.metrics?.recordInformativeRealPoll('top_level');
       }
 
@@ -519,8 +534,7 @@ export class AdaptivePollingShadowService {
         policyVersion,
         prePollDecision,
         patch: observational,
-        alreadyRecordedLv: false,
-        alreadyRecordedTop: false,
+        existing: existingOutcome,
       });
 
       await this.repository.updateSuccessfulPollOutcome({
