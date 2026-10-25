@@ -124,26 +124,16 @@ export type BaselineInformationRediscoveryEvidence =
     }
   | { kind: 'UNKNOWN' };
 
-/** Deferred LIVE_VOLTAGE persistence proving strict LV advance on the correlated poll. */
-export function evaluateInformationRediscoveredOnDeferredLv(input: {
+/**
+ * Same-poll deferred LIVE_VOLTAGE persistence is baseline observational evidence only —
+ * not simulated information rediscovery (the skipped poll cannot rediscover itself).
+ */
+export function evaluateInformationRediscoveredOnDeferredLv(_input: {
   previousLvProviderSourceMs: number | null;
   strictLvProviderSourceMs: number;
   pollFinishedAtMs: number;
 }): BaselineInformationRediscoveryEvidence {
-  const lv = evaluateBaselineLvSourceEvidence({
-    previousLvProviderSourceMs: input.previousLvProviderSourceMs,
-    strictLvProviderSourceMs: input.strictLvProviderSourceMs,
-  });
-  if (lv.kind !== 'STRICT_LV_ADVANCE') {
-    return { kind: 'UNKNOWN' };
-  }
-  if (!Number.isFinite(input.pollFinishedAtMs)) {
-    return { kind: 'UNKNOWN' };
-  }
-  return {
-    kind: 'INFORMATION_REDISCOVERED',
-    simulatedDiscoveryAtMs: input.pollFinishedAtMs,
-  };
+  return { kind: 'UNKNOWN' };
 }
 
 /** Parse `snapshot:<vehicleId>:<iso>` correlation ids from battery provenance. */

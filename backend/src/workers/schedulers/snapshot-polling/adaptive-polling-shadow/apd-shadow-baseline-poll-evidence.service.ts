@@ -7,7 +7,6 @@ import {
   evaluateBaselineLvSourceEvidence,
   evaluateBaselineSkipDiscoveryDelay,
   evaluateBaselineTopLevelSourceAdvance,
-  evaluateInformationRediscoveredOnDeferredLv,
   parseSnapshotCorrelationId,
 } from './p25-apd-shadow-baseline-poll-evidence';
 import type { AdaptivePollingShadowPostPollContext } from './adaptive-polling-shadow.types';
@@ -226,12 +225,6 @@ export class ApdShadowBaselinePollEvidenceService {
           ? new Date(rowEvidence.providerSourceMs)
           : null;
 
-      const rediscovery = evaluateInformationRediscoveredOnDeferredLv({
-        previousLvProviderSourceMs: input.previousLvProviderSourceMsBeforePersist,
-        strictLvProviderSourceMs: input.providerTimestampMs,
-        pollFinishedAtMs: poll.finishedAt.getTime(),
-      });
-
       const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
         where: {
           organizationId: input.organizationId,
@@ -244,11 +237,6 @@ export class ApdShadowBaselinePollEvidenceService {
         data: {
           newLvSourceObserved: true,
           newLvSourceAt: lvAt,
-          ...(rediscovery.kind === 'INFORMATION_REDISCOVERED'
-            ? {
-                simulatedDiscoveryAt: new Date(rediscovery.simulatedDiscoveryAtMs),
-              }
-            : {}),
         },
       });
 

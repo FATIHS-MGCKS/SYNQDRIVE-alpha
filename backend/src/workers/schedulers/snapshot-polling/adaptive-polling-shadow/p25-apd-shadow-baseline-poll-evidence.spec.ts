@@ -119,16 +119,14 @@ describe('p25-apd-shadow-baseline-poll-evidence', () => {
       }
     });
 
-    it('INFORMATION_REDISCOVERED on deferred strict LV for same poll', () => {
-      const r = evaluateInformationRediscoveredOnDeferredLv({
-        previousLvProviderSourceMs: 1_000,
-        strictLvProviderSourceMs: 2_000,
-        pollFinishedAtMs: 9_000,
-      });
-      expect(r.kind).toBe('INFORMATION_REDISCOVERED');
-      if (r.kind === 'INFORMATION_REDISCOVERED') {
-        expect(r.simulatedDiscoveryAtMs).toBe(9_000);
-      }
+    it('deferred strict LV on same realPollId is not INFORMATION_REDISCOVERED', () => {
+      expect(
+        evaluateInformationRediscoveredOnDeferredLv({
+          previousLvProviderSourceMs: 1_000,
+          strictLvProviderSourceMs: 2_000,
+          pollFinishedAtMs: 9_000,
+        }).kind,
+      ).toBe('UNKNOWN');
     });
 
     it('UNKNOWN when next poll not yet available at post-poll time', () => {

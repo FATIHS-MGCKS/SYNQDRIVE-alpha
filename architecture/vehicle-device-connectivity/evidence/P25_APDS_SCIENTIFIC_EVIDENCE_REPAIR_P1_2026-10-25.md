@@ -34,7 +34,7 @@
 - Strict LV: `resolveStrictLvBatteryProviderSourceAt` — no `collectionLastSeenAt` fallback for observational evidence.
 - LV classes: `STRICT_LV_ADVANCE` | `FIRST_VALID_LV_OBSERVATION` | `NO_ADVANCE` | `UNKNOWN`; skip-informative uses **STRICT_LV_ADVANCE** only.
 - Discovery delay: `NEXT_BASELINE_POLL_OBSERVED` fills `simulatedNextPollAt` + `additionalDiscoveryDelayMs` only; **no** `simulatedDiscoveryAt` (later SUCCESS poll ≠ confirmed rediscovery).
-- `INFORMATION_REDISCOVERED` sets `simulatedDiscoveryAt` only on deferred strict-LV persistence for the **same** correlated real poll.
+- Deferred strict-LV on the **same** `realPollId` sets baseline `newLvSourceObserved` only — never `simulatedDiscoveryAt` (skipped poll cannot rediscover itself). `INFORMATION_REDISCOVERED` remains reserved for future non–same-poll proof paths.
 - Metric correctness: promote-guarded durable transitions; `recordInformativeRealPoll` once per physical poll; per-policy `recordSkippedInformative` only after `updateMany` count === 1; no success counters on persist failure.
 - Deferred LV uses pre-persist `providerTimestamp` authority (not `lastLvSourceAt` simulated field).
 - Bootstrap visibility restored: `pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs`.
