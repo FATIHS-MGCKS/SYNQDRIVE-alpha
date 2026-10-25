@@ -3607,6 +3607,7 @@ model VehicleTireSetup {
   snapshots            TireHealthSnapshot[]
   wearDataPoints       TireWearDataPoint[]
   tripUsageLedger      TireTripUsageLedger[]
+  wearV3PriorShadowRows TireWearV3PriorShadowV1[]
   mountPeriods         VehicleTireSetupMountPeriod[]
   rentalHealthReviews  TireRentalHealthReviewOverride[]
   healthAlerts         TireHealthAlert[]
@@ -3967,6 +3968,26 @@ model TireDs4MotionShadowInputV1 {
   @@index([tripId], map: "tire_ds4_shadow_input_trip_idx")
   @@index([tireSetupId], map: "tire_ds4_shadow_input_setup_idx")
   @@map("tire_ds4_motion_shadow_input_v1")
+}
+
+/// Tire Wear V3 P3A distance-prior shadow output (not read by productive tire health / V2).
+model TireWearV3PriorShadowV1 {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  vehicleId        String   @map("vehicle_id")
+  tireSetupId      String   @map("tire_setup_id")
+  modelVersion     String   @map("model_version")
+  modelConfigHash  String   @map("model_config_hash")
+  inputFingerprint String   @map("input_fingerprint")
+  resultPayload    Json     @map("result_payload")
+  computedAt       DateTime @map("computed_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
+
+  @@index([tireSetupId, modelVersion, inputFingerprint], map: "tire_wear_v3_prior_shadow_setup_model_fp_idx")
+  @@index([organizationId, vehicleId], map: "tire_wear_v3_prior_shadow_org_vehicle_idx")
+  @@map("tire_wear_v3_prior_shadow_v1")
 }
 
 // ------------------------------------------------

@@ -25,6 +25,17 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | `bash architecture/tires/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 | NON_EFFECTS | No runtime, DS4, or i18n change |
 
+### Tire Wear V3 P3A — distance prior shadow module (2026-10-25)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | V2-only wear projection; Fable/Cursor research defined conservative prior + β=0 P3A scope |
+| WHY | Implement kalibrierbares Distanz-Prior-Modell ohne V2/DS4/Produktionspfad zu berühren |
+| CHANGE | `wear-v3-prior/*` service + math; `tire_wear_v3_prior_shadow_v1` migration; `TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED` default false; doc `integration/TIRE_WEAR_V3_PRIOR_P3A.md` |
+| EXPECTED_EFFECT | Shadow-only P3A projections per setup/wheel with fingerprint + evidence levels; V2 unchanged |
+| VALIDATION | Jest `tire-wear-v3-prior*` · productive isolation spec · `bash architecture/scripts/validate-module-registry.sh` |
+| NON_EFFECTS | No deploy, no canary env change, β_dyn=0, no UI/alerts/rental, no TireHealthSnapshot writes |
+
 ### Tire Intelligence P2 — DS4 shadow adapter implementation (2026-10-24)
 
 | Event | Detail |

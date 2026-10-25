@@ -309,6 +309,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
 import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/di-v0-s4-research.module';
 import { DiV0MotionCoreShadowModule } from './driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.module';
 import { TireDs4ShadowModule } from './tires/ds4-shadow/tire-ds4-shadow.module';
+import { TireWearV3PriorModule } from './tires/wear-v3-prior/tire-wear-v3-prior.module';
 import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-road-assignment-shadow-worker/di-v0-m7a-road-assignment-shadow.module';
 
 @Module({
@@ -320,6 +321,7 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
     DiV0S4ResearchModule,
     DiV0MotionCoreShadowModule,
     TireDs4ShadowModule,
+    TireWearV3PriorModule,
     DiV0M7aRoadAssignmentShadowModule,
     forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
