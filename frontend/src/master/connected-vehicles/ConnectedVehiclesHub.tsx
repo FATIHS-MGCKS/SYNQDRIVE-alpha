@@ -31,8 +31,10 @@ import { VehicleRegistrationModal } from '../components/VehicleRegistrationModal
 import { useAppTheme } from '../../context/AppThemeContext';
 import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
 import {
+  mapAdminVehicleDtoToRegisteredVehicle,
   mapApiDimoToDimoVehicle,
   persistMasterRegisteredVehicle,
+  updateMasterRegisteredVehicle,
   type ManualBaselineArea,
 } from './master-vehicle-registration';
 import { api } from '../../lib/api';
@@ -68,9 +70,13 @@ export function ConnectedVehiclesHub({
   const [mfaOpen, setMfaOpen] = useState(false);
   const skipMfaCancelCleanupRef = useRef(false);
   const detailRefreshRef = useRef<(() => void) | null>(null);
+  const specsRefreshRef = useRef<(() => void) | null>(null);
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [registrationDimo, setRegistrationDimo] = useState<DimoVehicle | null>(null);
   const [registrationPrefillOrgId, setRegistrationPrefillOrgId] = useState<string | null>(null);
+  const [editExistingVehicle, setEditExistingVehicle] = useState<RegisteredVehicle | null>(null);
+  const [editBaselineVehicle, setEditBaselineVehicle] = useState<RegisteredVehicle | null>(null);
+  const [editSpecsLoading, setEditSpecsLoading] = useState(false);
 
   const navigateSection = useCallback((next: CvSection, replace = false) => {
     setSection(next);
@@ -267,8 +273,51 @@ export function ConnectedVehiclesHub({
   const openManualRegistration = useCallback(() => {
     setRegistrationDimo(null);
     setRegistrationPrefillOrgId(null);
+    setEditExistingVehicle(null);
+    setEditBaselineVehicle(null);
     setRegistrationOpen(true);
   }, []);
+
+  const openEditSpecifications = useCallback(async () => {
+    if (!vehicleId) return;
+    setEditSpecsLoading(true);
+    try {
+      const dto = await api.vehicles.get(vehicleId);
+      const orgId = dto?.organizationId != null ? String(dto.organizationId) : '';
+      if (!orgId) {
+        toast.error(t('master.cv.technicalSpecs.editLoadError'));
+        return;
+      }
+      setRegistrationDimo(null);
+      setRegistrationPrefillOrgId(orgId);
+      const mapped = mapAdminVehicleDtoToRegisteredVehicle(dto as Record<string, unknown>);
+      setEditExistingVehicle(mapped);
+      setEditBaselineVehicle(mapped);
+      setRegistrationOpen(true);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : t('master.cv.technicalSpecs.editLoadError'),
+      );
+    } finally {
+      setEditSpecsLoading(false);
+    }
+  }, [t, vehicleId]);
+
+  const handleUpdateRegisteredVehicle = useCallback(
+    async (rv: RegisteredVehicle) => {
+      if (!editBaselineVehicle) {
+        throw new Error('EDIT_BASELINE_REQUIRED');
+      }
+      await updateMasterRegisteredVehicle(rv, { baseline: editBaselineVehicle });
+      setEditBaselineVehicle(rv);
+      toast.success(t('master.cv.technicalSpecs.updateSuccess'));
+      overviewState.refresh();
+      emitConnectedVehiclesRefresh();
+      detailRefreshRef.current?.();
+      specsRefreshRef.current?.();
+    },
+    [editBaselineVehicle, overviewState, t],
+  );
 
   const openDimoRegistration = useCallback(
     async (dimoVehicleId: string, organizationId?: string | null) => {
@@ -414,6 +463,11 @@ export function ConnectedVehiclesHub({
         onRegisterDetailRefresh={(fn) => {
           detailRefreshRef.current = fn;
         }}
+        onRegisterSpecsRefresh={(fn) => {
+          specsRefreshRef.current = fn;
+        }}
+        onEditSpecifications={() => void openEditSpecifications()}
+        editSpecificationsLoading={editSpecsLoading}
         onOpenOrganization={onOpenOrganization}
       />
 
@@ -424,12 +478,16 @@ export function ConnectedVehiclesHub({
           setRegistrationOpen(false);
           setRegistrationDimo(null);
           setRegistrationPrefillOrgId(null);
+          setEditExistingVehicle(null);
+          setEditBaselineVehicle(null);
         }}
         dimoVehicle={registrationDimo ?? undefined}
+        existingVehicle={editExistingVehicle ?? undefined}
         organizations={organizations}
         initialOrganizationId={registrationPrefillOrgId}
-        manualCreateOnly={!registrationDimo}
+        manualCreateOnly={!registrationDimo && !editExistingVehicle}
         onRegister={(rv) => handlePersistRegistration(rv)}
+        onUpdate={editExistingVehicle ? (rv) => handleUpdateRegisteredVehicle(rv) : undefined}
       />
 
       <MfaStepUpDialog

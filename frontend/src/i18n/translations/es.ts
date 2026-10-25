@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
 import { batteryV2HvInspectionES } from './battery-v2-hv-inspection.es';
 import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
 import { masterMotionPhysicsEs } from './master.motionPhysics.es';
+import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -166,5 +167,6 @@ export const es = {
   ...masterPlatformOpsDiS4Es,
   ...masterPhysicalDeviceInventoryEs,
   ...masterMotionPhysicsEs,
+  ...masterCvTechnicalSpecsEs,
   ...batteryV2HvInspectionES,
 } satisfies PartialTranslationDictionary;

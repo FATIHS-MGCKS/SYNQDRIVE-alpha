@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4It } from './master.platformOps.diS4.it';
 import { batteryV2HvInspectionIT } from './battery-v2-hv-inspection.it';
 import { masterPhysicalDeviceInventoryIt } from './master.physicalDeviceInventory.it';
 import { masterMotionPhysicsIt } from './master.motionPhysics.it';
+import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
 
 export const it = {
   'dashboard.welcomeBack': 'Bentornato, {name}',
@@ -166,5 +167,6 @@ export const it = {
   ...masterPlatformOpsDiS4It,
   ...masterPhysicalDeviceInventoryIt,
   ...masterMotionPhysicsIt,
+  ...masterCvTechnicalSpecsIt,
   ...batteryV2HvInspectionIT,
 } satisfies PartialTranslationDictionary;

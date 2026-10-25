@@ -1,5 +1,6 @@
 import { api } from '../../lib/api';
 import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
+import { parseMotionPhysicsCurbMassField } from './motion-physics-reference-sync.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -302,6 +303,165 @@ export async function applyManualBaselinesAfterCreate(
   }
 
   return failures;
+}
+
+/** Maps Master admin GET vehicle DTO into the registration modal shape (full baseline for edit). */
+export function mapAdminVehicleDtoToRegisteredVehicle(
+  dto: Record<string, unknown>,
+): RegisteredVehicle {
+  const str = (key: string, fallback = '') => {
+    const v = dto[key];
+    return v != null && String(v).trim() !== '' ? String(v) : fallback;
+  };
+  const num = (key: string, fallback = 0) => {
+    const v = dto[key];
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const makeRaw = str('make');
+  const modelRaw = str('model');
+  const mileageRaw = dto.mileage ?? dto.mileageKm;
+  const hardwareRaw = dto.hardwareType != null ? String(dto.hardwareType).trim() : '';
+
+  return {
+    id: str('id'),
+    vehicleName: str('vehicleName', `${makeRaw} ${modelRaw}`.trim()),
+    vin: str('vin'),
+    make: makeRaw || 'Unknown',
+    model: modelRaw || 'Unknown',
+    year: dto.year != null && dto.year !== '' ? num('year', 0) : 0,
+    organizationId: str('organizationId'),
+    organizationName: str('organizationName'),
+    station: str('station'),
+    status: (str('status') as RegisteredVehicle['status']) || 'Available',
+    health: (str('health') as RegisteredVehicle['health']) || 'Good',
+    lastSignal: str('lastSignal'),
+    online: Boolean(dto.online),
+    fuelType: str('fuelType'),
+    mileage:
+      mileageRaw != null && mileageRaw !== '' && Number.isFinite(Number(mileageRaw))
+        ? Number(mileageRaw)
+        : 0,
+    licensePlate: str('licensePlate'),
+    vehicleType: str('vehicleType'),
+    operationalStatus: str('operationalStatus', 'Active'),
+    notes: str('notes'),
+    batteryType: str('batteryType'),
+    batteryAmpere: str('batteryAmpere'),
+    batteryVolt: str('batteryVolt'),
+    lvBatteryChemistry: str('lvBatteryChemistry'),
+    hvBatteryCapacityKwh: str('hvBatteryCapacityKwh'),
+    tankCapacityLiters: str('tankCapacityLiters'),
+    hvBatteryPresent: str('hvBatteryPresent'),
+    hvBatteryChemistry: str('hvBatteryChemistry'),
+    hvBatteryCellFormat: str('hvBatteryCellFormat'),
+    hvBatteryGrossCapacityKwh: str('hvBatteryGrossCapacityKwh'),
+    hvBatteryUsableCapacityKwh: str('hvBatteryUsableCapacityKwh'),
+    hvBatteryNominalVoltage: str('hvBatteryNominalVoltage'),
+    hvBatteryArchitecture: str('hvBatteryArchitecture'),
+    hvBatteryThermalManagement: str('hvBatteryThermalManagement'),
+    hvBatteryWarrantyYears: str('hvBatteryWarrantyYears'),
+    hvBatteryWarrantyKm: str('hvBatteryWarrantyKm'),
+    acOnboardChargerKw: str('acOnboardChargerKw'),
+    dcFastChargeMaxKw: str('dcFastChargeMaxKw'),
+    engineDisplacementCc: str('engineDisplacementCc'),
+    cylinderCount: str('cylinderCount'),
+    tireFrontDimension: str('tireFrontDimension'),
+    tireFrontBrandModel: str('tireFrontBrandModel'),
+    tireFrontSeason: str('tireFrontSeason'),
+    tireFrontDot: str('tireFrontDot'),
+    tireFrontLoadIndex: str('tireFrontLoadIndex'),
+    tireFrontSpeedIndex: str('tireFrontSpeedIndex'),
+    tireBackDimension: str('tireBackDimension'),
+    tireBackBrandModel: str('tireBackBrandModel'),
+    tireBackSeason: str('tireBackSeason'),
+    tireBackDot: str('tireBackDot'),
+    tireBackLoadIndex: str('tireBackLoadIndex'),
+    tireBackSpeedIndex: str('tireBackSpeedIndex'),
+    treadDepthFL: str('treadDepthFL'),
+    treadDepthFR: str('treadDepthFR'),
+    treadDepthBL: str('treadDepthBL'),
+    treadDepthBR: str('treadDepthBR'),
+    tireCondition: (str('tireCondition') as RegisteredVehicle['tireCondition']) || '',
+    aiTireSpec: (dto.aiTireSpec as Record<string, unknown> | null) ?? null,
+    brakeFrontRotorDiameter: str('brakeFrontRotorDiameter'),
+    brakeFrontRotorWidth: str('brakeFrontRotorWidth'),
+    brakeFrontPadThickness: str('brakeFrontPadThickness'),
+    brakeBackRotorDiameter: str('brakeBackRotorDiameter'),
+    brakeBackRotorWidth: str('brakeBackRotorWidth'),
+    brakeBackPadThickness: str('brakeBackPadThickness'),
+    idleRpm: str('idleRpm'),
+    maxRpm: str('maxRpm'),
+    drivetrain: str('drivetrain'),
+    brakeForceDistribution: str('brakeForceDistribution'),
+    frontToRearWeightDistribution: str('frontToRearWeightDistribution'),
+    curbWeight: str('curbWeight'),
+    systemMotorPowerKw: str('systemMotorPowerKw'),
+    accel0To100S: str('accel0To100S'),
+    motionPhysicsVariantAssumption: str('motionPhysicsVariantAssumption'),
+    serviceIntervals: str('serviceIntervals'),
+    serviceIntervalManufacturerKm: str('serviceIntervalManufacturerKm'),
+    serviceIntervalManufacturerMonths: str('serviceIntervalManufacturerMonths'),
+    oilChangeIntervalKm: str('oilChangeIntervalKm'),
+    oilChangeIntervalMonths: str('oilChangeIntervalMonths'),
+    lastTuev: str('lastTuev'),
+    lastBokraft: str('lastBokraft'),
+    lastInspection: str('lastInspection'),
+    lastOilChange: str('lastOilChange'),
+    lastBrakePadChange: str('lastBrakePadChange'),
+    lastBrakeRotorChange: str('lastBrakeRotorChange'),
+    hardwareType: (hardwareRaw || 'UNKNOWN') as RegisteredVehicle['hardwareType'],
+  };
+}
+
+export function parseCurbWeightKgFromForm(curbWeight: string | undefined | null): number | null {
+  const parsed = parseMotionPhysicsCurbMassField(String(curbWeight ?? ''));
+  if (parsed.status === 'empty') return null;
+  if (parsed.status === 'invalid') {
+    throw new Error('CURB_MASS_INVALID');
+  }
+  return parsed.kg;
+}
+
+/**
+ * Connected-vehicles spec edit: only changed vehicle-table physics scalars (curb mass).
+ * Motion power/accel/variant persist via motion-physics-reference APIs in the modal.
+ */
+export function buildMasterVehiclePhysicsSpecPatch(
+  current: RegisteredVehicle,
+  baseline: RegisteredVehicle,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  const nextKg = parseCurbWeightKgFromForm(current.curbWeight);
+  const prevKg = parseCurbWeightKgFromForm(baseline.curbWeight);
+  if (nextKg != null && nextKg !== prevKg) {
+    patch.curbWeightKg = nextKg;
+  }
+  return patch;
+}
+
+export type MasterVehiclePhysicsEditOptions = {
+  baseline: RegisteredVehicle;
+};
+
+/** Spec edit from Connected Vehicles — vehicle physics PATCH only; no tire/battery/brake side effects. */
+export async function updateMasterRegisteredVehicle(
+  rv: RegisteredVehicle,
+  options: MasterVehiclePhysicsEditOptions,
+): Promise<void> {
+  const orgId = rv.organizationId?.trim();
+  const vehicleId = rv.id?.trim();
+  if (!orgId || !vehicleId) {
+    throw new Error('ORG_VEHICLE_REQUIRED');
+  }
+  if (!options.baseline?.id) {
+    throw new Error('EDIT_BASELINE_REQUIRED');
+  }
+
+  const patch = buildMasterVehiclePhysicsSpecPatch(rv, options.baseline);
+  if (Object.keys(patch).length > 0) {
+    await api.vehicles.update(orgId, vehicleId, patch);
+  }
 }
 
 export async function persistMasterRegisteredVehicle(

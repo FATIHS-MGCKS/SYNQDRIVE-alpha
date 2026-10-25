@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
 import { batteryV2HvInspectionCS } from './battery-v2-hv-inspection.cs';
 import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 import { masterMotionPhysicsCs } from './master.motionPhysics.cs';
+import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
 
 export const cs = {
   'dashboard.welcomeBack': 'Vítejte zpět, {name}',
@@ -166,5 +167,6 @@ export const cs = {
   ...masterPlatformOpsDiS4Cs,
   ...masterPhysicalDeviceInventoryCs,
   ...masterMotionPhysicsCs,
+  ...masterCvTechnicalSpecsCs,
   ...batteryV2HvInspectionCS,
 } satisfies PartialTranslationDictionary;

@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
 import { batteryV2HvInspectionFR } from './battery-v2-hv-inspection.fr';
 import { masterPhysicalDeviceInventoryFr } from './master.physicalDeviceInventory.fr';
 import { masterMotionPhysicsFr } from './master.motionPhysics.fr';
+import { masterCvTechnicalSpecsFr } from './master.cv.technicalSpecs.fr';
 
 export const fr = {
   'dashboard.welcomeBack': 'Bon retour, {name}',
@@ -907,5 +908,6 @@ export const fr = {
   ...masterPlatformOpsDiS4Fr,
   ...masterPhysicalDeviceInventoryFr,
   ...masterMotionPhysicsFr,
+  ...masterCvTechnicalSpecsFr,
   ...batteryV2HvInspectionFR,
 } satisfies PartialTranslationDictionary;

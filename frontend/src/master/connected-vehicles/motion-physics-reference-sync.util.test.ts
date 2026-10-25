@@ -5,14 +5,19 @@ import {
   hasMotionPhysicsFormValues,
   isMotionPhysicsReferenceReadOnly,
   motionPhysicsReferenceSourceForSave,
+  parseMotionPhysicsCurbMassField,
+  parseMotionPhysicsDecimalField,
   parseMotionPhysicsNumericField,
   canConfirmEstimatedAiMotionReference,
   hasUnconfirmedManualMotionPhysicsEdits,
   motionPhysicsFormMatchesSnapshot,
   resolveMotionPhysicsPendingAfterAiApply,
+  resolveMotionPhysicsCurbMassKg,
   shouldSyncMotionPhysicsReferenceOnSave,
   snapshotMotionPhysicsFromActiveReference,
 } from './motion-physics-reference-sync.util';
+import { buildMasterVehiclePhysicsSpecPatch, parseCurbWeightKgFromForm } from './master-vehicle-registration';
+import type { RegisteredVehicle } from '../data/platform-data';
 import { shouldApplyAiSpecToEmptyField } from './ai-spec-field-merge.util';
 
 const baseSyncInput = {
@@ -158,9 +163,53 @@ describe('motion-physics-reference-sync.util', () => {
     expect(body.systemPowerDefinition).toBe('OEM_RATED_SYSTEM_KW');
   });
 
-  it('parses numeric fields safely', () => {
+  it('parses decimal power/accel fields (comma dot) without thousand grouping', () => {
+    expect(parseMotionPhysicsDecimalField('5,2')).toBe(5.2);
+    expect(parseMotionPhysicsDecimalField('5.2')).toBe(5.2);
+    expect(parseMotionPhysicsDecimalField('150')).toBe(150);
+    expect(parseMotionPhysicsDecimalField('1.234,5')).toBeNull();
     expect(parseMotionPhysicsNumericField('1.234,5')).toBeNull();
-    expect(parseMotionPhysicsNumericField('150')).toBe(150);
+  });
+
+  describe('curb mass locale parsing', () => {
+    it('accepts German thousands and decimal comma', () => {
+      expect(parseMotionPhysicsCurbMassField('1.760')).toEqual({ status: 'valid', kg: 1760 });
+      expect(parseMotionPhysicsCurbMassField('1.760,5')).toEqual({ status: 'valid', kg: 1760.5 });
+      expect(parseMotionPhysicsCurbMassField('1760')).toEqual({ status: 'valid', kg: 1760 });
+      expect(parseMotionPhysicsCurbMassField('1760,5')).toEqual({ status: 'valid', kg: 1760.5 });
+    });
+
+    it('rejects ambiguous or implausible curb mass', () => {
+      expect(parseMotionPhysicsCurbMassField('1,760').status).toBe('invalid');
+      expect(parseMotionPhysicsCurbMassField('12.34.56').status).toBe('invalid');
+      expect(parseMotionPhysicsCurbMassField('abc').status).toBe('invalid');
+      expect(parseMotionPhysicsCurbMassField('50').status).toBe('invalid');
+      expect(parseMotionPhysicsCurbMassField('')).toEqual({ status: 'empty' });
+      expect(parseMotionPhysicsCurbMassField('1.234,5')).toEqual({ status: 'valid', kg: 1234.5 });
+    });
+
+    it('throws on invalid non-empty curb mass for reference create (no silent null)', () => {
+      expect(() => resolveMotionPhysicsCurbMassKg('1,760')).toThrow('CURB_MASS_INVALID');
+    });
+
+    it('PATCH and MANUAL_ENTRY reference store the same kg for identical curb input', () => {
+      const curbInput = '1.760,5';
+      const refBody = buildMotionPhysicsReferenceCreateBody({
+        curbWeight: curbInput,
+        systemMotorPowerKw: '',
+        accel0To100S: '',
+        variantAssumption: '',
+        systemPowerDefinition: '',
+        source: 'MANUAL_ENTRY',
+        manualOperatorConfirm: true,
+      });
+      expect(refBody.curbMassKg).toBe(1760.5);
+      expect(parseCurbWeightKgFromForm(curbInput)).toBe(1760.5);
+
+      const baseline = { curbWeight: '1700' } as RegisteredVehicle;
+      const current = { curbWeight: curbInput } as RegisteredVehicle;
+      expect(buildMasterVehiclePhysicsSpecPatch(current, baseline)).toEqual({ curbWeightKg: 1760.5 });
+    });
   });
 
   describe('ESTIMATED reference vs form (manual confirmation consistency)', () => {
