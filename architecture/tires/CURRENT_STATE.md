@@ -9,6 +9,7 @@ Registry coverage: `AUDIT_IN_PROGRESS`. Repository baseline `1c1e3bfa4`; Product
 | Tire setups, lifecycle, mount periods, odometer anchor | **Tires Health** | CONFIRMED |
 | Tread/pressure measurements, evidence provenance, ground truth | **Tires Health** | CONFIRMED |
 | Tire Wear Model V2 (`tire-wear-v2`), snapshots, fingerprint dedupe, alerts | **Tires Health** | CONFIRMED |
+| Tire Wear V3 P3A distance prior (`tire-wear-v3-prior-0.1.0`, β=0, shadow table) | **Tires Health** (shadow only) | INFERRED (code on branch; not deployed) |
 | Trip usage ledger + canonical-finalization attribution | **Tires Health** (hook lives in Trips coordinator) | CONFIRMED |
 | REST `/vehicles/:vehicleId/tires/*` | **Tires Health** (controller shared in `vehicle-intelligence.controller.ts`) | CONFIRMED |
 | Driving-Impact aggregates (`vehicle_driving_impact_current`, `trip_driving_impact`) | **Driving Intelligence** | CONFIRMED |
