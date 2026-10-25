@@ -39,6 +39,11 @@ export const TIRE_WEAR_V3_PRIOR_CONFIG = {
   minMeasurementsForRateL4: 5,
   /** Implausible tread jump between consecutive measurements (mm). */
   maxTreadJumpBetweenMeasurementsMm: 2.0,
+  /**
+   * When OLS residual RMSE exceeds this fraction of total tread span (first→last point),
+   * treat the series as contradictory for rate calibration (prior-only).
+   */
+  maxResidualRmseFractionOfTreadSpan: 0.4,
 } as const;
 
 export type TireWearV3PriorConfig = typeof TIRE_WEAR_V3_PRIOR_CONFIG;
@@ -55,6 +60,7 @@ export function computeTireWearV3PriorConfigHash(
     modelVersion: TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
     dynamicBeta: config.dynamicBeta,
     defaultMeasurementUncertaintyMm: config.defaultMeasurementUncertaintyMm,
+    maxResidualRmseFractionOfTreadSpan: config.maxResidualRmseFractionOfTreadSpan,
     reference3SigmaSpacingExampleKm: config.reference3SigmaSpacingExampleKm,
     unknownLifeKmSpan: config.unknownLifeKmSpan,
     replaceThresholds: TIRE_HEALTH_CONFIG.replaceThresholds,

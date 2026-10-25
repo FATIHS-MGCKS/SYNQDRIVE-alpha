@@ -10,6 +10,7 @@ import {
   TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
   computeTireWearV3PriorConfigHash,
 } from './tire-wear-v3-prior.config';
+import { resolveRateCalibrationSigmaMm } from './tire-wear-v3-prior.calibration';
 import {
   roundDisplayRateIntervalMmPer1000,
   roundDisplayTreadInterval,
@@ -61,16 +62,6 @@ function wheelField(position: WheelPos): 'frontLeftMm' | 'frontRightMm' | 'rearL
 function parseAiTireSpec(raw: unknown): AiTireSpec | null {
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return null;
   return raw as AiTireSpec;
-}
-
-function measurementSigmaMm(source: string, isCalibrationPoint: boolean): number {
-  if (isCalibrationPoint) {
-    return TIRE_WEAR_V3_PRIOR_CONFIG.refinedMeasurementUncertaintyMm;
-  }
-  if (source === 'workshop') {
-    return TIRE_WEAR_V3_PRIOR_CONFIG.refinedMeasurementUncertaintyMm;
-  }
-  return TIRE_WEAR_V3_PRIOR_CONFIG.defaultMeasurementUncertaintyMm;
 }
 
 @Injectable()
@@ -250,13 +241,8 @@ export class TireWearV3PriorService {
 
       const { segment: rateSegment, flags: segmentFlags } =
         selectRateCalibrationSegment(measurementPoints);
-      const sigmaMeasMm =
-        rateSegment.length > 0
-          ? measurementSigmaMm(
-              rateSegment[rateSegment.length - 1]!.source,
-              rateSegment[rateSegment.length - 1]!.isCalibrationPoint,
-            )
-          : TIRE_WEAR_V3_PRIOR_CONFIG.defaultMeasurementUncertaintyMm;
+      const { sigmaMm: sigmaMeasMm, flags: calibrationSigmaFlags } =
+        resolveRateCalibrationSigmaMm(rateSegment);
 
       const wearRateRaw = buildWearRateEstimate({
         initialTreadMm: initial.treadMm,
@@ -307,6 +293,7 @@ export class TireWearV3PriorService {
       const wheelFlags: string[] = [
         ...wearRateRaw.flags,
         ...segmentFlags,
+        ...calibrationSigmaFlags,
       ];
       if (rotationBlocksRate) {
         wheelFlags.push('RATE_ROTATION_UNVERIFIED');

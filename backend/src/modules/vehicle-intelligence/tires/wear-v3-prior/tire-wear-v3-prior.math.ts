@@ -11,6 +11,7 @@ import {
   TIRE_WEAR_V3_PRIOR_CONFIG,
   type TireWearV3PriorConfig,
 } from './tire-wear-v3-prior.config';
+import { rateCalibrationBlockedByMeasurementQuality } from './tire-wear-v3-prior.calibration';
 import { intervalMmPerKmToDisplayPer1000 } from './tire-wear-v3-prior.display';
 import type {
   NumericInterval,
@@ -206,6 +207,13 @@ export function fitWearRateFromMeasurements(
       const pred = meanH + slope * (odometers[i]! - meanD);
       return s + (h - pred) ** 2;
     }, 0) / Math.max(1, n - 2);
+  const treadSpanMm = Math.abs(treads[0]! - treads[n - 1]!);
+  if (n > 2 && residualVar > 0 && treadSpanMm > 0) {
+    const rmse = Math.sqrt(residualVar);
+    if (rmse / treadSpanMm > config.maxResidualRmseFractionOfTreadSpan) {
+      flags.push('RATE_MEASUREMENT_SERIES_CONTRADICTORY');
+    }
+  }
   const rateSigma =
     n > 2 && residualVar > 0
       ? Math.sqrt(residualVar / ssDd)
@@ -442,14 +450,21 @@ export function buildWearRateEstimate(args: {
     fit.flags.includes('RATE_IMPLAUSIBLY_HIGH');
 
   const meets3Sigma = !fit.flags.includes('RATE_SPAN_BELOW_3SIGMA_THRESHOLD');
+  const qualityBlocked = rateCalibrationBlockedByMeasurementQuality(fit.flags);
 
   let source: TireWearV3RateSource = life.source;
   let interval = priorRate;
   let measurementUncertainty: NumericInterval | null = null;
+  const outFlags = [...fit.flags];
+
+  if (qualityBlocked) {
+    outFlags.push('RATE_CALIBRATION_PRIOR_ONLY');
+  }
 
   if (
     fit.rateMmPerKm != null &&
     !rateRejected &&
+    !qualityBlocked &&
     fit.pointCount >= cfg.minMeasurementsForRateL2 &&
     meets3Sigma
   ) {
@@ -465,7 +480,7 @@ export function buildWearRateEstimate(args: {
     source,
     modelUncertaintyMmPerKm: priorRate,
     measurementUncertaintyMmPerKm: measurementUncertainty,
-    flags: fit.flags,
+    flags: outFlags,
   };
 }
 
