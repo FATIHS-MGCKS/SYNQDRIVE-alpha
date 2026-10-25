@@ -4202,6 +4202,33 @@ export const api = {
       treadFL?: number | null; treadFR?: number | null;
       treadBL?: number | null; treadBR?: number | null;
     }) => put<any>(`/organizations/${orgId}/vehicles/${vehicleId}/tires`, data),
+    batteryReferenceCapacity: {
+      getActive: (orgId: string, vehicleId: string) =>
+        get<{
+          id: string;
+          capacityKwh: number;
+          capacityType: string;
+          source: string;
+        } | null>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/battery-reference-capacity`,
+        ),
+      create: (
+        orgId: string,
+        vehicleId: string,
+        body: {
+          capacityKwh: number;
+          capacityType: 'USABLE' | 'GROSS';
+          source: string;
+          documentId?: string;
+          serviceEventId?: string;
+          notes?: string;
+        },
+      ) =>
+        post<unknown>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/battery-reference-capacity`,
+          body,
+        ),
+    },
     motionPhysicsReference: {
       getActive: (orgId: string, vehicleId: string) =>
         get<VehicleMotionPhysicsReferenceDto | null>(

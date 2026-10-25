@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyManualBaselinesAfterCreate,
   buildMasterHvCapacityExtraFields,
+  buildMasterVehicleHvStammdatenDiff,
   buildMasterVehiclePhysicsSpecPatch,
   buildVehicleExtraData,
   buildVehicleManualSpecs,
   mapAdminVehicleDtoToRegisteredVehicle,
+  resolveAdminDtoHvUsableCapacityKwh,
   mapApiDimoToDimoVehicle,
   persistMasterRegisteredVehicle,
   updateMasterRegisteredVehicle,
@@ -16,6 +18,7 @@ const createMock = vi.fn();
 const registerFromDimoMock = vi.fn();
 const upsertTiresMock = vi.fn();
 const updateMock = vi.fn();
+const batteryReferenceCreateMock = vi.fn();
 
 vi.mock('../../lib/api', () => ({
   api: {
@@ -24,6 +27,9 @@ vi.mock('../../lib/api', () => ({
       update: (...args: unknown[]) => updateMock(...args),
       registerFromDimo: (...args: unknown[]) => registerFromDimoMock(...args),
       upsertTires: (...args: unknown[]) => upsertTiresMock(...args),
+      batteryReferenceCapacity: {
+        create: (...args: unknown[]) => batteryReferenceCreateMock(...args),
+      },
     },
     vehicleIntelligence: {
       createBatterySpec: vi.fn().mockResolvedValue({}),
@@ -292,6 +298,68 @@ describe('master-vehicle-registration payloads', () => {
     expect(rv.fuelType).toBe('');
     expect(rv.mileage).toBe(0);
     expect(buildMasterVehiclePhysicsSpecPatch(rv, rv)).toEqual({});
+  });
+
+  it('resolveAdminDtoHvUsableCapacityKwh maps legacy hvBatteryCapacityKwh for Tesla-like admin DTO', () => {
+    expect(
+      resolveAdminDtoHvUsableCapacityKwh({
+        hvBatteryCapacityKwh: 57,
+        fuelType: 'Electric',
+      }),
+    ).toBe('57');
+    const rv = mapAdminVehicleDtoToRegisteredVehicle({
+      id: 'tesla-1',
+      organizationId: 'org-1',
+      make: 'Tesla',
+      model: 'Model 3',
+      year: 2023,
+      fuelType: 'Electric',
+      hvBatteryCapacityKwh: 57,
+    });
+    expect(rv.hvBatteryUsableCapacityKwh).toBe('57');
+    expect(rv.hvBatteryCapacityKwh).toBe('57');
+    expect(buildMasterVehicleHvStammdatenDiff(rv, rv).vehiclePatch).toEqual({});
+  });
+
+  it('buildMasterVehicleHvStammdatenDiff PATCHes usable scalar and flags reference create on change', () => {
+    const baseline = minimalRv({
+      fuelType: 'Electric',
+      hvBatteryUsableCapacityKwh: '57',
+      hvBatteryCapacityKwh: '57',
+    });
+    const current = minimalRv({
+      fuelType: 'Electric',
+      hvBatteryUsableCapacityKwh: '58',
+      hvBatteryCapacityKwh: '58',
+    });
+    const diff = buildMasterVehicleHvStammdatenDiff(current, baseline);
+    expect(diff.vehiclePatch).toEqual({ hvBatteryCapacityKwh: 58 });
+    expect(diff.usableReferenceChanged).toBe(true);
+    expect(diff.usableReferenceKwh).toBe(58);
+  });
+
+  it('updateMasterRegisteredVehicle syncs HV usable reference when capacity changes', async () => {
+    updateMock.mockResolvedValueOnce({});
+    batteryReferenceCreateMock.mockResolvedValueOnce({});
+    const baseline = minimalRv({
+      fuelType: 'Electric',
+      hvBatteryUsableCapacityKwh: '57',
+    });
+    const current = minimalRv({
+      fuelType: 'Electric',
+      hvBatteryUsableCapacityKwh: '58',
+    });
+
+    await updateMasterRegisteredVehicle(current, { baseline });
+
+    expect(updateMock).toHaveBeenCalledWith('org-1', 'rv-1', { hvBatteryCapacityKwh: 58 });
+    expect(batteryReferenceCreateMock).toHaveBeenCalledWith('org-1', 'rv-1', {
+      capacityKwh: 58,
+      capacityType: 'USABLE',
+      source: 'MANUAL_VERIFIED',
+    });
+    expect(upsertTiresMock).not.toHaveBeenCalled();
+    expect(api.vehicleIntelligence.createBatterySpec).not.toHaveBeenCalled();
   });
 
   it('mapAdminVehicleDtoToRegisteredVehicle preserves motion physics form fields', () => {
