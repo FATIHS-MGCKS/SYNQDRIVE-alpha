@@ -310,6 +310,20 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
   useEffect(() => {
     if (!isOpen) return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const previousPaddingRight = body.style.paddingRight;
+    body.style.overflow = 'hidden';
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPaddingRight;
+      body.removeAttribute('data-scroll-locked');
+      body.style.pointerEvents = '';
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     if (isEditMode) {
       prefillFromExisting(existingVehicle);
       setAiLoading(false);
@@ -1025,11 +1039,19 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const toggleAllHmSignals = (on: boolean) => setHmSignals(Object.fromEntries(HIGH_MOBILITY_SIGNALS.map(s => [s.id, on])));
 
   return (
-    <div className="overlay-scrim fixed inset-0 flex items-start justify-center z-[100] pt-6 pb-6 overflow-y-auto">
-      <div className={`w-full max-w-3xl mx-4 border surface-solid border-border`}>
+    <div
+      className="overlay-scrim fixed inset-0 z-[100] flex flex-col sm:items-center sm:justify-center sm:overflow-y-auto sm:px-4 sm:py-6"
+      data-testid="vehicle-registration-modal-scrim"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className={`flex min-h-0 w-full max-w-3xl flex-col border surface-solid border-border sm:mx-auto sm:max-h-[calc(100dvh-3rem)] sm:h-auto h-[100dvh] max-h-[100dvh] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}
+        data-testid="vehicle-registration-modal-panel"
+      >
 
         {/* ── Header ── */}
-        <div className={`flex items-center justify-between px-8 py-5 border-b ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
+        <div className={`flex shrink-0 items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
           <div className="flex items-center gap-3">
             {isEditMode && <Pencil className={`w-5 h-5 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />}
             <div>
@@ -1045,7 +1067,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         </div>
 
         {/* ── AI Agent — prominent status panel + Fetch AI button ── */}
-        <div className={`px-8 py-4 border-b ${
+        <div className={`shrink-0 px-4 sm:px-8 py-4 border-b ${
           aiLoading
             ? (isDarkMode ? 'bg-purple-950/40 border-purple-800/40' : 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200/40')
             : aiDegraded
@@ -1115,6 +1137,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
             {/* Fetch AI button */}
             <button
+              type="button"
+              data-testid="vehicle-registration-fetch-ai-specs"
               onClick={handleFetchAi}
               disabled={aiLoading || (!vehicleIdentity.vin && !vehicleIdentity.make)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
@@ -1194,7 +1218,11 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           )}
         </div>
 
-        <div className="px-8 py-5 space-y-1 max-h-[72vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+        <div
+          className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-y-contain touch-pan-y px-4 sm:px-8 py-5 [-webkit-overflow-scrolling:touch]"
+          data-testid="vehicle-registration-modal-scroll"
+          style={{ scrollbarWidth: 'thin' }}
+        >
 
           {isManualCreate && !isEditMode ? (
             <div className="mb-4 rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
@@ -1918,7 +1946,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         </div>
 
         {/* ── Footer ── */}
-        <div className={`flex items-center justify-between px-8 py-5 border-t ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
+        <div className={`flex shrink-0 items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-t ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
           <div className={`text-xs text-muted-foreground`}>
             {isEditMode ? 'Editing registered vehicle' : 'Creating new registered vehicle'}{organizationId ? ` · ${orgName}` : ''}
           </div>

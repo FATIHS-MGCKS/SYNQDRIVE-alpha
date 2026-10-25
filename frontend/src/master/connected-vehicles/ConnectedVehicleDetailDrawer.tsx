@@ -41,6 +41,8 @@ interface ConnectedVehicleDetailDrawerProps {
   onOpenOrganization?: (organizationId: string) => void;
   onEditSpecifications?: () => void;
   editSpecificationsLoading?: boolean;
+  /** Fires after the Radix sheet has fully closed (focus trap released). */
+  onDrawerClosed?: () => void;
 }
 
 export function ConnectedVehicleDetailDrawer({
@@ -59,6 +61,7 @@ export function ConnectedVehicleDetailDrawer({
   onOpenOrganization,
   onEditSpecifications,
   editSpecificationsLoading = false,
+  onDrawerClosed,
 }: ConnectedVehicleDetailDrawerProps) {
   const { t } = useLanguage();
   const {
@@ -148,6 +151,7 @@ export function ConnectedVehicleDetailDrawer({
         onOpenChange={(next) => {
           if (!next) onClose();
         }}
+        onClosed={onDrawerClosed}
         title={detail?.displayTitle ?? 'Fahrzeug'}
         description={detail?.displaySubtitle}
         widthClassName="sm:max-w-2xl"

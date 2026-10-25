@@ -77,6 +77,11 @@ export function ConnectedVehiclesHub({
   const [editExistingVehicle, setEditExistingVehicle] = useState<RegisteredVehicle | null>(null);
   const [editBaselineVehicle, setEditBaselineVehicle] = useState<RegisteredVehicle | null>(null);
   const [editSpecsLoading, setEditSpecsLoading] = useState(false);
+  const pendingSpecsEditRef = useRef<{
+    vehicle: RegisteredVehicle;
+    baseline: RegisteredVehicle;
+    organizationId: string;
+  } | null>(null);
 
   const navigateSection = useCallback((next: CvSection, replace = false) => {
     setSection(next);
@@ -278,6 +283,21 @@ export function ConnectedVehiclesHub({
     setRegistrationOpen(true);
   }, []);
 
+  const flushPendingSpecsEdit = useCallback(() => {
+    const pending = pendingSpecsEditRef.current;
+    if (!pending) return;
+    pendingSpecsEditRef.current = null;
+    setRegistrationDimo(null);
+    setRegistrationPrefillOrgId(pending.organizationId);
+    setEditExistingVehicle(pending.vehicle);
+    setEditBaselineVehicle(pending.baseline);
+    setRegistrationOpen(true);
+  }, []);
+
+  const handleDetailDrawerClosed = useCallback(() => {
+    flushPendingSpecsEdit();
+  }, [flushPendingSpecsEdit]);
+
   const openEditSpecifications = useCallback(async () => {
     if (!vehicleId) return;
     setEditSpecsLoading(true);
@@ -288,20 +308,22 @@ export function ConnectedVehiclesHub({
         toast.error(t('master.cv.technicalSpecs.editLoadError'));
         return;
       }
-      setRegistrationDimo(null);
-      setRegistrationPrefillOrgId(orgId);
       const mapped = mapAdminVehicleDtoToRegisteredVehicle(dto as Record<string, unknown>);
-      setEditExistingVehicle(mapped);
-      setEditBaselineVehicle(mapped);
-      setRegistrationOpen(true);
+      pendingSpecsEditRef.current = {
+        vehicle: mapped,
+        baseline: mapped,
+        organizationId: orgId,
+      };
+      closeDetail();
     } catch (e) {
+      pendingSpecsEditRef.current = null;
       toast.error(
         e instanceof Error ? e.message : t('master.cv.technicalSpecs.editLoadError'),
       );
     } finally {
       setEditSpecsLoading(false);
     }
-  }, [t, vehicleId]);
+  }, [closeDetail, t, vehicleId]);
 
   const handleUpdateRegisteredVehicle = useCallback(
     async (rv: RegisteredVehicle) => {
@@ -468,6 +490,7 @@ export function ConnectedVehiclesHub({
         }}
         onEditSpecifications={() => void openEditSpecifications()}
         editSpecificationsLoading={editSpecsLoading}
+        onDrawerClosed={handleDetailDrawerClosed}
         onOpenOrganization={onOpenOrganization}
       />
 
@@ -480,6 +503,7 @@ export function ConnectedVehiclesHub({
           setRegistrationPrefillOrgId(null);
           setEditExistingVehicle(null);
           setEditBaselineVehicle(null);
+          pendingSpecsEditRef.current = null;
         }}
         dimoVehicle={registrationDimo ?? undefined}
         existingVehicle={editExistingVehicle ?? undefined}

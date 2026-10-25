@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../ui/utils';
 import {
@@ -57,20 +57,12 @@ export function DetailDrawer({
   onContentOpenAutoFocus,
   closeLabel = 'Schließen',
   returnFocusRef,
+  onClosed,
   children,
   className,
   surface = 'solid',
   footerSurface = 'frosted',
 }: DetailDrawerProps) {
-  const wasOpenRef = useRef(false);
-
-  useEffect(() => {
-    if (wasOpenRef.current && !open) {
-      returnFocusRef?.current?.focus({ preventScroll: true });
-    }
-    wasOpenRef.current = open;
-  }, [open, returnFocusRef]);
-
   const handleOpenAutoFocus = useCallback(
     (event: Event) => {
       if (onContentOpenAutoFocus) {
@@ -88,12 +80,25 @@ export function DetailDrawer({
     [onContentOpenAutoFocus],
   );
 
+  const handleCloseAutoFocus = useCallback(
+    (event: Event) => {
+      onClosed?.();
+      const content = event.currentTarget as HTMLElement;
+      if (returnFocusRef?.current) {
+        event.preventDefault();
+        returnFocusRef.current.focus({ preventScroll: true });
+      }
+    },
+    [onClosed, returnFocusRef],
+  );
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={side}
         showCloseButton={false}
         onOpenAutoFocus={handleOpenAutoFocus}
+        onCloseAutoFocus={handleCloseAutoFocus}
         className={cn(
           'w-full gap-0 p-0 border-0 bg-transparent shadow-none text-foreground',
           surfaceClassName(surface),
