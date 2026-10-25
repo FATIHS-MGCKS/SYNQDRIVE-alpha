@@ -28,7 +28,6 @@ export interface TireWearV3PriorFingerprintInput {
   vehicleId: string;
   organizationId: string | null;
   setupRevision: {
-    updatedAt: string | null;
     installedOdometerKm: number | null;
     odometerAnchorStatus: string | null;
     initialTreadFrontMm: number | null;
@@ -37,11 +36,16 @@ export interface TireWearV3PriorFingerprintInput {
     expectedLifeKm: number | null;
     tireSeason: string;
   };
+  mountPeriod: {
+    id: string | null;
+    installedAtIso: string | null;
+    removedAtIso: string | null;
+    installedOdometerKm: number | null;
+  };
   ledger: {
     activeRowCount: number;
     totalDistanceKm: number;
-    maxRevisionNumber: number | null;
-    ledgerFingerprint: string | null;
+    contentDigest: string;
   };
   measurements: Array<{
     id: string;
@@ -53,7 +57,8 @@ export interface TireWearV3PriorFingerprintInput {
     rearRightMm: number | null;
   }>;
   currentOdometerKm: number | null;
-  asOfIso: string;
+  /** Optional explicit data cutoff (e.g. replay); omit for live compute. */
+  dataCutoffIso?: string | null;
 }
 
 export function computeTireWearV3PriorInputFingerprint(

@@ -11,6 +11,7 @@ import {
   TIRE_WEAR_V3_PRIOR_CONFIG,
   type TireWearV3PriorConfig,
 } from './tire-wear-v3-prior.config';
+import { intervalMmPerKmToDisplayPer1000 } from './tire-wear-v3-prior.display';
 import type {
   NumericInterval,
   TireWearV3EvidenceLevel,
@@ -21,27 +22,29 @@ import type {
 
 const WHEEL_POSITIONS: WheelPos[] = ['FL', 'FR', 'RL', 'RR'];
 
-export function round4(v: number): number {
-  return Math.round(v * 10000) / 10000;
+/** ΔD ≥ 3·√2·σ_m / r (r in mm/km). */
+export function computeMinOdometerSpanKmFor3Sigma(
+  sigmaMeasMm: number,
+  rateMmPerKm: number,
+): number {
+  if (!Number.isFinite(rateMmPerKm) || rateMmPerKm <= 0) return Number.POSITIVE_INFINITY;
+  if (!Number.isFinite(sigmaMeasMm) || sigmaMeasMm <= 0) return Number.POSITIVE_INFINITY;
+  return (3 * Math.SQRT2 * sigmaMeasMm) / rateMmPerKm;
 }
 
-export function round6(v: number): number {
-  return Math.round(v * 1_000_000) / 1_000_000;
-}
-
-export function round2(v: number): number {
-  return Math.round(v * 100) / 100;
-}
-
-export function mmPerKmToPer1000(mmPerKm: number): number {
-  return round4(mmPerKm * 1000);
-}
-
-export function intervalMmPer1000(interval: NumericInterval): NumericInterval {
-  return {
-    lo: mmPerKmToPer1000(interval.lo),
-    hi: mmPerKmToPer1000(interval.hi),
-  };
+export function empiricalRateRelativeUncertainty(
+  rateMmPerKm: number | null,
+  rateSigmaMmPerKm: number | null,
+): number | null {
+  if (
+    rateMmPerKm == null ||
+    rateSigmaMmPerKm == null ||
+    rateMmPerKm <= 0 ||
+    rateSigmaMmPerKm <= 0
+  ) {
+    return null;
+  }
+  return rateSigmaMmPerKm / rateMmPerKm;
 }
 
 export function resolvePriorLifeKmInterval(args: {
@@ -112,8 +115,8 @@ export function priorWearRateIntervalMmPerKm(
     return { lo: 0, hi: 0 };
   }
   return {
-    lo: round6(usable / lifeKm.hi),
-    hi: round6(usable / lifeKm.lo),
+    lo: usable / lifeKm.hi,
+    hi: usable / lifeKm.lo,
   };
 }
 
@@ -197,7 +200,7 @@ export function fitWearRateFromMeasurements(
     };
   }
 
-  const rate = round4(-slope);
+  const rate = -slope;
   const residualVar =
     treads.reduce((s, h, i) => {
       const pred = meanH + slope * (odometers[i]! - meanD);
@@ -208,7 +211,7 @@ export function fitWearRateFromMeasurements(
       ? Math.sqrt(residualVar / ssDd)
       : rateSigmaFromTwoPoints(treads[0]! - treads[n - 1]!, spanKm, sigmaMeasMm);
 
-  const ratePer1000 = mmPerKmToPer1000(rate);
+  const ratePer1000 = rate * 1000;
   if (ratePer1000 > config.maxPlausibleWearRateMmPer1000km) {
     flags.push('RATE_IMPLAUSIBLY_HIGH');
   }
@@ -216,13 +219,14 @@ export function fitWearRateFromMeasurements(
     flags.push('RATE_IMPLAUSIBLY_LOW');
   }
 
-  if (spanKm < config.minOdometerSpacingKmForRate3Sigma) {
+  const minSpan3Sigma = computeMinOdometerSpanKmFor3Sigma(sigmaMeasMm, rate);
+  if (spanKm < minSpan3Sigma) {
     flags.push('RATE_SPAN_BELOW_3SIGMA_THRESHOLD');
   }
 
   return {
     rateMmPerKm: rate,
-    rateSigmaMmPerKm: rateSigma != null ? round4(rateSigma) : null,
+    rateSigmaMmPerKm: rateSigma,
     spanKm,
     pointCount: n,
     flags,
@@ -233,33 +237,39 @@ export function fuseRateWithPrior(
   prior: NumericInterval,
   observedRate: number,
   observedSigma: number | null,
-): { interval: NumericInterval; mid: number; measurementUncertainty: NumericInterval | null } {
+): {
+  interval: NumericInterval;
+  posteriorMid: number;
+  measurementUncertainty: NumericInterval | null;
+} {
   const priorMid = (prior.lo + prior.hi) / 2;
-  const priorHalf = (prior.hi - prior.lo) / 2;
-  const priorSigma = priorHalf > 0 ? priorHalf / 1.645 : priorMid * 0.15;
 
   if (observedSigma == null || observedSigma <= 0) {
     return {
       interval: prior,
-      mid: priorMid,
+      posteriorMid: priorMid,
       measurementUncertainty: null,
     };
   }
 
+  const priorHalf = (prior.hi - prior.lo) / 2;
+  const priorSigma = priorHalf > 0 ? priorHalf / 1.645 : priorMid * 0.15;
   const wPrior = 1 / (priorSigma * priorSigma);
   const wObs = 1 / (observedSigma * observedSigma);
-  const mid = (wPrior * priorMid + wObs * observedRate) / (wPrior + wObs);
+  const posteriorMid = (wPrior * priorMid + wObs * observedRate) / (wPrior + wObs);
   const postSigma = Math.sqrt(1 / (wPrior + wObs));
+  const postLo = posteriorMid - 1.645 * postSigma;
+  const postHi = posteriorMid + 1.645 * postSigma;
   const interval = {
-    lo: round4(Math.max(0, mid - 1.645 * postSigma)),
-    hi: round4(mid + 1.645 * postSigma),
+    lo: Math.min(prior.lo, Math.max(0, postLo)),
+    hi: Math.max(prior.hi, postHi),
   };
   return {
     interval,
-    mid: round4(mid),
+    posteriorMid,
     measurementUncertainty: {
-      lo: round4(Math.max(0, observedRate - 1.645 * observedSigma)),
-      hi: round4(observedRate + 1.645 * observedSigma),
+      lo: Math.max(0, observedRate - 1.645 * observedSigma),
+      hi: observedRate + 1.645 * observedSigma,
     },
   };
 }
@@ -268,9 +278,12 @@ export function deriveEvidenceLevel(args: {
   anchorStatus: TireOdometerAnchorStatus | null;
   measurementCount: number;
   ratePointCount: number;
-  rateRelativeUncertainty: number | null;
+  empiricalRateMmPerKm: number | null;
+  empiricalRateSigmaMmPerKm: number | null;
   measurementSpanKm: number | null;
+  meets3SigmaSpacing: boolean;
   rateRejected: boolean;
+  priorOnlyForRate: boolean;
   config?: TireWearV3PriorConfig;
 }): TireWearV3EvidenceLevel {
   const cfg = args.config ?? TIRE_WEAR_V3_PRIOR_CONFIG;
@@ -280,16 +293,26 @@ export function deriveEvidenceLevel(args: {
   if (args.measurementCount < 1) {
     return 'L0';
   }
-  if (args.measurementCount < cfg.minMeasurementsForRateL2 || args.rateRejected) {
+  if (args.priorOnlyForRate || args.rateRejected) {
     return 'L1';
   }
+  if (args.ratePointCount < cfg.minMeasurementsForRateL2) {
+    return 'L1';
+  }
+
   const span = args.measurementSpanKm ?? 0;
-  const rel = args.rateRelativeUncertainty;
+  const rel = empiricalRateRelativeUncertainty(
+    args.empiricalRateMmPerKm,
+    args.empiricalRateSigmaMmPerKm,
+  );
+
+  if (!args.meets3SigmaSpacing || rel == null) {
+    return 'L1';
+  }
 
   if (
     args.ratePointCount >= cfg.minMeasurementsForRateL4 &&
     span >= cfg.minMeasurementSpanKmForRateL4 &&
-    rel != null &&
     rel <= cfg.rateRelativeUncertaintyL3
   ) {
     return 'L4';
@@ -297,15 +320,12 @@ export function deriveEvidenceLevel(args: {
   if (
     args.ratePointCount >= cfg.minMeasurementsForRateL3 &&
     span >= cfg.minMeasurementSpanKmForRateL3 &&
-    rel != null &&
     rel <= cfg.rateRelativeUncertaintyL3
   ) {
     return 'L3';
   }
   if (
-    args.ratePointCount >= cfg.minMeasurementsForRateL2 &&
     span >= cfg.minMeasurementSpanKmForRateL2 &&
-    rel != null &&
     rel <= cfg.rateRelativeUncertaintyL2
   ) {
     return 'L2';
@@ -321,8 +341,8 @@ export function projectTreadMm(args: {
 }): NumericInterval {
   const delta = Math.max(0, args.currentOdometerKm - args.anchorOdometerKm);
   return {
-    lo: round2(args.anchorTreadMm - args.rateMmPerKm.hi * delta),
-    hi: round2(args.anchorTreadMm - args.rateMmPerKm.lo * delta),
+    lo: args.anchorTreadMm - args.rateMmPerKm.hi * delta,
+    hi: args.anchorTreadMm - args.rateMmPerKm.lo * delta,
   };
 }
 
@@ -421,6 +441,8 @@ export function buildWearRateEstimate(args: {
     fit.flags.includes('RATE_NEGATIVE_WEAR_REJECTED') ||
     fit.flags.includes('RATE_IMPLAUSIBLY_HIGH');
 
+  const meets3Sigma = !fit.flags.includes('RATE_SPAN_BELOW_3SIGMA_THRESHOLD');
+
   let source: TireWearV3RateSource = life.source;
   let interval = priorRate;
   let measurementUncertainty: NumericInterval | null = null;
@@ -428,7 +450,8 @@ export function buildWearRateEstimate(args: {
   if (
     fit.rateMmPerKm != null &&
     !rateRejected &&
-    fit.pointCount >= cfg.minMeasurementsForRateL2
+    fit.pointCount >= cfg.minMeasurementsForRateL2 &&
+    meets3Sigma
   ) {
     const fused = fuseRateWithPrior(priorRate, fit.rateMmPerKm, fit.rateSigmaMmPerKm);
     interval = fused.interval;
@@ -436,17 +459,11 @@ export function buildWearRateEstimate(args: {
     source = 'measurement_fused';
   }
 
-  const mid = (interval.lo + interval.hi) / 2;
-  const modelHalf = (priorRate.hi - priorRate.lo) / 2;
-
   return {
     mmPerKm: interval,
-    mmPer1000km: intervalMmPer1000(interval),
+    mmPer1000km: intervalMmPerKmToDisplayPer1000(interval),
     source,
-    modelUncertaintyMmPerKm: {
-      lo: round4(Math.max(0, mid - modelHalf)),
-      hi: round4(mid + modelHalf),
-    },
+    modelUncertaintyMmPerKm: priorRate,
     measurementUncertaintyMmPerKm: measurementUncertainty,
     flags: fit.flags,
   };

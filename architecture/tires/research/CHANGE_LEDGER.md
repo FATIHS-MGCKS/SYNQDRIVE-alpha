@@ -25,6 +25,13 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | `bash architecture/tires/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 | NON_EFFECTS | No runtime, DS4, or i18n change |
 
+### Tire Wear V3 P3A — correctness fix (2026-10-25)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Mount-period ledger/measurement scoping; empirical L2–L4; dynamic 3σ span; non-collapsing rate intervals; stable fingerprint; shadow write env-only; unique shadow fingerprint index |
+| NON_EFFECTS | V2, DS4 canary, production flags unchanged |
+
 ### Tire Wear V3 P3A — distance prior shadow module (2026-10-25)
 
 | Event | Detail |

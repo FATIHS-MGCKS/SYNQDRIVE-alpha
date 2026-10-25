@@ -30,7 +30,7 @@ describe('tire-wear-v3-prior.math', () => {
     const minKm = (3 * Math.SQRT2 * sigma) / r;
     expect(minKm).toBeGreaterThan(6750);
     expect(minKm).toBeLessThan(6850);
-    expect(TIRE_WEAR_V3_PRIOR_CONFIG.minOdometerSpacingKmForRate3Sigma).toBe(6800);
+    expect(TIRE_WEAR_V3_PRIOR_CONFIG.reference3SigmaSpacingExampleKm).toBe(6800);
   });
 
   it('rejects a single measurement for wear-rate inference', () => {
@@ -79,9 +79,12 @@ describe('tire-wear-v3-prior.math', () => {
       anchorStatus: TireOdometerAnchorStatus.ANCHORED,
       measurementCount: 1,
       ratePointCount: 1,
-      rateRelativeUncertainty: null,
+      empiricalRateMmPerKm: null,
+      empiricalRateSigmaMmPerKm: null,
       measurementSpanKm: null,
+      meets3SigmaSpacing: false,
       rateRejected: true,
+      priorOnlyForRate: true,
     });
     expect(level).toBe('L1');
   });

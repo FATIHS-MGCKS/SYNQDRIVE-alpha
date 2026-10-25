@@ -3985,7 +3985,7 @@ model TireWearV3PriorShadowV1 {
 
   tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
 
-  @@index([tireSetupId, modelVersion, inputFingerprint], map: "tire_wear_v3_prior_shadow_setup_model_fp_idx")
+  @@unique([tireSetupId, modelVersion, inputFingerprint], map: "tire_wear_v3_prior_shadow_setup_model_fp_uq")
   @@index([organizationId, vehicleId], map: "tire_wear_v3_prior_shadow_org_vehicle_idx")
   @@map("tire_wear_v3_prior_shadow_v1")
 }

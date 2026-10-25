@@ -8,6 +8,7 @@ describe('TireWearV3PriorService', () => {
   const setupId = 'setup-1';
   const vehicleId = 'vehicle-1';
   const orgId = 'org-1';
+  const mountInstalled = new Date('2026-01-01');
 
   const prisma = {
     vehicleTireSetup: {
@@ -19,11 +20,15 @@ describe('TireWearV3PriorService', () => {
     vehicleTireTreadMeasurement: {
       findMany: jest.fn(),
     },
+    tirePositionHistory: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 
   const repository = {
     findLatestShadowRow: jest.fn(),
     insertShadowRow: jest.fn(),
+    insertShadowRowIdempotent: jest.fn(),
   };
 
   const configService = {
@@ -54,11 +59,21 @@ describe('TireWearV3PriorService', () => {
       initialTreadRearMm: 8,
       initialTreadDepthMm: 8,
       installedOdometerKm: 10000,
+      installedAt: mountInstalled,
+      removedAt: null,
       odometerAnchorStatus: TireOdometerAnchorStatus.ANCHORED,
       initialTreadEvidenceSource: TireEvidenceSource.USER_CONFIRMED,
       baselineStatus: TireBaselineStatus.CONFIRMED,
       aiTireSpec: null,
-      updatedAt: new Date('2026-10-01'),
+      mountPeriods: [
+        {
+          id: 'mp-1',
+          installedAt: mountInstalled,
+          removedAt: null,
+          installedOdometerKm: 10000,
+          odometerAnchorStatus: TireOdometerAnchorStatus.ANCHORED,
+        },
+      ],
       vehicle: {
         organizationId: orgId,
         latestState: { odometerKm: 15000 },
@@ -67,11 +82,23 @@ describe('TireWearV3PriorService', () => {
     });
   }
 
-  it('sums only non-invalidated ledger distance', async () => {
+  it('sums only non-invalidated ledger distance within mount period', async () => {
     mockAnchoredSetup();
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([
-      { distanceKm: 100, revisionNumber: 1, sourceFingerprint: 'fp-a' },
-      { distanceKm: 50, revisionNumber: 2, sourceFingerprint: 'fp-b' },
+      {
+        tripId: 't1',
+        distanceKm: 100,
+        revisionNumber: 1,
+        sourceFingerprint: 'fp-a',
+        tripStartedAt: new Date('2026-02-01'),
+      },
+      {
+        tripId: 't2',
+        distanceKm: 50,
+        revisionNumber: 2,
+        sourceFingerprint: 'fp-b',
+        tripStartedAt: new Date('2026-03-01'),
+      },
     ]);
     prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([]);
 
@@ -91,6 +118,15 @@ describe('TireWearV3PriorService', () => {
     mockAnchoredSetup({
       odometerAnchorStatus: TireOdometerAnchorStatus.ANCHOR_REQUIRED,
       installedOdometerKm: null,
+      mountPeriods: [
+        {
+          id: 'mp-1',
+          installedAt: mountInstalled,
+          removedAt: null,
+          installedOdometerKm: null,
+          odometerAnchorStatus: TireOdometerAnchorStatus.ANCHOR_REQUIRED,
+        },
+      ],
     });
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([]);
     prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([]);
@@ -106,14 +142,20 @@ describe('TireWearV3PriorService', () => {
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([]);
     prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([]);
 
-    await service.computeForSetup(setupId, { persistShadow: false });
-    expect(repository.insertShadowRow).not.toHaveBeenCalled();
+    await service.computeForSetup(setupId, { persistShadow: true });
+    expect(repository.insertShadowRowIdempotent).not.toHaveBeenCalled();
   });
 
   it('keeps L1 for a single tread measurement (no rate calibration)', async () => {
     mockAnchoredSetup();
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([
-      { distanceKm: 5000, revisionNumber: 1, sourceFingerprint: 'fp' },
+      {
+        tripId: 't1',
+        distanceKm: 5000,
+        revisionNumber: 1,
+        sourceFingerprint: 'fp',
+        tripStartedAt: new Date('2026-02-01'),
+      },
     ]);
     prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([
       {

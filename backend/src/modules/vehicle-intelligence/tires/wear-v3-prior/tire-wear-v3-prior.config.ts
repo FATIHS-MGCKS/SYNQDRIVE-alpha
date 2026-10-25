@@ -17,11 +17,10 @@ export const TIRE_WEAR_V3_PRIOR_CONFIG = {
   /** When measurement source is workshop / multi-groove (future), may tighten to this. */
   refinedMeasurementUncertaintyMm: 0.2,
   /**
-   * Minimum odometer span between two measurements before a wear-rate slope is considered
-   * to resolve ≥3σ of expected wear at r≈0.125 mm/1000 km with σ_m=0.2 mm:
-   * ΔD ≥ 3·√2·σ_m / r ≈ 6800 km.
+   * Reference example only: σ_m=0.2 mm and r=0.125 mm/1000 km (=0.000125 mm/km)
+   * → ΔD ≥ 3·√2·σ_m / r ≈ 6800 km. Runtime uses {@link computeMinOdometerSpanKmFor3Sigma}.
    */
-  minOdometerSpacingKmForRate3Sigma: 6800,
+  reference3SigmaSpacingExampleKm: 6800,
   /** Minimum span across all rate points (km). */
   minMeasurementSpanKmForRateL2: 5000,
   minMeasurementSpanKmForRateL3: 12000,
@@ -56,7 +55,7 @@ export function computeTireWearV3PriorConfigHash(
     modelVersion: TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
     dynamicBeta: config.dynamicBeta,
     defaultMeasurementUncertaintyMm: config.defaultMeasurementUncertaintyMm,
-    minOdometerSpacingKmForRate3Sigma: config.minOdometerSpacingKmForRate3Sigma,
+    reference3SigmaSpacingExampleKm: config.reference3SigmaSpacingExampleKm,
     unknownLifeKmSpan: config.unknownLifeKmSpan,
     replaceThresholds: TIRE_HEALTH_CONFIG.replaceThresholds,
     expectedLifeKm: TIRE_HEALTH_CONFIG.expectedLifeKm,

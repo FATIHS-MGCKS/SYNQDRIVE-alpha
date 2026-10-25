@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|--------|
-| Model version | `tire-wear-v3-prior-0.1.0` |
+| Model version | `tire-wear-v3-prior-0.1.0` (correctness pass: mount-period scope, full-precision math, stable fingerprint) |
 | Dynamic β (DS4) | `0` (fixed in P3A) |
 | Productive consumer | **none** — shadow table `tire_wear_v3_prior_shadow_v1` |
 | Write gate | `TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED` default `false` |

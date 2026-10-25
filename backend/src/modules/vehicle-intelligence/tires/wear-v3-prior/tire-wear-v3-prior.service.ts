@@ -10,10 +10,25 @@ import {
   TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
   computeTireWearV3PriorConfigHash,
 } from './tire-wear-v3-prior.config';
+import {
+  roundDisplayRateIntervalMmPer1000,
+  roundDisplayTreadInterval,
+} from './tire-wear-v3-prior.display';
 import { computeTireWearV3PriorInputFingerprint } from './tire-wear-v3-prior.fingerprint';
+import {
+  filterLedgerRowsForMountPeriod,
+  filterMeasurementsForMountPeriod,
+  hasRotationDuringMountPeriod,
+  resolveActiveMountPeriod,
+  selectRateCalibrationSegment,
+  stableLedgerContentDigest,
+  sumLedgerDistanceKm,
+  validateOdometerContext,
+} from './tire-wear-v3-prior.lifecycle';
 import {
   buildWearRateEstimate,
   deriveEvidenceLevel,
+  fitWearRateFromMeasurements,
   listWheelPositions,
   projectTreadMm,
   remainingKmInterval,
@@ -48,6 +63,16 @@ function parseAiTireSpec(raw: unknown): AiTireSpec | null {
   return raw as AiTireSpec;
 }
 
+function measurementSigmaMm(source: string, isCalibrationPoint: boolean): number {
+  if (isCalibrationPoint) {
+    return TIRE_WEAR_V3_PRIOR_CONFIG.refinedMeasurementUncertaintyMm;
+  }
+  if (source === 'workshop') {
+    return TIRE_WEAR_V3_PRIOR_CONFIG.refinedMeasurementUncertaintyMm;
+  }
+  return TIRE_WEAR_V3_PRIOR_CONFIG.defaultMeasurementUncertaintyMm;
+}
+
 @Injectable()
 export class TireWearV3PriorService {
   constructor(
@@ -56,9 +81,13 @@ export class TireWearV3PriorService {
     private readonly configService: ConfigService,
   ) {}
 
+  isShadowWriteEnabled(): boolean {
+    return this.configService.get<boolean>('tireWearV3PriorShadow.writeEnabled') === true;
+  }
+
   async computeForSetup(
     tireSetupId: string,
-    opts?: { asOf?: Date; persistShadow?: boolean },
+    opts?: { asOf?: Date; dataCutoff?: Date; persistShadow?: boolean },
   ): Promise<TireWearV3PriorSetupResult | null> {
     const asOf = opts?.asOf ?? new Date();
     const setup = await this.prisma.vehicleTireSetup.findUnique({
@@ -70,6 +99,16 @@ export class TireWearV3PriorService {
             latestState: { select: { odometerKm: true } },
           },
         },
+        mountPeriods: {
+          select: {
+            id: true,
+            installedAt: true,
+            removedAt: true,
+            installedOdometerKm: true,
+            odometerAnchorStatus: true,
+          },
+          orderBy: { installedAt: 'asc' },
+        },
       },
     });
     if (!setup) return null;
@@ -78,28 +117,34 @@ export class TireWearV3PriorService {
     const { archetype, season } = resolveArchetypeAndSeason(spec, setup.tireSeason);
     const replacementMm = resolveReplacementMm(spec, archetype, season);
 
-    const ledgerRows = await this.prisma.tireTripUsageLedger.findMany({
+    const activePeriod = resolveActiveMountPeriod(
+      setup.mountPeriods,
+      asOf,
+      {
+        installedAt: setup.installedAt,
+        removedAt: setup.removedAt,
+        installedOdometerKm: setup.installedOdometerKm,
+        odometerAnchorStatus: setup.odometerAnchorStatus,
+      },
+    );
+
+    const ledgerRowsAll = await this.prisma.tireTripUsageLedger.findMany({
       where: { tireSetupId, invalidatedAt: null },
       select: {
+        tripId: true,
         distanceKm: true,
         revisionNumber: true,
         sourceFingerprint: true,
+        tripStartedAt: true,
       },
-      orderBy: { revisionNumber: 'desc' },
+      orderBy: { tripStartedAt: 'asc' },
     });
 
-    const ledgerDistanceKm = ledgerRows.reduce(
-      (sum, row) => sum + (Number.isFinite(row.distanceKm) ? row.distanceKm : 0),
-      0,
-    );
-    const maxRevision = ledgerRows.reduce(
-      (max, row) => Math.max(max, row.revisionNumber ?? 1),
-      0,
-    );
-    const ledgerFingerprint =
-      ledgerRows.length > 0 ? ledgerRows[0]?.sourceFingerprint ?? null : null;
+    const ledgerRows = filterLedgerRowsForMountPeriod(ledgerRowsAll, activePeriod);
+    const ledgerDistanceKm = sumLedgerDistanceKm(ledgerRows);
+    const ledgerDigest = stableLedgerContentDigest(ledgerRows);
 
-    const measurementsRaw = await this.prisma.vehicleTireTreadMeasurement.findMany({
+    const measurementsRawAll = await this.prisma.vehicleTireTreadMeasurement.findMany({
       where: { tireSetupId },
       orderBy: { measuredAt: 'asc' },
       select: {
@@ -114,30 +159,71 @@ export class TireWearV3PriorService {
         isCalibrationPoint: true,
       },
     });
+    const measurementsRaw = filterMeasurementsForMountPeriod(
+      measurementsRawAll,
+      activePeriod,
+    );
 
-    const anchorStatus = setup.odometerAnchorStatus;
-    const anchorOdometerKm = setup.installedOdometerKm;
+    const rotationEvents = await this.prisma.tirePositionHistory.findMany({
+      where: { tireSetId: tireSetupId },
+      select: { changedAt: true, changeType: true },
+    });
+
+    const periodAnchorOdometer =
+      activePeriod?.installedOdometerKm ?? setup.installedOdometerKm;
+    const anchorStatus =
+      activePeriod?.odometerAnchorStatus ?? setup.odometerAnchorStatus;
+
     const latestStateOdometer = setup.vehicle.latestState?.odometerKm ?? null;
     let currentOdometerKm = latestStateOdometer;
     if (
       anchorStatus === TireOdometerAnchorStatus.ANCHORED &&
-      anchorOdometerKm != null &&
+      periodAnchorOdometer != null &&
       currentOdometerKm == null
     ) {
-      currentOdometerKm = anchorOdometerKm + ledgerDistanceKm;
+      currentOdometerKm = periodAnchorOdometer + ledgerDistanceKm;
     }
 
     const setupFlags: string[] = [];
+    if (!activePeriod) {
+      setupFlags.push('NO_ACTIVE_MOUNT_PERIOD');
+    }
     if (anchorStatus !== TireOdometerAnchorStatus.ANCHORED) {
       setupFlags.push('ODOMETER_ANCHOR_NOT_CONFIRMED');
+    }
+    if (measurementsRawAll.length > measurementsRaw.length) {
+      setupFlags.push('MEASUREMENTS_EXCLUDED_OUTSIDE_MOUNT_PERIOD');
+    }
+    if (ledgerRowsAll.length > ledgerRows.length) {
+      setupFlags.push('LEDGER_ROWS_EXCLUDED_OUTSIDE_MOUNT_PERIOD');
+    }
+    if (
+      activePeriod &&
+      hasRotationDuringMountPeriod(rotationEvents, activePeriod)
+    ) {
+      setupFlags.push('ROTATION_DURING_MOUNT_PERIOD');
     }
     if (TIRE_WEAR_V3_PRIOR_DYNAMIC_BETA !== 0) {
       setupFlags.push('UNEXPECTED_DYNAMIC_BETA');
     }
 
+    const odometerValidation = validateOdometerContext({
+      anchorOdometerKm: periodAnchorOdometer,
+      currentOdometerKm,
+      ledgerDistanceKm,
+      measurementOdometers: measurementsRaw
+        .map((m) => m.odometerAtMeasurement)
+        .filter((o): o is number => o != null && Number.isFinite(o)),
+    });
+    setupFlags.push(...odometerValidation.flags);
+
     const widenedBaseline =
       setup.initialTreadEvidenceSource === TireEvidenceSource.DEFAULT_ASSUMPTION ||
       setup.baselineStatus === TireBaselineStatus.INCOMPLETE;
+
+    const rotationBlocksRate =
+      activePeriod != null &&
+      hasRotationDuringMountPeriod(rotationEvents, activePeriod);
 
     const wheels: TireWearV3WheelProjection[] = [];
     for (const position of listWheelPositions()) {
@@ -162,7 +248,17 @@ export class TireWearV3PriorService {
         });
       }
 
-      const wearRate = buildWearRateEstimate({
+      const { segment: rateSegment, flags: segmentFlags } =
+        selectRateCalibrationSegment(measurementPoints);
+      const sigmaMeasMm =
+        rateSegment.length > 0
+          ? measurementSigmaMm(
+              rateSegment[rateSegment.length - 1]!.source,
+              rateSegment[rateSegment.length - 1]!.isCalibrationPoint,
+            )
+          : TIRE_WEAR_V3_PRIOR_CONFIG.defaultMeasurementUncertaintyMm;
+
+      const wearRateRaw = buildWearRateEstimate({
         initialTreadMm: initial.treadMm,
         replacementMm,
         spec,
@@ -173,37 +269,54 @@ export class TireWearV3PriorService {
         expectedLifeKmRear: setup.expectedLifeKmRear,
         position,
         widenedBaseline: widenedBaseline || initial.usedDefaultFallback,
-        measurements: measurementPoints,
-        sigmaMeasMm: TIRE_WEAR_V3_PRIOR_CONFIG.defaultMeasurementUncertaintyMm,
+        measurements: rotationBlocksRate ? [] : rateSegment,
+        sigmaMeasMm,
       });
 
-      const rateRejected = wearRate.flags.some((f) =>
-        ['RATE_NEGATIVE_WEAR_REJECTED', 'RATE_IMPLAUSIBLY_HIGH'].includes(f),
+      const empiricalFit = fitWearRateFromMeasurements(
+        rotationBlocksRate ? [] : rateSegment,
+        sigmaMeasMm,
       );
-      const rateMid = (wearRate.mmPerKm.lo + wearRate.mmPerKm.hi) / 2;
-      const rateRel =
-        rateMid > 0 ? (wearRate.mmPerKm.hi - wearRate.mmPerKm.lo) / (2 * rateMid) : null;
 
-      const withOdometer = measurementPoints.filter((p) => p.odometerKm != null);
-      const spanKm =
-        withOdometer.length >= 2
-          ? withOdometer[withOdometer.length - 1]!.odometerKm! -
-            withOdometer[0]!.odometerKm!
-          : null;
+      const rateRejected =
+        rotationBlocksRate ||
+        wearRateRaw.flags.some((f) =>
+          ['RATE_NEGATIVE_WEAR_REJECTED', 'RATE_IMPLAUSIBLY_HIGH'].includes(f),
+        );
+
+      const meets3Sigma =
+        empiricalFit.rateMmPerKm != null &&
+        !empiricalFit.flags.includes('RATE_SPAN_BELOW_3SIGMA_THRESHOLD');
+
+      const spanKm = empiricalFit.spanKm;
+      const priorOnlyForRate =
+        wearRateRaw.source !== 'measurement_fused' || rateRejected;
 
       const evidenceLevel = deriveEvidenceLevel({
         anchorStatus,
         measurementCount: measurementPoints.length,
-        ratePointCount: withOdometer.length,
-        rateRelativeUncertainty: rateRel,
+        ratePointCount: rateSegment.length,
+        empiricalRateMmPerKm: empiricalFit.rateMmPerKm,
+        empiricalRateSigmaMmPerKm: empiricalFit.rateSigmaMmPerKm,
         measurementSpanKm: spanKm,
+        meets3SigmaSpacing: meets3Sigma,
         rateRejected,
+        priorOnlyForRate,
       });
 
-      const wheelFlags: string[] = [...wearRate.flags];
+      const wheelFlags: string[] = [
+        ...wearRateRaw.flags,
+        ...segmentFlags,
+      ];
+      if (rotationBlocksRate) {
+        wheelFlags.push('RATE_ROTATION_UNVERIFIED');
+      }
+
       let rated =
+        activePeriod != null &&
+        odometerValidation.valid &&
         anchorStatus === TireOdometerAnchorStatus.ANCHORED &&
-        anchorOdometerKm != null &&
+        periodAnchorOdometer != null &&
         currentOdometerKm != null;
 
       if (!rated) {
@@ -214,26 +327,26 @@ export class TireWearV3PriorService {
       let distanceSinceAnchorKm = 0;
 
       if (rated) {
-        distanceSinceAnchorKm = Math.max(0, currentOdometerKm! - anchorOdometerKm!);
+        distanceSinceAnchorKm = Math.max(0, currentOdometerKm! - periodAnchorOdometer!);
+        const withOdometer = measurementPoints.filter((p) => p.odometerKm != null);
         const latestMeas = [...withOdometer].sort(
           (a, b) => b.measuredAt.getTime() - a.measuredAt.getTime(),
         )[0];
 
-        if (latestMeas?.odometerKm != null) {
-          estimatedTreadMm = projectTreadMm({
-            anchorTreadMm: latestMeas.treadMm,
-            anchorOdometerKm: latestMeas.odometerKm,
-            currentOdometerKm: currentOdometerKm!,
-            rateMmPerKm: wearRate.mmPerKm,
-          });
-        } else {
-          estimatedTreadMm = projectTreadMm({
-            anchorTreadMm: initial.treadMm,
-            anchorOdometerKm: anchorOdometerKm!,
-            currentOdometerKm: currentOdometerKm!,
-            rateMmPerKm: wearRate.mmPerKm,
-          });
-        }
+        const projected = latestMeas?.odometerKm != null
+          ? projectTreadMm({
+              anchorTreadMm: latestMeas.treadMm,
+              anchorOdometerKm: latestMeas.odometerKm,
+              currentOdometerKm: currentOdometerKm!,
+              rateMmPerKm: wearRateRaw.mmPerKm,
+            })
+          : projectTreadMm({
+              anchorTreadMm: initial.treadMm,
+              anchorOdometerKm: periodAnchorOdometer!,
+              currentOdometerKm: currentOdometerKm!,
+              rateMmPerKm: wearRateRaw.mmPerKm,
+            });
+        estimatedTreadMm = roundDisplayTreadInterval(projected);
       } else {
         wheelFlags.push('PRIOR_ONLY_INTERVAL');
         const usable = initial.treadMm - replacementMm;
@@ -242,17 +355,22 @@ export class TireWearV3PriorService {
             ? (usable / TIRE_WEAR_V3_PRIOR_CONFIG.unknownLifeKmSpan.hi) *
               ledgerDistanceKm
             : 0;
-        estimatedTreadMm = {
+        estimatedTreadMm = roundDisplayTreadInterval({
           lo: Math.max(replacementMm, initial.treadMm - pessimisticWear * 1.25),
           hi: initial.treadMm,
-        };
+        });
       }
 
       const remainingKm = remainingKmInterval(
         estimatedTreadMm,
         replacementMm,
-        wearRate.mmPerKm,
+        wearRateRaw.mmPerKm,
       );
+
+      const wearRate = {
+        ...wearRateRaw,
+        mmPer1000km: roundDisplayRateIntervalMmPer1000(wearRateRaw.mmPer1000km),
+      };
 
       wheels.push({
         position,
@@ -273,7 +391,6 @@ export class TireWearV3PriorService {
       vehicleId: setup.vehicleId,
       organizationId: setup.organizationId,
       setupRevision: {
-        updatedAt: setup.updatedAt?.toISOString() ?? null,
         installedOdometerKm: setup.installedOdometerKm,
         odometerAnchorStatus: setup.odometerAnchorStatus,
         initialTreadFrontMm: setup.initialTreadFrontMm,
@@ -282,11 +399,16 @@ export class TireWearV3PriorService {
         expectedLifeKm: setup.expectedLifeKm,
         tireSeason: setup.tireSeason,
       },
+      mountPeriod: {
+        id: activePeriod?.id ?? null,
+        installedAtIso: activePeriod?.installedAt.toISOString() ?? null,
+        removedAtIso: activePeriod?.removedAt?.toISOString() ?? null,
+        installedOdometerKm: activePeriod?.installedOdometerKm ?? null,
+      },
       ledger: {
         activeRowCount: ledgerRows.length,
-        totalDistanceKm: Math.round(ledgerDistanceKm * 1000) / 1000,
-        maxRevisionNumber: maxRevision > 0 ? maxRevision : null,
-        ledgerFingerprint,
+        totalDistanceKm: ledgerDistanceKm,
+        contentDigest: ledgerDigest,
       },
       measurements: measurementsRaw.map((m) => ({
         id: m.id,
@@ -298,7 +420,7 @@ export class TireWearV3PriorService {
         rearRightMm: m.rearRightMm,
       })),
       currentOdometerKm,
-      asOfIso: asOf.toISOString(),
+      dataCutoffIso: opts?.dataCutoff?.toISOString() ?? null,
     });
 
     const result: TireWearV3PriorSetupResult = {
@@ -309,41 +431,37 @@ export class TireWearV3PriorService {
       modelConfigHash: computeTireWearV3PriorConfigHash(),
       inputFingerprint: fingerprint,
       computedAt: asOf.toISOString(),
-      odometerAnchorKm: anchorOdometerKm,
+      odometerAnchorKm: periodAnchorOdometer,
       odometerAnchorStatus: anchorStatus,
       currentOdometerKm,
-      ledgerDistanceKm: Math.round(ledgerDistanceKm * 1000) / 1000,
+      ledgerDistanceKm,
       ledgerRowCount: ledgerRows.length,
       dynamicBeta: TIRE_WEAR_V3_PRIOR_DYNAMIC_BETA,
       rated:
+        activePeriod != null &&
+        odometerValidation.valid &&
         anchorStatus === TireOdometerAnchorStatus.ANCHORED &&
-        anchorOdometerKm != null &&
+        periodAnchorOdometer != null &&
         currentOdometerKm != null,
       wheels,
       setupFlags,
     };
 
-    const shadowWrite =
-      opts?.persistShadow === true ||
-      this.configService.get<boolean>('tireWearV3PriorShadow.writeEnabled') === true;
+    const shadowWriteEnabled = this.isShadowWriteEnabled();
+    if (opts?.persistShadow === true && !shadowWriteEnabled) {
+      setupFlags.push('SHADOW_WRITE_BLOCKED_BY_CONFIG');
+    }
 
-    if (shadowWrite && setup.organizationId) {
-      const existing = await this.repository.findLatestShadowRow(
-        setup.id,
-        TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
-        fingerprint,
-      );
-      if (!existing) {
-        await this.repository.insertShadowRow({
-          organizationId: setup.organizationId,
-          vehicleId: setup.vehicleId,
-          tireSetupId: setup.id,
-          modelVersion: TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
-          modelConfigHash: result.modelConfigHash,
-          inputFingerprint: fingerprint,
-          resultPayload: result,
-        });
-      }
+    if (shadowWriteEnabled && setup.organizationId) {
+      await this.repository.insertShadowRowIdempotent({
+        organizationId: setup.organizationId,
+        vehicleId: setup.vehicleId,
+        tireSetupId: setup.id,
+        modelVersion: TIRE_WEAR_V3_PRIOR_MODEL_VERSION,
+        modelConfigHash: result.modelConfigHash,
+        inputFingerprint: fingerprint,
+        resultPayload: result,
+      });
     }
 
     return result;
