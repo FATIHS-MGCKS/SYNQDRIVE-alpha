@@ -36,6 +36,8 @@ export interface DetailDrawerProps {
   closeLabel?: string;
   /** Element to restore focus to when the drawer closes. */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Fires after the sheet has closed and Radix has released focus (safe to open another modal). */
+  onClosed?: () => void;
   children: ReactNode;
   className?: string;
   /** Drawer body surface — solid (L0) or elevated (L1). No glass/liquid. */

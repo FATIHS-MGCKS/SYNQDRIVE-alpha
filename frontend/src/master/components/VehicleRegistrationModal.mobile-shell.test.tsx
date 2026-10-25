@@ -125,7 +125,7 @@ describe('VehicleRegistrationModal mobile shell (Phase A.2)', () => {
             isDarkMode: false,
             isOpen: true,
             onClose,
-            organizations: [{ id: 'org-1', name: 'Org', type: 'Fleet', status: 'Active' }],
+            organizations: [],
             existingVehicle: minimalExistingVehicle(),
             initialOrganizationId: 'org-1',
             onRegister: vi.fn(),
