@@ -57,6 +57,9 @@ export class TireDs4ShadowProcessorService {
         vehicleId: true,
         tripId: true,
         tireSetupId: true,
+        distanceKm: true,
+        tripStartedAt: true,
+        tripEndedAt: true,
       },
     });
 
@@ -114,7 +117,11 @@ export class TireDs4ShadowProcessorService {
       return this.defer(data, ledger, 'ds4_run_row_missing');
     }
 
-    const inputPayload = mapDs4TripMapToTireShadowInput(read);
+    const inputPayload = mapDs4TripMapToTireShadowInput(read, {
+      tripDistanceKm: ledger.distanceKm,
+      tripStartedAt: ledger.tripStartedAt,
+      tripEndedAt: ledger.tripEndedAt,
+    });
     const eventQualityCoverage = eventQualityCoverageFromPayload(inputPayload);
     const eventsAlgorithmVersion = read.algorithmVersions?.events ?? 'unknown';
     const speedAuthority = read.speedAuthority ?? 'unknown';
