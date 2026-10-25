@@ -482,6 +482,9 @@ export class AdaptivePollingShadowService {
         ? new Date(ctx.realPollVisibleLvSourceAtMs)
         : null;
 
+    let informativeLvRecordedForPoll = false;
+    let informativeTopRecordedForPoll = false;
+
     for (const policyVersion of [P25_APD_B2_V1, P25_APD_B4_V1]) {
       const prePoll = await this.repository.findPrePollDecisionForOpportunity({
         organizationId: ctx.organizationId,
@@ -504,18 +507,15 @@ export class AdaptivePollingShadowService {
         existing: existingOutcome,
       });
 
-      if (
-        observational.newLvSourceObserved &&
-        !existingOutcome?.newLvSourceObserved
-      ) {
-        this.metrics?.recordInformativeRealPoll('lv');
-      }
-      if (
-        observational.newTopLevelSourceObserved &&
-        !existingOutcome?.newTopLevelSourceObserved
-      ) {
-        this.metrics?.recordInformativeRealPoll('top_level');
-      }
+      const mergedObservational = {
+        ...observational,
+        newLvSourceObserved:
+          existingOutcome?.newLvSourceObserved === true ||
+          observational.newLvSourceObserved,
+        newTopLevelSourceObserved:
+          existingOutcome?.newTopLevelSourceObserved === true ||
+          observational.newTopLevelSourceObserved,
+      };
 
       const admission = prePoll
         ? evaluateLvProviderTimestampAdmission({
@@ -530,14 +530,14 @@ export class AdaptivePollingShadowService {
       const persistVisibleLv =
         admission.admit && visibleLvAt != null ? visibleLvAt : null;
 
-      this.baselinePollEvidence.recordSkippedInformativeIfNeeded({
-        policyVersion,
-        prePollDecision,
-        patch: observational,
-        existing: existingOutcome,
-      });
+      const wantsLvTransition =
+        mergedObservational.newLvSourceObserved &&
+        !existingOutcome?.newLvSourceObserved;
+      const wantsTopTransition =
+        mergedObservational.newTopLevelSourceObserved &&
+        !existingOutcome?.newTopLevelSourceObserved;
 
-      await this.repository.updateSuccessfulPollOutcome({
+      const persistCount = await this.repository.updateSuccessfulPollOutcome({
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
         opportunityId: ctx.opportunityId,
@@ -548,12 +548,64 @@ export class AdaptivePollingShadowService {
         realPollCompletedAt: new Date(ctx.pollCompletedAtMs),
         realPollVisibleLvSourceAt: persistVisibleLv,
         patch: {
-          ...observational,
+          ...mergedObservational,
+          newLvSourceObserved: wantsLvTransition
+            ? (existingOutcome?.newLvSourceObserved ?? false)
+            : mergedObservational.newLvSourceObserved,
+          newTopLevelSourceObserved: wantsTopTransition
+            ? (existingOutcome?.newTopLevelSourceObserved ?? false)
+            : mergedObservational.newTopLevelSourceObserved,
           legacyAssessmentImpact: 'NONE',
           legacyPublicationImpact: 'NONE',
           legacyCustomerImpact: 'NONE',
         },
       });
+
+      if (persistCount !== 1) {
+        continue;
+      }
+
+      let lvTransitioned = false;
+      let topTransitioned = false;
+
+      if (wantsLvTransition) {
+        lvTransitioned =
+          (await this.repository.promoteNewLvSourceObservedIfAbsent({
+            organizationId: ctx.organizationId,
+            vehicleId: ctx.vehicleId,
+            opportunityId: ctx.opportunityId,
+            policyVersion,
+            activationEpochId: activeEpoch.id,
+            newLvSourceAt: mergedObservational.newLvSourceAt,
+          })) === 1;
+      }
+
+      if (wantsTopTransition) {
+        topTransitioned =
+          (await this.repository.promoteNewTopLevelSourceObservedIfAbsent({
+            organizationId: ctx.organizationId,
+            vehicleId: ctx.vehicleId,
+            opportunityId: ctx.opportunityId,
+            policyVersion,
+            activationEpochId: activeEpoch.id,
+          })) === 1;
+      }
+
+      this.baselinePollEvidence.recordSkippedInformativeAfterDurableTransition({
+        policyVersion,
+        prePollDecision,
+        lvTransitioned,
+        topLevelTransitioned: topTransitioned,
+      });
+
+      if (lvTransitioned && !informativeLvRecordedForPoll) {
+        this.metrics?.recordInformativeRealPoll('lv');
+        informativeLvRecordedForPoll = true;
+      }
+      if (topTransitioned && !informativeTopRecordedForPoll) {
+        this.metrics?.recordInformativeRealPoll('top_level');
+        informativeTopRecordedForPoll = true;
+      }
     }
   }
 

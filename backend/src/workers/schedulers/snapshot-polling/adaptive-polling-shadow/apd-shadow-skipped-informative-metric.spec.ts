@@ -26,7 +26,9 @@ describe('apd-shadow skipped-informative metric wiring', () => {
     findExistingObservationalOutcomeForOpportunity: jest
       .fn()
       .mockResolvedValue(null),
-    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
+    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(1),
+    promoteNewLvSourceObservedIfAbsent: jest.fn().mockResolvedValue(1),
+    promoteNewTopLevelSourceObservedIfAbsent: jest.fn().mockResolvedValue(0),
   } as unknown as AdaptivePollingShadowRepository;
 
   const metrics = {
@@ -80,6 +82,7 @@ describe('apd-shadow skipped-informative metric wiring', () => {
       providerFetchedAtMs: null,
     });
 
+    expect(metrics.recordInformativeRealPoll).toHaveBeenCalledTimes(1);
     expect(metrics.recordSkippedInformative).toHaveBeenCalledTimes(2);
     expect(metrics.recordSkippedInformative).toHaveBeenCalledWith(
       expect.stringContaining('B2'),
@@ -89,10 +92,11 @@ describe('apd-shadow skipped-informative metric wiring', () => {
       expect.stringContaining('B4'),
       'lv',
     );
+    expect(repository.promoteNewLvSourceObservedIfAbsent).toHaveBeenCalledTimes(2);
     expect(repository.updateSuccessfulPollOutcome).toHaveBeenCalledWith(
       expect.objectContaining({
         realPollVisibleLvSourceAt: null,
-        patch: expect.objectContaining({ newLvSourceObserved: true }),
+        patch: expect.objectContaining({ newLvSourceAt: expect.any(Date) }),
       }),
     );
   });

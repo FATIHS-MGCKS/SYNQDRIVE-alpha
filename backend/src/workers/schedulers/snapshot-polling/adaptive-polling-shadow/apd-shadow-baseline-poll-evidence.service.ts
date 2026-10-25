@@ -7,6 +7,7 @@ import {
   evaluateBaselineLvSourceEvidence,
   evaluateBaselineSkipDiscoveryDelay,
   evaluateBaselineTopLevelSourceAdvance,
+  evaluateInformationRediscoveredOnDeferredLv,
   parseSnapshotCorrelationId,
 } from './p25-apd-shadow-baseline-poll-evidence';
 import type { AdaptivePollingShadowPostPollContext } from './adaptive-polling-shadow.types';
@@ -74,24 +75,22 @@ export class ApdShadowBaselinePollEvidenceService {
     };
   }
 
-  recordSkippedInformativeIfNeeded(input: {
+  /**
+   * Prometheus loss counters — only after durable false→true promotion (count === 1).
+   */
+  recordSkippedInformativeAfterDurableTransition(input: {
     policyVersion: string;
     prePollDecision: string;
-    patch: BaselinePollObservationalPatch;
-    existing: ExistingObservationalOutcome | null;
+    lvTransitioned: boolean;
+    topLevelTransitioned: boolean;
   }): void {
     if (input.prePollDecision !== 'WOULD_SKIP') {
       return;
     }
-    const lvNew =
-      input.patch.newLvSourceObserved && !input.existing?.newLvSourceObserved;
-    const topNew =
-      input.patch.newTopLevelSourceObserved &&
-      !input.existing?.newTopLevelSourceObserved;
-    if (lvNew) {
+    if (input.lvTransitioned) {
       this.metrics?.recordSkippedInformative(input.policyVersion, 'lv');
     }
-    if (topNew) {
+    if (input.topLevelTransitioned) {
       this.metrics?.recordSkippedInformative(input.policyVersion, 'top_level');
     }
   }
@@ -134,7 +133,7 @@ export class ApdShadowBaselinePollEvidenceService {
         nextBaselinePollStartedAtMs: input.observingPollStartedAtMs,
         nextBaselinePollCompletedAtMs: input.observingPollCompletedAtMs,
       });
-      if (delayEvidence.kind !== 'OBSERVABLE_NEXT_BASELINE_POLL') {
+      if (delayEvidence.kind !== 'NEXT_BASELINE_POLL_OBSERVED') {
         continue;
       }
 
@@ -150,7 +149,6 @@ export class ApdShadowBaselinePollEvidenceService {
         data: {
           simulatedNextPollAt: new Date(delayEvidence.simulatedNextPollAtMs),
           additionalDiscoveryDelayMs: delayEvidence.additionalDiscoveryDelayMs,
-          simulatedDiscoveryAt: new Date(delayEvidence.simulatedDiscoveryAtMs),
         },
       });
       if (updated.count !== 1) {
@@ -228,6 +226,12 @@ export class ApdShadowBaselinePollEvidenceService {
           ? new Date(rowEvidence.providerSourceMs)
           : null;
 
+      const rediscovery = evaluateInformationRediscoveredOnDeferredLv({
+        previousLvProviderSourceMs: input.previousLvProviderSourceMsBeforePersist,
+        strictLvProviderSourceMs: input.providerTimestampMs,
+        pollFinishedAtMs: poll.finishedAt.getTime(),
+      });
+
       const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
         where: {
           organizationId: input.organizationId,
@@ -240,6 +244,11 @@ export class ApdShadowBaselinePollEvidenceService {
         data: {
           newLvSourceObserved: true,
           newLvSourceAt: lvAt,
+          ...(rediscovery.kind === 'INFORMATION_REDISCOVERED'
+            ? {
+                simulatedDiscoveryAt: new Date(rediscovery.simulatedDiscoveryAtMs),
+              }
+            : {}),
         },
       });
 

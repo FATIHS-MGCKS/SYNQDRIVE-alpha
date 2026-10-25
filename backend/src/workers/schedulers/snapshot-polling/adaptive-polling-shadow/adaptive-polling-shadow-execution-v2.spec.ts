@@ -43,7 +43,9 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
       expect(row.shadowExecutionVersion).toBe(P25_APD_SHADOW_EXECUTION_VERSION_CURRENT);
     }),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
-    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
+    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(1),
+    promoteNewLvSourceObservedIfAbsent: jest.fn().mockResolvedValue(0),
+    promoteNewTopLevelSourceObservedIfAbsent: jest.fn().mockResolvedValue(0),
     updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
   } as unknown as AdaptivePollingShadowRepository;
 

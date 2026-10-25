@@ -84,14 +84,17 @@ export function evaluateBaselineTopLevelSourceAdvance(input: {
 
 export type BaselineSkipDiscoveryDelayEvidence =
   | {
-      kind: 'OBSERVABLE_NEXT_BASELINE_POLL';
+      kind: 'NEXT_BASELINE_POLL_OBSERVED';
       simulatedNextPollAtMs: number;
       additionalDiscoveryDelayMs: number;
-      /** Wall-clock when the next baseline poll completed (discovery), not provider source time. */
-      simulatedDiscoveryAtMs: number;
     }
   | { kind: 'UNKNOWN' };
 
+/**
+ * Observational delay until the next baseline poll **started** — not confirmed
+ * information rediscovery (a later SUCCESS snapshot alone does not prove the
+ * same signal was re-learned).
+ */
 export function evaluateBaselineSkipDiscoveryDelay(input: {
   priorPollCompletedAtMs: number;
   nextBaselinePollStartedAtMs: number;
@@ -107,10 +110,39 @@ export function evaluateBaselineSkipDiscoveryDelay(input: {
     return { kind: 'UNKNOWN' };
   }
   return {
-    kind: 'OBSERVABLE_NEXT_BASELINE_POLL',
+    kind: 'NEXT_BASELINE_POLL_OBSERVED',
     simulatedNextPollAtMs: input.nextBaselinePollStartedAtMs,
     additionalDiscoveryDelayMs: delay,
-    simulatedDiscoveryAtMs: input.nextBaselinePollCompletedAtMs,
+  };
+}
+
+export type BaselineInformationRediscoveryEvidence =
+  | {
+      kind: 'INFORMATION_REDISCOVERED';
+      /** Wall-clock when durable evidence proves the signal on the same real poll. */
+      simulatedDiscoveryAtMs: number;
+    }
+  | { kind: 'UNKNOWN' };
+
+/** Deferred LIVE_VOLTAGE persistence proving strict LV advance on the correlated poll. */
+export function evaluateInformationRediscoveredOnDeferredLv(input: {
+  previousLvProviderSourceMs: number | null;
+  strictLvProviderSourceMs: number;
+  pollFinishedAtMs: number;
+}): BaselineInformationRediscoveryEvidence {
+  const lv = evaluateBaselineLvSourceEvidence({
+    previousLvProviderSourceMs: input.previousLvProviderSourceMs,
+    strictLvProviderSourceMs: input.strictLvProviderSourceMs,
+  });
+  if (lv.kind !== 'STRICT_LV_ADVANCE') {
+    return { kind: 'UNKNOWN' };
+  }
+  if (!Number.isFinite(input.pollFinishedAtMs)) {
+    return { kind: 'UNKNOWN' };
+  }
+  return {
+    kind: 'INFORMATION_REDISCOVERED',
+    simulatedDiscoveryAtMs: input.pollFinishedAtMs,
   };
 }
 

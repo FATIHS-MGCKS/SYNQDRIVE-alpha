@@ -20,7 +20,9 @@ describe('AdaptivePollingShadowService', () => {
     resolveLastAllowedPollStartMs: jest.fn().mockResolvedValue(0),
     resolveSimulatedLastLvSourceMs: jest.fn().mockResolvedValue(null),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
-    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
+    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(1),
+    promoteNewLvSourceObservedIfAbsent: jest.fn().mockResolvedValue(0),
+    promoteNewTopLevelSourceObservedIfAbsent: jest.fn().mockResolvedValue(0),
     updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
     findExistingObservationalOutcomeForOpportunity: jest
       .fn()

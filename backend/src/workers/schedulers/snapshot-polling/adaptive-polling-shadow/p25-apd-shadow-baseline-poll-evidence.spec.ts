@@ -8,6 +8,7 @@ import {
   evaluateBaselineLvSourceEvidence,
   evaluateBaselineSkipDiscoveryDelay,
   evaluateBaselineTopLevelSourceAdvance,
+  evaluateInformationRediscoveredOnDeferredLv,
   parseSnapshotCorrelationId,
 } from './p25-apd-shadow-baseline-poll-evidence';
 import { ApdShadowBaselinePollEvidenceService } from './apd-shadow-baseline-poll-evidence.service';
@@ -105,16 +106,28 @@ describe('p25-apd-shadow-baseline-poll-evidence', () => {
   });
 
   describe('discovery delay semantics', () => {
-    it('uses next poll completion as simulatedDiscoveryAt (not provider source time)', () => {
+    it('NEXT_BASELINE_POLL_OBSERVED records poll timing only (not confirmed discovery)', () => {
       const r = evaluateBaselineSkipDiscoveryDelay({
         priorPollCompletedAtMs: 1_000_000,
         nextBaselinePollStartedAtMs: 1_060_000,
         nextBaselinePollCompletedAtMs: 1_065_000,
       });
-      expect(r.kind).toBe('OBSERVABLE_NEXT_BASELINE_POLL');
-      if (r.kind === 'OBSERVABLE_NEXT_BASELINE_POLL') {
-        expect(r.simulatedDiscoveryAtMs).toBe(1_065_000);
+      expect(r.kind).toBe('NEXT_BASELINE_POLL_OBSERVED');
+      if (r.kind === 'NEXT_BASELINE_POLL_OBSERVED') {
+        expect(r.simulatedNextPollAtMs).toBe(1_060_000);
         expect(r.additionalDiscoveryDelayMs).toBe(60_000);
+      }
+    });
+
+    it('INFORMATION_REDISCOVERED on deferred strict LV for same poll', () => {
+      const r = evaluateInformationRediscoveredOnDeferredLv({
+        previousLvProviderSourceMs: 1_000,
+        strictLvProviderSourceMs: 2_000,
+        pollFinishedAtMs: 9_000,
+      });
+      expect(r.kind).toBe('INFORMATION_REDISCOVERED');
+      if (r.kind === 'INFORMATION_REDISCOVERED') {
+        expect(r.simulatedDiscoveryAtMs).toBe(9_000);
       }
     });
 

@@ -171,7 +171,7 @@ describePg('APDS baseline poll evidence (Postgres integration)', () => {
     expect(row?.additionalDiscoveryDelayMs).toBe(
       nextStarted.getTime() - priorCompleted.getTime(),
     );
-    expect(row?.simulatedDiscoveryAt?.getTime()).toBe(nextCompleted.getTime());
+    expect(row?.simulatedDiscoveryAt).toBeNull();
     expect(row?.simulatedNextPollAt?.getTime()).toBe(nextStarted.getTime());
   });
 });

@@ -99,27 +99,22 @@ describe('ApdShadowBaselinePollEvidenceService idempotency', () => {
     expect(updateMany.mock.calls[1][0].where.additionalDiscoveryDelayMs).toBeNull();
   });
 
-  it('recordSkippedInformativeIfNeeded does not double-count on existing durable LV', () => {
+  it('recordSkippedInformativeAfterDurableTransition only counts explicit transitions', () => {
     const service = new ApdShadowBaselinePollEvidenceService({} as never, metrics as never);
-    service.recordSkippedInformativeIfNeeded({
+    service.recordSkippedInformativeAfterDurableTransition({
       policyVersion: 'P25_APD_B2_V1',
       prePollDecision: 'WOULD_SKIP',
-      patch: {
-        newLvSourceObserved: true,
-        newLvSourceAt: new Date(),
-        newTopLevelSourceObserved: false,
-        simulatedNextPollAt: null,
-        simulatedDiscoveryAt: null,
-        additionalDiscoveryDelayMs: null,
-      },
-      existing: {
-        newLvSourceObserved: true,
-        newTopLevelSourceObserved: false,
-        additionalDiscoveryDelayMs: null,
-        simulatedNextPollAt: null,
-        simulatedDiscoveryAt: null,
-      },
+      lvTransitioned: false,
+      topLevelTransitioned: false,
     });
     expect(metrics.recordSkippedInformative).not.toHaveBeenCalled();
+
+    service.recordSkippedInformativeAfterDurableTransition({
+      policyVersion: 'P25_APD_B2_V1',
+      prePollDecision: 'WOULD_SKIP',
+      lvTransitioned: true,
+      topLevelTransitioned: false,
+    });
+    expect(metrics.recordSkippedInformative).toHaveBeenCalledTimes(1);
   });
 });
