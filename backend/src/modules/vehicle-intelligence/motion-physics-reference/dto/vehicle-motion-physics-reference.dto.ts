@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -37,6 +38,11 @@ export class CreateVehicleMotionPhysicsReferenceDto {
 
   @IsEnum(MotionPhysicsReferenceSource)
   source!: MotionPhysicsReferenceSource;
+
+  /** Required for MANUAL_ENTRY + CONFIRMED (explicit “confirm manual values” in Master UI). */
+  @IsOptional()
+  @IsBoolean()
+  manualOperatorConfirm?: boolean;
 
   @IsOptional()
   @IsString()
