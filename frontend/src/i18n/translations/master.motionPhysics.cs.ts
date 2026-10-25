@@ -19,6 +19,12 @@ export const masterMotionPhysicsCs = {
   'master.motionPhysics.confirmSuccess': 'Referenční data potvrzena',
   'master.motionPhysics.confirmError': 'Referenci se nepodařilo potvrdit',
   'master.motionPhysics.manualConfirmError': 'Potvrzené ruční hodnoty se nepodařilo uložit',
+  'master.motionPhysics.unsavedManualValuesHint':
+    'Ruční hodnoty pohybové fyziky se liší od uložené reference. Uloží se jako reference až po „Potvrdit ruční hodnoty“.',
+  'master.motionPhysics.confirmAiEstimateBlockedHint':
+    'Hodnoty ve formuláři se liší od uloženého odhadu AI. Použijte „Potvrdit ruční hodnoty“ pro uložení úprav jako potvrzené reference.',
+  'master.motionPhysics.unsavedAfterVehicleSave':
+    'Data vozidla uložena. Reference pohybové fyziky beze změny — potvrďte ruční hodnoty pro uložení úprav.',
   'master.motionPhysics.backfillError':
     'Vozidlo uloženo, ale referenci pohybové fyziky se nepodařilo uložit. Opravte hodnoty a uložte znovu.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'např. 150',

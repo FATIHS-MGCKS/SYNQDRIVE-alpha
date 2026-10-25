@@ -11,15 +11,19 @@ import {
 } from '../connected-vehicles/ai-spec-field-merge.util';
 import {
   buildMotionPhysicsReferenceCreateBody,
+  canConfirmEstimatedAiMotionReference,
   canConfirmManualMotionValues,
   hasMotionPhysicsFormValues,
+  hasUnconfirmedManualMotionPhysicsEdits,
   isMotionPhysicsReferenceReadOnly,
   MOTION_SYSTEM_POWER_DEFINITION_OPTIONS,
   motionPhysicsReferenceSourceForSave,
   resolveMotionPhysicsPendingAfterAiApply,
   shouldSyncMotionPhysicsReferenceOnSave,
   snapshotMotionPhysicsFormFields,
+  snapshotMotionPhysicsFromActiveReference,
   type AiSpecsApplyProvenance,
+  type MotionPhysicsFormSnapshot,
   type MotionPhysicsPendingCreateSource,
   type MotionSystemPowerDefinitionOption,
 } from '../connected-vehicles/motion-physics-reference-sync.util';
@@ -115,8 +119,10 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const [motionPhysicsManualConfirming, setMotionPhysicsManualConfirming] = useState(false);
   const [systemPowerDefinition, setSystemPowerDefinition] = useState<MotionSystemPowerDefinitionOption | ''>('');
   const [motionPhysicsSyncError, setMotionPhysicsSyncError] = useState('');
+  const [motionPhysicsSaveInfo, setMotionPhysicsSaveInfo] = useState('');
   const motionPhysicsPendingCreateSourceRef = useRef<MotionPhysicsPendingCreateSource>(null);
   const motionPhysicsManualEditedRef = useRef(false);
+  const motionPhysicsLoadedBaselineRef = useRef<MotionPhysicsFormSnapshot | null>(null);
   const [idleRpm, setIdleRpm] = useState('');
   const [maxRpm, setMaxRpm] = useState('');
   const [brakeForceDistribution, setBrakeForceDistribution] = useState('');
@@ -236,6 +242,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setMotionPhysicsVariantAssumption(v.motionPhysicsVariantAssumption ?? '');
     motionPhysicsManualEditedRef.current = false;
     motionPhysicsPendingCreateSourceRef.current = null;
+    motionPhysicsLoadedBaselineRef.current = null;
+    setMotionPhysicsSaveInfo('');
     setIdleRpm(v.idleRpm);
     setMaxRpm(v.maxRpm);
     setBrakeForceDistribution(v.brakeForceDistribution || '');
@@ -634,6 +642,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       setMotionPhysicsEvidenceTier(null);
       motionPhysicsPendingCreateSourceRef.current = null;
       motionPhysicsManualEditedRef.current = false;
+      motionPhysicsLoadedBaselineRef.current = null;
+      setMotionPhysicsSaveInfo('');
       return;
     }
     api.vehicles.motionPhysicsReference
@@ -654,12 +664,40 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         }
         motionPhysicsManualEditedRef.current = false;
         motionPhysicsPendingCreateSourceRef.current = null;
+        motionPhysicsLoadedBaselineRef.current =
+          ref.evidenceTier === 'ESTIMATED'
+            ? snapshotMotionPhysicsFromActiveReference(ref)
+            : null;
+        setMotionPhysicsSaveInfo('');
       })
       .catch(() => {
         setMotionPhysicsReferenceId(null);
         setMotionPhysicsEvidenceTier(null);
+        motionPhysicsLoadedBaselineRef.current = null;
       });
   }, [isOpen, isEditMode, existingVehicle?.id, organizationId]);
+
+  const motionPhysicsFormSnapshot = snapshotMotionPhysicsFormFields({
+    curbWeight,
+    systemMotorPowerKw,
+    accel0To100S,
+    variantAssumption: motionPhysicsVariantAssumption,
+    systemPowerDefinition,
+  });
+
+  const motionPhysicsHasUnsavedManualEdits = hasUnconfirmedManualMotionPhysicsEdits({
+    evidenceTier: motionPhysicsEvidenceTier,
+    referenceId: motionPhysicsReferenceId,
+    loadedReferenceBaseline: motionPhysicsLoadedBaselineRef.current,
+    currentForm: motionPhysicsFormSnapshot,
+  });
+
+  const canConfirmAiEstimateReference = canConfirmEstimatedAiMotionReference({
+    evidenceTier: motionPhysicsEvidenceTier,
+    referenceId: motionPhysicsReferenceId,
+    loadedReferenceBaseline: motionPhysicsLoadedBaselineRef.current,
+    currentForm: motionPhysicsFormSnapshot,
+  });
 
   const motionPhysicsFieldsDisabled = isMotionPhysicsReferenceReadOnly(motionPhysicsEvidenceTier);
 
@@ -708,6 +746,16 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       setMotionPhysicsReferenceId(created.id);
       setMotionPhysicsEvidenceTier(created.evidenceTier);
       motionPhysicsPendingCreateSourceRef.current = null;
+      motionPhysicsManualEditedRef.current = false;
+      motionPhysicsLoadedBaselineRef.current = snapshotMotionPhysicsFormFields({
+        curbWeight,
+        systemMotorPowerKw,
+        accel0To100S,
+        variantAssumption: motionPhysicsVariantAssumption,
+        systemPowerDefinition,
+      });
+      setMotionPhysicsSaveInfo('');
+      setMotionPhysicsSyncError('');
     } catch {
       setMotionPhysicsSyncError(t('master.motionPhysics.manualConfirmError'));
     } finally {
@@ -717,7 +765,12 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
   const handleConfirmMotionReference = async () => {
     if (!motionPhysicsReferenceId || !organizationId || !existingVehicle?.id || motionPhysicsConfirming) return;
+    if (!canConfirmAiEstimateReference) {
+      setMotionPhysicsSyncError(t('master.motionPhysics.confirmAiEstimateBlockedHint'));
+      return;
+    }
     setMotionPhysicsConfirming(true);
+    setMotionPhysicsSyncError('');
     try {
       const updated = await api.vehicles.motionPhysicsReference.confirm(
         organizationId,
@@ -725,6 +778,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         motionPhysicsReferenceId,
       );
       setMotionPhysicsEvidenceTier(updated.evidenceTier);
+      motionPhysicsManualEditedRef.current = false;
+      motionPhysicsLoadedBaselineRef.current = null;
+      setMotionPhysicsSaveInfo('');
     } catch {
       setAiErrorDetail(t('master.motionPhysics.confirmError'));
     } finally {
@@ -930,7 +986,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const handleSubmit = async () => {
     if (!organizationId || submitting) return;
     setSubmitting(true);
+    setMotionPhysicsSaveInfo('');
     const rv = buildVehicle();
+    const unsavedMotionPhysics = motionPhysicsHasUnsavedManualEdits;
     try {
       if (isEditMode && onUpdate) {
         await Promise.resolve(onUpdate(rv));
@@ -941,6 +999,10 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
             setMotionPhysicsSyncError(t('master.motionPhysics.backfillError'));
             return;
           }
+        }
+        if (unsavedMotionPhysics) {
+          setMotionPhysicsSaveInfo(t('master.motionPhysics.unsavedAfterVehicleSave'));
+          return;
         }
       } else {
         await Promise.resolve(onRegister(rv));
@@ -1286,7 +1348,12 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                   {isEditMode && motionPhysicsReferenceId && motionPhysicsEvidenceTier === 'ESTIMATED' && (
                     <button
                       type="button"
-                      disabled={motionPhysicsConfirming}
+                      disabled={motionPhysicsConfirming || !canConfirmAiEstimateReference}
+                      title={
+                        !canConfirmAiEstimateReference
+                          ? t('master.motionPhysics.confirmAiEstimateBlockedHint')
+                          : undefined
+                      }
                       onClick={handleConfirmMotionReference}
                       className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-brand/10 text-brand hover:bg-brand/20 disabled:opacity-50"
                     >
@@ -1302,6 +1369,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                     >
                       {t('master.motionPhysics.manualConfirmAction')}
                     </button>
+                  )}
+                  {motionPhysicsHasUnsavedManualEdits && (
+                    <p className="text-[11px] text-status-warning w-full">
+                      {t('master.motionPhysics.unsavedManualValuesHint')}
+                    </p>
+                  )}
+                  {motionPhysicsSaveInfo && (
+                    <p className="text-[11px] text-status-info w-full">{motionPhysicsSaveInfo}</p>
                   )}
                   {motionPhysicsSyncError && (
                     <p className="text-[11px] text-status-danger w-full">{motionPhysicsSyncError}</p>

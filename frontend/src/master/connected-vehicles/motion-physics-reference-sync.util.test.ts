@@ -6,8 +6,12 @@ import {
   isMotionPhysicsReferenceReadOnly,
   motionPhysicsReferenceSourceForSave,
   parseMotionPhysicsNumericField,
+  canConfirmEstimatedAiMotionReference,
+  hasUnconfirmedManualMotionPhysicsEdits,
+  motionPhysicsFormMatchesSnapshot,
   resolveMotionPhysicsPendingAfterAiApply,
   shouldSyncMotionPhysicsReferenceOnSave,
+  snapshotMotionPhysicsFromActiveReference,
 } from './motion-physics-reference-sync.util';
 import { shouldApplyAiSpecToEmptyField } from './ai-spec-field-merge.util';
 
@@ -157,6 +161,61 @@ describe('motion-physics-reference-sync.util', () => {
   it('parses numeric fields safely', () => {
     expect(parseMotionPhysicsNumericField('1.234,5')).toBeNull();
     expect(parseMotionPhysicsNumericField('150')).toBe(150);
+  });
+
+  describe('ESTIMATED reference vs form (manual confirmation consistency)', () => {
+    const baseline = snapshotMotionPhysicsFromActiveReference({
+      curbMassKg: 1760,
+      systemMotorPowerKw: 150,
+      accel0To100S: 5.2,
+      variantAssumption: 'RWD',
+      systemPowerDefinition: 'OEM_RATED_SYSTEM_KW',
+    });
+
+    const tierInput = {
+      evidenceTier: 'ESTIMATED' as const,
+      referenceId: 'ref-est-1',
+      loadedReferenceBaseline: baseline,
+    };
+
+    it('allows AI estimate confirm only when form matches loaded reference', () => {
+      expect(
+        canConfirmEstimatedAiMotionReference({
+          ...tierInput,
+          currentForm: { ...baseline },
+        }),
+      ).toBe(true);
+      expect(
+        canConfirmEstimatedAiMotionReference({
+          ...tierInput,
+          currentForm: { ...baseline, systemMotorPowerKw: '160' },
+        }),
+      ).toBe(false);
+    });
+
+    it('flags unconfirmed manual edits against ESTIMATED reference', () => {
+      expect(
+        hasUnconfirmedManualMotionPhysicsEdits({
+          ...tierInput,
+          currentForm: { ...baseline, curbWeight: '1800' },
+        }),
+      ).toBe(true);
+      expect(
+        hasUnconfirmedManualMotionPhysicsEdits({
+          ...tierInput,
+          currentForm: { ...baseline },
+        }),
+      ).toBe(false);
+    });
+
+    it('treats trimmed fields as equal', () => {
+      expect(
+        motionPhysicsFormMatchesSnapshot(
+          { ...baseline, curbWeight: ' 1760 ' },
+          baseline,
+        ),
+      ).toBe(true);
+    });
   });
 });
 

@@ -19,6 +19,12 @@ export const masterMotionPhysicsNl = {
   'master.motionPhysics.confirmSuccess': 'Bewegingsreferentie bevestigd',
   'master.motionPhysics.confirmError': 'Referentie kon niet worden bevestigd',
   'master.motionPhysics.manualConfirmError': 'Bevestigde handmatige waarden konden niet worden opgeslagen',
+  'master.motionPhysics.unsavedManualValuesHint':
+    'Handmatige bewegingsfysiek-waarden wijken af van de opgeslagen referentie. Ze worden pas als referentie opgeslagen via „Handmatige waarden bevestigen“.',
+  'master.motionPhysics.confirmAiEstimateBlockedHint':
+    'Formulierwaarden wijken af van de opgeslagen AI-schatting. Gebruik „Handmatige waarden bevestigen“ om uw wijzigingen als bevestigde referentie op te slaan.',
+  'master.motionPhysics.unsavedAfterVehicleSave':
+    'Voertuigdata opgeslagen. Bewegingsreferentie ongewijzigd — bevestig handmatige waarden om uw wijzigingen op te slaan.',
   'master.motionPhysics.backfillError':
     'Voertuig opgeslagen, maar bewegingsreferentie kon niet worden opgeslagen. Corrigeer de waarden en sla opnieuw op.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'bijv. 150',
