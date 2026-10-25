@@ -1609,20 +1609,43 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 </p>
                 {(() => {
                   const isEv = fuelType === 'Electric' || fuelType === 'Plugin Hybrid' || fuelType === 'Hybrid';
-                  const cls = `${inputClass} ${!isEv ? 'opacity-40 cursor-not-allowed' : ''}`;
+                  const hvExistingVehicleReadOnly = isEditMode && isEv;
+                  const hvFieldDisabled = !isEv || hvExistingVehicleReadOnly;
+                  const cls = `${inputClass} ${hvFieldDisabled ? 'opacity-40 cursor-not-allowed' : ''}`;
                   return (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div><label className={labelClass}>Usable Capacity (kWh) {aiTag}</label><input value={hvBatteryUsableCapacityKwh || hvBatteryCapacityKwh} onChange={e => { setHvBatteryUsableCapacityKwh(e.target.value); setHvBatteryCapacityKwh(e.target.value); }} disabled={!isEv} placeholder={isEv ? 'e.g. 75' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Gross Capacity (kWh) {aiTag}</label><input value={hvBatteryGrossCapacityKwh} onChange={e => setHvBatteryGrossCapacityKwh(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 82' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Nominal Voltage (V) {aiTag}</label><input value={hvBatteryNominalVoltage} onChange={e => setHvBatteryNominalVoltage(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 400' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Chemistry {aiTag}</label><input value={hvBatteryChemistry} onChange={e => setHvBatteryChemistry(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. NMC, LFP' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Cell Format {aiTag}</label><input value={hvBatteryCellFormat} onChange={e => setHvBatteryCellFormat(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. prismatic' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Architecture {aiTag}</label><input value={hvBatteryArchitecture} onChange={e => setHvBatteryArchitecture(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 400V, 800V' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Thermal Management {aiTag}</label><input value={hvBatteryThermalManagement} onChange={e => setHvBatteryThermalManagement(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. liquid-cooled' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>AC Charger (kW) {aiTag}</label><input value={acOnboardChargerKw} onChange={e => setAcOnboardChargerKw(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 11' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>DC Fast Charge (kW) {aiTag}</label><input value={dcFastChargeMaxKw} onChange={e => setDcFastChargeMaxKw(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 150' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Warranty (years) {aiTag}</label><input value={hvBatteryWarrantyYears} onChange={e => setHvBatteryWarrantyYears(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 8' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Warranty (km) {aiTag}</label><input value={hvBatteryWarrantyKm} onChange={e => setHvBatteryWarrantyKm(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 160000' : 'N/A'} className={cls} /></div>
+                    <div className="space-y-2">
+                      {hvExistingVehicleReadOnly && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('master.cv.technicalSpecs.hvLegacyMasterDataHint')}
+                        </p>
+                      )}
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div>
+                        <label className={labelClass}>Usable Capacity (kWh) {aiTag}</label>
+                        <input
+                          value={hvBatteryUsableCapacityKwh || hvBatteryCapacityKwh}
+                          onChange={e => {
+                            setHvBatteryUsableCapacityKwh(e.target.value);
+                            setHvBatteryCapacityKwh(e.target.value);
+                          }}
+                          disabled={hvFieldDisabled}
+                          readOnly={hvExistingVehicleReadOnly}
+                          placeholder={isEv ? 'e.g. 75' : 'N/A'}
+                          className={cls}
+                          data-testid="hv-usable-capacity-kwh"
+                        />
+                      </div>
+                      <div><label className={labelClass}>Gross Capacity (kWh) {aiTag}</label><input value={hvBatteryGrossCapacityKwh} onChange={e => setHvBatteryGrossCapacityKwh(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 82' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Nominal Voltage (V) {aiTag}</label><input value={hvBatteryNominalVoltage} onChange={e => setHvBatteryNominalVoltage(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 400' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Chemistry {aiTag}</label><input value={hvBatteryChemistry} onChange={e => setHvBatteryChemistry(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. NMC, LFP' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Cell Format {aiTag}</label><input value={hvBatteryCellFormat} onChange={e => setHvBatteryCellFormat(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. prismatic' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Architecture {aiTag}</label><input value={hvBatteryArchitecture} onChange={e => setHvBatteryArchitecture(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 400V, 800V' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Thermal Management {aiTag}</label><input value={hvBatteryThermalManagement} onChange={e => setHvBatteryThermalManagement(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. liquid-cooled' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>AC Charger (kW) {aiTag}</label><input value={acOnboardChargerKw} onChange={e => setAcOnboardChargerKw(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 11' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>DC Fast Charge (kW) {aiTag}</label><input value={dcFastChargeMaxKw} onChange={e => setDcFastChargeMaxKw(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 150' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Warranty (years) {aiTag}</label><input value={hvBatteryWarrantyYears} onChange={e => setHvBatteryWarrantyYears(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 8' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Warranty (km) {aiTag}</label><input value={hvBatteryWarrantyKm} onChange={e => setHvBatteryWarrantyKm(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 160000' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                    </div>
                     </div>
                   );
                 })()}

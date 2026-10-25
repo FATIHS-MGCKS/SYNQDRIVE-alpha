@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsCs = {
   'master.cv.technicalSpecs.editLoadError': 'Data vozidla pro úpravu se nepodařilo načíst.',
   'master.cv.technicalSpecs.updateSuccess': 'Specifikace vozidla uloženy.',
   'master.cv.technicalSpecs.secondaryDetails': 'Provozní a integrační podrobnosti',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'Užitná kapacita je legacy hodnota ze základních dat vozidla (ne SOH, ne ověřená reference, ne nový měřící údaj). HV pole nelze u existujících vozidel v této verzi upravovat.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'Toto HV pole se v editoru existujícího vozidla aktuálně neukládá.',
 };

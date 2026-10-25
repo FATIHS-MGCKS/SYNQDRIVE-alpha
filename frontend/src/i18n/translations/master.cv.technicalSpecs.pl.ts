@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsPl = {
   'master.cv.technicalSpecs.editLoadError': 'Nie można załadować danych pojazdu do edycji.',
   'master.cv.technicalSpecs.updateSuccess': 'Specyfikacje pojazdu zapisane.',
   'master.cv.technicalSpecs.secondaryDetails': 'Szczegóły operacyjne i integracji',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'Pojemność użytkowa to legacy dane pojazdu (nie SOH, nie zweryfikowana referencja, nie nowy pomiar). Pola HV nie są edytowalne dla istniejących pojazdów w tej wersji.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'To pole HV nie jest zapisywane w edytorze istniejącego pojazdu.',
 };
