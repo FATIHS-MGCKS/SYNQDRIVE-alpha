@@ -129,12 +129,50 @@ describe('TireDs4ShadowProcessorService', () => {
     expect(tripMapRead.readForTrip).toHaveBeenCalledWith('org-1', 'veh-1', 'trip-1');
   });
 
-  it('persists terminal marker on NOT_AVAILABLE (no retry loop)', async () => {
+  it('defers on NOT_AVAILABLE when upstream may still produce motion evidence', async () => {
     const prisma = {
       tireTripUsageLedger: { findFirst: jest.fn().mockResolvedValue(ledgerRow) },
       diV0MotionCoreShadowRunV1: { findFirst: jest.fn() },
     };
     const tripMapRead = { readForTrip: jest.fn().mockResolvedValue({ status: 'NOT_AVAILABLE' }) };
+    const repository = makeRepository();
+    const producer = {
+      enqueueMaterialize: jest.fn().mockResolvedValue('job-1'),
+      computeRetryDelayMs: jest.fn().mockReturnValue(2000),
+    };
+    const svc = new TireDs4ShadowProcessorService(
+      prisma as never,
+      tripMapRead as never,
+      repository as never,
+      producer as never,
+      config as never,
+    );
+
+    const outcome = await svc.processJob({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      tireTripUsageLedgerId: 'ledger-1',
+      attempt: 0,
+    });
+
+    expect(outcome).toEqual({
+      status: 'deferred',
+      reason: 'ds4_motion_evidence_not_available_yet',
+      nextAttempt: 1,
+    });
+    expect(repository.persistTerminalMarker).not.toHaveBeenCalled();
+    expect(producer.enqueueMaterialize).toHaveBeenCalled();
+  });
+
+  it('persists terminal marker only when trip is not found', async () => {
+    const prisma = {
+      tireTripUsageLedger: { findFirst: jest.fn().mockResolvedValue(ledgerRow) },
+      diV0MotionCoreShadowRunV1: { findFirst: jest.fn() },
+    };
+    const tripMapRead = {
+      readForTrip: jest.fn().mockResolvedValue({ status: 'NOT_AVAILABLE', failureCode: 'TRIP_NOT_FOUND' }),
+    };
     const repository = makeRepository();
     const svc = new TireDs4ShadowProcessorService(
       prisma as never,

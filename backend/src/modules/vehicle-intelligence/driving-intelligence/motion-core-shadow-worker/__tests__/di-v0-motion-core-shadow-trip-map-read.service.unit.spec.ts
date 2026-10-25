@@ -12,12 +12,32 @@ describe('DiV0MotionCoreShadowTripMapReadService — run selection', () => {
     findLatestSucceededRunForTrip: jest.Mock;
     vehicleTrip?: jest.Mock;
     pendingOutbox?: boolean;
+    upstreamPrimary?: { status: string; shadow_run_id: string | null; pinned_snapshot_hash: string | null } | null;
+    motionOutboxIneligible?: boolean;
   }) {
     const prisma = {
       vehicleTrip: {
         findFirst: mocks.vehicleTrip ?? jest.fn().mockResolvedValue({ id: tripId }),
       },
-      $queryRaw: jest.fn().mockResolvedValue(mocks.pendingOutbox ? [{ status: 'PENDING' }] : []),
+      $queryRaw: jest.fn().mockImplementation((strings: TemplateStringsArray) => {
+        const sql = strings.join('');
+        if (sql.includes('SKIPPED_INELIGIBLE')) {
+          return Promise.resolve(mocks.motionOutboxIneligible ? [{ one: 1 }] : []);
+        }
+        if (sql.includes('active_primary')) {
+          if (mocks.upstreamPrimary === null) {
+            return Promise.resolve([]);
+          }
+          if (mocks.upstreamPrimary) {
+            return Promise.resolve([mocks.upstreamPrimary]);
+          }
+          return Promise.resolve([]);
+        }
+        if (mocks.pendingOutbox) {
+          return Promise.resolve([{ status: 'PENDING' }]);
+        }
+        return Promise.resolve([]);
+      }),
     };
     const service = new DiV0MotionCoreShadowTripMapReadService(prisma as unknown as PrismaService);
     const runs = (service as unknown as { runs: DiV0MotionCoreShadowRunRepository }).runs;
@@ -25,6 +45,55 @@ describe('DiV0MotionCoreShadowTripMapReadService — run selection', () => {
     jest.spyOn(runs, 'findLatestSucceededRunForTrip').mockImplementation(mocks.findLatestSucceededRunForTrip);
     return { service, runs };
   }
+
+  it('returns PENDING when S4 PRIMARY is not completed yet (no motion run)', async () => {
+    const { service } = makeService({
+      findLatestRunForTrip: jest.fn().mockResolvedValue(null),
+      findLatestSucceededRunForTrip: jest.fn().mockResolvedValue(null),
+      upstreamPrimary: { status: 'PROCESSING', shadow_run_id: null, pinned_snapshot_hash: null },
+    });
+    const res = await service.readForTrip(organizationId, vehicleId, tripId);
+    expect(res.status).toBe('PENDING');
+  });
+
+  it('returns PENDING when no S4 PRIMARY exists yet for the trip', async () => {
+    const { service } = makeService({
+      findLatestRunForTrip: jest.fn().mockResolvedValue(null),
+      findLatestSucceededRunForTrip: jest.fn().mockResolvedValue(null),
+      upstreamPrimary: null,
+    });
+    const res = await service.readForTrip(organizationId, vehicleId, tripId);
+    expect(res.status).toBe('PENDING');
+  });
+
+  it('returns PENDING when S4 PRIMARY completed but motion run not materialized yet', async () => {
+    const { service } = makeService({
+      findLatestRunForTrip: jest.fn().mockResolvedValue(null),
+      findLatestSucceededRunForTrip: jest.fn().mockResolvedValue(null),
+      upstreamPrimary: {
+        status: 'COMPLETED',
+        shadow_run_id: 'shadow-run-1',
+        pinned_snapshot_hash: 'pin-hash',
+      },
+    });
+    const res = await service.readForTrip(organizationId, vehicleId, tripId);
+    expect(res.status).toBe('PENDING');
+  });
+
+  it('returns NOT_AVAILABLE when motion outbox is SKIPPED_INELIGIBLE', async () => {
+    const { service } = makeService({
+      findLatestRunForTrip: jest.fn().mockResolvedValue(null),
+      findLatestSucceededRunForTrip: jest.fn().mockResolvedValue(null),
+      upstreamPrimary: {
+        status: 'COMPLETED',
+        shadow_run_id: 'shadow-run-1',
+        pinned_snapshot_hash: 'pin-hash',
+      },
+      motionOutboxIneligible: true,
+    });
+    const res = await service.readForTrip(organizationId, vehicleId, tripId);
+    expect(res.status).toBe('NOT_AVAILABLE');
+  });
 
   it('returns FAILED when only non-succeeded runs exist', async () => {
     const { service, runs } = makeService({

@@ -31,6 +31,12 @@ Derived from DS4 speed/FSM samples, stop episodes, and tire-trip ledger window (
 
 An **85%** temporal coverage threshold is recorded as `fableHypothesis85PctThreshold: 0.85` in payload metadata for research comparison only. Missing events must **not** be interpreted as gentle driving.
 
+## Upstream lifecycle (S4 PRIMARY vs motion-core)
+
+- `DiV0MotionCoreShadowTripMapReadService` treats **S4 PRIMARY COMPLETED** and **motion-core SUCCEEDED** as separate gates.
+- While PRIMARY is missing/in-flight, or a completed PRIMARY still awaits motion-core outbox/run materialization, read status is **PENDING** (not `NOT_AVAILABLE`).
+- Tire DS4 shadow jobs **defer** on `PENDING` and on residual `NOT_AVAILABLE` (bounded retries); immediate `ds4_not_available` terminal markers apply only when the trip cannot be resolved (`TRIP_NOT_FOUND`) or retries are exhausted.
+
 ## Safety
 
 - Insert-only shadow rows; prior adapter `v1.0.1` / schema v2 rows immutable.
