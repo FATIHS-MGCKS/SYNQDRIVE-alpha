@@ -108,11 +108,12 @@ describe('VehicleRegistrationModal mobile shell (Phase A.2)', () => {
       handlers.onEvent?.({ type: 'complete', specs: {} });
       return { abort: vi.fn() };
     });
-    document.body.style.pointerEvents = 'none';
-    document.body.setAttribute('data-scroll-locked', '');
+    document.body.style.overflow = '';
+    document.body.style.pointerEvents = '';
+    document.body.removeAttribute('data-scroll-locked');
   });
 
-  it('exposes a single scroll region and restores body interaction on close', async () => {
+  it('exposes a single scroll region and restores only its own overflow lock on close', async () => {
     const onClose = vi.fn();
     const container = document.createElement('div');
     document.body.appendChild(container);
@@ -161,6 +162,8 @@ describe('VehicleRegistrationModal mobile shell (Phase A.2)', () => {
     });
     expect(document.activeElement).toBe(input);
 
+    expect(document.body.style.overflow).toBe('hidden');
+
     await act(async () => {
       root.render(
         createElement(LanguageProvider, {
@@ -175,10 +178,60 @@ describe('VehicleRegistrationModal mobile shell (Phase A.2)', () => {
       );
     });
 
-    expect(document.body.getAttribute('data-scroll-locked')).toBeNull();
-    expect(document.body.style.pointerEvents).toBe('');
+    expect(document.body.style.overflow).toBe('');
 
     root.unmount();
     container.remove();
+  });
+
+  it('does not clear foreign Radix scroll-lock attributes when closing', async () => {
+    document.body.style.overflow = 'hidden';
+    document.body.style.pointerEvents = 'none';
+    document.body.setAttribute('data-scroll-locked', '');
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(LanguageProvider, {
+          children: createElement(VehicleRegistrationModal, {
+            isDarkMode: false,
+            isOpen: true,
+            onClose: vi.fn(),
+            organizations: [],
+            existingVehicle: minimalExistingVehicle(),
+            initialOrganizationId: 'org-1',
+            onRegister: vi.fn(),
+            onUpdate: vi.fn(),
+          }),
+        }),
+      );
+    });
+
+    await act(async () => {
+      root.render(
+        createElement(LanguageProvider, {
+          children: createElement(VehicleRegistrationModal, {
+            isDarkMode: false,
+            isOpen: false,
+            onClose: vi.fn(),
+            organizations: [],
+            onRegister: vi.fn(),
+          }),
+        }),
+      );
+    });
+
+    expect(document.body.getAttribute('data-scroll-locked')).toBe('');
+    expect(document.body.style.pointerEvents).toBe('none');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    root.unmount();
+    container.remove();
+    document.body.style.overflow = '';
+    document.body.style.pointerEvents = '';
+    document.body.removeAttribute('data-scroll-locked');
   });
 });

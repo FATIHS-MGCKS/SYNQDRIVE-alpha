@@ -312,13 +312,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     if (!isOpen) return;
     const body = document.body;
     const previousOverflow = body.style.overflow;
-    const previousPaddingRight = body.style.paddingRight;
     body.style.overflow = 'hidden';
     return () => {
       body.style.overflow = previousOverflow;
-      body.style.paddingRight = previousPaddingRight;
-      body.removeAttribute('data-scroll-locked');
-      body.style.pointerEvents = '';
     };
   }, [isOpen]);
 

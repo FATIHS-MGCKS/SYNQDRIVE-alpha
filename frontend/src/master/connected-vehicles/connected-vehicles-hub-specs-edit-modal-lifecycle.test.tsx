@@ -182,7 +182,6 @@ describe('ConnectedVehiclesHub specs edit modal lifecycle (Phase A.2 mobile)', (
     });
 
     expect(document.querySelector('[data-testid="registration-modal-open"]')).toBeNull();
-    expect(document.body.style.pointerEvents).toBe('');
 
     root.unmount();
     container.remove();
