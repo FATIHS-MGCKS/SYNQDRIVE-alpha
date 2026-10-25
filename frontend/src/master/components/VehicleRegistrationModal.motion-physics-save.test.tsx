@@ -4,7 +4,7 @@ import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { VehicleRegistrationModal } from './VehicleRegistrationModal';
-import type { RegisteredVehicle } from '../data/platform-data';
+import type { Organization, RegisteredVehicle } from '../data/platform-data';
 import { MOTION_PHYSICS_SYNC_REASON_CODES } from '../connected-vehicles/motion-physics-reference-sync.util';
 
 const streamAiSpecsMock = vi.fn();
@@ -141,7 +141,7 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
             isOpen: true,
             onClose,
             existingVehicle: teslaVehicle(),
-            organizations: [{ id: 'org-1', company_name: 'Org' }],
+            organizations: [{ id: 'org-1', company_name: 'Org' } as Organization],
             onRegister: vi.fn(),
             onUpdate,
           }),
@@ -212,7 +212,7 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
             isOpen: true,
             onClose,
             existingVehicle: teslaVehicle(),
-            organizations: [{ id: 'org-1', company_name: 'Org' }],
+            organizations: [{ id: 'org-1', company_name: 'Org' } as Organization],
             onRegister: vi.fn(),
             onUpdate: vi.fn(),
           }),
@@ -279,7 +279,7 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
             isOpen: true,
             onClose: vi.fn(),
             existingVehicle: teslaVehicle(),
-            organizations: [{ id: 'org-1', company_name: 'Org' }],
+            organizations: [{ id: 'org-1', company_name: 'Org' } as Organization],
             onRegister: vi.fn(),
             onUpdate: vi.fn(),
           }),
@@ -339,7 +339,7 @@ describe('VehicleRegistrationModal motion physics save (no reference)', () => {
             isOpen: true,
             onClose,
             existingVehicle: teslaVehicle(),
-            organizations: [{ id: 'org-1', company_name: 'Org' }],
+            organizations: [{ id: 'org-1', company_name: 'Org' } as Organization],
             onRegister: vi.fn(),
             onUpdate: vi.fn(),
           }),
