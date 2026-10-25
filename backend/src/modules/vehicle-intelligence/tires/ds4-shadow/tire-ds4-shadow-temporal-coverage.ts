@@ -321,3 +321,63 @@ export function computeTemporalCoverage(
     },
   };
 }
+
+/** Read-only audit helper: DIRECT-labelled seconds that fall into invalidLabelSeconds, by reason. */
+export function analyzeDirectExclusionBreakdown(
+  read: DiV0MotionCoreShadowTripMapReadResponse,
+  trip: TireDs4ShadowTripWindowContext,
+): { directExcludedLabelSeconds: number; reasons: Record<string, number> } {
+  const tripStartMs = toMs(trip.tripStartedAt);
+  const tripEndMs = toMs(trip.tripEndedAt);
+  if (tripStartMs == null || tripEndMs == null || tripEndMs <= tripStartMs) {
+    return { directExcludedLabelSeconds: 0, reasons: {} };
+  }
+  const windowStartSec = Math.floor(tripStartMs / 1000);
+  const windowEndSec = Math.floor(tripEndMs / 1000);
+  const speedAuthority = read.speedAuthority;
+  const sampleBySecond = new Map<number, DiV0MotionCoreShadowTripMapSampleDto>();
+  for (const sample of read.samples ?? []) {
+    const key = bucketSecondKey(sample.bucketLabelUtc);
+    if (key == null || key < windowStartSec || key > windowEndSec) continue;
+    sampleBySecond.set(key, sample);
+  }
+  const confirmedStationaryBySecond = new Set<number>();
+  for (const stop of read.stopEpisodes ?? []) {
+    addConfirmedStationarySecondsFromStop(
+      stop,
+      windowStartSec,
+      windowEndSec,
+      sampleBySecond,
+      confirmedStationaryBySecond,
+      speedAuthority,
+    );
+  }
+  const reasons: Record<string, number> = {};
+  let directExcludedLabelSeconds = 0;
+  for (let t = windowStartSec; t <= windowEndSec; t += 1) {
+    const sample = sampleBySecond.get(t);
+    if (!sample || !isMotionFsmEvidenceQualityToken(sample.evidenceQuality)) continue;
+    if (normalizeMotionFsmEvidenceQuality(sample.evidenceQuality) !== 'DIRECT') continue;
+    const confirmedStop = confirmedStationaryBySecond.has(t);
+    const bucket = classifyLabelledSecond(sample, speedAuthority, confirmedStop);
+    if (bucket !== 'invalid') continue;
+    directExcludedLabelSeconds += 1;
+    const state = sample.motionState.trim().toUpperCase();
+    let reason = 'direct_other';
+    if (state === 'STATIONARY' || state === 'STOP_CANDIDATE') {
+      reason = confirmedStop
+        ? 'direct_stationary_not_accountable_speed'
+        : 'direct_stationary_outside_confirmed_stop_core';
+    } else if (state === 'MOVING' || state === 'STARTING') {
+      if (speedAuthority == null) reason = 'direct_moving_missing_speed_authority';
+      else if (sample.speedKmh == null) reason = 'direct_moving_speed_null';
+      else if (!isPlausibleSpeedKmh(sample.speedKmh)) reason = 'direct_moving_speed_implausible';
+      else if (sample.speedKmh <= MIN_MOVING_SPEED_KMH) reason = 'direct_moving_speed_at_or_below_threshold';
+      else reason = 'direct_moving_unclassified';
+    } else {
+      reason = `direct_state_${state}`;
+    }
+    reasons[reason] = (reasons[reason] ?? 0) + 1;
+  }
+  return { directExcludedLabelSeconds, reasons };
+}
