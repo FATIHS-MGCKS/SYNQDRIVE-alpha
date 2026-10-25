@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsEs = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Clasificación de enrutamiento DI (almacenada)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'El enrutamiento DI no se puede cambiar aquí. Cambiar la clasificación almacenada requiere una revisión DI aprobada por el operador.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Enrutamiento LTE_R1: los eventos de conducción (frenado brusco, aceleración, curvas) usan la ruta de eventos de la API de telemetría DIMO. No es el tipo de dispositivo físico a bordo.',
 };

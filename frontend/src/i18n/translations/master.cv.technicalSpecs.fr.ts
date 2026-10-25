@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsFr = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Classification de routage DI (enregistrée)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'Le routage DI ne peut pas être modifié ici. Tout changement de classification stockée nécessite une revue DI approuvée par l’exploitant.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Routage LTE_R1 : les événements de conduite (freinage brusque, accélération, virage) passent par les événements de l’API télémétrie DIMO. Ce n’est pas le type d’appareil physique embarqué.',
 };

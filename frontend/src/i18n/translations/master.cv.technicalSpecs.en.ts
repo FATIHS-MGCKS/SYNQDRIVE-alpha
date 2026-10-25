@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsEn = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'DI event routing classification (stored)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'DI routing cannot be changed from this editor. Changing stored hardware routing requires a separate owner-approved Driving Intelligence review.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'LTE_R1 routing: Driving Events (harsh braking, acceleration, cornering) use the DIMO Telemetry API Events path. This is not the physical onboard device type.',
 };

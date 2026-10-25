@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsPl = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Klasyfikacja routingu zdarzeń DI (zapisana)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'Routingu DI nie można zmienić w tym edytorze. Zmiana zapisanej klasyfikacji wymaga osobnej zgody właściciela i przeglądu DI.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Routing LTE_R1: zdarzenia jazdy (ostre hamowanie, przyspieszenie, pokonywanie zakrętów) korzystają ze ścieżki zdarzeń API telemetrii DIMO. To nie jest fizyczny typ urządzenia w pojeździe.',
 };

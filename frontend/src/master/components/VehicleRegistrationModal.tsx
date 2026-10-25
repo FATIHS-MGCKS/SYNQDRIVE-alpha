@@ -2100,7 +2100,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               )}
               {hardwareType === 'LTE_R1' && (
                 <div className={`rounded-xl px-3 py-2 text-xs ${isDarkMode ? 'bg-status-info-soft text-status-info border border-border' : 'bg-status-info-soft text-status-info border border-border'}`}>
-                  LTE_R1 routing: Driving Events (harsh braking, acceleration, cornering) use the DIMO Telemetry API Events path. This is not the physical onboard device type.
+                  {t('master.cv.technicalSpecs.diRoutingLteR1Info')}
                 </div>
               )}
             </div>

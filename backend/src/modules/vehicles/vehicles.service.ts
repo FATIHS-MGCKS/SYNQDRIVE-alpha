@@ -1866,7 +1866,7 @@ export class VehiclesService {
             isActive: true,
             provider: 'DIMO',
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: [{ activatedAt: 'desc' }, { id: 'desc' }],
           select: { metadata: true },
         }),
       ]);

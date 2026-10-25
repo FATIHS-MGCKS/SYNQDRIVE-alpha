@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsCs = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Klasifikace směrování DI (uložená)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'Směrování DI zde nelze změnit. Změna uložené klasifikace vyžaduje samostatné schválení a revizi DI.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Směrování LTE_R1: události jízdy (prudké brzdění, zrychlení, zatáčení) používají cestu událostí telemetrického API DIMO. Nejde o fyzický typ zařízení ve vozidle.',
 };

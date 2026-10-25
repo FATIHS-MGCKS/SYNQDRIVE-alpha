@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsNl = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'DI-eventroutingclassificatie (opgeslagen)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'DI-routing kan hier niet worden gewijzigd. Wijzigen van de opgeslagen classificatie vereist een aparte DI-review met goedkeuring van de operator.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'LTE_R1-routing: rijgebeurtenissen (hard remmen, acceleratie, bochten) gebruiken het DIMO-telemetrie-API-eventpad. Dit is niet het fysieke apparaattype in het voertuig.',
 };

@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsIt = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'Classificazione routing DI (memorizzata)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'Il routing DI non può essere modificato qui. Modificare la classificazione memorizzata richiede una revisione DI approvata dall’operatore.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'Routing LTE_R1: gli eventi di guida (frenata brusca, accelerazione, curve) usano il percorso eventi API telemetria DIMO. Non è il tipo di dispositivo fisico a bordo.',
 };

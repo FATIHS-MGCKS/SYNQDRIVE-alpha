@@ -30,4 +30,6 @@ export const masterCvTechnicalSpecsDe = {
   'master.cv.technicalSpecs.diRoutingHardwareLabel': 'DI-Event-Routing-Klassifikation (gespeichert)',
   'master.cv.technicalSpecs.diRoutingReadOnlyHint':
     'DI-Routing kann hier nicht geändert werden. Eine Änderung der gespeicherten Hardware-Routing-Klassifikation erfordert eine separate, vom Betreiber freigegebene DI-Prüfung.',
+  'master.cv.technicalSpecs.diRoutingLteR1Info':
+    'LTE_R1-Routing: Fahrereignisse (hartes Bremsen, Beschleunigen, Kurvenfahrt) nutzen den DIMO-Telemetrie-API-Events-Pfad. Das ist nicht der physische Gerätetyp im Fahrzeug.',
 };
