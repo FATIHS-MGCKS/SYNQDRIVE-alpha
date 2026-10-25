@@ -1,5 +1,6 @@
 import { api } from '../../lib/api';
 import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
+import { parseMotionPhysicsCurbMassField } from './motion-physics-reference-sync.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -304,16 +305,6 @@ export async function applyManualBaselinesAfterCreate(
   return failures;
 }
 
-function mapMasterFormDrivetrainToDriveType(raw: string | undefined | null): string | null {
-  if (!raw?.trim()) return null;
-  const normalized = raw.trim().toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
-  if (normalized === '4WD' || normalized === '4X4' || normalized === 'FOUR_WD') return 'FOUR_WD';
-  if (normalized === 'FWD') return 'FWD';
-  if (normalized === 'RWD') return 'RWD';
-  if (normalized === 'AWD') return 'AWD';
-  return null;
-}
-
 /** Maps Master admin GET vehicle DTO into the registration modal shape (full baseline for edit). */
 export function mapAdminVehicleDtoToRegisteredVehicle(
   dto: Record<string, unknown>,
@@ -423,10 +414,13 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
   };
 }
 
-function parseCurbWeightKgFromForm(curbWeight: string | undefined | null): number | null {
-  if (curbWeight == null || String(curbWeight).trim() === '') return null;
-  const n = Number(String(curbWeight).replace(/[^\d.-]/g, ''));
-  return Number.isFinite(n) ? n : null;
+export function parseCurbWeightKgFromForm(curbWeight: string | undefined | null): number | null {
+  const parsed = parseMotionPhysicsCurbMassField(String(curbWeight ?? ''));
+  if (parsed.status === 'empty') return null;
+  if (parsed.status === 'invalid') {
+    throw new Error('CURB_MASS_INVALID');
+  }
+  return parsed.kg;
 }
 
 /**

@@ -85,12 +85,108 @@ export function motionPhysicsReferenceSourceForSave(
   return pendingCreateSource === 'MISTRAL_AI' ? 'MISTRAL_AI' : null;
 }
 
-export function parseMotionPhysicsNumericField(raw: string): number | null {
+/** Plausible passenger/light commercial curb mass (kg); rejects silent garbage without blocking edge fleet cases. */
+export const MOTION_PHYSICS_CURB_MASS_KG_MIN = 300;
+export const MOTION_PHYSICS_CURB_MASS_KG_MAX = 6000;
+
+export type MotionPhysicsCurbMassParseResult =
+  | { status: 'empty' }
+  | { status: 'valid'; kg: number }
+  | { status: 'invalid' };
+
+/**
+ * Curb mass (kg) — German grouping: 1.760 → 1760, 1.760,5 → 1760.5; plain integers accepted.
+ * Rejects ambiguous US-style 1,760 and combined thousand+decimal forms that are not DE-shaped.
+ */
+export function parseMotionPhysicsCurbMassField(raw: string): MotionPhysicsCurbMassParseResult {
+  const trimmed = raw.trim();
+  if (!trimmed) return { status: 'empty' };
+
+  const compact = trimmed.replace(/\s/g, '');
+  if (!/^[\d.,]+$/.test(compact)) return { status: 'invalid' };
+
+  const commaCount = (compact.match(/,/g) ?? []).length;
+  const dotCount = (compact.match(/\./g) ?? []).length;
+  if (commaCount > 1) return { status: 'invalid' };
+
+  let normalized: string;
+
+  if (commaCount === 1 && dotCount >= 1) {
+    const commaIdx = compact.lastIndexOf(',');
+    const intPart = compact.slice(0, commaIdx).replace(/\./g, '');
+    const fracPart = compact.slice(commaIdx + 1);
+    if (!/^\d+$/.test(intPart) || !/^\d+$/.test(fracPart) || fracPart.length > 2) {
+      return { status: 'invalid' };
+    }
+    normalized = `${intPart}.${fracPart}`;
+  } else if (commaCount === 1 && dotCount === 0) {
+    const [intPart, fracPart] = compact.split(',');
+    if (!intPart || !fracPart || !/^\d+$/.test(intPart) || !/^\d+$/.test(fracPart)) {
+      return { status: 'invalid' };
+    }
+    if (fracPart.length === 3 && intPart.length <= 3) return { status: 'invalid' };
+    if (fracPart.length > 2) return { status: 'invalid' };
+    normalized = `${intPart}.${fracPart}`;
+  } else if (dotCount > 1 && commaCount === 0) {
+    const parts = compact.split('.');
+    const last = parts[parts.length - 1];
+    if (parts.length < 2 || last.length !== 3) return { status: 'invalid' };
+    for (let i = 1; i < parts.length - 1; i++) {
+      if (parts[i].length !== 3) return { status: 'invalid' };
+    }
+    normalized = parts.join('');
+  } else if (dotCount === 1 && commaCount === 0) {
+    const [intPart, fracPart] = compact.split('.');
+    if (!intPart || !fracPart || !/^\d+$/.test(intPart) || !/^\d+$/.test(fracPart)) {
+      return { status: 'invalid' };
+    }
+    if (fracPart.length === 3) {
+      normalized = intPart + fracPart;
+    } else if (fracPart.length <= 2) {
+      normalized = `${intPart}.${fracPart}`;
+    } else {
+      return { status: 'invalid' };
+    }
+  } else if (dotCount === 0 && commaCount === 0) {
+    if (!/^\d+$/.test(compact)) return { status: 'invalid' };
+    normalized = compact;
+  } else {
+    return { status: 'invalid' };
+  }
+
+  const kg = Number(normalized);
+  if (!Number.isFinite(kg) || kg <= 0) return { status: 'invalid' };
+  if (kg < MOTION_PHYSICS_CURB_MASS_KG_MIN || kg > MOTION_PHYSICS_CURB_MASS_KG_MAX) {
+    return { status: 'invalid' };
+  }
+  return { status: 'valid', kg };
+}
+
+export function resolveMotionPhysicsCurbMassKg(raw: string): number | null {
+  const parsed = parseMotionPhysicsCurbMassField(raw);
+  if (parsed.status === 'empty') return null;
+  if (parsed.status === 'invalid') {
+    throw new Error('CURB_MASS_INVALID');
+  }
+  return parsed.kg;
+}
+
+/** Motor power / 0–100 s — decimal comma or dot; no thousand separators. */
+export function parseMotionPhysicsDecimalField(raw: string): number | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  const normalized = trimmed.replace(/[^\d.,-]/g, '').replace(',', '.');
-  const n = Number(normalized);
+  if (trimmed.includes('.') && trimmed.includes(',')) return null;
+  const dotCount = (trimmed.match(/\./g) ?? []).length;
+  if (dotCount > 1) return null;
+  const compact = trimmed.replace(/\s/g, '').replace(',', '.');
+  if (!/^-?\d+(\.\d+)?$/.test(compact)) return null;
+  const n = Number(compact);
   return Number.isFinite(n) ? n : null;
+}
+
+/** @deprecated Use parseMotionPhysicsDecimalField for power/accel; parseMotionPhysicsCurbMassField for curb mass. */
+export function parseMotionPhysicsNumericField(raw: string): number | null {
+  return parseMotionPhysicsDecimalField(raw);
 }
 
 export type MotionPhysicsFormSnapshot = {
@@ -183,9 +279,9 @@ export function buildMotionPhysicsReferenceCreateBody(input: {
   manualOperatorConfirm?: boolean;
 }) {
   return {
-    curbMassKg: parseMotionPhysicsNumericField(input.curbWeight),
-    systemMotorPowerKw: parseMotionPhysicsNumericField(input.systemMotorPowerKw),
-    accel0To100S: parseMotionPhysicsNumericField(input.accel0To100S),
+    curbMassKg: resolveMotionPhysicsCurbMassKg(input.curbWeight),
+    systemMotorPowerKw: parseMotionPhysicsDecimalField(input.systemMotorPowerKw),
+    accel0To100S: parseMotionPhysicsDecimalField(input.accel0To100S),
     variantAssumption: input.variantAssumption.trim() || null,
     systemPowerDefinition: input.systemPowerDefinition.trim() || null,
     source: input.source,
