@@ -2,21 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyManualBaselinesAfterCreate,
   buildMasterHvCapacityExtraFields,
+  buildMasterVehicleUpdatePatch,
   buildVehicleExtraData,
   buildVehicleManualSpecs,
+  mapAdminVehicleDtoToRegisteredVehicle,
   mapApiDimoToDimoVehicle,
   persistMasterRegisteredVehicle,
+  updateMasterRegisteredVehicle,
 } from './master-vehicle-registration';
 import { api } from '../../lib/api';
 
 const createMock = vi.fn();
 const registerFromDimoMock = vi.fn();
 const upsertTiresMock = vi.fn();
+const updateMock = vi.fn();
 
 vi.mock('../../lib/api', () => ({
   api: {
     vehicles: {
       create: (...args: unknown[]) => createMock(...args),
+      update: (...args: unknown[]) => updateMock(...args),
       registerFromDimo: (...args: unknown[]) => registerFromDimoMock(...args),
       upsertTires: (...args: unknown[]) => upsertTiresMock(...args),
     },
@@ -234,6 +239,65 @@ describe('master-vehicle-registration payloads', () => {
     expect(result.vehicleId).toBe('veh-dimo-1');
     expect(result.postActivationEnrichment).toBeUndefined();
     expect(registerFromDimoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('buildMasterVehicleUpdatePatch omits UI-only fields and maps drivetrain', () => {
+    const patch = buildMasterVehicleUpdatePatch(
+      minimalRv({
+        drivetrain: 'AWD',
+        curbWeight: '1900',
+        systemMotorPowerKw: '150',
+        accel0To100S: '7.1',
+        frontToRearWeightDistribution: '55',
+      }),
+    );
+    expect(patch).toMatchObject({
+      make: 'Volkswagen',
+      driveType: 'AWD',
+      curbWeightKg: 1900,
+      frontWeightDistributionPct: 55,
+    });
+    expect(patch).not.toHaveProperty('systemMotorPowerKw');
+    expect(patch).not.toHaveProperty('accel0To100S');
+    expect(patch).not.toHaveProperty('tireFrontDimension');
+  });
+
+  it('mapAdminVehicleDtoToRegisteredVehicle preserves motion physics form fields', () => {
+    const rv = mapAdminVehicleDtoToRegisteredVehicle({
+      id: 'v-1',
+      organizationId: 'org-1',
+      make: 'BMW',
+      model: 'i4',
+      year: 2023,
+      fuelType: 'Electric',
+      curbWeight: '2100',
+      systemMotorPowerKw: '250',
+      accel0To100S: '5.7',
+      motionPhysicsVariantAssumption: 'M50',
+    });
+    expect(rv.systemMotorPowerKw).toBe('250');
+    expect(rv.motionPhysicsVariantAssumption).toBe('M50');
+  });
+
+  it('updateMasterRegisteredVehicle PATCHes narrow scalar payload only', async () => {
+    updateMock.mockResolvedValueOnce({});
+    upsertTiresMock.mockResolvedValueOnce({});
+
+    await updateMasterRegisteredVehicle(
+      minimalRv({ make: 'VW', model: 'Golf', curbWeight: '1400', mileage: 5000 }),
+    );
+
+    expect(updateMock).toHaveBeenCalledWith(
+      'org-1',
+      'rv-1',
+      expect.objectContaining({
+        make: 'VW',
+        model: 'Golf',
+        curbWeightKg: 1400,
+        mileageKm: 5000,
+      }),
+    );
+    expect(updateMock.mock.calls[0][2]).not.toHaveProperty('vin');
   });
 
   it('persistMasterRegisteredVehicle surfaces tire enrichment partial success from register-from-dimo', async () => {

@@ -61,6 +61,7 @@ import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
 import { batteryV2HvInspectionEN } from './battery-v2-hv-inspection.en';
 import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
 import { masterMotionPhysicsEn } from './master.motionPhysics.en';
+import { masterCvTechnicalSpecsEn } from './master.cv.technicalSpecs.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5957,6 +5958,7 @@ export const en = {
   ...masterPlatformOpsDiS4En,
   ...masterPhysicalDeviceInventoryEn,
   ...masterMotionPhysicsEn,
+  ...masterCvTechnicalSpecsEn,
   ...batteryV2HvInspectionEN,
 } as const;
 

@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
 import { batteryV2HvInspectionNL } from './battery-v2-hv-inspection.nl';
 import { masterPhysicalDeviceInventoryNl } from './master.physicalDeviceInventory.nl';
 import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
+import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -167,5 +168,6 @@ export const nl = {
   ...masterPlatformOpsDiS4Nl,
   ...masterPhysicalDeviceInventoryNl,
   ...masterMotionPhysicsNl,
+  ...masterCvTechnicalSpecsNl,
   ...batteryV2HvInspectionNL,
 } satisfies PartialTranslationDictionary;

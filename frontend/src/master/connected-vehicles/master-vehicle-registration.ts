@@ -304,6 +304,198 @@ export async function applyManualBaselinesAfterCreate(
   return failures;
 }
 
+function mapMasterFormDrivetrainToDriveType(raw: string | undefined | null): string | null {
+  if (!raw?.trim()) return null;
+  const normalized = raw.trim().toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
+  if (normalized === '4WD' || normalized === '4X4' || normalized === 'FOUR_WD') return 'FOUR_WD';
+  if (normalized === 'FWD') return 'FWD';
+  if (normalized === 'RWD') return 'RWD';
+  if (normalized === 'AWD') return 'AWD';
+  return null;
+}
+
+/** Maps Master admin GET vehicle DTO into the registration modal shape (full baseline for edit). */
+export function mapAdminVehicleDtoToRegisteredVehicle(
+  dto: Record<string, unknown>,
+): RegisteredVehicle {
+  const str = (key: string, fallback = '') => {
+    const v = dto[key];
+    return v != null && String(v).trim() !== '' ? String(v) : fallback;
+  };
+  const num = (key: string, fallback = 0) => {
+    const v = dto[key];
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  return {
+    id: str('id'),
+    vehicleName: str('vehicleName', `${str('make')} ${str('model')}`.trim()),
+    vin: str('vin'),
+    make: str('make', 'Unknown'),
+    model: str('model', 'Unknown'),
+    year: num('year', new Date().getFullYear()),
+    organizationId: str('organizationId'),
+    organizationName: str('organizationName'),
+    station: str('station'),
+    status: (str('status', 'Available') as RegisteredVehicle['status']) || 'Available',
+    health: (str('health', 'Good') as RegisteredVehicle['health']) || 'Good',
+    lastSignal: str('lastSignal'),
+    online: Boolean(dto.online),
+    fuelType: str('fuelType', 'Other'),
+    mileage: num('mileage', 0),
+    licensePlate: str('licensePlate'),
+    vehicleType: str('vehicleType'),
+    operationalStatus: str('operationalStatus', 'Active'),
+    notes: str('notes'),
+    batteryType: str('batteryType'),
+    batteryAmpere: str('batteryAmpere'),
+    batteryVolt: str('batteryVolt'),
+    lvBatteryChemistry: str('lvBatteryChemistry'),
+    hvBatteryCapacityKwh: str('hvBatteryCapacityKwh'),
+    tankCapacityLiters: str('tankCapacityLiters'),
+    hvBatteryPresent: str('hvBatteryPresent'),
+    hvBatteryChemistry: str('hvBatteryChemistry'),
+    hvBatteryCellFormat: str('hvBatteryCellFormat'),
+    hvBatteryGrossCapacityKwh: str('hvBatteryGrossCapacityKwh'),
+    hvBatteryUsableCapacityKwh: str('hvBatteryUsableCapacityKwh'),
+    hvBatteryNominalVoltage: str('hvBatteryNominalVoltage'),
+    hvBatteryArchitecture: str('hvBatteryArchitecture'),
+    hvBatteryThermalManagement: str('hvBatteryThermalManagement'),
+    hvBatteryWarrantyYears: str('hvBatteryWarrantyYears'),
+    hvBatteryWarrantyKm: str('hvBatteryWarrantyKm'),
+    acOnboardChargerKw: str('acOnboardChargerKw'),
+    dcFastChargeMaxKw: str('dcFastChargeMaxKw'),
+    engineDisplacementCc: str('engineDisplacementCc'),
+    cylinderCount: str('cylinderCount'),
+    tireFrontDimension: str('tireFrontDimension'),
+    tireFrontBrandModel: str('tireFrontBrandModel'),
+    tireFrontSeason: str('tireFrontSeason'),
+    tireFrontDot: str('tireFrontDot'),
+    tireFrontLoadIndex: str('tireFrontLoadIndex'),
+    tireFrontSpeedIndex: str('tireFrontSpeedIndex'),
+    tireBackDimension: str('tireBackDimension'),
+    tireBackBrandModel: str('tireBackBrandModel'),
+    tireBackSeason: str('tireBackSeason'),
+    tireBackDot: str('tireBackDot'),
+    tireBackLoadIndex: str('tireBackLoadIndex'),
+    tireBackSpeedIndex: str('tireBackSpeedIndex'),
+    treadDepthFL: str('treadDepthFL'),
+    treadDepthFR: str('treadDepthFR'),
+    treadDepthBL: str('treadDepthBL'),
+    treadDepthBR: str('treadDepthBR'),
+    tireCondition: (str('tireCondition') as RegisteredVehicle['tireCondition']) || '',
+    aiTireSpec: (dto.aiTireSpec as Record<string, unknown> | null) ?? null,
+    brakeFrontRotorDiameter: str('brakeFrontRotorDiameter'),
+    brakeFrontRotorWidth: str('brakeFrontRotorWidth'),
+    brakeFrontPadThickness: str('brakeFrontPadThickness'),
+    brakeBackRotorDiameter: str('brakeBackRotorDiameter'),
+    brakeBackRotorWidth: str('brakeBackRotorWidth'),
+    brakeBackPadThickness: str('brakeBackPadThickness'),
+    idleRpm: str('idleRpm'),
+    maxRpm: str('maxRpm'),
+    drivetrain: str('drivetrain'),
+    brakeForceDistribution: str('brakeForceDistribution'),
+    frontToRearWeightDistribution: str('frontToRearWeightDistribution'),
+    curbWeight: str('curbWeight'),
+    systemMotorPowerKw: str('systemMotorPowerKw'),
+    accel0To100S: str('accel0To100S'),
+    motionPhysicsVariantAssumption: str('motionPhysicsVariantAssumption'),
+    serviceIntervals: str('serviceIntervals'),
+    serviceIntervalManufacturerKm: str('serviceIntervalManufacturerKm'),
+    serviceIntervalManufacturerMonths: str('serviceIntervalManufacturerMonths'),
+    oilChangeIntervalKm: str('oilChangeIntervalKm'),
+    oilChangeIntervalMonths: str('oilChangeIntervalMonths'),
+    lastTuev: str('lastTuev'),
+    lastBokraft: str('lastBokraft'),
+    lastInspection: str('lastInspection'),
+    lastOilChange: str('lastOilChange'),
+    lastBrakePadChange: str('lastBrakePadChange'),
+    lastBrakeRotorChange: str('lastBrakeRotorChange'),
+    hardwareType: (str('hardwareType', 'UNKNOWN') as RegisteredVehicle['hardwareType']) || 'UNKNOWN',
+  };
+}
+
+/**
+ * PATCH payload for Master edit — mirrors backend post-activation vehicle patch; never sends UI-only fields.
+ */
+export function buildMasterVehicleUpdatePatch(rv: RegisteredVehicle): Record<string, unknown> {
+  const extra = buildVehicleExtraData(rv);
+  const patch: Record<string, unknown> = {};
+
+  if (rv.make?.trim()) patch.make = rv.make.trim();
+  if (rv.model?.trim()) patch.model = rv.model.trim();
+  if (Number.isFinite(rv.year)) patch.year = rv.year;
+
+  const mileageKm = extra.mileageKm;
+  if (mileageKm != null && Number.isFinite(mileageKm as number)) {
+    patch.mileageKm = mileageKm;
+  }
+
+  if (extra.vehicleName) patch.vehicleName = extra.vehicleName;
+  if (extra.licensePlate) patch.licensePlate = extra.licensePlate;
+  if (extra.notes !== undefined) patch.notes = extra.notes ?? null;
+  if (extra.fuelType) patch.fuelType = extra.fuelType;
+  if (extra.vehicleType) patch.vehicleType = extra.vehicleType;
+  if (extra.hardwareType) patch.hardwareType = extra.hardwareType;
+
+  const driveType = mapMasterFormDrivetrainToDriveType(rv.drivetrain);
+  if (driveType) patch.driveType = driveType;
+
+  const scalarKeys = [
+    'curbWeightKg',
+    'idleRpm',
+    'maxRpm',
+    'brakeForceFrontPercent',
+    'tankCapacityLiters',
+    'serviceIntervalManufacturerKm',
+    'serviceIntervalManufacturerMonths',
+    'oilChangeIntervalKm',
+    'oilChangeIntervalMonths',
+  ] as const;
+
+  for (const key of scalarKeys) {
+    const value = extra[key];
+    if (value !== undefined && value !== null && value !== '') {
+      patch[key] = value;
+    }
+  }
+
+  const frontToRear = extra.frontToRearWeightDistribution;
+  if (frontToRear !== undefined && frontToRear !== null && frontToRear !== '') {
+    const parsed =
+      typeof frontToRear === 'number' ? frontToRear : Number(String(frontToRear).replace(/[^\d.-]/g, ''));
+    if (Number.isFinite(parsed)) {
+      patch.frontWeightDistributionPct = parsed;
+    }
+  }
+
+  const hv = buildMasterHvCapacityExtraFields(rv);
+  if (hv.hvBatteryUsableCapacityKwh != null) {
+    patch.hvBatteryUsableCapacityKwh = hv.hvBatteryUsableCapacityKwh;
+  }
+  if (hv.hvBatteryGrossCapacityKwh != null) {
+    patch.hvBatteryGrossCapacityKwh = hv.hvBatteryGrossCapacityKwh;
+  }
+
+  return patch;
+}
+
+/** Safe Master vehicle update: PATCH vehicle scalars + manual baseline modules; motion reference via modal hooks. */
+export async function updateMasterRegisteredVehicle(rv: RegisteredVehicle): Promise<void> {
+  const orgId = rv.organizationId?.trim();
+  const vehicleId = rv.id?.trim();
+  if (!orgId || !vehicleId) {
+    throw new Error('ORG_VEHICLE_REQUIRED');
+  }
+
+  const patch = buildMasterVehicleUpdatePatch(rv);
+  if (Object.keys(patch).length > 0) {
+    await api.vehicles.update(orgId, vehicleId, patch);
+  }
+  await applyManualBaselinesAfterCreate(orgId, vehicleId, rv);
+}
+
 export async function persistMasterRegisteredVehicle(
   rv: RegisteredVehicle,
   options: { dimoVehicleId?: string | null } = {},

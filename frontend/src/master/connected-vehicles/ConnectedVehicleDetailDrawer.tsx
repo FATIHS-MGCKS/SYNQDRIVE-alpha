@@ -17,6 +17,8 @@ import {
 import { ConnectivityDiagnosticPanel } from './ConnectivityDiagnosticPanel';
 import { formatDateTimeDe } from './cv.utils';
 import { OffboardReleaseGatePanel } from './OffboardReleaseGatePanel';
+import { ConnectedVehicleTechnicalSpecsSection } from './ConnectedVehicleTechnicalSpecsSection';
+import { useConnectedVehicleTechnicalSpecs } from './useConnectedVehicleTechnicalSpecs';
 
 interface ConnectedVehicleDetailDrawerProps {
   open: boolean;
@@ -35,7 +37,10 @@ interface ConnectedVehicleDetailDrawerProps {
   onRetryUncertainOffboard?: () => void;
   onAbandonOffboardIntent?: () => void;
   onRegisterDetailRefresh?: (refresh: () => void) => void;
+  onRegisterSpecsRefresh?: (refresh: () => void) => void;
   onOpenOrganization?: (organizationId: string) => void;
+  onEditSpecifications?: () => void;
+  editSpecificationsLoading?: boolean;
 }
 
 export function ConnectedVehicleDetailDrawer({
@@ -50,7 +55,10 @@ export function ConnectedVehicleDetailDrawer({
   onRetryUncertainOffboard,
   onAbandonOffboardIntent,
   onRegisterDetailRefresh,
+  onRegisterSpecsRefresh,
   onOpenOrganization,
+  onEditSpecifications,
+  editSpecificationsLoading = false,
 }: ConnectedVehicleDetailDrawerProps) {
   const { t } = useLanguage();
   const {
@@ -66,6 +74,26 @@ export function ConnectedVehicleDetailDrawer({
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showOffboard, setShowOffboard] = useState(false);
+  const [operationalSectionsOpen, setOperationalSectionsOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 640px)').matches : true,
+  );
+
+  const specsEnabled = open && Boolean(vehicleId && detail?.organizationId);
+  const {
+    specs: technicalSpecs,
+    evidenceTier,
+    loading: specsLoading,
+    error: specsError,
+    refresh: refreshSpecs,
+  } = useConnectedVehicleTechnicalSpecs(
+    vehicleId,
+    detail?.organizationId ?? null,
+    specsEnabled,
+  );
+
+  const canEditSpecifications =
+    Boolean(vehicleId && detail?.organizationId && detail?.registrationState === 'registered') &&
+    Boolean(onEditSpecifications);
 
   useEffect(() => {
     if (!open) {
@@ -77,6 +105,17 @@ export function ConnectedVehicleDetailDrawer({
   useEffect(() => {
     onRegisterDetailRefresh?.(refresh);
   }, [onRegisterDetailRefresh, refresh]);
+
+  useEffect(() => {
+    onRegisterSpecsRefresh?.(refreshSpecs);
+  }, [onRegisterSpecsRefresh, refreshSpecs]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)');
+    const onChange = () => setOperationalSectionsOpen(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const lifecycleAllowsOffboard = Boolean(detail && canOffboardRegisteredVehicle(detail));
   const offboardAllowed =
@@ -171,6 +210,19 @@ export function ConnectedVehicleDetailDrawer({
               </div>
             ) : null}
 
+            {vehicleId && detail.organizationId ? (
+              <ConnectedVehicleTechnicalSpecsSection
+                specs={technicalSpecs}
+                evidenceTier={evidenceTier}
+                loading={specsLoading}
+                error={specsError}
+                canEdit={canEditSpecifications}
+                editLoading={editSpecificationsLoading}
+                onEdit={onEditSpecifications}
+                onRetry={() => void refreshSpecs()}
+              />
+            ) : null}
+
             {detail.activeIssues.length > 0 ? (
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aktive Themen</h3>
@@ -187,6 +239,18 @@ export function ConnectedVehicleDetailDrawer({
               </section>
             ) : null}
 
+            <details
+              className="border-t border-border pt-4 group"
+              open={operationalSectionsOpen}
+              onToggle={(e) => setOperationalSectionsOpen((e.currentTarget as HTMLDetailsElement).open)}
+            >
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground list-none flex items-center justify-between gap-2 sm:hidden">
+                <span>{t('master.cv.technicalSpecs.secondaryDetails')}</span>
+                <span className="text-[10px] font-normal normal-case text-muted-foreground">
+                  {operationalSectionsOpen ? '▾' : '▸'}
+                </span>
+              </summary>
+              <div className="space-y-6 mt-4 sm:mt-0">
             <section className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Frische</h3>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -275,7 +339,7 @@ export function ConnectedVehicleDetailDrawer({
               </section>
             ) : null}
 
-            <section className="space-y-3 border-t border-border pt-4">
+            <section className="space-y-3 border-t border-border pt-4 sm:border-t-0 sm:pt-0">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Technische Diagnostik
@@ -329,6 +393,8 @@ export function ConnectedVehicleDetailDrawer({
                 </p>
               )}
             </section>
+              </div>
+            </details>
 
             {vehicleId && offboardPhase === 'uncertain' ? (
               <div
