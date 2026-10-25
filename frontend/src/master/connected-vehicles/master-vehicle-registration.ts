@@ -327,23 +327,30 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
     const n = typeof v === 'number' ? v : Number(v);
     return Number.isFinite(n) ? n : fallback;
   };
+  const makeRaw = str('make');
+  const modelRaw = str('model');
+  const mileageRaw = dto.mileage ?? dto.mileageKm;
+  const hardwareRaw = dto.hardwareType != null ? String(dto.hardwareType).trim() : '';
 
   return {
     id: str('id'),
-    vehicleName: str('vehicleName', `${str('make')} ${str('model')}`.trim()),
+    vehicleName: str('vehicleName', `${makeRaw} ${modelRaw}`.trim()),
     vin: str('vin'),
-    make: str('make', 'Unknown'),
-    model: str('model', 'Unknown'),
-    year: num('year', new Date().getFullYear()),
+    make: makeRaw || 'Unknown',
+    model: modelRaw || 'Unknown',
+    year: dto.year != null && dto.year !== '' ? num('year', 0) : 0,
     organizationId: str('organizationId'),
     organizationName: str('organizationName'),
     station: str('station'),
-    status: (str('status', 'Available') as RegisteredVehicle['status']) || 'Available',
-    health: (str('health', 'Good') as RegisteredVehicle['health']) || 'Good',
+    status: (str('status') as RegisteredVehicle['status']) || 'Available',
+    health: (str('health') as RegisteredVehicle['health']) || 'Good',
     lastSignal: str('lastSignal'),
     online: Boolean(dto.online),
-    fuelType: str('fuelType', 'Other'),
-    mileage: num('mileage', 0),
+    fuelType: str('fuelType'),
+    mileage:
+      mileageRaw != null && mileageRaw !== '' && Number.isFinite(Number(mileageRaw))
+        ? Number(mileageRaw)
+        : 0,
     licensePlate: str('licensePlate'),
     vehicleType: str('vehicleType'),
     operationalStatus: str('operationalStatus', 'Active'),
@@ -412,88 +419,55 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
     lastOilChange: str('lastOilChange'),
     lastBrakePadChange: str('lastBrakePadChange'),
     lastBrakeRotorChange: str('lastBrakeRotorChange'),
-    hardwareType: (str('hardwareType', 'UNKNOWN') as RegisteredVehicle['hardwareType']) || 'UNKNOWN',
+    hardwareType: (hardwareRaw || 'UNKNOWN') as RegisteredVehicle['hardwareType'],
   };
 }
 
+function parseCurbWeightKgFromForm(curbWeight: string | undefined | null): number | null {
+  if (curbWeight == null || String(curbWeight).trim() === '') return null;
+  const n = Number(String(curbWeight).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
 /**
- * PATCH payload for Master edit — mirrors backend post-activation vehicle patch; never sends UI-only fields.
+ * Connected-vehicles spec edit: only changed vehicle-table physics scalars (curb mass).
+ * Motion power/accel/variant persist via motion-physics-reference APIs in the modal.
  */
-export function buildMasterVehicleUpdatePatch(rv: RegisteredVehicle): Record<string, unknown> {
-  const extra = buildVehicleExtraData(rv);
+export function buildMasterVehiclePhysicsSpecPatch(
+  current: RegisteredVehicle,
+  baseline: RegisteredVehicle,
+): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
-
-  if (rv.make?.trim()) patch.make = rv.make.trim();
-  if (rv.model?.trim()) patch.model = rv.model.trim();
-  if (Number.isFinite(rv.year)) patch.year = rv.year;
-
-  const mileageKm = extra.mileageKm;
-  if (mileageKm != null && Number.isFinite(mileageKm as number)) {
-    patch.mileageKm = mileageKm;
+  const nextKg = parseCurbWeightKgFromForm(current.curbWeight);
+  const prevKg = parseCurbWeightKgFromForm(baseline.curbWeight);
+  if (nextKg != null && nextKg !== prevKg) {
+    patch.curbWeightKg = nextKg;
   }
-
-  if (extra.vehicleName) patch.vehicleName = extra.vehicleName;
-  if (extra.licensePlate) patch.licensePlate = extra.licensePlate;
-  if (extra.notes !== undefined) patch.notes = extra.notes ?? null;
-  if (extra.fuelType) patch.fuelType = extra.fuelType;
-  if (extra.vehicleType) patch.vehicleType = extra.vehicleType;
-  if (extra.hardwareType) patch.hardwareType = extra.hardwareType;
-
-  const driveType = mapMasterFormDrivetrainToDriveType(rv.drivetrain);
-  if (driveType) patch.driveType = driveType;
-
-  const scalarKeys = [
-    'curbWeightKg',
-    'idleRpm',
-    'maxRpm',
-    'brakeForceFrontPercent',
-    'tankCapacityLiters',
-    'serviceIntervalManufacturerKm',
-    'serviceIntervalManufacturerMonths',
-    'oilChangeIntervalKm',
-    'oilChangeIntervalMonths',
-  ] as const;
-
-  for (const key of scalarKeys) {
-    const value = extra[key];
-    if (value !== undefined && value !== null && value !== '') {
-      patch[key] = value;
-    }
-  }
-
-  const frontToRear = extra.frontToRearWeightDistribution;
-  if (frontToRear !== undefined && frontToRear !== null && frontToRear !== '') {
-    const parsed =
-      typeof frontToRear === 'number' ? frontToRear : Number(String(frontToRear).replace(/[^\d.-]/g, ''));
-    if (Number.isFinite(parsed)) {
-      patch.frontWeightDistributionPct = parsed;
-    }
-  }
-
-  const hv = buildMasterHvCapacityExtraFields(rv);
-  if (hv.hvBatteryUsableCapacityKwh != null) {
-    patch.hvBatteryUsableCapacityKwh = hv.hvBatteryUsableCapacityKwh;
-  }
-  if (hv.hvBatteryGrossCapacityKwh != null) {
-    patch.hvBatteryGrossCapacityKwh = hv.hvBatteryGrossCapacityKwh;
-  }
-
   return patch;
 }
 
-/** Safe Master vehicle update: PATCH vehicle scalars + manual baseline modules; motion reference via modal hooks. */
-export async function updateMasterRegisteredVehicle(rv: RegisteredVehicle): Promise<void> {
+export type MasterVehiclePhysicsEditOptions = {
+  baseline: RegisteredVehicle;
+};
+
+/** Spec edit from Connected Vehicles — vehicle physics PATCH only; no tire/battery/brake side effects. */
+export async function updateMasterRegisteredVehicle(
+  rv: RegisteredVehicle,
+  options: MasterVehiclePhysicsEditOptions,
+): Promise<void> {
   const orgId = rv.organizationId?.trim();
   const vehicleId = rv.id?.trim();
   if (!orgId || !vehicleId) {
     throw new Error('ORG_VEHICLE_REQUIRED');
   }
+  if (!options.baseline?.id) {
+    throw new Error('EDIT_BASELINE_REQUIRED');
+  }
 
-  const patch = buildMasterVehicleUpdatePatch(rv);
+  const patch = buildMasterVehiclePhysicsSpecPatch(rv, options.baseline);
   if (Object.keys(patch).length > 0) {
     await api.vehicles.update(orgId, vehicleId, patch);
   }
-  await applyManualBaselinesAfterCreate(orgId, vehicleId, rv);
 }
 
 export async function persistMasterRegisteredVehicle(

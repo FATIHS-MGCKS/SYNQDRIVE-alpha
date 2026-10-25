@@ -51,18 +51,18 @@ export function buildTechnicalSpecsView(input: {
 
   const ref = input.motionReference;
   const curbFromVehicle = parseNum(input.curbWeight);
-  const curbFromRef = ref?.curbMassKg ?? null;
+  const powerFromVehicle = parseNum(input.systemMotorPowerKw);
+  const accelFromVehicle = parseNum(input.accel0To100S);
+  const variantFromVehicle = input.variantAssumption?.trim() || null;
 
   return {
     make: input.make?.trim() || '—',
     model: input.model?.trim() || '—',
     year: input.year ?? null,
     fuelType: input.fuelType?.trim() || '—',
-    curbWeightKg: curbFromVehicle ?? curbFromRef,
-    systemMotorPowerKw:
-      parseNum(input.systemMotorPowerKw) ?? ref?.systemMotorPowerKw ?? null,
-    accel0To100S: parseNum(input.accel0To100S) ?? ref?.accel0To100S ?? null,
-    variantAssumption:
-      input.variantAssumption?.trim() || ref?.variantAssumption?.trim() || null,
+    curbWeightKg: ref?.curbMassKg ?? curbFromVehicle,
+    systemMotorPowerKw: ref?.systemMotorPowerKw ?? powerFromVehicle,
+    accel0To100S: ref?.accel0To100S ?? accelFromVehicle,
+    variantAssumption: ref?.variantAssumption?.trim() || variantFromVehicle,
   };
 }

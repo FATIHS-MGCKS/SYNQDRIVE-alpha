@@ -75,6 +75,7 @@ export function ConnectedVehiclesHub({
   const [registrationDimo, setRegistrationDimo] = useState<DimoVehicle | null>(null);
   const [registrationPrefillOrgId, setRegistrationPrefillOrgId] = useState<string | null>(null);
   const [editExistingVehicle, setEditExistingVehicle] = useState<RegisteredVehicle | null>(null);
+  const [editBaselineVehicle, setEditBaselineVehicle] = useState<RegisteredVehicle | null>(null);
   const [editSpecsLoading, setEditSpecsLoading] = useState(false);
 
   const navigateSection = useCallback((next: CvSection, replace = false) => {
@@ -273,6 +274,7 @@ export function ConnectedVehiclesHub({
     setRegistrationDimo(null);
     setRegistrationPrefillOrgId(null);
     setEditExistingVehicle(null);
+    setEditBaselineVehicle(null);
     setRegistrationOpen(true);
   }, []);
 
@@ -288,7 +290,9 @@ export function ConnectedVehiclesHub({
       }
       setRegistrationDimo(null);
       setRegistrationPrefillOrgId(orgId);
-      setEditExistingVehicle(mapAdminVehicleDtoToRegisteredVehicle(dto as Record<string, unknown>));
+      const mapped = mapAdminVehicleDtoToRegisteredVehicle(dto as Record<string, unknown>);
+      setEditExistingVehicle(mapped);
+      setEditBaselineVehicle(mapped);
       setRegistrationOpen(true);
     } catch (e) {
       toast.error(
@@ -301,14 +305,18 @@ export function ConnectedVehiclesHub({
 
   const handleUpdateRegisteredVehicle = useCallback(
     async (rv: RegisteredVehicle) => {
-      await updateMasterRegisteredVehicle(rv);
+      if (!editBaselineVehicle) {
+        throw new Error('EDIT_BASELINE_REQUIRED');
+      }
+      await updateMasterRegisteredVehicle(rv, { baseline: editBaselineVehicle });
+      setEditBaselineVehicle(rv);
       toast.success(t('master.cv.technicalSpecs.updateSuccess'));
       overviewState.refresh();
       emitConnectedVehiclesRefresh();
       detailRefreshRef.current?.();
       specsRefreshRef.current?.();
     },
-    [overviewState, t],
+    [editBaselineVehicle, overviewState, t],
   );
 
   const openDimoRegistration = useCallback(
@@ -471,6 +479,7 @@ export function ConnectedVehiclesHub({
           setRegistrationDimo(null);
           setRegistrationPrefillOrgId(null);
           setEditExistingVehicle(null);
+          setEditBaselineVehicle(null);
         }}
         dimoVehicle={registrationDimo ?? undefined}
         existingVehicle={editExistingVehicle ?? undefined}

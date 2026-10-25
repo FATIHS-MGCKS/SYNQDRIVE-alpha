@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyManualBaselinesAfterCreate,
   buildMasterHvCapacityExtraFields,
-  buildMasterVehicleUpdatePatch,
+  buildMasterVehiclePhysicsSpecPatch,
   buildVehicleExtraData,
   buildVehicleManualSpecs,
   mapAdminVehicleDtoToRegisteredVehicle,
@@ -241,25 +241,57 @@ describe('master-vehicle-registration payloads', () => {
     expect(registerFromDimoMock).toHaveBeenCalledTimes(1);
   });
 
-  it('buildMasterVehicleUpdatePatch omits UI-only fields and maps drivetrain', () => {
-    const patch = buildMasterVehicleUpdatePatch(
-      minimalRv({
-        drivetrain: 'AWD',
-        curbWeight: '1900',
-        systemMotorPowerKw: '150',
-        accel0To100S: '7.1',
-        frontToRearWeightDistribution: '55',
-      }),
-    );
-    expect(patch).toMatchObject({
-      make: 'Volkswagen',
-      driveType: 'AWD',
-      curbWeightKg: 1900,
-      frontWeightDistributionPct: 55,
+  it('buildMasterVehiclePhysicsSpecPatch only includes changed curb mass (Tesla motor-only edit)', () => {
+    const baseline = minimalRv({
+      make: 'Tesla',
+      model: 'Model 3',
+      fuelType: 'Electric',
+      curbWeight: '1847',
+      systemMotorPowerKw: '250',
     });
-    expect(patch).not.toHaveProperty('systemMotorPowerKw');
-    expect(patch).not.toHaveProperty('accel0To100S');
-    expect(patch).not.toHaveProperty('tireFrontDimension');
+    const current = minimalRv({
+      ...baseline,
+      systemMotorPowerKw: '300',
+    });
+    expect(buildMasterVehiclePhysicsSpecPatch(current, baseline)).toEqual({});
+  });
+
+  it('buildMasterVehiclePhysicsSpecPatch includes curb mass delta (VW)', () => {
+    const baseline = minimalRv({ make: 'Volkswagen', model: 'Tiguan', curbWeight: '1750' });
+    const current = minimalRv({ ...baseline, curbWeight: '1780' });
+    expect(buildMasterVehiclePhysicsSpecPatch(current, baseline)).toEqual({ curbWeightKg: 1780 });
+  });
+
+  it('buildMasterVehiclePhysicsSpecPatch never sends display fuel labels (Audi)', () => {
+    const baseline = minimalRv({
+      make: 'Audi',
+      model: 'e-tron',
+      fuelType: 'Electric',
+      curbWeight: '2490',
+    });
+    const current = minimalRv({
+      ...baseline,
+      fuelType: 'Plugin Hybrid',
+      mileage: 99999,
+      hardwareType: 'LTE_R1',
+    });
+    const patch = buildMasterVehiclePhysicsSpecPatch(current, baseline);
+    expect(patch).toEqual({});
+    expect(patch).not.toHaveProperty('fuelType');
+    expect(patch).not.toHaveProperty('mileageKm');
+    expect(patch).not.toHaveProperty('hardwareType');
+  });
+
+  it('mapAdminVehicleDtoToRegisteredVehicle avoids Other/UNKNOWN defaults for sparse admin DTO', () => {
+    const rv = mapAdminVehicleDtoToRegisteredVehicle({
+      id: 'v-sparse',
+      organizationId: 'org-1',
+      make: 'Audi',
+      model: 'Q4',
+    });
+    expect(rv.fuelType).toBe('');
+    expect(rv.mileage).toBe(0);
+    expect(buildMasterVehiclePhysicsSpecPatch(rv, rv)).toEqual({});
   });
 
   it('mapAdminVehicleDtoToRegisteredVehicle preserves motion physics form fields', () => {
@@ -279,25 +311,28 @@ describe('master-vehicle-registration payloads', () => {
     expect(rv.motionPhysicsVariantAssumption).toBe('M50');
   });
 
-  it('updateMasterRegisteredVehicle PATCHes narrow scalar payload only', async () => {
+  it('updateMasterRegisteredVehicle PATCHes only physics diff and skips tire/battery/brake APIs', async () => {
     updateMock.mockResolvedValueOnce({});
-    upsertTiresMock.mockResolvedValueOnce({});
+    const baseline = minimalRv({ curbWeight: '1400', systemMotorPowerKw: '110' });
+    const current = minimalRv({ curbWeight: '1450', systemMotorPowerKw: '150' });
 
-    await updateMasterRegisteredVehicle(
-      minimalRv({ make: 'VW', model: 'Golf', curbWeight: '1400', mileage: 5000 }),
-    );
+    await updateMasterRegisteredVehicle(current, { baseline });
 
-    expect(updateMock).toHaveBeenCalledWith(
-      'org-1',
-      'rv-1',
-      expect.objectContaining({
-        make: 'VW',
-        model: 'Golf',
-        curbWeightKg: 1400,
-        mileageKm: 5000,
-      }),
-    );
-    expect(updateMock.mock.calls[0][2]).not.toHaveProperty('vin');
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateMock).toHaveBeenCalledWith('org-1', 'rv-1', { curbWeightKg: 1450 });
+    expect(upsertTiresMock).not.toHaveBeenCalled();
+    expect(api.vehicleIntelligence.createBatterySpec).not.toHaveBeenCalled();
+    expect(api.vehicleIntelligence.brakeHealthInitialize).not.toHaveBeenCalled();
+  });
+
+  it('updateMasterRegisteredVehicle skips vehicle PATCH when only motor power form field changes', async () => {
+    const baseline = minimalRv({ systemMotorPowerKw: '250' });
+    const current = minimalRv({ systemMotorPowerKw: '300' });
+
+    await updateMasterRegisteredVehicle(current, { baseline });
+
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(upsertTiresMock).not.toHaveBeenCalled();
   });
 
   it('persistMasterRegisteredVehicle surfaces tire enrichment partial success from register-from-dimo', async () => {
