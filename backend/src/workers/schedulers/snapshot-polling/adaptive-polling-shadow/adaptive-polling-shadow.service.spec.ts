@@ -1,4 +1,5 @@
 import { AdaptivePollingShadowService } from './adaptive-polling-shadow.service';
+import { apdShadowBaselinePollEvidenceForTests } from './apd-shadow-test-baseline-evidence.helper';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { SnapshotPollingTier } from '../snapshot-polling-tier.types';
@@ -108,6 +109,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       mockActivationEpochServiceMissing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     const result = await service.observePrePoll(baseCtx);
@@ -122,6 +125,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       epochSvc,
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     const authoritativeSpy = jest.spyOn(epochSvc, 'loadActiveEpochForScopeAuthoritative');
@@ -148,6 +153,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       mockActivationEpochServiceMissing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     const opportunityId = await service.observeActualBaselinePollStart({
@@ -177,6 +184,7 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
       metrics,
       vsiLoader as never,
     );
@@ -215,6 +223,7 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
       metrics,
       vsiLoader as never,
     );
@@ -252,6 +261,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     const opportunityId = await service.observeActualBaselinePollStart({
@@ -281,6 +292,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     await expect(
@@ -315,6 +328,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     await service.observeActualBaselinePollStart({
@@ -347,6 +362,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     await service.observeActualBaselinePollStart({
@@ -374,6 +391,8 @@ describe('AdaptivePollingShadowService', () => {
       prisma as never,
       repository,
       activationEpochAllowing(),
+      apdShadowBaselinePollEvidenceForTests(),
+
       metrics,
     );
     await service.observeActualBaselinePollStart({

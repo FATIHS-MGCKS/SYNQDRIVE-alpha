@@ -1,0 +1,42 @@
+[
+  {
+    "id": "tiguan-b2-5s-lv",
+    "preLastLvSourceAt": "2026-10-25T10:28:51.000Z",
+    "payloadLvProviderSourceAt": "2026-10-25T10:28:56.000Z",
+    "pollStartedAt": "2026-10-25T10:29:02.655Z",
+    "pollCompletedAt": "2026-10-25T10:29:05.000Z",
+    "nextBaselinePollStartedAt": "2026-10-25T10:30:02.808Z"
+  },
+  {
+    "id": "tiguan-b4-5s-lv",
+    "preLastLvSourceAt": "2026-10-25T10:28:51.000Z",
+    "payloadLvProviderSourceAt": "2026-10-25T10:28:56.000Z",
+    "pollStartedAt": "2026-10-25T10:29:02.655Z",
+    "pollCompletedAt": "2026-10-25T10:29:05.000Z",
+    "nextBaselinePollStartedAt": "2026-10-25T10:30:02.808Z"
+  },
+  {
+    "id": "audi-b2-8h-heartbeat",
+    "preLastLvSourceAt": "2026-10-24T23:40:34.000Z",
+    "payloadLvProviderSourceAt": "2026-10-25T07:42:21.000Z",
+    "pollStartedAt": "2026-10-25T07:47:21.230Z",
+    "pollCompletedAt": "2026-10-25T07:47:25.000Z",
+    "nextBaselinePollStartedAt": "2026-10-25T07:47:51.211Z"
+  },
+  {
+    "id": "arteon-b2-heartbeat-1",
+    "preLastLvSourceAt": "2026-10-24T13:03:50.000Z",
+    "payloadLvProviderSourceAt": "2026-10-24T21:05:19.000Z",
+    "pollStartedAt": "2026-10-24T21:10:11.004Z",
+    "pollCompletedAt": "2026-10-24T21:10:15.000Z",
+    "nextBaselinePollStartedAt": "2026-10-24T21:10:41.000Z"
+  },
+  {
+    "id": "arteon-b2-heartbeat-2",
+    "preLastLvSourceAt": "2026-10-24T21:05:19.000Z",
+    "payloadLvProviderSourceAt": "2026-10-25T05:07:21.000Z",
+    "pollStartedAt": "2026-10-25T05:11:51.695Z",
+    "pollCompletedAt": "2026-10-25T05:11:55.000Z",
+    "nextBaselinePollStartedAt": "2026-10-25T05:12:21.688Z"
+  }
+]

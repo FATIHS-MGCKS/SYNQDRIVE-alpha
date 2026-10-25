@@ -1,3 +1,4 @@
+import { apdShadowBaselinePollEvidenceForTests } from './apd-shadow-test-baseline-evidence.helper';
 import {
   ApdShadowActivationEpochLifecycle,
   BusinessType,
@@ -139,6 +140,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       prisma as never,
       repository,
       epochService,
+      apdShadowBaselinePollEvidenceForTests(prisma as never),
     );
 
     await repository.upsertPrePollDecision({
@@ -181,7 +183,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       pollCompletedAtMs: completedAtMs,
       realPollVisibleLvSourceAtMs: visibleLvMs,
       previousLvSourceMs: null,
-      newLvSourceMs: visibleLvMs,
+      baselineLvProviderSourceMs: visibleLvMs,
       previousTopLevelSourceMs: null,
       newTopLevelSourceMs: completedAtMs,
       providerFetchedAtMs: null,
@@ -247,6 +249,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       prisma as never,
       repository,
       epochService,
+      apdShadowBaselinePollEvidenceForTests(prisma as never),
     );
 
     await repository.upsertPrePollDecision({
@@ -288,7 +291,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       pollCompletedAtMs: decisionAtMs + 1_500,
       realPollVisibleLvSourceAtMs: visibleLvMs,
       previousLvSourceMs: null,
-      newLvSourceMs: visibleLvMs,
+      baselineLvProviderSourceMs: visibleLvMs,
       previousTopLevelSourceMs: null,
       newTopLevelSourceMs: null,
       providerFetchedAtMs: null,
@@ -320,6 +323,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       prisma as never,
       repository,
       epochService,
+      apdShadowBaselinePollEvidenceForTests(prisma as never),
     );
 
     await repository.upsertPrePollDecision({
@@ -360,7 +364,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       pollCompletedAtMs: decisionAtMs + 1_000,
       realPollVisibleLvSourceAtMs: null,
       previousLvSourceMs: null,
-      newLvSourceMs: null,
+      baselineLvProviderSourceMs: null,
       previousTopLevelSourceMs: null,
       newTopLevelSourceMs: null,
       providerFetchedAtMs: null,

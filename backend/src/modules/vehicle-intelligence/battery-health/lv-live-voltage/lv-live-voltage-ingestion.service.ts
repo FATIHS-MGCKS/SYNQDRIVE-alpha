@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ApdShadowBaselinePollEvidenceService } from '../../../../workers/schedulers/snapshot-polling/adaptive-polling-shadow/apd-shadow-baseline-poll-evidence.service';
 import {
   BatteryMeasurementQuality,
   BatteryMeasurementType,
@@ -47,6 +48,8 @@ export class LvLiveVoltageIngestionService {
     private readonly prisma: PrismaService,
     private readonly measurements: BatteryMeasurementService,
     private readonly lastStoredLiveVoltage: BatteryProviderLastStoredLiveVoltageResolver,
+    @Optional()
+    private readonly apdShadowBaselineEvidence?: ApdShadowBaselinePollEvidenceService,
   ) {}
 
   /**
@@ -130,6 +133,24 @@ export class LvLiveVoltageIngestionService {
     this.logger.debug(
       `LIVE_VOLTAGE persisted vehicle=${payload.vehicleId} id=${measurement.id} v=${voltage}V outcome=${decision.outcome}`,
     );
+
+    if (this.apdShadowBaselineEvidence) {
+      void this.apdShadowBaselineEvidence
+        .reconcileDeferredLvAfterSnapshotPersistence({
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          providerTimestampMs: decision.observedAt.getTime(),
+          snapshotCorrelationId: payload.correlationId ?? null,
+          previousLvProviderSourceMsAtPersist: lastStored?.observedAt?.getTime() ?? null,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `APD shadow deferred LV evidence reconcile failed vehicle=${payload.vehicleId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+    }
 
     return {
       persisted: true,

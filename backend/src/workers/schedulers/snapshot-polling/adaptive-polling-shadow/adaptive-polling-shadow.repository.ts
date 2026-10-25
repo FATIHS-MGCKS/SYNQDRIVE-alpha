@@ -355,6 +355,9 @@ export class AdaptivePollingShadowRepository {
       newTopLevelSourceObserved?: boolean;
       newObdSourceObserved?: boolean;
       newIgnitionSourceObserved?: boolean;
+      simulatedNextPollAt?: Date | null;
+      simulatedDiscoveryAt?: Date | null;
+      additionalDiscoveryDelayMs?: number | null;
       legacyAssessmentImpact?: string;
       legacyPublicationImpact?: string;
       legacyCustomerImpact?: string;

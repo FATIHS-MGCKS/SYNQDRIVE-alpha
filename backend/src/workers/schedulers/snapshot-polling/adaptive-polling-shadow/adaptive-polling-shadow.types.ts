@@ -47,10 +47,16 @@ export interface AdaptivePollingShadowPostPollContext {
   realPollId: string;
   pollStartedAtMs: number;
   pollCompletedAtMs: number;
+  /** Simulated policy LV visibility (historical visibility / bootstrap admission only). */
   realPollVisibleLvSourceAtMs: number | null;
   previousLvSourceMs: number | null;
-  newLvSourceMs: number | null;
+  /**
+   * Authoritative LIVE_VOLTAGE provider source timestamp from the live DIMO snapshot payload
+   * (`resolveLvBatteryObservedAt`), not DB fetch-time or post-async measurement reads.
+   */
+  baselineLvProviderSourceMs: number | null;
   previousTopLevelSourceMs: number | null;
+  /** Provider `sourceTimestamp` from the applied snapshot (not providerFetchedAt). */
   newTopLevelSourceMs: number | null;
   providerFetchedAtMs: number | null;
 }

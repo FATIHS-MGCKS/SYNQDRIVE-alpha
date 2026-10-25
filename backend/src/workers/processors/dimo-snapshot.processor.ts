@@ -173,16 +173,22 @@ export class DimoSnapshotProcessor extends WorkerHost {
       return;
     }
 
-    const previousLv = await this.prisma.batteryMeasurement.findFirst({
-      where: {
-        vehicleId,
-        type: 'LIVE_VOLTAGE',
-        quality: 'VALID',
-        providerTimestamp: { not: null },
-      },
-      orderBy: { providerTimestamp: 'desc' },
-      select: { providerTimestamp: true },
-    });
+    const [previousLv, previousVls] = await Promise.all([
+      this.prisma.batteryMeasurement.findFirst({
+        where: {
+          vehicleId,
+          type: 'LIVE_VOLTAGE',
+          quality: 'VALID',
+          providerTimestamp: { not: null },
+        },
+        orderBy: { providerTimestamp: 'desc' },
+        select: { providerTimestamp: true },
+      }),
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: { sourceTimestamp: true },
+      }),
+    ]);
 
     let apdShadowOpportunityId: string | null = null;
     if (this.apdShadow?.isEnabledForVehicle(vehicle.organizationId, vehicleId)) {
@@ -238,10 +244,10 @@ export class DimoSnapshotProcessor extends WorkerHost {
           pollStartedAtMs: startedAt.getTime(),
           pollCompletedAtMs,
           realPollVisibleLvSourceAtMs:
-            pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs,
+            latestVisibleLvProviderMs ?? pipelineResult.lvProviderTimestampMs,
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
-          newLvSourceMs: latestVisibleLvProviderMs,
-          previousTopLevelSourceMs: null,
+          baselineLvProviderSourceMs: pipelineResult.lvProviderTimestampMs,
+          previousTopLevelSourceMs: previousVls?.sourceTimestamp?.getTime() ?? null,
           newTopLevelSourceMs: afterCtx.snapshotSourceTimestamp?.getTime() ?? null,
           providerFetchedAtMs: null,
         });
