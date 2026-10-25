@@ -25,6 +25,8 @@ export const masterMotionPhysicsEs = {
     'Los valores del formulario difieren de la estimación IA guardada. Use «Confirmar valores manuales» para guardar sus cambios como referencia confirmada.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Datos del vehículo guardados. Referencia de física sin cambios — confirme valores manuales para guardar sus ediciones.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'La potencia del motor, la aceleración y la variante no se guardan con «Guardar cambios». Use «Confirmar valores manuales» para persistirlos como referencia confirmada.',
   'master.motionPhysics.backfillError':
     'Vehículo guardado, pero no se pudo almacenar la referencia de física. Corrija los valores y guarde de nuevo.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'p. ej. 150',

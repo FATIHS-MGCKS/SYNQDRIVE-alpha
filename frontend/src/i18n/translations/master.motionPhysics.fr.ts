@@ -25,6 +25,8 @@ export const masterMotionPhysicsFr = {
     'Les valeurs du formulaire diffèrent de l’estimation IA enregistrée. Utilisez « Confirmer les valeurs manuelles » pour enregistrer vos modifications.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Données véhicule enregistrées. Référence physique inchangée — confirmez les valeurs manuelles pour enregistrer vos modifications.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'La puissance moteur, l’accélération et la variante ne sont pas enregistrées via « Enregistrer les modifications ». Utilisez « Confirmer les valeurs manuelles » pour les persister comme référence confirmée.',
   'master.motionPhysics.backfillError':
     'Véhicule enregistré, mais la référence physique n’a pas pu être stockée. Corrigez les valeurs et réenregistrez.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'p. ex. 150',

@@ -25,6 +25,8 @@ export const masterMotionPhysicsTr = {
     'Form değerleri kayıtlı AI tahmininden farklı. Düzenlemelerinizi onaylı referans olarak kaydetmek için „Manuel değerleri onayla“ kullanın.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Araç verileri kaydedildi. Hareket referansı değişmedi — düzenlemelerinizi kaydetmek için manuel değerleri onaylayın.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Motor gücü, ivme ve varyant «Değişiklikleri kaydet» ile saklanmaz. Onaylı referans olarak kaydetmek için «Manuel değerleri onayla» kullanın.',
   'master.motionPhysics.backfillError':
     'Araç kaydedildi, ancak hareket fiziği referansı kaydedilemedi. Değerleri düzeltip yeniden kaydedin.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'örn. 150',

@@ -25,6 +25,8 @@ export const masterMotionPhysicsDe = {
     'Formularwerte weichen von der gespeicherten KI-Schätzung ab. Nutzen Sie „Manuelle Werte bestätigen“, um Ihre Änderungen als bestätigte Referenz zu speichern.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Fahrzeugdaten gespeichert. Fahrphysik-Referenz unverändert — „Manuelle Werte bestätigen“, um Ihre Änderungen zu speichern.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Motorleistung, Beschleunigung und Variante werden bei „Änderungen speichern“ nicht gespeichert. Nutzen Sie „Manuelle Werte bestätigen“, um sie als bestätigte Referenz zu persistieren.',
   'master.motionPhysics.backfillError':
     'Fahrzeug gespeichert, aber die Fahrphysik-Referenz konnte nicht gespeichert werden. Werte korrigieren und erneut speichern.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'z. B. 150',

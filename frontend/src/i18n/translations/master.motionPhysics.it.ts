@@ -25,6 +25,8 @@ export const masterMotionPhysicsIt = {
     'I valori del modulo differiscono dalla stima IA salvata. Usa «Conferma valori manuali» per salvare le modifiche come referenza confermata.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Dati veicolo salvati. Referenza fisica invariata — conferma i valori manuali per salvare le modifiche.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Potenza motore, accelerazione e variante non vengono salvate con «Salva modifiche». Usa «Conferma valori manuali» per persistere come riferimento confermato.',
   'master.motionPhysics.backfillError':
     'Veicolo salvato, ma il riferimento di fisica non è stato memorizzato. Correggere i valori e salvare di nuovo.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'es. 150',

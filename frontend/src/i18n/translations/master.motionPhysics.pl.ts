@@ -25,6 +25,8 @@ export const masterMotionPhysicsPl = {
     'Wartości w formularzu różnią się od zapisanej estymaty AI. Użyj „Potwierdź wartości ręczne”, aby zapisać zmiany jako potwierdzoną referencję.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Dane pojazdu zapisane. Referencja fizyki ruchu bez zmian — potwierdź wartości ręczne, aby zapisać edycje.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Moc silnika, przyspieszenie i wariant nie są zapisywane przy „Zapisz zmiany”. Użyj „Potwierdź wartości ręczne”, aby zapisać je jako potwierdzoną referencję.',
   'master.motionPhysics.backfillError':
     'Pojazd zapisany, ale referencji fizyki ruchu nie udało się zapisać. Popraw wartości i zapisz ponownie.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'np. 150',

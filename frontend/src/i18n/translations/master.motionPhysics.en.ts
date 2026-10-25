@@ -25,6 +25,8 @@ export const masterMotionPhysicsEn = {
     'Form values differ from the stored AI estimate. Use “Confirm manual values” to save your edits as a confirmed reference.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Vehicle data saved. Motion physics reference unchanged — confirm manual values to store your edits.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Motor power, acceleration, and variant are not stored on “Save Changes”. Use “Confirm manual values” to persist them as a confirmed reference.',
   'master.motionPhysics.backfillError':
     'Vehicle saved, but motion physics reference could not be stored. Fix the values and save again.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'e.g. 150',
