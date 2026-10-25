@@ -3,6 +3,7 @@ import type {
   DiV0MotionCoreShadowTripMapSampleDto,
   DiV0MotionCoreShadowTripMapStopDto,
 } from '../../driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.types';
+import { isPlausibleSpeedKmh } from './tire-ds4-shadow-m3-dynamics';
 import type {
   TireDs4ShadowTemporalCoverage,
   TireDs4ShadowTemporalCoverageDetail,
@@ -13,6 +14,10 @@ export type TireDs4ShadowTripWindowContext = {
   tripStartedAt: Date | string | null;
   tripEndedAt: Date | string | null;
 };
+
+const MIN_MOVING_SPEED_KMH = 0.5;
+
+type SampleQualityClass = 'OK' | 'DEGRADED' | 'LIMITED' | 'ARTEFACT' | 'OTHER';
 
 function toMs(value: Date | string | null | undefined): number | null {
   if (value == null) return null;
@@ -26,127 +31,166 @@ function bucketSecondKey(labelUtc: string): number | null {
   return Math.floor(ms / 1000);
 }
 
-function isSampleEvidenceOk(sample: DiV0MotionCoreShadowTripMapSampleDto): boolean {
+function classifySampleQuality(sample: DiV0MotionCoreShadowTripMapSampleDto): SampleQualityClass {
   const q = sample.evidenceQuality.trim().toUpperCase();
-  return q === 'OK' || q === 'DEGRADED';
+  if (q === 'OK') return 'OK';
+  if (q === 'DEGRADED') return 'DEGRADED';
+  if (q === 'LIMITED') return 'LIMITED';
+  if (q === 'ARTEFACT_SUSPECT' || q === 'ARTEFACT') return 'ARTEFACT';
+  return 'OTHER';
 }
 
-function isStopEvidenceOk(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
-  const q = stop.evidenceQuality.trim().toUpperCase();
-  return q === 'OK' || q === 'DEGRADED';
+function isValidOkDrivingSample(sample: DiV0MotionCoreShadowTripMapSampleDto): boolean {
+  if (classifySampleQuality(sample) !== 'OK') return false;
+  if (sample.speedKmh == null || !isPlausibleSpeedKmh(sample.speedKmh)) return false;
+  return sample.speedKmh > MIN_MOVING_SPEED_KMH;
+}
+
+function isDirectlyConfirmedStop(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
+  if (!stop.observed || stop.inferred) return false;
+  if (stop.gapLabels > 0) return false;
+  if (classifySampleQuality({ evidenceQuality: stop.evidenceQuality } as DiV0MotionCoreShadowTripMapSampleDto) !== 'OK') {
+    return false;
+  }
+  const endUtc = stop.endEarliestUtc;
+  if (!endUtc || !stop.endLatestUtc) return false;
+  const startMs = Date.parse(stop.startEarliestUtc);
+  const endMs = Date.parse(endUtc);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return false;
+  return true;
+}
+
+function emptyDetail(): TireDs4ShadowTemporalCoverageDetail {
+  return {
+    tripWindowSeconds: 0,
+    labelledSampleSeconds: 0,
+    validDrivingSeconds: 0,
+    confirmedStationarySeconds: 0,
+    degradedLabelSeconds: 0,
+    invalidLabelSeconds: 0,
+    gapSeconds: 0,
+    unknownSeconds: 0,
+    labelledFraction: null,
+    accountableFraction: null,
+    fableHypothesis85PctThreshold: 0.85,
+    verified: false,
+  };
 }
 
 export function computeTemporalCoverage(
   read: DiV0MotionCoreShadowTripMapReadResponse,
   trip: TireDs4ShadowTripWindowContext,
 ): { temporalCoverage: TireDs4ShadowTemporalCoverage; detail: TireDs4ShadowTemporalCoverageDetail } {
-  const sampleKeys = new Set<number>();
-  const drivingKeys = new Set<number>();
-  const stationaryKeys = new Set<number>();
-  const gapKeys = new Set<number>();
-
   const samples = read.samples ?? [];
   const stopEpisodes = read.stopEpisodes ?? [];
 
-  for (const sample of samples) {
-    const key = bucketSecondKey(sample.bucketLabelUtc);
-    if (key == null) continue;
-    sampleKeys.add(key);
-    if (!isSampleEvidenceOk(sample)) {
-      gapKeys.add(key);
-      continue;
-    }
-    if (sample.speedKmh != null && Number.isFinite(sample.speedKmh) && sample.speedKmh > 0.5) {
-      drivingKeys.add(key);
-    }
-  }
-
   const tripStartMs = toMs(trip.tripStartedAt);
   const tripEndMs = toMs(trip.tripEndedAt);
-  let windowStartMs = tripStartMs;
-  let windowEndMs = tripEndMs;
 
-  if (samples.length > 0) {
-    const sampleMs = samples
-      .map((s) => Date.parse(s.bucketLabelUtc))
-      .filter((ms) => Number.isFinite(ms));
-    if (sampleMs.length > 0) {
-      const minS = Math.min(...sampleMs);
-      const maxS = Math.max(...sampleMs);
-      windowStartMs = windowStartMs ?? minS;
-      windowEndMs = windowEndMs ?? maxS;
-    }
-  }
-
-  if (windowStartMs == null || windowEndMs == null || windowEndMs <= windowStartMs) {
+  if (tripStartMs == null || tripEndMs == null || tripEndMs <= tripStartMs) {
+    const detail = emptyDetail();
+    const inWindowLabels = samples.filter((s) => {
+      const k = bucketSecondKey(s.bucketLabelUtc);
+      return k != null;
+    }).length;
+    detail.labelledSampleSeconds = inWindowLabels;
     return {
-      temporalCoverage: sampleKeys.size > 0 ? 'PARTIAL' : 'NONE',
-      detail: {
-        tripWindowSeconds: 0,
-        labelledSampleSeconds: sampleKeys.size,
-        validDrivingSeconds: drivingKeys.size,
-        confirmedStationarySeconds: 0,
-        gapSeconds: gapKeys.size,
-        unknownSeconds: 0,
-        labelledFraction: null,
-        fableHypothesis85PctThreshold: 0.85,
-        verified: false,
-      },
+      temporalCoverage: inWindowLabels > 0 ? 'PARTIAL' : 'NONE',
+      detail,
     };
   }
 
-  const tripWindowSeconds = Math.max(1, Math.round((windowEndMs - windowStartMs) / 1000) + 1);
+  const windowStartSec = Math.floor(tripStartMs / 1000);
+  const windowEndSec = Math.floor(tripEndMs / 1000);
+  const tripWindowSeconds = windowEndSec - windowStartSec + 1;
 
+  const sampleBySecond = new Map<number, DiV0MotionCoreShadowTripMapSampleDto>();
+  for (const sample of samples) {
+    const key = bucketSecondKey(sample.bucketLabelUtc);
+    if (key == null || key < windowStartSec || key > windowEndSec) continue;
+    sampleBySecond.set(key, sample);
+  }
+
+  const confirmedStationaryBySecond = new Set<number>();
   for (const stop of stopEpisodes) {
-    if (!stop.observed || !isStopEvidenceOk(stop)) continue;
+    if (!isDirectlyConfirmedStop(stop)) continue;
     const startMs = Date.parse(stop.startEarliestUtc);
-    const endMs = stop.endEarliestUtc ? Date.parse(stop.endEarliestUtc) : startMs;
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue;
-    const lo = Math.max(windowStartMs, Math.min(startMs, endMs));
-    const hi = Math.min(windowEndMs, Math.max(startMs, endMs));
-    for (let t = Math.floor(lo / 1000); t <= Math.floor(hi / 1000); t += 1) {
-      if (!drivingKeys.has(t)) stationaryKeys.add(t);
+    const endUtc = stop.endEarliestUtc;
+    if (!endUtc) continue;
+    const endMs = Date.parse(endUtc);
+    const loSec = Math.max(windowStartSec, Math.floor(Math.min(startMs, endMs) / 1000));
+    const hiSec = Math.min(windowEndSec, Math.floor(Math.max(startMs, endMs) / 1000));
+    for (let t = loSec; t <= hiSec; t += 1) {
+      confirmedStationaryBySecond.add(t);
     }
   }
 
-  const accounted = new Set<number>();
-  for (const k of sampleKeys) accounted.add(k);
-  for (const k of stationaryKeys) accounted.add(k);
-
-  const sortedSamples = [...sampleKeys].sort((a, b) => a - b);
-  let internalGapSeconds = 0;
-  for (let i = 1; i < sortedSamples.length; i += 1) {
-    const delta = sortedSamples[i]! - sortedSamples[i - 1]!;
-    if (delta > 1) internalGapSeconds += delta - 1;
-  }
-
-  const windowStartSec = Math.floor(windowStartMs / 1000);
-  const windowEndSec = Math.floor(windowEndMs / 1000);
+  let labelledSampleSeconds = 0;
+  let validDrivingSeconds = 0;
+  let confirmedStationarySeconds = 0;
+  let degradedLabelSeconds = 0;
+  let invalidLabelSeconds = 0;
   let unknownSeconds = 0;
+
+  const labelledKeys: number[] = [];
+
   for (let t = windowStartSec; t <= windowEndSec; t += 1) {
-    if (!accounted.has(t)) unknownSeconds += 1;
+    const sample = sampleBySecond.get(t);
+    const confirmedStop = confirmedStationaryBySecond.has(t);
+
+    if (sample) {
+      labelledSampleSeconds += 1;
+      labelledKeys.push(t);
+      const q = classifySampleQuality(sample);
+      if (isValidOkDrivingSample(sample)) {
+        validDrivingSeconds += 1;
+        continue;
+      }
+      if (q === 'DEGRADED') {
+        degradedLabelSeconds += 1;
+        continue;
+      }
+      if (q === 'OK' && confirmedStop) {
+        confirmedStationarySeconds += 1;
+        continue;
+      }
+      invalidLabelSeconds += 1;
+      continue;
+    }
+
+    if (confirmedStop) {
+      confirmedStationarySeconds += 1;
+      continue;
+    }
+
+    unknownSeconds += 1;
   }
 
-  const labelledSampleSeconds = sampleKeys.size;
-  const confirmedStationarySeconds = stationaryKeys.size;
-  const gapSeconds = internalGapSeconds + gapKeys.size;
-  const labelledFraction = labelledSampleSeconds / tripWindowSeconds;
+  let gapSeconds = 0;
+  for (let i = 1; i < labelledKeys.length; i += 1) {
+    const prev = labelledKeys[i - 1]!;
+    const curr = labelledKeys[i]!;
+    for (let t = prev + 1; t < curr; t += 1) {
+      if (!confirmedStationaryBySecond.has(t)) {
+        gapSeconds += 1;
+      }
+    }
+  }
 
-  const ledgerAligned =
-    tripStartMs != null &&
-    tripEndMs != null &&
-    sampleKeys.size > 0 &&
-    Math.abs(Math.min(...sampleKeys) * 1000 - tripStartMs) <= 2000 &&
-    Math.abs(Math.max(...sampleKeys) * 1000 - tripEndMs) <= 2000;
+  const labelledFraction = Math.min(1, labelledSampleSeconds / tripWindowSeconds);
+  const accountableSeconds = validDrivingSeconds + confirmedStationarySeconds;
+  const accountableFraction = Math.min(1, accountableSeconds / tripWindowSeconds);
 
   const verified =
-    ledgerAligned &&
+    tripWindowSeconds > 0 &&
     unknownSeconds === 0 &&
-    internalGapSeconds === 0 &&
-    labelledSampleSeconds >= tripWindowSeconds;
+    gapSeconds === 0 &&
+    degradedLabelSeconds === 0 &&
+    invalidLabelSeconds === 0 &&
+    accountableSeconds === tripWindowSeconds;
 
   let temporalCoverage: TireDs4ShadowTemporalCoverage = 'UNVERIFIED';
-  if (sampleKeys.size === 0 && stationaryKeys.size === 0) {
+  if (labelledSampleSeconds === 0 && confirmedStationarySeconds === 0) {
     temporalCoverage = 'NONE';
   } else if (verified) {
     temporalCoverage = 'VERIFIED';
@@ -159,11 +203,14 @@ export function computeTemporalCoverage(
     detail: {
       tripWindowSeconds,
       labelledSampleSeconds,
-      validDrivingSeconds: drivingKeys.size,
+      validDrivingSeconds,
       confirmedStationarySeconds,
+      degradedLabelSeconds,
+      invalidLabelSeconds,
       gapSeconds,
       unknownSeconds,
       labelledFraction,
+      accountableFraction,
       fableHypothesis85PctThreshold: 0.85,
       verified,
     },

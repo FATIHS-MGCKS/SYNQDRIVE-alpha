@@ -17,10 +17,15 @@ M_3 = \sum \frac{0.5 \cdot |v_{\mathrm{end}}^2 - v_{\mathrm{start}}^2|}{\mathrm{
 
 ## Temporal coverage
 
-Derived from DS4 speed/FSM samples, stop episodes, and tire-trip ledger window:
+Derived from DS4 speed/FSM samples, stop episodes, and tire-trip ledger window (ledger `tripStartedAt` / `tripEndedAt`):
 
-- `validDrivingSeconds`, `confirmedStationarySeconds`, `gapSeconds`, `unknownSeconds` (no double-count per second).
-- `VERIFIED` only when ledger-aligned window, no internal gaps, and full labelling — **not** when a ratio threshold is met alone.
+- Per-second walk inside the trip window; samples and stops clipped to window bounds; each second counted once.
+- `validDrivingSeconds`: **OK** evidence with plausible speed above minimal movement threshold (not null/NaN/invalid).
+- `confirmedStationarySeconds`: **observed**, non-inferred stops with **OK** quality, no gap labels, and certain stop bounds only (not inferred/gap-labelled stops).
+- `degradedLabelSeconds` / `invalidLabelSeconds`: **DEGRADED** vs **LIMITED**/artefact/unknown quality or invalid OK labels (e.g. null speed).
+- `gapSeconds`: unlabelled seconds between labelled samples that are **not** explained by confirmed stationary; `unknownSeconds`: unlabelled seconds without confirmed stop.
+- `accountableFraction` = min(1, (valid driving + confirmed stationary) / trip window).
+- `VERIFIED` only when every trip second is accountable (valid OK movement or directly confirmed stationary), with zero unknown/gap/degraded/invalid seconds — **not** when time labels exist alone or a ratio threshold is met.
 
 ### Fable hypothesis (not a product gate in P3B)
 

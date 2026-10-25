@@ -25,6 +25,13 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | `bash architecture/tires/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 | NON_EFFECTS | No runtime, DS4, or i18n change |
 
+### Tire Wear V3 P3B — temporal coverage correctness (2026-10-25)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Stricter `VERIFIED` gate: OK movement + directly confirmed stops only; DEGRADED/LIMITED/invalid speed tracked; gap seconds exclude confirmed stationary; regression spec |
+| NON_EFFECTS | M3 formula unchanged; adapter v1.1.0 / schema v3; DS4 core, production flags |
+
 ### Tire Wear V3 P3B — DS4 M3 dynamics & temporal coverage (2026-10-25)
 
 | Event | Detail |

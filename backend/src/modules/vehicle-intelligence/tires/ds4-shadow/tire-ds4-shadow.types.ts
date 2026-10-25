@@ -35,9 +35,12 @@ export type TireDs4ShadowTemporalCoverageDetail = {
   labelledSampleSeconds: number;
   validDrivingSeconds: number;
   confirmedStationarySeconds: number;
+  degradedLabelSeconds: number;
+  invalidLabelSeconds: number;
   gapSeconds: number;
   unknownSeconds: number;
   labelledFraction: number | null;
+  accountableFraction: number | null;
   /** Documented Fable research hypothesis only — not used as product gate in P3B. */
   fableHypothesis85PctThreshold: number;
   verified: boolean;

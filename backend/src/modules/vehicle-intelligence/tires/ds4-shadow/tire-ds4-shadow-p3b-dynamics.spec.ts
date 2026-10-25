@@ -194,7 +194,7 @@ describe('tire-ds4-shadow P3B temporal coverage', () => {
     expect(detail.verified).toBe(false);
   });
 
-  it('counts confirmed stationary seconds from observed stops', () => {
+  it('counts confirmed stationary only for observed non-inferred OK stops', () => {
     const { detail } = computeTemporalCoverage(
       baseRead({
         stopEpisodes: [
@@ -224,7 +224,7 @@ describe('tire-ds4-shadow P3B temporal coverage', () => {
         tripEndedAt: '2026-01-01T10:00:10.000Z',
       },
     );
-    expect(detail.confirmedStationarySeconds).toBeGreaterThan(0);
+    expect(detail.confirmedStationarySeconds).toBe(3);
   });
 
   it('EV mild regen below event threshold yields no manoeuvre events (neutral)', () => {
@@ -299,9 +299,12 @@ describe('tire-ds4-shadow P3B repository idempotency', () => {
           labelledSampleSeconds: 0,
           validDrivingSeconds: 0,
           confirmedStationarySeconds: 0,
+          degradedLabelSeconds: 0,
+          invalidLabelSeconds: 0,
           gapSeconds: 0,
           unknownSeconds: 0,
           labelledFraction: null,
+          accountableFraction: null,
           fableHypothesis85PctThreshold: 0.85,
           verified: false,
         },
