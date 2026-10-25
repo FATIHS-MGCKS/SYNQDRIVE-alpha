@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../ui/utils';
 import {
@@ -36,6 +36,8 @@ export interface DetailDrawerProps {
   closeLabel?: string;
   /** Element to restore focus to when the drawer closes. */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Fires after the sheet has closed and Radix has released focus (safe to open another modal). */
+  onClosed?: () => void;
   children: ReactNode;
   className?: string;
   /** Drawer body surface — solid (L0) or elevated (L1). No glass/liquid. */
@@ -57,20 +59,12 @@ export function DetailDrawer({
   onContentOpenAutoFocus,
   closeLabel = 'Schließen',
   returnFocusRef,
+  onClosed,
   children,
   className,
   surface = 'solid',
   footerSurface = 'frosted',
 }: DetailDrawerProps) {
-  const wasOpenRef = useRef(false);
-
-  useEffect(() => {
-    if (wasOpenRef.current && !open) {
-      returnFocusRef?.current?.focus({ preventScroll: true });
-    }
-    wasOpenRef.current = open;
-  }, [open, returnFocusRef]);
-
   const handleOpenAutoFocus = useCallback(
     (event: Event) => {
       if (onContentOpenAutoFocus) {
@@ -88,12 +82,25 @@ export function DetailDrawer({
     [onContentOpenAutoFocus],
   );
 
+  const handleCloseAutoFocus = useCallback(
+    (event: Event) => {
+      onClosed?.();
+      const content = event.currentTarget as HTMLElement;
+      if (returnFocusRef?.current) {
+        event.preventDefault();
+        returnFocusRef.current.focus({ preventScroll: true });
+      }
+    },
+    [onClosed, returnFocusRef],
+  );
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={side}
         showCloseButton={false}
         onOpenAutoFocus={handleOpenAutoFocus}
+        onCloseAutoFocus={handleCloseAutoFocus}
         className={cn(
           'w-full gap-0 p-0 border-0 bg-transparent shadow-none text-foreground',
           surfaceClassName(surface),
