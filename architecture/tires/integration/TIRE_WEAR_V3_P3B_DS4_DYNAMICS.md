@@ -21,7 +21,7 @@ Derived from DS4 speed/FSM samples, stop episodes, and tire-trip ledger window (
 
 - Per-second walk inside the trip window; samples and stops clipped to window bounds; each second counted once.
 - `validDrivingSeconds`: **OK** evidence with plausible speed above minimal movement threshold (not null/NaN/invalid).
-- `confirmedStationarySeconds`: **observed**, non-inferred stops with **OK** quality, no gap labels, and certain stop bounds only (not inferred/gap-labelled stops).
+- `confirmedStationarySeconds`: **observed**, non-inferred stops with **OK** quality; seconds only inside the certain core `startLatestUtc`…`endEarliestUtc` (not the wide earliest…latest envelope). Per-second OK stationary samples, or tight bounds with `gapLabels === 0` and `observedLabels` covering the core span (no imputation across uncertain boundaries).
 - `degradedLabelSeconds` / `invalidLabelSeconds`: **DEGRADED** vs **LIMITED**/artefact/unknown quality or invalid OK labels (e.g. null speed).
 - `gapSeconds`: unlabelled seconds between labelled samples that are **not** explained by confirmed stationary; `unknownSeconds`: unlabelled seconds without confirmed stop.
 - `accountableFraction` = min(1, (valid driving + confirmed stationary) / trip window).

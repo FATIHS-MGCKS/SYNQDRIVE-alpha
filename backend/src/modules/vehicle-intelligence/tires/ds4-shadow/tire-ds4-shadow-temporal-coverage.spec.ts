@@ -182,6 +182,44 @@ describe('tire-ds4-shadow temporal coverage correctness', () => {
     expect(detail.accountableFraction).toBeLessThanOrEqual(1);
   });
 
+  it('wide uncertain stop bounds with few observed labels do not yield VERIFIED', () => {
+    const samples = [
+      ...okSamplesEverySecond('2026-01-01T10:00:00.000Z', 2),
+      ...okSamplesEverySecond('2026-01-01T10:00:04.000Z', 1),
+    ];
+    const { temporalCoverage, detail } = computeTemporalCoverage(
+      baseRead({
+        samples,
+        stopEpisodes: [
+          {
+            id: 'wide-stop',
+            startEarliestUtc: '2026-01-01T10:00:01.000Z',
+            startLatestUtc: '2026-01-01T10:00:03.000Z',
+            endEarliestUtc: '2026-01-01T10:00:04.000Z',
+            endLatestUtc: '2026-01-01T10:00:05.000Z',
+            minDurationS: 3,
+            maxDurationS: 4,
+            evidenceQuality: 'OK',
+            observedLabels: 1,
+            gapLabels: 2,
+            firstStationarySource: 'FSM',
+            observed: true,
+            inferred: false,
+            latitude: null,
+            longitude: null,
+            positionResolved: false,
+          },
+        ],
+      }),
+      tripWindow,
+    );
+    expect(temporalCoverage).not.toBe('VERIFIED');
+    expect(detail.verified).toBe(false);
+    expect(detail.confirmedStationarySeconds).toBe(0);
+    expect(detail.validDrivingSeconds).toBe(3);
+    expect(detail.unknownSeconds).toBeGreaterThan(0);
+  });
+
   it('internal data gap prevents VERIFIED', () => {
     const samples = [
       ...okSamplesEverySecond('2026-01-01T10:00:00.000Z', 2),

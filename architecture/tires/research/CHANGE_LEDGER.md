@@ -25,6 +25,13 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | `bash architecture/tires/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 | NON_EFFECTS | No runtime, DS4, or i18n change |
 
+### Tire Wear V3 P3B — stop boundary safety (2026-10-25)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Confirmed stationary seconds use FSM certain core (`startLatest`…`endEarliest`); no fill across uncertain earliest/latest envelopes; regression for wide stops |
+| NON_EFFECTS | M3 unchanged; adapter v1.1.0 / schema v3; DS4 core, production flags |
+
 ### Tire Wear V3 P3B — temporal coverage correctness (2026-10-25)
 
 | Event | Detail |

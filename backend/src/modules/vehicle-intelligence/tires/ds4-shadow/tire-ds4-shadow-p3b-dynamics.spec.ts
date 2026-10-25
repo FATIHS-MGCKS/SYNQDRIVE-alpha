@@ -207,7 +207,7 @@ describe('tire-ds4-shadow P3B temporal coverage', () => {
             minDurationS: 2,
             maxDurationS: 2,
             evidenceQuality: 'OK',
-            observedLabels: 2,
+            observedLabels: 3,
             gapLabels: 0,
             firstStationarySource: 'FSM',
             observed: true,
@@ -225,6 +225,39 @@ describe('tire-ds4-shadow P3B temporal coverage', () => {
       },
     );
     expect(detail.confirmedStationarySeconds).toBe(3);
+  });
+
+  it('partially observed tight stop does not impute unobserved core seconds', () => {
+    const { detail } = computeTemporalCoverage(
+      baseRead({
+        stopEpisodes: [
+          {
+            id: 's1',
+            startEarliestUtc: '2026-01-01T10:00:05.000Z',
+            startLatestUtc: '2026-01-01T10:00:05.000Z',
+            endEarliestUtc: '2026-01-01T10:00:07.000Z',
+            endLatestUtc: '2026-01-01T10:00:07.000Z',
+            minDurationS: 2,
+            maxDurationS: 2,
+            evidenceQuality: 'OK',
+            observedLabels: 2,
+            gapLabels: 0,
+            firstStationarySource: 'FSM',
+            observed: true,
+            inferred: false,
+            latitude: null,
+            longitude: null,
+            positionResolved: false,
+          },
+        ],
+      }),
+      {
+        tripDistanceKm: 2,
+        tripStartedAt: '2026-01-01T10:00:00.000Z',
+        tripEndedAt: '2026-01-01T10:00:10.000Z',
+      },
+    );
+    expect(detail.confirmedStationarySeconds).toBe(0);
   });
 
   it('EV mild regen below event threshold yields no manoeuvre events (neutral)', () => {

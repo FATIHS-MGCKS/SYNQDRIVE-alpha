@@ -46,18 +46,86 @@ function isValidOkDrivingSample(sample: DiV0MotionCoreShadowTripMapSampleDto): b
   return sample.speedKmh > MIN_MOVING_SPEED_KMH;
 }
 
-function isDirectlyConfirmedStop(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
+function isEligibleStopEpisode(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
   if (!stop.observed || stop.inferred) return false;
-  if (stop.gapLabels > 0) return false;
   if (classifySampleQuality({ evidenceQuality: stop.evidenceQuality } as DiV0MotionCoreShadowTripMapSampleDto) !== 'OK') {
     return false;
   }
-  const endUtc = stop.endEarliestUtc;
-  if (!endUtc || !stop.endLatestUtc) return false;
-  const startMs = Date.parse(stop.startEarliestUtc);
-  const endMs = Date.parse(endUtc);
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return false;
+  if (!stop.endEarliestUtc || !stop.endLatestUtc) return false;
+  const startLatestMs = Date.parse(stop.startLatestUtc);
+  const endEarliestMs = Date.parse(stop.endEarliestUtc);
+  if (!Number.isFinite(startLatestMs) || !Number.isFinite(endEarliestMs) || endEarliestMs < startLatestMs) {
+    return false;
+  }
   return true;
+}
+
+/** FSM: startEarliest/startLatest and endEarliest/endLatest bracket uncertainty; only tight bounds allow gapless imputation. */
+function stopBoundariesAreCertain(stop: DiV0MotionCoreShadowTripMapStopDto): boolean {
+  const startEarliestSec = bucketSecondKey(stop.startEarliestUtc);
+  const startLatestSec = bucketSecondKey(stop.startLatestUtc);
+  if (startEarliestSec == null || startLatestSec == null || startEarliestSec !== startLatestSec) {
+    return false;
+  }
+  const endEarliestSec = bucketSecondKey(stop.endEarliestUtc!);
+  const endLatestSec = bucketSecondKey(stop.endLatestUtc!);
+  if (endEarliestSec == null || endLatestSec == null || endEarliestSec !== endLatestSec) {
+    return false;
+  }
+  return true;
+}
+
+function isOkStationarySample(sample: DiV0MotionCoreShadowTripMapSampleDto): boolean {
+  if (classifySampleQuality(sample) !== 'OK') return false;
+  if (sample.speedKmh == null || !isPlausibleSpeedKmh(sample.speedKmh)) return true;
+  return sample.speedKmh <= MIN_MOVING_SPEED_KMH;
+}
+
+function stopCoreBoundsSec(
+  stop: DiV0MotionCoreShadowTripMapStopDto,
+  windowStartSec: number,
+  windowEndSec: number,
+): { loSec: number; hiSec: number } | null {
+  if (!isEligibleStopEpisode(stop)) return null;
+  const loSec = Math.max(windowStartSec, bucketSecondKey(stop.startLatestUtc)!);
+  const hiSec = Math.min(windowEndSec, bucketSecondKey(stop.endEarliestUtc!)!);
+  if (hiSec < loSec) return null;
+  return { loSec, hiSec };
+}
+
+function canImputeStationarySecondsWithoutSamples(
+  stop: DiV0MotionCoreShadowTripMapStopDto,
+  loSec: number,
+  hiSec: number,
+): boolean {
+  if (stop.gapLabels > 0) return false;
+  if (!stopBoundariesAreCertain(stop)) return false;
+  const spanSeconds = hiSec - loSec + 1;
+  return stop.observedLabels >= spanSeconds;
+}
+
+function addConfirmedStationarySecondsFromStop(
+  stop: DiV0MotionCoreShadowTripMapStopDto,
+  windowStartSec: number,
+  windowEndSec: number,
+  sampleBySecond: Map<number, DiV0MotionCoreShadowTripMapSampleDto>,
+  confirmedStationaryBySecond: Set<number>,
+): void {
+  const bounds = stopCoreBoundsSec(stop, windowStartSec, windowEndSec);
+  if (!bounds) return;
+  const imputeAll = canImputeStationarySecondsWithoutSamples(stop, bounds.loSec, bounds.hiSec);
+  for (let t = bounds.loSec; t <= bounds.hiSec; t += 1) {
+    const sample = sampleBySecond.get(t);
+    if (sample != null) {
+      if (isOkStationarySample(sample)) {
+        confirmedStationaryBySecond.add(t);
+      }
+      continue;
+    }
+    if (imputeAll) {
+      confirmedStationaryBySecond.add(t);
+    }
+  }
 }
 
 function emptyDetail(): TireDs4ShadowTemporalCoverageDetail {
@@ -113,16 +181,13 @@ export function computeTemporalCoverage(
 
   const confirmedStationaryBySecond = new Set<number>();
   for (const stop of stopEpisodes) {
-    if (!isDirectlyConfirmedStop(stop)) continue;
-    const startMs = Date.parse(stop.startEarliestUtc);
-    const endUtc = stop.endEarliestUtc;
-    if (!endUtc) continue;
-    const endMs = Date.parse(endUtc);
-    const loSec = Math.max(windowStartSec, Math.floor(Math.min(startMs, endMs) / 1000));
-    const hiSec = Math.min(windowEndSec, Math.floor(Math.max(startMs, endMs) / 1000));
-    for (let t = loSec; t <= hiSec; t += 1) {
-      confirmedStationaryBySecond.add(t);
-    }
+    addConfirmedStationarySecondsFromStop(
+      stop,
+      windowStartSec,
+      windowEndSec,
+      sampleBySecond,
+      confirmedStationaryBySecond,
+    );
   }
 
   let labelledSampleSeconds = 0;
