@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { apdShadowBaselinePollEvidenceForTests } from './apd-shadow-test-baseline-evidence.helper';
 import {
   ApdShadowActivationEpochLifecycle,
   BatteryEvidenceScope,
@@ -178,6 +179,7 @@ describePg('APDS R4 P2 trip authority (Postgres integration)', () => {
       prisma as never,
       repository,
       mockActivationEpochServiceForCohort(cohort, organizationId, { id: epochId }),
+      apdShadowBaselinePollEvidenceForTests(prisma as never),
       {
         setEnabled: jest.fn(),
         setCohortMemberCount: jest.fn(),

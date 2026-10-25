@@ -305,6 +305,78 @@ export async function applyManualBaselinesAfterCreate(
   return failures;
 }
 
+/** Admin GET may expose legacy `hvBatteryCapacityKwh` without split usable/gross fields. */
+export function resolveAdminDtoHvUsableCapacityKwh(
+  dto: Record<string, unknown>,
+): string {
+  const usable = dto.hvBatteryUsableCapacityKwh;
+  if (usable != null && String(usable).trim() !== '') {
+    return String(usable);
+  }
+  const legacy = dto.hvBatteryCapacityKwh;
+  if (legacy != null && String(legacy).trim() !== '') {
+    return String(legacy);
+  }
+  return '';
+}
+
+export function assertMasterHvCapacityConsistency(rv: RegisteredVehicle): void {
+  const usable =
+    parseOptionalFloat(rv.hvBatteryUsableCapacityKwh) ??
+    parseOptionalFloat(rv.hvBatteryCapacityKwh);
+  const gross = parseOptionalFloat(rv.hvBatteryGrossCapacityKwh);
+  if (usable != null && gross != null && usable > gross) {
+    throw new Error('HV_USABLE_EXCEEDS_GROSS');
+  }
+}
+
+export type MasterVehicleHvStammdatenDiff = {
+  vehiclePatch: Record<string, unknown>;
+  usableReferenceKwh: number | null;
+  usableReferenceChanged: boolean;
+};
+
+/**
+ * Master spec edit: vehicle-table HV scalars (usable legacy column + tank).
+ * Gross kWh has no vehicle column; canonical gross reference is not written here
+ * (single active reference row + gross not used as SOH reference on register).
+ */
+export function buildMasterVehicleHvStammdatenDiff(
+  current: RegisteredVehicle,
+  baseline: RegisteredVehicle,
+): MasterVehicleHvStammdatenDiff {
+  const vehiclePatch: Record<string, unknown> = {};
+  const electrified = isElectrifiedFuelType(current.fuelType);
+
+  const nextUsable =
+    parseOptionalFloat(current.hvBatteryUsableCapacityKwh) ??
+    parseOptionalFloat(current.hvBatteryCapacityKwh);
+  const prevUsable =
+    parseOptionalFloat(baseline.hvBatteryUsableCapacityKwh) ??
+    parseOptionalFloat(baseline.hvBatteryCapacityKwh);
+
+  if (electrified) {
+    if (nextUsable !== prevUsable) {
+      vehiclePatch.hvBatteryCapacityKwh = nextUsable;
+    }
+  }
+
+  const nextTank = parseOptionalFloat(current.tankCapacityLiters);
+  const prevTank = parseOptionalFloat(baseline.tankCapacityLiters);
+  if (nextTank !== prevTank) {
+    vehiclePatch.tankCapacityLiters = nextTank;
+  }
+
+  const usableReferenceChanged =
+    electrified && nextUsable != null && nextUsable !== prevUsable;
+
+  return {
+    vehiclePatch,
+    usableReferenceKwh: electrified ? nextUsable : null,
+    usableReferenceChanged,
+  };
+}
+
 /** Maps Master admin GET vehicle DTO into the registration modal shape (full baseline for edit). */
 export function mapAdminVehicleDtoToRegisteredVehicle(
   dto: Record<string, unknown>,
@@ -350,13 +422,14 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
     batteryAmpere: str('batteryAmpere'),
     batteryVolt: str('batteryVolt'),
     lvBatteryChemistry: str('lvBatteryChemistry'),
-    hvBatteryCapacityKwh: str('hvBatteryCapacityKwh'),
+    hvBatteryCapacityKwh:
+      str('hvBatteryCapacityKwh') || resolveAdminDtoHvUsableCapacityKwh(dto),
     tankCapacityLiters: str('tankCapacityLiters'),
     hvBatteryPresent: str('hvBatteryPresent'),
     hvBatteryChemistry: str('hvBatteryChemistry'),
     hvBatteryCellFormat: str('hvBatteryCellFormat'),
     hvBatteryGrossCapacityKwh: str('hvBatteryGrossCapacityKwh'),
-    hvBatteryUsableCapacityKwh: str('hvBatteryUsableCapacityKwh'),
+    hvBatteryUsableCapacityKwh: resolveAdminDtoHvUsableCapacityKwh(dto),
     hvBatteryNominalVoltage: str('hvBatteryNominalVoltage'),
     hvBatteryArchitecture: str('hvBatteryArchitecture'),
     hvBatteryThermalManagement: str('hvBatteryThermalManagement'),

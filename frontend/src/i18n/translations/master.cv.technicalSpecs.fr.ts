@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsFr = {
   'master.cv.technicalSpecs.editLoadError': 'Impossible de charger les données du véhicule pour modification.',
   'master.cv.technicalSpecs.updateSuccess': 'Spécifications du véhicule enregistrées.',
   'master.cv.technicalSpecs.secondaryDetails': 'Détails opérationnels et d’intégration',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'La capacité utile affichée provient des données maîtres véhicule héritées (pas de SOH, pas de référence vérifiée, pas une mesure récente). Les champs HV ne sont pas modifiables pour les véhicules existants dans cette version.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'Ce champ HV n’est pas enregistré dans l’éditeur véhicule existant.',
 };

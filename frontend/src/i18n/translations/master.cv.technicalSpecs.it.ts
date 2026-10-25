@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsIt = {
   'master.cv.technicalSpecs.editLoadError': 'Impossibile caricare i dati del veicolo per la modifica.',
   'master.cv.technicalSpecs.updateSuccess': 'Specifiche del veicolo salvate.',
   'master.cv.technicalSpecs.secondaryDetails': 'Dettagli operativi e di integrazione',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'La capacità utile mostrata proviene dai dati anagrafici legacy del veicolo (non SOH, non riferimento verificato, non misurazione recente). I campi HV non sono modificabili per i veicoli esistenti in questa release.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'Questo campo HV non viene persistito nell’editor veicoli esistenti.',
 };

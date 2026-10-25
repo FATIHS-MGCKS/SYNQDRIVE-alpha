@@ -18,4 +18,8 @@ export const masterCvTechnicalSpecsDe = {
   'master.cv.technicalSpecs.editLoadError': 'Fahrzeugdaten für die Bearbeitung konnten nicht geladen werden.',
   'master.cv.technicalSpecs.updateSuccess': 'Fahrzeugspezifikationen gespeichert.',
   'master.cv.technicalSpecs.secondaryDetails': 'Betriebs- und Integrationsdetails',
+  'master.cv.technicalSpecs.hvLegacyMasterDataHint':
+    'Die nutzbare Kapazität stammt aus den Fahrzeug-Stammdaten (Legacy, keine SOH-, Referenz- oder Messwert-Aussage). HV-Felder sind für Bestandsfahrzeuge in diesem Release nicht editierbar.',
+  'master.cv.technicalSpecs.hvFieldNotPersistedHint':
+    'Dieses HV-Feld wird im Bestandsfahrzeug-Editor aktuell nicht persistiert.',
 };

@@ -718,10 +718,21 @@ export class VehiclesService {
 
   // ── Mapping: RegisteredVehicle (Master Admin) ─────────────────────
 
+  private formatRegisteredVehicleKwhField(
+    value: number | null | undefined,
+  ): string {
+    if (value == null || !Number.isFinite(value)) return '';
+    return String(value);
+  }
+
   mapToRegisteredVehicle(
     v: any,
     tripStateMap?: Map<string, { state: any }>,
     derivedFleetStatus?: string | null,
+    hvReference?: {
+      capacityKwh: number;
+      capacityType: string;
+    } | null,
   ) {
     const battery = v.batterySpecs?.[0];
     const tireSetup = v.tireSetups?.[0];
@@ -837,6 +848,20 @@ export class VehiclesService {
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,
       hardwareType: v.hardwareType ?? 'UNKNOWN',
+      hvBatteryCapacityKwh: this.formatRegisteredVehicleKwhField(
+        v.hvBatteryCapacityKwh,
+      ),
+      tankCapacityLiters: this.formatRegisteredVehicleKwhField(
+        v.tankCapacityLiters,
+      ),
+      hvBatteryUsableCapacityKwh:
+        hvReference?.capacityType === 'USABLE'
+          ? this.formatRegisteredVehicleKwhField(hvReference.capacityKwh)
+          : this.formatRegisteredVehicleKwhField(v.hvBatteryCapacityKwh),
+      hvBatteryGrossCapacityKwh:
+        hvReference?.capacityType === 'GROSS'
+          ? this.formatRegisteredVehicleKwhField(hvReference.capacityKwh)
+          : '',
     };
   }
 
@@ -1740,8 +1765,19 @@ export class VehiclesService {
       include: FULL_VEHICLE_WITH_ORG_INCLUDE,
     });
     if (!vehicle) return null;
-    const tripStateMap = await this.buildTripStateMap([vehicle.id]);
-    return this.mapToRegisteredVehicle(vehicle, tripStateMap);
+    const [tripStateMap, hvReference] = await Promise.all([
+      this.buildTripStateMap([vehicle.id]),
+      this.prisma.vehicleBatteryReferenceCapacity.findFirst({
+        where: {
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          isActive: true,
+          supersededById: null,
+        },
+        select: { capacityKwh: true, capacityType: true },
+      }),
+    ]);
+    return this.mapToRegisteredVehicle(vehicle, tripStateMap, undefined, hvReference);
   }
 
   async findOne(organizationId: string, id: string) {

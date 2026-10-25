@@ -19,12 +19,16 @@ export const masterMotionPhysicsEn = {
   'master.motionPhysics.confirmSuccess': 'Motion reference confirmed',
   'master.motionPhysics.confirmError': 'Could not confirm motion reference',
   'master.motionPhysics.manualConfirmError': 'Could not save confirmed manual values',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Manual values were saved, but the active reference could not be reloaded. Display uses the confirmed create response.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Manual motion physics values differ from the stored reference. They are not saved as a reference until you use “Confirm manual values”.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':
     'Form values differ from the stored AI estimate. Use “Confirm manual values” to save your edits as a confirmed reference.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Vehicle data saved. Motion physics reference unchanged — confirm manual values to store your edits.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Motor power, acceleration, and variant are not stored on “Save Changes”. Use “Confirm manual values” to persist them as a confirmed reference.',
   'master.motionPhysics.backfillError':
     'Vehicle saved, but motion physics reference could not be stored. Fix the values and save again.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'e.g. 150',

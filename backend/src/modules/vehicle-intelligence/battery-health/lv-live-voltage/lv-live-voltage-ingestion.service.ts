@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ApdShadowBaselinePollEvidenceService } from '../../../../workers/schedulers/snapshot-polling/adaptive-polling-shadow/apd-shadow-baseline-poll-evidence.service';
 import {
   BatteryMeasurementQuality,
   BatteryMeasurementType,
@@ -47,6 +48,8 @@ export class LvLiveVoltageIngestionService {
     private readonly prisma: PrismaService,
     private readonly measurements: BatteryMeasurementService,
     private readonly lastStoredLiveVoltage: BatteryProviderLastStoredLiveVoltageResolver,
+    @Optional()
+    private readonly apdShadowBaselineEvidence?: ApdShadowBaselinePollEvidenceService,
   ) {}
 
   /**
@@ -74,6 +77,18 @@ export class LvLiveVoltageIngestionService {
         payload.organizationId,
         payload.vehicleId,
       );
+
+    const previousLvProviderRow = await this.prisma.batteryMeasurement.findFirst({
+      where: {
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        type: BatteryMeasurementType.LIVE_VOLTAGE,
+        quality: BatteryMeasurementQuality.VALID,
+        providerTimestamp: { not: null },
+      },
+      orderBy: { providerTimestamp: 'desc' },
+      select: { providerTimestamp: true },
+    });
 
     const decision = evaluateBatteryProviderObservation({
       organizationId: payload.organizationId,
@@ -130,6 +145,25 @@ export class LvLiveVoltageIngestionService {
     this.logger.debug(
       `LIVE_VOLTAGE persisted vehicle=${payload.vehicleId} id=${measurement.id} v=${voltage}V outcome=${decision.outcome}`,
     );
+
+    if (this.apdShadowBaselineEvidence) {
+      void this.apdShadowBaselineEvidence
+        .reconcileDeferredLvAfterSnapshotPersistence({
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          providerTimestampMs: decision.observedAt.getTime(),
+          snapshotCorrelationId: payload.correlationId ?? null,
+          previousLvProviderSourceMsBeforePersist:
+            previousLvProviderRow?.providerTimestamp?.getTime() ?? null,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `APD shadow deferred LV evidence reconcile failed vehicle=${payload.vehicleId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+    }
 
     return {
       persisted: true,

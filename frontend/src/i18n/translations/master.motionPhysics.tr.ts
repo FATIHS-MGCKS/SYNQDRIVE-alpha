@@ -19,12 +19,16 @@ export const masterMotionPhysicsTr = {
   'master.motionPhysics.confirmSuccess': 'Hareket referansı onaylandı',
   'master.motionPhysics.confirmError': 'Referans onaylanamadı',
   'master.motionPhysics.manualConfirmError': 'Onaylanan manuel değerler kaydedilemedi',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Manuel değerler kaydedildi ancak etkin referans yeniden yüklenemedi. Görünüm onay yanıtını kullanıyor.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Manuel hareket fiziği değerleri kayıtlı referanstan farklı. „Manuel değerleri onayla“ ile referans olarak kaydedilir.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':
     'Form değerleri kayıtlı AI tahmininden farklı. Düzenlemelerinizi onaylı referans olarak kaydetmek için „Manuel değerleri onayla“ kullanın.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Araç verileri kaydedildi. Hareket referansı değişmedi — düzenlemelerinizi kaydetmek için manuel değerleri onaylayın.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Motor gücü, ivme ve varyant «Değişiklikleri kaydet» ile saklanmaz. Onaylı referans olarak kaydetmek için «Manuel değerleri onayla» kullanın.',
   'master.motionPhysics.backfillError':
     'Araç kaydedildi, ancak hareket fiziği referansı kaydedilemedi. Değerleri düzeltip yeniden kaydedin.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'örn. 150',

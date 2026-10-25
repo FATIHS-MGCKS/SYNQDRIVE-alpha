@@ -11,11 +11,15 @@ import {
 } from '../connected-vehicles/ai-spec-field-merge.util';
 import {
   buildMotionPhysicsReferenceCreateBody,
+  mergeMotionPhysicsReferenceFromCreateResponse,
   canConfirmEstimatedAiMotionReference,
   canConfirmManualMotionValues,
+  formatMotionPhysicsUserErrorMessage,
   hasMotionPhysicsFormValues,
+  hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave,
   hasUnconfirmedManualMotionPhysicsEdits,
   isMotionPhysicsReferenceReadOnly,
+  MOTION_PHYSICS_SYNC_REASON_CODES,
   MOTION_SYSTEM_POWER_DEFINITION_OPTIONS,
   motionPhysicsReferenceSourceForSave,
   resolveMotionPhysicsPendingAfterAiApply,
@@ -123,6 +127,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const motionPhysicsPendingCreateSourceRef = useRef<MotionPhysicsPendingCreateSource>(null);
   const motionPhysicsManualEditedRef = useRef(false);
   const motionPhysicsLoadedBaselineRef = useRef<MotionPhysicsFormSnapshot | null>(null);
+  const motionPhysicsNoReferenceSessionBaselineRef = useRef<MotionPhysicsFormSnapshot | null>(
+    null,
+  );
   const [idleRpm, setIdleRpm] = useState('');
   const [maxRpm, setMaxRpm] = useState('');
   const [brakeForceDistribution, setBrakeForceDistribution] = useState('');
@@ -646,6 +653,51 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     };
   }, []);
 
+  const applyActiveMotionPhysicsReference = useCallback(
+    (ref: {
+      id: string;
+      evidenceTier: 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED';
+      curbMassKg?: number | null;
+      systemMotorPowerKw?: number | null;
+      accel0To100S?: number | null;
+      variantAssumption?: string | null;
+      systemPowerDefinition?: string | null;
+    }) => {
+      setMotionPhysicsReferenceId(ref.id);
+      setMotionPhysicsEvidenceTier(ref.evidenceTier);
+      if (ref.curbMassKg != null) setCurbWeight(String(ref.curbMassKg));
+      if (ref.systemMotorPowerKw != null) setSystemMotorPowerKw(String(ref.systemMotorPowerKw));
+      if (ref.accel0To100S != null) setAccel0To100S(String(ref.accel0To100S));
+      if (ref.variantAssumption) setMotionPhysicsVariantAssumption(ref.variantAssumption);
+      if (ref.systemPowerDefinition) {
+        const def = ref.systemPowerDefinition as MotionSystemPowerDefinitionOption;
+        if ((MOTION_SYSTEM_POWER_DEFINITION_OPTIONS as readonly string[]).includes(def)) {
+          setSystemPowerDefinition(def);
+        }
+      }
+      motionPhysicsManualEditedRef.current = false;
+      motionPhysicsPendingCreateSourceRef.current = null;
+      motionPhysicsNoReferenceSessionBaselineRef.current = null;
+      motionPhysicsLoadedBaselineRef.current =
+        ref.evidenceTier === 'VERIFIED'
+          ? null
+          : snapshotMotionPhysicsFromActiveReference(ref);
+      setMotionPhysicsSaveInfo('');
+      setMotionPhysicsSyncError('');
+    },
+    [],
+  );
+
+  const snapshotMotionPhysicsBaselineFromVehicle = useCallback((vehicle: RegisteredVehicle) => {
+    return snapshotMotionPhysicsFormFields({
+      curbWeight: vehicle.curbWeight ?? '',
+      systemMotorPowerKw: vehicle.systemMotorPowerKw ?? '',
+      accel0To100S: vehicle.accel0To100S ?? '',
+      variantAssumption: vehicle.motionPhysicsVariantAssumption ?? '',
+      systemPowerDefinition: '',
+    });
+  }, []);
+
   useEffect(() => {
     if (!isOpen || !isEditMode || !existingVehicle?.id || !organizationId) {
       setMotionPhysicsReferenceId(null);
@@ -653,39 +705,38 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       motionPhysicsPendingCreateSourceRef.current = null;
       motionPhysicsManualEditedRef.current = false;
       motionPhysicsLoadedBaselineRef.current = null;
+      motionPhysicsNoReferenceSessionBaselineRef.current = null;
       setMotionPhysicsSaveInfo('');
       return;
     }
+
+    motionPhysicsNoReferenceSessionBaselineRef.current =
+      snapshotMotionPhysicsBaselineFromVehicle(existingVehicle);
+
     api.vehicles.motionPhysicsReference
       .getActive(organizationId, existingVehicle.id)
       .then((ref) => {
-        if (!ref) return;
-        setMotionPhysicsReferenceId(ref.id);
-        setMotionPhysicsEvidenceTier(ref.evidenceTier);
-        if (ref.curbMassKg != null) setCurbWeight(String(ref.curbMassKg));
-        if (ref.systemMotorPowerKw != null) setSystemMotorPowerKw(String(ref.systemMotorPowerKw));
-        if (ref.accel0To100S != null) setAccel0To100S(String(ref.accel0To100S));
-        if (ref.variantAssumption) setMotionPhysicsVariantAssumption(ref.variantAssumption);
-        if (ref.systemPowerDefinition) {
-          const def = ref.systemPowerDefinition as MotionSystemPowerDefinitionOption;
-          if ((MOTION_SYSTEM_POWER_DEFINITION_OPTIONS as readonly string[]).includes(def)) {
-            setSystemPowerDefinition(def);
-          }
+        if (!ref) {
+          setMotionPhysicsReferenceId(null);
+          setMotionPhysicsEvidenceTier(null);
+          motionPhysicsLoadedBaselineRef.current = null;
+          return;
         }
-        motionPhysicsManualEditedRef.current = false;
-        motionPhysicsPendingCreateSourceRef.current = null;
-        motionPhysicsLoadedBaselineRef.current =
-          ref.evidenceTier === 'ESTIMATED'
-            ? snapshotMotionPhysicsFromActiveReference(ref)
-            : null;
-        setMotionPhysicsSaveInfo('');
+        applyActiveMotionPhysicsReference(ref);
       })
       .catch(() => {
         setMotionPhysicsReferenceId(null);
         setMotionPhysicsEvidenceTier(null);
         motionPhysicsLoadedBaselineRef.current = null;
       });
-  }, [isOpen, isEditMode, existingVehicle?.id, organizationId]);
+  }, [
+    isOpen,
+    isEditMode,
+    existingVehicle,
+    organizationId,
+    applyActiveMotionPhysicsReference,
+    snapshotMotionPhysicsBaselineFromVehicle,
+  ]);
 
   const motionPhysicsFormSnapshot = snapshotMotionPhysicsFormFields({
     curbWeight,
@@ -700,6 +751,16 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     referenceId: motionPhysicsReferenceId,
     loadedReferenceBaseline: motionPhysicsLoadedBaselineRef.current,
     currentForm: motionPhysicsFormSnapshot,
+  });
+
+  const motionPhysicsRoutineSaveAtRisk = hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave({
+    evidenceTier: motionPhysicsEvidenceTier,
+    referenceId: motionPhysicsReferenceId,
+    loadedReferenceBaseline: motionPhysicsLoadedBaselineRef.current,
+    noReferenceSessionBaseline: motionPhysicsNoReferenceSessionBaselineRef.current,
+    currentForm: motionPhysicsFormSnapshot,
+    pendingCreateSource: motionPhysicsPendingCreateSourceRef.current,
+    manualMotionEdited: motionPhysicsManualEditedRef.current,
   });
 
   const canConfirmAiEstimateReference = canConfirmEstimatedAiMotionReference({
@@ -753,21 +814,41 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           manualOperatorConfirm: true,
         }),
       );
-      setMotionPhysicsReferenceId(created.id);
-      setMotionPhysicsEvidenceTier(created.evidenceTier);
-      motionPhysicsPendingCreateSourceRef.current = null;
-      motionPhysicsManualEditedRef.current = false;
-      motionPhysicsLoadedBaselineRef.current = snapshotMotionPhysicsFormFields({
-        curbWeight,
-        systemMotorPowerKw,
-        accel0To100S,
-        variantAssumption: motionPhysicsVariantAssumption,
-        systemPowerDefinition,
-      });
-      setMotionPhysicsSaveInfo('');
-      setMotionPhysicsSyncError('');
-    } catch {
-      setMotionPhysicsSyncError(t('master.motionPhysics.manualConfirmError'));
+
+      let reloaded: Awaited<ReturnType<typeof api.vehicles.motionPhysicsReference.getActive>> = null;
+      try {
+        reloaded = await api.vehicles.motionPhysicsReference.getActive(
+          organizationId,
+          existingVehicle.id,
+        );
+      } catch {
+        reloaded = null;
+      }
+
+      if (reloaded) {
+        applyActiveMotionPhysicsReference(reloaded);
+      } else {
+        applyActiveMotionPhysicsReference(
+          mergeMotionPhysicsReferenceFromCreateResponse(created, {
+            curbWeight,
+            systemMotorPowerKw,
+            accel0To100S,
+            variantAssumption: motionPhysicsVariantAssumption,
+            systemPowerDefinition,
+          }),
+        );
+        setMotionPhysicsSaveInfo(
+          `${t('master.motionPhysics.manualConfirmReloadWarning')} (${MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_RELOAD_FAILED})`,
+        );
+      }
+    } catch (error) {
+      setMotionPhysicsSyncError(
+        formatMotionPhysicsUserErrorMessage(
+          t('master.motionPhysics.manualConfirmError'),
+          error,
+          MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_CONFIRM_FAILED,
+        ),
+      );
     } finally {
       setMotionPhysicsManualConfirming(false);
     }
@@ -998,19 +1079,25 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setSubmitting(true);
     setMotionPhysicsSaveInfo('');
     const rv = buildVehicle();
-    const unsavedMotionPhysics = motionPhysicsHasUnsavedManualEdits;
+    const motionPhysicsBlockedAfterSave = motionPhysicsRoutineSaveAtRisk;
     try {
       if (isEditMode && onUpdate) {
         await Promise.resolve(onUpdate(rv));
         if (organizationId && rv.id) {
           try {
             await syncMotionPhysicsReferenceAfterSave(rv.id, organizationId);
-          } catch {
-            setMotionPhysicsSyncError(t('master.motionPhysics.backfillError'));
+          } catch (error) {
+            setMotionPhysicsSyncError(
+              formatMotionPhysicsUserErrorMessage(
+                t('master.motionPhysics.backfillError'),
+                error,
+                MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_CREATE_FAILED,
+              ),
+            );
             return;
           }
         }
-        if (unsavedMotionPhysics) {
+        if (motionPhysicsBlockedAfterSave) {
           setMotionPhysicsSaveInfo(t('master.motionPhysics.unsavedAfterVehicleSave'));
           return;
         }
@@ -1394,9 +1481,11 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       {t('master.motionPhysics.manualConfirmAction')}
                     </button>
                   )}
-                  {motionPhysicsHasUnsavedManualEdits && (
+                  {(motionPhysicsHasUnsavedManualEdits || motionPhysicsRoutineSaveAtRisk) && (
                     <p className="text-[11px] text-status-warning w-full">
-                      {t('master.motionPhysics.unsavedManualValuesHint')}
+                      {motionPhysicsHasUnsavedManualEdits
+                        ? t('master.motionPhysics.unsavedManualValuesHint')
+                        : t('master.motionPhysics.routineSaveWillNotPersistHint')}
                     </p>
                   )}
                   {motionPhysicsSaveInfo && (
@@ -1432,6 +1521,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                   <div>
                     <label className={labelClass}>{t('master.motionPhysics.systemMotorPowerKw')} {aiTag}</label>
                     <input
+                      data-testid="motion-physics-system-power-kw"
                       value={systemMotorPowerKw}
                       onChange={e => {
                         noteMotionPhysicsManualEdit();
@@ -1445,6 +1535,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                   <div>
                     <label className={labelClass}>{t('master.motionPhysics.accel0To100S')} {aiTag}</label>
                     <input
+                      data-testid="motion-physics-accel-0-100"
                       value={accel0To100S}
                       onChange={e => {
                         noteMotionPhysicsManualEdit();
@@ -1518,20 +1609,43 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 </p>
                 {(() => {
                   const isEv = fuelType === 'Electric' || fuelType === 'Plugin Hybrid' || fuelType === 'Hybrid';
-                  const cls = `${inputClass} ${!isEv ? 'opacity-40 cursor-not-allowed' : ''}`;
+                  const hvExistingVehicleReadOnly = isEditMode && isEv;
+                  const hvFieldDisabled = !isEv || hvExistingVehicleReadOnly;
+                  const cls = `${inputClass} ${hvFieldDisabled ? 'opacity-40 cursor-not-allowed' : ''}`;
                   return (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div><label className={labelClass}>Usable Capacity (kWh) {aiTag}</label><input value={hvBatteryUsableCapacityKwh || hvBatteryCapacityKwh} onChange={e => { setHvBatteryUsableCapacityKwh(e.target.value); setHvBatteryCapacityKwh(e.target.value); }} disabled={!isEv} placeholder={isEv ? 'e.g. 75' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Gross Capacity (kWh) {aiTag}</label><input value={hvBatteryGrossCapacityKwh} onChange={e => setHvBatteryGrossCapacityKwh(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 82' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Nominal Voltage (V) {aiTag}</label><input value={hvBatteryNominalVoltage} onChange={e => setHvBatteryNominalVoltage(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 400' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Chemistry {aiTag}</label><input value={hvBatteryChemistry} onChange={e => setHvBatteryChemistry(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. NMC, LFP' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Cell Format {aiTag}</label><input value={hvBatteryCellFormat} onChange={e => setHvBatteryCellFormat(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. prismatic' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Architecture {aiTag}</label><input value={hvBatteryArchitecture} onChange={e => setHvBatteryArchitecture(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 400V, 800V' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Thermal Management {aiTag}</label><input value={hvBatteryThermalManagement} onChange={e => setHvBatteryThermalManagement(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. liquid-cooled' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>AC Charger (kW) {aiTag}</label><input value={acOnboardChargerKw} onChange={e => setAcOnboardChargerKw(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 11' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>DC Fast Charge (kW) {aiTag}</label><input value={dcFastChargeMaxKw} onChange={e => setDcFastChargeMaxKw(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 150' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Warranty (years) {aiTag}</label><input value={hvBatteryWarrantyYears} onChange={e => setHvBatteryWarrantyYears(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 8' : 'N/A'} className={cls} /></div>
-                      <div><label className={labelClass}>Warranty (km) {aiTag}</label><input value={hvBatteryWarrantyKm} onChange={e => setHvBatteryWarrantyKm(e.target.value)} disabled={!isEv} placeholder={isEv ? 'e.g. 160000' : 'N/A'} className={cls} /></div>
+                    <div className="space-y-2">
+                      {hvExistingVehicleReadOnly && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('master.cv.technicalSpecs.hvLegacyMasterDataHint')}
+                        </p>
+                      )}
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div>
+                        <label className={labelClass}>Usable Capacity (kWh) {aiTag}</label>
+                        <input
+                          value={hvBatteryUsableCapacityKwh || hvBatteryCapacityKwh}
+                          onChange={e => {
+                            setHvBatteryUsableCapacityKwh(e.target.value);
+                            setHvBatteryCapacityKwh(e.target.value);
+                          }}
+                          disabled={hvFieldDisabled}
+                          readOnly={hvExistingVehicleReadOnly}
+                          placeholder={isEv ? 'e.g. 75' : 'N/A'}
+                          className={cls}
+                          data-testid="hv-usable-capacity-kwh"
+                        />
+                      </div>
+                      <div><label className={labelClass}>Gross Capacity (kWh) {aiTag}</label><input value={hvBatteryGrossCapacityKwh} onChange={e => setHvBatteryGrossCapacityKwh(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 82' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Nominal Voltage (V) {aiTag}</label><input value={hvBatteryNominalVoltage} onChange={e => setHvBatteryNominalVoltage(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 400' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Chemistry {aiTag}</label><input value={hvBatteryChemistry} onChange={e => setHvBatteryChemistry(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. NMC, LFP' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Cell Format {aiTag}</label><input value={hvBatteryCellFormat} onChange={e => setHvBatteryCellFormat(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. prismatic' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Architecture {aiTag}</label><input value={hvBatteryArchitecture} onChange={e => setHvBatteryArchitecture(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 400V, 800V' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Thermal Management {aiTag}</label><input value={hvBatteryThermalManagement} onChange={e => setHvBatteryThermalManagement(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. liquid-cooled' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>AC Charger (kW) {aiTag}</label><input value={acOnboardChargerKw} onChange={e => setAcOnboardChargerKw(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 11' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>DC Fast Charge (kW) {aiTag}</label><input value={dcFastChargeMaxKw} onChange={e => setDcFastChargeMaxKw(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 150' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Warranty (years) {aiTag}</label><input value={hvBatteryWarrantyYears} onChange={e => setHvBatteryWarrantyYears(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 8' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                      <div><label className={labelClass}>Warranty (km) {aiTag}</label><input value={hvBatteryWarrantyKm} onChange={e => setHvBatteryWarrantyKm(e.target.value)} disabled={hvFieldDisabled} readOnly={hvExistingVehicleReadOnly} placeholder={isEv ? 'e.g. 160000' : 'N/A'} className={cls} title={hvExistingVehicleReadOnly ? t('master.cv.technicalSpecs.hvFieldNotPersistedHint') : undefined} /></div>
+                    </div>
                     </div>
                   );
                 })()}

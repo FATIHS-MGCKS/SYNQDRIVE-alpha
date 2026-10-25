@@ -19,12 +19,16 @@ export const masterMotionPhysicsDe = {
   'master.motionPhysics.confirmSuccess': 'Fahrphysik-Referenz bestätigt',
   'master.motionPhysics.confirmError': 'Referenz konnte nicht bestätigt werden',
   'master.motionPhysics.manualConfirmError': 'Manuelle Werte konnten nicht bestätigt werden',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Manuelle Werte wurden gespeichert, die aktive Referenz konnte jedoch nicht neu geladen werden. Die Anzeige nutzt die Bestätigungsantwort.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Manuelle Fahrphysik-Werte weichen von der gespeicherten Referenz ab. Sie werden erst mit „Manuelle Werte bestätigen“ als Referenz gespeichert.',
   'master.motionPhysics.confirmAiEstimateBlockedHint':
     'Formularwerte weichen von der gespeicherten KI-Schätzung ab. Nutzen Sie „Manuelle Werte bestätigen“, um Ihre Änderungen als bestätigte Referenz zu speichern.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Fahrzeugdaten gespeichert. Fahrphysik-Referenz unverändert — „Manuelle Werte bestätigen“, um Ihre Änderungen zu speichern.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'Motorleistung, Beschleunigung und Variante werden bei „Änderungen speichern“ nicht gespeichert. Nutzen Sie „Manuelle Werte bestätigen“, um sie als bestätigte Referenz zu persistieren.',
   'master.motionPhysics.backfillError':
     'Fahrzeug gespeichert, aber die Fahrphysik-Referenz konnte nicht gespeichert werden. Werte korrigieren und erneut speichern.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'z. B. 150',

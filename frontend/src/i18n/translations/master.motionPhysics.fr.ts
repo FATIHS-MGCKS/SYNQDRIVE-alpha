@@ -19,12 +19,16 @@ export const masterMotionPhysicsFr = {
   'master.motionPhysics.confirmSuccess': 'Référence mouvement confirmée',
   'master.motionPhysics.confirmError': 'Impossible de confirmer la référence',
   'master.motionPhysics.manualConfirmError': 'Impossible d’enregistrer les valeurs manuelles confirmées',
+  'master.motionPhysics.manualConfirmReloadWarning':
+    'Les valeurs manuelles ont été enregistrées, mais la référence active n’a pas pu être rechargée. L’affichage utilise la réponse de confirmation.',
   'master.motionPhysics.unsavedManualValuesHint':
     'Les valeurs manuelles diffèrent de la référence enregistrée. Elles ne seront enregistrées qu’avec « Confirmer les valeurs manuelles ».',
   'master.motionPhysics.confirmAiEstimateBlockedHint':
     'Les valeurs du formulaire diffèrent de l’estimation IA enregistrée. Utilisez « Confirmer les valeurs manuelles » pour enregistrer vos modifications.',
   'master.motionPhysics.unsavedAfterVehicleSave':
     'Données véhicule enregistrées. Référence physique inchangée — confirmez les valeurs manuelles pour enregistrer vos modifications.',
+  'master.motionPhysics.routineSaveWillNotPersistHint':
+    'La puissance moteur, l’accélération et la variante ne sont pas enregistrées via « Enregistrer les modifications ». Utilisez « Confirmer les valeurs manuelles » pour les persister comme référence confirmée.',
   'master.motionPhysics.backfillError':
     'Véhicule enregistré, mais la référence physique n’a pas pu être stockée. Corrigez les valeurs et réenregistrez.',
   'master.motionPhysics.placeholder.systemMotorPowerKw': 'p. ex. 150',

@@ -23,6 +23,7 @@ import { capRawPayload } from '@shared/utils/json-payload.util';
 import {
   mapDimoBatterySignals,
   resolveLvBatteryObservedAt,
+  resolveStrictLvBatteryProviderSourceAt,
   toVlsBatteryFields,
 } from '../../modules/dimo/mappers/dimo-battery-signal.mapper';
 import { DeviceConnectionEpisodeResolutionService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.service';
@@ -173,16 +174,22 @@ export class DimoSnapshotProcessor extends WorkerHost {
       return;
     }
 
-    const previousLv = await this.prisma.batteryMeasurement.findFirst({
-      where: {
-        vehicleId,
-        type: 'LIVE_VOLTAGE',
-        quality: 'VALID',
-        providerTimestamp: { not: null },
-      },
-      orderBy: { providerTimestamp: 'desc' },
-      select: { providerTimestamp: true },
-    });
+    const [previousLv, previousVls] = await Promise.all([
+      this.prisma.batteryMeasurement.findFirst({
+        where: {
+          vehicleId,
+          type: 'LIVE_VOLTAGE',
+          quality: 'VALID',
+          providerTimestamp: { not: null },
+        },
+        orderBy: { providerTimestamp: 'desc' },
+        select: { providerTimestamp: true },
+      }),
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: { sourceTimestamp: true },
+      }),
+    ]);
 
     let apdShadowOpportunityId: string | null = null;
     if (this.apdShadow?.isEnabledForVehicle(vehicle.organizationId, vehicleId)) {
@@ -240,8 +247,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
           realPollVisibleLvSourceAtMs:
             pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs,
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
-          newLvSourceMs: latestVisibleLvProviderMs,
-          previousTopLevelSourceMs: null,
+          baselineLvProviderSourceMs: pipelineResult.strictLvProviderTimestampMs,
+          previousTopLevelSourceMs: previousVls?.sourceTimestamp?.getTime() ?? null,
           newTopLevelSourceMs: afterCtx.snapshotSourceTimestamp?.getTime() ?? null,
           providerFetchedAtMs: null,
         });
@@ -326,6 +333,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     pollLogId: string;
     finishedAt: Date;
     lvProviderTimestampMs: number | null;
+    strictLvProviderTimestampMs: number | null;
   } | null> {
     const { vehicleId, dimoTokenId } = jobDataWithWake;
 
@@ -680,8 +688,15 @@ export class DimoSnapshotProcessor extends WorkerHost {
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
       const lvProviderTimestampMs = lvBatteryObservedAt?.getTime() ?? null;
+      const strictLvProviderTimestampMs =
+        resolveStrictLvBatteryProviderSourceAt(batteryMap)?.getTime() ?? null;
 
-      return { pollLogId: pollLog.id, finishedAt, lvProviderTimestampMs };
+      return {
+        pollLogId: pollLog.id,
+        finishedAt,
+        lvProviderTimestampMs,
+        strictLvProviderTimestampMs,
+      };
   }
 
   private async isLegacySnapshotEpisodeResolutionExcluded(

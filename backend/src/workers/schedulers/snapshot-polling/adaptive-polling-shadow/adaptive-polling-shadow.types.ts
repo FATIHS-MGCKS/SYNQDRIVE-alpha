@@ -47,10 +47,16 @@ export interface AdaptivePollingShadowPostPollContext {
   realPollId: string;
   pollStartedAtMs: number;
   pollCompletedAtMs: number;
+  /** Simulated policy LV visibility (historical visibility / bootstrap admission only). */
   realPollVisibleLvSourceAtMs: number | null;
   previousLvSourceMs: number | null;
-  newLvSourceMs: number | null;
+  /**
+   * Strict LIVE_VOLTAGE provider source timestamp (`resolveStrictLvBatteryProviderSourceAt` only).
+   * Never `collectionLastSeenAt` or DB read-at-poll-completion.
+   */
+  baselineLvProviderSourceMs: number | null;
   previousTopLevelSourceMs: number | null;
+  /** Provider `sourceTimestamp` from the applied snapshot (not providerFetchedAt). */
   newTopLevelSourceMs: number | null;
   providerFetchedAtMs: number | null;
 }

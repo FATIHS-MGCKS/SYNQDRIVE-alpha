@@ -339,6 +339,38 @@ export class AdaptivePollingShadowRepository {
     return { decision: row.decision, reconciliation: row.reconciliation };
   }
 
+  async findExistingObservationalOutcomeForOpportunity(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+  }): Promise<{
+    newLvSourceObserved: boolean;
+    newTopLevelSourceObserved: boolean;
+    additionalDiscoveryDelayMs: number | null;
+    simulatedNextPollAt: Date | null;
+    simulatedDiscoveryAt: Date | null;
+  } | null> {
+    const row = await this.prisma.apdShadowReconciliationDecision.findUnique({
+      where: {
+        organizationId_vehicleId_opportunityId_policyVersion: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          opportunityId: input.opportunityId,
+          policyVersion: input.policyVersion,
+        },
+      },
+      select: {
+        newLvSourceObserved: true,
+        newTopLevelSourceObserved: true,
+        additionalDiscoveryDelayMs: true,
+        simulatedNextPollAt: true,
+        simulatedDiscoveryAt: true,
+      },
+    });
+    return row ?? null;
+  }
+
   async updateSuccessfulPollOutcome(input: {
     organizationId: string;
     vehicleId: string;
@@ -355,11 +387,14 @@ export class AdaptivePollingShadowRepository {
       newTopLevelSourceObserved?: boolean;
       newObdSourceObserved?: boolean;
       newIgnitionSourceObserved?: boolean;
+      simulatedNextPollAt?: Date | null;
+      simulatedDiscoveryAt?: Date | null;
+      additionalDiscoveryDelayMs?: number | null;
       legacyAssessmentImpact?: string;
       legacyPublicationImpact?: string;
       legacyCustomerImpact?: string;
     };
-  }): Promise<void> {
+  }): Promise<number> {
     const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
       where: {
         organizationId: input.organizationId,
@@ -393,6 +428,57 @@ export class AdaptivePollingShadowRepository {
         },
       );
     }
+    return updated.count;
+  }
+
+  async promoteNewLvSourceObservedIfAbsent(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+    activationEpochId: string;
+    newLvSourceAt: Date | null;
+  }): Promise<number> {
+    const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        opportunityId: input.opportunityId,
+        policyVersion: input.policyVersion,
+        activationEpochId: input.activationEpochId,
+        newLvSourceObserved: false,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
+      },
+      data: {
+        newLvSourceObserved: true,
+        newLvSourceAt: input.newLvSourceAt,
+      },
+    });
+    return updated.count;
+  }
+
+  async promoteNewTopLevelSourceObservedIfAbsent(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+    activationEpochId: string;
+  }): Promise<number> {
+    const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        opportunityId: input.opportunityId,
+        policyVersion: input.policyVersion,
+        activationEpochId: input.activationEpochId,
+        newTopLevelSourceObserved: false,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
+      },
+      data: {
+        newTopLevelSourceObserved: true,
+      },
+    });
+    return updated.count;
   }
 
   async updateFailedPollOutcome(input: {
