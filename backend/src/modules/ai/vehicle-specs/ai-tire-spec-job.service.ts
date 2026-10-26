@@ -18,8 +18,7 @@ import { buildAiTireSpecApplySetupUpdate } from '../../vehicle-intelligence/tire
 import { normalizeTireSpecConfidenceScore } from '../../vehicle-intelligence/tires/ai-tire-spec-confidence.util';
 import {
   isActiveTireSetup,
-  loadSpeedIndexMatchesSetup,
-  tireSizeMatchesSetup,
+  jobMatchesSetupAxleIdentity,
   validateJobTireSetupBinding,
   type TireSetupIdentitySnapshot,
 } from '../../vehicle-intelligence/tires/ai-tire-spec-job-binding.util';
@@ -131,16 +130,19 @@ export class AiTireSpecJobService {
       if (!isActiveTireSetup(boundSetup)) {
         throw new BadRequestException('tire setup is not active');
       }
-      if (!tireSizeMatchesSetup(input.tireSize.trim(), boundSetup)) {
-        throw new BadRequestException('tireSize does not match bound tire setup dimensions');
-      }
       if (
-        !loadSpeedIndexMatchesSetup(
-          { loadIndex: input.loadIndex.trim(), speedIndex: input.speedIndex.trim() },
+        !jobMatchesSetupAxleIdentity(
+          {
+            tireSize: input.tireSize.trim(),
+            loadIndex: input.loadIndex.trim(),
+            speedIndex: input.speedIndex.trim(),
+          },
           boundSetup,
         )
       ) {
-        throw new BadRequestException('load/speed index does not match bound tire setup');
+        throw new BadRequestException(
+          'tire size, load index, and speed index must match one axle on the bound tire setup',
+        );
       }
     }
 

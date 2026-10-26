@@ -21,6 +21,12 @@ export interface TireSetupIdentitySnapshot {
   speedIndexRear: string | null;
 }
 
+export interface TireAxleIdentityTuple {
+  dimension: string;
+  loadIndex: string;
+  speedIndex: string;
+}
+
 export function normalizeTireSizeForCompare(size: string | null | undefined): string {
   if (!size) return '';
   return size
@@ -35,49 +41,83 @@ export function normalizeLoadSpeedIndex(value: string | null | undefined): strin
   return value.trim().toUpperCase();
 }
 
-/**
- * Returns true when job tire size matches front and/or rear axle dimensions on the setup.
- */
-export function tireSizeMatchesSetup(
-  jobTireSize: string,
-  setup: Pick<TireSetupIdentitySnapshot, 'frontDimension' | 'rearDimension'>,
-): boolean {
-  const jobNorm = normalizeTireSizeForCompare(jobTireSize);
-  if (!jobNorm) return false;
-
-  const front = normalizeTireSizeForCompare(setup.frontDimension);
-  const rear = normalizeTireSizeForCompare(setup.rearDimension);
-
-  if (!front && !rear) {
-    // No dimensions on setup — cannot prove identity; caller should reject stale unbound jobs.
-    return false;
-  }
-  if (front && jobNorm === front) return true;
-  if (rear && jobNorm === rear) return true;
-  return false;
+function tuplesEqual(a: TireAxleIdentityTuple, b: TireAxleIdentityTuple): boolean {
+  return (
+    a.dimension === b.dimension &&
+    a.loadIndex === b.loadIndex &&
+    a.speedIndex === b.speedIndex
+  );
 }
 
-export function loadSpeedIndexMatchesSetup(
-  job: Pick<AiTireSpecJobIdentity, 'loadIndex' | 'speedIndex'>,
+/**
+ * Build complete axle identity tuples from setup fields.
+ * Each axle requires dimension + load + speed on the same side.
+ * Non-staggered setups may only populate front fields (rear dimension null).
+ */
+export function buildSetupAxleIdentityTuples(
   setup: Pick<
     TireSetupIdentitySnapshot,
-    'loadIndexFront' | 'loadIndexRear' | 'speedIndexFront' | 'speedIndexRear'
+    | 'frontDimension'
+    | 'rearDimension'
+    | 'loadIndexFront'
+    | 'loadIndexRear'
+    | 'speedIndexFront'
+    | 'speedIndexRear'
+  >,
+): TireAxleIdentityTuple[] {
+  const tuples: TireAxleIdentityTuple[] = [];
+
+  const frontDim = normalizeTireSizeForCompare(setup.frontDimension);
+  const frontLoad = normalizeLoadSpeedIndex(setup.loadIndexFront);
+  const frontSpeed = normalizeLoadSpeedIndex(setup.speedIndexFront);
+  if (frontDim && frontLoad && frontSpeed) {
+    tuples.push({ dimension: frontDim, loadIndex: frontLoad, speedIndex: frontSpeed });
+  }
+
+  const rearDim = normalizeTireSizeForCompare(setup.rearDimension);
+  const rearLoad = normalizeLoadSpeedIndex(setup.loadIndexRear);
+  const rearSpeed = normalizeLoadSpeedIndex(setup.speedIndexRear);
+  if (rearDim && rearLoad && rearSpeed) {
+    const rearTuple = { dimension: rearDim, loadIndex: rearLoad, speedIndex: rearSpeed };
+    if (!tuples.some((t) => tuplesEqual(t, rearTuple))) {
+      tuples.push(rearTuple);
+    }
+  }
+
+  return tuples;
+}
+
+export function buildJobAxleIdentityTuple(
+  job: Pick<AiTireSpecJobIdentity, 'tireSize' | 'loadIndex' | 'speedIndex'>,
+): TireAxleIdentityTuple | null {
+  const dimension = normalizeTireSizeForCompare(job.tireSize);
+  const loadIndex = normalizeLoadSpeedIndex(job.loadIndex);
+  const speedIndex = normalizeLoadSpeedIndex(job.speedIndex);
+  if (!dimension || !loadIndex || !speedIndex) return null;
+  return { dimension, loadIndex, speedIndex };
+}
+
+/**
+ * True when job dimension + load + speed match one complete axle tuple on the setup.
+ * Never matches size on one axle with indices from another.
+ */
+export function jobMatchesSetupAxleIdentity(
+  job: Pick<AiTireSpecJobIdentity, 'tireSize' | 'loadIndex' | 'speedIndex'>,
+  setup: Pick<
+    TireSetupIdentitySnapshot,
+    | 'frontDimension'
+    | 'rearDimension'
+    | 'loadIndexFront'
+    | 'loadIndexRear'
+    | 'speedIndexFront'
+    | 'speedIndexRear'
   >,
 ): boolean {
-  const jobLoad = normalizeLoadSpeedIndex(job.loadIndex);
-  const jobSpeed = normalizeLoadSpeedIndex(job.speedIndex);
-  if (!jobLoad || !jobSpeed) return false;
-
-  const loads = [setup.loadIndexFront, setup.loadIndexRear]
-    .map(normalizeLoadSpeedIndex)
-    .filter(Boolean);
-  const speeds = [setup.speedIndexFront, setup.speedIndexRear]
-    .map(normalizeLoadSpeedIndex)
-    .filter(Boolean);
-
-  if (loads.length === 0 || speeds.length === 0) return false;
-
-  return loads.includes(jobLoad) && speeds.includes(jobSpeed);
+  const jobTuple = buildJobAxleIdentityTuple(job);
+  if (!jobTuple) return false;
+  const setupTuples = buildSetupAxleIdentityTuples(setup);
+  if (setupTuples.length === 0) return false;
+  return setupTuples.some((axle) => tuplesEqual(axle, jobTuple));
 }
 
 export function isActiveTireSetup(setup: Pick<TireSetupIdentitySnapshot, 'status' | 'removedAt'>): boolean {
@@ -87,6 +127,36 @@ export function isActiveTireSetup(setup: Pick<TireSetupIdentitySnapshot, 'status
 export type TireSetupBindingValidation =
   | { ok: true; reason: 'bound_setup' | 'single_active_setup' }
   | { ok: false; code: string; message: string };
+
+function validateAxleIdentityForSetup(
+  job: AiTireSpecJobIdentity,
+  setup: TireSetupIdentitySnapshot,
+): TireSetupBindingValidation | { ok: true } {
+  if (!jobMatchesSetupAxleIdentity(job, setup)) {
+    const jobTuple = buildJobAxleIdentityTuple(job);
+    if (!jobTuple) {
+      return {
+        ok: false,
+        code: 'INCOMPLETE_JOB_IDENTITY',
+        message: 'Job tire size, load index, and speed index are all required',
+      };
+    }
+    const axles = buildSetupAxleIdentityTuples(setup);
+    if (axles.length === 0) {
+      return {
+        ok: false,
+        code: 'INSUFFICIENT_SETUP_IDENTITY',
+        message: 'Tire setup lacks complete axle identity (dimension, load, and speed per axle)',
+      };
+    }
+    return {
+      ok: false,
+      code: 'TIRE_AXLE_IDENTITY_MISMATCH',
+      message: 'Job tire identity does not match any complete axle on the tire setup',
+    };
+  }
+  return { ok: true };
+}
 
 /**
  * Validates that a job targets exactly one intended active setup and tire identity matches.
@@ -118,20 +188,8 @@ export function validateJobTireSetupBinding(
         message: 'Bound tire setup is no longer active; apply rejected to prevent stale cross-setup writes',
       };
     }
-    if (!tireSizeMatchesSetup(job.tireSize, boundSetup)) {
-      return {
-        ok: false,
-        code: 'TIRE_SIZE_MISMATCH',
-        message: 'Job tire size does not match bound tire setup dimensions',
-      };
-    }
-    if (!loadSpeedIndexMatchesSetup(job, boundSetup)) {
-      return {
-        ok: false,
-        code: 'LOAD_SPEED_MISMATCH',
-        message: 'Job load/speed index does not match bound tire setup',
-      };
-    }
+    const axleCheck = validateAxleIdentityForSetup(job, boundSetup);
+    if (!axleCheck.ok) return axleCheck;
     return { ok: true, reason: 'bound_setup' };
   }
 
@@ -147,19 +205,7 @@ export function validateJobTireSetupBinding(
   }
 
   const setup = activeSetups[0];
-  if (!tireSizeMatchesSetup(job.tireSize, setup)) {
-    return {
-      ok: false,
-      code: 'TIRE_SIZE_MISMATCH',
-      message: 'Job tire size does not match active tire setup dimensions',
-    };
-  }
-  if (!loadSpeedIndexMatchesSetup(job, setup)) {
-    return {
-      ok: false,
-      code: 'LOAD_SPEED_MISMATCH',
-      message: 'Job load/speed index does not match active tire setup',
-    };
-  }
+  const axleCheck = validateAxleIdentityForSetup(job, setup);
+  if (!axleCheck.ok) return axleCheck;
   return { ok: true, reason: 'single_active_setup' };
 }
