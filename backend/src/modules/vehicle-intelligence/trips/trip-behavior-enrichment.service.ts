@@ -48,6 +48,7 @@ import {
 import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.service';
 import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import { HfMirrorService } from './hf-mirror.service';
+import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { TripChEvidenceMirrorCoordinator } from './trip-ch-evidence-mirror.coordinator';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
@@ -64,8 +65,10 @@ import {
 import { DrivingAssessmentDeviceQualityService } from './driving-assessment-device-quality.service';
 import type { VsiSignalProfileMaterializationService } from '../vehicle-signal-intelligence/vsi-profile-materialization.service';
 import {
+  logVsiPostTripRpmCadenceDecision,
   refreshVsiRpmCadenceAfterTrip,
   resolveDimoProviderSourceLinkIdForVehicle,
+  resolvePostTripRpmCadenceHfEvidenceReady,
 } from '../vehicle-signal-intelligence/vsi-profile-rpm-cadence-post-trip';
 
 export interface BehaviorEnrichmentResult {
@@ -203,6 +206,7 @@ export class TripBehaviorEnrichmentService {
     private readonly tripAssignmentService: TripAssignmentService,
     private readonly hfMirror: HfMirrorService,
     private readonly chEvidenceMirror: TripChEvidenceMirrorCoordinator,
+    @Optional() private readonly clickHouseHf?: ClickHouseHfService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly deviceQuality?: DrivingAssessmentDeviceQualityService,
     @Optional() private readonly brakingLedger?: BrakingEventLedgerService,
@@ -228,17 +232,25 @@ export class TripBehaviorEnrichmentService {
     }
     void this.hfMirror
       .mirrorTripHf(params)
-      .then((res) => {
+      .then(async (res) => {
         if (res.mirrored) {
           this.logger.debug(
             `HF mirror trip ${params.tripId}: ${res.pointsInserted} point(s), ${res.eventsInserted} event(s).`,
           );
         }
-        void this.scheduleVsiRpmCadenceAfterTrip({
+        const hfTripPointsReady = await resolvePostTripRpmCadenceHfEvidenceReady({
+          vehicleId: params.vehicleId,
+          tripId: params.tripId,
+          pointsInserted: res.pointsInserted,
+          hasTripHfPoints: this.clickHouseHf
+            ? (vehicleId, tripId) => this.clickHouseHf!.hasTripHfPoints(vehicleId, tripId)
+            : undefined,
+        });
+        await this.scheduleVsiRpmCadenceAfterTrip({
           organizationId: params.orgId,
           vehicleId: params.vehicleId,
           tripId: params.tripId,
-          hfMirrorSucceeded: res.mirrored && res.pointsInserted > 0,
+          hfTripPointsReady,
         });
       })
       .catch((err: unknown) => {
@@ -254,9 +266,14 @@ export class TripBehaviorEnrichmentService {
     organizationId: string | null | undefined;
     vehicleId: string;
     tripId: string;
-    hfMirrorSucceeded: boolean;
+    hfTripPointsReady: boolean;
   }): Promise<void> {
     if (!this.vsiProfileMaterialization) {
+      logVsiPostTripRpmCadenceDecision(this.logger, {
+        tripId: input.tripId,
+        vehicleId: input.vehicleId,
+        decision: { outcome: 'SKIP', skipReason: 'VSI_MATERIALIZATION_UNAVAILABLE' },
+      });
       return;
     }
     const providerSourceLinkId = await resolveDimoProviderSourceLinkIdForVehicle(
@@ -271,7 +288,7 @@ export class TripBehaviorEnrichmentService {
       vehicleId: input.vehicleId,
       tripId: input.tripId,
       providerSourceLinkId,
-      hfMirrorSucceeded: input.hfMirrorSucceeded,
+      hfTripPointsReady: input.hfTripPointsReady,
     });
   }
 
