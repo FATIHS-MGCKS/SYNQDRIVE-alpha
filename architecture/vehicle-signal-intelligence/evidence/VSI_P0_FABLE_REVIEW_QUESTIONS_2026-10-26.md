@@ -17,3 +17,7 @@
 4. **`contentFingerprint` vs `signalsSnapshot` consistency** — Operational refresh updates `signalsSnapshot` operational fields while `contentFingerprint` remains the semantic hash. Does any consumer assume byte-level snapshot equality with `contentFingerprint`?
 
 5. **Operational monotonic merge** — Fetch-only refresh merges `lastMaterializedProviderFetchAt` and per-signal `lastProviderFetchAt` with `max()` against the persisted row. Is this sufficient for concurrent snapshot-hook races without inventing semantic revisions?
+
+## Deferred P1 (documented, not in P0 scope)
+
+See [`VSI_P0_P1_DEFERRED_NOTES_2026-10-26.md`](VSI_P0_P1_DEFERRED_NOTES_2026-10-26.md).

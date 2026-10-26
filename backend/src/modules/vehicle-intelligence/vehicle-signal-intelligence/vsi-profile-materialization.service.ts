@@ -8,7 +8,10 @@ import {
   areVsiProfileSemanticEvaluationsEquivalent,
   fingerprintVsiProfileSemanticEvaluation,
 } from './vsi-profile-fingerprint.util';
-import { buildOperationalProfileRefreshUpdate } from './vsi-profile-operational-refresh.util';
+import {
+  buildOperationalProfileRefreshCasWhere,
+  buildOperationalProfileRefreshUpdate,
+} from './vsi-profile-operational-refresh.util';
 import { loadVsiBundleHistoricalEvidence } from './vsi-profile-historical-evidence.loader';
 import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
 import type { VsiProfileEvaluationResult } from './vsi-profile.types';
@@ -383,6 +386,7 @@ export class VsiSignalProfileMaterializationService {
         throw err;
       }
     }
+    throw new Error('VSI_PROFILE_REVISION_CONFLICT');
   }
 
   private async persistOperationalRefresh(
@@ -411,7 +415,7 @@ export class VsiSignalProfileMaterializationService {
       }
 
       const updated = await tx.vehicleSignalCapabilityProfile.updateMany({
-        where: { id: profileId, profileRevision: existingProfile.profileRevision },
+        where: buildOperationalProfileRefreshCasWhere(existingProfile),
         data: {
           contentFingerprint: refreshData.contentFingerprint,
           evaluatedAt: refreshData.evaluatedAt,
@@ -461,6 +465,7 @@ export class VsiSignalProfileMaterializationService {
         throw err;
       }
     }
+    throw new Error('VSI_PROFILE_REVISION_CONFLICT');
   }
 
   private async persistEvaluation(
@@ -501,7 +506,7 @@ export class VsiSignalProfileMaterializationService {
           return;
         }
         const refreshed = await tx.vehicleSignalCapabilityProfile.updateMany({
-          where: { id: existing.id, profileRevision: existing.profileRevision },
+          where: buildOperationalProfileRefreshCasWhere(existing),
           data: {
             contentFingerprint: refreshData.contentFingerprint,
             evaluatedAt: refreshData.evaluatedAt,

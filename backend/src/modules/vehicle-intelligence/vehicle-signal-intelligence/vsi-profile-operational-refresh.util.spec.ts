@@ -1,6 +1,7 @@
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import {
+  buildOperationalProfileRefreshCasWhere,
   buildOperationalProfileRefreshUpdate,
   mergeOperationalSignalSnapshots,
 } from './vsi-profile-operational-refresh.util';
@@ -120,5 +121,22 @@ describe('vsi-profile-operational-refresh.util', () => {
       semanticFingerprint: 'fp',
     });
     expect(update).toBeNull();
+  });
+
+  it('buildOperationalProfileRefreshCasWhere includes revision, updatedAt, and nullable fetch', () => {
+    const at = new Date('2026-10-15T12:00:00.000Z');
+    expect(
+      buildOperationalProfileRefreshCasWhere({
+        id: 'pid',
+        profileRevision: 3,
+        updatedAt: at,
+        lastMaterializedProviderFetchAt: null,
+      }),
+    ).toEqual({
+      id: 'pid',
+      profileRevision: 3,
+      updatedAt: at,
+      lastMaterializedProviderFetchAt: null,
+    });
   });
 });

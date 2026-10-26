@@ -1,5 +1,29 @@
+import type { Prisma } from '@prisma/client';
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
 import { areVsiProfileSemanticEvaluationsEquivalent } from './vsi-profile-fingerprint.util';
+
+/** Row tokens read inside the transaction immediately before an operational-only CAS write. */
+export type VsiOperationalProfileRefreshCasRow = {
+  id: string;
+  profileRevision: number;
+  updatedAt: Date;
+  lastMaterializedProviderFetchAt: Date | null;
+};
+
+/**
+ * Compare-and-swap predicate for operational refresh when `profileRevision` is unchanged.
+ * Guards against lost updates from concurrent fetch-only writers (Fable P0).
+ */
+export function buildOperationalProfileRefreshCasWhere(
+  row: VsiOperationalProfileRefreshCasRow,
+): Prisma.VehicleSignalCapabilityProfileWhereInput {
+  return {
+    id: row.id,
+    profileRevision: row.profileRevision,
+    updatedAt: row.updatedAt,
+    lastMaterializedProviderFetchAt: row.lastMaterializedProviderFetchAt,
+  };
+}
 
 export type VsiPersistedProfileOperationalRefreshRow = {
   profileContractVersion: string;
