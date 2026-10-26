@@ -17,11 +17,17 @@ export const masterCvTechnicalSpecsIt = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Impossibile caricare i dati del veicolo per la modifica.',
   'master.cv.technicalSpecs.updateSuccess': 'Specifiche del veicolo salvate.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Le specifiche non sono state salvate completamente. Controlla i campi e riprova.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'I dati fisici (es. peso a vuoto) non sono stati salvati. Le specifiche HV sono state salvate.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'Le specifiche HV non sono state salvate. Altri dati del veicolo potrebbero essere stati salvati.',
   'master.cv.technicalSpecs.secondaryDetails': 'Dettagli operativi e di integrazione',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'La capacità utile mostrata proviene dai dati anagrafici legacy del veicolo (non SOH, non riferimento verificato, non misurazione recente). I campi HV non sono modificabili per i veicoli esistenti in questa release.',
+    'La capacità utile è un dato legacy (non SOH, non riferimento verificato, non misurazione) e resta in sola lettura. I campi HV estesi sotto sono modificabili e salvati separatamente dalla battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'Questo campo HV non viene persistito nell’editor veicoli esistenti.',
+    'I campi HV estesi sono salvati nella master specification HV (separata dalle capacità di riferimento SOH).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Instradamento eventi di guida (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs SMART5 definisce come Driving Intelligence acquisisce gli eventi di guida. È separato dalla modalità di connessione onboarding verificata (software/OEM vs telematica fisica).',

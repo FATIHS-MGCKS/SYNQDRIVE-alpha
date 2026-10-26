@@ -17,11 +17,17 @@ export const masterCvTechnicalSpecsDe = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Fahrzeugdaten für die Bearbeitung konnten nicht geladen werden.',
   'master.cv.technicalSpecs.updateSuccess': 'Fahrzeugspezifikationen gespeichert.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Fahrzeugspezifikationen konnten nicht vollständig gespeichert werden. Bitte prüfen und erneut speichern.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'Physikdaten (z. B. Leergewicht) konnten nicht gespeichert werden. HV-Stammdaten wurden gespeichert.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'HV-Stammdaten konnten nicht gespeichert werden. Andere Fahrzeugdaten wurden möglicherweise gespeichert.',
   'master.cv.technicalSpecs.secondaryDetails': 'Betriebs- und Integrationsdetails',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'Die nutzbare Kapazität stammt aus den Fahrzeug-Stammdaten (Legacy, keine SOH-, Referenz- oder Messwert-Aussage). HV-Felder sind für Bestandsfahrzeuge in diesem Release nicht editierbar.',
+    'Die nutzbare Kapazität stammt aus den Legacy-Fahrzeug-Stammdaten (keine SOH-, Referenz- oder Messwert-Aussage) und bleibt hier read-only. Erweiterte HV-Katalogfelder darunter sind editierbar und werden getrennt von Battery Health gespeichert.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'Dieses HV-Feld wird im Bestandsfahrzeug-Editor aktuell nicht persistiert.',
+    'Erweiterte HV-Katalogfelder werden in der HV-Master-Spezifikation gespeichert (getrennt von SOH-Referenzkapazitäten).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Driving-Events-Routing (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs. SMART5 steuert, wie Driving Intelligence Fahrereignisse bezieht. Das ist getrennt von der verifizierten Onboarding-Verbindungsart (Software/OEM vs. physische Telematik).',

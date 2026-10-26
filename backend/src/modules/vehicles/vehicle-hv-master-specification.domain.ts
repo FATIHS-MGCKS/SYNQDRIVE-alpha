@@ -2,9 +2,14 @@ export const VEHICLE_HV_MASTER_SPEC_VERSION = 1;
 
 export type HvMasterSpecProvenance = 'ESTIMATED' | 'CONFIRMED';
 
+export type HvMasterFieldChangeClassification =
+  | 'CATALOG_ESTIMATED_FIELD_UPDATE'
+  | 'OPERATOR_FIELD_UPDATE';
+
 export interface VehicleHvMasterSpecificationV1 {
   version: typeof VEHICLE_HV_MASTER_SPEC_VERSION;
   provenance: HvMasterSpecProvenance;
+  fieldChangeClassification?: HvMasterFieldChangeClassification | null;
   variantLabel?: string | null;
   evidenceNote?: string | null;
   grossCapacityKwh?: number | null;
@@ -84,8 +89,74 @@ export function parseVehicleHvMasterSpecification(
     warrantyYears: parseOptionalNonNegativeInt(o.warrantyYears),
     warrantyKm: parseOptionalNonNegativeInt(o.warrantyKm),
     catalogReferences: catalogReferences && catalogReferences.length > 0 ? catalogReferences : null,
+    fieldChangeClassification:
+      o.fieldChangeClassification === 'CATALOG_ESTIMATED_FIELD_UPDATE' ||
+      o.fieldChangeClassification === 'OPERATOR_FIELD_UPDATE'
+        ? o.fieldChangeClassification
+        : null,
     updatedAt: trimOrNull(o.updatedAt),
   };
+}
+
+export type UpsertHvMasterSpecInput = {
+  provenance?: HvMasterSpecProvenance;
+  variantLabel?: string | null;
+  evidenceNote?: string | null;
+  grossCapacityKwh?: number | null;
+  nominalVoltageV?: number | null;
+  chemistry?: string | null;
+  cellFormat?: string | null;
+  architecture?: string | null;
+  thermalManagement?: string | null;
+  acOnboardChargerKw?: number | null;
+  dcFastChargeMaxKw?: number | null;
+  warrantyYears?: number | null;
+  warrantyKm?: number | null;
+  catalogReferences?: string[] | null;
+};
+
+const CATALOG_FIELD_KEYS: (keyof UpsertHvMasterSpecInput)[] = [
+  'grossCapacityKwh',
+  'nominalVoltageV',
+  'chemistry',
+  'cellFormat',
+  'architecture',
+  'thermalManagement',
+  'acOnboardChargerKw',
+  'dcFastChargeMaxKw',
+  'warrantyYears',
+  'warrantyKm',
+];
+
+export function patchTouchesCatalogFields(patch: UpsertHvMasterSpecInput): boolean {
+  return CATALOG_FIELD_KEYS.some((key) => patch[key] !== undefined);
+}
+
+export function resolveMergedProvenance(
+  existing: VehicleHvMasterSpecificationV1 | null,
+  patch: UpsertHvMasterSpecInput,
+): HvMasterSpecProvenance {
+  if (patch.provenance !== undefined) {
+    return patch.provenance;
+  }
+  if (existing?.provenance) {
+    return existing.provenance;
+  }
+  return 'ESTIMATED';
+}
+
+export function resolveFieldChangeClassification(
+  existing: VehicleHvMasterSpecificationV1 | null,
+  patch: UpsertHvMasterSpecInput,
+  mergedProvenance: HvMasterSpecProvenance,
+): HvMasterFieldChangeClassification | null {
+  if (!patchTouchesCatalogFields(patch)) {
+    return existing?.fieldChangeClassification ?? null;
+  }
+  if (mergedProvenance === 'CONFIRMED') {
+    return 'OPERATOR_FIELD_UPDATE';
+  }
+  return 'CATALOG_ESTIMATED_FIELD_UPDATE';
 }
 
 export function hvMasterSpecToFormFields(
@@ -108,31 +179,20 @@ export function hvMasterSpecToFormFields(
   };
 }
 
-export type UpsertHvMasterSpecInput = {
-  provenance?: HvMasterSpecProvenance;
-  variantLabel?: string | null;
-  evidenceNote?: string | null;
-  grossCapacityKwh?: number | null;
-  nominalVoltageV?: number | null;
-  chemistry?: string | null;
-  cellFormat?: string | null;
-  architecture?: string | null;
-  thermalManagement?: string | null;
-  acOnboardChargerKw?: number | null;
-  dcFastChargeMaxKw?: number | null;
-  warrantyYears?: number | null;
-  warrantyKm?: number | null;
-  catalogReferences?: string[] | null;
-};
-
 export function mergeHvMasterSpecification(
   existing: VehicleHvMasterSpecificationV1 | null,
   patch: UpsertHvMasterSpecInput,
 ): VehicleHvMasterSpecificationV1 {
-  const provenance = patch.provenance ?? existing?.provenance ?? 'ESTIMATED';
+  const provenance = resolveMergedProvenance(existing, patch);
+  const fieldChangeClassification = resolveFieldChangeClassification(
+    existing,
+    patch,
+    provenance,
+  );
   return {
     version: VEHICLE_HV_MASTER_SPEC_VERSION,
     provenance,
+    fieldChangeClassification,
     variantLabel: patch.variantLabel !== undefined ? patch.variantLabel : existing?.variantLabel ?? null,
     evidenceNote: patch.evidenceNote !== undefined ? patch.evidenceNote : existing?.evidenceNote ?? null,
     grossCapacityKwh:

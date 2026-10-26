@@ -34,6 +34,7 @@ import {
   mapAdminVehicleDtoToRegisteredVehicle,
   mapApiDimoToDimoVehicle,
   persistMasterRegisteredVehicle,
+  MasterVehiclePartialSaveError,
   updateMasterRegisteredVehicle,
   type ManualBaselineArea,
 } from './master-vehicle-registration';
@@ -330,7 +331,31 @@ export function ConnectedVehiclesHub({
       if (!editBaselineVehicle) {
         throw new Error('EDIT_BASELINE_REQUIRED');
       }
-      await updateMasterRegisteredVehicle(rv, { baseline: editBaselineVehicle });
+      try {
+        await updateMasterRegisteredVehicle(rv, { baseline: editBaselineVehicle });
+      } catch (error) {
+        if (error instanceof MasterVehiclePartialSaveError) {
+          const { outcome, failures } = error;
+          if (outcome.physicsSaved && !outcome.hvMasterSaved) {
+            toast.error(t('master.cv.technicalSpecs.updatePartialHvFailed'));
+          } else if (!outcome.physicsSaved && outcome.hvMasterSaved) {
+            toast.error(t('master.cv.technicalSpecs.updatePartialPhysicsFailed'));
+          } else {
+            toast.error(t('master.cv.technicalSpecs.updatePartialSaveFailed'));
+          }
+          if (failures.length > 0) {
+            console.warn('[master.cv] partial vehicle spec save', failures);
+          }
+          if (outcome.physicsSaved || outcome.hvMasterSaved) {
+            overviewState.refresh();
+            emitConnectedVehiclesRefresh();
+            detailRefreshRef.current?.();
+            specsRefreshRef.current?.();
+          }
+          return;
+        }
+        throw error;
+      }
       setEditBaselineVehicle(rv);
       toast.success(t('master.cv.technicalSpecs.updateSuccess'));
       overviewState.refresh();

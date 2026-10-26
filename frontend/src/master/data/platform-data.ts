@@ -17,6 +17,8 @@ export type UserStatus = 'Active' | 'Inactive' | 'Invited';
 // platform operators can differentiate a scheduled maintenance from a
 // hard operational block. `Reserved` was previously missing from this
 // union even though the backend emits it; that gap is now closed.
+export type HvMasterSpecProvenance = 'ESTIMATED' | 'CONFIRMED';
+
 export type VehicleStatus =
   | 'Available'
   | 'Reserved'
@@ -125,6 +127,11 @@ export interface RegisteredVehicle {
   hvBatteryWarrantyKm?: string;
   acOnboardChargerKw?: string;
   dcFastChargeMaxKw?: string;
+  hvMasterSpecificationProvenance?: HvMasterSpecProvenance | null;
+  hvMasterSpecificationVariantLabel?: string | null;
+  hvMasterSpecificationEvidenceNote?: string | null;
+  hvMasterSpecificationCatalogReferences?: string[] | null;
+  hvMasterSpecificationFieldChangeClassification?: string | null;
   // Engine
   engineDisplacementCc?: string;
   cylinderCount?: string;

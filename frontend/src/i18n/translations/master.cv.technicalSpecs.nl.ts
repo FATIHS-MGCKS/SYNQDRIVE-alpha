@@ -17,11 +17,17 @@ export const masterCvTechnicalSpecsNl = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Voertuiggegevens voor bewerken konden niet worden geladen.',
   'master.cv.technicalSpecs.updateSuccess': 'Voertuigspecificaties opgeslagen.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Niet alle specificaties konden worden opgeslagen. Controleer de velden en probeer opnieuw.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'Fysische data (bijv. leeggewicht) is niet opgeslagen. HV-specificaties zijn opgeslagen.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'HV-specificaties zijn niet opgeslagen. Andere voertuigdata kan wel zijn opgeslagen.',
   'master.cv.technicalSpecs.secondaryDetails': 'Operationele en integratiedetails',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'De getoonde bruikbare capaciteit is legacy voertuigstamdata (geen SOH, geen geverifieerde referentie, geen nieuwe meting). HV-velden zijn voor bestaande voertuigen in deze release niet bewerkbaar.',
+    'Bruikbare capaciteit is legacy stamdata (geen SOH, geen geverifieerde referentie, geen meting) en blijft hier read-only. Uitgebreide HV-velden hieronder zijn bewerkbaar en worden apart van battery health opgeslagen.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'Dit HV-veld wordt niet opgeslagen in de bestaande-voertuig-editor.',
+    'Uitgebreide HV-velden worden opgeslagen in de HV-master-specificatie (los van SOH-referentiecapaciteiten).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Routing rijgebeurtenissen (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs SMART5 bepaalt hoe Driving Intelligence rijgebeurtenissen ophaalt. Dit staat los van de geverifieerde onboarding-verbindingsmodaliteit (software/OEM vs fysieke telematica).',

@@ -954,6 +954,9 @@ export class VehiclesService {
       hvMasterSpecificationProvenance: hvMaster?.provenance ?? null,
       hvMasterSpecificationVariantLabel: hvMaster?.variantLabel ?? null,
       hvMasterSpecificationEvidenceNote: hvMaster?.evidenceNote ?? null,
+      hvMasterSpecificationCatalogReferences: hvMaster?.catalogReferences ?? null,
+      hvMasterSpecificationFieldChangeClassification:
+        hvMaster?.fieldChangeClassification ?? null,
     };
   }
 
@@ -2270,7 +2273,7 @@ export class VehiclesService {
 
     await this.prisma.vehicle.update({
       where: { id: vehicleId },
-      data: { hvMasterSpecification: merged as Prisma.InputJsonValue },
+      data: { hvMasterSpecification: merged as unknown as Prisma.InputJsonValue },
     });
 
     return merged;

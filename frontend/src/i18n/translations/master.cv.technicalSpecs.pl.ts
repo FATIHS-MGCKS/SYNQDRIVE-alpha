@@ -17,11 +17,17 @@ export const masterCvTechnicalSpecsPl = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Nie można załadować danych pojazdu do edycji.',
   'master.cv.technicalSpecs.updateSuccess': 'Specyfikacje pojazdu zapisane.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Nie udało się w pełni zapisać specyfikacji pojazdu. Sprawdź pola i spróbuj ponownie.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'Nie zapisano danych fizycznych (np. masy własnej). Dane HV zostały zapisane.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'Nie zapisano specyfikacji HV. Inne dane pojazdu mogły zostać zapisane.',
   'master.cv.technicalSpecs.secondaryDetails': 'Szczegóły operacyjne i integracji',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'Pojemność użytkowa to legacy dane pojazdu (nie SOH, nie zweryfikowana referencja, nie nowy pomiar). Pola HV nie są edytowalne dla istniejących pojazdów w tej wersji.',
+    'Pojemność użytkowa to dane legacy (nie SOH, nie zweryfikowana referencja, nie pomiar) i pozostaje tylko do odczytu. Rozszerzone pola HV poniżej można edytować; są zapisywane oddzielnie od battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'To pole HV nie jest zapisywane w edytorze istniejącego pojazdu.',
+    'Rozszerzone pola HV są zapisywane w master spec HV (oddzielnie od referencyjnych pojemności SOH).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Routing zdarzeń jazdy (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs SMART5 określa źródło zdarzeń jazdy w Driving Intelligence. To jest oddzielne od zweryfikowanej modalności połączenia onboarding (software/OEM vs telematyka fizyczna).',

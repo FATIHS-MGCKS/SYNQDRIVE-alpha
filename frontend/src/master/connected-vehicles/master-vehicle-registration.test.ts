@@ -361,11 +361,14 @@ describe('master-vehicle-registration payloads', () => {
 
     await updateMasterRegisteredVehicle(current, { baseline });
 
-    expect(upsertHvMock).toHaveBeenCalledWith('rv-1', {
-      chemistry: 'LFP',
-      grossCapacityKwh: 60,
-      provenance: 'ESTIMATED',
-    });
+    expect(upsertHvMock).toHaveBeenCalledWith(
+      'rv-1',
+      expect.objectContaining({
+        chemistry: 'LFP',
+        grossCapacityKwh: 60,
+        provenance: 'ESTIMATED',
+      }),
+    );
     expect(updateMock).not.toHaveBeenCalled();
   });
 

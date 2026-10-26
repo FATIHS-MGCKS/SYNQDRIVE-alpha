@@ -2,8 +2,8 @@ import { api } from '../../lib/api';
 import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
 import { parseMotionPhysicsCurbMassField } from './motion-physics-reference-sync.util';
 import {
+  applyTeslaModel3EstimatedEvidenceToVehicle,
   buildHvMasterSpecPatchFromRegisteredVehicle,
-  extractHvMasterSpecFormFields,
 } from './master-hv-master-specification.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
@@ -497,7 +497,49 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
     lastBrakePadChange: str('lastBrakePadChange'),
     lastBrakeRotorChange: str('lastBrakeRotorChange'),
     hardwareType: (hardwareRaw || 'UNKNOWN') as RegisteredVehicle['hardwareType'],
+    hvMasterSpecificationProvenance:
+      dto.hvMasterSpecificationProvenance === 'ESTIMATED' ||
+      dto.hvMasterSpecificationProvenance === 'CONFIRMED'
+        ? dto.hvMasterSpecificationProvenance
+        : null,
+    hvMasterSpecificationVariantLabel:
+      dto.hvMasterSpecificationVariantLabel != null
+        ? String(dto.hvMasterSpecificationVariantLabel)
+        : null,
+    hvMasterSpecificationEvidenceNote:
+      dto.hvMasterSpecificationEvidenceNote != null
+        ? String(dto.hvMasterSpecificationEvidenceNote)
+        : null,
+    hvMasterSpecificationCatalogReferences: Array.isArray(dto.hvMasterSpecificationCatalogReferences)
+      ? dto.hvMasterSpecificationCatalogReferences
+          .map((r) => (typeof r === 'string' ? r.trim() : ''))
+          .filter((r) => r.length > 0)
+      : null,
+    hvMasterSpecificationFieldChangeClassification:
+      dto.hvMasterSpecificationFieldChangeClassification != null
+        ? String(dto.hvMasterSpecificationFieldChangeClassification)
+        : null,
   };
+}
+
+export type MasterVehicleSaveOutcome = {
+  physicsSaved: boolean;
+  hvMasterSaved: boolean;
+};
+
+export class MasterVehiclePartialSaveError extends Error {
+  readonly outcome: MasterVehicleSaveOutcome;
+  readonly failures: Array<{ step: 'physics' | 'hvMaster'; message: string }>;
+
+  constructor(
+    outcome: MasterVehicleSaveOutcome,
+    failures: Array<{ step: 'physics' | 'hvMaster'; message: string }>,
+  ) {
+    super('MASTER_VEHICLE_PARTIAL_SAVE');
+    this.name = 'MasterVehiclePartialSaveError';
+    this.outcome = outcome;
+    this.failures = failures;
+  }
 }
 
 export function parseCurbWeightKgFromForm(curbWeight: string | undefined | null): number | null {
@@ -534,7 +576,7 @@ export type MasterVehiclePhysicsEditOptions = {
 export async function updateMasterRegisteredVehicle(
   rv: RegisteredVehicle,
   options: MasterVehiclePhysicsEditOptions,
-): Promise<void> {
+): Promise<MasterVehicleSaveOutcome> {
   const orgId = rv.organizationId?.trim();
   const vehicleId = rv.id?.trim();
   if (!orgId || !vehicleId) {
@@ -544,15 +586,41 @@ export async function updateMasterRegisteredVehicle(
     throw new Error('EDIT_BASELINE_REQUIRED');
   }
 
+  const outcome: MasterVehicleSaveOutcome = { physicsSaved: false, hvMasterSaved: false };
+  const failures: Array<{ step: 'physics' | 'hvMaster'; message: string }> = [];
+
   const patch = buildMasterVehiclePhysicsSpecPatch(rv, options.baseline);
   if (Object.keys(patch).length > 0) {
-    await api.vehicles.update(orgId, vehicleId, patch);
+    try {
+      await api.vehicles.update(orgId, vehicleId, patch);
+      outcome.physicsSaved = true;
+    } catch (error) {
+      failures.push({
+        step: 'physics',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
-  const hvMasterPatch = buildHvMasterSpecPatchFromRegisteredVehicle(rv, options.baseline);
+  const enrichedRv = applyTeslaModel3EstimatedEvidenceToVehicle(rv);
+  const hvMasterPatch = buildHvMasterSpecPatchFromRegisteredVehicle(enrichedRv, options.baseline);
   if (hvMasterPatch) {
-    await api.vehicles.upsertHvMasterSpecification(vehicleId, hvMasterPatch);
+    try {
+      await api.vehicles.upsertHvMasterSpecification(vehicleId, hvMasterPatch);
+      outcome.hvMasterSaved = true;
+    } catch (error) {
+      failures.push({
+        step: 'hvMaster',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
+
+  if (failures.length > 0) {
+    throw new MasterVehiclePartialSaveError(outcome, failures);
+  }
+
+  return outcome;
 }
 
 export async function persistMasterRegisteredVehicle(

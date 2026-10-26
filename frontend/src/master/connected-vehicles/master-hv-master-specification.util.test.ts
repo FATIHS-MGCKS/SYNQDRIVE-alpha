@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildHvMasterSpecPatchFromRegisteredVehicle,
   extractHvMasterSpecFormFields,
+  TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE,
 } from './master-hv-master-specification.util';
 import type { RegisteredVehicle } from '../data/platform-data';
 
@@ -87,10 +88,47 @@ describe('master-hv-master-specification.util', () => {
     expect(fields.hvBatteryGrossCapacityKwh).toBe('60');
   });
 
-  it('buildHvMasterSpecPatchFromRegisteredVehicle sets ESTIMATED provenance', () => {
+  it('first Tesla catalog save includes ESTIMATED evidence metadata', () => {
     const baseline = minimalRv();
-    const current = minimalRv({ hvBatteryChemistry: 'LFP' });
+    const current = minimalRv({ hvBatteryChemistry: 'LFP', hvBatteryGrossCapacityKwh: '60' });
     const patch = buildHvMasterSpecPatchFromRegisteredVehicle(current, baseline);
-    expect(patch).toEqual({ chemistry: 'LFP', provenance: 'ESTIMATED' });
+    expect(patch).toMatchObject({
+      chemistry: 'LFP',
+      grossCapacityKwh: 60,
+      provenance: 'ESTIMATED',
+      variantLabel: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.variantLabel,
+      evidenceNote: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.evidenceNote,
+    });
+    expect(patch?.catalogReferences).toEqual([
+      ...TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.catalogReferences,
+    ]);
+  });
+
+  it('CONFIRMED baseline edit does not send provenance downgrade', () => {
+    const baseline = minimalRv({
+      hvMasterSpecificationProvenance: 'CONFIRMED',
+      hvBatteryChemistry: 'LFP',
+    });
+    const current = minimalRv({
+      hvMasterSpecificationProvenance: 'CONFIRMED',
+      hvBatteryChemistry: 'NMC',
+    });
+    const patch = buildHvMasterSpecPatchFromRegisteredVehicle(current, baseline);
+    expect(patch).toEqual({ chemistry: 'NMC' });
+    expect(patch?.provenance).toBeUndefined();
+  });
+
+  it('ESTIMATED baseline edit does not re-send provenance', () => {
+    const baseline = minimalRv({
+      hvMasterSpecificationProvenance: 'ESTIMATED',
+      hvBatteryChemistry: 'LFP',
+    });
+    const current = minimalRv({
+      hvMasterSpecificationProvenance: 'ESTIMATED',
+      hvBatteryChemistry: 'NMC',
+    });
+    const patch = buildHvMasterSpecPatchFromRegisteredVehicle(current, baseline);
+    expect(patch).toEqual({ chemistry: 'NMC' });
+    expect(patch?.provenance).toBeUndefined();
   });
 });

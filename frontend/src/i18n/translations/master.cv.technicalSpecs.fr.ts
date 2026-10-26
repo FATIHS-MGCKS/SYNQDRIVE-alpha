@@ -17,11 +17,17 @@ export const masterCvTechnicalSpecsFr = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Impossible de charger les données du véhicule pour modification.',
   'master.cv.technicalSpecs.updateSuccess': 'Spécifications du véhicule enregistrées.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Les spécifications n’ont pas pu être entièrement enregistrées. Vérifiez les champs et réessayez.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'Les données physiques (ex. masse à vide) n’ont pas été enregistrées. Les données HV ont été enregistrées.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'Les spécifications HV n’ont pas été enregistrées. D’autres données peuvent avoir été enregistrées.',
   'master.cv.technicalSpecs.secondaryDetails': 'Détails opérationnels et d’intégration',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'La capacité utile affichée provient des données maîtres véhicule héritées (pas de SOH, pas de référence vérifiée, pas une mesure récente). Les champs HV ne sont pas modifiables pour les véhicules existants dans cette version.',
+    'La capacité utile est une donnée legacy (pas SOH, pas référence vérifiée, pas mesure) et reste en lecture seule. Les champs HV étendus ci-dessous sont modifiables et stockés séparément de la battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'Ce champ HV n’est pas enregistré dans l’éditeur véhicule existant.',
+    'Les champs HV étendus sont stockés dans la spécification master HV (séparée des capacités de référence SOH).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Routage des événements de conduite (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs SMART5 détermine la source des événements de conduite pour Driving Intelligence. C’est distinct de la modalité de connexion onboarding vérifiée (logiciel/OEM vs télématique physique).',
