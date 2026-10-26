@@ -13,8 +13,9 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { ensureOrganizationProductEntitlement } from '@modules/vehicle-onboarding/testing/org-product-test.harness';
-import { VehiclesService } from './vehicles.service';
+import type { UpsertHvMasterSpecInput } from './vehicle-hv-master-specification.domain';
 import { parseVehicleHvMasterSpecification } from './vehicle-hv-master-specification.domain';
+import { VehiclesService } from './vehicles.service';
 
 const LIVE = process.env.VEHICLE_HV_MASTER_SPEC_PG === '1';
 
@@ -29,14 +30,15 @@ function assertDisposableDatabaseUrl(): void {
   }
 }
 
+/** Calls production upsert with injected Prisma only (no full Nest DI graph). */
 async function serviceUpsert(
   prisma: PrismaClient,
   vehicleId: string,
-  patch: Record<string, unknown>,
+  patch: UpsertHvMasterSpecInput,
 ) {
-  const ctx = { prisma } as Pick<VehiclesService, 'prisma'>;
+  const serviceCtx = { prisma } as unknown as VehiclesService;
   return VehiclesService.prototype.upsertHvMasterSpecificationForAdmin.call(
-    ctx,
+    serviceCtx,
     vehicleId,
     patch,
   );
