@@ -4,6 +4,7 @@ Append-only architecture change record.
 
 | Date | Change | Phase | Evidence |
 |------|--------|-------|----------|
+| 2026-10-26 | **P2 post-trip RPM gate fix** — decouple VSI cadence readiness from `pointsInserted`; `hasTripHfPoints` for idempotent HF mirror; structured post-trip decision logs; no change to cadence algorithm | P2 | `vsi-profile-rpm-cadence-post-trip.ts`, `trip-behavior-enrichment.service.ts`, `vsi-profile-rpm-cadence-post-trip.spec.ts` |
 | 2026-10-26 | **P2 per-signal cadence intelligence (draft)** — `engine_rpm` + `lv_voltage` cadence regimes; `cadenceIntelligence` v2 dimension; bounded CH/PG loaders; post-trip RPM materialization trigger; provenance-safe density labels | P2 | `vsi-profile-cadence-*`, `vsi-profile-rpm-cadence-post-trip.ts`, `vsi-profile-cadence-stats.util.spec.ts` |
 | 2026-10-26 | **P2 cadence P0 lifecycle + limitation parity** — `cadenceTriggered` bypasses unchanged-VLS fast path for trip/backfill/recovery; prior cadence limitations merged on snapshot hook; PG `TRIP_FINALIZED_RPM_CADENCE` certification | P2 | `vsi-profile-materialization.service.ts`, `vsi-profile-cadence.enricher.ts`, materialization PG spec |
 | 2026-10-26 | **P2 cadence CI + density label correction** — `VsiProfileCadenceEvidencePort` stub typing; median-driven RPM `observedDensityLabel` (DIMO limitation retained); `clipTripWindowsToLinkBounds`; Nest `@Inject` loader token | P2 | `vsi-profile-cadence-evidence.loader.stub.ts`, `resolveRpmObservedDensityLabel`, `vsi-profile-cadence-stats.util.spec.ts` |
