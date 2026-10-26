@@ -1,0 +1,3088 @@
+{
+  "edge_direction": "dependency -> dependent",
+  "normalized": {
+    "active_edge_count": 101,
+    "active_hard_edge_count": 84,
+    "active_soft_edge_count": 17,
+    "changeset_graph": {
+      "adjacency": {
+        "cs-evaluations-accessibility-i18n": [],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-action-integrations"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-audit-logging": [
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-backtesting-drift"
+        ],
+        "cs-evaluations-driver-influence-analysis": [],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-finance-test-suite": [],
+        "cs-evaluations-forecast-ux": [],
+        "cs-evaluations-freshness-lineage": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-gdpr": [
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-grouping-entity-references": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-impact-measurement": [],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-backtesting-drift"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip"
+        ],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-accessibility-i18n"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-cost-model",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-receivables"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-finance-test-suite"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-finance-test-suite"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [
+          "cs-evaluations-feature-store"
+        ],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-recommendation-domain": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-multi-currency"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-summary-detail-separation": [
+          "cs-evaluations-analytics-summary"
+        ],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-timezone-period-model": [
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-receivables",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-money-domain"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-strength-weakness-cockpit"
+        ]
+      },
+      "cycles": [],
+      "indegree": {
+        "cs-evaluations-accessibility-i18n": 1,
+        "cs-evaluations-action-center": 2,
+        "cs-evaluations-action-integrations": 4,
+        "cs-evaluations-analytics-contracts": 2,
+        "cs-evaluations-analytics-summary": 5,
+        "cs-evaluations-audit-logging": 3,
+        "cs-evaluations-backtesting-drift": 2,
+        "cs-evaluations-calculation-versioning-baseline": 0,
+        "cs-evaluations-cost-model": 4,
+        "cs-evaluations-data-quality": 2,
+        "cs-evaluations-data-quality-panel": 4,
+        "cs-evaluations-demand-revenue-utilization-forecast": 1,
+        "cs-evaluations-driver-influence-analysis": 6,
+        "cs-evaluations-executive-kpi-strip": 4,
+        "cs-evaluations-feature-store": 2,
+        "cs-evaluations-filter-architecture": 1,
+        "cs-evaluations-finance-test-suite": 5,
+        "cs-evaluations-forecast-ux": 3,
+        "cs-evaluations-freshness-lineage": 1,
+        "cs-evaluations-gdpr": 2,
+        "cs-evaluations-grouping-entity-references": 0,
+        "cs-evaluations-impact-measurement": 2,
+        "cs-evaluations-information-architecture": 2,
+        "cs-evaluations-maintenance-failure-forecast": 1,
+        "cs-evaluations-metric-registry-baseline": 0,
+        "cs-evaluations-metric-state-ux": 2,
+        "cs-evaluations-mobile-readiness": 4,
+        "cs-evaluations-money-domain": 2,
+        "cs-evaluations-money-migration": 1,
+        "cs-evaluations-multi-currency": 1,
+        "cs-evaluations-predictive-analytics-architecture": 5,
+        "cs-evaluations-receivables": 2,
+        "cs-evaluations-recommendation-domain": 4,
+        "cs-evaluations-revenue-cashflow-result": 2,
+        "cs-evaluations-risk-cost-failure-visuals": 3,
+        "cs-evaluations-roles-permissions": 2,
+        "cs-evaluations-strength-detection": 3,
+        "cs-evaluations-strength-weakness-cockpit": 3,
+        "cs-evaluations-summary-detail-separation": 1,
+        "cs-evaluations-tenant-isolation": 1,
+        "cs-evaluations-timezone-period-model": 0,
+        "cs-evaluations-unified-kpi-contract": 1,
+        "cs-evaluations-utilization": 2,
+        "cs-evaluations-weakness-detection": 3
+      },
+      "leaves": [
+        "cs-evaluations-accessibility-i18n",
+        "cs-evaluations-calculation-versioning-baseline",
+        "cs-evaluations-driver-influence-analysis",
+        "cs-evaluations-finance-test-suite",
+        "cs-evaluations-forecast-ux",
+        "cs-evaluations-impact-measurement",
+        "cs-evaluations-metric-registry-baseline"
+      ],
+      "outdegree": {
+        "cs-evaluations-accessibility-i18n": 0,
+        "cs-evaluations-action-center": 1,
+        "cs-evaluations-action-integrations": 1,
+        "cs-evaluations-analytics-contracts": 5,
+        "cs-evaluations-analytics-summary": 5,
+        "cs-evaluations-audit-logging": 3,
+        "cs-evaluations-backtesting-drift": 1,
+        "cs-evaluations-calculation-versioning-baseline": 0,
+        "cs-evaluations-cost-model": 5,
+        "cs-evaluations-data-quality": 4,
+        "cs-evaluations-data-quality-panel": 1,
+        "cs-evaluations-demand-revenue-utilization-forecast": 1,
+        "cs-evaluations-driver-influence-analysis": 0,
+        "cs-evaluations-executive-kpi-strip": 1,
+        "cs-evaluations-feature-store": 2,
+        "cs-evaluations-filter-architecture": 4,
+        "cs-evaluations-finance-test-suite": 0,
+        "cs-evaluations-forecast-ux": 0,
+        "cs-evaluations-freshness-lineage": 3,
+        "cs-evaluations-gdpr": 2,
+        "cs-evaluations-grouping-entity-references": 5,
+        "cs-evaluations-impact-measurement": 0,
+        "cs-evaluations-information-architecture": 6,
+        "cs-evaluations-maintenance-failure-forecast": 1,
+        "cs-evaluations-metric-registry-baseline": 0,
+        "cs-evaluations-metric-state-ux": 2,
+        "cs-evaluations-mobile-readiness": 1,
+        "cs-evaluations-money-domain": 4,
+        "cs-evaluations-money-migration": 1,
+        "cs-evaluations-multi-currency": 1,
+        "cs-evaluations-predictive-analytics-architecture": 1,
+        "cs-evaluations-receivables": 2,
+        "cs-evaluations-recommendation-domain": 2,
+        "cs-evaluations-revenue-cashflow-result": 3,
+        "cs-evaluations-risk-cost-failure-visuals": 1,
+        "cs-evaluations-roles-permissions": 4,
+        "cs-evaluations-strength-detection": 2,
+        "cs-evaluations-strength-weakness-cockpit": 1,
+        "cs-evaluations-summary-detail-separation": 1,
+        "cs-evaluations-tenant-isolation": 13,
+        "cs-evaluations-timezone-period-model": 4,
+        "cs-evaluations-unified-kpi-contract": 1,
+        "cs-evaluations-utilization": 4,
+        "cs-evaluations-weakness-detection": 2
+      },
+      "reverse_adjacency": {
+        "cs-evaluations-accessibility-i18n": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-audit-logging": [
+          "cs-evaluations-gdpr",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-cost-model",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-feature-store"
+        ],
+        "cs-evaluations-driver-influence-analysis": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-finance-test-suite": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-forecast-ux": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-freshness-lineage": [
+          "cs-evaluations-data-quality"
+        ],
+        "cs-evaluations-gdpr": [
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-grouping-entity-references": [],
+        "cs-evaluations-impact-measurement": [
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-feature-store"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-freshness-lineage"
+        ],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-money-domain"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-recommendation-domain": [
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-receivables",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-information-architecture"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-gdpr",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-summary-detail-separation": [
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-analytics-contracts"
+        ],
+        "cs-evaluations-timezone-period-model": [],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-utilization"
+        ]
+      },
+      "roots": [
+        "cs-evaluations-calculation-versioning-baseline",
+        "cs-evaluations-grouping-entity-references",
+        "cs-evaluations-metric-registry-baseline",
+        "cs-evaluations-timezone-period-model"
+      ],
+      "strongly_connected_components": [
+        [
+          "cs-evaluations-accessibility-i18n"
+        ],
+        [
+          "cs-evaluations-action-center"
+        ],
+        [
+          "cs-evaluations-action-integrations"
+        ],
+        [
+          "cs-evaluations-analytics-contracts"
+        ],
+        [
+          "cs-evaluations-analytics-summary"
+        ],
+        [
+          "cs-evaluations-audit-logging"
+        ],
+        [
+          "cs-evaluations-backtesting-drift"
+        ],
+        [
+          "cs-evaluations-calculation-versioning-baseline"
+        ],
+        [
+          "cs-evaluations-cost-model"
+        ],
+        [
+          "cs-evaluations-data-quality"
+        ],
+        [
+          "cs-evaluations-data-quality-panel"
+        ],
+        [
+          "cs-evaluations-demand-revenue-utilization-forecast"
+        ],
+        [
+          "cs-evaluations-driver-influence-analysis"
+        ],
+        [
+          "cs-evaluations-executive-kpi-strip"
+        ],
+        [
+          "cs-evaluations-feature-store"
+        ],
+        [
+          "cs-evaluations-filter-architecture"
+        ],
+        [
+          "cs-evaluations-finance-test-suite"
+        ],
+        [
+          "cs-evaluations-forecast-ux"
+        ],
+        [
+          "cs-evaluations-freshness-lineage"
+        ],
+        [
+          "cs-evaluations-gdpr"
+        ],
+        [
+          "cs-evaluations-grouping-entity-references"
+        ],
+        [
+          "cs-evaluations-impact-measurement"
+        ],
+        [
+          "cs-evaluations-information-architecture"
+        ],
+        [
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        [
+          "cs-evaluations-metric-registry-baseline"
+        ],
+        [
+          "cs-evaluations-metric-state-ux"
+        ],
+        [
+          "cs-evaluations-mobile-readiness"
+        ],
+        [
+          "cs-evaluations-money-domain"
+        ],
+        [
+          "cs-evaluations-money-migration"
+        ],
+        [
+          "cs-evaluations-multi-currency"
+        ],
+        [
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        [
+          "cs-evaluations-receivables"
+        ],
+        [
+          "cs-evaluations-recommendation-domain"
+        ],
+        [
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        [
+          "cs-evaluations-risk-cost-failure-visuals"
+        ],
+        [
+          "cs-evaluations-roles-permissions"
+        ],
+        [
+          "cs-evaluations-strength-detection"
+        ],
+        [
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        [
+          "cs-evaluations-summary-detail-separation"
+        ],
+        [
+          "cs-evaluations-tenant-isolation"
+        ],
+        [
+          "cs-evaluations-timezone-period-model"
+        ],
+        [
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        [
+          "cs-evaluations-utilization"
+        ],
+        [
+          "cs-evaluations-weakness-detection"
+        ]
+      ],
+      "topological_order": [
+        "cs-evaluations-calculation-versioning-baseline",
+        "cs-evaluations-grouping-entity-references",
+        "cs-evaluations-metric-registry-baseline",
+        "cs-evaluations-timezone-period-model",
+        "cs-evaluations-filter-architecture",
+        "cs-evaluations-analytics-contracts",
+        "cs-evaluations-tenant-isolation",
+        "cs-evaluations-gdpr",
+        "cs-evaluations-information-architecture",
+        "cs-evaluations-roles-permissions",
+        "cs-evaluations-audit-logging",
+        "cs-evaluations-recommendation-domain",
+        "cs-evaluations-action-center",
+        "cs-evaluations-action-integrations",
+        "cs-evaluations-impact-measurement",
+        "cs-evaluations-summary-detail-separation",
+        "cs-evaluations-analytics-summary",
+        "cs-evaluations-unified-kpi-contract",
+        "cs-evaluations-money-domain",
+        "cs-evaluations-cost-model",
+        "cs-evaluations-money-migration",
+        "cs-evaluations-receivables",
+        "cs-evaluations-revenue-cashflow-result",
+        "cs-evaluations-multi-currency",
+        "cs-evaluations-finance-test-suite",
+        "cs-evaluations-risk-cost-failure-visuals",
+        "cs-evaluations-utilization",
+        "cs-evaluations-data-quality",
+        "cs-evaluations-freshness-lineage",
+        "cs-evaluations-metric-state-ux",
+        "cs-evaluations-data-quality-panel",
+        "cs-evaluations-executive-kpi-strip",
+        "cs-evaluations-predictive-analytics-architecture",
+        "cs-evaluations-feature-store",
+        "cs-evaluations-demand-revenue-utilization-forecast",
+        "cs-evaluations-maintenance-failure-forecast",
+        "cs-evaluations-backtesting-drift",
+        "cs-evaluations-forecast-ux",
+        "cs-evaluations-strength-detection",
+        "cs-evaluations-weakness-detection",
+        "cs-evaluations-driver-influence-analysis",
+        "cs-evaluations-strength-weakness-cockpit",
+        "cs-evaluations-mobile-readiness",
+        "cs-evaluations-accessibility-i18n"
+      ],
+      "transitive_dependencies": {
+        "cs-evaluations-accessibility-i18n": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-audit-logging": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-driver-influence-analysis": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-finance-test-suite": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-forecast-ux": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-freshness-lineage": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-gdpr": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-grouping-entity-references": [],
+        "cs-evaluations-impact-measurement": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-recommendation-domain": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-receivables",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-summary-detail-separation": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-timezone-period-model": [],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization"
+        ]
+      },
+      "transitive_dependents": {
+        "cs-evaluations-accessibility-i18n": [],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-audit-logging": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-driver-influence-analysis": [],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-finance-test-suite": [],
+        "cs-evaluations-forecast-ux": [],
+        "cs-evaluations-freshness-lineage": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-gdpr": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-grouping-entity-references": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-impact-measurement": [],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-accessibility-i18n"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-finance-test-suite"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-finance-test-suite"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-recommendation-domain": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-multi-currency"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-summary-detail-separation": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-timezone-period-model": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-gdpr",
+          "cs-evaluations-impact-measurement",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-receivables",
+          "cs-evaluations-recommendation-domain",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-roles-permissions",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-unified-kpi-contract",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-predictive-analytics-architecture",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-strength-weakness-cockpit",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-strength-weakness-cockpit"
+        ]
+      }
+    },
+    "package_graph": {
+      "adjacency": {
+        "E1": [
+          "E2",
+          "E3"
+        ],
+        "E2": [
+          "E3",
+          "E4",
+          "E5",
+          "E6",
+          "E7",
+          "E8"
+        ],
+        "E3": [
+          "E4",
+          "E6"
+        ],
+        "E4": [
+          "E5",
+          "E6"
+        ],
+        "E5": [
+          "E6",
+          "E7",
+          "E8",
+          "E9"
+        ],
+        "E6": [
+          "E7",
+          "E9"
+        ],
+        "E7": [],
+        "E8": [
+          "E9"
+        ],
+        "E9": []
+      },
+      "cycles": [],
+      "indegree": {
+        "E1": 0,
+        "E2": 1,
+        "E3": 2,
+        "E4": 2,
+        "E5": 2,
+        "E6": 4,
+        "E7": 3,
+        "E8": 2,
+        "E9": 3
+      },
+      "leaves": [
+        "E7",
+        "E9"
+      ],
+      "outdegree": {
+        "E1": 2,
+        "E2": 6,
+        "E3": 2,
+        "E4": 2,
+        "E5": 4,
+        "E6": 2,
+        "E7": 0,
+        "E8": 1,
+        "E9": 0
+      },
+      "reverse_adjacency": {
+        "E1": [],
+        "E2": [
+          "E1"
+        ],
+        "E3": [
+          "E1",
+          "E2"
+        ],
+        "E4": [
+          "E2",
+          "E3"
+        ],
+        "E5": [
+          "E2",
+          "E4"
+        ],
+        "E6": [
+          "E2",
+          "E3",
+          "E4",
+          "E5"
+        ],
+        "E7": [
+          "E2",
+          "E5",
+          "E6"
+        ],
+        "E8": [
+          "E2",
+          "E5"
+        ],
+        "E9": [
+          "E5",
+          "E6",
+          "E8"
+        ]
+      },
+      "roots": [
+        "E1"
+      ],
+      "strongly_connected_components": [
+        [
+          "E1"
+        ],
+        [
+          "E2"
+        ],
+        [
+          "E3"
+        ],
+        [
+          "E4"
+        ],
+        [
+          "E5"
+        ],
+        [
+          "E6"
+        ],
+        [
+          "E7"
+        ],
+        [
+          "E8"
+        ],
+        [
+          "E9"
+        ]
+      ],
+      "topological_order": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7",
+        "E8",
+        "E9"
+      ],
+      "transitive_dependencies": {
+        "E1": [],
+        "E2": [
+          "E1"
+        ],
+        "E3": [
+          "E1",
+          "E2"
+        ],
+        "E4": [
+          "E1",
+          "E2",
+          "E3"
+        ],
+        "E5": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "E6": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5"
+        ],
+        "E7": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5",
+          "E6"
+        ],
+        "E8": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5"
+        ],
+        "E9": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5",
+          "E6",
+          "E8"
+        ]
+      },
+      "transitive_dependents": {
+        "E1": [
+          "E2",
+          "E3",
+          "E4",
+          "E5",
+          "E6",
+          "E7",
+          "E8",
+          "E9"
+        ],
+        "E2": [
+          "E3",
+          "E4",
+          "E5",
+          "E6",
+          "E7",
+          "E8",
+          "E9"
+        ],
+        "E3": [
+          "E4",
+          "E5",
+          "E6",
+          "E7",
+          "E8",
+          "E9"
+        ],
+        "E4": [
+          "E5",
+          "E6",
+          "E7",
+          "E8",
+          "E9"
+        ],
+        "E5": [
+          "E6",
+          "E7",
+          "E8",
+          "E9"
+        ],
+        "E6": [
+          "E7",
+          "E9"
+        ],
+        "E7": [],
+        "E8": [
+          "E9"
+        ],
+        "E9": []
+      }
+    }
+  },
+  "original": {
+    "changeset_graph": {
+      "adjacency": {
+        "cs-evaluations-accessibility-i18n": [],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-action-integrations"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-cost-model"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-filter-architecture"
+        ],
+        "cs-evaluations-audit-logging": [],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-freshness-lineage"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-information-architecture"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-driver-influence-analysis": [
+          "cs-evaluations-data-quality"
+        ],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-demand-revenue-utilization-forecast"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-finance-test-suite": [],
+        "cs-evaluations-forecast-ux": [],
+        "cs-evaluations-freshness-lineage": [],
+        "cs-evaluations-gdpr": [
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-grouping-entity-references": [
+          "cs-evaluations-analytics-summary"
+        ],
+        "cs-evaluations-impact-measurement": [],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-executive-kpi-strip"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-backtesting-drift"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [
+          "cs-evaluations-data-quality-panel"
+        ],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-accessibility-i18n"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-money-migration"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-receivables"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-finance-test-suite"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [
+          "cs-evaluations-feature-store"
+        ],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-recommendation-domain": [
+          "cs-evaluations-action-center"
+        ],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-multi-currency"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-audit-logging"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-driver-influence-analysis"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-risk-cost-failure-visuals"
+        ],
+        "cs-evaluations-summary-detail-separation": [
+          "cs-evaluations-grouping-entity-references"
+        ],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-analytics-contracts"
+        ],
+        "cs-evaluations-timezone-period-model": [
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-money-domain"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-driver-influence-analysis"
+        ]
+      },
+      "cycles": [],
+      "indegree": {
+        "cs-evaluations-accessibility-i18n": 1,
+        "cs-evaluations-action-center": 1,
+        "cs-evaluations-action-integrations": 1,
+        "cs-evaluations-analytics-contracts": 1,
+        "cs-evaluations-analytics-summary": 1,
+        "cs-evaluations-audit-logging": 1,
+        "cs-evaluations-backtesting-drift": 1,
+        "cs-evaluations-calculation-versioning-baseline": 0,
+        "cs-evaluations-cost-model": 1,
+        "cs-evaluations-data-quality": 1,
+        "cs-evaluations-data-quality-panel": 1,
+        "cs-evaluations-demand-revenue-utilization-forecast": 1,
+        "cs-evaluations-driver-influence-analysis": 2,
+        "cs-evaluations-executive-kpi-strip": 1,
+        "cs-evaluations-feature-store": 1,
+        "cs-evaluations-filter-architecture": 1,
+        "cs-evaluations-finance-test-suite": 1,
+        "cs-evaluations-forecast-ux": 1,
+        "cs-evaluations-freshness-lineage": 1,
+        "cs-evaluations-gdpr": 0,
+        "cs-evaluations-grouping-entity-references": 1,
+        "cs-evaluations-impact-measurement": 1,
+        "cs-evaluations-information-architecture": 1,
+        "cs-evaluations-maintenance-failure-forecast": 1,
+        "cs-evaluations-metric-registry-baseline": 0,
+        "cs-evaluations-metric-state-ux": 0,
+        "cs-evaluations-mobile-readiness": 1,
+        "cs-evaluations-money-domain": 1,
+        "cs-evaluations-money-migration": 1,
+        "cs-evaluations-multi-currency": 1,
+        "cs-evaluations-predictive-analytics-architecture": 0,
+        "cs-evaluations-receivables": 1,
+        "cs-evaluations-recommendation-domain": 0,
+        "cs-evaluations-revenue-cashflow-result": 1,
+        "cs-evaluations-risk-cost-failure-visuals": 1,
+        "cs-evaluations-roles-permissions": 1,
+        "cs-evaluations-strength-detection": 1,
+        "cs-evaluations-strength-weakness-cockpit": 1,
+        "cs-evaluations-summary-detail-separation": 0,
+        "cs-evaluations-tenant-isolation": 1,
+        "cs-evaluations-timezone-period-model": 0,
+        "cs-evaluations-unified-kpi-contract": 1,
+        "cs-evaluations-utilization": 1,
+        "cs-evaluations-weakness-detection": 1
+      },
+      "leaves": [
+        "cs-evaluations-accessibility-i18n",
+        "cs-evaluations-audit-logging",
+        "cs-evaluations-calculation-versioning-baseline",
+        "cs-evaluations-finance-test-suite",
+        "cs-evaluations-forecast-ux",
+        "cs-evaluations-freshness-lineage",
+        "cs-evaluations-impact-measurement",
+        "cs-evaluations-metric-registry-baseline"
+      ],
+      "outdegree": {
+        "cs-evaluations-accessibility-i18n": 0,
+        "cs-evaluations-action-center": 1,
+        "cs-evaluations-action-integrations": 1,
+        "cs-evaluations-analytics-contracts": 1,
+        "cs-evaluations-analytics-summary": 1,
+        "cs-evaluations-audit-logging": 0,
+        "cs-evaluations-backtesting-drift": 1,
+        "cs-evaluations-calculation-versioning-baseline": 0,
+        "cs-evaluations-cost-model": 1,
+        "cs-evaluations-data-quality": 1,
+        "cs-evaluations-data-quality-panel": 1,
+        "cs-evaluations-demand-revenue-utilization-forecast": 1,
+        "cs-evaluations-driver-influence-analysis": 1,
+        "cs-evaluations-executive-kpi-strip": 1,
+        "cs-evaluations-feature-store": 1,
+        "cs-evaluations-filter-architecture": 1,
+        "cs-evaluations-finance-test-suite": 0,
+        "cs-evaluations-forecast-ux": 0,
+        "cs-evaluations-freshness-lineage": 0,
+        "cs-evaluations-gdpr": 1,
+        "cs-evaluations-grouping-entity-references": 1,
+        "cs-evaluations-impact-measurement": 0,
+        "cs-evaluations-information-architecture": 1,
+        "cs-evaluations-maintenance-failure-forecast": 1,
+        "cs-evaluations-metric-registry-baseline": 0,
+        "cs-evaluations-metric-state-ux": 1,
+        "cs-evaluations-mobile-readiness": 1,
+        "cs-evaluations-money-domain": 1,
+        "cs-evaluations-money-migration": 1,
+        "cs-evaluations-multi-currency": 1,
+        "cs-evaluations-predictive-analytics-architecture": 1,
+        "cs-evaluations-receivables": 1,
+        "cs-evaluations-recommendation-domain": 1,
+        "cs-evaluations-revenue-cashflow-result": 1,
+        "cs-evaluations-risk-cost-failure-visuals": 1,
+        "cs-evaluations-roles-permissions": 1,
+        "cs-evaluations-strength-detection": 1,
+        "cs-evaluations-strength-weakness-cockpit": 1,
+        "cs-evaluations-summary-detail-separation": 1,
+        "cs-evaluations-tenant-isolation": 1,
+        "cs-evaluations-timezone-period-model": 1,
+        "cs-evaluations-unified-kpi-contract": 1,
+        "cs-evaluations-utilization": 2,
+        "cs-evaluations-weakness-detection": 1
+      },
+      "reverse_adjacency": {
+        "cs-evaluations-accessibility-i18n": [
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-action-center"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-grouping-entity-references"
+        ],
+        "cs-evaluations-audit-logging": [
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-analytics-contracts"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-driver-influence-analysis"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-metric-state-ux"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-feature-store"
+        ],
+        "cs-evaluations-driver-influence-analysis": [
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-information-architecture"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-analytics-summary"
+        ],
+        "cs-evaluations-finance-test-suite": [
+          "cs-evaluations-multi-currency"
+        ],
+        "cs-evaluations-forecast-ux": [
+          "cs-evaluations-backtesting-drift"
+        ],
+        "cs-evaluations-freshness-lineage": [
+          "cs-evaluations-data-quality"
+        ],
+        "cs-evaluations-gdpr": [],
+        "cs-evaluations-grouping-entity-references": [
+          "cs-evaluations-summary-detail-separation"
+        ],
+        "cs-evaluations-impact-measurement": [
+          "cs-evaluations-action-integrations"
+        ],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-data-quality-panel"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-demand-revenue-utilization-forecast"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-risk-cost-failure-visuals"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-money-domain"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-money-migration"
+        ],
+        "cs-evaluations-recommendation-domain": [],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-receivables"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-gdpr"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-executive-kpi-strip"
+        ],
+        "cs-evaluations-summary-detail-separation": [],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-filter-architecture"
+        ],
+        "cs-evaluations-timezone-period-model": [],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-cost-model"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-utilization"
+        ]
+      },
+      "roots": [
+        "cs-evaluations-calculation-versioning-baseline",
+        "cs-evaluations-gdpr",
+        "cs-evaluations-metric-registry-baseline",
+        "cs-evaluations-metric-state-ux",
+        "cs-evaluations-predictive-analytics-architecture",
+        "cs-evaluations-recommendation-domain",
+        "cs-evaluations-summary-detail-separation",
+        "cs-evaluations-timezone-period-model"
+      ],
+      "strongly_connected_components": [
+        [
+          "cs-evaluations-accessibility-i18n"
+        ],
+        [
+          "cs-evaluations-action-center"
+        ],
+        [
+          "cs-evaluations-action-integrations"
+        ],
+        [
+          "cs-evaluations-analytics-contracts"
+        ],
+        [
+          "cs-evaluations-analytics-summary"
+        ],
+        [
+          "cs-evaluations-audit-logging"
+        ],
+        [
+          "cs-evaluations-backtesting-drift"
+        ],
+        [
+          "cs-evaluations-calculation-versioning-baseline"
+        ],
+        [
+          "cs-evaluations-cost-model"
+        ],
+        [
+          "cs-evaluations-data-quality"
+        ],
+        [
+          "cs-evaluations-data-quality-panel"
+        ],
+        [
+          "cs-evaluations-demand-revenue-utilization-forecast"
+        ],
+        [
+          "cs-evaluations-driver-influence-analysis"
+        ],
+        [
+          "cs-evaluations-executive-kpi-strip"
+        ],
+        [
+          "cs-evaluations-feature-store"
+        ],
+        [
+          "cs-evaluations-filter-architecture"
+        ],
+        [
+          "cs-evaluations-finance-test-suite"
+        ],
+        [
+          "cs-evaluations-forecast-ux"
+        ],
+        [
+          "cs-evaluations-freshness-lineage"
+        ],
+        [
+          "cs-evaluations-gdpr"
+        ],
+        [
+          "cs-evaluations-grouping-entity-references"
+        ],
+        [
+          "cs-evaluations-impact-measurement"
+        ],
+        [
+          "cs-evaluations-information-architecture"
+        ],
+        [
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        [
+          "cs-evaluations-metric-registry-baseline"
+        ],
+        [
+          "cs-evaluations-metric-state-ux"
+        ],
+        [
+          "cs-evaluations-mobile-readiness"
+        ],
+        [
+          "cs-evaluations-money-domain"
+        ],
+        [
+          "cs-evaluations-money-migration"
+        ],
+        [
+          "cs-evaluations-multi-currency"
+        ],
+        [
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        [
+          "cs-evaluations-receivables"
+        ],
+        [
+          "cs-evaluations-recommendation-domain"
+        ],
+        [
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        [
+          "cs-evaluations-risk-cost-failure-visuals"
+        ],
+        [
+          "cs-evaluations-roles-permissions"
+        ],
+        [
+          "cs-evaluations-strength-detection"
+        ],
+        [
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        [
+          "cs-evaluations-summary-detail-separation"
+        ],
+        [
+          "cs-evaluations-tenant-isolation"
+        ],
+        [
+          "cs-evaluations-timezone-period-model"
+        ],
+        [
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        [
+          "cs-evaluations-utilization"
+        ],
+        [
+          "cs-evaluations-weakness-detection"
+        ]
+      ],
+      "topological_order": [
+        "cs-evaluations-calculation-versioning-baseline",
+        "cs-evaluations-gdpr",
+        "cs-evaluations-metric-registry-baseline",
+        "cs-evaluations-metric-state-ux",
+        "cs-evaluations-data-quality-panel",
+        "cs-evaluations-information-architecture",
+        "cs-evaluations-executive-kpi-strip",
+        "cs-evaluations-predictive-analytics-architecture",
+        "cs-evaluations-feature-store",
+        "cs-evaluations-demand-revenue-utilization-forecast",
+        "cs-evaluations-maintenance-failure-forecast",
+        "cs-evaluations-backtesting-drift",
+        "cs-evaluations-forecast-ux",
+        "cs-evaluations-recommendation-domain",
+        "cs-evaluations-action-center",
+        "cs-evaluations-action-integrations",
+        "cs-evaluations-impact-measurement",
+        "cs-evaluations-roles-permissions",
+        "cs-evaluations-audit-logging",
+        "cs-evaluations-strength-weakness-cockpit",
+        "cs-evaluations-risk-cost-failure-visuals",
+        "cs-evaluations-mobile-readiness",
+        "cs-evaluations-accessibility-i18n",
+        "cs-evaluations-summary-detail-separation",
+        "cs-evaluations-grouping-entity-references",
+        "cs-evaluations-analytics-summary",
+        "cs-evaluations-filter-architecture",
+        "cs-evaluations-tenant-isolation",
+        "cs-evaluations-analytics-contracts",
+        "cs-evaluations-cost-model",
+        "cs-evaluations-timezone-period-model",
+        "cs-evaluations-unified-kpi-contract",
+        "cs-evaluations-money-domain",
+        "cs-evaluations-money-migration",
+        "cs-evaluations-receivables",
+        "cs-evaluations-revenue-cashflow-result",
+        "cs-evaluations-multi-currency",
+        "cs-evaluations-finance-test-suite",
+        "cs-evaluations-utilization",
+        "cs-evaluations-strength-detection",
+        "cs-evaluations-weakness-detection",
+        "cs-evaluations-driver-influence-analysis",
+        "cs-evaluations-data-quality",
+        "cs-evaluations-freshness-lineage"
+      ],
+      "transitive_dependencies": {
+        "cs-evaluations-accessibility-i18n": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation"
+        ],
+        "cs-evaluations-audit-logging": [
+          "cs-evaluations-gdpr",
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-metric-state-ux"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-feature-store",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-driver-influence-analysis": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation"
+        ],
+        "cs-evaluations-finance-test-suite": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-forecast-ux": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-maintenance-failure-forecast",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-freshness-lineage": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-gdpr": [],
+        "cs-evaluations-grouping-entity-references": [
+          "cs-evaluations-summary-detail-separation"
+        ],
+        "cs-evaluations-impact-measurement": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-recommendation-domain"
+        ],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-metric-state-ux"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-predictive-analytics-architecture"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-recommendation-domain": [],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-receivables",
+          "cs-evaluations-timezone-period-model",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-gdpr"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-metric-state-ux"
+        ],
+        "cs-evaluations-summary-detail-separation": [],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation"
+        ],
+        "cs-evaluations-timezone-period-model": [],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-timezone-period-model"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-summary-detail-separation",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization"
+        ]
+      },
+      "transitive_dependents": {
+        "cs-evaluations-accessibility-i18n": [],
+        "cs-evaluations-action-center": [
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-action-integrations": [
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-analytics-contracts": [
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-analytics-summary": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-audit-logging": [],
+        "cs-evaluations-backtesting-drift": [
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-calculation-versioning-baseline": [],
+        "cs-evaluations-cost-model": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-data-quality": [
+          "cs-evaluations-freshness-lineage"
+        ],
+        "cs-evaluations-data-quality-panel": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-demand-revenue-utilization-forecast": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-driver-influence-analysis": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-freshness-lineage"
+        ],
+        "cs-evaluations-executive-kpi-strip": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-feature-store": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-filter-architecture": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-finance-test-suite": [],
+        "cs-evaluations-forecast-ux": [],
+        "cs-evaluations-freshness-lineage": [],
+        "cs-evaluations-gdpr": [
+          "cs-evaluations-audit-logging",
+          "cs-evaluations-roles-permissions"
+        ],
+        "cs-evaluations-grouping-entity-references": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-impact-measurement": [],
+        "cs-evaluations-information-architecture": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-maintenance-failure-forecast": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-forecast-ux"
+        ],
+        "cs-evaluations-metric-registry-baseline": [],
+        "cs-evaluations-metric-state-ux": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-data-quality-panel",
+          "cs-evaluations-executive-kpi-strip",
+          "cs-evaluations-information-architecture",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals",
+          "cs-evaluations-strength-weakness-cockpit"
+        ],
+        "cs-evaluations-mobile-readiness": [
+          "cs-evaluations-accessibility-i18n"
+        ],
+        "cs-evaluations-money-domain": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-money-migration": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-multi-currency": [
+          "cs-evaluations-finance-test-suite"
+        ],
+        "cs-evaluations-predictive-analytics-architecture": [
+          "cs-evaluations-backtesting-drift",
+          "cs-evaluations-demand-revenue-utilization-forecast",
+          "cs-evaluations-feature-store",
+          "cs-evaluations-forecast-ux",
+          "cs-evaluations-maintenance-failure-forecast"
+        ],
+        "cs-evaluations-receivables": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-recommendation-domain": [
+          "cs-evaluations-action-center",
+          "cs-evaluations-action-integrations",
+          "cs-evaluations-impact-measurement"
+        ],
+        "cs-evaluations-revenue-cashflow-result": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-multi-currency"
+        ],
+        "cs-evaluations-risk-cost-failure-visuals": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness"
+        ],
+        "cs-evaluations-roles-permissions": [
+          "cs-evaluations-audit-logging"
+        ],
+        "cs-evaluations-strength-detection": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage"
+        ],
+        "cs-evaluations-strength-weakness-cockpit": [
+          "cs-evaluations-accessibility-i18n",
+          "cs-evaluations-mobile-readiness",
+          "cs-evaluations-risk-cost-failure-visuals"
+        ],
+        "cs-evaluations-summary-detail-separation": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-analytics-summary",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-filter-architecture",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-grouping-entity-references",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-tenant-isolation",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-tenant-isolation": [
+          "cs-evaluations-analytics-contracts",
+          "cs-evaluations-cost-model",
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-utilization",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-timezone-period-model": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result",
+          "cs-evaluations-unified-kpi-contract"
+        ],
+        "cs-evaluations-unified-kpi-contract": [
+          "cs-evaluations-finance-test-suite",
+          "cs-evaluations-money-domain",
+          "cs-evaluations-money-migration",
+          "cs-evaluations-multi-currency",
+          "cs-evaluations-receivables",
+          "cs-evaluations-revenue-cashflow-result"
+        ],
+        "cs-evaluations-utilization": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage",
+          "cs-evaluations-strength-detection",
+          "cs-evaluations-weakness-detection"
+        ],
+        "cs-evaluations-weakness-detection": [
+          "cs-evaluations-data-quality",
+          "cs-evaluations-driver-influence-analysis",
+          "cs-evaluations-freshness-lineage"
+        ]
+      }
+    },
+    "external_dependency_count": 56,
+    "internal_edge_count": 37,
+    "package_graph": {
+      "adjacency": {
+        "E1": [
+          "E2",
+          "E3"
+        ],
+        "E2": [],
+        "E3": [
+          "E1",
+          "E4"
+        ],
+        "E4": [
+          "E1",
+          "E5",
+          "E6"
+        ],
+        "E5": [],
+        "E6": [],
+        "E7": [
+          "E8"
+        ],
+        "E8": []
+      },
+      "cycles": [
+        [
+          "E1",
+          "E3",
+          "E4"
+        ]
+      ],
+      "indegree": {
+        "E1": 2,
+        "E2": 1,
+        "E3": 1,
+        "E4": 1,
+        "E5": 1,
+        "E6": 1,
+        "E7": 0,
+        "E8": 1
+      },
+      "leaves": [
+        "E2",
+        "E5",
+        "E6",
+        "E8"
+      ],
+      "outdegree": {
+        "E1": 2,
+        "E2": 0,
+        "E3": 2,
+        "E4": 3,
+        "E5": 0,
+        "E6": 0,
+        "E7": 1,
+        "E8": 0
+      },
+      "reverse_adjacency": {
+        "E1": [
+          "E3",
+          "E4"
+        ],
+        "E2": [
+          "E1"
+        ],
+        "E3": [
+          "E1"
+        ],
+        "E4": [
+          "E3"
+        ],
+        "E5": [
+          "E4"
+        ],
+        "E6": [
+          "E4"
+        ],
+        "E7": [],
+        "E8": [
+          "E7"
+        ]
+      },
+      "roots": [
+        "E7"
+      ],
+      "strongly_connected_components": [
+        [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        [
+          "E2"
+        ],
+        [
+          "E5"
+        ],
+        [
+          "E6"
+        ],
+        [
+          "E7"
+        ],
+        [
+          "E8"
+        ]
+      ],
+      "topological_order": [
+        "E7",
+        "E8"
+      ],
+      "transitive_dependencies": {
+        "E1": [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        "E2": [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        "E3": [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        "E4": [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        "E5": [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        "E6": [
+          "E1",
+          "E3",
+          "E4"
+        ],
+        "E7": [],
+        "E8": [
+          "E7"
+        ]
+      },
+      "transitive_dependents": {
+        "E1": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5",
+          "E6"
+        ],
+        "E2": [],
+        "E3": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5",
+          "E6"
+        ],
+        "E4": [
+          "E1",
+          "E2",
+          "E3",
+          "E4",
+          "E5",
+          "E6"
+        ],
+        "E5": [],
+        "E6": [],
+        "E7": [
+          "E8"
+        ],
+        "E8": []
+      }
+    }
+  },
+  "schema_version": "phase2.6-evaluations-graph-v1",
+  "source_state": {
+    "current_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
+    "gh_version": "gh version 2.91.0 (2026-04-22)",
+    "git_version": "git version 2.43.0",
+    "main_changed_since_phase2_5": false,
+    "main_delta_left_right": "0\t0",
+    "phase2_5_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb"
+  }
+}
