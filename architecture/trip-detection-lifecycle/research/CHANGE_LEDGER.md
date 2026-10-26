@@ -106,6 +106,7 @@ Append-only record for this authority directory.
 | 2026-10-16 | **P1B** EXP021 anchor PR #2051 @ `4b387d43…` (P22E_F semantic integrity); reference shadow semantics; P23 not blocking P1B; video excluded from runtime | Docs | same P1B evidence |
 | 2026-10-16 | **P1B.1** shadow-OFF legacy-only — gate before modality DB read; orchestration wiring tests; metric property `tripStartBoundaryAdmissionShadowDeltaSeconds` | PR #2057 | same P1B evidence |
 | 2026-10-22 | **P1B.9C** optional `TRIP_MID_GAP_TELEMETRY_SILENCE_HARDENING_ENABLED` (default off) + vehicle UUID allowlist; synthetic anchor / engine-idle mid-gap suppression; Tiguan 2026-10-21 false-split regression | Live FSM mid-gap only | `trip-mid-gap-detection.util.ts`, `trip-mid-gap-p1b9c-telemetry-silence.spec.ts` |
+| 2026-10-22 | **P1B.9D** Tesla Oct-21 driver GT validation (2 trips); sparse offline fixtures + regression; read-only Production forensics | Start boundary admission (shadow resolver) | `p1b9d-tesla-oct21-ground-truth.fixture.ts`, `trip-start-boundary-admission-p1b9d-tesla-gt.spec.ts`, evidence `TDL_P1B9D_TESLA_START_GT_VALIDATION_2026-10-22.md` |
 
 ## Standard 1.0 phases
 
