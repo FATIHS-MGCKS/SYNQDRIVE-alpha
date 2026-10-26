@@ -15,6 +15,7 @@
  */
 
 import { AiTireSpec } from './tire-health.config';
+import { normalizeTireSpecConfidenceScore } from './ai-tire-spec-confidence.util';
 
 // ── Canonical enum sets ─────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ export function normalizeAiTireSpecResult(
     urbanBias: clamp(toFiniteNumberOrNull(raw.urbanBias), 0.0, 2.0),
     highwayBias: clamp(toFiniteNumberOrNull(raw.highwayBias), 0.0, 2.0),
     tireArchetype: toNormalizedEnum(raw.tireArchetype, TIRE_ARCHETYPES),
-    confidenceScore: clamp(toFiniteNumberOrNull(raw.confidenceScore), 0, 100),
+    confidenceScore: normalizeTireSpecConfidenceScore(raw.confidenceScore),
     manufacturerSourceUrl: toUrlOrNull(raw.manufacturerSourceUrl),
     labelSourceUrl: toUrlOrNull(raw.labelSourceUrl),
   };

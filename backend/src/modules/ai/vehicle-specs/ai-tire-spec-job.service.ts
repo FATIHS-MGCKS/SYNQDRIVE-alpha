@@ -1,4 +1,10 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireSpecAiService } from './tire-spec-ai.service';
 import { AiTireSpec } from '../../vehicle-intelligence/tires/tire-health.config';
@@ -7,8 +13,9 @@ import {
   validateAiTireSpec,
   buildPersistedAiTireSpec,
 } from '../../vehicle-intelligence/tires/ai-tire-spec-normalizer';
-import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
-import { buildSetupBaselineFields } from '../../vehicle-intelligence/tires/tire-evidence-provenance';
+import { TireSetupStatus } from '@prisma/client';
+import { buildAiTireSpecApplySetupUpdate } from '../../vehicle-intelligence/tires/ai-tire-spec-apply.util';
+import { normalizeTireSpecConfidenceScore } from '../../vehicle-intelligence/tires/ai-tire-spec-confidence.util';
 
 function mapTireSpecAliases(
   raw: Record<string, unknown> | null,
@@ -34,6 +41,12 @@ export interface StartAiTireSpecJobInput {
   speedIndex: string;
   vehicleId?: string;
   tireSetupId?: string;
+}
+
+export interface ApplyAiTireSpecJobOptions {
+  organizationId: string;
+  /** Owner confirmed catalog/spec match — does not confirm measured tread depth. */
+  userConfirmedSpec?: boolean;
 }
 
 // ── Status response DTO ───────────────────────────────────────────────────────
@@ -63,6 +76,7 @@ export interface AiTireSpecApplyResult {
   setupId?: string;
   appliedFields?: string[];
   message?: string;
+  idempotentReplay?: boolean;
 }
 
 @Injectable()
@@ -114,6 +128,10 @@ export class AiTireSpecJobService {
     if (!job) throw new NotFoundException(`Job ${jobId} not found`);
 
     const normalized = job.normalizedResult as AiTireSpec | null;
+    const confidenceScore =
+      job.confidenceScore != null
+        ? normalizeTireSpecConfidenceScore(job.confidenceScore)
+        : null;
 
     return {
       jobId: job.id,
@@ -122,7 +140,7 @@ export class AiTireSpecJobService {
       startedAt: job.startedAt?.toISOString() ?? null,
       completedAt: job.completedAt?.toISOString() ?? null,
       errorMessage: job.errorMessage ?? null,
-      confidenceScore: job.confidenceScore ?? null,
+      confidenceScore,
       result: job.status === 'succeeded' ? normalized : null,
       resultReady: job.status === 'succeeded' && normalized !== null,
       input: {
@@ -136,9 +154,13 @@ export class AiTireSpecJobService {
     };
   }
 
-  // ── Apply confirmed result to active tire setup ─────────────────────────────
+  // ── Apply result to active tire setup ─────────────────────────────────────────
 
-  async applyResult(jobId: string, vehicleId: string): Promise<AiTireSpecApplyResult> {
+  async applyResult(
+    jobId: string,
+    vehicleId: string,
+    options: ApplyAiTireSpecJobOptions,
+  ): Promise<AiTireSpecApplyResult> {
     const job = await this.prisma.aiTireSpecJob.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException(`Job ${jobId} not found`);
     if (job.status !== 'succeeded') {
@@ -146,6 +168,20 @@ export class AiTireSpecJobService {
     }
     if (!job.normalizedResult) {
       return { success: false, message: 'No normalized result available' };
+    }
+    if (!job.vehicleId) {
+      return { success: false, message: 'Job is not bound to a vehicle; apply rejected for safety' };
+    }
+    if (job.vehicleId !== vehicleId) {
+      return { success: false, message: 'Job vehicle does not match target vehicle' };
+    }
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId: options.organizationId },
+      select: { id: true },
+    });
+    if (!vehicle) {
+      throw new ForbiddenException('Vehicle not in organization scope');
     }
 
     const setup = await this.prisma.vehicleTireSetup.findFirst({
@@ -155,6 +191,26 @@ export class AiTireSpecJobService {
     if (!setup) {
       return { success: false, message: 'No active tire setup found for this vehicle' };
     }
+    if (job.tireSetupId && job.tireSetupId !== setup.id) {
+      return { success: false, message: 'Job tire setup does not match active tire setup' };
+    }
+
+    if (job.appliedAt) {
+      if (job.appliedToSetupId === setup.id) {
+        const normalized = normalizeAiTireSpecResult(job.normalizedResult as Record<string, unknown>);
+        const appliedFields = Object.entries(normalized)
+          .filter(([, v]) => v != null)
+          .map(([k]) => k);
+        return {
+          success: true,
+          setupId: setup.id,
+          appliedFields,
+          message: 'Already applied to this tire setup',
+          idempotentReplay: true,
+        };
+      }
+      return { success: false, message: 'Job already applied to a different tire setup' };
+    }
 
     const normalized = normalizeAiTireSpecResult(job.normalizedResult as Record<string, unknown>);
     const validation = validateAiTireSpec(normalized);
@@ -163,40 +219,45 @@ export class AiTireSpecJobService {
       return { success: false, message: 'Stored result has no usable structured data after re-validation' };
     }
 
+    const confidenceScore =
+      normalizeTireSpecConfidenceScore(job.confidenceScore ?? normalized.confidenceScore) ??
+      normalized.confidenceScore ??
+      null;
+
+    const userConfirmedSpec = options.userConfirmedSpec === true;
+
     const persisted = buildPersistedAiTireSpec(normalized, {
       jobId: job.id,
-      confidenceScore: job.confidenceScore,
+      confidenceScore,
       completedAt: job.completedAt?.toISOString() ?? null,
       specSourceType: 'ai_agent',
-      userConfirmedSpec: true,
+      userConfirmedSpec,
     });
 
-    const aiBaseline = buildSetupBaselineFields({
-      aiTireSpec: persisted,
-      userConfirmedSpec: true,
-      treadMm: normalized.newTreadDepthMm,
-      confirmedAt: new Date(),
-    });
-
-    await this.prisma.vehicleTireSetup.update({
-      where: { id: setup.id },
-      data: {
-        aiTireSpec: persisted as any,
-        ...aiBaseline,
-        initialTreadEvidenceSource:
-          aiBaseline.initialTreadEvidenceSource === TireEvidenceSource.USER_CONFIRMED
-            ? TireEvidenceSource.USER_CONFIRMED
-            : aiBaseline.initialTreadEvidenceSource,
+    const setupUpdate = buildAiTireSpecApplySetupUpdate({
+      setup: {
+        initialTreadEvidenceSource: setup.initialTreadEvidenceSource,
+        initialTreadDepthMm: setup.initialTreadDepthMm,
+        initialTreadFrontMm: setup.initialTreadFrontMm,
+        initialTreadRearMm: setup.initialTreadRearMm,
       },
+      persisted,
+      confidenceScore,
     });
 
-    await this.prisma.aiTireSpecJob.update({
-      where: { id: job.id },
-      data: {
-        appliedAt: new Date(),
-        appliedToSetupId: setup.id,
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.vehicleTireSetup.update({
+        where: { id: setup.id },
+        data: setupUpdate as any,
+      }),
+      this.prisma.aiTireSpecJob.update({
+        where: { id: job.id },
+        data: {
+          appliedAt: new Date(),
+          appliedToSetupId: setup.id,
+        },
+      }),
+    ]);
 
     this.logger.log(`[AiTireSpec] Applied job ${job.id} to setup ${setup.id} — ${validation.fieldCount} fields`);
 
@@ -282,7 +343,7 @@ export class AiTireSpecJobService {
         this.logger.warn(`[AiTireSpec] Job ${jobId} validation warnings: ${validation.warnings.join('; ')}`);
       }
 
-      const confidence = normalized.confidenceScore;
+      const confidence = normalizeTireSpecConfidenceScore(normalized.confidenceScore);
 
       await this.prisma.aiTireSpecJob.update({
         where: { id: jobId },

@@ -169,7 +169,7 @@ Fill factory/OEM tire specifications for this tire.
 Rules:
 - use null ONLY if you genuinely do not know the value
 - numbers without units in numeric fields
-- confidenceScore: 0 to 1
+- confidenceScore: integer 0 to 100 (percent confidence; use null if unknown)
 - intendedUse: array of strings or null
 - all bias/sensitivity values: 0 to 1 or null
 - legalMinTreadDepthMm defaults to 1.6 if unknown

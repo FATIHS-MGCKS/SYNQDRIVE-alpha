@@ -89,7 +89,8 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
-import { buildSetupBaselineFields } from './tires/tire-evidence-provenance';
+import { buildAiTireSpecApplySetupUpdate } from './tires/ai-tire-spec-apply.util';
+import { normalizeTireSpecConfidenceScore } from './tires/ai-tire-spec-confidence.util';
 import {
   CreateTireSetupDto,
   AddTireMeasurementDto,
@@ -373,10 +374,16 @@ export class VehicleIntelligenceController {
   async applyAiTireSpec(
     @Param('vehicleId') vehicleId: string,
     @Body() body: ApplyAiTireSpecDto,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+
     // Job-based flow (preferred): apply from a completed AiTireSpecJob
     if (body.jobId) {
-      const result = await this.aiTireSpecJobService.applyResult(body.jobId, vehicleId);
+      const result = await this.aiTireSpecJobService.applyResult(body.jobId, vehicleId, {
+        organizationId,
+        userConfirmedSpec: body.userConfirmedSpec === true,
+      });
       if (result.success) {
         try {
           await this.tireHealthService.recalculate(vehicleId);
@@ -402,25 +409,30 @@ export class VehicleIntelligenceController {
         return { success: false, message: 'No structured tire spec data after normalization' };
       }
 
+      const confidenceScore = normalizeTireSpecConfidenceScore(normalized.confidenceScore);
+
       const persisted = buildPersistedAiTireSpec(normalized, {
         jobId: null,
-        confidenceScore: normalized.confidenceScore ?? null,
+        confidenceScore,
         completedAt: null,
         specSourceType: 'ai_agent',
-        userConfirmedSpec: body.userConfirmedSpec ?? false,
+        userConfirmedSpec: body.userConfirmedSpec === true,
+      });
+
+      const setupUpdate = buildAiTireSpecApplySetupUpdate({
+        setup: {
+          initialTreadEvidenceSource: setup.initialTreadEvidenceSource,
+          initialTreadDepthMm: setup.initialTreadDepthMm,
+          initialTreadFrontMm: setup.initialTreadFrontMm,
+          initialTreadRearMm: setup.initialTreadRearMm,
+        },
+        persisted,
+        confidenceScore,
       });
 
       await this.prisma.vehicleTireSetup.update({
         where: { id: setup.id },
-        data: {
-          aiTireSpec: persisted as any,
-          ...buildSetupBaselineFields({
-            aiTireSpec: persisted,
-            userConfirmedSpec: persisted.userConfirmedSpec,
-            treadMm: normalized.newTreadDepthMm,
-            confirmedAt: persisted.userConfirmedSpec ? new Date() : null,
-          }),
-        },
+        data: setupUpdate as any,
       });
 
       try {
