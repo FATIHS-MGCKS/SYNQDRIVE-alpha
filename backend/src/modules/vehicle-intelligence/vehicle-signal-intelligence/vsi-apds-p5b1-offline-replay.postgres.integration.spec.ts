@@ -1,7 +1,7 @@
 /**
-import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * P5B.1 offline replay (disposable PostgreSQL) — read-only batch correlation.
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';

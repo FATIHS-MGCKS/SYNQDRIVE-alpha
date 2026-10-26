@@ -15,6 +15,20 @@ export type VsiProfileCadenceEnrichmentInput = {
   priorCadenceByKey?: ReadonlyMap<string, VsiSignalCadenceIntelligenceV2>;
 };
 
+function shouldPreservePriorRpmCadence(
+  evidence: VsiRpmCadenceEvidenceInput,
+  prior: VsiSignalCadenceIntelligenceV2 | undefined,
+): boolean {
+  if (!prior) {
+    return false;
+  }
+  return (
+    evidence.hfReadStatus === 'UNAVAILABLE' ||
+    evidence.hfReadStatus === 'QUERY_FAILED' ||
+    (evidence.hfReadStatus === 'EMPTY' && prior.observedSampleCount > 0)
+  );
+}
+
 function mergeCadenceOntoSignal(
   signal: VsiProfileSignalFingerprintV1,
   cadence: VsiSignalCadenceIntelligenceV2 | null,
@@ -46,12 +60,20 @@ export function enrichVsiProfileWithCadenceIntelligence(
   evaluation: VsiProfileEvaluationResult,
   input: VsiProfileCadenceEnrichmentInput,
 ): VsiProfileEvaluationResult {
-  const rpmCadence =
-    input.rpmEvidence != null ? analyzeEngineRpmCadence(input.rpmEvidence) : null;
+  const prior = input.priorCadenceByKey ?? new Map();
+
+  let rpmCadence: VsiSignalCadenceIntelligenceV2 | null = null;
+  if (input.rpmEvidence != null) {
+    const priorRpm = prior.get('engine_rpm');
+    if (shouldPreservePriorRpmCadence(input.rpmEvidence, priorRpm)) {
+      rpmCadence = priorRpm ?? null;
+    } else {
+      rpmCadence = analyzeEngineRpmCadence(input.rpmEvidence);
+    }
+  }
+
   const lvCadence =
     input.lvEvidence != null ? analyzeLvVoltageCadence(input.lvEvidence) : null;
-
-  const prior = input.priorCadenceByKey ?? new Map();
 
   const signals = evaluation.signals.map((signal) => {
     if (signal.canonicalSignalKey === 'engine_rpm') {

@@ -224,10 +224,6 @@ export class TripBehaviorEnrichmentService {
     abuseEvents: AbuseEvent[];
   }): void {
     if (!this.hfMirror.isEnabled) {
-      void this.scheduleVsiRpmCadenceAfterTrip({
-        organizationId: params.orgId,
-        vehicleId: params.vehicleId,
-      });
       return;
     }
     void this.hfMirror
@@ -241,6 +237,8 @@ export class TripBehaviorEnrichmentService {
         void this.scheduleVsiRpmCadenceAfterTrip({
           organizationId: params.orgId,
           vehicleId: params.vehicleId,
+          tripId: params.tripId,
+          hfMirrorSucceeded: res.mirrored && res.pointsInserted > 0,
         });
       })
       .catch((err: unknown) => {
@@ -249,16 +247,14 @@ export class TripBehaviorEnrichmentService {
             err instanceof Error ? err.message : String(err)
           }`,
         );
-        void this.scheduleVsiRpmCadenceAfterTrip({
-          organizationId: params.orgId,
-          vehicleId: params.vehicleId,
-        });
       });
   }
 
   private async scheduleVsiRpmCadenceAfterTrip(input: {
     organizationId: string | null | undefined;
     vehicleId: string;
+    tripId: string;
+    hfMirrorSucceeded: boolean;
   }): Promise<void> {
     if (!this.vsiProfileMaterialization) {
       return;
@@ -273,7 +269,9 @@ export class TripBehaviorEnrichmentService {
       logger: this.logger,
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
+      tripId: input.tripId,
       providerSourceLinkId,
+      hfMirrorSucceeded: input.hfMirrorSucceeded,
     });
   }
 

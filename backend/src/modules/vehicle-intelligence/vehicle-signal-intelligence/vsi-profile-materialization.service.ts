@@ -51,6 +51,8 @@ export type VsiProfileMaterializeFromSnapshotInput = {
   organizationId: string;
   vehicleId: string;
   providerSourceLinkId: string | null;
+  /** Post-trip RPM cadence: wait for HF mirror rows on this trip before certifying. */
+  rpmCadenceTripId?: string | null;
   /** When true, skip when VLS binding does not match the target link. */
   requireBindingMatch?: boolean;
   /**
@@ -360,6 +362,10 @@ export class VsiSignalProfileMaterializationService {
       projectionAsOf,
       refreshRpmCadence,
       refreshLvCadence: true,
+      rpmTripIdForReadiness:
+        lifecycleMode === 'TRIP_FINALIZED_RPM_CADENCE'
+          ? input.rpmCadenceTripId ?? null
+          : null,
     };
     const priorCadenceByKey = extractPriorCadenceByKey(existingProfile?.signalsSnapshot);
     const [rpmEvidence, lvEvidence] = await Promise.all([

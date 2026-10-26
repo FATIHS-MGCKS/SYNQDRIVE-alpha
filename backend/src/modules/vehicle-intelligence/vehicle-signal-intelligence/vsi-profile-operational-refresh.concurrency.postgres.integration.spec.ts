@@ -1,7 +1,7 @@
 /**
-import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * Operational refresh concurrency (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import { Prisma, PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';

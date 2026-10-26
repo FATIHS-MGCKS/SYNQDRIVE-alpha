@@ -1,7 +1,7 @@
 /**
-import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * VSI P2 lifecycle outbox + automatic profile initialization (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import {
   PrismaClient,
   DrivingCapabilityStatus,

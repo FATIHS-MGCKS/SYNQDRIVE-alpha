@@ -642,9 +642,12 @@ export class ClickHouseHfService {
     from: Date;
     to: Date;
     limit: number;
-  }): Promise<Array<{ recordedAtMs: number; value: number }>> {
+  }): Promise<{
+    status: 'SUCCESS' | 'UNAVAILABLE' | 'QUERY_FAILED' | 'EMPTY';
+    points: Array<{ recordedAtMs: number; value: number }>;
+  }> {
     if (!this.ch.isAvailable) {
-      return [];
+      return { status: 'UNAVAILABLE', points: [] };
     }
     try {
       const result = await this.ch.getClient().query({
@@ -658,7 +661,7 @@ export class ClickHouseHfService {
             AND recorded_at >= parseDateTime64BestEffort({from: String})
             AND recorded_at <= parseDateTime64BestEffort({to: String})
             AND value_float IS NOT NULL
-          ORDER BY recorded_at ASC
+          ORDER BY recorded_at DESC
           LIMIT {limit: UInt32}
         `,
         query_params: {
@@ -679,7 +682,7 @@ export class ClickHouseHfService {
         query: 'hf_bounded_signal_points',
         result: 'success',
       });
-      return rows
+      const points = rows
         .map((r) => {
           const iso = parseChUtc(r.recorded_at);
           const value = Number(r.value_float);
@@ -688,7 +691,12 @@ export class ClickHouseHfService {
           }
           return { recordedAtMs: new Date(iso).getTime(), value };
         })
-        .filter((r): r is { recordedAtMs: number; value: number } => r != null);
+        .filter((r): r is { recordedAtMs: number; value: number } => r != null)
+        .sort((a, b) => a.recordedAtMs - b.recordedAtMs);
+      return {
+        status: points.length > 0 ? 'SUCCESS' : 'EMPTY',
+        points,
+      };
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'hf_bounded_signal_points',
@@ -697,7 +705,7 @@ export class ClickHouseHfService {
       this.logger.warn(
         `getBoundedSignalValuePoints failed: ${(err as Error).message}`,
       );
-      return [];
+      return { status: 'QUERY_FAILED', points: [] };
     }
   }
 

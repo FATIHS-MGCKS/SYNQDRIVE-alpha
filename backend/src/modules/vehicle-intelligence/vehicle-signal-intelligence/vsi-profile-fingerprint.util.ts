@@ -21,6 +21,8 @@ const OPERATIONAL_SIGNAL_FIELDS = new Set([
   'observedCadenceMedianSeconds',
   'observedCadenceSampleCount',
   'maxStaleIntervalSeconds',
+  /** Full cadence blob is operational; semantic identity uses cadenceSemanticFingerprint only. */
+  'cadenceIntelligence',
 ]);
 
 /** Signals whose lastValidObservationAt tracks fetch wall clock, not physics source time. */

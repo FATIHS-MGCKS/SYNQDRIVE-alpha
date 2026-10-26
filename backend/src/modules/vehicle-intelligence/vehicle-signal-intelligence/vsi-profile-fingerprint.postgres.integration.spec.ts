@@ -1,7 +1,7 @@
 /**
-import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * VSI P3 signal fingerprint + quality (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import {
   PrismaClient,
   DrivingCapabilityStatus,

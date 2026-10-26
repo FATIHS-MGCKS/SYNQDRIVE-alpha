@@ -3,8 +3,12 @@ import { TripStatus } from '@prisma/client';
 import type { PrismaService } from '../../../shared/database/prisma.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { buildP25ApdProfileLvLoaderWhere } from '../../../workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-lv-loader';
-import { isIceRpmApplicableForFuelType } from './vsi-profile-cadence-stats.util';
+import {
+  filterTripsForSourceLinkWindow,
+  resolveIceRpmApplicability,
+} from './vsi-profile-cadence-stats.util';
 import type {
+  VsiHfCadenceReadStatus,
   VsiLvCadenceEvidenceInput,
   VsiLvCadenceEvidencePoint,
   VsiRpmCadenceEvidenceInput,
@@ -29,6 +33,8 @@ export type VsiProfileCadenceLoadContext = {
   projectionAsOf: Date;
   refreshRpmCadence: boolean;
   refreshLvCadence: boolean;
+  /** When set, HF readiness is checked for this trip before RPM cadence refresh. */
+  rpmTripIdForReadiness?: string | null;
 };
 
 @Injectable()
@@ -45,10 +51,12 @@ export class VsiProfileCadenceEvidenceLoader {
       return null;
     }
 
-    const iceRpmApplicable = isIceRpmApplicableForFuelType(ctx.fuelType);
+    const iceRpmApplicability = resolveIceRpmApplicability(ctx.fuelType);
+    const linkActivatedMs = ctx.linkActivatedAt.getTime();
+    const linkDeactivatedMs = ctx.linkDeactivatedAt?.getTime() ?? null;
     const windowStart = new Date(
       Math.max(
-        ctx.linkActivatedAt.getTime(),
+        linkActivatedMs,
         ctx.projectionAsOf.getTime() - RPM_HISTORY_DAYS * 24 * 3600 * 1000,
       ),
     );
@@ -65,32 +73,61 @@ export class VsiProfileCadenceEvidenceLoader {
       select: { id: true, startTime: true, endTime: true },
     });
 
-    const tripWindows: VsiRpmCadenceTripWindow[] = trips
-      .filter((t) => t.endTime != null)
-      .map((t) => ({
-        tripId: t.id,
-        startMs: t.startTime.getTime(),
-        endMs: t.endTime!.getTime(),
-      }));
+    const tripWindows: VsiRpmCadenceTripWindow[] = filterTripsForSourceLinkWindow(
+      trips
+        .filter((t) => t.endTime != null)
+        .map((t) => ({
+          tripId: t.id,
+          startMs: t.startTime.getTime(),
+          endMs: t.endTime!.getTime(),
+        })),
+      linkActivatedMs,
+      linkDeactivatedMs,
+    );
 
+    let hfReadStatus: VsiHfCadenceReadStatus = 'SKIPPED';
     let points: VsiRpmCadenceSamplePoint[] = [];
-    if (iceRpmApplicable && this.clickHouseHf && tripWindows.length > 0) {
-      const earliest = Math.min(...tripWindows.map((t) => t.startMs));
-      const latest = Math.max(...tripWindows.map((t) => t.endMs));
-      points = await this.clickHouseHf.getBoundedSignalValuePoints({
-        vehicleId: ctx.vehicleId,
-        signalName: ENGINE_RPM_SIGNAL,
-        from: new Date(earliest),
-        to: new Date(latest),
-        limit: MAX_RPM_POINTS,
-      });
+
+    if (iceRpmApplicability === 'APPLICABLE' && tripWindows.length > 0) {
+      if (!this.clickHouseHf) {
+        hfReadStatus = 'UNAVAILABLE';
+      } else {
+        if (ctx.rpmTripIdForReadiness) {
+          const ready = await this.clickHouseHf.hasTripHfPoints(
+            ctx.vehicleId,
+            ctx.rpmTripIdForReadiness,
+          );
+          if (!ready) {
+            return {
+              iceRpmApplicability,
+              tripWindows,
+              points: [],
+              provenance: [],
+              hfReadStatus: 'EMPTY',
+            };
+          }
+        }
+        const earliest = Math.min(...tripWindows.map((t) => t.startMs));
+        const latest = Math.max(...tripWindows.map((t) => t.endMs));
+        const read = await this.clickHouseHf.getBoundedSignalValuePoints({
+          vehicleId: ctx.vehicleId,
+          signalName: ENGINE_RPM_SIGNAL,
+          from: new Date(earliest),
+          to: new Date(latest),
+          limit: MAX_RPM_POINTS,
+        });
+        hfReadStatus = read.status;
+        points = read.points;
+      }
     }
 
     return {
-      iceRpmApplicable,
+      iceRpmApplicability,
       tripWindows,
       points,
-      provenance: points.length > 0 ? ['CLICKHOUSE_TELEMETRY_HF_POINTS'] : [],
+      provenance:
+        hfReadStatus === 'SUCCESS' ? ['CLICKHOUSE_TELEMETRY_HF_POINTS'] : [],
+      hfReadStatus,
     };
   }
 
@@ -110,11 +147,17 @@ export class VsiProfileCadenceEvidenceLoader {
       },
     });
 
+    const linkEnd = ctx.linkDeactivatedAt?.getTime() ?? Number.POSITIVE_INFINITY;
     const points: VsiLvCadenceEvidencePoint[] = rows
       .map((r) => ({
         observedAtMs: r.observedAt.getTime(),
         providerTimestampMs: r.providerTimestamp?.getTime() ?? null,
       }))
+      .filter(
+        (p) =>
+          p.observedAtMs >= ctx.linkActivatedAt.getTime() &&
+          p.observedAtMs <= linkEnd,
+      )
       .reverse();
 
     return {

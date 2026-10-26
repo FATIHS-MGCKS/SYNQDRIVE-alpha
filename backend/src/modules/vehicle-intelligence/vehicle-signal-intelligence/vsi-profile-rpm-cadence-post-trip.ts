@@ -4,7 +4,7 @@ import type { VsiSignalProfileMaterializationService } from './vsi-profile-mater
 
 /**
  * Best-effort post-trip RPM cadence refresh (idempotent, non-blocking).
- * Chained after HF mirror when possible so ClickHouse points exist.
+ * Only runs when HF mirror produced points for the trip (readiness gate).
  */
 export async function refreshVsiRpmCadenceAfterTrip(input: {
   prisma: PrismaService;
@@ -12,9 +12,11 @@ export async function refreshVsiRpmCadenceAfterTrip(input: {
   logger: Logger;
   organizationId: string | null | undefined;
   vehicleId: string;
+  tripId: string;
   providerSourceLinkId: string | null | undefined;
+  hfMirrorSucceeded: boolean;
 }): Promise<void> {
-  if (!input.organizationId || !input.providerSourceLinkId) {
+  if (!input.organizationId || !input.providerSourceLinkId || !input.hfMirrorSucceeded) {
     return;
   }
   try {
@@ -24,10 +26,11 @@ export async function refreshVsiRpmCadenceAfterTrip(input: {
       providerSourceLinkId: input.providerSourceLinkId,
       requireBindingMatch: true,
       lifecycleMode: 'TRIP_FINALIZED_RPM_CADENCE',
+      rpmCadenceTripId: input.tripId,
     });
   } catch (err) {
     input.logger.warn(
-      `VSI RPM cadence refresh failed vehicle=${input.vehicleId} trip link=${input.providerSourceLinkId}: ${
+      `VSI RPM cadence refresh failed vehicle=${input.vehicleId} trip=${input.tripId}: ${
         err instanceof Error ? err.message : String(err)
       }`,
     );

@@ -15,6 +15,15 @@ export type VsiCadenceObservedDensityLabel =
   | 'SUB_ONE_HZ'
   | 'ONE_SECOND_BUCKETS_UNPROVEN';
 
+export type VsiIceRpmApplicability = 'APPLICABLE' | 'NOT_APPLICABLE' | 'UNKNOWN';
+
+export type VsiHfCadenceReadStatus =
+  | 'SUCCESS'
+  | 'UNAVAILABLE'
+  | 'QUERY_FAILED'
+  | 'EMPTY'
+  | 'SKIPPED';
+
 export type VsiCadenceRegimeV2 = {
   kind: VsiCadenceRegimeKind;
   intervalMedianSeconds: number | null;
@@ -37,13 +46,14 @@ export type VsiSignalCadenceIntelligenceV2 = {
   finalizedTripCount: number | null;
   regimes: VsiCadenceRegimeV2[];
   observedDensityLabel: VsiCadenceObservedDensityLabel;
-  /** Stable semantic identity for cadence dimension (excludes evaluation wall clock). */
+  /** Stable semantic identity for cadence dimension (excludes raw counters). */
   cadenceSemanticFingerprint: string;
 };
 
 export type VsiRpmCadenceSamplePoint = {
   recordedAtMs: number;
   value: number;
+  tripId?: string;
 };
 
 export type VsiRpmCadenceTripWindow = {
@@ -53,10 +63,11 @@ export type VsiRpmCadenceTripWindow = {
 };
 
 export type VsiRpmCadenceEvidenceInput = {
-  iceRpmApplicable: boolean;
+  iceRpmApplicability: VsiIceRpmApplicability;
   tripWindows: readonly VsiRpmCadenceTripWindow[];
   points: readonly VsiRpmCadenceSamplePoint[];
   provenance: string[];
+  hfReadStatus: VsiHfCadenceReadStatus;
 };
 
 export type VsiLvCadenceEvidencePoint = {
