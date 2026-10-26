@@ -36,13 +36,20 @@ function mergeCadenceOntoSignal(
 ): VsiProfileSignalFingerprintV1 {
   if (!cadence) {
     if (prior) {
-      return { ...signal, cadenceIntelligence: prior };
+      return {
+        ...signal,
+        limitations: [...new Set([...signal.limitations, ...prior.limitations])],
+        cadenceIntelligence: prior,
+      };
     }
     return signal;
   }
 
+  const nonCadenceLimitations = prior
+    ? signal.limitations.filter((limitation) => !prior.limitations.includes(limitation))
+    : signal.limitations;
   const mergedLimitations = [
-    ...new Set([...signal.limitations, ...cadence.limitations]),
+    ...new Set([...nonCadenceLimitations, ...cadence.limitations]),
   ];
 
   return {

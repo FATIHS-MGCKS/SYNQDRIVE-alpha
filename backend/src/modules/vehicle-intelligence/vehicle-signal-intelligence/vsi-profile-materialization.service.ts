@@ -267,7 +267,11 @@ export class VsiSignalProfileMaterializationService {
         declared.checkedAt > existingProfile.declaredCatalogCheckedAt;
       const dtcTriggered =
         input.lifecycleMode === 'DTC_CONFIRMED_COMPLETE_APPLIED' || dtcEvidenceAdvanced;
-      if (!catalogAdvanced && !dtcTriggered) {
+      const cadenceTriggered =
+        input.lifecycleMode === 'TRIP_FINALIZED_RPM_CADENCE' ||
+        input.lifecycleMode === 'BACKFILL_RECONCILE' ||
+        input.lifecycleMode === 'MANUAL_RECOVERY';
+      if (!catalogAdvanced && !dtcTriggered && !cadenceTriggered) {
         return null;
       }
     }
