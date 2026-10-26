@@ -229,29 +229,53 @@ export function buildCadenceSemanticFingerprint(parts: Record<string, unknown>):
   });
 }
 
+/** RPM aggregate-bucket density from observed interval median (native Hz never claimed). */
+export function resolveRpmObservedDensityLabel(input: {
+  intervalMedianSeconds: number | null;
+  intervalSampleCount: number;
+  limitations: string[];
+}): VsiCadenceObservedDensityLabel {
+  if (input.limitations.includes('ICE_RPM_NOT_APPLICABLE')) {
+    return 'NOT_APPLICABLE';
+  }
+  if (input.limitations.includes('POWERTRAIN_APPLICABILITY_UNKNOWN')) {
+    return 'UNKNOWN';
+  }
+  if (
+    input.intervalMedianSeconds == null ||
+    input.intervalSampleCount < VSI_CADENCE_MIN_INTERVAL_SAMPLES
+  ) {
+    return 'UNKNOWN';
+  }
+  const median = input.intervalMedianSeconds;
+  if (median <= 1.5) {
+    return 'ONE_SECOND_BUCKETS_UNPROVEN';
+  }
+  if (median < 60) {
+    return 'SUB_ONE_HZ';
+  }
+  return 'IRREGULAR';
+}
+
 function resolveDensityLabel(
   medianSeconds: number | null,
   limitations: string[],
+  intervalSampleCount = 0,
 ): VsiCadenceObservedDensityLabel {
-  if (limitations.includes('ICE_RPM_NOT_APPLICABLE')) {
-    return 'NOT_APPLICABLE';
-  }
-  if (limitations.includes('POWERTRAIN_APPLICABILITY_UNKNOWN')) {
-    return 'UNKNOWN';
-  }
-  if (medianSeconds == null) {
-    return 'UNKNOWN';
-  }
-  if (limitations.includes('DIMO_ONE_SECOND_BUCKET_NOT_NATIVE_SAMPLING_PROOF')) {
-    return 'ONE_SECOND_BUCKETS_UNPROVEN';
-  }
-  if (medianSeconds > 1.05 && medianSeconds < 60) {
-    return 'SUB_ONE_HZ';
-  }
-  if (medianSeconds >= 60) {
+  if (limitations.includes('LV_PROVIDER_TIMESTAMP_MAY_REFLECT_DIMO_BUNDLE_NOT_INDEPENDENT_PHYSICAL_SAMPLE')) {
+    if (medianSeconds == null || intervalSampleCount < VSI_CADENCE_MIN_INTERVAL_SAMPLES) {
+      return 'UNKNOWN';
+    }
+    if (medianSeconds < 60) {
+      return 'SUB_ONE_HZ';
+    }
     return 'IRREGULAR';
   }
-  return 'ONE_SECOND_BUCKETS_UNPROVEN';
+  return resolveRpmObservedDensityLabel({
+    intervalMedianSeconds: medianSeconds,
+    intervalSampleCount,
+    limitations,
+  });
 }
 
 function resolveEvidenceConfidence(
@@ -305,6 +329,22 @@ export function filterTripsForSourceLinkWindow(
   return trips.filter(
     (t) => t.endMs >= linkActivatedAtMs && t.startMs <= linkEnd,
   );
+}
+
+/** Intersects trip bounds with the active provider-source-link window (no cross-link telemetry). */
+export function clipTripWindowsToLinkBounds(
+  trips: readonly VsiRpmCadenceTripWindow[],
+  linkActivatedAtMs: number,
+  linkDeactivatedAtMs: number | null,
+): VsiRpmCadenceTripWindow[] {
+  const linkEnd = linkDeactivatedAtMs ?? Number.POSITIVE_INFINITY;
+  return filterTripsForSourceLinkWindow(trips, linkActivatedAtMs, linkDeactivatedAtMs)
+    .map((t) => ({
+      tripId: t.tripId,
+      startMs: Math.max(t.startMs, linkActivatedAtMs),
+      endMs: Math.min(t.endMs, linkEnd),
+    }))
+    .filter((t) => t.endMs > t.startMs);
 }
 
 export function dedupeLvPointsBySourceAdvance(
@@ -452,7 +492,11 @@ export function analyzeEngineRpmCadence(
     ),
     finalizedTripCount: input.tripWindows.length,
     regimes,
-    observedDensityLabel: resolveDensityLabel(intervalMedianSeconds, limitations),
+    observedDensityLabel: resolveDensityLabel(
+      intervalMedianSeconds,
+      limitations,
+      intervals.length,
+    ),
     cadenceSemanticFingerprint: '',
   };
 
@@ -514,7 +558,7 @@ export function analyzeLvVoltageCadence(
     observedDensityLabel:
       intervals.length < VSI_CADENCE_MIN_INTERVAL_SAMPLES
         ? 'UNKNOWN'
-        : resolveDensityLabel(intervalMedianSeconds, limitations),
+        : resolveDensityLabel(intervalMedianSeconds, limitations, intervals.length),
     cadenceSemanticFingerprint: '',
   };
 

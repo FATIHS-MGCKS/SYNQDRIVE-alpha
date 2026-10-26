@@ -1,10 +1,10 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { TripStatus } from '@prisma/client';
-import type { PrismaService } from '../../../shared/database/prisma.service';
+import { PrismaService } from '../../../shared/database/prisma.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { buildP25ApdProfileLvLoaderWhere } from '../../../workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-lv-loader';
 import {
-  filterTripsForSourceLinkWindow,
+  clipTripWindowsToLinkBounds,
   resolveIceRpmApplicability,
 } from './vsi-profile-cadence-stats.util';
 import type {
@@ -23,6 +23,14 @@ const MAX_LV_ROWS = 256;
 
 const ENGINE_RPM_SIGNAL = 'powertrainCombustionEngineSpeed';
 
+/** Public surface for cadence evidence loading (tests may supply a noop port). */
+export interface VsiProfileCadenceEvidencePort {
+  loadRpmEvidence(
+    ctx: VsiProfileCadenceLoadContext,
+  ): Promise<VsiRpmCadenceEvidenceInput | null>;
+  loadLvEvidence(ctx: VsiProfileCadenceLoadContext): Promise<VsiLvCadenceEvidenceInput | null>;
+}
+
 export type VsiProfileCadenceLoadContext = {
   organizationId: string;
   vehicleId: string;
@@ -38,7 +46,7 @@ export type VsiProfileCadenceLoadContext = {
 };
 
 @Injectable()
-export class VsiProfileCadenceEvidenceLoader {
+export class VsiProfileCadenceEvidenceLoader implements VsiProfileCadenceEvidencePort {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly clickHouseHf?: ClickHouseHfService,
@@ -73,7 +81,7 @@ export class VsiProfileCadenceEvidenceLoader {
       select: { id: true, startTime: true, endTime: true },
     });
 
-    const tripWindows: VsiRpmCadenceTripWindow[] = filterTripsForSourceLinkWindow(
+    const tripWindows: VsiRpmCadenceTripWindow[] = clipTripWindowsToLinkBounds(
       trips
         .filter((t) => t.endTime != null)
         .map((t) => ({

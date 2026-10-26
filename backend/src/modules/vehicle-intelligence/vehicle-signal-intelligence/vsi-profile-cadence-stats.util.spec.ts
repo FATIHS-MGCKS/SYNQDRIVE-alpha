@@ -2,12 +2,14 @@ import {
   analyzeEngineRpmCadence,
   analyzeLvVoltageCadence,
   buildCadenceSemanticFingerprint,
+  clipTripWindowsToLinkBounds,
   collectIntraTripIntervalsSeconds,
   computeDistinctBucketCoverageRatio,
   dedupeLvPointsBySourceAdvance,
   detectCadenceRegimes,
   intervalsFromTimestampsMs,
   resolveIceRpmApplicability,
+  resolveRpmObservedDensityLabel,
 } from './vsi-profile-cadence-stats.util';
 import { enrichVsiProfileWithCadenceIntelligence } from './vsi-profile-cadence.enricher';
 import {
@@ -93,6 +95,95 @@ describe('vsi-profile-cadence-stats.util', () => {
       rpmInput({ iceRpmApplicability: 'NOT_APPLICABLE' }),
     );
     expect(cadence.observedDensityLabel).toBe('NOT_APPLICABLE');
+  });
+
+  function rpmPointsEverySeconds(stepSeconds: number, count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+      recordedAtMs: msAt(i * stepSeconds),
+      value: 1500,
+    }));
+  }
+
+  it('classifies Tiguan-like ~1s aggregate buckets as ONE_SECOND_BUCKETS_UNPROVEN', () => {
+    const trip = { tripId: 'tiguan', startMs: msAt(0), endMs: msAt(120) };
+    const cadence = analyzeEngineRpmCadence(
+      rpmInput({
+        tripWindows: [trip],
+        points: rpmPointsEverySeconds(1, 40),
+        hfReadStatus: 'SUCCESS',
+      }),
+    );
+    expect(cadence.intervalMedianSeconds).toBeCloseTo(1, 0);
+    expect(cadence.observedDensityLabel).toBe('ONE_SECOND_BUCKETS_UNPROVEN');
+    expect(cadence.limitations).toContain(
+      'DIMO_ONE_SECOND_BUCKET_NOT_NATIVE_SAMPLING_PROOF',
+    );
+  });
+
+  it('classifies Arteon-like ~2s observed intervals as SUB_ONE_HZ', () => {
+    const trip = { tripId: 'arteon', startMs: msAt(0), endMs: msAt(200) };
+    const cadence = analyzeEngineRpmCadence(
+      rpmInput({
+        tripWindows: [trip],
+        points: rpmPointsEverySeconds(2, 30),
+        hfReadStatus: 'SUCCESS',
+      }),
+    );
+    expect(cadence.intervalMedianSeconds).toBeCloseTo(2, 0);
+    expect(cadence.observedDensityLabel).toBe('SUB_ONE_HZ');
+    expect(cadence.limitations).toContain(
+      'DIMO_ONE_SECOND_BUCKET_NOT_NATIVE_SAMPLING_PROOF',
+    );
+  });
+
+  it('classifies Audi-like ~7s observed intervals as SUB_ONE_HZ', () => {
+    const trip = { tripId: 'audi', startMs: msAt(0), endMs: msAt(600) };
+    const cadence = analyzeEngineRpmCadence(
+      rpmInput({
+        tripWindows: [trip],
+        points: rpmPointsEverySeconds(7, 20),
+        hfReadStatus: 'SUCCESS',
+      }),
+    );
+    expect(cadence.intervalMedianSeconds).toBeCloseTo(7, 0);
+    expect(cadence.observedDensityLabel).toBe('SUB_ONE_HZ');
+  });
+
+  it('resolveRpmObservedDensityLabel returns UNKNOWN when interval evidence is thin', () => {
+    expect(
+      resolveRpmObservedDensityLabel({
+        intervalMedianSeconds: 2,
+        intervalSampleCount: 2,
+        limitations: ['DIMO_ONE_SECOND_BUCKET_NOT_NATIVE_SAMPLING_PROOF'],
+      }),
+    ).toBe('UNKNOWN');
+  });
+
+  it('clips trip windows to provider link bounds for cadence eligibility', () => {
+    const linkActivated = msAt(100);
+    const linkEnd = msAt(200);
+    const clipped = clipTripWindowsToLinkBounds(
+      [{ tripId: 'span', startMs: msAt(0), endMs: msAt(300) }],
+      linkActivated,
+      linkEnd,
+    );
+    expect(clipped).toEqual([
+      { tripId: 'span', startMs: linkActivated, endMs: linkEnd },
+    ]);
+    const points = [
+      { recordedAtMs: msAt(50), value: 900 },
+      { recordedAtMs: msAt(150), value: 900 },
+      { recordedAtMs: msAt(250), value: 900 },
+    ];
+    const cadence = analyzeEngineRpmCadence(
+      rpmInput({
+        tripWindows: clipped,
+        points,
+        hfReadStatus: 'SUCCESS',
+      }),
+    );
+    expect(cadence.observedSampleCount).toBe(1);
+    expect(cadence.distinctTimestampCount).toBe(1);
   });
 
   it('dedupes LV by provider source advancement', () => {

@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-projection';
@@ -14,7 +14,10 @@ import {
 } from './vsi-profile-operational-refresh.util';
 import { loadVsiBundleHistoricalEvidence } from './vsi-profile-historical-evidence.loader';
 import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
-import { VsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader';
+import {
+  VsiProfileCadenceEvidenceLoader,
+  type VsiProfileCadenceEvidencePort,
+} from './vsi-profile-cadence-evidence.loader';
 import {
   enrichVsiProfileWithCadenceIntelligence,
   extractPriorCadenceByKey,
@@ -69,7 +72,8 @@ export class VsiSignalProfileMaterializationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly declaredCatalog: VsiDeclaredCatalogResolver,
-    private readonly cadenceEvidence: VsiProfileCadenceEvidenceLoader,
+    @Inject(VsiProfileCadenceEvidenceLoader)
+    private readonly cadenceEvidence: VsiProfileCadenceEvidencePort,
   ) {}
 
   async getProfileForLink(
