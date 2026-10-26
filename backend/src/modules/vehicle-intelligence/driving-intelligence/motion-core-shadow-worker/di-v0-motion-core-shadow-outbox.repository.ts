@@ -30,6 +30,18 @@ export interface DiV0MotionCoreShadowOutboxRow {
   claimToken: string;
 }
 
+type DiV0MotionCoreShadowDiscoveryCandidate = {
+  work_item_id: string;
+  organization_id: string;
+  trip_id: string;
+  vehicle_id: string;
+  pinned_snapshot_hash: string;
+  combined_input_identity: string;
+  completed_at: Date;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+};
+
 export class DiV0MotionCoreShadowOutboxRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -42,22 +54,87 @@ export class DiV0MotionCoreShadowOutboxRepository {
     now: Date;
   }): Promise<number> {
     if (input.organizationAllowlist.length === 0 || input.vehicleAllowlist.length === 0) return 0;
+    if (input.limit <= 0) return 0;
+
+    const insertBudget = input.limit;
+    const pageSize = DI_V0_MOTION_CORE_SHADOW_TUNING.discoveryCandidatePageSize;
+    let inserted = 0;
+    let cursor: { completedAt: Date; workItemId: string } | null = null;
+
+    while (inserted < insertBudget) {
+      const page = await this.fetchDiscoveryCandidatePage({
+        enabledSince: input.enabledSince,
+        organizationAllowlist: input.organizationAllowlist,
+        vehicleAllowlist: input.vehicleAllowlist,
+        pageSize,
+        cursor,
+      });
+      if (page.length === 0) break;
+
+      for (const candidate of page) {
+        if (inserted >= insertBudget) break;
+        const didInsert = await this.tryInsertDiscoveryCandidate(candidate, input);
+        if (didInsert) inserted += 1;
+      }
+
+      const last = page[page.length - 1]!;
+      cursor = { completedAt: last.completed_at, workItemId: last.work_item_id };
+      if (page.length < pageSize) break;
+    }
+
+    return inserted;
+  }
+
+  private async fetchDiscoveryCandidatePage(input: {
+    enabledSince: Date;
+    organizationAllowlist: readonly string[];
+    vehicleAllowlist: readonly string[];
+    pageSize: number;
+    cursor: { completedAt: Date; workItemId: string } | null;
+  }): Promise<DiV0MotionCoreShadowDiscoveryCandidate[]> {
     const orgs = input.organizationAllowlist;
     const vehicles = input.vehicleAllowlist;
+    const cursor = input.cursor;
 
-    const candidates = await this.prisma.$queryRaw<
-      Array<{
-        work_item_id: string;
-        organization_id: string;
-        trip_id: string;
-        vehicle_id: string;
-        pinned_snapshot_hash: string;
-        combined_input_identity: string;
-        completed_at: Date;
-        vehicle_make: string | null;
-        vehicle_model: string | null;
-      }>
-    >`
+    if (!cursor) {
+      return this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
+        WITH active_primary AS (
+          SELECT DISTINCT ON (organization_id, trip_id)
+            id, organization_id, trip_id
+          FROM di_v0_s4_work_items
+          WHERE run_purpose = 'PRIMARY'
+            AND purpose_discriminator = 'PRIMARY'
+            AND status <> 'SUPERSEDED'
+          ORDER BY organization_id, trip_id, boundary_occurrence DESC, created_at DESC
+        )
+        SELECT
+          wi.id AS work_item_id,
+          wi.organization_id,
+          wi.trip_id,
+          wi.vehicle_id,
+          wi.pinned_snapshot_hash,
+          coalesce(wi.combined_input_identity, '') AS combined_input_identity,
+          wi.completed_at,
+          v.make AS vehicle_make,
+          v.model AS vehicle_model
+        FROM di_v0_s4_work_items wi
+        INNER JOIN vehicles v ON v.id = wi.vehicle_id
+        INNER JOIN active_primary ap
+          ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
+        WHERE wi.status = 'COMPLETED'
+          AND wi.run_purpose = 'PRIMARY'
+          AND wi.purpose_discriminator = 'PRIMARY'
+          AND wi.pinned_snapshot_hash IS NOT NULL
+          AND wi.shadow_run_id IS NOT NULL
+          AND wi.completed_at IS NOT NULL
+          AND wi.completed_at >= ${input.enabledSince}
+          AND wi.organization_id = ANY(${orgs}::text[])
+          AND wi.vehicle_id = ANY(${vehicles}::text[])
+        ORDER BY wi.completed_at ASC, wi.id ASC
+        LIMIT ${input.pageSize}`;
+    }
+
+    return this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
       WITH active_primary AS (
         SELECT DISTINCT ON (organization_id, trip_id)
           id, organization_id, trip_id
@@ -90,49 +167,62 @@ export class DiV0MotionCoreShadowOutboxRepository {
         AND wi.completed_at >= ${input.enabledSince}
         AND wi.organization_id = ANY(${orgs}::text[])
         AND wi.vehicle_id = ANY(${vehicles}::text[])
-      ORDER BY wi.completed_at ASC
-      LIMIT ${input.limit}`;
+        AND (wi.completed_at, wi.id) > (${cursor.completedAt}, ${cursor.workItemId})
+      ORDER BY wi.completed_at ASC, wi.id ASC
+      LIMIT ${input.pageSize}`;
+  }
 
-    let inserted = 0;
-    for (const c of candidates) {
-      const vehicleAdmission = resolveC5_1VehicleAdmissionFromLabels(c.vehicle_make, c.vehicle_model);
-      const c5_1Effective = isC5_1PreferredSpeedEffective(input.controlPlane, {
-        vehicleAdmission,
-        workItemCompletedAt: c.completed_at,
-      });
-      const fsmGapBridgeV1Effective = isFsmGapBridgeV1Effective(input.controlPlane, {
-        workItemCompletedAt: c.completed_at,
-      });
-      const shadowBundleVersion = resolveMotionCoreShadowBundleVersion({
-        c5_1PreferredSpeedEnabled: c5_1Effective,
-        fsmGapBridgeV1Enabled: fsmGapBridgeV1Effective,
-      });
-      const shadowIntentKey = buildMotionCoreShadowIntentKey({
-        pinnedSnapshotHash: c.pinned_snapshot_hash,
-        combinedInputIdentity: c.combined_input_identity,
-        bundleVersion: shadowBundleVersion,
-      });
-      const blocked = await this.prisma.$queryRaw<Array<{ one: number }>>`
-        SELECT 1 AS one FROM di_v0_motion_core_shadow_runs_v1 r
-        WHERE r.work_item_id = ${c.work_item_id}
-          AND r.shadow_intent_key = ${shadowIntentKey}
-          AND r.shadow_status = 'SUCCEEDED'
-        LIMIT 1`;
-      if (blocked.length > 0) continue;
+  private async tryInsertDiscoveryCandidate(
+    c: DiV0MotionCoreShadowDiscoveryCandidate,
+    input: {
+      controlPlane: DiV0MotionCoreShadowControlPlaneConfig;
+      now: Date;
+    },
+  ): Promise<boolean> {
+    const vehicleAdmission = resolveC5_1VehicleAdmissionFromLabels(c.vehicle_make, c.vehicle_model);
+    const c5_1Effective = isC5_1PreferredSpeedEffective(input.controlPlane, {
+      vehicleAdmission,
+      workItemCompletedAt: c.completed_at,
+    });
+    const fsmGapBridgeV1Effective = isFsmGapBridgeV1Effective(input.controlPlane, {
+      workItemCompletedAt: c.completed_at,
+    });
+    const shadowBundleVersion = resolveMotionCoreShadowBundleVersion({
+      c5_1PreferredSpeedEnabled: c5_1Effective,
+      fsmGapBridgeV1Enabled: fsmGapBridgeV1Effective,
+    });
+    const shadowIntentKey = buildMotionCoreShadowIntentKey({
+      pinnedSnapshotHash: c.pinned_snapshot_hash,
+      combinedInputIdentity: c.combined_input_identity,
+      bundleVersion: shadowBundleVersion,
+    });
 
-      const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
-        INSERT INTO di_v0_motion_core_shadow_outbox_v1 (
-          work_item_id, shadow_intent_key, organization_id, trip_id, vehicle_id,
-          shadow_bundle_version, status, next_attempt_at
-        ) VALUES (
-          ${c.work_item_id}, ${shadowIntentKey}, ${c.organization_id}, ${c.trip_id}, ${c.vehicle_id},
-          ${shadowBundleVersion}, 'PENDING', ${input.now}
-        )
-        ON CONFLICT (work_item_id, shadow_intent_key) DO NOTHING
-        RETURNING outbox_id`;
-      inserted += rows.length;
-    }
-    return inserted;
+    const blockedRun = await this.prisma.$queryRaw<Array<{ one: number }>>`
+      SELECT 1 AS one FROM di_v0_motion_core_shadow_runs_v1 r
+      WHERE r.work_item_id = ${c.work_item_id}
+        AND r.shadow_intent_key = ${shadowIntentKey}
+        AND r.shadow_status = 'SUCCEEDED'
+      LIMIT 1`;
+    if (blockedRun.length > 0) return false;
+
+    const existingOutbox = await this.prisma.$queryRaw<Array<{ one: number }>>`
+      SELECT 1 AS one FROM di_v0_motion_core_shadow_outbox_v1 o
+      WHERE o.work_item_id = ${c.work_item_id}
+        AND o.shadow_intent_key = ${shadowIntentKey}
+      LIMIT 1`;
+    if (existingOutbox.length > 0) return false;
+
+    const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
+      INSERT INTO di_v0_motion_core_shadow_outbox_v1 (
+        work_item_id, shadow_intent_key, organization_id, trip_id, vehicle_id,
+        shadow_bundle_version, status, next_attempt_at
+      ) VALUES (
+        ${c.work_item_id}, ${shadowIntentKey}, ${c.organization_id}, ${c.trip_id}, ${c.vehicle_id},
+        ${shadowBundleVersion}, 'PENDING', ${input.now}
+      )
+      ON CONFLICT (work_item_id, shadow_intent_key) DO NOTHING
+      RETURNING outbox_id`;
+    return rows.length > 0;
   }
 
   async claimBatch(limit: number, now: Date): Promise<DiV0MotionCoreShadowOutboxRow[]> {

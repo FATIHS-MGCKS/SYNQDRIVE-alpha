@@ -13,6 +13,8 @@ export const DI_V0_MOTION_CORE_SHADOW_TUNING = {
   schedulerIntervalMs: 90_000,
   defaultBatchLimit: 10,
   maxBatchLimit: 50,
+  /** Keyset page size when scanning eligible S4 work items during discovery (not an insert cap). */
+  discoveryCandidatePageSize: 50,
   baseRetryDelayMs: 60_000,
   maxRetryDelayMs: 30 * 60_000,
   claimLeaseMs: 5 * 60_000,
