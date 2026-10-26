@@ -632,6 +632,83 @@ export class ClickHouseHfService {
     }
   }
 
+  /**
+   * Bounded HF scalar points for VSI cadence analysis (best-effort).
+   * Does not assert native device sampling frequency — bucket timestamps only.
+   */
+  async getBoundedSignalValuePoints(input: {
+    vehicleId: string;
+    signalName: string;
+    from: Date;
+    to: Date;
+    limit: number;
+  }): Promise<{
+    status: 'SUCCESS' | 'UNAVAILABLE' | 'QUERY_FAILED' | 'EMPTY';
+    points: Array<{ recordedAtMs: number; value: number }>;
+  }> {
+    if (!this.ch.isAvailable) {
+      return { status: 'UNAVAILABLE', points: [] };
+    }
+    try {
+      const result = await this.ch.getClient().query({
+        query: `
+          SELECT
+            recorded_at AS recorded_at,
+            value_float AS value_float
+          FROM ${HF_POINTS_TABLE}
+          WHERE vehicle_id = {vehicleId: String}
+            AND signal_name = {signalName: String}
+            AND recorded_at >= parseDateTime64BestEffort({from: String})
+            AND recorded_at <= parseDateTime64BestEffort({to: String})
+            AND value_float IS NOT NULL
+          ORDER BY recorded_at DESC
+          LIMIT {limit: UInt32}
+        `,
+        query_params: {
+          vehicleId: input.vehicleId,
+          signalName: input.signalName,
+          from: toChDateTimeParam(input.from),
+          to: toChDateTimeParam(input.to),
+          limit: input.limit,
+        },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 15 },
+      });
+      const rows = await result.json<{
+        recorded_at: string;
+        value_float: number | string;
+      }>();
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'hf_bounded_signal_points',
+        result: 'success',
+      });
+      const points = rows
+        .map((r) => {
+          const iso = parseChUtc(r.recorded_at);
+          const value = Number(r.value_float);
+          if (!iso || !Number.isFinite(value)) {
+            return null;
+          }
+          return { recordedAtMs: new Date(iso).getTime(), value };
+        })
+        .filter((r): r is { recordedAtMs: number; value: number } => r != null)
+        .sort((a, b) => a.recordedAtMs - b.recordedAtMs);
+      return {
+        status: points.length > 0 ? 'SUCCESS' : 'EMPTY',
+        points,
+      };
+    } catch (err: unknown) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'hf_bounded_signal_points',
+        result: 'error',
+      });
+      this.logger.warn(
+        `getBoundedSignalValuePoints failed: ${(err as Error).message}`,
+      );
+      return { status: 'QUERY_FAILED', points: [] };
+    }
+  }
+
   /** Recent derived HF events for a vehicle/time-range. Degrades gracefully. */
   async getRecentHfEvents(
     vehicleId: string,

@@ -1,6 +1,7 @@
 /**
  * VSI P4 capability resolver (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import { PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
@@ -69,7 +70,7 @@ async function upsertVls(
 (LIVE ? describe : describe.skip)('VSI P4 capability resolver (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
   const resolver = new VsiCapabilityResolverService(
     new VsiCapabilityResolverRepository(prisma as never),
   );

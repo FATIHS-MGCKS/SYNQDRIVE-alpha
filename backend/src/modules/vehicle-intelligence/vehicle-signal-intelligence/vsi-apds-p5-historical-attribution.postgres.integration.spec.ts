@@ -1,6 +1,7 @@
 /**
  * VSI P5A historical source-link attribution via VsiApdsP5ReadonlyService (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
@@ -136,7 +137,7 @@ async function createSecondDimoLink(
   () => {
     const prisma = new PrismaClient();
     const declared = new VsiDeclaredCatalogResolver(prisma as never);
-    const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared);
+    const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
     const service = new VsiApdsP5ReadonlyService(
       new VsiCapabilityResolverRepository(prisma as never),
     );

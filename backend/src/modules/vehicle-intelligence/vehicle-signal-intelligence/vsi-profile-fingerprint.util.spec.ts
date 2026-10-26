@@ -1,10 +1,15 @@
 import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
-import type { VsiProfileEvaluationDraft } from './vsi-profile.types';
+import type {
+  VsiProfileEvaluationDraft,
+  VsiProfileEvaluationResult,
+} from './vsi-profile.types';
+import { VSI_SIGNAL_CADENCE_CONTRACT_VERSION } from './vsi-profile-cadence.types';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import {
   areVsiProfileSemanticEvaluationsEquivalent,
   fingerprintVsiProfileSemanticEvaluation,
   fingerprintVsiProfileSemanticFromPersisted,
+  projectVsiSignalSemanticFingerprintFields,
 } from './vsi-profile-fingerprint.util';
 
 function baseDraft(): VsiProfileEvaluationDraft {
@@ -182,6 +187,83 @@ describe('vsi-profile-fingerprint.util', () => {
         enrichedB,
       ),
     ).toBe(true);
+  });
+
+  it('does not include raw cadenceIntelligence blob in semantic projection', () => {
+    const enriched = enrichVsiProfileWithSignalFingerprints(baseDraft(), {
+      bundleSourceTimestamps: [],
+    });
+    const withCadence: VsiProfileEvaluationResult = {
+      ...enriched,
+      signals: enriched.signals.map((s) =>
+        s.canonicalSignalKey === 'vehicle_speed'
+          ? {
+              ...s,
+              cadenceIntelligence: {
+                contractVersion: VSI_SIGNAL_CADENCE_CONTRACT_VERSION,
+                cadenceSemanticFingerprint: 'abc123',
+                evidenceConfidence: 'HIGH',
+                provenance: [],
+                limitations: [],
+                observedSampleCount: 99,
+                distinctTimestampCount: 99,
+                intervalMedianSeconds: 180,
+                intervalP95Seconds: 200,
+                maxIntraWindowGapSeconds: 200,
+                activeWindowCoverageRatio: null,
+                finalizedTripCount: 99,
+                regimes: [],
+                observedDensityLabel: 'SUB_ONE_HZ',
+              },
+            }
+          : s,
+      ),
+    };
+    const projected = projectVsiSignalSemanticFingerprintFields(
+      withCadence.signals.find((s) => s.canonicalSignalKey === 'vehicle_speed')!,
+    );
+    expect(projected.cadenceIntelligence).toBeUndefined();
+    expect(projected.cadenceSemanticFingerprint).toBe('abc123');
+    expect(projected.observedSampleCount).toBeUndefined();
+  });
+
+  it('includes cadence semantic fingerprint in profile identity when present', () => {
+    const enriched = enrichVsiProfileWithSignalFingerprints(baseDraft(), {
+      bundleSourceTimestamps: [],
+    });
+    const rpm = enriched.signals.find((s) => s.canonicalSignalKey === 'vehicle_speed');
+    if (!rpm) {
+      throw new Error('expected vehicle_speed row');
+    }
+    const withCadence: VsiProfileEvaluationResult = {
+      ...enriched,
+      signals: enriched.signals.map((s) =>
+        s.canonicalSignalKey === 'vehicle_speed'
+          ? {
+              ...s,
+              cadenceIntelligence: {
+                contractVersion: VSI_SIGNAL_CADENCE_CONTRACT_VERSION,
+                cadenceSemanticFingerprint: 'abc123',
+                evidenceConfidence: 'HIGH',
+                provenance: [],
+                limitations: [],
+                observedSampleCount: 3,
+                distinctTimestampCount: 3,
+                intervalMedianSeconds: 180,
+                intervalP95Seconds: 200,
+                maxIntraWindowGapSeconds: 200,
+                activeWindowCoverageRatio: null,
+                finalizedTripCount: null,
+                regimes: [],
+                observedDensityLabel: 'SUB_ONE_HZ',
+              },
+            }
+          : s,
+      ),
+    };
+    const fpBase = fingerprintVsiProfileSemanticEvaluation(enriched);
+    const fpCadence = fingerprintVsiProfileSemanticEvaluation(withCadence);
+    expect(fpCadence).not.toBe(fpBase);
   });
 
   it('recomputes the same semantic fingerprint from persisted snapshots', () => {

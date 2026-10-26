@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-projection';
@@ -14,6 +14,14 @@ import {
 } from './vsi-profile-operational-refresh.util';
 import { loadVsiBundleHistoricalEvidence } from './vsi-profile-historical-evidence.loader';
 import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
+import {
+  VsiProfileCadenceEvidenceLoader,
+  type VsiProfileCadenceEvidencePort,
+} from './vsi-profile-cadence-evidence.loader';
+import {
+  enrichVsiProfileWithCadenceIntelligence,
+  extractPriorCadenceByKey,
+} from './vsi-profile-cadence.enricher';
 import type { VsiProfileEvaluationResult } from './vsi-profile.types';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import type { VsiSourceLinkRow } from './vsi-readonly-composer.types';
@@ -39,12 +47,15 @@ export type VsiProfileLifecycleMaterializationMode =
   | 'DECLARED_CATALOG_ADVANCED'
   | 'BACKFILL_RECONCILE'
   | 'MANUAL_RECOVERY'
-  | 'DTC_CONFIRMED_COMPLETE_APPLIED';
+  | 'DTC_CONFIRMED_COMPLETE_APPLIED'
+  | 'TRIP_FINALIZED_RPM_CADENCE';
 
 export type VsiProfileMaterializeFromSnapshotInput = {
   organizationId: string;
   vehicleId: string;
   providerSourceLinkId: string | null;
+  /** Post-trip RPM cadence: wait for HF mirror rows on this trip before certifying. */
+  rpmCadenceTripId?: string | null;
   /** When true, skip when VLS binding does not match the target link. */
   requireBindingMatch?: boolean;
   /**
@@ -61,6 +72,8 @@ export class VsiSignalProfileMaterializationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly declaredCatalog: VsiDeclaredCatalogResolver,
+    @Inject(VsiProfileCadenceEvidenceLoader)
+    private readonly cadenceEvidence: VsiProfileCadenceEvidencePort,
   ) {}
 
   async getProfileForLink(
@@ -103,6 +116,7 @@ export class VsiSignalProfileMaterializationService {
         organizationId: true,
         registryLifecycle: true,
         hardwareType: true,
+        fuelType: true,
       },
     });
     if (!vehicle) {
@@ -117,6 +131,8 @@ export class VsiSignalProfileMaterializationService {
         isActive: true,
         metadata: true,
         consentId: true,
+        activatedAt: true,
+        deactivatedAt: true,
       },
     });
     if (!link) {
@@ -251,7 +267,11 @@ export class VsiSignalProfileMaterializationService {
         declared.checkedAt > existingProfile.declaredCatalogCheckedAt;
       const dtcTriggered =
         input.lifecycleMode === 'DTC_CONFIRMED_COMPLETE_APPLIED' || dtcEvidenceAdvanced;
-      if (!catalogAdvanced && !dtcTriggered) {
+      const cadenceTriggered =
+        input.lifecycleMode === 'TRIP_FINALIZED_RPM_CADENCE' ||
+        input.lifecycleMode === 'BACKFILL_RECONCILE' ||
+        input.lifecycleMode === 'MANUAL_RECOVERY';
+      if (!catalogAdvanced && !dtcTriggered && !cadenceTriggered) {
         return null;
       }
     }
@@ -330,10 +350,41 @@ export class VsiSignalProfileMaterializationService {
       providerSourceLinkId,
       provider: link.provider,
     });
-    const evaluation = enrichVsiProfileWithSignalFingerprints(
+    let evaluation = enrichVsiProfileWithSignalFingerprints(
       evaluationDraft,
       bundleHistory,
     );
+
+    const lifecycleMode = input.lifecycleMode ?? 'SNAPSHOT_HOOK';
+    const refreshRpmCadence =
+      lifecycleMode === 'TRIP_FINALIZED_RPM_CADENCE' ||
+      lifecycleMode === 'BACKFILL_RECONCILE' ||
+      lifecycleMode === 'MANUAL_RECOVERY';
+    const cadenceCtx = {
+      organizationId,
+      vehicleId,
+      providerSourceLinkId,
+      fuelType: vehicle.fuelType,
+      linkActivatedAt: link.activatedAt,
+      linkDeactivatedAt: link.deactivatedAt,
+      projectionAsOf,
+      refreshRpmCadence,
+      refreshLvCadence: true,
+      rpmTripIdForReadiness:
+        lifecycleMode === 'TRIP_FINALIZED_RPM_CADENCE'
+          ? input.rpmCadenceTripId ?? null
+          : null,
+    };
+    const priorCadenceByKey = extractPriorCadenceByKey(existingProfile?.signalsSnapshot);
+    const [rpmEvidence, lvEvidence] = await Promise.all([
+      this.cadenceEvidence.loadRpmEvidence(cadenceCtx),
+      this.cadenceEvidence.loadLvEvidence(cadenceCtx),
+    ]);
+    evaluation = enrichVsiProfileWithCadenceIntelligence(evaluation, {
+      rpmEvidence,
+      lvEvidence,
+      priorCadenceByKey,
+    });
 
     const semanticFingerprint = fingerprintVsiProfileSemanticEvaluation(evaluation);
     if (

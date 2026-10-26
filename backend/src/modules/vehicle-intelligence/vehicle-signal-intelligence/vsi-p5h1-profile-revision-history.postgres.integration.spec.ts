@@ -1,6 +1,7 @@
 /**
  * VSI P5-H1 immutable profile revision history (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import { Prisma, PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
@@ -95,7 +96,7 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
 (LIVE ? describe : describe.skip)('VSI P5-H1 profile revision history (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const service = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const service = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
   const historyRepo = new VsiProfileRevisionHistoryRepository(prisma as never);
 
   const prevHistoryFlag = process.env.VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED;

@@ -12,6 +12,7 @@ import { VsiProfileLifecycleOutboxRepository } from './vsi-profile-lifecycle-out
 import { VsiProfileLifecycleEnqueueService } from './vsi-profile-lifecycle-enqueue.service';
 import { VsiProfileLifecycleOutboxProcessor } from './vsi-profile-lifecycle.processor';
 import { VsiProfileLifecycleOutboxWorker } from './vsi-profile-lifecycle.worker';
+import { VsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader';
 
 @Module({
   imports: [PrismaModule],
@@ -23,6 +24,7 @@ import { VsiProfileLifecycleOutboxWorker } from './vsi-profile-lifecycle.worker'
     VsiDeclaredCatalogResolver,
     VsiP3aPerLinkCatalogRepository,
     VsiP3aPerLinkCatalogWriterService,
+    VsiProfileCadenceEvidenceLoader,
     VsiSignalProfileMaterializationService,
     VsiProfileLifecycleOutboxRepository,
     VsiProfileLifecycleEnqueueService,

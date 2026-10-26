@@ -21,6 +21,8 @@ const OPERATIONAL_SIGNAL_FIELDS = new Set([
   'observedCadenceMedianSeconds',
   'observedCadenceSampleCount',
   'maxStaleIntervalSeconds',
+  /** Full cadence blob is operational; semantic identity uses cadenceSemanticFingerprint only. */
+  'cadenceIntelligence',
 ]);
 
 /** Signals whose lastValidObservationAt tracks fetch wall clock, not physics source time. */
@@ -69,6 +71,10 @@ export function projectVsiSignalSemanticFingerprintFields(
   }
   if (Array.isArray(projected.evidenceProvenance)) {
     projected.evidenceProvenance = [...projected.evidenceProvenance].sort();
+  }
+  const cadence = signal.cadenceIntelligence;
+  if (cadence?.cadenceSemanticFingerprint) {
+    projected.cadenceSemanticFingerprint = cadence.cadenceSemanticFingerprint;
   }
   return projected;
 }

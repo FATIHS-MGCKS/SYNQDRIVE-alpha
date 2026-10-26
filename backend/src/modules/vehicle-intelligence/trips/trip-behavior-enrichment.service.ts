@@ -62,6 +62,11 @@ import {
   parseBehaviorSummaryJson,
 } from './trip-analysis-status';
 import { DrivingAssessmentDeviceQualityService } from './driving-assessment-device-quality.service';
+import type { VsiSignalProfileMaterializationService } from '../vehicle-signal-intelligence/vsi-profile-materialization.service';
+import {
+  refreshVsiRpmCadenceAfterTrip,
+  resolveDimoProviderSourceLinkIdForVehicle,
+} from '../vehicle-signal-intelligence/vsi-profile-rpm-cadence-post-trip';
 
 export interface BehaviorEnrichmentResult {
   accelerationEvents: number;
@@ -201,6 +206,8 @@ export class TripBehaviorEnrichmentService {
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly deviceQuality?: DrivingAssessmentDeviceQualityService,
     @Optional() private readonly brakingLedger?: BrakingEventLedgerService,
+    @Optional()
+    private readonly vsiProfileMaterialization?: VsiSignalProfileMaterializationService,
   ) {}
 
   /**
@@ -216,7 +223,9 @@ export class TripBehaviorEnrichmentService {
     readings: import('../../dimo/dimo-segments.service').HighFrequencyReading[];
     abuseEvents: AbuseEvent[];
   }): void {
-    if (!this.hfMirror.isEnabled) return;
+    if (!this.hfMirror.isEnabled) {
+      return;
+    }
     void this.hfMirror
       .mirrorTripHf(params)
       .then((res) => {
@@ -225,6 +234,12 @@ export class TripBehaviorEnrichmentService {
             `HF mirror trip ${params.tripId}: ${res.pointsInserted} point(s), ${res.eventsInserted} event(s).`,
           );
         }
+        void this.scheduleVsiRpmCadenceAfterTrip({
+          organizationId: params.orgId,
+          vehicleId: params.vehicleId,
+          tripId: params.tripId,
+          hfMirrorSucceeded: res.mirrored && res.pointsInserted > 0,
+        });
       })
       .catch((err: unknown) => {
         this.logger.warn(
@@ -233,6 +248,31 @@ export class TripBehaviorEnrichmentService {
           }`,
         );
       });
+  }
+
+  private async scheduleVsiRpmCadenceAfterTrip(input: {
+    organizationId: string | null | undefined;
+    vehicleId: string;
+    tripId: string;
+    hfMirrorSucceeded: boolean;
+  }): Promise<void> {
+    if (!this.vsiProfileMaterialization) {
+      return;
+    }
+    const providerSourceLinkId = await resolveDimoProviderSourceLinkIdForVehicle(
+      this.prisma,
+      input.vehicleId,
+    );
+    await refreshVsiRpmCadenceAfterTrip({
+      prisma: this.prisma,
+      materialization: this.vsiProfileMaterialization,
+      logger: this.logger,
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      tripId: input.tripId,
+      providerSourceLinkId,
+      hfMirrorSucceeded: input.hfMirrorSucceeded,
+    });
   }
 
   private scheduleChEvidenceMirror(params: {

@@ -1,6 +1,7 @@
 /**
  * VSI P2 lifecycle outbox + automatic profile initialization (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import {
   PrismaClient,
   DrivingCapabilityStatus,
@@ -89,7 +90,7 @@ async function upsertVlsForTest(
 (LIVE ? describe : describe.skip)('VSI P2 profile lifecycle (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
   const outboxRepo = new VsiProfileLifecycleOutboxRepository(prisma as never);
   const enqueue = new VsiProfileLifecycleEnqueueService(outboxRepo);
   const processor = new VsiProfileLifecycleOutboxProcessor(
