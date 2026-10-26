@@ -4,6 +4,7 @@ Append-only architecture change record.
 
 | Date | Change | Phase | Evidence |
 |------|--------|-------|----------|
+| 2026-10-26 | **P0 core hardening** — finite scalar zero = OBSERVED; semantic `contentFingerprint` excludes fetch/quality projection churn; operational profile refresh without revision bump; P3A catalog refresh deferral evidence | P0/P3 | `vsi-profile-fingerprint.util.ts`, `vsi-profile-materialization.service.ts`, [`evidence/VSI_P3A_CATALOG_REFRESH_DEFERRAL_2026-10-26.md`](../evidence/VSI_P3A_CATALOG_REFRESH_DEFERRAL_2026-10-26.md) |
 | 2026-10-24 | APDS shadow parallel LV availability projection (`LV_*` classes) via `projectVsiApdsShadowLvAvailability`; B2/B4 baseline unchanged | P5 shadow observability | [`CURRENT_STATE.md`](../CURRENT_STATE.md) |
 | 2026-10-15 | P0+P1 signal capability profiles merged (#2034 @ `eb5f1f2ee`) | P0, P1 | [`evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md`](../evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md), [`CURRENT_STATE.md`](../CURRENT_STATE.md) |
 | 2026-10-15 | Canonical **Product Charter**, **Master Roadmap** (P0–P7), **Cross-workstream contracts**, **Product governance** PR checklist | Governance | [`VSI_PRODUCT_CHARTER.md`](../VSI_PRODUCT_CHARTER.md), [`VSI_MASTER_ROADMAP.md`](../VSI_MASTER_ROADMAP.md) |
