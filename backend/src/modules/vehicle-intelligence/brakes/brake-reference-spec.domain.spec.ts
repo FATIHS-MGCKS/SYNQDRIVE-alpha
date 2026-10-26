@@ -167,6 +167,35 @@ describe('brake-reference-spec.domain', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.join(' ')).toMatch(/pad thickness/i);
     });
+
+    it('accepts ventilated front disc nominal thickness values (e.g. Arteon Brembo catalog)', () => {
+      for (const mm of [22, 25, 30]) {
+        const result = validateThicknessPlausibility('FRONT_DISCS', mm);
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      }
+    });
+
+    it('accepts solid and ventilated rear disc nominal thickness values', () => {
+      for (const mm of [12, 22]) {
+        const result = validateThicknessPlausibility('REAR_DISCS', mm);
+        expect(result.valid).toBe(true);
+        expect(result.errors).toEqual([]);
+      }
+    });
+
+    it('rejects non-finite and non-positive disc thickness', () => {
+      for (const mm of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+        const result = validateThicknessPlausibility('FRONT_DISCS', mm);
+        expect(result.valid).toBe(false);
+      }
+    });
+
+    it('rejects clearly implausible disc thickness above range', () => {
+      const result = validateThicknessPlausibility('FRONT_DISCS', 55);
+      expect(result.valid).toBe(false);
+      expect(result.errors.join(' ')).toMatch(/outside plausible disc range/i);
+    });
   });
 
   describe('wrong vehicle fit', () => {
