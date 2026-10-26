@@ -1,6 +1,10 @@
 import { api } from '../../lib/api';
 import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
 import { parseMotionPhysicsCurbMassField } from './motion-physics-reference-sync.util';
+import {
+  buildHvMasterSpecPatchFromRegisteredVehicle,
+  extractHvMasterSpecFormFields,
+} from './master-hv-master-specification.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -543,6 +547,11 @@ export async function updateMasterRegisteredVehicle(
   const patch = buildMasterVehiclePhysicsSpecPatch(rv, options.baseline);
   if (Object.keys(patch).length > 0) {
     await api.vehicles.update(orgId, vehicleId, patch);
+  }
+
+  const hvMasterPatch = buildHvMasterSpecPatchFromRegisteredVehicle(rv, options.baseline);
+  if (hvMasterPatch) {
+    await api.vehicles.upsertHvMasterSpecification(vehicleId, hvMasterPatch);
   }
 }
 

@@ -47,6 +47,13 @@ import {
 } from '@shared/utils/pagination';
 import { interpretVehicleState } from './vehicle-state-interpreter';
 import {
+  hvMasterSpecToFormFields,
+  mergeHvMasterSpecification,
+  parseVehicleHvMasterSpecification,
+  type UpsertHvMasterSpecInput,
+  type VehicleHvMasterSpecificationV1,
+} from './vehicle-hv-master-specification.domain';
+import {
   buildFleetBookingContextFromRows,
   emptyFleetBookingSupplement,
   type FleetBookingContextRow,
@@ -806,6 +813,9 @@ export class VehiclesService {
       (e: any) => e.eventType === 'BRAKE_SERVICE',
     );
 
+    const hvMaster = parseVehicleHvMasterSpecification(v.hvMasterSpecification);
+    const hvMasterFields = hvMasterSpecToFormFields(hvMaster);
+
     const tripState = tripStateMap?.get(v.id) ?? null;
     const interpreted = interpretVehicleState(
       {
@@ -931,7 +941,19 @@ export class VehiclesService {
       hvBatteryGrossCapacityKwh:
         hvReference?.capacityType === 'GROSS'
           ? this.formatRegisteredVehicleKwhField(hvReference.capacityKwh)
-          : '',
+          : hvMasterFields.hvBatteryGrossCapacityKwh ?? '',
+      hvBatteryChemistry: hvMasterFields.hvBatteryChemistry ?? '',
+      hvBatteryCellFormat: hvMasterFields.hvBatteryCellFormat ?? '',
+      hvBatteryNominalVoltage: hvMasterFields.hvBatteryNominalVoltage ?? '',
+      hvBatteryArchitecture: hvMasterFields.hvBatteryArchitecture ?? '',
+      hvBatteryThermalManagement: hvMasterFields.hvBatteryThermalManagement ?? '',
+      hvBatteryWarrantyYears: hvMasterFields.hvBatteryWarrantyYears ?? '',
+      hvBatteryWarrantyKm: hvMasterFields.hvBatteryWarrantyKm ?? '',
+      acOnboardChargerKw: hvMasterFields.acOnboardChargerKw ?? '',
+      dcFastChargeMaxKw: hvMasterFields.dcFastChargeMaxKw ?? '',
+      hvMasterSpecificationProvenance: hvMaster?.provenance ?? null,
+      hvMasterSpecificationVariantLabel: hvMaster?.variantLabel ?? null,
+      hvMasterSpecificationEvidenceNote: hvMaster?.evidenceNote ?? null,
     };
   }
 
@@ -2224,6 +2246,35 @@ export class VehiclesService {
   }
 
   // ── Mutations ─────────────────────────────────────────────────────
+
+  async upsertHvMasterSpecificationForAdmin(
+    vehicleId: string,
+    patch: UpsertHvMasterSpecInput,
+  ): Promise<VehicleHvMasterSpecificationV1> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, hvMasterSpecification: true, hvBatteryCapacityKwh: true },
+    });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    const existing = parseVehicleHvMasterSpecification(vehicle.hvMasterSpecification);
+    const merged = mergeHvMasterSpecification(existing, patch);
+
+    if (
+      merged.grossCapacityKwh != null &&
+      vehicle.hvBatteryCapacityKwh != null &&
+      merged.grossCapacityKwh < vehicle.hvBatteryCapacityKwh
+    ) {
+      throw new ConflictException('HV_GROSS_BELOW_LEGACY_USABLE');
+    }
+
+    await this.prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { hvMasterSpecification: merged as Prisma.InputJsonValue },
+    });
+
+    return merged;
+  }
 
   async update(
     id: string,

@@ -3009,6 +3009,8 @@ model Vehicle {
   oilChangeIntervalKm               Int?              @map("oil_change_interval_km")
   oilChangeIntervalMonths           Int?              @map("oil_change_interval_months")
   hvBatteryCapacityKwh              Float?            @map("hv_battery_capacity_kwh")
+  /// Master Admin HV traction stammdaten (chemistry, chargers, warranty) — not SOH reference capacity.
+  hvMasterSpecification             Json?             @map("hv_master_specification")
   tankCapacityLiters                Float?            @map("tank_capacity_liters")
 
   // ── V3 Hardware type ───────────────────────────────────────────────────────

@@ -32,6 +32,7 @@ import {
   legacyVehicleDestructionDisabledException,
 } from './legacy-vehicle-destruction.errors';
 import { PaginationParams } from '@shared/utils/pagination';
+import { UpsertVehicleHvMasterSpecificationDto } from './dto/upsert-vehicle-hv-master-specification.dto';
 import {
   Prisma,
   CleaningStatus,
@@ -151,6 +152,15 @@ export class VehiclesController {
   @Roles('MASTER_ADMIN')
   async findOneAdmin(@Param('vehicleId') vehicleId: string) {
     return this.vehiclesService.findById(vehicleId);
+  }
+
+  @Patch('admin/vehicles/:vehicleId/hv-master-specification')
+  @Roles('MASTER_ADMIN')
+  async upsertHvMasterSpecificationAdmin(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: UpsertVehicleHvMasterSpecificationDto,
+  ) {
+    return this.vehiclesService.upsertHvMasterSpecificationForAdmin(vehicleId, body);
   }
 
   // ── Organizations/:orgId/vehicles (org-scoped CRUD) ───────────────

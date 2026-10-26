@@ -352,6 +352,23 @@ describe('master-vehicle-registration payloads', () => {
     expect(api.vehicleIntelligence.createBatterySpec).not.toHaveBeenCalled();
   });
 
+  it('updateMasterRegisteredVehicle persists HV master spec via admin endpoint', async () => {
+    const upsertHvMock = vi.fn().mockResolvedValue({});
+    (api.vehicles as { upsertHvMasterSpecification?: typeof upsertHvMock }).upsertHvMasterSpecification =
+      upsertHvMock;
+    const baseline = minimalRv({ hvBatteryChemistry: '' });
+    const current = minimalRv({ hvBatteryChemistry: 'LFP', hvBatteryGrossCapacityKwh: '60' });
+
+    await updateMasterRegisteredVehicle(current, { baseline });
+
+    expect(upsertHvMock).toHaveBeenCalledWith('rv-1', {
+      chemistry: 'LFP',
+      grossCapacityKwh: 60,
+      provenance: 'ESTIMATED',
+    });
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
   it('mapAdminVehicleDtoToRegisteredVehicle maps connection identity fields from admin GET', () => {
     const rv = mapAdminVehicleDtoToRegisteredVehicle({
       id: 'tesla-1',
