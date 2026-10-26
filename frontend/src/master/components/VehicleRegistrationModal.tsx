@@ -4,6 +4,7 @@ import { api, streamAiSpecs, streamAiTireSpecs } from '../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabilityDto } from '../../lib/api';
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
+import { HV_CATALOG_VARIANT_KEYS } from '../connected-vehicles/master-hv-master-specification.util';
 import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
 import {
   isMotionPhysicsTierLockedForAiMerge,
@@ -160,6 +161,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const [hvBatteryWarrantyKm, setHvBatteryWarrantyKm] = useState('');
   const [acOnboardChargerKw, setAcOnboardChargerKw] = useState('');
   const [dcFastChargeMaxKw, setDcFastChargeMaxKw] = useState('');
+  const [hvMasterSpecificationCatalogVariantKey, setHvMasterSpecificationCatalogVariantKey] =
+    useState('');
 
   // Fuel tank
   const [tankCapacityLiters, setTankCapacityLiters] = useState('');
@@ -277,6 +280,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setHvBatteryWarrantyKm(v.hvBatteryWarrantyKm ?? '');
     setAcOnboardChargerKw(v.acOnboardChargerKw ?? '');
     setDcFastChargeMaxKw(v.dcFastChargeMaxKw ?? '');
+    setHvMasterSpecificationCatalogVariantKey(v.hvMasterSpecificationCatalogVariantKey ?? '');
     setTankCapacityLiters(v.tankCapacityLiters ?? '');
     setEngineDisplacementCc(v.engineDisplacementCc ?? '');
     setCylinderCount(v.cylinderCount ?? '');
@@ -1065,7 +1069,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     hvBatteryGrossCapacityKwh, hvBatteryUsableCapacityKwh, hvBatteryNominalVoltage,
     hvBatteryArchitecture, hvBatteryThermalManagement,
     hvBatteryWarrantyYears, hvBatteryWarrantyKm,
-    acOnboardChargerKw, dcFastChargeMaxKw,
+    acOnboardChargerKw,     dcFastChargeMaxKw,
+    hvMasterSpecificationCatalogVariantKey:
+      hvMasterSpecificationCatalogVariantKey.trim() || null,
     tankCapacityLiters,
     engineDisplacementCc, cylinderCount,
     tireFrontDimension, tireFrontBrandModel, tireFrontSeason, tireFrontDot, tireFrontLoadIndex, tireFrontSpeedIndex,
@@ -1636,6 +1642,25 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                           {t('master.cv.technicalSpecs.hvLegacyMasterDataHint')}
                         </p>
                       )}
+                      <div className="mb-2">
+                        <label className={labelClass}>
+                          {t('master.cv.technicalSpecs.hvCatalogVariantLabel')}
+                        </label>
+                        <select
+                          value={hvMasterSpecificationCatalogVariantKey}
+                          onChange={(e) => setHvMasterSpecificationCatalogVariantKey(e.target.value)}
+                          disabled={hvFieldDisabled}
+                          className={clsExtended}
+                          data-testid="hv-catalog-variant-key"
+                        >
+                          <option value="">
+                            {t('master.cv.technicalSpecs.hvCatalogVariantNone')}
+                          </option>
+                          <option value={HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L}>
+                            {t('master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l')}
+                          </option>
+                        </select>
+                      </div>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                       <div>
                         <label className={labelClass}>Usable Capacity (kWh) {aiTag}</label>

@@ -131,6 +131,7 @@ export interface RegisteredVehicle {
   hvMasterSpecificationVariantLabel?: string | null;
   hvMasterSpecificationEvidenceNote?: string | null;
   hvMasterSpecificationCatalogReferences?: string[] | null;
+  hvMasterSpecificationCatalogVariantKey?: string | null;
   hvMasterSpecificationFieldChangeClassification?: string | null;
   // Engine
   engineDisplacementCc?: string;

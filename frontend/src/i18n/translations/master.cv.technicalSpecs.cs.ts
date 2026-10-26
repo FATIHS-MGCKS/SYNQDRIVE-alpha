@@ -24,6 +24,10 @@ export const masterCvTechnicalSpecsCs = {
   'master.cv.technicalSpecs.updatePartialHvFailed':
     'HV údaje se neuložily. Ostatní data vozidla mohla být uložena.',
   'master.cv.technicalSpecs.secondaryDetails': 'Provozní a integrační podrobnosti',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'HV katalogová varianta (explicitní)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'Žádná — bez katalogových metadat',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — katalog CATL 6L (ESTIMATED, bez ověření packu)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
     'Užitná kapacita je legacy hodnota ze základních dat (ne SOH, ne ověřená reference, ne měření) a zůstává zde jen pro čtení. Rozšířená HV pole níže lze upravovat a ukládají se odděleně od battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':

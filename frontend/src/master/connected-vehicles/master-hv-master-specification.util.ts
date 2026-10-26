@@ -2,6 +2,13 @@ import type { RegisteredVehicle } from '../data/platform-data';
 
 export type HvMasterSpecProvenance = 'ESTIMATED' | 'CONFIRMED';
 
+export const HV_CATALOG_VARIANT_KEYS = {
+  TESLA_MODEL3_RWD_LFP_CATL6L: 'TESLA_MODEL3_RWD_LFP_CATL6L',
+} as const;
+
+export type HvCatalogVariantKey =
+  (typeof HV_CATALOG_VARIANT_KEYS)[keyof typeof HV_CATALOG_VARIANT_KEYS];
+
 export type HvMasterSpecFormFields = {
   hvBatteryGrossCapacityKwh: string;
   hvBatteryNominalVoltage: string;
@@ -24,6 +31,14 @@ export const TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE = {
     'https://www.tesla.com/support/vehicle-warranty',
   ],
 } as const;
+
+export function resolveExplicitHvCatalogVariantKey(rv: RegisteredVehicle): HvCatalogVariantKey | null {
+  const key = (rv.hvMasterSpecificationCatalogVariantKey ?? '').trim();
+  if (key === HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L) {
+    return HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L;
+  }
+  return null;
+}
 
 export function extractHvMasterSpecFormFields(rv: RegisteredVehicle): HvMasterSpecFormFields {
   return {
@@ -53,6 +68,12 @@ function diffEvidenceMetadata(
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
 
+  const curKey = (current.hvMasterSpecificationCatalogVariantKey ?? '').trim();
+  const baseKey = (baseline.hvMasterSpecificationCatalogVariantKey ?? '').trim();
+  if (curKey !== baseKey) {
+    patch.catalogVariantKey = curKey || null;
+  }
+
   const curVariant = (current.hvMasterSpecificationVariantLabel ?? '').trim();
   const baseVariant = (baseline.hvMasterSpecificationVariantLabel ?? '').trim();
   if (curVariant !== baseVariant) {
@@ -74,13 +95,22 @@ function diffEvidenceMetadata(
   return patch;
 }
 
-function isTeslaModel3Electric(rv: RegisteredVehicle): boolean {
-  const make = String(rv.make ?? '').trim().toLowerCase();
-  const model = String(rv.model ?? '').trim().toLowerCase();
-  const fuel = String(rv.fuelType ?? '').trim().toLowerCase();
-  const electrified =
-    fuel.includes('electric') || fuel.includes('plugin') || fuel.includes('phev') || fuel.includes('hybrid');
-  return electrified && make.includes('tesla') && model.includes('model 3');
+function attachCatalogEvidenceForExplicitVariant(
+  patch: Record<string, unknown>,
+  catalogVariantKey: HvCatalogVariantKey,
+): void {
+  if (catalogVariantKey !== HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L) {
+    return;
+  }
+  if (patch.variantLabel === undefined) {
+    patch.variantLabel = TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.variantLabel;
+  }
+  if (patch.evidenceNote === undefined) {
+    patch.evidenceNote = TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.evidenceNote;
+  }
+  if (patch.catalogReferences === undefined) {
+    patch.catalogReferences = [...TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.catalogReferences];
+  }
 }
 
 function attachInitialEstimatedEvidenceIfNeeded(
@@ -104,20 +134,25 @@ function attachInitialEstimatedEvidenceIfNeeded(
     'warrantyKm',
   ].some((key) => patch[key] !== undefined);
 
-  if (!hasCatalogFieldInPatch) return;
+  const explicitKey = resolveExplicitHvCatalogVariantKey(current);
+  const keyInPatch =
+    patch.catalogVariantKey === HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L;
 
-  if (!baseline.hvMasterSpecificationVariantLabel && isTeslaModel3Electric(current)) {
-    if (patch.variantLabel === undefined) {
-      patch.variantLabel = TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.variantLabel;
+  if (!explicitKey && !keyInPatch) {
+    if (hasCatalogFieldInPatch) {
+      patch.provenance = 'ESTIMATED';
     }
-    if (patch.evidenceNote === undefined) {
-      patch.evidenceNote = TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.evidenceNote;
-    }
-    if (patch.catalogReferences === undefined) {
-      patch.catalogReferences = [...TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.catalogReferences];
-    }
+    return;
   }
 
+  if (!hasCatalogFieldInPatch && patch.catalogVariantKey === undefined) {
+    return;
+  }
+
+  attachCatalogEvidenceForExplicitVariant(
+    patch,
+    explicitKey ?? HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L,
+  );
   patch.provenance = 'ESTIMATED';
 }
 
@@ -189,17 +224,28 @@ export function buildHvMasterSpecPatchFromRegisteredVehicle(
   return patch;
 }
 
-/** Apply Tesla Model 3 catalog evidence onto RV when extended HV fields are edited without stored evidence. */
-export function applyTeslaModel3EstimatedEvidenceToVehicle(rv: RegisteredVehicle): RegisteredVehicle {
+/** Apply catalog ESTIMATED evidence only when an HV catalog variant was explicitly selected. */
+export function applySelectedHvCatalogEvidenceToVehicle(rv: RegisteredVehicle): RegisteredVehicle {
   if (rv.hvMasterSpecificationProvenance) return rv;
-  if (!isTeslaModel3Electric(rv)) return rv;
+
+  const catalogKey = resolveExplicitHvCatalogVariantKey(rv);
+  if (!catalogKey) return rv;
+
   const fields = extractHvMasterSpecFormFields(rv);
   const hasAnyCatalogField = Object.values(fields).some((v) => String(v).trim() !== '');
-  if (!hasAnyCatalogField) return rv;
-  return {
-    ...rv,
-    hvMasterSpecificationVariantLabel: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.variantLabel,
-    hvMasterSpecificationEvidenceNote: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.evidenceNote,
-    hvMasterSpecificationCatalogReferences: [...TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.catalogReferences],
-  };
+  const selectingVariantOnly =
+    Boolean(rv.hvMasterSpecificationCatalogVariantKey) && !hasAnyCatalogField;
+
+  if (!hasAnyCatalogField && !selectingVariantOnly) return rv;
+
+  if (catalogKey === HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L) {
+    return {
+      ...rv,
+      hvMasterSpecificationVariantLabel: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.variantLabel,
+      hvMasterSpecificationEvidenceNote: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.evidenceNote,
+      hvMasterSpecificationCatalogReferences: [...TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.catalogReferences],
+    };
+  }
+
+  return rv;
 }

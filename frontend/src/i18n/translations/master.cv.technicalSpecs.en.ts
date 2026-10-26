@@ -24,6 +24,10 @@ export const masterCvTechnicalSpecsEn = {
   'master.cv.technicalSpecs.updatePartialHvFailed':
     'HV traction specifications could not be saved. Other vehicle data may have been saved.',
   'master.cv.technicalSpecs.secondaryDetails': 'Operational & integration details',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'HV catalog variant (explicit)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'None — no catalog metadata',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — CATL 6L catalog (ESTIMATED, not pack-verified)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
     'Usable capacity is legacy vehicle master data (not SOH, not a verified reference capacity, not a live measurement) and stays read-only here. Extended HV catalog fields below can be edited and are stored separately from battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':

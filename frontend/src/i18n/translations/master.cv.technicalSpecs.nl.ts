@@ -24,6 +24,10 @@ export const masterCvTechnicalSpecsNl = {
   'master.cv.technicalSpecs.updatePartialHvFailed':
     'HV-specificaties zijn niet opgeslagen. Andere voertuigdata kan wel zijn opgeslagen.',
   'master.cv.technicalSpecs.secondaryDetails': 'Operationele en integratiedetails',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'HV-catalogusvariant (expliciet)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'Geen — geen catalogusmetadata',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — CATL 6L-catalogus (ESTIMATED, pack niet geverifieerd)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
     'Bruikbare capaciteit is legacy stamdata (geen SOH, geen geverifieerde referentie, geen meting) en blijft hier read-only. Uitgebreide HV-velden hieronder zijn bewerkbaar en worden apart van battery health opgeslagen.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':

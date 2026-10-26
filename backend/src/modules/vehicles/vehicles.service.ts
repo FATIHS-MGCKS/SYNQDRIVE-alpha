@@ -955,6 +955,7 @@ export class VehiclesService {
       hvMasterSpecificationVariantLabel: hvMaster?.variantLabel ?? null,
       hvMasterSpecificationEvidenceNote: hvMaster?.evidenceNote ?? null,
       hvMasterSpecificationCatalogReferences: hvMaster?.catalogReferences ?? null,
+      hvMasterSpecificationCatalogVariantKey: hvMaster?.catalogVariantKey ?? null,
       hvMasterSpecificationFieldChangeClassification:
         hvMaster?.fieldChangeClassification ?? null,
     };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildHvMasterSpecPatchFromRegisteredVehicle,
   extractHvMasterSpecFormFields,
+  HV_CATALOG_VARIANT_KEYS,
   TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE,
 } from './master-hv-master-specification.util';
 import type { RegisteredVehicle } from '../data/platform-data';
@@ -88,13 +89,19 @@ describe('master-hv-master-specification.util', () => {
     expect(fields.hvBatteryGrossCapacityKwh).toBe('60');
   });
 
-  it('first Tesla catalog save includes ESTIMATED evidence metadata', () => {
-    const baseline = minimalRv();
-    const current = minimalRv({ hvBatteryChemistry: 'LFP', hvBatteryGrossCapacityKwh: '60' });
+  it('Model 3 RWD with explicit CATL-6L catalog variant includes ESTIMATED evidence', () => {
+    const baseline = minimalRv({ motionPhysicsVariantAssumption: 'RWD' });
+    const current = minimalRv({
+      motionPhysicsVariantAssumption: 'RWD',
+      hvMasterSpecificationCatalogVariantKey: HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L,
+      hvBatteryChemistry: 'LFP',
+      hvBatteryGrossCapacityKwh: '60',
+    });
     const patch = buildHvMasterSpecPatchFromRegisteredVehicle(current, baseline);
     expect(patch).toMatchObject({
       chemistry: 'LFP',
       grossCapacityKwh: 60,
+      catalogVariantKey: HV_CATALOG_VARIANT_KEYS.TESLA_MODEL3_RWD_LFP_CATL6L,
       provenance: 'ESTIMATED',
       variantLabel: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.variantLabel,
       evidenceNote: TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.evidenceNote,
@@ -102,6 +109,39 @@ describe('master-hv-master-specification.util', () => {
     expect(patch?.catalogReferences).toEqual([
       ...TESLA_MODEL3_CATL6L_ESTIMATED_EVIDENCE.catalogReferences,
     ]);
+    expect(patch?.variantLabel).toContain('not pack-verified');
+  });
+
+  it('Model 3 Long Range without explicit catalog variant does not attach CATL-6L evidence', () => {
+    const baseline = minimalRv({ motionPhysicsVariantAssumption: 'Long Range' });
+    const current = minimalRv({
+      motionPhysicsVariantAssumption: 'Long Range',
+      hvBatteryChemistry: 'NMC',
+      hvBatteryGrossCapacityKwh: '75',
+    });
+    const patch = buildHvMasterSpecPatchFromRegisteredVehicle(current, baseline);
+    expect(patch).toMatchObject({
+      chemistry: 'NMC',
+      grossCapacityKwh: 75,
+      provenance: 'ESTIMATED',
+    });
+    expect(patch?.variantLabel).toBeUndefined();
+    expect(patch?.evidenceNote).toBeUndefined();
+    expect(patch?.catalogReferences).toBeUndefined();
+    expect(patch?.catalogVariantKey).toBeUndefined();
+  });
+
+  it('Model 3 Performance without explicit catalog variant does not attach CATL-6L evidence', () => {
+    const baseline = minimalRv({ motionPhysicsVariantAssumption: 'Performance' });
+    const current = minimalRv({
+      motionPhysicsVariantAssumption: 'Performance',
+      hvBatteryChemistry: 'NMC',
+      hvBatteryGrossCapacityKwh: '82',
+    });
+    const patch = buildHvMasterSpecPatchFromRegisteredVehicle(current, baseline);
+    expect(patch?.chemistry).toBe('NMC');
+    expect(patch?.variantLabel).toBeUndefined();
+    expect(patch?.catalogReferences).toBeUndefined();
   });
 
   it('CONFIRMED baseline edit does not send provenance downgrade', () => {

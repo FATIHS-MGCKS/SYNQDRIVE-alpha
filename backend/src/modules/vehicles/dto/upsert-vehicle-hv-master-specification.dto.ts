@@ -1,4 +1,14 @@
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { KNOWN_HV_CATALOG_VARIANT_KEYS } from '../vehicle-hv-master-specification.domain';
 
 export class UpsertVehicleHvMasterSpecificationDto {
   @IsOptional()
@@ -69,4 +79,11 @@ export class UpsertVehicleHvMasterSpecificationDto {
   @IsArray()
   @IsString({ each: true })
   catalogReferences?: string[] | null;
+
+  @IsOptional()
+  @ValidateIf((_o, value) => value != null && value !== '')
+  @IsString()
+  @MaxLength(64)
+  @IsIn(KNOWN_HV_CATALOG_VARIANT_KEYS as unknown as string[])
+  catalogVariantKey?: string | null;
 }

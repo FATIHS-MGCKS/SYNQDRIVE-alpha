@@ -24,6 +24,10 @@ export const masterCvTechnicalSpecsFr = {
   'master.cv.technicalSpecs.updatePartialHvFailed':
     'Les spécifications HV n’ont pas été enregistrées. D’autres données peuvent avoir été enregistrées.',
   'master.cv.technicalSpecs.secondaryDetails': 'Détails opérationnels et d’intégration',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'Variante catalogue HV (explicite)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'Aucune — pas de métadonnées catalogue',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — catalogue CATL 6L (ESTIMATED, pack non vérifié)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
     'La capacité utile est une donnée legacy (pas SOH, pas référence vérifiée, pas mesure) et reste en lecture seule. Les champs HV étendus ci-dessous sont modifiables et stockés séparément de la battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':

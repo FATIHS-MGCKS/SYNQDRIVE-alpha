@@ -1,5 +1,12 @@
 export const VEHICLE_HV_MASTER_SPEC_VERSION = 1;
 
+export const HV_CATALOG_VARIANT_KEY_TESLA_MODEL3_RWD_LFP_CATL6L =
+  'TESLA_MODEL3_RWD_LFP_CATL6L';
+
+export const KNOWN_HV_CATALOG_VARIANT_KEYS = [
+  HV_CATALOG_VARIANT_KEY_TESLA_MODEL3_RWD_LFP_CATL6L,
+] as const;
+
 export type HvMasterSpecProvenance = 'ESTIMATED' | 'CONFIRMED';
 
 export type HvMasterFieldChangeClassification =
@@ -23,6 +30,7 @@ export interface VehicleHvMasterSpecificationV1 {
   warrantyYears?: number | null;
   warrantyKm?: number | null;
   catalogReferences?: string[] | null;
+  catalogVariantKey?: string | null;
   updatedAt?: string | null;
 }
 
@@ -89,6 +97,7 @@ export function parseVehicleHvMasterSpecification(
     warrantyYears: parseOptionalNonNegativeInt(o.warrantyYears),
     warrantyKm: parseOptionalNonNegativeInt(o.warrantyKm),
     catalogReferences: catalogReferences && catalogReferences.length > 0 ? catalogReferences : null,
+    catalogVariantKey: trimOrNull(o.catalogVariantKey),
     fieldChangeClassification:
       o.fieldChangeClassification === 'CATALOG_ESTIMATED_FIELD_UPDATE' ||
       o.fieldChangeClassification === 'OPERATOR_FIELD_UPDATE'
@@ -113,6 +122,7 @@ export type UpsertHvMasterSpecInput = {
   warrantyYears?: number | null;
   warrantyKm?: number | null;
   catalogReferences?: string[] | null;
+  catalogVariantKey?: string | null;
 };
 
 const CATALOG_FIELD_KEYS: (keyof UpsertHvMasterSpecInput)[] = [
@@ -217,6 +227,10 @@ export function mergeHvMasterSpecification(
       patch.catalogReferences !== undefined
         ? patch.catalogReferences
         : existing?.catalogReferences ?? null,
+    catalogVariantKey:
+      patch.catalogVariantKey !== undefined
+        ? patch.catalogVariantKey
+        : existing?.catalogVariantKey ?? null,
     updatedAt: new Date().toISOString(),
   };
 }

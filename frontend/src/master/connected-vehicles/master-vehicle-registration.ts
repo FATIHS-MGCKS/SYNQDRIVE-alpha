@@ -2,7 +2,7 @@ import { api } from '../../lib/api';
 import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
 import { parseMotionPhysicsCurbMassField } from './motion-physics-reference-sync.util';
 import {
-  applyTeslaModel3EstimatedEvidenceToVehicle,
+  applySelectedHvCatalogEvidenceToVehicle,
   buildHvMasterSpecPatchFromRegisteredVehicle,
 } from './master-hv-master-specification.util';
 
@@ -515,6 +515,10 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
           .map((r) => (typeof r === 'string' ? r.trim() : ''))
           .filter((r) => r.length > 0)
       : null,
+    hvMasterSpecificationCatalogVariantKey:
+      dto.hvMasterSpecificationCatalogVariantKey != null
+        ? String(dto.hvMasterSpecificationCatalogVariantKey).trim() || null
+        : null,
     hvMasterSpecificationFieldChangeClassification:
       dto.hvMasterSpecificationFieldChangeClassification != null
         ? String(dto.hvMasterSpecificationFieldChangeClassification)
@@ -602,7 +606,7 @@ export async function updateMasterRegisteredVehicle(
     }
   }
 
-  const enrichedRv = applyTeslaModel3EstimatedEvidenceToVehicle(rv);
+  const enrichedRv = applySelectedHvCatalogEvidenceToVehicle(rv);
   const hvMasterPatch = buildHvMasterSpecPatchFromRegisteredVehicle(enrichedRv, options.baseline);
   if (hvMasterPatch) {
     try {
