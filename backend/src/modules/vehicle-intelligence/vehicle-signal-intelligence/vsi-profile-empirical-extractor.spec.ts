@@ -82,4 +82,100 @@ describe('vsi-profile-empirical-extractor', () => {
     expect(result?.limitations).toContain('FUTURE_SIGNAL_TIMESTAMP_REJECTED');
     expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
   });
+
+  it('observes vehicle_speed zero as a valid stationary measurement', () => {
+    const ts = '2026-10-15T11:55:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({ speed: { value: 0, timestamp: ts } }, new Date(ts)),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(result?.lastSourceTimestamp?.toISOString()).toBe(ts);
+    expect(result?.limitations).not.toContain('RAW_SNAPSHOT_KEY_NULL_VALUE_NOT_PHYSICAL_OBSERVATION');
+  });
+
+  it('treats present speed key with null value as not observed', () => {
+    const ts = '2026-10-15T11:55:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({ speed: { value: null, timestamp: ts } }, new Date(ts)),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+    expect(result?.limitations).toContain('RAW_SNAPSHOT_KEY_NULL_VALUE_NOT_PHYSICAL_OBSERVATION');
+  });
+
+  it('missing speed key is NEVER_OBSERVED without inventing zero', () => {
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({}, projectionAsOf),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+    expect(result?.lastSourceTimestamp).toBeNull();
+  });
+
+  it('observes positive vehicle_speed', () => {
+    const ts = '2026-10-15T11:54:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({ speed: { value: 42.5, timestamp: ts } }, new Date(ts)),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(result?.lastValidObservationAt?.toISOString()).toBe(ts);
+  });
+
+  it('rejects non-finite speed values', () => {
+    const ts = '2026-10-15T11:54:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({ speed: { value: Number.NaN, timestamp: ts } }, new Date(ts)),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+  });
+
+  it('classifies stale speed source timestamps without rejecting the numeric value', () => {
+    const ts = '2026-10-01T00:00:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({ speed: { value: 10, timestamp: ts } }, new Date(ts)),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(result?.freshnessClassification).toBe('STALE');
+  });
+
+  it('does not attribute speed when latest state is not bound to the link', () => {
+    const ts = '2026-10-15T11:54:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'vehicle_speed',
+      latestState: vls({ speed: { value: 10, timestamp: ts } }, new Date(ts)),
+      stateAttributed: false,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+  });
+
+  it('observes fuel_level_relative zero as a valid empty-tank measurement', () => {
+    const ts = '2026-10-15T11:53:00.000Z';
+    const result = extractProfileSignalEmpirical({
+      key: 'fuel_level_relative',
+      latestState: vls(
+        { powertrainFuelSystemRelativeLevel: { value: 0, timestamp: ts } },
+        new Date(ts),
+      ),
+      stateAttributed: true,
+      projectionAsOf,
+    });
+    expect(result?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+  });
 });

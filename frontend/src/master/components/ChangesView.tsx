@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-core-hardening-p0-2026-10-26',
+    version: '4.9.4995',
+    title: 'VSI P0 — scalar zero semantics + semantic profile fingerprint',
+    summary: [
+      'Finite numeric zero (e.g. vehicle_speed=0) is OBSERVED; null/missing keys stay NEVER_OBSERVED.',
+      'Profile contentFingerprint excludes provider fetch bookkeeping; identical capability evidence no longer bumps profileRevision.',
+      'Operational lastMaterializedProviderFetchAt / lastProviderFetchAt still refresh on the mutable profile row.',
+      'P3A catalog axes frozen since last 7-day DIMO preflight — documented, no extra provider calls in this change.',
+    ],
+    reason:
+      'Production audit: speed=0 misclassified; ~13k snapshot-hook revisions driven by fetch-only fingerprint churn.',
+    previousBehavior:
+      'Zero treated as non-observation for scalars; contentFingerprint hashed lastProviderFetchAt and advanced fetch timestamps.',
+    details:
+      'vsi-profile-empirical-extractor.ts, vsi-profile-fingerprint.util.ts, vsi-profile-materialization.service.ts; architecture/vehicle-signal-intelligence/evidence/VSI_P3A_CATALOG_REFRESH_DEFERRAL_2026-10-26.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-26T00:00:00.000Z',
+  },
+  {
     id: 'apds-scientific-evidence-p1-2026-10-25',
     version: '4.9.4994',
     title: 'APDS shadow — scientific baseline poll evidence repair (P1)',

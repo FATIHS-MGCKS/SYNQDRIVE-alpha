@@ -4,7 +4,14 @@ import { PrismaService } from '../../../shared/database/prisma.service';
 import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-projection';
 import { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 import { evaluateVsiSignalProfile } from './vsi-profile-evaluator';
-import { fingerprintVsiProfileEvaluation } from './vsi-profile-fingerprint.util';
+import {
+  areVsiProfileSemanticEvaluationsEquivalent,
+  fingerprintVsiProfileSemanticEvaluation,
+} from './vsi-profile-fingerprint.util';
+import {
+  buildOperationalProfileRefreshCasWhere,
+  buildOperationalProfileRefreshUpdate,
+} from './vsi-profile-operational-refresh.util';
 import { loadVsiBundleHistoricalEvidence } from './vsi-profile-historical-evidence.loader';
 import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
 import type { VsiProfileEvaluationResult } from './vsi-profile.types';
@@ -328,21 +335,105 @@ export class VsiSignalProfileMaterializationService {
       bundleHistory,
     );
 
-    const fingerprint = fingerprintVsiProfileEvaluation(evaluation);
-    if (existingProfile?.contentFingerprint === fingerprint) {
+    const semanticFingerprint = fingerprintVsiProfileSemanticEvaluation(evaluation);
+    if (
+      existingProfile &&
+      areVsiProfileSemanticEvaluationsEquivalent(existingProfile, evaluation)
+    ) {
+      await this.persistOperationalRefreshWithConcurrencyRetry(
+        evaluation,
+        existingProfile.id,
+        semanticFingerprint,
+      );
       return evaluation;
     }
 
     await this.persistWithConcurrencyRetry(
       evaluation,
       input.lifecycleMode ?? 'SNAPSHOT_HOOK',
+      semanticFingerprint,
     );
     return evaluation;
+  }
+
+  private async persistOperationalRefreshWithConcurrencyRetry(
+    evaluation: VsiProfileEvaluationResult,
+    profileId: string,
+    semanticFingerprint: string,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const applied = await this.persistOperationalRefresh(
+          evaluation,
+          profileId,
+          semanticFingerprint,
+        );
+        if (applied === 'stale_semantics') {
+          return;
+        }
+        if (applied === 'applied' || applied === 'noop') {
+          return;
+        }
+      } catch (err) {
+        const code = (err as { code?: string })?.code;
+        const message = err instanceof Error ? err.message : '';
+        if (
+          (code === 'P2002' || message === 'VSI_PROFILE_REVISION_CONFLICT') &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error('VSI_PROFILE_REVISION_CONFLICT');
+  }
+
+  private async persistOperationalRefresh(
+    evaluation: VsiProfileEvaluationResult,
+    profileId: string,
+    semanticFingerprint: string,
+  ): Promise<'applied' | 'noop' | 'stale_semantics' | 'conflict'> {
+    return this.prisma.$transaction(async (tx) => {
+      const existingProfile = await tx.vehicleSignalCapabilityProfile.findUnique({
+        where: { id: profileId },
+      });
+      if (!existingProfile) {
+        return 'noop';
+      }
+
+      const refreshData = buildOperationalProfileRefreshUpdate({
+        persisted: existingProfile,
+        evaluation,
+        semanticFingerprint,
+      });
+      if (!refreshData) {
+        if (!areVsiProfileSemanticEvaluationsEquivalent(existingProfile, evaluation)) {
+          return 'stale_semantics';
+        }
+        return 'noop';
+      }
+
+      const updated = await tx.vehicleSignalCapabilityProfile.updateMany({
+        where: buildOperationalProfileRefreshCasWhere(existingProfile),
+        data: {
+          contentFingerprint: refreshData.contentFingerprint,
+          evaluatedAt: refreshData.evaluatedAt,
+          lastMaterializedProviderFetchAt: refreshData.lastMaterializedProviderFetchAt,
+          signalsSnapshot: refreshData.signalsSnapshot as unknown as Prisma.InputJsonValue,
+        },
+      });
+      if (updated.count === 0) {
+        throw new Error('VSI_PROFILE_REVISION_CONFLICT');
+      }
+      return 'applied';
+    });
   }
 
   private async persistWithConcurrencyRetry(
     evaluation: VsiProfileEvaluationResult,
     materializationTrigger: VsiProfileRevisionMaterializationTrigger,
+    semanticFingerprint?: string,
   ): Promise<void> {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -355,7 +446,12 @@ export class VsiSignalProfileMaterializationService {
             },
           },
         });
-        await this.persistEvaluation(evaluation, existingProfile, materializationTrigger);
+        await this.persistEvaluation(
+          evaluation,
+          existingProfile,
+          materializationTrigger,
+          semanticFingerprint,
+        );
         return;
       } catch (err) {
         const code = (err as { code?: string })?.code;
@@ -369,6 +465,7 @@ export class VsiSignalProfileMaterializationService {
         throw err;
       }
     }
+    throw new Error('VSI_PROFILE_REVISION_CONFLICT');
   }
 
   private async persistEvaluation(
@@ -379,8 +476,10 @@ export class VsiSignalProfileMaterializationService {
       contentFingerprint: string;
     } | null,
     materializationTrigger: VsiProfileRevisionMaterializationTrigger,
+    semanticFingerprint?: string,
   ): Promise<void> {
-    const fingerprint = fingerprintVsiProfileEvaluation(evaluation);
+    const fingerprint =
+      semanticFingerprint ?? fingerprintVsiProfileSemanticEvaluation(evaluation);
     const historyEnabled = isVsiP5h1ProfileRevisionHistoryCaptureEnabled();
 
     await this.prisma.$transaction(async (tx) => {
@@ -393,6 +492,33 @@ export class VsiSignalProfileMaterializationService {
           },
         },
       });
+
+      if (existing && areVsiProfileSemanticEvaluationsEquivalent(existing, evaluation)) {
+        const refreshData = buildOperationalProfileRefreshUpdate({
+          persisted: existing,
+          evaluation,
+          semanticFingerprint: fingerprint,
+        });
+        if (!refreshData) {
+          if (!areVsiProfileSemanticEvaluationsEquivalent(existing, evaluation)) {
+            return;
+          }
+          return;
+        }
+        const refreshed = await tx.vehicleSignalCapabilityProfile.updateMany({
+          where: buildOperationalProfileRefreshCasWhere(existing),
+          data: {
+            contentFingerprint: refreshData.contentFingerprint,
+            evaluatedAt: refreshData.evaluatedAt,
+            lastMaterializedProviderFetchAt: refreshData.lastMaterializedProviderFetchAt,
+            signalsSnapshot: refreshData.signalsSnapshot as unknown as Prisma.InputJsonValue,
+          },
+        });
+        if (refreshed.count === 0) {
+          throw new Error('VSI_PROFILE_REVISION_CONFLICT');
+        }
+        return;
+      }
 
       const link = await tx.vehicleDataSourceLink.findFirst({
         where: {

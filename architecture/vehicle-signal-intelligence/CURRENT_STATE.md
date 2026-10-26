@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-24 (DTC confirmed-complete → VSI `diagnostic_trouble_code` freshness projection) |
+| **Last updated** | 2026-10-26 (P0 operational CAS + semantic fingerprint) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -32,7 +32,8 @@
 ## Implemented (P3 — in PR #2041, not deployed)
 
 - **Profile contract v2** — `vsi-signal-profile-v2` with per-signal fingerprint dimensions (`qualityClassification`, `confidenceLevel`, `contentFingerprint` per signal).
-- **Empirical extractors (P3 correctness)** — VLS `rawPayloadJson` readers for `position_coordinates`, `accelerator_pedal_position`, `vehicle_speed`, `odometer`, `fuel_level_relative`, `diagnostic_trouble_code` (`vsi-profile-empirical-extractor.ts`, `vsi-raw-payload-signals.util.ts`). P1 composer keys unchanged.
+- **Empirical extractors (P3 correctness)** — VLS `rawPayloadJson` readers for `position_coordinates`, `accelerator_pedal_position`, `vehicle_speed`, `odometer`, `fuel_level_relative`, `diagnostic_trouble_code` (`vsi-profile-empirical-extractor.ts`, `vsi-raw-payload-signals.util.ts`). P1 composer keys unchanged. **2026-10-26:** finite numeric **zero** is a valid scalar measurement (e.g. `vehicle_speed=0` stationary); null/missing keys remain `NEVER_OBSERVED`.
+- **Semantic profile fingerprint (P0 hardening)** — `contentFingerprint` / revision identity excludes `lastMaterializedProviderFetchAt` and per-signal `lastProviderFetchAt`; operational fetch metadata can refresh without a new `profileRevision` when capability evidence is unchanged (`vsi-profile-fingerprint.util.ts`, `vsi-profile-materialization.service.ts`). Operational-only writes use CAS on `profileRevision`, `updatedAt`, and `lastMaterializedProviderFetchAt` (`buildOperationalProfileRefreshCasWhere`). Deferred consumer/P1 notes: [`evidence/VSI_P0_P1_DEFERRED_NOTES_2026-10-26.md`](evidence/VSI_P0_P1_DEFERRED_NOTES_2026-10-26.md).
 - **DTC-01A cross-path (2026-10-24)** — When telemetry bundle lacks `obdDTCList`, materialization uses binding-matched `vehicle_dtc_source_heads` confirmed-complete timestamps + VLS operational list (`vsi-dtc-complete-evidence.util.ts`); idempotency bypass when DTC source advances without bundle timestamp change; non-blocking `DTC_CONFIRMED_COMPLETE_APPLIED` hook from `DtcSnapshotApplyService`. Does not mutate bundle JSON or create legacy source heads.
 - **Bundle vs per-signal evidence** — bundle cadence / advance counts apply only to `provider_source_timestamp` (+ `bundleAdvanceFingerprint` on evaluation). Other materialized keys carry `PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT` and null historical metrics.
 - **Quality classifier** — current-observation freshness only on physical signals; `UNKNOWN` when attribution blockers; bundle historical helper separate (`classifyBundleHistoricalQuality`). No `OBSERVED_INTERMITTENT` from bundle irregularity alone.

@@ -106,7 +106,6 @@ export function extractProfileSignalEmpirical(input: {
         projectionAsOfMs,
         limitations,
         provenance,
-        allowZero: true,
       });
     }
     case 'position_coordinates': {
@@ -189,13 +188,16 @@ export function extractProfileSignalEmpirical(input: {
   }
 }
 
+function isFiniteNumericMeasurement(value: number | null): boolean {
+  return value != null && Number.isFinite(value);
+}
+
 function finalizeScalarExtraction(input: {
   native: string;
   rawSignal: ReturnType<typeof readRawScalarSignal>;
   projectionAsOfMs: number;
   limitations: string[];
   provenance: Array<'VEHICLE_LATEST_STATE'>;
-  allowZero?: boolean;
 }): VsiProfileEmpiricalExtraction {
   const limitations = [...input.limitations];
   if (!input.rawSignal.keyPresent) {
@@ -225,11 +227,7 @@ function finalizeScalarExtraction(input: {
       limitations,
     };
   }
-  const hasValue =
-    input.rawSignal.value != null &&
-    Number.isFinite(input.rawSignal.value) &&
-    (input.allowZero || input.rawSignal.value !== 0);
-  if (!hasValue) {
+  if (!isFiniteNumericMeasurement(input.rawSignal.value)) {
     if (input.rawSignal.keyPresent) {
       limitations.push('RAW_SNAPSHOT_KEY_NULL_VALUE_NOT_PHYSICAL_OBSERVATION');
     }
