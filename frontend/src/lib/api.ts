@@ -4163,6 +4163,14 @@ export const api = {
     listAll: (params?: { page?: number; limit?: number }) =>
       get<{ data: any[] }>('/admin/vehicles' + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
     get: (id: string) => get<any>(`/admin/vehicles/${id}`),
+    upsertHvMasterSpecification: (
+      vehicleId: string,
+      body: Record<string, unknown>,
+    ) =>
+      patch<Record<string, unknown>>(
+        `/admin/vehicles/${vehicleId}/hv-master-specification`,
+        body,
+      ),
     operationalOverview: () => get<any>('/admin/vehicles/operational/overview'),
     operationalAttentionQueue: (limit = 8) =>
       get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),

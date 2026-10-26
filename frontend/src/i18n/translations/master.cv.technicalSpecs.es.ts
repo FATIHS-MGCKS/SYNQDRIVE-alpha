@@ -17,11 +17,21 @@ export const masterCvTechnicalSpecsEs = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'No se pudieron cargar los datos del vehículo para editar.',
   'master.cv.technicalSpecs.updateSuccess': 'Especificaciones del vehículo guardadas.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'No se pudieron guardar todas las especificaciones. Revise los campos e inténtelo de nuevo.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'No se guardaron los datos físicos (p. ej. peso en vacío). Las especificaciones HV sí se guardaron.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'No se guardaron las especificaciones HV. Otros datos del vehículo pueden haberse guardado.',
   'master.cv.technicalSpecs.secondaryDetails': 'Detalles operativos e de integración',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'Variante de catálogo HV (explícita)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'Ninguna — sin metadatos de catálogo',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — catálogo CATL 6L (ESTIMATED, pack no verificado)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'La capacidad útil mostrada es un dato maestro heredado del vehículo (no SOH, no referencia verificada, no medición nueva). Los campos HV no se pueden editar para vehículos existentes en esta versión.',
+    'La capacidad útil es un dato legacy (no SOH, no referencia verificada, no medición) y permanece solo lectura. Los campos HV extendidos debajo son editables y se almacenan aparte de battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'Este campo HV no se persiste en el editor de vehículos existentes.',
+    'Los campos HV extendidos se guardan en la especificación master HV (separada de capacidades de referencia SOH).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Enrutamiento de eventos de conducción (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 frente a SMART5 define cómo Driving Intelligence obtiene eventos de conducción. Es independiente de la modalidad de conexión verificada en onboarding (software/OEM frente a telemática física).',

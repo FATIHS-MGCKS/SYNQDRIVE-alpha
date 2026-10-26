@@ -3,7 +3,13 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
 import { VehiclesController } from './vehicles.controller';
+
+function rolesOf(target: object, method: string) {
+  const handler = (target as Record<string, (...args: unknown[]) => unknown>)[method];
+  return Reflect.getMetadata(ROLES_KEY, handler) as string[] | undefined;
+}
 
 function guardsOf(target: object, method: string) {
   const handler = (target as Record<string, (...args: unknown[]) => unknown>)[method];
@@ -109,6 +115,18 @@ describe('VehiclesController — vehicle detail security characterization', () =
     it('GET vehicles/:vehicleId has no OrgScopingGuard', () => {
       const guards = guardsOf(VehiclesController.prototype, 'findOne');
       expect(guards).not.toContain(OrgScopingGuard);
+    });
+  });
+
+  describe('master admin HV master specification', () => {
+    it('upsertHvMasterSpecificationAdmin requires MASTER_ADMIN', () => {
+      expect(rolesOf(VehiclesController.prototype, 'upsertHvMasterSpecificationAdmin')).toEqual([
+        'MASTER_ADMIN',
+      ]);
+    });
+
+    it('findOneAdmin requires MASTER_ADMIN', () => {
+      expect(rolesOf(VehiclesController.prototype, 'findOneAdmin')).toEqual(['MASTER_ADMIN']);
     });
   });
 });

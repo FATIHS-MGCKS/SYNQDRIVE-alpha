@@ -17,11 +17,21 @@ export const masterCvTechnicalSpecsCs = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Data vozidla pro úpravu se nepodařilo načíst.',
   'master.cv.technicalSpecs.updateSuccess': 'Specifikace vozidla uloženy.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Specifikace vozidla se nepodařilo uložit kompletně. Zkontrolujte pole a zkuste to znovu.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'Fyzikální data (např. provozní hmotnost) se neuložila. HV údaje byly uloženy.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'HV údaje se neuložily. Ostatní data vozidla mohla být uložena.',
   'master.cv.technicalSpecs.secondaryDetails': 'Provozní a integrační podrobnosti',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'HV katalogová varianta (explicitní)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'Žádná — bez katalogových metadat',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — katalog CATL 6L (ESTIMATED, bez ověření packu)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'Užitná kapacita je legacy hodnota ze základních dat vozidla (ne SOH, ne ověřená reference, ne nový měřící údaj). HV pole nelze u existujících vozidel v této verzi upravovat.',
+    'Užitná kapacita je legacy hodnota ze základních dat (ne SOH, ne ověřená reference, ne měření) a zůstává zde jen pro čtení. Rozšířená HV pole níže lze upravovat a ukládají se odděleně od battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'Toto HV pole se v editoru existujícího vozidla aktuálně neukládá.',
+    'Rozšířená HV pole se ukládají v master HV specifikaci (odděleně od SOH referenčních kapacit).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Směrování událostí jízdy (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs SMART5 určuje, jak Driving Intelligence získává události jízdy. Je to oddělené od ověřené onboardingové modality připojení (software/OEM vs fyzická telematika).',

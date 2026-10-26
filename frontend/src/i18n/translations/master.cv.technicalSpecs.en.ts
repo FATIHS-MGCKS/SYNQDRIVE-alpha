@@ -17,11 +17,21 @@ export const masterCvTechnicalSpecsEn = {
   'master.cv.technicalSpecs.unitSeconds': 's',
   'master.cv.technicalSpecs.editLoadError': 'Vehicle data could not be loaded for editing.',
   'master.cv.technicalSpecs.updateSuccess': 'Vehicle specifications saved.',
+  'master.cv.technicalSpecs.updatePartialSaveFailed':
+    'Vehicle specifications could not be saved completely. Review the fields and try again.',
+  'master.cv.technicalSpecs.updatePartialPhysicsFailed':
+    'Physics data (e.g. curb weight) could not be saved. HV traction specifications were saved.',
+  'master.cv.technicalSpecs.updatePartialHvFailed':
+    'HV traction specifications could not be saved. Other vehicle data may have been saved.',
   'master.cv.technicalSpecs.secondaryDetails': 'Operational & integration details',
+  'master.cv.technicalSpecs.hvCatalogVariantLabel': 'HV catalog variant (explicit)',
+  'master.cv.technicalSpecs.hvCatalogVariantNone': 'None — no catalog metadata',
+  'master.cv.technicalSpecs.hvCatalogVariantTeslaModel3RwdCatl6l':
+    'Tesla Model 3 RWD LFP — CATL 6L catalog (ESTIMATED, not pack-verified)',
   'master.cv.technicalSpecs.hvLegacyMasterDataHint':
-    'Usable capacity shown here is legacy vehicle master data from registration (not SOH, not a verified reference, not a fresh measurement). HV fields cannot be edited for existing vehicles in this release.',
+    'Usable capacity is legacy vehicle master data (not SOH, not a verified reference capacity, not a live measurement) and stays read-only here. Extended HV catalog fields below can be edited and are stored separately from battery health.',
   'master.cv.technicalSpecs.hvFieldNotPersistedHint':
-    'This HV field is not stored for existing vehicles in the current editor.',
+    'Extended HV catalog fields are stored in HV master specification (separate from SOH reference capacities).',
   'master.cv.technicalSpecs.diRoutingSectionTitle': 'Driving Events routing (DI)',
   'master.cv.technicalSpecs.diRoutingHint':
     'LTE_R1 vs SMART5 controls how Driving Intelligence sources harsh-driving events. It is separate from the verified onboarding connection modality (software/OEM vs physical telematics).',
