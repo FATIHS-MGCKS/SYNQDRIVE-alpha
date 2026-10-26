@@ -27,10 +27,16 @@ export const BRAKE_REFERENCE_SPEC_SOURCE_PRIORITY: readonly BrakeReferenceSpecEv
 
 export const BRAKE_REFERENCE_SPEC_PLAUSIBILITY = {
   pad: { minMm: 2, maxMm: 25 },
-  disc: { minMm: 15, maxMm: 40 },
+  /** Solid rear discs (~12 mm) and ventilated fronts (~22–30 mm) must fit; not measured wear minimums. */
+  disc: { minMm: 10, maxMm: 40 },
   rotorWidth: { minMm: 8, maxMm: 50 },
   rotorDiameter: { minMm: 200, maxMm: 500 },
 } as const;
+
+/** Disc nominal at or below this is treated as pad thickness (overlap zone below ~12 mm solid discs). */
+const DISC_PAD_LIKE_UPPER_BOUND_MM = 11;
+/** Pad nominal at or above this is treated as disc thickness (independent of disc range minimum). */
+const PAD_DISC_LIKE_LOWER_BOUND_MM = 15;
 
 const COMPONENT_TO_INSTALLATION: Record<
   BrakeReferenceSpecComponent,
@@ -214,10 +220,10 @@ export function validateThicknessPlausibility(
     );
   }
 
-  if (kind === 'pad' && thicknessMm >= BRAKE_REFERENCE_SPEC_PLAUSIBILITY.disc.minMm) {
+  if (kind === 'pad' && thicknessMm >= PAD_DISC_LIKE_LOWER_BOUND_MM) {
     errors.push(`${component} value ${thicknessMm} mm looks like a disc thickness, not a pad`);
   }
-  if (kind === 'disc' && thicknessMm <= BRAKE_REFERENCE_SPEC_PLAUSIBILITY.pad.maxMm) {
+  if (kind === 'disc' && thicknessMm <= DISC_PAD_LIKE_UPPER_BOUND_MM) {
     errors.push(`${component} value ${thicknessMm} mm looks like a pad thickness, not a disc`);
   }
 
