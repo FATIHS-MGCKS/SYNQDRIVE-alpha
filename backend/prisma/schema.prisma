@@ -1853,6 +1853,8 @@ model Organization {
   batteryHvChargingCounterObservations                      BatteryHvChargingCounterObservation[]
   batteryHvChargingCounterRevalidationCheckpoints           BatteryHvChargingCounterRevalidationCheckpoint[]
   batteryHvChargingCounterPilotProviderRequests              BatteryHvChargingCounterPilotProviderRequest[]
+  batteryStartProxyPilotProviderRequests                     BatteryStartProxyPilotProviderRequest[]
+  batteryStartProxyPilotRawArchives                          BatteryStartProxyPilotRawArchive[]
   hvCapacityObservations                                    HvCapacityObservation[]
   batteryV2JobDeadLetters                                   BatteryV2JobDeadLetter[]
   batteryRetentionAggregates                                BatteryRetentionAggregate[]
@@ -3090,6 +3092,8 @@ model Vehicle {
   batteryHvChargingCounterObservations   BatteryHvChargingCounterObservation[]
   batteryHvChargingCounterRevalidationCheckpoints BatteryHvChargingCounterRevalidationCheckpoint[]
   batteryHvChargingCounterPilotProviderRequests BatteryHvChargingCounterPilotProviderRequest[]
+  batteryStartProxyPilotProviderRequests BatteryStartProxyPilotProviderRequest[]
+  batteryStartProxyPilotRawArchives      BatteryStartProxyPilotRawArchive[]
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
@@ -9998,6 +10002,64 @@ model BatteryHvChargingCounterPilotProviderRequest {
   @@id([organizationId, vehicleId, pilotEpoch, sourceHvChargeSessionId])
   @@index([organizationId, vehicleId], map: "battery_hv_cc_pilot_provider_req_vehicle_idx")
   @@map("battery_hv_charging_counter_pilot_provider_requests")
+}
+
+/// G5C-N16 P4H-R7 — durable forward-capture pilot provider attempt ledger (one row per trip per epoch).
+model BatteryStartProxyPilotProviderRequest {
+  organizationId     String    @map("organization_id")
+  vehicleId          String    @map("vehicle_id")
+  pilotEpoch         String    @map("pilot_epoch")
+  tripId             String    @map("trip_id")
+  lifecycleState     String    @map("lifecycle_state")
+  queryFingerprint   String    @db.Char(64) @map("query_fingerprint")
+  reservedAt         DateTime  @map("reserved_at")
+  requestStartedAt   DateTime? @map("request_started_at")
+  terminalAt         DateTime? @map("terminal_at")
+  outcomeDetail      String?   @map("outcome_detail")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, vehicleId, pilotEpoch, tripId])
+  @@index([organizationId, vehicleId], map: "battery_start_proxy_pilot_provider_req_vehicle_idx")
+  @@map("battery_start_proxy_pilot_provider_requests")
+}
+
+/// G5C-N16 P4H-R7 — cross-replica total provider send budget per pilot epoch.
+model BatteryStartProxyPilotGlobalBudget {
+  pilotEpoch         String   @id @map("pilot_epoch")
+  totalAttempts      Int      @default(0) @map("total_attempts")
+  maxTotalAttempts   Int      @map("max_total_attempts")
+  killSwitchActive   Boolean  @default(false) @map("kill_switch_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("battery_start_proxy_pilot_global_budget")
+}
+
+/// G5C-N16 P4H-R7 — sealed raw crank-window archive for offline replay (no secrets).
+model BatteryStartProxyPilotRawArchive {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  vehicleId          String   @map("vehicle_id")
+  tripId             String   @map("trip_id")
+  pilotEpoch         String   @map("pilot_epoch")
+  schemaVersion      String   @map("schema_version")
+  queryFingerprint   String   @db.Char(64) @map("query_fingerprint")
+  integritySha256    String   @db.Char(64) @map("integrity_sha256")
+  archiveJson        Json     @map("archive_json")
+  requestLedgerTripId String  @map("request_ledger_trip_id")
+  capturedAt         DateTime @map("captured_at")
+  retentionExpiresAt DateTime @map("retention_expires_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([pilotEpoch, tripId], map: "battery_start_proxy_pilot_raw_archives_epoch_trip_key")
+  @@index([organizationId, vehicleId, capturedAt(sort: Desc)], map: "battery_start_proxy_pilot_raw_archives_vehicle_idx")
+  @@map("battery_start_proxy_pilot_raw_archives")
 }
 
 /// M3.3-HV-H4-A3.1 — append-only H4 charge session source evidence revision (no runtime writer).

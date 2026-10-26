@@ -7,9 +7,11 @@ import {
   getBatteryRestTargetDelayMs,
   getBatteryV2ObservationStaleMs,
   getBatteryV2ReconciliationBatchSize,
+  evaluateBatteryV2StartProxyPilotScope,
   getBatteryV2StartProxyDelayMs,
   isBatteryV2RestShadowEnabled,
   isBatteryV2GeneralizedEvidenceEnabled,
+  isBatteryV2StartProxyPilotScopeEnabled,
   isStartWindowCollectionEnabled,
 } from '@config/battery-health-v2.config';
 import {
@@ -828,6 +830,10 @@ export class BatteryV2ReconciliationService {
       return 0;
     }
 
+    if (isBatteryV2StartProxyPilotScopeEnabled()) {
+      return 0;
+    }
+
     const proxyReadyBefore = new Date(Date.now() - getBatteryV2StartProxyDelayMs());
     const lookback = new Date(Date.now() - TRIP_LOOKBACK_MS);
 
@@ -853,6 +859,14 @@ export class BatteryV2ReconciliationService {
     for (const trip of trips) {
       const organizationId = trip.vehicle.organizationId;
       if (!organizationId) continue;
+
+      const pilotScope = evaluateBatteryV2StartProxyPilotScope({
+        vehicleId: trip.vehicleId,
+        tripStartedAt: trip.startTime,
+      });
+      if (!pilotScope.allowed) {
+        continue;
+      }
 
       const existingMeasurement = await this.prisma.batteryMeasurement.findFirst({
         where: {
