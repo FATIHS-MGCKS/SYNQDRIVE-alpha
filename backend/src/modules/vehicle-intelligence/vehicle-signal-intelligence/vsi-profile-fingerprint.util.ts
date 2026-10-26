@@ -70,6 +70,10 @@ export function projectVsiSignalSemanticFingerprintFields(
   if (Array.isArray(projected.evidenceProvenance)) {
     projected.evidenceProvenance = [...projected.evidenceProvenance].sort();
   }
+  const cadence = signal.cadenceIntelligence;
+  if (cadence?.cadenceSemanticFingerprint) {
+    projected.cadenceSemanticFingerprint = cadence.cadenceSemanticFingerprint;
+  }
   return projected;
 }
 

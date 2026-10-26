@@ -1,4 +1,5 @@
 /**
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * VSI P3 signal fingerprint + quality (disposable PostgreSQL).
  */
 import {
@@ -110,7 +111,7 @@ async function seedBundleHistory(
 (LIVE ? describe : describe.skip)('VSI P3 profile signal fingerprint (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
 
   beforeAll(() => {
     assertVsi03DisposablePostgresTarget();

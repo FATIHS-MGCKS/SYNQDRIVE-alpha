@@ -1,6 +1,7 @@
 /**
  * VSI P0+P1 profile materialization (disposable PostgreSQL).
  */
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
 import { PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
@@ -88,7 +89,7 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
 (LIVE ? describe : describe.skip)('VSI signal profile materialization (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const service = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const service = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
 
   beforeAll(() => {
     assertVsi03DisposablePostgresTarget();

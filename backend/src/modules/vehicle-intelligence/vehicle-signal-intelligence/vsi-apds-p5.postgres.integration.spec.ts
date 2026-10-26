@@ -1,4 +1,5 @@
 /**
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * VSI P5 APDS read-only adapter (disposable PostgreSQL).
  */
 import { PrismaClient } from '@prisma/client';
@@ -52,7 +53,7 @@ async function upsertVls(
 (LIVE ? describe : describe.skip)('VSI P5 APDS read-only (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
   const service = new VsiApdsP5ReadonlyService(
     new VsiCapabilityResolverRepository(prisma as never),
   );

@@ -22,6 +22,7 @@ export type VsiProfileEmpiricalExtraction = {
 
 const IMPLEMENTED_EXTRACTOR_KEYS = new Set<VsiProfileMaterializationKey>([
   'vehicle_speed',
+  'engine_rpm',
   'odometer',
   'fuel_level_relative',
   'diagnostic_trouble_code',
@@ -75,6 +76,18 @@ export function extractProfileSignalEmpirical(input: {
         projectionAsOfMs,
         limitations,
         provenance,
+      });
+    }
+    case 'engine_rpm': {
+      const rawSignal = readRawScalarSignal(raw, native);
+      limitations.push('ICE_RPM_SNAPSHOT_ONLY_NOT_HISTORICAL_CADENCE');
+      return finalizeScalarExtraction({
+        native,
+        rawSignal,
+        projectionAsOfMs,
+        limitations,
+        provenance,
+        zeroIsMeasured: true,
       });
     }
     case 'odometer': {
@@ -198,6 +211,7 @@ function finalizeScalarExtraction(input: {
   projectionAsOfMs: number;
   limitations: string[];
   provenance: Array<'VEHICLE_LATEST_STATE'>;
+  zeroIsMeasured?: boolean;
 }): VsiProfileEmpiricalExtraction {
   const limitations = [...input.limitations];
   if (!input.rawSignal.keyPresent) {
@@ -227,7 +241,10 @@ function finalizeScalarExtraction(input: {
       limitations,
     };
   }
-  if (!isFiniteNumericMeasurement(input.rawSignal.value)) {
+  const valueMeasured =
+    isFiniteNumericMeasurement(input.rawSignal.value) ||
+    (input.zeroIsMeasured && input.rawSignal.value === 0);
+  if (!valueMeasured) {
     if (input.rawSignal.keyPresent) {
       limitations.push('RAW_SNAPSHOT_KEY_NULL_VALUE_NOT_PHYSICAL_OBSERVATION');
     }

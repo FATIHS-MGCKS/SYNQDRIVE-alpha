@@ -1,4 +1,5 @@
 /**
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * Operational refresh concurrency (disposable PostgreSQL).
  */
 import { Prisma, PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
@@ -103,7 +104,7 @@ async function seedDrivingCapability(
   () => {
     const prisma = new PrismaClient();
     const declared = new VsiDeclaredCatalogResolver(prisma as never);
-    const service = new VsiSignalProfileMaterializationService(prisma as never, declared);
+    const service = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
     const callOperationalRefresh = (
       evaluation: VsiProfileEvaluationResult,
       profileId: string,

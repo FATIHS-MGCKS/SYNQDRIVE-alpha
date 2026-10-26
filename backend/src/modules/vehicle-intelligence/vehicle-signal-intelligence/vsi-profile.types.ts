@@ -4,6 +4,7 @@ import type {
   VsiEvidenceOrigin,
   VsiProviderCatalogStatus,
 } from './vehicle-signal-evidence.contract';
+import type { VsiSignalCadenceIntelligenceV2 } from './vsi-profile-cadence.types';
 
 export const VSI_PROFILE_CONTRACT_VERSION = 'vsi-signal-profile-v2' as const;
 
@@ -18,6 +19,7 @@ export const VSI_PROFILE_MATERIALIZATION_KEYS = [
   'device_connectivity',
   'provider_last_successful_fetch',
   'vehicle_speed',
+  'engine_rpm',
   'odometer',
   'fuel_level_relative',
   'diagnostic_trouble_code',
@@ -68,6 +70,8 @@ export type VsiProfileSignalFingerprintV1 = VsiProfileSignalSnapshotV1 & {
   observedCadenceMedianSeconds: number | null;
   observedCadenceSampleCount: number | null;
   maxStaleIntervalSeconds: number | null;
+  /** Per-signal cadence dimension (V2); absent on legacy V1 snapshots. */
+  cadenceIntelligence?: VsiSignalCadenceIntelligenceV2;
   contentFingerprint: string;
 };
 

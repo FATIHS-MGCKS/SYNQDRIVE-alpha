@@ -1,4 +1,5 @@
 /**
+import { createNoopVsiProfileCadenceEvidenceLoader } from './vsi-profile-cadence-evidence.loader.stub';
  * P5B.1 offline replay (disposable PostgreSQL) — read-only batch correlation.
  */
 import { PrismaClient } from '@prisma/client';
@@ -63,7 +64,7 @@ async function upsertVls(
   const prisma = new PrismaClient();
   const profiles = new VsiCapabilityResolverRepository(prisma as never);
   const declared = new VsiDeclaredCatalogResolver(prisma as never);
-  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared);
+  const materialization = new VsiSignalProfileMaterializationService(prisma as never, declared, createNoopVsiProfileCadenceEvidenceLoader());
   const replay = new VsiApdsP5b1OfflineReplayService(
     new VsiApdsP5b1DecisionRepository(prisma as never),
     profiles,
