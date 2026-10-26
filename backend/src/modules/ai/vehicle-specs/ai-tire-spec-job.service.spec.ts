@@ -83,14 +83,17 @@ describe('AiTireSpecJobService.applyResult', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('rejects tire setup mismatch', async () => {
+  it('rejects stale bound setup that is not active', async () => {
     const prisma = {
       aiTireSpecJob: {
         findUnique: jest.fn().mockResolvedValue({
           id: jobId,
           status: 'succeeded',
           vehicleId,
-          tireSetupId: 'other-setup',
+          tireSetupId: 'setup-stale',
+          tireSize: '225/45R17',
+          loadIndex: '94',
+          speedIndex: 'Y',
           normalizedResult,
           appliedAt: null,
         }),
@@ -98,23 +101,62 @@ describe('AiTireSpecJobService.applyResult', () => {
       vehicle: { findFirst: jest.fn().mockResolvedValue({ id: vehicleId }) },
       vehicleTireSetup: {
         findFirst: jest.fn().mockResolvedValue({
-          id: setupId,
+          id: 'setup-stale',
+          vehicleId,
+          status: 'STORED',
+          removedAt: new Date(),
+          frontDimension: '225/45R17',
+          rearDimension: null,
+          loadIndexFront: '94',
+          speedIndexFront: 'Y',
+          loadIndexRear: null,
+          speedIndexRear: null,
           initialTreadEvidenceSource: null,
           initialTreadDepthMm: null,
           initialTreadFrontMm: null,
           initialTreadRearMm: null,
         }),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: setupId,
+            vehicleId,
+            status: 'ACTIVE',
+            removedAt: null,
+            frontDimension: '225/45R17',
+            rearDimension: null,
+            loadIndexFront: '94',
+            speedIndexFront: 'Y',
+            loadIndexRear: null,
+            speedIndexRear: null,
+          },
+        ]),
       },
     };
     const service = buildService(prisma);
     const result = await service.applyResult(jobId, vehicleId, { organizationId: orgId });
     expect(result.success).toBe(false);
-    expect(result.message).toMatch(/tire setup/i);
+    expect(result.message).toMatch(/no longer active/i);
   });
+
+  const activeSetupRow = {
+    id: setupId,
+    vehicleId,
+    status: 'ACTIVE',
+    removedAt: null,
+    frontDimension: '225/45R17',
+    rearDimension: null,
+    loadIndexFront: '94',
+    speedIndexFront: 'Y',
+    loadIndexRear: null,
+    speedIndexRear: null,
+    initialTreadEvidenceSource: null,
+    initialTreadDepthMm: null,
+    initialTreadFrontMm: null,
+    initialTreadRearMm: null,
+  };
 
   it('applies with AI_ESTIMATED baseline and does not force USER_CONFIRMED', async () => {
     const update = jest.fn();
-    const jobUpdate = jest.fn();
     const prisma = {
       aiTireSpecJob: {
         findUnique: jest.fn().mockResolvedValue({
@@ -122,25 +164,28 @@ describe('AiTireSpecJobService.applyResult', () => {
           status: 'succeeded',
           vehicleId,
           tireSetupId: setupId,
+          tireSize: '225/45R17',
+          loadIndex: '94',
+          speedIndex: 'Y',
           normalizedResult,
           confidenceScore: 0.95,
           completedAt: new Date(),
           appliedAt: null,
         }),
-        update: jobUpdate,
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       vehicle: { findFirst: jest.fn().mockResolvedValue({ id: vehicleId }) },
       vehicleTireSetup: {
-        findFirst: jest.fn().mockResolvedValue({
-          id: setupId,
-          initialTreadEvidenceSource: null,
-          initialTreadDepthMm: null,
-          initialTreadFrontMm: null,
-          initialTreadRearMm: null,
-        }),
+        findFirst: jest.fn().mockResolvedValue(activeSetupRow),
+        findMany: jest.fn().mockResolvedValue([activeSetupRow]),
         update,
       },
-      $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
+      $transaction: jest.fn(async (fn: (tx: object) => Promise<unknown>) =>
+        fn({
+          aiTireSpecJob: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+          vehicleTireSetup: { update },
+        }),
+      ),
     };
     const service = buildService(prisma);
     const result = await service.applyResult(jobId, vehicleId, {
@@ -162,6 +207,9 @@ describe('AiTireSpecJobService.applyResult', () => {
           status: 'succeeded',
           vehicleId,
           tireSetupId: setupId,
+          tireSize: '225/45R17',
+          loadIndex: '94',
+          speedIndex: 'Y',
           normalizedResult,
           appliedAt: new Date(),
           appliedToSetupId: setupId,
@@ -169,7 +217,8 @@ describe('AiTireSpecJobService.applyResult', () => {
       },
       vehicle: { findFirst: jest.fn().mockResolvedValue({ id: vehicleId }) },
       vehicleTireSetup: {
-        findFirst: jest.fn().mockResolvedValue({ id: setupId }),
+        findFirst: jest.fn().mockResolvedValue(activeSetupRow),
+        findMany: jest.fn().mockResolvedValue([activeSetupRow]),
       },
     };
     const service = buildService(prisma);
@@ -180,32 +229,39 @@ describe('AiTireSpecJobService.applyResult', () => {
 
   it('allows explicit owner spec confirmation on persisted blob only', async () => {
     const update = jest.fn();
+    const protectedSetup = {
+      ...activeSetupRow,
+      initialTreadEvidenceSource: TireEvidenceSource.USER_CONFIRMED,
+      initialTreadDepthMm: 6,
+    };
     const prisma = {
       aiTireSpecJob: {
         findUnique: jest.fn().mockResolvedValue({
           id: jobId,
           status: 'succeeded',
           vehicleId,
-          tireSetupId: null,
+          tireSetupId: setupId,
+          tireSize: '225/45R17',
+          loadIndex: '94',
+          speedIndex: 'Y',
           normalizedResult,
           confidenceScore: 95,
           completedAt: new Date(),
           appliedAt: null,
         }),
-        update: jest.fn(),
       },
       vehicle: { findFirst: jest.fn().mockResolvedValue({ id: vehicleId }) },
       vehicleTireSetup: {
-        findFirst: jest.fn().mockResolvedValue({
-          id: setupId,
-          initialTreadEvidenceSource: TireEvidenceSource.USER_CONFIRMED,
-          initialTreadDepthMm: 6,
-          initialTreadFrontMm: null,
-          initialTreadRearMm: null,
-        }),
+        findFirst: jest.fn().mockResolvedValue(protectedSetup),
+        findMany: jest.fn().mockResolvedValue([protectedSetup]),
         update,
       },
-      $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
+      $transaction: jest.fn(async (fn: (tx: object) => Promise<unknown>) =>
+        fn({
+          aiTireSpecJob: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+          vehicleTireSetup: { update },
+        }),
+      ),
     };
     const service = buildService(prisma);
     await service.applyResult(jobId, vehicleId, {

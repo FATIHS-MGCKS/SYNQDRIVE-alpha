@@ -16,6 +16,13 @@ import {
 import { TireSetupStatus } from '@prisma/client';
 import { buildAiTireSpecApplySetupUpdate } from '../../vehicle-intelligence/tires/ai-tire-spec-apply.util';
 import { normalizeTireSpecConfidenceScore } from '../../vehicle-intelligence/tires/ai-tire-spec-confidence.util';
+import {
+  isActiveTireSetup,
+  loadSpeedIndexMatchesSetup,
+  tireSizeMatchesSetup,
+  validateJobTireSetupBinding,
+  type TireSetupIdentitySnapshot,
+} from '../../vehicle-intelligence/tires/ai-tire-spec-job-binding.util';
 
 function mapTireSpecAliases(
   raw: Record<string, unknown> | null,
@@ -97,6 +104,45 @@ export class AiTireSpecJobService {
     if (!input.tireSize?.trim()) throw new BadRequestException('tireSize is required');
     if (!input.loadIndex?.trim()) throw new BadRequestException('loadIndex is required');
     if (!input.speedIndex?.trim()) throw new BadRequestException('speedIndex is required');
+
+    if (input.tireSetupId && !input.vehicleId) {
+      throw new BadRequestException('vehicleId is required when tireSetupId is set');
+    }
+
+    if (input.tireSetupId && input.vehicleId) {
+      const boundSetup = await this.prisma.vehicleTireSetup.findFirst({
+        where: { id: input.tireSetupId, vehicleId: input.vehicleId },
+        select: {
+          id: true,
+          vehicleId: true,
+          status: true,
+          removedAt: true,
+          frontDimension: true,
+          rearDimension: true,
+          loadIndexFront: true,
+          loadIndexRear: true,
+          speedIndexFront: true,
+          speedIndexRear: true,
+        },
+      });
+      if (!boundSetup) {
+        throw new BadRequestException('tireSetupId does not belong to vehicle');
+      }
+      if (!isActiveTireSetup(boundSetup)) {
+        throw new BadRequestException('tire setup is not active');
+      }
+      if (!tireSizeMatchesSetup(input.tireSize.trim(), boundSetup)) {
+        throw new BadRequestException('tireSize does not match bound tire setup dimensions');
+      }
+      if (
+        !loadSpeedIndexMatchesSetup(
+          { loadIndex: input.loadIndex.trim(), speedIndex: input.speedIndex.trim() },
+          boundSetup,
+        )
+      ) {
+        throw new BadRequestException('load/speed index does not match bound tire setup');
+      }
+    }
 
     const job = await this.prisma.aiTireSpecJob.create({
       data: {
@@ -184,21 +230,65 @@ export class AiTireSpecJobService {
       throw new ForbiddenException('Vehicle not in organization scope');
     }
 
-    const setup = await this.prisma.vehicleTireSetup.findFirst({
+    const setupSelect = {
+      id: true,
+      vehicleId: true,
+      status: true,
+      removedAt: true,
+      frontDimension: true,
+      rearDimension: true,
+      loadIndexFront: true,
+      loadIndexRear: true,
+      speedIndexFront: true,
+      speedIndexRear: true,
+      initialTreadEvidenceSource: true,
+      initialTreadDepthMm: true,
+      initialTreadFrontMm: true,
+      initialTreadRearMm: true,
+    };
+
+    const boundSetup = job.tireSetupId
+      ? await this.prisma.vehicleTireSetup.findFirst({
+          where: { id: job.tireSetupId, vehicleId },
+          select: setupSelect,
+        })
+      : null;
+
+    const activeSetups = await this.prisma.vehicleTireSetup.findMany({
       where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
+      select: setupSelect,
       orderBy: { createdAt: 'desc' },
     });
-    if (!setup) {
-      return { success: false, message: 'No active tire setup found for this vehicle' };
+
+    const binding = validateJobTireSetupBinding(
+      {
+        tireSize: job.tireSize,
+        loadIndex: job.loadIndex,
+        speedIndex: job.speedIndex,
+        vehicleId: job.vehicleId,
+        tireSetupId: job.tireSetupId,
+      },
+      activeSetups as TireSetupIdentitySnapshot[],
+      boundSetup as TireSetupIdentitySnapshot | null,
+    );
+    if (!binding.ok) {
+      return { success: false, message: binding.message };
     }
-    if (job.tireSetupId && job.tireSetupId !== setup.id) {
-      return { success: false, message: 'Job tire setup does not match active tire setup' };
+
+    const setup =
+      job.tireSetupId && boundSetup
+        ? boundSetup
+        : activeSetups.length === 1
+          ? activeSetups[0]
+          : null;
+    if (!setup) {
+      return { success: false, message: 'No applicable tire setup found for this job' };
     }
 
     if (job.appliedAt) {
       if (job.appliedToSetupId === setup.id) {
-        const normalized = normalizeAiTireSpecResult(job.normalizedResult as Record<string, unknown>);
-        const appliedFields = Object.entries(normalized)
+        const normalizedReplay = normalizeAiTireSpecResult(job.normalizedResult as Record<string, unknown>);
+        const appliedFields = Object.entries(normalizedReplay)
           .filter(([, v]) => v != null)
           .map(([k]) => k);
         return {
@@ -245,19 +335,49 @@ export class AiTireSpecJobService {
       confidenceScore,
     });
 
-    await this.prisma.$transaction([
-      this.prisma.vehicleTireSetup.update({
+    const appliedAt = new Date();
+    const claimAndApply = await this.prisma.$transaction(async (tx) => {
+      const claim = await tx.aiTireSpecJob.updateMany({
+        where: { id: job.id, appliedAt: null, status: 'succeeded' },
+        data: { appliedAt, appliedToSetupId: setup.id },
+      });
+
+      if (claim.count === 0) {
+        const current = await tx.aiTireSpecJob.findUnique({
+          where: { id: job.id },
+          select: { appliedAt: true, appliedToSetupId: true },
+        });
+        if (current?.appliedAt && current.appliedToSetupId === setup.id) {
+          return { idempotentReplay: true as const };
+        }
+        return { idempotentReplay: false as const, conflict: true as const };
+      }
+
+      await tx.vehicleTireSetup.update({
         where: { id: setup.id },
         data: setupUpdate as any,
-      }),
-      this.prisma.aiTireSpecJob.update({
-        where: { id: job.id },
-        data: {
-          appliedAt: new Date(),
-          appliedToSetupId: setup.id,
-        },
-      }),
-    ]);
+      });
+      return { idempotentReplay: false as const, conflict: false as const };
+    });
+
+    if (claimAndApply.conflict) {
+      return {
+        success: false,
+        message: 'Job apply conflict — another request claimed this job first',
+      };
+    }
+    if (claimAndApply.idempotentReplay) {
+      const appliedFields = Object.entries(normalized)
+        .filter(([, v]) => v != null)
+        .map(([k]) => k);
+      return {
+        success: true,
+        setupId: setup.id,
+        appliedFields,
+        message: 'Already applied to this tire setup',
+        idempotentReplay: true,
+      };
+    }
 
     this.logger.log(`[AiTireSpec] Applied job ${job.id} to setup ${setup.id} — ${validation.fieldCount} fields`);
 
