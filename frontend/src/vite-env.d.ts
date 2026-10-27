@@ -14,6 +14,11 @@ interface ImportMetaEnv {
    */
   readonly VITE_NOTIFICATIONS_V2?: string;
   readonly VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST?: string;
+  /**
+   * Trip map: replace legacy behavior driving-event markers with DS4 motion markers when verified events exist.
+   * Default on when unset. Set `false` to roll back to legacy-only driving markers.
+   */
+  readonly VITE_TRIP_MAP_DS4_DRIVING_MARKER_REPLACEMENT_ENABLED?: string;
 }
 
 interface ImportMeta {

@@ -28,6 +28,7 @@ import {
   type MotionRoutePickMap,
 } from './motion-map.utils';
 import type { TripMapLayerState, TripMapPopoverState, TripMapRoutePoint, TripMapTripData } from './trips-map.types';
+import type { TripMapDrivingMarkerSourceResolution } from './utils/trip-map-driving-marker-source';
 import {
   bearingBetween,
   buildMeasuredSpeedLineFeatures,
@@ -51,6 +52,7 @@ export interface UseTripsRouteMapOptions {
   selectedBehaviorEventId?: string | null;
   endpointLabels?: { start?: string | null; end?: string | null };
   motionMapActive?: boolean;
+  drivingMarkerSource?: TripMapDrivingMarkerSourceResolution;
   motionSamples?: TripMotionMapSample[];
   motionEvents?: TripMotionMapEvent[];
   motionStops?: TripMotionMapStop[];
@@ -88,6 +90,16 @@ export function useTripsRouteMap({
   selectedBehaviorEventId,
   endpointLabels,
   motionMapActive = false,
+  drivingMarkerSource = {
+    provenance: 'LEGACY_BEHAVIOR_EVENTS',
+    ds4EvidenceState: 'UNAVAILABLE',
+    replacementGateEnabled: true,
+    hideLegacyDrivingMarkers: false,
+    showDs4DrivingMarkers: false,
+    renderableDs4EventCount: 0,
+    rejectedOrSuspectDs4EventCount: 0,
+    totalDs4EventCount: 0,
+  },
   motionSamples = [],
   motionEvents = [],
   motionStops = [],
@@ -542,7 +554,7 @@ export function useTripsRouteMap({
       if (ev.latitude == null || ev.longitude == null) return;
       const isAbuse = ev.eventCategory === 'ABUSE';
       if (isAbuse && !layers.showAbuseEvents) return;
-      if (!isAbuse && layers.showDrivingEvents && motionMapActive) return;
+      if (!isAbuse && layers.showDrivingEvents && drivingMarkerSource.hideLegacyDrivingMarkers) return;
       if (!isAbuse && !layers.showDrivingEvents) return;
 
       const openPopover = () => {
@@ -570,16 +582,16 @@ export function useTripsRouteMap({
     isDarkMode,
     onEventSelect,
     selectedBehaviorEventId,
-    motionMapActive,
+    drivingMarkerSource.hideLegacyDrivingMarkers,
   ]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapLoaded || !selectedTrip || !motionMapActive) return;
+    if (!map || !mapLoaded || !selectedTrip) return;
     motionMarkersRef.current.forEach((m) => m.remove());
     motionMarkersRef.current = [];
 
-    if (!layers.showDrivingEvents) return;
+    if (!layers.showDrivingEvents || !drivingMarkerSource.showDs4DrivingMarkers) return;
     const grouped = groupMotionEventsByCoordinate(motionEvents);
     grouped.forEach((eventsAtPoint) => {
       const ev = eventsAtPoint[0];
@@ -611,7 +623,7 @@ export function useTripsRouteMap({
     });
   }, [
     motionEvents,
-    motionMapActive,
+    drivingMarkerSource.showDs4DrivingMarkers,
     layers.showDrivingEvents,
     mapLoaded,
     selectedTrip?.id,
