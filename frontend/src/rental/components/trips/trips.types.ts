@@ -96,13 +96,17 @@ export interface TripTimelineTrip {
   tripDecisionSummary?: import('./trip-decision.types').TripDecisionSummary | null;
   /** Hardware-aware driving impact profile (P45) — fleet comparability hint. */
   drivingImpactModelProfile?: import('../../../lib/api').VehicleTripAnalytics['drivingImpactModelProfile'];
+  scoreSource?: import('../../../lib/api').VehicleTripAnalytics['scoreSource'];
+  drivingImpactAnalysisStatus?: import('../../../lib/api').VehicleTripAnalytics['drivingImpactAnalysisStatus'];
+  drivingImpactScoreSource?: import('../../../lib/api').VehicleTripAnalytics['drivingImpactScoreSource'];
+  drivingImpactSourceCompleteness?: number | null;
   /** Read-only ClickHouse evidence mirror — not canonical scores. */
   clickhouseEvidence?: TripClickHouseEvidence | null;
 }
 
 /** Full trip record including optional analytics fields from the API. */
 export interface TripData extends TripTimelineTrip {
-  scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  scoreSource?: import('../../../lib/api').VehicleTripAnalytics['scoreSource'];
   fuelUsedLiters?: number;
   avgConsumptionLPer100Km?: number;
   fuelConfidence?: string;

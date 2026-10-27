@@ -47,9 +47,10 @@ describe('i18n structural invariants (P0/P1 guardrails)', () => {
     }
   });
 
-  it('keeps Turkish as fallback-only with an empty typed dictionary file', () => {
-    expect(OFFICIAL_LOCALES_WITHOUT_DICTIONARY).toContain('tr');
-    expect(TRANSLATION_LOCALE_REGISTRY.tr.status).toBe('fallback-only');
+  it('keeps Turkish on a sparse partial dictionary without English spread inheritance', () => {
+    expect(OFFICIAL_LOCALES_WITHOUT_DICTIONARY).not.toContain('tr');
+    expect(TRANSLATION_LOCALE_REGISTRY.tr.status).toBe('partial');
+    expect(TRANSLATION_LOCALE_REGISTRY.tr.hasLocaleDictionary).toBe(true);
     const turkishSource = readFileSync(join(translationsDir, 'tr.ts'), 'utf8');
     expect(turkishSource).not.toMatch(/\.\.\.en\b/);
     expect(turkishSource).toContain('PartialTranslationDictionary');

@@ -1,4 +1,4 @@
-import { BookingStatus, Prisma } from '@prisma/client';
+import { BookingStatus, Prisma, type TripDrivingImpactAnalysisStatus } from '@prisma/client';
 import type {
   DriverAttributionSource,
   DriverAttributionType,
@@ -111,6 +111,8 @@ export class CanonicalTripHydrationBatchLoader {
         drivingStressScore: number | null;
         fullBrakingPer100Km: number | null;
         sourceSummaryJson: Prisma.JsonValue | null;
+        analysisStatus: TripDrivingImpactAnalysisStatus;
+        sourceCompleteness: number | null;
       }
     >
   > {
@@ -120,6 +122,8 @@ export class CanonicalTripHydrationBatchLoader {
         drivingStressScore: number | null;
         fullBrakingPer100Km: number | null;
         sourceSummaryJson: Prisma.JsonValue | null;
+        analysisStatus: TripDrivingImpactAnalysisStatus;
+        sourceCompleteness: number | null;
       }
     >();
     if (tripIds.length === 0) return map;
@@ -133,6 +137,8 @@ export class CanonicalTripHydrationBatchLoader {
           drivingStressScore: true,
           fullBrakingPer100Km: true,
           sourceSummaryJson: true,
+          analysisStatus: true,
+          sourceCompleteness: true,
         },
       });
       for (const row of rows) {
@@ -140,6 +146,8 @@ export class CanonicalTripHydrationBatchLoader {
           drivingStressScore: row.drivingStressScore,
           fullBrakingPer100Km: row.fullBrakingPer100Km,
           sourceSummaryJson: row.sourceSummaryJson,
+          analysisStatus: row.analysisStatus,
+          sourceCompleteness: row.sourceCompleteness,
         });
       }
     }

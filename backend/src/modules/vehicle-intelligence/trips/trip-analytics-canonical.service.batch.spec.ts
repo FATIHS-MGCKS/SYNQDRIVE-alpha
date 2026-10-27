@@ -72,7 +72,14 @@ describe('TripAnalyticsCanonicalService batch hydration', () => {
 
   it('hydrates a single trip through the shared batch path', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      { tripId: 'trip-1', drivingStressScore: 42, sourceSummaryJson: null },
+      {
+        tripId: 'trip-1',
+        drivingStressScore: 42,
+        sourceSummaryJson: null,
+        fullBrakingPer100Km: null,
+        analysisStatus: 'COMPLETE',
+        sourceCompleteness: 0.8,
+      },
     ]);
 
     const result = await service.hydrateTrip('org-1', baseTrip('trip-1') as any);

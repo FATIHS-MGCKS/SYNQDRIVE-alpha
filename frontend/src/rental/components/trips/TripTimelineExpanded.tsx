@@ -209,6 +209,9 @@ export function TripTimelineExpanded({
             compact={false}
             comparabilityHint={comparabilityHint}
             modelProfileLabel={modelProfileLabel}
+            drivingImpactAnalysisStatus={trip.drivingImpactAnalysisStatus ?? null}
+            scoreSource={trip.scoreSource ?? null}
+            drivingImpactScoreSource={trip.drivingImpactScoreSource ?? trip.scoreSource ?? null}
             stressMissingContext={{
               behaviorEventCount: resolveBehaviorEventCount(
                 behaviorEvents,

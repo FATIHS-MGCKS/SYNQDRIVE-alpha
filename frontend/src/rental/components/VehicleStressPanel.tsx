@@ -1,4 +1,9 @@
+import { useLanguage } from '../../i18n/LanguageContext';
 import { StatusChip } from '../../components/patterns';
+import {
+  DRIVING_IMPACT_QUALITY_I18N_KEY,
+  resolveDrivingImpactQualityHintKeys,
+} from '../lib/driving-impact-quality';
 import {
   formatStressScore,
   getDataConfidenceLabel,
@@ -8,6 +13,7 @@ import {
   SCORE_EM_DASH,
   stressToneToStatusTone,
   type DataConfidence,
+  type DrivingStressScoreSource,
   type StressLevel,
 } from '../lib/scoreFormat';
 import {
@@ -39,6 +45,9 @@ interface VehicleStressPanelProps {
   modelProfileLabel?: string | null;
   rollingWindowFootnote?: string | null;
   stressMissingContext?: StressScoreMissingContext;
+  drivingImpactAnalysisStatus?: string | null;
+  scoreSource?: DrivingStressScoreSource | string | null;
+  drivingImpactScoreSource?: DrivingStressScoreSource | string | null;
 }
 
 const COMPONENT_ROWS: Array<{
@@ -104,7 +113,20 @@ export function VehicleStressPanel({
   modelProfileLabel,
   rollingWindowFootnote,
   stressMissingContext,
+  drivingImpactAnalysisStatus,
+  scoreSource,
+  drivingImpactScoreSource,
 }: VehicleStressPanelProps) {
+  const { t } = useLanguage();
+  const qualityHintKeys = resolveDrivingImpactQualityHintKeys({
+    drivingStressScore: stressScore,
+    scoreSource,
+    drivingImpactScoreSource,
+    drivingImpactAnalysisStatus,
+  });
+  const qualityHints = qualityHintKeys.map((key) =>
+    t(DRIVING_IMPACT_QUALITY_I18N_KEY[key]),
+  );
   const display = formatStressScore(stressScore, {
     hasEnoughData,
     level: stressLevel ?? undefined,
@@ -126,6 +148,14 @@ export function VehicleStressPanel({
             Datenbasis: {getDataConfidenceLabel(dataConfidence as DataConfidence)}
           </p>
         )}
+        {qualityHintKeys.map((hintKey, index) => (
+          <p
+            key={`${hintKey}-${index}`}
+            className="mt-2 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300"
+          >
+            {qualityHints[index]}
+          </p>
+        ))}
         {comparabilityHint && (
           <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
             {modelProfileLabel ? (
@@ -154,6 +184,14 @@ export function VehicleStressPanel({
           <StatusChip tone={stressToneToStatusTone(display.tone)} dot>
             {display.label}
           </StatusChip>
+          {qualityHintKeys.map((hintKey, index) => (
+            <p
+              key={`${hintKey}-${index}`}
+              className="text-[10px] leading-relaxed text-amber-800 dark:text-amber-300"
+            >
+              {qualityHints[index]}
+            </p>
+          ))}
         </div>
 
         <div className="flex shrink-0 flex-col items-center gap-1 self-center sm:self-auto">

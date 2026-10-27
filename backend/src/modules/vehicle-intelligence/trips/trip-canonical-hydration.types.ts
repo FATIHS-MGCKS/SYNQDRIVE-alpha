@@ -1,4 +1,11 @@
-import type { CustomerType, DriverAttributionSource, DriverAttributionType, DrivingAttributionConfidence, Prisma } from '@prisma/client';
+import type {
+  CustomerType,
+  DriverAttributionSource,
+  DriverAttributionType,
+  DrivingAttributionConfidence,
+  Prisma,
+  TripDrivingImpactAnalysisStatus,
+} from '@prisma/client';
 import type { TripAssignmentResolution } from './trip-assignment.service';
 import type { TripAttribution } from './trip-attribution.types';
 
@@ -54,6 +61,8 @@ export type CanonicalTripHydrationPrefetch = {
       drivingStressScore: number | null;
       fullBrakingPer100Km: number | null;
       sourceSummaryJson: Prisma.JsonValue | null;
+      analysisStatus: TripDrivingImpactAnalysisStatus;
+      sourceCompleteness: number | null;
     }
   >;
   bookingsByVehicle: Map<string, BookingOverlapCandidate[]>;

@@ -21,7 +21,14 @@ export function mapTripForVehicleApi(
     qualityStatus?: string | null;
     hardwareType?: string | null;
     canonicalTripSummary?: {
-      scores?: { drivingStressScore?: number | null; stressLevel?: string | null; scoreSource?: string };
+      scores?: {
+        drivingStressScore?: number | null;
+        stressLevel?: string | null;
+        scoreSource?: string;
+        drivingImpactAnalysisStatus?: string | null;
+        drivingImpactScoreSource?: string | null;
+        drivingImpactSourceCompleteness?: number | null;
+      };
       events?: Record<string, number | undefined>;
       assignment?: Record<string, unknown>;
       attribution?: TripAttribution;
@@ -65,6 +72,10 @@ export function mapTripForVehicleApi(
     stressLevel: summary?.scores?.stressLevel ?? null,
     drivingStyleScore: summary?.scores?.drivingStressScore ?? null,
     scoreSource: summary?.scores?.scoreSource ?? 'derived',
+    drivingImpactAnalysisStatus: summary?.scores?.drivingImpactAnalysisStatus ?? null,
+    drivingImpactScoreSource:
+      summary?.scores?.drivingImpactScoreSource ?? summary?.scores?.scoreSource ?? null,
+    drivingImpactSourceCompleteness: summary?.scores?.drivingImpactSourceCompleteness ?? null,
     totalAccelerationEvents: summary?.events?.totalAccelerationEvents ?? 0,
     hardAccelerationEvents: summary?.events?.hardAccelerationEvents ?? 0,
     totalBrakingEvents: summary?.events?.totalBrakingEvents ?? 0,

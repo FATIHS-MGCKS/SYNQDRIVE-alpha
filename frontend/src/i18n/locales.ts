@@ -41,8 +41,8 @@ export const SUPPORTED_LOCALES: readonly LocaleMetadata[] = [
 export const DEFAULT_PRODUCT_LOCALE: SupportedLocale = 'en';
 export const FALLBACK_PRODUCT_LOCALE: SupportedLocale = 'en';
 
-/** Locales without meaningful owned product translations (explicit English fallback at lookup time). */
-export const OFFICIAL_LOCALES_WITHOUT_DICTIONARY: readonly SupportedLocale[] = ['tr'];
+/** Locales without a typed dictionary file (all nine official locales currently have partial or complete dictionaries). */
+export const OFFICIAL_LOCALES_WITHOUT_DICTIONARY: readonly SupportedLocale[] = [];
 
 /**
  * @deprecated Use OFFICIAL_PRODUCT_LOCALE_CODES. Retained temporarily for P0 structural checks.

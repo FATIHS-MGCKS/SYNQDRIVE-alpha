@@ -53,9 +53,10 @@ describe('canonical product locales', () => {
     expect(OFFICIAL_PRODUCT_LOCALE_CODES).toContain('tr');
   });
 
-  it('marks Turkish as dictionary-less with explicit runtime fallback', () => {
-    expect(OFFICIAL_LOCALES_WITHOUT_DICTIONARY).toContain('tr');
-    expect(OFFICIAL_LOCALES_WITHOUT_DICTIONARY).not.toContain('it');
+  it('keeps every official locale on a typed dictionary (Turkish partial since PR #2192)', () => {
+    expect(OFFICIAL_LOCALES_WITHOUT_DICTIONARY).toEqual([]);
+    expect(OFFICIAL_PRODUCT_LOCALE_CODES).toContain('tr');
+    expect(OFFICIAL_PRODUCT_LOCALE_CODES).toContain('it');
   });
 });
 
