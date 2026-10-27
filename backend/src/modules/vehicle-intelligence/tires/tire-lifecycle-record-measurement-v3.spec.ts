@@ -201,6 +201,28 @@ describe('TireLifecycleService.recordMeasurement — V3 ingestion P1', () => {
     expect(result.v3Ingestion?.warnings.map((w) => w.code)).toContain('V3_NOT_GROUND_TRUTH_SOURCE');
   });
 
+  it('returns success when measurement persisted but V3 recompute fails', async () => {
+    const computeForSetup = jest.fn().mockRejectedValue(new Error('v3 compute down'));
+    const { svc, measurementCreate, tireHealthService } = buildHarness({ computeForSetup });
+
+    const result = await svc.recordMeasurement({
+      vehicleId: VEHICLE_A,
+      tireSetupId: SETUP_A,
+      frontLeftMm: 5,
+      odometerKm: 12000,
+      manualConfirmOdometer: true,
+      source: 'manual',
+    });
+
+    expect(measurementCreate).toHaveBeenCalledTimes(1);
+    expect(tireHealthService.recalculate).toHaveBeenCalledWith(VEHICLE_A);
+    expect(result.measurement.id).toBe('meas-1');
+    expect(result.v3Recompute?.status).toBe('failed');
+    expect(result.v3Recompute?.code).toBe('V3_RECOMPUTE_FAILED');
+    expect(result.v3Ingestion?.verificationEligible).toBe(false);
+    expect(result.v3Ingestion?.warnings.map((w) => w.code)).toContain('V3_RECOMPUTE_FAILED');
+  });
+
   it('rejects wrong-vehicle setup (tenant isolation)', async () => {
     const { svc, prisma } = buildHarness();
     prisma.vehicleTireSetup.findUnique.mockResolvedValueOnce({

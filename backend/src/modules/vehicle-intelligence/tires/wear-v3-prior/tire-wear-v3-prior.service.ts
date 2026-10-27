@@ -556,11 +556,15 @@ export class TireWearV3PriorService {
     };
 
     const shadowWriteEnabled = this.isShadowWriteEnabled();
-    if (opts?.persistShadow === true && !shadowWriteEnabled) {
+    const persistShadowOpt = opts?.persistShadow;
+    if (persistShadowOpt === true && !shadowWriteEnabled) {
       setupFlags.push('SHADOW_WRITE_BLOCKED_BY_CONFIG');
     }
 
-    if (shadowWriteEnabled && setup.organizationId) {
+    const mayPersistShadow =
+      persistShadowOpt !== false && shadowWriteEnabled && setup.organizationId;
+
+    if (mayPersistShadow && setup.organizationId) {
       await this.repository.insertShadowRowIdempotent({
         organizationId: setup.organizationId,
         vehicleId: setup.vehicleId,

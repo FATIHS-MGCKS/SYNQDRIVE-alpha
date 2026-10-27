@@ -129,3 +129,13 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | Jest `tire-measurement-v3-ingestion.spec.ts`, `tire-lifecycle-record-measurement-v3.spec.ts`, `operatorTireMeasure.utils.test.ts` |
 | NON_EFFECTS | No migration; shadow writer OFF; no scheduler; no production backfill; Health quick-measure still may auto-confirm odometer when `odometerKm` sent (V2-compat) |
 | EVIDENCE | Read-only fleet odometer audit (Tiguan/Tesla/Audi/Arteon): NULL measurement odometers + `mileage_km` vs install anchor retrograde flags documented in agent artifacts |
+
+### Tire V3 cutover P1 — post-commit compute + persistShadow safety (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `recordMeasurement`: isolate optional V3 `computeForSetup` failures after durable save; return `v3Recompute` diagnostic + structured log `tire_measurement_v3_recompute_failed`. `computeForSetup`: `persistShadow === false` suppresses shadow inserts even when `TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED` is on |
+| WHY | Safety review #2186: save must not 500 solely on post-commit V3 recompute; measurement ingestion path must not write shadow rows when explicitly dry-run |
+| EXPECTED_EFFECT | Operators/API get 200 with saved measurement + `v3Recompute.failed` when V3 assess fails; shadow table untouched on `persistShadow: false` |
+| VALIDATION | Jest `tire-lifecycle-record-measurement-v3.spec.ts`, `tire-wear-v3-prior.service.spec.ts` |
+| NON_EFFECTS | V2 recalculate error semantics unchanged; customer-facing V3 read still future — fresh V3 state after cutover via on-demand `computeForSetup` / scheduled recompute hooks already used elsewhere, not new queue |

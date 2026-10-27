@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   Prisma,
   TireChangeType,
@@ -52,6 +52,7 @@ import {
   resolvePersistedMeasurementOdometerKm,
   validateTreadMmValues,
   type TireMeasurementV3IngestionAssessment,
+  type TireMeasurementV3RecomputeResult,
 } from './tire-measurement-v3-ingestion';
 import { resolveActiveMountPeriod } from './wear-v3-prior/tire-wear-v3-prior.lifecycle';
 import { TireWearV3PriorService } from './wear-v3-prior/tire-wear-v3-prior.service';
@@ -252,6 +253,8 @@ function fromDbPosition(pos: string): WheelPos {
 
 @Injectable()
 export class TireLifecycleService {
+  private readonly logger = new Logger(TireLifecycleService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly wearModel: TireWearModelService,
@@ -387,25 +390,56 @@ export class TireLifecycleService {
     }
 
     let v3Ingestion: TireMeasurementV3IngestionAssessment | null = null;
+    let v3Recompute: TireMeasurementV3RecomputeResult = { status: 'skipped' };
     if (this.tireWearV3PriorService) {
-      const priorResult = await this.tireWearV3PriorService.computeForSetup(setup.id, {
-        persistShadow: false,
-      });
-      v3Ingestion = assessV3Ingestion({
-        legacySource: source,
-        evidenceSource,
-        measuredAt,
-        mountPeriod,
-        explicitOdometerKm,
-        inferredAnchor,
-        treadValues: values,
-        priorResult,
-      });
+      try {
+        const priorResult = await this.tireWearV3PriorService.computeForSetup(setup.id, {
+          persistShadow: false,
+        });
+        v3Ingestion = assessV3Ingestion({
+          legacySource: source,
+          evidenceSource,
+          measuredAt,
+          mountPeriod,
+          explicitOdometerKm,
+          inferredAnchor,
+          treadValues: values,
+          priorResult,
+        });
+        v3Recompute = { status: 'ok' };
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        this.logger.error({
+          event: 'tire_measurement_v3_recompute_failed',
+          vehicleId: command.vehicleId,
+          tireSetupId: setup.id,
+          measurementId: measurement.id,
+          organizationId: vehicle.organizationId,
+          errorMessage,
+        });
+        v3Recompute = {
+          status: 'failed',
+          code: 'V3_RECOMPUTE_FAILED',
+          message:
+            'Measurement was saved; Tire V3 reassessment failed and verification eligibility could not be updated.',
+        };
+        v3Ingestion = {
+          verificationEligible: false,
+          posteriorCalibrationEligible: false,
+          verificationStatus: null,
+          warnings: [
+            {
+              code: 'V3_RECOMPUTE_FAILED',
+              message: v3Recompute.message!,
+            },
+          ],
+        };
+      }
     }
 
     this.observability?.recordMeasurement({ source });
 
-    return { measurement, kFactors, source, v3Ingestion };
+    return { measurement, kFactors, source, v3Ingestion, v3Recompute };
   }
 
   async findMeasurementByDocumentExtractionId(vehicleId: string, documentExtractionId: string) {

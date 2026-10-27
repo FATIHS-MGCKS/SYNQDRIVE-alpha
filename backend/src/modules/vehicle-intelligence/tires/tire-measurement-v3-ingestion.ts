@@ -19,6 +19,7 @@ export const TIRE_MEASUREMENT_TREAD_MIN_MM = 0;
 export const TIRE_MEASUREMENT_TREAD_MAX_MM = 20;
 
 export type TireMeasurementV3WarningCode =
+  | 'V3_RECOMPUTE_FAILED'
   | 'V3_ODOMETER_NOT_EXPLICIT'
   | 'V3_ODOMETER_INFERRED_NOT_USED'
   | 'V3_MEASUREMENT_OUTSIDE_MOUNT_PERIOD'
@@ -32,6 +33,14 @@ export interface TireMeasurementV3IngestionAssessment {
   posteriorCalibrationEligible: boolean;
   warnings: Array<{ code: TireMeasurementV3WarningCode; message: string }>;
   verificationStatus: string | null;
+}
+
+export type TireMeasurementV3RecomputeStatus = 'ok' | 'failed' | 'skipped';
+
+export interface TireMeasurementV3RecomputeResult {
+  status: TireMeasurementV3RecomputeStatus;
+  code?: 'V3_RECOMPUTE_FAILED';
+  message?: string;
 }
 
 export function isOdometerExplicitlyConfirmed(command: RecordTireMeasurementCommand): boolean {
