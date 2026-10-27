@@ -115,13 +115,13 @@ export function VehicleIdentityP2Panel({
     setLoading(true);
     setError(null);
     try {
-      const uploaded = await api.vehicles.uploadDocumentExtraction(
+      const uploaded = await api.vehicleIntelligence.uploadDocumentExtraction(
         vehicleId,
         file,
         'REGISTRATION_CERTIFICATE',
         'master_vehicle_identity_p2',
       );
-      const id = uploaded?.id ?? uploaded?.extractionId;
+      const id = uploaded?.id;
       if (typeof id === 'string') {
         setExtractionId(id);
       }
