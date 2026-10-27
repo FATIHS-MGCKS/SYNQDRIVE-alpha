@@ -34,11 +34,14 @@ export const operatorTireMeasureEn = {
   'operator.tireMeasure.fields.tireSet': 'Tire set',
   'operator.tireMeasure.fields.measuredAt': 'Measurement date',
   'operator.tireMeasure.fields.odometerKm': 'Odometer',
+  'operator.tireMeasure.fields.odometerAtMeasurement': 'Odometer at measurement time',
+  'operator.tireMeasure.fields.odometerSource': 'Source: {{source}}',
   'operator.tireMeasure.fields.method': 'Measurement method',
   'operator.tireMeasure.fields.workshop': 'Workshop',
   'operator.tireMeasure.fields.note': 'Note',
 
   'operator.tireMeasure.placeholders.optional': 'Optional',
+  'operator.tireMeasure.placeholders.odometerV3Required': 'Required for V3 evidence',
   'operator.tireMeasure.placeholders.workshopName': 'Workshop name',
   'operator.tireMeasure.placeholders.note':
     'Optional — review only locally, not sent to tire-health API',
@@ -56,6 +59,24 @@ export const operatorTireMeasureEn = {
   'operator.tireMeasure.tread.unitMm': 'mm',
   'operator.tireMeasure.tread.ariaLabel': '{{position}} tread depth mm',
 
+  'operator.tireMeasure.context.confirmOdometer.title': 'Confirm odometer at measurement time',
+  'operator.tireMeasure.context.confirmOdometer.hint':
+    'Without confirmation, no explicit V3 odometer evidence is stored (vehicle telemetry is not applied silently).',
+
+  'operator.tireMeasure.odometerSource.workshop': 'Workshop report (explicit)',
+  'operator.tireMeasure.odometerSource.manualConfirmed': 'Manually confirmed at measurement time',
+  'operator.tireMeasure.odometerSource.fleetPrefill': 'Prefilled from vehicle data — please confirm',
+  'operator.tireMeasure.odometerSource.unconfirmed': 'Entered without confirmation',
+  'operator.tireMeasure.odometerSource.none': 'No odometer reading',
+
+  'operator.tireMeasure.v3.aiSource':
+    'AI upload / document: saved values do not count as Tire V3 verification evidence — measure manually or choose workshop source.',
+  'operator.tireMeasure.v3.odometerMissing':
+    'Without odometer at measurement time, Tire V3 verification and calibration stay insufficient (V2 save remains available).',
+  'operator.tireMeasure.v3.odometerUnconfirmed':
+    'Odometer not confirmed yet — no explicit V3 odometer evidence will be stored (telemetry is not applied silently).',
+  'operator.tireMeasure.v3.noTread': 'At least one wheel tread depth is required for V3 verification.',
+
   'operator.tireMeasure.context.aiUploadTitle': 'Extract tire report via AI upload',
   'operator.tireMeasure.context.aiUploadHint': 'Apply extracted values only after confirmation',
 
@@ -66,6 +87,7 @@ export const operatorTireMeasureEn = {
   'operator.tireMeasure.review.method': 'Method:',
   'operator.tireMeasure.review.note': 'Note:',
   'operator.tireMeasure.review.uiWarnings': 'Notes (UI only)',
+  'operator.tireMeasure.review.v3EvidenceTitle': 'Tire V3 evidence',
   'operator.tireMeasure.review.backendHint':
     'After saving, tire health / rental health reload — status and remaining km come exclusively from the backend.',
   'operator.tireMeasure.review.now': 'Now',
@@ -82,6 +104,8 @@ export const operatorTireMeasureEn = {
   'operator.tireMeasure.validation.treadRequired': 'Enter at least one tread depth.',
   'operator.tireMeasure.validation.measuredAtInvalid': 'Measurement date is invalid.',
   'operator.tireMeasure.validation.odometerInvalid': 'Odometer reading is invalid.',
+  'operator.tireMeasure.validation.odometerRequiredV3':
+    'Odometer at measurement time is required (V3 evidence).',
 
   'operator.tireMeasure.plausibility.range':
     '{{position}}: Value outside {{min}}–{{max}} mm.',

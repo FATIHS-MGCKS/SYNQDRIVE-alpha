@@ -101,7 +101,7 @@ export function validateTireMeasureStep(
     const needsOdo =
       context.source === 'manual' || context.source === 'workshop';
     if (needsOdo && !context.odometerKm.trim()) {
-      return 'Kilometerstand zum Messzeitpunkt ist erforderlich (V3-Nachweis).';
+      return 'operator.tireMeasure.validation.odometerRequiredV3';
     }
   }
   return null;
@@ -116,8 +116,7 @@ export function deriveOperatorV3EvidenceWarnings(
   if (context.source === 'ai_confirmed') {
     warnings.push({
       id: 'v3-ai-source',
-      message:
-        'AI Upload / Dokument: gespeicherte Werte zählen nicht als Tire-V3-Verifikationsnachweis — Profil manuell messen oder Werkstattquelle wählen.',
+      message: 'operator.tireMeasure.v3.aiSource',
     });
   }
 
@@ -130,8 +129,7 @@ export function deriveOperatorV3EvidenceWarnings(
   if (!odoTrim) {
     warnings.push({
       id: 'v3-odo-missing',
-      message:
-        'Ohne Kilometerstand am Messzeitpunkt bleibt Tire-V3-Verifikation und Kalibrierung unzureichend (V2-Speicherung bleibt möglich).',
+      message: 'operator.tireMeasure.v3.odometerMissing',
     });
     return warnings;
   }
@@ -142,8 +140,7 @@ export function deriveOperatorV3EvidenceWarnings(
   if (!explicit) {
     warnings.push({
       id: 'v3-odo-unconfirmed',
-      message:
-        'Kilometerstand noch nicht bestätigt — für V3 wird kein expliziter Odometer-Nachweis gespeichert (Telemetrie wird nicht still übernommen).',
+      message: 'operator.tireMeasure.v3.odometerUnconfirmed',
     });
   }
 
@@ -151,33 +148,40 @@ export function deriveOperatorV3EvidenceWarnings(
   if (!hasAnyTread) {
     warnings.push({
       id: 'v3-no-tread',
-      message: 'Mindestens ein Radprofil ist für V3-Verifikation erforderlich.',
+      message: 'operator.tireMeasure.v3.noTread',
     });
   }
 
   return warnings;
 }
 
-export function resolveOperatorOdometerSourceLabel(
+export type OperatorOdometerSourceKey =
+  | 'workshop'
+  | 'manualConfirmed'
+  | 'fleetPrefill'
+  | 'unconfirmed'
+  | 'none';
+
+export function resolveOperatorOdometerSourceKey(
   context: OperatorTireContextForm,
   fleetHintKm: number | null,
-): string {
+): OperatorOdometerSourceKey {
   if (context.source === 'workshop') {
-    return 'Werkstattbericht (explizit)';
+    return 'workshop';
   }
   if (context.confirmOdometerKm && context.odometerKm.trim()) {
-    return 'Manuell bestätigt am Messzeitpunkt';
+    return 'manualConfirmed';
   }
   if (context.odometerKm.trim() && fleetHintKm != null) {
     const entered = parseFloat(context.odometerKm.replace(',', '.'));
     if (Number.isFinite(entered) && Math.round(entered) === Math.round(fleetHintKm)) {
-      return 'Vorausgefüllt aus Fahrzeugdaten — bitte bestätigen';
+      return 'fleetPrefill';
     }
   }
   if (context.odometerKm.trim()) {
-    return 'Eingabe ohne Bestätigung';
+    return 'unconfirmed';
   }
-  return 'Kein Kilometerstand';
+  return 'none';
 }
 
 export function extractTreadFromAiReviewFields(

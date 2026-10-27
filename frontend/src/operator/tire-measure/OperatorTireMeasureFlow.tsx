@@ -25,11 +25,12 @@ import {
   deriveOperatorV3EvidenceWarnings,
   deriveTirePlausibilityWarnings,
   formatTreadInput,
-  resolveOperatorOdometerSourceLabel,
+  resolveOperatorOdometerSourceKey,
   SEASON_LABELS,
   validateTireMeasureStep,
 } from './operatorTireMeasure.utils';
 import { useOperatorTireMeasureData } from './useOperatorTireMeasureData';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 type TireMeasureAction = Extract<OperatorSheetAction, { type: 'tire-measure' }>;
 
@@ -56,6 +57,7 @@ interface Props {
 }
 
 export function OperatorTireMeasureFlow({ action }: Props) {
+  const { t } = useLanguage();
   const isTablet = useOperatorTabletLayout();
   const { closeSheet, openSheet, triggerRefresh } = useOperatorShell();
   const { orgId } = useRentalOrg();
@@ -82,9 +84,21 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     () => deriveOperatorV3EvidenceWarnings(tread, context),
     [tread, context],
   );
-  const odometerSourceLabel = useMemo(
-    () => resolveOperatorOdometerSourceLabel(context, data.odometerKm),
+  const odometerSourceKey = useMemo(
+    () => resolveOperatorOdometerSourceKey(context, data.odometerKm),
     [context, data.odometerKm],
+  );
+  const odometerSourceLabel = useMemo(
+    () => t(`operator.tireMeasure.odometerSource.${odometerSourceKey}`),
+    [t, odometerSourceKey],
+  );
+  const formatStepError = useCallback(
+    (err: string | null) => {
+      if (!err) return null;
+      if (err.startsWith('operator.tireMeasure.')) return t(err);
+      return err;
+    },
+    [t],
   );
 
   useEffect(() => {
@@ -364,7 +378,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                    Kilometerstand am Messzeitpunkt
+                    {t('operator.tireMeasure.fields.odometerAtMeasurement')}
                   </span>
                   <input
                     type="text"
@@ -380,11 +394,13 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                     }
                     placeholder={
                       context.source === 'manual' || context.source === 'workshop'
-                        ? 'Erforderlich für V3-Nachweis'
-                        : 'Optional'
+                        ? t('operator.tireMeasure.placeholders.odometerV3Required')
+                        : t('operator.tireMeasure.placeholders.optional')
                     }
                   />
-                  <p className="mt-1 text-[11px] text-muted-foreground">Quelle: {odometerSourceLabel}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t('operator.tireMeasure.fields.odometerSource', { source: odometerSourceLabel })}
+                  </p>
                 </label>
                 {context.source === 'manual' && context.odometerKm.trim() && (
                   <label className="flex min-h-[48px] cursor-pointer items-start gap-3 rounded-xl border border-border/60 px-3 py-3">
@@ -398,11 +414,10 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                     />
                     <span className="text-sm">
                       <span className="font-semibold text-foreground">
-                        Kilometerstand am Messzeitpunkt bestätigen
+                        {t('operator.tireMeasure.context.confirmOdometer.title')}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
-                        Ohne Bestätigung wird kein expliziter V3-Odometer-Nachweis gespeichert (Fahrzeug-Telemetrie
-                        wird nicht still übernommen).
+                        {t('operator.tireMeasure.context.confirmOdometer.hint')}
                       </span>
                     </span>
                   </label>
@@ -510,10 +525,12 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                 </div>
                 {v3EvidenceWarnings.length > 0 && (
                   <div className="space-y-2 rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/5 px-3 py-2">
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">Tire V3 Nachweis</p>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      {t('operator.tireMeasure.review.v3EvidenceTitle')}
+                    </p>
                     {v3EvidenceWarnings.map((w) => (
                       <p key={w.id} className="text-xs text-[color:var(--status-watch)]">
-                        {w.message}
+                        {t(w.message)}
                       </p>
                     ))}
                   </div>
@@ -538,7 +555,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               </div>
             )}
 
-            {stepError && <p className="mt-2 text-sm text-[color:var(--status-critical)]">{stepError}</p>}
+            {stepError && (
+              <p className="mt-2 text-sm text-[color:var(--status-critical)]">{formatStepError(stepError)}</p>
+            )}
           </>
         )}
       </div>
