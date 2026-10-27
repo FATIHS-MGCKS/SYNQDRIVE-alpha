@@ -36,6 +36,20 @@ const WHEEL_FIELDS: { pos: WheelPos; field: keyof RawTreadMeasurementRow }[] = [
   { pos: 'RR', field: 'rearRightMm' },
 ];
 
+/**
+ * Legacy sources that must never anchor V3 verification cadence.
+ * V2 provenance mapping is unchanged; this gate is verification-only.
+ */
+export function isVerificationExcludedLegacySource(source: string): boolean {
+  const normalized = source.trim().toLowerCase();
+  return (
+    normalized === 'calibration' ||
+    normalized === 'ai_estimate' ||
+    normalized === 'ai_agent' ||
+    normalized === 'ai_confirmed'
+  );
+}
+
 export function resolveMeasurementEvidenceSource(
   row: RawTreadMeasurementRow,
 ): TireEvidenceSource | null {
@@ -43,16 +57,6 @@ export function resolveMeasurementEvidenceSource(
     return row.evidenceSource;
   }
   return mapLegacyMeasurementSourceToEvidence(row.source);
-}
-
-/** Model-projected calibration rows must not reset verification cadence. */
-export function isVerificationExcludedLegacySource(source: string): boolean {
-  const normalized = source.trim().toLowerCase();
-  return (
-    normalized === 'calibration' ||
-    normalized === 'ai_estimate' ||
-    normalized === 'ai_agent'
-  );
 }
 
 export function isAcceptedVerificationMeasurement(
@@ -119,24 +123,35 @@ export function listAcceptedVerificationMeasurements(
   return accepted.sort((a, b) => a.measuredAt.getTime() - b.measuredAt.getTime());
 }
 
-export function latestAcceptedVerificationMeasurement(
+/** Latest accepted anchor per wheel (independent cadence authority). */
+export function latestAcceptedVerificationAnchorPerWheel(
   accepted: AcceptedVerificationMeasurement[],
-): AcceptedVerificationMeasurement | null {
-  if (accepted.length === 0) return null;
-  return accepted[accepted.length - 1]!;
-}
-
-export function buildPerWheelVerificationState(
-  accepted: AcceptedVerificationMeasurement[],
-): TireWearV3WheelVerificationState[] {
-  const covered = new Set<WheelPos>();
+): Partial<Record<WheelPos, AcceptedVerificationMeasurement>> {
+  const latest: Partial<Record<WheelPos, AcceptedVerificationMeasurement>> = {};
   for (const row of accepted) {
-    for (const w of row.wheelsWithTread) {
-      covered.add(w);
+    for (const wheel of row.wheelsWithTread) {
+      const prev = latest[wheel];
+      if (!prev || row.measuredAt.getTime() > prev.measuredAt.getTime()) {
+        latest[wheel] = row;
+      }
     }
   }
-  return (['FL', 'FR', 'RL', 'RR'] as WheelPos[]).map((position) => ({
+  return latest;
+}
+
+export function emptyWheelVerificationState(
+  position: WheelPos,
+): TireWearV3WheelVerificationState {
+  return {
     position,
-    hasAcceptedVerification: covered.has(position),
-  }));
+    hasAcceptedVerification: false,
+    verificationStatus: 'INSUFFICIENT_EVIDENCE',
+    lastAcceptedMeasurementId: null,
+    lastAcceptedMeasurementAt: null,
+    lastAcceptedOdometerKm: null,
+    kmSinceAcceptedMeasurement: null,
+    daysSinceAcceptedMeasurement: null,
+    nextDueOdometerKm: null,
+    qualityFlags: ['VERIFICATION_NO_ACCEPTED_ANCHOR'],
+  };
 }

@@ -2,39 +2,60 @@
 
 ## Purpose
 
-Deterministic **km + time** cadence for manual tread verification, attached to
+Deterministic **per-wheel km + time** cadence for manual tread verification, attached to
 `tire-wear-v3-prior-0.2.0` compute output only. Does **not** change V2
 `TIRE_HEALTH_CONFIG.measurementFreshness`, alerts, or `TireHealthSummary`.
 
-## State machine (precedence)
+## Per-wheel cadence authority
 
-1. No active mount period → `INSUFFICIENT_EVIDENCE`
-2. No **accepted** ground-truth measurement (odometer + tread in period) → `INSUFFICIENT_EVIDENCE`
-3. Current odometer missing → `INSUFFICIENT_EVIDENCE`
-4. `currentOdometer < acceptedOdometer` → `INSUFFICIENT_EVIDENCE` (no clamp-to-zero)
-5. **Calendar months** since accepted `measuredAt` ≥ `timeFallbackMonths` (UTC year/month) → `OVERDUE` (not suppressed by low km)
-6. Setup odometer quality flags block km cadence → `INSUFFICIENT_EVIDENCE` (time rule above still wins)
-7. `kmSinceAccepted ≥ overdueKm` → `OVERDUE`
-8. `kmSinceAccepted ≥ dueKm` → `DUE`
-9. `kmSinceAccepted ≥ remindKm` → `DUE_SOON`
-10. Else → `CURRENT`
+For each wheel position (`FL`, `FR`, `RL`, `RR`):
 
-`kmSinceAccepted = currentOdometerKm − acceptedOdometerKm` (last accepted by `measuredAt`).
+1. Consider only **accepted** measurements that include a finite tread mm for that wheel.
+2. Select the **latest** such row by `measuredAt` within the active mount period.
+3. Compute `kmSince`, calendar-month age, `nextDueOdometerKm`, and `verificationStatus` from **that wheel’s anchor only**.
+
+A partial measurement (e.g. FL-only) resets cadence **only** for wheels present on that row. Other wheels keep older anchors.
+
+## Setup status aggregation
+
+`verification.status` is the **maximum precedence** across wheel statuses:
+
+`INSUFFICIENT_EVIDENCE` → `OVERDUE` → `DUE` → `DUE_SOON` → `CURRENT`
+
+Tie-break among equal precedence: higher `kmSinceAcceptedMeasurement` wins. One `CURRENT` wheel cannot mask `OVERDUE` or `INSUFFICIENT_EVIDENCE` on another.
+
+Top-level `acceptedMeasurement*` fields mirror the wheel that drives aggregated `status`.
+
+## State machine (per wheel)
+
+1. No mount period → all wheels `INSUFFICIENT_EVIDENCE` (setup flag `VERIFICATION_NO_ACTIVE_MOUNT_PERIOD`)
+2. No accepted anchor for this wheel → `INSUFFICIENT_EVIDENCE` (`VERIFICATION_NO_ACCEPTED_ANCHOR`)
+3. Rotation during mount period → `INSUFFICIENT_EVIDENCE` (`VERIFICATION_ROTATION_IDENTITY_UNVERIFIED`) — **no `CURRENT`**
+4. Current odometer missing → `INSUFFICIENT_EVIDENCE`
+5. `currentOdometer < wheelAnchorOdometer` → `INSUFFICIENT_EVIDENCE` (no clamp)
+6. UTC calendar months since anchor `measuredAt` ≥ `timeFallbackMonths` → `OVERDUE`
+7. Setup odometer quality flags block km cadence → `INSUFFICIENT_EVIDENCE` (month rule still wins)
+8. Km thresholds: `overdueKm` / `dueKm` / `remindKm` → `OVERDUE` / `DUE` / `DUE_SOON`
+9. Else → `CURRENT`
 
 ## Accepted verification measurement (≠ posterior calibration)
 
-**Acceptance** (resets due interval when odometer valid):
+**Acceptance** (eligible to anchor **only wheels with tread on that row**):
 
-- `evidenceSource` ∈ ground truth (`MANUAL_MEASUREMENT`, `WORKSHOP`, `DOCUMENT`, `MANUFACTURER`, `USER_CONFIRMED`)
-- Legacy `source` not `calibration` / `ai_*`
+- `evidenceSource` ∈ ground truth (`MANUAL_MEASUREMENT`, `WORKSHOP`, `DOCUMENT`, `MANUFACTURER`, `USER_CONFIRMED`) **after** verification-only legacy exclusions
+- Legacy `source` not in `calibration`, `ai_estimate`, `ai_agent`, **`ai_confirmed`** (V3-only exclusion; V2 mapping unchanged)
 - `odometer_at_measurement` finite
 - `measuredAt` inside active mount period
 - At least one wheel tread mm present
 
-**Not accepted:** `AI_ESTIMATED`, `MODEL_ESTIMATED`, `DEFAULT_ASSUMPTION`, calibration projections.
+**Not accepted:** `AI_ESTIMATED`, `MODEL_ESTIMATED`, `DEFAULT_ASSUMPTION`, calibration projections, `ai_confirmed`.
 
 **Posterior rate fusion** remains gated separately in `tire-wear-v3-prior.math` / lifecycle
-(≥2 odometer points, span L2+, no rotation block, no contradictory series).
+(≥2 odometer points, span L2+, no rotation block, no contradictory series). Verification acceptance does **not** imply calibration.
+
+## Rotation fail-closed
+
+When `hasRotationDuringMountPeriod` is true, tire identity across positions is not trusted. Every wheel is `INSUFFICIENT_EVIDENCE` with `VERIFICATION_ROTATION_IDENTITY_UNVERIFIED`. Posterior rotation blocking in the wear path is unchanged.
 
 ## Defaults (`tire-wear-v3-verification.config.ts`)
 
@@ -47,11 +68,6 @@ Deterministic **km + time** cadence for manual tread verification, attached to
 
 Monotonic: `remindKm < dueKm < overdueKm`.
 
-## Per-wheel semantics
+## Replacement / mount period
 
-`wheels[].hasAcceptedVerification` = union of wheels with tread mm on any **accepted** row in the mount period (not “latest row only”).
-
-## Rotation / replacement
-
-- Measurements before mount `installedAt` excluded (replacement).
-- `rotationDuringMountPeriod` adds `VERIFICATION_ROTATION_IDENTITY_UNVERIFIED` (does not auto-reset cadence; rate fusion still blocked in wear path).
+Measurements before mount `installedAt` are excluded (`filterMeasurementsForMountPeriod`).
