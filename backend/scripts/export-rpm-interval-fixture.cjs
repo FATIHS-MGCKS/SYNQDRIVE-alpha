@@ -50,8 +50,8 @@ async function main() {
       where: { id: tripId },
       select: { id: true, startTime: true, endTime: true },
     });
-    if (!trip) {
-      out.push({ tripId, error: 'NOT_IN_PG' });
+    if (!trip || !trip.endTime) {
+      out.push({ tripId, error: trip ? 'NO_END_TIME' : 'NOT_IN_PG' });
       continue;
     }
     const r = await ch.query({
