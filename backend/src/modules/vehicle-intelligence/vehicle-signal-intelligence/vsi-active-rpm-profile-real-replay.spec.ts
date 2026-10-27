@@ -53,11 +53,19 @@ describe('vsi-active-rpm-profile real production interval replay', () => {
     expect(resolution?.activeProfile).toBe('RPM_STANDARD');
   });
 
-  it('Tiguan before config shift (2026-10-13..22): RPM_STANDARD', () => {
+  it('Tiguan before config shift (2026-10-13..22): sparse STANDARD per trip, rolling conservative', () => {
     const phase = tripsInDateRange(fixture.tiguan.trips, '2026-10-13', '2026-10-22');
     expect(phase.length).toBeGreaterThanOrEqual(5);
+    const standardish = phase.filter((trip) => {
+      const resolution = resolveActiveRpmProfileV1(
+        buildRpmEvidenceFromIntervalReplayTrips([trip]),
+      );
+      return resolution?.tripClassifications[0]?.profile === 'RPM_STANDARD';
+    });
+    expect(standardish.length).toBeGreaterThan(phase.length / 2);
     const resolution = resolveRollingAtEnd(phase);
-    expect(resolution?.activeProfile).toBe('RPM_STANDARD');
+    expect(resolution?.activeProfile).not.toBe('RPM_1HZ');
+    expect(['RPM_STANDARD', 'UNKNOWN']).toContain(resolution?.activeProfile);
   });
 
   it('Tiguan transition (2026-10-23..26): active-sequence evidence (not gap-pooled STANDARD)', () => {

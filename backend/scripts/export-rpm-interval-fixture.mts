@@ -29,7 +29,7 @@ async function main() {
     }
     const r = await ch.query({
       query: `
-        SELECT toUnixTimestamp64Milli(ts) AS ms
+        SELECT toUnixTimestamp64Milli(recorded_at) AS ms
         FROM synqdrive.telemetry_hf_points
         WHERE vehicle_id = {v:String}
           AND trip_id = {t:String}
