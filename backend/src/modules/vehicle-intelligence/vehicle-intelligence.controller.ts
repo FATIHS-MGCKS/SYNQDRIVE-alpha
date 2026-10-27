@@ -343,6 +343,7 @@ export class VehicleIntelligenceController {
       measuredAt: body.measuredAt,
       source: body.source,
       workshopName: body.workshopName,
+      manualConfirmOdometer: body.manualConfirmOdometer,
       shouldCalibrate: true,
       triggerRecalculate: true,
     });
@@ -549,8 +550,11 @@ export class VehicleIntelligenceController {
       rearLeftMm: body.rearLeftMm,
       rearRightMm: body.rearRightMm,
       odometerKm: body.odometerKm,
+      measuredAt: body.measuredAt,
       workshopName: body.workshopName,
       source: body.source,
+      manualConfirmOdometer:
+        body.manualConfirmOdometer ?? (body.odometerKm != null ? true : undefined),
       shouldCalibrate: true,
       triggerRecalculate: true,
     });

@@ -22,12 +22,16 @@ import {
 } from './operatorTireMeasure.types';
 import {
   defaultMeasuredAtLocal,
+  deriveOperatorV3EvidenceWarnings,
   deriveTirePlausibilityWarnings,
   formatTreadInput,
+  resolveOperatorOdometerSourceKey,
   SEASON_LABELS,
   validateTireMeasureStep,
 } from './operatorTireMeasure.utils';
 import { useOperatorTireMeasureData } from './useOperatorTireMeasureData';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 type TireMeasureAction = Extract<OperatorSheetAction, { type: 'tire-measure' }>;
 
@@ -54,6 +58,7 @@ interface Props {
 }
 
 export function OperatorTireMeasureFlow({ action }: Props) {
+  const { t } = useLanguage();
   const isTablet = useOperatorTabletLayout();
   const { closeSheet, openSheet, triggerRefresh } = useOperatorShell();
   const { orgId } = useRentalOrg();
@@ -66,6 +71,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
   const [context, setContext] = useState<OperatorTireContextForm>({
     measuredAt: defaultMeasuredAtLocal(),
     odometerKm: '',
+    confirmOdometerKm: false,
     source: 'manual',
     workshopName: '',
     note: '',
@@ -75,6 +81,27 @@ export function OperatorTireMeasureFlow({ action }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const plausibilityWarnings = useMemo(() => deriveTirePlausibilityWarnings(tread), [tread]);
+  const v3EvidenceWarnings = useMemo(
+    () => deriveOperatorV3EvidenceWarnings(tread, context),
+    [tread, context],
+  );
+  const odometerSourceKey = useMemo(
+    () => resolveOperatorOdometerSourceKey(context, data.odometerKm),
+    [context, data.odometerKm],
+  );
+  const odometerSourceLabel = useMemo(
+    () =>
+      t(`operator.tireMeasure.odometerSource.${odometerSourceKey}` as TranslationKey),
+    [t, odometerSourceKey],
+  );
+  const formatStepError = useCallback(
+    (err: string | null) => {
+      if (!err) return null;
+      if (err.startsWith('operator.tireMeasure.')) return t(err as TranslationKey);
+      return err;
+    },
+    [t],
+  );
 
   useEffect(() => {
     setStep('vehicle');
@@ -96,6 +123,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
           : data.odometerKm != null
             ? String(Math.round(data.odometerKm))
             : '',
+      confirmOdometerKm: false,
       source: action.sourceHint ?? 'manual',
       workshopName: '',
       note: action.bookingId ? `Handover Buchung ${action.bookingId.slice(0, 8)}…` : '',
@@ -351,16 +379,51 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">Kilometerstand</span>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {t('operator.tireMeasure.fields.odometerAtMeasurement')}
+                  </span>
                   <input
                     type="text"
                     inputMode="decimal"
                     className="mt-1 h-12 w-full surface-premium px-3 text-base tabular-nums"
                     value={context.odometerKm}
-                    onChange={(e) => setContext((c) => ({ ...c, odometerKm: e.target.value }))}
-                    placeholder="Optional"
+                    onChange={(e) =>
+                      setContext((c) => ({
+                        ...c,
+                        odometerKm: e.target.value,
+                        confirmOdometerKm: false,
+                      }))
+                    }
+                    placeholder={
+                      context.source === 'manual' || context.source === 'workshop'
+                        ? t('operator.tireMeasure.placeholders.odometerV3Required')
+                        : t('operator.tireMeasure.placeholders.optional')
+                    }
                   />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t('operator.tireMeasure.fields.odometerSource', { source: odometerSourceLabel })}
+                  </p>
                 </label>
+                {context.source === 'manual' && context.odometerKm.trim() && (
+                  <label className="flex min-h-[48px] cursor-pointer items-start gap-3 rounded-xl border border-border/60 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={context.confirmOdometerKm}
+                      onChange={(e) =>
+                        setContext((c) => ({ ...c, confirmOdometerKm: e.target.checked }))
+                      }
+                    />
+                    <span className="text-sm">
+                      <span className="font-semibold text-foreground">
+                        {t('operator.tireMeasure.context.confirmOdometer.title')}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {t('operator.tireMeasure.context.confirmOdometer.hint')}
+                      </span>
+                    </span>
+                  </label>
+                )}
                 <div>
                   <p className="mb-2 text-[10px] font-semibold uppercase text-muted-foreground">Messmethode</p>
                   <div className="flex flex-wrap gap-2">
@@ -446,6 +509,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   <p>
                     <span className="text-muted-foreground">Km:</span>{' '}
                     <span className="font-semibold">{context.odometerKm || '—'}</span>
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {odometerSourceLabel}
+                    </span>
                   </p>
                   <p>
                     <span className="text-muted-foreground">Methode:</span>{' '}
@@ -459,6 +525,18 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                     </p>
                   )}
                 </div>
+                {v3EvidenceWarnings.length > 0 && (
+                  <div className="space-y-2 rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/5 px-3 py-2">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      {t('operator.tireMeasure.review.v3EvidenceTitle')}
+                    </p>
+                    {v3EvidenceWarnings.map((w) => (
+                      <p key={w.id} className="text-xs text-[color:var(--status-watch)]">
+                        {t(w.message as TranslationKey)}
+                      </p>
+                    ))}
+                  </div>
+                )}
                 {plausibilityWarnings.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Hinweise (nur UI)</p>
@@ -479,7 +557,9 @@ export function OperatorTireMeasureFlow({ action }: Props) {
               </div>
             )}
 
-            {stepError && <p className="mt-2 text-sm text-[color:var(--status-critical)]">{stepError}</p>}
+            {stepError && (
+              <p className="mt-2 text-sm text-[color:var(--status-critical)]">{formatStepError(stepError)}</p>
+            )}
           </>
         )}
       </div>

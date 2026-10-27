@@ -217,6 +217,8 @@ function buildMocks() {
 //  ROTATION MOVE MAPS (private pure helper via typed access)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// recordMeasurement mocks must include v3Recompute for tsc (see TireLifecycleService return type).
+
 describe('rotation move maps', () => {
   const { svc } = buildMocks();
   const moves = (template: string): Record<string, string> =>
@@ -264,6 +266,8 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     const result = await svc.replaceTires({
@@ -295,6 +299,8 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.replaceTires({
@@ -318,6 +324,8 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.replaceTires({
@@ -358,6 +366,8 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.rotateTires(VEHICLE_ID, { template: 'front_to_rear' });
@@ -419,6 +429,8 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.replaceTires({

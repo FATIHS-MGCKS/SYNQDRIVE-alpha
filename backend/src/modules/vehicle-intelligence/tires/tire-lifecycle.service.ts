@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   Prisma,
   TireChangeType,
@@ -44,6 +44,18 @@ import {
   normalizeTirePressureSpecSource,
   type TirePressureSpecSource,
 } from './tire-recommended-pressure';
+import {
+  assessV3Ingestion,
+  isGroundTruthMeasurementCommand,
+  resolveExplicitMeasurementOdometerKm,
+  resolveInferredMeasurementOdometerKm,
+  resolvePersistedMeasurementOdometerKm,
+  validateTreadMmValues,
+  type TireMeasurementV3IngestionAssessment,
+  type TireMeasurementV3RecomputeResult,
+} from './tire-measurement-v3-ingestion';
+import { resolveActiveMountPeriod } from './wear-v3-prior/tire-wear-v3-prior.lifecycle';
+import { TireWearV3PriorService } from './wear-v3-prior/tire-wear-v3-prior.service';
 
 export type TireMeasurementSource =
   | 'manual'
@@ -61,6 +73,7 @@ export interface RecordTireMeasurementCommand {
   rearLeftMm?: number;
   rearRightMm?: number;
   odometerKm?: number;
+  /** When true (or workshop source), client odometer is stored for ground-truth V3 evidence — not inferred telemetry. */
   manualConfirmOdometer?: boolean;
   measuredAt?: Date | string;
   source?: string;
@@ -240,6 +253,8 @@ function fromDbPosition(pos: string): WheelPos {
 
 @Injectable()
 export class TireLifecycleService {
+  private readonly logger = new Logger(TireLifecycleService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly wearModel: TireWearModelService,
@@ -247,6 +262,7 @@ export class TireLifecycleService {
     private readonly tireHealthAlertService: TireHealthAlertService,
     private readonly tireIdentity: TireIdentityService,
     @Optional() private readonly observability?: TireHealthObservabilityService,
+    @Optional() private readonly tireWearV3PriorService?: TireWearV3PriorService,
   ) {}
 
   async recordMeasurement(command: RecordTireMeasurementCommand) {
@@ -262,13 +278,13 @@ export class TireLifecycleService {
       throw new BadRequestException('At least one wheel measurement is required.');
     }
 
+    const treadError = validateTreadMmValues(values);
+    if (treadError) {
+      throw new BadRequestException(treadError);
+    }
+
     const source = normalizeMeasurementSource(command.source);
     const measuredAt = command.measuredAt ? new Date(command.measuredAt) : new Date();
-    const resolvedOdometer = await this.resolveMeasurementOdometer(
-      command.vehicleId,
-      command.odometerKm,
-      command.manualConfirmOdometer ?? command.source === 'workshop',
-    );
     const shouldCalibrate = command.shouldCalibrate ?? true;
     const triggerRecalculate = command.triggerRecalculate ?? true;
     const evidenceSource = resolveEvidenceFromLegacySource(command.source ?? source, {
@@ -276,6 +292,18 @@ export class TireLifecycleService {
       workshopName: command.workshopName,
       modelProjected: source === 'calibration',
     });
+
+    const odometerContext = await this.fetchVehicleOdometerContext(command.vehicleId);
+    const inferredAnchor = resolveInferredMeasurementOdometerKm(command, odometerContext);
+    const explicitOdometerKm = resolveExplicitMeasurementOdometerKm(command);
+    const groundTruth = isGroundTruthMeasurementCommand(source, evidenceSource);
+    const resolvedOdometer = resolvePersistedMeasurementOdometerKm({
+      groundTruth,
+      explicitOdometerKm,
+      inferredOdometerKm: inferredAnchor.odometerKm,
+    });
+
+    const mountPeriod = await this.resolveActiveMountPeriodForSetup(setup.id, measuredAt, setup);
 
     const measurement = await this.prisma.vehicleTireTreadMeasurement.create({
       data: {
@@ -361,9 +389,57 @@ export class TireLifecycleService {
       await this.tireHealthService.recalculate(command.vehicleId);
     }
 
+    let v3Ingestion: TireMeasurementV3IngestionAssessment | null = null;
+    let v3Recompute: TireMeasurementV3RecomputeResult = { status: 'skipped' };
+    if (this.tireWearV3PriorService) {
+      try {
+        const priorResult = await this.tireWearV3PriorService.computeForSetup(setup.id, {
+          persistShadow: false,
+        });
+        v3Ingestion = assessV3Ingestion({
+          legacySource: source,
+          evidenceSource,
+          measuredAt,
+          mountPeriod,
+          explicitOdometerKm,
+          inferredAnchor,
+          treadValues: values,
+          priorResult,
+        });
+        v3Recompute = { status: 'ok' };
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        this.logger.error({
+          event: 'tire_measurement_v3_recompute_failed',
+          vehicleId: command.vehicleId,
+          tireSetupId: setup.id,
+          measurementId: measurement.id,
+          organizationId: vehicle.organizationId,
+          errorMessage,
+        });
+        v3Recompute = {
+          status: 'failed',
+          code: 'V3_RECOMPUTE_FAILED',
+          message:
+            'Measurement was saved; Tire V3 reassessment failed and verification eligibility could not be updated.',
+        };
+        v3Ingestion = {
+          verificationEligible: false,
+          posteriorCalibrationEligible: false,
+          verificationStatus: null,
+          warnings: [
+            {
+              code: 'V3_RECOMPUTE_FAILED',
+              message: v3Recompute.message!,
+            },
+          ],
+        };
+      }
+    }
+
     this.observability?.recordMeasurement({ source });
 
-    return { measurement, kFactors, source };
+    return { measurement, kFactors, source, v3Ingestion, v3Recompute };
   }
 
   async findMeasurementByDocumentExtractionId(vehicleId: string, documentExtractionId: string) {
@@ -1390,6 +1466,34 @@ export class TireLifecycleService {
       throw new BadRequestException('Vehicle does not belong to this organization.');
     }
     return vehicle;
+  }
+
+  private async resolveActiveMountPeriodForSetup(
+    setupId: string,
+    asOf: Date,
+    setup: {
+      installedAt: Date | null;
+      removedAt: Date | null;
+      installedOdometerKm: number | null;
+      odometerAnchorStatus: import('@prisma/client').TireOdometerAnchorStatus | null;
+    },
+  ) {
+    const periods = await this.prisma.vehicleTireSetupMountPeriod.findMany({
+      where: { tireSetupId: setupId },
+      select: {
+        id: true,
+        installedAt: true,
+        removedAt: true,
+        installedOdometerKm: true,
+        odometerAnchorStatus: true,
+      },
+    });
+    return resolveActiveMountPeriod(periods, asOf, {
+      installedAt: setup.installedAt,
+      removedAt: setup.removedAt,
+      installedOdometerKm: setup.installedOdometerKm,
+      odometerAnchorStatus: setup.odometerAnchorStatus,
+    });
   }
 
   private async resolveSetupForMeasurement(vehicleId: string, tireSetupId?: string) {

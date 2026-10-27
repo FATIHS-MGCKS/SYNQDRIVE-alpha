@@ -150,6 +150,36 @@ describe('TireWearV3PriorService', () => {
     expect(repository.insertShadowRowIdempotent).not.toHaveBeenCalled();
   });
 
+  it('does not persist shadow rows when persistShadow is false even if env write is on', async () => {
+    configService.get.mockReturnValue(true);
+    mockAnchoredSetup();
+    prisma.tireTripUsageLedger.findMany.mockResolvedValue([]);
+    prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([]);
+
+    await service.computeForSetup(setupId, { persistShadow: false });
+    expect(repository.insertShadowRowIdempotent).not.toHaveBeenCalled();
+  });
+
+  it('persists shadow rows when env write is on and persistShadow is omitted', async () => {
+    configService.get.mockReturnValue(true);
+    mockAnchoredSetup();
+    prisma.tireTripUsageLedger.findMany.mockResolvedValue([]);
+    prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([]);
+
+    await service.computeForSetup(setupId);
+    expect(repository.insertShadowRowIdempotent).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists shadow rows when env write is on and persistShadow is true', async () => {
+    configService.get.mockReturnValue(true);
+    mockAnchoredSetup();
+    prisma.tireTripUsageLedger.findMany.mockResolvedValue([]);
+    prisma.vehicleTireTreadMeasurement.findMany.mockResolvedValue([]);
+
+    await service.computeForSetup(setupId, { persistShadow: true });
+    expect(repository.insertShadowRowIdempotent).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps L1 for a single tread measurement (no rate calibration)', async () => {
     mockAnchoredSetup();
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([

@@ -78,12 +78,17 @@ export async function submitOperatorTireMeasurement(params: {
     tireSetupId !== '__unknown__' &&
     context.measuredAt.trim().length > 0;
 
+  const manualConfirmOdometer =
+    context.source === 'workshop' ||
+    (context.source === 'manual' && context.confirmOdometerKm);
+
   if (useSetupEndpoint) {
     const measuredAt = new Date(context.measuredAt);
     await api.vehicleIntelligence.addTireMeasurement(vehicleId, tireSetupId!, {
       ...treadPayload,
       odometerAtMeasurement: Number.isFinite(odometer!) ? odometer : undefined,
       measuredAt: measuredAt.toISOString(),
+      manualConfirmOdometer: manualConfirmOdometer || undefined,
     });
     return;
   }
@@ -91,6 +96,8 @@ export async function submitOperatorTireMeasurement(params: {
   await api.vehicleIntelligence.addTireHealthMeasurement(vehicleId, {
     ...treadPayload,
     odometerKm: Number.isFinite(odometer!) ? odometer : undefined,
+    measuredAt: context.measuredAt.trim() ? new Date(context.measuredAt).toISOString() : undefined,
+    manualConfirmOdometer: manualConfirmOdometer || undefined,
   });
 }
 

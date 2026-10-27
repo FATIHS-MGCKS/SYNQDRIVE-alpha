@@ -34,11 +34,14 @@ export const operatorTireMeasureDe = {
   'operator.tireMeasure.fields.tireSet': 'Reifenset',
   'operator.tireMeasure.fields.measuredAt': 'Messdatum',
   'operator.tireMeasure.fields.odometerKm': 'Kilometerstand',
+  'operator.tireMeasure.fields.odometerAtMeasurement': 'Kilometerstand am Messzeitpunkt',
+  'operator.tireMeasure.fields.odometerSource': 'Quelle: {{source}}',
   'operator.tireMeasure.fields.method': 'Messmethode',
   'operator.tireMeasure.fields.workshop': 'Werkstatt',
   'operator.tireMeasure.fields.note': 'Notiz',
 
   'operator.tireMeasure.placeholders.optional': 'Optional',
+  'operator.tireMeasure.placeholders.odometerV3Required': 'Erforderlich für V3-Nachweis',
   'operator.tireMeasure.placeholders.workshopName': 'Name der Werkstatt',
   'operator.tireMeasure.placeholders.note':
     'Optional — nur lokal im Review, nicht in Tire-Health-API',
@@ -57,6 +60,24 @@ export const operatorTireMeasureDe = {
   'operator.tireMeasure.tread.unitMm': 'mm',
   'operator.tireMeasure.tread.ariaLabel': '{{position}} Profiltiefe mm',
 
+  'operator.tireMeasure.context.confirmOdometer.title': 'Kilometerstand am Messzeitpunkt bestätigen',
+  'operator.tireMeasure.context.confirmOdometer.hint':
+    'Ohne Bestätigung wird kein expliziter V3-Odometer-Nachweis gespeichert (Fahrzeug-Telemetrie wird nicht still übernommen).',
+
+  'operator.tireMeasure.odometerSource.workshop': 'Werkstattbericht (explizit)',
+  'operator.tireMeasure.odometerSource.manualConfirmed': 'Manuell bestätigt am Messzeitpunkt',
+  'operator.tireMeasure.odometerSource.fleetPrefill': 'Vorausgefüllt aus Fahrzeugdaten — bitte bestätigen',
+  'operator.tireMeasure.odometerSource.unconfirmed': 'Eingabe ohne Bestätigung',
+  'operator.tireMeasure.odometerSource.none': 'Kein Kilometerstand',
+
+  'operator.tireMeasure.v3.aiSource':
+    'AI Upload / Dokument: gespeicherte Werte zählen nicht als Tire-V3-Verifikationsnachweis — Profil manuell messen oder Werkstattquelle wählen.',
+  'operator.tireMeasure.v3.odometerMissing':
+    'Ohne Kilometerstand am Messzeitpunkt bleibt Tire-V3-Verifikation und Kalibrierung unzureichend (V2-Speicherung bleibt möglich).',
+  'operator.tireMeasure.v3.odometerUnconfirmed':
+    'Kilometerstand noch nicht bestätigt — für V3 wird kein expliziter Odometer-Nachweis gespeichert (Telemetrie wird nicht still übernommen).',
+  'operator.tireMeasure.v3.noTread': 'Mindestens ein Radprofil ist für V3-Verifikation erforderlich.',
+
   'operator.tireMeasure.context.aiUploadTitle': 'Reifenbericht per AI Upload auslesen',
   'operator.tireMeasure.context.aiUploadHint':
     'Extrahierte Werte erst nach Bestätigung übernehmen',
@@ -68,6 +89,7 @@ export const operatorTireMeasureDe = {
   'operator.tireMeasure.review.method': 'Methode:',
   'operator.tireMeasure.review.note': 'Notiz:',
   'operator.tireMeasure.review.uiWarnings': 'Hinweise (nur UI)',
+  'operator.tireMeasure.review.v3EvidenceTitle': 'Tire V3 Nachweis',
   'operator.tireMeasure.review.backendHint':
     'Nach Speichern lädt Tire Health / Rental Health neu — Status und Rest-km kommen ausschließlich vom Backend.',
   'operator.tireMeasure.review.now': 'Jetzt',
@@ -84,6 +106,8 @@ export const operatorTireMeasureDe = {
   'operator.tireMeasure.validation.treadRequired': 'Mindestens eine Profiltiefe eingeben.',
   'operator.tireMeasure.validation.measuredAtInvalid': 'Messdatum ungültig.',
   'operator.tireMeasure.validation.odometerInvalid': 'Kilometerstand ungültig.',
+  'operator.tireMeasure.validation.odometerRequiredV3':
+    'Kilometerstand zum Messzeitpunkt ist erforderlich (V3-Nachweis).',
 
   'operator.tireMeasure.plausibility.range':
     '{{position}}: Wert außerhalb {{min}}–{{max}} mm.',

@@ -98,8 +98,90 @@ export function validateTireMeasureStep(
       const odo = parseFloat(context.odometerKm.replace(',', '.'));
       if (!Number.isFinite(odo) || odo < 0) return 'Kilometerstand ungültig.';
     }
+    const needsOdo =
+      context.source === 'manual' || context.source === 'workshop';
+    if (needsOdo && !context.odometerKm.trim()) {
+      return 'operator.tireMeasure.validation.odometerRequiredV3';
+    }
   }
   return null;
+}
+
+export function deriveOperatorV3EvidenceWarnings(
+  tread: OperatorTireTreadForm,
+  context: OperatorTireContextForm,
+): OperatorTirePlausibilityWarning[] {
+  const warnings: OperatorTirePlausibilityWarning[] = [];
+
+  if (context.source === 'ai_confirmed') {
+    warnings.push({
+      id: 'v3-ai-source',
+      message: 'operator.tireMeasure.v3.aiSource',
+    });
+  }
+
+  const groundTruthSource = context.source === 'manual' || context.source === 'workshop';
+  if (!groundTruthSource) {
+    return warnings;
+  }
+
+  const odoTrim = context.odometerKm.trim();
+  if (!odoTrim) {
+    warnings.push({
+      id: 'v3-odo-missing',
+      message: 'operator.tireMeasure.v3.odometerMissing',
+    });
+    return warnings;
+  }
+
+  const explicit =
+    context.source === 'workshop' ||
+    (context.source === 'manual' && context.confirmOdometerKm);
+  if (!explicit) {
+    warnings.push({
+      id: 'v3-odo-unconfirmed',
+      message: 'operator.tireMeasure.v3.odometerUnconfirmed',
+    });
+  }
+
+  const hasAnyTread = [tread.fl, tread.fr, tread.rl, tread.rr].some((v) => v.trim());
+  if (!hasAnyTread) {
+    warnings.push({
+      id: 'v3-no-tread',
+      message: 'operator.tireMeasure.v3.noTread',
+    });
+  }
+
+  return warnings;
+}
+
+export type OperatorOdometerSourceKey =
+  | 'workshop'
+  | 'manualConfirmed'
+  | 'fleetPrefill'
+  | 'unconfirmed'
+  | 'none';
+
+export function resolveOperatorOdometerSourceKey(
+  context: OperatorTireContextForm,
+  fleetHintKm: number | null,
+): OperatorOdometerSourceKey {
+  if (context.source === 'workshop') {
+    return 'workshop';
+  }
+  if (context.confirmOdometerKm && context.odometerKm.trim()) {
+    return 'manualConfirmed';
+  }
+  if (context.odometerKm.trim() && fleetHintKm != null) {
+    const entered = parseFloat(context.odometerKm.replace(',', '.'));
+    if (Number.isFinite(entered) && Math.round(entered) === Math.round(fleetHintKm)) {
+      return 'fleetPrefill';
+    }
+  }
+  if (context.odometerKm.trim()) {
+    return 'unconfirmed';
+  }
+  return 'none';
 }
 
 export function extractTreadFromAiReviewFields(
