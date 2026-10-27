@@ -1,7 +1,9 @@
 import { analyzeEngineRpmCadence } from './vsi-profile-cadence-stats.util';
 import { enrichVsiProfileWithCadenceIntelligence } from './vsi-profile-cadence.enricher';
+import { fingerprintVsiProfileSemanticEvaluation } from './vsi-profile-fingerprint.util';
 import type { VsiRpmCadenceEvidenceInput, VsiRpmCadenceTripWindow } from './vsi-profile-cadence.types';
 import {
+  buildActiveRpmProfileSemanticFingerprint,
   mergeActiveRpmProfileOntoEngineRpmCadence,
   resolveActiveRpmProfileV1,
   selectRollingCadenceTripWindows,
@@ -49,6 +51,71 @@ describe('vsi-active-rpm-profile-resolver', () => {
     );
     const selected = selectRollingCadenceTripWindows(trips, 5);
     expect(selected.map((t) => t.tripId)).toEqual(['t3', 't4', 't5', 't6', 't7']);
+  });
+
+  it('median≈2s with sparse P95 gaps is not RPM_1HZ (Tiguan-like)', () => {
+    const t = trip('sparse-m2', 0, 1200);
+    const points: { recordedAtMs: number; value: number }[] = [];
+    let ts = t.startMs;
+    for (let i = 0; i < 45; i += 1) {
+      points.push({ recordedAtMs: ts, value: 1800 });
+      ts += (i % 5 === 0 ? 20 : 2) * 1000;
+    }
+    const resolution = resolveActiveRpmProfileV1({
+      iceRpmApplicability: 'APPLICABLE',
+      tripWindows: [t],
+      points,
+      provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
+      hfReadStatus: 'SUCCESS',
+    });
+    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_STANDARD');
+    expect(resolution?.tripClassifications[0]?.profile).not.toBe('RPM_1HZ');
+  });
+
+  it('two classifiable trips in a five-trip window → UNKNOWN (insufficient known coverage)', () => {
+    const base = Date.parse('2026-10-24T08:00:00Z');
+    const trips = [0, 1, 2, 3, 4].map((i) => trip(`thin-${i}`, base + i * 3600000, 120));
+    const evidence = evidenceForTrips(trips, [
+      { tripId: 'thin-0', intervalSec: 6, count: 40 },
+      { tripId: 'thin-1', intervalSec: 6, count: 40 },
+      { tripId: 'thin-2', intervalSec: 6, count: 5 },
+      { tripId: 'thin-3', intervalSec: 6, count: 5 },
+      { tripId: 'thin-4', intervalSec: 6, count: 5 },
+    ]);
+    const resolution = resolveActiveRpmProfileV1(evidence);
+    expect(resolution?.activeProfile).toBe('UNKNOWN');
+    expect(resolution?.classificationDecisionCode).toBe('INSUFFICIENT_KNOWN_TRIPS_IN_WINDOW');
+  });
+
+  it('rolling window shift with stable RPM_1HZ keeps semantic profile fingerprint', () => {
+    const base = Date.parse('2026-10-27T00:00:00Z');
+    const buildTrips = (n: number) =>
+      Array.from({ length: n }, (_, i) => trip(`roll-${i}`, base + i * 3600000, 400));
+    const specs = (ids: string[]) =>
+      ids.map((id) => ({ tripId: id, intervalSec: 1, count: 50 }));
+    const trips5 = buildTrips(5);
+    const ev5 = evidenceForTrips(trips5, specs(trips5.map((t) => t.tripId)));
+    const trips6 = buildTrips(6);
+    const ev6 = evidenceForTrips(trips6, specs(trips6.map((t) => t.tripId)));
+    const cadence5 = mergeActiveRpmProfileOntoEngineRpmCadence(
+      analyzeEngineRpmCadence(ev5),
+      ev5,
+    );
+    const cadence6 = mergeActiveRpmProfileOntoEngineRpmCadence(
+      analyzeEngineRpmCadence(ev6),
+      ev6,
+    );
+    expect(cadence5.activeRpmProfile?.activeProfile).toBe('RPM_1HZ');
+    expect(cadence6.activeRpmProfile?.activeProfile).toBe('RPM_1HZ');
+    expect(cadence5.activeRpmProfile?.profileSemanticFingerprint).toBe(
+      cadence6.activeRpmProfile?.profileSemanticFingerprint,
+    );
+    expect(cadence5.activeRpmProfile?.profileSemanticFingerprint).toBe(
+      buildActiveRpmProfileSemanticFingerprint({ activeProfile: 'RPM_1HZ' }),
+    );
+    expect(cadence5.activeRpmProfile?.evaluatedTripIds).not.toEqual(
+      cadence6.activeRpmProfile?.evaluatedTripIds,
+    );
   });
 
   it('Tiguan 13–22 Oct historical: sparse multi-second → RPM_STANDARD', () => {
@@ -130,19 +197,27 @@ describe('vsi-active-rpm-profile-resolver', () => {
   });
 
   it('source-link isolation: resolver only classifies trips present in evidence window', () => {
-    const linkTrips = [
-      trip('link-a', 1000, 400),
-      trip('link-b', 5000, 400),
-      trip('link-c', 9000, 400),
-    ];
-    const evidence = evidenceForTrips([...linkTrips, trip('other-link', 13000, 400)], [
-      { tripId: 'link-a', intervalSec: 6, count: 35 },
-      { tripId: 'link-b', intervalSec: 6, count: 35 },
-      { tripId: 'link-c', intervalSec: 6, count: 35 },
-      { tripId: 'other-link', intervalSec: 1, count: 50 },
-    ]);
+    const base = Date.parse('2026-10-20T08:00:00Z');
+    const linkTrips = [0, 1, 2, 3, 4].map((i) => trip(`link-${i}`, base + i * 7_200_000, 600));
+    const evidence = evidenceForTrips(
+      [...linkTrips, trip('other-link', base + 5 * 7_200_000, 600)],
+      [
+        ...linkTrips.map((t) => ({ tripId: t.tripId, intervalSec: 6, count: 40 })),
+        { tripId: 'other-link', intervalSec: 1, count: 50 },
+      ],
+    );
     evidence.tripWindows = linkTrips;
+    evidence.points = evidence.points.filter((p) =>
+      linkTrips.some((t) => p.recordedAtMs >= t.startMs && p.recordedAtMs <= t.endMs),
+    );
     const resolution = resolveActiveRpmProfileV1(evidence);
+    expect(resolution?.tripClassifications.map((c) => c.profile)).toEqual([
+      'RPM_STANDARD',
+      'RPM_STANDARD',
+      'RPM_STANDARD',
+      'RPM_STANDARD',
+      'RPM_STANDARD',
+    ]);
     expect(resolution?.activeProfile).toBe('RPM_STANDARD');
     expect(resolution?.evaluatedTripIds).not.toContain('other-link');
   });
@@ -222,5 +297,72 @@ describe('vsi-active-rpm-profile-resolver', () => {
     const rpm = result.signals.find((s) => s.canonicalSignalKey === 'engine_rpm');
     expect(rpm?.cadenceIntelligence?.activeRpmProfile?.activeProfile).toBe('RPM_1HZ');
     expect(rpm?.cadenceIntelligence?.observedSampleCount).toBeGreaterThan(0);
+  });
+
+  it('VSI semantic fingerprint stable when only rolling trip ids change but active RPM profile unchanged', () => {
+    const base = Date.parse('2026-10-27T00:00:00Z');
+    const mkEval = (): VsiProfileEvaluationResult => ({
+      contractVersion: 'vsi-signal-profile-v2',
+      organizationId: 'o',
+      vehicleId: 'v',
+      providerSourceLinkId: 'l',
+      providerIdentity: 'DIMO',
+      verifiedModality: 'LTE_R1',
+      telemetrySourceFamily: 'DIMO',
+      evaluatedAt: new Date('2026-10-27T08:00:00.000Z'),
+      declaredCatalogCheckedAt: null,
+      lastMaterializedSourceTimestamp: null,
+      lastMaterializedProviderFetchAt: null,
+      lastProvenStrictSourceAdvanceAt: null,
+      profileLimitations: [],
+      signals: [
+        {
+          canonicalSignalKey: 'engine_rpm',
+          providerNativeSignalName: 'powertrainCombustionEngineSpeed',
+          declaredSupport: 'UNKNOWN',
+          empiricalObservation: 'NEVER_OBSERVED',
+          lastValidObservationAt: null,
+          lastSourceTimestamp: null,
+          lastProviderFetchAt: null,
+          lastProvenStrictSourceAdvanceAt: null,
+          strictSourceAdvanced: 'UNKNOWN',
+          freshnessClassification: 'UNKNOWN',
+          evidenceProvenance: [],
+          limitations: [],
+          signalFingerprintContractVersion: 'vsi-signal-fingerprint-v1',
+          qualityClassification: 'UNKNOWN',
+          confidenceLevel: 'UNKNOWN',
+          observedSamples: null,
+          provenSourceAdvances: null,
+          observedCadenceMedianSeconds: null,
+          observedCadenceSampleCount: null,
+          maxStaleIntervalSeconds: null,
+          contentFingerprint: 'x',
+        },
+      ],
+    });
+    const buildTrips = (n: number) =>
+      Array.from({ length: n }, (_, i) => trip(`fp-${i}`, base + i * 3600000, 400));
+    const specs = (trips: VsiRpmCadenceTripWindow[]) =>
+      trips.map((t) => ({ tripId: t.tripId, intervalSec: 1, count: 50 }));
+    const ev5 = evidenceForTrips(buildTrips(5), specs(buildTrips(5)));
+    const ev6 = evidenceForTrips(buildTrips(6), specs(buildTrips(6)));
+    const eval5 = enrichVsiProfileWithCadenceIntelligence(mkEval(), {
+      rpmEvidence: ev5,
+      lvEvidence: null,
+    });
+    const eval6 = enrichVsiProfileWithCadenceIntelligence(mkEval(), {
+      rpmEvidence: ev6,
+      lvEvidence: null,
+    });
+    expect(
+      eval5.signals[0]?.cadenceIntelligence?.activeRpmProfile?.activeProfile,
+    ).toBe('RPM_1HZ');
+    expect(
+      eval6.signals[0]?.cadenceIntelligence?.activeRpmProfile?.activeProfile,
+    ).toBe('RPM_1HZ');
+    expect(fingerprintVsiProfileSemanticEvaluation(eval5)).toBe(
+      fingerprintVsiProfileSemanticEvaluation(eval6),
+    );
   });
 });
