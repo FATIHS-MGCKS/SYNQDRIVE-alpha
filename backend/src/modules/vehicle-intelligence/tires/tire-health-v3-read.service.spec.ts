@@ -127,6 +127,21 @@ describe('TireHealthV3ReadService', () => {
     expect(enriched.wearReadModel).toBe('v2');
   });
 
+  it('does not activate V3 when only authoritative flag is set', async () => {
+    const computeForSetup = jest.fn().mockResolvedValue(minimalPriorResult());
+    const config = {
+      get: () => ({ customerReadEnabled: false, customerReadAuthoritative: true }),
+    };
+    const svc = new TireHealthV3ReadService(config as never, {
+      computeForSetup,
+    } as never);
+    expect(svc.isCustomerReadEnabled()).toBe(false);
+    expect(svc.isCustomerReadAuthoritative()).toBe(false);
+    const read = await svc.computeCustomerRead('setup-1');
+    expect(read).toBeNull();
+    expect(computeForSetup).not.toHaveBeenCalled();
+  });
+
   it('authoritative mode maps insufficient evidence to UNKNOWN display', async () => {
     const computeForSetup = jest.fn().mockResolvedValue(minimalPriorResult());
     const config = {

@@ -161,3 +161,12 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | When `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true`, APIs attach `wearV3` + optional authoritative presentation; rental distinguishes OVERDUE vs INSUFFICIENT_EVIDENCE; flags default false — no production behavior change until owner enables |
 | VALIDATION | Jest adapter/read/rental/wear-analysis specs; `npm run i18n:check` (frontend); registry validator |
 | NON_EFFECTS | No migration; no deploy; no DS4/S4/FSM change; shadow writer OFF; V2 snapshot recalculate path unchanged until authoritative flag; no feature activation in this PR |
+
+### Tire V3 P2 cutover safety — flag AND-gate + V2 snapshot guard (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| WHY | Post-merge audit: `AUTHORITATIVE` alone could enable V3 read; authoritative mode did not suppress new V2 snapshot writes |
+| CHANGE | `tire-wear-v3-cutover.policy.ts` truth table; authoritative requires enabled+authoritative; `TireHealthService.recalculate` skips `tireHealthSnapshot.create` when authoritative; rollback resumes V2 snapshots when flags cleared |
+| VALIDATION | Jest policy truth table, v3-read flag regression, recalculate cutover spec |
+| NON_EFFECTS | Defaults OFF; measurement ingestion, alerts, lifecycle unchanged; historical V2 snapshots retained |

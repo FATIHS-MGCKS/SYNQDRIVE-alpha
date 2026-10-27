@@ -120,6 +120,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-27T13:10:00.000Z',
   },
   {
+    id: 'tire-v3-cutover-safety-flags-v2-guard-2026-10-27',
+    version: '4.9.4998',
+    title: 'Tire V3 P2 cutover safety — flag AND-gate + V2 snapshot guard',
+    summary: [
+      'Authoritative V3 requires CUSTOMER_READ_ENABLED and AUTHORITATIVE both true; authoritative alone inactive.',
+      'Single guard suppresses new tireHealthSnapshot writes when V3 authoritative; rollback resumes V2 snapshots when flags cleared.',
+    ],
+    reason: 'Close post-merge audit gaps without changing production defaults (flags remain OFF).',
+    previousBehavior:
+      'AUTHORITATIVE alone could enable V3 customer read; V2 snapshots still written when authoritative.',
+    details:
+      'backend: tire-wear-v3-cutover.policy.ts, tire-health.service recalculate guard, regression specs.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-10-27T23:05:00.000Z',
+  },
+  {
     id: 'tire-v3-cutover-p2-customer-read-2026-10-27',
     version: '4.9.4997',
     title: 'Tire Wear V3 cutover P2 — customer read adapter (flags default OFF)',

@@ -9,10 +9,10 @@ P2 wires **Tire Wear V3 Prior** (`TireWearV3PriorService.computeForSetup`) into 
 | Env | Default | Effect |
 |-----|---------|--------|
 | `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED` | `false` | Attach `wearV3` on summary/detail/wear-analysis; merge V3 verification alerts |
-| `TIRE_WEAR_V3_CUSTOMER_READ_AUTHORITATIVE` | `false` | V3 drives primary summary tread/status/presentation (`wearReadModel: v3`) |
+| `TIRE_WEAR_V3_CUSTOMER_READ_AUTHORITATIVE` | `false` | V3 drives primary summary tread/status/presentation only when **both** flags are `true`; suppresses new V2 `tireHealthSnapshot` writes |
 | `TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED` | `false` | Unchanged — customer reads always call `persistShadow: false` |
 
-Authoritative mode must not be enabled without customer read enabled.
+Authoritative mode requires `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true` **and** `TIRE_WEAR_V3_CUSTOMER_READ_AUTHORITATIVE=true`. Authoritative alone has no effect.
 
 ## Single V3 computation path (customer reads)
 

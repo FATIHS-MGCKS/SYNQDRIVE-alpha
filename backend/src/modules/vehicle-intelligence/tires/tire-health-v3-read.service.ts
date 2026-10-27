@@ -1,6 +1,10 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { TireWearV3CutoverConfig } from '@config/tire-wear-v3-cutover.config';
+import {
+  isTireWearV3CustomerReadActive,
+  isTireWearV3CustomerReadAuthoritative,
+} from '@config/tire-wear-v3-cutover.policy';
 import type { TireHealthSummary, TireHealthDetail, TireAlert } from './tire-health.service';
 import {
   buildV3VerificationAlerts,
@@ -30,12 +34,11 @@ export class TireHealthV3ReadService {
   }
 
   isCustomerReadEnabled(): boolean {
-    const c = this.cutover();
-    return c.customerReadEnabled || c.customerReadAuthoritative;
+    return isTireWearV3CustomerReadActive(this.cutover());
   }
 
   isCustomerReadAuthoritative(): boolean {
-    return this.cutover().customerReadAuthoritative;
+    return isTireWearV3CustomerReadAuthoritative(this.cutover());
   }
 
   /**
