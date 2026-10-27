@@ -133,7 +133,7 @@ export class VehicleOffboardingService {
     });
     const actorUserId = input.actorUserId;
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction<OffboardVehicleResult>(async (tx) => {
       const lockedRows = await tx.$queryRaw<
         Array<{ registry_lifecycle: VehicleRegistryLifecycle }>
       >`
