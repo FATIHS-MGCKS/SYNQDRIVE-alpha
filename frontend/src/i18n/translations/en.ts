@@ -3586,6 +3586,11 @@ export const en = {
   'trips.duration': 'Duration',
   'trips.alerts': 'Alerts',
   'trips.drivingScore': 'Vehicle load',
+  'trips.drivingImpact.quality.partial': 'Limited data coverage — evaluation may be incomplete.',
+  'trips.drivingImpact.quality.stale': 'Evaluation may be outdated (trip distance or inputs changed).',
+  'trips.drivingImpact.quality.legacyCompat': 'Legacy score from older trip mirror — not the current Driving Impact pipeline.',
+  'trips.drivingImpact.quality.unavailable': 'No reliable vehicle load evaluation available.',
+  'trips.drivingImpact.quality.r1Contained': 'Vehicle load temporarily unavailable (R1 temporal containment).',
   'trips.start': 'Start',
   'trips.destination': 'Destination',
 

@@ -86,7 +86,13 @@ export function getStressDescription(level: StressLevel | null): string {
   }
 }
 
-/** Resolve canonical stress score from API record (legacy fallbacks only). */
+export type DrivingStressScoreSource =
+  | 'trip_driving_impact'
+  | 'vehicle_trip_compat'
+  | 'derived'
+  | 'r1_temporal_containment_unavailable';
+
+/** Resolve canonical stress score from API record (legacy fallbacks only when provenance allows). */
 export function resolveDrivingStressScore(
   record:
     | {
@@ -95,14 +101,25 @@ export function resolveDrivingStressScore(
         drivingStyleScore?: number | null;
         /** @deprecated legacy mirror */
         drivingScore?: number | null;
+        scoreSource?: DrivingStressScoreSource | string | null;
+        drivingImpactScoreSource?: DrivingStressScoreSource | string | null;
       }
     | null
     | undefined,
 ): number | null {
   if (!record) return null;
+  const source = record.drivingImpactScoreSource ?? record.scoreSource ?? null;
+  if (source === 'r1_temporal_containment_unavailable') return null;
   if (typeof record.drivingStressScore === 'number') return record.drivingStressScore;
+  if (source === 'trip_driving_impact') return null;
   if (typeof record.drivingStyleScore === 'number') return record.drivingStyleScore;
-  if (typeof record.drivingScore === 'number') return record.drivingScore;
+  if (
+    source === 'vehicle_trip_compat' ||
+    source === 'derived' ||
+    source == null
+  ) {
+    if (typeof record.drivingScore === 'number') return record.drivingScore;
+  }
   return null;
 }
 

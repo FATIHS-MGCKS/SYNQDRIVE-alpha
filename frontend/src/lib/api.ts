@@ -2198,7 +2198,21 @@ export interface VehicleTripAnalytics {
   stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   /** @deprecated Legacy mirror — use drivingStressScore */
   drivingScore?: number | null;
-  scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  scoreSource?:
+    | 'trip_driving_impact'
+    | 'vehicle_trip_compat'
+    | 'derived'
+    | 'r1_temporal_containment_unavailable';
+  drivingImpactAnalysisStatus?:
+    | 'PENDING'
+    | 'COMPLETE'
+    | 'PARTIAL'
+    | 'UNSUPPORTED'
+    | 'FAILED'
+    | 'STALE'
+    | null;
+  drivingImpactScoreSource?: VehicleTripAnalytics['scoreSource'] | null;
+  drivingImpactSourceCompleteness?: number | null;
   totalAccelerationEvents?: number;
   hardAccelerationEvents?: number;
   totalBrakingEvents?: number;

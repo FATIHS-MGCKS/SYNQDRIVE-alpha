@@ -5,6 +5,7 @@ import {
   TripAssignmentStatus,
   TripAssignmentSubjectType,
   TripDrivingImpact,
+  TripDrivingImpactAnalysisStatus,
   VehicleTrip,
 } from '@prisma/client';
 import { TripAssignmentResolution, TripAssignmentService, type TripAssignmentInput } from './trip-assignment.service';
@@ -67,6 +68,12 @@ export interface CanonicalTripScoreSummary {
     | 'vehicle_trip_compat'
     | 'derived'
     | 'r1_temporal_containment_unavailable';
+  /** TripDrivingImpact.analysisStatus when a TDI row exists; null when absent (never fabricated). */
+  drivingImpactAnalysisStatus: TripDrivingImpactAnalysisStatus | null;
+  /** Explicit provenance alias for API consumers (mirrors scoreSource). */
+  drivingImpactScoreSource: CanonicalTripScoreSummary['scoreSource'];
+  /** Persisted TDI source_completeness 0–1 when available. */
+  drivingImpactSourceCompleteness: number | null;
   /** @deprecated Use drivingStressScore */
   drivingStyleScore?: number | null;
 }
@@ -436,7 +443,11 @@ export class TripAnalyticsCanonicalService {
     trip: TripProjection,
     impact: Pick<
       TripDrivingImpact,
-      'drivingStressScore' | 'sourceSummaryJson' | 'fullBrakingPer100Km'
+      | 'drivingStressScore'
+      | 'sourceSummaryJson'
+      | 'fullBrakingPer100Km'
+      | 'analysisStatus'
+      | 'sourceCompleteness'
     > | null,
     assignment: TripAssignmentResolution,
     attribution?: TripAttribution,
@@ -489,12 +500,18 @@ export class TripAnalyticsCanonicalService {
       ? readTripDrivingImpactModelProfile(impact.sourceSummaryJson)
       : null;
 
+    const drivingImpactAnalysisStatus = impact?.analysisStatus ?? null;
+    const drivingImpactSourceCompleteness = impact?.sourceCompleteness ?? null;
+
     return {
       events,
       scores: {
         drivingStressScore,
         stressLevel: classifyStressLevel(drivingStressScore),
         scoreSource,
+        drivingImpactAnalysisStatus,
+        drivingImpactScoreSource: scoreSource,
+        drivingImpactSourceCompleteness,
         drivingStyleScore: drivingStressScore,
       },
       assignment,

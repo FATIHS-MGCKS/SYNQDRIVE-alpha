@@ -1,4 +1,8 @@
-import { TripAssignmentStatus, TripAssignmentSubjectType } from '@prisma/client';
+import {
+  TripAssignmentStatus,
+  TripAssignmentSubjectType,
+  TripDrivingImpactAnalysisStatus,
+} from '@prisma/client';
 import { TripAnalyticsCanonicalService } from './trip-analytics-canonical.service';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripAttributionService } from './trip-attribution.service';
@@ -35,6 +39,27 @@ function makeMockPrisma() {
 
 const R1_RAW_JSON = { aftermarketDevice: { serial: 'R1-TEST-0001' }, syntheticDevice: null };
 const TESLA_RAW_JSON = { aftermarketDevice: null, syntheticDevice: { tokenId: 1 } };
+
+function impactPrefetchRow(
+  overrides: Partial<{
+    tripId: string;
+    drivingStressScore: number | null;
+    sourceSummaryJson: null;
+    fullBrakingPer100Km: number | null;
+    analysisStatus: TripDrivingImpactAnalysisStatus;
+    sourceCompleteness: number | null;
+  }> = {},
+) {
+  return {
+    tripId: 'trip-1',
+    drivingStressScore: 82,
+    sourceSummaryJson: null,
+    fullBrakingPer100Km: null,
+    analysisStatus: TripDrivingImpactAnalysisStatus.COMPLETE,
+    sourceCompleteness: 0.85,
+    ...overrides,
+  };
+}
 
 function tripWithFullBraking(overrides: Record<string, unknown> = {}) {
   return {
@@ -79,9 +104,7 @@ describe('TripAnalyticsCanonicalService', () => {
   });
 
   it('hydrates trip list with canonical stress score + event summary', async () => {
-    prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      { tripId: 'trip-1', drivingStressScore: 82, sourceSummaryJson: null },
-    ]);
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([impactPrefetchRow()]);
 
     const result = await service.hydrateTrips('org-1', [
       {
@@ -122,7 +145,92 @@ describe('TripAnalyticsCanonicalService', () => {
     expect(result).toHaveLength(1);
     expect(result[0].canonicalTripSummary.scores.drivingStressScore).toBe(82);
     expect(result[0].canonicalTripSummary.scores.stressLevel).toBe('critical');
+    expect(result[0].canonicalTripSummary.scores.drivingImpactAnalysisStatus).toBe(
+      TripDrivingImpactAnalysisStatus.COMPLETE,
+    );
+    expect(result[0].canonicalTripSummary.scores.drivingImpactScoreSource).toBe(
+      'trip_driving_impact',
+    );
+    expect(result[0].canonicalTripSummary.scores.drivingImpactSourceCompleteness).toBe(0.85);
     expect(result[0].canonicalTripSummary.events.totalBrakingEvents).toBe(6);
+  });
+
+  describe('Driving Impact read provenance (PR B)', () => {
+    const baseTrip = {
+      id: 'trip-1',
+      vehicleId: 'vehicle-1',
+      driverName: null,
+      startTime: new Date('2026-03-01T08:00:00Z'),
+      endTime: new Date('2026-03-01T09:00:00Z'),
+      drivingScore: null,
+      speedingSectionCount: 0,
+      speedingSegments: 0,
+      speedingExposurePct: 0,
+      maxOverSpeedKmh: 0,
+      avgOverSpeedKmh: 0,
+      accelerationEventCount: 0,
+      hardAccelerationCount: 0,
+      brakingEventCount: 0,
+      hardBrakingCount: 0,
+      fullBrakingCount: 0,
+      harshCornerCount: 0,
+      abuseEventCount: 0,
+      totalAccelerationEvents: 0,
+      hardAccelerationEvents: 0,
+      totalBrakingEvents: 0,
+      hardBrakingEvents: 0,
+      fullBrakingEvents: 0,
+      corneringEvents: 0,
+      abuseEvents: 0,
+      speedingEvents: 0,
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      assignmentSubjectId: 'cust-1',
+      assignedBookingId: 'booking-1',
+      bookingLinkSource: 'EXPLICIT',
+      isPrivateTrip: false,
+    };
+
+    it('exposes PARTIAL analysis status while preserving score', async () => {
+      prisma.tripDrivingImpact.findMany.mockResolvedValue([
+        impactPrefetchRow({
+          drivingStressScore: 61,
+          analysisStatus: TripDrivingImpactAnalysisStatus.PARTIAL,
+          sourceCompleteness: 0.42,
+        }),
+      ]);
+      const [row] = await service.hydrateTrips('org-1', [baseTrip] as any);
+      expect(row.canonicalTripSummary.scores.drivingStressScore).toBe(61);
+      expect(row.canonicalTripSummary.scores.drivingImpactAnalysisStatus).toBe(
+        TripDrivingImpactAnalysisStatus.PARTIAL,
+      );
+    });
+
+    it('exposes STALE analysis status while preserving score', async () => {
+      prisma.tripDrivingImpact.findMany.mockResolvedValue([
+        impactPrefetchRow({
+          drivingStressScore: 70,
+          analysisStatus: TripDrivingImpactAnalysisStatus.STALE,
+          sourceCompleteness: 0.9,
+        }),
+      ]);
+      const [row] = await service.hydrateTrips('org-1', [baseTrip] as any);
+      expect(row.canonicalTripSummary.scores.drivingStressScore).toBe(70);
+      expect(row.canonicalTripSummary.scores.drivingImpactAnalysisStatus).toBe(
+        TripDrivingImpactAnalysisStatus.STALE,
+      );
+    });
+
+    it('does not fabricate analysis status when TripDrivingImpact is missing', async () => {
+      prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+      const [row] = await service.hydrateTrips('org-1', [
+        { ...baseTrip, drivingScore: 44 },
+      ] as any);
+      expect(row.canonicalTripSummary.scores.drivingStressScore).toBe(44);
+      expect(row.canonicalTripSummary.scores.scoreSource).toBe('vehicle_trip_compat');
+      expect(row.canonicalTripSummary.scores.drivingImpactAnalysisStatus).toBeNull();
+      expect(row.canonicalTripSummary.scores.drivingImpactSourceCompleteness).toBeNull();
+    });
   });
 
   it('falls back to legacy drivingScore when impact row is missing', async () => {
@@ -171,7 +279,7 @@ describe('TripAnalyticsCanonicalService', () => {
 
   it('does not expose safety score fields', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      { tripId: 'trip-1', drivingStressScore: 30, sourceSummaryJson: null },
+      impactPrefetchRow({ drivingStressScore: 30 }),
     ]);
 
     const result = await service.hydrateTrips('org-1', [
@@ -254,12 +362,12 @@ describe('TripAnalyticsCanonicalService', () => {
         { tripId: 'trip-1', eventType: 'FULL_BRAKING' },
       ]);
       prisma.tripDrivingImpact.findMany.mockResolvedValue([
-        {
-          tripId: 'trip-1',
+        impactPrefetchRow({
           drivingStressScore: 88,
           fullBrakingPer100Km: 4,
-          sourceSummaryJson: null,
-        },
+          analysisStatus: TripDrivingImpactAnalysisStatus.PARTIAL,
+          sourceCompleteness: 0.45,
+        }),
       ]);
 
       const [hydrated] = await service.hydrateTrips('org-1', [tripWithFullBraking()] as any);
@@ -273,6 +381,9 @@ describe('TripAnalyticsCanonicalService', () => {
       expect(hydrated.canonicalTripSummary.scores.drivingStressScore).toBeNull();
       expect(hydrated.canonicalTripSummary.scores.scoreSource).toBe(
         'r1_temporal_containment_unavailable',
+      );
+      expect(hydrated.canonicalTripSummary.scores.drivingImpactAnalysisStatus).toBe(
+        TripDrivingImpactAnalysisStatus.PARTIAL,
       );
       expect(prisma.tripBehaviorEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

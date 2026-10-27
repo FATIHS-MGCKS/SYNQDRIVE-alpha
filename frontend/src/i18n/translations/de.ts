@@ -3695,6 +3695,11 @@ export const de: Record<TranslationKey, string> = {
   'trips.duration': 'Dauer',
   'trips.alerts': 'Warnungen',
   'trips.drivingScore': 'Fahrbelastung',
+  'trips.drivingImpact.quality.partial': 'Eingeschränkte Datenbasis — Bewertung kann unvollständig sein.',
+  'trips.drivingImpact.quality.stale': 'Bewertung möglicherweise veraltet (Fahrtdaten haben sich geändert).',
+  'trips.drivingImpact.quality.legacyCompat': 'Legacy-Bewertung aus älterem Fahrt-Score — nicht die aktuelle Driving-Impact-Pipeline.',
+  'trips.drivingImpact.quality.unavailable': 'Keine verlässliche Fahrbelastungsbewertung verfügbar.',
+  'trips.drivingImpact.quality.r1Contained': 'Fahrbelastung vorläufig nicht verfügbar (R1-Zeitfenster-Containment).',
   'trips.start': 'Start',
   'trips.destination': 'Ziel',
 

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-ui-pr-b-driving-impact-provenance-2026-10-27',
+    version: '4.9.4998',
+    title: 'Trip UI PR B — Driving Impact quality & score provenance (read contract)',
+    summary: [
+      'Canonical hydration selects TDI analysisStatus + sourceCompleteness.',
+      'Additive trip API fields: drivingImpactAnalysisStatus, drivingImpactScoreSource, drivingImpactSourceCompleteness.',
+      'VehicleStressPanel localized quality hints (PARTIAL/STALE/legacy/R1); scoreFormat respects R1 containment.',
+      'Consumer audit doc for DriverScore/RentalDrivingAnalysis follow-up; no scoring formula changes.',
+    ],
+    reason:
+      'Fable audit: ~50% PARTIAL/STALE TDI rows served without quality metadata; vehicle_trip_compat fallback invisible in UI.',
+    previousBehavior:
+      'Hydration ignored analysisStatus; API exposed scoreSource only; frontend could fall back to drivingScore under R1 containment.',
+    details:
+      'trip-canonical-hydration.batch.ts, trip-analytics-canonical.service.ts, trip-api.mapper.ts, VehicleStressPanel, scoreFormat.ts, 9-locale i18n keys.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-27T14:05:00.000Z',
+  },
+  {
     id: 'commit-b-vehicle-tire-ai-v2-2026-10-27',
     version: '4.9.4996',
     title: 'Commit B — Vehicle/Tire AI Spec V2, normalization & provenance safety',
