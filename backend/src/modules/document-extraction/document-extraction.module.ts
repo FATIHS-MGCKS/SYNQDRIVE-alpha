@@ -94,9 +94,9 @@ import { Zb1RegistrationDocumentP4Service } from './zb1/zb1-registration-documen
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => InvoicesModule),
     FinesModule,
-    TasksModule,
-    OutboundEmailModule,
-    AiModule,
+    forwardRef(() => TasksModule),
+    forwardRef(() => OutboundEmailModule),
+    forwardRef(() => AiModule),
     BullModule.registerQueue({ name: QUEUE_NAMES.DOCUMENT_EXTRACTION }),
   ],
   controllers: [
