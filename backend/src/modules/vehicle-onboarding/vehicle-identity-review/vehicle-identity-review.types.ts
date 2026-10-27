@@ -67,6 +67,7 @@ export type VehicleIdentityReviewSnapshot = {
   zb1SchemaVersion: string | null;
   capabilities: {
     p2Enabled: boolean;
+    p3Enabled: boolean;
     zb1UploadEnabled: boolean;
     documentStoragePolicyAcknowledged: boolean;
   };

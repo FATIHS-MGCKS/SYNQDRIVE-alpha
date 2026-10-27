@@ -28,6 +28,10 @@ export class VehicleIdentityReviewService {
     return this.config.get<{ enabled?: boolean }>('vehicleIdentityP2')?.enabled === true;
   }
 
+  private get p3Enabled(): boolean {
+    return this.config.get<{ enabled?: boolean }>('vehicleIdentityP3')?.enabled === true;
+  }
+
   private get zb1UploadEnabled(): boolean {
     return (
       this.config.get<{ zb1RegistrationCertificateExtractionEnabled?: boolean }>(
@@ -169,6 +173,7 @@ export class VehicleIdentityReviewService {
       vinMismatchAcknowledged: query.vinMismatchAcknowledged,
       capabilities: {
         p2Enabled: this.p2Enabled,
+        p3Enabled: this.p3Enabled,
         zb1UploadEnabled: this.zb1UploadEnabled,
         documentStoragePolicyAcknowledged: false,
       },

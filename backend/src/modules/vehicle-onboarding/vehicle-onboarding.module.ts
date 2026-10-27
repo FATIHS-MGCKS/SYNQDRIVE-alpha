@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { AiModule } from '@modules/ai/ai.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { AuthModule } from '@shared/auth/auth.module';
@@ -23,6 +24,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
 import { MasterDimoCanonicalRegistrationService } from './master-dimo/master-dimo-canonical-registration.service';
 import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-readonly-composer.module';
 import { VehicleIdentityReviewController } from './vehicle-identity-review/vehicle-identity-review.controller';
+import { VehicleIdentityP3Service } from './vehicle-identity-review/vehicle-identity-p3.service';
 import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-identity-review.service';
 
 @Module({
@@ -31,6 +33,7 @@ import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-
     forwardRef(() => DimoModule),
     ActivityLogModule,
     VsiReadonlySignalComposerModule,
+    forwardRef(() => AiModule),
   ],
   controllers: [
     VehicleIdentityReviewController,
@@ -59,6 +62,7 @@ import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-
     MasterVehicleOffboardMfaGuard,
     MasterDimoCanonicalRegistrationService,
     VehicleIdentityReviewService,
+    VehicleIdentityP3Service,
   ],
   exports: [
     VehicleOnboardingCaseService,

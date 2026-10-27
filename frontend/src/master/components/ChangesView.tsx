@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-identity-p3-bridge-provenance-2026-10-27',
+    version: '4.9.5000',
+    title: 'Vehicle Identity P3 — canonical identity → Vehicle AI V2 → save + provenance',
+    summary: [
+      'P3 connects P2 manual + ZB-I confirmed fields to a typed canonical identity, then Vehicle AI V2 preview (synthetic `injectedAiSpecs` in tests; live only when P3 + AI-live flags on).',
+      'Explicit `POST …/registration-identity-review/save` persists vehicle row fields + `registration_identity_provenance` JSONB (value, provenance, confirmation status, timestamps, document ref).',
+      'Conflict gates: FIN mismatch, P.2 nominal vs AI system kW, eTSI variant vs implausible displacement; no auto-upgrade of AI to manufacturer truth.',
+      'P2 validate-confirmations unchanged (`persisted: false`); no save on OCR review alone.',
+      'Flags default OFF: `ZB1_VEHICLE_IDENTITY_P3_ENABLED`, `ZB1_VEHICLE_IDENTITY_P3_AI_LIVE_ENABLED`, `VITE_ZB1_VEHICLE_IDENTITY_P3_ENABLED`.',
+    ],
+    reason:
+      'Operators need a governed bridge from field-level confirmation to AI-assisted specs and durable provenance without silent overwrites or production OCR/Mistral in CI.',
+    previousBehavior:
+      'P2 reconciled and validated only; no canonical handoff, no provenance reload, no explicit identity save API.',
+    details:
+      'Backend: `vehicle-identity-canonical.*`, `vehicle-identity-p3.service.ts`, `vehicle-identity-p3-bridge.util.ts`, `vehicle-identity-provenance.util.ts`, Prisma `registrationIdentityProvenance`. Frontend: P3 preview/save actions on `VehicleIdentityP2Panel` when flags + capability on.',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-27T18:45:00.000Z',
+  },
+  {
     id: 'vehicle-identity-p2-zb1-review-2026-10-27',
     version: '4.9.4999',
     title: 'Vehicle Identity P2 — Fahrzeugschein review-only (manual + ZB-I OCR)',

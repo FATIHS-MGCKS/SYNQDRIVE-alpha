@@ -5,6 +5,7 @@ import { buildVehicleIdentityReviewSnapshot } from './vehicle-identity-reconcile
 describe('vehicle-identity-confirm.util', () => {
   const capabilities = {
     p2Enabled: true,
+    p3Enabled: false,
     zb1UploadEnabled: false,
     documentStoragePolicyAcknowledged: false,
   };
