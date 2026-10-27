@@ -72,6 +72,21 @@ function fractionLe(seconds: number[], threshold: number): number | null {
   return seconds.filter((s) => s <= threshold).length / seconds.length;
 }
 
+/** Dense ≤2 s spacing with a tail beyond the fast P95 cap — not STANDARD-by-P95 alone. */
+function hasContradictoryFastDensityEvidence(input: {
+  medianSeconds: number | null;
+  fractionIntervalsLe2s: number | null;
+  intervalP95Seconds: number | null;
+}): boolean {
+  return (
+    input.medianSeconds != null &&
+    input.medianSeconds <= VSI_ACTIVE_RPM_FAST_MEDIAN_MAX_SECONDS &&
+    (input.fractionIntervalsLe2s ?? 0) >= VSI_ACTIVE_RPM_FAST_FRACTION_LE2_MIN &&
+    input.intervalP95Seconds != null &&
+    input.intervalP95Seconds > VSI_ACTIVE_RPM_FAST_P95_MAX_SECONDS
+  );
+}
+
 /**
  * Per-trip RPM profile from intra-trip intervals.
  * Median alone does not decide STANDARD vs 1 Hz; P95 and short-interval fraction
@@ -118,6 +133,18 @@ export function classifySingleTripRpmProfile(input: {
       ...base,
       profile: 'RPM_STANDARD',
       decisionCode: 'MEDIAN_GE_SPARSE_REFERENCE_BAND',
+    };
+  }
+
+  if (hasContradictoryFastDensityEvidence({
+    medianSeconds: med,
+    fractionIntervalsLe2s: fracLe2,
+    intervalP95Seconds: p95,
+  })) {
+    return {
+      ...base,
+      profile: 'UNKNOWN',
+      decisionCode: 'CONTRADICTORY_FAST_DENSITY_WITH_SPARSE_TAIL',
     };
   }
 

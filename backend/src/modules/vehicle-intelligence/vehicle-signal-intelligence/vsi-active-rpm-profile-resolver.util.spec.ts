@@ -53,13 +53,35 @@ describe('vsi-active-rpm-profile-resolver', () => {
     expect(selected.map((t) => t.tripId)).toEqual(['t3', 't4', 't5', 't6', 't7']);
   });
 
+  it('high ≤2s fraction with P95 tail is UNKNOWN, not unearned RPM_STANDARD', () => {
+    const t = trip('contradictory-fast', 0, 900);
+    const points: { recordedAtMs: number; value: number }[] = [];
+    let ts = t.startMs;
+    for (let i = 0; i < 80; i += 1) {
+      points.push({ recordedAtMs: ts, value: 1800 });
+      ts += (i % 12 === 0 ? 18 : 1) * 1000;
+    }
+    const resolution = resolveActiveRpmProfileV1({
+      iceRpmApplicability: 'APPLICABLE',
+      tripWindows: [t],
+      points,
+      provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
+      hfReadStatus: 'SUCCESS',
+    });
+    expect(resolution?.tripClassifications[0]?.profile).toBe('UNKNOWN');
+    expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
+      'CONTRADICTORY_FAST_DENSITY_WITH_SPARSE_TAIL',
+    );
+  });
+
   it('median≈2s with sparse P95 gaps is not RPM_1HZ (Tiguan-like)', () => {
     const t = trip('sparse-m2', 0, 1200);
     const points: { recordedAtMs: number; value: number }[] = [];
     let ts = t.startMs;
     for (let i = 0; i < 45; i += 1) {
       points.push({ recordedAtMs: ts, value: 1800 });
-      ts += (i % 5 === 0 ? 20 : 2) * 1000;
+      // median≈2 s sparse tail without fast-density ≤2s supermajority (Tiguan ALT-like)
+      ts += (i % 3 === 0 ? 20 : 2) * 1000;
     }
     const resolution = resolveActiveRpmProfileV1({
       iceRpmApplicability: 'APPLICABLE',
