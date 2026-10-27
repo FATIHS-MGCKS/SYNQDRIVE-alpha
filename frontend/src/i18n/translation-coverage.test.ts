@@ -37,7 +37,7 @@ describe('translation coverage contract', () => {
       nl: { ownedCount: 745, status: 'partial' },
       es: { ownedCount: 745, status: 'partial' },
       it: { ownedCount: 745, status: 'partial' },
-      tr: { ownedCount: 0, status: 'fallback-only' },
+      tr: { ownedCount: 8, status: 'partial' },
     } as const;
 
     for (const [locale, values] of Object.entries(expected)) {
@@ -46,14 +46,15 @@ describe('translation coverage contract', () => {
     }
   });
 
-  it('Turkish fallback does not count as Turkish-owned translations', () => {
+  it('Turkish partial locale owns sparse Driving Impact quality keys', () => {
     const turkish = getTranslationRegistryEntry('tr');
     const report = buildAllLocaleCoverageReports().find((entry) => entry.locale === 'tr');
 
     expect(turkish.usesEnglishFallback).toBe(true);
-    expect(turkish.dictionary).toEqual({});
-    expect(report?.ownedCount).toBe(0);
-    expect(report?.status).toBe('fallback-only');
+    expect(turkish.status).toBe('partial');
+    expect(report?.ownedCount).toBe(8);
+    expect(report?.status).toBe('partial');
+    expect(Object.keys(turkish.dictionary ?? {}).length).toBe(8);
   });
 
   it('findLocalesWithDecreasedCoverage detects a synthetic locale decrease', () => {

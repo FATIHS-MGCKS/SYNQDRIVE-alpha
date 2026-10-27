@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Canonical hydration selects TDI analysisStatus + sourceCompleteness.',
       'Additive trip API fields: drivingImpactAnalysisStatus, drivingImpactScoreSource, drivingImpactSourceCompleteness.',
-      'VehicleStressPanel localized quality hints (PARTIAL/STALE/legacy/R1); scoreFormat respects R1 containment.',
+      'VehicleStressPanel localized quality hints (PARTIAL/STALE/PENDING/FAILED/UNSUPPORTED + legacy/R1); scoreFormat respects R1 containment.',
+      'Turkish registry partial for Driving Impact quality keys; Fable remediation tests + DI change ledger.',
       'Consumer audit doc for DriverScore/RentalDrivingAnalysis follow-up; no scoring formula changes.',
     ],
     reason:

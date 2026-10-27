@@ -74,12 +74,14 @@ describe('platform LanguageProvider runtime', () => {
     expect(document.documentElement.lang).toBe('it-IT');
   });
 
-  it('uses explicit English fallback for Turkish without a dictionary', () => {
+  it('uses explicit English fallback for Turkish keys outside the sparse partial dictionary', () => {
     const result = translateKey('tr', 'common.save');
     expect(result.source).toBe('fallback-en');
     expect(result.text.length).toBeGreaterThan(0);
-    expect(usesLocaleDictionary('tr')).toBe(false);
+    expect(usesLocaleDictionary('tr')).toBe(true);
     expect(usesLocaleDictionary('it')).toBe(true);
+    const owned = translateKey('tr', 'trips.drivingImpact.quality.partial');
+    expect(owned.source).toBe('locale');
   });
 
   it('keeps Italian dictionary-backed translations', () => {

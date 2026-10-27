@@ -2332,3 +2332,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | GAPS RAISED TO DI | Persisted event rows lack `meanAccelMps2`/`durationS`/`coverageRatio` (B7) — extension requires DI decision + Fable sign-off; DI graph has no motion-core/DS4 node to attach the tire consumer edge (`TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001`) |
 | VALIDATION | `bash architecture/tires/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh`; Production read-only 2026-10-24: 85 SUCCEEDED runs, 34 trips, 4 vehicles, latest-per-trip 449 events (OK 394 / DEGRADED 21 / LIMITED 32 / ARTEFACT_SUSPECT 2) |
 | NON_EFFECTS | No DI code, flag, allowlist, persistence, graph node or deploy change; detector/C4/C5.1/FSM/P1/P2 untouched; no tire runtime change |
+
+### Trip UI PR B — vehicle trip API read provenance + quality hints (2026-10-27, PR #2192 Fable remediation)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | **Read contract only:** canonical trip hydration selects `TripDrivingImpact.analysisStatus` + `sourceCompleteness`; vehicle trip API adds `drivingImpactAnalysisStatus`, `drivingImpactScoreSource`, `drivingImpactSourceCompleteness`. Rental `VehicleStressPanel` shows localized quality hints (PARTIAL/STALE/PENDING/FAILED/UNSUPPORTED, legacy `vehicle_trip_compat`, R1 containment) without changing `buildSummary` score math. Turkish locale registry promoted `fallback-only` → `partial` for owned Driving Impact quality keys. |
+| WHY | Fable audit: nonterminal TDI statuses and legacy mirror provenance were invisible; i18n gate failed on Turkish owned keys vs fallback-only registry |
+| VALIDATION | `trip-analytics-canonical.service.spec.ts`, `trip-api.mapper.spec.ts`, `scoreFormat.test.ts`, `VehicleStressPanel.ui.test.tsx`, `translation-registry.test.ts`; `bash architecture/drivingintelligence/scripts/validate-docs.sh` |
+| NON_EFFECTS | No Driving Impact compute/persist formulas; no DriverScore/RentalDrivingAnalysis/Tire/Brake/FSM/schema changes |

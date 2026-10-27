@@ -82,9 +82,9 @@ export const TRANSLATION_LOCALE_REGISTRY: Record<SupportedLocale, TranslationLoc
   },
   tr: {
     locale: 'tr',
-    status: 'fallback-only',
+    status: 'partial',
     dictionary: tr,
-    hasLocaleDictionary: false,
+    hasLocaleDictionary: true,
     usesEnglishFallback: true,
   },
 };

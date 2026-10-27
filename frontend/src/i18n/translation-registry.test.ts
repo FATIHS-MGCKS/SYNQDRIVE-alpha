@@ -42,18 +42,21 @@ describe('translation registry', () => {
   });
 
   it('marks partial locales as partial with English fallback enabled', () => {
-    for (const locale of ['fr', 'nl', 'es', 'it', 'pl', 'cs'] as const) {
+    for (const locale of ['fr', 'nl', 'es', 'it', 'pl', 'cs', 'tr'] as const) {
       const entry = getTranslationRegistryEntry(locale);
       expect(entry.status).toBe('partial');
       expect(entry.usesEnglishFallback).toBe(true);
     }
   });
 
-  it('marks Turkish as fallback-only without owned product keys', () => {
+  it('marks Turkish as partial with owned Driving Impact quality keys', () => {
     const entry = getTranslationRegistryEntry('tr');
-    expect(entry.status).toBe('fallback-only');
-    expect(Object.keys(tr)).toHaveLength(0);
+    expect(entry.status).toBe('partial');
+    expect(entry.hasLocaleDictionary).toBe(true);
+    expect(Object.keys(tr).length).toBeGreaterThan(0);
     expect(entry.usesEnglishFallback).toBe(true);
+    const owned = translateKey('tr', 'trips.drivingImpact.quality.partial');
+    expect(owned.source).toBe('locale');
   });
 });
 
