@@ -217,6 +217,8 @@ function buildMocks() {
 //  ROTATION MOVE MAPS (private pure helper via typed access)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// recordMeasurement mocks must include v3Recompute for tsc (see TireLifecycleService return type).
+
 describe('rotation move maps', () => {
   const { svc } = buildMocks();
   const moves = (template: string): Record<string, string> =>
