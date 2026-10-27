@@ -1,0 +1,16 @@
+{
+  "_fixtureLabel": "SYNTHETIC_FIXTURE — partial-wheel accepted measurement (safety-critical edge; not from production)",
+  "_purpose": "Consumer-chain validation for single-wheel tread row with three null wheels",
+  "partialMeasurement": {
+    "frontLeftMm": 4.2,
+    "frontRightMm": null,
+    "rearLeftMm": null,
+    "rearRightMm": null,
+    "odometerAtMeasurement": 50000,
+    "measuredAt": "2026-06-01T12:00:00.000Z"
+  },
+  "expectedConsumerBehaviors": {
+    "v3MustNotFabricateMissingWheels": true,
+    "rentalMustNotHardBlockOnPartialAlone": "policy-dependent"
+  }
+}

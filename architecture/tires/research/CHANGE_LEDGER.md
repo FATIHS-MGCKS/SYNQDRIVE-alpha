@@ -170,3 +170,14 @@ Newest entry last. Never rewrite or delete entries.
 | CHANGE | `tire-wear-v3-cutover.policy.ts` truth table; authoritative requires enabled+authoritative; `TireHealthService.recalculate` skips `tireHealthSnapshot.create` when authoritative; rollback resumes V2 snapshots when flags cleared |
 | VALIDATION | Jest policy truth table, v3-read flag regression, recalculate cutover spec |
 | NON_EFFECTS | Defaults OFF; measurement ingestion, alerts, lifecycle unchanged; historical V2 snapshots retained |
+
+### Tire V3 P3 — offline E2E validation (read-only production) (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| WHY | Final pre-cutover proof that V3 can replace V2 on real fleet evidence without production writes or flag activation |
+| CHANGE | `validation/P3_OFFLINE_E2E_2026-10-27.md`; evidence bundle + `offline-replay-results.json`; `scripts/ops/tire-v3-p3-offline-e2e-validation.readonly.ts`; `tire-v3-p3-consumer-chain.validation.spec.ts`; `SYNTHETIC_partial-wheel-measurement.fixture.json` |
+| VALIDATION | Read-only SSH/psql export (Tesla M3, Tiguan, A4, Arteon); offline replay idempotent 4/4; shadow rows unchanged; Jest cutover + P3 consumer chain 15/15 |
+| OBSERVED_EFFECT | All four cohort vehicles: V3 verification `INSUFFICIENT_EVIDENCE` (NULL measurement odometers; Arteon no measurements); rental `MEASUREMENT_REQUIRED`; DS4 β=0 |
+| VERDICT | **INCONCLUSIVE** for production GO — mechanics OK, evidence quality blocks authoritative replacement |
+| NON_EFFECTS | No model formula change; no deploy; no flags; no production mutation |

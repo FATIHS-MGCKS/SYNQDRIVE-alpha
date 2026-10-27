@@ -120,6 +120,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-27T13:10:00.000Z',
   },
   {
+    id: 'tire-v3-p3-offline-e2e-validation-2026-10-28',
+    version: '4.9.4999',
+    title: 'Tire V3 P3 — offline E2E validation (read-only production)',
+    summary: [
+      'Read-only production evidence + offline V3 replay for Tesla M3, Tiguan, A4, Arteon; fixtures and validation report in architecture/tires.',
+      'Consumer chain Jest (adapter → alerts → rental) pinned to replay JSON; cutover truth table unchanged; verdict INCONCLUSIVE for prod GO.',
+    ],
+    reason:
+      'Principal-engineer validation gate before V3 authoritative cutover — no deploy, flags, or production writes.',
+    previousBehavior: 'P2 cutover code on main; no formal P3 fleet replay artifact.',
+    details:
+      'architecture/tires/validation/P3_OFFLINE_E2E_2026-10-27.md; backend/scripts/ops/tire-v3-p3-offline-e2e-validation.readonly.ts; tire-v3-p3-consumer-chain.validation.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-10-28T00:10:00.000Z',
+  },
+  {
     id: 'tire-v3-cutover-safety-flags-v2-guard-2026-10-27',
     version: '4.9.4998',
     title: 'Tire V3 P2 cutover safety — flag AND-gate + V2 snapshot guard',
