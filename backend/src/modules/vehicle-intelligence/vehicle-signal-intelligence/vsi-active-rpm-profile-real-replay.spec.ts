@@ -66,11 +66,38 @@ describe('vsi-active-rpm-profile real production interval replay', () => {
     expect(resolution?.activeProfile).toBe('UNKNOWN');
   });
 
-  it('Tiguan 2026-10-27 fast phase: RPM_1HZ when last rolling window confirms', () => {
-    const phase = tripsInDateRange(fixture.tiguan.trips, '2026-10-27', '2026-10-27');
-    expect(phase.length).toBe(3);
-    const resolution = resolveRollingAtEnd(phase);
-    expect(resolution?.activeProfile).toBe('RPM_1HZ');
+  it('Tiguan post-deploy neue trips (production ids): per-trip UNKNOWN under contradictory density', () => {
+    const neueIds = [
+      '29b8bb31-bc76-4b0f-a92f-c8897e982988',
+      '0e276eb6-0f53-455f-8d12-bd81d2693a4d',
+      'f1bf4ae6-fb29-4e59-b39a-f9ea17d0714f',
+    ];
+    for (const tripId of neueIds) {
+      const trip = fixture.tiguan.trips.find((t) => t.tripId === tripId);
+      expect(trip).toBeDefined();
+      const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip!]);
+      const resolution = resolveActiveRpmProfileV1(evidence);
+      expect(resolution?.tripClassifications[0]?.profile).toBe('UNKNOWN');
+      expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
+        'CONTRADICTORY_FAST_DENSITY_WITH_SPARSE_TAIL',
+      );
+    }
+    const rolling = resolveRollingAtEnd(
+      neueIds.map((id) => fixture.tiguan.trips.find((t) => t.tripId === id)!),
+    );
+    expect(rolling?.activeProfile).toBe('UNKNOWN');
+    expect(rolling?.classificationDecisionCode).toBe('INSUFFICIENT_KNOWN_TRIPS_IN_WINDOW');
+  });
+
+  it('Tiguan stable fast historical trip b373: RPM_1HZ per trip', () => {
+    const trip = fixture.tiguan.trips.find((t) =>
+      t.tripId.startsWith('b373f596'),
+    );
+    expect(trip).toBeDefined();
+    const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip!]);
+    const resolution = resolveActiveRpmProfileV1(evidence);
+    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
+    expect(resolution?.tripClassifications[0]?.decisionCode).toBe('FAST_1_2S_BUCKET_PATTERN');
   });
 
   it('replay fixture intervals are clipped to trip duration when building evidence', () => {
