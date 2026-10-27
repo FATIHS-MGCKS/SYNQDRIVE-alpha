@@ -65,8 +65,12 @@ export class DocumentExtractionOrgController {
 
   @Get()
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
-  list(@Param('orgId') orgId: string, @Query() query: ListDocumentExtractionsQueryDto) {
-    return this.service.listForOrg(orgId, query);
+  list(
+    @Param('orgId') orgId: string,
+    @Query() query: ListDocumentExtractionsQueryDto,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
+  ) {
+    return this.service.listForOrg(orgId, query, user);
   }
 
   @Get('archive')
@@ -74,8 +78,9 @@ export class DocumentExtractionOrgController {
   listArchive(
     @Param('orgId') orgId: string,
     @Query() query: ListDocumentExtractionArchiveQueryDto,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
   ) {
-    return this.service.listArchiveForOrg(orgId, query);
+    return this.service.listArchiveForOrg(orgId, query, user);
   }
 
   @Post('upload')
@@ -131,10 +136,15 @@ export class DocumentExtractionOrgController {
   async download(
     @Param('orgId') orgId: string,
     @Param('extractionId') extractionId: string,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const dl = await this.service.getDownloadForOrg(orgId, extractionId, userId ?? null);
+    const dl = await this.service.getDownloadForOrg(
+      orgId,
+      extractionId,
+      user?.id ?? null,
+      user?.platformRole ?? null,
+    );
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDisposition(dl.fileName, true),
@@ -145,8 +155,12 @@ export class DocumentExtractionOrgController {
 
   @Get(':extractionId')
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
-  getOne(@Param('orgId') orgId: string, @Param('extractionId') extractionId: string) {
-    return this.service.getPublicForOrg(orgId, extractionId);
+  getOne(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
+  ) {
+    return this.service.getPublicForOrg(orgId, extractionId, user);
   }
 
   @Patch(':extractionId/entity-links')

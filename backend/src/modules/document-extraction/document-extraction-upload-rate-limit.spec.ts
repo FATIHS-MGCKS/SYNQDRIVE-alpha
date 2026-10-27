@@ -3,7 +3,14 @@ import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
 import { FIXTURE_TXT } from './__fixtures__/document-fixtures';
-import {makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, spreadDocumentExtractionExtendedServiceMocks } from './document-extraction-test.helpers';
+import {
+  makeDocumentExtractionObservabilityMock,
+  makeLifecycleMock,
+  makeMalwareScanMock,
+  makeRetentionMock,
+  makeUploadContextMock,
+  spreadDocumentExtractionExtendedServiceMocks,
+} from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -85,7 +92,7 @@ function makeUploadService(rateLimit: DocumentUploadRateLimitService) {
     makeLifecycleMock() as any,
     makeRetentionMock() as any,
     makeUploadContextMock() as any,
-    { logEvent: jest.fn(), recordApply: jest.fn(), observeStage: jest.fn((_a, _b, fn) => fn()) } as any,
+    makeDocumentExtractionObservabilityMock() as any,
     ...spreadDocumentExtractionExtendedServiceMocks(),
   );
 

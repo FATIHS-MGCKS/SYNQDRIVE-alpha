@@ -218,10 +218,53 @@ export function makeLifecycleMock() {
     })),
     setLegalHold: jest.fn(),
     clearLegalHold: jest.fn(),
-    recordDownloadAudit: jest.fn(),
+    recordDownloadAudit: jest.fn().mockResolvedValue(undefined),
     assertNotOnLegalHold: jest.fn(),
     hasDownstreamLinks: jest.fn().mockReturnValue(false),
     redactSensitiveExtractedData: jest.fn().mockReturnValue(null),
+  };
+}
+
+export function makeZb1RegistrationDocumentP4Mock(
+  overrides: Partial<{
+    isP4Active: jest.Mock;
+    assertProductionGatesForUpload: jest.Mock;
+    assertMandatoryStorageCommitted: jest.Mock;
+    stampRegistrationDocumentMetadata: jest.Mock;
+    shouldHideFromListForUser: jest.Mock;
+    assertAccess: jest.Mock;
+    softDeleteRegistrationDocumentsForVehicle: jest.Mock;
+    softDeleteRegistrationDocumentsForOrganization: jest.Mock;
+  }> = {},
+) {
+  return {
+    isP4Active: jest.fn().mockReturnValue(false),
+    assertProductionGatesForUpload: jest.fn(),
+    assertMandatoryStorageCommitted: jest.fn().mockResolvedValue(undefined),
+    stampRegistrationDocumentMetadata: jest.fn((plausibility: unknown) => plausibility),
+    shouldHideFromListForUser: jest.fn().mockReturnValue(false),
+    assertAccess: jest.fn(),
+    softDeleteRegistrationDocumentsForVehicle: jest.fn().mockResolvedValue({ affected: 0 }),
+    softDeleteRegistrationDocumentsForOrganization: jest.fn().mockResolvedValue({ affected: 0 }),
+    isRegistrationCertificate: jest.fn(
+      (record: {
+        effectiveDocumentType?: string | null;
+        documentType?: string | null;
+        requestedDocumentType?: string | null;
+      }) =>
+        (record.effectiveDocumentType ??
+          record.documentType ??
+          record.requestedDocumentType) === 'REGISTRATION_CERTIFICATE',
+    ),
+    resolveEffectiveDocumentType: jest.fn(
+      (record: {
+        effectiveDocumentType?: string | null;
+        documentType?: string | null;
+        requestedDocumentType?: string | null;
+      }) =>
+        record.effectiveDocumentType ?? record.documentType ?? record.requestedDocumentType ?? null,
+    ),
+    ...overrides,
   };
 }
 
@@ -395,8 +438,11 @@ export function makeDocumentExtractionExtendedServiceMocks(
 
 export function spreadDocumentExtractionExtendedServiceMocks(
   overrides: Record<string, unknown> = {},
-): [any, any, any, any, any, any] {
+): [any, any, any, any, any, any, any] {
   const extended = makeDocumentExtractionExtendedServiceMocks(overrides);
+  const p4 =
+    (overrides.zb1RegistrationDocumentP4 as ReturnType<typeof makeZb1RegistrationDocumentP4Mock>) ??
+    makeZb1RegistrationDocumentP4Mock();
   return [
     extended.actionPlanPreview,
     extended.applyResultService,
@@ -404,5 +450,6 @@ export function spreadDocumentExtractionExtendedServiceMocks(
     extended.followUpContactPrepareService,
     extended.followUpResyncService,
     extended.archiveIndexService,
-  ] as [any, any, any, any, any, any];
+    p4,
+  ] as [any, any, any, any, any, any, any];
 }

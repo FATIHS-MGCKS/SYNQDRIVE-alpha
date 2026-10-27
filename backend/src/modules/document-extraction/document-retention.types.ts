@@ -2,6 +2,7 @@ export type DocumentRetentionTrigger = 'manual' | 'cron';
 
 export interface DocumentRetentionPhaseResult {
   phase:
+    | 'pending_physical_object_delete'
     | 'ocr_cache_after_soft_delete'
     | 'sensitive_extracted_data_after_soft_delete'
     | 'final_row_after_soft_delete'

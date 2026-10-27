@@ -1819,8 +1819,11 @@ export class VehicleIntelligenceController {
 
   // --- Vehicle file summary (Documents tab read model) ---
   @Get('file-summary')
-  async getVehicleFileSummary(@Param('vehicleId') vehicleId: string) {
-    return this.vehicleFileSummaryService.buildSummary(vehicleId);
+  async getVehicleFileSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { id?: string; platformRole?: string | null } },
+  ) {
+    return this.vehicleFileSummaryService.buildSummary(vehicleId, req.user);
   }
 
   // --- Service Info Status ---

@@ -9,7 +9,12 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BillingModule } from '@modules/billing/billing.module';
 
 @Module({
-  imports: [UsersModule, PaymentsModule, VehiclesModule, BillingModule],
+  imports: [
+    UsersModule,
+    PaymentsModule,
+    VehiclesModule,
+    BillingModule,
+  ],
   controllers: [OrganizationsController, TenantOrganizationProfileController],
   providers: [OrganizationsService, OrganizationsOperationalService],
   exports: [OrganizationsService, OrganizationsOperationalService],

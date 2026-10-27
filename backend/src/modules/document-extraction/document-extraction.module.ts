@@ -79,6 +79,7 @@ import { DocumentFollowUpContactPrepareService } from './document-follow-up-cont
 import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
 import { DocumentSchemaRegistryService } from './document-schema-registry.service';
+import { Zb1RegistrationDocumentP4Service } from './zb1/zb1-registration-document-p4.service';
 
 /**
  * AI Document Upload feature module.
@@ -93,9 +94,9 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => InvoicesModule),
     FinesModule,
-    TasksModule,
-    OutboundEmailModule,
-    AiModule,
+    forwardRef(() => TasksModule),
+    forwardRef(() => OutboundEmailModule),
+    forwardRef(() => AiModule),
     BullModule.registerQueue({ name: QUEUE_NAMES.DOCUMENT_EXTRACTION }),
   ],
   controllers: [
@@ -143,6 +144,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     DocumentFollowUpContactPrepareService,
     DocumentFollowUpResyncService,
     DocumentExtractionArchiveIndexService,
+    Zb1RegistrationDocumentP4Service,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,
@@ -184,6 +186,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     DocumentExtractionHealthService,
     DocumentIntakeReconciliationService,
     DocumentIntakeActionRecoveryService,
+    Zb1RegistrationDocumentP4Service,
   ],
 })
 export class DocumentExtractionModule {}

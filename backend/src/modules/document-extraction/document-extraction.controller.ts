@@ -65,8 +65,9 @@ export class DocumentExtractionController {
   list(
     @Param('vehicleId') vehicleId: string,
     @Query() query: ListDocumentExtractionsQueryDto,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
   ) {
-    return this.service.listForVehicle(vehicleId, query);
+    return this.service.listForVehicle(vehicleId, query, user);
   }
 
   @Get(':extractionId/download')
@@ -75,10 +76,15 @@ export class DocumentExtractionController {
   async download(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const dl = await this.service.getDownloadForVehicle(vehicleId, extractionId, userId ?? null);
+    const dl = await this.service.getDownloadForVehicle(
+      vehicleId,
+      extractionId,
+      user?.id ?? null,
+      user?.platformRole ?? null,
+    );
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDisposition(dl.fileName, true),
@@ -92,8 +98,9 @@ export class DocumentExtractionController {
   getOne(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
   ) {
-    return this.service.getPublicForVehicle(vehicleId, extractionId);
+    return this.service.getPublicForVehicle(vehicleId, extractionId, user);
   }
 
   @Post('upload')
@@ -373,9 +380,14 @@ export class DocumentExtractionController {
   async deleteFile(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
   ) {
-    const record = await this.service.deleteFile(vehicleId, extractionId, userId ?? null);
+    const record = await this.service.deleteFile(
+      vehicleId,
+      extractionId,
+      user?.id ?? null,
+      user?.platformRole ?? null,
+    );
     return record;
   }
 

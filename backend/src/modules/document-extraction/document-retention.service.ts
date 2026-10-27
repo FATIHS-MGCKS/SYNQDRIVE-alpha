@@ -44,9 +44,6 @@ export class DocumentRetentionService implements OnModuleInit {
   async runOnce(options: DocumentRetentionRunOptions = {}): Promise<DocumentRetentionReport> {
     const trigger = options.trigger ?? 'manual';
     const startedAtMs = Date.now();
-    if (!this.config.enabled) {
-      return this.emptyReport(trigger, true, startedAtMs);
-    }
     if (this.running) {
       this.logger.warn('Document retention already running — skipping overlapping run.');
       return this.emptyReport(trigger, this.resolveDryRun(options), startedAtMs);
@@ -58,6 +55,28 @@ export class DocumentRetentionService implements OnModuleInit {
     const phases: DocumentRetentionPhaseResult[] = [];
 
     try {
+      phases.push(
+        await this.phasePendingPhysicalObjectDelete(dryRun, options.organizationId),
+      );
+      if (!this.config.enabled) {
+        const totals = phases.reduce(
+          (acc, phase) => ({
+            candidates: acc.candidates + phase.candidates,
+            affected: acc.affected + phase.affected,
+            skipped: acc.skipped + phase.skipped,
+          }),
+          { candidates: 0, affected: 0, skipped: 0 },
+        );
+        return {
+          trigger,
+          dryRun,
+          startedAt: new Date(startedAtMs).toISOString(),
+          completedAt: new Date().toISOString(),
+          durationMs: Date.now() - startedAtMs,
+          phases,
+          totals,
+        };
+      }
       phases.push(
         await this.phaseOcrCacheAfterSoftDelete(dryRun, days.ocrCacheAfterSoftDelete, options.organizationId),
       );
@@ -128,6 +147,33 @@ export class DocumentRetentionService implements OnModuleInit {
 
   private orgFilter(organizationId?: string): Prisma.VehicleDocumentExtractionWhereInput {
     return organizationId ? { organizationId } : {};
+  }
+
+  private async phasePendingPhysicalObjectDelete(
+    dryRun: boolean,
+    organizationId?: string,
+  ): Promise<DocumentRetentionPhaseResult> {
+    const result = await this.lifecycle.retryPendingPhysicalObjectDeletes({
+      dryRun,
+      organizationId,
+      batchSize: this.config.batchSize * this.config.maxBatchesPerRun,
+    });
+    return {
+      phase: 'pending_physical_object_delete',
+      organizationId: organizationId ?? null,
+      candidates: result.candidates,
+      affected: result.affected,
+      skipped: result.skipped,
+      dryRun,
+    };
+  }
+
+  /** Runs physical object purge retries even when timed retention phases are disabled. */
+  async runPhysicalDeleteRetries(
+    options: DocumentRetentionRunOptions = {},
+  ): Promise<DocumentRetentionPhaseResult> {
+    const dryRun = this.resolveDryRun(options);
+    return this.phasePendingPhysicalObjectDelete(dryRun, options.organizationId);
   }
 
   private async phaseOcrCacheAfterSoftDelete(
