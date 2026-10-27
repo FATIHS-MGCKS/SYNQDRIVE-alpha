@@ -6,8 +6,15 @@ import { isMotionMapGeometryTrusted } from '../motion-map.utils';
  * Default on (unset) preserves the production replacement path when DS4 supplies verified events.
  * Set `VITE_TRIP_MAP_DS4_DRIVING_MARKER_REPLACEMENT_ENABLED=false` to roll back to legacy-only markers.
  */
-export function isTripMapDs4DrivingMarkerReplacementEnabled(): boolean {
-  const raw = import.meta.env.VITE_TRIP_MAP_DS4_DRIVING_MARKER_REPLACEMENT_ENABLED;
+/** Vite env key (declared here to avoid vite-env.d.ts i18n governance coupling). */
+export type TripMapDs4DrivingMarkerGateEnv = {
+  VITE_TRIP_MAP_DS4_DRIVING_MARKER_REPLACEMENT_ENABLED?: string;
+};
+
+export function isTripMapDs4DrivingMarkerReplacementEnabled(
+  env: TripMapDs4DrivingMarkerGateEnv = import.meta.env as TripMapDs4DrivingMarkerGateEnv,
+): boolean {
+  const raw = env.VITE_TRIP_MAP_DS4_DRIVING_MARKER_REPLACEMENT_ENABLED;
   if (raw === undefined || raw === '') return true;
   if (raw === 'false' || raw === '0' || raw === 'off') return false;
   return raw === 'true' || raw === '1' || raw === 'on';
