@@ -34,6 +34,7 @@ import {
   formatV3AuthoritativeHeadline,
   isTireWearV3Authoritative,
 } from '../lib/tire-wear-read-model-ui';
+import { tireWearV3Copy } from '../lib/tire-wear-v3-i18n';
 
 interface FleetConditionDetailViewProps {
   isDarkMode: boolean;
@@ -405,7 +406,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
         <StatBox
           {...p}
           isDark={isDark}
-          label={v3Authoritative ? 'Tread (V3)' : 'Tread Life'}
+          label={v3Authoritative ? tireWearV3Copy('en', 'tire.wearV3.fleetTreadLabel') : 'Tread Life'}
           value={treadLifeValue}
           colorClass={v3Authoritative ? p.textPrimary : getMetricColor(pct ?? 0, isDark)}
           sub={v3Authoritative ? tireLowestTreadLabel(s, 'en') : (s?.healthStatus ?? '')}

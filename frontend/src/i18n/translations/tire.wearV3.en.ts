@@ -12,4 +12,12 @@ export const tireWearV3En = {
   'tire.wearV3.evidence.insufficient': 'Insufficient evidence',
   'tire.wearV3.measurementAction': 'Record tread measurement',
   'tire.wearV3.lastMeasurement': 'Last accepted measurement: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Authoritative wear (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'Legacy V2 tread-life % is not shown under V3 authority. See V3 panel below.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Estimated remaining tread life (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Insufficient evidence — measurement required',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'V3 wear estimate',
+  'tire.wearV3.fleetTreadLabel': 'Tread (V3)',
 } as const;

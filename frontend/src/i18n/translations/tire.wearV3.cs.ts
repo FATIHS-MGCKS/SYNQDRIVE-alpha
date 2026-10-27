@@ -12,4 +12,12 @@ export const tireWearV3Cs = {
   'tire.wearV3.evidence.insufficient': 'Nedostatečné důkazy',
   'tire.wearV3.measurementAction': 'Změřit dezén',
   'tire.wearV3.lastMeasurement': 'Poslední přijaté měření: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Autoritativní opotřebení (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'Procento životnosti V2 se pod autoritou V3 nezobrazuje. Viz panel V3 níže.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Odhadovaná životnost dezénu (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Nedostatečné důkazy — nutné měření',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'Odhad opotřebení V3',
+  'tire.wearV3.fleetTreadLabel': 'Dezén (V3)',
 } as const;

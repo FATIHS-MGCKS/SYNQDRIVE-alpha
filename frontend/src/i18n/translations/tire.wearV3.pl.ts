@@ -12,4 +12,12 @@ export const tireWearV3Pl = {
   'tire.wearV3.evidence.insufficient': 'Niewystarczające dowody',
   'tire.wearV3.measurementAction': 'Wykonaj pomiar bieżnika',
   'tire.wearV3.lastMeasurement': 'Ostatni zaakceptowany pomiar: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Autorytatywny zużycie (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'Procent życia bieżnika V2 nie jest pokazywany przy autorytecie V3. Zobacz panel V3 poniżej.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Szacowane życie bieżnika (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Niewystarczające dowody — wymagany pomiar',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'Szacunek zużycia V3',
+  'tire.wearV3.fleetTreadLabel': 'Bieżnik (V3)',
 } as const;

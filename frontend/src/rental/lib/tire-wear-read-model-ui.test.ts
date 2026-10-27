@@ -58,7 +58,8 @@ describe('tire-wear-read-model-ui', () => {
             wheels: [],
           } as never,
         }),
+        'en',
       ),
-    ).toContain('Insufficient evidence');
+    ).toContain('measurement');
   });
 });

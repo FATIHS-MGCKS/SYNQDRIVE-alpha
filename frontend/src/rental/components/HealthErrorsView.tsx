@@ -283,7 +283,7 @@ export function HealthErrorsView({
     batteryLoading,
     retryBattery,
   } = batteryQueryState;
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
 
@@ -3172,13 +3172,13 @@ export function HealthErrorsView({
                       return (
                         <div className="rounded-lg p-4 sq-tone-watch bg-muted/40">
                           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">
-                            Authoritative wear (V3)
+                            {t('tire.wearV3.authoritativeCardTitle' as never)}
                           </p>
                           <p className="text-lg font-bold text-foreground leading-snug">
-                            {formatV3AuthoritativeHeadline(sum)}
+                            {formatV3AuthoritativeHeadline(sum, locale)}
                           </p>
                           <p className="text-[10px] mt-2 text-muted-foreground/80">
-                            Legacy V2 tread-life % is not shown under V3 authority. See V3 panel below.
+                            {t('tire.wearV3.legacyPercentHiddenHint' as never)}
                           </p>
                         </div>
                       );
@@ -3192,7 +3192,7 @@ export function HealthErrorsView({
                         {pct != null ? (<>
                           <p className={`text-2xl font-bold mb-1 text-foreground tabular-nums`}>{pct}%</p>
                           <div className={`w-full h-2 rounded-full overflow-hidden mb-2 bg-muted`}><div className={`h-full ${barFg} rounded-full transition-all`} style={{ width: `${pct}%` }} /></div>
-                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>Estimated remaining tread life (V2)</p>
+                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>{t('tire.wearV3.estimatedTreadLifeV2' as never)}</p>
                           <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>{TIRE_TREAD_LIFE_SCORE_HINT}</p>
                           {remKm != null && <p className={`text-[11px] mt-1 text-muted-foreground tabular-nums`}>ca. {remKm.toLocaleString('de-DE')} km remaining</p>}
                           {sum?.wearRateMmPer1000km != null && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>Wear: {sum.wearRateMmPer1000km.toFixed(2)} mm / 1000 km</p>}

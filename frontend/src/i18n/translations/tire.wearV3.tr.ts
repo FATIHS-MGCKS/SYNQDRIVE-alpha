@@ -12,4 +12,12 @@ export const tireWearV3Tr = {
   'tire.wearV3.evidence.insufficient': 'Yetersiz kanıt',
   'tire.wearV3.measurementAction': 'Diş derinliği ölç',
   'tire.wearV3.lastMeasurement': 'Son onaylı ölçüm: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Yetkili aşınma (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'V3 yetkisi altında V2 diş ömrü % gösterilmez. Aşağıdaki V3 paneline bakın.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Tahmini diş ömrü (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Yetersiz kanıt — ölçüm gerekli',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'V3 aşınma tahmini',
+  'tire.wearV3.fleetTreadLabel': 'Diş (V3)',
 } as const;
