@@ -237,6 +237,7 @@ type ManualBrakePayload = {
   rearPadThickness?: number | null;
   frontRotorWidth?: number | null;
   rearRotorWidth?: number | null;
+  workshopMeasurementConfirmed?: boolean | null;
 };
 type ManualBatteryPayload = {
   batteryType?: string | null;

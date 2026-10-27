@@ -466,14 +466,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     options?: { provenance?: AiSpecsApplyProvenance },
   ) => {
     const provenance = options?.provenance ?? 'local_fallback';
-    const str = (v: string | number | null | undefined) => (v != null ? String(v) : '');
+    const str = (v: string | number | boolean | null | undefined) => (v != null ? String(v) : '');
     const maybeSetIfEmpty = (
       current: () => string,
       setter: (v: string) => void,
-      v: string | number | null | undefined,
+      v: string | number | boolean | null | undefined,
     ) => {
       if (!shouldApplyAiSpecToEmptyField(current(), v)) return;
-      setter(str(v as string | number));
+      setter(str(v as string | number | boolean));
     };
     const motionLocked = isMotionPhysicsTierLockedForAiMerge(motionPhysicsEvidenceTierRef.current);
     // LV battery — support both new lvBattery* names and legacy names
@@ -523,10 +523,10 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       const applyMotion = (
         current: () => string,
         setter: (v: string) => void,
-        v: string | number | null | undefined,
+        v: string | number | boolean | null | undefined,
       ) => {
         if (!shouldApplyAiSpecToEmptyField(current(), v)) return;
-        setter(str(v as string | number));
+        setter(str(v as string | number | boolean));
         appliedMotionFromAi = true;
       };
       applyMotion(() => curbWeightRef.current, setCurbWeight, specs.curbWeightKg ?? specs.curbWeight);
