@@ -8,6 +8,13 @@ import {
   VSI_CADENCE_MIN_INTERVAL_SAMPLES,
 } from './vsi-profile-cadence-stats.util';
 import { buildCadenceSemanticFingerprint } from './vsi-profile-cadence-stats.util';
+import {
+  summarizeActiveRpmSequenceCadence,
+  summarizeTripActiveIntervalCadence,
+  tripActiveCadenceSupportsFastProfile,
+  VSI_ACTIVE_RPM_MIN_QUALIFYING_FAST_SEQUENCES,
+  VSI_ACTIVE_RPM_SPARSE_MEDIAN_MIN_SECONDS,
+} from './vsi-active-rpm-sequence-cadence.util';
 import type {
   VsiActiveRpmProfileLabel,
   VsiActiveRpmProfileResolutionV1,
@@ -20,14 +27,11 @@ export const VSI_ACTIVE_RPM_PROFILE_CONTRACT_VERSION = 'vsi-active-rpm-profile-v
 
 export type { VsiActiveRpmProfileLabel, VsiActiveRpmProfileResolutionV1 };
 
-/** Upper bound for dense ~1–2 s spacing medians (not a native Hz claim). */
-export const VSI_ACTIVE_RPM_FAST_MEDIAN_MAX_SECONDS = 2;
-/** Audi-aligned sparse R1 median band (production replay P25 ≈ 3 s). */
-export const VSI_ACTIVE_RPM_SPARSE_MEDIAN_MIN_SECONDS = 3;
-/** P95 at or above this with sub-3 s median indicates sparse gaps, not fast 1 Hz. */
-export const VSI_ACTIVE_RPM_SPARSE_P95_MIN_SECONDS = 8;
-export const VSI_ACTIVE_RPM_FAST_P95_MAX_SECONDS = 5;
-export const VSI_ACTIVE_RPM_FAST_FRACTION_LE2_MIN = 0.7;
+export {
+  VSI_ACTIVE_RPM_FAST_FRACTION_LE2_MIN,
+  VSI_ACTIVE_RPM_FAST_MEDIAN_MAX_SECONDS,
+  VSI_ACTIVE_RPM_SPARSE_MEDIAN_MIN_SECONDS,
+} from './vsi-active-rpm-sequence-cadence.util';
 export const VSI_ACTIVE_RPM_MIN_POINTS_PER_TRIP = 10;
 export const VSI_ACTIVE_RPM_ROLLING_TRIP_MIN = 3;
 export const VSI_ACTIVE_RPM_ROLLING_TRIP_MAX = 5;
@@ -73,9 +77,9 @@ function fractionLe(seconds: number[], threshold: number): number | null {
 }
 
 /**
- * Per-trip RPM profile from intra-trip intervals.
- * Median alone does not decide STANDARD vs 1 Hz; P95 and short-interval fraction
- * separate Tiguan sparse median≈2 s (high P95) from true ~1–2 s fast profiles.
+ * Per-trip RPM profile from active measurement sequences (not gap-pooled trip P95).
+ * Trip-level interval median/P95 remain diagnostic only; classification uses
+ * sustained in-sequence cadence. Coverage/continuity stay on cadenceIntelligence.
  */
 export function classifySingleTripRpmProfile(input: {
   trip: VsiRpmCadenceTripWindow;
@@ -113,66 +117,110 @@ export function classifySingleTripRpmProfile(input: {
     };
   }
 
-  if (med != null && med >= VSI_ACTIVE_RPM_SPARSE_MEDIAN_MIN_SECONDS) {
+  const sequenceEvidence = summarizeActiveRpmSequenceCadence(intervals);
+
+  const slowActiveIntervalCount =
+    sequenceEvidence.activeIntervalCount - sequenceEvidence.fastActiveIntervalCount;
+
+  const hasQualifyingFast =
+    sequenceEvidence.qualifyingFastSequenceCount >=
+    VSI_ACTIVE_RPM_MIN_QUALIFYING_FAST_SEQUENCES;
+
+  const strictFastIntervalDominance =
+    hasQualifyingFast &&
+    sequenceEvidence.fastActiveIntervalCount > slowActiveIntervalCount;
+
+  const fastDominatesSlow = strictFastIntervalDominance;
+
+  const strictSlowIntervalDominance =
+    sequenceEvidence.qualifyingSlowSequenceCount > 0 &&
+    slowActiveIntervalCount > sequenceEvidence.fastActiveIntervalCount;
+
+  const slowDominatesFast = strictSlowIntervalDominance;
+
+  const corroboratesFastTrip = () =>
+    tripActiveCadenceSupportsFastProfile(intervals, {
+      strictFastIntervalDominance,
+    });
+
+  const mixedFastAndSlow =
+    hasQualifyingFast && sequenceEvidence.qualifyingSlowSequenceCount > 0;
+
+  if (mixedFastAndSlow) {
+    if (fastDominatesSlow && corroboratesFastTrip()) {
+      return {
+        ...base,
+        profile: 'RPM_1HZ',
+        decisionCode: 'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
+      };
+    }
+    if (slowDominatesFast && !corroboratesFastTrip()) {
+      return {
+        ...base,
+        profile: 'RPM_STANDARD',
+        decisionCode: 'ACTIVE_SLOW_MEASUREMENT_SEQUENCES',
+      };
+    }
     return {
       ...base,
-      profile: 'RPM_STANDARD',
-      decisionCode: 'MEDIAN_GE_SPARSE_REFERENCE_BAND',
+      profile: 'UNKNOWN',
+      decisionCode: 'MIXED_ACTIVE_CADENCE_NO_CLEAR_DOMINANCE',
     };
   }
 
-  if (p95 != null && p95 >= VSI_ACTIVE_RPM_SPARSE_P95_MIN_SECONDS) {
-    return {
-      ...base,
-      profile: 'RPM_STANDARD',
-      decisionCode: 'P95_SPARSE_GAP_PATTERN',
-    };
-  }
-
-  if (
-    med != null &&
-    med >= 2 &&
-    p95 != null &&
-    p95 >= 10
-  ) {
-    return {
-      ...base,
-      profile: 'RPM_STANDARD',
-      decisionCode: 'SUB_3S_MEDIAN_WITH_LARGE_P95_GAPS',
-    };
-  }
-
-  if (
-    med != null &&
-    med >= 2.5 &&
-    p95 != null &&
-    p95 >= 6
-  ) {
-    return {
-      ...base,
-      profile: 'RPM_STANDARD',
-      decisionCode: 'MID_MEDIAN_WITH_SPARSE_TAIL',
-    };
-  }
-
-  const fastProfile =
-    med != null &&
-    med <= VSI_ACTIVE_RPM_FAST_MEDIAN_MAX_SECONDS &&
-    (fracLe2 ?? 0) >= VSI_ACTIVE_RPM_FAST_FRACTION_LE2_MIN &&
-    (p95 == null || p95 <= VSI_ACTIVE_RPM_FAST_P95_MAX_SECONDS);
-
-  if (fastProfile) {
+  if (fastDominatesSlow && corroboratesFastTrip()) {
     return {
       ...base,
       profile: 'RPM_1HZ',
-      decisionCode: 'FAST_1_2S_BUCKET_PATTERN',
+      decisionCode: 'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
+    };
+  }
+
+  if (sequenceEvidence.qualifyingSlowSequenceCount > 0) {
+    return {
+      ...base,
+      profile: 'RPM_STANDARD',
+      decisionCode: 'ACTIVE_SLOW_MEASUREMENT_SEQUENCES',
+    };
+  }
+
+  if (sequenceEvidence.sequences.some((s) => s.isFastCadence)) {
+    return {
+      ...base,
+      profile: 'UNKNOWN',
+      decisionCode: 'FAST_SEQUENCES_TOO_SHORT',
+    };
+  }
+
+  const tripActive = summarizeTripActiveIntervalCadence(intervals);
+  if (
+    tripActive.intervalMedianSeconds != null &&
+    tripActive.intervalMedianSeconds >= VSI_ACTIVE_RPM_SPARSE_MEDIAN_MIN_SECONDS &&
+    tripActive.activeIntervalCount >= VSI_CADENCE_MIN_INTERVAL_SAMPLES
+  ) {
+    return {
+      ...base,
+      profile: 'RPM_STANDARD',
+      decisionCode: 'TRIP_LEVEL_SPARSE_ACTIVE_MEDIAN',
+    };
+  }
+
+  if (
+    med != null &&
+    med >= VSI_ACTIVE_RPM_SPARSE_MEDIAN_MIN_SECONDS &&
+    sequenceEvidence.activeIntervalCount >= VSI_CADENCE_MIN_INTERVAL_SAMPLES
+  ) {
+    return {
+      ...base,
+      profile: 'RPM_STANDARD',
+      decisionCode: 'TRIP_LEVEL_SPARSE_INTERVAL_MEDIAN',
     };
   }
 
   return {
     ...base,
     profile: 'UNKNOWN',
-    decisionCode: 'AMBIGUOUS_OR_MIXED_SPACING',
+    decisionCode: 'INSUFFICIENT_ACTIVE_CADENCE_EVIDENCE',
   };
 }
 

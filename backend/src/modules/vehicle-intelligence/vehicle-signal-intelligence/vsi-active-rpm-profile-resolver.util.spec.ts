@@ -53,13 +53,13 @@ describe('vsi-active-rpm-profile-resolver', () => {
     expect(selected.map((t) => t.tripId)).toEqual(['t3', 't4', 't5', 't6', 't7']);
   });
 
-  it('median≈2s with sparse P95 gaps is not RPM_1HZ (Tiguan-like)', () => {
-    const t = trip('sparse-m2', 0, 1200);
+  it('long inter-sequence gaps do not block RPM_1HZ when fast active runs qualify', () => {
+    const t = trip('gap-fast', 0, 900);
     const points: { recordedAtMs: number; value: number }[] = [];
     let ts = t.startMs;
-    for (let i = 0; i < 45; i += 1) {
+    for (let i = 0; i < 80; i += 1) {
       points.push({ recordedAtMs: ts, value: 1800 });
-      ts += (i % 5 === 0 ? 20 : 2) * 1000;
+      ts += (i % 12 === 0 ? 18 : 1) * 1000;
     }
     const resolution = resolveActiveRpmProfileV1({
       iceRpmApplicability: 'APPLICABLE',
@@ -68,8 +68,33 @@ describe('vsi-active-rpm-profile-resolver', () => {
       provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
       hfReadStatus: 'SUCCESS',
     });
-    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_STANDARD');
+    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
+    expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
+      'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
+    );
+    expect(resolution?.tripClassifications[0]?.intervalP95Seconds).toBeGreaterThan(5);
+  });
+
+  it('median≈2s with sparse P95 gaps is not RPM_1HZ (Tiguan-like)', () => {
+    const t = trip('sparse-m2', 0, 1200);
+    const points: { recordedAtMs: number; value: number }[] = [];
+    let ts = t.startMs;
+    for (let i = 0; i < 45; i += 1) {
+      points.push({ recordedAtMs: ts, value: 1800 });
+      // median≈2 s sparse tail without fast-density ≤2s supermajority (Tiguan ALT-like)
+      ts += (i % 3 === 0 ? 20 : 2) * 1000;
+    }
+    const resolution = resolveActiveRpmProfileV1({
+      iceRpmApplicability: 'APPLICABLE',
+      tripWindows: [t],
+      points,
+      provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
+      hfReadStatus: 'SUCCESS',
+    });
     expect(resolution?.tripClassifications[0]?.profile).not.toBe('RPM_1HZ');
+    expect(['RPM_STANDARD', 'UNKNOWN']).toContain(
+      resolution?.tripClassifications[0]?.profile,
+    );
   });
 
   it('two classifiable trips in a five-trip window → UNKNOWN (insufficient known coverage)', () => {
