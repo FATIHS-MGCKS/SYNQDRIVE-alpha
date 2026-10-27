@@ -47,6 +47,8 @@ export interface DocumentLegalHoldState {
 
 export interface DocumentRetentionState {
   policyVersion: string;
+  purpose?: string | null;
+  registrationCertificateRetentionDaysAfterSoftDelete?: number | null;
   fileSoftDeletedAt?: string | null;
   filePurgedAt?: string | null;
   ocrCachePurgedAt?: string | null;

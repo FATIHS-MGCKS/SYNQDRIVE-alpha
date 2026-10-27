@@ -7,7 +7,13 @@ import {
   DOCUMENT_ACTION_REQUIREMENTS,
 } from './document-action.types';
 import { DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES } from './document-action-plan.state-machine';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock } from './document-extraction-test.helpers';
+import {
+  makeLifecycleMock,
+  makeMalwareScanMock,
+  makeRetentionMock,
+  makeUploadContextMock,
+  makeZb1RegistrationDocumentP4Mock,
+} from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -92,6 +98,7 @@ describe('DocumentExtractionService retryFailedActions', () => {
       { prepareContactDraft: jest.fn() } as any,
       { resyncAfterPlanChange: jest.fn() } as any,
       { upsertForRecord: jest.fn().mockResolvedValue(undefined) } as any,
+      makeZb1RegistrationDocumentP4Mock() as any,
     );
 
     return { svc, prisma, actionOrchestrator, applyResultService };

@@ -107,6 +107,9 @@ import { DocumentFollowUpSuggestionService } from './document-follow-up-suggesti
 import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
 import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
+import { Zb1RegistrationDocumentP4Service } from './zb1/zb1-registration-document-p4.service';
+import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
+import { MembershipRole } from '@prisma/client';
 import {
   buildDocumentExtractionArchiveWhere,
   parseDocumentExtractionArchivePagination,
@@ -374,7 +377,28 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
     private readonly followUpResyncService: DocumentFollowUpResyncService,
     private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
+    private readonly zb1RegistrationDocumentP4: Zb1RegistrationDocumentP4Service,
   ) {}
+
+  private async resolveVehicleDocumentAccess(
+    userId: string,
+    organizationId: string,
+    platformRole?: string | null,
+  ): Promise<{
+    membershipRole: MembershipRole | null;
+    permissions: ReturnType<typeof normalizeMembershipPermissions>;
+    platformRole: string | null;
+  }> {
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: { userId, organizationId, status: 'ACTIVE' },
+      select: { role: true, permissions: true },
+    });
+    return {
+      membershipRole: membership?.role ?? null,
+      permissions: normalizeMembershipPermissions(membership?.permissions),
+      platformRole: platformRole ?? null,
+    };
+  }
 
   onModuleInit(): void {
     if (isProductionEnvironment() && !this.docConfig.queueEnabled) {
@@ -433,6 +457,9 @@ export class DocumentExtractionService implements OnModuleInit {
           'Zulassungsbescheinigung Teil I (REGISTRATION_CERTIFICATE) extraction is disabled in this environment',
         code: 'ZB1_REGISTRATION_CERTIFICATE_DISABLED',
       });
+    }
+    if (requestedDocumentType === 'REGISTRATION_CERTIFICATE') {
+      this.zb1RegistrationDocumentP4.assertProductionGatesForUpload();
     }
     if (!isAllowedMimeType(input.mimeType)) {
       this.observability.recordUploadRejected('mime');
@@ -644,15 +671,31 @@ export class DocumentExtractionService implements OnModuleInit {
       throw error;
     });
 
+    if (requestedDocumentType === 'REGISTRATION_CERTIFICATE') {
+      await this.zb1RegistrationDocumentP4.assertMandatoryStorageCommitted(
+        record.id,
+        stored.objectKey,
+      );
+    }
+
+    const storagePlausibility =
+      requestedDocumentType === 'REGISTRATION_CERTIFICATE'
+        ? this.zb1RegistrationDocumentP4.stampRegistrationDocumentMetadata(
+            mergePipelinePlausibility(record.plausibility, {
+              malwareScan: stored.malwareScan,
+            }),
+          )
+        : (mergePipelinePlausibility(record.plausibility, {
+            malwareScan: stored.malwareScan,
+          }) as Prisma.InputJsonValue);
+
     record = await this.prisma.vehicleDocumentExtraction.update({
       where: { id: record.id },
       data: {
         processingStage: 'STORAGE',
         objectKey: stored.objectKey,
         storageProvider: stored.storageProvider,
-        plausibility: mergePipelinePlausibility(record.plausibility, {
-          malwareScan: stored.malwareScan,
-        }) as Prisma.InputJsonValue,
+        plausibility: storagePlausibility,
       },
     });
 
@@ -789,8 +832,25 @@ export class DocumentExtractionService implements OnModuleInit {
     return toPublicDocumentExtractionSummary(record);
   }
 
-  async getPublicForVehicle(vehicleId: string, extractionId: string) {
+  async getPublicForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    viewer?: { id?: string; platformRole?: string | null },
+  ) {
     const record = await this.getForVehicle(vehicleId, extractionId);
+    if (viewer?.id && record.organizationId) {
+      const access = await this.resolveVehicleDocumentAccess(
+        viewer.id,
+        record.organizationId,
+        viewer.platformRole,
+      );
+      this.zb1RegistrationDocumentP4.assertAccess({
+        record,
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+        platformRole: access.platformRole,
+      });
+    }
     return this.toPublicExtraction(record);
   }
 
@@ -940,7 +1000,11 @@ export class DocumentExtractionService implements OnModuleInit {
     await this.archiveIndexService.upsertForRecord(record);
   }
 
-  async listPublicForVehicle(vehicleId: string, query: ListDocumentExtractionsQueryDto = {}) {
+  async listPublicForVehicle(
+    vehicleId: string,
+    query: ListDocumentExtractionsQueryDto = {},
+    viewer?: { id?: string; platformRole?: string | null },
+  ) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId },
       select: { organizationId: true },
@@ -972,24 +1036,59 @@ export class DocumentExtractionService implements OnModuleInit {
     ]);
 
     const enriched = await Promise.all(rows.map((row) => this.enrichWithActors(row)));
+    let summaries = enriched.map((row) => this.toPublicSummary(row));
+    if (viewer?.id) {
+      const access = await this.resolveVehicleDocumentAccess(
+        viewer.id,
+        vehicle.organizationId,
+        viewer.platformRole,
+      );
+      summaries = summaries.filter(
+        (row) =>
+          !this.zb1RegistrationDocumentP4.shouldHideFromListForUser({
+            record: row,
+            membershipRole: access.membershipRole,
+            permissions: access.permissions,
+            platformRole: access.platformRole,
+          }),
+      );
+    }
     return buildDocumentExtractionPaginatedResult(
-      enriched.map((row) => this.toPublicSummary(row)),
-      total,
+      summaries,
+      viewer?.id ? summaries.length : total,
       pagination.page,
       pagination.limit,
     );
   }
 
-  listForVehicle(vehicleId: string, query: ListDocumentExtractionsQueryDto = {}) {
-    return this.listPublicForVehicle(vehicleId, query);
+  listForVehicle(
+    vehicleId: string,
+    query: ListDocumentExtractionsQueryDto = {},
+    viewer?: { id?: string; platformRole?: string | null },
+  ) {
+    return this.listPublicForVehicle(vehicleId, query, viewer);
   }
 
   async getDownloadForVehicle(
     vehicleId: string,
     extractionId: string,
     userId?: string | null,
+    platformRole?: string | null,
   ): Promise<DocumentExtractionDownload> {
     const record = await this.getForVehicle(vehicleId, extractionId);
+    if (userId && record.organizationId) {
+      const access = await this.resolveVehicleDocumentAccess(
+        userId,
+        record.organizationId,
+        platformRole,
+      );
+      this.zb1RegistrationDocumentP4.assertAccess({
+        record,
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+        platformRole: access.platformRole,
+      });
+    }
     const dl = await this.buildDownload(record);
     if (userId) {
       await this.lifecycle.recordDownloadAudit({ record, userId }).catch(() => undefined);
@@ -1001,8 +1100,18 @@ export class DocumentExtractionService implements OnModuleInit {
     orgId: string,
     extractionId: string,
     userId?: string | null,
+    platformRole?: string | null,
   ): Promise<DocumentExtractionDownload> {
     const record = await this.getForOrg(orgId, extractionId);
+    if (userId) {
+      const access = await this.resolveVehicleDocumentAccess(userId, orgId, platformRole);
+      this.zb1RegistrationDocumentP4.assertAccess({
+        record,
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+        platformRole: access.platformRole,
+      });
+    }
     const dl = await this.buildDownload(record);
     if (userId) {
       await this.lifecycle.recordDownloadAudit({ record, userId }).catch(() => undefined);
@@ -1083,6 +1192,9 @@ export class DocumentExtractionService implements OnModuleInit {
           'Zulassungsbescheinigung Teil I (REGISTRATION_CERTIFICATE) extraction is disabled in this environment',
         code: 'ZB1_REGISTRATION_CERTIFICATE_DISABLED',
       });
+    }
+    if (applyType === 'REGISTRATION_CERTIFICATE') {
+      this.zb1RegistrationDocumentP4.assertProductionGatesForUpload();
     }
 
     if (record.status === 'APPLIED' || record.status === 'PARTIALLY_APPLIED') {

@@ -131,6 +131,18 @@ describe('buildDocumentCategories', () => {
     expect(service?.uiStatus).toBe('needs_review');
   });
 
+  it('maps REGISTRATION_CERTIFICATE into registration category', () => {
+    const categories = buildDocumentCategories({
+      ...baseInput,
+      extractions: [
+        ext({ documentType: 'REGISTRATION_CERTIFICATE', status: 'READY_FOR_REVIEW', id: 'reg-1' }),
+      ],
+    });
+    const registration = categories.find((c) => c.id === 'registration');
+    expect(registration?.documentCount).toBe(1);
+    expect(registration?.latestExtractionId).toBe('reg-1');
+  });
+
   it('uses canonical compliance status for TÜV category', () => {
     const categories = buildDocumentCategories({
       ...baseInput,

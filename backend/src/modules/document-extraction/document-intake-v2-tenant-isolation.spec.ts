@@ -2,7 +2,12 @@ import { NotFoundException } from '@nestjs/common';
 import { buildDocumentExtractionArchiveWhere } from './document-extraction-archive-query.util';
 import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentUploadContextService } from './document-upload-context.service';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock } from './document-extraction-test.helpers';
+import {
+  makeLifecycleMock,
+  makeMalwareScanMock,
+  makeRetentionMock,
+  makeZb1RegistrationDocumentP4Mock,
+} from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -97,6 +102,7 @@ describe('Document Intake V2 tenant isolation', () => {
         { prepareContactDraft: jest.fn() } as any,
         { resyncAfterPlanChange: jest.fn() } as any,
         { syncAfterApply: jest.fn() } as any,
+        makeZb1RegistrationDocumentP4Mock() as any,
       );
 
       return { svc, prisma };

@@ -3,7 +3,14 @@ import { DocumentUploadDuplicateBlockedException } from './document-upload-dupli
 import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 import { computeDocumentContentSha256 } from './document-content-hash.util';
-import {makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, spreadDocumentExtractionExtendedServiceMocks } from './document-extraction-test.helpers';
+import {
+  makeDocumentExtractionObservabilityMock,
+  makeLifecycleMock,
+  makeMalwareScanMock,
+  makeRetentionMock,
+  makeUploadContextMock,
+  spreadDocumentExtractionExtendedServiceMocks,
+} from './document-extraction-test.helpers';
 import { FIXTURE_TXT } from './__fixtures__/document-fixtures';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
@@ -154,7 +161,7 @@ function makeUploadService(shared = makeSharedPrisma()) {
     makeLifecycleMock() as any,
     makeRetentionMock() as any,
     makeUploadContextMock() as any,
-    { logEvent: jest.fn(), recordApply: jest.fn(), observeStage: jest.fn((_a, _b, fn) => fn()) } as any,
+    makeDocumentExtractionObservabilityMock() as any,
     ...spreadDocumentExtractionExtendedServiceMocks(),
   );
 

@@ -7,6 +7,7 @@ import {
   makeMalwareScanMock,
   makeRetentionMock,
   makeUploadContextMock,
+  makeZb1RegistrationDocumentP4Mock,
 } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
@@ -117,6 +118,7 @@ describe('DocumentExtractionService', () => {
         upsertForRecord: jest.fn().mockResolvedValue(undefined),
         ensureIndexedForOrg: jest.fn().mockResolvedValue(undefined),
       } as any,
+      makeZb1RegistrationDocumentP4Mock() as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }

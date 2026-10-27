@@ -1,4 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
+import { Zb1RegistrationDocumentP4Service } from '@modules/document-extraction/zb1/zb1-registration-document-p4.service';
 import { VsiProfileLifecycleEnqueueService } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-lifecycle-enqueue.service';
 import type { Prisma, VehicleRegistryLifecycle } from '@prisma/client';
 import { VehicleProviderConsentStatus } from '@prisma/client';
@@ -55,6 +56,8 @@ export class VehicleOffboardingService {
     private readonly businessAuditOutbox: BusinessAuditOutboxRepository,
     @Optional()
     private readonly vsiProfileLifecycleEnqueue?: VsiProfileLifecycleEnqueueService,
+    @Optional()
+    private readonly zb1RegistrationDocumentP4?: Zb1RegistrationDocumentP4Service,
   ) {}
 
   /**
@@ -130,7 +133,7 @@ export class VehicleOffboardingService {
     });
     const actorUserId = input.actorUserId;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const lockedRows = await tx.$queryRaw<
         Array<{ registry_lifecycle: VehicleRegistryLifecycle }>
       >`
@@ -300,6 +303,16 @@ export class VehicleOffboardingService {
         idempotentReplay: false,
       };
     });
+
+    await this.zb1RegistrationDocumentP4
+      ?.softDeleteRegistrationDocumentsForVehicle({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        actorUserId: input.actorUserId,
+      })
+      .catch(() => undefined);
+
+    return result;
   }
 
   private async ensureOffboardOutboxEvent(

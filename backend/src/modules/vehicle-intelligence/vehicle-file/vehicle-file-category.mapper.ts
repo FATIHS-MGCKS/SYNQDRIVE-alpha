@@ -38,6 +38,7 @@ const TYPE_TO_CATEGORY: Partial<Record<DocumentExtractionType, VehicleDocumentCa
   DAMAGE: 'damage_accident',
   ACCIDENT: 'damage_accident',
   VEHICLE_CONDITION: 'registration',
+  REGISTRATION_CERTIFICATE: 'registration',
   FINE: 'other',
   OTHER: 'other',
 };

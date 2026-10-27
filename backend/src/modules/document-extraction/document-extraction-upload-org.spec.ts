@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { DocumentExtractionService } from './document-extraction.service';
 import {
+  makeDocumentExtractionObservabilityMock,
   makeLifecycleMock,
   makeMalwareScanMock,
   makeRetentionMock,
@@ -76,19 +77,7 @@ describe('DocumentExtractionService org upload', () => {
       makeLifecycleMock() as any,
       makeRetentionMock() as any,
       uploadContext as any,
-      {
-        logEvent: jest.fn(),
-        recordApply: jest.fn(),
-        recordJobOutcome: jest.fn(),
-        recordFailure: jest.fn(),
-        recordStageDuration: jest.fn(),
-        recordPages: jest.fn(),
-        recordRetry: jest.fn(),
-        recordClassification: jest.fn(),
-        setQueueAgeSeconds: jest.fn(),
-        setActiveJobs: jest.fn(),
-        observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
-      } as any,
+      makeDocumentExtractionObservabilityMock() as any,
       ...spreadDocumentExtractionExtendedServiceMocks(),
     );
     return { svc, prisma, storage, uploadContext };

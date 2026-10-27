@@ -1,4 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
+import { Zb1RegistrationDocumentP4Service } from '@modules/document-extraction/zb1/zb1-registration-document-p4.service';
 import { AiModule } from '@modules/ai/ai.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
@@ -34,6 +36,7 @@ import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-
     ActivityLogModule,
     VsiReadonlySignalComposerModule,
     forwardRef(() => AiModule),
+    forwardRef(() => DocumentExtractionModule),
   ],
   controllers: [
     VehicleIdentityReviewController,
