@@ -4,6 +4,7 @@ Append-only architecture change record.
 
 | Date | Change | Phase | Evidence |
 |------|--------|-------|----------|
+| 2026-10-27 | **P2 active RPM profile resolver V1 (draft)** — rolling 3–5 link-scoped trips; `activeRpmProfile` on `cadenceIntelligence`; stability supermajority; research-backed regression fixtures | P2 | `vsi-active-rpm-profile-resolver.util.ts`, `vsi-active-rpm-profile-resolver.util.spec.ts`, `vsi-profile-cadence.enricher.ts` |
 | 2026-10-27 | **P2 enrichment VSI materialization DI fix** — runtime import + `@Inject(VsiSignalProfileMaterializationService)`; remove `@Optional` silent skip (`VSI_MATERIALIZATION_UNAVAILABLE` in workers) | P2 | `trip-behavior-enrichment.service.ts`, `trip-behavior-enrichment-vsi-materialization.nest-di.spec.ts` |
 | 2026-10-26 | **P2 post-trip RPM gate fix** — decouple VSI cadence readiness from `pointsInserted`; `hasTripHfPoints` for idempotent HF mirror; structured post-trip decision logs; no change to cadence algorithm | P2 | `vsi-profile-rpm-cadence-post-trip.ts`, `trip-behavior-enrichment.service.ts`, `vsi-profile-rpm-cadence-post-trip.spec.ts` |
 | 2026-10-26 | **P2 per-signal cadence intelligence (draft)** — `engine_rpm` + `lv_voltage` cadence regimes; `cadenceIntelligence` v2 dimension; bounded CH/PG loaders; post-trip RPM materialization trigger; provenance-safe density labels | P2 | `vsi-profile-cadence-*`, `vsi-profile-rpm-cadence-post-trip.ts`, `vsi-profile-cadence-stats.util.spec.ts` |
