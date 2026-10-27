@@ -75,7 +75,10 @@ export class VehicleFileSummaryService {
 
   private filterRegistrationExtractionsForViewer<T extends VehicleDocumentExtraction>(
     extractions: T[],
-    access: { membershipRole: MembershipRole | null; permissions: MembershipPermissionsMap },
+    access: {
+      membershipRole: MembershipRole | null;
+      permissions: MembershipPermissionsMap | null;
+    },
   ): T[] {
     return extractions.filter((row) => {
       if (resolveRowDocumentType(row) !== 'REGISTRATION_CERTIFICATE') {
