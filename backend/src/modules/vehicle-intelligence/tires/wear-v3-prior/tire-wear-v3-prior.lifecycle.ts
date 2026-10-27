@@ -10,6 +10,7 @@ export type MountPeriodWindow = {
 };
 
 export type LedgerRowForLifecycle = {
+  id: string;
   tripId: string;
   distanceKm: number;
   revisionNumber: number;

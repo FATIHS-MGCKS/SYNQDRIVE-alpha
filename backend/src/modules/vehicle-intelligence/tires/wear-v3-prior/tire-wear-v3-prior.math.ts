@@ -9,6 +9,7 @@ import {
 import { resolveWheelTreadMm, type WheelPos } from '../tire-evidence-provenance';
 import {
   TIRE_WEAR_V3_PRIOR_CONFIG,
+  TIRE_WEAR_V3_PRIOR_USE_POSTERIOR_RATE_FUSION,
   type TireWearV3PriorConfig,
 } from './tire-wear-v3-prior.config';
 import { rateCalibrationBlockedByMeasurementQuality } from './tire-wear-v3-prior.calibration';
@@ -241,6 +242,34 @@ export function fitWearRateFromMeasurements(
   };
 }
 
+function bayesianRateFusion(
+  prior: NumericInterval,
+  observedRate: number,
+  observedSigma: number,
+): {
+  posteriorMid: number;
+  postSigma: number;
+  measurementUncertainty: NumericInterval;
+} {
+  const priorMid = (prior.lo + prior.hi) / 2;
+  const priorHalf = (prior.hi - prior.lo) / 2;
+  const priorSigma = priorHalf > 0 ? priorHalf / 1.645 : priorMid * 0.15;
+  const wPrior = 1 / (priorSigma * priorSigma);
+  const wObs = 1 / (observedSigma * observedSigma);
+  const posteriorMid = (wPrior * priorMid + wObs * observedRate) / (wPrior + wObs);
+  const postSigma = Math.sqrt(1 / (wPrior + wObs));
+  const z = 1.645;
+  return {
+    posteriorMid,
+    postSigma,
+    measurementUncertainty: {
+      lo: Math.max(0, observedRate - z * observedSigma),
+      hi: observedRate + z * observedSigma,
+    },
+  };
+}
+
+/** Legacy P3A: union of prior and posterior (measurements can only widen the interval). */
 export function fuseRateWithPrior(
   prior: NumericInterval,
   observedRate: number,
@@ -260,12 +289,11 @@ export function fuseRateWithPrior(
     };
   }
 
-  const priorHalf = (prior.hi - prior.lo) / 2;
-  const priorSigma = priorHalf > 0 ? priorHalf / 1.645 : priorMid * 0.15;
-  const wPrior = 1 / (priorSigma * priorSigma);
-  const wObs = 1 / (observedSigma * observedSigma);
-  const posteriorMid = (wPrior * priorMid + wObs * observedRate) / (wPrior + wObs);
-  const postSigma = Math.sqrt(1 / (wPrior + wObs));
+  const { posteriorMid, postSigma, measurementUncertainty } = bayesianRateFusion(
+    prior,
+    observedRate,
+    observedSigma,
+  );
   const postLo = posteriorMid - 1.645 * postSigma;
   const postHi = posteriorMid + 1.645 * postSigma;
   const interval = {
@@ -275,9 +303,50 @@ export function fuseRateWithPrior(
   return {
     interval,
     posteriorMid,
+    measurementUncertainty,
+  };
+}
+
+/** P3B+: posterior 90 % interval clipped to plausible rate bounds (can narrow vs prior). */
+export function fuseRateWithPriorPosterior(
+  prior: NumericInterval,
+  observedRate: number,
+  observedSigma: number | null,
+  config: TireWearV3PriorConfig = TIRE_WEAR_V3_PRIOR_CONFIG,
+): {
+  interval: NumericInterval;
+  posteriorMid: number;
+  measurementUncertainty: NumericInterval | null;
+} {
+  const priorMid = (prior.lo + prior.hi) / 2;
+  const minRate = config.minPlausibleWearRateMmPer1000km / 1000;
+  const maxRate = config.maxPlausibleWearRateMmPer1000km / 1000;
+
+  if (observedSigma == null || observedSigma <= 0) {
+    return {
+      interval: prior,
+      posteriorMid: priorMid,
+      measurementUncertainty: null,
+    };
+  }
+
+  const { posteriorMid, postSigma, measurementUncertainty } = bayesianRateFusion(
+    prior,
+    observedRate,
+    observedSigma,
+  );
+  const z = 1.645;
+  const postLo = Math.max(minRate, posteriorMid - z * postSigma);
+  const postHi = Math.min(maxRate, posteriorMid + z * postSigma);
+  return {
+    interval: {
+      lo: Math.min(postLo, postHi),
+      hi: Math.max(postLo, postHi),
+    },
+    posteriorMid,
     measurementUncertainty: {
-      lo: Math.max(0, observedRate - 1.645 * observedSigma),
-      hi: observedRate + 1.645 * observedSigma,
+      lo: Math.max(minRate, measurementUncertainty.lo),
+      hi: Math.min(maxRate, measurementUncertainty.hi),
     },
   };
 }
@@ -468,7 +537,14 @@ export function buildWearRateEstimate(args: {
     fit.pointCount >= cfg.minMeasurementsForRateL2 &&
     meets3Sigma
   ) {
-    const fused = fuseRateWithPrior(priorRate, fit.rateMmPerKm, fit.rateSigmaMmPerKm);
+    const fused = TIRE_WEAR_V3_PRIOR_USE_POSTERIOR_RATE_FUSION
+      ? fuseRateWithPriorPosterior(
+          priorRate,
+          fit.rateMmPerKm,
+          fit.rateSigmaMmPerKm,
+          cfg,
+        )
+      : fuseRateWithPrior(priorRate, fit.rateMmPerKm, fit.rateSigmaMmPerKm);
     interval = fused.interval;
     measurementUncertainty = fused.measurementUncertainty;
     source = 'measurement_fused';

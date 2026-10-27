@@ -3,6 +3,21 @@ import type { WheelPos } from '../tire-evidence-provenance';
 
 export type TireWearV3EvidenceLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'UNRATED';
 
+/** Customer-facing tread depth evidence (never conflated with L-level rate calibration). */
+export type TireWearV3TreadEvidenceClass =
+  | 'MEASURED'
+  | 'CALIBRATED_ESTIMATE'
+  | 'BASELINE_ESTIMATE'
+  | 'INSUFFICIENT';
+
+export interface TireWearV3DynamicFactorSnapshot {
+  factor: number;
+  coverage: number;
+  sRel: number | null;
+  applied: boolean;
+  appliedToRateLo: boolean;
+}
+
 export type TireWearV3RateSource =
   | 'prior_life_table'
   | 'prior_life_explicit'
@@ -31,10 +46,19 @@ export interface TireWearV3WheelProjection {
   initialTreadUsedDefaultFallback: boolean;
   replacementThresholdMm: number;
   distanceSinceAnchorKm: number;
+  /** Interval projection from anchor + wear rate (internal). */
   estimatedTreadMm: NumericInterval;
+  /** Wear since projection anchor (mm), from rate × distance. */
+  estimatedWearMm: NumericInterval;
+  /** Null when treadEvidenceClass is INSUFFICIENT. */
+  displayTreadMm: NumericInterval | null;
+  /** Point mm only for MEASURED (fresh) or CALIBRATED_ESTIMATE; never for baseline-only. */
+  pointEstimateTreadMm: number | null;
+  treadEvidenceClass: TireWearV3TreadEvidenceClass;
   remainingKm: NumericInterval;
   wearRate: TireWearV3WearRateEstimate;
   evidenceLevel: TireWearV3EvidenceLevel;
+  dynamicFactor: TireWearV3DynamicFactorSnapshot;
   flags: string[];
 }
 
@@ -52,6 +76,8 @@ export interface TireWearV3PriorSetupResult {
   ledgerDistanceKm: number;
   ledgerRowCount: number;
   dynamicBeta: number;
+  ds4SeverityCoverage: number;
+  ds4SeveritySRel: number | null;
   rated: boolean;
   wheels: TireWearV3WheelProjection[];
   setupFlags: string[];

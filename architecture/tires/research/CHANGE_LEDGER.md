@@ -90,3 +90,12 @@ Newest entry last. Never rewrite or delete entries.
 | WHY | PR #2160 review: avoid endless catch-up, preserve audit evidence, keep trip finalization independent of DS4, conservative coverage claims |
 | VALIDATION | Jest: ds4-shadow processor/repository/catchup + tire-trip-usage enqueue specs; `validate-graph.sh` · `validate-module-registry.sh` |
 | NON_EFFECTS | No merge to main, no Production migration/deploy/flag enable |
+
+### Tire Wear V3 Prior 0.2.0 — mm estimation shadow (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `tire-wear-v3-prior-0.2.0`: explicit `estimatedWearMm` / `displayTreadMm` / `treadEvidenceClass`; posterior rate fusion (`fuseRateWithPriorPosterior`) with legacy union preserved for `0.1.0` replays; read-only DS4 severity coverage interface (`dynamicBeta=0`); repository `findLatestDs4ShadowEvidenceByLedgerIds` |
+| WHY | Fable scientific model research: conservative anchored mm/km projection, measurement calibration narrowing, evidence classes, no M3→mm conversion |
+| VALIDATION | Jest `wear-v3-prior` suites (41 tests); productive V2 isolation spec unchanged |
+| NON_EFFECTS | V2 customer path; `TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED` default OFF; no DS4/S4/FSM change; no migration |

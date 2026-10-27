@@ -27,6 +27,17 @@ import {
   validateOdometerContext,
 } from './tire-wear-v3-prior.lifecycle';
 import {
+  classifyTreadEvidenceClass,
+  computeEstimatedWearMmInterval,
+  resolveDisplayTreadForEvidenceClass,
+} from './tire-wear-v3-baseline.math';
+import {
+  applyDynamicFactorToRateInterval,
+  boundedDynamicWearFactor,
+  computeSetupDs4Severity,
+  type TireWearV3Ds4LedgerShadowRow,
+} from './tire-wear-v3-dynamic.math';
+import {
   buildWearRateEstimate,
   deriveEvidenceLevel,
   fitWearRateFromMeasurements,
@@ -122,6 +133,7 @@ export class TireWearV3PriorService {
     const ledgerRowsAll = await this.prisma.tireTripUsageLedger.findMany({
       where: { tireSetupId, invalidatedAt: null },
       select: {
+        id: true,
         tripId: true,
         distanceKm: true,
         revisionNumber: true,
@@ -215,6 +227,28 @@ export class TireWearV3PriorService {
     const rotationBlocksRate =
       activePeriod != null &&
       hasRotationDuringMountPeriod(rotationEvents, activePeriod);
+
+    const ledgerDistanceById = new Map(
+      ledgerRows.map((row) => [row.id, row.distanceKm]),
+    );
+    const ds4ShadowBase = await this.repository.findLatestDs4ShadowEvidenceByLedgerIds(
+      ledgerRows.map((row) => row.id),
+    );
+    const ds4RowsForSeverity: TireWearV3Ds4LedgerShadowRow[] = ds4ShadowBase.map(
+      (row) => ({
+        ...row,
+        distanceKm: ledgerDistanceById.get(row.ledgerId) ?? 0,
+      }),
+    );
+    const ds4Severity = computeSetupDs4Severity(ds4RowsForSeverity, ledgerDistanceKm);
+    setupFlags.push(...ds4Severity.flags);
+    const setupDynamic = boundedDynamicWearFactor(
+      ds4Severity.sRel,
+      ds4Severity.coverage,
+    );
+    if (setupDynamic.flags.length > 0) {
+      setupFlags.push(...setupDynamic.flags);
+    }
 
     const wheels: TireWearV3WheelProjection[] = [];
     for (const position of listWheelPositions()) {
@@ -311,7 +345,15 @@ export class TireWearV3PriorService {
       }
 
       let estimatedTreadMm = { lo: initial.treadMm, hi: initial.treadMm };
+      let estimatedWearMm = { lo: 0, hi: 0 };
       let distanceSinceAnchorKm = 0;
+      let kmSinceLatestMeasurement: number | null = null;
+      let latestMeasTreadMm: number | null = null;
+
+      const rateMmPerKmForProjection = applyDynamicFactorToRateInterval(
+        wearRateRaw.mmPerKm,
+        setupDynamic,
+      );
 
       if (rated) {
         distanceSinceAnchorKm = Math.max(0, currentOdometerKm! - periodAnchorOdometer!);
@@ -320,18 +362,35 @@ export class TireWearV3PriorService {
           (a, b) => b.measuredAt.getTime() - a.measuredAt.getTime(),
         )[0];
 
+        if (latestMeas?.odometerKm != null) {
+          latestMeasTreadMm = latestMeas.treadMm;
+          kmSinceLatestMeasurement = Math.max(
+            0,
+            currentOdometerKm! - latestMeas.odometerKm,
+          );
+        }
+
+        const wearDistanceKm =
+          latestMeas?.odometerKm != null
+            ? kmSinceLatestMeasurement ?? 0
+            : distanceSinceAnchorKm;
+
+        estimatedWearMm = roundDisplayTreadInterval(
+          computeEstimatedWearMmInterval(rateMmPerKmForProjection, wearDistanceKm),
+        );
+
         const projected = latestMeas?.odometerKm != null
           ? projectTreadMm({
               anchorTreadMm: latestMeas.treadMm,
               anchorOdometerKm: latestMeas.odometerKm,
               currentOdometerKm: currentOdometerKm!,
-              rateMmPerKm: wearRateRaw.mmPerKm,
+              rateMmPerKm: rateMmPerKmForProjection,
             })
           : projectTreadMm({
               anchorTreadMm: initial.treadMm,
               anchorOdometerKm: periodAnchorOdometer!,
               currentOdometerKm: currentOdometerKm!,
-              rateMmPerKm: wearRateRaw.mmPerKm,
+              rateMmPerKm: rateMmPerKmForProjection,
             });
         estimatedTreadMm = roundDisplayTreadInterval(projected);
       } else {
@@ -351,13 +410,36 @@ export class TireWearV3PriorService {
       const remainingKm = remainingKmInterval(
         estimatedTreadMm,
         replacementMm,
-        wearRateRaw.mmPerKm,
+        rateMmPerKmForProjection,
       );
 
       const wearRate = {
         ...wearRateRaw,
-        mmPer1000km: roundDisplayRateIntervalMmPer1000(wearRateRaw.mmPer1000km),
+        mmPerKm: rateMmPerKmForProjection,
+        mmPer1000km: roundDisplayRateIntervalMmPer1000({
+          lo: rateMmPerKmForProjection.lo * 1000,
+          hi: rateMmPerKmForProjection.hi * 1000,
+        }),
       };
+
+      const treadEvidenceClass = classifyTreadEvidenceClass({
+        rated,
+        evidenceLevel: rated ? evidenceLevel : 'UNRATED',
+        kmSinceLatestMeasurement,
+        measuredFreshKmThreshold: TIRE_WEAR_V3_PRIOR_CONFIG.measuredFreshKm,
+        hasMeasurement: latestMeasTreadMm != null,
+      });
+
+      const { displayTreadMm, pointEstimateTreadMm } = resolveDisplayTreadForEvidenceClass({
+        treadEvidenceClass,
+        projectedTreadMm: estimatedTreadMm,
+        latestMeasuredTreadMm: latestMeasTreadMm,
+        measurementSigmaMm: sigmaMeasMm,
+      });
+
+      if (initial.usedDefaultFallback && treadEvidenceClass === 'BASELINE_ESTIMATE') {
+        wheelFlags.push('INITIAL_TREAD_DEFAULT_ASSUMPTION');
+      }
 
       wheels.push({
         position,
@@ -366,9 +448,20 @@ export class TireWearV3PriorService {
         replacementThresholdMm: replacementMm,
         distanceSinceAnchorKm,
         estimatedTreadMm,
+        estimatedWearMm,
+        displayTreadMm,
+        pointEstimateTreadMm,
+        treadEvidenceClass,
         remainingKm,
         wearRate,
         evidenceLevel: rated ? evidenceLevel : 'UNRATED',
+        dynamicFactor: {
+          factor: setupDynamic.factor,
+          coverage: setupDynamic.coverage,
+          sRel: setupDynamic.sRel,
+          applied: setupDynamic.applied,
+          appliedToRateLo: setupDynamic.appliedToRateLo,
+        },
         flags: wheelFlags,
       });
     }
@@ -424,6 +517,8 @@ export class TireWearV3PriorService {
       ledgerDistanceKm,
       ledgerRowCount: ledgerRows.length,
       dynamicBeta: TIRE_WEAR_V3_PRIOR_DYNAMIC_BETA,
+      ds4SeverityCoverage: ds4Severity.coverage,
+      ds4SeveritySRel: ds4Severity.sRel,
       rated:
         activePeriod != null &&
         odometerValidation.valid &&

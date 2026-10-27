@@ -101,6 +101,7 @@ describe('tire-wear-v3-prior correctness', () => {
     };
     const rows = [
       {
+        id: 'led-1',
         tripId: 't1',
         distanceKm: 10,
         revisionNumber: 1,
@@ -108,6 +109,7 @@ describe('tire-wear-v3-prior correctness', () => {
         tripStartedAt: new Date('2026-02-01'),
       },
       {
+        id: 'led-2',
         tripId: 't2',
         distanceKm: 20,
         revisionNumber: 1,
@@ -193,6 +195,7 @@ describe('tire-wear-v3-prior correctness', () => {
       insertShadowRowIdempotent: jest.fn(),
       findLatestShadowRow: jest.fn(),
       insertShadowRow: jest.fn(),
+      findLatestDs4ShadowEvidenceByLedgerIds: jest.fn().mockResolvedValue([]),
     };
     const configService = { get: jest.fn().mockReturnValue(false) };
     const prisma = {

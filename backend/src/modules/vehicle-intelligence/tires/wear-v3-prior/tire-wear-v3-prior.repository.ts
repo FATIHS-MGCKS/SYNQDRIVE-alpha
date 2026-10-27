@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  extractM3JPerKgPerKmFromShadowPayload,
+  extractTemporalSecondsFromShadowPayload,
+} from './tire-wear-v3-ds4-payload.util';
+import type { TireWearV3Ds4LedgerShadowRow } from './tire-wear-v3-dynamic.math';
 import type { TireWearV3PriorSetupResult } from './tire-wear-v3-prior.types';
 
 @Injectable()
@@ -44,6 +49,46 @@ export class TireWearV3PriorRepository {
         computedAt: new Date(args.resultPayload.computedAt),
       },
     });
+  }
+
+  /**
+   * Latest succeeded DS4 shadow row per ledger id (read-only; does not enqueue or mutate DS4).
+   */
+  async findLatestDs4ShadowEvidenceByLedgerIds(
+    ledgerIds: string[],
+  ): Promise<TireWearV3Ds4LedgerShadowRow[]> {
+    if (ledgerIds.length === 0) return [];
+
+    const rows = await this.prisma.tireDs4MotionShadowInputV1.findMany({
+      where: {
+        tireTripUsageLedgerId: { in: ledgerIds },
+        ds4ReadStatus: 'SUCCEEDED',
+      },
+      select: {
+        tireTripUsageLedgerId: true,
+        temporalCoverage: true,
+        ds4ReadStatus: true,
+        inputPayload: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const byLedger = new Map<string, TireWearV3Ds4LedgerShadowRow>();
+    for (const row of rows) {
+      if (byLedger.has(row.tireTripUsageLedgerId)) continue;
+      const temporal = extractTemporalSecondsFromShadowPayload(row.inputPayload);
+      byLedger.set(row.tireTripUsageLedgerId, {
+        ledgerId: row.tireTripUsageLedgerId,
+        distanceKm: 0,
+        ds4ReadStatus: row.ds4ReadStatus,
+        temporalCoverage: row.temporalCoverage,
+        m3JPerKgPerKm: extractM3JPerKgPerKmFromShadowPayload(row.inputPayload),
+        validDrivingSeconds: temporal.validDrivingSeconds,
+        tripDurationSeconds: temporal.tripDurationSeconds,
+      });
+    }
+    return [...byLedger.values()];
   }
 
   async insertShadowRowIdempotent(args: {
