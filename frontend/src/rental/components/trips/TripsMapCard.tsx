@@ -14,6 +14,10 @@ import { TripMapSummaryOverlay } from './TripMapSummaryOverlay';
 import { TripEventPopover } from './TripEventPopover';
 import { deriveTripMapQuality } from './trips-map.utils';
 import { DEFAULT_TRIP_MAP_LAYERS } from './utils/tripMapLayers';
+import {
+  filterDs4DrivingEventsForMap,
+  resolveTripMapDrivingMarkerSource,
+} from './utils/trip-map-driving-marker-source';
 import { TripMotionMapPopover } from './TripMotionMapPopover';
 import { TripMotionMapStatusBanner } from './TripMotionMapStatusBanner';
 import type { TripMotionMapPayload, TripMotionMapPopoverState } from './motion-map.types';
@@ -95,6 +99,18 @@ export function TripsMapCard({
   const [selectedMotionEventId, setSelectedMotionEventId] = useState<string | null>(null);
 
   const motionActive = isMotionMapActive(motionMapPayload);
+  const drivingMarkerSource = useMemo(
+    () =>
+      resolveTripMapDrivingMarkerSource({
+        showDrivingEventsLayer: layers.showDrivingEvents,
+        motionMapPayload,
+      }),
+    [layers.showDrivingEvents, motionMapPayload],
+  );
+  const motionEventsForDrivingMarkers = useMemo(() => {
+    if (!drivingMarkerSource.showDs4DrivingMarkers) return [];
+    return filterDs4DrivingEventsForMap(motionMapPayload?.events ?? []);
+  }, [drivingMarkerSource.showDs4DrivingMarkers, motionMapPayload?.events]);
   const m7aActive = isM7aMapActive(m7aMapPayload);
   const m7aLayerAvailable = isM7aMapEvaluationPresent(m7aMapPayload) && m7aActive;
   const m7aBinding = useMemo(
@@ -197,8 +213,9 @@ export function TripsMapCard({
     selectedBehaviorEventId,
     endpointLabels,
     motionMapActive: motionActive,
+    drivingMarkerSource,
     motionSamples: resolvedMotion?.samples ?? [],
-    motionEvents: motionMapPayload?.events ?? [],
+    motionEvents: motionEventsForDrivingMarkers,
     motionStops: motionMapPayload?.stopEpisodes ?? [],
     onMotionPopover: (state) => {
       setMotionPopover(state);
@@ -297,7 +314,12 @@ export function TripsMapCard({
       </div>
 
       <div className={`relative synq-map-hud-surface ${frameHeight} ${tv.mapFrame} shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] bg-muted/15`}>
-        <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+        <div
+          ref={mapContainerRef}
+          className="absolute inset-0 w-full h-full"
+          data-trip-driving-marker-provenance={drivingMarkerSource.provenance}
+          data-trip-ds4-evidence-state={drivingMarkerSource.ds4EvidenceState}
+        />
 
         {mapError && (
           <div className={`${tv.overlay} z-20`}>

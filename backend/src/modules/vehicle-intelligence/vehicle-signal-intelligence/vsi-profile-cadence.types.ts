@@ -32,6 +32,30 @@ export type VsiCadenceRegimeV2 = {
   confidence: VsiSignalConfidenceLevel;
 };
 
+export type VsiActiveRpmProfileLabel = 'RPM_1HZ' | 'RPM_STANDARD' | 'UNKNOWN';
+
+export type VsiActiveRpmProfileResolutionV1 = {
+  contractVersion: 'vsi-active-rpm-profile-v1';
+  activeProfile: VsiActiveRpmProfileLabel;
+  evaluatedTripIds: string[];
+  qualifyingTripCount: number;
+  agreementRatio: number | null;
+  classificationDecisionCode: string;
+  classificationDecisionSummary: string;
+  tripClassifications: readonly {
+    tripId: string;
+    endMs: number;
+    profile: VsiActiveRpmProfileLabel;
+    intervalMedianSeconds: number | null;
+    intervalP95Seconds: number | null;
+    intervalCount: number;
+    rpmPointCount: number;
+    fractionIntervalsLe2s: number | null;
+    decisionCode: string;
+  }[];
+  profileSemanticFingerprint: string;
+};
+
 export type VsiSignalCadenceIntelligenceV2 = {
   contractVersion: typeof VSI_SIGNAL_CADENCE_CONTRACT_VERSION;
   evidenceConfidence: VsiSignalConfidenceLevel;
@@ -46,6 +70,8 @@ export type VsiSignalCadenceIntelligenceV2 = {
   finalizedTripCount: number | null;
   regimes: VsiCadenceRegimeV2[];
   observedDensityLabel: VsiCadenceObservedDensityLabel;
+  /** Rolling-trip resolver for the active provider source link (not 14 d pooled). */
+  activeRpmProfile?: VsiActiveRpmProfileResolutionV1;
   /** Stable semantic identity for cadence dimension (excludes raw counters). */
   cadenceSemanticFingerprint: string;
 };
