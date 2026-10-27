@@ -20,7 +20,11 @@ write_mock_gh_ci_ok() {
   cat >"${MOCK_BIN}/gh" <<'EOS'
 #!/usr/bin/env bash
 if [[ "$*" == *check-runs* ]]; then
-  echo '{"total_count":1,"check_runs":[{"name":"CI gate (all critical jobs)","status":"completed","conclusion":"success","started_at":"2026-10-12T12:00:00Z","completed_at":"2026-10-12T12:01:00Z"}]}'
+  echo '{"total_count":1,"check_runs":[{"name":"CI gate (all critical jobs)","status":"completed","conclusion":"success","started_at":"2026-10-12T12:00:00Z","completed_at":"2026-10-12T12:01:00Z","details_url":"https://github.com/ORG/REPO/actions/runs/40573450839/job/1"}]}'
+  exit 0
+fi
+if [[ "$*" == *actions/runs/* ]]; then
+  echo '.github/workflows/vehicle-detail-production-readiness.yml'
   exit 0
 fi
 exec /usr/bin/gh "$@"
