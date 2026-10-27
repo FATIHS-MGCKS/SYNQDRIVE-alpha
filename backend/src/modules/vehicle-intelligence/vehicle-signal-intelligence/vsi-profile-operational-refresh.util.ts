@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
 import { areVsiProfileSemanticEvaluationsEquivalent } from './vsi-profile-fingerprint.util';
+import type { VsiSignalCadenceIntelligenceV2 } from './vsi-profile-cadence.types';
 
 /** Row tokens read inside the transaction immediately before an operational-only CAS write. */
 export type VsiOperationalProfileRefreshCasRow = {
@@ -57,6 +58,84 @@ function maxIsoTimestamp(a: string | null, b: string | null): string | null {
   return aMs >= bMs ? a : b;
 }
 
+/** Latest reliable trip end timestamp from active RPM rolling evidence, if present. */
+export function maxActiveRpmTripEndMs(
+  cadence: VsiSignalCadenceIntelligenceV2 | undefined,
+): number | null {
+  const rows = cadence?.activeRpmProfile?.tripClassifications;
+  if (!rows?.length) {
+    return null;
+  }
+  let max: number | null = null;
+  for (const row of rows) {
+    if (!Number.isFinite(row.endMs)) {
+      continue;
+    }
+    max = max == null ? row.endMs : Math.max(max, row.endMs);
+  }
+  return max;
+}
+
+/**
+ * Rejects stale active RPM rolling windows that share the same cadence semantic fingerprint.
+ * LV cadence (no activeRpmProfile) is not gated here.
+ */
+export function isIncomingActiveRpmEvidenceMonotonic(
+  persisted: VsiSignalCadenceIntelligenceV2,
+  incoming: VsiSignalCadenceIntelligenceV2,
+): boolean {
+  if (!persisted.activeRpmProfile) {
+    return true;
+  }
+  if (!incoming.activeRpmProfile) {
+    return false;
+  }
+  const persistedMax = maxActiveRpmTripEndMs(persisted);
+  const incomingMax = maxActiveRpmTripEndMs(incoming);
+  if (persistedMax == null || incomingMax == null) {
+    return false;
+  }
+  if (incomingMax < persistedMax) {
+    return false;
+  }
+  if (incomingMax > persistedMax) {
+    return true;
+  }
+  const persistedIds = persisted.activeRpmProfile.evaluatedTripIds;
+  const incomingIds = incoming.activeRpmProfile.evaluatedTripIds;
+  if (JSON.stringify(persistedIds) === JSON.stringify(incomingIds)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * When cadence semantic identity is unchanged, refresh operational cadence evidence
+ * (e.g. activeRpmProfile.evaluatedTripIds) from the newer evaluation.
+ */
+export function mergeOperationalCadenceIntelligence(
+  persisted: VsiSignalCadenceIntelligenceV2 | undefined,
+  incoming: VsiSignalCadenceIntelligenceV2 | undefined,
+): VsiSignalCadenceIntelligenceV2 | undefined {
+  if (!incoming) {
+    return persisted;
+  }
+  if (!persisted) {
+    return incoming;
+  }
+  if (
+    !persisted.cadenceSemanticFingerprint ||
+    !incoming.cadenceSemanticFingerprint ||
+    persisted.cadenceSemanticFingerprint !== incoming.cadenceSemanticFingerprint
+  ) {
+    return persisted;
+  }
+  if (!isIncomingActiveRpmEvidenceMonotonic(persisted, incoming)) {
+    return persisted;
+  }
+  return incoming;
+}
+
 export function mergeOperationalSignalSnapshots(
   persistedSignals: readonly VsiProfileSignalFingerprintV1[],
   incomingSignals: readonly VsiProfileSignalFingerprintV1[],
@@ -69,14 +148,22 @@ export function mergeOperationalSignalSnapshots(
     if (!incoming) {
       return persistedSignal;
     }
+    let next: VsiProfileSignalFingerprintV1 = persistedSignal;
     const lastProviderFetchAt = maxIsoTimestamp(
       persistedSignal.lastProviderFetchAt,
       incoming.lastProviderFetchAt,
     );
-    if (lastProviderFetchAt === persistedSignal.lastProviderFetchAt) {
-      return persistedSignal;
+    if (lastProviderFetchAt !== persistedSignal.lastProviderFetchAt) {
+      next = { ...next, lastProviderFetchAt };
     }
-    return { ...persistedSignal, lastProviderFetchAt };
+    const cadenceIntelligence = mergeOperationalCadenceIntelligence(
+      persistedSignal.cadenceIntelligence,
+      incoming.cadenceIntelligence,
+    );
+    if (cadenceIntelligence !== persistedSignal.cadenceIntelligence) {
+      next = { ...next, cadenceIntelligence };
+    }
+    return next;
   });
 }
 
