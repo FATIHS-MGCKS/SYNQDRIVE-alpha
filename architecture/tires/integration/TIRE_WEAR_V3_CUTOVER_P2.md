@@ -18,7 +18,7 @@ Authoritative mode requires `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true` **and** `T
 
 All customer-facing V3 reads go through `TireHealthV3ReadService.computeCustomerRead` → `computeForSetup({ persistShadow: false })`. No second scheduler; no permanent V2+V3 dual writers on customer fields when authoritative is on.
 
-Measurement ingestion (P1) continues post-save V3 recompute on the lifecycle path. V2 `recalculate()` still writes snapshots until a later cutover phase explicitly moves persistence.
+Measurement ingestion (P1) continues post-save V3 recompute on the lifecycle path. V2 `recalculate()` skips **new** snapshot writes when authoritative cutover is active (#2201); see [`TIRE_WEAR_V3_CUTOVER_PRODUCTION.md`](./TIRE_WEAR_V3_CUTOVER_PRODUCTION.md).
 
 ## API contracts
 

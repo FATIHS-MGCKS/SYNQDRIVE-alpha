@@ -181,3 +181,12 @@ Newest entry last. Never rewrite or delete entries.
 | OBSERVED_EFFECT | All four cohort vehicles: V3 verification `INSUFFICIENT_EVIDENCE` (NULL measurement odometers; Arteon no measurements); rental `MEASUREMENT_REQUIRED`; DS4 β=0 |
 | VERDICT | **INCONCLUSIVE** for production GO — mechanics OK, evidence quality blocks authoritative replacement |
 | NON_EFFECTS | No model formula change; no deploy; no flags; no production mutation |
+
+### Tire V3 — global production cutover preparation (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| WHY | Owner decision: full V2→V3 cutover; prepare env/rollback/deploy runbook without activation |
+| CHANGE | `integration/TIRE_WEAR_V3_CUTOVER_PRODUCTION.md`; P2 doc snapshot-write clarification |
+| VALIDATION | Read-only VPS preflight; local Jest cutover suites 15/15; P3 evidence reviewed |
+| NON_EFFECTS | No deploy; no `backend.env` mutation; flags remain absent on production |
