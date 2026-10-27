@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Zb1RegistrationDocumentP4Service } from '@modules/document-extraction/zb1/zb1-registration-document-p4.service';
 import {
   Prisma,
@@ -103,9 +104,16 @@ export class OrganizationsService {
     private readonly audit: AuditService,
     private readonly organizationRoles: OrganizationRoleService,
     private readonly vehiclesService: VehiclesService,
-    @Optional()
-    private readonly zb1RegistrationDocumentP4?: Zb1RegistrationDocumentP4Service,
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  private resolveZb1RegistrationDocumentP4(): Zb1RegistrationDocumentP4Service | null {
+    try {
+      return this.moduleRef.get(Zb1RegistrationDocumentP4Service, { strict: false });
+    } catch {
+      return null;
+    }
+  }
 
   private toBusinessTypeEnum(value: string): BusinessType {
     const map: Record<string, BusinessType> = {
@@ -344,7 +352,8 @@ export class OrganizationsService {
   }
 
   async delete(id: string, actorUserId?: string | null) {
-    await this.zb1RegistrationDocumentP4
+    const zb1P4 = this.resolveZb1RegistrationDocumentP4();
+    await zb1P4
       ?.softDeleteRegistrationDocumentsForOrganization({
         organizationId: id,
         actorUserId: actorUserId ?? null,

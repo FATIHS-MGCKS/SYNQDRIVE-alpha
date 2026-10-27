@@ -80,6 +80,7 @@ describe('OrganizationsService — tenant company profile', () => {
       audit as unknown as AuditService,
       roleService as never,
       vehiclesService as never,
+      { get: () => null } as never,
     );
   });
 
