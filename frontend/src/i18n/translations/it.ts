@@ -6,6 +6,7 @@ import { rentalTripGpsSpeedEvaluationIt } from './rental.tripGpsSpeedEvaluation.
 import { dimoWebhookHealthIt } from './dimo-webhook-health.it';
 import { masterPlatformOpsDiS4It } from './master.platformOps.diS4.it';
 import { batteryV2HvInspectionIT } from './battery-v2-hv-inspection.it';
+import { tireWearV3It } from './tire.wearV3.it';
 import { masterPhysicalDeviceInventoryIt } from './master.physicalDeviceInventory.it';
 import { masterMotionPhysicsIt } from './master.motionPhysics.it';
 import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
@@ -179,4 +180,5 @@ export const it = {
 ...masterVehicleIdentityIt,
   ...masterCvTechnicalSpecsIt,
   ...batteryV2HvInspectionIT,
+  ...tireWearV3It,
 } satisfies PartialTranslationDictionary;

@@ -6,6 +6,7 @@ import { rentalTripGpsSpeedEvaluationCs } from './rental.tripGpsSpeedEvaluation.
 import { dimoWebhookHealthCs } from './dimo-webhook-health.cs';
 import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
 import { batteryV2HvInspectionCS } from './battery-v2-hv-inspection.cs';
+import { tireWearV3Cs } from './tire.wearV3.cs';
 import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 import { masterMotionPhysicsCs } from './master.motionPhysics.cs';
 import { masterVehicleIdentityCs } from './master.vehicleIdentity.cs';
@@ -179,4 +180,5 @@ export const cs = {
 ...masterVehicleIdentityCs,
   ...masterCvTechnicalSpecsCs,
   ...batteryV2HvInspectionCS,
+  ...tireWearV3Cs,
 } satisfies PartialTranslationDictionary;

@@ -6,6 +6,7 @@ import { rentalTripGpsSpeedEvaluationFr } from './rental.tripGpsSpeedEvaluation.
 import { dimoWebhookHealthFr } from './dimo-webhook-health.fr';
 import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
 import { batteryV2HvInspectionFR } from './battery-v2-hv-inspection.fr';
+import { tireWearV3Fr } from './tire.wearV3.fr';
 import { masterPhysicalDeviceInventoryFr } from './master.physicalDeviceInventory.fr';
 import { masterMotionPhysicsFr } from './master.motionPhysics.fr';
 import { masterVehicleIdentityFr } from './master.vehicleIdentity.fr';
@@ -920,4 +921,5 @@ export const fr = {
 ...masterVehicleIdentityFr,
   ...masterCvTechnicalSpecsFr,
   ...batteryV2HvInspectionFR,
+  ...tireWearV3Fr,
 } satisfies PartialTranslationDictionary;

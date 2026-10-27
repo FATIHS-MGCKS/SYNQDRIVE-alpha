@@ -150,6 +150,30 @@ const MESSAGES: Record<
     actionDe: 'Manuelle Messung durchführen',
     actionEn: 'Perform manual measurement',
   },
+  TIRE_V3_INSUFFICIENT_EVIDENCE: {
+    de: () => 'V3: Unzureichende Nachweise — Profiltiefenmessung erforderlich',
+    en: () => 'V3: Insufficient evidence — tread measurement required',
+    actionDe: 'Profiltiefe messen und bestätigen',
+    actionEn: 'Record and confirm tread measurement',
+  },
+  TIRE_V3_VERIFICATION_OVERDUE: {
+    de: () => 'V3: Verifikation überfällig — Messung erforderlich',
+    en: () => 'V3: Verification overdue — measurement required',
+    actionDe: 'Verifikationsmessung durchführen',
+    actionEn: 'Perform verification measurement',
+  },
+  TIRE_V3_VERIFICATION_DUE: {
+    de: () => 'V3: Verifikation fällig',
+    en: () => 'V3: Verification due',
+    actionDe: 'Profiltiefe zeitnah messen',
+    actionEn: 'Measure tread depth soon',
+  },
+  TIRE_V3_VERIFICATION_DUE_SOON: {
+    de: () => 'V3: Verifikation bald fällig',
+    en: () => 'V3: Verification due soon',
+    actionDe: 'Messung in den nächsten Kilometern planen',
+    actionEn: 'Plan measurement within upcoming distance',
+  },
   ODOMETER_ANCHOR_REQUIRED: {
     de: () => 'Kilometeranker für Restlaufzeit fehlt',
     en: () => 'Odometer anchor required for remaining-km projection',

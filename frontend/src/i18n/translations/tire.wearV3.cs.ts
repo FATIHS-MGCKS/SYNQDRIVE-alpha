@@ -1,0 +1,15 @@
+export const tireWearV3Cs = {
+  'tire.wearV3.sectionTitle': 'Hloubka dezénu (V3)',
+  'tire.wearV3.verification.insufficient': 'Nedostatečné důkazy — nutné měření',
+  'tire.wearV3.verification.overdue': 'Ověření po termínu',
+  'tire.wearV3.verification.due': 'Ověření splatné',
+  'tire.wearV3.verification.dueSoon': 'Ověření brzy splatné',
+  'tire.wearV3.verification.current': 'Ověření aktuální',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Změřeno',
+  'tire.wearV3.evidence.calibrated': 'Kalibrovaný odhad',
+  'tire.wearV3.evidence.baseline': 'Základní odhad',
+  'tire.wearV3.evidence.insufficient': 'Nedostatečné důkazy',
+  'tire.wearV3.measurementAction': 'Změřit dezén',
+  'tire.wearV3.lastMeasurement': 'Poslední přijaté měření: {{date}}',
+} as const;

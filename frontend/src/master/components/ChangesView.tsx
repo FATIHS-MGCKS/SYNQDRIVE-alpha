@@ -120,6 +120,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-27T13:10:00.000Z',
   },
   {
+    id: 'tire-v3-cutover-p2-customer-read-2026-10-27',
+    version: '4.9.4997',
+    title: 'Tire Wear V3 cutover P2 — customer read adapter (flags default OFF)',
+    summary: [
+      'TireHealthV3ReadService maps V3 prior output to versioned `wearV3` on summary/detail/wear-analysis.',
+      'Cutover env flags `TIRE_WEAR_V3_CUSTOMER_READ_*` default false; reads use `persistShadow: false`.',
+      'Rental health + alerts distinguish V3 INSUFFICIENT_EVIDENCE vs OVERDUE; tire modal V3 panel + 9-locale i18n.',
+    ],
+    reason:
+      'Prepare single authoritative V3 customer read without activating production or dual customer-facing wear estimates.',
+    previousBehavior:
+      'Customer tire APIs and UI exposed V2 wear only; V3 prior ran on measurement path but was not a first-class read model.',
+    details:
+      'backend: tire-health-v3-read.*, tire-wear-v3-cutover.config, tire-rental-health.policy; frontend: TireWearV3CustomerPanel, tire.wearV3.* translations.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-10-27T19:55:00.000Z',
+  },
+  {
     id: 'commit-b-vehicle-tire-ai-v2-2026-10-27',
     version: '4.9.4996',
     title: 'Commit B — Vehicle/Tire AI Spec V2, normalization & provenance safety',

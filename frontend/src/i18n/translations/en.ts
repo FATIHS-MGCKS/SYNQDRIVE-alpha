@@ -59,6 +59,7 @@ import { tripsMotionMapEN } from './trips-motion-map.en';
 import { tripsM7aMapEN } from './trips-m7a-map.en';
 import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
 import { batteryV2HvInspectionEN } from './battery-v2-hv-inspection.en';
+import { tireWearV3En } from './tire.wearV3.en';
 import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
 import { masterMotionPhysicsEn } from './master.motionPhysics.en';
 import { masterVehicleIdentityEn } from './master.vehicleIdentity.en';
@@ -5972,6 +5973,7 @@ export const en = {
   ...masterRegistrationBrakeEn,
   ...masterCvTechnicalSpecsEn,
   ...batteryV2HvInspectionEN,
+  ...tireWearV3En,
 } as const;
 
 export type TranslationKey = keyof typeof en;

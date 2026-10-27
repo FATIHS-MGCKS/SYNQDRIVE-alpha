@@ -6,6 +6,7 @@ import { rentalTripGpsSpeedEvaluationEs } from './rental.tripGpsSpeedEvaluation.
 import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
 import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
 import { batteryV2HvInspectionES } from './battery-v2-hv-inspection.es';
+import { tireWearV3Es } from './tire.wearV3.es';
 import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
 import { masterMotionPhysicsEs } from './master.motionPhysics.es';
 import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
@@ -179,4 +180,5 @@ export const es = {
 ...masterVehicleIdentityEs,
   ...masterCvTechnicalSpecsEs,
   ...batteryV2HvInspectionES,
+  ...tireWearV3Es,
 } satisfies PartialTranslationDictionary;

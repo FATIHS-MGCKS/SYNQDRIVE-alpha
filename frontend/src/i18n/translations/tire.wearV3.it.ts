@@ -1,0 +1,15 @@
+export const tireWearV3It = {
+  'tire.wearV3.sectionTitle': 'Profondità battistrada (V3)',
+  'tire.wearV3.verification.insufficient': 'Evidenze insufficienti — misurazione richiesta',
+  'tire.wearV3.verification.overdue': 'Verifica scaduta',
+  'tire.wearV3.verification.due': 'Verifica dovuta',
+  'tire.wearV3.verification.dueSoon': 'Verifica in scadenza',
+  'tire.wearV3.verification.current': 'Verifica aggiornata',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Misurato',
+  'tire.wearV3.evidence.calibrated': 'Stima calibrata',
+  'tire.wearV3.evidence.baseline': 'Stima di base',
+  'tire.wearV3.evidence.insufficient': 'Evidenze insufficienti',
+  'tire.wearV3.measurementAction': 'Misura battistrada',
+  'tire.wearV3.lastMeasurement': 'Ultima misurazione accettata: {{date}}',
+} as const;

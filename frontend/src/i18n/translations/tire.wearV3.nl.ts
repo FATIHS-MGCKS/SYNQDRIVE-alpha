@@ -1,0 +1,15 @@
+export const tireWearV3Nl = {
+  'tire.wearV3.sectionTitle': 'Profieldiepte (V3)',
+  'tire.wearV3.verification.insufficient': 'Onvoldoende bewijs — meting vereist',
+  'tire.wearV3.verification.overdue': 'Verificatie te laat',
+  'tire.wearV3.verification.due': 'Verificatie verschuldigd',
+  'tire.wearV3.verification.dueSoon': 'Verificatie binnenkort',
+  'tire.wearV3.verification.current': 'Verificatie actueel',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Gemeten',
+  'tire.wearV3.evidence.calibrated': 'Gekalibreerde schatting',
+  'tire.wearV3.evidence.baseline': 'Basisschatting',
+  'tire.wearV3.evidence.insufficient': 'Onvoldoende bewijs',
+  'tire.wearV3.measurementAction': 'Profiel meten',
+  'tire.wearV3.lastMeasurement': 'Laatste geaccepteerde meting: {{date}}',
+} as const;

@@ -95,6 +95,7 @@ import {
   type TireHealthSummaryForPresentation,
 } from './tire-health-presentation';
 import { TireHealthObservabilityService } from './tire-health-observability.service';
+import { TireHealthV3ReadService } from './tire-health-v3-read.service';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -211,10 +212,16 @@ export interface TireHealthSummary {
 
   /** Capability-gated DIMO context signals (ambient, odometer plausibility, TPMS). */
   dimoContext: TireDimoContext;
+
+  /** Which wear read model backs customer-facing fields when authoritative cutover is on. */
+  wearReadModel?: 'v2' | 'v3';
+  /** Versioned V3 customer read model (interval mm, verification, evidence classes). */
+  wearV3?: import('./tire-health-v3-read.types').TireHealthV3CustomerReadModel;
 }
 
 export interface TireHealthDetail {
   summary: TireHealthSummary;
+  wearV3?: import('./tire-health-v3-read.types').TireHealthV3CustomerReadModel;
   wheels: PerWheelEstimate[];
   usageSplit: { city: number; highway: number; rural: number };
   factors: Record<string, any>;
@@ -305,6 +312,7 @@ export class TireHealthService {
     private readonly predictionValidation: TirePredictionValidationService,
     private readonly tireHealthAlertService: TireHealthAlertService,
     @Optional() private readonly observability?: TireHealthObservabilityService,
+    @Optional() private readonly tireHealthV3Read?: TireHealthV3ReadService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -361,7 +369,7 @@ export class TireHealthService {
       dimoContext,
     );
 
-    return this.buildSummaryPayload(
+    const summary = this.buildSummaryPayload(
       setup,
       wearAnalysis,
       confidence,
@@ -370,6 +378,7 @@ export class TireHealthService {
       inventoryFlags,
       dimoContext,
     );
+    return this.enrichSummaryWithV3IfEnabled(summary, setup);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -440,7 +449,7 @@ export class TireHealthService {
       });
     }
 
-    return {
+    const detail: TireHealthDetail = {
       summary,
       wheels,
       usageSplit,
@@ -454,6 +463,31 @@ export class TireHealthService {
       measurements,
       alerts,
     };
+    if (!this.tireHealthV3Read?.isCustomerReadEnabled()) {
+      return detail;
+    }
+    return this.tireHealthV3Read.enrichDetail(detail, setup.id, setup.tireSeason);
+  }
+
+  private async enrichSummaryWithV3IfEnabled(
+    summary: TireHealthSummary,
+    setup: { id: string; tireSeason: string | null },
+  ): Promise<TireHealthSummary> {
+    if (!this.tireHealthV3Read?.isCustomerReadEnabled()) {
+      return summary;
+    }
+    const wheels = summary.evidencePresentation?.treadLines?.map((line) => ({
+      position: line.position,
+      treadMm: line.valueMm ?? 0,
+      lastMeasuredMm: line.valueMm,
+      lastMeasuredAt: line.measuredAt,
+    })) ?? [];
+    return this.tireHealthV3Read.enrichSummary(
+      summary,
+      setup.id,
+      setup.tireSeason,
+      wheels,
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

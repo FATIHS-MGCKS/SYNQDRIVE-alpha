@@ -8648,6 +8648,8 @@ export interface TireWearAnalysis {
     possibleCauseHints: string[];
   };
   effectiveWearRateKmPerMm: { front: number; rear: number };
+  wearReadModel?: 'v2' | 'v3';
+  wearV3?: TireHealthV3CustomerReadModel | null;
 }
 
 export interface TireAlert {
@@ -8865,6 +8867,36 @@ export interface TireDimoContextResponse {
   blockedWearDerivations: string[];
 }
 
+export interface TireHealthV3WheelReadModel {
+  position: string;
+  treadDepthMm: { lo: number; hi: number } | null;
+  pointEstimateTreadMm: number | null;
+  treadEvidenceClass: string;
+  remainingKm: { lo: number; hi: number } | null;
+  replacementThresholdMm: number;
+  evidenceLevel: string;
+  uncertaintyFlags: string[];
+  verificationStatus: string;
+  lastAcceptedMeasurementAt: string | null;
+  kmSinceAcceptedMeasurement: number | null;
+  nextDueOdometerKm: number | null;
+  mountPeriodQualityFlags: string[];
+}
+
+export interface TireHealthV3CustomerReadModel {
+  modelVersion: string;
+  computedAt: string;
+  inputFingerprint: string;
+  rated: boolean;
+  setupFlags: string[];
+  verificationStatus: string;
+  verificationQualityFlags: string[];
+  wheels: TireHealthV3WheelReadModel[];
+  lowestTreadPosition: string | null;
+  lowestTreadMm: { lo: number; hi: number } | null;
+  insufficientEvidence: boolean;
+}
+
 export interface TireHealthSummaryResponse {
   overallPercent: number;
   overallRemainingKm: number;
@@ -8931,6 +8963,10 @@ export interface TireHealthSummaryResponse {
   seasonStatus?: TireCanonicalStatus;
   unevenWearStatus?: TireCanonicalStatus;
   recommendations?: string[];
+  /** Which wear read model backs customer fields when authoritative cutover is on. */
+  wearReadModel?: 'v2' | 'v3';
+  /** Versioned V3 customer read (mm intervals, verification, evidence classes). */
+  wearV3?: TireHealthV3CustomerReadModel;
 }
 
 export interface TireWheelEstimate {
@@ -8955,6 +8991,7 @@ export interface TireWheelEstimate {
 
 export interface TireHealthDetailResponse {
   summary: TireHealthSummaryResponse;
+  wearV3?: TireHealthV3CustomerReadModel;
   wheels: TireWheelEstimate[];
   usageSplit: { city: number; highway: number; rural: number };
   factors: {

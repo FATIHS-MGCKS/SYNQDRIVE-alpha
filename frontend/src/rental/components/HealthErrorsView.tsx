@@ -31,6 +31,7 @@ import {
   restingVoltageChartDomain,
   restingVoltageStatusLabelDe,
 } from '../lib/battery-health-detail-ui';
+import { TireWearV3CustomerPanel } from './tires/TireWearV3CustomerPanel';
 import {
   TIRE_FORECAST_QUALITY_SUBTEXT,
   TIRE_MANUAL_MEASUREMENT_HINT,
@@ -2774,6 +2775,8 @@ export function HealthErrorsView({
                 </div>
               );
             })()}
+
+            <TireWearV3CustomerPanel summary={tireDetail?.summary ?? tireHealth} />
 
             {/* Estimate Quality Badge */}
             {(() => {

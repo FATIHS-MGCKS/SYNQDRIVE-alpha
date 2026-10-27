@@ -6,6 +6,7 @@ import { rentalTripGpsSpeedEvaluationNl } from './rental.tripGpsSpeedEvaluation.
 import { dimoWebhookHealthNl } from './dimo-webhook-health.nl';
 import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
 import { batteryV2HvInspectionNL } from './battery-v2-hv-inspection.nl';
+import { tireWearV3Nl } from './tire.wearV3.nl';
 import { masterPhysicalDeviceInventoryNl } from './master.physicalDeviceInventory.nl';
 import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
 import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
@@ -180,4 +181,5 @@ export const nl = {
 ...masterVehicleIdentityNl,
   ...masterCvTechnicalSpecsNl,
   ...batteryV2HvInspectionNL,
+  ...tireWearV3Nl,
 } satisfies PartialTranslationDictionary;

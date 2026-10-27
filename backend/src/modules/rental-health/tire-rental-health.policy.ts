@@ -287,6 +287,24 @@ export function buildTireRentalHealthReadModel(
     pressureState = 'unknown';
     primaryReason = 'Keine Reifendaten verfügbar';
   } else {
+    // ── V3 verification (P2 cutover — distinguish overdue vs insufficient) ─
+    const v3Verify = summary.wearV3?.verificationStatus;
+    if (v3Verify === 'INSUFFICIENT_EVIDENCE') {
+      reasonCodes.push('V3_VERIFICATION_INSUFFICIENT_EVIDENCE');
+      wearState = 'unknown';
+      reviewRequirement = mergeReviewRequirement(
+        reviewRequirement,
+        'MEASUREMENT_REQUIRED',
+      );
+      primaryReason =
+        'Reifen-V3: unzureichende Nachweise — Profiltiefenmessung erforderlich';
+    } else if (v3Verify === 'OVERDUE') {
+      reasonCodes.push('V3_VERIFICATION_OVERDUE');
+      wearState = 'warning';
+      reviewRequirement = mergeReviewRequirement(reviewRequirement, 'REVIEW_REQUIRED');
+      primaryReason = 'Reifen-V3: Verifikation überfällig — Messung vor Vermietung';
+    }
+
     // ── Wear path ─────────────────────────────────────────────────────────
     if (summary.isDefaultAssumption) {
       reasonCodes.push('TREAD_DEFAULT_ASSUMPTION');

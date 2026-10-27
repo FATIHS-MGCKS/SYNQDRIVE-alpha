@@ -1,5 +1,6 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
+import { tireWearV3Tr } from './tire.wearV3.tr';
 
 /**
  * Turkish product-copy dictionary (partial).
@@ -15,4 +16,5 @@ export const tr = {
   'trips.drivingImpact.quality.legacyCompat': 'Eski yolculuk skoru yansımasından legacy değerlendirme — güncel Driving Impact hattı değil.',
   'trips.drivingImpact.quality.unavailable': 'Güvenilir araç yükü değerlendirmesi yok.',
   'trips.drivingImpact.quality.r1Contained': 'Araç yükü geçici olarak kullanılamıyor (R1 zaman sınırı).',
+  ...tireWearV3Tr,
 } satisfies PartialTranslationDictionary;

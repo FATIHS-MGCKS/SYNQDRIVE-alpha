@@ -1,0 +1,15 @@
+export const tireWearV3Pl = {
+  'tire.wearV3.sectionTitle': 'Głębokość bieżnika (V3)',
+  'tire.wearV3.verification.insufficient': 'Niewystarczające dowody — wymagany pomiar',
+  'tire.wearV3.verification.overdue': 'Weryfikacja po terminie',
+  'tire.wearV3.verification.due': 'Weryfikacja wymagana',
+  'tire.wearV3.verification.dueSoon': 'Weryfikacja wkrótce',
+  'tire.wearV3.verification.current': 'Weryfikacja aktualna',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Zmierzone',
+  'tire.wearV3.evidence.calibrated': 'Szacunek skalibrowany',
+  'tire.wearV3.evidence.baseline': 'Szacunek bazowy',
+  'tire.wearV3.evidence.insufficient': 'Niewystarczające dowody',
+  'tire.wearV3.measurementAction': 'Wykonaj pomiar bieżnika',
+  'tire.wearV3.lastMeasurement': 'Ostatni zaakceptowany pomiar: {{date}}',
+} as const;

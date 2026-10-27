@@ -150,3 +150,14 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Operators/API get 200 with saved measurement + `v3Recompute.failed` when V3 assess fails; shadow table untouched on `persistShadow: false` |
 | VALIDATION | Jest `tire-lifecycle-record-measurement-v3.spec.ts`, `tire-wear-v3-prior.service.spec.ts` |
 | NON_EFFECTS | V2 recalculate error semantics unchanged; customer-facing V3 read still future — fresh V3 state after cutover via on-demand `computeForSetup` / scheduled recompute hooks already used elsewhere, not new queue |
+
+### Tire V3 production cutover P2 — customer read adapter & integration (draft, 2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | V2 wear model only on tire summary/detail, fleet wear-analysis, rental health, alerts; V3 prior computed on measurement path but not exposed as versioned customer read |
+| WHY | Owner P2: single future authoritative V3 read model with safe cutover flags (default OFF), V2 rollback retained, no dual customer-facing wear, no shadow dual-write on reads |
+| CHANGE | `tire-health-v3-read.*` adapter/service; `tire-wear-v3-cutover.config.ts`; enrich `TireHealthService` summary/detail + `TiresService.getWearAnalysis`; rental health V3 verification codes; alert reason codes; rental UI `TireWearV3CustomerPanel`; i18n `tire.wearV3.*` (9 locales); `integration/TIRE_WEAR_V3_CUTOVER_P2.md` |
+| EXPECTED_EFFECT | When `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true`, APIs attach `wearV3` + optional authoritative presentation; rental distinguishes OVERDUE vs INSUFFICIENT_EVIDENCE; flags default false — no production behavior change until owner enables |
+| VALIDATION | Jest adapter/read/rental/wear-analysis specs; `npm run i18n:check` (frontend); registry validator |
+| NON_EFFECTS | No migration; no deploy; no DS4/S4/FSM change; shadow writer OFF; V2 snapshot recalculate path unchanged until authoritative flag; no feature activation in this PR |
