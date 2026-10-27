@@ -49,6 +49,7 @@ import {
   resolveWheelInitialTread,
 } from './tire-wear-v3-prior.math';
 import { TireWearV3PriorRepository } from './tire-wear-v3-prior.repository';
+import { resolveV3VerificationStatus } from './tire-wear-v3-verification.resolver';
 import type {
   TireWearV3MeasurementPoint,
   TireWearV3PriorSetupResult,
@@ -160,6 +161,7 @@ export class TireWearV3PriorService {
         rearRightMm: true,
         source: true,
         isCalibrationPoint: true,
+        evidenceSource: true,
       },
     });
     const measurementsRaw = filterMeasurementsForMountPeriod(
@@ -503,6 +505,29 @@ export class TireWearV3PriorService {
       dataCutoffIso: opts?.dataCutoff?.toISOString() ?? null,
     });
 
+    const rotationDuringMount =
+      activePeriod != null &&
+      hasRotationDuringMountPeriod(rotationEvents, activePeriod);
+
+    const verification = resolveV3VerificationStatus({
+      asOf,
+      currentOdometerKm,
+      mountPeriod: activePeriod,
+      measurements: measurementsRawAll.map((m) => ({
+        id: m.id,
+        measuredAt: m.measuredAt,
+        odometerAtMeasurement: m.odometerAtMeasurement,
+        frontLeftMm: m.frontLeftMm,
+        frontRightMm: m.frontRightMm,
+        rearLeftMm: m.rearLeftMm,
+        rearRightMm: m.rearRightMm,
+        source: m.source,
+        evidenceSource: m.evidenceSource,
+      })),
+      setupOdometerQualityFlags: odometerValidation.flags,
+      rotationDuringMountPeriod: rotationDuringMount,
+    });
+
     const result: TireWearV3PriorSetupResult = {
       tireSetupId: setup.id,
       vehicleId: setup.vehicleId,
@@ -527,6 +552,7 @@ export class TireWearV3PriorService {
         currentOdometerKm != null,
       wheels,
       setupFlags,
+      verification,
     };
 
     const shadowWriteEnabled = this.isShadowWriteEnabled();
