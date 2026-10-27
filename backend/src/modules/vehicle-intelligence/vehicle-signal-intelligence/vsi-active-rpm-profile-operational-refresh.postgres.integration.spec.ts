@@ -259,5 +259,117 @@ async function upsertVlsForTest(
 
       await prisma.vehicleSignalCapabilityProfile.deleteMany({ where: { organizationId } });
     });
+
+    it('rejects stale RPM rolling evidence (trips 1–5) after newer trips 2–6 persisted', async () => {
+      const organizationId = await createLegacyReconcileOrg(prisma);
+      const fixture = await createLegacyDimoLinkFixture(prisma, {
+        organizationId,
+        externalId: `0x${randomUUID().replace(/-/g, '')}`,
+        rawJson: RUPTELA_RAW_JSON,
+        metadata: {
+          connectionIdentity: {
+            version: 'vo-source-link-connection-identity-v1',
+            verifiedModality: 'HARDWARE_DEVICE',
+            telemetrySourceFamily: 'RUPTELA_R1',
+          },
+        },
+      });
+
+      await prisma.vehicle.update({
+        where: { id: fixture.vehicleId },
+        data: { fuelType: 'GASOLINE' },
+      });
+
+      await prisma.vehicleDrivingCapability.create({
+        data: {
+          organizationId,
+          vehicleId: fixture.vehicleId,
+          hardwareProfile: 'LTE_R1',
+          providerSource: DRIVING_CAPABILITY_PROVIDER.DIMO_TELEMETRY,
+          signalName: 'powertrainCombustionEngineSpeed',
+          capabilityKey: 'powertrainCombustionEngineSpeed',
+          capabilityStatus: DrivingCapabilityStatus.SUPPORTED,
+          firstSeenAt: new Date(),
+          lastSeenAt: new Date(),
+          checkedAt: new Date(),
+          capabilityVersion: 'test',
+          metadata: { listedInAvailableSignals: true },
+        },
+      });
+
+      const sourceTs = new Date('2026-10-27T09:00:00.000Z');
+      await upsertVlsForTest(prisma, {
+        vehicleId: fixture.vehicleId,
+        linkId: fixture.linkId,
+        sourceTimestamp: sourceTs,
+        providerFetchedAt: new Date('2026-10-27T09:00:01.000Z'),
+        rawPayloadJson: {
+          powertrainCombustionEngineSpeed: { value: 1800, timestamp: sourceTs.toISOString() },
+        },
+      });
+
+      await cadenceService.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      });
+
+      rollingTripCount = 6;
+      await cadenceService.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        lifecycleMode: 'TRIP_FINALIZED_RPM_CADENCE',
+        rpmCadenceTripId: buildFastTrips(6)[5]!.tripId,
+      });
+
+      const rowNewer = await prisma.vehicleSignalCapabilityProfile.findUnique({
+        where: {
+          organizationId_vehicleId_providerSourceLinkId: {
+            organizationId,
+            vehicleId: fixture.vehicleId,
+            providerSourceLinkId: fixture.linkId,
+          },
+        },
+      });
+      const rpmNewer = (
+        rowNewer!.signalsSnapshot as {
+          canonicalSignalKey: string;
+          cadenceIntelligence?: { activeRpmProfile?: { evaluatedTripIds: string[] } };
+        }[]
+      ).find((s) => s.canonicalSignalKey === 'engine_rpm');
+      const idsNewer = rpmNewer?.cadenceIntelligence?.activeRpmProfile?.evaluatedTripIds ?? [];
+      expect(idsNewer).toEqual(buildFastTrips(6).slice(-5).map((t) => t.tripId));
+      const revision = rowNewer!.profileRevision;
+
+      rollingTripCount = 5;
+      await cadenceService.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        lifecycleMode: 'TRIP_FINALIZED_RPM_CADENCE',
+        rpmCadenceTripId: buildFastTrips(5)[4]!.tripId,
+      });
+
+      const rowAfterStale = await prisma.vehicleSignalCapabilityProfile.findUnique({
+        where: {
+          organizationId_vehicleId_providerSourceLinkId: {
+            organizationId,
+            vehicleId: fixture.vehicleId,
+            providerSourceLinkId: fixture.linkId,
+          },
+        },
+      });
+      expect(rowAfterStale?.profileRevision).toBe(revision);
+      const rpmStale = (
+        rowAfterStale!.signalsSnapshot as {
+          canonicalSignalKey: string;
+          cadenceIntelligence?: { activeRpmProfile?: { evaluatedTripIds: string[] } };
+        }[]
+      ).find((s) => s.canonicalSignalKey === 'engine_rpm');
+      expect(rpmStale?.cadenceIntelligence?.activeRpmProfile?.evaluatedTripIds).toEqual(idsNewer);
+
+      await prisma.vehicleSignalCapabilityProfile.deleteMany({ where: { organizationId } });
+    });
   },
 );
