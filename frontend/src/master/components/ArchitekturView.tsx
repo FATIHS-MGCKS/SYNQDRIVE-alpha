@@ -471,8 +471,8 @@ interface FrontendFlowEntry {
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'Master Vehicle Identity P2 — registration review (V4.9.4999)', icon: UserPlus,
-    endpoint: 'POST `/organizations/:orgId/vehicles/:vehicleId/registration-identity-review/reconcile` · POST `…/validate-confirmations` (fleet-condition read/write). ZB-I upload: `POST /vehicles/:vehicleId/document-extractions/upload` via `api.vehicleIntelligence.uploadDocumentExtraction`.',
-    service: 'Gated by `ZB1_VEHICLE_IDENTITY_P2_ENABLED` + `VITE_ZB1_VEHICLE_IDENTITY_P2_ENABLED`. Review-only: validate returns `persisted: false`. Manual + ZB-I OCR paths; provenance-aware baseline; FIN gate; P.2 ≠ system power. P3: Vehicle AI V2 bridge + persistence.',
+    endpoint: 'POST `…/registration-identity-review/reconcile` · `…/validate-confirmations` · P3: `…/ai-v2-preview` · `…/save` · `…/provenance`. ZB-I upload: `POST /vehicles/:vehicleId/document-extractions/upload` via `api.vehicleIntelligence.uploadDocumentExtraction`.',
+    service: 'P2: `ZB1_VEHICLE_IDENTITY_P2_ENABLED` + `VITE_ZB1_VEHICLE_IDENTITY_P2_ENABLED` (validate `persisted: false`). P3: `ZB1_VEHICLE_IDENTITY_P3_*` + `VITE_ZB1_VEHICLE_IDENTITY_P3_ENABLED` — canonical identity, AI V2 preview, explicit save + `registration_identity_provenance`. FIN gate; P.2 ≠ system power; conflict gates on save.',
     dataSource: '`VehicleIdentityP2Panel` → `api.vehicles.registrationIdentityReview.*`; snapshot `suggestedManualDraft` prefill; 9-locale `master.vehicleIdentity.*`.' },
   { name: 'Auswertungen E9D-DEFER Forecast Runtime Deferred (Phase 3 — V4.9.904)', icon: Layers,
     endpoint: 'E9 runtime deferred — no forecast API/UI in product.',

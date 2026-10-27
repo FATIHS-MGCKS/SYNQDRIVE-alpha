@@ -5,6 +5,7 @@ import { buildVehicleIdentityReviewSnapshot } from './vehicle-identity-reconcile
 describe('vehicle-identity-confirm.util', () => {
   const capabilities = {
     p2Enabled: true,
+    p3Enabled: false,
     zb1UploadEnabled: false,
     documentStoragePolicyAcknowledged: false,
   };
@@ -37,6 +38,23 @@ describe('vehicle-identity-confirm.util', () => {
     });
     expect(result.ok).toBe(false);
     expect(result.errors.some((e) => e.code === 'VIN_MISMATCH_UNACKNOWLEDGED')).toBe(true);
+  });
+
+  it('rejects correctedValue without confirmed: true', () => {
+    const snapshot = buildVehicleIdentityReviewSnapshot({
+      system: emptySystem,
+      zb1: null,
+      manual: null,
+      documentExtractionId: null,
+      capabilities,
+    });
+    const result = validateVehicleIdentityFieldConfirmations({
+      snapshot,
+      confirmations: [{ fieldCode: 'd1Manufacturer', confirmed: false, correctedValue: 'VW' }],
+      vinMismatchAcknowledged: false,
+      acceptP2AsSystemPower: false,
+    });
+    expect(result.errors.some((e) => e.code === 'CORRECTED_WITHOUT_CONFIRMATION')).toBe(true);
   });
 
   it('rejects P.2 as system power', () => {

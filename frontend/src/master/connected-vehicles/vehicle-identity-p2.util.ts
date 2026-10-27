@@ -2,6 +2,10 @@ export function isVehicleIdentityP2Enabled(): boolean {
   return import.meta.env.VITE_ZB1_VEHICLE_IDENTITY_P2_ENABLED === 'true';
 }
 
+export function isVehicleIdentityP3Enabled(): boolean {
+  return import.meta.env.VITE_ZB1_VEHICLE_IDENTITY_P3_ENABLED === 'true';
+}
+
 export type VehicleIdentityProvenanceUi =
   | 'DOCUMENT_EXTRACTED'
   | 'DIMO_PROVIDER'

@@ -29,9 +29,43 @@ export function validateVehicleIdentityFieldConfirmations(input: {
 
   const byCode = new Map(input.confirmations.map((c) => [c.fieldCode, c]));
 
+  for (const conf of input.confirmations) {
+    if (
+      conf.correctedValue !== undefined &&
+      conf.correctedValue !== null &&
+      !conf.confirmed
+    ) {
+      errors.push({
+        code: 'CORRECTED_WITHOUT_CONFIRMATION',
+        fieldCode: conf.fieldCode,
+        message: 'correctedValue requires confirmed: true for the same field.',
+      });
+    }
+  }
+
   for (const field of input.snapshot.fields) {
     const conf = byCode.get(field.fieldCode);
     if (!conf?.confirmed) continue;
+
+    const hasManual = field.manualValue != null;
+    const hasCorrection =
+      conf.correctedValue !== undefined && conf.correctedValue !== null;
+    const documentExtracted = field.extractionStatus === 'EXTRACTED';
+    if (
+      field.documentFieldCode != null &&
+      field.documentValue != null &&
+      !documentExtracted &&
+      !hasManual &&
+      !hasCorrection
+    ) {
+      errors.push({
+        code: 'CONFIRM_REQUIRES_EXTRACTED_OR_MANUAL',
+        fieldCode: field.fieldCode,
+        message:
+          'Unconfirmed OCR values cannot be confirmed without manual correction or an extracted document field.',
+      });
+      continue;
+    }
 
     if (field.fieldCode === 'p2NominalPowerKw' && input.acceptP2AsSystemPower) {
       errors.push({

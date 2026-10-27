@@ -4277,6 +4277,20 @@ export const api = {
           `/organizations/${orgId}/vehicles/${vehicleId}/registration-identity-review/validate-confirmations`,
           body,
         ),
+      aiV2Preview: (orgId: string, vehicleId: string, body: Record<string, unknown>) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/registration-identity-review/ai-v2-preview`,
+          body,
+        ),
+      saveIdentity: (orgId: string, vehicleId: string, body: Record<string, unknown>) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/registration-identity-review/save`,
+          body,
+        ),
+      getProvenance: (orgId: string, vehicleId: string) =>
+        get<Record<string, unknown>>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/registration-identity-review/provenance`,
+        ),
     },
     telemetry: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}/telemetry`),
     liveGps: (orgId: string, id: string) => get<{

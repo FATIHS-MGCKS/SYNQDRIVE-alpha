@@ -3013,6 +3013,8 @@ model Vehicle {
   /// Master Admin HV traction stammdaten (chemistry, chargers, warranty) — not SOH reference capacity.
   hvMasterSpecification             Json?             @map("hv_master_specification")
   tankCapacityLiters                Float?            @map("tank_capacity_liters")
+  /// P3: per-field registration identity provenance envelope (no OCR raw text).
+  registrationIdentityProvenance    Json?             @map("registration_identity_provenance")
 
   // ── V3 Hardware type ───────────────────────────────────────────────────────
   // Drives the source split for Driving Events (LTE_R1 → Telemetry API Events,

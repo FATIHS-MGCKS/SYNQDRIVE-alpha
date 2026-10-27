@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
   isVehicleIdentityP2Enabled,
+  isVehicleIdentityP3Enabled,
   provenanceBadgeClass,
   provenanceLabelKey,
   type VehicleIdentityProvenanceUi,
@@ -32,7 +33,7 @@ type ReviewSnapshot = {
   p2PowerSemanticsWarning: string;
   documentExtractionId: string | null;
   suggestedManualDraft?: SuggestedManualDraft;
-  capabilities: { p2Enabled: boolean; zb1UploadEnabled: boolean };
+  capabilities: { p2Enabled: boolean; p3Enabled?: boolean; zb1UploadEnabled: boolean };
 };
 
 type Props = {
@@ -61,6 +62,12 @@ export function VehicleIdentityP2Panel({
   const [confirmedFields, setConfirmedFields] = useState<Record<string, boolean>>({});
   const [extractionId, setExtractionId] = useState<string | null>(null);
   const [validateMsg, setValidateMsg] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  const p3Enabled = useMemo(
+    () => isVehicleIdentityP3Enabled() && snapshot?.capabilities.p3Enabled === true,
+    [snapshot],
+  );
 
   const manualBody = useMemo(
     () => ({
@@ -133,14 +140,58 @@ export function VehicleIdentityP2Panel({
     }
   };
 
+  const buildConfirmations = () =>
+    Object.entries(confirmedFields)
+      .filter(([, v]) => v)
+      .map(([fieldCode]) => ({ fieldCode, confirmed: true }));
+
+  const onAiPreview = async () => {
+    if (!p3Enabled) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await api.vehicles.registrationIdentityReview.aiV2Preview(organizationId, vehicleId, {
+        documentExtractionId: extractionId ?? undefined,
+        manual: manualBody,
+        confirmations: buildConfirmations(),
+        vinMismatchAcknowledged: vinAck,
+        acceptP2AsSystemPower: false,
+      });
+      setValidateMsg(t('master.vehicleIdentity.aiPreviewReady'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSaveIdentity = async () => {
+    if (!p3Enabled) return;
+    setLoading(true);
+    setSaveMsg(null);
+    setError(null);
+    try {
+      await api.vehicles.registrationIdentityReview.saveIdentity(organizationId, vehicleId, {
+        documentExtractionId: extractionId ?? undefined,
+        manual: manualBody,
+        confirmations: buildConfirmations(),
+        vinMismatchAcknowledged: vinAck,
+        acceptP2AsSystemPower: false,
+      });
+      setSaveMsg(t('master.vehicleIdentity.saveSuccess'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onValidate = async () => {
     if (!snapshot) return;
     setLoading(true);
     setValidateMsg(null);
     try {
-      const confirmations = Object.entries(confirmedFields)
-        .filter(([, v]) => v)
-        .map(([fieldCode]) => ({ fieldCode, confirmed: true }));
+      const confirmations = buildConfirmations();
       await api.vehicles.registrationIdentityReview.validateConfirmations(
         organizationId,
         vehicleId,
@@ -320,16 +371,41 @@ export function VehicleIdentityP2Panel({
         </table>
       </div>
 
-      <button
-        type="button"
-        className="rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
-        disabled={loading || (snapshot?.vinMismatchBlocked && !vinAck)}
-        onClick={() => void onValidate()}
-        data-testid="vehicle-identity-validate-confirm"
-      >
-        {t('master.vehicleIdentity.validateConfirm')}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
+          disabled={loading || (snapshot?.vinMismatchBlocked && !vinAck)}
+          onClick={() => void onValidate()}
+          data-testid="vehicle-identity-validate-confirm"
+        >
+          {t('master.vehicleIdentity.validateConfirm')}
+        </button>
+        {p3Enabled && (
+          <>
+            <button
+              type="button"
+              className="rounded border border-border px-3 py-1.5 text-xs disabled:opacity-50"
+              disabled={loading || (snapshot?.vinMismatchBlocked && !vinAck)}
+              onClick={() => void onAiPreview()}
+              data-testid="vehicle-identity-ai-v2-preview"
+            >
+              {t('master.vehicleIdentity.aiV2Preview')}
+            </button>
+            <button
+              type="button"
+              className="rounded bg-emerald-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+              disabled={loading || (snapshot?.vinMismatchBlocked && !vinAck)}
+              onClick={() => void onSaveIdentity()}
+              data-testid="vehicle-identity-save"
+            >
+              {t('master.vehicleIdentity.saveIdentity')}
+            </button>
+          </>
+        )}
+      </div>
       {validateMsg && <p className="text-xs text-emerald-600">{validateMsg}</p>}
+      {saveMsg && <p className="text-xs text-emerald-600">{saveMsg}</p>}
     </div>
   );
 }
