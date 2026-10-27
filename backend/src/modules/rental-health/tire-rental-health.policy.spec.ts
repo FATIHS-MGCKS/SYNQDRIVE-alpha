@@ -320,4 +320,46 @@ describe('tire-rental-health.policy', () => {
     expect(model.overallStatus).toBe('unknown');
     expect(model.structuredReasonCodes).toContain('NO_TIRE_DATA');
   });
+
+  it('distinguishes V3 insufficient evidence from overdue verification', () => {
+    const insufficient = buildTireRentalHealthReadModel({
+      summary: baseSummary({
+        wearV3: {
+          modelVersion: '0.2.0',
+          computedAt: '2026-10-27T12:00:00.000Z',
+          inputFingerprint: 'fp',
+          rated: false,
+          setupFlags: [],
+          verificationStatus: 'INSUFFICIENT_EVIDENCE',
+          verificationQualityFlags: [],
+          wheels: [],
+          lowestTreadPosition: null,
+          lowestTreadMm: null,
+          insufficientEvidence: true,
+        },
+      }),
+    });
+    expect(insufficient.structuredReasonCodes).toContain('V3_VERIFICATION_INSUFFICIENT_EVIDENCE');
+    expect(isTireRentalHardBlocked(insufficient)).toBe(false);
+
+    const overdue = buildTireRentalHealthReadModel({
+      summary: baseSummary({
+        wearV3: {
+          modelVersion: '0.2.0',
+          computedAt: '2026-10-27T12:00:00.000Z',
+          inputFingerprint: 'fp',
+          rated: true,
+          setupFlags: [],
+          verificationStatus: 'OVERDUE',
+          verificationQualityFlags: [],
+          wheels: [],
+          lowestTreadPosition: 'FL',
+          lowestTreadMm: { lo: 5, hi: 5.2 },
+          insufficientEvidence: false,
+        },
+      }),
+    });
+    expect(overdue.structuredReasonCodes).toContain('V3_VERIFICATION_OVERDUE');
+    expect(overdue.structuredReasonCodes).not.toContain('V3_VERIFICATION_INSUFFICIENT_EVIDENCE');
+  });
 });

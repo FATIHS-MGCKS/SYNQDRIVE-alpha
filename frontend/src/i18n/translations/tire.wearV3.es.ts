@@ -1,0 +1,15 @@
+export const tireWearV3Es = {
+  'tire.wearV3.sectionTitle': 'Profundidad de banda (V3)',
+  'tire.wearV3.verification.insufficient': 'Evidencia insuficiente — medición requerida',
+  'tire.wearV3.verification.overdue': 'Verificación vencida',
+  'tire.wearV3.verification.due': 'Verificación pendiente',
+  'tire.wearV3.verification.dueSoon': 'Verificación próxima',
+  'tire.wearV3.verification.current': 'Verificación al día',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Medido',
+  'tire.wearV3.evidence.calibrated': 'Estimación calibrada',
+  'tire.wearV3.evidence.baseline': 'Estimación base',
+  'tire.wearV3.evidence.insufficient': 'Evidencia insuficiente',
+  'tire.wearV3.measurementAction': 'Medir banda',
+  'tire.wearV3.lastMeasurement': 'Última medición aceptada: {{date}}',
+} as const;

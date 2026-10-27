@@ -1,0 +1,15 @@
+export const tireWearV3Tr = {
+  'tire.wearV3.sectionTitle': 'Diş derinliği (V3)',
+  'tire.wearV3.verification.insufficient': 'Yetersiz kanıt — ölçüm gerekli',
+  'tire.wearV3.verification.overdue': 'Doğrulama gecikti',
+  'tire.wearV3.verification.due': 'Doğrulama gerekli',
+  'tire.wearV3.verification.dueSoon': 'Doğrulama yakında',
+  'tire.wearV3.verification.current': 'Doğrulama güncel',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Ölçüldü',
+  'tire.wearV3.evidence.calibrated': 'Kalibre tahmin',
+  'tire.wearV3.evidence.baseline': 'Temel tahmin',
+  'tire.wearV3.evidence.insufficient': 'Yetersiz kanıt',
+  'tire.wearV3.measurementAction': 'Diş derinliği ölç',
+  'tire.wearV3.lastMeasurement': 'Son onaylı ölçüm: {{date}}',
+} as const;

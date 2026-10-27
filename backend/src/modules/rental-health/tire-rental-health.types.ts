@@ -27,7 +27,9 @@ export type TireRentalReasonCode =
   | 'PRESSURE_UNKNOWN'
   | 'NO_TIRE_DATA'
   | 'DATA_STALE'
-  | 'REVIEW_OVERRIDE_ACTIVE';
+  | 'REVIEW_OVERRIDE_ACTIVE'
+  | 'V3_VERIFICATION_INSUFFICIENT_EVIDENCE'
+  | 'V3_VERIFICATION_OVERDUE';
 
 export type TireMeasurementFreshness = 'fresh' | 'aging' | 'stale' | 'no_data';
 

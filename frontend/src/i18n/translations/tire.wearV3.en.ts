@@ -1,0 +1,15 @@
+export const tireWearV3En = {
+  'tire.wearV3.sectionTitle': 'Tread depth (V3)',
+  'tire.wearV3.verification.insufficient': 'Insufficient evidence — measurement required',
+  'tire.wearV3.verification.overdue': 'Verification overdue',
+  'tire.wearV3.verification.due': 'Verification due',
+  'tire.wearV3.verification.dueSoon': 'Verification due soon',
+  'tire.wearV3.verification.current': 'Verification up to date',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Measured',
+  'tire.wearV3.evidence.calibrated': 'Calibrated estimate',
+  'tire.wearV3.evidence.baseline': 'Baseline estimate',
+  'tire.wearV3.evidence.insufficient': 'Insufficient evidence',
+  'tire.wearV3.measurementAction': 'Record tread measurement',
+  'tire.wearV3.lastMeasurement': 'Last accepted measurement: {{date}}',
+} as const;

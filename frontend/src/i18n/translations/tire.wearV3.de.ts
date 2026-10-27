@@ -1,0 +1,15 @@
+export const tireWearV3De = {
+  'tire.wearV3.sectionTitle': 'Profiltiefe (V3)',
+  'tire.wearV3.verification.insufficient': 'Unzureichende Nachweise — Messung erforderlich',
+  'tire.wearV3.verification.overdue': 'Verifikation überfällig',
+  'tire.wearV3.verification.due': 'Verifikation fällig',
+  'tire.wearV3.verification.dueSoon': 'Verifikation bald fällig',
+  'tire.wearV3.verification.current': 'Verifikation aktuell',
+  'tire.wearV3.treadInterval': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Gemessen',
+  'tire.wearV3.evidence.calibrated': 'Kalibrierte Schätzung',
+  'tire.wearV3.evidence.baseline': 'Basis-Schätzung',
+  'tire.wearV3.evidence.insufficient': 'Unzureichende Nachweise',
+  'tire.wearV3.measurementAction': 'Profiltiefe messen',
+  'tire.wearV3.lastMeasurement': 'Letzte akzeptierte Messung: {{date}}',
+} as const;

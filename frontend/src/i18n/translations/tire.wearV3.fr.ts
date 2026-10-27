@@ -1,0 +1,15 @@
+export const tireWearV3Fr = {
+  'tire.wearV3.sectionTitle': 'Profondeur de sculpture (V3)',
+  'tire.wearV3.verification.insufficient': 'Preuves insuffisantes — mesure requise',
+  'tire.wearV3.verification.overdue': 'Vérification en retard',
+  'tire.wearV3.verification.due': 'Vérification due',
+  'tire.wearV3.verification.dueSoon': 'Vérification bientôt due',
+  'tire.wearV3.verification.current': 'Vérification à jour',
+  'tire.wearV3.treadInterval': '{{position}} : {{lo}}–{{hi}} mm',
+  'tire.wearV3.evidence.measured': 'Mesuré',
+  'tire.wearV3.evidence.calibrated': 'Estimation calibrée',
+  'tire.wearV3.evidence.baseline': 'Estimation de base',
+  'tire.wearV3.evidence.insufficient': 'Preuves insuffisantes',
+  'tire.wearV3.measurementAction': 'Mesurer la sculpture',
+  'tire.wearV3.lastMeasurement': 'Dernière mesure acceptée : {{date}}',
+} as const;

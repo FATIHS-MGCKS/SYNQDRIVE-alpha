@@ -6,6 +6,7 @@ import { rentalTripGpsSpeedEvaluationPl } from './rental.tripGpsSpeedEvaluation.
 import { dimoWebhookHealthPl } from './dimo-webhook-health.pl';
 import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
 import { batteryV2HvInspectionPL } from './battery-v2-hv-inspection.pl';
+import { tireWearV3Pl } from './tire.wearV3.pl';
 import { masterPhysicalDeviceInventoryPl } from './master.physicalDeviceInventory.pl';
 import { masterMotionPhysicsPl } from './master.motionPhysics.pl';
 import { masterVehicleIdentityPl } from './master.vehicleIdentity.pl';
@@ -179,4 +180,5 @@ export const pl = {
 ...masterVehicleIdentityPl,
   ...masterCvTechnicalSpecsPl,
   ...batteryV2HvInspectionPL,
+  ...tireWearV3Pl,
 } satisfies PartialTranslationDictionary;
