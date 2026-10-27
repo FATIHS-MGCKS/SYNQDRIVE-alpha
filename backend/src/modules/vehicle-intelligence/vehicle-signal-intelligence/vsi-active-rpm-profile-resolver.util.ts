@@ -126,26 +126,35 @@ export function classifySingleTripRpmProfile(input: {
     sequenceEvidence.qualifyingFastSequenceCount >=
     VSI_ACTIVE_RPM_MIN_QUALIFYING_FAST_SEQUENCES;
 
-  const fastDominatesSlow =
+  const strictFastIntervalDominance =
     hasQualifyingFast &&
-    sequenceEvidence.fastActiveIntervalCount >= slowActiveIntervalCount;
+    sequenceEvidence.fastActiveIntervalCount > slowActiveIntervalCount;
 
-  const slowDominatesFast =
+  const fastDominatesSlow = strictFastIntervalDominance;
+
+  const strictSlowIntervalDominance =
     sequenceEvidence.qualifyingSlowSequenceCount > 0 &&
     slowActiveIntervalCount > sequenceEvidence.fastActiveIntervalCount;
+
+  const slowDominatesFast = strictSlowIntervalDominance;
+
+  const corroboratesFastTrip = () =>
+    tripActiveCadenceSupportsFastProfile(intervals, {
+      strictFastIntervalDominance,
+    });
 
   const mixedFastAndSlow =
     hasQualifyingFast && sequenceEvidence.qualifyingSlowSequenceCount > 0;
 
   if (mixedFastAndSlow) {
-    if (fastDominatesSlow && tripActiveCadenceSupportsFastProfile(intervals)) {
+    if (fastDominatesSlow && corroboratesFastTrip()) {
       return {
         ...base,
         profile: 'RPM_1HZ',
         decisionCode: 'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
       };
     }
-    if (slowDominatesFast && !tripActiveCadenceSupportsFastProfile(intervals)) {
+    if (slowDominatesFast && !corroboratesFastTrip()) {
       return {
         ...base,
         profile: 'RPM_STANDARD',
@@ -159,7 +168,7 @@ export function classifySingleTripRpmProfile(input: {
     };
   }
 
-  if (fastDominatesSlow && tripActiveCadenceSupportsFastProfile(intervals)) {
+  if (fastDominatesSlow && corroboratesFastTrip()) {
     return {
       ...base,
       profile: 'RPM_1HZ',
