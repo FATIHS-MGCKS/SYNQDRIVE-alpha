@@ -98,6 +98,7 @@ export class VehicleIdentityReviewController {
       vinMismatchAcknowledged?: boolean;
       acceptP2AsSystemPower?: boolean;
       acceptSuggestedFieldKeys?: string[];
+      expectedVehicleUpdatedAt?: string;
     },
   ) {
     return this.p3Service.saveIdentity(orgId, vehicleId, body);

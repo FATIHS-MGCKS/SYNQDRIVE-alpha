@@ -70,6 +70,22 @@ describe('VehicleIdentityReviewService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('rejects foreign documentExtractionId for this vehicle/org', async () => {
+    prisma.vehicleDocumentExtraction.findFirst.mockResolvedValue(null);
+    await expect(
+      service.getReviewSnapshot('org-1', 'veh-1', { documentExtractionId: 'ext-other-org' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.vehicleDocumentExtraction.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'ext-other-org',
+          vehicleId: 'veh-1',
+          organizationId: 'org-1',
+        }),
+      }),
+    );
+  });
+
   it('validate-confirmations is review-only (no persistence writes)', async () => {
     const result = await service.validateConfirmations('org-1', 'veh-1', {
       confirmations: [{ fieldCode: 'manualPowerKind', confirmed: true }],

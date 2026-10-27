@@ -4,6 +4,11 @@ import type {
   RegistrationIdentityFieldProvenanceEntry,
   RegistrationIdentityProvenanceDocument,
 } from './vehicle-identity-canonical.types';
+import {
+  getProtectedProvenanceValue,
+  normalizeProvenanceStorageKey,
+  valuesEqual,
+} from './vehicle-identity-field-mapping.util';
 
 export function parseRegistrationIdentityProvenance(
   raw: unknown,
@@ -24,18 +29,21 @@ export function isProtectedProvenanceEntry(
 export function mergeProvenanceOnSave(input: {
   existing: RegistrationIdentityProvenanceDocument | null;
   canonical: RegistrationIdentityCanonicalIdentity;
-  acceptedSuggestions?: Partial<
-    Record<RegistrationIdentityCanonicalFieldKey | 'engineDisplacementCc', RegistrationIdentityFieldProvenanceEntry>
-  >;
+  acceptedSuggestions?: Partial<Record<string, RegistrationIdentityFieldProvenanceEntry>>;
+  explicitlyConfirmedCanonicalKeys?: Set<RegistrationIdentityCanonicalFieldKey>;
 }): RegistrationIdentityProvenanceDocument {
   const now = new Date().toISOString();
   const fields: RegistrationIdentityProvenanceDocument['fields'] = {
     ...(input.existing?.fields ?? {}),
   };
+  const explicit = input.explicitlyConfirmedCanonicalKeys ?? new Set();
 
   for (const field of input.canonical.fields) {
-    const prev = fields[field.key];
-    if (isProtectedProvenanceEntry(prev) && prev?.value !== field.value) {
+    const prev = getProtectedProvenanceValue(
+      { version: 1, updatedAt: input.existing?.updatedAt ?? now, fields },
+      field.key,
+    );
+    if (prev && !valuesEqual(prev.value, field.value) && !explicit.has(field.key)) {
       continue;
     }
     fields[field.key] = {
@@ -48,15 +56,30 @@ export function mergeProvenanceOnSave(input: {
   }
 
   if (input.acceptedSuggestions) {
+    const extended = fields as Record<string, RegistrationIdentityFieldProvenanceEntry>;
     for (const [key, entry] of Object.entries(input.acceptedSuggestions)) {
-      const k = key as RegistrationIdentityCanonicalFieldKey;
-      const prev = fields[k];
-      if (isProtectedProvenanceEntry(prev)) continue;
       if (!entry) continue;
-      fields[k] = {
+      const canonicalKey = normalizeProvenanceStorageKey(key);
+      const protectedKey =
+        canonicalKey === 'systemMotorPowerKw' || canonicalKey === 'resolvedVariant'
+          ? null
+          : (canonicalKey as RegistrationIdentityCanonicalFieldKey);
+      if (protectedKey) {
+        const prev = getProtectedProvenanceValue(
+          { version: 1, updatedAt: input.existing?.updatedAt ?? now, fields },
+          protectedKey,
+        );
+        if (prev && !valuesEqual(prev.value, entry.value)) {
+          continue;
+        }
+      }
+      extended[canonicalKey] = {
         ...entry,
         confirmationStatus: entry.confirmationStatus ?? 'SUGGESTED',
       };
+      if (key !== canonicalKey && extended[key]) {
+        delete extended[key];
+      }
     }
   }
 

@@ -8,11 +8,12 @@ import { VehicleSpecAiService } from '@modules/ai/vehicle-specs/vehicle-spec-ai.
 
 describe('VehicleIdentityP3Service', () => {
   const prisma = {
-    vehicle: { findFirst: jest.fn(), update: jest.fn() },
+    vehicle: { findFirst: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     vehicleLatestState: { findUnique: jest.fn() },
     vehicleMotionPhysicsReference: { findFirst: jest.fn() },
     vehicleDataSourceLink: { findFirst: jest.fn() },
     vehicleDocumentExtraction: { findFirst: jest.fn() },
+    $transaction: jest.fn(),
   };
 
   const config = {
@@ -51,9 +52,12 @@ describe('VehicleIdentityP3Service', () => {
       model: 'Golf',
       vin: 'VINOLD',
       fuelType: FuelType.GASOLINE,
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
       registrationIdentityProvenance: null,
     });
     prisma.vehicle.update.mockResolvedValue({});
+    prisma.vehicle.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma));
     reviewService.getReviewSnapshot = jest.fn().mockResolvedValue({
       fields: [
         {
@@ -144,7 +148,7 @@ describe('VehicleIdentityP3Service', () => {
       },
     });
     expect(saved.persisted).toBe(true);
-    expect(prisma.vehicle.update).toHaveBeenCalled();
+    expect(prisma.vehicle.updateMany).toHaveBeenCalled();
 
     prisma.vehicle.findFirst.mockResolvedValueOnce({
       registrationIdentityProvenance: saved.provenance,
@@ -177,7 +181,7 @@ describe('VehicleIdentityP3Service', () => {
     expect(result.provenance).toBeNull();
   });
 
-  it('does not overwrite USER_CONFIRMED provenance values', async () => {
+  it('rejects AI displacement alias against protected displacementCc', async () => {
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'veh-1',
       year: 2020,
@@ -185,6 +189,44 @@ describe('VehicleIdentityP3Service', () => {
       model: 'Golf',
       vin: 'VINOLD',
       fuelType: FuelType.GASOLINE,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      registrationIdentityProvenance: {
+        version: 1,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        fields: {
+          displacementCc: {
+            value: 1498,
+            provenance: 'USER_CONFIRMED',
+            confirmationStatus: 'USER_CONFIRMED',
+            confirmedAt: '2026-01-01T00:00:00.000Z',
+            documentExtractionId: null,
+          },
+        },
+      },
+    });
+    await expect(
+      service.saveIdentity('org-1', 'veh-1', {
+        confirmations: [{ fieldCode: 'd1Manufacturer', confirmed: true }],
+        acceptSuggestedFieldKeys: ['engineDisplacementCc'],
+        injectedAiSpecs: {
+          engineDisplacementCc: 1984,
+          variantConfidence: 0.95,
+          resolvedVariant: '1.5 TSI',
+        },
+      }),
+    ).rejects.toMatchObject({ response: { code: 'VEHICLE_IDENTITY_PROTECTED_FIELD_VIOLATION' } });
+    expect(prisma.vehicle.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('allows explicit correction of protected make with confirmed d1 + correctedValue', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      year: 2020,
+      make: 'Audi',
+      model: 'Golf',
+      vin: 'VINOLD',
+      fuelType: FuelType.GASOLINE,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
       registrationIdentityProvenance: {
         version: 1,
         updatedAt: '2026-01-01T00:00:00.000Z',
@@ -203,9 +245,30 @@ describe('VehicleIdentityP3Service', () => {
       confirmations: [{ fieldCode: 'd1Manufacturer', confirmed: true, correctedValue: 'VW' }],
       injectedAiSpecs: {},
     });
-    const updateArg = prisma.vehicle.update.mock.calls[0][0];
+    const updateArg = prisma.vehicle.updateMany.mock.calls[0][0];
+    expect(updateArg.data.make).toBe('VW');
     const prov = updateArg.data.registrationIdentityProvenance as { fields: { make: { value: string } } };
-    expect(prov.fields.make.value).toBe('Audi');
+    expect(prov.fields.make.value).toBe('VW');
+  });
+
+  it('returns conflict when optimistic update loses race', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      year: 2020,
+      make: 'VW',
+      model: 'Golf',
+      vin: 'VINOLD',
+      fuelType: FuelType.GASOLINE,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      registrationIdentityProvenance: null,
+    });
+    prisma.vehicle.updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(
+      service.saveIdentity('org-1', 'veh-1', {
+        confirmations: [{ fieldCode: 'd1Manufacturer', confirmed: true }],
+        injectedAiSpecs: {},
+      }),
+    ).rejects.toMatchObject({ response: { code: 'VEHICLE_IDENTITY_SAVE_CONFLICT' } });
   });
 
 });

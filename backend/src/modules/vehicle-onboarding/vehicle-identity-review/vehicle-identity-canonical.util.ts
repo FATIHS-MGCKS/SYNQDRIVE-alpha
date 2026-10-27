@@ -47,13 +47,29 @@ function resolveConfirmedValue(
 function provenanceForConfirmed(
   fieldCode: VehicleIdentityReviewFieldCode,
   snapshot: VehicleIdentityReviewSnapshot,
+  confirmation: VehicleIdentityFieldConfirmationInput,
 ): VehicleIdentityValueProvenance {
+  if (confirmation.correctedValue !== undefined && confirmation.correctedValue !== null) {
+    return 'MANUAL_ENTRY';
+  }
   const row = snapshot.fields.find((f) => f.fieldCode === fieldCode);
   if (!row) return 'USER_CONFIRMED';
   if (row.manualValue != null) return 'MANUAL_ENTRY';
   if (row.documentValue != null && row.extractionStatus === 'EXTRACTED') return 'DOCUMENT_EXTRACTED';
   if (row.baselineProvenance === 'DIMO_PROVIDER') return 'DIMO_PROVIDER';
   return 'USER_CONFIRMED';
+}
+
+export function buildExplicitlyConfirmedCanonicalKeySet(
+  confirmations: VehicleIdentityFieldConfirmationInput[],
+): Set<RegistrationIdentityCanonicalFieldKey> {
+  const set = new Set<RegistrationIdentityCanonicalFieldKey>();
+  for (const c of confirmations) {
+    if (!c.confirmed) continue;
+    const key = FIELD_CODE_TO_CANONICAL[c.fieldCode];
+    if (key) set.add(key);
+  }
+  return set;
 }
 
 export function buildRegistrationIdentityCanonical(input: {
@@ -75,7 +91,7 @@ export function buildRegistrationIdentityCanonical(input: {
     fields.push({
       key: canonicalKey,
       value,
-      provenance: provenanceForConfirmed(fieldCode, input.snapshot),
+      provenance: provenanceForConfirmed(fieldCode, input.snapshot, conf),
       confirmationStatus: 'USER_CONFIRMED',
       documentExtractionId: input.snapshot.documentExtractionId,
     });

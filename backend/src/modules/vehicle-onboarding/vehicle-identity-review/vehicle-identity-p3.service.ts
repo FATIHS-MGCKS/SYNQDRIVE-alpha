@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -8,9 +9,18 @@ import { ConfigService } from '@nestjs/config';
 import { FuelType } from '@prisma/client';
 import { VehicleSpecAiService } from '@modules/ai/vehicle-specs/vehicle-spec-ai.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { buildRegistrationIdentityCanonical, canonicalToVehicleSpecContext } from './vehicle-identity-canonical.util';
-import type { RegistrationIdentityProvenanceDocument } from './vehicle-identity-canonical.types';
+import {
+  buildExplicitlyConfirmedCanonicalKeySet,
+  buildRegistrationIdentityCanonical,
+  canonicalToVehicleSpecContext,
+} from './vehicle-identity-canonical.util';
 import { mergeAiSpecsIntoIdentityPreview } from './vehicle-identity-p3-bridge.util';
+import {
+  assertProvenanceMatchesVehicleScalars,
+  buildVehicleScalarPatch,
+  collectProtectedIdentityViolations,
+  normalizeAcceptedSuggestions,
+} from './vehicle-identity-p3-persistence.util';
 import { mergeProvenanceOnSave, parseRegistrationIdentityProvenance } from './vehicle-identity-provenance.util';
 import { validateVehicleIdentityFieldConfirmations } from './vehicle-identity-confirm.util';
 import type {
@@ -146,6 +156,7 @@ export class VehicleIdentityP3Service {
       vinMismatchAcknowledged?: boolean;
       acceptP2AsSystemPower?: boolean;
       acceptSuggestedFieldKeys?: string[];
+      expectedVehicleUpdatedAt?: string;
       injectedAiSpecs?: Record<string, string | number | boolean | null>;
     },
   ) {
@@ -159,7 +170,11 @@ export class VehicleIdentityP3Service {
       });
     }
 
-    const vehicle = await this.prisma.vehicle.findFirst({
+    const explicitlyConfirmed = buildExplicitlyConfirmedCanonicalKeySet(body.confirmations);
+    const acceptKeys = new Set(body.acceptSuggestedFieldKeys ?? []);
+    const acceptedSuggestions = normalizeAcceptedSuggestions(preview.suggestedFields, acceptKeys);
+
+    const snapshotVehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: orgId },
       select: {
         id: true,
@@ -168,58 +183,91 @@ export class VehicleIdentityP3Service {
         year: true,
         vin: true,
         fuelType: true,
+        updatedAt: true,
         registrationIdentityProvenance: true,
       },
     });
-    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    if (!snapshotVehicle) throw new NotFoundException('Vehicle not found');
 
-    const existing = parseRegistrationIdentityProvenance(vehicle.registrationIdentityProvenance);
-    const acceptedSuggestions: RegistrationIdentityProvenanceDocument['fields'] = {};
-    const acceptKeys = new Set(body.acceptSuggestedFieldKeys ?? []);
-    for (const [key, entry] of Object.entries(preview.suggestedFields)) {
-      if (acceptKeys.has(key) && entry) {
-        acceptedSuggestions[key as keyof NonNullable<typeof acceptedSuggestions>] = entry;
+    if (body.expectedVehicleUpdatedAt) {
+      const expected = new Date(body.expectedVehicleUpdatedAt);
+      if (Number.isNaN(expected.getTime()) || snapshotVehicle.updatedAt.getTime() !== expected.getTime()) {
+        throw new ConflictException({
+          code: 'VEHICLE_IDENTITY_SAVE_STALE',
+          message: 'Vehicle changed since load; reload review snapshot and confirm again.',
+          currentUpdatedAt: snapshotVehicle.updatedAt.toISOString(),
+        });
       }
+    }
+
+    const existing = parseRegistrationIdentityProvenance(snapshotVehicle.registrationIdentityProvenance);
+    const violations = collectProtectedIdentityViolations({
+      existing,
+      vehicle: snapshotVehicle,
+      canonical: preview.canonical,
+      acceptedSuggestions,
+      explicitlyConfirmedCanonicalKeys: explicitlyConfirmed,
+    });
+    if (violations.length > 0) {
+      throw new BadRequestException({
+        code: 'VEHICLE_IDENTITY_PROTECTED_FIELD_VIOLATION',
+        violations,
+      });
     }
 
     const provenanceDoc = mergeProvenanceOnSave({
       existing,
       canonical: preview.canonical,
       acceptedSuggestions,
+      explicitlyConfirmedCanonicalKeys: explicitlyConfirmed,
     });
 
-    const byCanonical = new Map(preview.canonical.fields.map((f) => [f.key, f.value]));
-    const data: {
-      make?: string;
-      model?: string;
-      year?: number;
-      vin?: string | null;
-      fuelType?: FuelType;
-      registrationIdentityProvenance: RegistrationIdentityProvenanceDocument;
-    } = { registrationIdentityProvenance: provenanceDoc };
+    const vehiclePatch = buildVehicleScalarPatch({
+      canonical: preview.canonical,
+      mapFuelType: mapFuelTypeLabel,
+    });
+    assertProvenanceMatchesVehicleScalars({
+      provenanceDoc,
+      vehiclePatch,
+      mapFuelType: mapFuelTypeLabel,
+    });
 
-    const make = byCanonical.get('make');
-    const model = byCanonical.get('model');
-    const year = byCanonical.get('year');
-    const vin = byCanonical.get('vin');
-    const fuel = byCanonical.get('fuelType');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.vehicle.findFirst({
+        where: { id: vehicleId, organizationId: orgId },
+        select: { updatedAt: true },
+      });
+      if (!current) throw new NotFoundException('Vehicle not found');
 
-    if (typeof make === 'string' && make.trim()) data.make = make.trim();
-    if (typeof model === 'string' && model.trim()) data.model = model.trim();
-    if (typeof year === 'number' && Number.isFinite(year)) data.year = year;
-    if (vin === null || typeof vin === 'string') data.vin = vin === '' ? null : vin;
-    const mappedFuel = mapFuelTypeLabel(typeof fuel === 'string' ? fuel : null);
-    if (mappedFuel) data.fuelType = mappedFuel;
-
-    await this.prisma.vehicle.update({
-      where: { id: vehicleId },
-      data,
+      const writeResult = await tx.vehicle.updateMany({
+        where: {
+          id: vehicleId,
+          organizationId: orgId,
+          updatedAt: current.updatedAt,
+        },
+        data: {
+          ...vehiclePatch,
+          registrationIdentityProvenance: provenanceDoc,
+        },
+      });
+      if (writeResult.count !== 1) {
+        throw new ConflictException({
+          code: 'VEHICLE_IDENTITY_SAVE_CONFLICT',
+          message: 'Concurrent identity save detected; reload and confirm again.',
+        });
+      }
+      const row = await tx.vehicle.findFirst({
+        where: { id: vehicleId, organizationId: orgId },
+        select: { updatedAt: true },
+      });
+      return row;
     });
 
     return {
       ok: true,
       persisted: true,
       provenance: provenanceDoc,
+      vehicleUpdatedAt: updated?.updatedAt?.toISOString() ?? null,
     };
   }
 }
