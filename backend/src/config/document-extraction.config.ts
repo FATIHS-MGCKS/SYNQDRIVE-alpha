@@ -27,6 +27,12 @@ export default registerAs('documentExtraction', () => ({
   allowPendingWithoutQueue:
     (process.env.DOCUMENT_EXTRACTION_ALLOW_PENDING_WITHOUT_QUEUE || 'false') === 'true',
   aiExtractionEnabled: (process.env.DOCUMENT_AI_EXTRACTION_ENABLED ?? 'true') === 'true',
+  /**
+   * ZB-I (Zulassungsbescheinigung Teil I) typed OCR contract — default OFF (no production activation).
+   * When false, uploads with documentType REGISTRATION_CERTIFICATE are rejected at API layer.
+   */
+  zb1RegistrationCertificateExtractionEnabled:
+    (process.env.ZB1_REGISTRATION_CERTIFICATE_EXTRACTION_ENABLED ?? 'false') === 'true',
   pdfMinTextChars: parsePositiveIntEnv(process.env.DOCUMENT_PDF_MIN_TEXT_CHARS, 40),
   pdfMinSensibleCharRatio: parseRatioEnv(process.env.DOCUMENT_PDF_MIN_SENSIBLE_RATIO, 0.45),
   pdfMaxRepeatedLineRatio: parseRatioEnv(process.env.DOCUMENT_PDF_MAX_REPEATED_LINE_RATIO, 0.7),

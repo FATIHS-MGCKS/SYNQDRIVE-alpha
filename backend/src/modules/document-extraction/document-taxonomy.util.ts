@@ -102,6 +102,14 @@ const LEGACY_TYPE_TAXONOMY: Record<ApplyDocumentExtractionType, DocumentTaxonomy
     source: 'legacy_mapping',
     archiveRecommended: false,
   },
+  REGISTRATION_CERTIFICATE: {
+    taxonomyVersion: DOCUMENT_TAXONOMY_VERSION,
+    documentCategory: 'VEHICLE',
+    documentSubtype: 'REGISTRATION_CERTIFICATE',
+    legacyDocumentType: 'REGISTRATION_CERTIFICATE',
+    source: 'legacy_mapping',
+    archiveRecommended: false,
+  },
   VEHICLE_CONDITION: {
     taxonomyVersion: DOCUMENT_TAXONOMY_VERSION,
     documentCategory: 'VEHICLE',
@@ -135,6 +143,7 @@ const SUBTYPE_HINT_TAXONOMY: Record<DocumentSubtype, { category: DocumentCategor
   INSURANCE_LETTER: { category: 'INSURANCE', legacy: 'OTHER' },
   CUSTOMER_CORRESPONDENCE: { category: 'CUSTOMER', legacy: 'OTHER' },
   DRIVER_DOCUMENT: { category: 'DRIVER', legacy: 'OTHER' },
+  REGISTRATION_CERTIFICATE: { category: 'VEHICLE', legacy: 'REGISTRATION_CERTIFICATE' },
   OTHER: { category: 'GENERAL', legacy: 'OTHER' },
 };
 

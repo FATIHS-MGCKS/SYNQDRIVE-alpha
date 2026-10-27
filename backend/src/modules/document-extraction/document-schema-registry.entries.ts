@@ -342,6 +342,33 @@ export const DOCUMENT_SUBTYPE_SCHEMA_ENTRIES: DocumentSubtypeSchemaEntry[] = [
     ],
   }),
   makeEntry({
+    subtype: 'REGISTRATION_CERTIFICATE',
+    category: 'VEHICLE',
+    legacyDocumentTypes: ['REGISTRATION_CERTIFICATE'],
+    extractionFields: fieldsFor('REGISTRATION_CERTIFICATE'),
+    requiredFields: ['zb1RegistrationCertificate'],
+    plausibilityRules: ['cross_document_consistency'],
+    entityResolvers: ['vehicle'],
+    allowedActions: [
+      {
+        semanticAction: ARCHIVE_SEMANTIC_ACTIONS.SUGGEST_ENTITY_LINK,
+        requirement: 'OPTIONAL',
+      },
+      {
+        semanticAction: ARCHIVE_SEMANTIC_ACTIONS.NO_AUTOMATIC_OUTREACH,
+        requirement: 'INFORMATIONAL',
+      },
+    ],
+    followUpSuggestionRules: [
+      {
+        code: 'ZB1_HUMAN_REVIEW_REQUIRED',
+        message: 'ZB-I fields require human review before identity merge — never auto-confirm.',
+        trigger: 'missing_booking',
+        severity: 'INFO',
+      },
+    ],
+  }),
+  makeEntry({
     subtype: 'OTHER',
     category: 'GENERAL',
     legacyDocumentTypes: ['OTHER', 'VEHICLE_CONDITION'],

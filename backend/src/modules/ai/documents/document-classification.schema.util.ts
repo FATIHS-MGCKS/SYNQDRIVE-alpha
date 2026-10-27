@@ -29,6 +29,8 @@ export const DOCUMENT_TYPE_CLASSIFICATION_HINTS: Record<
   ACCIDENT: 'Accident report, police report, or collision documentation',
   DAMAGE: 'Damage documentation, repair estimate for body damage (not full accident report)',
   FINE: 'Traffic fine, penalty notice, or Verwarnungsgeld',
+  REGISTRATION_CERTIFICATE:
+    'German Zulassungsbescheinigung Teil I (Fahrzeugschein) — vehicle registration identity document; not HU/TÜV, AU/BOKraft, invoice, or service record; OCR fields require human review before use as vehicle identity',
   OTHER: 'Vehicle-related document that does not fit any specific category above',
 };
 
