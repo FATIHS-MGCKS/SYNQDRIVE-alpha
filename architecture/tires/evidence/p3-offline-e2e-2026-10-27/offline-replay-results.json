@@ -1,0 +1,899 @@
+{
+  "kind": "tire_wear_v3_p3_offline_e2e",
+  "baseSha": "1cc5b91c7508b5e973caa3c5e5ea32e0eb397cc2",
+  "replayedAtUtc": "2026-10-27T22:56:06.079Z",
+  "readOnly": true,
+  "shadowWriteEnv": "false",
+  "dynamicBeta": 0,
+  "flagTruthTable": [
+    {
+      "enabled": false,
+      "authoritative": false,
+      "readActive": false,
+      "readAuthoritative": false,
+      "suppressV2Snapshots": false
+    },
+    {
+      "enabled": false,
+      "authoritative": true,
+      "readActive": false,
+      "readAuthoritative": false,
+      "suppressV2Snapshots": false
+    },
+    {
+      "enabled": true,
+      "authoritative": false,
+      "readActive": true,
+      "readAuthoritative": false,
+      "suppressV2Snapshots": false
+    },
+    {
+      "enabled": true,
+      "authoritative": true,
+      "readActive": true,
+      "readAuthoritative": true,
+      "suppressV2Snapshots": true
+    }
+  ],
+  "vehicles": [
+    {
+      "label": "Tesla Model 3 (KS FH 660E)",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "setupId": "52d71c61-5215-4b4f-8884-3183b11d32aa",
+      "mileageKm": 159688,
+      "v3PriorShadowRowsBefore": 0,
+      "v3PriorShadowRowsAfter": 0,
+      "shadowRowsUnchanged": true,
+      "idempotent": true,
+      "v2LatestSnapshot": {
+        "estimatedTreadMm": 5.3,
+        "odometerKm": 180178.1375580019,
+        "modelVersion": "tire-wear-v2",
+        "snapshotDate": "2026-10-27T22:15:26.315Z"
+      },
+      "v3": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "inputFingerprint": "49ea96cbccfe1d1428a82ac0f77970f0f129070c39b919379a1f2cbc967e0bbd",
+        "rated": true,
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER"
+        ],
+        "setupFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 5.62,
+              "hi": 5.8
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 5.62,
+              "hi": 5.8
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 4.69,
+              "hi": 4.81
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 4.69,
+              "hi": 4.81
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          }
+        ]
+      },
+      "customerRead": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "computedAt": "2026-10-27T22:56:07.323Z",
+        "inputFingerprint": "49ea96cbccfe1d1428a82ac0f77970f0f129070c39b919379a1f2cbc967e0bbd",
+        "rated": true,
+        "setupFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadDepthMm": {
+              "lo": 5.62,
+              "hi": 5.8
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 23804,
+              "hi": 31505
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadDepthMm": {
+              "lo": 5.62,
+              "hi": 5.8
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 23804,
+              "hi": 31505
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadDepthMm": {
+              "lo": 4.69,
+              "hi": 4.81
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 23733,
+              "hi": 31479
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadDepthMm": {
+              "lo": 4.69,
+              "hi": 4.81
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 23733,
+              "hi": 31479
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          }
+        ],
+        "lowestTreadPosition": "RL",
+        "lowestTreadMm": {
+          "lo": 4.69,
+          "hi": 4.81
+        },
+        "insufficientEvidence": true
+      },
+      "v3AlertCodes": [
+        "TIRE_V3_INSUFFICIENT_EVIDENCE"
+      ],
+      "rentalReasonCodes": [
+        "V3_VERIFICATION_INSUFFICIENT_EVIDENCE",
+        "TREAD_DEFAULT_ASSUMPTION"
+      ],
+      "rentalReviewRequirement": "MEASUREMENT_REQUIRED",
+      "v3OverallTreadStatus": "UNKNOWN"
+    },
+    {
+      "label": "VW Tiguan (WOB L 7503)",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "setupId": "a4c7c0ff-5a3f-45d5-a7ee-a24ef327344e",
+      "mileageKm": 11387,
+      "v3PriorShadowRowsBefore": 0,
+      "v3PriorShadowRowsAfter": 0,
+      "shadowRowsUnchanged": true,
+      "idempotent": true,
+      "v2LatestSnapshot": {
+        "estimatedTreadMm": 7.18,
+        "odometerKm": 11447,
+        "modelVersion": "tire-wear-v2",
+        "snapshotDate": "2026-10-27T22:15:26.090Z"
+      },
+      "v3": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "inputFingerprint": "b77918cbd461eb335b8c1b81832f69595ea232b53128ac4885410f84cab367c0",
+        "rated": true,
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER"
+        ],
+        "setupFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          }
+        ]
+      },
+      "customerRead": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "computedAt": "2026-10-27T22:56:10.157Z",
+        "inputFingerprint": "b77918cbd461eb335b8c1b81832f69595ea232b53128ac4885410f84cab367c0",
+        "rated": true,
+        "setupFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadDepthMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 20863,
+              "hi": 28613
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadDepthMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 20863,
+              "hi": 28613
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadDepthMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 20863,
+              "hi": 28613
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadDepthMm": {
+              "lo": 5.7,
+              "hi": 5.99
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 20863,
+              "hi": 28613
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          }
+        ],
+        "lowestTreadPosition": "FL",
+        "lowestTreadMm": {
+          "lo": 5.7,
+          "hi": 5.99
+        },
+        "insufficientEvidence": true
+      },
+      "v3AlertCodes": [
+        "TIRE_V3_INSUFFICIENT_EVIDENCE"
+      ],
+      "rentalReasonCodes": [
+        "V3_VERIFICATION_INSUFFICIENT_EVIDENCE",
+        "TREAD_DEFAULT_ASSUMPTION"
+      ],
+      "rentalReviewRequirement": "MEASUREMENT_REQUIRED",
+      "v3OverallTreadStatus": "UNKNOWN"
+    },
+    {
+      "label": "Audi A4 (KS MS 661)",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "setupId": "ed89e3e1-ee91-46e1-b6a1-b5bb8e8c7f44",
+      "mileageKm": 188272,
+      "v3PriorShadowRowsBefore": 0,
+      "v3PriorShadowRowsAfter": 0,
+      "shadowRowsUnchanged": true,
+      "idempotent": true,
+      "v2LatestSnapshot": {
+        "estimatedTreadMm": 8.1,
+        "odometerKm": 192809,
+        "modelVersion": "tire-wear-v2",
+        "snapshotDate": "2026-10-27T22:15:26.288Z"
+      },
+      "v3": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "inputFingerprint": "25cfc62263fc403322e4ce0274455b69c6851c58f901345c3249471c6138ccdb",
+        "rated": true,
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [],
+        "setupFlags": [
+          "DS4_SEVERITY_NO_LEDGER_DISTANCE",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 7.67,
+              "hi": 7.75
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 7.67,
+              "hi": 7.75
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 7.72,
+              "hi": 7.81
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "evidenceLevel": "L1",
+            "displayTreadMm": {
+              "lo": 7.72,
+              "hi": 7.81
+            },
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          }
+        ]
+      },
+      "customerRead": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "computedAt": "2026-10-27T22:56:12.327Z",
+        "inputFingerprint": "25cfc62263fc403322e4ce0274455b69c6851c58f901345c3249471c6138ccdb",
+        "rated": true,
+        "setupFlags": [
+          "DS4_SEVERITY_NO_LEDGER_DISTANCE",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadDepthMm": {
+              "lo": 7.67,
+              "hi": 7.75
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 29518,
+              "hi": 37182
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadDepthMm": {
+              "lo": 7.67,
+              "hi": 7.75
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 29518,
+              "hi": 37182
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadDepthMm": {
+              "lo": 7.72,
+              "hi": 7.81
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 29488,
+              "hi": 37215
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadDepthMm": {
+              "lo": 7.72,
+              "hi": 7.81
+            },
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "BASELINE_ESTIMATE",
+            "remainingKm": {
+              "lo": 29488,
+              "hi": 37215
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L1",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          }
+        ],
+        "lowestTreadPosition": "FL",
+        "lowestTreadMm": {
+          "lo": 7.67,
+          "hi": 7.75
+        },
+        "insufficientEvidence": true
+      },
+      "v3AlertCodes": [
+        "TIRE_V3_INSUFFICIENT_EVIDENCE"
+      ],
+      "rentalReasonCodes": [
+        "V3_VERIFICATION_INSUFFICIENT_EVIDENCE",
+        "TREAD_DEFAULT_ASSUMPTION"
+      ],
+      "rentalReviewRequirement": "MEASUREMENT_REQUIRED",
+      "v3OverallTreadStatus": "UNKNOWN"
+    },
+    {
+      "label": "VW Arteon (HMÜ C 215)",
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "setupId": "7e34a096-fc68-4443-8e89-5d60eab1e42f",
+      "mileageKm": 112175,
+      "v3PriorShadowRowsBefore": 0,
+      "v3PriorShadowRowsAfter": 0,
+      "shadowRowsUnchanged": true,
+      "idempotent": true,
+      "v2LatestSnapshot": {
+        "estimatedTreadMm": 8,
+        "odometerKm": 123078,
+        "modelVersion": "tire-wear-v2",
+        "snapshotDate": "2026-10-27T22:15:26.082Z"
+      },
+      "v3": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "inputFingerprint": "014cdf24f518b7678f6375764255a608b8707a7c4101b3c1a2205b101dcb296a",
+        "rated": true,
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER"
+        ],
+        "setupFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER",
+          "DS4_SEVERITY_NO_LEDGER_DISTANCE",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadEvidenceClass": "INSUFFICIENT",
+            "evidenceLevel": "L0",
+            "displayTreadMm": null,
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadEvidenceClass": "INSUFFICIENT",
+            "evidenceLevel": "L0",
+            "displayTreadMm": null,
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadEvidenceClass": "INSUFFICIENT",
+            "evidenceLevel": "L0",
+            "displayTreadMm": null,
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadEvidenceClass": "INSUFFICIENT",
+            "evidenceLevel": "L0",
+            "displayTreadMm": null,
+            "pointEstimateTreadMm": null,
+            "flags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ]
+          }
+        ]
+      },
+      "customerRead": {
+        "modelVersion": "tire-wear-v3-prior-0.2.0",
+        "computedAt": "2026-10-27T22:56:14.430Z",
+        "inputFingerprint": "014cdf24f518b7678f6375764255a608b8707a7c4101b3c1a2205b101dcb296a",
+        "rated": true,
+        "setupFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER",
+          "DS4_SEVERITY_NO_LEDGER_DISTANCE",
+          "DYNAMIC_BETA_ZERO"
+        ],
+        "verificationStatus": "INSUFFICIENT_EVIDENCE",
+        "verificationQualityFlags": [
+          "ODOMETER_STALE_OR_JUMP_AHEAD_OF_LEDGER"
+        ],
+        "wheels": [
+          {
+            "position": "FL",
+            "treadDepthMm": null,
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "INSUFFICIENT",
+            "remainingKm": {
+              "lo": 15550,
+              "hi": 40600
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L0",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "FR",
+            "treadDepthMm": null,
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "INSUFFICIENT",
+            "remainingKm": {
+              "lo": 15550,
+              "hi": 40600
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L0",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RL",
+            "treadDepthMm": null,
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "INSUFFICIENT",
+            "remainingKm": {
+              "lo": 15550,
+              "hi": 40600
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L0",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          },
+          {
+            "position": "RR",
+            "treadDepthMm": null,
+            "pointEstimateTreadMm": null,
+            "treadEvidenceClass": "INSUFFICIENT",
+            "remainingKm": {
+              "lo": 15550,
+              "hi": 40600
+            },
+            "replacementThresholdMm": 3,
+            "evidenceLevel": "L0",
+            "uncertaintyFlags": [
+              "RATE_INSUFFICIENT_POINTS",
+              "RATE_INSUFFICIENT_POINTS"
+            ],
+            "verificationStatus": "INSUFFICIENT_EVIDENCE",
+            "lastAcceptedMeasurementAt": null,
+            "kmSinceAcceptedMeasurement": null,
+            "nextDueOdometerKm": null,
+            "mountPeriodQualityFlags": [
+              "VERIFICATION_NO_ACCEPTED_ANCHOR"
+            ]
+          }
+        ],
+        "lowestTreadPosition": null,
+        "lowestTreadMm": null,
+        "insufficientEvidence": true
+      },
+      "v3AlertCodes": [
+        "TIRE_V3_INSUFFICIENT_EVIDENCE"
+      ],
+      "rentalReasonCodes": [
+        "V3_VERIFICATION_INSUFFICIENT_EVIDENCE",
+        "TREAD_DEFAULT_ASSUMPTION"
+      ],
+      "rentalReviewRequirement": "MEASUREMENT_REQUIRED",
+      "v3OverallTreadStatus": "UNKNOWN"
+    }
+  ]
+}
