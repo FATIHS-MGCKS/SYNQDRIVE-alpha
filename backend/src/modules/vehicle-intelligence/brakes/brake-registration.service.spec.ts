@@ -92,7 +92,7 @@ describe('BrakeRegistrationService', () => {
     expect(store.specs).toHaveLength(1);
   });
 
-  it('measured new brakes materialize MEASURED baseline', async () => {
+  it('workshop-confirmed explicit measured mm materialize MEASURED baseline', async () => {
     mockWorkflow.initializeFromRegistration.mockResolvedValue({
       outcome: 'initialized',
       initialized: true,
@@ -108,6 +108,9 @@ describe('BrakeRegistrationService', () => {
       ...baseInput,
       brakes: {
         condition: 'NEW',
+        workshopMeasurementConfirmed: true,
+        frontPadMeasuredMm: 10.5,
+        rearPadMeasuredMm: 10.2,
         frontPadThickness: 10.5,
         rearPadThickness: 10.2,
       },
@@ -116,6 +119,32 @@ describe('BrakeRegistrationService', () => {
     expect(result.brakeBaselineStatus).toBe('MEASURED');
     expect(result.evidenceSource).toBe('MEASURED');
     expect(result.requiresMeasurement).toBe(false);
+  });
+
+  it('nominal pad thickness alone does not materialize MEASURED baseline', async () => {
+    mockWorkflow.initializeFromRegistration.mockResolvedValue({
+      outcome: 'initialized',
+      initialized: true,
+      skipped: false,
+      message: 'ok',
+    });
+    store.bhc.set('veh-1', {
+      isInitialized: true,
+      anchorValidationStatus: 'spec_fallback_anchor',
+    });
+
+    const result = await svc.processRegistrationBrakes({
+      ...baseInput,
+      brakes: {
+        condition: 'NEW',
+        frontPadThickness: 10.5,
+        rearPadThickness: 10.2,
+      },
+    });
+
+    expect(result.brakeBaselineStatus).toBe('DOCUMENTED_REPLACEMENT');
+    expect(result.evidenceSource).toBe('DOCUMENTED_REPLACEMENT');
+    expect(result.requiresMeasurement).toBe(true);
   });
 
   it('unknown brakes without payload stays NO_BASELINE when no spec values', async () => {
@@ -177,7 +206,11 @@ describe('BrakeRegistrationService', () => {
 
     const result = await svc.processRegistrationBrakes({
       ...baseInput,
-      brakes: { condition: 'NEW', frontPadThickness: 10.5 },
+      brakes: {
+        condition: 'NEW',
+        workshopMeasurementConfirmed: true,
+        frontPadMeasuredMm: 10.5,
+      },
     });
 
     expect(result.brakeHealthInitialized).toBe(true);

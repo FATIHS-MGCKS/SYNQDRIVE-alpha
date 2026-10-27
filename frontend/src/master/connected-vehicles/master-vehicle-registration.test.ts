@@ -181,7 +181,7 @@ describe('master-vehicle-registration payloads', () => {
     expect(extra.hvBatteryGrossCapacityKwh).toBe(60);
   });
 
-  it('applyManualBaselinesAfterCreate calls tire, battery, and brake APIs', async () => {
+  it('applyManualBaselinesAfterCreate calls tire and battery APIs without unconfirmed brake init', async () => {
     await applyManualBaselinesAfterCreate(
       'org-1',
       'veh-1',
@@ -189,7 +189,18 @@ describe('master-vehicle-registration payloads', () => {
     );
     expect(upsertTiresMock).toHaveBeenCalled();
     expect(api.vehicleIntelligence.createBatterySpec).toHaveBeenCalled();
-    expect(api.vehicleIntelligence.brakeHealthInitialize).toHaveBeenCalled();
+    expect(api.vehicleIntelligence.brakeHealthInitialize).not.toHaveBeenCalled();
+  });
+
+  it('buildMasterHvCapacityExtraFields skips MHEV electrification level', () => {
+    const fields = buildMasterHvCapacityExtraFields(
+      minimalRv({
+        fuelType: 'Hybrid',
+        electrificationLevel: 'MHEV_48V',
+        hvBatteryUsableCapacityKwh: '1.5',
+      }),
+    );
+    expect(fields).toEqual({});
   });
 
   it('builds manualSpecs when brake or tire data present', () => {

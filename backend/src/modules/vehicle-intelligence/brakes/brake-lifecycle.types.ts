@@ -5,7 +5,12 @@ export type BrakeLifecycleKind =
   | 'brake_fluid_service'
   | 'full_brake_service';
 
-export type BrakeLifecycleSource = 'manual' | 'ai_document' | 'api' | 'manual_registration';
+export type BrakeLifecycleSource =
+  | 'manual'
+  | 'workshop'
+  | 'ai_document'
+  | 'api'
+  | 'manual_registration';
 
 export type BrakeLifecycleScope =
   | 'front_pads'

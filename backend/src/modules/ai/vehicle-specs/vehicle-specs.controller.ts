@@ -30,6 +30,7 @@ export class VehicleSpecsController {
     @Query('year') yearParam?: string,
     @Query('organizationId') organizationId?: string,
     @Query('vehicleId') vehicleId?: string,
+    @Query('drivetrain') drivetrainParam?: string,
   ) {
     if (!this.vehicleSpecAi.isConfigured()) {
       return {
@@ -52,6 +53,7 @@ export class VehicleSpecsController {
         yearParam,
         organizationId,
         vehicleId,
+        drivetrainParam,
       );
 
     const result = await this.vehicleSpecAi.getVehicleSpecs(
@@ -63,7 +65,7 @@ export class VehicleSpecsController {
       const hasData = result.specs && Object.values(result.specs).some((v) => v !== null);
       return {
         success: true,
-        degraded: !hasData || result.knowledgeOnlyFallback,
+        degraded: !hasData,
         configFailure: false,
         agentId: result.providerId,
         specs: result.specs ?? {},
@@ -102,6 +104,7 @@ export class VehicleSpecsController {
     @Query('fuelType') fuelType?: string,
     @Query('organizationId') organizationId?: string,
     @Query('vehicleId') vehicleId?: string,
+    @Query('drivetrain') drivetrainParam?: string,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -129,6 +132,7 @@ export class VehicleSpecsController {
         yearParam,
         organizationId,
         vehicleId,
+        drivetrainParam,
       );
 
     const closed = { value: false };
@@ -234,13 +238,14 @@ export class VehicleSpecsController {
     yearParam?: string,
     organizationId?: string,
     vehicleId?: string,
+    drivetrainParam?: string,
   ) {
     const tokenIds: number[] = [];
     let resolvedVin = vin;
     let resolvedMake = make;
     let resolvedModel = model;
     let resolvedYear = yearParam ? parseInt(yearParam, 10) : undefined;
-    const drivetrain: string | undefined = undefined;
+    let drivetrain: string | undefined = drivetrainParam?.trim() || undefined;
 
     if (tokenIdParam) {
       const n = parseInt(tokenIdParam, 10);
@@ -255,6 +260,7 @@ export class VehicleSpecsController {
           make: true,
           model: true,
           year: true,
+          driveType: true,
           dimoVehicleId: true,
           dimoVehicle: { select: { tokenId: true, vin: true, make: true, model: true, year: true } },
         },
@@ -266,6 +272,9 @@ export class VehicleSpecsController {
       if (!resolvedMake) resolvedMake = scoped.make;
       if (!resolvedModel) resolvedModel = scoped.model;
       if (!resolvedYear) resolvedYear = scoped.year;
+      if (!drivetrain && scoped.driveType) {
+        drivetrain = String(scoped.driveType);
+      }
       const token = scoped.dimoVehicle?.tokenId;
       if (token != null && tokenIds.length === 0) tokenIds.push(token);
     }

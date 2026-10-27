@@ -3,7 +3,10 @@ export type MotionPhysicsEvidenceTierUi = 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED'
 export type MotionPhysicsPendingCreateSource = 'MISTRAL_AI' | null;
 
 /** How vehicle AI specs were applied to the form (reference auto-create eligibility). */
-export type AiSpecsApplyProvenance = 'mistral_live' | 'local_fallback';
+export type AiSpecsApplyProvenance =
+  | 'mistral_live'
+  | 'mistral_knowledge_only'
+  | 'local_fallback';
 
 /** Canonical stored values for systemPowerDefinition (matches backend semantics). */
 export const MOTION_SYSTEM_POWER_DEFINITION_OPTIONS = [
@@ -75,7 +78,9 @@ export function resolveMotionPhysicsPendingAfterAiApply(input: {
   manualEditedAfterApply: boolean;
 }): MotionPhysicsPendingCreateSource {
   if (!input.appliedMotionFromAi) return null;
-  if (input.provenance !== 'mistral_live') return null;
+  if (input.provenance !== 'mistral_live' && input.provenance !== 'mistral_knowledge_only') {
+    return null;
+  }
   if (input.motionFieldsHadValuesBeforeApply) return null;
   if (input.manualEditedAfterApply) return null;
   return 'MISTRAL_AI';

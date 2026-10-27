@@ -18,15 +18,37 @@ function parseOptionalFloat(value: string | undefined | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function isElectrifiedFuelType(fuelType: string | undefined | null): boolean {
+const MHEV_ELECTRIFICATION_LEVELS = new Set(['MHEV_12V', 'MHEV_48V']);
+
+export function isElectrifiedFuelType(
+  fuelType: string | undefined | null,
+  electrificationLevel?: string | null,
+): boolean {
+  const level = String(electrificationLevel ?? '').trim().toUpperCase();
+  if (level && MHEV_ELECTRIFICATION_LEVELS.has(level)) {
+    return false;
+  }
+  if (level === 'NONE') {
+    return false;
+  }
+  if (
+    level === 'BEV' ||
+    level === 'PHEV' ||
+    level === 'FULL_HYBRID' ||
+    level === 'FCEV'
+  ) {
+    return true;
+  }
   const fuel = String(fuelType ?? '').trim().toLowerCase();
   if (!fuel) return false;
+  if (fuel.includes('mild') || fuel.includes('mhev') || fuel.includes('48v')) {
+    return false;
+  }
   return (
     fuel.includes('electric') ||
     fuel.includes('plugin') ||
     fuel.includes('phev') ||
-    fuel === 'hybrid' ||
-    fuel.includes('hybrid')
+    (fuel.includes('hybrid') && !fuel.includes('mild'))
   );
 }
 
@@ -34,7 +56,7 @@ function isElectrifiedFuelType(fuelType: string | undefined | null): boolean {
 export function buildMasterHvCapacityExtraFields(
   rv: RegisteredVehicle,
 ): Record<string, number> {
-  if (!isElectrifiedFuelType(rv.fuelType)) return {};
+  if (!isElectrifiedFuelType(rv.fuelType, rv.electrificationLevel)) return {};
 
   const usable =
     parseOptionalFloat(rv.hvBatteryUsableCapacityKwh) ??
@@ -83,6 +105,7 @@ export function buildVehicleExtraData(rv: RegisteredVehicle): Record<string, unk
     hardwareType: rv.hardwareType ?? 'UNKNOWN',
     notes: rv.notes || undefined,
     drivetrain: rv.drivetrain || undefined,
+    electrificationLevel: rv.electrificationLevel?.trim() || undefined,
     curbWeightKg: parseOptionalNumber(rv.curbWeight),
     systemMotorPowerKw: parseOptionalFloat(rv.systemMotorPowerKw),
     accel0To100S: parseOptionalFloat(rv.accel0To100S),
@@ -214,6 +237,11 @@ type ManualBrakePayload = {
   rearPadThickness?: number | null;
   frontRotorWidth?: number | null;
   rearRotorWidth?: number | null;
+  workshopMeasurementConfirmed?: boolean | null;
+  frontPadMeasuredMm?: number | null;
+  rearPadMeasuredMm?: number | null;
+  frontDiscMeasuredMm?: number | null;
+  rearDiscMeasuredMm?: number | null;
 };
 type ManualBatteryPayload = {
   batteryType?: string | null;
@@ -284,21 +312,22 @@ export async function applyManualBaselinesAfterCreate(
   }
 
   const brakes = manualSpecs.brakes as ManualBrakePayload | undefined;
-  if (brakes) {
-    const hasPad =
-      brakes.frontPadThickness != null ||
-      brakes.rearPadThickness != null ||
-      brakes.frontRotorWidth != null ||
-      brakes.rearRotorWidth != null;
-    if (hasPad) {
+  if (brakes?.workshopMeasurementConfirmed === true) {
+    const measured = {
+      frontPadMm: brakes.frontPadMeasuredMm ?? undefined,
+      rearPadMm: brakes.rearPadMeasuredMm ?? undefined,
+      frontDiscMm: brakes.frontDiscMeasuredMm ?? undefined,
+      rearDiscMm: brakes.rearDiscMeasuredMm ?? undefined,
+    };
+    const hasExplicitMeasured = Object.values(measured).some((v) => v != null);
+    if (hasExplicitMeasured) {
       try {
-        await api.vehicleIntelligence.brakeHealthInitialize(vehicleId, {
+        await api.vehicleIntelligence.recordBrakeService(vehicleId, {
           serviceDate: new Date().toISOString(),
           odometerKm: brakes.odometerKm ?? parseOptionalNumber(rv.mileage) ?? undefined,
-          frontPadMm: brakes.frontPadThickness ?? undefined,
-          rearPadMm: brakes.rearPadThickness ?? undefined,
-          frontRotorWidthMm: brakes.frontRotorWidth ?? undefined,
-          rearRotorWidthMm: brakes.rearRotorWidth ?? undefined,
+          source: 'manual',
+          measured,
+          initializeIfPossible: true,
         });
       } catch (error) {
         failures.push({ area: 'brakes', message: baselineErrorMessage(error) });
@@ -350,7 +379,7 @@ export function buildMasterVehicleHvStammdatenDiff(
   baseline: RegisteredVehicle,
 ): MasterVehicleHvStammdatenDiff {
   const vehiclePatch: Record<string, unknown> = {};
-  const electrified = isElectrifiedFuelType(current.fuelType);
+  const electrified = isElectrifiedFuelType(current.fuelType, current.electrificationLevel);
 
   const nextUsable =
     parseOptionalFloat(current.hvBatteryUsableCapacityKwh) ??

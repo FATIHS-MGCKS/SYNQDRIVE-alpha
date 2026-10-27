@@ -95,6 +95,22 @@ describe('brake-reference-spec.domain', () => {
     });
   });
 
+  describe('USER_CONFIRMED reference preservation (Arteon-class rows)', () => {
+    it('keeps USER_CONFIRMED disc nominal eligible without LEGACY_UNVERIFIED downgrade', () => {
+      const arteonLike = {
+        frontDiscNominalThicknessMm: 25,
+        frontDiscEvidenceCategory: BrakeReferenceSpecEvidenceCategory.USER_CONFIRMED,
+        rearDiscNominalThicknessMm: 12,
+        rearDiscEvidenceCategory: BrakeReferenceSpecEvidenceCategory.USER_CONFIRMED,
+      };
+      expect(resolveAnchorEligibleThicknessMm(arteonLike, 'FRONT_DISCS')).toBe(25);
+      expect(resolveAnchorEligibleThicknessMm(arteonLike, 'REAR_DISCS')).toBe(12);
+      expect(arteonLike.frontDiscEvidenceCategory).toBe(
+        BrakeReferenceSpecEvidenceCategory.USER_CONFIRMED,
+      );
+    });
+  });
+
   describe('legacy rotor width', () => {
     it('adapts legacy rotor width as LEGACY_UNVERIFIED and not anchor-eligible', () => {
       const adaptation = adaptLegacyRotorWidth(30, 'front');

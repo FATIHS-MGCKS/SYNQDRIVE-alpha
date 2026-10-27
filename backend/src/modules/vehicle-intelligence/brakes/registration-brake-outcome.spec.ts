@@ -28,7 +28,12 @@ describe('registration-brake-outcome', () => {
 
   it('maps user-submitted mm to MEASURED', () => {
     const result = deriveRegistrationBrakeResult({
-      rawBrakes: { condition: 'NEW', frontPadThickness: 10.5, rearPadThickness: 10.2 },
+      rawBrakes: {
+        condition: 'NEW',
+        workshopMeasurementConfirmed: true,
+        frontPadMeasuredMm: 10.5,
+        rearPadMeasuredMm: 10.2,
+      },
       specCreated: true,
       initialized: true,
       anchorValidationStatus: 'measured_anchor',

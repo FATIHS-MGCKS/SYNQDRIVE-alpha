@@ -86,19 +86,5 @@ export function applyVehicleSpecMotionPlausibility(
     }
   }
 
-  const variantAssumption = out.variantAssumption;
-  const hasMotion =
-    num(out.curbWeightKg) != null ||
-    num(out.systemMotorPowerKw) != null ||
-    num(out.accel0To100S) != null;
-  if (
-    hasMotion &&
-    (variantAssumption == null || String(variantAssumption).trim() === '')
-  ) {
-    out.variantAssumption = context?.make && context?.model
-      ? `Assumed base variant for ${context.make} ${context.model}`
-      : 'Variant not specified';
-  }
-
   return { specs: out, rejectedFields: rejected };
 }

@@ -442,8 +442,9 @@ export interface AiSpecsResponse {
 export interface AiSpecsStreamResult {
   success: boolean;
   degraded?: boolean;
+  knowledgeOnlyFallback?: boolean;
   agentId?: string;
-  specs: Record<string, string | number | null>;
+  specs: Record<string, string | number | boolean | null>;
 }
 
 export type AiSpecsStreamEvent =
@@ -7409,6 +7410,7 @@ export const api = {
         rearPadMm?: number;
         frontRotorWidthMm?: number;
         rearRotorWidthMm?: number;
+        measurementConfirmed?: boolean;
         kind?: BrakeServiceKindInput;
         scope?: BrakeServiceScopeInput[];
         workshopName?: string;
