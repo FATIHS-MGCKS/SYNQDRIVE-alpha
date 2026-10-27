@@ -119,12 +119,45 @@ export function classifySingleTripRpmProfile(input: {
 
   const sequenceEvidence = summarizeActiveRpmSequenceCadence(intervals);
 
-  const fastDominatesSlow =
+  const slowActiveIntervalCount =
+    sequenceEvidence.activeIntervalCount - sequenceEvidence.fastActiveIntervalCount;
+
+  const hasQualifyingFast =
     sequenceEvidence.qualifyingFastSequenceCount >=
-      VSI_ACTIVE_RPM_MIN_QUALIFYING_FAST_SEQUENCES &&
-    sequenceEvidence.fastActiveIntervalCount >=
-      sequenceEvidence.activeIntervalCount -
-        sequenceEvidence.fastActiveIntervalCount;
+    VSI_ACTIVE_RPM_MIN_QUALIFYING_FAST_SEQUENCES;
+
+  const fastDominatesSlow =
+    hasQualifyingFast &&
+    sequenceEvidence.fastActiveIntervalCount >= slowActiveIntervalCount;
+
+  const slowDominatesFast =
+    sequenceEvidence.qualifyingSlowSequenceCount > 0 &&
+    slowActiveIntervalCount > sequenceEvidence.fastActiveIntervalCount;
+
+  const mixedFastAndSlow =
+    hasQualifyingFast && sequenceEvidence.qualifyingSlowSequenceCount > 0;
+
+  if (mixedFastAndSlow) {
+    if (fastDominatesSlow && tripActiveCadenceSupportsFastProfile(intervals)) {
+      return {
+        ...base,
+        profile: 'RPM_1HZ',
+        decisionCode: 'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
+      };
+    }
+    if (slowDominatesFast && !tripActiveCadenceSupportsFastProfile(intervals)) {
+      return {
+        ...base,
+        profile: 'RPM_STANDARD',
+        decisionCode: 'ACTIVE_SLOW_MEASUREMENT_SEQUENCES',
+      };
+    }
+    return {
+      ...base,
+      profile: 'UNKNOWN',
+      decisionCode: 'MIXED_ACTIVE_CADENCE_NO_CLEAR_DOMINANCE',
+    };
+  }
 
   if (fastDominatesSlow && tripActiveCadenceSupportsFastProfile(intervals)) {
     return {
