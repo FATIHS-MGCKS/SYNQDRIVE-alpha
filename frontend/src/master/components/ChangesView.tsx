@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'commit-b-vehicle-tire-ai-v2-2026-10-27',
+    version: '4.9.4996',
+    title: 'Commit B — Vehicle/Tire AI Spec V2, normalization & provenance safety',
+    summary: [
+      'Vehicle Mistral schema V2: variant identity gate, sourceNote, MHEV/HV gates preserved; offline strict-schema regression harness.',
+      'AiTireSpec canonical contract (tire_v2): schema/normalizer key parity, null-not-clamp, EU/UTQG/OE fields, intendedUse arrays.',
+      'Tire evidence: AI URLs never promote to MANUFACTURER_CONFIRMED; DIMO aiTireSpec writes normalized JSON; extraData.aiFieldProvenance on registration.',
+    ],
+    reason:
+      'Close data-quality gaps: AI values must not masquerade as manufacturer-confirmed; ambiguous variants must not emit precise variant numerics.',
+    previousBehavior:
+      'Tire schema/normalizer drift; URL strings could inflate tread provenance; raw AI tire JSON could persist from DIMO registration.',
+    details:
+      'backend: ai/vehicle-specs/*, vehicle-intelligence/tires/ai-tire-spec-*; frontend: vehicle-ai-field-provenance.util, VehicleRegistrationModal provenance capture.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-27T10:00:00.000Z',
+  },
+  {
     id: 'vsi-core-hardening-p0-2026-10-26',
     version: '4.9.4995',
     title: 'VSI P0 — scalar zero semantics + semantic profile fingerprint',

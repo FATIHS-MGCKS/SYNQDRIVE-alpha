@@ -35,6 +35,7 @@ export const VEHICLE_SPEC_FIELD_KEYS = [
   'systemMotorPowerKw',
   'accel0To100S',
   'variantAssumption',
+  'sourceNote',
   'resolvedVariant',
   'variantConfidence',
   'ambiguousVariants',
@@ -171,32 +172,28 @@ export function buildVehicleSpecPrompt(
     ? 'No DIMO tokenId is available. Use make/model/year/VIN context only. Do NOT claim live DIMO telemetry or invent live vehicle data.'
     : 'DIMO tokenId(s) provided — vehicle context may be used, but return OEM factory specs as JSON only.';
 
-  const system = `You are a vehicle specification database assistant with deep automotive engineering knowledge.
-Answer from your automotive knowledge only. Do NOT perform web searches.
-Return structured OEM/factory specifications. Use null when genuinely unknown — never invent values.
-${scopeNote}`;
+  const system = `You are an OEM technical-data extraction engine for a fleet platform.
+Return ONLY JSON matching the strict schema. Use automotive knowledge only — no web search, no live telemetry claims.
+null means unknown; never invent variant-specific numbers.
+${scopeNote}
+MHEV (MHEV_12V/MHEV_48V): hvBatteryPresent must be false and all hvBattery* fields null.
+BEV/PHEV/FULL_HYBRID/FCEV: hvBatteryPresent true when a traction pack exists.
+When variantConfidence is below 0.7 or ambiguousVariants has more than one entry, leave variant-specific numerics null.
+Do not output URLs. sourceNote describes evidence type in plain text only (no links).`;
 
   const user = `${vehicleBlock ? `Vehicle context:\n${vehicleBlock}\n${tokenCtx}\n` : ''}
-Fill factory/OEM specifications for this vehicle.
+Resolve the exact variant for the identity above and return factory/OEM specifications.
 Rules:
-- use null ONLY if you genuinely do not know the value
+- Identity (MAKE/MODEL/YEAR) is authoritative; resolvedVariant must refer to this vehicle line
 - numbers without units in numeric fields
-- tankCapacityLiters: fuel tank liters for ICE/HEV/PHEV, null for pure EV
-- drivetrain: FWD, RWD, AWD, or FOUR_WD (alias 4WD)
-- electrificationLevel: NONE, MHEV_12V, MHEV_48V, FULL_HYBRID, PHEV, BEV, or FCEV
-- variantConfidence: 0 to 1; set below 0.7 when variant is uncertain
-- ambiguousVariants: array of candidate variant names when uncertain
-- resolvedVariant: short marketing/trim label when confident
-- brakeForceDistribution: front percentage as number (e.g. 60)
-- frontToRearWeightDistribution: string ratio, e.g. "60/40"
-- lvBattery* = low-voltage auxiliary 12V battery
-- hvBatteryPresent=true only for HEV/PHEV/EV, false for pure ICE
-- for ICE vehicles, set all hvBattery* to null and hvBatteryPresent=false
-- for pure EV, engineDisplacementCc and cylinderCount must be null
-- systemMotorPowerKw: OEM rated system/motor power in kW (not wheel power); null if unknown
-- accel0To100S: published 0-100 km/h time in seconds; null if unknown
-- variantAssumption: short text when variant/trim is uncertain but other fields are filled; null only if all motion fields are null
-- Zulassungsbescheinigung field P.2 must not be treated as EV peak traction power without explicit variant context`;
+- tankCapacityLiters: ICE/HEV/PHEV tank liters; null for pure BEV
+- drivetrain: FWD, RWD, AWD, FOUR_WD (4WD alias accepted)
+- electrificationLevel: NONE, MHEV_12V, MHEV_48V, FULL_HYBRID, PHEV, BEV, FCEV
+- variantConfidence: 0..1; below 0.7 when uncertain
+- ambiguousVariants: candidate trims when uncertain (empty when confident)
+- brake disc diameter (*RotorDiameterMm) vs nominal new disc thickness (*RotorWidthMm) are different quantities
+- frontPadThicknessMm: factory NEW pad material thickness, not measured wear
+- Zulassungsbescheinigung P.2 is not traction power without variant context`;
 
   return { system, user };
 }

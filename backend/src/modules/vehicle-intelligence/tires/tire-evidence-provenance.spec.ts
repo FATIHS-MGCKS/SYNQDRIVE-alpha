@@ -138,6 +138,28 @@ describe('tire-evidence-provenance helpers', () => {
     expect(summary.lastActualMeasurementAt).toBeNull();
   });
 
+  it('does not promote AI tire spec URLs to MANUFACTURER_CONFIRMED', () => {
+    const resolved = resolveInitialTreadEvidence({
+      aiTireSpec: {
+        newTreadDepthMm: 8.1,
+        confidenceScore: 80,
+        manufacturerSourceUrl: 'https://example.com/michelin-spec.pdf',
+        userConfirmedSpec: false,
+      },
+    });
+    expect(resolved.evidenceSource).toBe(TireEvidenceSource.AI_ESTIMATED);
+    expect(resolved.evidenceSource).not.toBe(TireEvidenceSource.MANUFACTURER_CONFIRMED);
+  });
+
+  it('keeps MANUFACTURER_CONFIRMED only when explicitly flagged with independent confirmation', () => {
+    const resolved = resolveInitialTreadEvidence({
+      treadMm: 8,
+      manufacturerConfirmed: true,
+      aiTireSpec: { newTreadDepthMm: 8, userConfirmedSpec: false },
+    });
+    expect(resolved.evidenceSource).toBe(TireEvidenceSource.MANUFACTURER_CONFIRMED);
+  });
+
   it('does not auto-confirm persisted AI specs without explicit user confirmation', () => {
     const normalized = normalizeAiTireSpecResult({
       matchedBrand: 'Michelin',

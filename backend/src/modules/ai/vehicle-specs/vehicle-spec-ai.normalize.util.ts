@@ -1,3 +1,5 @@
+import type { VehicleSpecContext } from './vehicle-spec-ai.types';
+
 export const DRIVETRAIN_VALUES = ['FWD', 'RWD', 'AWD', 'FOUR_WD'] as const;
 export type CanonicalDrivetrain = (typeof DRIVETRAIN_VALUES)[number];
 
@@ -166,5 +168,27 @@ export function normalizeVehicleSpecValues(
   out.electrificationLevel = electrificationLevel;
   applyElectrificationHvSafety(out);
   return out;
+}
+
+export function applyResolvedVariantIdentityGate(
+  specs: Record<string, string | number | boolean | null>,
+  context?: VehicleSpecContext,
+): string[] {
+  if (!context?.make?.trim() || !context?.model?.trim()) return [];
+  const resolved = String(specs.resolvedVariant ?? '').trim().toLowerCase();
+  if (!resolved) return [];
+
+  const make = context.make.trim().toLowerCase();
+  const modelToken = context.model.trim().toLowerCase().split(/\s+/).filter(Boolean)[0] ?? '';
+  if (resolved.includes(make) || (modelToken.length >= 2 && resolved.includes(modelToken))) {
+    return [];
+  }
+
+  const rejected: string[] = ['identity:resolved_variant_context_mismatch'];
+  for (const key of VARIANT_DEPENDENT_NUMERIC_KEYS) {
+    if (specs[key] != null) specs[key] = null;
+  }
+  specs.variantAssumption = null;
+  return rejected;
 }
 

@@ -27,6 +27,27 @@ export interface AiTireSpec {
   reinforced?: boolean | null;
   xl?: boolean | null;
   evOptimized?: boolean | null;
+  oeHomologation?: string | null;
+  sectionWidthMm?: number | null;
+  overallDiameterMm?: number | null;
+  approvedRimWidthMinIn?: number | null;
+  approvedRimWidthMaxIn?: number | null;
+  measuredRimWidthIn?: number | null;
+  revsPerKm?: number | null;
+  euRollingResistanceClass?: string | null;
+  euWetGripClass?: string | null;
+  euExternalNoiseDb?: number | null;
+  euExternalNoiseClass?: string | null;
+  severeSnowMarked?: boolean | null;
+  iceMarked?: boolean | null;
+  utqgTreadwear?: number | null;
+  utqgTraction?: string | null;
+  utqgTemperature?: string | null;
+  mileageWarrantyKm?: number | null;
+  comfortBias?: number | null;
+  efficiencyBias?: number | null;
+  wetSafetyBias?: number | null;
+  sportBias?: number | null;
   maxLoadKg?: number | null;
   maxInflationKpa?: number | null;
   maxInflationPsi?: number | null;
@@ -513,6 +534,27 @@ export function parseAiTireSpec(raw: unknown): AiTireSpec | null {
     reinforced: _bool(obj.reinforced),
     xl: _bool(obj.xl),
     evOptimized: _bool(obj.evOptimized),
+    oeHomologation: _str(obj.oeHomologation),
+    sectionWidthMm: _num(obj.sectionWidthMm),
+    overallDiameterMm: _num(obj.overallDiameterMm),
+    approvedRimWidthMinIn: _num(obj.approvedRimWidthMinIn),
+    approvedRimWidthMaxIn: _num(obj.approvedRimWidthMaxIn),
+    measuredRimWidthIn: _num(obj.measuredRimWidthIn),
+    revsPerKm: _num(obj.revsPerKm),
+    euRollingResistanceClass: _str(obj.euRollingResistanceClass),
+    euWetGripClass: _str(obj.euWetGripClass),
+    euExternalNoiseDb: _num(obj.euExternalNoiseDb),
+    euExternalNoiseClass: _str(obj.euExternalNoiseClass),
+    severeSnowMarked: _bool(obj.severeSnowMarked),
+    iceMarked: _bool(obj.iceMarked),
+    utqgTreadwear: _num(obj.utqgTreadwear),
+    utqgTraction: _str(obj.utqgTraction),
+    utqgTemperature: _str(obj.utqgTemperature),
+    mileageWarrantyKm: _num(obj.mileageWarrantyKm),
+    comfortBias: _num(obj.comfortBias),
+    efficiencyBias: _num(obj.efficiencyBias),
+    wetSafetyBias: _num(obj.wetSafetyBias),
+    sportBias: _num(obj.sportBias),
     maxLoadKg: _num(obj.maxLoadKg),
     maxInflationKpa: _num(obj.maxInflationKpa),
     maxInflationPsi: _num(obj.maxInflationPsi),

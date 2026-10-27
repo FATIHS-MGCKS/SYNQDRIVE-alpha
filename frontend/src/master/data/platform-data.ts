@@ -193,6 +193,11 @@ export interface RegisteredVehicle {
   // SMART5:  Driving Events from HF time-series reconstruction
   // UNKNOWN: default (falls back to SMART5 behaviour)
   hardwareType?: 'LTE_R1' | 'SMART5' | 'UNKNOWN';
+  /** Per-field AI provenance captured at registration (stored in vehicle extraData). */
+  aiFieldProvenance?: Record<
+    string,
+    { category: 'AI_ESTIMATED' | 'KNOWLEDGE_ONLY' | 'USER_CONFIRMED' | 'INPUT_KNOWN'; confidence?: number | null }
+  >;
   /** Verified onboarding connection modality (not DI routing hardware type). */
   connectionModality?: string | null;
   /** Telemetry family from connection identity evidence (e.g. API_SYNTHETIC). */

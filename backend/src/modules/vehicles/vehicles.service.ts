@@ -88,6 +88,7 @@ import {
   sortFleetConnectivityListItems,
 } from './fleet-connectivity-api.mapper';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
+import { buildNormalizedRegistrationAiTireSpecJson } from '@modules/vehicle-intelligence/tires/ai-tire-spec-registration-persist.util';
 import { BrakeRegistrationService } from '@modules/vehicle-intelligence/brakes/brake-registration.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
@@ -2608,10 +2609,20 @@ export class VehiclesService {
     }
 
     if (tr.aiTireSpec && result.setup?.id) {
-      await this.prisma.vehicleTireSetup.update({
+      const existingSetup = await this.prisma.vehicleTireSetup.findUnique({
         where: { id: result.setup.id },
-        data: { aiTireSpec: tr.aiTireSpec as Prisma.InputJsonValue },
+        select: { aiTireSpec: true },
       });
+      const normalizedJson = buildNormalizedRegistrationAiTireSpecJson(
+        tr.aiTireSpec as Record<string, unknown>,
+        existingSetup?.aiTireSpec,
+      );
+      if (normalizedJson) {
+        await this.prisma.vehicleTireSetup.update({
+          where: { id: result.setup.id },
+          data: { aiTireSpec: normalizedJson },
+        });
+      }
     }
   }
 
