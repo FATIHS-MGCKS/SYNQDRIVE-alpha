@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
 import { batteryV2HvInspectionNL } from './battery-v2-hv-inspection.nl';
 import { masterPhysicalDeviceInventoryNl } from './master.physicalDeviceInventory.nl';
 import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
+import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 
 // Dutch translations - start with English as base, override with Dutch
@@ -176,6 +177,7 @@ export const nl = {
   'trips.drivingImpact.quality.r1Contained': 'Voertuigbelasting tijdelijk niet beschikbaar (R1-tijdsbeperking).',
   ...masterPhysicalDeviceInventoryNl,
   ...masterMotionPhysicsNl,
+...masterVehicleIdentityNl,
   ...masterCvTechnicalSpecsNl,
   ...batteryV2HvInspectionNL,
 } satisfies PartialTranslationDictionary;

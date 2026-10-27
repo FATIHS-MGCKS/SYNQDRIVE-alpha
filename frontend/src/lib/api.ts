@@ -4254,6 +4254,30 @@ export const api = {
           body ?? {},
         ),
     },
+    registrationIdentityReview: {
+      reconcile: (
+        orgId: string,
+        vehicleId: string,
+        body: {
+          documentExtractionId?: string;
+          manual?: Record<string, unknown> | null;
+          vinMismatchAcknowledged?: boolean;
+        },
+      ) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/registration-identity-review/reconcile`,
+          body,
+        ),
+      validateConfirmations: (
+        orgId: string,
+        vehicleId: string,
+        body: Record<string, unknown>,
+      ) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/registration-identity-review/validate-confirmations`,
+          body,
+        ),
+    },
     telemetry: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}/telemetry`),
     liveGps: (orgId: string, id: string) => get<{
       latitude: number | null;

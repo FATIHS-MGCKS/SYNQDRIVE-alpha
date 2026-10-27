@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
 import { batteryV2HvInspectionPL } from './battery-v2-hv-inspection.pl';
 import { masterPhysicalDeviceInventoryPl } from './master.physicalDeviceInventory.pl';
 import { masterMotionPhysicsPl } from './master.motionPhysics.pl';
+import { masterVehicleIdentityPl } from './master.vehicleIdentity.pl';
 import { masterCvTechnicalSpecsPl } from './master.cv.technicalSpecs.pl';
 
 export const pl = {
@@ -175,6 +176,7 @@ export const pl = {
   'trips.drivingImpact.quality.r1Contained': 'Obciążenie pojazdu tymczasowo niedostępne (ograniczenie czasowe R1).',
   ...masterPhysicalDeviceInventoryPl,
   ...masterMotionPhysicsPl,
+...masterVehicleIdentityPl,
   ...masterCvTechnicalSpecsPl,
   ...batteryV2HvInspectionPL,
 } satisfies PartialTranslationDictionary;

@@ -49,6 +49,7 @@ describe('DocumentExtractionService', () => {
       jobAttempts: 4,
       jobBackoffMs: 5000,
       jobTimeoutMs: 120000,
+      zb1RegistrationCertificateExtractionEnabled: false,
     };
     const storage = {
       putObject: jest.fn(),
@@ -373,6 +374,15 @@ describe('DocumentExtractionService', () => {
         findFirst: jest.fn().mockResolvedValue(awaitingRecord),
       });
       await expect(svc.setDocumentType('v1', 'e1', 'AUTO')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('rejects REGISTRATION_CERTIFICATE when ZB1 extraction flag is off', async () => {
+      const { svc } = makeService({
+        findFirst: jest.fn().mockResolvedValue(awaitingRecord),
+      });
+      await expect(svc.setDocumentType('v1', 'e1', 'REGISTRATION_CERTIFICATE')).rejects.toBeInstanceOf(
         BadRequestException,
       );
     });

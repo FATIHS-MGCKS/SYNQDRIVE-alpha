@@ -27,6 +27,7 @@ export type DocumentExtractionType =
   | 'ACCIDENT'
   | 'DAMAGE'
   | 'FINE'
+  | 'REGISTRATION_CERTIFICATE'
   | 'OTHER';
 
 export type DocumentExtractionAction =

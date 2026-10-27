@@ -1074,6 +1074,17 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const applyType = documentType as ApplyDocumentExtractionType;
 
+    if (
+      applyType === 'REGISTRATION_CERTIFICATE' &&
+      !this.docConfig.zb1RegistrationCertificateExtractionEnabled
+    ) {
+      throw new BadRequestException({
+        message:
+          'Zulassungsbescheinigung Teil I (REGISTRATION_CERTIFICATE) extraction is disabled in this environment',
+        code: 'ZB1_REGISTRATION_CERTIFICATE_DISABLED',
+      });
+    }
+
     if (record.status === 'APPLIED' || record.status === 'PARTIALLY_APPLIED') {
       throw new BadRequestException('Cannot change document type after data has been applied');
     }
