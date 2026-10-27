@@ -2,10 +2,19 @@ import { createHash } from 'crypto';
 import { TIRE_HEALTH_CONFIG } from '../tire-health.config';
 
 /**
- * Tire Wear V3 Phase P3A — distance prior only (β_dyn = 0).
+ * Tire Wear V3 — distance prior + optional bounded DS4 severity (β_dyn = 0 until calibrated).
  * Tunables live here; do not scatter across services.
  */
-export const TIRE_WEAR_V3_PRIOR_MODEL_VERSION = 'tire-wear-v3-prior-0.1.0';
+export const TIRE_WEAR_V3_PRIOR_LEGACY_MODEL_VERSION = 'tire-wear-v3-prior-0.1.0';
+
+export const TIRE_WEAR_V3_PRIOR_MODEL_VERSION = 'tire-wear-v3-prior-0.2.0';
+
+/** Active default for {@link TIRE_WEAR_V3_PRIOR_MODEL_VERSION} (posterior intervals). */
+export const TIRE_WEAR_V3_PRIOR_USE_POSTERIOR_RATE_FUSION = true;
+
+export function usePosteriorRateFusionForModelVersion(modelVersion: string): boolean {
+  return modelVersion !== TIRE_WEAR_V3_PRIOR_LEGACY_MODEL_VERSION;
+}
 
 /** DS4 / M3 dynamic wear coefficient — fixed at 0 for P3A. */
 export const TIRE_WEAR_V3_PRIOR_DYNAMIC_BETA = 0;
@@ -44,6 +53,13 @@ export const TIRE_WEAR_V3_PRIOR_CONFIG = {
    * treat the series as contradictory for rate calibration (prior-only).
    */
   maxResidualRmseFractionOfTreadSpan: 0.4,
+  /** Reference M3 sum (J/kg/km) for relative severity; not a wear coefficient. */
+  severityReferenceM3JPerKgPerKm: 15,
+  dynamicFactorBounds: { min: 0.85, max: 1.3 },
+  /** Allow f_dyn < 1 only when DS4 distance coverage meets this threshold. */
+  dynamicDownwardMinCoverage: 0.9,
+  measuredFreshKm: 500,
+  odometerRelativeSigma: 0.03,
 } as const;
 
 export type TireWearV3PriorConfig = typeof TIRE_WEAR_V3_PRIOR_CONFIG;
@@ -62,6 +78,11 @@ export function computeTireWearV3PriorConfigHash(
     defaultMeasurementUncertaintyMm: config.defaultMeasurementUncertaintyMm,
     maxResidualRmseFractionOfTreadSpan: config.maxResidualRmseFractionOfTreadSpan,
     reference3SigmaSpacingExampleKm: config.reference3SigmaSpacingExampleKm,
+    severityReferenceM3JPerKgPerKm: config.severityReferenceM3JPerKgPerKm,
+    dynamicFactorBounds: config.dynamicFactorBounds,
+    dynamicDownwardMinCoverage: config.dynamicDownwardMinCoverage,
+    measuredFreshKm: config.measuredFreshKm,
+    usePosteriorRateFusion: TIRE_WEAR_V3_PRIOR_USE_POSTERIOR_RATE_FUSION,
     unknownLifeKmSpan: config.unknownLifeKmSpan,
     replaceThresholds: TIRE_HEALTH_CONFIG.replaceThresholds,
     expectedLifeKm: TIRE_HEALTH_CONFIG.expectedLifeKm,

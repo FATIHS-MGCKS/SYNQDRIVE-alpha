@@ -29,6 +29,7 @@ describe('TireWearV3PriorService', () => {
     findLatestShadowRow: jest.fn(),
     insertShadowRow: jest.fn(),
     insertShadowRowIdempotent: jest.fn(),
+    findLatestDs4ShadowEvidenceByLedgerIds: jest.fn().mockResolvedValue([]),
   };
 
   const configService = {
@@ -86,6 +87,7 @@ describe('TireWearV3PriorService', () => {
     mockAnchoredSetup();
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([
       {
+        id: 'led-1',
         tripId: 't1',
         distanceKm: 100,
         revisionNumber: 1,
@@ -93,6 +95,7 @@ describe('TireWearV3PriorService', () => {
         tripStartedAt: new Date('2026-02-01'),
       },
       {
+        id: 'led-2',
         tripId: 't2',
         distanceKm: 50,
         revisionNumber: 2,
@@ -150,6 +153,7 @@ describe('TireWearV3PriorService', () => {
     mockAnchoredSetup();
     prisma.tireTripUsageLedger.findMany.mockResolvedValue([
       {
+        id: 'led-1',
         tripId: 't1',
         distanceKm: 5000,
         revisionNumber: 1,
