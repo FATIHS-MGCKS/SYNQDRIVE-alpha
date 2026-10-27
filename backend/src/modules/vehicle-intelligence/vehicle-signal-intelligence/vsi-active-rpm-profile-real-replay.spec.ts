@@ -73,6 +73,20 @@ describe('vsi-active-rpm-profile real production interval replay', () => {
     expect(resolution?.activeProfile).toBe('RPM_1HZ');
   });
 
+  it('replay fixture intervals are clipped to trip duration when building evidence', () => {
+    let overflowTrips = 0;
+    for (const key of ['tiguan', 'audi'] as const) {
+      for (const trip of fixture[key].trips) {
+        const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip]);
+        const lastTs = evidence.points.at(-1)?.recordedAtMs ?? trip.startMs;
+        if (lastTs > trip.endMs) {
+          overflowTrips += 1;
+        }
+      }
+    }
+    expect(overflowTrips).toBe(0);
+  });
+
   it('median≈2s Tiguan historical trips are not classified as RPM_1HZ per trip', () => {
     const phase = tripsInDateRange(fixture.tiguan.trips, '2026-10-13', '2026-10-22');
     const med2 = phase.filter((t) => {

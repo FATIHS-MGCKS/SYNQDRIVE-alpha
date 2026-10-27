@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
 import { areVsiProfileSemanticEvaluationsEquivalent } from './vsi-profile-fingerprint.util';
+import type { VsiSignalCadenceIntelligenceV2 } from './vsi-profile-cadence.types';
 
 /** Row tokens read inside the transaction immediately before an operational-only CAS write. */
 export type VsiOperationalProfileRefreshCasRow = {
@@ -57,6 +58,30 @@ function maxIsoTimestamp(a: string | null, b: string | null): string | null {
   return aMs >= bMs ? a : b;
 }
 
+/**
+ * When cadence semantic identity is unchanged, refresh operational cadence evidence
+ * (e.g. activeRpmProfile.evaluatedTripIds) from the newer evaluation.
+ */
+export function mergeOperationalCadenceIntelligence(
+  persisted: VsiSignalCadenceIntelligenceV2 | undefined,
+  incoming: VsiSignalCadenceIntelligenceV2 | undefined,
+): VsiSignalCadenceIntelligenceV2 | undefined {
+  if (!incoming) {
+    return persisted;
+  }
+  if (!persisted) {
+    return incoming;
+  }
+  if (
+    !persisted.cadenceSemanticFingerprint ||
+    !incoming.cadenceSemanticFingerprint ||
+    persisted.cadenceSemanticFingerprint !== incoming.cadenceSemanticFingerprint
+  ) {
+    return persisted;
+  }
+  return incoming;
+}
+
 export function mergeOperationalSignalSnapshots(
   persistedSignals: readonly VsiProfileSignalFingerprintV1[],
   incomingSignals: readonly VsiProfileSignalFingerprintV1[],
@@ -69,14 +94,22 @@ export function mergeOperationalSignalSnapshots(
     if (!incoming) {
       return persistedSignal;
     }
+    let next: VsiProfileSignalFingerprintV1 = persistedSignal;
     const lastProviderFetchAt = maxIsoTimestamp(
       persistedSignal.lastProviderFetchAt,
       incoming.lastProviderFetchAt,
     );
-    if (lastProviderFetchAt === persistedSignal.lastProviderFetchAt) {
-      return persistedSignal;
+    if (lastProviderFetchAt !== persistedSignal.lastProviderFetchAt) {
+      next = { ...next, lastProviderFetchAt };
     }
-    return { ...persistedSignal, lastProviderFetchAt };
+    const cadenceIntelligence = mergeOperationalCadenceIntelligence(
+      persistedSignal.cadenceIntelligence,
+      incoming.cadenceIntelligence,
+    );
+    if (cadenceIntelligence !== persistedSignal.cadenceIntelligence) {
+      next = { ...next, cadenceIntelligence };
+    }
+    return next;
   });
 }
 

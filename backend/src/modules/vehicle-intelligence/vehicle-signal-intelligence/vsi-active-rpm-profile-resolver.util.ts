@@ -371,8 +371,11 @@ export function buildRpmEvidenceFromIntervalReplayTrips(
     let ts = trip.startMs;
     points.push({ recordedAtMs: ts, value: 1800 });
     for (const gapSec of trip.intervalsSec) {
-      ts += gapSec * 1000;
-      if (ts > trip.endMs) break;
+      const nextTs = ts + gapSec * 1000;
+      if (nextTs > trip.endMs) {
+        break;
+      }
+      ts = nextTs;
       points.push({ recordedAtMs: ts, value: 1800 });
     }
   }
