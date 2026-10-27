@@ -99,7 +99,10 @@ export class InitializeBrakeHealthDto {
   @IsOptional() @IsIn(BRAKE_SERVICE_SOURCES as unknown as string[])
   source?: (typeof BRAKE_SERVICE_SOURCES)[number];
 
-  /** When true, pad/disc mm values are persisted as workshop measurements (not AI/spec guesses). */
+  /**
+   * Ignored for MEASURED evidence on initialize — use POST /brake-health/service with nested `measured`.
+   * Kept for API compatibility only.
+   */
   @IsOptional() @IsBoolean()
   measurementConfirmed?: boolean;
 }

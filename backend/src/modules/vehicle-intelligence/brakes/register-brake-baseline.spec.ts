@@ -106,24 +106,36 @@ describe('register-brake-baseline', () => {
       expect(registrationBrakeMeasuredSnapshot({ condition: 'NEW' })).toBeUndefined();
     });
 
-    it('maps confirmed pad and disc nominal fields only when workshop confirmed', () => {
+    it('maps explicit measured mm only when workshop confirmed', () => {
       expect(
         registrationBrakeMeasuredSnapshot({
           workshopMeasurementConfirmed: true,
-          frontPadThickness: 10,
-          frontDiscNominalThicknessMm: 28,
+          frontPadMeasuredMm: 9.2,
+          frontDiscMeasuredMm: 24.5,
         }),
       ).toEqual({
-        frontPadMm: 10,
-        frontDiscMm: 28,
+        frontPadMm: 9.2,
+        frontDiscMm: 24.5,
       });
     });
 
     it('returns undefined for pad/disc without workshop confirmation', () => {
       expect(
         registrationBrakeMeasuredSnapshot({
+          frontPadMeasuredMm: 10,
+          frontDiscMeasuredMm: 28,
+        }),
+      ).toBeUndefined();
+    });
+
+    it('does not promote nominal pad or disc thickness to measured snapshot', () => {
+      expect(
+        registrationBrakeMeasuredSnapshot({
+          workshopMeasurementConfirmed: true,
           frontPadThickness: 10,
+          frontPadNominalThicknessMm: 12,
           frontDiscNominalThicknessMm: 28,
+          rearRotorWidth: 30,
         }),
       ).toBeUndefined();
     });
@@ -132,7 +144,7 @@ describe('register-brake-baseline', () => {
       expect(
         registrationBrakeMeasuredSnapshot({
           workshopMeasurementConfirmed: true,
-          frontPadThickness: 10,
+          frontPadMeasuredMm: 10,
           rearRotorWidth: 28,
         }),
       ).toEqual({

@@ -135,7 +135,22 @@ describe('brake health regression matrix', () => {
   });
 
   describe('TC02 registration_measured', () => {
-    it('initializes measured anchors when registration includes pad thickness', async () => {
+    it('initializes measured anchors only with workshop-confirmed explicit measured mm', async () => {
+      const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 2500 });
+      const init = await h.simulateRegisterFromDimoBrakes({
+        condition: 'NEW',
+        odometerKm: 1500,
+        workshopMeasurementConfirmed: true,
+        frontPadMeasuredMm: 10.5,
+        rearPadMeasuredMm: 10.2,
+      });
+      expect(init?.initialized).toBe(true);
+      expect(h.store.brakeHealthCurrent.get(h.vehicleId)?.anchorValidationStatus).toBe(
+        'measured_anchor',
+      );
+    });
+
+    it('pad thickness without workshop measured fields stays spec_fallback_anchor', async () => {
       const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 2500 });
       const init = await h.simulateRegisterFromDimoBrakes({
         condition: 'NEW',
@@ -145,7 +160,7 @@ describe('brake health regression matrix', () => {
       });
       expect(init?.initialized).toBe(true);
       expect(h.store.brakeHealthCurrent.get(h.vehicleId)?.anchorValidationStatus).toBe(
-        'measured_anchor',
+        'spec_fallback_anchor',
       );
     });
   });

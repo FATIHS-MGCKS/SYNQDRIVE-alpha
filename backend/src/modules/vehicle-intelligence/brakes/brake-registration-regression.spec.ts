@@ -8,7 +8,7 @@ function createBrakeRegistrationHarness(
 
 describe('Brake registration initialization regression', () => {
   describe('register-from-dimo pipeline', () => {
-    it('1) NEW + odometer + measured pad values → initialized GOOD with measured evidence', async () => {
+    it('1) NEW + odometer + pad thickness only → documented baseline (not MEASURED)', async () => {
       const h = createBrakeRegistrationHarness({ latestStateOdometerKm: 2500 });
       const init = await h.simulateRegisterFromDimoBrakes({
         condition: 'NEW',
@@ -22,21 +22,38 @@ describe('Brake registration initialization regression', () => {
       expect(init?.initialized).toBe(true);
       const current = h.store.brakeHealthCurrent.get(h.vehicleId);
       expect(current?.isInitialized).toBe(true);
-      expect(current?.anchorValidationStatus).toBe('measured_anchor');
-      expect(current?.stateClass).toBe('MEASURED');
+      expect(current?.anchorValidationStatus).toBe('spec_fallback_anchor');
+      expect(current?.stateClass).toBe('ESTIMATED');
 
       const summary = await h.brakeHealth.getSummary(h.vehicleId);
       expect(summary.isInitialized).toBe(true);
       expect(summary.overallCondition).toBe('GOOD');
-      expect(summary.dataBasis).toBe('MEASURED');
+      expect(summary.dataBasis).toBe('DOCUMENTED');
 
       const rental = h.evaluateBrakes(summary) as { state: string; evidence_type: string };
       expect(rental.state).toBe('good');
-      expect(rental.evidence_type).toBe('measured');
+      expect(rental.evidence_type).toBe('document');
+
+      expect(h.store.brakeEvidence.filter((e) => e.measuredPadMm != null)).toHaveLength(0);
+    });
+
+    it('1b) workshop-confirmed explicit measured mm → MEASURED evidence', async () => {
+      const h = createBrakeRegistrationHarness({ latestStateOdometerKm: 2500 });
+      const init = await h.simulateRegisterFromDimoBrakes({
+        condition: 'NEW',
+        odometerKm: 1500,
+        workshopMeasurementConfirmed: true,
+        frontPadMeasuredMm: 10.5,
+        rearPadMeasuredMm: 10.2,
+      });
+
+      expect(init?.initialized).toBe(true);
+      const current = h.store.brakeHealthCurrent.get(h.vehicleId);
+      expect(current?.anchorValidationStatus).toBe('measured_anchor');
+      expect(current?.stateClass).toBe('MEASURED');
 
       const measuredEvidence = h.store.brakeEvidence.filter((e) => e.measuredPadMm != null);
       expect(measuredEvidence.length).toBeGreaterThan(0);
-      expect(measuredEvidence.every((e) => e.source === 'MANUAL_MEASUREMENT')).toBe(true);
     });
 
     it('2) NEW + odometer without measured mm → documented baseline, not MEASURED', async () => {

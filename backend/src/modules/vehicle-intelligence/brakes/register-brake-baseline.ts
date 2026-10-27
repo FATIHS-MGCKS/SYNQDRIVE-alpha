@@ -31,6 +31,11 @@ export interface RegistrationBrakeManualSpec {
   userConfirmedBy?: string | null;
   /** True only when the operator confirms a real workshop measurement (not AI/spec). */
   workshopMeasurementConfirmed?: boolean | null;
+  /** Explicit workshop measurements — never inferred from nominal/spec fields. */
+  frontPadMeasuredMm?: number | null;
+  rearPadMeasuredMm?: number | null;
+  frontDiscMeasuredMm?: number | null;
+  rearDiscMeasuredMm?: number | null;
 }
 
 const NUMERIC_BRAKE_FIELDS = [
@@ -164,12 +169,10 @@ export function normalizeRegistrationBrakeCondition(
 
 export function hasRegistrationBrakeMeasurements(brakes: RegistrationBrakeManualSpec): boolean {
   return (
-    toPositiveNumber(brakes.frontPadThickness) != null ||
-    toPositiveNumber(brakes.frontPadNominalThicknessMm) != null ||
-    toPositiveNumber(brakes.rearPadThickness) != null ||
-    toPositiveNumber(brakes.rearPadNominalThicknessMm) != null ||
-    toPositiveNumber(brakes.frontDiscNominalThicknessMm) != null ||
-    toPositiveNumber(brakes.rearDiscNominalThicknessMm) != null
+    toPositiveNumber(brakes.frontPadMeasuredMm) != null ||
+    toPositiveNumber(brakes.rearPadMeasuredMm) != null ||
+    toPositiveNumber(brakes.frontDiscMeasuredMm) != null ||
+    toPositiveNumber(brakes.rearDiscMeasuredMm) != null
   );
 }
 
@@ -230,14 +233,10 @@ export function registrationBrakeMeasuredSnapshot(
   if (brakes.workshopMeasurementConfirmed !== true) {
     return undefined;
   }
-  const frontPadMm =
-    toPositiveNumber(brakes.frontPadNominalThicknessMm) ??
-    toPositiveNumber(brakes.frontPadThickness);
-  const rearPadMm =
-    toPositiveNumber(brakes.rearPadNominalThicknessMm) ??
-    toPositiveNumber(brakes.rearPadThickness);
-  const frontDiscMm = toPositiveNumber(brakes.frontDiscNominalThicknessMm);
-  const rearDiscMm = toPositiveNumber(brakes.rearDiscNominalThicknessMm);
+  const frontPadMm = toPositiveNumber(brakes.frontPadMeasuredMm);
+  const rearPadMm = toPositiveNumber(brakes.rearPadMeasuredMm);
+  const frontDiscMm = toPositiveNumber(brakes.frontDiscMeasuredMm);
+  const rearDiscMm = toPositiveNumber(brakes.rearDiscMeasuredMm);
   if (frontPadMm == null && rearPadMm == null && frontDiscMm == null && rearDiscMm == null) {
     return undefined;
   }

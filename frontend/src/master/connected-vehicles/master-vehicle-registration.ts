@@ -238,6 +238,10 @@ type ManualBrakePayload = {
   frontRotorWidth?: number | null;
   rearRotorWidth?: number | null;
   workshopMeasurementConfirmed?: boolean | null;
+  frontPadMeasuredMm?: number | null;
+  rearPadMeasuredMm?: number | null;
+  frontDiscMeasuredMm?: number | null;
+  rearDiscMeasuredMm?: number | null;
 };
 type ManualBatteryPayload = {
   batteryType?: string | null;
@@ -309,16 +313,21 @@ export async function applyManualBaselinesAfterCreate(
 
   const brakes = manualSpecs.brakes as ManualBrakePayload | undefined;
   if (brakes?.workshopMeasurementConfirmed === true) {
-    const hasMeasuredPad =
-      brakes.frontPadThickness != null || brakes.rearPadThickness != null;
-    if (hasMeasuredPad) {
+    const measured = {
+      frontPadMm: brakes.frontPadMeasuredMm ?? undefined,
+      rearPadMm: brakes.rearPadMeasuredMm ?? undefined,
+      frontDiscMm: brakes.frontDiscMeasuredMm ?? undefined,
+      rearDiscMm: brakes.rearDiscMeasuredMm ?? undefined,
+    };
+    const hasExplicitMeasured = Object.values(measured).some((v) => v != null);
+    if (hasExplicitMeasured) {
       try {
-        await api.vehicleIntelligence.brakeHealthInitialize(vehicleId, {
+        await api.vehicleIntelligence.recordBrakeService(vehicleId, {
           serviceDate: new Date().toISOString(),
           odometerKm: brakes.odometerKm ?? parseOptionalNumber(rv.mileage) ?? undefined,
-          frontPadMm: brakes.frontPadThickness ?? undefined,
-          rearPadMm: brakes.rearPadThickness ?? undefined,
-          measurementConfirmed: true,
+          source: 'manual',
+          measured,
+          initializeIfPossible: true,
         });
       } catch (error) {
         failures.push({ area: 'brakes', message: baselineErrorMessage(error) });

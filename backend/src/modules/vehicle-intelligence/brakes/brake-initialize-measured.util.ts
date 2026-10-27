@@ -8,16 +8,16 @@ export type BrakeInitializeMeasuredSnapshot = {
 };
 
 /**
- * Registration and AI flows must not classify disc/pad values as workshop measurements
- * unless the caller explicitly confirms a real measurement event.
+ * Flat `/brake-health/initialize` bodies must never infer MEASURED evidence from
+ * client `source` strings or `measurementConfirmed` flags alone.
+ *
+ * Operator workshop entry uses `POST /brake-health/service` with nested `measured`.
  */
-export function isWorkshopMeasurementAuthorized(input: {
+export function isWorkshopMeasurementAuthorized(_input: {
   measurementConfirmed?: boolean;
   source?: string | null;
 }): boolean {
-  if (input.measurementConfirmed === true) return true;
-  const source = String(input.source ?? 'manual').trim().toLowerCase();
-  return source === 'workshop' || source === 'api';
+  return false;
 }
 
 export function resolveBrakeInitializeMeasured(
