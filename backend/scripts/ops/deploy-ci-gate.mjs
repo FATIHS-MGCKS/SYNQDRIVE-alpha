@@ -1,11 +1,13 @@
 /**
  * Mandatory CI gate check before production deploy (aggregate critical jobs).
- * Uses latest check run per name (by completed_at, else started_at) across all API pages.
+ * Canonical gate: Vehicle Detail production-readiness workflow on the exact deploy SHA.
  */
 import { execFileSync } from 'node:child_process';
 
 const DEFAULT_REPO = 'FATIHS-MGCKS/SYNQDRIVE-alpha';
 export const CRITICAL_GATE_NAME = 'CI gate (all critical jobs)';
+export const CANONICAL_DEPLOY_GATE_WORKFLOW_PATH =
+  '.github/workflows/vehicle-detail-production-readiness.yml';
 
 /**
  * @param {unknown} sha
@@ -23,6 +25,48 @@ export function checkRunSortKey(iso) {
   }
   const t = Date.parse(iso);
   return Number.isFinite(t) ? t : 0;
+}
+
+/**
+ * @param {unknown} detailsUrl
+ * @returns {string | null}
+ */
+export function parseGithubActionsRunIdFromDetailsUrl(detailsUrl) {
+  if (typeof detailsUrl !== 'string' || !detailsUrl) {
+    return null;
+  }
+  const match = detailsUrl.match(/\/actions\/runs\/(\d+)(?:\/|$)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * @param {string} runId
+ * @param {{ repo?: string; ghBin?: string; execFileSync?: typeof import('node:child_process').execFileSync; workflowPathByRunId?: Record<string, string | null> }} [opts]
+ * @returns {string | null}
+ */
+export function fetchWorkflowPathForActionsRunId(runId, opts = {}) {
+  if (!runId) {
+    return null;
+  }
+  const map = opts.workflowPathByRunId;
+  if (map && Object.prototype.hasOwnProperty.call(map, runId)) {
+    const mapped = map[runId];
+    return typeof mapped === 'string' ? mapped : null;
+  }
+  const repo = opts.repo ?? DEFAULT_REPO;
+  const gh = opts.ghBin ?? 'gh';
+  const runGh = opts.execFileSync ?? execFileSync;
+  try {
+    const raw = runGh(
+      gh,
+      ['api', `repos/${repo}/actions/runs/${runId}`, '--jq', '.path'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    const path = String(raw).trim();
+    return path || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -45,16 +89,84 @@ export function latestCheckRunPerName(runs) {
 }
 
 /**
+ * @param {Array<Record<string, unknown>>} canonicalRuns
+ * @returns {Record<string, unknown> | null}
+ */
+export function selectLatestCanonicalGateRun(canonicalRuns) {
+  if (!Array.isArray(canonicalRuns) || canonicalRuns.length === 0) {
+    return null;
+  }
+  let latest = canonicalRuns[0];
+  let latestKey = checkRunSortKey(latest.completed_at) || checkRunSortKey(latest.started_at);
+  for (const run of canonicalRuns.slice(1)) {
+    const key = checkRunSortKey(run.completed_at) || checkRunSortKey(run.started_at);
+    if (key >= latestKey) {
+      latest = run;
+      latestKey = key;
+    }
+  }
+  return latest;
+}
+
+/**
  * @param {Array<Record<string, unknown>>} runs
- * @param {string} [gateName]
+ * @param {{
+ *   gateName?: string;
+ *   canonicalWorkflowPath?: string;
+ *   resolveWorkflowPathForRunId?: (runId: string, run: Record<string, unknown>) => string | null;
+ *   repo?: string;
+ *   ghBin?: string;
+ *   execFileSync?: typeof import('node:child_process').execFileSync;
+ *   workflowPathByRunId?: Record<string, string | null>;
+ * }} [opts]
  * @returns {{ ok: true; latest: Record<string, unknown> } | { ok: false; reason: string; detail?: string }}
  */
-export function evaluateCriticalGateFromCheckRuns(runs, gateName = CRITICAL_GATE_NAME) {
+export function evaluateCriticalGateFromCheckRuns(runs, opts = {}) {
+  const gateName = opts.gateName ?? CRITICAL_GATE_NAME;
+  const canonicalPath = opts.canonicalWorkflowPath ?? CANONICAL_DEPLOY_GATE_WORKFLOW_PATH;
+  const resolvePath =
+    opts.resolveWorkflowPathForRunId ??
+    ((runId) => fetchWorkflowPathForActionsRunId(runId, opts));
+
   if (!Array.isArray(runs)) {
     return { ok: false, reason: 'check_runs_not_array' };
   }
-  const latestByName = latestCheckRunPerName(runs);
-  const latest = latestByName.get(gateName);
+
+  const gateRuns = runs.filter((run) => run && run.name === gateName);
+  if (gateRuns.length === 0) {
+    return { ok: false, reason: 'critical_gate_check_run_missing' };
+  }
+
+  const canonicalRuns = [];
+  let sawUnverifiableGateRun = false;
+
+  for (const run of gateRuns) {
+    const runId = parseGithubActionsRunIdFromDetailsUrl(run.details_url);
+    if (!runId) {
+      sawUnverifiableGateRun = true;
+      continue;
+    }
+    const workflowPath = resolvePath(runId, run);
+    if (!workflowPath) {
+      sawUnverifiableGateRun = true;
+      continue;
+    }
+    if (workflowPath === canonicalPath) {
+      canonicalRuns.push(run);
+    }
+  }
+
+  if (canonicalRuns.length === 0) {
+    if (sawUnverifiableGateRun) {
+      return {
+        ok: false,
+        reason: 'canonical_gate_workflow_identity_unverifiable',
+      };
+    }
+    return { ok: false, reason: 'critical_gate_check_run_missing' };
+  }
+
+  const latest = selectLatestCanonicalGateRun(canonicalRuns);
   if (!latest) {
     return { ok: false, reason: 'critical_gate_check_run_missing' };
   }
@@ -93,7 +205,7 @@ export function buildCommitCheckRunsApiEndpoint(repo, sha, page, perPage = 100) 
 
 /**
  * @param {string} sha
- * @param {{ repo?: string; ghBin?: string; execFileSync?: typeof import('node:child_process').execFileSync }} [opts]
+ * @param {{ repo?: string; ghBin?: string; execFileSync?: typeof import('node:child_process').execFileSync; workflowPathByRunId?: Record<string, string | null> }} [opts]
  * @returns {Array<Record<string, unknown>>}
  */
 export function fetchAllCheckRunsForCommit(sha, opts = {}) {
@@ -126,7 +238,7 @@ export function fetchAllCheckRunsForCommit(sha, opts = {}) {
 
 /**
  * @param {string} sha
- * @param {{ repo?: string; ghBin?: string }} [opts]
+ * @param {{ repo?: string; ghBin?: string; execFileSync?: typeof import('node:child_process').execFileSync; workflowPathByRunId?: Record<string, string | null> }} [opts]
  * @returns {{ ok: true } | { ok: false; reason: string; detail?: string }}
  */
 export function assertCriticalCiGatePassed(sha, opts = {}) {
@@ -140,7 +252,7 @@ export function assertCriticalCiGatePassed(sha, opts = {}) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, reason: 'gh_api_failed', detail: message };
   }
-  return evaluateCriticalGateFromCheckRuns(runs);
+  return evaluateCriticalGateFromCheckRuns(runs, opts);
 }
 
 const isCli =
