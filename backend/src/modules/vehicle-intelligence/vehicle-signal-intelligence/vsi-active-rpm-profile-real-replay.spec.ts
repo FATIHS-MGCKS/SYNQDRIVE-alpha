@@ -60,33 +60,35 @@ describe('vsi-active-rpm-profile real production interval replay', () => {
     expect(resolution?.activeProfile).toBe('RPM_STANDARD');
   });
 
-  it('Tiguan transition (2026-10-23..26): UNKNOWN under contradictory evidence', () => {
+  it('Tiguan transition (2026-10-23..26): active-sequence evidence (not gap-pooled STANDARD)', () => {
     const phase = tripsInDateRange(fixture.tiguan.trips, '2026-10-23', '2026-10-26');
     const resolution = resolveRollingAtEnd(phase);
-    expect(resolution?.activeProfile).toBe('UNKNOWN');
+    expect(resolution?.activeProfile).not.toBe('RPM_STANDARD');
+    expect(['RPM_1HZ', 'UNKNOWN']).toContain(resolution?.activeProfile);
   });
 
-  it('Tiguan post-deploy neue trips (production ids): per-trip UNKNOWN under contradictory density', () => {
-    const neueIds = [
-      '29b8bb31-bc76-4b0f-a92f-c8897e982988',
-      '0e276eb6-0f53-455f-8d12-bd81d2693a4d',
-      'f1bf4ae6-fb29-4e59-b39a-f9ea17d0714f',
-    ];
-    for (const tripId of neueIds) {
-      const trip = fixture.tiguan.trips.find((t) => t.tripId === tripId);
-      expect(trip).toBeDefined();
-      const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip!]);
+  it('Tiguan 2026-10-27 production replay: sustained fast active sequences → RPM_1HZ', () => {
+    const phase = tripsInDateRange(fixture.tiguan.trips, '2026-10-27', '2026-10-27');
+    expect(phase.length).toBeGreaterThanOrEqual(3);
+    for (const trip of phase) {
+      const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip]);
       const resolution = resolveActiveRpmProfileV1(evidence);
-      expect(resolution?.tripClassifications[0]?.profile).toBe('UNKNOWN');
+      expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
       expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
-        'CONTRADICTORY_FAST_DENSITY_WITH_SPARSE_TAIL',
+        'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
       );
     }
-    const rolling = resolveRollingAtEnd(
-      neueIds.map((id) => fixture.tiguan.trips.find((t) => t.tripId === id)!),
-    );
-    expect(rolling?.activeProfile).toBe('UNKNOWN');
-    expect(rolling?.classificationDecisionCode).toBe('INSUFFICIENT_KNOWN_TRIPS_IN_WINDOW');
+    const resolution = resolveRollingAtEnd(phase);
+    expect(resolution?.activeProfile).toBe('RPM_1HZ');
+  });
+
+  it('Tiguan post-deploy representative trip 7e72506d: RPM_1HZ despite long inter-sequence gaps', () => {
+    const trip = fixture.tiguan.trips.find((t) => t.tripId.startsWith('7e72506d'));
+    expect(trip).toBeDefined();
+    const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip!]);
+    const resolution = resolveActiveRpmProfileV1(evidence);
+    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
+    expect(resolution?.tripClassifications[0]?.intervalP95Seconds).toBeGreaterThan(5);
   });
 
   it('Tiguan stable fast historical trip b373: RPM_1HZ per trip', () => {
@@ -97,7 +99,21 @@ describe('vsi-active-rpm-profile real production interval replay', () => {
     const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip!]);
     const resolution = resolveActiveRpmProfileV1(evidence);
     expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
-    expect(resolution?.tripClassifications[0]?.decisionCode).toBe('FAST_1_2S_BUCKET_PATTERN');
+    expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
+      'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
+    );
+  });
+
+  it('Audi historical trips: zero false RPM_1HZ classifications', () => {
+    let falseFast = 0;
+    for (const trip of fixture.audi.trips) {
+      const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip]);
+      const resolution = resolveActiveRpmProfileV1(evidence);
+      if (resolution?.tripClassifications[0]?.profile === 'RPM_1HZ') {
+        falseFast += 1;
+      }
+    }
+    expect(falseFast).toBe(0);
   });
 
   it('replay fixture intervals are clipped to trip duration when building evidence', () => {
