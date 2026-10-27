@@ -1,5 +1,6 @@
 import type { TireOdometerAnchorStatus } from '@prisma/client';
 import type { WheelPos } from '../tire-evidence-provenance';
+import type { TireWearV3VerificationResult } from './tire-wear-v3-verification.types';
 
 export type TireWearV3EvidenceLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'UNRATED';
 
@@ -81,6 +82,8 @@ export interface TireWearV3PriorSetupResult {
   rated: boolean;
   wheels: TireWearV3WheelProjection[];
   setupFlags: string[];
+  /** Shadow / internal only — manual verification cadence (not V2 TireHealthSummary). */
+  verification: TireWearV3VerificationResult;
 }
 
 export interface TireWearV3MeasurementPoint {

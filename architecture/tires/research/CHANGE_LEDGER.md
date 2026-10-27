@@ -99,3 +99,21 @@ Newest entry last. Never rewrite or delete entries.
 | WHY | Fable scientific model research: conservative anchored mm/km projection, measurement calibration narrowing, evidence classes, no M3→mm conversion |
 | VALIDATION | Jest `wear-v3-prior` suites (41 tests); productive V2 isolation spec unchanged |
 | NON_EFFECTS | V2 customer path; `TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED` default OFF; no DS4/S4/FSM change; no migration |
+
+### Tire Wear V3 — verification policy P1 (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Isolated `tire-wear-v3-verification` policy (4500/5000/6000 km + 6 mo UTC); `resolveV3VerificationStatus` on V3 prior setup result; ground-truth acceptance separate from posterior calibration |
+| WHY | Recurring manual tread verification design audit; shadow-only cadence without V2 measurementFreshness changes |
+| VALIDATION | Jest `tire-wear-v3-verification.spec.ts` + existing wear-v3-prior suites |
+| NON_EFFECTS | No V2 TireHealthSummary; no shadow writer; no migration; no scheduler |
+
+### Tire Wear V3 — verification per-wheel cadence fix (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Per-wheel latest accepted anchors (`latestAcceptedVerificationAnchorPerWheel`); setup `status` aggregated by precedence; rotation fail-closed (`INSUFFICIENT_EVIDENCE` per wheel); V3-only exclusion of legacy `ai_confirmed` |
+| WHY | PR #2185 safety review: setup-wide latest anchor let partial rows reset cadence for unmeasured wheels |
+| VALIDATION | Jest `tire-wear-v3-verification.spec.ts` (20 tests) + `tire-wear-v3-prior.service.spec` |
+| NON_EFFECTS | V2 provenance maps; posterior calibration gates; no migration; no deploy |

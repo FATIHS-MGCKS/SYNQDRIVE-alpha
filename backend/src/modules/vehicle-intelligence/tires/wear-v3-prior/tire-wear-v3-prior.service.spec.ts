@@ -115,6 +115,7 @@ describe('TireWearV3PriorService', () => {
     expect(result?.modelVersion).toBe(TIRE_WEAR_V3_PRIOR_MODEL_VERSION);
     expect(result?.dynamicBeta).toBe(0);
     expect(result?.wheels).toHaveLength(4);
+    expect(result?.verification.status).toBe('INSUFFICIENT_EVIDENCE');
   });
 
   it('marks UNRATED when odometer anchor is missing', async () => {
