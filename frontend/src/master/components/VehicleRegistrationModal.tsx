@@ -12,6 +12,10 @@ import {
   shouldApplyVehicleAiSpecsFromStreamResult,
 } from '../connected-vehicles/vehicle-registration-ai-stream.util';
 import {
+  buildAiFieldProvenanceFromSpecs,
+  type VehicleAiFieldProvenanceMap,
+} from '../connected-vehicles/vehicle-ai-field-provenance.util';
+import {
   isMotionPhysicsTierLockedForAiMerge,
   shouldApplyAiSpecToEmptyField,
 } from '../connected-vehicles/ai-spec-field-merge.util';
@@ -345,9 +349,11 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     if (!isOpen) return;
     if (isEditMode) {
       prefillFromExisting(existingVehicle);
+      aiFieldProvenanceRef.current = existingVehicle.aiFieldProvenance ?? {};
       setAiLoading(false);
       return;
     }
+    aiFieldProvenanceRef.current = {};
     setOrganizationId(initialOrganizationId ?? '');
     setStation('');
     setVehicleType('SEDAN');
@@ -367,6 +373,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
   const aiAbortRef = useRef<AbortController | null>(null);
   const aiGenerationRef = useRef(0);
+  const aiFieldProvenanceRef = useRef<VehicleAiFieldProvenanceMap>({});
 
   const curbWeightRef = useRef(curbWeight);
   const systemMotorPowerKwRef = useRef(systemMotorPowerKw);
@@ -569,6 +576,15 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     if (oilKm || oilMo) parts.push(`Oil: ${[oilKm && `${oilKm} km`, oilMo && `${oilMo} months`].filter(Boolean).join(' / ')}`);
     const svcSummary = parts.join('; ') || str(specs.serviceIntervals);
     if (!serviceIntervalsRef.current.trim() && svcSummary) setServiceIntervals(svcSummary);
+
+    if (provenance === 'mistral_live' || provenance === 'mistral_knowledge_only') {
+      const chunk = buildAiFieldProvenanceFromSpecs(specs, {
+        provenance,
+        variantConfidence:
+          typeof specs.variantConfidence === 'number' ? specs.variantConfidence : null,
+      });
+      aiFieldProvenanceRef.current = { ...aiFieldProvenanceRef.current, ...chunk };
+    }
   };
 
   const handleFetchAi = () => {
@@ -1097,6 +1113,10 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     oilChangeIntervalKm, oilChangeIntervalMonths,
     lastTuev, lastBokraft, lastInspection, lastOilChange, lastBrakePadChange, lastBrakeRotorChange,
     hardwareType,
+    aiFieldProvenance:
+      Object.keys(aiFieldProvenanceRef.current).length > 0
+        ? aiFieldProvenanceRef.current
+        : undefined,
   });
 
   const handleSubmit = async () => {

@@ -118,6 +118,17 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | Jest `tire-wear-v3-verification.spec.ts` (20 tests) + `tire-wear-v3-prior.service.spec` |
 | NON_EFFECTS | V2 provenance maps; posterior calibration gates; no migration; no deploy |
 
+### Commit B — AiTireSpec V2 contract, normalizer parity, provenance safety (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Tire LLM schema/normalizer key drift; AI URLs could inflate tread evidence; DIMO registration could persist raw AI tire JSON |
+| WHY | Owner Commit B: canonical AiTireSpec V2, null-not-clamp, no URL→MANUFACTURER_CONFIRMED, normalize-before-persist, preserve USER_CONFIRMED |
+| CHANGE | `ai-tire-spec-canonical.contract.ts`; tire-spec-ai schema V2; normalizer V2; `tire-evidence-provenance` URL demotion; `ai-tire-spec-registration-persist.util` for DIMO path; contract + regression Jest suites |
+| EXPECTED_EFFECT | AI tire specs and tread evidence stay conservative; DIMO writes normalized `tire_v2` payloads only |
+| VALIDATION | Jest ai-tire-spec*, tire-evidence-provenance, tire-health-regression-matrix; vehicle-spec-ai Commit B offline preflight |
+| NON_EFFECTS | Tire Wear V3 math; DS4; migrations; Intelligence modules unchanged; C6 brake hardening preserved on main |
+
 ### Tire V3 production cutover P1 — measurement ingestion & operator evidence (2026-10-27)
 
 | Event | Detail |

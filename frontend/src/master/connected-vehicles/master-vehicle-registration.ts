@@ -5,6 +5,7 @@ import {
   applySelectedHvCatalogEvidenceToVehicle,
   buildHvMasterSpecPatchFromRegisteredVehicle,
 } from './master-hv-master-specification.util';
+import type { VehicleAiFieldProvenanceMap } from './vehicle-ai-field-provenance.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -95,7 +96,11 @@ export function mapApiDimoToDimoVehicle(raw: Record<string, unknown>): DimoVehic
   };
 }
 
-export function buildVehicleExtraData(rv: RegisteredVehicle): Record<string, unknown> {
+export function buildVehicleExtraData(
+  rv: RegisteredVehicle,
+  options?: { aiFieldProvenance?: VehicleAiFieldProvenanceMap },
+): Record<string, unknown> {
+  const aiFieldProvenance = options?.aiFieldProvenance ?? rv.aiFieldProvenance;
   return {
     vehicleName: rv.vehicleName || `${rv.make} ${rv.model}`.trim(),
     licensePlate: rv.licensePlate || undefined,
@@ -120,6 +125,9 @@ export function buildVehicleExtraData(rv: RegisteredVehicle): Record<string, unk
     oilChangeIntervalKm: parseOptionalNumber(rv.oilChangeIntervalKm),
     oilChangeIntervalMonths: parseOptionalNumber(rv.oilChangeIntervalMonths),
     ...buildMasterHvCapacityExtraFields(rv),
+    ...(aiFieldProvenance && Object.keys(aiFieldProvenance).length > 0
+      ? { aiFieldProvenance }
+      : {}),
   };
 }
 
@@ -665,7 +673,9 @@ export async function persistMasterRegisteredVehicle(
     throw new Error('ORGANIZATION_REQUIRED');
   }
 
-  const extraData = buildVehicleExtraData(rv);
+  const extraData = buildVehicleExtraData(rv, {
+    aiFieldProvenance: rv.aiFieldProvenance,
+  });
   const manualSpecs = buildVehicleManualSpecs(rv);
 
   if (options.dimoVehicleId) {

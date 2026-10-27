@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-26 (P2 per-signal cadence intelligence draft) |
+| **Last updated** | 2026-10-27 (P2 active RPM profile resolver V1 draft) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -37,6 +37,7 @@
 - **DTC-01A cross-path (2026-10-24)** — When telemetry bundle lacks `obdDTCList`, materialization uses binding-matched `vehicle_dtc_source_heads` confirmed-complete timestamps + VLS operational list (`vsi-dtc-complete-evidence.util.ts`); idempotency bypass when DTC source advances without bundle timestamp change; non-blocking `DTC_CONFIRMED_COMPLETE_APPLIED` hook from `DtcSnapshotApplyService`. Does not mutate bundle JSON or create legacy source heads.
 - **Bundle vs per-signal evidence** — bundle cadence / advance counts apply only to `provider_source_timestamp` (+ `bundleAdvanceFingerprint` on evaluation). Legacy V1 bundle metrics remain excluded from semantic revision identity.
 - **P2 cadence intelligence (draft)** — `engine_rpm` materialized with bounded ClickHouse `telemetry_hf_points` + finalized trip windows; `lv_voltage` cadence from PostgreSQL `battery_measurements` with link-activation scoping. Per-signal `cadenceIntelligence` (`vsi-signal-cadence-v2`) is semantically fingerprinted via `cadenceSemanticFingerprint`; operational fetch fields and stored quality/confidence tiers are not used for cadence eligibility. RPM refresh triggered post-trip (`TRIP_FINALIZED_RPM_CADENCE`) when trip HF **points** exist in ClickHouse; `TripBehaviorEnrichmentService` requires injected `VsiSignalProfileMaterializationService` (fail-closed bootstrap, no silent skip) (new insert or idempotent re-mirror via `hasTripHfPoints`; events/windows alone insufficient); structured `VSI_POST_TRIP_RPM_CADENCE` logs. LV cadence on bounded materialization reads. No native 1 Hz / device transmission claims without authoritative proof.
+- **P2 active RPM profile resolver V1 (draft)** — `cadenceIntelligence.activeRpmProfile` (`vsi-active-rpm-profile-v1`) resolves `RPM_1HZ` / `RPM_STANDARD` / `UNKNOWN` from the last 3–5 link-scoped finalized trips (rolling, not 14 d pooled) via `vsi-active-rpm-profile-resolver.util.ts`; supermajority stability gate; documented per-trip `decisionCode`; `profileSemanticFingerprint` folded into `cadenceSemanticFingerprint` for idempotent revisions. Aggregate cadence metrics unchanged.
 - **Quality classifier** — current-observation freshness only on physical signals; `UNKNOWN` when attribution blockers; bundle historical helper separate (`classifyBundleHistoricalQuality`). No `OBSERVED_INTERMITTENT` from bundle irregularity alone.
 - **Historical loader** — latest 64 bundle rows (`orderBy desc` + chronological window), not oldest 64 (`vsi-profile-historical-evidence.loader.ts`).
 - **Registry coverage matrix** — explicit flags: catalog support, mapping, extractor, materialization, historical quality (`vsi-signal-registry-coverage.ts`).

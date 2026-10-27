@@ -23,6 +23,8 @@ on:
     branches:
       - main
       - 'cursor/legal-docs-*'
+      # Cloud Agent PR branches (cursor/<task>-b126) — pull_request may not fire on agent pushes
+      - 'cursor/*-b126'
 
 concurrency:
   group: legal-docs-ci-${{ github.ref }}

@@ -199,9 +199,6 @@ export function mapNewTreadRefSourceToEvidence(
       if (aiTireSpec?.userConfirmedSpec) {
         return TireEvidenceSource.USER_CONFIRMED;
       }
-      if (aiTireSpec?.manufacturerSourceUrl) {
-        return TireEvidenceSource.MANUFACTURER_CONFIRMED;
-      }
       return TireEvidenceSource.AI_ESTIMATED;
     case 'archetype_default':
     case 'season_fallback':
@@ -302,11 +299,7 @@ export function resolveInitialTreadEvidence(
   } else if (input.userConfirmedSpec || input.aiTireSpec?.userConfirmedSpec) {
     evidenceSource = TireEvidenceSource.USER_CONFIRMED;
   } else if (input.aiTireSpec?.newTreadDepthMm != null && !input.usedDefaultFallback) {
-    if (input.aiTireSpec.manufacturerSourceUrl) {
-      evidenceSource = TireEvidenceSource.MANUFACTURER_CONFIRMED;
-    } else {
-      evidenceSource = TireEvidenceSource.AI_ESTIMATED;
-    }
+    evidenceSource = TireEvidenceSource.AI_ESTIMATED;
   } else if (input.modelProjected) {
     evidenceSource = TireEvidenceSource.MODEL_ESTIMATED;
   } else if (input.usedDefaultFallback || (usedDefaultFallback && isDefaultTreadFallbackValue(treadMm))) {

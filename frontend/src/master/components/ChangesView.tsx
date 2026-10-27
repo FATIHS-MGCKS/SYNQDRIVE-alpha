@@ -36,6 +36,45 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-ui-pr-a-driving-marker-source-2026-10-27',
+    version: '4.9.4997',
+    title: 'Trip UI PR A — driving-event marker source resolver + DS4 replacement gate',
+    summary: [
+      'Explicit VITE_TRIP_MAP_DS4_DRIVING_MARKER_REPLACEMENT_ENABLED gate (default on when unset).',
+      'resolveTripMapDrivingMarkerSource: legacy markers when DS4 unavailable/failed/SUCCEEDED_EMPTY/suspect-only; DS4 only for verified renderable events.',
+      'Map container data-trip-driving-marker-provenance + data-trip-ds4-evidence-state for rendered marker set.',
+      'Regression tests for all source-selection states; motion speed/route layers unchanged.',
+    ],
+    reason:
+      'Close R1 split-brain: production hid legacy driving markers whenever motion shadow was active, including SUCCEEDED_EMPTY with non-zero trip KPIs.',
+    previousBehavior:
+      'useTripsRouteMap hid legacy behavior markers when isMotionMapActive (SUCCEEDED or SUCCEEDED_EMPTY + verified binding), regardless of accepted DS4 events.',
+    details:
+      'frontend: trip-map-driving-marker-source.ts, useTripsRouteMap.ts, TripsMapCard.tsx; no backend/API/scoring changes.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-27T13:10:00.000Z',
+  },
+  {
+    id: 'commit-b-vehicle-tire-ai-v2-2026-10-27',
+    version: '4.9.4996',
+    title: 'Commit B — Vehicle/Tire AI Spec V2, normalization & provenance safety',
+    summary: [
+      'Vehicle Mistral schema V2: variant identity gate, sourceNote, MHEV/HV gates preserved; offline strict-schema regression harness.',
+      'AiTireSpec canonical contract (tire_v2): schema/normalizer key parity, null-not-clamp, EU/UTQG/OE fields, intendedUse arrays.',
+      'Tire evidence: AI URLs never promote to MANUFACTURER_CONFIRMED; DIMO aiTireSpec writes normalized JSON; extraData.aiFieldProvenance on registration.',
+    ],
+    reason:
+      'Close data-quality gaps: AI values must not masquerade as manufacturer-confirmed; ambiguous variants must not emit precise variant numerics.',
+    previousBehavior:
+      'Tire schema/normalizer drift; URL strings could inflate tread provenance; raw AI tire JSON could persist from DIMO registration.',
+    details:
+      'backend: ai/vehicle-specs/*, vehicle-intelligence/tires/ai-tire-spec-*; frontend: vehicle-ai-field-provenance.util, VehicleRegistrationModal provenance capture.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-27T10:00:00.000Z',
+  },
+  {
     id: 'vsi-core-hardening-p0-2026-10-26',
     version: '4.9.4995',
     title: 'VSI P0 — scalar zero semantics + semantic profile fingerprint',

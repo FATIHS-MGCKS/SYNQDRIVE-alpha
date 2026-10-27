@@ -1,0 +1,41 @@
+import type { Prisma } from '@prisma/client';
+import { parseAiTireSpec } from './tire-health.config';
+import {
+  buildPersistedAiTireSpec,
+  normalizeAiTireSpecResult,
+  validateAiTireSpec,
+} from './ai-tire-spec-normalizer';
+import { AI_TIRE_SPEC_SCHEMA_VERSION } from './ai-tire-spec-canonical.contract';
+
+/**
+ * Normalize registration/DIMO raw aiTireSpec before persistence.
+ * Skips overwrite when an existing setup already has user-confirmed spec.
+ */
+export function buildNormalizedRegistrationAiTireSpecJson(
+  raw: Record<string, unknown>,
+  existingAiTireSpec: unknown,
+): Prisma.InputJsonValue | null {
+  const existing = parseAiTireSpec(existingAiTireSpec);
+  if (existing?.userConfirmedSpec === true) {
+    return null;
+  }
+
+  const normalized = normalizeAiTireSpecResult(raw);
+  const validation = validateAiTireSpec(normalized);
+  if (!validation.hasStructuredData) {
+    return null;
+  }
+
+  const persisted = buildPersistedAiTireSpec(normalized, {
+    jobId: null,
+    confidenceScore: normalized.confidenceScore ?? null,
+    completedAt: new Date().toISOString(),
+    specSourceType: 'ai_agent',
+    userConfirmedSpec: false,
+  });
+
+  return {
+    ...persisted,
+    schemaVersion: AI_TIRE_SPEC_SCHEMA_VERSION,
+  } as Prisma.InputJsonValue;
+}
