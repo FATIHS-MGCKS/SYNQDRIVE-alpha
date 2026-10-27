@@ -5,8 +5,11 @@ export function isVehicleIdentityP2Enabled(): boolean {
 export type VehicleIdentityProvenanceUi =
   | 'DOCUMENT_EXTRACTED'
   | 'DIMO_PROVIDER'
+  | 'MOTION_PHYSICS_REFERENCE'
+  | 'AI_ESTIMATED'
   | 'MANUAL_ENTRY'
   | 'USER_CONFIRMED'
+  | 'UNCONFIRMED'
   | 'UNAVAILABLE'
   | 'CONFLICT';
 
@@ -20,10 +23,16 @@ export function provenanceBadgeClass(
       return `${base} ${isDarkMode ? 'bg-blue-900/40 text-blue-200' : 'bg-blue-100 text-blue-800'}`;
     case 'DIMO_PROVIDER':
       return `${base} ${isDarkMode ? 'bg-violet-900/40 text-violet-200' : 'bg-violet-100 text-violet-800'}`;
+    case 'MOTION_PHYSICS_REFERENCE':
+      return `${base} ${isDarkMode ? 'bg-cyan-900/40 text-cyan-200' : 'bg-cyan-100 text-cyan-800'}`;
+    case 'AI_ESTIMATED':
+      return `${base} ${isDarkMode ? 'bg-fuchsia-900/40 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-800'}`;
     case 'MANUAL_ENTRY':
       return `${base} ${isDarkMode ? 'bg-amber-900/40 text-amber-200' : 'bg-amber-100 text-amber-800'}`;
     case 'USER_CONFIRMED':
       return `${base} ${isDarkMode ? 'bg-emerald-900/40 text-emerald-200' : 'bg-emerald-100 text-emerald-800'}`;
+    case 'UNCONFIRMED':
+      return `${base} ${isDarkMode ? 'bg-zinc-700/60 text-zinc-300' : 'bg-zinc-200 text-zinc-700'}`;
     case 'CONFLICT':
       return `${base} ${isDarkMode ? 'bg-red-900/40 text-red-200' : 'bg-red-100 text-red-800'}`;
     default:
@@ -37,10 +46,16 @@ export function provenanceLabelKey(provenance: VehicleIdentityProvenanceUi): str
       return 'master.vehicleIdentity.provenance.document';
     case 'DIMO_PROVIDER':
       return 'master.vehicleIdentity.provenance.dimo';
+    case 'MOTION_PHYSICS_REFERENCE':
+      return 'master.vehicleIdentity.provenance.motionPhysics';
+    case 'AI_ESTIMATED':
+      return 'master.vehicleIdentity.provenance.aiEstimated';
     case 'MANUAL_ENTRY':
       return 'master.vehicleIdentity.provenance.manual';
     case 'USER_CONFIRMED':
       return 'master.vehicleIdentity.provenance.confirmed';
+    case 'UNCONFIRMED':
+      return 'master.vehicleIdentity.provenance.unconfirmed';
     case 'CONFLICT':
       return 'master.vehicleIdentity.provenance.conflict';
     default:

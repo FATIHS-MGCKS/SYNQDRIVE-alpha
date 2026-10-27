@@ -10,6 +10,7 @@ describe('vehicle-identity-p2.util', () => {
 
   it('maps provenance to label keys', () => {
     expect(provenanceLabelKey('DIMO_PROVIDER')).toBe('master.vehicleIdentity.provenance.dimo');
+    expect(provenanceLabelKey('AI_ESTIMATED')).toBe('master.vehicleIdentity.provenance.aiEstimated');
     expect(provenanceLabelKey('CONFLICT')).toBe('master.vehicleIdentity.provenance.conflict');
   });
 });

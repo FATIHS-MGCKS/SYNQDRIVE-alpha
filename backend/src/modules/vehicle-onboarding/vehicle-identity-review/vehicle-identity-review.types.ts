@@ -19,8 +19,11 @@ export type VehicleIdentityReviewFieldCode = (typeof VEHICLE_IDENTITY_REVIEW_FIE
 export type VehicleIdentityValueProvenance =
   | 'DOCUMENT_EXTRACTED'
   | 'DIMO_PROVIDER'
+  | 'MOTION_PHYSICS_REFERENCE'
+  | 'AI_ESTIMATED'
   | 'MANUAL_ENTRY'
   | 'USER_CONFIRMED'
+  | 'UNCONFIRMED'
   | 'UNAVAILABLE'
   | 'CONFLICT';
 
@@ -33,7 +36,8 @@ export type VehicleIdentityReviewFieldState = {
   provenance: VehicleIdentityValueProvenance;
   extractionStatus: string | null;
   conflict: boolean;
-  dimoValue: string | number | null;
+  baselineValue: string | number | null;
+  baselineProvenance: VehicleIdentityValueProvenance;
   documentValue: string | number | null;
   manualValue: string | number | null;
   userConfirmed: boolean;
@@ -65,6 +69,14 @@ export type VehicleIdentityReviewSnapshot = {
     p2Enabled: boolean;
     zb1UploadEnabled: boolean;
     documentStoragePolicyAcknowledged: boolean;
+  };
+  suggestedManualDraft: {
+    displacementCc: number | null;
+    motorPowerKw: number | null;
+    fuelType: string | null;
+    displacementProvenance: VehicleIdentityValueProvenance;
+    motorPowerProvenance: VehicleIdentityValueProvenance;
+    fuelProvenance: VehicleIdentityValueProvenance;
   };
 };
 

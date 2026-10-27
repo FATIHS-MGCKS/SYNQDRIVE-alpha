@@ -1,10 +1,12 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
 
 /**
  * Turkish product-copy dictionary (partial).
  * Sparse native coverage — runtime uses explicit English fallback for missing keys.
  */
 export const tr = {
+  ...masterVehicleIdentityTr,
   'trips.drivingImpact.quality.partial': 'Sınırlı veri kapsamı — değerlendirme eksik olabilir.',
   'trips.drivingImpact.quality.stale': 'Değerlendirme güncel olmayabilir (yolculuk verileri değişti).',
   'trips.drivingImpact.quality.pending': 'Driving Impact değerlendirmesi devam ediyor.',

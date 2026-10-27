@@ -1,5 +1,6 @@
 import { ZB1_P2_SEMANTICS } from '@modules/document-extraction/zb1/zb1-registration-certificate.contract';
 import type { Zb1RegistrationCertificateExtract } from '@modules/document-extraction/zb1/zb1-registration-certificate.contract';
+import type { VehicleSystemBaseline } from './vehicle-identity-baseline.util';
 import type {
   VehicleIdentityManualDraftInput,
   VehicleIdentityReviewFieldCode,
@@ -8,16 +9,7 @@ import type {
   VehicleIdentityValueProvenance,
 } from './vehicle-identity-review.types';
 
-export type VehicleDimoBaseline = {
-  vin: string | null;
-  make: string | null;
-  model: string | null;
-  year: number | null;
-  fuelType: string | null;
-  /** Provider-reported motor/system power when known (kW). */
-  motorPowerKw: number | null;
-  displacementCc: number | null;
-};
+export type { VehicleSystemBaseline };
 
 function normalizeCompare(value: string | number | null | undefined): string | null {
   if (value == null) return null;
@@ -36,43 +28,61 @@ function valuesConflict(
   return na !== nb;
 }
 
+function baselineComparable(
+  provenance: VehicleIdentityValueProvenance,
+  value: string | number | null,
+): boolean {
+  return value != null && provenance !== 'UNAVAILABLE' && provenance !== 'UNCONFIRMED';
+}
+
 function resolveProvenance(input: {
   documentValue: string | number | null;
-  dimoValue: string | number | null;
+  baselineValue: string | number | null;
+  baselineProvenance: VehicleIdentityValueProvenance;
   manualValue: string | number | null;
   extractionStatus: string | null;
 }): VehicleIdentityValueProvenance {
   const hasDoc = input.documentValue != null && input.extractionStatus === 'EXTRACTED';
-  const hasDimo = input.dimoValue != null;
+  const hasBaseline = baselineComparable(input.baselineProvenance, input.baselineValue);
   const hasManual = input.manualValue != null;
-  const sources = [hasDoc, hasDimo, hasManual].filter(Boolean).length;
+  const sources = [hasDoc, hasBaseline, hasManual].filter(Boolean).length;
   if (sources === 0) return 'UNAVAILABLE';
   if (
-    (hasDoc && hasDimo && valuesConflict(input.documentValue, input.dimoValue)) ||
+    (hasDoc &&
+      hasBaseline &&
+      valuesConflict(input.documentValue, input.baselineValue)) ||
     (hasDoc && hasManual && valuesConflict(input.documentValue, input.manualValue)) ||
-    (hasDimo && hasManual && valuesConflict(input.dimoValue, input.manualValue))
+    (hasBaseline && hasManual && valuesConflict(input.baselineValue, input.manualValue))
   ) {
     return 'CONFLICT';
   }
   if (hasManual) return 'MANUAL_ENTRY';
   if (hasDoc) return 'DOCUMENT_EXTRACTED';
-  if (hasDimo) return 'DIMO_PROVIDER';
+  if (hasBaseline) return input.baselineProvenance;
   return 'UNAVAILABLE';
 }
 
 function pickDisplayValue(
   provenance: VehicleIdentityValueProvenance,
   documentValue: string | number | null,
-  dimoValue: string | number | null,
+  baselineValue: string | number | null,
   manualValue: string | number | null,
 ): string | number | null {
   if (provenance === 'MANUAL_ENTRY') return manualValue;
   if (provenance === 'DOCUMENT_EXTRACTED') return documentValue;
-  if (provenance === 'DIMO_PROVIDER') return dimoValue;
   if (provenance === 'CONFLICT') {
-    return documentValue ?? dimoValue ?? manualValue;
+    return documentValue ?? baselineValue ?? manualValue;
   }
-  return documentValue ?? dimoValue ?? manualValue;
+  if (
+    provenance === 'DIMO_PROVIDER' ||
+    provenance === 'MOTION_PHYSICS_REFERENCE' ||
+    provenance === 'USER_CONFIRMED' ||
+    provenance === 'AI_ESTIMATED' ||
+    provenance === 'UNCONFIRMED'
+  ) {
+    return baselineValue;
+  }
+  return documentValue ?? baselineValue ?? manualValue;
 }
 
 function fieldRow(input: {
@@ -80,20 +90,22 @@ function fieldRow(input: {
   documentFieldCode: string | null;
   labelKey: string;
   documentValue: string | number | null;
-  dimoValue: string | number | null;
+  baselineValue: string | number | null;
+  baselineProvenance: VehicleIdentityValueProvenance;
   manualValue: string | number | null;
   extractionStatus: string | null;
 }): VehicleIdentityReviewFieldState {
   const provenance = resolveProvenance({
     documentValue: input.documentValue,
-    dimoValue: input.dimoValue,
+    baselineValue: input.baselineValue,
+    baselineProvenance: input.baselineProvenance,
     manualValue: input.manualValue,
     extractionStatus: input.extractionStatus,
   });
   const value = pickDisplayValue(
     provenance,
     input.documentValue,
-    input.dimoValue,
+    input.baselineValue,
     input.manualValue,
   );
   return {
@@ -105,7 +117,8 @@ function fieldRow(input: {
     provenance,
     extractionStatus: input.extractionStatus,
     conflict: provenance === 'CONFLICT',
-    dimoValue: input.dimoValue,
+    baselineValue: input.baselineValue,
+    baselineProvenance: input.baselineProvenance,
     documentValue: input.documentValue,
     manualValue: input.manualValue,
     userConfirmed: false,
@@ -114,7 +127,7 @@ function fieldRow(input: {
 }
 
 export function buildVehicleIdentityReviewSnapshot(input: {
-  dimo: VehicleDimoBaseline;
+  system: VehicleSystemBaseline;
   zb1: Zb1RegistrationCertificateExtract | null;
   manual: VehicleIdentityManualDraftInput | null;
   documentExtractionId: string | null;
@@ -123,6 +136,7 @@ export function buildVehicleIdentityReviewSnapshot(input: {
 }): VehicleIdentityReviewSnapshot {
   const z = input.zb1?.fields;
   const manual = input.manual ?? {};
+  const sys = input.system;
 
   const fields: VehicleIdentityReviewFieldState[] = [
     fieldRow({
@@ -130,7 +144,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'D.1',
       labelKey: 'master.vehicleIdentity.field.d1Manufacturer',
       documentValue: z?.d1Manufacturer.value ?? null,
-      dimoValue: input.dimo.make,
+      baselineValue: sys.make.value as string | null,
+      baselineProvenance: sys.make.provenance,
       manualValue: null,
       extractionStatus: z?.d1Manufacturer.extractionStatus ?? null,
     }),
@@ -139,7 +154,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'D.3',
       labelKey: 'master.vehicleIdentity.field.d3TradeName',
       documentValue: z?.d3TradeName.value ?? null,
-      dimoValue: input.dimo.model,
+      baselineValue: sys.model.value as string | null,
+      baselineProvenance: sys.model.provenance,
       manualValue: null,
       extractionStatus: z?.d3TradeName.extractionStatus ?? null,
     }),
@@ -148,7 +164,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'D.2',
       labelKey: 'master.vehicleIdentity.field.d2TypeVariant',
       documentValue: z?.d2TypeVariantVersion.value ?? null,
-      dimoValue: null,
+      baselineValue: null,
+      baselineProvenance: 'UNAVAILABLE',
       manualValue: null,
       extractionStatus: z?.d2TypeVariantVersion.extractionStatus ?? null,
     }),
@@ -157,7 +174,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'E',
       labelKey: 'master.vehicleIdentity.field.vin',
       documentValue: z?.eVin.value ?? null,
-      dimoValue: input.dimo.vin,
+      baselineValue: sys.vin.value as string | null,
+      baselineProvenance: sys.vin.provenance,
       manualValue: null,
       extractionStatus: z?.eVin.extractionStatus ?? null,
     }),
@@ -166,7 +184,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'P.1',
       labelKey: 'master.vehicleIdentity.field.displacementCc',
       documentValue: z?.p1DisplacementCc.value ?? null,
-      dimoValue: input.dimo.displacementCc,
+      baselineValue: sys.displacementCc.value as number | null,
+      baselineProvenance: sys.displacementCc.provenance,
       manualValue: manual.displacementCc ?? null,
       extractionStatus: z?.p1DisplacementCc.extractionStatus ?? null,
     }),
@@ -175,7 +194,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'P.2',
       labelKey: 'master.vehicleIdentity.field.nominalPowerKw',
       documentValue: z?.p2NominalPowerKw.value ?? null,
-      dimoValue: input.dimo.motorPowerKw,
+      baselineValue: sys.motorPowerKw.value as number | null,
+      baselineProvenance: sys.motorPowerKw.provenance,
       manualValue: manual.motorPowerKw ?? null,
       extractionStatus: z?.p2NominalPowerKw.extractionStatus ?? null,
     }),
@@ -184,7 +204,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: 'P.3',
       labelKey: 'master.vehicleIdentity.field.fuelType',
       documentValue: z?.p3FuelOrEnergy.value ?? null,
-      dimoValue: input.dimo.fuelType,
+      baselineValue: sys.fuelType.value as string | null,
+      baselineProvenance: sys.fuelType.provenance,
       manualValue: manual.fuelType ?? null,
       extractionStatus: z?.p3FuelOrEnergy.extractionStatus ?? null,
     }),
@@ -193,7 +214,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: '2.1',
       labelKey: 'master.vehicleIdentity.field.hsn',
       documentValue: z?.hsnCode21.value ?? null,
-      dimoValue: null,
+      baselineValue: null,
+      baselineProvenance: 'UNAVAILABLE',
       manualValue: null,
       extractionStatus: z?.hsnCode21.extractionStatus ?? null,
     }),
@@ -202,7 +224,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: '2.2',
       labelKey: 'master.vehicleIdentity.field.tsn',
       documentValue: z?.tsnCode22.value ?? null,
-      dimoValue: null,
+      baselineValue: null,
+      baselineProvenance: 'UNAVAILABLE',
       manualValue: null,
       extractionStatus: z?.tsnCode22.extractionStatus ?? null,
     }),
@@ -211,7 +234,8 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: null,
       labelKey: 'master.vehicleIdentity.field.powerKind',
       documentValue: null,
-      dimoValue: null,
+      baselineValue: null,
+      baselineProvenance: 'UNAVAILABLE',
       manualValue: manual.powerKind ?? null,
       extractionStatus: null,
     }),
@@ -220,14 +244,15 @@ export function buildVehicleIdentityReviewSnapshot(input: {
       documentFieldCode: null,
       labelKey: 'master.vehicleIdentity.field.electrificationGrade',
       documentValue: null,
-      dimoValue: null,
+      baselineValue: null,
+      baselineProvenance: 'UNAVAILABLE',
       manualValue: manual.electrificationGrade ?? null,
       extractionStatus: null,
     }),
   ];
 
   const docVin = normalizeCompare(z?.eVin.value);
-  const vehicleVin = normalizeCompare(input.dimo.vin);
+  const vehicleVin = normalizeCompare(sys.vin.value);
   const vinMismatchBlocked =
     docVin != null &&
     vehicleVin != null &&
@@ -242,6 +267,25 @@ export function buildVehicleIdentityReviewSnapshot(input: {
     documentExtractionId: input.documentExtractionId,
     zb1SchemaVersion: input.zb1?.schemaVersion ?? null,
     capabilities: input.capabilities,
+    suggestedManualDraft: {
+      displacementCc:
+        sys.displacementCc.provenance !== 'UNAVAILABLE' &&
+        sys.displacementCc.provenance !== 'UNCONFIRMED'
+          ? (sys.displacementCc.value as number | null)
+          : null,
+      motorPowerKw:
+        sys.motorPowerKw.provenance !== 'UNAVAILABLE' &&
+        sys.motorPowerKw.provenance !== 'UNCONFIRMED'
+          ? (sys.motorPowerKw.value as number | null)
+          : null,
+      fuelType:
+        sys.fuelType.provenance === 'UNCONFIRMED'
+          ? (sys.fuelType.value as string | null)
+          : null,
+      displacementProvenance: sys.displacementCc.provenance,
+      motorPowerProvenance: sys.motorPowerKw.provenance,
+      fuelProvenance: sys.fuelType.provenance,
+    },
   };
 }
 

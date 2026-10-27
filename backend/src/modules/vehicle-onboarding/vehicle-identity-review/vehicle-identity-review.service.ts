@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildVehicleSystemBaseline } from './vehicle-identity-baseline.util';
 import {
   buildVehicleIdentityReviewSnapshot,
   parseZb1FromExtractionExtractedData,
-  type VehicleDimoBaseline,
 } from './vehicle-identity-reconcile.util';
 import { validateVehicleIdentityFieldConfirmations } from './vehicle-identity-confirm.util';
 import type {
@@ -61,22 +61,61 @@ export class VehicleIdentityReviewService {
     return vehicle;
   }
 
-  private dimoBaselineFromVehicle(vehicle: {
-    vin: string | null;
-    make: string | null;
-    model: string | null;
-    year: number | null;
-    fuelType: string | null;
-  }): VehicleDimoBaseline {
-    return {
+  private async buildSystemBaseline(
+    orgId: string,
+    vehicleId: string,
+    vehicle: {
+      vin: string | null;
+      make: string | null;
+      model: string | null;
+      fuelType: string | null;
+    },
+  ) {
+    const [latestState, motionReference, dimoLink] = await Promise.all([
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: { dimoTokenId: true },
+      }),
+      this.prisma.vehicleMotionPhysicsReference.findFirst({
+        where: {
+          organizationId: orgId,
+          vehicleId,
+          isActive: true,
+          supersededById: null,
+        },
+        select: {
+          systemMotorPowerKw: true,
+          source: true,
+          evidenceTier: true,
+        },
+      }),
+      this.prisma.vehicleDataSourceLink.findFirst({
+        where: {
+          vehicleId,
+          isActive: true,
+          provider: 'DIMO',
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    const hasDimoProviderLink =
+      latestState?.dimoTokenId != null || dimoLink != null;
+
+    return buildVehicleSystemBaseline({
       vin: vehicle.vin,
       make: vehicle.make,
       model: vehicle.model,
-      year: vehicle.year,
       fuelType: vehicle.fuelType ? String(vehicle.fuelType) : null,
-      motorPowerKw: null,
-      displacementCc: null,
-    };
+      hasDimoProviderLink,
+      motionReference: motionReference
+        ? {
+            systemMotorPowerKw: motionReference.systemMotorPowerKw,
+            source: motionReference.source,
+            evidenceTier: motionReference.evidenceTier,
+          }
+        : null,
+    });
   }
 
   async getReviewSnapshot(
@@ -90,6 +129,7 @@ export class VehicleIdentityReviewService {
   ) {
     this.assertP2Enabled();
     const vehicle = await this.loadVehicle(orgId, vehicleId);
+    const system = await this.buildSystemBaseline(orgId, vehicleId, vehicle);
     let zb1 = null;
     let extractionId: string | null = null;
 
@@ -122,7 +162,7 @@ export class VehicleIdentityReviewService {
     }
 
     return buildVehicleIdentityReviewSnapshot({
-      dimo: this.dimoBaselineFromVehicle(vehicle),
+      system,
       zb1,
       manual: query.manual ?? null,
       documentExtractionId: extractionId,

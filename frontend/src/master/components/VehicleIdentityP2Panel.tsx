@@ -16,8 +16,14 @@ type ReviewField = {
   provenance: VehicleIdentityProvenanceUi;
   extractionStatus: string | null;
   conflict: boolean;
-  dimoValue: string | number | null;
+  baselineValue: string | number | null;
   documentValue: string | number | null;
+};
+
+type SuggestedManualDraft = {
+  displacementCc: number | null;
+  motorPowerKw: number | null;
+  fuelType: string | null;
 };
 
 type ReviewSnapshot = {
@@ -25,6 +31,7 @@ type ReviewSnapshot = {
   vinMismatchBlocked: boolean;
   p2PowerSemanticsWarning: string;
   documentExtractionId: string | null;
+  suggestedManualDraft?: SuggestedManualDraft;
   capabilities: { p2Enabled: boolean; zb1UploadEnabled: boolean };
 };
 
@@ -32,25 +39,19 @@ type Props = {
   isDarkMode: boolean;
   organizationId: string;
   vehicleId: string;
-  dimoDisplacementCc?: number | null;
-  dimoMotorPowerKw?: number | null;
-  dimoFuelType?: string | null;
 };
 
 export function VehicleIdentityP2Panel({
   isDarkMode,
   organizationId,
   vehicleId,
-  dimoDisplacementCc,
-  dimoMotorPowerKw,
-  dimoFuelType,
 }: Props) {
   const { t } = useLanguage();
   const enabled = isVehicleIdentityP2Enabled();
 
   const [manualDisplacement, setManualDisplacement] = useState('');
   const [manualPowerKw, setManualPowerKw] = useState('');
-  const [manualFuel, setManualFuel] = useState(dimoFuelType ?? '');
+  const [manualFuel, setManualFuel] = useState('');
   const [powerKind, setPowerKind] = useState<'COMBUSTION' | 'ELECTRIC_DRIVE' | 'COMBINED_SYSTEM' | ''>('');
   const [electrificationGrade, setElectrificationGrade] = useState('');
   const [snapshot, setSnapshot] = useState<ReviewSnapshot | null>(null);
@@ -60,12 +61,6 @@ export function VehicleIdentityP2Panel({
   const [confirmedFields, setConfirmedFields] = useState<Record<string, boolean>>({});
   const [extractionId, setExtractionId] = useState<string | null>(null);
   const [validateMsg, setValidateMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (dimoDisplacementCc != null) setManualDisplacement(String(dimoDisplacementCc));
-    if (dimoMotorPowerKw != null) setManualPowerKw(String(dimoMotorPowerKw));
-    if (dimoFuelType) setManualFuel(dimoFuelType);
-  }, [dimoDisplacementCc, dimoMotorPowerKw, dimoFuelType]);
 
   const manualBody = useMemo(
     () => ({
@@ -88,7 +83,20 @@ export function VehicleIdentityP2Panel({
         manual: manualBody,
         vinMismatchAcknowledged: vinAck,
       });
-      setSnapshot(data as ReviewSnapshot);
+      const next = data as ReviewSnapshot;
+      setSnapshot(next);
+      const draft = next.suggestedManualDraft;
+      if (draft) {
+        if (draft.displacementCc != null) {
+          setManualDisplacement((prev) => (prev === '' ? String(draft.displacementCc) : prev));
+        }
+        if (draft.motorPowerKw != null) {
+          setManualPowerKw((prev) => (prev === '' ? String(draft.motorPowerKw) : prev));
+        }
+        if (draft.fuelType) {
+          setManualFuel((prev) => (prev === '' ? draft.fuelType! : prev));
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -239,7 +247,7 @@ export function VehicleIdentityP2Panel({
                   if (f) void onUpload(f);
                 }}
               />
-              REGISTRATION_CERTIFICATE
+              {t('master.vehicleIdentity.uploadRegistrationCertificate')}
             </label>
           ) : (
             <p className="text-[10px] text-muted-foreground">{t('master.vehicleIdentity.uploadDisabled')}</p>
@@ -274,9 +282,9 @@ export function VehicleIdentityP2Panel({
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-muted-foreground">
-              <th className="py-1">Field</th>
-              <th className="py-1">Value</th>
-              <th className="py-1">Source</th>
+              <th className="py-1">{t('master.vehicleIdentity.table.field')}</th>
+              <th className="py-1">{t('master.vehicleIdentity.table.value')}</th>
+              <th className="py-1">{t('master.vehicleIdentity.table.source')}</th>
               <th className="py-1">{t('master.vehicleIdentity.confirmField')}</th>
             </tr>
           </thead>

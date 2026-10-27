@@ -1440,7 +1440,6 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 isDarkMode={isDarkMode}
                 organizationId={organizationId}
                 vehicleId={existingVehicle.id}
-                dimoFuelType={fuelType}
               />
             </div>
           ) : null}
