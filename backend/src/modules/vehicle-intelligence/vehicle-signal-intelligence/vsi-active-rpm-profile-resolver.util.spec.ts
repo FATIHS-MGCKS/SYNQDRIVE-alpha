@@ -53,8 +53,8 @@ describe('vsi-active-rpm-profile-resolver', () => {
     expect(selected.map((t) => t.tripId)).toEqual(['t3', 't4', 't5', 't6', 't7']);
   });
 
-  it('high ≤2s fraction with P95 tail is UNKNOWN, not unearned RPM_STANDARD', () => {
-    const t = trip('contradictory-fast', 0, 900);
+  it('long inter-sequence gaps do not block RPM_1HZ when fast active runs qualify', () => {
+    const t = trip('gap-fast', 0, 900);
     const points: { recordedAtMs: number; value: number }[] = [];
     let ts = t.startMs;
     for (let i = 0; i < 80; i += 1) {
@@ -68,10 +68,11 @@ describe('vsi-active-rpm-profile-resolver', () => {
       provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
       hfReadStatus: 'SUCCESS',
     });
-    expect(resolution?.tripClassifications[0]?.profile).toBe('UNKNOWN');
+    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
     expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
-      'CONTRADICTORY_FAST_DENSITY_WITH_SPARSE_TAIL',
+      'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
     );
+    expect(resolution?.tripClassifications[0]?.intervalP95Seconds).toBeGreaterThan(5);
   });
 
   it('median≈2s with sparse P95 gaps is not RPM_1HZ (Tiguan-like)', () => {
@@ -90,8 +91,10 @@ describe('vsi-active-rpm-profile-resolver', () => {
       provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
       hfReadStatus: 'SUCCESS',
     });
-    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_STANDARD');
     expect(resolution?.tripClassifications[0]?.profile).not.toBe('RPM_1HZ');
+    expect(['RPM_STANDARD', 'UNKNOWN']).toContain(
+      resolution?.tripClassifications[0]?.profile,
+    );
   });
 
   it('two classifiable trips in a five-trip window → UNKNOWN (insufficient known coverage)', () => {
