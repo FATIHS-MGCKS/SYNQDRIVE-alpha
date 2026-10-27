@@ -98,8 +98,86 @@ export function validateTireMeasureStep(
       const odo = parseFloat(context.odometerKm.replace(',', '.'));
       if (!Number.isFinite(odo) || odo < 0) return 'Kilometerstand ungültig.';
     }
+    const needsOdo =
+      context.source === 'manual' || context.source === 'workshop';
+    if (needsOdo && !context.odometerKm.trim()) {
+      return 'Kilometerstand zum Messzeitpunkt ist erforderlich (V3-Nachweis).';
+    }
   }
   return null;
+}
+
+export function deriveOperatorV3EvidenceWarnings(
+  tread: OperatorTireTreadForm,
+  context: OperatorTireContextForm,
+): OperatorTirePlausibilityWarning[] {
+  const warnings: OperatorTirePlausibilityWarning[] = [];
+
+  if (context.source === 'ai_confirmed') {
+    warnings.push({
+      id: 'v3-ai-source',
+      message:
+        'AI Upload / Dokument: gespeicherte Werte zählen nicht als Tire-V3-Verifikationsnachweis — Profil manuell messen oder Werkstattquelle wählen.',
+    });
+  }
+
+  const groundTruthSource = context.source === 'manual' || context.source === 'workshop';
+  if (!groundTruthSource) {
+    return warnings;
+  }
+
+  const odoTrim = context.odometerKm.trim();
+  if (!odoTrim) {
+    warnings.push({
+      id: 'v3-odo-missing',
+      message:
+        'Ohne Kilometerstand am Messzeitpunkt bleibt Tire-V3-Verifikation und Kalibrierung unzureichend (V2-Speicherung bleibt möglich).',
+    });
+    return warnings;
+  }
+
+  const explicit =
+    context.source === 'workshop' ||
+    (context.source === 'manual' && context.confirmOdometerKm);
+  if (!explicit) {
+    warnings.push({
+      id: 'v3-odo-unconfirmed',
+      message:
+        'Kilometerstand noch nicht bestätigt — für V3 wird kein expliziter Odometer-Nachweis gespeichert (Telemetrie wird nicht still übernommen).',
+    });
+  }
+
+  const hasAnyTread = [tread.fl, tread.fr, tread.rl, tread.rr].some((v) => v.trim());
+  if (!hasAnyTread) {
+    warnings.push({
+      id: 'v3-no-tread',
+      message: 'Mindestens ein Radprofil ist für V3-Verifikation erforderlich.',
+    });
+  }
+
+  return warnings;
+}
+
+export function resolveOperatorOdometerSourceLabel(
+  context: OperatorTireContextForm,
+  fleetHintKm: number | null,
+): string {
+  if (context.source === 'workshop') {
+    return 'Werkstattbericht (explizit)';
+  }
+  if (context.confirmOdometerKm && context.odometerKm.trim()) {
+    return 'Manuell bestätigt am Messzeitpunkt';
+  }
+  if (context.odometerKm.trim() && fleetHintKm != null) {
+    const entered = parseFloat(context.odometerKm.replace(',', '.'));
+    if (Number.isFinite(entered) && Math.round(entered) === Math.round(fleetHintKm)) {
+      return 'Vorausgefüllt aus Fahrzeugdaten — bitte bestätigen';
+    }
+  }
+  if (context.odometerKm.trim()) {
+    return 'Eingabe ohne Bestätigung';
+  }
+  return 'Kein Kilometerstand';
 }
 
 export function extractTreadFromAiReviewFields(

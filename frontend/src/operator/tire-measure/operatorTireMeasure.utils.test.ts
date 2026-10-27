@@ -2,11 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
   AXLE_DIFF_WARN_MM,
   LEGAL_MIN_MM,
+  deriveOperatorV3EvidenceWarnings,
   deriveTirePlausibilityWarnings,
   extractTreadFromAiReviewFields,
   parseTreadMm,
   validateTireMeasureStep,
 } from './operatorTireMeasure.utils';
+import type { OperatorTireContextForm } from './operatorTireMeasure.types';
+
+const baseContext: OperatorTireContextForm = {
+  measuredAt: '',
+  odometerKm: '',
+  confirmOdometerKm: false,
+  source: 'manual',
+  workshopName: '',
+  note: '',
+};
 
 describe('operator tire measurement utils', () => {
   it('parses tread depth with comma decimals', () => {
@@ -28,12 +39,34 @@ describe('operator tire measurement utils', () => {
   });
 
   it('requires at least one tread value on tread step', () => {
-    expect(validateTireMeasureStep('tread', { fl: '', fr: '', rl: '', rr: '' }, { measuredAt: '', odometerKm: '' })).toContain(
-      'Profiltiefe',
-    );
     expect(
-      validateTireMeasureStep('tread', { fl: '4', fr: '', rl: '', rr: '' }, { measuredAt: '', odometerKm: '' }),
+      validateTireMeasureStep('tread', { fl: '', fr: '', rl: '', rr: '' }, baseContext),
+    ).toContain('Profiltiefe');
+    expect(
+      validateTireMeasureStep('tread', { fl: '4', fr: '', rl: '', rr: '' }, baseContext),
     ).toBeNull();
+  });
+
+  it('warns on V3 insufficient odometer without blocking ai_confirmed source', () => {
+    expect(
+      validateTireMeasureStep('context', { fl: '4', fr: '', rl: '', rr: '' }, {
+        ...baseContext,
+        source: 'ai_confirmed',
+      }),
+    ).toBeNull();
+    const warnings = deriveOperatorV3EvidenceWarnings(
+      { fl: '4', fr: '', rl: '', rr: '' },
+      { ...baseContext, source: 'ai_confirmed' },
+    );
+    expect(warnings.some((w) => w.id === 'v3-ai-source')).toBe(true);
+  });
+
+  it('warns when manual odometer is not confirmed for V3', () => {
+    const warnings = deriveOperatorV3EvidenceWarnings(
+      { fl: '4', fr: '', rl: '', rr: '' },
+      { ...baseContext, odometerKm: '12000' },
+    );
+    expect(warnings.some((w) => w.id === 'v3-odo-unconfirmed')).toBe(true);
   });
 
   it('extracts tread depths from AI review fields', () => {

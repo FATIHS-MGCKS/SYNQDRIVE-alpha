@@ -154,6 +154,9 @@ export class AddTireMeasurementDto {
 
   @IsOptional() @IsString() @MaxLength(160)
   workshopName?: string;
+
+  @IsOptional() @IsBoolean()
+  manualConfirmOdometer?: boolean;
 }
 
 /** Calibration variant — `source` defaults to 'calibration' in the controller. */
@@ -181,6 +184,12 @@ export class TireHealthMeasurementDto {
 
   @IsOptional() @IsString() @MaxLength(160)
   workshopName?: string;
+
+  @IsOptional() @IsString()
+  measuredAt?: string;
+
+  @IsOptional() @IsBoolean()
+  manualConfirmOdometer?: boolean;
 }
 
 // ── Rotation ────────────────────────────────────────────────────────────────────

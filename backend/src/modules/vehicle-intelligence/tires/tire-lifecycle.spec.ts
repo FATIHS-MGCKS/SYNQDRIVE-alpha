@@ -264,6 +264,7 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
     });
 
     const result = await svc.replaceTires({
@@ -295,6 +296,7 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
     });
 
     await svc.replaceTires({
@@ -318,6 +320,7 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
     });
 
     await svc.replaceTires({
@@ -358,6 +361,7 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
     });
 
     await svc.rotateTires(VEHICLE_ID, { template: 'front_to_rear' });
@@ -419,6 +423,7 @@ describe('TireLifecycleService business logic', () => {
       measurement: { id: 'm1' } as any,
       kFactors: null,
       source: 'calibration',
+      v3Ingestion: null,
     });
 
     await svc.replaceTires({

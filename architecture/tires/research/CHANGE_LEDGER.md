@@ -117,3 +117,15 @@ Newest entry last. Never rewrite or delete entries.
 | WHY | PR #2185 safety review: setup-wide latest anchor let partial rows reset cadence for unmeasured wheels |
 | VALIDATION | Jest `tire-wear-v3-verification.spec.ts` (20 tests) + `tire-wear-v3-prior.service.spec` |
 | NON_EFFECTS | V2 provenance maps; posterior calibration gates; no migration; no deploy |
+
+### Tire V3 production cutover P1 — measurement ingestion & operator evidence (2026-10-27)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Measurements often persisted with `odometer_at_measurement` NULL; operator flow did not distinguish explicit vs telemetry odometer for V3 |
+| WHY | Production cutover prep: ground-truth ingestion, explicit odometer evidence, V3 recompute hook after lifecycle save without V2/customer/shadow-writer changes |
+| CHANGE | `tire-measurement-v3-ingestion.ts`; `TireLifecycleService.recordMeasurement` mount-period validation, explicit vs inferred odometer persistence, post-save `computeForSetup({ persistShadow: false })` + `v3Ingestion` assessment; OperatorTireMeasureFlow odometer confirm + V3 warnings; DTO `manualConfirmOdometer` |
+| EXPECTED_EFFECT | New measurements can feed V3 verification policy when odometer explicitly confirmed; insufficient evidence returns operator-visible warnings; V2 kFactor/recalculate unchanged |
+| VALIDATION | Jest `tire-measurement-v3-ingestion.spec.ts`, `tire-lifecycle-record-measurement-v3.spec.ts`, `operatorTireMeasure.utils.test.ts` |
+| NON_EFFECTS | No migration; shadow writer OFF; no scheduler; no production backfill; Health quick-measure still may auto-confirm odometer when `odometerKm` sent (V2-compat) |
+| EVIDENCE | Read-only fleet odometer audit (Tiguan/Tesla/Audi/Arteon): NULL measurement odometers + `mileage_km` vs install anchor retrograde flags documented in agent artifacts |

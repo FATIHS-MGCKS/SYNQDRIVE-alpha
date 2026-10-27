@@ -20,6 +20,8 @@ export interface OperatorTireTreadForm {
 export interface OperatorTireContextForm {
   measuredAt: string;
   odometerKm: string;
+  /** Operator attests odometer at measurement time (required for V3 ground-truth evidence). */
+  confirmOdometerKm: boolean;
   source: OperatorTireMeasureSource;
   workshopName: string;
   note: string;
