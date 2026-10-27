@@ -40,11 +40,13 @@ describe('vehicle-spec-ai.plausibility', () => {
     expect(specs.curbWeightKg).toBeNull();
   });
 
-  it('fills variant assumption when motion fields present', () => {
+  it('does not synthesize variant assumption when motion fields present', () => {
     const { specs } = applyVehicleSpecMotionPlausibility(
       { systemMotorPowerKw: 150, curbWeightKg: 1800 },
       { make: 'VW', model: 'ID.4', year: 2023 },
     );
-    expect(specs.variantAssumption).toMatch(/ID\.4/);
+    expect(specs.variantAssumption == null || String(specs.variantAssumption).trim() === '').toBe(
+      true,
+    );
   });
 });

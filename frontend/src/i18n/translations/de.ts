@@ -63,6 +63,7 @@ import { masterPlatformOpsDiS4De } from './master.platformOps.diS4.de';
 import { batteryV2HvInspectionDE } from './battery-v2-hv-inspection.de';
 import { masterPhysicalDeviceInventoryDe } from './master.physicalDeviceInventory.de';
 import { masterMotionPhysicsDe } from './master.motionPhysics.de';
+import { masterRegistrationBrakeDe } from './master.registration.brake.de';
 import { masterCvTechnicalSpecsDe } from './master.cv.technicalSpecs.de';
 
 export const de: Record<TranslationKey, string> = {
@@ -5968,6 +5969,7 @@ export const de: Record<TranslationKey, string> = {
   ...masterPlatformOpsDiS4De,
   ...masterPhysicalDeviceInventoryDe,
   ...masterMotionPhysicsDe,
+  ...masterRegistrationBrakeDe,
   ...masterCvTechnicalSpecsDe,
   ...batteryV2HvInspectionDE,
 } satisfies CompleteTranslationDictionary;

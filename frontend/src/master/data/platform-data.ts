@@ -114,6 +114,7 @@ export interface RegisteredVehicle {
   hvBatteryCapacityKwh: string;
   tankCapacityLiters?: string;
   hvBatteryPresent?: string;
+  electrificationLevel?: string;
   hvBatteryChemistry?: string;
   hvBatteryCellFormat?: string;
   hvBatteryGrossCapacityKwh?: string;

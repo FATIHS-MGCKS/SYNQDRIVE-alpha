@@ -29,6 +29,8 @@ export interface RegistrationBrakeManualSpec {
   sourceConfidence?: number | null;
   userConfirmedAt?: string | null;
   userConfirmedBy?: string | null;
+  /** True only when the operator confirms a real workshop measurement (not AI/spec). */
+  workshopMeasurementConfirmed?: boolean | null;
 }
 
 const NUMERIC_BRAKE_FIELDS = [
@@ -225,6 +227,9 @@ export function registrationBrakeMeasuredSnapshot(
   frontDiscMm?: number;
   rearDiscMm?: number;
 } | undefined {
+  if (brakes.workshopMeasurementConfirmed !== true) {
+    return undefined;
+  }
   const frontPadMm =
     toPositiveNumber(brakes.frontPadNominalThicknessMm) ??
     toPositiveNumber(brakes.frontPadThickness);

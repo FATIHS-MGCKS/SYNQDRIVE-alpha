@@ -5,7 +5,12 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabilityDto } from '../../lib/api';
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
 import { HV_CATALOG_VARIANT_KEYS } from '../connected-vehicles/master-hv-master-specification.util';
-import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
+import { generateId } from '../data/platform-data';
+import { formatAiHvBatteryPresentForForm } from '../connected-vehicles/ai-spec-hv-boolean.util';
+import {
+  resolveVehicleAiSpecsProvenance,
+  shouldApplyVehicleAiSpecsFromStreamResult,
+} from '../connected-vehicles/vehicle-registration-ai-stream.util';
 import {
   isMotionPhysicsTierLockedForAiMerge,
   shouldApplyAiSpecToEmptyField,
@@ -150,6 +155,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   // HV Battery (EV / PHEV traction)
   const [hvBatteryCapacityKwh, setHvBatteryCapacityKwh] = useState('');
   const [hvBatteryPresent, setHvBatteryPresent] = useState('');
+  const [electrificationLevel, setElectrificationLevel] = useState('');
   const [hvBatteryChemistry, setHvBatteryChemistry] = useState('');
   const [hvBatteryCellFormat, setHvBatteryCellFormat] = useState('');
   const [hvBatteryGrossCapacityKwh, setHvBatteryGrossCapacityKwh] = useState('');
@@ -269,6 +275,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setLvBatteryChemistry(v.lvBatteryChemistry ?? '');
     setHvBatteryCapacityKwh(v.hvBatteryCapacityKwh);
     setHvBatteryPresent(v.hvBatteryPresent ?? '');
+    setElectrificationLevel(v.electrificationLevel ?? '');
     setHvBatteryChemistry(v.hvBatteryChemistry ?? '');
     setHvBatteryCellFormat(v.hvBatteryCellFormat ?? '');
     setHvBatteryGrossCapacityKwh(v.hvBatteryGrossCapacityKwh ?? '');
@@ -388,6 +395,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const batteryAmpereRef = useRef(batteryAmpere);
   const batteryVoltRef = useRef(batteryVolt);
   const drivetrainRef = useRef(drivetrain);
+  const electrificationLevelRef = useRef(electrificationLevel);
   const idleRpmRef = useRef(idleRpm);
   const maxRpmRef = useRef(maxRpm);
   const brakeForceDistributionRef = useRef(brakeForceDistribution);
@@ -431,6 +439,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   batteryAmpereRef.current = batteryAmpere;
   batteryVoltRef.current = batteryVolt;
   drivetrainRef.current = drivetrain;
+  electrificationLevelRef.current = electrificationLevel;
   idleRpmRef.current = idleRpm;
   maxRpmRef.current = maxRpm;
   brakeForceDistributionRef.current = brakeForceDistribution;
@@ -453,7 +462,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   };
 
   const applySpecs = (
-    specs: Record<string, string | number | null>,
+    specs: Record<string, string | number | boolean | null>,
     options?: { provenance?: AiSpecsApplyProvenance },
   ) => {
     const provenance = options?.provenance ?? 'local_fallback';
@@ -476,7 +485,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     maybeSetIfEmpty(
       () => hvBatteryPresentRef.current,
       setHvBatteryPresent,
-      specs.hvBatteryPresent != null ? String(specs.hvBatteryPresent) : null,
+      formatAiHvBatteryPresentForForm(specs.hvBatteryPresent),
     );
     maybeSetIfEmpty(() => hvBatteryChemistryRef.current, setHvBatteryChemistry, specs.hvBatteryChemistry);
     maybeSetIfEmpty(() => hvBatteryCellFormatRef.current, setHvBatteryCellFormat, specs.hvBatteryCellFormat);
@@ -536,6 +545,11 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       });
     }
     maybeSetIfEmpty(() => drivetrainRef.current, setDrivetrain, specs.drivetrain);
+    maybeSetIfEmpty(
+      () => electrificationLevelRef.current,
+      setElectrificationLevel,
+      specs.electrificationLevel,
+    );
     maybeSetIfEmpty(() => brakeForceDistributionRef.current, setBrakeForceDistribution, specs.brakeForceDistribution);
     maybeSetIfEmpty(
       () => frontToRearWeightDistributionRef.current,
@@ -605,17 +619,15 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
             setAiLiveStep(evt.data.content || 'Verarbeitung...');
             break;
           case 'result': {
-            if (evt.data.success && !evt.data.degraded && evt.data.specs) {
-              applySpecs(evt.data.specs, { provenance: 'mistral_live' });
+            if (shouldApplyVehicleAiSpecsFromStreamResult(evt.data)) {
+              applySpecs(evt.data.specs!, {
+                provenance: resolveVehicleAiSpecsProvenance(evt.data),
+              });
+              if (evt.data.knowledgeOnlyFallback || evt.data.degraded) {
+                setAiDegraded(true);
+              }
             } else {
               setAiDegraded(true);
-              const key = getAiWorkerKey(vehicleIdentity.make, vehicleIdentity.model);
-              const local = aiWorkerData[key];
-              if (local) {
-                applySpecs(local as unknown as Record<string, string | number | null>, {
-                  provenance: 'local_fallback',
-                });
-              }
             }
             setAiLoading(false);
             break;
@@ -623,13 +635,6 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           case 'error': {
             setAiDegraded(true);
             setAiErrorDetail(evt.data.message || 'Unbekannter Fehler');
-            const key = getAiWorkerKey(vehicleIdentity.make, vehicleIdentity.model);
-            const local = aiWorkerData[key];
-            if (local) {
-              applySpecs(local as unknown as Record<string, string | number | null>, {
-                provenance: 'local_fallback',
-              });
-            }
             setAiLoading(false);
             break;
           }
@@ -1063,7 +1068,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     health: isEditMode ? existingVehicle.health : 'Good' as const,
     lastSignal: isEditMode ? existingVehicle.lastSignal : (dimoVehicle?.lastSignal ?? ''),
     online: isEditMode ? existingVehicle.online : (dimoVehicle?.connectionStatus === 'Connected' || false),
-    fuelType, mileage: vehicleIdentity.odometer, licensePlate, vehicleType, operationalStatus, notes,
+    fuelType,
+    electrificationLevel: electrificationLevel.trim() || undefined,
+    mileage: vehicleIdentity.odometer, licensePlate, vehicleType, operationalStatus, notes,
     batteryType, batteryAmpere, batteryVolt, lvBatteryChemistry,
     hvBatteryCapacityKwh, hvBatteryPresent, hvBatteryChemistry, hvBatteryCellFormat,
     hvBatteryGrossCapacityKwh, hvBatteryUsableCapacityKwh, hvBatteryNominalVoltage,
@@ -1703,16 +1710,17 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {expandedSections.includes('brakes') && (
             <div className="space-y-3 pl-1 pb-3">
               <p className={`text-xs font-bold text-muted-foreground`}>Front Axle</p>
+              <p className="text-[10px] text-muted-foreground">{t('master.registration.brake.nominalNotMeasurementHint')}</p>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className={labelClass}>Rotor Ø (mm) {aiTag}</label><input value={brakeFrontRotorDiameter} onChange={e => setBrakeFrontRotorDiameter(e.target.value)} className={inputClass} /></div>
-                <div><label className={labelClass}>Rotor Width (mm) {aiTag}</label><input value={brakeFrontRotorWidth} onChange={e => setBrakeFrontRotorWidth(e.target.value)} className={inputClass} /></div>
-                <div><label className={labelClass}>Pad Thickness (mm) {aiTag}</label><input value={brakeFrontPadThickness} onChange={e => setBrakeFrontPadThickness(e.target.value)} className={inputClass} /></div>
+                <div><label className={labelClass}>{t('master.registration.brake.discDiameterFront')} {aiTag}</label><input value={brakeFrontRotorDiameter} onChange={e => setBrakeFrontRotorDiameter(e.target.value)} className={inputClass} /></div>
+                <div><label className={labelClass}>{t('master.registration.brake.discNominalThicknessFront')} {aiTag}</label><input value={brakeFrontRotorWidth} onChange={e => setBrakeFrontRotorWidth(e.target.value)} className={inputClass} /></div>
+                <div><label className={labelClass}>{t('master.registration.brake.padNominalThicknessFront')} {aiTag}</label><input value={brakeFrontPadThickness} onChange={e => setBrakeFrontPadThickness(e.target.value)} className={inputClass} /></div>
               </div>
               <p className={`text-xs font-bold text-muted-foreground`}>Rear Axle</p>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className={labelClass}>Rotor Ø (mm) {aiTag}</label><input value={brakeBackRotorDiameter} onChange={e => setBrakeBackRotorDiameter(e.target.value)} className={inputClass} /></div>
-                <div><label className={labelClass}>Rotor Width (mm) {aiTag}</label><input value={brakeBackRotorWidth} onChange={e => setBrakeBackRotorWidth(e.target.value)} className={inputClass} /></div>
-                <div><label className={labelClass}>Pad Thickness (mm) {aiTag}</label><input value={brakeBackPadThickness} onChange={e => setBrakeBackPadThickness(e.target.value)} className={inputClass} /></div>
+                <div><label className={labelClass}>{t('master.registration.brake.discDiameterRear')} {aiTag}</label><input value={brakeBackRotorDiameter} onChange={e => setBrakeBackRotorDiameter(e.target.value)} className={inputClass} /></div>
+                <div><label className={labelClass}>{t('master.registration.brake.discNominalThicknessRear')} {aiTag}</label><input value={brakeBackRotorWidth} onChange={e => setBrakeBackRotorWidth(e.target.value)} className={inputClass} /></div>
+                <div><label className={labelClass}>{t('master.registration.brake.padNominalThicknessRear')} {aiTag}</label><input value={brakeBackPadThickness} onChange={e => setBrakeBackPadThickness(e.target.value)} className={inputClass} /></div>
               </div>
             </div>
           )}

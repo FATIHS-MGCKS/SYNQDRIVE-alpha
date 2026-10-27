@@ -20,7 +20,12 @@ describe('VehicleSpecAiService', () => {
       isConfigured: jest.fn().mockReturnValue(true),
       activeProviderId: 'mistral',
       completeJson: jest.fn().mockResolvedValue({
-        data: { curbWeightKg: 1350, drivetrain: 'FWD', tankCapacityLiters: 50 },
+        data: {
+          curbWeightKg: 1350,
+          drivetrain: 'FWD',
+          tankCapacityLiters: 50,
+          variantConfidence: 0.9,
+        },
         rawContent: '{"curbWeightKg":1350}',
         model: 'json-model',
       }),
@@ -45,7 +50,7 @@ describe('VehicleSpecAiService', () => {
       isConfigured: jest.fn().mockReturnValue(true),
       activeProviderId: 'mistral',
       completeJson: jest.fn().mockResolvedValue({
-        data: { curbWeightKg: 1400 },
+        data: { curbWeightKg: 1400, variantConfidence: 0.9 },
         model: 'json-model',
       }),
     };
@@ -60,6 +65,8 @@ describe('VehicleSpecAiService', () => {
     expect(result).toBeDefined();
     expect((result!.data as any).agentId).toBe('mistral');
     expect((result!.data as any).specs.curbWeightKg).toBe(1400);
+    expect((result!.data as any).degraded).toBe(false);
+    expect((result!.data as any).knowledgeOnlyFallback).toBe(true);
   });
 });
 

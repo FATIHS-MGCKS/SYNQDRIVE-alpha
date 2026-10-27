@@ -35,6 +35,10 @@ export const VEHICLE_SPEC_FIELD_KEYS = [
   'systemMotorPowerKw',
   'accel0To100S',
   'variantAssumption',
+  'resolvedVariant',
+  'variantConfidence',
+  'ambiguousVariants',
+  'electrificationLevel',
   'drivetrain',
   'frontToRearWeightDistribution',
   'manufacturerServiceIntervalKm',
@@ -60,12 +64,45 @@ export function buildVehicleSpecEmptyShape(): Record<string, string | number | b
 export function buildVehicleSpecJsonSchema(): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
   for (const key of VEHICLE_SPEC_FIELD_KEYS) {
-    if (
-      key === 'hvBatteryPresent' ||
-      key.endsWith('Count') ||
-      key === 'cylinderCount'
-    ) {
+    if (key === 'hvBatteryPresent') {
+      properties[key] = nullable({ type: 'boolean' });
+      continue;
+    }
+    if (key.endsWith('Count') || key === 'cylinderCount') {
+      properties[key] = nullable({ type: 'integer' });
+      continue;
+    }
+    if (key === 'variantConfidence') {
       properties[key] = nullable({ type: 'number' });
+      continue;
+    }
+    if (key === 'ambiguousVariants') {
+      properties[key] = nullable({
+        type: 'array',
+        items: { type: 'string' },
+      });
+      continue;
+    }
+    if (key === 'drivetrain') {
+      properties[key] = nullable({
+        type: 'string',
+        enum: ['FWD', 'RWD', 'AWD', 'FOUR_WD', '4WD'],
+      });
+      continue;
+    }
+    if (key === 'electrificationLevel') {
+      properties[key] = nullable({
+        type: 'string',
+        enum: [
+          'NONE',
+          'MHEV_12V',
+          'MHEV_48V',
+          'FULL_HYBRID',
+          'PHEV',
+          'BEV',
+          'FCEV',
+        ],
+      });
       continue;
     }
     if (
@@ -78,10 +115,13 @@ export function buildVehicleSpecJsonSchema(): Record<string, unknown> {
       key.includes('Rpm') ||
       key.includes('Kg') ||
       key === 'accel0To100S' ||
-      key.includes('Months') ||
       key === 'brakeForceDistribution'
     ) {
       properties[key] = nullable({ type: 'number' });
+      continue;
+    }
+    if (key.includes('Months')) {
+      properties[key] = nullable({ type: 'integer' });
       continue;
     }
     properties[key] = nullable({ type: 'string' });
@@ -142,7 +182,11 @@ Rules:
 - use null ONLY if you genuinely do not know the value
 - numbers without units in numeric fields
 - tankCapacityLiters: fuel tank liters for ICE/HEV/PHEV, null for pure EV
-- drivetrain: FWD, RWD, AWD, or 4WD
+- drivetrain: FWD, RWD, AWD, or FOUR_WD (alias 4WD)
+- electrificationLevel: NONE, MHEV_12V, MHEV_48V, FULL_HYBRID, PHEV, BEV, or FCEV
+- variantConfidence: 0 to 1; set below 0.7 when variant is uncertain
+- ambiguousVariants: array of candidate variant names when uncertain
+- resolvedVariant: short marketing/trim label when confident
 - brakeForceDistribution: front percentage as number (e.g. 60)
 - frontToRearWeightDistribution: string ratio, e.g. "60/40"
 - lvBattery* = low-voltage auxiliary 12V battery
@@ -167,6 +211,9 @@ export function parseVehicleSpecJson(
     if (key in parsed && parsed[key] !== undefined) {
       result[key] = parsed[key] as string | number | boolean | null;
     }
+  }
+  if (Array.isArray(parsed.ambiguousVariants)) {
+    (result as Record<string, unknown>).ambiguousVariants = parsed.ambiguousVariants;
   }
 
   if (result.lvBatteryType !== null && result.batteryType === null) result.batteryType = result.lvBatteryType;

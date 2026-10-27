@@ -23,6 +23,7 @@ import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
 import { BrakeRecalculationOrchestratorService } from './brakes/brake-recalculation-orchestrator.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
+import { resolveBrakeInitializeMeasured } from './brakes/brake-initialize-measured.util';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
@@ -823,6 +824,7 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body(ValidateBrakeServiceScopePipe) body: InitializeBrakeHealthDto,
   ) {
+    const measured = resolveBrakeInitializeMeasured(body);
     return this.brakeLifecycleService.recordService({
       vehicleId,
       serviceDate: body.serviceDate,
@@ -832,12 +834,7 @@ export class VehicleIntelligenceController {
       source: body.source ?? 'manual',
       kind: body.kind,
       scope: body.scope,
-      measured: {
-        frontPadMm: body.frontPadMm,
-        rearPadMm: body.rearPadMm,
-        frontDiscMm: body.frontRotorWidthMm,
-        rearDiscMm: body.rearRotorWidthMm,
-      },
+      measured,
       initializeIfPossible: true,
     });
   }

@@ -12,7 +12,7 @@ import {
   parseVehicleSpecJson,
   resolveVehicleSpecsScope,
 } from './vehicle-spec-ai.schema.util';
-import { applyVehicleSpecMotionPlausibility } from './vehicle-spec-ai.plausibility.util';
+import { postProcessVehicleSpecOutput } from './vehicle-spec-ai.postprocess.util';
 
 const CONFIG_ERROR =
   'AI provider not configured (set MISTRAL_API_KEY and AI_PROVIDER=mistral)';
@@ -84,7 +84,7 @@ export class VehicleSpecAiService {
       steps.push(parseStep);
 
       const parsed = parseVehicleSpecJson(result.data);
-      const { specs } = applyVehicleSpecMotionPlausibility(parsed, vehicle);
+      const { specs } = postProcessVehicleSpecOutput(parsed, vehicle);
       const hasData = Object.values(specs).some((v) => v !== null);
 
       if (!hasData) {
@@ -151,7 +151,7 @@ export class VehicleSpecAiService {
       emit('step', { step: 'Daten verarbeiten', status: 'working' });
 
       const parsed = parseVehicleSpecJson(result.data);
-      const { specs } = applyVehicleSpecMotionPlausibility(parsed, vehicle);
+      const { specs } = postProcessVehicleSpecOutput(parsed, vehicle);
       const hasData = Object.values(specs).some((v) => v !== null);
 
       if (hasData) {
@@ -169,7 +169,7 @@ export class VehicleSpecAiService {
 
       emit('result', {
         success: true,
-        degraded: !hasData || scope.knowledgeOnlyFallback,
+        degraded: !hasData,
         knowledgeOnlyFallback: scope.knowledgeOnlyFallback,
         dimoVehicleConnected: scope.hasVehicleScope,
         agentId: this.llm.activeProviderId,

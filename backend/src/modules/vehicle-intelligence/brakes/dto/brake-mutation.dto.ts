@@ -43,7 +43,7 @@ export const BRAKE_SERVICE_SCOPES = [
   'rear_discs',
 ] as const;
 
-export const BRAKE_SERVICE_SOURCES = ['manual', 'ai_document', 'api'] as const;
+export const BRAKE_SERVICE_SOURCES = ['manual', 'workshop', 'ai_document', 'api'] as const;
 
 // ── Measured snapshot (nested) ──────────────────────────────────────────────
 
@@ -98,6 +98,10 @@ export class InitializeBrakeHealthDto {
 
   @IsOptional() @IsIn(BRAKE_SERVICE_SOURCES as unknown as string[])
   source?: (typeof BRAKE_SERVICE_SOURCES)[number];
+
+  /** When true, pad/disc mm values are persisted as workshop measurements (not AI/spec guesses). */
+  @IsOptional() @IsBoolean()
+  measurementConfirmed?: boolean;
 }
 
 // ── Record a brake lifecycle service (nested measured) ──────────────────────
