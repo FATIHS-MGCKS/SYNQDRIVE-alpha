@@ -1,4 +1,7 @@
 import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { TireWearV3CutoverConfig } from '@config/tire-wear-v3-cutover.config';
+import { shouldSuppressV2TireWearSnapshotWrites } from '@config/tire-wear-v3-cutover.policy';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService, WearExplainability } from './tire-wear-model.service';
 import { DrivingImpactService } from '../driving-impact/driving-impact.service';
@@ -313,7 +316,21 @@ export class TireHealthService {
     private readonly tireHealthAlertService: TireHealthAlertService,
     @Optional() private readonly observability?: TireHealthObservabilityService,
     @Optional() private readonly tireHealthV3Read?: TireHealthV3ReadService,
+    @Optional() private readonly config?: ConfigService,
   ) {}
+
+  private tireWearV3CutoverFlags(): TireWearV3CutoverConfig {
+    return (
+      this.config?.get<TireWearV3CutoverConfig>('tireWearV3Cutover') ?? {
+        customerReadEnabled: false,
+        customerReadAuthoritative: false,
+      }
+    );
+  }
+
+  private shouldSuppressV2WearSnapshotWrites(): boolean {
+    return shouldSuppressV2TireWearSnapshotWrites(this.tireWearV3CutoverFlags());
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  GET SUMMARY (Quick Box DTO)
@@ -719,8 +736,17 @@ export class TireHealthService {
       evidenceSummary: (snapshotProvenance.evidenceSummary ?? undefined) as Prisma.InputJsonValue | undefined,
     };
 
-    let snapshot: { id: string };
-    if (lastSnapshot && options.force) {
+    let snapshot: { id: string } | null = null;
+    if (this.shouldSuppressV2WearSnapshotWrites()) {
+      snapshot = lastSnapshot;
+      this.logger.debug(
+        `Skipping V2 tireHealthSnapshot create for vehicle=${vehicleId} setup=${setup.id} — V3 authoritative cutover active`,
+      );
+      this.observability?.recordRecalculation({
+        result: 'skipped',
+        skipReason: 'v3_authoritative_v2_snapshot_suppressed',
+      });
+    } else if (lastSnapshot && options.force) {
       // Snapshots are immutable historical records — force refresh never rewrites them.
       snapshot = lastSnapshot;
     } else {
@@ -822,7 +848,9 @@ export class TireHealthService {
       inputFingerprint: fingerprint.inputFingerprint,
     });
 
-    this.observability?.recordSnapshotCreated('created');
+    if (snapshot) {
+      this.observability?.recordSnapshotCreated('created');
+    }
     this.observability?.recordRecalculation({
       result: 'success',
       durationMs: Date.now() - recalcStartedAt,
@@ -833,7 +861,7 @@ export class TireHealthService {
       remainingKm: adjustedRemainingKm,
       healthStatus,
       confidence,
-      snapshotId: snapshot.id,
+      snapshotId: snapshot?.id ?? null,
       forced: options.force ?? false,
       inputFingerprint: fingerprint.inputFingerprint,
       timePolicyBucket: fingerprint.timePolicyBucket,

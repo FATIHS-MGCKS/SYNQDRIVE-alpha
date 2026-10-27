@@ -16,7 +16,7 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
 /**
  * P2 cutover flags — safe defaults OFF.
  * - customerReadEnabled: attach `wearV3` read model on tire health APIs
- * - customerReadAuthoritative: V3 drives primary summary/presentation (no dual customer wear)
+ * - customerReadAuthoritative: V3 drives primary summary/presentation only when customerReadEnabled is also true
  * Shadow writer remains controlled by TIRE_WEAR_V3_PRIOR_SHADOW_WRITE_ENABLED (default OFF).
  */
 export interface TireWearV3CutoverConfig {
