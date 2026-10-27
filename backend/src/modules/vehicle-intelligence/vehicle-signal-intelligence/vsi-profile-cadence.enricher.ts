@@ -1,4 +1,5 @@
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
+import { mergeActiveRpmProfileOntoEngineRpmCadence } from './vsi-active-rpm-profile-resolver.util';
 import {
   analyzeEngineRpmCadence,
   analyzeLvVoltageCadence,
@@ -75,7 +76,10 @@ export function enrichVsiProfileWithCadenceIntelligence(
     if (shouldPreservePriorRpmCadence(input.rpmEvidence, priorRpm)) {
       rpmCadence = priorRpm ?? null;
     } else {
-      rpmCadence = analyzeEngineRpmCadence(input.rpmEvidence);
+      rpmCadence = mergeActiveRpmProfileOntoEngineRpmCadence(
+        analyzeEngineRpmCadence(input.rpmEvidence),
+        input.rpmEvidence,
+      );
     }
   }
 
