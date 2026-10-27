@@ -10,7 +10,7 @@ Every gap has a graph node (`TIRE-GAP-*`). Closing a gap requires evidence and a
 | TIRE-GAP-DS4-INTENSITY-ATTENUATION-B3-001 | Systematic −0.13…−0.55 m/s² attenuation; intensities not physically validated | CONFIRMED | absolute thresholds (forbidden) |
 | TIRE-GAP-DS4-SPEED-AUTHORITY-MIX-001 | C4_ONLY vs C5_1_PREFERRED across trips of one vehicle | CONFIRMED | cross-trip comparability |
 | TIRE-GAP-V2-GROUND-TRUTH-SPARSE-001 | 5 tread measurements, 0 wear data points fleet-wide | CONFIRMED | validation of V2 and any successor |
-| TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001 | Driving Intelligence graph has no motion-core/DS4 node to attach the tire consumer edge | CONFIRMED | cross-module authority completeness |
+| TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001 | Driving Intelligence graph has no motion-core/DS4 node to attach the tire consumer edge | **PARTIALLY_CLOSED** (2026-10-28 PR-0) | Design + decision [`DI-DEC-DS4-AUTHORITY-001`](../../drivingintelligence/decisions/DECISION_REGISTER.md) and [`DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md`](../../drivingintelligence/design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md) record the DS4 authority chain; machine graph node YAML update deferred to implementation PR |
 | TIRE-GAP-ACTIVE-SETUP-COUNT-RECONCILE-001 | Active setups read as 5 vs 6 under two filters during the audit | CONTRADICTED | promotion gate |
 | TIRE-GAP-CODE-VIEWS-NOT-UPDATED-001 | SynqDrive Code → Changes / Architektur (`frontend/src/master/components/*View.tsx`) not updated because this PR is documentation-only | CONFIRMED | governance completeness; first implementation PR |
 

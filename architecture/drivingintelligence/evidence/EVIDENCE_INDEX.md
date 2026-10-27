@@ -25,6 +25,15 @@ Each item records what conclusions it **supports** and what it **does not** supp
 
 ---
 
+## DS4 authority migration (2026-10-28)
+
+| ID | Type | Description | Location | Supports | Does NOT support |
+|----|------|-------------|----------|----------|------------------|
+| DI-EVID-CONSUMER-AUDIT-V1-001 | AUDIT | Driver Score & Rental Driving Analysis Consumer Audit V1 (read-only @ `51adb234…`) | `evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md` | P1/P2 remediation acceptance criteria | DS4 cutover execution |
+| DI-EVID-DS4-MIGRATION-DESIGN-001 | DESIGN | DS4 authoritative assessment migration plan + fail-closed contract | `design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md` | PR-0..PR-10 sequencing; owner decision trace | Production DS4 authority active |
+
+---
+
 ## Program & forensic baseline
 
 | ID | Type | Era | Description | Location | DI-EV | Strength | Supports | Does NOT support |

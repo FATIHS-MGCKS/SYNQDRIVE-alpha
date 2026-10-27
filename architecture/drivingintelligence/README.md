@@ -21,6 +21,15 @@ It spans:
 - rental and driver-subject aggregation
 - health module inputs (brake/tire recalc)
 - API and fleet/rental UI projection
+- **DS4 Motion Core** (post-trip manoeuvre assessment — shadow today; **target authority** per owner decision 2026-10-28)
+
+## DS4 authoritative assessment migration (PR-0, docs only)
+
+Owner decision: DS4 replaces legacy HF/native driving assessment completely — **no permanent legacy fallback**, **no parallel authoritative scoring**. Recorded, **not activated** in runtime.
+
+- Design: [`design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md`](design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md)
+- Decision: [`decisions/DECISION_REGISTER.md`](decisions/DECISION_REGISTER.md) → `DI-DEC-DS4-AUTHORITY-001`
+- Consumer audit traceability: [`evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md`](evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md)
 
 ## Critical system boundary
 
