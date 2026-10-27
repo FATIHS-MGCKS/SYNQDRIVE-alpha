@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-10-27 | **Vehicle Identity P2 (ZB-I review-only)** — Master manual identity + Fahrzeugschein OCR reconcile UI/API; `buildVehicleSystemBaseline` (DIMO link, motion-physics kW, no displacement without provider); `validate-confirmations` returns `persisted: false`; FIN mismatch ack; P.2 not system power; flags `ZB1_VEHICLE_IDENTITY_P2_ENABLED` / `ZB1_REGISTRATION_CERTIFICATE_EXTRACTION_ENABLED` / `VITE_ZB1_VEHICLE_IDENTITY_P2_ENABLED` default OFF; **P3** owns Vehicle AI V2 bridge + provenance persistence | Additive `vehicle-identity-review` module under `VehicleOnboardingModule`; no registry lifecycle / billing / DIMO ingress change; module remains `AUDIT_IN_PROGRESS` |
 | 2026-10-15 | **Physical Device Inventory P1A hardening** — canonical identifier normalization, manual-intake identity clarification only, idempotency payload binding, audit events, assignment `RESTRICT`, ephemeral PostgreSQL CI (chained in VO-2 postgres gate for i18n workflow firewall) | Inventory module only; no DIMO/VDC/VO link mutation |
 | 2026-10-15 | **Physical Device Inventory P1A CI repair** — shared frontend API DTO types, hub list-load tests, i18n hardcoded-copy drift reverted | No backend semantic change |
 | 2026-10-15 | **Physical Device Inventory P1B.1** — Master Admin identity verification (R1 DIMO serial reconciliation), hardware INSTALL assignment, audit/history, feature-flagged writes; no VDC/DIMO link mutation | Additive Prisma enums + partial unique index; VO registry/billing unchanged |

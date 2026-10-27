@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-identity-p2-zb1-review-2026-10-27',
+    version: '4.9.4999',
+    title: 'Vehicle Identity P2 — Fahrzeugschein review-only (manual + ZB-I OCR)',
+    summary: [
+      'Review-only P2: reconcile + validate-confirmations; `persisted: false` — no Vehicle / motion-physics writes.',
+      'Two input paths: manual draft fields and optional REGISTRATION_CERTIFICATE upload (ZB-I OCR) when ZB1 extraction flag is on.',
+      'System baseline provenance: DIMO link for VIN/make/model only; fuel UNCONFIRMED; kW from active motion-physics reference (AI vs operator vs reference tier); displacement unavailable without provider query.',
+      'FIN/VIN mismatch blocks confirmation until explicit acknowledgment; P.2 nominal power cannot be confirmed as hybrid/system power.',
+      'Flags default OFF: `ZB1_VEHICLE_IDENTITY_P2_ENABLED`, `ZB1_REGISTRATION_CERTIFICATE_EXTRACTION_ENABLED`, `VITE_ZB1_VEHICLE_IDENTITY_P2_ENABLED`.',
+      'P3 owns Vehicle AI V2 bridge and provenance persistence; nine-locale `master.vehicleIdentity.*` copy.',
+    ],
+    reason:
+      'P2 must reconcile manual identity with ZB-I OCR without mislabeling AI or unconfirmed vehicle fields as DIMO or auto-persisting review outcomes.',
+    previousBehavior:
+      'Master registration showed read-only identity only; no governed ZB-I review surface; vehicle fuel could be implied as DIMO prefill.',
+    details:
+      'Backend: `vehicle-identity-review/*`, `vehicle-identity-baseline.util.ts`, `vehicle-identity-p2.config.ts`. Frontend: `VehicleIdentityP2Panel` in `VehicleRegistrationModal` (edit). API: `…/registration-identity-review/reconcile` + `validate-confirmations`. Tests: reconcile/confirm/baseline/service security specs; document-extraction `setDocumentType` gate when ZB1 off.',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-27T17:20:00.000Z',
+  },
+  {
     id: 'trip-ui-pr-b-driving-impact-provenance-2026-10-27',
     version: '4.9.4998',
     title: 'Trip UI PR B — Driving Impact quality & score provenance (read contract)',

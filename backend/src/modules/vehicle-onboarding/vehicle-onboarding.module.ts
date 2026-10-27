@@ -22,6 +22,8 @@ import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onbo
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
 import { MasterDimoCanonicalRegistrationService } from './master-dimo/master-dimo-canonical-registration.service';
 import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-readonly-composer.module';
+import { VehicleIdentityReviewController } from './vehicle-identity-review/vehicle-identity-review.controller';
+import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-identity-review.service';
 
 @Module({
   imports: [
@@ -31,6 +33,7 @@ import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/v
     VsiReadonlySignalComposerModule,
   ],
   controllers: [
+    VehicleIdentityReviewController,
     VehicleOnboardingCaptureController,
     VehicleOnboardingSourceAdoptionController,
     VehicleOnboardingProviderCandidateController,
@@ -55,6 +58,7 @@ import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/v
     MasterVehicleOffboardAdmissionGuard,
     MasterVehicleOffboardMfaGuard,
     MasterDimoCanonicalRegistrationService,
+    VehicleIdentityReviewService,
   ],
   exports: [
     VehicleOnboardingCaseService,

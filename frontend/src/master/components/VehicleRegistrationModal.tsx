@@ -51,6 +51,8 @@ import {
   flushBufferedExteriorImages,
   type ExteriorImageBufferEntry,
 } from './ExteriorImagesEditor';
+import { VehicleIdentityP2Panel } from './VehicleIdentityP2Panel';
+import { isVehicleIdentityP2Enabled } from '../connected-vehicles/vehicle-identity-p2.util';
 
 interface VehicleRegistrationModalProps {
   isDarkMode: boolean;
@@ -1431,6 +1433,16 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               </div>
             </div>
           </div>
+
+          {isEditMode && existingVehicle && organizationId && isVehicleIdentityP2Enabled() ? (
+            <div className={`p-4 border mb-4 ${isDarkMode ? 'surface-premium/30 border-neutral-700/40' : 'bg-muted/80 border-border/40'}`}>
+              <VehicleIdentityP2Panel
+                isDarkMode={isDarkMode}
+                organizationId={organizationId}
+                vehicleId={existingVehicle.id}
+              />
+            </div>
+          ) : null}
 
           {/* ═══════════════════════════════════════════════
               SECTION 1 — Assignment & Operations

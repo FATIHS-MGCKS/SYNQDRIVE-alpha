@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
 import { batteryV2HvInspectionCS } from './battery-v2-hv-inspection.cs';
 import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 import { masterMotionPhysicsCs } from './master.motionPhysics.cs';
+import { masterVehicleIdentityCs } from './master.vehicleIdentity.cs';
 import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
 
 export const cs = {
@@ -175,6 +176,7 @@ export const cs = {
   'trips.drivingImpact.quality.r1Contained': 'Zatížení vozidla dočasně nedostupné (časové omezení R1).',
   ...masterPhysicalDeviceInventoryCs,
   ...masterMotionPhysicsCs,
+...masterVehicleIdentityCs,
   ...masterCvTechnicalSpecsCs,
   ...batteryV2HvInspectionCS,
 } satisfies PartialTranslationDictionary;
