@@ -380,9 +380,14 @@ export class DocumentExtractionController {
   async deleteFile(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
   ) {
-    const record = await this.service.deleteFile(vehicleId, extractionId, userId ?? null);
+    const record = await this.service.deleteFile(
+      vehicleId,
+      extractionId,
+      user?.id ?? null,
+      user?.platformRole ?? null,
+    );
     return record;
   }
 

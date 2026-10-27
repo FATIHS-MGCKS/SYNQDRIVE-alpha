@@ -11,11 +11,19 @@ import documentRetentionConfig from '@config/document-retention.config';
 import type { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { MembershipPermissionsMap } from '@shared/auth/permission.util';
-import { canAccessZb1RegistrationVehicleDocument } from './zb1-registration-document-p4.access.util';
+import {
+  assertZb1RegistrationCertificateAccess,
+  canAccessZb1RegistrationCertificate,
+} from './zb1-registration-certificate-access.policy';
 import { mergePipelineLifecycle, patchRetentionState } from '../document-pipeline-lifecycle.util';
 import { DocumentLifecycleService } from '../document-lifecycle.service';
 
 export const ZB1_REGISTRATION_DOCUMENT_PURPOSE = 'ZB1_REGISTRATION_CERTIFICATE_VEHICLE_FILE' as const;
+
+export type Zb1RegistrationAccessContext = {
+  membershipRole: MembershipRole | null;
+  permissions: MembershipPermissionsMap | null;
+};
 
 @Injectable()
 export class Zb1RegistrationDocumentP4Service {
@@ -64,6 +72,18 @@ export class Zb1RegistrationDocumentP4Service {
     return this.resolveEffectiveDocumentType(record) === 'REGISTRATION_CERTIFICATE';
   }
 
+  /** New persistent ZB-I storage requires P4 ON + release attestations. */
+  assertRegistrationCertificatePersistenceAllowed(): void {
+    if (!this.isP4Active()) {
+      throw new BadRequestException({
+        code: 'ZB1_REGISTRATION_DOCUMENT_P4_STORAGE_DISABLED',
+        message:
+          'ZB-I (REGISTRATION_CERTIFICATE) document persistence is disabled until P4 storage is enabled and released.',
+      });
+    }
+    this.assertProductionGatesForUpload();
+  }
+
   assertProductionGatesForUpload(): void {
     if (!this.isP4Active()) return;
     if (!this.cfg?.storageReleaseAcknowledged) {
@@ -88,33 +108,53 @@ export class Zb1RegistrationDocumentP4Service {
     }
   }
 
-  assertAccess(input: {
+  assertAccess(
     record: {
       effectiveDocumentType?: DocumentExtractionType | null;
       documentType?: DocumentExtractionType | null;
       requestedDocumentType?: DocumentExtractionType | null;
-    };
-    membershipRole?: MembershipRole | null;
-    permissions?: MembershipPermissionsMap | null;
-    platformRole?: string | null;
-  }): void {
-    if (!this.isP4Active() || !this.isRegistrationCertificate(input.record)) {
+    },
+    access: Zb1RegistrationAccessContext,
+  ): void {
+    if (!this.isRegistrationCertificate(record)) {
       return;
     }
-    if (input.platformRole === 'MASTER_ADMIN') {
-      return;
-    }
-    if (
-      !canAccessZb1RegistrationVehicleDocument({
-        membershipRole: input.membershipRole ?? null,
-        permissions: input.permissions ?? null,
-      })
-    ) {
+    try {
+      assertZb1RegistrationCertificateAccess(access);
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
       throw new ForbiddenException({
         code: 'ZB1_REGISTRATION_DOCUMENT_FORBIDDEN',
-        message: 'Registration certificate documents are restricted to organization admins and fleet managers.',
+        message: 'Registration certificate access denied.',
       });
     }
+  }
+
+  assertDeleteAccess(
+    record: {
+      effectiveDocumentType?: DocumentExtractionType | null;
+      documentType?: DocumentExtractionType | null;
+      requestedDocumentType?: DocumentExtractionType | null;
+    },
+    access: Zb1RegistrationAccessContext,
+  ): void {
+    this.assertAccess(record, access);
+  }
+
+  shouldHideFromListForUser(
+    record: {
+      effectiveDocumentType?: DocumentExtractionType | null;
+      documentType?: DocumentExtractionType | null;
+      requestedDocumentType?: DocumentExtractionType | null;
+    },
+    access: Zb1RegistrationAccessContext,
+  ): boolean {
+    if (!this.isRegistrationCertificate(record)) {
+      return false;
+    }
+    return !canAccessZb1RegistrationCertificate(access);
   }
 
   stampRegistrationDocumentMetadata(plausibility: unknown): Prisma.InputJsonValue {
@@ -159,32 +199,41 @@ export class Zb1RegistrationDocumentP4Service {
     }
   }
 
+  private registrationCertificateWhere(
+    organizationId: string,
+    vehicleId?: string,
+  ): Prisma.VehicleDocumentExtractionWhereInput {
+    const regCert = DocumentExtractionType.REGISTRATION_CERTIFICATE;
+    return {
+      organizationId,
+      ...(vehicleId ? { vehicleId } : {}),
+      OR: [
+        { effectiveDocumentType: regCert },
+        { documentType: regCert },
+        { requestedDocumentType: regCert },
+      ],
+      fileDeletedAt: null,
+      objectKey: { not: null },
+    };
+  }
+
   async softDeleteRegistrationDocumentsForVehicle(input: {
     organizationId: string;
     vehicleId: string;
     actorUserId: string | null;
   }): Promise<{ affected: number }> {
-    if (!this.isP4Active() || this.cfg?.deleteOnVehicleOffboarding !== true) {
+    if (this.cfg?.deleteOnVehicleOffboarding === false) {
       return { affected: 0 };
     }
     const rows = await this.prisma.vehicleDocumentExtraction.findMany({
-      where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        OR: [
-          { effectiveDocumentType: 'REGISTRATION_CERTIFICATE' },
-          { documentType: 'REGISTRATION_CERTIFICATE' },
-          { requestedDocumentType: 'REGISTRATION_CERTIFICATE' },
-        ],
-        fileDeletedAt: null,
-        objectKey: { not: null },
-      },
+      where: this.registrationCertificateWhere(input.organizationId, input.vehicleId),
       select: {
         id: true,
         objectKey: true,
         plausibility: true,
         organizationId: true,
         vehicleId: true,
+        fileDeletedAt: true,
       },
     });
     let affected = 0;
@@ -192,42 +241,34 @@ export class Zb1RegistrationDocumentP4Service {
       await this.lifecycle.softDeleteFile({
         record: row,
         userId: input.actorUserId,
+        toleratePhysicalDeleteFailure: true,
       });
       affected += 1;
     }
     if (affected > 0) {
       this.logger.log(
-        `P4 ZB-I soft-delete on offboarding vehicle=${input.vehicleId} org=${input.organizationId} count=${affected}`,
+        `ZB-I soft-delete on offboarding vehicle=${input.vehicleId} org=${input.organizationId} count=${affected}`,
       );
     }
     return { affected };
   }
 
-  /** Hook for organization deletion / tenant teardown (P4 enabled + offboarding flag). */
   async softDeleteRegistrationDocumentsForOrganization(input: {
     organizationId: string;
     actorUserId: string | null;
   }): Promise<{ affected: number }> {
-    if (!this.isP4Active() || this.cfg?.deleteOnVehicleOffboarding !== true) {
+    if (this.cfg?.deleteOnVehicleOffboarding === false) {
       return { affected: 0 };
     }
     const rows = await this.prisma.vehicleDocumentExtraction.findMany({
-      where: {
-        organizationId: input.organizationId,
-        OR: [
-          { effectiveDocumentType: 'REGISTRATION_CERTIFICATE' },
-          { documentType: 'REGISTRATION_CERTIFICATE' },
-          { requestedDocumentType: 'REGISTRATION_CERTIFICATE' },
-        ],
-        fileDeletedAt: null,
-        objectKey: { not: null },
-      },
+      where: this.registrationCertificateWhere(input.organizationId),
       select: {
         id: true,
         objectKey: true,
         plausibility: true,
         organizationId: true,
         vehicleId: true,
+        fileDeletedAt: true,
       },
     });
     let affected = 0;
@@ -235,36 +276,15 @@ export class Zb1RegistrationDocumentP4Service {
       await this.lifecycle.softDeleteFile({
         record: row,
         userId: input.actorUserId,
+        toleratePhysicalDeleteFailure: true,
       });
       affected += 1;
     }
     if (affected > 0) {
       this.logger.log(
-        `P4 ZB-I soft-delete on organization removal org=${input.organizationId} count=${affected}`,
+        `ZB-I soft-delete on organization removal org=${input.organizationId} count=${affected}`,
       );
     }
     return { affected };
-  }
-
-  shouldHideFromListForUser(input: {
-    record: {
-      effectiveDocumentType?: DocumentExtractionType | null;
-      documentType?: DocumentExtractionType | null;
-      requestedDocumentType?: DocumentExtractionType | null;
-    };
-    membershipRole?: MembershipRole | null;
-    permissions?: MembershipPermissionsMap | null;
-    platformRole?: string | null;
-  }): boolean {
-    if (!this.isP4Active() || !this.isRegistrationCertificate(input.record)) {
-      return false;
-    }
-    if (input.platformRole === 'MASTER_ADMIN') {
-      return false;
-    }
-    return !canAccessZb1RegistrationVehicleDocument({
-      membershipRole: input.membershipRole ?? null,
-      permissions: input.permissions ?? null,
-    });
   }
 }

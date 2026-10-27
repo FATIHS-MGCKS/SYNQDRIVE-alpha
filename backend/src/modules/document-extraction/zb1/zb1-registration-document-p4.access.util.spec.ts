@@ -28,4 +28,13 @@ describe('zb1-registration-document-p4.access.util', () => {
       }),
     ).toBe(false);
   });
+
+  it('denies document-upload.manage without fleet.manage', () => {
+    expect(
+      canAccessZb1RegistrationVehicleDocument({
+        membershipRole: MembershipRole.WORKER,
+        permissions: { 'document-upload': { read: true, write: true, manage: true } },
+      }),
+    ).toBe(false);
+  });
 });

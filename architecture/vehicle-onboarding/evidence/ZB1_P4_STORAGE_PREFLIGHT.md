@@ -15,3 +15,11 @@
 - `ZB1_REGISTRATION_DOCUMENT_P4_STORAGE_RELEASE_ACKNOWLEDGED=false`
 - `ZB1_REGISTRATION_DOCUMENT_P4_GDPR_RELEASE_ACKNOWLEDGED=false`
 - Upload of `REGISTRATION_CERTIFICATE` still requires `ZB1_REGISTRATION_CERTIFICATE_EXTRACTION_ENABLED` (P1/P2 path).
+- **P4 OFF:** no new ZB-I persistence (`ZB1_REGISTRATION_DOCUMENT_P4_STORAGE_DISABLED`); existing ZB-I rows remain protected by the same ORG_ADMIN / `fleet.manage` ACL (not exposed via legacy list/download bypasses).
+- **ZB1_REGISTRATION_DOCUMENT_P4_RETENTION_DAYS_AFTER_SOFT_DELETE=0:** disables timed post-soft-delete purge metadata — **not** immediate physical delete. Object bytes are removed on soft-delete (with retry via `pending_physical_object_delete` when storage delete fails).
+
+## ACL (post-hardening)
+
+- Central policy: `zb1-registration-certificate-access.policy.ts` — organization admins and `fleet.manage` only.
+- `document-upload.read` / `write` / `manage` do **not** grant ZB-I read, download, or delete.
+- `MASTER_ADMIN` has no implicit global bypass on ZB-I document paths.

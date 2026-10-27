@@ -459,7 +459,7 @@ export class DocumentExtractionService implements OnModuleInit {
       });
     }
     if (requestedDocumentType === 'REGISTRATION_CERTIFICATE') {
-      this.zb1RegistrationDocumentP4.assertProductionGatesForUpload();
+      this.zb1RegistrationDocumentP4.assertRegistrationCertificatePersistenceAllowed();
     }
     if (!isAllowedMimeType(input.mimeType)) {
       this.observability.recordUploadRejected('mime');
@@ -844,22 +844,35 @@ export class DocumentExtractionService implements OnModuleInit {
         record.organizationId,
         viewer.platformRole,
       );
-      this.zb1RegistrationDocumentP4.assertAccess({
-        record,
+      this.zb1RegistrationDocumentP4.assertAccess(record, {
         membershipRole: access.membershipRole,
         permissions: access.permissions,
-        platformRole: access.platformRole,
       });
     }
     return this.toPublicExtraction(record);
   }
 
-  async getPublicForOrg(orgId: string, extractionId: string) {
+  async getPublicForOrg(
+    orgId: string,
+    extractionId: string,
+    viewer?: { id?: string; platformRole?: string | null },
+  ) {
     const record = await this.getForOrg(orgId, extractionId);
+    if (viewer?.id) {
+      const access = await this.resolveVehicleDocumentAccess(viewer.id, orgId, viewer.platformRole);
+      this.zb1RegistrationDocumentP4.assertAccess(record, {
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+      });
+    }
     return this.toPublicExtraction(record);
   }
 
-  async listForOrg(orgId: string, query: ListDocumentExtractionsQueryDto) {
+  async listForOrg(
+    orgId: string,
+    query: ListDocumentExtractionsQueryDto,
+    viewer?: { id?: string; platformRole?: string | null },
+  ) {
     const pagination = parseDocumentExtractionPagination(query);
     const where = buildDocumentExtractionWhere({
       organizationId: orgId,
@@ -883,15 +896,30 @@ export class DocumentExtractionService implements OnModuleInit {
     ]);
 
     const enriched = await Promise.all(rows.map((row) => this.enrichWithActors(row)));
+    let summaries = enriched.map((row) => this.toPublicSummary(row));
+    if (viewer?.id) {
+      const access = await this.resolveVehicleDocumentAccess(viewer.id, orgId, viewer.platformRole);
+      const accessCtx = {
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+      };
+      summaries = summaries.filter(
+        (row) => !this.zb1RegistrationDocumentP4.shouldHideFromListForUser(row, accessCtx),
+      );
+    }
     return buildDocumentExtractionPaginatedResult(
-      enriched.map((row) => this.toPublicSummary(row)),
-      total,
+      summaries,
+      viewer?.id ? summaries.length : total,
       pagination.page,
       pagination.limit,
     );
   }
 
-  async listArchiveForOrg(orgId: string, query: ListDocumentExtractionArchiveQueryDto) {
+  async listArchiveForOrg(
+    orgId: string,
+    query: ListDocumentExtractionArchiveQueryDto,
+    viewer?: { id?: string; platformRole?: string | null },
+  ) {
     const pagination = parseDocumentExtractionArchivePagination(query);
     const where = buildDocumentExtractionArchiveWhere({
       organizationId: orgId,
@@ -972,7 +1000,7 @@ export class DocumentExtractionService implements OnModuleInit {
         : [];
     const uploaderById = new Map(uploaders.map((user) => [user.id, user]));
 
-    const items = rows
+    let items = rows
       .filter((row) => row.extraction)
       .map((row) =>
         toPublicDocumentExtractionArchiveItem({
@@ -986,9 +1014,27 @@ export class DocumentExtractionService implements OnModuleInit {
         }),
       );
 
+    if (viewer?.id) {
+      const access = await this.resolveVehicleDocumentAccess(viewer.id, orgId, viewer.platformRole);
+      const accessCtx = {
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+      };
+      items = items.filter(
+        (item) =>
+          !this.zb1RegistrationDocumentP4.shouldHideFromListForUser(
+            {
+              effectiveDocumentType: item.effectiveDocumentType,
+              documentType: item.effectiveDocumentType,
+            },
+            accessCtx,
+          ),
+      );
+    }
+
     return buildDocumentExtractionPaginatedResult(
       items,
-      total,
+      viewer?.id ? items.length : total,
       pagination.page,
       pagination.limit,
     );
@@ -1045,11 +1091,9 @@ export class DocumentExtractionService implements OnModuleInit {
       );
       summaries = summaries.filter(
         (row) =>
-          !this.zb1RegistrationDocumentP4.shouldHideFromListForUser({
-            record: row,
+          !this.zb1RegistrationDocumentP4.shouldHideFromListForUser(row, {
             membershipRole: access.membershipRole,
             permissions: access.permissions,
-            platformRole: access.platformRole,
           }),
       );
     }
@@ -1082,11 +1126,9 @@ export class DocumentExtractionService implements OnModuleInit {
         record.organizationId,
         platformRole,
       );
-      this.zb1RegistrationDocumentP4.assertAccess({
-        record,
+      this.zb1RegistrationDocumentP4.assertAccess(record, {
         membershipRole: access.membershipRole,
         permissions: access.permissions,
-        platformRole: access.platformRole,
       });
     }
     const dl = await this.buildDownload(record);
@@ -1105,11 +1147,9 @@ export class DocumentExtractionService implements OnModuleInit {
     const record = await this.getForOrg(orgId, extractionId);
     if (userId) {
       const access = await this.resolveVehicleDocumentAccess(userId, orgId, platformRole);
-      this.zb1RegistrationDocumentP4.assertAccess({
-        record,
+      this.zb1RegistrationDocumentP4.assertAccess(record, {
         membershipRole: access.membershipRole,
         permissions: access.permissions,
-        platformRole: access.platformRole,
       });
     }
     const dl = await this.buildDownload(record);
@@ -1194,7 +1234,7 @@ export class DocumentExtractionService implements OnModuleInit {
       });
     }
     if (applyType === 'REGISTRATION_CERTIFICATE') {
-      this.zb1RegistrationDocumentP4.assertProductionGatesForUpload();
+      this.zb1RegistrationDocumentP4.assertRegistrationCertificatePersistenceAllowed();
     }
 
     if (record.status === 'APPLIED' || record.status === 'PARTIALLY_APPLIED') {
@@ -2345,10 +2385,22 @@ export class DocumentExtractionService implements OnModuleInit {
 
   // ── delete stored file (keeps audit record + confirmed data) ───────────
 
-  async deleteFile(vehicleId: string, extractionId: string, userId?: string | null) {
+  async deleteFile(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+    platformRole?: string | null,
+  ) {
     const record = await this.getForVehicle(vehicleId, extractionId);
+    if (userId && record.organizationId) {
+      const access = await this.resolveVehicleDocumentAccess(userId, record.organizationId, platformRole);
+      this.zb1RegistrationDocumentP4.assertDeleteAccess(record, {
+        membershipRole: access.membershipRole,
+        permissions: access.permissions,
+      });
+    }
     await this.lifecycle.softDeleteFile({ record, userId });
-    return this.getPublicForVehicle(vehicleId, extractionId);
+    return this.getPublicForVehicle(vehicleId, extractionId, userId ? { id: userId, platformRole } : undefined);
   }
 
   async setLegalHold(

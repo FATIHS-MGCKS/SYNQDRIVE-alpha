@@ -23,7 +23,10 @@ export default registerAs('zb1RegistrationDocumentP4', () => ({
   storageReleaseAcknowledged: boolEnv('ZB1_REGISTRATION_DOCUMENT_P4_STORAGE_RELEASE_ACKNOWLEDGED', false),
   /** Owner attestation for Mistral OCR / DPA / transfer posture (no legal retention period invented). */
   gdprReleaseAcknowledged: boolEnv('ZB1_REGISTRATION_DOCUMENT_P4_GDPR_RELEASE_ACKNOWLEDGED', false),
-  /** Days after soft-delete before P4 registration files are purged (0 = disabled). */
+  /**
+   * Days after soft-delete before optional ZB-I timed purge metadata is considered (0 = disabled, not immediate delete).
+   * Physical object removal happens on soft-delete (with retry), independent of this value.
+   */
   retentionDaysAfterSoftDelete: intEnv('ZB1_REGISTRATION_DOCUMENT_P4_RETENTION_DAYS_AFTER_SOFT_DELETE', 0),
   /** Purge registration certificate extractions on vehicle offboarding when P4 enabled. */
   deleteOnVehicleOffboarding: boolEnv('ZB1_REGISTRATION_DOCUMENT_P4_DELETE_ON_VEHICLE_OFFBOARDING', true),

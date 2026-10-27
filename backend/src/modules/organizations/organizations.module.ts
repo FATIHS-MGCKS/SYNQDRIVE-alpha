@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
 import { OrganizationsController } from './organizations.controller';
 import { TenantOrganizationProfileController } from './tenant-organization-profile.controller';
 import { OrganizationsService } from './organizations.service';
@@ -9,7 +10,13 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BillingModule } from '@modules/billing/billing.module';
 
 @Module({
-  imports: [UsersModule, PaymentsModule, VehiclesModule, BillingModule],
+  imports: [
+    UsersModule,
+    PaymentsModule,
+    VehiclesModule,
+    BillingModule,
+    forwardRef(() => DocumentExtractionModule),
+  ],
   controllers: [OrganizationsController, TenantOrganizationProfileController],
   providers: [OrganizationsService, OrganizationsOperationalService],
   exports: [OrganizationsService, OrganizationsOperationalService],

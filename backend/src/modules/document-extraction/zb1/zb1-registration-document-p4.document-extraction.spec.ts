@@ -154,11 +154,12 @@ describe('ZB1 P4 document extraction ACL', () => {
     await expect(svc.getDownloadForVehicle('v1', 'ext-reg-1', 'admin-1')).resolves.toBeDefined();
   });
 
-  it('allows download when P4 mock leaves assertAccess as no-op (flag off)', async () => {
-    const p4Mock = makeZb1RegistrationDocumentP4Mock();
-    p4Mock.isP4Active.mockReturnValue(false);
-    const { svc } = makeServiceWithP4(p4Mock);
-    await expect(svc.getDownloadForVehicle('v1', 'ext-reg-1', 'user-1')).resolves.toBeDefined();
+  it('still enforces ZB-I ACL when P4 feature flag off', async () => {
+    const p4 = realP4Service(false);
+    const { svc } = makeServiceWithP4(p4);
+    await expect(svc.getDownloadForVehicle('v1', 'ext-reg-1', 'user-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('rejects cross-vehicle extraction lookup (IDOR)', async () => {

@@ -20,6 +20,12 @@ import {
   resolveRowDocumentType,
   toExtractionSummary,
 } from './vehicle-file-category.mapper';
+import { canAccessZb1RegistrationCertificate } from '@modules/document-extraction/zb1/zb1-registration-certificate-access.policy';
+import {
+  normalizeMembershipPermissions,
+  type MembershipPermissionsMap,
+} from '@shared/auth/permission.util';
+import { MembershipRole } from '@prisma/client';
 import type { VehicleDocumentExtraction } from '@prisma/client';
 
 function centsToEuro(cents: number | null | undefined): number | null {
@@ -67,7 +73,22 @@ export class VehicleFileSummaryService {
     private readonly serviceCompliance: ServiceComplianceService,
   ) {}
 
-  async buildSummary(vehicleId: string): Promise<VehicleFileSummary> {
+  private filterRegistrationExtractionsForViewer<T extends VehicleDocumentExtraction>(
+    extractions: T[],
+    access: { membershipRole: MembershipRole | null; permissions: MembershipPermissionsMap },
+  ): T[] {
+    return extractions.filter((row) => {
+      if (resolveRowDocumentType(row) !== 'REGISTRATION_CERTIFICATE') {
+        return true;
+      }
+      return canAccessZb1RegistrationCertificate(access);
+    });
+  }
+
+  async buildSummary(
+    vehicleId: string,
+    viewer?: { id?: string; platformRole?: string | null },
+  ): Promise<VehicleFileSummary> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       include: {
@@ -106,7 +127,18 @@ export class VehicleFileSummaryService {
         }),
       ]);
 
-    const extractions = extractionsRaw;
+    let extractions = extractionsRaw;
+    if (viewer?.id) {
+      const membership = await this.prisma.organizationMembership.findFirst({
+        where: { userId: viewer.id, organizationId: orgId, status: 'ACTIVE' },
+        select: { role: true, permissions: true },
+      });
+      const access = {
+        membershipRole: membership?.role ?? null,
+        permissions: normalizeMembershipPermissions(membership?.permissions),
+      };
+      extractions = this.filterRegistrationExtractionsForViewer(extractions, access);
+    }
     const complianceEval = await this.serviceCompliance.evaluateCompliance(vehicleId, {
       lastTuvDate: vehicle.lastTuvDate,
       nextTuvDate: vehicle.nextTuvDate,

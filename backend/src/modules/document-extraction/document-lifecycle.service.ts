@@ -22,6 +22,10 @@ import {
   stripSensitiveOcrFromPlausibility,
 } from './document-pipeline-lifecycle.util';
 import type { DocumentStorageCapabilities } from './document-storage-lifecycle.types';
+import {
+  DOCUMENT_PHYSICAL_DELETE_PENDING_CODE,
+  DocumentPhysicalDeletePendingError,
+} from './document-physical-delete.error';
 
 @Injectable()
 export class DocumentLifecycleService {
@@ -47,6 +51,18 @@ export class DocumentLifecycleService {
     }
   }
 
+  private safeDeleteErrorMessage(err: unknown): string {
+    const raw = (err as Error)?.message ?? 'delete_failed';
+    return raw.slice(0, 200);
+  }
+
+  private async purgeStoredObject(objectKey: string): Promise<void> {
+    await this.storage.deleteObject(objectKey);
+  }
+
+  /**
+   * Soft-delete metadata; physical object removal must succeed or objectKey is retained for retry.
+   */
   async softDeleteFile(params: {
     record: {
       id: string;
@@ -55,21 +71,16 @@ export class DocumentLifecycleService {
       fileDeletedAt?: Date | null;
     };
     userId?: string | null;
+    /** When true, storage failures are recorded but do not fail the caller (offboarding hooks). */
+    toleratePhysicalDeleteFailure?: boolean;
   }) {
     this.assertNotOnLegalHold(params.record.plausibility);
-    if (params.record.fileDeletedAt) {
+    const now = new Date().toISOString();
+
+    if (params.record.fileDeletedAt && !params.record.objectKey) {
       return params.record;
     }
 
-    if (params.record.objectKey) {
-      await this.storage.deleteObject(params.record.objectKey).catch((err) => {
-        this.logger.warn(
-          `deleteObject(${params.record.objectKey}) failed: ${(err as Error).message}`,
-        );
-      });
-    }
-
-    const now = new Date().toISOString();
     let plausibility = appendExtractionActionAudit(params.record.plausibility, {
       action: 'delete_file',
       at: now,
@@ -77,21 +88,73 @@ export class DocumentLifecycleService {
       details: { mode: 'soft_delete' },
     }) as Record<string, unknown>;
 
-    if (this.retentionConfig.stripOcrCacheOnManualDelete) {
-      plausibility = stripSensitiveOcrFromPlausibility(plausibility);
-      plausibility = patchRetentionState(plausibility, {
-        policyVersion: this.retentionConfig.policyVersion,
-        ocrCachePurgedAt: now,
-        fileSoftDeletedAt: now,
-        filePurgedAt: now,
-      }) as Record<string, unknown>;
-    } else {
-      plausibility = patchRetentionState(plausibility, {
-        policyVersion: this.retentionConfig.policyVersion,
-        fileSoftDeletedAt: now,
-        filePurgedAt: now,
-      }) as Record<string, unknown>;
+    const objectKey = params.record.objectKey;
+    if (objectKey) {
+      try {
+        await this.purgeStoredObject(objectKey);
+        if (this.retentionConfig.stripOcrCacheOnManualDelete) {
+          plausibility = stripSensitiveOcrFromPlausibility(plausibility);
+        }
+        plausibility = patchRetentionState(plausibility, {
+          policyVersion: this.retentionConfig.policyVersion,
+          ocrCachePurgedAt: this.retentionConfig.stripOcrCacheOnManualDelete ? now : undefined,
+          fileSoftDeletedAt: now,
+          filePurgedAt: now,
+          physicalObjectDeleteStatus: 'completed',
+          physicalObjectDeleteCompletedAt: now,
+          physicalObjectDeleteLastError: null,
+        }) as Record<string, unknown>;
+
+        return this.prisma.vehicleDocumentExtraction.update({
+          where: { id: params.record.id },
+          data: {
+            objectKey: null,
+            sizeBytes: null,
+            mimeType: null,
+            fileDeletedAt: new Date(now),
+            fileDeletedById: params.userId ?? null,
+            plausibility: plausibility as Prisma.InputJsonValue,
+          },
+        });
+      } catch (err) {
+        const message = this.safeDeleteErrorMessage(err);
+        this.logger.warn(
+          `deleteObject failed extraction=${params.record.id} code=${DOCUMENT_PHYSICAL_DELETE_PENDING_CODE} error=${message}`,
+        );
+        const lifecycle = readPipelinePayload(plausibility).lifecycle?.retention;
+        const attempts = (lifecycle?.physicalObjectDeleteAttempts ?? 0) + 1;
+        plausibility = patchRetentionState(plausibility, {
+          policyVersion: this.retentionConfig.policyVersion,
+          fileSoftDeletedAt: now,
+          physicalObjectDeleteStatus: 'pending',
+          physicalObjectDeleteAttempts: attempts,
+          physicalObjectDeleteLastError: message,
+          physicalObjectDeleteLastAt: now,
+        }) as Record<string, unknown>;
+
+        const updated = await this.prisma.vehicleDocumentExtraction.update({
+          where: { id: params.record.id },
+          data: {
+            fileDeletedAt: new Date(now),
+            fileDeletedById: params.userId ?? null,
+            plausibility: plausibility as Prisma.InputJsonValue,
+          },
+        });
+
+        if (params.toleratePhysicalDeleteFailure) {
+          return updated;
+        }
+        throw new DocumentPhysicalDeletePendingError(params.record.id);
+      }
     }
+
+    plausibility = patchRetentionState(plausibility, {
+      policyVersion: this.retentionConfig.policyVersion,
+      fileSoftDeletedAt: now,
+      filePurgedAt: now,
+      physicalObjectDeleteStatus: 'completed',
+      physicalObjectDeleteCompletedAt: now,
+    }) as Record<string, unknown>;
 
     return this.prisma.vehicleDocumentExtraction.update({
       where: { id: params.record.id },
@@ -104,6 +167,52 @@ export class DocumentLifecycleService {
         plausibility: plausibility as Prisma.InputJsonValue,
       },
     });
+  }
+
+  async retryPendingPhysicalObjectDeletes(input: {
+    dryRun: boolean;
+    organizationId?: string;
+    batchSize: number;
+  }): Promise<{ candidates: number; affected: number; skipped: number }> {
+    const rows = await this.prisma.vehicleDocumentExtraction.findMany({
+      where: {
+        ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+        fileDeletedAt: { not: null },
+        objectKey: { not: null },
+      },
+      select: {
+        id: true,
+        objectKey: true,
+        plausibility: true,
+        organizationId: true,
+        fileDeletedAt: true,
+      },
+      take: input.batchSize,
+      orderBy: { fileDeletedAt: 'asc' },
+    });
+
+    let affected = 0;
+    let skipped = 0;
+    for (const row of rows) {
+      if (isDocumentLegalHoldActive(row.plausibility)) {
+        skipped += 1;
+        continue;
+      }
+      if (!row.objectKey) {
+        skipped += 1;
+        continue;
+      }
+      affected += 1;
+      if (!input.dryRun) {
+        await this.softDeleteFile({
+          record: row,
+          userId: null,
+          toleratePhysicalDeleteFailure: true,
+        });
+      }
+    }
+
+    return { candidates: rows.length, affected, skipped };
   }
 
   async setLegalHold(params: {

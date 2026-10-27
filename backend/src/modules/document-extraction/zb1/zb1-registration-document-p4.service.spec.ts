@@ -56,15 +56,20 @@ describe('Zb1RegistrationDocumentP4Service', () => {
     );
   };
 
+  it('blocks persistence when P4 disabled', () => {
+    const svc = build({ enabled: false });
+    expect(() => svc.assertRegistrationCertificatePersistenceAllowed()).toThrow(BadRequestException);
+  });
+
   it('blocks upload when P4 enabled without GDPR release', () => {
     const svc = build({
       enabled: true,
       storageReleaseAcknowledged: true,
       gdprReleaseAcknowledged: false,
     });
-    expect(() => svc.assertProductionGatesForUpload()).toThrow(BadRequestException);
+    expect(() => svc.assertRegistrationCertificatePersistenceAllowed()).toThrow(BadRequestException);
     try {
-      svc.assertProductionGatesForUpload();
+      svc.assertRegistrationCertificatePersistenceAllowed();
     } catch (error) {
       expect((error as BadRequestException).getResponse()).toMatchObject({
         code: 'ZB1_REGISTRATION_DOCUMENT_P4_GDPR_GATE',
@@ -87,14 +92,16 @@ describe('Zb1RegistrationDocumentP4Service', () => {
     expect(pipeline?.lifecycle?.retention?.registrationCertificateRetentionDaysAfterSoftDelete).toBe(14);
   });
 
-  it('denies access for workers without fleet.manage when P4 active', () => {
-    const svc = build({ enabled: true });
+  it('denies access for workers without fleet.manage even when P4 inactive', () => {
+    const svc = build({ enabled: false });
     expect(() =>
-      svc.assertAccess({
-        record: { effectiveDocumentType: 'REGISTRATION_CERTIFICATE' },
-        membershipRole: MembershipRole.WORKER,
-        permissions: { 'document-upload': { read: true, write: true, manage: false } },
-      }),
+      svc.assertAccess(
+        { effectiveDocumentType: 'REGISTRATION_CERTIFICATE' },
+        {
+          membershipRole: MembershipRole.WORKER,
+          permissions: { 'document-upload': { read: true, write: true, manage: false } },
+        },
+      ),
     ).toThrow(ForbiddenException);
   });
 

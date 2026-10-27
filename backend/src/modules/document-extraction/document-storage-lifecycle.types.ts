@@ -45,15 +45,26 @@ export interface DocumentLegalHoldState {
   clearedByUserId?: string | null;
 }
 
+export type DocumentPhysicalObjectDeleteStatus = 'pending' | 'completed';
+
 export interface DocumentRetentionState {
   policyVersion: string;
   purpose?: string | null;
+  /**
+   * Days after soft-delete before optional ZB-I-specific purge phases apply.
+   * `0` = disabled (no automatic timed purge from this stamp); not immediate delete.
+   */
   registrationCertificateRetentionDaysAfterSoftDelete?: number | null;
   fileSoftDeletedAt?: string | null;
   filePurgedAt?: string | null;
   ocrCachePurgedAt?: string | null;
   sensitiveDataPurgedAt?: string | null;
   rowFinalDeletedAt?: string | null;
+  physicalObjectDeleteStatus?: DocumentPhysicalObjectDeleteStatus | null;
+  physicalObjectDeleteAttempts?: number | null;
+  physicalObjectDeleteLastError?: string | null;
+  physicalObjectDeleteLastAt?: string | null;
+  physicalObjectDeleteCompletedAt?: string | null;
 }
 
 export type DocumentMistralTransferStatus = 'not_sent' | 'sent' | 'completed' | 'failed';
