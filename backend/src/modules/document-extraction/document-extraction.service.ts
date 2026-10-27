@@ -423,6 +423,17 @@ export class DocumentExtractionService implements OnModuleInit {
       this.observability.recordUploadRejected('validation');
       throw new BadRequestException(`Unsupported document type: ${requestedDocumentType}`);
     }
+    if (
+      requestedDocumentType === 'REGISTRATION_CERTIFICATE' &&
+      !this.docConfig.zb1RegistrationCertificateExtractionEnabled
+    ) {
+      this.observability.recordUploadRejected('validation');
+      throw new BadRequestException({
+        message:
+          'Zulassungsbescheinigung Teil I (REGISTRATION_CERTIFICATE) extraction is disabled in this environment',
+        code: 'ZB1_REGISTRATION_CERTIFICATE_DISABLED',
+      });
+    }
     if (!isAllowedMimeType(input.mimeType)) {
       this.observability.recordUploadRejected('mime');
       throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);

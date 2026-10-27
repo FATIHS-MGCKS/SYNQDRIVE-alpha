@@ -574,6 +574,15 @@ export const DOCUMENT_FIELD_SCHEMAS: Record<ApplyDocumentExtractionType, FieldDe
     },
     { key: 'reportNumber', label: 'Reference number', type: 'string' },
   ],
+  REGISTRATION_CERTIFICATE: [
+    {
+      key: 'zb1RegistrationCertificate',
+      label: 'ZB-I structured extract (server)',
+      type: 'string',
+      hint: 'Populated by zb1_v1 OCR parser — not user-editable JSON',
+    },
+    { key: 'eventDate', label: 'Document date', type: 'date', hint: 'Optional issue date if visible' },
+  ],
   OTHER: [
     ...ARCHIVE_COMMON_FIELDS,
     { key: 'eventDate', label: 'Document date (alias)', type: 'date' },

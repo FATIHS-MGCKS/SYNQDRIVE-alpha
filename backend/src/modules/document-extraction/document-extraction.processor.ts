@@ -82,6 +82,8 @@ import {
 import { mapFieldEvidence, readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
 import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
 import { makePlausibilityCheck, resolveOverallPlausibilityStatus } from './document-plausibility.types';
+import { buildZb1RegistrationCertificateExtractionArtifacts } from './zb1/zb1-registration-certificate.processor.util';
+import type { DocumentAiExtractResult } from '@modules/ai/documents/document-ai-extraction.types';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -450,43 +452,60 @@ export class DocumentExtractionProcessor extends WorkerHost {
     const lastKnownOdometerKm = latest?.odometerKm ?? vehicle?.mileageKm ?? null;
     const dimoTokenId = latest?.dimoTokenId ?? undefined;
 
-    const agentResult = await this.aiExtraction.extract({
-      documentType: applyDocumentType,
-      fields: schema.map((f) => ({
-        key: f.key,
-        label: f.label,
-        type: f.type,
-        enumValues: f.enumValues,
-      })),
-      documentContent: {
-        text: content.text,
-        pages: content.pages,
-        pageBoundaryReliable: content.pageBoundaryReliable,
-      },
-      vehicleContext: {
-        vin: vehicle?.vin ?? undefined,
-        licensePlate: vehicle?.licensePlate ?? undefined,
-        make: vehicle?.make ?? undefined,
-        model: vehicle?.model ?? undefined,
-        year: vehicle?.year ?? undefined,
-        fuelType: vehicle?.fuelType ? String(vehicle.fuelType) : undefined,
-        lastKnownOdometerKm: lastKnownOdometerKm ?? undefined,
-      },
-      dimoTokenId,
-    });
+    let agentResult: DocumentAiExtractResult;
+    let structuredExtraction: ReturnType<typeof buildStructuredExtractionPayload>;
+    let fields: Record<string, unknown>;
 
-    if (!agentResult.success) {
-      throw mapAiExtractionFailure(agentResult.error);
+    if (
+      applyDocumentType === 'REGISTRATION_CERTIFICATE' &&
+      this.docConfig.zb1RegistrationCertificateExtractionEnabled
+    ) {
+      const zb1Artifacts = buildZb1RegistrationCertificateExtractionArtifacts({
+        resolvedSchema,
+        documentContent: content,
+      });
+      agentResult = zb1Artifacts.agentResult;
+      structuredExtraction = zb1Artifacts.structuredExtraction;
+      fields = zb1Artifacts.fields;
+    } else {
+      agentResult = await this.aiExtraction.extract({
+        documentType: applyDocumentType,
+        fields: schema.map((f) => ({
+          key: f.key,
+          label: f.label,
+          type: f.type,
+          enumValues: f.enumValues,
+        })),
+        documentContent: {
+          text: content.text,
+          pages: content.pages,
+          pageBoundaryReliable: content.pageBoundaryReliable,
+        },
+        vehicleContext: {
+          vin: vehicle?.vin ?? undefined,
+          licensePlate: vehicle?.licensePlate ?? undefined,
+          make: vehicle?.make ?? undefined,
+          model: vehicle?.model ?? undefined,
+          year: vehicle?.year ?? undefined,
+          fuelType: vehicle?.fuelType ? String(vehicle.fuelType) : undefined,
+          lastKnownOdometerKm: lastKnownOdometerKm ?? undefined,
+        },
+        dimoTokenId,
+      });
+
+      if (!agentResult.success) {
+        throw mapAiExtractionFailure(agentResult.error);
+      }
+
+      structuredExtraction = buildStructuredExtractionPayload({
+        resolvedSchema,
+        agentResult,
+      });
+      fields =
+        Object.keys(structuredExtraction.normalizedFlat).length > 0
+          ? structuredExtraction.normalizedFlat
+          : buildEmptyExtractedData(applyDocumentType, resolvedSchema.documentSubtype);
     }
-
-    const structuredExtraction = buildStructuredExtractionPayload({
-      resolvedSchema,
-      agentResult,
-    });
-    const fields =
-      Object.keys(structuredExtraction.normalizedFlat).length > 0
-        ? structuredExtraction.normalizedFlat
-        : buildEmptyExtractedData(applyDocumentType, resolvedSchema.documentSubtype);
 
     const plausibilityChecks = this.plausibility.runChecks(
       applyDocumentType,
