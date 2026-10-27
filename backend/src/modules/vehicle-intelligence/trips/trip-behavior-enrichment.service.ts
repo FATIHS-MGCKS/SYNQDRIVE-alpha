@@ -15,7 +15,7 @@
  * Detection thresholds and method/class names are intentionally unchanged here;
  * this is a naming/semantic clarification only.
  */
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService, type DimoFuelSummary } from '../../dimo/dimo-segments.service';
 import {
@@ -63,9 +63,8 @@ import {
   parseBehaviorSummaryJson,
 } from './trip-analysis-status';
 import { DrivingAssessmentDeviceQualityService } from './driving-assessment-device-quality.service';
-import type { VsiSignalProfileMaterializationService } from '../vehicle-signal-intelligence/vsi-profile-materialization.service';
+import { VsiSignalProfileMaterializationService } from '../vehicle-signal-intelligence/vsi-profile-materialization.service';
 import {
-  logVsiPostTripRpmCadenceDecision,
   refreshVsiRpmCadenceAfterTrip,
   resolveDimoProviderSourceLinkIdForVehicle,
   resolvePostTripRpmCadenceHfEvidenceReady,
@@ -206,12 +205,12 @@ export class TripBehaviorEnrichmentService {
     private readonly tripAssignmentService: TripAssignmentService,
     private readonly hfMirror: HfMirrorService,
     private readonly chEvidenceMirror: TripChEvidenceMirrorCoordinator,
+    @Inject(VsiSignalProfileMaterializationService)
+    private readonly vsiProfileMaterialization: VsiSignalProfileMaterializationService,
     @Optional() private readonly clickHouseHf?: ClickHouseHfService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly deviceQuality?: DrivingAssessmentDeviceQualityService,
     @Optional() private readonly brakingLedger?: BrakingEventLedgerService,
-    @Optional()
-    private readonly vsiProfileMaterialization?: VsiSignalProfileMaterializationService,
   ) {}
 
   /**
@@ -268,14 +267,6 @@ export class TripBehaviorEnrichmentService {
     tripId: string;
     hfTripPointsReady: boolean;
   }): Promise<void> {
-    if (!this.vsiProfileMaterialization) {
-      logVsiPostTripRpmCadenceDecision(this.logger, {
-        tripId: input.tripId,
-        vehicleId: input.vehicleId,
-        decision: { outcome: 'SKIP', skipReason: 'VSI_MATERIALIZATION_UNAVAILABLE' },
-      });
-      return;
-    }
     const providerSourceLinkId = await resolveDimoProviderSourceLinkIdForVehicle(
       this.prisma,
       input.vehicleId,
