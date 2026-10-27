@@ -29,6 +29,11 @@ import {
 import { ComplianceTaskActions } from './ComplianceTaskActions';
 import type { ConditionCategory } from './FleetConditionView';
 import { BrakeEvidencePanel } from './health/BrakeEvidencePanel';
+import { tireLowestTreadLabel } from '../lib/tire-health-detail-ui';
+import {
+  formatV3AuthoritativeHeadline,
+  isTireWearV3Authoritative,
+} from '../lib/tire-wear-read-model-ui';
 
 interface FleetConditionDetailViewProps {
   isDarkMode: boolean;
@@ -342,7 +347,11 @@ function RecommendationList({ items, isDark, textSecondary }: { items: string[];
 /* ─── TIRES ─── */
 function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary: TireHealthSummaryResponse | null; detail: TireHealthDetailResponse | null }) {
   const s = summary;
-  const pct = s?.overallPercent ?? 0;
+  const v3Authoritative = isTireWearV3Authoritative(s);
+  const pct = v3Authoritative ? null : (s?.overallPercent ?? 0);
+  const treadLifeValue = v3Authoritative
+    ? formatV3AuthoritativeHeadline(s!)
+    : `${Math.round(pct ?? 0)}%`;
   const canonPill = tireStatusPill(s?.overallStatus, isDark);
   return (
     <>
@@ -393,7 +402,14 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
         </div>
       )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatBox {...p} isDark={isDark} label="Tread Life" value={`${Math.round(pct)}%`} colorClass={getMetricColor(pct, isDark)} sub={s?.healthStatus ?? ''} />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label={v3Authoritative ? 'Tread (V3)' : 'Tread Life'}
+          value={treadLifeValue}
+          colorClass={v3Authoritative ? p.textPrimary : getMetricColor(pct ?? 0, isDark)}
+          sub={v3Authoritative ? tireLowestTreadLabel(s, 'en') : (s?.healthStatus ?? '')}
+        />
         <StatBox {...p} isDark={isDark} label="Remaining KM" value={s?.overallRemainingKm != null ? `~${Math.round(s.overallRemainingKm / 1000)}k` : '—'} sub="projected wear limit" />
         <StatBox {...p} isDark={isDark} label="Wear Rate" value={s?.wearRateMmPer1000km != null ? `${s.wearRateMmPer1000km.toFixed(2)} mm/1k` : '—'} sub="estimated per 1,000 km" />
         <StatBox {...p} isDark={isDark} label="Confidence" value={s?.confidenceLabel ?? '—'} sub={s?.confidenceScore != null ? `Score: ${s.confidenceScore}` : ''} colorClass={
