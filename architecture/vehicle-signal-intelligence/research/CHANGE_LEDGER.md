@@ -4,6 +4,7 @@ Append-only architecture change record.
 
 | Date | Change | Phase | Evidence |
 |------|--------|-------|----------|
+| 2026-10-27 | **P2 active RPM operational evidence refresh** — merge cadence snapshot on stable `cadenceSemanticFingerprint`; rolling trip ids update without `profileRevision` bump; PG integration | P2 | `vsi-profile-operational-refresh.util.ts`, `vsi-active-rpm-profile-operational-refresh.postgres.integration.spec.ts` |
 | 2026-10-27 | **P2 active RPM profile resolver V1 precision** — multi-feature trip class (median+P95+≤2s fraction); window known-trip quorum; semantic fingerprint excludes trip ids; production interval replay fixture | P2 | `vsi-active-rpm-profile-resolver.util.ts`, `vsi-active-rpm-profile-real-replay.spec.ts`, `fixtures/rpm-production-interval-replay.json` |
 | 2026-10-27 | **P2 active RPM profile resolver V1 (draft)** — rolling 3–5 link-scoped trips; `activeRpmProfile` on `cadenceIntelligence`; stability supermajority; research-backed regression fixtures | P2 | `vsi-active-rpm-profile-resolver.util.ts`, `vsi-active-rpm-profile-resolver.util.spec.ts`, `vsi-profile-cadence.enricher.ts` |
 | 2026-10-27 | **P2 enrichment VSI materialization DI fix** — runtime import + `@Inject(VsiSignalProfileMaterializationService)`; remove `@Optional` silent skip (`VSI_MATERIALIZATION_UNAVAILABLE` in workers) | P2 | `trip-behavior-enrichment.service.ts`, `trip-behavior-enrichment-vsi-materialization.nest-di.spec.ts` |

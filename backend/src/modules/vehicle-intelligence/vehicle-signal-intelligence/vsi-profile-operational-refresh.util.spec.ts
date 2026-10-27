@@ -1,8 +1,10 @@
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
+import { VSI_SIGNAL_CADENCE_CONTRACT_VERSION } from './vsi-profile-cadence.types';
 import {
   buildOperationalProfileRefreshCasWhere,
   buildOperationalProfileRefreshUpdate,
+  mergeOperationalCadenceIntelligence,
   mergeOperationalSignalSnapshots,
 } from './vsi-profile-operational-refresh.util';
 
@@ -121,6 +123,151 @@ describe('vsi-profile-operational-refresh.util', () => {
       semanticFingerprint: 'fp',
     });
     expect(update).toBeNull();
+  });
+
+  it('mergeOperationalCadenceIntelligence refreshes activeRpmProfile when cadence fingerprint is stable', () => {
+    const cadenceBase = {
+      contractVersion: VSI_SIGNAL_CADENCE_CONTRACT_VERSION,
+      evidenceConfidence: 'HIGH' as const,
+      provenance: [],
+      limitations: [],
+      observedSampleCount: 100,
+      distinctTimestampCount: 100,
+      intervalMedianSeconds: 1,
+      intervalP95Seconds: 2,
+      maxIntraWindowGapSeconds: 2,
+      activeWindowCoverageRatio: 0.5,
+      finalizedTripCount: 5,
+      regimes: [],
+      observedDensityLabel: 'ONE_SECOND_BUCKETS_UNPROVEN' as const,
+      cadenceSemanticFingerprint: 'cadence-fp-stable',
+    };
+    const persistedCadence = {
+      ...cadenceBase,
+      activeRpmProfile: {
+        contractVersion: 'vsi-active-rpm-profile-v1' as const,
+        activeProfile: 'RPM_1HZ' as const,
+        evaluatedTripIds: ['trip-a', 'trip-b', 'trip-c', 'trip-d', 'trip-e'],
+        qualifyingTripCount: 5,
+        agreementRatio: 1,
+        classificationDecisionCode: 'ROLLING_SUPERMAJORITY',
+        classificationDecisionSummary: 'ok',
+        tripClassifications: [],
+        profileSemanticFingerprint: 'rpm-profile-fp',
+      },
+    };
+    const incomingCadence = {
+      ...cadenceBase,
+      activeRpmProfile: {
+        ...persistedCadence.activeRpmProfile!,
+        evaluatedTripIds: ['trip-b', 'trip-c', 'trip-d', 'trip-e', 'trip-f'],
+        classificationDecisionSummary: 'rolled',
+      },
+    };
+    const merged = mergeOperationalCadenceIntelligence(persistedCadence, incomingCadence);
+    expect(merged?.activeRpmProfile?.evaluatedTripIds).toEqual([
+      'trip-b',
+      'trip-c',
+      'trip-d',
+      'trip-e',
+      'trip-f',
+    ]);
+    expect(merged?.cadenceSemanticFingerprint).toBe('cadence-fp-stable');
+  });
+
+  it('mergeOperationalCadenceIntelligence keeps persisted cadence when semantic fingerprint diverges', () => {
+    const persisted = {
+      contractVersion: VSI_SIGNAL_CADENCE_CONTRACT_VERSION,
+      evidenceConfidence: 'HIGH' as const,
+      provenance: [],
+      limitations: [],
+      observedSampleCount: 1,
+      distinctTimestampCount: 1,
+      intervalMedianSeconds: 6,
+      intervalP95Seconds: 8,
+      maxIntraWindowGapSeconds: 8,
+      activeWindowCoverageRatio: null,
+      finalizedTripCount: 5,
+      regimes: [],
+      observedDensityLabel: 'SUB_ONE_HZ' as const,
+      cadenceSemanticFingerprint: 'cadence-fp-a',
+    };
+    const incoming = { ...persisted, cadenceSemanticFingerprint: 'cadence-fp-b' };
+    expect(mergeOperationalCadenceIntelligence(persisted, incoming)?.cadenceSemanticFingerprint).toBe(
+      'cadence-fp-a',
+    );
+  });
+
+  it('buildOperationalProfileRefreshUpdate applies cadence operational refresh without fetch advance', () => {
+    const cadence = (tripIds: string[]) => ({
+      contractVersion: VSI_SIGNAL_CADENCE_CONTRACT_VERSION,
+      evidenceConfidence: 'HIGH' as const,
+      provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
+      limitations: [],
+      observedSampleCount: 50,
+      distinctTimestampCount: 50,
+      intervalMedianSeconds: 1,
+      intervalP95Seconds: 2,
+      maxIntraWindowGapSeconds: 2,
+      activeWindowCoverageRatio: 0.4,
+      finalizedTripCount: tripIds.length,
+      regimes: [],
+      observedDensityLabel: 'ONE_SECOND_BUCKETS_UNPROVEN' as const,
+      cadenceSemanticFingerprint: 'cadence-fp-stable',
+      activeRpmProfile: {
+        contractVersion: 'vsi-active-rpm-profile-v1' as const,
+        activeProfile: 'RPM_1HZ' as const,
+        evaluatedTripIds: tripIds,
+        qualifyingTripCount: tripIds.length,
+        agreementRatio: 1,
+        classificationDecisionCode: 'ROLLING_SUPERMAJORITY',
+        classificationDecisionSummary: 'ok',
+        tripClassifications: [],
+        profileSemanticFingerprint: 'rpm-profile-fp',
+      },
+    });
+    const persistedSignals = [
+      signalRow('engine_rpm', {
+        cadenceIntelligence: cadence(['t1', 't2', 't3', 't4', 't5']),
+      }),
+    ];
+    const incomingSignals = [
+      signalRow('engine_rpm', {
+        cadenceIntelligence: cadence(['t2', 't3', 't4', 't5', 't6']),
+      }),
+    ];
+    const update = buildOperationalProfileRefreshUpdate({
+      persisted: {
+        profileContractVersion: VSI_PROFILE_CONTRACT_VERSION,
+        providerSourceLinkId: 'link',
+        providerIdentity: 'DIMO',
+        verifiedModality: null,
+        telemetrySourceFamily: null,
+        declaredCatalogCheckedAt: new Date('2026-10-10T10:00:00.000Z'),
+        lastMaterializedSourceTimestamp: new Date('2026-10-15T12:00:00.000Z'),
+        lastProvenStrictSourceAdvanceAt: null,
+        profileLimitations: [],
+        signalsSnapshot: persistedSignals,
+        evaluatedAt: new Date('2026-10-15T12:00:10.000Z'),
+        lastMaterializedProviderFetchAt: new Date('2026-10-15T12:00:10.000Z'),
+      },
+      evaluation: evaluation(incomingSignals, {
+        evaluatedAt: new Date('2026-10-15T12:00:10.000Z'),
+        lastMaterializedProviderFetchAt: new Date('2026-10-15T12:00:10.000Z'),
+      }),
+      semanticFingerprint: 'profile-fp',
+    });
+    expect(update).not.toBeNull();
+    const rpm = (update!.signalsSnapshot as VsiProfileSignalFingerprintV1[]).find(
+      (s) => s.canonicalSignalKey === 'engine_rpm',
+    );
+    expect(rpm?.cadenceIntelligence?.activeRpmProfile?.evaluatedTripIds).toEqual([
+      't2',
+      't3',
+      't4',
+      't5',
+      't6',
+    ]);
   });
 
   it('buildOperationalProfileRefreshCasWhere includes revision, updatedAt, and nullable fetch', () => {
