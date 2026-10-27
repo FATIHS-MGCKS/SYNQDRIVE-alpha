@@ -265,6 +265,7 @@ describe('TireLifecycleService business logic', () => {
       kFactors: null,
       source: 'calibration',
       v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     const result = await svc.replaceTires({
@@ -297,6 +298,7 @@ describe('TireLifecycleService business logic', () => {
       kFactors: null,
       source: 'calibration',
       v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.replaceTires({
@@ -321,6 +323,7 @@ describe('TireLifecycleService business logic', () => {
       kFactors: null,
       source: 'calibration',
       v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.replaceTires({
@@ -362,6 +365,7 @@ describe('TireLifecycleService business logic', () => {
       kFactors: null,
       source: 'calibration',
       v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.rotateTires(VEHICLE_ID, { template: 'front_to_rear' });
@@ -424,6 +428,7 @@ describe('TireLifecycleService business logic', () => {
       kFactors: null,
       source: 'calibration',
       v3Ingestion: null,
+      v3Recompute: { status: 'skipped' },
     });
 
     await svc.replaceTires({

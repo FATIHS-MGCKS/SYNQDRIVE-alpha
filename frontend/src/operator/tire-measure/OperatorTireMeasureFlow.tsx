@@ -31,6 +31,7 @@ import {
 } from './operatorTireMeasure.utils';
 import { useOperatorTireMeasureData } from './useOperatorTireMeasureData';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 type TireMeasureAction = Extract<OperatorSheetAction, { type: 'tire-measure' }>;
 
@@ -89,13 +90,14 @@ export function OperatorTireMeasureFlow({ action }: Props) {
     [context, data.odometerKm],
   );
   const odometerSourceLabel = useMemo(
-    () => t(`operator.tireMeasure.odometerSource.${odometerSourceKey}`),
+    () =>
+      t(`operator.tireMeasure.odometerSource.${odometerSourceKey}` as TranslationKey),
     [t, odometerSourceKey],
   );
   const formatStepError = useCallback(
     (err: string | null) => {
       if (!err) return null;
-      if (err.startsWith('operator.tireMeasure.')) return t(err);
+      if (err.startsWith('operator.tireMeasure.')) return t(err as TranslationKey);
       return err;
     },
     [t],
@@ -530,7 +532,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                     </p>
                     {v3EvidenceWarnings.map((w) => (
                       <p key={w.id} className="text-xs text-[color:var(--status-watch)]">
-                        {t(w.message)}
+                        {t(w.message as TranslationKey)}
                       </p>
                     ))}
                   </div>
