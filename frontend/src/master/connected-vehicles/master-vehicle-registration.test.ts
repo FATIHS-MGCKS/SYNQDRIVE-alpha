@@ -139,6 +139,19 @@ describe('master-vehicle-registration payloads', () => {
     });
   });
 
+  it('merges aiFieldProvenance into extraData when provided on registered vehicle', () => {
+    const extra = buildVehicleExtraData(
+      minimalRv({
+        aiFieldProvenance: {
+          curbWeightKg: { category: 'AI_ESTIMATED', confidence: 0.7 },
+        },
+      }),
+    );
+    expect(extra.aiFieldProvenance).toEqual({
+      curbWeightKg: { category: 'AI_ESTIMATED', confidence: 0.7 },
+    });
+  });
+
   it('builds extraData with org-scoped mileage and hardware', () => {
     const extra = buildVehicleExtraData(minimalRv({ hardwareType: 'LTE_R1', mileage: 1500 }));
     expect(extra.mileageKm).toBe(1500);

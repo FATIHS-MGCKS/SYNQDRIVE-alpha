@@ -1,3 +1,5 @@
+import { AI_TIRE_SPEC_LLM_FIELD_KEYS } from '../../vehicle-intelligence/tires/ai-tire-spec-canonical.contract';
+
 export interface TireSpecContext {
   brand?: string;
   model?: string;
@@ -7,62 +9,7 @@ export interface TireSpecContext {
   speedIndex?: string;
 }
 
-export const TIRE_SPEC_FIELD_KEYS = [
-  'matchedBrand',
-  'matchedModel',
-  'matchedVariant',
-  'seasonType',
-  'vehicleClassFit',
-  'runFlat',
-  'reinforced',
-  'xl',
-  'oeHomologation',
-  'tireSizeRaw',
-  'widthMm',
-  'aspectRatio',
-  'rimDiameterInch',
-  'loadIndex',
-  'speedIndex',
-  'newTreadDepthMm',
-  'legalMinTreadDepthMm',
-  'practicalReplacementDepthMm',
-  'winterRecommendedMinDepthMm',
-  'sectionWidthMm',
-  'overallDiameterMm',
-  'approvedRimWidthMinIn',
-  'approvedRimWidthMaxIn',
-  'measuredRimWidthIn',
-  'revsPerKm',
-  'maxLoadKg',
-  'maxInflationKpa',
-  'maxInflationPsi',
-  'euRollingResistanceClass',
-  'euWetGripClass',
-  'euExternalNoiseDb',
-  'euExternalNoiseClass',
-  'severeSnowMarked',
-  'iceMarked',
-  'utqgTreadwear',
-  'utqgTraction',
-  'utqgTemperature',
-  'mileageWarrantyKm',
-  'evOptimized',
-  'intendedUse',
-  'comfortBias',
-  'efficiencyBias',
-  'wetSafetyBias',
-  'sportBias',
-  'longevityBias',
-  'payloadBias',
-  'urbanBias',
-  'highwayBias',
-  'aggressiveDrivingSensitivity',
-  'underinflationSensitivity',
-  'heatSensitivity',
-  'confidenceScore',
-  'manufacturerSourceUrl',
-  'labelSourceUrl',
-] as const;
+export const TIRE_SPEC_FIELD_KEYS = [...AI_TIRE_SPEC_LLM_FIELD_KEYS] as const;
 
 const BOOL_KEYS = new Set([
   'runFlat',
@@ -73,14 +20,13 @@ const BOOL_KEYS = new Set([
   'evOptimized',
 ]);
 
+const INTEGER_KEYS = new Set(['utqgTreadwear', 'euExternalNoiseDb', 'mileageWarrantyKm']);
+
 const NUMBER_KEYS = new Set([
   'widthMm',
   'aspectRatio',
   'rimDiameterInch',
   'newTreadDepthMm',
-  'legalMinTreadDepthMm',
-  'practicalReplacementDepthMm',
-  'winterRecommendedMinDepthMm',
   'sectionWidthMm',
   'overallDiameterMm',
   'approvedRimWidthMinIn',
@@ -90,8 +36,6 @@ const NUMBER_KEYS = new Set([
   'maxLoadKg',
   'maxInflationKpa',
   'maxInflationPsi',
-  'euExternalNoiseDb',
-  'mileageWarrantyKm',
   'comfortBias',
   'efficiencyBias',
   'wetSafetyBias',
@@ -125,13 +69,32 @@ export function buildTireSpecJsonSchema(): Record<string, unknown> {
       properties[key] = nullable({ type: 'boolean' });
       continue;
     }
+    if (INTEGER_KEYS.has(key)) {
+      properties[key] = nullable({ type: 'integer' });
+      continue;
+    }
     if (NUMBER_KEYS.has(key)) {
       properties[key] = nullable({ type: 'number' });
       continue;
     }
     if (key === 'intendedUse') {
       properties[key] = nullable({
-        anyOf: [{ type: 'array', items: { type: 'string' } }, { type: 'string' }],
+        type: 'array',
+        items: { type: 'string' },
+      });
+      continue;
+    }
+    if (key === 'utqgTraction' || key === 'utqgTemperature') {
+      properties[key] = nullable({
+        type: 'string',
+        enum: ['AA', 'A', 'B', 'C'],
+      });
+      continue;
+    }
+    if (key === 'euRollingResistanceClass' || key === 'euWetGripClass' || key === 'euExternalNoiseClass') {
+      properties[key] = nullable({
+        type: 'string',
+        enum: ['A', 'B', 'C', 'D', 'E'],
       });
       continue;
     }
@@ -157,25 +120,25 @@ export function buildTireSpecPrompt(context: TireSpecContext): { system: string;
     .filter(Boolean)
     .join('\n');
 
-  const system = `You are a tire specification database assistant with deep automotive knowledge.
-Answer from your knowledge only. Do NOT perform web searches.
-Return structured OEM/factory tire specifications. Use null when genuinely unknown — never invent values.
-Scope: knowledge-only tire lookup from brand/model/size data. No live vehicle telemetry.`;
+  const system = `You are an OEM tire specification extraction engine.
+Return ONLY JSON matching the provided strict schema.
+Use null when a value is unknown or not verifiable — never invent specifications.
+Do NOT output legal minimum tread, replacement policy thresholds, or jurisdiction defaults.
+Do NOT output URLs or claim manufacturer verification.
+Knowledge-only lookup from brand/model/size — no live vehicle telemetry.`;
 
   const user = `Tire context:
 ${ctxLines}
 
 Fill factory/OEM tire specifications for this tire.
 Rules:
-- use null ONLY if you genuinely do not know the value
-- numbers without units in numeric fields
-- confidenceScore: integer 0 to 100 (percent confidence; use null if unknown)
-- intendedUse: array of strings or null
-- all bias/sensitivity values: 0 to 1 or null
-- legalMinTreadDepthMm defaults to 1.6 if unknown
-- practicalReplacementDepthMm defaults: 3.0 summer, 4.0 all_season, 4.0 winter
-- winterRecommendedMinDepthMm defaults to 4.0 for winter tires
-- if not verifiable, return null`;
+- null means unknown; never guess numeric values
+- newTreadDepthMm: factory new tread depth in mm only (not legal minimum)
+- intendedUse: array of lowercase tags (e.g. touring, sport) or null
+- confidenceScore: integer 0–100 or null
+- bias/sensitivity fields: 0 to 1 or null
+- oeHomologation: OEM mark string (e.g. AO, MO) or null
+- EU label classes use A–E where applicable; UTQG traction/temperature use AA/A/B/C`;
 
   return { system, user };
 }

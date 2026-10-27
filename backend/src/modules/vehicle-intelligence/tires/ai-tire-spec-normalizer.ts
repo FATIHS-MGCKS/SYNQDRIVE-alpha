@@ -1,36 +1,50 @@
 /**
- * AI Tire Spec — Normalization, Validation, Persistence Builder
- *
- * Single-responsibility module for:
- *  1. Coercing raw AI output into strongly-typed spec fields
- *  2. Validating and clamping values into acceptable ranges
- *  3. Building the persisted JSON blob with source metadata
- *
- * RULES:
- *  - unknown / malformed values become null (never invented)
- *  - enums are normalized to lowercase canonical forms or null
- *  - numeric values are clamped to physically plausible ranges
- *  - booleans accept true/false/"true"/"false"/1/0
- *  - this module NEVER touches manual tread, calibration, or current-state fields
+ * AI Tire Spec — Normalization, Validation, Persistence Builder (V2)
  */
 
 import { AiTireSpec } from './tire-health.config';
 import { normalizeTireSpecConfidenceScore } from './ai-tire-spec-confidence.util';
-
-// ── Canonical enum sets ─────────────────────────────────────────────────────
+import { AI_TIRE_SPEC_LLM_FIELD_KEYS, AI_TIRE_SPEC_SCHEMA_VERSION } from './ai-tire-spec-canonical.contract';
 
 const SEASON_TYPES = new Set(['summer', 'winter', 'all_season']);
 const VEHICLE_CLASS_FITS = new Set(['passenger', 'suv', 'van', 'truck', 'sport', 'luxury', 'commercial']);
-const INTENDED_USES = new Set(['touring', 'sport', 'off_road', 'urban', 'highway', 'mixed', 'comfort', 'eco', 'track', 'economy']);
+const INTENDED_USES = new Set([
+  'touring',
+  'sport',
+  'off_road',
+  'urban',
+  'highway',
+  'mixed',
+  'comfort',
+  'eco',
+  'track',
+  'economy',
+  'passenger',
+]);
 const TIRE_ARCHETYPES = new Set([
-  'touring', 'comfort', 'sport', 'ultra_high_performance', 'performance',
-  'all_terrain', 'mud_terrain', 'winter_studded', 'winter_non_studded', 'winter_performance',
-  'eco', 'van_commercial', 'run_flat', 'ev_optimized', 'highway',
-  'luxury', 'commercial', 'budget', 'default',
+  'touring',
+  'comfort',
+  'sport',
+  'ultra_high_performance',
+  'performance',
+  'all_terrain',
+  'mud_terrain',
+  'winter_studded',
+  'winter_non_studded',
+  'winter_performance',
+  'eco',
+  'van_commercial',
+  'run_flat',
+  'ev_optimized',
+  'highway',
+  'luxury',
+  'commercial',
+  'budget',
+  'default',
 ]);
 const SPEC_SOURCE_TYPES = new Set(['ai_agent', 'manual', 'import', 'ocr']);
-
-// ── Persisted AI Tire Spec shape (extends AiTireSpec with metadata) ─────────
+const UTQG_LETTERS = new Set(['AA', 'A', 'B', 'C']);
+const EU_LABEL_CLASSES = new Set(['A', 'B', 'C', 'D', 'E']);
 
 export interface PersistedAiTireSpec extends AiTireSpec {
   userConfirmedSpec: boolean;
@@ -39,9 +53,8 @@ export interface PersistedAiTireSpec extends AiTireSpec {
   fetchedAt: string;
   jobId: string | null;
   normalizedAt: string;
+  schemaVersion?: string;
 }
-
-// ── Validation report ───────────────────────────────────────────────────────
 
 export interface AiTireSpecValidation {
   valid: boolean;
@@ -51,8 +64,6 @@ export interface AiTireSpecValidation {
   warnings: string[];
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
 function toStringOrNull(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
@@ -61,8 +72,20 @@ function toStringOrNull(v: unknown): string | null {
 
 function toNormalizedEnum(v: unknown, allowed: Set<string>): string | null {
   if (v == null) return null;
-  const s = String(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
-  return allowed.has(s) ? s : null;
+  const normalized = String(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return allowed.has(normalized) ? normalized : null;
+}
+
+function toUtqgEnum(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim().toUpperCase();
+  return UTQG_LETTERS.has(s) ? s : null;
+}
+
+function toEuLabelClass(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim().toUpperCase();
+  return EU_LABEL_CLASSES.has(s) ? s : null;
 }
 
 function toBoolOrNull(v: unknown): boolean | null {
@@ -77,26 +100,33 @@ function toFiniteNumberOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Clamp a numeric value to [min, max], returning null if input is null. */
-function clamp(v: number | null, min: number, max: number): number | null {
+function inRangeOrNull(v: number | null, min: number, max: number): number | null {
   if (v == null) return null;
-  return Math.max(min, Math.min(max, v));
+  if (v < min || v > max) return null;
+  return v;
 }
 
-function toUrlOrNull(v: unknown): string | null {
+function toIntendedUseValue(v: unknown): string | null {
   if (v == null) return null;
-  const s = String(v).trim();
-  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  if (Array.isArray(v)) {
+    const tags = v
+      .map((item) => String(item).trim().toLowerCase().replace(/[\s-]+/g, '_'))
+      .filter((tag) => tag && INTENDED_USES.has(tag));
+    return tags.length > 0 ? tags.join(',') : null;
+  }
+  if (typeof v === 'string' && v.trim()) {
+    const tags = v
+      .split(/[,;|/]/)
+      .map((s) => s.trim().toLowerCase().replace(/[\s-]+/g, '_'))
+      .filter((tag) => tag && INTENDED_USES.has(tag));
+    return tags.length > 0 ? tags.join(',') : toNormalizedEnum(v, INTENDED_USES);
+  }
   return null;
 }
 
-// ── Main normalizer ─────────────────────────────────────────────────────────
+/** Keys the normalizer reads from raw LLM output (must match schema contract). */
+export const AI_TIRE_SPEC_NORMALIZER_INPUT_KEYS = [...AI_TIRE_SPEC_LLM_FIELD_KEYS] as const;
 
-/**
- * Normalize raw AI agent output into a clean AiTireSpec.
- * Accepts any Record (typically from JSON parse of agent response).
- * Returns a fully-typed spec with nulls for unknown/invalid fields.
- */
 export function normalizeAiTireSpecResult(
   raw: Record<string, unknown> | null | undefined,
 ): AiTireSpec {
@@ -108,9 +138,9 @@ export function normalizeAiTireSpecResult(
     matchedModel: toStringOrNull(raw.matchedModel),
     matchedVariant: toStringOrNull(raw.matchedVariant),
     tireSizeRaw: toStringOrNull(raw.tireSizeRaw),
-    widthMm: clamp(toFiniteNumberOrNull(raw.widthMm), 100, 400),
-    aspectRatio: clamp(toFiniteNumberOrNull(raw.aspectRatio), 20, 90),
-    rimDiameterInch: clamp(toFiniteNumberOrNull(raw.rimDiameterInch), 10, 26),
+    widthMm: inRangeOrNull(toFiniteNumberOrNull(raw.widthMm), 100, 400),
+    aspectRatio: inRangeOrNull(toFiniteNumberOrNull(raw.aspectRatio), 20, 90),
+    rimDiameterInch: inRangeOrNull(toFiniteNumberOrNull(raw.rimDiameterInch), 10, 26),
     loadIndex: toStringOrNull(raw.loadIndex),
     speedIndex: toStringOrNull(raw.speedIndex),
     seasonType: toNormalizedEnum(raw.seasonType, SEASON_TYPES),
@@ -119,34 +149,53 @@ export function normalizeAiTireSpecResult(
     reinforced: toBoolOrNull(raw.reinforced),
     xl: toBoolOrNull(raw.xl),
     evOptimized: toBoolOrNull(raw.evOptimized),
-    maxLoadKg: clamp(toFiniteNumberOrNull(raw.maxLoadKg), 200, 4000),
-    maxInflationKpa: clamp(toFiniteNumberOrNull(raw.maxInflationKpa), 150, 500),
-    maxInflationPsi: clamp(toFiniteNumberOrNull(raw.maxInflationPsi), 20, 80),
-    newTreadDepthMm: clamp(toFiniteNumberOrNull(raw.newTreadDepthMm), 4.0, 16.0),
-    legalMinimumMm: clamp(toFiniteNumberOrNull(raw.legalMinimumMm), 1.0, 3.0),
-    recommendedReplacementDepthMm: clamp(toFiniteNumberOrNull(raw.recommendedReplacementDepthMm), 1.6, 6.0),
-    operationalReplacementDepthMm: clamp(toFiniteNumberOrNull(raw.operationalReplacementDepthMm), 1.6, 6.0),
-    intendedUse: toNormalizedEnum(raw.intendedUse, INTENDED_USES),
-    longevityBias: clamp(toFiniteNumberOrNull(raw.longevityBias), 0.0, 2.0),
-    aggressiveDrivingSensitivity: clamp(toFiniteNumberOrNull(raw.aggressiveDrivingSensitivity), 0.0, 2.0),
-    underinflationSensitivity: clamp(toFiniteNumberOrNull(raw.underinflationSensitivity), 0.0, 2.0),
-    heatSensitivity: clamp(toFiniteNumberOrNull(raw.heatSensitivity), 0.0, 2.0),
-    payloadBias: clamp(toFiniteNumberOrNull(raw.payloadBias), 0.0, 2.0),
-    urbanBias: clamp(toFiniteNumberOrNull(raw.urbanBias), 0.0, 2.0),
-    highwayBias: clamp(toFiniteNumberOrNull(raw.highwayBias), 0.0, 2.0),
+    oeHomologation: toStringOrNull(raw.oeHomologation),
+    sectionWidthMm: inRangeOrNull(toFiniteNumberOrNull(raw.sectionWidthMm), 125, 355),
+    overallDiameterMm: inRangeOrNull(toFiniteNumberOrNull(raw.overallDiameterMm), 400, 900),
+    approvedRimWidthMinIn: inRangeOrNull(toFiniteNumberOrNull(raw.approvedRimWidthMinIn), 4, 14),
+    approvedRimWidthMaxIn: inRangeOrNull(toFiniteNumberOrNull(raw.approvedRimWidthMaxIn), 4, 14),
+    measuredRimWidthIn: inRangeOrNull(toFiniteNumberOrNull(raw.measuredRimWidthIn), 4, 14),
+    revsPerKm: inRangeOrNull(toFiniteNumberOrNull(raw.revsPerKm), 300, 600),
+    maxLoadKg: inRangeOrNull(toFiniteNumberOrNull(raw.maxLoadKg), 200, 4000),
+    maxInflationKpa: inRangeOrNull(toFiniteNumberOrNull(raw.maxInflationKpa), 150, 500),
+    maxInflationPsi: inRangeOrNull(toFiniteNumberOrNull(raw.maxInflationPsi), 20, 80),
+    newTreadDepthMm: inRangeOrNull(toFiniteNumberOrNull(raw.newTreadDepthMm), 4.0, 16.0),
+    euRollingResistanceClass: toEuLabelClass(raw.euRollingResistanceClass),
+    euWetGripClass: toEuLabelClass(raw.euWetGripClass),
+    euExternalNoiseDb: inRangeOrNull(toFiniteNumberOrNull(raw.euExternalNoiseDb), 60, 85),
+    euExternalNoiseClass: toEuLabelClass(raw.euExternalNoiseClass),
+    severeSnowMarked: toBoolOrNull(raw.severeSnowMarked),
+    iceMarked: toBoolOrNull(raw.iceMarked),
+    utqgTreadwear: inRangeOrNull(toFiniteNumberOrNull(raw.utqgTreadwear), 60, 800),
+    utqgTraction: toUtqgEnum(raw.utqgTraction),
+    utqgTemperature: toUtqgEnum(raw.utqgTemperature),
+    mileageWarrantyKm: inRangeOrNull(toFiniteNumberOrNull(raw.mileageWarrantyKm), 0, 150_000),
+    intendedUse: toIntendedUseValue(raw.intendedUse),
+    longevityBias: inRangeOrNull(toFiniteNumberOrNull(raw.longevityBias), 0.0, 1.0),
+    aggressiveDrivingSensitivity: inRangeOrNull(
+      toFiniteNumberOrNull(raw.aggressiveDrivingSensitivity),
+      0.0,
+      1.0,
+    ),
+    underinflationSensitivity: inRangeOrNull(toFiniteNumberOrNull(raw.underinflationSensitivity), 0.0, 1.0),
+    heatSensitivity: inRangeOrNull(toFiniteNumberOrNull(raw.heatSensitivity), 0.0, 1.0),
+    payloadBias: inRangeOrNull(toFiniteNumberOrNull(raw.payloadBias), 0.0, 1.0),
+    urbanBias: inRangeOrNull(toFiniteNumberOrNull(raw.urbanBias), 0.0, 1.0),
+    highwayBias: inRangeOrNull(toFiniteNumberOrNull(raw.highwayBias), 0.0, 1.0),
+    comfortBias: inRangeOrNull(toFiniteNumberOrNull(raw.comfortBias), 0.0, 1.0),
+    efficiencyBias: inRangeOrNull(toFiniteNumberOrNull(raw.efficiencyBias), 0.0, 1.0),
+    wetSafetyBias: inRangeOrNull(toFiniteNumberOrNull(raw.wetSafetyBias), 0.0, 1.0),
+    sportBias: inRangeOrNull(toFiniteNumberOrNull(raw.sportBias), 0.0, 1.0),
     tireArchetype: toNormalizedEnum(raw.tireArchetype, TIRE_ARCHETYPES),
     confidenceScore: normalizeTireSpecConfidenceScore(raw.confidenceScore),
-    manufacturerSourceUrl: toUrlOrNull(raw.manufacturerSourceUrl),
-    labelSourceUrl: toUrlOrNull(raw.labelSourceUrl),
+    legalMinimumMm: null,
+    recommendedReplacementDepthMm: null,
+    operationalReplacementDepthMm: null,
+    manufacturerSourceUrl: null,
+    labelSourceUrl: null,
   };
 }
 
-// ── Validation ──────────────────────────────────────────────────────────────
-
-/**
- * Validate a normalized AiTireSpec. Returns a report with warnings
- * for implausible values. Does NOT reject — the caller decides.
- */
 export function validateAiTireSpec(spec: AiTireSpec): AiTireSpecValidation {
   const warnings: string[] = [];
   const entries = Object.entries(spec);
@@ -158,21 +207,6 @@ export function validateAiTireSpec(spec: AiTireSpec): AiTireSpecValidation {
   if (spec.confidenceScore != null && spec.confidenceScore < 30) {
     warnings.push(`Low confidence score: ${spec.confidenceScore}`);
   }
-  if (spec.newTreadDepthMm != null && spec.legalMinimumMm != null) {
-    if (spec.newTreadDepthMm <= spec.legalMinimumMm) {
-      warnings.push('newTreadDepthMm <= legalMinimumMm — likely incorrect');
-    }
-  }
-  if (spec.operationalReplacementDepthMm != null && spec.legalMinimumMm != null) {
-    if (spec.operationalReplacementDepthMm < spec.legalMinimumMm) {
-      warnings.push('operationalReplacementDepthMm < legalMinimumMm — implausible');
-    }
-  }
-  if (spec.newTreadDepthMm != null && spec.operationalReplacementDepthMm != null) {
-    if (spec.newTreadDepthMm <= spec.operationalReplacementDepthMm) {
-      warnings.push('newTreadDepthMm <= operationalReplacementDepthMm — replacement before new?');
-    }
-  }
 
   return {
     valid: nonNull.length > 0,
@@ -183,13 +217,6 @@ export function validateAiTireSpec(spec: AiTireSpec): AiTireSpecValidation {
   };
 }
 
-// ── Persistence builder ─────────────────────────────────────────────────────
-
-/**
- * Build the JSON blob to persist on VehicleTireSetup.aiTireSpec.
- * Merges normalized spec fields with source metadata.
- * Only known fields are stored — no arbitrary pass-through.
- */
 export function buildPersistedAiTireSpec(
   normalized: AiTireSpec,
   metadata: {
@@ -208,23 +235,66 @@ export function buildPersistedAiTireSpec(
     fetchedAt: metadata.completedAt ?? new Date().toISOString(),
     jobId: metadata.jobId,
     normalizedAt: new Date().toISOString(),
+    schemaVersion: AI_TIRE_SPEC_SCHEMA_VERSION,
   };
 }
 
-// ── Empty spec ──────────────────────────────────────────────────────────────
-
 function buildEmptySpec(): AiTireSpec {
   return {
-    matchedBrand: null, matchedModel: null, matchedVariant: null,
-    tireSizeRaw: null, widthMm: null, aspectRatio: null, rimDiameterInch: null,
-    loadIndex: null, speedIndex: null, seasonType: null, vehicleClassFit: null,
-    runFlat: null, reinforced: null, xl: null, evOptimized: null,
-    maxLoadKg: null, maxInflationKpa: null, maxInflationPsi: null,
-    newTreadDepthMm: null, legalMinimumMm: null,
-    recommendedReplacementDepthMm: null, operationalReplacementDepthMm: null,
-    intendedUse: null, longevityBias: null, aggressiveDrivingSensitivity: null,
-    underinflationSensitivity: null, heatSensitivity: null, payloadBias: null,
-    urbanBias: null, highwayBias: null, tireArchetype: null,
-    confidenceScore: null, manufacturerSourceUrl: null, labelSourceUrl: null,
+    matchedBrand: null,
+    matchedModel: null,
+    matchedVariant: null,
+    tireSizeRaw: null,
+    widthMm: null,
+    aspectRatio: null,
+    rimDiameterInch: null,
+    loadIndex: null,
+    speedIndex: null,
+    seasonType: null,
+    vehicleClassFit: null,
+    runFlat: null,
+    reinforced: null,
+    xl: null,
+    evOptimized: null,
+    oeHomologation: null,
+    sectionWidthMm: null,
+    overallDiameterMm: null,
+    approvedRimWidthMinIn: null,
+    approvedRimWidthMaxIn: null,
+    measuredRimWidthIn: null,
+    revsPerKm: null,
+    maxLoadKg: null,
+    maxInflationKpa: null,
+    maxInflationPsi: null,
+    newTreadDepthMm: null,
+    euRollingResistanceClass: null,
+    euWetGripClass: null,
+    euExternalNoiseDb: null,
+    euExternalNoiseClass: null,
+    severeSnowMarked: null,
+    iceMarked: null,
+    utqgTreadwear: null,
+    utqgTraction: null,
+    utqgTemperature: null,
+    mileageWarrantyKm: null,
+    legalMinimumMm: null,
+    recommendedReplacementDepthMm: null,
+    operationalReplacementDepthMm: null,
+    intendedUse: null,
+    longevityBias: null,
+    aggressiveDrivingSensitivity: null,
+    underinflationSensitivity: null,
+    heatSensitivity: null,
+    payloadBias: null,
+    urbanBias: null,
+    highwayBias: null,
+    comfortBias: null,
+    efficiencyBias: null,
+    wetSafetyBias: null,
+    sportBias: null,
+    tireArchetype: null,
+    confidenceScore: null,
+    manufacturerSourceUrl: null,
+    labelSourceUrl: null,
   };
 }

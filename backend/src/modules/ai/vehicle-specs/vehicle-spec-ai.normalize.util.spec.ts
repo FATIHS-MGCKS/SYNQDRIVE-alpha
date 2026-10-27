@@ -1,5 +1,6 @@
 import {
   applyElectrificationHvSafety,
+  applyResolvedVariantIdentityGate,
   applyVariantConfidenceGate,
   coerceHvBatteryPresent,
   normalizeDrivetrain,
@@ -28,6 +29,23 @@ describe('vehicle-spec-ai.normalize.util', () => {
     };
     const rejected = applyVariantConfidenceGate(specs);
     expect(rejected.length).toBeGreaterThan(0);
+    expect(specs.curbWeightKg).toBeNull();
+    expect(specs.systemMotorPowerKw).toBeNull();
+  });
+
+  it('nulls variant numerics when resolvedVariant does not match vehicle identity', () => {
+    const specs: Record<string, string | number | boolean | null> = {
+      resolvedVariant: 'Completely Different Model XYZ',
+      variantConfidence: 0.95,
+      curbWeightKg: 1900,
+      systemMotorPowerKw: 120,
+    };
+    const rejected = applyResolvedVariantIdentityGate(specs, {
+      make: 'Volkswagen',
+      model: 'Arteon',
+      year: 2022,
+    });
+    expect(rejected).toContain('identity:resolved_variant_context_mismatch');
     expect(specs.curbWeightKg).toBeNull();
     expect(specs.systemMotorPowerKw).toBeNull();
   });
