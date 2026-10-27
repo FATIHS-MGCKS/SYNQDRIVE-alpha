@@ -2341,3 +2341,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Fable audit: nonterminal TDI statuses and legacy mirror provenance were invisible; i18n gate failed on Turkish owned keys vs fallback-only registry |
 | VALIDATION | `trip-analytics-canonical.service.spec.ts`, `trip-api.mapper.spec.ts`, `scoreFormat.test.ts`, `VehicleStressPanel.ui.test.tsx`, `translation-registry.test.ts`; `bash architecture/drivingintelligence/scripts/validate-docs.sh` |
 | NON_EFFECTS | No Driving Impact compute/persist formulas; no DriverScore/RentalDrivingAnalysis/Tire/Brake/FSM/schema changes |
+
+### DS4 authoritative assessment migration — PR-0 governance (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Owner decision **DI-DEC-DS4-AUTHORITY-001** (`OWNER_APPROVED`, not runtime-activated). Design doc `design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md` (dependency graph, fail-closed FC-1..FC-7, blockers B1–B9, PR-0..PR-10 sequence, OBD misuse separation). Consumer Audit V1 findings register `evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md` (4×P1, 4×P2, 2×ADDENDUM). Registry: Brakes Health / Rental Driving Analysis / Rental Health → `AUDIT_IN_PROGRESS` bootstrap authorities. Tires `TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001` → PARTIALLY_CLOSED (design node; YAML deferred). |
+| WHY | Owner-approved migration plan from legacy HF/Impact V1 to DS4 as single driving-behaviour authority; permanent record before implementation PRs |
+| VALIDATION | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/drivingintelligence/scripts/validate-graph.sh`; `bash architecture/drivingintelligence/scripts/validate-docs.sh` |
+| NON_EFFECTS | **No** runtime code, migrations, flags, deploy, DS4 authority activation, or scoring changes |

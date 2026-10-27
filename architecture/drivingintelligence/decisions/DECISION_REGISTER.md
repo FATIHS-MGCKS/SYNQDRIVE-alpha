@@ -455,3 +455,21 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED for code/test behavior on local PostgreSQL 16 and the read-only Production baseline; Production migration effect not yet observed |
 | **EVIDENCE** | DI-EVID-EXP021-S4A-IMPL-001 |
 | **BOUNDARY** | Consulted: Trips (`vehicle_trips` read-only; FKs `ON DELETE CASCADE` only; no trigger/index/constraint on canonical tables), DIMO Integration (no call, no change), S2 shadow persistence (guards added to S2 tables; S2 library unchanged) |
+
+## DI-DEC-DS4-AUTHORITY-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DS4 Motion Core as single authoritative driving-behaviour assessment (legacy HF/Impact V1 retirement) |
+| **ERA** | DS4 authority migration (2026-10-28, PR-0 governance) |
+| **STATUS** | PROPOSED (owner approval recorded 2026-10-28 in architecture; not activated in runtime) |
+| **PROBLEM** | Legacy HF/native enrichment + Impact V1 is authoritative while DS4 motion core is shadow-only; consumers lack quality gates and mix legacy fallbacks (Consumer Audit V1: 4×P1, 4×P2) |
+| **ALTERNATIVES** | (1) Permanent dual authority with legacy fallback — **rejected** (owner). (2) DS4 markers only, legacy scoring forever — **rejected**. (3) Incremental shadow compare indefinitely without cutover — **rejected** as end state |
+| **DECISION** | DS4 Motion → DS4 Assessment (L2) → Driving Impact V2 (`scoreAuthority=DS4`) → aggregators (DriverScore, Rental, Trip UI, brakes, tires after gates). **No permanent legacy fallback** after cutover. **No parallel authoritative scoring**. **Fail-closed**: insufficient DS4 evidence ⇒ unavailable assessment, never legacy top-up or fabricated zero. OBD misuse remains a **separate channel** from motion scoring (PR-M). Historical rows retain provenance (`LEGACY_HF_V1` label); non-destructive migration only |
+| **RATIONALE** | DS4 manoeuvre detector + FSM temporal quality is the engineered replacement for HF point-pair kinematics; shadow production evidence exists on allowlisted fleet; consumer audit proves legacy path is unsafe for authority promotion |
+| **TRADE-OFFS** | B1–B9 blockers must close before decommission; fleet-wide admission and Impact V2 weights require Fable review; assessment latency vs legacy enrichment |
+| **CONSEQUENCES** | PR-0..PR-10 sequence; Brakes/Rental Driving Analysis/Rental Health → `AUDIT_IN_PROGRESS`; DI design doc + findings register; **no** flag/migration/deploy in PR-0 |
+| **GRAPH NODES** | DI-DEC-DS4-AUTHORITY-001, DI-EVID-CONSUMER-AUDIT-V1-001, DI-EVID-DS4-MIGRATION-DESIGN-001 |
+| **EPISTEMIC** | CONFIRMED for owner decision and audit counts @ `51adb234…`; DS4 fleet coverage CONFIRMED read-only for allowlisted vehicles; full-fleet readiness INFERRED pending G1–G9 |
+| **EVIDENCE** | [`design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md`](../design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md) · [`evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md`](../evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md) |
+| **BOUNDARY** | Trip boundaries unchanged (Trip Detection). Tires productive DS4 input remains gated (Tires authority). ATE enqueue retirement only at PR-10 after gates |

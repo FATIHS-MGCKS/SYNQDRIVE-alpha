@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-10-24 (Tires Health `NOT_STARTED` → `AUDIT_IN_PROGRESS`; bootstrap authority `architecture/tires/`; Tire Intelligence P1)
+**Last updated:** 2026-10-28 (DS4 authoritative assessment migration PR-0: DI design doc + owner decision; Brakes Health / Rental Driving Analysis / Rental Health → `AUDIT_IN_PROGRESS`)
 
 ---
 
@@ -24,7 +24,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Battery V2 | Documents Battery V2 health model, signal authority, lifecycle, execution, persistence, and consumer contracts. | `AUTHORITY_ACTIVE` | Phase 4 resolution planning · gaps remain open | [`architecture/battery-v2/`](battery-v2/) |
 | Billing (SynqDrive SaaS) | Tenant subscription billing, Stripe SaaS catalog, usage metering, and master billing reconciliation. | `NOT_STARTED` | N/A — inventory only | — |
 | Bookings | Rental booking lifecycle from wizard through handover, eligibility gates, pickup gate, and payment coupling. | `NOT_STARTED` | N/A — inventory only | — |
-| Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `NOT_STARTED` | N/A — inventory only | — |
+| Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 migration consumer (PR-8) · Production audit not started | [`architecture/brakes-health/`](brakes-health/) |
 | Business Audit | Durable business-event audit outbox with scheduled processing for operational audit records. | `NOT_STARTED` | N/A — inventory only | — |
 | Business Insights | Detector-based dashboard insight signals such as utilization, shortages, and fleet operational patterns. | `NOT_STARTED` | N/A — inventory only | — |
 | Communication Center | Omnichannel conversation persistence and operator inbox across WhatsApp, SMS, and voice projections. | `NOT_STARTED` | N/A — inventory only | — |
@@ -60,8 +60,8 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Pricing & Deposits | Rental tariff pricing rules, publish flow, and deposit resolution for checkout. | `NOT_STARTED` | N/A — inventory only | — |
 | Products (Rental Catalog) | Rental product catalog definitions and org product assignments. | `NOT_STARTED` | N/A — inventory only | — |
 | Prospects | Pre-customer prospect and lead records for master-admin sales pipeline. | `NOT_STARTED` | N/A — inventory only | — |
-| Rental Driving Analysis | Rental-period driving analysis aggregation for bookings and drivers consuming trip intelligence. | `NOT_STARTED` | N/A — inventory only | — |
-| Rental Health | Fleet-level health aggregation consuming source vehicle health modules without recalculating. | `NOT_STARTED` | N/A — inventory only | — |
+| Rental Driving Analysis | Rental-period driving analysis aggregation for bookings and drivers consuming trip intelligence. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · Consumer Audit V1 traceability · DS4 consumer PR-6 | [`architecture/rental-driving-analysis/`](rental-driving-analysis/) |
+| Rental Health | Fleet-level health aggregation consuming source vehicle health modules without recalculating. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 cross-module governance PR-0 | [`architecture/rental-health/`](rental-health/) |
 | Rental Rules | Org-level rental policy and rules configuration governing bookings and operations. | `NOT_STARTED` | N/A — inventory only | — |
 | Scaling Process | Documents horizontal scaling, multi-replica coordination, scheduler leader election, and production scale gates. | `AUTHORITY_ACTIVE` | Bootstrap established · living architecture authority | [`architecture/scaling-process/`](scaling-process/) |
 | Service Cases | Operational service-case tracking linked to fleet maintenance and vendor work. | `NOT_STARTED` | N/A — inventory only | — |
@@ -342,7 +342,7 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Authority directory** | [`architecture/drivingintelligence/`](drivingintelligence/) |
 | **Authority-native status** | **Retrospective expansion V2** (2026-09-06) · **SUBSTANTIAL reconstruction** — full workstream 2026-08-30 → present · Runtime impact: documentation and knowledge graph only |
 | **Ownership boundary** | **Does NOT own canonical trip boundaries** — Trip Detection / DIMO Segments own trip start/end and live trip FSM. **Does NOT own** REFUEL/RECHARGE energy events (→ KG-EED). **Does NOT own** fuel-station identification (→ Tankstellenerkennung). Three confidence domains must never be conflated: assessability dimension status (A), event provenance native vs HF-reconstructed (B), driving stress score as operational load not driver quality (C). |
-| **Mandatory entry documents** | [README.md](drivingintelligence/README.md) · [CURRENT_STATE.md](drivingintelligence/CURRENT_STATE.md) · [KNOWLEDGE_GRAPH.md](drivingintelligence/KNOWLEDGE_GRAPH.md) · [AGENT_CONTRACT.md](drivingintelligence/AGENT_CONTRACT.md) · [COVERAGE_MATRIX.md](drivingintelligence/COVERAGE_MATRIX.md) · [decisions/DECISION_REGISTER.md](drivingintelligence/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](drivingintelligence/evidence/EVIDENCE_INDEX.md) · [contradictions/CONTRADICTION_REGISTER.md](drivingintelligence/contradictions/CONTRADICTION_REGISTER.md) · [research/OPEN_QUESTIONS.md](drivingintelligence/research/OPEN_QUESTIONS.md) |
+| **Mandatory entry documents** | [README.md](drivingintelligence/README.md) · [CURRENT_STATE.md](drivingintelligence/CURRENT_STATE.md) · [design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md](drivingintelligence/design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md) · [KNOWLEDGE_GRAPH.md](drivingintelligence/KNOWLEDGE_GRAPH.md) · [AGENT_CONTRACT.md](drivingintelligence/AGENT_CONTRACT.md) · [COVERAGE_MATRIX.md](drivingintelligence/COVERAGE_MATRIX.md) · [decisions/DECISION_REGISTER.md](drivingintelligence/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](drivingintelligence/evidence/EVIDENCE_INDEX.md) · [evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md](drivingintelligence/evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md) · [contradictions/CONTRADICTION_REGISTER.md](drivingintelligence/contradictions/CONTRADICTION_REGISTER.md) · [research/OPEN_QUESTIONS.md](drivingintelligence/research/OPEN_QUESTIONS.md) |
 | **Validation** | `bash architecture/drivingintelligence/scripts/validate-graph.sh` · `bash architecture/drivingintelligence/scripts/validate-docs.sh` |
 
 ---
@@ -403,6 +403,48 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Repository audit + read-only Production baseline complete for P1 scope; V2 ↔ DS4 comparison and target architecture documented; promotion gate open (setup-count reconciliation, DI graph DS4 node, post-adapter Production baseline). |
 | **Mandatory entry documents (partial)** | [README.md](tires/README.md) · [AUDIT_MANIFEST.md](tires/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](tires/CURRENT_STATE.md) · [integration/DS4_MOTION_INTEGRATION_AUDIT.md](tires/integration/DS4_MOTION_INTEGRATION_AUDIT.md) · [AGENT_CONTRACT.md](tires/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](tires/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](tires/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](tires/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](tires/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](tires/contradictions/KNOWLEDGE_GAPS.md) · [contradictions/OPEN_CONTRADICTIONS.md](tires/contradictions/OPEN_CONTRADICTIONS.md) |
 | **Validation** | `bash architecture/tires/scripts/validate-graph.sh` |
+
+---
+
+### Brakes Health
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap 2026-10-28 (DS4 authority migration PR-0); **not** promoted |
+| **Scope** | Brake component lifecycle, wear evidence, recalculation jobs, brake health APIs; consumption of Driving Impact braking rates (today COMPLETE\|PARTIAL TDI filter). |
+| **Authority directory** | [`architecture/brakes-health/`](brakes-health/) |
+| **Authority-native status** | Bootstrap V0.1 · DS4 migration consumer track (PR-8) · Production `NOT_AUDITED` in PR-0 |
+| **Ownership boundary** | **Owns** brake health persistence and APIs. **Does NOT own** Driving Impact or DS4 motion assessment (→ Driving Intelligence). |
+| **Mandatory entry documents (partial)** | [README.md](brakes-health/README.md) · [AUDIT_MANIFEST.md](brakes-health/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](brakes-health/CURRENT_STATE.md) · [AGENT_CONTRACT.md](brakes-health/AGENT_CONTRACT.md) |
+| **Validation** | Registry validator only until graph script exists |
+
+---
+
+### Rental Driving Analysis
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap 2026-10-28 (DS4 authority migration PR-0) |
+| **Scope** | Booking/driver rental-period driving analysis aggregation, `rental_driving_analyses` persistence, rental UI stress cards, bookings detail usage fields, BI detectors. |
+| **Authority directory** | [`architecture/rental-driving-analysis/`](rental-driving-analysis/) |
+| **Authority-native status** | Bootstrap V0.1 · Consumer Audit V1 findings register linked |
+| **Ownership boundary** | **Owns** rental analysis rows and rental-specific assessment publication. **Consumes** trip driving impact (→ Driving Intelligence). **Does NOT own** trip boundaries or DS4 motion runs. |
+| **Mandatory entry documents (partial)** | [README.md](rental-driving-analysis/README.md) · [AUDIT_MANIFEST.md](rental-driving-analysis/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](rental-driving-analysis/CURRENT_STATE.md) · [AGENT_CONTRACT.md](rental-driving-analysis/AGENT_CONTRACT.md) |
+| **Validation** | Registry validator only until graph script exists |
+
+---
+
+### Rental Health
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap 2026-10-28 (DS4 authority migration PR-0) |
+| **Scope** | Fleet-level rental health aggregation consuming tire/brake/vehicle health summaries without recalculating source modules. |
+| **Authority directory** | [`architecture/rental-health/`](rental-health/) |
+| **Authority-native status** | Bootstrap V0.1 |
+| **Ownership boundary** | **Owns** rental gate aggregation semantics. **Does NOT own** DS4 shadow tables or Driving Impact scoring. |
+| **Mandatory entry documents (partial)** | [README.md](rental-health/README.md) · [AUDIT_MANIFEST.md](rental-health/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](rental-health/CURRENT_STATE.md) · [AGENT_CONTRACT.md](rental-health/AGENT_CONTRACT.md) |
+| **Validation** | Registry validator only until graph script exists |
 
 ---
 
