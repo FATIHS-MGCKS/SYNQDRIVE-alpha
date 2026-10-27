@@ -117,14 +117,28 @@ export const VSI_ACTIVE_RPM_TRIP_ACTIVE_FAST_MEDIAN_MAX_SECONDS = 1.5;
 /** Tiguan fast production replay (7e72506d): active ≤2s fraction ≈0.79; b373 ≈0.89. */
 export const VSI_ACTIVE_RPM_TRIP_ACTIVE_FAST_FRACTION_LE2_MIN = 0.78;
 
+/**
+ * Trip-level corroboration for RPM_1HZ.
+ * When qualifying fast sequences already strictly dominate active intervals, the
+ * trip-wide ≤2s fraction gate is redundant (sequence-level fast rules apply);
+ * only the active median and sample floor are required.
+ */
 export function tripActiveCadenceSupportsFastProfile(
   intervalsSec: readonly number[],
+  options?: { strictFastIntervalDominance?: boolean },
 ): boolean {
   const active = summarizeTripActiveIntervalCadence(intervalsSec);
+  if (
+    active.activeIntervalCount < VSI_CADENCE_MIN_INTERVAL_SAMPLES ||
+    active.intervalMedianSeconds == null ||
+    active.intervalMedianSeconds > VSI_ACTIVE_RPM_TRIP_ACTIVE_FAST_MEDIAN_MAX_SECONDS
+  ) {
+    return false;
+  }
+  if (options?.strictFastIntervalDominance) {
+    return true;
+  }
   return (
-    active.activeIntervalCount >= VSI_CADENCE_MIN_INTERVAL_SAMPLES &&
-    active.intervalMedianSeconds != null &&
-    active.intervalMedianSeconds <= VSI_ACTIVE_RPM_TRIP_ACTIVE_FAST_MEDIAN_MAX_SECONDS &&
     (active.fractionIntervalsLe2s ?? 0) >= VSI_ACTIVE_RPM_TRIP_ACTIVE_FAST_FRACTION_LE2_MIN
   );
 }

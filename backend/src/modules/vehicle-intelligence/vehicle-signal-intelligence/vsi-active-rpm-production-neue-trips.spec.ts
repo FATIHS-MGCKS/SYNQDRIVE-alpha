@@ -51,20 +51,34 @@ describe('vsi-active-rpm production neue Tiguan trips (verified export)', () => 
     expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
   });
 
-  it('0e276eb6 and f1bf4ae6: mixed fast/slow sequence evidence → UNKNOWN', () => {
-    for (const prefix of ['0e276eb6', 'f1bf4ae6']) {
-      const trip = trips.find((t) => t.tripId.startsWith(prefix))!;
-      const seq = summarizeActiveRpmSequenceCadence(trip.intervalsSec);
-      expect(seq.qualifyingFastSequenceCount).toBeGreaterThan(0);
-      expect(seq.qualifyingSlowSequenceCount).toBeGreaterThan(0);
-      const resolution = resolveActiveRpmProfileV1(
-        buildRpmEvidenceFromIntervalReplayTrips([trip]),
-      );
-      expect(resolution?.tripClassifications[0]?.profile).toBe('UNKNOWN');
-      expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
-        'MIXED_ACTIVE_CADENCE_NO_CLEAR_DOMINANCE',
-      );
-    }
+  it('0e276eb6: mixed evidence without strict fast dominance → UNKNOWN', () => {
+    const trip = trips.find((t) => t.tripId.startsWith('0e276eb6'))!;
+    const seq = summarizeActiveRpmSequenceCadence(trip.intervalsSec);
+    expect(seq.qualifyingFastSequenceCount).toBeGreaterThan(0);
+    expect(seq.qualifyingSlowSequenceCount).toBeGreaterThan(0);
+    const resolution = resolveActiveRpmProfileV1(
+      buildRpmEvidenceFromIntervalReplayTrips([trip]),
+    );
+    expect(resolution?.tripClassifications[0]?.profile).toBe('UNKNOWN');
+    expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
+      'MIXED_ACTIVE_CADENCE_NO_CLEAR_DOMINANCE',
+    );
+  });
+
+  it('f1bf4ae6: strict fast interval dominance + active median → RPM_1HZ', () => {
+    const trip = trips.find((t) => t.tripId.startsWith('f1bf4ae6'))!;
+    const seq = summarizeActiveRpmSequenceCadence(trip.intervalsSec);
+    const slowIntervals = seq.activeIntervalCount - seq.fastActiveIntervalCount;
+    expect(seq.fastActiveIntervalCount).toBeGreaterThan(slowIntervals);
+    const active = summarizeTripActiveIntervalCadence(trip.intervalsSec);
+    expect(active.intervalMedianSeconds).toBeLessThanOrEqual(1.5);
+    const resolution = resolveActiveRpmProfileV1(
+      buildRpmEvidenceFromIntervalReplayTrips([trip]),
+    );
+    expect(resolution?.tripClassifications[0]?.profile).toBe('RPM_1HZ');
+    expect(resolution?.tripClassifications[0]?.decisionCode).toBe(
+      'ACTIVE_FAST_MEASUREMENT_SEQUENCES',
+    );
   });
 
   it('documents gap break >8s on verified production intervals', () => {
