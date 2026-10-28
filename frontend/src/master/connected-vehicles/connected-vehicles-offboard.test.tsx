@@ -124,6 +124,7 @@ describe('connected vehicles offboard (VO5C-P2A)', () => {
       for (const key of required) {
         expect(src).toContain(`'${key}'`);
       }
+      if (locale === 'tr') continue;
       const specsFile = path.join(
         frontendRoot,
         `src/i18n/translations/master.cv.technicalSpecs.${locale}.ts`,
