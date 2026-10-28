@@ -8,6 +8,7 @@ import {
   BatteryReferenceCapacitySource,
   BatteryReferenceCapacityType,
 } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
+import { parseFrontWeightDistributionPct } from '@modules/vehicles/vehicle-technical-spec.util';
 
 function readStringField(extra: MasterDimoRegistrationInput['extraData'], key: string): string | null {
   if (!extra || typeof extra !== 'object') return null;
@@ -143,6 +144,8 @@ export function buildPostActivationVehiclePatch(
 
   const scalarKeys = [
     'curbWeightKg',
+    'engineDisplacementCc',
+    'cylinderCount',
     'idleRpm',
     'maxRpm',
     'brakeForceFrontPercent',
@@ -163,8 +166,8 @@ export function buildPostActivationVehiclePatch(
   const frontToRear = (extra as { frontToRearWeightDistribution?: unknown })
     .frontToRearWeightDistribution;
   if (frontToRear !== undefined && frontToRear !== null && frontToRear !== '') {
-    const parsed = typeof frontToRear === 'number' ? frontToRear : Number(String(frontToRear));
-    if (Number.isFinite(parsed)) {
+    const parsed = parseFrontWeightDistributionPct(frontToRear);
+    if (parsed != null) {
       patch.frontWeightDistributionPct = parsed;
     }
   }

@@ -6,6 +6,10 @@ import {
   buildHvMasterSpecPatchFromRegisteredVehicle,
 } from './master-hv-master-specification.util';
 import type { VehicleAiFieldProvenanceMap } from './vehicle-ai-field-provenance.util';
+import {
+  parseFrontWeightDistributionPct,
+  parsePositiveIntegerField,
+} from './vehicle-technical-spec.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -119,6 +123,8 @@ export function buildVehicleExtraData(
     maxRpm: parseOptionalNumber(rv.maxRpm),
     brakeForceFrontPercent: parseOptionalFloat(rv.brakeForceDistribution),
     frontToRearWeightDistribution: rv.frontToRearWeightDistribution || undefined,
+    engineDisplacementCc: parsePositiveIntegerField(rv.engineDisplacementCc) ?? undefined,
+    cylinderCount: parsePositiveIntegerField(rv.cylinderCount) ?? undefined,
     tankCapacityLiters: parseOptionalFloat(rv.tankCapacityLiters),
     serviceIntervalManufacturerKm: parseOptionalNumber(rv.serviceIntervalManufacturerKm),
     serviceIntervalManufacturerMonths: parseOptionalNumber(rv.serviceIntervalManufacturerMonths),
@@ -592,8 +598,12 @@ export function parseCurbWeightKgFromForm(curbWeight: string | undefined | null)
   return parsed.kg;
 }
 
+function strEq(a: string | undefined | null, b: string | undefined | null): boolean {
+  return String(a ?? '').trim() === String(b ?? '').trim();
+}
+
 /**
- * Connected-vehicles spec edit: only changed vehicle-table physics scalars (curb mass).
+ * Connected-vehicles spec edit: vehicle-table physics scalars (curb mass + technical specs).
  * Motion power/accel/variant persist via motion-physics-reference APIs in the modal.
  */
 export function buildMasterVehiclePhysicsSpecPatch(
@@ -601,11 +611,49 @@ export function buildMasterVehiclePhysicsSpecPatch(
   baseline: RegisteredVehicle,
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
+  const confirmedFieldKeys: string[] = [];
+
   const nextKg = parseCurbWeightKgFromForm(current.curbWeight);
   const prevKg = parseCurbWeightKgFromForm(baseline.curbWeight);
   if (nextKg != null && nextKg !== prevKg) {
     patch.curbWeightKg = nextKg;
   }
+
+  if (!strEq(current.engineDisplacementCc, baseline.engineDisplacementCc)) {
+    const parsed = parsePositiveIntegerField(current.engineDisplacementCc);
+    patch.engineDisplacementCc = parsed;
+    confirmedFieldKeys.push('engineDisplacementCc');
+  }
+
+  if (!strEq(current.cylinderCount, baseline.cylinderCount)) {
+    const parsed = parsePositiveIntegerField(current.cylinderCount);
+    patch.cylinderCount = parsed;
+    confirmedFieldKeys.push('cylinderCount');
+  }
+
+  if (!strEq(current.frontToRearWeightDistribution, baseline.frontToRearWeightDistribution)) {
+    const raw = current.frontToRearWeightDistribution?.trim() ?? '';
+    if (!raw) {
+      patch.frontToRearWeightDistribution = null;
+    } else {
+      const frontPct = parseFrontWeightDistributionPct(raw);
+      if (frontPct == null) {
+        throw new Error('INVALID_FRONT_REAR_WEIGHT_DISTRIBUTION');
+      }
+      patch.frontToRearWeightDistribution = raw;
+      patch.frontWeightDistributionPct = frontPct;
+    }
+    confirmedFieldKeys.push('frontToRearWeightDistribution');
+  }
+
+  if (confirmedFieldKeys.length > 0) {
+    patch.technicalSpecificationSave = { confirmedFieldKeys };
+  }
+
+  if (current.aiFieldProvenance && Object.keys(current.aiFieldProvenance).length > 0) {
+    patch.aiFieldProvenance = current.aiFieldProvenance;
+  }
+
   return patch;
 }
 

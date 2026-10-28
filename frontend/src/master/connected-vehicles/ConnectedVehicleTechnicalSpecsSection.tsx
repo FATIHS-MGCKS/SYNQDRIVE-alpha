@@ -104,6 +104,26 @@ export function ConnectedVehicleTechnicalSpecsSection({
               }
             />
             <SpecItem
+              label={t('master.cv.technicalSpecs.engineDisplacement')}
+              value={
+                specs.engineDisplacementCc != null
+                  ? `${formatSpecsNumber(specs.engineDisplacementCc)} ${t('master.cv.technicalSpecs.unitCc')}`
+                  : '—'
+              }
+            />
+            <SpecItem
+              label={t('master.cv.technicalSpecs.cylinderCount')}
+              value={specs.cylinderCount != null ? String(specs.cylinderCount) : '—'}
+            />
+            <SpecItem
+              label={t('master.cv.technicalSpecs.weightDistribution')}
+              value={
+                specs.frontToRearWeightDistribution && specs.frontToRearWeightDistribution !== '—'
+                  ? specs.frontToRearWeightDistribution
+                  : '—'
+              }
+            />
+            <SpecItem
               label={t('master.cv.technicalSpecs.systemPower')}
               value={
                 specs.systemMotorPowerKw != null

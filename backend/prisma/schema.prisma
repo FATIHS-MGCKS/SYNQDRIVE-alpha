@@ -2995,6 +2995,8 @@ model Vehicle {
   taxCostCents                      Int?              @map("tax_cost_cents")
   curbWeightKg                      Float?            @map("curb_weight_kg")
   frontWeightDistributionPct        Float?            @map("front_weight_distribution_pct")
+  engineDisplacementCc              Int?              @map("engine_displacement_cc")
+  cylinderCount                     Int?              @map("cylinder_count")
   idleRpm                           Int?              @map("idle_rpm")
   maxRpm                            Int?              @map("max_rpm")
   serviceIntervalKm                 Int?              @map("service_interval_km")

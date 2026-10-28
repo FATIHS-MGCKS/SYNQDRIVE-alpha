@@ -293,7 +293,9 @@ export class VehiclesController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: Prisma.VehicleUpdateInput,
   ) {
-    return this.vehiclesService.update(vehicleId, body, orgId);
+    return this.vehiclesService.update(vehicleId, body, orgId, {
+      rawBody: body as Record<string, unknown>,
+    });
   }
 
   @Put('organizations/:orgId/vehicles/:vehicleId/tires')
@@ -539,7 +541,9 @@ export class VehiclesController {
       req?.user?.platformRole === 'MASTER_ADMIN'
         ? undefined
         : req?.user?.organizationId;
-    return this.vehiclesService.update(vehicleId, body, orgId);
+    return this.vehiclesService.update(vehicleId, body, orgId, {
+      rawBody: body as Record<string, unknown>,
+    });
   }
 
   @Delete('vehicles/:vehicleId')
