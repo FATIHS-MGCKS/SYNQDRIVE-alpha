@@ -104,7 +104,7 @@ export function buildVehicleTechnicalSpecificationPrismaPatch(
 
     if (isProtectedTechnicalField(provenanceDoc, provenanceStorageKey)) {
       const locked = protectedValue(provenanceDoc, provenanceStorageKey);
-      if (locked != null && !valuesEqualScalar(next, locked)) {
+      if (locked != null && !valuesEqualScalar(next, locked) && !confirmed.has(key)) {
         throw new BadRequestException({
           message: `Protected USER_CONFIRMED value for ${key} cannot be changed without explicit confirmation.`,
           code: 'VEHICLE_TECH_SPEC_USER_CONFIRMED_BLOCKED',
@@ -270,10 +270,70 @@ export function stripTechnicalSpecificationKeysFromUpdateBody(
     'frontWeightDistributionPct',
     'frontToRearWeightDistribution',
     'technicalSpecificationSave',
+    'aiFieldProvenance',
   ]) {
     delete next[key];
   }
   return next;
+}
+
+/** True when this save corrects a USER_CONFIRMED technical field (needs optimistic concurrency). */
+export function technicalSpecSaveRequiresOptimisticConcurrency(
+  provenanceDoc: RegistrationIdentityProvenanceDocument | null,
+  vehicle: VehicleTechnicalSpecificationVehicleRow,
+  input: VehicleTechnicalSpecificationPatchInput,
+): boolean {
+  const confirmed = new Set(
+    (input.technicalSpecificationSave?.confirmedFieldKeys ?? []).map((k) =>
+      k === 'frontToRearWeightDistribution' ? 'frontWeightDistributionPct' : k,
+    ),
+  );
+  if (confirmed.size === 0) return false;
+
+  if (input.engineDisplacementCc !== undefined && confirmed.has('engineDisplacementCc')) {
+    if (isProtectedTechnicalField(provenanceDoc, 'displacementCc')) {
+      const locked = protectedValue(provenanceDoc, 'displacementCc');
+      let next: number | null;
+      if (input.engineDisplacementCc === null || input.engineDisplacementCc === '') {
+        next = null;
+      } else {
+        next = parsePositiveIntegerField(input.engineDisplacementCc);
+      }
+      if (locked != null && next != null && !valuesEqualScalar(next, locked)) return true;
+    }
+  }
+
+  if (input.cylinderCount !== undefined && confirmed.has('cylinderCount')) {
+    if (isProtectedTechnicalField(provenanceDoc, 'cylinderCount')) {
+      const locked = protectedValue(provenanceDoc, 'cylinderCount');
+      let next: number | null;
+      if (input.cylinderCount === null || input.cylinderCount === '') {
+        next = null;
+      } else {
+        next = parsePositiveIntegerField(input.cylinderCount);
+      }
+      if (locked != null && next != null && !valuesEqualScalar(next, locked)) return true;
+    }
+  }
+
+  const frontInput =
+    input.frontWeightDistributionPct !== undefined
+      ? input.frontWeightDistributionPct
+      : input.frontToRearWeightDistribution;
+  if (frontInput !== undefined && confirmed.has('frontWeightDistributionPct')) {
+    if (isProtectedTechnicalField(provenanceDoc, 'frontWeightDistributionPct')) {
+      const locked = protectedValue(provenanceDoc, 'frontWeightDistributionPct');
+      let next: number | null;
+      if (frontInput === null || frontInput === '') {
+        next = null;
+      } else {
+        next = parseFrontWeightDistributionPct(frontInput);
+      }
+      if (locked != null && next != null && !valuesEqualScalar(next, locked)) return true;
+    }
+  }
+
+  return false;
 }
 
 /** Returns true when client marks a field as AI-sourced without user confirmation. */

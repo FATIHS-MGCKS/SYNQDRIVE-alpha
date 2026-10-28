@@ -98,6 +98,7 @@ import { parseRegistrationIdentityProvenance } from '@modules/vehicle-onboarding
 import {
   assertAiTechnicalFieldsConfirmed,
   buildVehicleTechnicalSpecificationPrismaPatch,
+  technicalSpecSaveRequiresOptimisticConcurrency,
   extractTechnicalSpecificationPatchInput,
   mapVehicleTechnicalSpecsToRegisteredVehicleFields,
   stripTechnicalSpecificationKeysFromUpdateBody,
@@ -2310,6 +2311,7 @@ export class VehiclesService {
             cylinderCount: true,
             frontWeightDistributionPct: true,
             registrationIdentityProvenance: true,
+            updatedAt: true,
           },
         })
       : await this.prisma.vehicle.findUnique({
@@ -2321,13 +2323,17 @@ export class VehiclesService {
             cylinderCount: true,
             frontWeightDistributionPct: true,
             registrationIdentityProvenance: true,
+            updatedAt: true,
           },
         });
     if (!existing) throw new NotFoundException('Vehicle not found');
 
     const rawBody = options?.rawBody ?? (data as Record<string, unknown>);
     const technicalInput = extractTechnicalSpecificationPatchInput(rawBody);
-    let merged: Prisma.VehicleUpdateInput = { ...data };
+    let merged: Prisma.VehicleUpdateInput = {
+      ...stripTechnicalSpecificationKeysFromUpdateBody(data as Record<string, unknown>),
+    };
+    let optimisticTechnicalSave = false;
     if (technicalInput) {
       assertAiTechnicalFieldsConfirmed(
         technicalInput,
@@ -2335,6 +2341,11 @@ export class VehiclesService {
       );
       const provenanceDoc = parseRegistrationIdentityProvenance(
         existing.registrationIdentityProvenance,
+      );
+      optimisticTechnicalSave = technicalSpecSaveRequiresOptimisticConcurrency(
+        provenanceDoc,
+        existing,
+        technicalInput,
       );
       const technicalPatch = buildVehicleTechnicalSpecificationPrismaPatch(
         existing,
@@ -2345,6 +2356,29 @@ export class VehiclesService {
         ...stripTechnicalSpecificationKeysFromUpdateBody(merged as Record<string, unknown>),
         ...technicalPatch,
       } as Prisma.VehicleUpdateInput;
+    }
+
+    if (optimisticTechnicalSave) {
+      const optimisticWhere: Prisma.VehicleWhereInput = {
+        id,
+        updatedAt: existing.updatedAt,
+      };
+      if (organizationId) {
+        optimisticWhere.organizationId = organizationId;
+      }
+      const writeResult = await this.prisma.vehicle.updateMany({
+        where: optimisticWhere,
+        data: merged,
+      });
+      if (writeResult.count !== 1) {
+        throw new ConflictException({
+          code: 'VEHICLE_TECH_SPEC_SAVE_CONFLICT',
+          message: 'Concurrent technical specification save detected; reload and confirm again.',
+        });
+      }
+      const updated = await this.prisma.vehicle.findUnique({ where: { id } });
+      if (!updated) throw new NotFoundException('Vehicle not found');
+      return updated;
     }
 
     return this.prisma.vehicle.update({ where, data: merged });

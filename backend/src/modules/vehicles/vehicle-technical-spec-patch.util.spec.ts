@@ -3,6 +3,8 @@ import {
   assertAiTechnicalFieldsConfirmed,
   buildVehicleTechnicalSpecificationPrismaPatch,
   mapVehicleTechnicalSpecsToRegisteredVehicleFields,
+  stripTechnicalSpecificationKeysFromUpdateBody,
+  technicalSpecSaveRequiresOptimisticConcurrency,
 } from './vehicle-technical-spec-patch.util';
 
 const baseVehicle = {
@@ -10,6 +12,20 @@ const baseVehicle = {
   cylinderCount: null as number | null,
   frontWeightDistributionPct: null as number | null,
   registrationIdentityProvenance: null,
+};
+
+const userConfirmedDisplacementProvenance = {
+  version: 1 as const,
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  fields: {
+    displacementCc: {
+      value: 1968,
+      provenance: 'USER_CONFIRMED' as const,
+      confirmationStatus: 'USER_CONFIRMED' as const,
+      confirmedAt: '2026-01-01T00:00:00.000Z',
+      documentExtractionId: null,
+    },
+  },
 };
 
 describe('vehicle-technical-spec-patch.util', () => {
@@ -70,33 +86,84 @@ describe('vehicle-technical-spec-patch.util', () => {
   });
 
   it('blocks overwriting USER_CONFIRMED displacement without confirmation', () => {
-    const provenance = {
-      version: 1 as const,
-      updatedAt: '2026-01-01T00:00:00.000Z',
-      fields: {
-        displacementCc: {
-          value: 1968,
-          provenance: 'USER_CONFIRMED' as const,
-          confirmationStatus: 'USER_CONFIRMED' as const,
-          confirmedAt: '2026-01-01T00:00:00.000Z',
-          documentExtractionId: null,
-        },
-      },
-    };
     expect(() =>
       buildVehicleTechnicalSpecificationPrismaPatch(
         { ...baseVehicle, engineDisplacementCc: 1968 },
-        {
-          engineDisplacementCc: 1984,
-          technicalSpecificationSave: { confirmedFieldKeys: ['engineDisplacementCc'] },
-        },
-        provenance,
+        { engineDisplacementCc: 1984 },
+        userConfirmedDisplacementProvenance,
       ),
     ).toThrow(BadRequestException);
+  });
+
+  it('allows authorized correction of USER_CONFIRMED displacement with confirmedFieldKeys', () => {
+    const patch = buildVehicleTechnicalSpecificationPrismaPatch(
+      { ...baseVehicle, engineDisplacementCc: 1968 },
+      {
+        engineDisplacementCc: 1984,
+        technicalSpecificationSave: { confirmedFieldKeys: ['engineDisplacementCc'] },
+      },
+      userConfirmedDisplacementProvenance,
+    );
+    expect(patch.engineDisplacementCc).toBe(1984);
+    const provenance = patch.registrationIdentityProvenance as {
+      fields: { displacementCc?: { value: number; provenance: string } };
+    };
+    expect(provenance.fields.displacementCc?.value).toBe(1984);
+    expect(provenance.fields.displacementCc?.provenance).toBe('USER_CONFIRMED');
   });
 
   it('leaves legacy null vehicle unchanged when no input keys', () => {
     const patch = buildVehicleTechnicalSpecificationPrismaPatch(baseVehicle, {}, null);
     expect(patch).toEqual({});
+  });
+
+  it('rejects AI-sourced displacement without explicit confirmation metadata', () => {
+    expect(() =>
+      assertAiTechnicalFieldsConfirmed(
+        { engineDisplacementCc: 1968 },
+        { engineDisplacementCc: { category: 'AI_ESTIMATED' } },
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('strips aiFieldProvenance from generic Prisma update body', () => {
+    const stripped = stripTechnicalSpecificationKeysFromUpdateBody({
+      make: 'Audi',
+      aiFieldProvenance: { engineDisplacementCc: { category: 'AI_ESTIMATED' } },
+      engineDisplacementCc: 1968,
+      technicalSpecificationSave: { confirmedFieldKeys: ['engineDisplacementCc'] },
+    });
+    expect(stripped).toEqual({ make: 'Audi' });
+  });
+
+  it('legacy PATCH body without technical keys passes through unchanged except metadata strip', () => {
+    const stripped = stripTechnicalSpecificationKeysFromUpdateBody({
+      make: 'VW',
+      model: 'Golf',
+      aiFieldProvenance: { cylinderCount: { category: 'KNOWLEDGE_ONLY' } },
+    });
+    expect(stripped).toEqual({ make: 'VW', model: 'Golf' });
+  });
+
+  it('requires optimistic concurrency for protected displacement correction', () => {
+    expect(
+      technicalSpecSaveRequiresOptimisticConcurrency(
+        userConfirmedDisplacementProvenance,
+        { ...baseVehicle, engineDisplacementCc: 1968 },
+        {
+          engineDisplacementCc: 1984,
+          technicalSpecificationSave: { confirmedFieldKeys: ['engineDisplacementCc'] },
+        },
+      ),
+    ).toBe(true);
+  });
+
+  it('does not require optimistic concurrency for first-time confirmed save', () => {
+    expect(
+      technicalSpecSaveRequiresOptimisticConcurrency(null, baseVehicle, {
+        engineDisplacementCc: 1968,
+        technicalSpecificationSave: { confirmedFieldKeys: ['engineDisplacementCc'] },
+      }),
+    ).toBe(false);
   });
 });
