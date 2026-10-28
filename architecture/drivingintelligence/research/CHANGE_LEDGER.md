@@ -2370,3 +2370,24 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Fable PASS_WITH_CONDITIONS remediation on same PR: document `meanAccelMps2` as positive secant magnitude (direction in `kind` only) + B3 ordinal policy; `coverageRatio` semantics and reject outside (0,1]; `resolveMotionCoreShadowEventRowContract` returns explicit `UNKNOWN` for unrecognised/future contracts; `readPersistedMotionEventIntensityForPayload` fail-closed for V1/UNKNOWN; `eventFlagsSemantics`/`eventFlagsConsumptionPolicy` (opaque flags, no accel/peak parsing in PR-3); unit tests for UNKNOWN, invalid coverageRatio, legacy V1 fail-closed |
 | WHY | Independent Fable review of persistence contract before merge |
 | NON_EFFECTS | Bundle versions, detection, event counts, trip-map DTO, Trip UI unchanged; no deploy |
+
+### DS4 Assessment L2 + Driving Impact V2 PR-A (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | New `ds4-assessment/` module: fleet admission (four canonical UUIDs), `computeDs4TripAssessmentV1`, `computeDs4DrivingImpactV2` (score publication disabled), tables `di_v0_ds4_trip_assessment_v1`, `di_v0_ds4_trip_driving_impact_v2`, outbox + leader scheduler (`di_v0_ds4_assessment_v1`, flags OFF); internal read `GET .../ds4-assessment` |
+| WHY | Owner decision DS4 single authority — implement productive-capable assessment infrastructure without consumer cutover or calibrated scoring |
+| VALIDATION | `npm run test:di:ds4-assessment`; optional postgres integration when `S4A_POSTGRES_LIVE`; `nest build`; architecture validators |
+| NON_EFFECTS | Motion detection, legacy HF/Impact V1, Trip UI/DriverScore/Rental/Brake/Tire customer paths unchanged; motion-core env allowlists untouched; no deploy |
+| REMAINING | Fable review quality policy + reference distribution calibration; PR-B consumer cutover |
+
+### DS4 RPM High Frequency V1A — data integration & admission (2026-10-28, Draft PR, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | VSI cadence loader read RPM HF via vehicle time-band only (12k cap); no trip-scoped DS4 reader; no DS4 admission/DQ contract for RPM HF shadow path |
+| CHANGE | `ClickHouseHfService.getTripRpmHfPoints` (org + vehicle + trip_id + signal + trip window; pagination; tenant violation detection; fail-soft). New isolated module `driving-intelligence/rpm-hf-v1a/` (`Ds4RpmHfV1aTripInputService`: per-trip VSI admission, descriptive DQ, read-only contract). VSI consumer registry entry `ds4_rpm_hf_v1a` (APPROVED_DESIGN_CONTRACT). **Production activation forbidden** — no scheduler/outbox/shadow persist |
+| WHY | Phase 2A controlled integration after read-only audit 2026-10-28; trip-scoped HF read without retroactive RPM_1HZ on unclassified historical trips |
+| VALIDATION | Jest: `ds4-rpm-hf-v1a/*`, `clickhouse-hf.trip-rpm.spec.ts`; `nest build`; replay fixture `rpm-production-interval-replay.json` |
+| NON_EFFECTS | Motion C5.1, Trip FSM, Driving Impact, DriverScore, Tire/Brake, DIMO fetch pipeline, HF mirror ingest unchanged; no DB migration; no deploy |
+| REMAINING | Live ClickHouse preflight gate before activation; V1B shadow engine + Fable before production allowlist |

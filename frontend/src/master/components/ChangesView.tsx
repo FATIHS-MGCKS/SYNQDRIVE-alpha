@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ds4-rpm-hf-v1a-data-integration-2026-10-28',
+    version: '4.9.5004',
+    title: 'DS4 RPM High Frequency V1A — trip-scoped HF read + admission (Draft, not deployed)',
+    summary: [
+      'ClickHouseHfService.getTripRpmHfPoints: org/vehicle/trip_id/signal + trip window; pagination at 12k; tenant scope violation detection; fail-soft on CH outage.',
+      'New rpm-hf-v1a module: per-trip VSI admission (RPM_1HZ only when trip classified), descriptive data quality, read-only contract for future shadow engine.',
+      'VSI consumer registry ds4_rpm_hf_v1a (APPROVED_DESIGN_CONTRACT). Production activation forbidden — no scheduler, outbox, or Motion/Impact changes.',
+    ],
+    reason:
+      'Phase 2A controlled data integration after DS4 RPM HF read-only audit; no retroactive RPM_1HZ on unclassified historical trips.',
+    previousBehavior:
+      'RPM HF cadence evidence used vehicle time-band reads only; DS4 had no trip-scoped RPM HF reader or admission adapter.',
+    details:
+      'backend: clickhouse-hf.service/types, driving-intelligence/rpm-hf-v1a/*, vehicle-intelligence.module.ts, vsi-consumer-requirements.registry.ts; architecture/drivingintelligence/research/CHANGE_LEDGER.md.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T11:30:00.000Z',
+  },
+  {
     id: 'vsi-lv-standby-transmission-profile-v1-2026-10-28',
     version: '4.9.5003',
     title: 'VSI LV standby transmission profile V1 (observed 8h/24h cadence)',
