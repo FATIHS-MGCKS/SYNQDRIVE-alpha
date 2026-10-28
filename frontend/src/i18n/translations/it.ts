@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4It } from './master.platformOps.diS4.it';
 import { batteryV2HvInspectionIT } from './battery-v2-hv-inspection.it';
 import { tireWearV3It } from './tire.wearV3.it';
 import { masterPhysicalDeviceInventoryIt } from './master.physicalDeviceInventory.it';
+import { masterIntelligenceIt } from './master.intelligence.it';
 import { masterMotionPhysicsIt } from './master.motionPhysics.it';
 import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
 import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
@@ -176,6 +177,7 @@ export const it = {
   'trips.drivingImpact.quality.unavailable': 'Nessuna valutazione affidabile del carico veicolo disponibile.',
   'trips.drivingImpact.quality.r1Contained': 'Carico veicolo temporaneamente non disponibile (contenimento temporale R1).',
   ...masterPhysicalDeviceInventoryIt,
+  ...masterIntelligenceIt,
   ...masterMotionPhysicsIt,
 ...masterVehicleIdentityIt,
   ...masterCvTechnicalSpecsIt,

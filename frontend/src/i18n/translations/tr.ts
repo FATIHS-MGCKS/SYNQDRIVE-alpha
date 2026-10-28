@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
 import { masterCvTechnicalSpecsTr } from './master.cv.technicalSpecs.tr';
+import { masterIntelligenceTr } from './master.intelligence.tr';
 import { tireWearV3Tr } from './tire.wearV3.tr';
 
 /**
@@ -10,6 +11,7 @@ import { tireWearV3Tr } from './tire.wearV3.tr';
 export const tr = {
   ...masterVehicleIdentityTr,
   ...masterCvTechnicalSpecsTr,
+  ...masterIntelligenceTr,
   'trips.drivingImpact.quality.partial': 'Sınırlı veri kapsamı — değerlendirme eksik olabilir.',
   'trips.drivingImpact.quality.stale': 'Değerlendirme güncel olmayabilir (yolculuk verileri değişti).',
   'trips.drivingImpact.quality.pending': 'Driving Impact değerlendirmesi devam ediyor.',

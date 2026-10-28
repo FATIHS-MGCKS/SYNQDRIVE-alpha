@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
 import { batteryV2HvInspectionCS } from './battery-v2-hv-inspection.cs';
 import { tireWearV3Cs } from './tire.wearV3.cs';
 import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
+import { masterIntelligenceCs } from './master.intelligence.cs';
 import { masterMotionPhysicsCs } from './master.motionPhysics.cs';
 import { masterVehicleIdentityCs } from './master.vehicleIdentity.cs';
 import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
@@ -176,6 +177,7 @@ export const cs = {
   'trips.drivingImpact.quality.unavailable': 'Není k dispozici spolehlivé hodnocení zatížení vozidla.',
   'trips.drivingImpact.quality.r1Contained': 'Zatížení vozidla dočasně nedostupné (časové omezení R1).',
   ...masterPhysicalDeviceInventoryCs,
+  ...masterIntelligenceCs,
   ...masterMotionPhysicsCs,
 ...masterVehicleIdentityCs,
   ...masterCvTechnicalSpecsCs,

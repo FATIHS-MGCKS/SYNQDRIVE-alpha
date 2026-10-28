@@ -61,6 +61,7 @@ import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
 import { batteryV2HvInspectionEN } from './battery-v2-hv-inspection.en';
 import { tireWearV3En } from './tire.wearV3.en';
 import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
+import { masterIntelligenceEn } from './master.intelligence.en';
 import { masterMotionPhysicsEn } from './master.motionPhysics.en';
 import { masterVehicleIdentityEn } from './master.vehicleIdentity.en';
 import { masterRegistrationBrakeEn } from './master.registration.brake.en';
@@ -5968,6 +5969,7 @@ export const en = {
   ...tripsM7aMapEN,
   ...masterPlatformOpsDiS4En,
   ...masterPhysicalDeviceInventoryEn,
+  ...masterIntelligenceEn,
   ...masterMotionPhysicsEn,
 ...masterVehicleIdentityEn,
   ...masterRegistrationBrakeEn,

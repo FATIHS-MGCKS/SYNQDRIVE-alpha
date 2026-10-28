@@ -63,6 +63,7 @@ import { masterPlatformOpsDiS4De } from './master.platformOps.diS4.de';
 import { batteryV2HvInspectionDE } from './battery-v2-hv-inspection.de';
 import { tireWearV3De } from './tire.wearV3.de';
 import { masterPhysicalDeviceInventoryDe } from './master.physicalDeviceInventory.de';
+import { masterIntelligenceDe } from './master.intelligence.de';
 import { masterMotionPhysicsDe } from './master.motionPhysics.de';
 import { masterVehicleIdentityDe } from './master.vehicleIdentity.de';
 import { masterRegistrationBrakeDe } from './master.registration.brake.de';
@@ -5978,6 +5979,7 @@ export const de: Record<TranslationKey, string> = {
   ...tripsM7aMapDE,
   ...masterPlatformOpsDiS4De,
   ...masterPhysicalDeviceInventoryDe,
+  ...masterIntelligenceDe,
   ...masterMotionPhysicsDe,
 ...masterVehicleIdentityDe,
   ...masterRegistrationBrakeDe,
