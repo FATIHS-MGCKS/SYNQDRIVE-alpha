@@ -61,3 +61,19 @@ if ! grep -qE "Tests:[[:space:]]+${EXPECTED_POSTGRES_TESTS} passed" "$LOG"; then
 fi
 
 echo "S4A Postgres CI suite OK (${EXPECTED_POSTGRES_TESTS}/${EXPECTED_POSTGRES_TESTS})"
+
+run_v1b_postgres_if_relevant() {
+  local base="${GITHUB_EVENT_PULL_REQUEST_BASE_SHA:-}"
+  local head="${GITHUB_SHA:-HEAD}"
+  if [[ -z "$base" ]]; then
+    return 0
+  fi
+  if ! git diff --name-only "$base" "$head" | grep -qE 'rpm-hf-v1b|20261028180000_ds4_rpm_hf_v1b'; then
+    echo "DS4 RPM HF V1B Postgres: skipped (no V1B-relevant paths in PR diff)"
+    return 0
+  fi
+  echo "DS4 RPM HF V1B Postgres: running (V1B paths changed vs ${base:0:12})"
+  DS4_RPM_HF_V1B_POSTGRES_REQUIRED=1 bash scripts/test/ds4-rpm-hf-v1b-postgres-ci.sh
+}
+
+run_v1b_postgres_if_relevant
