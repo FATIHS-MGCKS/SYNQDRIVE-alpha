@@ -154,9 +154,12 @@ function buildAcceptedSpeedAndFsm(input: {
   for (const [label, count] of speedCounts) {
     if (count > 1) duplicateLabelsUnion.add(label);
   }
+  const fsmCounts = new Map<string, number>();
   for (const row of input.payload.fsmLabels ?? []) {
-    const count = (input.payload.fsmLabels ?? []).filter((r) => r.bucketLabelUtc === row.bucketLabelUtc).length;
-    if (count > 1) duplicateLabelsUnion.add(row.bucketLabelUtc);
+    fsmCounts.set(row.bucketLabelUtc, (fsmCounts.get(row.bucketLabelUtc) ?? 0) + 1);
+  }
+  for (const [label, count] of fsmCounts) {
+    if (count > 1) duplicateLabelsUnion.add(label);
   }
 
   const rows = speedDedupe.accepted

@@ -2411,3 +2411,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-assessment`; `test:di:ds4-assessment:postgres:ci`; merge with main (#2217) |
 | NON_EFFECTS | No score publication; workers OFF; no consumer cutover |
 | REMAINING | Impact V2 percentile gate on `assessmentStatus===RATED` before future activation |
+
+### DS4 pre-activation readiness — exposure perf + postgres persistence assertions (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | O(n) Map-based FSM duplicate-label counting in `ds4-assessment-driving-exposure.v1.ts`; postgres integration asserts persisted `eventSummariesJson` exposure provenance + intensity quality + zero-exposure path |
+| WHY | Close PR-A2 technical prerequisites before assessment worker data collection; production read-only audit baseline |
+| VALIDATION | `npm run test:di:ds4-assessment`; `test:di:ds4-assessment:postgres:ci`; evidence `evidence/DS4_PRE_ACTIVATION_READINESS_2026-10-28.md` |
+| NON_EFFECTS | No deploy; assessment/impact workers OFF; no numeric score; no consumer cutover |
+| REMAINING | Production deploy of #2212/#2215/#2218 stack; V2 intensity backfill on legacy motion payloads; owner activation record |
