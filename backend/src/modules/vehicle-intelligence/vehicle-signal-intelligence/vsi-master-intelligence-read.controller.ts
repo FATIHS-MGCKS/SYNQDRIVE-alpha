@@ -7,17 +7,14 @@ import {
 } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
-import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
-import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { VsiMasterIntelligenceReadService } from './vsi-master-intelligence-read.service';
 
 /**
  * Production read-only Master Admin VSI intelligence (PR2). No materialize, no DIMO.
+ * MFA step-up deferred by owner — MASTER_ADMIN RBAC only until SynqDrive MFA is activated.
  */
 @Controller('admin/master-intelligence/vsi')
-@UseGuards(RolesGuard, MasterAdminMfaGuard)
-@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
+@UseGuards(RolesGuard)
 @Roles('MASTER_ADMIN')
 export class VsiMasterIntelligenceReadController {
   constructor(private readonly reads: VsiMasterIntelligenceReadService) {}

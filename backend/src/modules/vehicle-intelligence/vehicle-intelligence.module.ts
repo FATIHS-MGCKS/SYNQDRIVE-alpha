@@ -304,7 +304,6 @@ import { VsiSignalProfileInspectionController } from './vehicle-signal-intellige
 import { VsiCapabilityResolverController } from './vehicle-signal-intelligence/vsi-capability-resolver.controller';
 import { VsiMasterIntelligenceReadController } from './vehicle-signal-intelligence/vsi-master-intelligence-read.controller';
 import { VsiMasterIntelligenceReadService } from './vehicle-signal-intelligence/vsi-master-intelligence-read.service';
-import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-capability-resolver.service';
 import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds-p5.service';
@@ -322,7 +321,6 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
   imports: [
     forwardRef(() => DimoModule),
     VsiReadonlySignalComposerModule,
-    IamMfaModule,
     DiV0S4RuntimeModule,
     DiV0TripSpeedQualityModule,
     DiV0S4ResearchModule,
