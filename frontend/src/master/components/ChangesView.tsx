@@ -73,6 +73,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T07:30:00.000Z',
   },
   {
+    id: 'ds4-pre-activation-readiness-2026-10-28',
+    version: '4.9.5006',
+    title: 'DS4 pre-activation readiness — exposure O(n) + postgres persistence assertions (Draft)',
+    summary: [
+      'Map-based duplicate FSM label counting in driving exposure (same fail-closed semantics).',
+      'Disposable Postgres integration asserts persisted eventSummariesJson exposure provenance, intensity quality counts, C4/C5.1 authority, zero-exposure INSUFFICIENT_EVIDENCE.',
+      'Read-only production audit recorded; no worker activation or deploy.',
+    ],
+    reason: 'Close technical prerequisites before DS4 assessment data collection (post PR #2218 merge).',
+    previousBehavior: 'FSM duplicate-label union used O(n²) scans; postgres suite did not assert persisted eventSummariesJson PR-A2 fields.',
+    details:
+      'backend: ds4-assessment-driving-exposure.v1.ts; ds4-assessment.postgres.integration.spec.ts; architecture evidence DS4_PRE_ACTIVATION_READINESS_2026-10-28.md.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T14:05:00.000Z',
+  },
+  {
     id: 'ds4-assessment-l2-intensity-exposure-pr-a2-2026-10-28',
     version: '4.9.5005',
     title: 'DS4 Assessment L2 PR-A2 — intensity, exposure hardening (Draft, worker OFF)',
