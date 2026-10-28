@@ -7,6 +7,10 @@ import {
 } from './master-hv-master-specification.util';
 import type { VehicleAiFieldProvenanceMap } from './vehicle-ai-field-provenance.util';
 import {
+  upsertBrakeReferenceSpecOnEdit,
+  upsertLvBatterySpecOnEdit,
+} from './master-vehicle-manual-baseline-edit.util';
+import {
   parseFrontWeightDistributionPct,
   parsePositiveIntegerField,
   parseBrakeForceFrontPercent,
@@ -450,13 +454,7 @@ export async function applyManualBaselinesOnEdit(
   const prevBattery = prevSpecs?.battery as ManualBatteryPayload | undefined;
   if (battery && JSON.stringify(battery) !== JSON.stringify(prevBattery)) {
     try {
-      await api.vehicleIntelligence.createBatterySpec(vehicleId, {
-        batteryType: battery.batteryType ?? null,
-        batteryAmpere: battery.batteryAmpere ?? null,
-        batteryVolt: battery.batteryVolt ?? null,
-        sourceType: 'MANUAL',
-        sourceConfidence: 1,
-      });
+      await upsertLvBatterySpecOnEdit(vehicleId, battery);
     } catch (error) {
       failures.push({ area: 'battery', message: baselineErrorMessage(error) });
     }
@@ -487,16 +485,7 @@ export async function applyManualBaselinesOnEdit(
     }
   } else if (brakes && JSON.stringify(brakes) !== JSON.stringify(prevBrakes)) {
     try {
-      await api.vehicleIntelligence.createBrakeSpec(vehicleId, {
-        frontPadThickness: brakes.frontPadThickness ?? undefined,
-        rearPadThickness: brakes.rearPadThickness ?? undefined,
-        frontRotorDiameter: brakes.frontRotorDiameter ?? undefined,
-        rearRotorDiameter: brakes.rearRotorDiameter ?? undefined,
-        frontRotorWidth: brakes.frontRotorWidth ?? undefined,
-        rearRotorWidth: brakes.rearRotorWidth ?? undefined,
-        sourceType: 'manual_edit',
-        sourceConfidence: 1,
-      });
+      await upsertBrakeReferenceSpecOnEdit(vehicleId, brakes);
     } catch (error) {
       failures.push({ area: 'brakes', message: baselineErrorMessage(error) });
     }

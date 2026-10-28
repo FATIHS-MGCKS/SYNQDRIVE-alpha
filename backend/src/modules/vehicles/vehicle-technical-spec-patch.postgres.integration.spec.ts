@@ -4,18 +4,29 @@
  */
 import { BadRequestException } from '@nestjs/common';
 import {
+  BatterySourceType,
   BusinessType,
   DriveType,
   FuelType,
   HealthStatus,
   PrismaClient,
   ProductSlug,
+  TireSetupStatus,
   VehicleStatus,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { ensureOrganizationProductEntitlement } from '@modules/vehicle-onboarding/testing/org-product-test.harness';
 import { VehiclesService } from './vehicles.service';
 import { parseRegistrationIdentityProvenance } from '@modules/vehicle-onboarding/vehicle-identity-review/vehicle-identity-provenance.util';
+import { PrismaService } from '@shared/database/prisma.service';
+import { BatteryService } from '@modules/vehicle-intelligence/battery/battery.service';
+import { BrakesService } from '@modules/vehicle-intelligence/brakes/brakes.service';
+import { BrakeReferenceSpecService } from '@modules/vehicle-intelligence/brakes/brake-reference-spec.service';
+import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
+import { TireWearModelService } from '@modules/vehicle-intelligence/tires/tire-wear-model.service';
+import { TireHealthAlertService } from '@modules/vehicle-intelligence/tires/tire-health-alert.service';
+import { TireIdentityService } from '@modules/vehicle-intelligence/tires/tire-identity.service';
+import type { DrivingImpactService } from '@modules/vehicle-intelligence/driving-impact/driving-impact.service';
 
 const LIVE = process.env.VEHICLE_TECH_SPEC_PATCH_PG === '1';
 
@@ -43,10 +54,94 @@ async function serviceUpdate(
   return VehiclesService.prototype.update.call(
     serviceCtx,
     vehicleId,
-    {},
+    body as never,
     organizationId,
     { rawBody: body },
   );
+}
+
+function prismaService(prisma: PrismaClient): PrismaService {
+  return prisma as unknown as PrismaService;
+}
+
+function buildTireLifecycle(prisma: PrismaClient): TireLifecycleService {
+  const ps = prismaService(prisma);
+  const wearModel = new TireWearModelService(ps, {} as DrivingImpactService);
+  const tireHealthAlert = new TireHealthAlertService(ps);
+  const tireIdentity = new TireIdentityService(ps);
+  const tireHealth = { recalculate: async () => undefined };
+  return new TireLifecycleService(
+    ps,
+    wearModel,
+    tireHealth as never,
+    tireHealthAlert,
+    tireIdentity,
+  );
+}
+
+async function serviceUpsertTires(
+  prisma: PrismaClient,
+  organizationId: string,
+  vehicleId: string,
+  tires: Record<string, unknown>,
+) {
+  const serviceCtx = {
+    prisma,
+    withOrgScope: (orgId: string) => ({ organizationId: orgId }),
+    tireLifecycleService: buildTireLifecycle(prisma),
+  } as unknown as VehiclesService;
+  return VehiclesService.prototype.upsertTireData.call(
+    serviceCtx,
+    vehicleId,
+    organizationId,
+    tires as Parameters<VehiclesService['upsertTireData']>[2],
+  );
+}
+
+async function batteryServiceUpdate(
+  prisma: PrismaClient,
+  vehicleId: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  const serviceCtx = { prisma: prismaService(prisma) } as unknown as BatteryService;
+  return BatteryService.prototype.update.call(serviceCtx, vehicleId, id, data);
+}
+
+async function batteryServiceCreate(
+  prisma: PrismaClient,
+  vehicleId: string,
+  data: Record<string, unknown>,
+) {
+  const serviceCtx = { prisma: prismaService(prisma) } as unknown as BatteryService;
+  return BatteryService.prototype.create.call(serviceCtx, vehicleId, data);
+}
+
+async function brakeServiceUpdate(
+  prisma: PrismaClient,
+  vehicleId: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  const ps = prismaService(prisma);
+  const serviceCtx = {
+    prisma: ps,
+    brakeReferenceSpec: new BrakeReferenceSpecService(ps),
+  } as unknown as BrakesService;
+  return BrakesService.prototype.update.call(serviceCtx, vehicleId, id, data);
+}
+
+async function brakeServiceCreate(
+  prisma: PrismaClient,
+  vehicleId: string,
+  data: Record<string, unknown>,
+) {
+  const ps = prismaService(prisma);
+  const serviceCtx = {
+    prisma: ps,
+    brakeReferenceSpec: new BrakeReferenceSpecService(ps),
+  } as unknown as BrakesService;
+  return BrakesService.prototype.create.call(serviceCtx, vehicleId, data);
 }
 
 (LIVE ? describe : describe.skip)(
@@ -94,6 +189,9 @@ async function serviceUpdate(
     });
 
     afterEach(async () => {
+      await prisma.vehicleBrakeReferenceSpec.deleteMany({ where: { vehicleId } });
+      await prisma.vehicleBatterySpec.deleteMany({ where: { vehicleId } });
+      await prisma.vehicleTireSetup.deleteMany({ where: { vehicleId } });
       await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
       await prisma.organizationProduct.deleteMany({ where: { organizationId } });
       await prisma.organization.deleteMany({ where: { id: organizationId } });
@@ -145,15 +243,15 @@ async function serviceUpdate(
       });
 
       await serviceUpdate(prisma, organizationId, vehicleId, {
-        curbWeightKg: 1400,
+        notes: 'omission probe',
       });
 
       const row = await prisma.vehicle.findUnique({
         where: { id: vehicleId },
-        select: { tankCapacityLiters: true, curbWeightKg: true },
+        select: { tankCapacityLiters: true, notes: true },
       });
       expect(row?.tankCapacityLiters).toBe(55);
-      expect(row?.curbWeightKg).toBe(1400);
+      expect(row?.notes).toBe('omission probe');
     });
 
     it('rejects unconfirmed AI-sourced tank change', async () => {
@@ -197,7 +295,101 @@ async function serviceUpdate(
       });
       expect(row?.idleRpm).toBe(800);
       const doc = parseRegistrationIdentityProvenance(row?.registrationIdentityProvenance);
-      expect(doc?.fields?.idleRpm?.value).toBe(800);
+      const idleField = doc?.fields
+        ? (doc.fields as Record<string, { value?: number }>).idleRpm
+        : undefined;
+      expect(idleField?.value).toBe(800);
+    });
+
+    it('updates existing LV battery and brake reference rows without duplicate create', async () => {
+      const battery = await batteryServiceCreate(prisma, vehicleId, {
+        batteryType: 'AGM',
+        batteryAmpere: 70,
+        batteryVolt: 12,
+        sourceType: BatterySourceType.MANUAL,
+        sourceConfidence: 1,
+      });
+      const brake = await brakeServiceCreate(prisma, vehicleId, {
+        frontPadThickness: 10,
+        sourceType: 'manual_registration',
+        sourceConfidence: 1,
+        userConfirmedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      });
+
+      await batteryServiceUpdate(prisma, vehicleId, battery.id, {
+        batteryAmpere: 74,
+        sourceType: BatterySourceType.MANUAL,
+        sourceConfidence: 1,
+      });
+      await brakeServiceUpdate(prisma, vehicleId, brake.id, {
+        frontPadThickness: 11,
+        sourceConfidence: 1,
+      });
+
+      const batteryRows = await prisma.vehicleBatterySpec.findMany({ where: { vehicleId } });
+      const brakeRows = await prisma.vehicleBrakeReferenceSpec.findMany({ where: { vehicleId } });
+      expect(batteryRows).toHaveLength(1);
+      expect(brakeRows).toHaveLength(1);
+      expect(batteryRows[0]?.batteryAmpere).toBe(74);
+      expect(brakeRows[0]?.frontPadThickness).toBe(11);
+      expect(brakeRows[0]?.userConfirmedAt).not.toBeNull();
+    });
+
+    it('upserts tire reference on existing active setup and repeated save is stable', async () => {
+      await prisma.vehicleTireSetup.create({
+        data: {
+          id: randomUUID(),
+          vehicleId,
+          organizationId,
+          status: TireSetupStatus.ACTIVE,
+          frontDimension: '225/45R17',
+          rearDimension: '225/45R17',
+        },
+      });
+
+      await serviceUpsertTires(prisma, organizationId, vehicleId, {
+        frontDimension: '235/45R18',
+        rearDimension: '235/45R18',
+      });
+
+      const afterFirst = await prisma.vehicleTireSetup.findFirst({
+        where: { vehicleId, status: TireSetupStatus.ACTIVE },
+      });
+      expect(afterFirst?.frontDimension).toBe('235/45R18');
+
+      await serviceUpsertTires(prisma, organizationId, vehicleId, {
+        frontDimension: '235/45R18',
+        rearDimension: '235/45R18',
+      });
+
+      const afterRepeat = await prisma.vehicleTireSetup.findMany({
+        where: { vehicleId, status: TireSetupStatus.ACTIVE },
+      });
+      expect(afterRepeat).toHaveLength(1);
+      expect(afterRepeat[0]?.frontDimension).toBe('235/45R18');
+    });
+
+    it('repeated technical PATCH with identical values leaves DB unchanged', async () => {
+      await serviceUpdate(prisma, organizationId, vehicleId, {
+        tankCapacityLiters: 55,
+        technicalSpecificationSave: { confirmedFieldKeys: ['tankCapacityLiters'] },
+      });
+      const first = await prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { tankCapacityLiters: true, updatedAt: true },
+      });
+
+      await serviceUpdate(prisma, organizationId, vehicleId, {
+        tankCapacityLiters: 55,
+        technicalSpecificationSave: { confirmedFieldKeys: ['tankCapacityLiters'] },
+      });
+      const second = await prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { tankCapacityLiters: true, updatedAt: true },
+      });
+
+      expect(second?.tankCapacityLiters).toBe(55);
+      expect(first?.tankCapacityLiters).toBe(55);
     });
   },
 );

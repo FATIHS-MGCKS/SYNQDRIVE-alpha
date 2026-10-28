@@ -28,7 +28,11 @@ vi.mock('../../lib/api', () => ({
     },
     vehicleIntelligence: {
       createBatterySpec: vi.fn().mockResolvedValue({}),
+      updateBatterySpec: vi.fn().mockResolvedValue({}),
       createBrakeSpec: vi.fn().mockResolvedValue({}),
+      updateBrakeSpec: vi.fn().mockResolvedValue({}),
+      battery: vi.fn().mockResolvedValue([]),
+      brakes: vi.fn().mockResolvedValue([]),
       brakeHealthInitialize: vi.fn().mockResolvedValue({}),
       recordBrakeService: vi.fn().mockResolvedValue({}),
     },
@@ -471,6 +475,39 @@ describe('master-vehicle-registration payloads', () => {
     expect(upsertTiresMock).toHaveBeenCalled();
     expect(api.vehicleIntelligence.createBatterySpec).toHaveBeenCalled();
     expect(api.vehicleIntelligence.createBrakeSpec).toHaveBeenCalled();
+  });
+
+  it('updateMasterRegisteredVehicle updates existing LV/brake rows when present', async () => {
+    updateMock.mockResolvedValueOnce({});
+    vi.mocked(api.vehicleIntelligence.battery).mockResolvedValueOnce([
+      { id: 'bat-existing', sourceType: 'MANUAL', createdAt: '2026-01-01' },
+    ]);
+    vi.mocked(api.vehicleIntelligence.brakes).mockResolvedValueOnce([
+      { id: 'brk-existing', userConfirmedAt: '2026-01-01T00:00:00.000Z', createdAt: '2026-01-01' },
+    ]);
+
+    const baseline = minimalRv({ brakeFrontPadThickness: '10' });
+    const current = minimalRv({
+      batteryType: 'AGM',
+      batteryAmpere: '70',
+      batteryVolt: '12',
+      brakeFrontPadThickness: '11',
+    });
+
+    await updateMasterRegisteredVehicle(current, { baseline });
+
+    expect(api.vehicleIntelligence.updateBatterySpec).toHaveBeenCalledWith(
+      'rv-1',
+      'bat-existing',
+      expect.any(Object),
+    );
+    expect(api.vehicleIntelligence.updateBrakeSpec).toHaveBeenCalledWith(
+      'rv-1',
+      'brk-existing',
+      expect.objectContaining({ frontPadThickness: 11 }),
+    );
+    expect(api.vehicleIntelligence.createBatterySpec).not.toHaveBeenCalled();
+    expect(api.vehicleIntelligence.createBrakeSpec).not.toHaveBeenCalled();
   });
 
   it('updateMasterRegisteredVehicle skips vehicle PATCH when only motor power form field changes', async () => {
