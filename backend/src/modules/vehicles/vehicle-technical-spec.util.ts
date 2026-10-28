@@ -46,6 +46,47 @@ export function parsePositiveIntegerField(input: unknown): number | null {
   return n;
 }
 
+/** Non-negative tank capacity (liters); zero is valid for BEV. */
+export function parseTankCapacityLiters(input: unknown): number | null {
+  if (input == null || input === '') return null;
+  const n = typeof input === 'number' ? input : Number(String(input).replace(',', '.').trim());
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+/** Engine idle/max RPM — positive integer within plausible engine range. */
+export function parseVehicleRpmField(input: unknown): number | null {
+  const n = parsePositiveIntegerField(input);
+  if (n == null || n > 20_000) return null;
+  return n;
+}
+
+/**
+ * Front brake force percent (not F/R weight distribution). Rejects slash ratio strings.
+ */
+export function parseBrakeForceFrontPercent(input: unknown): number | null {
+  if (input == null || input === '') return null;
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input) || input <= 0 || input >= 100) return null;
+    return Math.round(input);
+  }
+  const raw = String(input).trim();
+  if (!raw || /\//.test(raw)) return null;
+  const pctMatch = raw.match(/(\d+(?:\.\d+)?)/);
+  if (!pctMatch) return null;
+  const n = Number(pctMatch[1]);
+  if (!Number.isFinite(n) || n <= 0 || n >= 100) return null;
+  return Math.round(n);
+}
+
+export function vehicleRpmPairIsConsistent(
+  idleRpm: number | null | undefined,
+  maxRpm: number | null | undefined,
+): boolean {
+  if (idleRpm == null || maxRpm == null) return true;
+  return maxRpm > idleRpm;
+}
+
 export function valuesEqualScalar(
   a: number | null | undefined,
   b: number | null | undefined,

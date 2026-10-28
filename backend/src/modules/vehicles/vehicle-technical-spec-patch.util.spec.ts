@@ -11,6 +11,15 @@ const baseVehicle = {
   engineDisplacementCc: null as number | null,
   cylinderCount: null as number | null,
   frontWeightDistributionPct: null as number | null,
+  idleRpm: null as number | null,
+  maxRpm: null as number | null,
+  brakeForceFrontPercent: null as number | null,
+  tankCapacityLiters: null as number | null,
+  serviceIntervalManufacturerKm: null as number | null,
+  serviceIntervalManufacturerMonths: null as number | null,
+  oilChangeIntervalKm: null as number | null,
+  oilChangeIntervalMonths: null as number | null,
+  driveType: null as import('@prisma/client').DriveType | null,
   registrationIdentityProvenance: null,
 };
 
@@ -165,5 +174,107 @@ describe('vehicle-technical-spec-patch.util', () => {
         technicalSpecificationSave: { confirmedFieldKeys: ['engineDisplacementCc'] },
       }),
     ).toBe(false);
+  });
+
+  it('persists idleRpm, maxRpm, and brakeForceFrontPercent with confirmation', () => {
+    const patch = buildVehicleTechnicalSpecificationPrismaPatch(
+      baseVehicle,
+      {
+        idleRpm: 750,
+        maxRpm: 6500,
+        brakeForceFrontPercent: 62,
+        technicalSpecificationSave: {
+          confirmedFieldKeys: ['idleRpm', 'maxRpm', 'brakeForceDistribution'],
+        },
+      },
+      null,
+    );
+    expect(patch.idleRpm).toBe(750);
+    expect(patch.maxRpm).toBe(6500);
+    expect(patch.brakeForceFrontPercent).toBe(62);
+  });
+
+  it('rejects maxRpm not greater than idleRpm', () => {
+    expect(() =>
+      buildVehicleTechnicalSpecificationPrismaPatch(
+        { ...baseVehicle, idleRpm: 800 },
+        {
+          maxRpm: 700,
+          technicalSpecificationSave: { confirmedFieldKeys: ['maxRpm'] },
+        },
+        null,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('rejects weight distribution string as brake force', () => {
+    expect(() =>
+      buildVehicleTechnicalSpecificationPrismaPatch(
+        baseVehicle,
+        {
+          brakeForceDistribution: '58/42',
+          technicalSpecificationSave: { confirmedFieldKeys: ['brakeForceDistribution'] },
+        },
+        null,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('allows confirmed AI idleRpm when confirmedFieldKeys present', () => {
+    expect(() =>
+      assertAiTechnicalFieldsConfirmed(
+        {
+          idleRpm: 750,
+          technicalSpecificationSave: { confirmedFieldKeys: ['idleRpm'] },
+        },
+        { idleRpm: { category: 'AI_ESTIMATED' } },
+      ),
+    ).not.toThrow();
+  });
+
+  it('omits unchanged idleRpm from patch when sent equal to current', () => {
+    const patch = buildVehicleTechnicalSpecificationPrismaPatch(
+      { ...baseVehicle, idleRpm: 750 },
+      {
+        idleRpm: 750,
+        technicalSpecificationSave: { confirmedFieldKeys: ['idleRpm'] },
+      },
+      null,
+    );
+    expect(patch.idleRpm).toBeUndefined();
+  });
+
+  it('persists tank and service intervals with confirmation', () => {
+    const patch = buildVehicleTechnicalSpecificationPrismaPatch(
+      baseVehicle,
+      {
+        tankCapacityLiters: 55,
+        serviceIntervalManufacturerKm: 30000,
+        oilChangeIntervalMonths: 24,
+        technicalSpecificationSave: {
+          confirmedFieldKeys: [
+            'tankCapacityLiters',
+            'serviceIntervalManufacturerKm',
+            'oilChangeIntervalMonths',
+          ],
+        },
+      },
+      null,
+    );
+    expect(patch.tankCapacityLiters).toBe(55);
+    expect(patch.serviceIntervalManufacturerKm).toBe(30000);
+    expect(patch.oilChangeIntervalMonths).toBe(24);
+  });
+
+  it('persists drivetrain as driveType when confirmed', () => {
+    const patch = buildVehicleTechnicalSpecificationPrismaPatch(
+      baseVehicle,
+      {
+        drivetrain: 'AWD',
+        technicalSpecificationSave: { confirmedFieldKeys: ['drivetrain'] },
+      },
+      null,
+    );
+    expect(patch.driveType).toBe('AWD');
   });
 });

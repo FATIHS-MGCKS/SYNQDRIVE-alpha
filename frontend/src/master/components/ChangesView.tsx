@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-lv-standby-transmission-profile-v1-2026-10-28',
+    version: '4.9.5003',
+    title: 'VSI LV standby transmission profile V1 (observed 8h/24h cadence)',
+    summary: [
+      'Adds lvStandbyTransmissionProfile on lv_voltage.cadenceIntelligence (LV_8H_OBSERVED | LV_24H_OBSERVED | UNKNOWN) from 30d battery LIVE_VOLTAGE provider-time evidence with trip isolation.',
+      'Keeps generic MAX_LV_ROWS=256 cadence regimes unchanged; separate bounded historical loader for standby classification.',
+    ],
+    reason:
+      'R1 fleet shows ~8h LV source advances during park; prior strict intra-session segmentation could not surface inter-wake 8h evidence.',
+    previousBehavior:
+      'lv_voltage cadenceIntelligence only exposed generic POLL_BOUND / PERIODIC_RESTING regimes without observed standby transmission profile label.',
+    details:
+      'backend: vsi-lv-standby-transmission-profile-resolver.util.ts, vsi-lv-standby-transmission-evidence.loader.ts, enricher + materialization wiring.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-28T07:30:00.000Z',
+  },
+  {
     id: 'ds4-event-intensity-persistence-pr2-2026-10-28',
     version: '4.9.5002',
     title: 'DS4 event intensity persistence — PR-2 (shadow payload, Draft, not deployed)',
