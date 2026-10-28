@@ -92,6 +92,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T07:30:00.000Z',
   },
   {
+    id: 'ds4-assessment-collection-safety-2026-10-28',
+    version: '4.9.5011',
+    title: 'DS4 L2 assessment collection safety — V2-only discovery + cutoff fail-closed (Draft)',
+    summary: [
+      'Assessment outbox discovery: only SUCCEEDED Motion runs with V2 intensity event-row contract on/after DI_V0_DS4_ASSESSMENT_MIN_MOTION_RUN_CREATED_AT; summary_json validated against payload contract.',
+      'Worker fail-closed without explicit UTC cutoff env; proposed boundary 2026-10-28T17:42:00Z documented in .env.example only (not production).',
+      'Impact V2 percentile resolver runs only when assessmentStatus=RATED; UNRATED/INSUFFICIENT paths keep operationalLoadIndex=null.',
+    ],
+    reason:
+      'Safe shadow collection for post-L2 Motion V2 without V1 batch starvation, historical reprocessing, or numeric score leakage under unapproved ordinal policy.',
+    previousBehavior:
+      'Discovery ordered all SUCCEEDED motion runs regardless of V1/V2 contract or age; Impact V2 could invoke percentile resolver for non-RATED assessments.',
+    details:
+      'backend: ds4-assessment-outbox.repository.v1.ts, ds4-assessment-motion-discovery-eligibility.v1.ts, ds4-assessment.config.ts, ds4-driving-impact-v2.engine.ts; postgres CI 31 tests; architecture/drivingintelligence/research/CHANGE_LEDGER.md.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T21:50:00.000Z',
+  },
+  {
     id: 'ds4-pre-activation-readiness-2026-10-28',
     version: '4.9.5006',
     title: 'DS4 pre-activation readiness — exposure O(n) + postgres persistence assertions (Draft)',
