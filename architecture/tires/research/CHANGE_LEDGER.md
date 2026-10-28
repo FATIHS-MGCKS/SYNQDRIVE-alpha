@@ -230,3 +230,13 @@ Newest entry last. Never rewrite or delete entries.
 | CHANGE | Append monitoring row to cutover evidence; re-run service `--mode=v3` with corrected `verificationStatus` parsing |
 | OBSERVED_EFFECT | 0 new V2 snapshots since activation; scheduler stable; P3 cohort `INSUFFICIENT_EVIDENCE` on verification axis |
 | NON_EFFECTS | No env or PM2 change |
+
+### Tire V3 — read-only pipeline + physics audit (2026-10-28, P3 cohort)
+
+| Event | Detail |
+|-------|--------|
+| WHY | Owner request: trace 14 pipeline stages and determine actual V3 consumption of vehicle-dynamics parameters after global cutover |
+| CHANGE | Documentation only — [`evidence/TIRE_V3_PIPELINE_PHYSICS_AUDIT_2026-10-28.md`](../evidence/TIRE_V3_PIPELINE_PHYSICS_AUDIT_2026-10-28.md) (`TIRE-EVID-PROD-V3-PIPELINE-PHYSICS-AUDIT-2026-10-28-001`) |
+| OBSERVED_EFFECT | Pipeline PARTIAL: ledger → V3 → rental → UI authority PASS; DS4 tire evidence only Tesla/Tiguan at ≤2 % ledger coverage, 0 `VERIFIED` temporal rows; V3 output invariant to `curbWeightKg`, `frontWeightDistributionPct`, `driveType`, `brakeForceFrontPercent` and DS4 severity (β=0); observed M3 43–71 J/kg/km vs reference 15 (sRel 2.85–4.74); Tesla ledger 6.9 % of odometer delta (935 unattributed Apr–Jun trips) |
+| NON_EFFECTS | No deploy, flag, coefficient, β, or production-table change; offline replay with `persistShadow:false`; 0 shadow rows, snapshots 9246 unchanged |
+| REMAINING_GAPS | Severity reference recalibration before any β>0; DS4 tire allowlist/catch-up scope; measurement-with-odometer intake; Arteon `brake_force_front_percent=1` data quality |

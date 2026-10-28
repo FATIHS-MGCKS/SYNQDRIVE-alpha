@@ -621,6 +621,21 @@ nodes:
     verified_ref: 6ec3844c3293e8b4a5863fe75562fd82f8f3a839
     verified_at: "2026-10-28T20:24:39Z"
 
+  - id: TIRE-EVID-PROD-V3-PIPELINE-PHYSICS-AUDIT-2026-10-28-001
+    type: evidence
+    title: Read-only Tire Wear V3 pipeline + physics audit, P3 cohort (2026-10-28)
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      14-stage trace on binary 6ec3844c3 for Tesla/Tiguan/Audi/Arteon; V3 output invariant to curb weight,
+      axle distribution, drive type, brake split and DS4 severity (beta=0); DS4 tire evidence only for
+      Tesla/Tiguan at <=2 % ledger coverage, 0 VERIFIED temporal rows; observed M3 43-71 J/kg/km vs
+      reference 15; Tesla ledger covers 6.9 % of odometer delta; offline replay idempotent, no writes.
+    source_paths:
+      - architecture/tires/evidence/TIRE_V3_PIPELINE_PHYSICS_AUDIT_2026-10-28.md
+    verified_ref: 6ec3844c3293e8b4a5863fe75562fd82f8f3a839
+    verified_at: "2026-10-28T22:16:00Z"
+
   - id: TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
     type: evidence
     title: Production read-only — DS4 motion-core shadow runs and event quality distribution (2026-10-24)
