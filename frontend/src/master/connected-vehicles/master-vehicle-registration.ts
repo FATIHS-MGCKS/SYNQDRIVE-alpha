@@ -9,6 +9,8 @@ import type { VehicleAiFieldProvenanceMap } from './vehicle-ai-field-provenance.
 import {
   parseFrontWeightDistributionPct,
   parsePositiveIntegerField,
+  parseBrakeForceFrontPercent,
+  parseVehicleRpmField,
 } from './vehicle-technical-spec.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
@@ -644,6 +646,48 @@ export function buildMasterVehiclePhysicsSpecPatch(
       patch.frontWeightDistributionPct = frontPct;
     }
     confirmedFieldKeys.push('frontToRearWeightDistribution');
+  }
+
+  if (!strEq(current.idleRpm, baseline.idleRpm)) {
+    const raw = current.idleRpm?.trim() ?? '';
+    if (!raw) {
+      patch.idleRpm = null;
+    } else {
+      const parsed = parseVehicleRpmField(raw);
+      if (parsed == null) {
+        throw new Error('INVALID_IDLE_RPM');
+      }
+      patch.idleRpm = parsed;
+    }
+    confirmedFieldKeys.push('idleRpm');
+  }
+
+  if (!strEq(current.maxRpm, baseline.maxRpm)) {
+    const raw = current.maxRpm?.trim() ?? '';
+    if (!raw) {
+      patch.maxRpm = null;
+    } else {
+      const parsed = parseVehicleRpmField(raw);
+      if (parsed == null) {
+        throw new Error('INVALID_MAX_RPM');
+      }
+      patch.maxRpm = parsed;
+    }
+    confirmedFieldKeys.push('maxRpm');
+  }
+
+  if (!strEq(current.brakeForceDistribution, baseline.brakeForceDistribution)) {
+    const raw = current.brakeForceDistribution?.trim() ?? '';
+    if (!raw) {
+      patch.brakeForceFrontPercent = null;
+    } else {
+      const frontPct = parseBrakeForceFrontPercent(raw);
+      if (frontPct == null) {
+        throw new Error('INVALID_BRAKE_FORCE_DISTRIBUTION');
+      }
+      patch.brakeForceFrontPercent = frontPct;
+    }
+    confirmedFieldKeys.push('brakeForceDistribution');
   }
 
   if (confirmedFieldKeys.length > 0) {

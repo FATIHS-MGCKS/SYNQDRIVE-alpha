@@ -124,6 +124,22 @@ export function ConnectedVehicleTechnicalSpecsSection({
               }
             />
             <SpecItem
+              label={t('master.cv.technicalSpecs.idleRpm')}
+              value={specs.idleRpm != null ? formatSpecsNumber(specs.idleRpm) : '—'}
+            />
+            <SpecItem
+              label={t('master.cv.technicalSpecs.maxRpm')}
+              value={specs.maxRpm != null ? formatSpecsNumber(specs.maxRpm) : '—'}
+            />
+            <SpecItem
+              label={t('master.cv.technicalSpecs.brakeForceDistribution')}
+              value={
+                specs.brakeForceFrontPercent != null
+                  ? `${formatSpecsNumber(specs.brakeForceFrontPercent)} ${t('master.cv.technicalSpecs.unitPercentFront')}`
+                  : '—'
+              }
+            />
+            <SpecItem
               label={t('master.cv.technicalSpecs.systemPower')}
               value={
                 specs.systemMotorPowerKw != null
