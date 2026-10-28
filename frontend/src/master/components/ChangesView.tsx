@@ -54,6 +54,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T07:30:00.000Z',
   },
   {
+    id: 'ds4-assessment-l2-intensity-exposure-pr-a2-2026-10-28',
+    version: '4.9.5003',
+    title: 'DS4 Assessment L2 PR-A2 — intensity eligibility + canonical exposure (Draft, worker OFF)',
+    summary: [
+      'L2 assessment derives per-event admissibility from persisted V2 intensity only (quality OK, coverageRatio=1, steps=durationS, duration≥2s; ≥3s FULL_ELIGIBLE, 2s BIN_ONLY).',
+      'Per-kind quality counts + explicit reason codes on eventSummaries; ratedEventCount counts admissible events only.',
+      'Canonical driving exposure Es/D_km from FSM MOVING+DIRECT + usable DS4 speed over actual label intervals (DS4_ASSESSMENT_DRIVING_EXPOSURE_V1 provenance).',
+      'Quality policy default DS4_ASSESSMENT_QUALITY_POLICY_V2; ordinalTripRatingApproved remains false; operationalLoadIndex stays null.',
+    ],
+    reason:
+      'Implement Fable 2026-10-28 gates for ordinal event quality and exposure before calibrated Driving Impact V2 scoring.',
+    previousBehavior:
+      'PR-A L2 counted any consumable intensity row without duration tier gates or integrated driving exposure metadata.',
+    details:
+      'backend ds4-assessment: ds4-assessment-event-intensity-eligibility.v1.ts, ds4-assessment-driving-exposure.v1.ts, ds4-trip-assessment-v1.engine.ts; tests; architecture/drivingintelligence design + evidence PR-A2.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T12:30:00.000Z',
+  },
+  {
     id: 'ds4-event-intensity-persistence-pr2-2026-10-28',
     version: '4.9.5002',
     title: 'DS4 event intensity persistence — PR-2 (shadow payload, Draft, not deployed)',

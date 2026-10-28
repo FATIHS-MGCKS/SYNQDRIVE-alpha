@@ -2380,3 +2380,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-assessment`; optional postgres integration when `S4A_POSTGRES_LIVE`; `nest build`; architecture validators |
 | NON_EFFECTS | Motion detection, legacy HF/Impact V1, Trip UI/DriverScore/Rental/Brake/Tire customer paths unchanged; motion-core env allowlists untouched; no deploy |
 | REMAINING | Fable review quality policy + reference distribution calibration; PR-B consumer cutover |
+
+### DS4 Assessment L2 PR-A2 — intensity eligibility + driving exposure (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `ds4-assessment-event-intensity-eligibility.v1.ts` + `ds4-assessment-driving-exposure.v1.ts`; L2 engine wires admissible ordinals, exposure provenance, `NO_VALID_DRIVING_EXPOSURE`; quality policy V2 default; extended `eventSummariesJson` (no schema migration) |
+| WHY | Fable 2026-10-28: gate ordinal bins on validated V2 intensity + duration metadata; canonical Es/D_km for future calibrated impact without publishing numeric score |
+| VALIDATION | `npm run test:di:ds4-assessment` (unit + optional postgres) |
+| NON_EFFECTS | C4/C5.1 algorithms unchanged; `operationalLoadIndex` remains null; worker OFF; no consumer cutover |
+| REMAINING | Reference population calibration; Fable re-review of eligibility thresholds |
