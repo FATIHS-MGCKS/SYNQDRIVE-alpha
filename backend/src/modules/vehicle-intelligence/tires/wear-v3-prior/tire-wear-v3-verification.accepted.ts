@@ -46,7 +46,10 @@ export function isVerificationExcludedLegacySource(source: string): boolean {
     normalized === 'calibration' ||
     normalized === 'ai_estimate' ||
     normalized === 'ai_agent' ||
-    normalized === 'ai_confirmed'
+    normalized === 'ai_confirmed' ||
+    normalized === 'manual_registration' ||
+    normalized === 'documented_registration' ||
+    normalized === 'registration'
   );
 }
 

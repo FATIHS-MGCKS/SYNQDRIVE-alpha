@@ -155,4 +155,60 @@ describe('tire-measurement-v3-ingestion', () => {
       }),
     ).toContain('20');
   });
+
+  it('excludes registration baseline from verification anchors', () => {
+    const assessment = assessV3Ingestion({
+      legacySource: 'manual_registration',
+      evidenceSource: TireEvidenceSource.DOCUMENT_MEASUREMENT,
+      measuredAt: new Date('2026-02-01T00:00:00Z'),
+      mountPeriod: mount,
+      explicitOdometerKm: null,
+      inferredAnchor: {
+        odometerKm: null,
+        source: 'UNKNOWN' as never,
+        capturedAt: new Date(),
+        evidenceId: null,
+        status: TireOdometerAnchorStatus.ANCHORED,
+        confidence: 0,
+        plausibilityIssue: null,
+        clientValueIgnored: false,
+      },
+      treadValues: {
+        frontLeftMm: 7,
+        frontRightMm: 7,
+        rearLeftMm: 7,
+        rearRightMm: 7,
+      },
+      priorResult: null,
+    });
+    expect(assessment.verificationEligible).toBe(false);
+    expect(assessment.evidenceClass).toBe('EXCLUDED_SOURCE');
+    expect(assessment.warnings.map((w) => w.code)).toContain(
+      'V3_REGISTRATION_BASELINE_NOT_VERIFICATION_ANCHOR',
+    );
+  });
+
+  it('classifies unverified manual ground truth without confirm', () => {
+    const assessment = assessV3Ingestion({
+      legacySource: 'manual',
+      evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT,
+      measuredAt: new Date('2026-02-01T00:00:00Z'),
+      mountPeriod: mount,
+      explicitOdometerKm: null,
+      inferredAnchor: {
+        odometerKm: 1200,
+        source: 'VEHICLE_LATEST_STATE' as never,
+        capturedAt: new Date(),
+        evidenceId: null,
+        status: TireOdometerAnchorStatus.ANCHORED,
+        confidence: 80,
+        plausibilityIssue: null,
+        clientValueIgnored: true,
+      },
+      treadValues: { frontLeftMm: 7, frontRightMm: null, rearLeftMm: null, rearRightMm: null },
+      priorResult: null,
+    });
+    expect(assessment.evidenceClass).toBe('UNVERIFIED_GROUND_TRUTH');
+    expect(assessment.warnings.map((w) => w.code)).toContain('V3_MEASUREMENT_RECORDED_UNVERIFIED');
+  });
 });
