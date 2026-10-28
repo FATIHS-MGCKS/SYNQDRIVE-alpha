@@ -1653,7 +1653,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 </p>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className={labelClass}>LV construction type {aiTag}</label>
+                    <label className={labelClass}>
+                      {t('master.registration.lvBatteryConstructionType.label')} {aiTag}
+                    </label>
                     <select
                       value={batteryType}
                       onChange={(e) => setBatteryType(e.target.value)}
@@ -1662,18 +1664,22 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       <option value="">—</option>
                       <option value="AGM">AGM</option>
                       <option value="EFB">EFB</option>
-                      <option value="LEAD_ACID">Lead-acid (flooded)</option>
+                      <option value="LEAD_ACID">
+                        {t('master.registration.lvBatteryConstructionType.leadAcid')}
+                      </option>
                       <option value="LITHIUM">Lithium</option>
                     </select>
                   </div>
                   <div>
-                    <label className={labelClass}>Chemistry (AI hint only) {aiTag}</label>
+                    <label className={labelClass}>
+                      {t('master.registration.lvBatteryChemistryHint.label')} {aiTag}
+                    </label>
                     <input
                       value={lvBatteryChemistry}
                       onChange={(e) => setLvBatteryChemistry(e.target.value)}
                       className={`${inputClass} opacity-70`}
-                      placeholder="Not saved — use LV construction type"
-                      title="Material chemistry is not persisted; Battery Health uses the LV construction type."
+                      placeholder={t('master.registration.lvBatteryChemistryHint.placeholder')}
+                      title={t('master.registration.lvBatteryChemistryHint.title')}
                       readOnly
                     />
                   </div>

@@ -12,6 +12,12 @@ export const tr = {
   ...masterVehicleIdentityTr,
   ...masterCvTechnicalSpecsTr,
   ...masterIntelligenceTr,
+  'master.registration.lvBatteryConstructionType.label': 'LV yapı tipi',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Kurşun-asit (açık)',
+  'master.registration.lvBatteryChemistryHint.label': 'Kimya (yalnızca AI ipucu)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Kaydedilmez — LV yapı tipini kullanın',
+  'master.registration.lvBatteryChemistryHint.title':
+    'Malzeme kimyası kalıcı değildir; Battery Health LV yapı tipini kullanır.',
   'trips.drivingImpact.quality.partial': 'Sınırlı veri kapsamı — değerlendirme eksik olabilir.',
   'trips.drivingImpact.quality.stale': 'Değerlendirme güncel olmayabilir (yolculuk verileri değişti).',
   'trips.drivingImpact.quality.pending': 'Driving Impact değerlendirmesi devam ediyor.',

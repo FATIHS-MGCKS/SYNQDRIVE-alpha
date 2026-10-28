@@ -60,6 +60,13 @@ export const pl = {
   'settings.accountInfo': 'Informacje o koncie', 'settings.companyProfile': 'Profil firmy', 'settings.stationsBranches': 'Stacje i oddzialy', 'settings.usersRoles': 'Uzytkownicy i role', 'settings.billingSubscription': 'Rozliczenia i subskrypcja', 'settings.firmLogo': 'Logo firmy', 'settings.documents': 'Dokumenty', 'settings.createNewLocation': 'Utworz nowa lokalizacje', 'settings.inviteUser': 'Zapros uzytkownika', 'settings.paymentMethod': 'Metoda platnosci', 'settings.subscriptionSummary': 'Podsumowanie subskrypcji', 'settings.invoiceHistory': 'Historia faktur', 'settings.vehicles': 'Pojazdy', 'settings.connectedVehicles': 'Polaczone pojazdy', 'settings.dataSync': 'Synchronizacja danych',
 
   // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  // ─── Master — Vehicle registration spec contract (V3) ───
+  'master.registration.lvBatteryConstructionType.label': 'Typ baterii LV',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Kwasowo-ołowiowa (otwarta)',
+  'master.registration.lvBatteryChemistryHint.label': 'Chemia (tylko podpowiedź AI)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Nie zapisywane — użyj typu LV',
+  'master.registration.lvBatteryChemistryHint.title': 'Chemia materiału nie jest zapisywana; Battery Health używa typu konstrukcji LV.',
+
   'master.cv.registryLifecycle.active': 'Aktywny',
   'master.cv.registryLifecycle.offboarded': 'Wycofany z floty',
   'master.cv.registryLifecycle.archived': 'Zarchiwizowany',

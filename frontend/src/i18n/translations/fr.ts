@@ -441,6 +441,13 @@ export const fr = {
   'settings.dataSync': 'Synchronisation donnees',
 
   // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  // ─── Master — Vehicle registration spec contract (V3) ───
+  'master.registration.lvBatteryConstructionType.label': 'Type de batterie LV',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Plomb-acide (noyée)',
+  'master.registration.lvBatteryChemistryHint.label': 'Chimie (indication IA uniquement)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Non enregistré — utiliser le type LV',
+  'master.registration.lvBatteryChemistryHint.title': 'La chimie matière n’est pas persistée ; Battery Health utilise le type de construction LV.',
+
   'master.cv.registryLifecycle.active': 'Actif',
   'master.cv.registryLifecycle.offboarded': 'Retire du parc',
   'master.cv.registryLifecycle.archived': 'Archive',

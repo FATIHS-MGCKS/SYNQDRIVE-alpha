@@ -3403,6 +3403,13 @@ export const de: Record<TranslationKey, string> = {
   'settings.dataSync': 'Datensynchronisation',
 
   // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  // ─── Master — Vehicle registration spec contract (V3) ───
+  'master.registration.lvBatteryConstructionType.label': 'LV-Bauart',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Bleisäure (nass)',
+  'master.registration.lvBatteryChemistryHint.label': 'Chemie (nur KI-Hinweis)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Wird nicht gespeichert — LV-Bauart verwenden',
+  'master.registration.lvBatteryChemistryHint.title': 'Materialchemie wird nicht gespeichert; Battery Health nutzt die LV-Bauart.',
+
   'master.cv.registryLifecycle.active': 'Aktiv',
   'master.cv.registryLifecycle.offboarded': 'Aus dem Bestand',
   'master.cv.registryLifecycle.archived': 'Archiviert',
