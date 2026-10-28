@@ -1,5 +1,6 @@
 import { MasterPageHeader, MasterPageSection } from '../shell';
-import { MasterIntelligenceContextProvider, useMasterIntelligenceContext } from './MasterIntelligenceContext';
+import { MasterIntelligenceContextProvider } from './MasterIntelligenceContextProvider';
+import { useMasterIntelligenceContext } from './useMasterIntelligenceContext';
 import { IntelligenceCrossLink } from './IntelligenceCrossLink';
 import { IntelligenceEmptyState } from './IntelligenceEmptyState';
 import { EvidenceFreshnessHint, ShadowVsRealPollHint } from './EvidenceFreshnessHint';
@@ -45,9 +46,14 @@ function ApdsMasterIntelligenceContent() {
       </MasterPageSection>
 
       <MasterPageSection title={t('master.intelligence.section.evidenceSemantics' as never)}>
-        <EvidenceFreshnessHint kind="simulated_shadow" className="mb-3" />
-        <EvidenceFreshnessHint kind="verified_real_execution" className="mb-3" />
-        <ShadowVsRealPollHint />
+        <p className="mb-2 text-xs text-muted-foreground" role="note">
+          {t('master.intelligence.vsi.previewNote' as never)}
+        </p>
+        <div data-intelligence-preview="presentation-only" data-testid="intelligence-evidence-preview">
+          <EvidenceFreshnessHint kind="simulated_shadow" className="mb-3" />
+          <EvidenceFreshnessHint kind="verified_real_execution" className="mb-3" />
+          <ShadowVsRealPollHint />
+        </div>
       </MasterPageSection>
 
       <IntelligenceEmptyState

@@ -95,6 +95,7 @@ describe('Master Intelligence URL', () => {
 describe('Master Intelligence URL — history', () => {
   const org = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
   const vehicle = '19fedd4b-c4e8-4de8-a125-dab293326e7e';
+  const link = '9ff5e350-cd4b-4e3a-956a-4f1770b017f2';
 
   it('supports back navigation after pushMasterIntelligenceUrl', () => {
     window.history.replaceState(null, '', '/master?view=vehicles&cvSection=vehicles');
@@ -119,6 +120,54 @@ describe('Master Intelligence URL — history', () => {
     expect(params.get('view')).toBe('vehicles');
     expect(params.get('cvSection')).toBe('vehicles');
     expect(params.get('vehicleId')).toBe(vehicle);
+  });
+
+  it('round-trips VSI -> APDS -> VSI preserving org and vehicle context', () => {
+    const base = {
+      ...emptyIntelligenceContext(),
+      orgId: org,
+      vehicleId: vehicle,
+      providerSourceLinkId: link,
+    };
+    window.history.replaceState(null, '', '/master?view=vsi-intelligence');
+    navigateMasterIntelligenceCrossLink('apds-intelligence', base);
+    let params = new URLSearchParams(window.location.search);
+    expect(params.get('view')).toBe('apds-intelligence');
+    expect(params.get('orgId')).toBe(org);
+    expect(params.get('vehicleId')).toBe(vehicle);
+    expect(params.get('providerSourceLinkId')).toBe(link);
+
+    const apdsCtx = parseMasterIntelligenceContext(window.location.search);
+    navigateMasterIntelligenceCrossLink('vsi-intelligence', apdsCtx);
+    params = new URLSearchParams(window.location.search);
+    expect(params.get('view')).toBe('vsi-intelligence');
+    expect(params.get('orgId')).toBe(org);
+    expect(params.get('vehicleId')).toBe(vehicle);
+  });
+
+  it('does not retain invalid physicalDeviceId in parsed context', () => {
+    const ctx = parseMasterIntelligenceContext(
+      `?view=vsi-intelligence&orgId=${org}&vehicleId=${vehicle}&physicalDeviceId=bad-id`,
+    );
+    expect(ctx.physicalDeviceId).toBeNull();
+    expect(ctx.rejectedParams).toContain('physicalDeviceId');
+    expect(ctx.orgId).toBe(org);
+  });
+
+  it('updates view on forward navigation after pushState chain', () => {
+    window.history.replaceState(null, '', `/master?view=vsi-intelligence&orgId=${org}&vehicleId=${vehicle}`);
+    pushMasterIntelligenceUrl('apds-intelligence', {
+      ...emptyIntelligenceContext(),
+      orgId: org,
+      vehicleId: vehicle,
+    });
+    expect(readMasterIntelligenceView(window.location.search)).toBe('apds-intelligence');
+    window.history.forward();
+    // forward may no-op if at end; back then forward restores apds
+    window.history.back();
+    expect(readMasterIntelligenceView(window.location.search)).toBe('vsi-intelligence');
+    window.history.forward();
+    expect(readMasterIntelligenceView(window.location.search)).toBe('apds-intelligence');
   });
 });
 

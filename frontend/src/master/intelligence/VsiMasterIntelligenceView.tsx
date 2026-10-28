@@ -1,5 +1,6 @@
 import { MasterPageHeader, MasterPageSection } from '../shell';
-import { MasterIntelligenceContextProvider, useMasterIntelligenceContext } from './MasterIntelligenceContext';
+import { MasterIntelligenceContextProvider } from './MasterIntelligenceContextProvider';
+import { useMasterIntelligenceContext } from './useMasterIntelligenceContext';
 import { IntelligenceCrossLink } from './IntelligenceCrossLink';
 import { IntelligenceEmptyState } from './IntelligenceEmptyState';
 import {
@@ -61,10 +62,15 @@ function VsiMasterIntelligenceContent() {
       </MasterPageSection>
 
       <MasterPageSection title={t('master.intelligence.section.previewComponents' as never)}>
-        <p className="mb-3 text-xs text-muted-foreground">
+        <p className="mb-3 text-xs text-muted-foreground" role="note">
           {t('master.intelligence.vsi.previewNote' as never)}
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex flex-wrap gap-2"
+          data-intelligence-preview="presentation-only"
+          data-testid="intelligence-badge-preview"
+          aria-hidden
+        >
           <SignalProfileBadge kind="lv" profile="LV_8H_OBSERVED" />
           <SignalProfileBadge kind="lv" profile="UNKNOWN" limitationCode="OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION" />
           <SignalProfileBadge kind="rpm" profile="RPM_1HZ" applicability="APPLICABLE" />

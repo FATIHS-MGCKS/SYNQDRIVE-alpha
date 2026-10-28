@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { cn } from '../../components/ui/utils';
-import { useMasterIntelligenceContext } from './MasterIntelligenceContext';
+import { useMasterIntelligenceContext } from './useMasterIntelligenceContext';
 import { contextHasMinimumForCrossLink } from './master-intelligence-url';
 import type { MasterIntelligenceCrossLinkTarget } from './master-intelligence.types';
 
