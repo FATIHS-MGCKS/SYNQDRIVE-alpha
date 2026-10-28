@@ -535,3 +535,15 @@ edges:
     relation: supports
     to: DI-EVID-DS4-MIGRATION-DESIGN-001
     notes: PR-0 migration design; no runtime activation
+
+  - id: DI-EDGE-157
+    from: DI-DEC-DS4-INTENSITY-PERSIST-001
+    relation: supports
+    to: DI-EVID-DS4-INTENSITY-PERSISTENCE-PR2-001
+    notes: PR-2 contract, root cause and validation evidence
+
+  - id: DI-EDGE-158
+    from: DI-DEC-DS4-INTENSITY-PERSIST-001
+    relation: supports
+    to: DI-DEC-DS4-AUTHORITY-001
+    notes: Closes blocker B2 data precondition of the DS4 authority migration (consumer binding still gated)

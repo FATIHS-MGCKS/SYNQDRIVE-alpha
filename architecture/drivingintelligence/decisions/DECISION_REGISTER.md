@@ -473,3 +473,21 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED for owner decision and audit counts @ `51adb234…`; DS4 fleet coverage CONFIRMED read-only for allowlisted vehicles; full-fleet readiness INFERRED pending G1–G9 |
 | **EVIDENCE** | [`design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md`](../design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md) · [`evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md`](../evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md) |
 | **BOUNDARY** | Trip boundaries unchanged (Trip Detection). Tires productive DS4 input remains gated (Tires authority). ATE enqueue retirement only at PR-10 after gates |
+
+## DI-DEC-DS4-INTENSITY-PERSIST-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DS4 event intensity persistence via event-row contract V2 (ordinal-only, no bundle bump) |
+| **ERA** | DS4 authority migration PR-2 (2026-10-28, isolated Draft PR; shadow persistence only) |
+| **STATUS** | PROPOSED (Fable review requested on persistence contract and ordinal-only restriction; not deployed) |
+| **PROBLEM** | Blocker B2: detector-computed `meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, `startUncertaintyS`, `endUncertaintyS` were dropped by `mapMotionManoeuvreEventToPersisted`; shadow rows carried boundaries/Δv/quality only, so no downstream assessment could use intensity without re-deriving under B3 bias |
+| **ALTERNATIVES** | (1) Bump algorithm bundle version to V5 — **rejected**: bundle is part of the outbox intent key and would re-enqueue every eligible trip (production reprocessing side effect). (2) Persist peak accelerations too — **rejected**: 1 s/2 s peaks are kernel-sensitive artefact amplifiers (B3). (3) Zero/null-fill missing constituents — **rejected**: fabricates values; readers must distinguish unreliable from zero. (4) Expose intensity on trip-map DTO now — **deferred**: no consumer may bind before Fable review |
+| **DECISION** | Add optional `intensity` block to persisted event rows, declared by `contract.persistence.eventRowContract = DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1` and mirrored in `summary_json.eventRowContract`. Payloads without `contract.persistence` resolve as legacy V1 (`intensity=null`). `intensity` is omitted when any constituent is non-finite/negative/non-integer/empty. `intensityUsagePolicy = ORDINAL_ONLY_NOT_PHYSICALLY_VALIDATED`; `peakAccel1sMps2`/`peakAccel2sMps2` listed as excluded. Bundle versions V1–V4, intent keys, kinematics, FSM, plausibility, counts, trip-map DTO and Trip UI unchanged |
+| **RATIONALE** | Persist what the detector already computes, versioned independently of the algorithm stack, so later PRs (assessment L2, Impact V2) can consume intensity from persisted evidence after review — without replay, backfill or reprocessing |
+| **TRADE-OFFS** | Historical rows remain V1 until naturally reprocessed by a future bundle change; uncertainty labels persisted as free text pending structured contract; motion-core Postgres specs still not wired into CI |
+| **CONSEQUENCES** | New runs after deploy carry V2 rows; `TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001` data precondition closes for future rows only (tire consumer still forbidden to bind pre-review); PR-3/PR-4 may read `intensity` only via `readPersistedMotionEventIntensity` |
+| **GRAPH NODES** | DI-DEC-DS4-INTENSITY-PERSIST-001, DI-EVID-DS4-INTENSITY-PERSISTENCE-PR2-001, DI-DEC-DS4-AUTHORITY-001 |
+| **EPISTEMIC** | CONFIRMED for code/test behaviour (unit 21/21, motion-core suite 72/72, local PostgreSQL 16 round-trip 2/2, tsc + nest build exit 0); Production effect NOT observed (not deployed) |
+| **EVIDENCE** | DI-EVID-DS4-INTENSITY-PERSISTENCE-PR2-001 |
+| **BOUNDARY** | Consulted: Tires Health (DS4 shadow adapter consumes trip-map DTO only — unaffected; gap pointer updated), Trips (trip-map read service unchanged), Brakes / Rental Driving Analysis / DriverScore (no consumer change) |

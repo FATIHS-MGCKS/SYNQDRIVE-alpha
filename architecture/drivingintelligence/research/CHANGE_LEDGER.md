@@ -2350,3 +2350,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Owner-approved migration plan from legacy HF/Impact V1 to DS4 as single driving-behaviour authority; permanent record before implementation PRs |
 | VALIDATION | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/drivingintelligence/scripts/validate-graph.sh`; `bash architecture/drivingintelligence/scripts/validate-docs.sh` |
 | NON_EFFECTS | **No** runtime code, migrations, flags, deploy, DS4 authority activation, or scoring changes |
+
+### DS4 event intensity persistence — PR-2 (2026-10-28, isolated Draft PR, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | `mapMotionManoeuvreEventToPersisted` dropped detector-computed `meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, `startUncertaintyS`, `endUncertaintyS` (and peaks); shadow rows in `di_v0_motion_core_shadow_runs_v1` carried kind/boundaries/speeds/Δv/quality/flags only (blocker B2) |
+| CHANGE | New `di-v0-motion-core-shadow-event-row.contract.ts`: event-row contract `DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1` declared in `payload.contract.persistence` + `summary_json.eventRowContract`; optional per-row `intensity` block (six fields) populated only when all constituents are finite/valid, otherwise omitted; `peakAccel1sMps2`/`peakAccel2sMps2` excluded by contract; `intensityUsagePolicy = ORDINAL_ONLY_NOT_PHYSICALLY_VALIDATED`; readers `resolveMotionCoreShadowEventRowContract` (legacy → V1) and `readPersistedMotionEventIntensity` (→ block or `null`) |
+| WHY | Persist already-computed intensity for later DS4 assessment/Impact V2 PRs without replay, backfill or reprocessing; decision `DI-DEC-DS4-INTENSITY-PERSIST-001` |
+| ALTERNATIVES | Bundle bump to V5 (rejected: intent-key change ⇒ mass re-enqueue); persisting peaks (rejected: B3 artefact amplifiers); zero/null-fill (rejected: fabrication); DTO exposure now (deferred to post-review) |
+| VALIDATION | `di-v0-motion-core-shadow-event-intensity-persistence.unit.spec.ts` 21/21; motion-core-shadow suite 14 suites / 72 tests; `di-v0-motion-core-shadow-event-intensity.postgres.integration.spec.ts` 2/2 on local ephemeral PostgreSQL 16 (`DI_V0_S4A_POSTGRES_INTEGRATION=1`); `npx tsc --noEmit` exit 0; `nest build` exit 0; `validate-graph.sh`, `validate-docs.sh`, `validate-module-registry.sh` |
+| NON_EFFECTS | Bundle versions V1–V4, intent keys, C4/C5.1/FSM/gap bridge/plausibility, event counts/classifications/boundaries, trip-map DTO (`peakAccel1sMps2` stays `null`), Trip UI, Tire/Brake/Rental/DriverScore calculations, flags, allowlists — all unchanged; no migration, no deploy, no production data mutation; DS4 authority not activated |
+| REMAINING | Fable review (`FABLE_REVIEW=REQUESTED`); motion-core Postgres specs not wired into CI; uncertainty labels persisted as free text |

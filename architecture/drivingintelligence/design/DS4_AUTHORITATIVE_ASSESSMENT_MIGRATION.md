@@ -82,7 +82,7 @@ flowchart TD
 | `driving-impact-scorer` V1 | `TripDrivingImpact` | Impact V2 scorer on assessment L2 | Weights/thresholds for DS4 inputs **not yet defined** (B4) |
 | Misuse rules on HF/native | `MisuseCase` | Manoeuvre subset from DS4 + **OBD Misuse V0** | B1 |
 
-**Intensity fields** (`meanAccelMps2`, `durationS`, `steps`, `coverageRatio`) are **IN_MEMORY_ONLY** today — PR-2 must persist before authoritative intensity use (B2).
+**Intensity fields** (`meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, `startUncertaintyS`, `endUncertaintyS`) were **IN_MEMORY_ONLY** at PR-0. **PR-2** persists them on shadow event rows under event-row contract `DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1` (ordinal-only policy, peaks excluded, legacy rows resolve as V1 with `intensity=null`; bundle versions/intent keys unchanged) — see [`evidence/DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md`](../evidence/DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md). Authoritative intensity use remains gated on Fable review (`DI-DEC-DS4-INTENSITY-PERSIST-001`, PROPOSED).
 
 ---
 
@@ -113,7 +113,7 @@ Summary: **0× P0**, **4× P1**, **4× P2**, **2× ADDENDUM** — each mapped to
 | ID | Blocker | Resolution path | Owning PR |
 |----|---------|-----------------|-----------|
 | **B1** | No DS4 OBD abuse detectors | PR-M shadow misuse V0 on pinned OBD; or owner decision to drop dimensions | PR-M / PR-10 gate |
-| **B2** | Intensity not persisted | Extend persisted event row; ordinal-only use (B3) | PR-2 |
+| **B2** | Intensity not persisted | Extend persisted event row; ordinal-only use (B3). **PR-2 implemented** (Draft, not deployed): event-row contract V2 persists six fields for new runs; historical rows stay V1 (no backfill). Residual: Fable review of contract + ordinal restriction; consumers may not bind before review | PR-2 |
 | **B3** | Fleet admission / allowlist / C5.1 Tesla-Tiguan only | G2 fleet admission policy; UNSUPPORTED outside admission | PR-3 + cutover gates |
 | **B4** | No DS4 Impact V2 score model | Define weights; Fable review; shadow mode compare | PR-4 |
 | **B5** | Assessment latency (S4 quiet + outbox) | PENDING UI; rental recompute on arrival | PR-6, PR-7 |
@@ -143,7 +143,7 @@ Summary: **0× P0**, **4× P1**, **4× P2**, **2× ADDENDUM** — each mapped to
 |----|-------|----------|
 | **PR-0** | Authority + migration design (this document) | **No** |
 | PR-1 | Consumer audit remediation (legacy path safety) | Yes (read gates) |
-| PR-2 | DS4 persisted event intensity | Yes (shadow bundle) |
+| PR-2 | DS4 persisted event intensity — **implemented (Draft PR; event-row contract V2, no bundle bump)** | Yes (shadow payload only) |
 | PR-3 | DS4 assessment materializer L2 | Flagged OFF default |
 | PR-4 | Impact V2 + `scoreAuthority` + SHADOW mode | Flagged |
 | PR-5 | Aggregator authority switch | Mode flag |
