@@ -38,6 +38,10 @@ import type {
   VehiclesOperationalOverviewDto,
   VehiclesOperationalQueryDto,
 } from './vehicles-operational.types';
+import {
+  buildRegisteredListQueryForOverviewSampling,
+  buildRegisteredOperationalWhere,
+} from './vehicles-operational-query.util';
 
 const TELEMETRY_LABELS: Record<TelemetryFreshness, string> = {
   live: 'Live',
@@ -241,23 +245,49 @@ export class VehiclesOperationalService {
     };
   }
 
-  async getOverview(): Promise<VehiclesOperationalOverviewDto> {
-    const [platformSummary, registeredCount, unregisteredCount, dimoLinkedCount] =
-      await Promise.all([
-        this.connectivitySummary.getPlatformSummary(),
-        this.prisma.vehicle.count(),
-        this.prisma.dimoVehicle.count({
-          where: { registeredVehicles: { none: {} } },
-        }),
-        this.prisma.vehicle.count({ where: { dimoVehicleId: { not: null } } }),
-      ]);
+  async getOverview(query?: {
+    organizationId?: string;
+  }): Promise<VehiclesOperationalOverviewDto> {
+    const activeListWhere = buildRegisteredOperationalWhere({
+      registrationState: 'registered',
+      registryLifecycle: 'ACTIVE',
+      organizationId: query?.organizationId,
+    });
+    const orgScope = query?.organizationId ? { organizationId: query.organizationId } : {};
+
+    const [
+      platformSummary,
+      registeredActive,
+      registeredOffboarded,
+      registeredArchived,
+      registeredAll,
+      unregisteredCount,
+      dimoLinkedActive,
+    ] = await Promise.all([
+      this.connectivitySummary.getPlatformSummary(),
+      this.prisma.vehicle.count({ where: activeListWhere }),
+      this.prisma.vehicle.count({
+        where: { registryLifecycle: 'OFFBOARDED', ...orgScope },
+      }),
+      this.prisma.vehicle.count({
+        where: { registryLifecycle: 'ARCHIVED', ...orgScope },
+      }),
+      this.prisma.vehicle.count({ where: { ...orgScope } }),
+      this.prisma.dimoVehicle.count({
+        where: { registeredVehicles: { none: {} } },
+      }),
+      this.prisma.vehicle.count({
+        where: {
+          ...activeListWhere,
+          dimoVehicleId: { not: null },
+        },
+      }),
+    ]);
 
     const platformCtx = await this.loadPlatformDimoContext();
-    const sampleRows = await this.findAllOperational({
-      page: 1,
-      limit: 500,
-      registrationState: 'registered',
-    });
+    const sampleRows = await this.findAllOperational(
+      buildRegisteredListQueryForOverviewSampling(query?.organizationId),
+    );
     const rows = sampleRows.data as VehicleOperationalRowDto[];
 
     let withAttention = 0;
@@ -272,10 +302,13 @@ export class VehiclesOperationalService {
       platformDimoDegraded: platformCtx.degraded,
       platformDimoMessage: platformCtx.message,
       counts: {
-        registered: registeredCount,
+        registered: registeredActive,
+        registeredOffboarded,
+        registeredArchived,
+        registeredAll,
         unregistered: unregisteredCount,
         withAttention,
-        dimoLinked: dimoLinkedCount,
+        dimoLinked: dimoLinkedActive,
       },
       freshness: platformSummary.freshness,
       attentionQueue,
@@ -285,9 +318,7 @@ export class VehiclesOperationalService {
   async getAttentionQueue(limit = 8): Promise<VehicleAttentionQueueItemDto[]> {
     const platformCtx = await this.loadPlatformDimoContext();
     const res = await this.findAllOperational({
-      page: 1,
-      limit: 500,
-      registrationState: 'registered',
+      ...buildRegisteredListQueryForOverviewSampling(),
       attention: 'true',
     });
     return this.buildAttentionQueue(res.data as VehicleOperationalRowDto[], platformCtx.degraded).slice(
@@ -364,7 +395,7 @@ export class VehiclesOperationalService {
     now: number,
     platformCtx: { degraded: boolean; message: string | null },
   ) {
-    const where = this.buildRegisteredWhere(query);
+    const where = buildRegisteredOperationalWhere(query);
     const [vehicles, totalBefore] = await Promise.all([
       this.prisma.vehicle.findMany({
         where,
@@ -636,29 +667,6 @@ export class VehiclesOperationalService {
         vehicle.latestState?.lastSeenAt ?? vehicle.latestState?.updatedAt ?? null,
     };
     return resolveTelemetryFreshness(evidence, now);
-  }
-
-  private buildRegisteredWhere(query: VehiclesOperationalQueryDto) {
-    const where: Record<string, unknown> = {};
-    const lifecycle = query.registryLifecycle;
-    if (lifecycle && lifecycle !== 'all') {
-      where.registryLifecycle = lifecycle;
-    }
-    if (query.organizationId) {
-      where.organizationId = query.organizationId;
-    }
-    if (query.q?.trim()) {
-      const q = query.q.trim();
-      where.OR = [
-        { vin: { contains: q, mode: 'insensitive' } },
-        { licensePlate: { contains: q, mode: 'insensitive' } },
-        { vehicleName: { contains: q, mode: 'insensitive' } },
-        { make: { contains: q, mode: 'insensitive' } },
-        { model: { contains: q, mode: 'insensitive' } },
-        { organization: { companyName: { contains: q, mode: 'insensitive' } } },
-      ];
-    }
-    return where;
   }
 
   private applyEnrichedFilters(
