@@ -8,6 +8,12 @@ import {
 } from './ds4-trip-assessment-v1.contract';
 import type { Ds4TripAssessmentComputeResultV1 } from './ds4-trip-assessment-v1.engine';
 
+/**
+ * Future calibrated score activation (pre-#2218 hardening note):
+ * `resolveOperationalLoadIndexPercentile` must run only when `assessment.assessmentStatus === 'RATED'`.
+ * Until then publication remains DISABLED_MODEL_NOT_CALIBRATED with operationalLoadIndex=null.
+ */
+
 export type Ds4DrivingImpactV2ComputeResultV1 = {
   modelVersion: typeof DS4_IMPACT_V2_MODEL_VERSION;
   scoreAuthority: typeof DS4_IMPACT_V2_SCORE_AUTHORITY;

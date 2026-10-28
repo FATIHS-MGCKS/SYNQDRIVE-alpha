@@ -70,7 +70,7 @@ describe('deriveDs4DrivingExposureV1', () => {
     expect(exposure.derivable).toBe(true);
     expect(exposure.exposureSeconds).toBe(3);
     expect(exposure.distanceKm).toBeCloseTo((36 * 3) / 3600, 6);
-    expect(exposure.provenance.provenanceVersion).toBe('DS4_ASSESSMENT_DRIVING_EXPOSURE_V1');
+    expect(exposure.provenance.provenanceVersion).toBe('DS4_ASSESSMENT_DRIVING_EXPOSURE_V2');
     expect(exposure.provenance.speedAuthority).toBe('C4_ONLY');
   });
 
@@ -122,14 +122,77 @@ describe('deriveDs4DrivingExposureV1', () => {
     expect(exposure.provenance.excludedGapIntervalCount).toBe(1);
   });
 
+  it('regression: 2s timestamp gap is not credited as observed exposure (1s grid step)', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:02Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:02Z', 36)],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.exposureSeconds).toBe(0);
+    expect(exposure.distanceKm).toBe(0);
+    expect(exposure.provenance.excludedGapIntervalCount).toBe(1);
+  });
+
+  it('regression: conflicting duplicate speed labels fail closed (order independent)', () => {
+    const build = (speeds: ReturnType<typeof speedRow>[]) =>
+      basePayload({
+        fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+        speeds,
+      });
+    for (const speeds of [
+      [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:00Z', 99), speedRow('2026-01-01T10:00:01Z', 36)],
+      [speedRow('2026-01-01T10:00:00Z', 99), speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:01Z', 36)],
+    ]) {
+      const exposure = deriveDs4DrivingExposureV1({ payload: build(speeds), speedAuthority: 'C4_ONLY' });
+      expect(exposure.exposureSeconds).toBe(0);
+      expect(exposure.distanceKm).toBe(0);
+      expect(exposure.provenance.conflictingDuplicateLabelCount).toBeGreaterThan(0);
+    }
+  });
+
+  it('regression: identical duplicate speed labels collapse deterministically', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:01Z', 36)],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.exposureSeconds).toBe(1);
+    expect(exposure.distanceKm).toBeCloseTo(36 / 3600, 8);
+    expect(exposure.provenance.duplicateLabelCount).toBe(1);
+    expect(exposure.provenance.conflictingDuplicateLabelCount).toBe(0);
+  });
+
   it('regression: duplicate timestamps do not inflate exposure', () => {
     const payload = basePayload({
       fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
       speeds: [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:00Z', 99), speedRow('2026-01-01T10:00:01Z', 36)],
     });
     const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
-    expect(exposure.exposureSeconds).toBe(1);
-    expect(exposure.provenance.speedLabelCount).toBe(2);
+    expect(exposure.exposureSeconds).toBe(0);
+    expect(exposure.distanceKm).toBe(0);
+  });
+
+  it('regression: C5_1_PREFERRED does not substitute c4Speeds when preferred speeds missing', () => {
+    const payload = basePayload({
+      contract: { ...basePayload().contract, speedAuthority: 'C5_1_PREFERRED' },
+      speeds: [],
+      c4Speeds: [speedRow('2026-01-01T10:00:00Z', 50), speedRow('2026-01-01T10:00:01Z', 50)],
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C5_1_PREFERRED' });
+    expect(exposure.derivable).toBe(false);
+    expect(exposure.provenance.canonicalSpeedSeriesMissing).toBe(true);
+    expect(exposure.provenance.speedSeriesField).toBe('speeds');
+  });
+
+  it('regression: C4_ONLY missing speeds fails closed', () => {
+    const payload = basePayload({
+      speeds: [],
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.derivable).toBe(false);
+    expect(exposure.provenance.canonicalSpeedSeriesMissing).toBe(true);
   });
 
   it('regression: two valid consecutive moving samples integrate one interval', () => {

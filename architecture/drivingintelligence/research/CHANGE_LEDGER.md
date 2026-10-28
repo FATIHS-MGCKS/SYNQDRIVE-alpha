@@ -2390,3 +2390,24 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-assessment` (unit + optional postgres) |
 | NON_EFFECTS | C4/C5.1 algorithms unchanged; `operationalLoadIndex` remains null; worker OFF; no consumer cutover |
 | REMAINING | Reference population calibration; Fable re-review of eligibility thresholds |
+
+### DS4 RPM High Frequency V1A — data integration & admission (2026-10-28, Draft PR, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | VSI cadence loader read RPM HF via vehicle time-band only (12k cap); no trip-scoped DS4 reader; no DS4 admission/DQ contract for RPM HF shadow path |
+| CHANGE | `ClickHouseHfService.getTripRpmHfPoints` (org + vehicle + trip_id + signal + trip window; pagination; tenant violation detection; fail-soft). New isolated module `driving-intelligence/rpm-hf-v1a/` (`Ds4RpmHfV1aTripInputService`: per-trip VSI admission, descriptive DQ, read-only contract). VSI consumer registry entry `ds4_rpm_hf_v1a` (APPROVED_DESIGN_CONTRACT). **Production activation forbidden** — no scheduler/outbox/shadow persist |
+| WHY | Phase 2A controlled integration after read-only audit 2026-10-28; trip-scoped HF read without retroactive RPM_1HZ on unclassified historical trips |
+| VALIDATION | Jest: `ds4-rpm-hf-v1a/*`, `clickhouse-hf.trip-rpm.spec.ts`; `nest build`; replay fixture `rpm-production-interval-replay.json` |
+| NON_EFFECTS | Motion C5.1, Trip FSM, Driving Impact, DriverScore, Tire/Brake, DIMO fetch pipeline, HF mirror ingest unchanged; no DB migration; no deploy |
+| REMAINING | Live ClickHouse preflight gate before activation; V1B shadow engine + Fable before production allowlist |
+
+### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fail-closed duplicate label handling; C5_1_PREFERRED no c4Speeds fallback; 1s exposure grid gap; L2 rule bindings in assessment input fingerprint; zero-exposure fail-closed independent of manoeuvre count |
+| WHY | Independent Fable review PASS_WITH_CONDITIONS remediation on PR #2218 |
+| VALIDATION | `npm run test:di:ds4-assessment`; `test:di:ds4-assessment:postgres:ci`; merge with main (#2217) |
+| NON_EFFECTS | No score publication; workers OFF; no consumer cutover |
+| REMAINING | Impact V2 percentile gate on `assessmentStatus===RATED` before future activation |

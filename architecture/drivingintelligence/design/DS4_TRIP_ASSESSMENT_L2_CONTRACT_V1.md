@@ -57,7 +57,7 @@ Engine: `ds4-assessment-event-intensity-eligibility.v1.ts`
 
 - **Es**: integrated seconds where FSM `MOVING` + `evidenceQuality DIRECT` + usable numeric DS4 speed quality on consecutive label intervals (actual Δt, max gap = motion event guard `maxGapS`)
 - **D_km**: ∫ speed over Es (km/h × seconds / 3600)
-- Provenance version `DS4_ASSESSMENT_DRIVING_EXPOSURE_V1` on `eventSummaries.drivingExposure`
+- Provenance version `DS4_ASSESSMENT_DRIVING_EXPOSURE_V2` on `eventSummaries.drivingExposure` (1s grid gap, duplicate-label fail-closed, no C5.1→c4Speeds fallback)
 
 Engine: `ds4-assessment-driving-exposure.v1.ts`
 

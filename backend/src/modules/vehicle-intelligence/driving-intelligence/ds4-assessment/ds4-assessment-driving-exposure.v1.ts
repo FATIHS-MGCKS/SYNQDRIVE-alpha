@@ -5,18 +5,20 @@ import type {
   DiV0MotionCoreShadowPersistedFsmRow,
   DiV0MotionCoreShadowPersistedSpeedRow,
 } from '../motion-core-shadow-worker/di-v0-motion-core-shadow.types';
+import { DS4_ASSESSMENT_DRIVING_EXPOSURE_RULE_VERSION_V2 } from './ds4-assessment-rule-bindings.v1';
 import type { Ds4SpeedAuthorityPartitionV1 } from './ds4-trip-assessment-v1.contract';
 
-export const DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V1 = 'DS4_ASSESSMENT_DRIVING_EXPOSURE_V1' as const;
+export const DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V2 = DS4_ASSESSMENT_DRIVING_EXPOSURE_RULE_VERSION_V2;
 
-/** Maximum forward gap between consecutive speed labels included in exposure integration. */
-export const DS4_ASSESSMENT_DRIVING_EXPOSURE_MAX_INTERVAL_GAP_S =
-  MOTION_CORE_EVENT_GUARDS_V0_1_DEV.maxGapS;
+/** Canonical 1 Hz motion grid step — do not credit unobserved intermediate buckets. */
+export const DS4_ASSESSMENT_DRIVING_EXPOSURE_MAX_INTERVAL_GAP_S = 1;
+
+const usableSpeedQualities = new Set<string>(MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities);
 
 export type Ds4DrivingExposureProvenanceV1 = {
-  provenanceVersion: typeof DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V1;
+  provenanceVersion: typeof DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V2;
   speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
-  speedSeriesField: 'speeds' | 'c4Speeds';
+  speedSeriesField: 'speeds';
   speedSeriesEstimator: string | null;
   fsmMovingDirectLabelCount: number;
   usableSpeedLabelCount: number;
@@ -24,6 +26,9 @@ export type Ds4DrivingExposureProvenanceV1 = {
   excludedGapIntervalCount: number;
   maxObservedIntervalGapS: number;
   speedLabelCount: number;
+  duplicateLabelCount: number;
+  conflictingDuplicateLabelCount: number;
+  canonicalSpeedSeriesMissing: boolean;
 };
 
 export type Ds4DrivingExposureV1 = {
@@ -33,31 +38,146 @@ export type Ds4DrivingExposureV1 = {
   provenance: Ds4DrivingExposureProvenanceV1;
 };
 
-const usableSpeedQualities = new Set<string>(MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities);
-
-function resolveSpeedSeries(payload: DiV0MotionCoreShadowPayloadV1): {
-  rows: DiV0MotionCoreShadowPersistedSpeedRow[];
-  field: 'speeds' | 'c4Speeds';
-} {
-  const preferred = payload.speeds ?? [];
-  const raw = preferred.length > 0 ? preferred : (payload.c4Speeds ?? []);
-  const field: 'speeds' | 'c4Speeds' = preferred.length > 0 ? 'speeds' : 'c4Speeds';
-  const byLabel = new Map<string, DiV0MotionCoreShadowPersistedSpeedRow>();
-  for (const row of raw) {
-    byLabel.set(row.bucketLabelUtc, row);
-  }
-  const rows = [...byLabel.values()].sort(
-    (a, b) => parseBucketLabelMs(a.bucketLabelUtc) - parseBucketLabelMs(b.bucketLabelUtc),
-  );
-  return { rows, field };
+function speedRowSignature(row: DiV0MotionCoreShadowPersistedSpeedRow): string {
+  return JSON.stringify({
+    speedKmh: row.speedKmh,
+    quality: row.quality,
+    estimator: row.estimator,
+    flags: [...row.flags].sort(),
+    support: [...row.support].sort(),
+  });
 }
 
-function fsmByLabel(fsmLabels: DiV0MotionCoreShadowPersistedFsmRow[]): Map<string, DiV0MotionCoreShadowPersistedFsmRow> {
-  const map = new Map<string, DiV0MotionCoreShadowPersistedFsmRow>();
-  for (const row of fsmLabels ?? []) {
-    map.set(row.bucketLabelUtc, row);
+function fsmRowSignature(row: DiV0MotionCoreShadowPersistedFsmRow): string {
+  return JSON.stringify({
+    state: row.state,
+    evidenceQuality: row.evidenceQuality,
+    reason: row.reason,
+    flags: [...row.flags].sort(),
+  });
+}
+
+type DuplicateResolution<T> = {
+  accepted: T[];
+  duplicateLabelCount: number;
+  conflictingDuplicateLabelCount: number;
+  rejectedLabels: Set<string>;
+};
+
+function resolveDuplicateLabels<T>(
+  rows: T[],
+  labelOf: (row: T) => string,
+  signatureOf: (row: T) => string,
+): DuplicateResolution<T> {
+  const byLabel = new Map<string, T[]>();
+  for (const row of rows) {
+    const label = labelOf(row);
+    const group = byLabel.get(label) ?? [];
+    group.push(row);
+    byLabel.set(label, group);
   }
-  return map;
+
+  const duplicateLabels = new Set<string>();
+  const rejectedLabels = new Set<string>();
+  const accepted: T[] = [];
+
+  for (const [label, group] of [...byLabel.entries()].sort(
+    (a, b) => parseBucketLabelMs(a[0]) - parseBucketLabelMs(b[0]),
+  )) {
+    if (group.length === 1) {
+      accepted.push(group[0]!);
+      continue;
+    }
+    duplicateLabels.add(label);
+    const signatures = new Set(group.map((row) => signatureOf(row)));
+    if (signatures.size > 1) {
+      rejectedLabels.add(label);
+      continue;
+    }
+    const canonical = [...group].sort((a, b) => signatureOf(a).localeCompare(signatureOf(b)))[0]!;
+    accepted.push(canonical);
+  }
+
+  return {
+    accepted,
+    duplicateLabelCount: duplicateLabels.size,
+    conflictingDuplicateLabelCount: rejectedLabels.size,
+    rejectedLabels,
+  };
+}
+
+function resolveSpeedSeries(input: {
+  payload: DiV0MotionCoreShadowPayloadV1;
+  speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
+}): {
+  rows: DiV0MotionCoreShadowPersistedSpeedRow[];
+  canonicalSeriesPresent: boolean;
+} {
+  const rows = input.payload.speeds ?? [];
+  if (rows.length > 0) {
+    return { rows, canonicalSeriesPresent: true };
+  }
+  if (input.speedAuthority === 'C5_1_PREFERRED' && (input.payload.c4Speeds?.length ?? 0) > 0) {
+    return { rows: [], canonicalSeriesPresent: false };
+  }
+  return { rows: [], canonicalSeriesPresent: false };
+}
+
+function buildAcceptedSpeedAndFsm(input: {
+  payload: DiV0MotionCoreShadowPayloadV1;
+  speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
+}): {
+  rows: DiV0MotionCoreShadowPersistedSpeedRow[];
+  fsmMap: Map<string, DiV0MotionCoreShadowPersistedFsmRow>;
+  duplicateLabelCount: number;
+  conflictingDuplicateLabelCount: number;
+  canonicalSpeedSeriesMissing: boolean;
+} {
+  const { rows: rawSpeed, canonicalSeriesPresent } = resolveSpeedSeries(input);
+  const speedDedupe = resolveDuplicateLabels(rawSpeed, (r) => r.bucketLabelUtc, speedRowSignature);
+  const fsmDedupe = resolveDuplicateLabels(
+    input.payload.fsmLabels ?? [],
+    (r) => r.bucketLabelUtc,
+    fsmRowSignature,
+  );
+
+  const rejectedLabels = new Set<string>([
+    ...speedDedupe.rejectedLabels,
+    ...fsmDedupe.rejectedLabels,
+  ]);
+
+  const duplicateLabelsUnion = new Set<string>();
+  const speedCounts = new Map<string, number>();
+  for (const row of rawSpeed) {
+    speedCounts.set(row.bucketLabelUtc, (speedCounts.get(row.bucketLabelUtc) ?? 0) + 1);
+  }
+  for (const [label, count] of speedCounts) {
+    if (count > 1) duplicateLabelsUnion.add(label);
+  }
+  for (const row of input.payload.fsmLabels ?? []) {
+    const count = (input.payload.fsmLabels ?? []).filter((r) => r.bucketLabelUtc === row.bucketLabelUtc).length;
+    if (count > 1) duplicateLabelsUnion.add(row.bucketLabelUtc);
+  }
+
+  const rows = speedDedupe.accepted
+    .filter((row) => !rejectedLabels.has(row.bucketLabelUtc))
+    .sort((a, b) => parseBucketLabelMs(a.bucketLabelUtc) - parseBucketLabelMs(b.bucketLabelUtc));
+
+  const fsmMap = new Map<string, DiV0MotionCoreShadowPersistedFsmRow>();
+  for (const row of fsmDedupe.accepted) {
+    if (rejectedLabels.has(row.bucketLabelUtc)) {
+      continue;
+    }
+    fsmMap.set(row.bucketLabelUtc, row);
+  }
+
+  return {
+    rows,
+    fsmMap,
+    duplicateLabelCount: duplicateLabelsUnion.size,
+    conflictingDuplicateLabelCount: rejectedLabels.size,
+    canonicalSpeedSeriesMissing: !canonicalSeriesPresent,
+  };
 }
 
 function isUsableNumericSpeed(row: DiV0MotionCoreShadowPersistedSpeedRow): boolean {
@@ -86,7 +206,7 @@ export function emptyDs4DrivingExposureV1(speedAuthority: Ds4SpeedAuthorityParti
     distanceKm: 0,
     derivable: false,
     provenance: {
-      provenanceVersion: DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V1,
+      provenanceVersion: DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V2,
       speedAuthority,
       speedSeriesField: 'speeds',
       speedSeriesEstimator: null,
@@ -96,6 +216,9 @@ export function emptyDs4DrivingExposureV1(speedAuthority: Ds4SpeedAuthorityParti
       excludedGapIntervalCount: 0,
       maxObservedIntervalGapS: 0,
       speedLabelCount: 0,
+      duplicateLabelCount: 0,
+      conflictingDuplicateLabelCount: 0,
+      canonicalSpeedSeriesMissing: true,
     },
   };
 }
@@ -104,8 +227,13 @@ export function deriveDs4DrivingExposureV1(input: {
   payload: DiV0MotionCoreShadowPayloadV1;
   speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
 }): Ds4DrivingExposureV1 {
-  const { rows, field } = resolveSpeedSeries(input.payload);
-  const fsmMap = fsmByLabel(input.payload.fsmLabels ?? []);
+  const {
+    rows,
+    fsmMap,
+    duplicateLabelCount,
+    conflictingDuplicateLabelCount,
+    canonicalSpeedSeriesMissing,
+  } = buildAcceptedSpeedAndFsm(input);
 
   let fsmMovingDirectLabelCount = 0;
   let usableSpeedLabelCount = 0;
@@ -152,7 +280,11 @@ export function deriveDs4DrivingExposureV1(input: {
   }
 
   const derivable =
-    input.speedAuthority != null && rows.length >= 2 && qualifyingIntervalCount > 0 && exposureSeconds > 0;
+    input.speedAuthority != null &&
+    !canonicalSpeedSeriesMissing &&
+    rows.length >= 2 &&
+    qualifyingIntervalCount > 0 &&
+    exposureSeconds > 0;
   const estimator = rows[0]?.estimator ?? null;
 
   return {
@@ -160,9 +292,9 @@ export function deriveDs4DrivingExposureV1(input: {
     distanceKm: derivable ? distanceKm : 0,
     derivable,
     provenance: {
-      provenanceVersion: DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V1,
+      provenanceVersion: DS4_ASSESSMENT_DRIVING_EXPOSURE_PROVENANCE_V2,
       speedAuthority: input.speedAuthority,
-      speedSeriesField: field,
+      speedSeriesField: 'speeds',
       speedSeriesEstimator: estimator,
       fsmMovingDirectLabelCount,
       usableSpeedLabelCount,
@@ -170,6 +302,9 @@ export function deriveDs4DrivingExposureV1(input: {
       excludedGapIntervalCount,
       maxObservedIntervalGapS,
       speedLabelCount: rows.length,
+      duplicateLabelCount,
+      conflictingDuplicateLabelCount,
+      canonicalSpeedSeriesMissing,
     },
   };
 }
