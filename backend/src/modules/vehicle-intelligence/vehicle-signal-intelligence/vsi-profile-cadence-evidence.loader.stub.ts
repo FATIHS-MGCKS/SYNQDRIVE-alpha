@@ -12,6 +12,7 @@ export function createNoopVsiProfileCadenceEvidenceLoader(): VsiProfileCadenceEv
   return {
     loadRpmEvidence: async () => null,
     loadLvEvidence: async () => null,
+    loadLvStandbyTransmissionEvidence: async () => null,
   };
 }
 
@@ -23,10 +24,16 @@ export function createScriptedVsiProfileCadenceEvidenceLoader(script: {
   loadLvEvidence?: (
     ctx: VsiProfileCadenceLoadContext,
   ) => Promise<VsiLvCadenceEvidenceInput | null>;
+  loadLvStandbyTransmissionEvidence?: (
+    ctx: VsiProfileCadenceLoadContext,
+  ) => Promise<import('./vsi-profile-cadence.types').VsiLvStandbyTransmissionEvidenceInput | null>;
 }): VsiProfileCadenceEvidencePort {
   const noop = createNoopVsiProfileCadenceEvidenceLoader();
   return {
     loadRpmEvidence: script.loadRpmEvidence ?? ((ctx) => noop.loadRpmEvidence(ctx)),
     loadLvEvidence: script.loadLvEvidence ?? ((ctx) => noop.loadLvEvidence(ctx)),
+    loadLvStandbyTransmissionEvidence:
+      script.loadLvStandbyTransmissionEvidence ??
+      ((ctx) => noop.loadLvStandbyTransmissionEvidence(ctx)),
   };
 }

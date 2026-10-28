@@ -72,6 +72,8 @@ export type VsiSignalCadenceIntelligenceV2 = {
   observedDensityLabel: VsiCadenceObservedDensityLabel;
   /** Rolling-trip resolver for the active provider source link (not 14 d pooled). */
   activeRpmProfile?: VsiActiveRpmProfileResolutionV1;
+  /** Observed R1/LV standby transmission cadence (not native device config). */
+  lvStandbyTransmissionProfile?: VsiLvStandbyTransmissionProfileV1;
   /** Stable semantic identity for cadence dimension (excludes raw counters). */
   cadenceSemanticFingerprint: string;
 };
@@ -106,4 +108,53 @@ export type VsiLvCadenceEvidenceInput = {
   provenance: string[];
   linkActivatedAtMs: number;
   linkDeactivatedAtMs: number | null;
+};
+
+export type VsiLvStandbyTransmissionMeasurementPoint = {
+  observedAtMs: number;
+  providerTimestampMs: number;
+  providerObservationOutcome: string | null;
+};
+
+export type VsiLvStandbyTransmissionEvidenceLoadIntegrity = {
+  sourceLinkAttribution: 'VERIFIED' | 'FAILED';
+  sourceLinkAttributionCode: string;
+  lvMeasurementWindowComplete: boolean;
+  tripHistoryWindowComplete: boolean;
+  activeOrIncompleteTripBlocksClassification: boolean;
+};
+
+export type VsiLvStandbyTransmissionEvidenceInput = {
+  contractVersion: 'vsi-lv-standby-transmission-evidence-v1';
+  points: readonly VsiLvStandbyTransmissionMeasurementPoint[];
+  tripWindows: readonly VsiRpmCadenceTripWindow[];
+  linkActivatedAtMs: number;
+  linkDeactivatedAtMs: number | null;
+  evidenceWindowDays: number;
+  windowStartMs: number;
+  windowEndMs: number;
+  provenance: string[];
+  loadIntegrity: VsiLvStandbyTransmissionEvidenceLoadIntegrity;
+};
+
+export type VsiLvStandbyTransmissionProfileLabel =
+  | 'LV_8H_OBSERVED'
+  | 'LV_24H_OBSERVED'
+  | 'UNKNOWN';
+
+export type VsiLvStandbyTransmissionProfileV1 = {
+  contractVersion: 'vsi-lv-standby-transmission-profile-v1';
+  profile: VsiLvStandbyTransmissionProfileLabel;
+  classificationDecisionCode: string;
+  evidenceConfidence: VsiSignalConfidenceLevel;
+  qualifyingPairCount: number;
+  independentRestPeriodCount: number;
+  evidenceWindow: {
+    days: number;
+    fromMs: number;
+    toMs: number;
+  };
+  provenance: string[];
+  limitations: string[];
+  profileSemanticFingerprint: string;
 };
