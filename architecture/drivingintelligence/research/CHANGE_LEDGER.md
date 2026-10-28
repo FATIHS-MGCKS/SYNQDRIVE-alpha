@@ -2432,6 +2432,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest rpm-hf-v1b + v1a; `ds4-rpm-hf-v1b-postgres-ci.sh` (PR-path hook in `di-v0-s4a-postgres-ci.sh`) |
 | NON_EFFECTS | V1A contract unchanged; flags default OFF; no deploy |
 
+### DS4 RPM HF V1B — SUCCEEDED run insert idempotency (2026-10-28, PR #2224)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `insertRun` / `insertRunWithActiveClaim` use partial unique index `ON CONFLICT … WHERE shadow_status = 'SUCCEEDED' DO NOTHING RETURNING id`; claim path verifies live lease before insert |
+| WHY | CI postgres test expected `idempotent_duplicate`; Prisma catch path missed partial-index violation metadata |
+| VALIDATION | `ds4-rpm-hf-v1b-postgres-ci.sh` (9/9) |
+| NON_EFFECTS | Schema unchanged; V1A/VSI/temporal/scheduler untouched |
+
 ### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
 
 | Event | Detail |
