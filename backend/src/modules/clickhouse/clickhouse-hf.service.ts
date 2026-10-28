@@ -15,6 +15,7 @@ import type {
   HfTripWindowsResult,
   HfWindowSummary,
 } from './clickhouse-hf.types';
+import { parseHfRpmValueFloat } from './hf-rpm-value-parse.util';
 
 const HF_POINTS_TABLE = 'telemetry_hf_points';
 const HF_EVENTS_TABLE = 'telemetry_hf_events';
@@ -747,6 +748,7 @@ export class ClickHouseHfService {
       points: [],
       totalMatchingCount: 0,
       returnedCount: 0,
+      rawRowsReturned: 0,
       limit,
       offset,
       completenessStatus: 'EMPTY',
@@ -826,7 +828,7 @@ export class ClickHouseHfService {
             AND signal_name = {signalName: String}
             AND recorded_at >= parseDateTime64BestEffort({from: String})
             AND recorded_at <= parseDateTime64BestEffort({to: String})
-          ORDER BY recorded_at ASC, ingested_at ASC
+          ORDER BY recorded_at ASC, ingested_at ASC, value_float ASC
           LIMIT {limit: UInt32}
           OFFSET {offset: UInt32}
         `,
@@ -854,31 +856,50 @@ export class ClickHouseHfService {
         quality: string;
       }>();
 
+      const rawRowsReturned = rows.length;
+
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'hf_trip_rpm_points',
         result: 'success',
       });
 
-      let tenantScopeViolation = false;
+      for (const r of rows) {
+        if (
+          r.org_id !== input.orgId ||
+          r.vehicle_id !== input.vehicleId ||
+          r.trip_id == null ||
+          r.trip_id !== input.tripId
+        ) {
+          return {
+            ...base,
+            status: 'TENANT_SCOPE_VIOLATION',
+            available: true,
+            points: [],
+            totalMatchingCount,
+            returnedCount: 0,
+            rawRowsReturned,
+            completenessStatus: 'COMPLETE',
+            duplicateTimestampCount: 0,
+            invalidValueCount: 0,
+            tenantScopeViolation: true,
+            degradedReason: 'tenant_scope_violation',
+          };
+        }
+      }
+
       let invalidValueCount = 0;
       const seenTimestamps = new Map<number, number>();
       const points: HfTripRpmPointRow[] = [];
 
       for (const r of rows) {
-        if (r.org_id !== input.orgId || r.vehicle_id !== input.vehicleId) {
-          tenantScopeViolation = true;
-        }
-        if (r.trip_id != null && r.trip_id !== input.tripId) {
-          tenantScopeViolation = true;
-        }
         const iso = parseChUtc(r.recorded_at);
         if (!iso) {
           invalidValueCount += 1;
           continue;
         }
         const recordedAtMs = new Date(iso).getTime();
-        const valueRpm = Number(r.value_float);
-        if (!Number.isFinite(valueRpm)) {
+        const valueRpm = parseHfRpmValueFloat(r.value_float);
+        if (valueRpm === null) {
           invalidValueCount += 1;
           continue;
         }
@@ -891,7 +912,7 @@ export class ClickHouseHfService {
           quality: r.quality ?? 'raw',
           orgId: r.org_id,
           vehicleId: r.vehicle_id,
-          tripId: r.trip_id ?? input.tripId,
+          tripId: r.trip_id!,
         });
       }
 
@@ -903,7 +924,7 @@ export class ClickHouseHfService {
       }
 
       const completenessStatus: HfTripRpmPointsCompletenessStatus =
-        totalMatchingCount > offset + points.length
+        totalMatchingCount > offset + rawRowsReturned
           ? 'INCOMPLETE_MORE_POINTS_AVAILABLE'
           : 'COMPLETE';
 
@@ -914,10 +935,11 @@ export class ClickHouseHfService {
         points,
         totalMatchingCount,
         returnedCount: points.length,
+        rawRowsReturned,
         completenessStatus,
         duplicateTimestampCount,
         invalidValueCount,
-        tenantScopeViolation,
+        tenantScopeViolation: false,
       };
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({

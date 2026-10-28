@@ -1,9 +1,12 @@
 import {
   resolveDs4RpmHfV1aAdmission,
   resolveTripRpmProfileFromVsi,
+  shouldSkipClickHouseRpmReadForAdmission,
 } from '../ds4-rpm-hf-v1a-admission';
 
 describe('ds4-rpm-hf-v1a-admission', () => {
+  const completeRead = { hfReadComplete: true } as const;
+
   it('RPM_1HZ with HF data → ENABLED', () => {
     const admission = resolveDs4RpmHfV1aAdmission({
       iceRpmApplicability: 'APPLICABLE',
@@ -13,6 +16,7 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: true,
       chReadAvailable: true,
       tenantScopeViolation: false,
+      ...completeRead,
     });
     expect(admission.processingAllowed).toBe(true);
     expect(admission.processingStatus).toBe('ENABLED');
@@ -27,6 +31,7 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: true,
       chReadAvailable: true,
       tenantScopeViolation: false,
+      hfReadComplete: true,
     });
     expect(admission.processingAllowed).toBe(false);
     expect(admission.reasonCode).toBe('RPM_STANDARD_PROFILE');
@@ -46,6 +51,7 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: true,
       chReadAvailable: true,
       tenantScopeViolation: false,
+      hfReadComplete: true,
     });
     expect(admission.processingAllowed).toBe(false);
     expect(admission.processingStatus).toBe('DISABLED_TRIP_NOT_CLASSIFIED');
@@ -60,6 +66,7 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: true,
       chReadAvailable: true,
       tenantScopeViolation: false,
+      hfReadComplete: true,
     });
     expect(admission.processingAllowed).toBe(false);
   });
@@ -73,6 +80,7 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: false,
       chReadAvailable: true,
       tenantScopeViolation: false,
+      hfReadComplete: true,
     });
     expect(admission.processingStatus).toBe('DISABLED_NO_HF_DATA');
   });
@@ -86,6 +94,7 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: false,
       chReadAvailable: false,
       tenantScopeViolation: false,
+      hfReadComplete: true,
     });
     expect(admission.processingStatus).toBe('DISABLED_CH_UNAVAILABLE');
   });
@@ -99,7 +108,37 @@ describe('ds4-rpm-hf-v1a-admission', () => {
       hfDataPresent: false,
       chReadAvailable: true,
       tenantScopeViolation: false,
+      hfReadComplete: true,
     });
     expect(admission.processingStatus).toBe('DISABLED_NOT_APPLICABLE');
+  });
+
+  it('RPM_1HZ with partial HF page → DISABLED_INCOMPLETE_HF_READ', () => {
+    const admission = resolveDs4RpmHfV1aAdmission({
+      iceRpmApplicability: 'APPLICABLE',
+      tripId: 't1',
+      tripRpmProfile: 'RPM_1HZ',
+      vehicleActiveRpmProfile: 'RPM_1HZ',
+      hfDataPresent: true,
+      chReadAvailable: true,
+      tenantScopeViolation: false,
+      hfReadComplete: false,
+    });
+    expect(admission.processingStatus).toBe('DISABLED_INCOMPLETE_HF_READ');
+  });
+
+  it('shouldSkipClickHouseRpmReadForAdmission for STANDARD profile', () => {
+    expect(
+      shouldSkipClickHouseRpmReadForAdmission({
+        iceRpmApplicability: 'APPLICABLE',
+        tripRpmProfile: 'RPM_STANDARD',
+      }),
+    ).toBe(true);
+    expect(
+      shouldSkipClickHouseRpmReadForAdmission({
+        iceRpmApplicability: 'APPLICABLE',
+        tripRpmProfile: 'RPM_1HZ',
+      }),
+    ).toBe(false);
   });
 });

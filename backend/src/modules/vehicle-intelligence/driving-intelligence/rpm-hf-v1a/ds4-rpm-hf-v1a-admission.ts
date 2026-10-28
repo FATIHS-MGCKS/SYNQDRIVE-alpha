@@ -9,6 +9,8 @@ export type Ds4RpmHfV1aAdmissionInput = {
   hfDataPresent: boolean;
   chReadAvailable: boolean;
   tenantScopeViolation: boolean;
+  /** True when all matching CH rows for the trip window are returned in this read (offset 0, full count). */
+  hfReadComplete: boolean;
 };
 
 export function resolveDs4RpmHfV1aAdmission(
@@ -38,6 +40,16 @@ export function resolveDs4RpmHfV1aAdmission(
       processingAllowed: false,
       reasonCode: 'TENANT_SCOPE_VIOLATION',
       reasonSummary: 'ClickHouse rows violated org/vehicle/trip scope.',
+    });
+  }
+
+  if (!input.hfReadComplete && input.tripRpmProfile === 'RPM_1HZ' && input.hfDataPresent) {
+    return buildAdmission(input, {
+      processingStatus: 'DISABLED_INCOMPLETE_HF_READ',
+      processingAllowed: false,
+      reasonCode: 'HF_RPM_READ_INCOMPLETE',
+      reasonSummary:
+        'More RPM HF points exist than returned — trip not fully readable in a single V1A page.',
     });
   }
 
@@ -92,8 +104,38 @@ export function resolveDs4RpmHfV1aAdmission(
     processingStatus: 'ENABLED',
     processingAllowed: true,
     reasonCode: 'RPM_1HZ_WITH_HF_DATA',
-    reasonSummary: 'VSI trip profile RPM_1HZ and HF RPM points available.',
+    reasonSummary: 'VSI trip profile RPM_1HZ and complete HF RPM points available.',
   });
+}
+
+/** Skip ClickHouse when admission outcome is already determined without HF data. */
+export function shouldSkipClickHouseRpmReadForAdmission(input: {
+  iceRpmApplicability: VsiIceRpmApplicability;
+  tripRpmProfile: VsiActiveRpmProfileLabel | 'UNCLASSIFIED';
+}): boolean {
+  if (input.iceRpmApplicability !== 'APPLICABLE') {
+    return true;
+  }
+  return input.tripRpmProfile !== 'RPM_1HZ';
+}
+
+export function buildAdmissionForTripIdentityFailure(input: {
+  iceRpmApplicability: VsiIceRpmApplicability;
+  tripRpmProfile: VsiActiveRpmProfileLabel | 'UNCLASSIFIED';
+  vehicleActiveRpmProfile: VsiActiveRpmProfileLabel | null;
+  reasonCode: string;
+  reasonSummary: string;
+}): Ds4RpmHfV1aAdmissionV1 {
+  return {
+    contractVersion: 'ds4-rpm-hf-admission-v1',
+    iceRpmApplicability: input.iceRpmApplicability,
+    tripRpmProfile: input.tripRpmProfile,
+    vehicleActiveRpmProfile: input.vehicleActiveRpmProfile,
+    processingStatus: 'DISABLED_TRIP_IDENTITY',
+    processingAllowed: false,
+    reasonCode: input.reasonCode,
+    reasonSummary: input.reasonSummary,
+  };
 }
 
 function buildAdmission(

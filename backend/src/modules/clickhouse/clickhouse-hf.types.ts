@@ -241,7 +241,8 @@ export type HfTripRpmPointsReadStatus =
   | 'SUCCESS'
   | 'UNAVAILABLE'
   | 'QUERY_FAILED'
-  | 'EMPTY';
+  | 'EMPTY'
+  | 'TENANT_SCOPE_VIOLATION';
 
 /** Trip-scoped RPM HF read result (DS4 RPM HF V1A). */
 export interface HfTripRpmPointsReadResult {
@@ -256,6 +257,8 @@ export interface HfTripRpmPointsReadResult {
   points: HfTripRpmPointRow[];
   totalMatchingCount: number;
   returnedCount: number;
+  /** Rows returned by ClickHouse in this page (before valid-point filtering). */
+  rawRowsReturned: number;
   limit: number;
   offset: number;
   completenessStatus: HfTripRpmPointsCompletenessStatus;

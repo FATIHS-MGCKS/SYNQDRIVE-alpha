@@ -1,24 +1,33 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { ClickHouseHfService, HF_TRIP_RPM_DEFAULT_READ_LIMIT } from '@modules/clickhouse/clickhouse-hf.service';
+import {
+  ClickHouseHfService,
+  HF_TRIP_RPM_DEFAULT_READ_LIMIT,
+} from '@modules/clickhouse/clickhouse-hf.service';
+import type { HfTripRpmPointsReadResult } from '@modules/clickhouse/clickhouse-hf.types';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VsiCapabilityResolverRepository } from '../../vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import type { VsiActiveRpmProfileResolutionV1 } from '../../vehicle-signal-intelligence/vsi-profile-cadence.types';
 import { resolveIceRpmApplicability } from '../../vehicle-signal-intelligence/vsi-profile-cadence-stats.util';
 import {
+  buildAdmissionForTripIdentityFailure,
   resolveDs4RpmHfV1aAdmission,
   resolveTripRpmProfileFromVsi,
+  shouldSkipClickHouseRpmReadForAdmission,
 } from './ds4-rpm-hf-v1a-admission';
 import type { Ds4RpmHfV1aTripInputV1 } from './ds4-rpm-hf-v1a.contract';
 import { DS4_RPM_HF_V1A_CONTRACT_VERSION } from './ds4-rpm-hf-v1a.contract';
 import { buildDs4RpmHfV1aDataQuality } from './ds4-rpm-hf-v1a-data-quality';
 import { readEngineRpmCadenceFromSignalsSnapshot } from './ds4-rpm-hf-v1a-profile.reader';
+import { resolveCanonicalTripForRpmHfV1a } from './ds4-rpm-hf-v1a-trip-identity';
 
 export type Ds4RpmHfV1aBuildTripInputParams = {
   organizationId: string;
   vehicleId: string;
   tripId: string;
-  tripStart: Date;
-  tripEnd: Date;
+  /** Ignored for ClickHouse scoping — canonical trip times come from VehicleTrip. */
+  tripStart?: Date;
+  /** Ignored for ClickHouse scoping — canonical trip times come from VehicleTrip. */
+  tripEnd?: Date;
   providerSourceLinkId?: string | null;
   fuelType?: string | null;
   readLimit?: number;
@@ -42,6 +51,12 @@ export class Ds4RpmHfV1aTripInputService {
   async buildTripInput(
     params: Ds4RpmHfV1aBuildTripInputParams,
   ): Promise<Ds4RpmHfV1aTripInputV1> {
+    const tripIdentity = await resolveCanonicalTripForRpmHfV1a(this.prisma, {
+      organizationId: params.organizationId,
+      vehicleId: params.vehicleId,
+      tripId: params.tripId,
+    });
+
     const linkId =
       params.providerSourceLinkId ??
       (await this.resolveDimoSourceLinkId(params.vehicleId));
@@ -71,7 +86,7 @@ export class Ds4RpmHfV1aTripInputService {
         vehicleId: params.vehicleId,
         providerSourceLinkId: linkId,
       });
-    if (profileCtx?.signals?.length) {
+      if (profileCtx?.signals?.length) {
         const parsed = readEngineRpmCadenceFromSignalsSnapshot(profileCtx.signals);
         activeRpmProfileSnapshot = parsed.activeRpmProfile;
         vehicleActiveRpmProfile = parsed.activeRpmProfile?.activeProfile ?? null;
@@ -82,17 +97,43 @@ export class Ds4RpmHfV1aTripInputService {
       }
     }
 
+    if (!tripIdentity.ok) {
+      const admission = buildAdmissionForTripIdentityFailure({
+        iceRpmApplicability,
+        tripRpmProfile,
+        vehicleActiveRpmProfile,
+        reasonCode: tripIdentity.reasonCode,
+        reasonSummary: tripIdentity.reasonSummary,
+      });
+      return this.buildResult({
+        params,
+        linkId,
+        tripStartIso: null,
+        tripEndIso: null,
+        admission,
+        read: null,
+        activeRpmProfileSnapshot,
+        points: [],
+      });
+    }
+
+    const canonical = tripIdentity.trip;
     const readLimit = params.readLimit ?? HF_TRIP_RPM_DEFAULT_READ_LIMIT;
     const readOffset = params.readOffset ?? 0;
 
-    let read = null;
-    if (this.clickHouseHf) {
+    let read: HfTripRpmPointsReadResult | null = null;
+    const skipCh = shouldSkipClickHouseRpmReadForAdmission({
+      iceRpmApplicability,
+      tripRpmProfile,
+    });
+
+    if (this.clickHouseHf && !skipCh) {
       read = await this.clickHouseHf.getTripRpmHfPoints({
-        orgId: params.organizationId,
-        vehicleId: params.vehicleId,
-        tripId: params.tripId,
-        tripStart: params.tripStart,
-        tripEnd: params.tripEnd,
+        orgId: canonical.organizationId,
+        vehicleId: canonical.vehicleId,
+        tripId: canonical.tripId,
+        tripStart: canonical.startTime,
+        tripEnd: canonical.endTime,
         limit: readLimit,
         offset: readOffset,
       });
@@ -101,7 +142,14 @@ export class Ds4RpmHfV1aTripInputService {
     const chReadAvailable =
       read != null &&
       read.status !== 'UNAVAILABLE' &&
-      read.status !== 'QUERY_FAILED';
+      read.status !== 'QUERY_FAILED' &&
+      read.status !== 'TENANT_SCOPE_VIOLATION';
+
+    const hfReadComplete =
+      read != null &&
+      read.status === 'SUCCESS' &&
+      read.completenessStatus === 'COMPLETE' &&
+      read.offset === 0;
 
     const hfDataPresent =
       read != null &&
@@ -115,17 +163,13 @@ export class Ds4RpmHfV1aTripInputService {
       tripRpmProfile,
       vehicleActiveRpmProfile,
       hfDataPresent,
-      chReadAvailable,
+      chReadAvailable: skipCh ? true : chReadAvailable,
       tenantScopeViolation: read?.tenantScopeViolation ?? false,
+      hfReadComplete: skipCh ? true : hfReadComplete,
     });
 
     const points =
       admission.processingAllowed && read?.status === 'SUCCESS' ? read.points : [];
-
-    const dataQuality = buildDs4RpmHfV1aDataQuality({
-      read,
-      points,
-    });
 
     if (read?.tenantScopeViolation) {
       this.logger.warn(
@@ -138,27 +182,54 @@ export class Ds4RpmHfV1aTripInputService {
       );
     }
 
+    return this.buildResult({
+      params,
+      linkId,
+      tripStartIso: canonical.startTime.toISOString(),
+      tripEndIso: canonical.endTime.toISOString(),
+      admission,
+      read,
+      activeRpmProfileSnapshot,
+      points,
+    });
+  }
+
+  private buildResult(input: {
+    params: Ds4RpmHfV1aBuildTripInputParams;
+    linkId: string | null;
+    tripStartIso: string | null;
+    tripEndIso: string | null;
+    admission: Ds4RpmHfV1aTripInputV1['admission'];
+    read: HfTripRpmPointsReadResult | null;
+    activeRpmProfileSnapshot: VsiActiveRpmProfileResolutionV1 | null;
+    points: HfTripRpmPointsReadResult['points'];
+  }): Ds4RpmHfV1aTripInputV1 {
+    const dataQuality = buildDs4RpmHfV1aDataQuality({
+      read: input.read,
+      points: input.points,
+    });
+
     return {
       contractVersion: DS4_RPM_HF_V1A_CONTRACT_VERSION,
-      organizationId: params.organizationId,
-      vehicleId: params.vehicleId,
-      tripId: params.tripId,
-      providerSourceLinkId: linkId,
-      tripStartIso: params.tripStart.toISOString(),
-      tripEndIso: params.tripEnd.toISOString(),
-      admission,
+      organizationId: input.params.organizationId,
+      vehicleId: input.params.vehicleId,
+      tripId: input.params.tripId,
+      providerSourceLinkId: input.linkId,
+      tripStartIso: input.tripStartIso ?? '',
+      tripEndIso: input.tripEndIso ?? '',
+      admission: input.admission,
       dataQuality,
       clickHouseRead: {
-        status: read?.status ?? 'UNAVAILABLE',
-        available: read?.available ?? false,
-        degradedReason: read?.degradedReason ?? null,
-        tenantScopeViolation: read?.tenantScopeViolation ?? false,
+        status: input.read?.status ?? (input.admission.processingStatus === 'DISABLED_TRIP_IDENTITY' ? 'QUERY_FAILED' : 'UNAVAILABLE'),
+        available: input.read?.available ?? false,
+        degradedReason: input.read?.degradedReason ?? null,
+        tenantScopeViolation: input.read?.tenantScopeViolation ?? false,
       },
-      rpmPoints: points.map((p) => ({
+      rpmPoints: input.points.map((p) => ({
         recordedAtIso: p.recordedAtIso,
         valueRpm: p.valueRpm,
       })),
-      vsiActiveRpmProfileSnapshot: activeRpmProfileSnapshot,
+      vsiActiveRpmProfileSnapshot: input.activeRpmProfileSnapshot,
       readOnly: true,
       productionActivationForbidden: true,
     };

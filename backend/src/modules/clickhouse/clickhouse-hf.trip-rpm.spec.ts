@@ -50,7 +50,7 @@ describe('ClickHouseHfService.getTripRpmHfPoints', () => {
     expect(captured.some((q) => q.includes('signal_name'))).toBe(true);
   });
 
-  it('flags tenant scope violation on mismatched org', async () => {
+  it('fail-closed tenant scope violation returns no points', async () => {
     const svc = makeService(async (query) => {
       if (query.includes('count()')) {
         return { json: async () => [{ cnt: 1 }] };
@@ -76,8 +76,81 @@ describe('ClickHouseHfService.getTripRpmHfPoints', () => {
       tripStart: new Date('2026-10-27T10:00:00.000Z'),
       tripEnd: new Date('2026-10-27T11:00:00.000Z'),
     });
+    expect(res.status).toBe('TENANT_SCOPE_VIOLATION');
     expect(res.tenantScopeViolation).toBe(true);
-    expect(res.points).toHaveLength(1);
+    expect(res.points).toHaveLength(0);
+    expect(res.returnedCount).toBe(0);
+  });
+
+  it('null trip_id triggers tenant fail-closed', async () => {
+    const svc = makeService(async (query) => {
+      if (query.includes('count()')) {
+        return { json: async () => [{ cnt: 1 }] };
+      }
+      return {
+        json: async () => [
+          {
+            org_id: 'org-1',
+            vehicle_id: 'veh-1',
+            trip_id: null,
+            recorded_at: '2026-10-27 10:00:01.000',
+            value_float: 1500,
+            unit: 'rpm',
+            quality: 'normalized',
+          },
+        ],
+      };
+    });
+    const res = await svc.getTripRpmHfPoints({
+      orgId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      tripStart: new Date('2026-10-27T10:00:00.000Z'),
+      tripEnd: new Date('2026-10-27T11:00:00.000Z'),
+    });
+    expect(res.status).toBe('TENANT_SCOPE_VIOLATION');
+    expect(res.points).toHaveLength(0);
+  });
+
+  it('null value_float increments invalidValueCount and is not coerced to 0', async () => {
+    const svc = makeService(async (query) => {
+      if (query.includes('count()')) {
+        return { json: async () => [{ cnt: 2 }] };
+      }
+      return {
+        json: async () => [
+          {
+            org_id: 'org-1',
+            vehicle_id: 'veh-1',
+            trip_id: 'trip-1',
+            recorded_at: '2026-10-27 10:00:01.000',
+            value_float: null,
+            unit: 'rpm',
+            quality: 'normalized',
+          },
+          {
+            org_id: 'org-1',
+            vehicle_id: 'veh-1',
+            trip_id: 'trip-1',
+            recorded_at: '2026-10-27 10:00:02.000',
+            value_float: 0,
+            unit: 'rpm',
+            quality: 'normalized',
+          },
+        ],
+      };
+    });
+    const res = await svc.getTripRpmHfPoints({
+      orgId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      tripStart: new Date('2026-10-27T10:00:00.000Z'),
+      tripEnd: new Date('2026-10-27T11:00:00.000Z'),
+    });
+    expect(res.invalidValueCount).toBe(1);
+    expect(res.returnedCount).toBe(1);
+    expect(res.points[0]!.valueRpm).toBe(0);
+    expect(res.completenessStatus).toBe('COMPLETE');
   });
 
   it('marks incomplete when count exceeds page limit', async () => {
@@ -108,5 +181,56 @@ describe('ClickHouseHfService.getTripRpmHfPoints', () => {
     expect(res.completenessStatus).toBe('INCOMPLETE_MORE_POINTS_AVAILABLE');
     expect(res.totalMatchingCount).toBe(HF_TRIP_RPM_DEFAULT_READ_LIMIT + 500);
     expect(res.returnedCount).toBe(HF_TRIP_RPM_DEFAULT_READ_LIMIT);
+    expect(res.rawRowsReturned).toBe(HF_TRIP_RPM_DEFAULT_READ_LIMIT);
+  });
+
+  it('invalid rows on full page do not cause false INCOMPLETE', async () => {
+    const svc = makeService(async (query) => {
+      if (query.includes('count()')) {
+        return { json: async () => [{ cnt: 3 }] };
+      }
+      return {
+        json: async () => [
+          {
+            org_id: 'org-1',
+            vehicle_id: 'veh-1',
+            trip_id: 'trip-1',
+            recorded_at: '2026-10-27 10:00:01.000',
+            value_float: null,
+            unit: 'rpm',
+            quality: 'normalized',
+          },
+          {
+            org_id: 'org-1',
+            vehicle_id: 'veh-1',
+            trip_id: 'trip-1',
+            recorded_at: '2026-10-27 10:00:02.000',
+            value_float: null,
+            unit: 'rpm',
+            quality: 'normalized',
+          },
+          {
+            org_id: 'org-1',
+            vehicle_id: 'veh-1',
+            trip_id: 'trip-1',
+            recorded_at: '2026-10-27 10:00:03.000',
+            value_float: 900,
+            unit: 'rpm',
+            quality: 'normalized',
+          },
+        ],
+      };
+    });
+    const res = await svc.getTripRpmHfPoints({
+      orgId: 'org-1',
+      vehicleId: 'veh-1',
+      tripId: 'trip-1',
+      tripStart: new Date('2026-10-27T10:00:00.000Z'),
+      tripEnd: new Date('2026-10-27T11:00:00.000Z'),
+    });
+    expect(res.completenessStatus).toBe('COMPLETE');
+    expect(res.rawRowsReturned).toBe(3);
+    expect(res.returnedCount).toBe(1);
+    expect(res.invalidValueCount).toBe(2);
   });
 });
