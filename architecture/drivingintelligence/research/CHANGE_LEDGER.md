@@ -2402,6 +2402,45 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | Motion C5.1, Trip FSM, Driving Impact, DriverScore, Tire/Brake, DIMO fetch pipeline, HF mirror ingest unchanged; no DB migration; no deploy |
 | REMAINING | Live ClickHouse preflight gate before activation; V1B shadow engine + Fable before production allowlist |
 
+### DS4 RPM High Frequency V1B — post-trip temporal quality shadow (2026-10-28, Draft PR, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | V1A read-only trip input only; no versioned post-trip RPM HF shadow persistence or temporal coverage contract |
+| CHANGE | `rpm-hf-v1b/`: deterministic temporal engine, versioned shadow result contract, trip outbox + run persistence (`ds4_rpm_hf_v1b_shadow_*`), leader-gated scheduler (`ds4_rpm_hf_v1b_shadow_v1`). Consumes **only** `Ds4RpmHfV1aTripInputService.buildTripInput()` — no alternate RPM pipeline. Flags default OFF |
+| WHY | Phase 2B shadow quality validation after prod V1A smoke; bounded post-trip processing with VSI rolling trip classification provenance (no vehicle-level promotion) |
+| VALIDATION | Jest `rpm-hf-v1b/*`; Prisma migration `20261028180000_ds4_rpm_hf_v1b_shadow_v1`; scheduler registry entry; `nest build` |
+| NON_EFFECTS | V1A contract unchanged; motion-core shadow scheduler untouched; no customer scoring/API/UI; no deploy/backfill |
+| REMAINING | Owner allowlist pilot + Fable review before any production flag enable |
+
+### DS4 RPM HF V1B — PR #2224 targeted hardening (2026-10-28, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Lease recovery for expired `PROCESSING` claims; claim-token fencing; canonical RPM series input fingerprint; bounded SUCCEEDED outbox reopen for input revision (`succeeded_input_fingerprint`); 72h post-trip readiness window vs defer attempt budget; temporal `observedSequenceDurationSeconds` excludes inter-sequence gaps; V1B-local control-plane env parsing (no `s4a-foundation` import); postgres integration spec `ds4-rpm-hf-v1b-outbox.postgres.integration.spec.ts` |
+| WHY | Independent code review on PR #2224 — worker safety, idempotency/revision semantics, VSI defer correctness, S4 dormant audit boundary |
+| VALIDATION | Jest `rpm-hf-v1b/*`; optional `DI_V0_S4A_POSTGRES_INTEGRATION=1` outbox postgres spec; `nest build`; S4 unit dormant audit |
+| NON_EFFECTS | V1A unchanged; flags default OFF; no deploy |
+| REMAINING | Merge review; owner pilot allowlist when ready |
+
+### DS4 RPM HF V1B — runtime integrity hardening (2026-10-28, PR #2224)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Trip-scoped VSI fingerprint; revision reopen gated on RPM_1HZ authoritative inputs; fair revision probe cursor (`revision_last_probed_at`); trip-end defer schedule vs 72h deadline; run insert bound to live outbox claim; dedicated postgres CI workflow |
+| WHY | Code review runtime risks: rolling VSI window churn, unsafe revision reopen, defer timeline vs budget, stale worker persist |
+| VALIDATION | Jest rpm-hf-v1b + v1a; `ds4-rpm-hf-v1b-postgres-ci.sh` (PR-path hook in `di-v0-s4a-postgres-ci.sh`) |
+| NON_EFFECTS | V1A contract unchanged; flags default OFF; no deploy |
+
+### DS4 RPM HF V1B — SUCCEEDED run insert idempotency (2026-10-28, PR #2224)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `insertRun` / `insertRunWithActiveClaim` use partial unique index `ON CONFLICT … WHERE shadow_status = 'SUCCEEDED' DO NOTHING RETURNING id`; claim path verifies live lease before insert |
+| WHY | CI postgres test expected `idempotent_duplicate`; Prisma catch path missed partial-index violation metadata |
+| VALIDATION | `ds4-rpm-hf-v1b-postgres-ci.sh` (9/9) |
+| NON_EFFECTS | Schema unchanged; V1A/VSI/temporal/scheduler untouched |
+
 ### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
 
 | Event | Detail |

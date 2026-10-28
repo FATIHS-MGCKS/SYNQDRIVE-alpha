@@ -13053,6 +13053,46 @@ model DiV0MotionCoreShadowOutboxV1 {
   @@map("di_v0_motion_core_shadow_outbox_v1")
 }
 
+/// DS4 RPM HF V1B post-trip temporal quality shadow (flags OFF by default).
+model Ds4RpmHfV1bShadowRunV1 {
+  id               String   @id @map("id")
+  organizationId   String   @map("organization_id")
+  vehicleId        String   @map("vehicle_id")
+  tripId           String   @map("trip_id")
+  engineVersion    String   @map("engine_version")
+  inputFingerprint String   @map("input_fingerprint")
+  shadowStatus     String   @map("shadow_status")
+  summaryJson      Json     @map("summary_json")
+  computedAt       DateTime @map("computed_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([organizationId, tripId], map: "ds4_rpm_hf_v1b_shadow_runs_org_trip_idx")
+  @@map("ds4_rpm_hf_v1b_shadow_runs_v1")
+}
+
+model Ds4RpmHfV1bShadowOutboxV1 {
+  outboxId       String    @id @default(uuid()) @map("outbox_id")
+  organizationId String    @map("organization_id")
+  vehicleId      String    @map("vehicle_id")
+  tripId         String    @map("trip_id")
+  engineVersion  String    @map("engine_version")
+  status         String    @map("status")
+  attemptCount   Int       @default(0) @map("attempt_count")
+  nextAttemptAt  DateTime  @map("next_attempt_at") @db.Timestamptz(6)
+  lastErrorCode  String?   @map("last_error_code")
+  lastErrorAt    DateTime? @map("last_error_at") @db.Timestamptz(6)
+  claimToken                 String?   @map("claim_token")
+  claimExpiresAt             DateTime? @map("claim_expires_at") @db.Timestamptz(6)
+  succeededInputFingerprint  String?   @map("succeeded_input_fingerprint")
+  revisionLastProbedAt       DateTime? @map("revision_last_probed_at") @db.Timestamptz(6)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, tripId, engineVersion], map: "ds4_rpm_hf_v1b_shadow_outbox_trip_engine_uq")
+  @@index([status, nextAttemptAt, createdAt], map: "ds4_rpm_hf_v1b_shadow_outbox_claim_idx")
+  @@map("ds4_rpm_hf_v1b_shadow_outbox_v1")
+}
+
 /// DS4 Assessment L2 (PR-A) — persisted trip assessment from motion-core shadow runs; worker OFF by default.
 model DiV0Ds4TripAssessmentV1 {
   id                         String   @id @default(uuid()) @db.Uuid
