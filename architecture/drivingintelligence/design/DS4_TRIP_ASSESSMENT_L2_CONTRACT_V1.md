@@ -20,7 +20,7 @@
 | `RATED` | Ordinal trip rating allowed **only** when `ordinalTripRatingApproved` quality policy flag is true |
 | `UNRATED_COUNTS_ONLY` | Manoeuvre counts / observation valid; ordinal trip rating withheld |
 | `INSUFFICIENT_EVIDENCE` | Missing or ambiguous evidence (labels, speed authority, etc.) |
-| `UNSUPPORTED` | Vehicle not in assessment fleet admission set |
+| `UNSUPPORTED` | Provider / motion contract cannot supply DS4 assessment evidence (not used for vehicle allowlist) |
 | `PENDING` | No motion run available yet |
 | `FAILED` | Processing/contract/source identity failure |
 
@@ -33,4 +33,4 @@
 ## Code
 
 - Engine: `backend/src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/ds4-trip-assessment-v1.engine.ts`
-- Fleet admission: `ds4-assessment-fleet-admission.v1.ts` (four canonical UUIDs; evidence ref in file header)
+- Fleet admission: `ds4-assessment-eligibility-policy.v1.ts` (tenant-safe scope; fleet-wide). Calibration cohort: `ds4-assessment-calibration-cohort.v1.ts` (tests/eval only)

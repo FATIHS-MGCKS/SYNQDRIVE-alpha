@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { gunzipSync } from 'zlib';
 import type { DiV0MotionCoreShadowPayloadV1 } from '../motion-core-shadow-worker/di-v0-motion-core-shadow.types';
-import { DS4_ASSESSMENT_FLEET_VEHICLES_V1, isVehicleInDs4AssessmentFleetV1 } from './ds4-assessment-fleet-admission.v1';
+import { evaluateDs4AssessmentScopeEligibilityV1 } from './ds4-assessment-eligibility-policy.v1';
 import {
   computeDs4AssessmentInputFingerprintFromMotionSource,
   computeDs4DiscoveryTerminalInputFingerprint,
@@ -69,7 +69,6 @@ export class Ds4AssessmentOutboxRepositoryV1 {
 
   async discoverFromSucceededMotionRuns(input: { limit: number; now: Date }): Promise<number> {
     if (input.limit <= 0) return 0;
-    const fleetIds = DS4_ASSESSMENT_FLEET_VEHICLES_V1.map((v) => v.vehicleId);
     const rows = await this.prisma.$queryRaw<
       Array<{
         id: string;
@@ -88,7 +87,6 @@ export class Ds4AssessmentOutboxRepositoryV1 {
         r.combined_input_identity, r.content_fingerprint, r.summary_json, r.payload_gzip, r.created_at
       FROM di_v0_motion_core_shadow_runs_v1 r
       WHERE r.shadow_status = 'SUCCEEDED'
-        AND r.vehicle_id = ANY(${fleetIds}::text[])
         AND NOT EXISTS (
           SELECT 1 FROM di_v0_ds4_trip_assessment_v1 a
           WHERE a.trip_id = r.trip_id
@@ -105,7 +103,29 @@ export class Ds4AssessmentOutboxRepositoryV1 {
 
     let inserted = 0;
     for (const row of rows) {
-      if (!isVehicleInDs4AssessmentFleetV1(row.vehicle_id)) continue;
+      const scopeEligibility = evaluateDs4AssessmentScopeEligibilityV1(
+        {
+          organizationId: row.organization_id,
+          vehicleId: row.vehicle_id,
+          tripId: row.trip_id,
+        },
+        { motionRunOrganizationId: row.organization_id },
+      );
+      if (!scopeEligibility.eligible) {
+        const reasonCode =
+          scopeEligibility.reason === 'SCOPE_IDENTITY_INVALID'
+            ? 'DISCOVERY_SOURCE_IDENTITY_MISMATCH'
+            : 'DISCOVERY_SOURCE_IDENTITY_MISMATCH';
+        await this.persistDiscoveryTerminalOutbox({
+          sourceMotionRunId: row.id,
+          organizationId: row.organization_id,
+          tripId: row.trip_id,
+          vehicleId: row.vehicle_id,
+          reasonCode,
+          now: input.now,
+        });
+        continue;
+      }
       const payload = decodeMotionPayloadGzip(Buffer.from(row.payload_gzip));
       const fingerprintResult = computeDs4AssessmentInputFingerprintFromMotionSource({
         sourceMotionRunId: row.id,

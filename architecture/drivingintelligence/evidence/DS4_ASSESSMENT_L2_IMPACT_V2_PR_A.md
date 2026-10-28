@@ -42,3 +42,12 @@ Validation: `npm run test:di:ds4-assessment`, `npm run test:di:ds4-assessment:po
 | Versioned outbox | Migration `20261028160000`; unique `(source_motion_run_id, assessment_version)`; `qualityPolicyVersion` in input fingerprint |
 | Postgres coverage | Worker integration spec + 14-test CI gate (`discoverFromSucceededMotionRuns`, `runPass`, `processMotionRun`, poison recovery, version terminal) |
 | Legacy isolation | Frozen column baseline + unique index `trip_driving_impact_trip_id_key` (no DS4 columns on legacy table) |
+
+## Fleet-wide authority correction (owner 2026-10-28)
+
+| Area | Change |
+|------|--------|
+| Eligibility | Replaced four-UUID admission with `evaluateDs4AssessmentScopeEligibilityV1` (tenant-safe, all orgs/vehicles) |
+| Calibration | Four vehicles moved to `ds4-assessment-calibration-cohort.v1.ts` (replay/tests only) |
+| Discovery | Outbox SQL no longer filters `vehicle_id = ANY(fleet…)` |
+| Activation | Documented gaps + gates in `design/DS4_FLEET_WIDE_ELIGIBILITY_AND_ACTIVATION_GATES_V1.md` — flags remain OFF |

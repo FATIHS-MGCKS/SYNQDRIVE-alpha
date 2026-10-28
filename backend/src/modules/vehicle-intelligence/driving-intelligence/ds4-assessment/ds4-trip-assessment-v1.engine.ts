@@ -6,7 +6,7 @@ import {
   readPersistedMotionEventIntensityForPayload,
   resolveMotionCoreShadowEventRowContract,
 } from '../motion-core-shadow-worker/di-v0-motion-core-shadow-event-row.contract';
-import { evaluateDs4AssessmentFleetAdmissionV1 } from './ds4-assessment-fleet-admission.v1';
+import { evaluateDs4AssessmentScopeEligibilityV1 } from './ds4-assessment-eligibility-policy.v1';
 import {
   DS4_TRIP_ASSESSMENT_VERSION_V1,
   type Ds4SpeedAuthorityPartitionV1,
@@ -104,15 +104,14 @@ export function computeDs4TripAssessmentV1(input: {
 }): Ds4TripAssessmentComputeResultV1 {
   const qualityPolicy = input.qualityPolicy ?? DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT;
   const qualityPolicyVersion = qualityPolicy.policyVersion;
-  const admission = evaluateDs4AssessmentFleetAdmissionV1(input.scope);
-  if (!admission.admitted) {
-    const reason: Ds4TripAssessmentReasonCodeV1 =
-      admission.reason === 'ORGANIZATION_TENANCY_MISMATCH'
-        ? 'ORGANIZATION_TENANCY_MISMATCH'
-        : 'VEHICLE_NOT_IN_ASSESSMENT_FLEET';
+  const scopeEligibility = evaluateDs4AssessmentScopeEligibilityV1(input.scope, {
+    motionRunOrganizationId: input.motionRun?.organizationId ?? null,
+  });
+  if (!scopeEligibility.eligible) {
+    const reason: Ds4TripAssessmentReasonCodeV1 = scopeEligibility.reason;
     return {
       assessmentVersion: DS4_TRIP_ASSESSMENT_VERSION_V1,
-      assessmentStatus: 'UNSUPPORTED',
+      assessmentStatus: 'FAILED',
       evidenceQuality: null,
       reasonCodes: [reason],
       completeness: {

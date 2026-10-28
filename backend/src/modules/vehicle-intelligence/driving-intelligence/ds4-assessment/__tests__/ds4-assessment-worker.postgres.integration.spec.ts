@@ -91,7 +91,8 @@ describePg('ds4-assessment worker postgres integration', () => {
 
   async function insertMotionRun(input: {
     runId: string;
-    fleet: (typeof DS4_ASSESSMENT_FLEET_VEHICLES_V1)[number];
+    organizationId: string;
+    vehicleId: string;
     tripId: string;
     contentFingerprint: string;
     payloadGzip: Buffer;
@@ -104,7 +105,7 @@ describePg('ds4-assessment worker postgres integration', () => {
         id, organization_id, vehicle_id, trip_id, work_item_id, shadow_intent_key, shadow_bundle_version,
         pinned_snapshot_hash, combined_input_identity, content_fingerprint, shadow_status, summary_json, payload_gzip, uncompressed_bytes, created_at
       ) VALUES (
-        ${input.runId}, ${input.fleet.organizationId}, ${input.fleet.vehicleId}, ${input.tripId}, ${randomUUID()}, 'test-intent', 'bundle-v1',
+        ${input.runId}, ${input.organizationId}, ${input.vehicleId}, ${input.tripId}, ${randomUUID()}, 'test-intent', 'bundle-v1',
         ${`pin-${input.contentFingerprint}`}, ${`ident-${input.contentFingerprint}`}, ${input.contentFingerprint}, 'SUCCEEDED',
         ${JSON.stringify(input.summaryJson)}::jsonb, ${input.payloadGzip}, ${input.jsonLength}, ${input.createdAt}
       )`;
@@ -123,7 +124,8 @@ describePg('ds4-assessment worker postgres integration', () => {
       const runId = randomUUID();
       await insertMotionRun({
         runId,
-        fleet,
+        organizationId: fleet.organizationId,
+        vehicleId: fleet.vehicleId,
         tripId,
         contentFingerprint: `poison-${i}`,
         payloadGzip: Buffer.from('not-valid-gzip'),
@@ -140,7 +142,8 @@ describePg('ds4-assessment worker postgres integration', () => {
     const payloadGzip = gzipSync(json);
     await insertMotionRun({
       runId: validRunId,
-      fleet,
+      organizationId: fleet.organizationId,
+      vehicleId: fleet.vehicleId,
       tripId,
       contentFingerprint: fp,
       payloadGzip,
@@ -185,7 +188,8 @@ describePg('ds4-assessment worker postgres integration', () => {
     await db.$executeRaw`DELETE FROM di_v0_motion_core_shadow_runs_v1 WHERE id = ${runId}`;
     await insertMotionRun({
       runId,
-      fleet,
+      organizationId: fleet.organizationId,
+      vehicleId: fleet.vehicleId,
       tripId,
       contentFingerprint: fp,
       payloadGzip,
@@ -226,7 +230,8 @@ describePg('ds4-assessment worker postgres integration', () => {
     await db.$executeRaw`DELETE FROM di_v0_motion_core_shadow_runs_v1 WHERE trip_id = ${tripId}`;
     await insertMotionRun({
       runId,
-      fleet,
+      organizationId: fleet.organizationId,
+      vehicleId: fleet.vehicleId,
       tripId,
       contentFingerprint: fp,
       payloadGzip,
@@ -270,7 +275,8 @@ describePg('ds4-assessment worker postgres integration', () => {
 
     await insertMotionRun({
       runId,
-      fleet,
+      organizationId: fleet.organizationId,
+      vehicleId: fleet.vehicleId,
       tripId,
       contentFingerprint: 'terminal-only',
       payloadGzip: Buffer.from('bad'),
@@ -291,5 +297,38 @@ describePg('ds4-assessment worker postgres integration', () => {
 
     const discovered = await outbox.discoverFromSucceededMotionRuns({ limit: 5, now: new Date() });
     expect(discovered).toBe(0);
+  });
+
+  it('discoverFromSucceededMotionRuns enqueues runs for non-calibration onboarded vehicles', async () => {
+    const tenant = await seedDs4PostgresTenant(db);
+    const tripId = tenant.tripId;
+    const runId = randomUUID();
+    const fp = 'onboard-fp';
+    const payload = buildValidPayload(fp);
+    const json = JSON.stringify(payload);
+    const payloadGzip = gzipSync(json);
+    await db.$executeRaw`DELETE FROM di_v0_ds4_assessment_outbox_v1 WHERE trip_id = ${tripId}`;
+    await db.$executeRaw`DELETE FROM di_v0_motion_core_shadow_runs_v1 WHERE trip_id = ${tripId}`;
+    await insertMotionRun({
+      runId,
+      organizationId: tenant.organizationId,
+      vehicleId: tenant.vehicleId,
+      tripId,
+      contentFingerprint: fp,
+      payloadGzip,
+      jsonLength: json.length,
+      createdAt: new Date(),
+      summaryJson: {
+        contentFingerprint: fp,
+        eventRowContract: DI_V0_MOTION_CORE_SHADOW_PERSISTENCE_CONTRACT_V2.eventRowContract,
+      },
+    });
+
+    const discovered = await outbox.discoverFromSucceededMotionRuns({ limit: 5, now: new Date() });
+    expect(discovered).toBe(1);
+    const pending = await db.diV0Ds4AssessmentOutboxV1.findFirst({
+      where: { sourceMotionRunId: runId, status: 'PENDING' },
+    });
+    expect(pending?.vehicleId).toBe(tenant.vehicleId);
   });
 });

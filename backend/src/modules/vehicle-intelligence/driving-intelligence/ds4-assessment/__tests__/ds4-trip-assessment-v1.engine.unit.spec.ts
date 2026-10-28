@@ -9,6 +9,7 @@ import { DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT } from '../ds4-assessment-qual
 import { computeDs4TripAssessmentV1 } from '../ds4-trip-assessment-v1.engine';
 
 const TIGUAN = DS4_ASSESSMENT_FLEET_VEHICLES_V1[1]!;
+const SCOPE_TRIP_ID = '00000000-0000-4000-8000-00000000000a';
 
 function basePayload(overrides: Partial<DiV0MotionCoreShadowPayloadV1> = {}): DiV0MotionCoreShadowPayloadV1 {
   return {
@@ -71,7 +72,7 @@ function motionRun(overrides: Partial<{ contentFingerprint: string; shadowStatus
     id: 'run-1',
     organizationId: TIGUAN.organizationId,
     vehicleId: TIGUAN.vehicleId,
-    tripId: 'trip-1',
+    tripId: SCOPE_TRIP_ID,
     shadowStatus: overrides.shadowStatus ?? 'SUCCEEDED',
     pinnedSnapshotHash: 'pin-hash',
     combinedInputIdentity: 'cid',
@@ -82,19 +83,32 @@ function motionRun(overrides: Partial<{ contentFingerprint: string; shadowStatus
 }
 
 describe('computeDs4TripAssessmentV1', () => {
-  it('returns UNSUPPORTED for non-fleet vehicle', () => {
+  it('returns FAILED for invalid scope identity', () => {
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: '00000000-0000-4000-8000-000000000001', tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: '00000000-0000-4000-8000-000000000001', tripId: 'not-a-uuid' },
       motionRun: null,
       payload: null,
     });
-    expect(result.assessmentStatus).toBe('UNSUPPORTED');
-    expect(result.reasonCodes).toContain('VEHICLE_NOT_IN_ASSESSMENT_FLEET');
+    expect(result.assessmentStatus).toBe('FAILED');
+    expect(result.reasonCodes).toContain('SCOPE_IDENTITY_INVALID');
+  });
+
+  it('returns PENDING for onboarded vehicle with valid scope when motion run missing', () => {
+    const result = computeDs4TripAssessmentV1({
+      scope: {
+        organizationId: TIGUAN.organizationId,
+        vehicleId: '00000000-0000-4000-8000-000000000099',
+        tripId: '00000000-0000-4000-8000-000000000088',
+      },
+      motionRun: null,
+      payload: null,
+    });
+    expect(result.assessmentStatus).toBe('PENDING');
   });
 
   it('returns PENDING when motion run missing', () => {
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: null,
       payload: null,
     });
@@ -103,7 +117,7 @@ describe('computeDs4TripAssessmentV1', () => {
 
   it('returns FAILED when motion run not succeeded', () => {
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun({ shadowStatus: 'FAILED' }),
       payload: basePayload(),
     });
@@ -118,7 +132,7 @@ describe('computeDs4TripAssessmentV1', () => {
       },
     });
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload,
     });
@@ -131,7 +145,7 @@ describe('computeDs4TripAssessmentV1', () => {
       summary: { ...basePayload().summary, contentFingerprint: 'other-fp' } as DiV0MotionCoreShadowPayloadV1['summary'],
     });
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun({ contentFingerprint: 'fp-1' }),
       payload,
     });
@@ -144,7 +158,7 @@ describe('computeDs4TripAssessmentV1', () => {
       contract: { ...basePayload().contract, speedAuthority: 'INVALID' as never },
     });
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload,
     });
@@ -155,7 +169,7 @@ describe('computeDs4TripAssessmentV1', () => {
   it('returns INSUFFICIENT_EVIDENCE when no temporal labels', () => {
     const payload = basePayload({ fsmLabels: [], summary: { ...basePayload().summary, labelCount: 0 } });
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload,
     });
@@ -178,7 +192,7 @@ describe('computeDs4TripAssessmentV1', () => {
       ],
     });
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload,
     });
@@ -188,7 +202,7 @@ describe('computeDs4TripAssessmentV1', () => {
 
   it('returns UNRATED_COUNTS_ONLY for V2 intensity without approved ordinal policy', () => {
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload: basePayload(),
       qualityPolicy: DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT,
@@ -200,7 +214,7 @@ describe('computeDs4TripAssessmentV1', () => {
 
   it('returns RATED when ordinal policy approved and intensity valid', () => {
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload: basePayload(),
       qualityPolicy: { ...DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT, ordinalTripRatingApproved: true },
@@ -226,7 +240,7 @@ describe('computeDs4TripAssessmentV1', () => {
       ],
     });
     const result = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload,
     });
@@ -238,7 +252,7 @@ describe('computeDs4TripAssessmentV1', () => {
 describe('computeDs4DrivingImpactV2', () => {
   it('never emits numeric score when reference distribution uncalibrated', () => {
     const assessment = computeDs4TripAssessmentV1({
-      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: 't' },
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
       motionRun: motionRun(),
       payload: basePayload(),
       qualityPolicy: { ...DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT, ordinalTripRatingApproved: true },

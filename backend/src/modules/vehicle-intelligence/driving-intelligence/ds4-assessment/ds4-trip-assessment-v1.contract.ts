@@ -14,6 +14,7 @@ export type Ds4TripAssessmentStatusV1 =
 
 export type Ds4TripAssessmentReasonCodeV1 =
   | 'VEHICLE_NOT_IN_ASSESSMENT_FLEET'
+  | 'SCOPE_IDENTITY_INVALID'
   | 'ORGANIZATION_TENANCY_MISMATCH'
   | 'MOTION_RUN_NOT_SUCCEEDED'
   | 'MOTION_RUN_MISSING'
