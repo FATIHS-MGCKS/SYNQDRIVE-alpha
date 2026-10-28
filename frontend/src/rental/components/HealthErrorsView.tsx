@@ -3208,6 +3208,7 @@ export function HealthErrorsView({
 
                   {/* Wheel position grid — 2×2 layout */}
                   {(() => {
+                    const v3WearAuthority = isTireWearV3Authoritative(tireDetail?.summary);
                     const wearFallback =
                       resolveV3WheelTreadFallback(tireDetail?.summary) ??
                       (tireWear
@@ -3238,7 +3239,7 @@ export function HealthErrorsView({
                                 {hasData ? (
                                   <>
                                     <p className={`text-sm font-bold tabular-nums ${treadMmColorClass(mm)}`}>{mm.toFixed(1)} mm</p>
-                                    {wheel!.wearPercent > 0 && (
+                                    {!v3WearAuthority && wheel!.wearPercent > 0 && (
                                       <p className="text-[9px] text-muted-foreground tabular-nums">{wheel!.wearPercent}% worn</p>
                                     )}
                                     {wheel!.healthStatus && wheel!.healthStatus !== 'UNKNOWN' && wheel!.wearPercent <= 0 && (
