@@ -94,6 +94,14 @@ import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
 import { MasterDimoCanonicalRegistrationService } from '@modules/vehicle-onboarding/master-dimo/master-dimo-canonical-registration.service';
 import { runVehicleOnboardingHttp } from '@modules/vehicle-onboarding/http/vehicle-onboarding-http.util';
+import { parseRegistrationIdentityProvenance } from '@modules/vehicle-onboarding/vehicle-identity-review/vehicle-identity-provenance.util';
+import {
+  assertAiTechnicalFieldsConfirmed,
+  buildVehicleTechnicalSpecificationPrismaPatch,
+  extractTechnicalSpecificationPatchInput,
+  mapVehicleTechnicalSpecsToRegisteredVehicleFields,
+  stripTechnicalSpecificationKeysFromUpdateBody,
+} from './vehicle-technical-spec-patch.util';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
@@ -886,7 +894,11 @@ export class VehiclesService {
       brakeForceDistribution: v.brakeForceFrontPercent
         ? `${v.brakeForceFrontPercent}% front`
         : '',
-      frontToRearWeightDistribution: '',
+      ...mapVehicleTechnicalSpecsToRegisteredVehicleFields({
+        engineDisplacementCc: v.engineDisplacementCc ?? null,
+        cylinderCount: v.cylinderCount ?? null,
+        frontWeightDistributionPct: v.frontWeightDistributionPct ?? null,
+      }),
       curbWeight: v.curbWeightKg?.toString() ?? '',
       systemMotorPowerKw:
         adminEnrichment?.motionReference?.systemMotorPowerKw != null
@@ -2285,17 +2297,57 @@ export class VehiclesService {
     id: string,
     data: Prisma.VehicleUpdateInput,
     organizationId?: string,
+    options?: { rawBody?: Record<string, unknown> },
   ): Promise<Vehicle> {
     const where: Prisma.VehicleWhereUniqueInput = { id };
-    if (organizationId) {
-      const existing = await this.prisma.vehicle.findFirst({
-        where: { id, ...this.withOrgScope(organizationId) },
-      });
-      if (!existing) throw new NotFoundException('Vehicle not found');
-    } else {
-      await this.prisma.vehicle.findUniqueOrThrow({ where: { id } });
+    const existing = organizationId
+      ? await this.prisma.vehicle.findFirst({
+          where: { id, ...this.withOrgScope(organizationId) },
+          select: {
+            id: true,
+            organizationId: true,
+            engineDisplacementCc: true,
+            cylinderCount: true,
+            frontWeightDistributionPct: true,
+            registrationIdentityProvenance: true,
+          },
+        })
+      : await this.prisma.vehicle.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            organizationId: true,
+            engineDisplacementCc: true,
+            cylinderCount: true,
+            frontWeightDistributionPct: true,
+            registrationIdentityProvenance: true,
+          },
+        });
+    if (!existing) throw new NotFoundException('Vehicle not found');
+
+    const rawBody = options?.rawBody ?? (data as Record<string, unknown>);
+    const technicalInput = extractTechnicalSpecificationPatchInput(rawBody);
+    let merged: Prisma.VehicleUpdateInput = { ...data };
+    if (technicalInput) {
+      assertAiTechnicalFieldsConfirmed(
+        technicalInput,
+        rawBody.aiFieldProvenance as Record<string, { category?: string }> | undefined,
+      );
+      const provenanceDoc = parseRegistrationIdentityProvenance(
+        existing.registrationIdentityProvenance,
+      );
+      const technicalPatch = buildVehicleTechnicalSpecificationPrismaPatch(
+        existing,
+        technicalInput,
+        provenanceDoc,
+      );
+      merged = {
+        ...stripTechnicalSpecificationKeysFromUpdateBody(merged as Record<string, unknown>),
+        ...technicalPatch,
+      } as Prisma.VehicleUpdateInput;
     }
-    return this.prisma.vehicle.update({ where, data });
+
+    return this.prisma.vehicle.update({ where, data: merged });
   }
 
   async upsertTireData(

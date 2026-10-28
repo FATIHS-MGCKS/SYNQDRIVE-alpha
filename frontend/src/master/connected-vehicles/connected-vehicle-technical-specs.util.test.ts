@@ -25,6 +25,7 @@ describe('connected-vehicle-technical-specs.util', () => {
     expect(view.systemMotorPowerKw).toBe(110);
     expect(view.accel0To100S).toBe(9.2);
     expect(view.variantAssumption).toBe('2.0 TSI');
+    expect(view.frontToRearWeightDistribution).toBe('—');
   });
 
   it('falls back to legacy vehicle fields when no reference values', () => {

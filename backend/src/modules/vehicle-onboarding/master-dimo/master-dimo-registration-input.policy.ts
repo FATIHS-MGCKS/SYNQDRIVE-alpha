@@ -1,7 +1,7 @@
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import type { MasterDimoRegistrationInput } from './master-dimo-registration.types';
 
-const UNSUPPORTED_EXTRA_FIELDS = ['engineDisplacementCc', 'cylinderCount'] as const;
+const UNSUPPORTED_EXTRA_FIELDS: readonly string[] = [];
 
 function hasMeaningfulValue(value: unknown): boolean {
   if (value == null) return false;
