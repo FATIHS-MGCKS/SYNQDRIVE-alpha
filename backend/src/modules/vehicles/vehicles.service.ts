@@ -972,6 +972,7 @@ export class VehiclesService {
       hvMasterSpecificationCatalogVariantKey: hvMaster?.catalogVariantKey ?? null,
       hvMasterSpecificationFieldChangeClassification:
         hvMaster?.fieldChangeClassification ?? null,
+      registrationIdentityProvenance: v.registrationIdentityProvenance ?? null,
     };
   }
 

@@ -181,6 +181,8 @@
     "test:di:ds4-assessment:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-outbox.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-worker.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-processor-tenancy.postgres.integration.spec.ts",
     "test:di:ds4-assessment:postgres:ci": "DI_V0_S4A_POSTGRES_REQUIRED=1 bash scripts/test/di-v0-ds4-assessment-postgres-ci.sh",
     "test:di:ds4-fleet-motion-admission:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/fleet-motion-admission/__tests__/di-v0-ds4-fleet-motion-admission.postgres.integration.spec.ts",
+    "test:di:ds4-rpm-hf-v1b:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 DS4_RPM_HF_V1B_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1b/__tests__/ds4-rpm-hf-v1b-outbox.postgres.integration.spec.ts",
+    "test:di:ds4-rpm-hf-v1b:postgres:ci": "DS4_RPM_HF_V1B_POSTGRES_REQUIRED=1 bash scripts/test/ds4-rpm-hf-v1b-postgres-ci.sh",
     "test:nest:boot-check:ci": "bash scripts/test/synqdrive-nest-boot-check-ci.sh",
     "test:boundary-repair:postgres": "bash scripts/test/boundary-repair-postgres-ci.sh",
     "test:erd-e4:bullmq-redis": "bash scripts/test/erd-e4-bullmq-redis-ci.sh",

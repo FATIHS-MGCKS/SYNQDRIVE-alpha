@@ -4186,7 +4186,12 @@ export const api = {
         `/admin/vehicles/${vehicleId}/hv-master-specification`,
         body,
       ),
-    operationalOverview: () => get<any>('/admin/vehicles/operational/overview'),
+    operationalOverview: (organizationId?: string) => {
+      const qs = organizationId?.trim()
+        ? `?organizationId=${encodeURIComponent(organizationId.trim())}`
+        : '';
+      return get<any>(`/admin/vehicles/operational/overview${qs}`);
+    },
     operationalAttentionQueue: (limit = 8) =>
       get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),
     operationalList: (params?: Record<string, string | number | undefined>) => {
