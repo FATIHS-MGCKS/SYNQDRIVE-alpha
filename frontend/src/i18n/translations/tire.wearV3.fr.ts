@@ -12,4 +12,12 @@ export const tireWearV3Fr = {
   'tire.wearV3.evidence.insufficient': 'Preuves insuffisantes',
   'tire.wearV3.measurementAction': 'Mesurer la sculpture',
   'tire.wearV3.lastMeasurement': 'Dernière mesure acceptée : {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Usure faisant autorité (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'Le % de vie V2 n’est pas affiché sous autorité V3. Voir le panneau V3 ci-dessous.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Vie de bande estimée (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Preuves insuffisantes — mesure requise',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}} : {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'Estimation d’usure V3',
+  'tire.wearV3.fleetTreadLabel': 'Bande (V3)',
 } as const;

@@ -12,4 +12,12 @@ export const tireWearV3It = {
   'tire.wearV3.evidence.insufficient': 'Evidenze insufficienti',
   'tire.wearV3.measurementAction': 'Misura battistrada',
   'tire.wearV3.lastMeasurement': 'Ultima misurazione accettata: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Usura autorevole (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'La % vita battistrada V2 non è mostrata con autorità V3. Vedi pannello V3 sotto.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Vita battistrada stimata (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Evidenze insufficienti — misurazione richiesta',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'Stima usura V3',
+  'tire.wearV3.fleetTreadLabel': 'Battistrada (V3)',
 } as const;

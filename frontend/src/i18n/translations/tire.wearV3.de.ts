@@ -12,4 +12,12 @@ export const tireWearV3De = {
   'tire.wearV3.evidence.insufficient': 'Unzureichende Nachweise',
   'tire.wearV3.measurementAction': 'Profiltiefe messen',
   'tire.wearV3.lastMeasurement': 'Letzte akzeptierte Messung: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Maßgeblicher Verschleiß (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'Legacy-V2-Profillebensdauer-% wird unter V3-Autorität nicht angezeigt. Siehe V3-Bereich unten.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Geschätzte Rest-Profillebensdauer (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Unzureichende Nachweise — Messung erforderlich',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'V3-Verschleißschätzung',
+  'tire.wearV3.fleetTreadLabel': 'Profil (V3)',
 } as const;

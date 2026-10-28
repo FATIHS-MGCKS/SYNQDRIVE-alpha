@@ -52,6 +52,7 @@ import {
   tireUiStatus,
   tireUiStatusLabel,
 } from '../../lib/tire-health-detail-ui';
+import { resolveTireHealthBoxBarPercent } from '../../lib/tire-wear-read-model-ui';
 import {
   brakeOverviewLabel,
   brakeRemainingKmLabel,
@@ -575,7 +576,7 @@ export function buildVehicleHealthBoxViewModel(params: {
               label: tireUiStatusLabel(tires, 'en'),
               labelColor: tireUi === 'CRITICAL' ? 'text-[color:var(--status-critical)]' : 'text-foreground',
               bar: tireUi === 'CRITICAL' ? 'bg-[color:var(--status-critical)]' : tireUi === 'WARNING' ? 'bg-[color:var(--status-watch)]' : 'bg-[color:var(--status-positive)]',
-              barPct: tires?.overallPercent ?? 0,
+              barPct: resolveTireHealthBoxBarPercent(tires),
               accentRing: '',
             }
           : getWearStatus(0, false),

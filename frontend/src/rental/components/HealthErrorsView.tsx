@@ -57,6 +57,12 @@ import {
   uiStatusAccentClass,
   wheelMeasurementBadge,
 } from '../lib/tire-health-detail-ui';
+import {
+  formatV3AuthoritativeHeadline,
+  isTireWearV3Authoritative,
+  resolveLegacyTreadLifePercent,
+  resolveV3WheelTreadFallback,
+} from '../lib/tire-wear-read-model-ui';
 import { segmentFromHealthState } from '../lib/health-segment-display';
 import { SegmentedHealthIndicator } from './health/SegmentedHealthIndicator';
 import { formatBatteryVoltage, normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
@@ -277,7 +283,7 @@ export function HealthErrorsView({
     batteryLoading,
     retryBattery,
   } = batteryQueryState;
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
 
@@ -1670,7 +1676,6 @@ export function HealthErrorsView({
           const uiStatus = tireUiStatus(th);
           const tireSeg = tireStatusToSegment(uiStatus);
           const nextMeasurementLabel = formatTireQuickNextMeasurementLabel(th);
-          const pct = th?.overallPercent ?? null;
           const lastMeasuredAt = th?.lastMeasurementAt ?? th?.lastActualMeasurementAt ?? null;
           const tireAccent = quickCardAccentFromRentalState(rentalHealth?.modules.tires.state);
           return (
@@ -1740,7 +1745,7 @@ export function HealthErrorsView({
                   </p>
                 </div>
               )}
-              {hasTireData && pct != null && (
+              {hasTireData && (
                 <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
                   <p className="text-[10px] font-medium text-muted-foreground/70">
                     Last measured: {lastMeasuredAt ? (formatMeasuredAgo(lastMeasuredAt) ?? '—') : '—'}
@@ -3162,8 +3167,24 @@ export function HealthErrorsView({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
                   {/* Overall */}
                   {(() => {
-                    const pct = tireDetail?.summary.overallPercent ?? tireWear?.overallPercent ?? null;
-                    const remKm = tireDetail?.summary.overallRemainingKm ?? tireWear?.estimatedRemainingKm ?? null;
+                    const sum = tireDetail?.summary;
+                    if (sum && isTireWearV3Authoritative(sum)) {
+                      return (
+                        <div className="rounded-lg p-4 sq-tone-watch bg-muted/40">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">
+                            {t('tire.wearV3.authoritativeCardTitle' as never)}
+                          </p>
+                          <p className="text-lg font-bold text-foreground leading-snug">
+                            {formatV3AuthoritativeHeadline(sum, locale)}
+                          </p>
+                          <p className="text-[10px] mt-2 text-muted-foreground/80">
+                            {t('tire.wearV3.legacyPercentHiddenHint' as never)}
+                          </p>
+                        </div>
+                      );
+                    }
+                    const pct = resolveLegacyTreadLifePercent(sum, tireWear?.overallPercent ?? null);
+                    const remKm = sum?.overallRemainingKm ?? tireWear?.estimatedRemainingKm ?? null;
                     const barBg = pct != null ? (pct >= 50 ? ('sq-tone-success') : pct >= 25 ? ('sq-tone-watch') : ('sq-tone-critical')) : ('bg-muted/60');
                     const barFg = pct != null ? (pct >= 50 ? 'bg-green-500' : pct >= 25 ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300';
                     return (
@@ -3171,10 +3192,10 @@ export function HealthErrorsView({
                         {pct != null ? (<>
                           <p className={`text-2xl font-bold mb-1 text-foreground tabular-nums`}>{pct}%</p>
                           <div className={`w-full h-2 rounded-full overflow-hidden mb-2 bg-muted`}><div className={`h-full ${barFg} rounded-full transition-all`} style={{ width: `${pct}%` }} /></div>
-                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>Estimated remaining tread life</p>
+                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>{t('tire.wearV3.estimatedTreadLifeV2' as never)}</p>
                           <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>{TIRE_TREAD_LIFE_SCORE_HINT}</p>
                           {remKm != null && <p className={`text-[11px] mt-1 text-muted-foreground tabular-nums`}>ca. {remKm.toLocaleString('de-DE')} km remaining</p>}
-                          {tireDetail?.summary.wearRateMmPer1000km != null && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>Wear: {tireDetail.summary.wearRateMmPer1000km.toFixed(2)} mm / 1000 km</p>}
+                          {sum?.wearRateMmPer1000km != null && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>Wear: {sum.wearRateMmPer1000km.toFixed(2)} mm / 1000 km</p>}
                           {tireWear && <div className="mt-3 flex gap-3">
                             <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground tabular-nums`}>{tireWear.frontPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Front</p></div>
                             <div className={`w-px bg-muted`} />
@@ -3187,9 +3208,12 @@ export function HealthErrorsView({
 
                   {/* Wheel position grid — 2×2 layout */}
                   {(() => {
-                    const wearFallback = tireWear
-                      ? { FL: tireWear.frontLeftMm, FR: tireWear.frontRightMm, RL: tireWear.rearLeftMm, RR: tireWear.rearRightMm }
-                      : undefined;
+                    const v3WearAuthority = isTireWearV3Authoritative(tireDetail?.summary);
+                    const wearFallback =
+                      resolveV3WheelTreadFallback(tireDetail?.summary) ??
+                      (tireWear
+                        ? { FL: tireWear.frontLeftMm, FR: tireWear.frontRightMm, RL: tireWear.rearLeftMm, RR: tireWear.rearRightMm }
+                        : undefined);
                     return (
                       <div className={`rounded-lg p-4 bg-muted`}>
                         <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Tread Depth per Wheel</p>
@@ -3215,7 +3239,7 @@ export function HealthErrorsView({
                                 {hasData ? (
                                   <>
                                     <p className={`text-sm font-bold tabular-nums ${treadMmColorClass(mm)}`}>{mm.toFixed(1)} mm</p>
-                                    {wheel!.wearPercent > 0 && (
+                                    {!v3WearAuthority && wheel!.wearPercent > 0 && (
                                       <p className="text-[9px] text-muted-foreground tabular-nums">{wheel!.wearPercent}% worn</p>
                                     )}
                                     {wheel!.healthStatus && wheel!.healthStatus !== 'UNKNOWN' && wheel!.wearPercent <= 0 && (

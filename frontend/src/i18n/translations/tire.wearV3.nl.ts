@@ -12,4 +12,12 @@ export const tireWearV3Nl = {
   'tire.wearV3.evidence.insufficient': 'Onvoldoende bewijs',
   'tire.wearV3.measurementAction': 'Profiel meten',
   'tire.wearV3.lastMeasurement': 'Laatste geaccepteerde meting: {{date}}',
+  'tire.wearV3.authoritativeCardTitle': 'Gezaghebbende slijtage (V3)',
+  'tire.wearV3.legacyPercentHiddenHint':
+    'V2-profiellevensduur-% wordt niet getoond onder V3-autoriteit. Zie V3-paneel hieronder.',
+  'tire.wearV3.estimatedTreadLifeV2': 'Geschatte profiellevensduur (V2)',
+  'tire.wearV3.insufficientEvidenceHeadline': 'Onvoldoende bewijs — meting vereist',
+  'tire.wearV3.lowestTreadIntervalHeadline': '{{position}}: {{lo}}–{{hi}} mm',
+  'tire.wearV3.authoritativeWearFallback': 'V3-slijtageschatting',
+  'tire.wearV3.fleetTreadLabel': 'Profiel (V3)',
 } as const;
