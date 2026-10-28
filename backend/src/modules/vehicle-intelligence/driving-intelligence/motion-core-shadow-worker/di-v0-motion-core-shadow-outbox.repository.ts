@@ -1,6 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
 import type { DiV0MotionCoreShadowControlPlaneConfig } from './di-v0-motion-core-shadow-control-plane';
 import {
+  DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
+  isDiV0S4LegacyAllowlistAdmissionRequired,
+  type DiV0Ds4FleetMotionAdmissionPolicySnapshotV1,
+} from '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
+import {
   isC5_1PreferredSpeedEffective,
   resolveC5_1VehicleAdmissionFromLabels,
 } from './di-v0-motion-core-c5-1-admission';
@@ -50,10 +55,15 @@ export class DiV0MotionCoreShadowOutboxRepository {
     organizationAllowlist: readonly string[];
     vehicleAllowlist: readonly string[];
     controlPlane: DiV0MotionCoreShadowControlPlaneConfig;
+    fleetMotionPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
     limit: number;
     now: Date;
   }): Promise<number> {
-    if (input.organizationAllowlist.length === 0 || input.vehicleAllowlist.length === 0) return 0;
+    const fleetMotionPolicy = input.fleetMotionPolicy ?? DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF;
+    const legacyAllowlist = isDiV0S4LegacyAllowlistAdmissionRequired(fleetMotionPolicy);
+    if (legacyAllowlist && (input.organizationAllowlist.length === 0 || input.vehicleAllowlist.length === 0)) {
+      return 0;
+    }
     if (input.limit <= 0) return 0;
 
     const insertBudget = input.limit;
@@ -66,6 +76,7 @@ export class DiV0MotionCoreShadowOutboxRepository {
         enabledSince: input.enabledSince,
         organizationAllowlist: input.organizationAllowlist,
         vehicleAllowlist: input.vehicleAllowlist,
+        fleetMotionPolicy,
         pageSize,
         cursor,
       });
@@ -89,15 +100,20 @@ export class DiV0MotionCoreShadowOutboxRepository {
     enabledSince: Date;
     organizationAllowlist: readonly string[];
     vehicleAllowlist: readonly string[];
+    fleetMotionPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
     pageSize: number;
     cursor: { completedAt: Date; workItemId: string } | null;
   }): Promise<DiV0MotionCoreShadowDiscoveryCandidate[]> {
+    const legacyAllowlist = isDiV0S4LegacyAllowlistAdmissionRequired(
+      input.fleetMotionPolicy ?? DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
+    );
     const orgs = input.organizationAllowlist;
     const vehicles = input.vehicleAllowlist;
     const cursor = input.cursor;
 
     if (!cursor) {
-      return this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
+      return legacyAllowlist
+        ? this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
         WITH active_primary AS (
           SELECT DISTINCT ON (organization_id, trip_id)
             id, organization_id, trip_id
@@ -118,7 +134,7 @@ export class DiV0MotionCoreShadowOutboxRepository {
           v.make AS vehicle_make,
           v.model AS vehicle_model
         FROM di_v0_s4_work_items wi
-        INNER JOIN vehicles v ON v.id = wi.vehicle_id
+        INNER JOIN vehicles v ON v.id = wi.vehicle_id AND v.organization_id = wi.organization_id
         INNER JOIN active_primary ap
           ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
         WHERE wi.status = 'COMPLETED'
@@ -131,10 +147,44 @@ export class DiV0MotionCoreShadowOutboxRepository {
           AND wi.organization_id = ANY(${orgs}::text[])
           AND wi.vehicle_id = ANY(${vehicles}::text[])
         ORDER BY wi.completed_at ASC, wi.id ASC
+        LIMIT ${input.pageSize}`
+        : this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
+        WITH active_primary AS (
+          SELECT DISTINCT ON (organization_id, trip_id)
+            id, organization_id, trip_id
+          FROM di_v0_s4_work_items
+          WHERE run_purpose = 'PRIMARY'
+            AND purpose_discriminator = 'PRIMARY'
+            AND status <> 'SUPERSEDED'
+          ORDER BY organization_id, trip_id, boundary_occurrence DESC, created_at DESC
+        )
+        SELECT
+          wi.id AS work_item_id,
+          wi.organization_id,
+          wi.trip_id,
+          wi.vehicle_id,
+          wi.pinned_snapshot_hash,
+          coalesce(wi.combined_input_identity, '') AS combined_input_identity,
+          wi.completed_at,
+          v.make AS vehicle_make,
+          v.model AS vehicle_model
+        FROM di_v0_s4_work_items wi
+        INNER JOIN vehicles v ON v.id = wi.vehicle_id AND v.organization_id = wi.organization_id
+        INNER JOIN active_primary ap
+          ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
+        WHERE wi.status = 'COMPLETED'
+          AND wi.run_purpose = 'PRIMARY'
+          AND wi.purpose_discriminator = 'PRIMARY'
+          AND wi.pinned_snapshot_hash IS NOT NULL
+          AND wi.shadow_run_id IS NOT NULL
+          AND wi.completed_at IS NOT NULL
+          AND wi.completed_at >= ${input.enabledSince}
+        ORDER BY wi.completed_at ASC, wi.id ASC
         LIMIT ${input.pageSize}`;
     }
 
-    return this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
+    return legacyAllowlist
+      ? this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
       WITH active_primary AS (
         SELECT DISTINCT ON (organization_id, trip_id)
           id, organization_id, trip_id
@@ -155,7 +205,7 @@ export class DiV0MotionCoreShadowOutboxRepository {
         v.make AS vehicle_make,
         v.model AS vehicle_model
       FROM di_v0_s4_work_items wi
-      INNER JOIN vehicles v ON v.id = wi.vehicle_id
+      INNER JOIN vehicles v ON v.id = wi.vehicle_id AND v.organization_id = wi.organization_id
       INNER JOIN active_primary ap
         ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
       WHERE wi.status = 'COMPLETED'
@@ -167,6 +217,40 @@ export class DiV0MotionCoreShadowOutboxRepository {
         AND wi.completed_at >= ${input.enabledSince}
         AND wi.organization_id = ANY(${orgs}::text[])
         AND wi.vehicle_id = ANY(${vehicles}::text[])
+        AND (wi.completed_at, wi.id) > (${cursor.completedAt}, ${cursor.workItemId})
+      ORDER BY wi.completed_at ASC, wi.id ASC
+      LIMIT ${input.pageSize}`
+      : this.prisma.$queryRaw<DiV0MotionCoreShadowDiscoveryCandidate[]>`
+      WITH active_primary AS (
+        SELECT DISTINCT ON (organization_id, trip_id)
+          id, organization_id, trip_id
+        FROM di_v0_s4_work_items
+        WHERE run_purpose = 'PRIMARY'
+          AND purpose_discriminator = 'PRIMARY'
+          AND status <> 'SUPERSEDED'
+        ORDER BY organization_id, trip_id, boundary_occurrence DESC, created_at DESC
+      )
+      SELECT
+        wi.id AS work_item_id,
+        wi.organization_id,
+        wi.trip_id,
+        wi.vehicle_id,
+        wi.pinned_snapshot_hash,
+        coalesce(wi.combined_input_identity, '') AS combined_input_identity,
+        wi.completed_at,
+        v.make AS vehicle_make,
+        v.model AS vehicle_model
+      FROM di_v0_s4_work_items wi
+      INNER JOIN vehicles v ON v.id = wi.vehicle_id AND v.organization_id = wi.organization_id
+      INNER JOIN active_primary ap
+        ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
+      WHERE wi.status = 'COMPLETED'
+        AND wi.run_purpose = 'PRIMARY'
+        AND wi.purpose_discriminator = 'PRIMARY'
+        AND wi.pinned_snapshot_hash IS NOT NULL
+        AND wi.shadow_run_id IS NOT NULL
+        AND wi.completed_at IS NOT NULL
+        AND wi.completed_at >= ${input.enabledSince}
         AND (wi.completed_at, wi.id) > (${cursor.completedAt}, ${cursor.workItemId})
       ORDER BY wi.completed_at ASC, wi.id ASC
       LIMIT ${input.pageSize}`;

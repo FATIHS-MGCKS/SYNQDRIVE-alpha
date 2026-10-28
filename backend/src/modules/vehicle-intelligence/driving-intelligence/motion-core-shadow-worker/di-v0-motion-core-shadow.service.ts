@@ -25,8 +25,10 @@ import {
   type DiV0MotionCoreShadowRuntimeConfig,
 } from './di-v0-motion-core-shadow.config';
 import {
-  evaluateDiV0MotionCoreShadowEnablement,
-} from './di-v0-motion-core-shadow-control-plane';
+  evaluateDiV0MotionCoreShadowEnablementWithFleetMotionPolicyV1,
+  parseDiV0Ds4FleetMotionAdmissionPolicyV1,
+  type DiV0Ds4FleetMotionAdmissionPolicySnapshotV1,
+} from '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
 import { DiV0MotionCoreShadowOutboxRepository } from './di-v0-motion-core-shadow-outbox.repository';
 import { processDiV0MotionCoreShadowTrip } from './di-v0-motion-core-shadow-processor';
 import { DiV0MotionCoreShadowRunRepository } from './di-v0-motion-core-shadow-run.repository';
@@ -45,6 +47,7 @@ export class DiV0MotionCoreShadowService {
   private readonly logger = new Logger(DiV0MotionCoreShadowService.name);
   private readonly runtimeConfig: DiV0MotionCoreShadowRuntimeConfig;
   private readonly s4ControlPlane: DiV0S4ControlPlaneConfig;
+  private readonly fleetMotionPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
   private readonly outbox: DiV0MotionCoreShadowOutboxRepository;
   private readonly runs: DiV0MotionCoreShadowRunRepository;
   private readonly s4Read: DiV0S4ResearchS4ReadRepository;
@@ -52,6 +55,7 @@ export class DiV0MotionCoreShadowService {
   constructor(private readonly prisma: PrismaService) {
     this.runtimeConfig = parseDiV0MotionCoreShadowRuntimeConfig(process.env);
     this.s4ControlPlane = parseDiV0S4ControlPlaneConfig(process.env);
+    this.fleetMotionPolicy = parseDiV0Ds4FleetMotionAdmissionPolicyV1(process.env);
     this.outbox = new DiV0MotionCoreShadowOutboxRepository(prisma as unknown as PrismaClient);
     this.runs = new DiV0MotionCoreShadowRunRepository(prisma as unknown as PrismaClient);
     this.s4Read = new DiV0S4ResearchS4ReadRepository(prisma as unknown as PrismaClient);
@@ -82,6 +86,7 @@ export class DiV0MotionCoreShadowService {
       organizationAllowlist: [...cp.organizationAllowlist],
       vehicleAllowlist: [...cp.vehicleAllowlist],
       controlPlane: cp,
+      fleetMotionPolicy: this.fleetMotionPolicy,
       limit: this.runtimeConfig.batchLimit * 5,
       now,
     });
@@ -141,9 +146,10 @@ export class DiV0MotionCoreShadowService {
       killState != null ? { kind: 'ROW', killState: killState as 'KILLED' | 'NOT_KILLED' } : { kind: 'MISSING' },
     );
     const vehicleOrganizationId = await this.s4Read.loadVehicleOrganizationId(row.vehicleId);
-    const enable = evaluateDiV0MotionCoreShadowEnablement(
+    const enable = evaluateDiV0MotionCoreShadowEnablementWithFleetMotionPolicyV1(
       this.runtimeConfig.controlPlane,
       this.s4ControlPlane,
+      this.fleetMotionPolicy,
       kill,
       {
         organizationId: row.organizationId,

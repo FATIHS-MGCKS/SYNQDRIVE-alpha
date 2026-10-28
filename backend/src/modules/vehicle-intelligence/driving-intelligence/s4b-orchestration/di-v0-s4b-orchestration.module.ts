@@ -8,6 +8,7 @@ import {
   buildDiV0S4LeaseOwner,
   loadDiV0S4bControlPlaneConfig,
   loadDiV0S4bDiscoveryContainmentAtCompositionBoundary,
+  loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary,
 } from './di-v0-s4b-config';
 import type { DiV0S4DiscoveryContainmentState } from './di-v0-s4b-discovery-containment';
 import { DiV0S4DiscoveryScheduler } from './di-v0-s4b-discovery.scheduler';
@@ -39,7 +40,8 @@ import {
     },
     {
       provide: DI_V0_S4B_WORK_ITEM_REPOSITORY,
-      useFactory: (prisma: PrismaService, config: DiV0S4ControlPlaneConfig) => new DiV0S4WorkItemRepository(prisma, config),
+      useFactory: (prisma: PrismaService, config: DiV0S4ControlPlaneConfig) =>
+        new DiV0S4WorkItemRepository(prisma, config, loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary()),
       inject: [PrismaService, DI_V0_S4B_CONTROL_PLANE_CONFIG],
     },
     { provide: DI_V0_S4B_EXECUTOR_REGISTRY, useFactory: () => new DiV0S4ExecutorRegistry() },
@@ -51,7 +53,15 @@ import {
         config: DiV0S4ControlPlaneConfig,
         pipeline: DiV0S4RuntimePipeline,
         containment: DiV0S4DiscoveryContainmentState,
-      ) => new DiV0S4DiscoveryService(prisma, repository, config, pipeline, containment),
+      ) =>
+        new DiV0S4DiscoveryService(
+          prisma,
+          repository,
+          config,
+          pipeline,
+          containment,
+          loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary(),
+        ),
       inject: [
         PrismaService,
         DI_V0_S4B_WORK_ITEM_REPOSITORY,

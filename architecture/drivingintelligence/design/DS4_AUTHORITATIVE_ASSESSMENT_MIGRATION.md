@@ -11,6 +11,8 @@
 | **Related decisions** | [`DI-DEC-DS4-AUTHORITY-001`](../decisions/DECISION_REGISTER.md) |
 | **Evidence** | [`evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md`](../evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md) |
 
+| **PR-F (2026-10-28)** | Fleet motion admission policy | `DS4_FLEET_MOTION_ADMISSION_POLICY_V1` — shared S4 + Motion-Core rollout gate (`DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED`, default OFF). Assessment L2 already fleet-wide (PR #2212). **No activation.** |
+
 ---
 
 ## 1. Problem statement
