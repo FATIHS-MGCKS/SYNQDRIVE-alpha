@@ -31,14 +31,14 @@ if [[ "$JEST_RC" -ne 0 ]]; then
   exit "$JEST_RC"
 fi
 
-if rg -q 'Tests:[[:space:]]+0 passed' "$JEST_OUT" || rg -q 'Test Suites:[[:space:]]+0 passed' "$JEST_OUT" || rg -q 'Test Suites:[[:space:]]+1 skipped' "$JEST_OUT"; then
+if grep -Eq 'Tests:[[:space:]]+0 passed' "$JEST_OUT" || grep -Eq 'Test Suites:[[:space:]]+0 passed' "$JEST_OUT" || grep -Eq 'Test Suites:[[:space:]]+1 skipped' "$JEST_OUT"; then
   log "FAIL: integration suite skipped or zero tests executed (skipped tests must not count as PASS)"
   exit 1
 fi
 
-if ! rg -q 'Tests:[[:space:]]+7 passed' "$JEST_OUT"; then
+if ! grep -Eq 'Tests:[[:space:]]+7 passed' "$JEST_OUT"; then
   log "FAIL: expected exactly 7 passing tests in vehicle-technical-spec-patch.postgres.integration"
-  rg 'Tests:' "$JEST_OUT" || true
+  grep 'Tests:' "$JEST_OUT" || true
   exit 1
 fi
 
