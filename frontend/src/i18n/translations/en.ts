@@ -3300,6 +3300,9 @@ export const en = {
   'master.registration.lvBatteryChemistryHint.label': 'Chemistry (AI hint only)',
   'master.registration.lvBatteryChemistryHint.placeholder': 'Not saved — use LV construction type',
   'master.registration.lvBatteryChemistryHint.title': 'Material chemistry is not persisted; Battery Health uses the LV construction type.',
+  'master.registration.lvBatteryType.legacyLabel': 'Stored legacy value (pick a type to update)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Select a supported LV construction type before entering capacity or voltage.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Unsupported LV construction type. Choose AGM, EFB, lead-acid, or lithium.',
 
   'master.cv.registryLifecycle.active': 'Active',
   'master.cv.registryLifecycle.offboarded': 'Offboarded',

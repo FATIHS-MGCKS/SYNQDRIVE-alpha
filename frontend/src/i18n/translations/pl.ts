@@ -66,6 +66,9 @@ export const pl = {
   'master.registration.lvBatteryChemistryHint.label': 'Chemia (tylko podpowiedź AI)',
   'master.registration.lvBatteryChemistryHint.placeholder': 'Nie zapisywane — użyj typu LV',
   'master.registration.lvBatteryChemistryHint.title': 'Chemia materiału nie jest zapisywana; Battery Health używa typu konstrukcji LV.',
+  'master.registration.lvBatteryType.legacyLabel': 'Zapisana wartość legacy (wybierz typ, aby zaktualizować)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Wybierz obsługiwany typ LV przed podaniem pojemności lub napięcia.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Nieobsługiwany typ LV. Wybierz AGM, EFB, kwasowo-ołowiową lub litową.',
 
   'master.cv.registryLifecycle.active': 'Aktywny',
   'master.cv.registryLifecycle.offboarded': 'Wycofany z floty',

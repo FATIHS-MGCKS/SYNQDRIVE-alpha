@@ -158,6 +158,18 @@ describe('master-vehicle-registration payloads', () => {
     expect(extra.drivetrain).toBe('FOUR_WD');
   });
 
+  it('omits manual battery baseline when type is legacy-unknown', () => {
+    const specs = buildVehicleManualSpecs(
+      minimalRv({ batteryType: 'legacy-custom-label', batteryAmpere: '70', batteryVolt: '12' }),
+    );
+    expect(specs?.battery).toBeUndefined();
+  });
+
+  it('includes manual battery baseline only for canonical normalized type', () => {
+    const specs = buildVehicleManualSpecs(minimalRv({ batteryType: 'AGM', batteryAmpere: '70' }));
+    expect(specs?.battery).toMatchObject({ batteryType: 'AGM', batteryAmpere: 70 });
+  });
+
   it('merges aiFieldProvenance into extraData when provided on registered vehicle', () => {
     const extra = buildVehicleExtraData(
       minimalRv({

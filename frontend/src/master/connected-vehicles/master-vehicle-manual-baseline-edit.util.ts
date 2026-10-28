@@ -65,8 +65,20 @@ export async function upsertLvBatterySpecOnEdit(
   vehicleId: string,
   battery: ManualBatteryPayload,
 ): Promise<void> {
+  const normalizedType = normalizeLvBatteryTypeInput(battery.batteryType);
+  const hasNumbers =
+    battery.batteryAmpere != null ||
+    battery.batteryVolt != null ||
+    String(battery.batteryAmpere ?? '').trim() !== '' ||
+    String(battery.batteryVolt ?? '').trim() !== '';
+  if (hasNumbers && !normalizedType) {
+    return;
+  }
+  if (!normalizedType) {
+    return;
+  }
   const payload = {
-    batteryType: normalizeLvBatteryTypeInput(battery.batteryType) ?? battery.batteryType ?? null,
+    batteryType: normalizedType,
     batteryAmpere: battery.batteryAmpere ?? null,
     batteryVolt: battery.batteryVolt ?? null,
     sourceType: 'MANUAL' as const,

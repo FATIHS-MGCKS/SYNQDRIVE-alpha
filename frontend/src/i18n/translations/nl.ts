@@ -67,6 +67,9 @@ export const nl = {
   'master.registration.lvBatteryChemistryHint.label': 'Chemie (alleen AI-hint)',
   'master.registration.lvBatteryChemistryHint.placeholder': 'Wordt niet opgeslagen — gebruik LV-bouwtype',
   'master.registration.lvBatteryChemistryHint.title': 'Materiaalchemie wordt niet opgeslagen; Battery Health gebruikt het LV-bouwtype.',
+  'master.registration.lvBatteryType.legacyLabel': 'Opgeslagen legacy-waarde (kies type om bij te werken)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Kies een ondersteund LV-bouwtype voordat u capaciteit of spanning invult.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Niet-ondersteund LV-bouwtype. Kies AGM, EFB, loodzuur of lithium.',
 
   'master.cv.registryLifecycle.active': 'Actief',
   'master.cv.registryLifecycle.offboarded': 'Uit actief bestand',

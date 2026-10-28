@@ -3,6 +3,8 @@ import {
   deriveElectrificationLevelReadOnly,
   normalizeCanonicalDrivetrain,
   normalizeLvBatteryTypeInput,
+  resolveRegistrationLvBatteryForSubmit,
+  resolveRegistrationLvBatteryFormState,
   stripNonPersistentVehicleSpecFields,
 } from './vehicle-specification-canonical.util';
 
@@ -30,5 +32,26 @@ describe('vehicle-specification-canonical.util', () => {
   it('derives electrification read-only without persisting user guesses', () => {
     expect(deriveElectrificationLevelReadOnly({ fuelType: 'Diesel' })).toBe('NONE');
     expect(deriveElectrificationLevelReadOnly({ fuelType: 'Electric' })).toBe('BEV');
+  });
+
+  it('preserves legacy battery labels until canonical selection', () => {
+    expect(resolveRegistrationLvBatteryFormState('custom legacy')).toEqual({
+      selectValue: '',
+      legacyDisplay: 'custom legacy',
+    });
+    expect(resolveRegistrationLvBatteryFormState('Lead-Acid')).toEqual({
+      selectValue: 'LEAD_ACID',
+      legacyDisplay: null,
+    });
+  });
+
+  it('blocks submit when numbers present without canonical type', () => {
+    expect(
+      resolveRegistrationLvBatteryForSubmit({
+        typeRaw: '',
+        ampereRaw: '70',
+        voltRaw: '12',
+      }).validationError,
+    ).toBe('lvBatteryTypeRequiredForNumbers');
   });
 });

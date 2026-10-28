@@ -66,6 +66,9 @@ export const cs = {
   'master.registration.lvBatteryChemistryHint.label': 'Chemie (pouze nápověda AI)',
   'master.registration.lvBatteryChemistryHint.placeholder': 'Neukládá se — použijte typ LV',
   'master.registration.lvBatteryChemistryHint.title': 'Chemie materiálu se neukládá; Battery Health používá typ konstrukce LV.',
+  'master.registration.lvBatteryType.legacyLabel': 'Uložená legacy hodnota (vyberte typ pro aktualizaci)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Před kapacitou nebo napětím vyberte podporovaný typ LV.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Nepodporovaný typ LV. Zvolte AGM, EFB, olověnou nebo lithiovou.',
 
   'master.cv.registryLifecycle.active': 'Aktivni',
   'master.cv.registryLifecycle.offboarded': 'Vyrazeno z provozu',

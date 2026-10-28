@@ -99,3 +99,49 @@ export function stripNonPersistentVehicleSpecFields<T extends Record<string, unk
   }
   return out;
 }
+
+export function isCanonicalLvBatteryStorageType(
+  value: string,
+): value is CanonicalLvBatteryStorageType {
+  return (CANONICAL_LV_BATTERY_STORAGE_TYPES as readonly string[]).includes(value);
+}
+
+/** Form state: canonical select value, or legacy raw string when unrecognized (not silently replaced). */
+export function resolveRegistrationLvBatteryFormState(raw: string): {
+  selectValue: CanonicalLvBatteryStorageType | '';
+  legacyDisplay: string | null;
+} {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return { selectValue: '', legacyDisplay: null };
+  const canonical = normalizeLvBatteryTypeInput(trimmed);
+  if (canonical) return { selectValue: canonical, legacyDisplay: null };
+  return { selectValue: '', legacyDisplay: trimmed };
+}
+
+export type RegistrationLvBatterySubmitResolution = {
+  canonical: CanonicalLvBatteryStorageType | null;
+  /** Preserved on RegisteredVehicle for read-back when legacy-only (no spec write). */
+  legacyRaw: string | null;
+  validationError: 'lvBatteryTypeRequiredForNumbers' | 'lvBatteryTypeInvalid' | null;
+};
+
+export function resolveRegistrationLvBatteryForSubmit(input: {
+  typeRaw: string;
+  ampereRaw: string;
+  voltRaw: string;
+}): RegistrationLvBatterySubmitResolution {
+  const trimmed = input.typeRaw.trim();
+  const hasNumbers = Boolean(input.ampereRaw.trim() || input.voltRaw.trim());
+  const canonical = normalizeLvBatteryTypeInput(trimmed);
+  if (hasNumbers && !canonical) {
+    return {
+      canonical: null,
+      legacyRaw: trimmed || null,
+      validationError: trimmed ? 'lvBatteryTypeInvalid' : 'lvBatteryTypeRequiredForNumbers',
+    };
+  }
+  if (trimmed && !canonical) {
+    return { canonical: null, legacyRaw: trimmed, validationError: null };
+  }
+  return { canonical, legacyRaw: null, validationError: null };
+}

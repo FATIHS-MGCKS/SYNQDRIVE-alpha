@@ -205,12 +205,14 @@ export function buildVehicleManualSpecs(rv: RegisteredVehicle) {
 
   if (rv.batteryType || rv.batteryAmpere || rv.batteryVolt) {
     const batteryType =
-      normalizeLvBatteryTypeInput(rv.batteryType) ?? (rv.batteryType?.trim() || null);
-    manualSpecs.battery = {
-      batteryType,
-      batteryAmpere: parseOptionalNumber(rv.batteryAmpere),
-      batteryVolt: parseOptionalNumber(rv.batteryVolt),
-    };
+      normalizeLvBatteryTypeInput(rv.batteryType) ?? null;
+    if (batteryType) {
+      manualSpecs.battery = {
+        batteryType,
+        batteryAmpere: parseOptionalNumber(rv.batteryAmpere),
+        batteryVolt: parseOptionalNumber(rv.batteryVolt),
+      };
+    }
   }
 
   if (hasBrakeInput) {

@@ -66,6 +66,9 @@ export const it = {
   'master.registration.lvBatteryChemistryHint.label': 'Chimica (solo suggerimento IA)',
   'master.registration.lvBatteryChemistryHint.placeholder': 'Non salvata — usare il tipo LV',
   'master.registration.lvBatteryChemistryHint.title': 'La chimica del materiale non viene persistita; Battery Health usa il tipo di costruzione LV.',
+  'master.registration.lvBatteryType.legacyLabel': 'Valore legacy salvato (scegli tipo per aggiornare)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Seleziona un tipo LV supportato prima di capacità o tensione.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Tipo LV non supportato. Scegli AGM, EFB, piombo-acido o litio.',
 
   'master.cv.registryLifecycle.active': 'Attivo',
   'master.cv.registryLifecycle.offboarded': 'Fuori dal parco attivo',

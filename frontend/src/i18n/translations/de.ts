@@ -3409,6 +3409,9 @@ export const de: Record<TranslationKey, string> = {
   'master.registration.lvBatteryChemistryHint.label': 'Chemie (nur KI-Hinweis)',
   'master.registration.lvBatteryChemistryHint.placeholder': 'Wird nicht gespeichert — LV-Bauart verwenden',
   'master.registration.lvBatteryChemistryHint.title': 'Materialchemie wird nicht gespeichert; Battery Health nutzt die LV-Bauart.',
+  'master.registration.lvBatteryType.legacyLabel': 'Gespeicherter Legacy-Wert (Typ wählen zum Aktualisieren)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Bitte zuerst eine unterstützte LV-Bauart wählen, bevor Kapazität oder Spannung eingegeben wird.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Nicht unterstützte LV-Bauart. Bitte AGM, EFB, Bleisäure oder Lithium wählen.',
 
   'master.cv.registryLifecycle.active': 'Aktiv',
   'master.cv.registryLifecycle.offboarded': 'Aus dem Bestand',

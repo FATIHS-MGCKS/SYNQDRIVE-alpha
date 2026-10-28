@@ -1,6 +1,8 @@
 import {
+  CANONICAL_LV_BATTERY_STORAGE_TYPES,
   deriveElectrificationLevelReadOnly,
-  normalizeLvBatteryTypeInput,
+  resolveRegistrationLvBatteryFormState,
+  resolveRegistrationLvBatteryForSubmit,
 } from '../connected-vehicles/vehicle-specification-canonical.util';
 import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -117,6 +119,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const [aiSteps, setAiSteps] = useState<AgentStep[]>([]);
   const [aiLiveStep, setAiLiveStep] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [batteryValidationError, setBatteryValidationError] = useState<string | null>(null);
 
   // Assignment
   const [organizationId, setOrganizationId] = useState('');
@@ -1076,7 +1079,13 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
   const orgName = organizations.find(o => o.id === organizationId)?.company_name || '';
 
-  const buildVehicle = (): RegisteredVehicle => ({
+  const buildVehicle = (): RegisteredVehicle => {
+    const lvBattery = resolveRegistrationLvBatteryForSubmit({
+      typeRaw: batteryType,
+      ampereRaw: batteryAmpere,
+      voltRaw: batteryVolt,
+    });
+    return {
     id: isEditMode ? existingVehicle.id : generateId('rv'),
     vehicleName: `${vehicleIdentity.make} ${vehicleIdentity.model}`,
     vin: vehicleIdentity.vin,
@@ -1095,7 +1104,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       deriveElectrificationLevelReadOnly({ fuelType }) ??
       (electrificationLevel.trim() || undefined),
     mileage: vehicleIdentity.odometer, licensePlate, vehicleType, operationalStatus, notes,
-    batteryType: normalizeLvBatteryTypeInput(batteryType) ?? batteryType.trim(),
+    batteryType: lvBattery.canonical ?? lvBattery.legacyRaw ?? '',
     batteryAmpere, batteryVolt,
     lvBatteryChemistry: undefined,
     hvBatteryCapacityKwh, hvBatteryPresent, hvBatteryChemistry, hvBatteryCellFormat,
@@ -1127,10 +1136,21 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       Object.keys(aiFieldProvenanceRef.current).length > 0
         ? aiFieldProvenanceRef.current
         : undefined,
-  });
+    };
+  };
 
   const handleSubmit = async () => {
     if (!organizationId || submitting) return;
+    setBatteryValidationError(null);
+    const lvBattery = resolveRegistrationLvBatteryForSubmit({
+      typeRaw: batteryType,
+      ampereRaw: batteryAmpere,
+      voltRaw: batteryVolt,
+    });
+    if (lvBattery.validationError) {
+      setBatteryValidationError(t(`master.registration.lvBatteryType.${lvBattery.validationError}`));
+      return;
+    }
     setSubmitting(true);
     setMotionPhysicsSaveInfo('');
     const rv = buildVehicle();
@@ -1177,6 +1197,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
   const toggleHmSignal = (id: string) => setHmSignals(prev => ({ ...prev, [id]: !prev[id] }));
   const toggleAllHmSignals = (on: boolean) => setHmSignals(Object.fromEntries(HIGH_MOBILITY_SIGNALS.map(s => [s.id, on])));
+  const lvBatteryForm = resolveRegistrationLvBatteryFormState(batteryType);
 
   return (
     <div
@@ -1657,18 +1678,29 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       {t('master.registration.lvBatteryConstructionType.label')} {aiTag}
                     </label>
                     <select
-                      value={batteryType}
-                      onChange={(e) => setBatteryType(e.target.value)}
+                      value={lvBatteryForm.selectValue}
+                      onChange={(e) => {
+                        setBatteryValidationError(null);
+                        setBatteryType(e.target.value);
+                      }}
                       className={inputClass}
                     >
                       <option value="">—</option>
-                      <option value="AGM">AGM</option>
-                      <option value="EFB">EFB</option>
-                      <option value="LEAD_ACID">
-                        {t('master.registration.lvBatteryConstructionType.leadAcid')}
-                      </option>
-                      <option value="LITHIUM">Lithium</option>
+                      {CANONICAL_LV_BATTERY_STORAGE_TYPES.map((token) => (
+                        <option key={token} value={token}>
+                          {token === 'LEAD_ACID'
+                            ? t('master.registration.lvBatteryConstructionType.leadAcid')
+                            : token === 'LITHIUM'
+                              ? 'Lithium'
+                              : token}
+                        </option>
+                      ))}
                     </select>
+                    {lvBatteryForm.legacyDisplay ? (
+                      <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                        {t('master.registration.lvBatteryType.legacyLabel')}: {lvBatteryForm.legacyDisplay}
+                      </p>
+                    ) : null}
                   </div>
                   <div>
                     <label className={labelClass}>
@@ -1683,9 +1715,12 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                       readOnly
                     />
                   </div>
-                  <div><label className={labelClass}>Capacity (Ah) {aiTag}</label><input value={batteryAmpere} onChange={e => setBatteryAmpere(e.target.value)} className={inputClass} placeholder="e.g. 70" /></div>
-                  <div><label className={labelClass}>Voltage (V) {aiTag}</label><input value={batteryVolt} onChange={e => setBatteryVolt(e.target.value)} className={inputClass} placeholder="e.g. 12" /></div>
+                  <div><label className={labelClass}>Capacity (Ah) {aiTag}</label><input value={batteryAmpere} onChange={e => { setBatteryValidationError(null); setBatteryAmpere(e.target.value); }} className={inputClass} placeholder="e.g. 70" /></div>
+                  <div><label className={labelClass}>Voltage (V) {aiTag}</label><input value={batteryVolt} onChange={e => { setBatteryValidationError(null); setBatteryVolt(e.target.value); }} className={inputClass} placeholder="e.g. 12" /></div>
                 </div>
+                {batteryValidationError ? (
+                  <p className="text-xs text-destructive mt-2" role="alert">{batteryValidationError}</p>
+                ) : null}
               </div>
 
               {/* HV Battery subsection */}
