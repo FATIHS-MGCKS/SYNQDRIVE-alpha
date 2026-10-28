@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatFrontRearWeightDistribution,
   parseFrontWeightDistributionPct,
+  parseBrakeForceFrontPercent,
 } from './vehicle-technical-spec.util';
 import { buildMasterVehiclePhysicsSpecPatch } from './master-vehicle-registration';
 import type { RegisteredVehicle } from '../data/platform-data';
@@ -46,5 +47,37 @@ describe('vehicle technical spec persistence patch', () => {
   it('formats display strings', () => {
     expect(formatFrontRearWeightDistribution(58)).toBe('58/42');
     expect(parseFrontWeightDistributionPct('60/40')).toBe(60);
+    expect(parseBrakeForceFrontPercent('58/42')).toBeNull();
+    expect(parseBrakeForceFrontPercent('62')).toBe(62);
+  });
+
+  it('builds idle/max/brake patch with confirmation', () => {
+    const baseline = { ...baseRv(), idleRpm: '', maxRpm: '', brakeForceDistribution: '' };
+    const current = {
+      ...baseline,
+      idleRpm: '750',
+      maxRpm: '6500',
+      brakeForceDistribution: '62',
+    };
+    const patch = buildMasterVehiclePhysicsSpecPatch(current, baseline);
+    expect(patch.idleRpm).toBe(750);
+    expect(patch.maxRpm).toBe(6500);
+    expect(patch.brakeForceFrontPercent).toBe(62);
+    expect(patch.technicalSpecificationSave).toEqual({
+      confirmedFieldKeys: ['idleRpm', 'maxRpm', 'brakeForceDistribution'],
+    });
+  });
+
+  it('does not patch unchanged idle/max/brake fields', () => {
+    const rv = {
+      ...baseRv(),
+      idleRpm: '750',
+      maxRpm: '6500',
+      brakeForceDistribution: '62% front',
+    };
+    const patch = buildMasterVehiclePhysicsSpecPatch(rv, rv);
+    expect(patch.idleRpm).toBeUndefined();
+    expect(patch.maxRpm).toBeUndefined();
+    expect(patch.brakeForceFrontPercent).toBeUndefined();
   });
 });

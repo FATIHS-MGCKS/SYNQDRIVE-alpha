@@ -1,5 +1,5 @@
 import type { TranslationKey } from '../../i18n/translations/en';
-import { formatFrontRearWeightDistribution } from './vehicle-technical-spec.util';
+import { formatFrontRearWeightDistribution, parseBrakeForceFrontPercent } from './vehicle-technical-spec.util';
 
 export type MotionPhysicsEvidenceTierUi = 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED' | null;
 
@@ -12,6 +12,9 @@ export type ConnectedVehicleTechnicalSpecsView = {
   engineDisplacementCc: number | null;
   cylinderCount: number | null;
   frontToRearWeightDistribution: string;
+  idleRpm: number | null;
+  maxRpm: number | null;
+  brakeForceFrontPercent: number | null;
   systemMotorPowerKw: number | null;
   accel0To100S: number | null;
   variantAssumption: string | null;
@@ -41,6 +44,10 @@ export function buildTechnicalSpecsView(input: {
   cylinderCount?: string | number | null;
   frontToRearWeightDistribution?: string | null;
   frontWeightDistributionPct?: number | null;
+  idleRpm?: string | number | null;
+  maxRpm?: string | number | null;
+  brakeForceFrontPercent?: number | null;
+  brakeForceDistribution?: string | null;
   systemMotorPowerKw?: string | number | null;
   accel0To100S?: string | number | null;
   variantAssumption?: string | null;
@@ -75,6 +82,13 @@ export function buildTechnicalSpecsView(input: {
       input.frontToRearWeightDistribution?.trim() ||
       formatFrontRearWeightDistribution(input.frontWeightDistributionPct ?? null) ||
       '—',
+    idleRpm: parseNum(input.idleRpm),
+    maxRpm: parseNum(input.maxRpm),
+    brakeForceFrontPercent:
+      input.brakeForceFrontPercent ??
+      (input.brakeForceDistribution
+        ? parseBrakeForceFrontPercent(input.brakeForceDistribution)
+        : null),
     systemMotorPowerKw: ref?.systemMotorPowerKw ?? powerFromVehicle,
     accel0To100S: ref?.accel0To100S ?? accelFromVehicle,
     variantAssumption: ref?.variantAssumption?.trim() || variantFromVehicle,

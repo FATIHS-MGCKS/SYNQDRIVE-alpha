@@ -8,15 +8,21 @@ import type { RegistrationIdentityProvenanceDocument } from '@modules/vehicle-on
 import { isProtectedProvenanceEntry } from '@modules/vehicle-onboarding/vehicle-identity-review/vehicle-identity-provenance.util';
 import {
   formatFrontRearWeightDistribution,
+  parseBrakeForceFrontPercent,
   parseFrontWeightDistributionPct,
   parsePositiveIntegerField,
+  parseVehicleRpmField,
   valuesEqualScalar,
+  vehicleRpmPairIsConsistent,
 } from './vehicle-technical-spec.util';
 
 export type VehicleTechnicalSpecFieldKey =
   | 'engineDisplacementCc'
   | 'cylinderCount'
-  | 'frontWeightDistributionPct';
+  | 'frontWeightDistributionPct'
+  | 'idleRpm'
+  | 'maxRpm'
+  | 'brakeForceFrontPercent';
 
 export type VehicleTechnicalSpecificationSaveMeta = {
   confirmedFieldKeys?: string[];
@@ -27,6 +33,10 @@ export type VehicleTechnicalSpecificationPatchInput = {
   cylinderCount?: number | string | null;
   frontWeightDistributionPct?: number | string | null;
   frontToRearWeightDistribution?: string | null;
+  idleRpm?: number | string | null;
+  maxRpm?: number | string | null;
+  brakeForceFrontPercent?: number | string | null;
+  brakeForceDistribution?: string | number | null;
   technicalSpecificationSave?: VehicleTechnicalSpecificationSaveMeta;
 };
 
@@ -34,10 +44,19 @@ export type VehicleTechnicalSpecificationVehicleRow = {
   engineDisplacementCc: number | null;
   cylinderCount: number | null;
   frontWeightDistributionPct: number | null;
+  idleRpm: number | null;
+  maxRpm: number | null;
+  brakeForceFrontPercent: number | null;
   registrationIdentityProvenance: unknown;
 };
 
 const AI_PROVENANCE_CATEGORIES = new Set(['AI_ESTIMATED', 'KNOWLEDGE_ONLY']);
+
+function normalizeConfirmedFieldKey(key: string): VehicleTechnicalSpecFieldKey | string {
+  if (key === 'frontToRearWeightDistribution') return 'frontWeightDistributionPct';
+  if (key === 'brakeForceDistribution') return 'brakeForceFrontPercent';
+  return key;
+}
 
 function provenanceEntryForKey(
   doc: RegistrationIdentityProvenanceDocument | null,
@@ -85,7 +104,7 @@ export function buildVehicleTechnicalSpecificationPrismaPatch(
 ): Prisma.VehicleUpdateInput {
   const confirmed = new Set(
     (input.technicalSpecificationSave?.confirmedFieldKeys ?? []).map((k) =>
-      k === 'frontToRearWeightDistribution' ? 'frontWeightDistributionPct' : k,
+      normalizeConfirmedFieldKey(k),
     ),
   );
 
@@ -100,7 +119,10 @@ export function buildVehicleTechnicalSpecificationPrismaPatch(
     current: number | null,
     provenanceStorageKey: VehicleTechnicalSpecFieldKey | 'displacementCc',
   ) => {
-    if (valuesEqualScalar(next, current)) return;
+    const currentNorm =
+      key === 'brakeForceFrontPercent' && current != null ? Math.round(current) : current;
+    const nextNorm = key === 'brakeForceFrontPercent' && next != null ? Math.round(next) : next;
+    if (valuesEqualScalar(nextNorm, currentNorm)) return;
 
     if (isProtectedTechnicalField(provenanceDoc, provenanceStorageKey)) {
       const locked = protectedValue(provenanceDoc, provenanceStorageKey);
@@ -125,8 +147,14 @@ export function buildVehicleTechnicalSpecificationPrismaPatch(
       patch.engineDisplacementCc = next;
     } else if (key === 'cylinderCount') {
       patch.cylinderCount = next;
-    } else {
+    } else if (key === 'frontWeightDistributionPct') {
       patch.frontWeightDistributionPct = next;
+    } else if (key === 'idleRpm') {
+      patch.idleRpm = next;
+    } else if (key === 'maxRpm') {
+      patch.maxRpm = next;
+    } else {
+      patch.brakeForceFrontPercent = next;
     }
 
     provenanceUpdates.fields[provenanceStorageKey as keyof typeof provenanceUpdates.fields] = {
@@ -142,7 +170,11 @@ export function buildVehicleTechnicalSpecificationPrismaPatch(
     input.engineDisplacementCc !== undefined ||
     input.cylinderCount !== undefined ||
     input.frontWeightDistributionPct !== undefined ||
-    input.frontToRearWeightDistribution !== undefined
+    input.frontToRearWeightDistribution !== undefined ||
+    input.idleRpm !== undefined ||
+    input.maxRpm !== undefined ||
+    input.brakeForceFrontPercent !== undefined ||
+    input.brakeForceDistribution !== undefined
   ) {
     let nextDisplacement: number | null | undefined;
     if (input.engineDisplacementCc !== undefined) {
@@ -208,6 +240,77 @@ export function buildVehicleTechnicalSpecificationPrismaPatch(
         'frontWeightDistributionPct',
       );
     }
+
+    let nextIdle: number | null | undefined;
+    if (input.idleRpm !== undefined) {
+      if (input.idleRpm === null || input.idleRpm === '') {
+        nextIdle = null;
+      } else {
+        const parsed = parseVehicleRpmField(input.idleRpm);
+        if (parsed == null) {
+          throw new BadRequestException({
+            message: 'idleRpm must be a positive integer.',
+            code: 'VEHICLE_TECH_SPEC_INVALID_IDLE_RPM',
+          });
+        }
+        nextIdle = parsed;
+      }
+      considerField('idleRpm', nextIdle ?? null, vehicle.idleRpm, 'idleRpm');
+    }
+
+    let nextMax: number | null | undefined;
+    if (input.maxRpm !== undefined) {
+      if (input.maxRpm === null || input.maxRpm === '') {
+        nextMax = null;
+      } else {
+        const parsed = parseVehicleRpmField(input.maxRpm);
+        if (parsed == null) {
+          throw new BadRequestException({
+            message: 'maxRpm must be a positive integer.',
+            code: 'VEHICLE_TECH_SPEC_INVALID_MAX_RPM',
+          });
+        }
+        nextMax = parsed;
+      }
+      considerField('maxRpm', nextMax ?? null, vehicle.maxRpm, 'maxRpm');
+    }
+
+    const effectiveIdle =
+      nextIdle !== undefined ? (nextIdle ?? null) : vehicle.idleRpm;
+    const effectiveMax = nextMax !== undefined ? (nextMax ?? null) : vehicle.maxRpm;
+    if (!vehicleRpmPairIsConsistent(effectiveIdle, effectiveMax)) {
+      throw new BadRequestException({
+        message: 'maxRpm must be greater than idleRpm when both are set.',
+        code: 'VEHICLE_TECH_SPEC_RPM_ORDER',
+      });
+    }
+
+    const brakeInput =
+      input.brakeForceFrontPercent !== undefined
+        ? input.brakeForceFrontPercent
+        : input.brakeForceDistribution;
+    if (brakeInput !== undefined) {
+      let nextBrake: number | null;
+      if (brakeInput === null || brakeInput === '') {
+        nextBrake = null;
+      } else {
+        const parsed = parseBrakeForceFrontPercent(brakeInput);
+        if (parsed == null) {
+          throw new BadRequestException({
+            message:
+              'brakeForceFrontPercent must be a front brake force percent (not F/R weight distribution).',
+            code: 'VEHICLE_TECH_SPEC_INVALID_BRAKE_FORCE',
+          });
+        }
+        nextBrake = parsed;
+      }
+      considerField(
+        'brakeForceFrontPercent',
+        nextBrake,
+        vehicle.brakeForceFrontPercent,
+        'brakeForceFrontPercent',
+      );
+    }
   }
 
   if (Object.keys(provenanceUpdates.fields).length > 0) {
@@ -245,6 +348,10 @@ export function extractTechnicalSpecificationPatchInput(
     'cylinderCount',
     'frontWeightDistributionPct',
     'frontToRearWeightDistribution',
+    'idleRpm',
+    'maxRpm',
+    'brakeForceFrontPercent',
+    'brakeForceDistribution',
     'technicalSpecificationSave',
   ];
   const hasAny = keys.some((k) => body[k] !== undefined);
@@ -254,6 +361,10 @@ export function extractTechnicalSpecificationPatchInput(
     cylinderCount: body.cylinderCount as number | string | null | undefined,
     frontWeightDistributionPct: body.frontWeightDistributionPct as number | string | null | undefined,
     frontToRearWeightDistribution: body.frontToRearWeightDistribution as string | null | undefined,
+    idleRpm: body.idleRpm as number | string | null | undefined,
+    maxRpm: body.maxRpm as number | string | null | undefined,
+    brakeForceFrontPercent: body.brakeForceFrontPercent as number | string | null | undefined,
+    brakeForceDistribution: body.brakeForceDistribution as string | number | null | undefined,
     technicalSpecificationSave: body.technicalSpecificationSave as
       | VehicleTechnicalSpecificationSaveMeta
       | undefined,
@@ -269,6 +380,10 @@ export function stripTechnicalSpecificationKeysFromUpdateBody(
     'cylinderCount',
     'frontWeightDistributionPct',
     'frontToRearWeightDistribution',
+    'idleRpm',
+    'maxRpm',
+    'brakeForceFrontPercent',
+    'brakeForceDistribution',
     'technicalSpecificationSave',
     'aiFieldProvenance',
   ]) {
@@ -285,7 +400,7 @@ export function technicalSpecSaveRequiresOptimisticConcurrency(
 ): boolean {
   const confirmed = new Set(
     (input.technicalSpecificationSave?.confirmedFieldKeys ?? []).map((k) =>
-      k === 'frontToRearWeightDistribution' ? 'frontWeightDistributionPct' : k,
+      normalizeConfirmedFieldKey(k),
     ),
   );
   if (confirmed.size === 0) return false;
@@ -333,6 +448,49 @@ export function technicalSpecSaveRequiresOptimisticConcurrency(
     }
   }
 
+  if (input.idleRpm !== undefined && confirmed.has('idleRpm')) {
+    if (isProtectedTechnicalField(provenanceDoc, 'idleRpm')) {
+      const locked = protectedValue(provenanceDoc, 'idleRpm');
+      let next: number | null;
+      if (input.idleRpm === null || input.idleRpm === '') {
+        next = null;
+      } else {
+        next = parseVehicleRpmField(input.idleRpm);
+      }
+      if (locked != null && next != null && !valuesEqualScalar(next, locked)) return true;
+    }
+  }
+
+  if (input.maxRpm !== undefined && confirmed.has('maxRpm')) {
+    if (isProtectedTechnicalField(provenanceDoc, 'maxRpm')) {
+      const locked = protectedValue(provenanceDoc, 'maxRpm');
+      let next: number | null;
+      if (input.maxRpm === null || input.maxRpm === '') {
+        next = null;
+      } else {
+        next = parseVehicleRpmField(input.maxRpm);
+      }
+      if (locked != null && next != null && !valuesEqualScalar(next, locked)) return true;
+    }
+  }
+
+  const brakeInput =
+    input.brakeForceFrontPercent !== undefined
+      ? input.brakeForceFrontPercent
+      : input.brakeForceDistribution;
+  if (brakeInput !== undefined && confirmed.has('brakeForceFrontPercent')) {
+    if (isProtectedTechnicalField(provenanceDoc, 'brakeForceFrontPercent')) {
+      const locked = protectedValue(provenanceDoc, 'brakeForceFrontPercent');
+      let next: number | null;
+      if (brakeInput === null || brakeInput === '') {
+        next = null;
+      } else {
+        next = parseBrakeForceFrontPercent(brakeInput);
+      }
+      if (locked != null && next != null && !valuesEqualScalar(next, locked)) return true;
+    }
+  }
+
   return false;
 }
 
@@ -342,17 +500,36 @@ export function assertAiTechnicalFieldsConfirmed(
   aiFieldProvenance: Record<string, { category?: string }> | null | undefined,
 ): void {
   if (!aiFieldProvenance) return;
-  const confirmed = new Set(input.technicalSpecificationSave?.confirmedFieldKeys ?? []);
-  const aiKeys: Array<{ formKey: string; patchKey: string }> = [
-    { formKey: 'engineDisplacementCc', patchKey: 'engineDisplacementCc' },
-    { formKey: 'cylinderCount', patchKey: 'cylinderCount' },
-    { formKey: 'frontToRearWeightDistribution', patchKey: 'frontToRearWeightDistribution' },
+  const confirmed = new Set(
+    (input.technicalSpecificationSave?.confirmedFieldKeys ?? []).map((k) =>
+      normalizeConfirmedFieldKey(k),
+    ),
+  );
+  const aiKeys: Array<{ formKey: string; patchKeys: string[] }> = [
+    { formKey: 'engineDisplacementCc', patchKeys: ['engineDisplacementCc'] },
+    { formKey: 'cylinderCount', patchKeys: ['cylinderCount'] },
+    {
+      formKey: 'frontToRearWeightDistribution',
+      patchKeys: ['frontToRearWeightDistribution', 'frontWeightDistributionPct'],
+    },
+    { formKey: 'idleRpm', patchKeys: ['idleRpm'] },
+    { formKey: 'maxRpm', patchKeys: ['maxRpm'] },
+    {
+      formKey: 'brakeForceDistribution',
+      patchKeys: ['brakeForceDistribution', 'brakeForceFrontPercent'],
+    },
   ];
-  for (const { formKey, patchKey } of aiKeys) {
+  for (const { formKey, patchKeys } of aiKeys) {
     const meta = aiFieldProvenance[formKey];
     if (!meta?.category || !AI_PROVENANCE_CATEGORIES.has(meta.category)) continue;
-    if (input[patchKey as keyof VehicleTechnicalSpecificationPatchInput] === undefined) continue;
-    if (!confirmed.has(formKey) && !confirmed.has(patchKey)) {
+    const patchTouched = patchKeys.some(
+      (patchKey) => input[patchKey as keyof VehicleTechnicalSpecificationPatchInput] !== undefined,
+    );
+    if (!patchTouched) continue;
+    if (
+      !confirmed.has(formKey) &&
+      !patchKeys.some((patchKey) => confirmed.has(normalizeConfirmedFieldKey(patchKey)))
+    ) {
       throw new BadRequestException({
         message: `AI-suggested field ${formKey} requires explicit confirmation before persistence.`,
         code: 'VEHICLE_TECH_SPEC_AI_CONFIRMATION_REQUIRED',

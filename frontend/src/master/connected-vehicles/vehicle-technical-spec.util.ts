@@ -37,3 +37,27 @@ export function parsePositiveIntegerField(input: string | number | null | undefi
   if (!Number.isInteger(n) || n <= 0) return null;
   return n;
 }
+
+export function parseVehicleRpmField(input: string | number | null | undefined): number | null {
+  const n = parsePositiveIntegerField(input);
+  if (n == null || n > 20_000) return null;
+  return n;
+}
+
+/** Front brake force percent — not weight distribution (rejects "58/42"). */
+export function parseBrakeForceFrontPercent(
+  input: string | number | null | undefined,
+): number | null {
+  if (input == null || input === '') return null;
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input) || input <= 0 || input >= 100) return null;
+    return Math.round(input);
+  }
+  const raw = String(input).trim();
+  if (!raw || /\//.test(raw)) return null;
+  const pctMatch = raw.match(/(\d+(?:\.\d+)?)/);
+  if (!pctMatch) return null;
+  const n = Number(pctMatch[1]);
+  if (!Number.isFinite(n) || n <= 0 || n >= 100) return null;
+  return Math.round(n);
+}
