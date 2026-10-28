@@ -5,6 +5,7 @@ import {
   isPureElectricFuelLabel,
   motionPhysicsEvidenceTierLabelKey,
   normalizeDriveType,
+  resolveMotionReferenceFieldProvenance,
   specValueState,
 } from './connected-vehicle-technical-specs.util';
 
@@ -103,5 +104,26 @@ describe('connected-vehicle-technical-specs.util', () => {
   it('maps evidence tier to i18n keys', () => {
     expect(motionPhysicsEvidenceTierLabelKey('ESTIMATED')).toBe('master.motionPhysics.evidence.estimated');
     expect(motionPhysicsEvidenceTierLabelKey(null)).toBe('master.cv.technicalSpecs.noReference');
+  });
+
+  it('maps CONFIRMED motion tier to user-confirmed power provenance, not AI', () => {
+    const view = buildTechnicalSpecsView({
+      fuelType: 'Electric',
+      systemMotorPowerKw: '210',
+      motionEvidenceTier: 'CONFIRMED',
+    });
+    expect(view.fieldProvenance.systemMotorPowerKw).toBe('USER_CONFIRMED');
+    expect(resolveMotionReferenceFieldProvenance(null, 'ESTIMATED')).toBe('AI_SUGGESTED');
+    expect(resolveMotionReferenceFieldProvenance(null, 'CONFIRMED')).toBe('USER_CONFIRMED');
+    expect(resolveMotionReferenceFieldProvenance(null, null)).toBeNull();
+  });
+
+  it('does not attach provenance to fields without stored identity or motion tier', () => {
+    const view = buildTechnicalSpecsView({
+      fuelType: 'Gasoline',
+      idleRpm: '750',
+    });
+    expect(view.fieldProvenance.idleRpm).toBeNull();
+    expect(view.fieldProvenance.systemMotorPowerKw).toBeUndefined();
   });
 });

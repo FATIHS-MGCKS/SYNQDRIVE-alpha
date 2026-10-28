@@ -125,8 +125,22 @@ type ProvenanceDoc = {
   >;
 };
 
+type ProvenanceFieldEntry = NonNullable<ProvenanceDoc['fields']>[string];
+
+export function resolveMotionReferenceFieldProvenance(
+  identityDoc: unknown,
+  tier: MotionPhysicsEvidenceTierUi,
+  storageKeys: string[] = ['systemMotorPowerKw'],
+): SpecProvenanceUi {
+  const fromDoc = resolveStorageProvenance(identityDoc, storageKeys);
+  if (fromDoc) return fromDoc;
+  if (tier === 'VERIFIED' || tier === 'CONFIRMED') return 'USER_CONFIRMED';
+  if (tier === 'ESTIMATED') return 'AI_SUGGESTED';
+  return null;
+}
+
 export function mapProvenanceEntryToUi(
-  entry: ProvenanceDoc['fields'][string] | undefined,
+  entry: ProvenanceFieldEntry | undefined,
 ): SpecProvenanceUi {
   if (!entry) return null;
   if (entry.confirmationStatus === 'USER_CONFIRMED' || entry.confirmationStatus === 'PROTECTED') {
@@ -296,11 +310,16 @@ export function buildTechnicalSpecsView(input: {
 
   if (input.hvMasterSpecificationProvenance?.trim()) {
     fieldProvenance.hvBatteryGrossCapacityKwh = 'REFERENCE';
+    fieldProvenance.hvBatteryUsableCapacityKwh =
+      fieldProvenance.hvBatteryUsableCapacityKwh ?? 'REFERENCE';
+    fieldProvenance.hvBatteryChemistry = fieldProvenance.hvBatteryChemistry ?? 'REFERENCE';
   }
-  if (input.motionEvidenceTier === 'VERIFIED' || input.motionEvidenceTier === 'CONFIRMED') {
-    fieldProvenance.systemMotorPowerKw = 'REFERENCE';
-  } else if (input.motionEvidenceTier === 'ESTIMATED') {
-    fieldProvenance.systemMotorPowerKw = 'AI_SUGGESTED';
+  const motionPowerProv = resolveMotionReferenceFieldProvenance(
+    doc,
+    input.motionEvidenceTier ?? null,
+  );
+  if (motionPowerProv) {
+    fieldProvenance.systemMotorPowerKw = motionPowerProv;
   }
 
   return {
