@@ -607,6 +607,20 @@ nodes:
     verified_ref: c169ddfab5a180ba93d0dbd09eaf7bd02c59be7d
     verified_at: "2026-10-24T17:23:00Z"
 
+  - id: TIRE-EVID-PROD-V3-GLOBAL-CUTOVER-2026-10-28-001
+    type: evidence
+    title: Production global Tire Wear V3 authoritative activation (2026-10-28)
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      Binary 6ec3844c3293e8b4a5863fe75562fd82f8f3a839; shared env both customer V3 flags true; rolling PM2
+      update-env; service-level validation PASS 4/4 P3 vehicles (wearReadModel=v3); 0 new V2 snapshots and 0
+      V3 prior shadow rows since activation; authenticated HTTP smokes not verified.
+    source_paths:
+      - architecture/tires/evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md
+    verified_ref: 6ec3844c3293e8b4a5863fe75562fd82f8f3a839
+    verified_at: "2026-10-28T20:24:39Z"
+
   - id: TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
     type: evidence
     title: Production read-only — DS4 motion-core shadow runs and event quality distribution (2026-10-24)

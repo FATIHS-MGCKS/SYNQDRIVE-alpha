@@ -209,3 +209,16 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Failed or missing V3 compute never presents legacy V2 as authoritative wear; rental stays measurement-required without new HARD_BLOCK |
 | VALIDATION | Jest: `tire-health-v3-read*.spec`, `tires.service.v3-fail-closed.spec`, existing `tire-health-recalculate-v3-cutover.spec` |
 | NON_EFFECTS | Flags default OFF; no migration; no DS4/RPM changes; `persistShadow: false` unchanged; β=0 unchanged |
+
+### Tire V3 — global production activation (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Production customer tire read authority **V2**; both `TIRE_WEAR_V3_CUSTOMER_READ_*` unset/false on VPS |
+| WHY | Owner explicit GO for global authoritative V3 on binary `6ec3844c3` (#2222 fail-closed) despite missing authenticated HTTP baseline |
+| CHANGE | Shared `/opt/synqdrive/shared/backend.env`: `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true` + `TIRE_WEAR_V3_CUSTOMER_READ_AUTHORITATIVE=true`; rolling PM2 `--update-env` both replicas; env backup `backend.env.bak-tire-v3-cutover-20261028202439` |
+| EXPECTED_EFFECT | All customer tire summary/detail/wear-analysis paths present `wearReadModel=v3` + `wearV3`; V2 snapshot writes suppressed on recalculate; rental fail-closed on insufficient evidence |
+| VALIDATION | T-0: CI gate PASS, V2 service baseline PASS (9246 snapshots); post: service-level V3 PASS 4/4 P3 vehicles; 0 new snapshots / 0 prior-shadow rows since activation timestamp; scheduler 1 LEADER |
+| OBSERVED_EFFECT | **PRODUCTION_VALIDATED** — see [`evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md`](../evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md) |
+| NON_EFFECTS | No binary redeploy; no migration; shadow write env off; authenticated HTTP smokes not run; historical V2 snapshots preserved |
+| REMAINING_GAPS | Org-scoped Clerk JWT GET smokes; long-window LEADER recalc snapshot suppression monitoring |

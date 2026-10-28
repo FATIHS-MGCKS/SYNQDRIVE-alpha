@@ -12,6 +12,7 @@ Graph nodes `TIRE-EVID-*` (evidence) and `TIRE-TEST-*` (test evidence). Each ent
 | TIRE-EVID-CODE-DS4-CONTROL-PLANE-001 | CURRENT_CODE | `motion-core-shadow-worker/di-v0-motion-core-shadow-control-plane.ts`, `di-v0-motion-core-shadow.bundle.version.ts` | `1c1e3bfa4` | CONFIRMED |
 | TIRE-EVID-PROD-BASELINE-2026-10-24-001 | PRODUCTION_OBSERVATION | [`PRODUCTION_BASELINE.md`](PRODUCTION_BASELINE.md) §Tire module tables | `c169ddfab`, 2026-10-24T17:21–17:23Z | CONFIRMED |
 | TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001 | PRODUCTION_OBSERVATION | [`PRODUCTION_BASELINE.md`](PRODUCTION_BASELINE.md) §DS4 motion-core shadow | `c169ddfab`, 2026-10-24T17:22Z | CONFIRMED |
+| TIRE-EVID-PROD-V3-GLOBAL-CUTOVER-2026-10-28-001 | PRODUCTION_OBSERVATION | [`TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md`](TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md) | `6ec3844c3`, 2026-10-28T20:24Z activation | CONFIRMED |
 | TIRE-EVID-DS4-FABLE-REVIEW-2026-10-24-001 | AUDIT_DOCUMENT | `research/driving-intelligence/evaluations/ds4-accel-brake-fable-review-20261024/REPORT.md`, `P2_UNIVERSAL_PLAUSIBILITY.md`; PR #2153 / #2154 | `1c1e3bfa4` | CONFIRMED |
 | TIRE-EVID-AUDIT-READINESS-2026-07-001 | AUDIT_DOCUMENT | `docs/audits/tire-health-production-readiness-2026-07.md`, `docs/audits/tire-health-post-remediation-readiness-2026-07.md` | historical | HISTORICAL |
 | TIRE-TEST-REGRESSION-MATRIX-001 | CURRENT_TEST | `backend/src/modules/vehicle-intelligence/tires/tire-health-regression-matrix.spec.ts` | present at `1c1e3bfa4`; not executed in this docs-only PR | CONFIRMED (existence) |

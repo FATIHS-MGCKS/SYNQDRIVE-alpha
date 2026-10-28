@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tire-v3-global-production-cutover-2026-10-28',
+    version: '4.9.5011',
+    title: 'Tire Wear V3 — global authoritative customer read (production)',
+    summary: [
+      'Production shared env: TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true and AUTHORITATIVE=true on SHA 6ec3844c3 (#2222 fail-closed); rolling PM2 --update-env both replicas; no binary redeploy.',
+      'Service-level validation PASS for P3 cohort (Tesla, Tiguan, A4, Arteon): wearReadModel=v3, wearV3 present, no fabricated point mm, rental measurement-required / unknown — not legacy GOOD clearance.',
+      'Persistence: 0 new tire_health_snapshots and 0 tire_wear_v3_prior_shadow_v1 rows since activation; authenticated org HTTP GET smokes remain NOT VERIFIED.',
+    ],
+    reason:
+      'Owner-authorized global V2→V3 customer wear authority after deploy of authoritative fail-closed hotfix; shadow phase and vehicle allowlist explicitly excluded.',
+    previousBehavior:
+      'Production customer tire APIs used V2 wear presentation (flags unset); V3 attach required both cutover flags on deployed binary.',
+    details:
+      'architecture/tires/evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md; integration/TIRE_WEAR_V3_CUTOVER_PRODUCTION.md §H; backend/scripts/ops/tire-cutover-service-validation.readonly.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-28T20:24:00.000Z',
+  },
+  {
     id: 'master-intelligence-center-pr1-2026-10-28',
     version: '4.9.5010',
     title: 'Master Admin Intelligence Center — PR1 navigation & UI foundation (Draft)',
