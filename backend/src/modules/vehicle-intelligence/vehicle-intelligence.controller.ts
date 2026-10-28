@@ -131,6 +131,7 @@ import { DiV0TripSpeedQualityProductReadService } from './driving-intelligence/t
 import { isDiV0TripSpeedQualityV2ProductReadEnabled } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.config';
 import { DiV0MotionCoreShadowTripMapReadService } from './driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-trip-map-read.service';
 import { DiV0M7aRoadAssignmentShadowReadService } from './driving-intelligence/m7a-road-assignment-shadow-worker/di-v0-m7a-road-assignment-shadow-read.service';
+import { Ds4AssessmentReadServiceV1 } from './driving-intelligence/ds4-assessment/ds4-assessment-read.service.v1';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, VehicleIntelligencePermissionGuard)
@@ -190,6 +191,7 @@ export class VehicleIntelligenceController {
     private readonly tripSpeedQualityProductRead: DiV0TripSpeedQualityProductReadService,
     private readonly motionCoreShadowTripMapRead: DiV0MotionCoreShadowTripMapReadService,
     private readonly m7aRoadAssignmentShadowRead: DiV0M7aRoadAssignmentShadowReadService,
+    private readonly ds4AssessmentRead: Ds4AssessmentReadServiceV1,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1526,6 +1528,25 @@ export class VehicleIntelligenceController {
     return this.motionCoreShadowTripMapRead.readForTrip(organizationId, vehicleId, tripId, {
       includeRepairAdminDetail,
     });
+  }
+
+  /** Internal DS4 Assessment L2 + Impact V2 read (PR-A). Not wired to rental/customer scoring surfaces. */
+  @Get('trips/:tripId/ds4-assessment')
+  async getTripDs4Assessment(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const trip = await this.tripsService.findById(organizationId, tripId);
+    if (!trip || trip.vehicleId !== vehicleId) {
+      throw new NotFoundException('Trip not found');
+    }
+    const bundle = await this.ds4AssessmentRead.readForTrip({ organizationId, vehicleId, tripId });
+    if (!bundle) {
+      throw new NotFoundException('DS4 assessment not available');
+    }
+    return bundle;
   }
 
   @Get('trips/:tripId/m7a-road-assignment-shadow')

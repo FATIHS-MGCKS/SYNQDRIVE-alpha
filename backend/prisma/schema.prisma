@@ -13053,6 +13053,84 @@ model DiV0MotionCoreShadowOutboxV1 {
   @@map("di_v0_motion_core_shadow_outbox_v1")
 }
 
+/// DS4 Assessment L2 (PR-A) — persisted trip assessment from motion-core shadow runs; worker OFF by default.
+model DiV0Ds4TripAssessmentV1 {
+  id                         String   @id @default(uuid()) @db.Uuid
+  organizationId             String   @map("organization_id")
+  vehicleId                  String   @map("vehicle_id")
+  tripId                     String   @map("trip_id")
+  assessmentVersion          String   @map("assessment_version")
+  sourceMotionRunId          String   @map("source_motion_run_id")
+  pinnedSnapshotHash         String   @map("pinned_snapshot_hash")
+  combinedInputIdentity      String   @map("combined_input_identity")
+  eventRowContract           String?  @map("event_row_contract")
+  speedAuthority             String   @map("speed_authority")
+  inputFingerprint           String   @map("input_fingerprint")
+  computedAt                 DateTime @map("computed_at") @db.Timestamptz(6)
+  assessmentStatus           String   @map("assessment_status")
+  evidenceQuality            String?  @map("evidence_quality")
+  reasonCodes                Json     @default("[]") @map("reason_codes")
+  completenessJson           Json     @map("completeness_json")
+  eventSummariesJson         Json     @map("event_summaries_json")
+  processingErrorJson        Json?    @map("processing_error_json")
+  sourceMotionRunCreatedAt   DateTime @map("source_motion_run_created_at") @db.Timestamptz(6)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  impactV2                   DiV0Ds4TripDrivingImpactV2?
+
+  @@unique([tripId, assessmentVersion, inputFingerprint], map: "di_v0_ds4_trip_assessment_idempotency_uq")
+  @@index([organizationId, tripId], map: "di_v0_ds4_trip_assessment_org_trip_idx")
+  @@index([vehicleId, computedAt], map: "di_v0_ds4_trip_assessment_vehicle_computed_idx")
+  @@map("di_v0_ds4_trip_assessment_v1")
+}
+
+/// DS4 Driving Impact V2 (PR-A) — consumes Assessment L2 only; score publication disabled until calibration.
+model DiV0Ds4TripDrivingImpactV2 {
+  id                         String   @id @default(uuid()) @db.Uuid
+  organizationId             String   @map("organization_id")
+  vehicleId                  String   @map("vehicle_id")
+  tripId                     String   @map("trip_id")
+  assessmentId               String   @unique @map("assessment_id") @db.Uuid
+  scoreAuthority             String   @default("DS4") @map("score_authority")
+  modelVersion               String   @map("model_version")
+  operationalLoadIndex         Float?   @map("operational_load_index")
+  scorePublicationStatus     String   @map("score_publication_status")
+  publicationReason          String?  @map("publication_reason")
+  evidenceCompletenessJson   Json     @map("evidence_completeness_json")
+  operationalLoadJson        Json     @map("operational_load_json")
+  sourceAssessmentFingerprint String  @map("source_assessment_fingerprint")
+  computedAt                 DateTime @map("computed_at") @db.Timestamptz(6)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assessment                 DiV0Ds4TripAssessmentV1 @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, modelVersion, sourceAssessmentFingerprint], map: "di_v0_ds4_trip_impact_v2_idempotency_uq")
+  @@index([organizationId, tripId], map: "di_v0_ds4_trip_impact_v2_org_trip_idx")
+  @@map("di_v0_ds4_trip_driving_impact_v2")
+}
+
+model DiV0Ds4AssessmentOutboxV1 {
+  outboxId           String    @id @default(uuid()) @map("outbox_id") @db.Uuid
+  sourceMotionRunId  String    @map("source_motion_run_id")
+  organizationId     String    @map("organization_id")
+  tripId             String    @map("trip_id")
+  vehicleId          String    @map("vehicle_id")
+  inputFingerprint   String    @map("input_fingerprint")
+  status             String    @map("status")
+  attemptCount       Int       @default(0) @map("attempt_count")
+  nextAttemptAt      DateTime  @map("next_attempt_at") @db.Timestamptz(6)
+  lastErrorCode      String?   @map("last_error_code")
+  lastErrorAt        DateTime? @map("last_error_at") @db.Timestamptz(6)
+  claimToken         String?   @map("claim_token")
+  claimExpiresAt     DateTime? @map("claim_expires_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([sourceMotionRunId, inputFingerprint], map: "di_v0_ds4_assessment_outbox_run_uq")
+  @@index([status, nextAttemptAt, createdAt], map: "di_v0_ds4_assessment_outbox_claim_idx")
+  @@map("di_v0_ds4_assessment_outbox_v1")
+}
+
 /// EXP-021 frozen M7A road-assignment shadow runs (post-S4 batch; flags OFF by default).
 model DiV0M7aRoadAssignmentShadowRunV1 {
   id                    String   @id @map("id")
