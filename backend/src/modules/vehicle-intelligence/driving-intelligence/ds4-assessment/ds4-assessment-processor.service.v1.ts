@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripDiBoundaryAdmissionService } from '../../trips/di-boundary-admission/trip-di-boundary-admission.service';
 import { DiV0MotionCoreShadowRunRepository } from '../motion-core-shadow-worker/di-v0-motion-core-shadow-run.repository';
+import { verifyDs4AssessmentCanonicalScopeBeforePersistV1 } from './ds4-assessment-canonical-scope-verifier.v1';
 import { computeDs4DrivingImpactV2 } from './ds4-driving-impact-v2.engine';
 import { Ds4AssessmentOutboxRepositoryV1 } from './ds4-assessment-outbox.repository.v1';
 import { computeDs4TripAssessmentV1 } from './ds4-trip-assessment-v1.engine';
@@ -12,7 +14,10 @@ export class Ds4AssessmentProcessorServiceV1 {
   private readonly motionRuns: DiV0MotionCoreShadowRunRepository;
   private readonly assessments: Ds4TripAssessmentRepositoryV1;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly boundaryAdmission: TripDiBoundaryAdmissionService,
+  ) {
     const client = prisma as unknown as PrismaClient;
     this.motionRuns = new DiV0MotionCoreShadowRunRepository(client);
     this.assessments = new Ds4TripAssessmentRepositoryV1(client);
@@ -49,12 +54,25 @@ export class Ds4AssessmentProcessorServiceV1 {
     if (!row) {
       return { status: 'error', code: 'MOTION_RUN_NOT_FOUND' };
     }
-    if (
-      row.organization_id !== scope.organizationId ||
-      row.vehicle_id !== scope.vehicleId ||
-      row.trip_id !== scope.tripId
-    ) {
-      return { status: 'error', code: 'SCOPE_MISMATCH' };
+
+    const scopeVerify = await verifyDs4AssessmentCanonicalScopeBeforePersistV1(
+      this.prisma as unknown as PrismaClient,
+      {
+        organizationId: scope.organizationId,
+        vehicleId: scope.vehicleId,
+        tripId: scope.tripId,
+        sourceMotionRunId: scope.sourceMotionRunId,
+      },
+      {
+        id: row.id,
+        organizationId: row.organization_id,
+        vehicleId: row.vehicle_id,
+        tripId: row.trip_id,
+      },
+      this.boundaryAdmission,
+    );
+    if (!scopeVerify.ok) {
+      return { status: 'error', code: scopeVerify.code };
     }
 
     let payload = null;

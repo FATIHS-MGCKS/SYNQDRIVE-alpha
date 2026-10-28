@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-EXPECTED_POSTGRES_TESTS=15
+EXPECTED_POSTGRES_TESTS=24
 
 fail_closed_url() {
   local name="$1" url="$2"
@@ -41,6 +41,7 @@ npx jest --runInBand --forceExit --verbose \
   src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment.postgres.integration.spec.ts \
   src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-outbox.postgres.integration.spec.ts \
   src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-worker.postgres.integration.spec.ts \
+  src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-processor-tenancy.postgres.integration.spec.ts \
   2>&1 | tee "$LOG"
 status=${PIPESTATUS[0]}
 set -e

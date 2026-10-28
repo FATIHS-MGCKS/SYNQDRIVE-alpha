@@ -8,6 +8,11 @@ import { DI_V0_DS4_ASSESSMENT_TUNING } from '../ds4-assessment.config';
 const describePg =
   process.env.DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION === '1' && DS4_POSTGRES_LIVE ? describe : describe.skip;
 
+/** Isolated tenant for outbox-only rows (never collides with worker/postgres specs). */
+const OUTBOX_TEST_ORG = '00000000-0000-4000-8000-0000000000e1';
+const OUTBOX_TEST_VEH = '00000000-0000-4000-8000-0000000000e2';
+const OUTBOX_TEST_TRIP = '00000000-0000-4000-8000-0000000000e3';
+
 describePg('ds4-assessment outbox postgres integration', () => {
   let db: PrismaClient;
   let outbox: Ds4AssessmentOutboxRepositoryV1;
@@ -19,7 +24,7 @@ describePg('ds4-assessment outbox postgres integration', () => {
   });
 
   beforeEach(async () => {
-    await db.$executeRaw`DELETE FROM di_v0_ds4_assessment_outbox_v1 WHERE organization_id = 'org-test'`;
+    await db.$executeRaw`DELETE FROM di_v0_ds4_assessment_outbox_v1`;
   });
 
   afterAll(async () => {
@@ -38,9 +43,9 @@ describePg('ds4-assessment outbox postgres integration', () => {
       data: {
         outboxId,
         sourceMotionRunId: input.sourceMotionRunId,
-        organizationId: 'org-test',
-        tripId: 'trip-test',
-        vehicleId: 'veh-test',
+        organizationId: OUTBOX_TEST_ORG,
+        tripId: OUTBOX_TEST_TRIP,
+        vehicleId: OUTBOX_TEST_VEH,
         assessmentVersion: DS4_TRIP_ASSESSMENT_VERSION_V1,
         inputFingerprint: `fp-${input.sourceMotionRunId}`,
         status: input.status,
@@ -124,6 +129,13 @@ describePg('ds4-assessment outbox postgres integration', () => {
       nextAttemptAt: now,
     });
 
+    const claimable = await db.$queryRaw<Array<{ count: bigint }>>`
+      SELECT count(*)::bigint AS count FROM di_v0_ds4_assessment_outbox_v1
+      WHERE status IN ('PENDING', 'FAILED_RETRYABLE')
+        AND attempt_count < ${DI_V0_DS4_ASSESSMENT_TUNING.maxProcessingAttempts}
+        AND next_attempt_at <= ${now}`;
+    expect(Number(claimable[0]?.count ?? 0n)).toBe(1);
+
     const db2 = new (await import('@prisma/client')).PrismaClient();
     const outbox2 = new Ds4AssessmentOutboxRepositoryV1(db2);
     try {
@@ -141,8 +153,14 @@ describePg('ds4-assessment outbox postgres integration', () => {
           maxProcessingAttempts: DI_V0_DS4_ASSESSMENT_TUNING.maxProcessingAttempts,
         }),
       ]);
+      expect(first.length + second.length).toBe(1);
       const claimsForRun = [...first, ...second].filter((c) => c.sourceMotionRunId === runId);
       expect(claimsForRun).toHaveLength(1);
+
+      const processingCount = await db.$queryRaw<Array<{ count: bigint }>>`
+        SELECT count(*)::bigint AS count FROM di_v0_ds4_assessment_outbox_v1
+        WHERE source_motion_run_id = ${runId}::text AND status = 'PROCESSING'`;
+      expect(Number(processingCount[0]?.count ?? 0n)).toBe(1);
     } finally {
       await db2.$disconnect();
     }

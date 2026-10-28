@@ -51,3 +51,12 @@ Validation: `npm run test:di:ds4-assessment`, `npm run test:di:ds4-assessment:po
 | Calibration | Four vehicles moved to `ds4-assessment-calibration-cohort.v1.ts` (replay/tests only) |
 | Discovery | Outbox SQL no longer filters `vehicle_id = ANY(fleet…)` |
 | Activation | Documented gaps + gates in `design/DS4_FLEET_WIDE_ELIGIBILITY_AND_ACTIVATION_GATES_V1.md` — flags remain OFF |
+
+## Dormant merge readiness (`4847b7d4b` follow-up)
+
+| Area | Change |
+|------|--------|
+| Outbox CI flake | Full-table outbox isolation per test; concurrent claim asserts global claim count + single `PROCESSING` row |
+| DB tenancy | `verifyDs4AssessmentCanonicalScopeBeforePersistV1` — vehicle/trip org + boundary admission before persist |
+| Boundary | `evaluateTripDiBoundaryAdmission` via `TripDiBoundaryAdmissionService.loadScope` — fail-closed |
+| Postgres CI | 24 tests including processor tenancy/boundary matrix |

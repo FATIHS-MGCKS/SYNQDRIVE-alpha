@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { gzipSync } from 'zlib';
 import type { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripDiBoundaryAdmissionService } from '../../../trips/di-boundary-admission/trip-di-boundary-admission.service';
 import { DI_V0_MOTION_CORE_SHADOW_PERSISTENCE_CONTRACT_V2 } from '../../motion-core-shadow-worker/di-v0-motion-core-shadow-event-row.contract';
 import { DS4_ASSESSMENT_FLEET_VEHICLES_V1 } from '../ds4-assessment-fleet-admission.v1';
 import { Ds4AssessmentOutboxRepositoryV1 } from '../ds4-assessment-outbox.repository.v1';
@@ -27,11 +28,21 @@ describePg('ds4-assessment worker postgres integration', () => {
     const { PrismaClient } = await import('@prisma/client');
     db = new PrismaClient();
     outbox = new Ds4AssessmentOutboxRepositoryV1(db);
-    processor = new Ds4AssessmentProcessorServiceV1(db as unknown as PrismaService);
+    processor = new Ds4AssessmentProcessorServiceV1(
+      db as unknown as PrismaService,
+      new TripDiBoundaryAdmissionService(db as unknown as PrismaService),
+    );
   });
 
   afterAll(async () => {
     await db.$disconnect();
+  });
+
+  beforeEach(async () => {
+    await db.$executeRaw`DELETE FROM di_v0_ds4_assessment_outbox_v1`;
+    await db.$executeRaw`DELETE FROM di_v0_ds4_trip_driving_impact_v2`;
+    await db.$executeRaw`DELETE FROM di_v0_ds4_trip_assessment_v1`;
+    await db.$executeRaw`DELETE FROM di_v0_motion_core_shadow_runs_v1`;
   });
 
   function buildValidPayload(contentFingerprint: string) {
@@ -247,7 +258,10 @@ describePg('ds4-assessment worker postgres integration', () => {
     const prevWorker = process.env.DI_V0_DS4_ASSESSMENT_WORKER_ENABLED;
     process.env.DI_V0_DS4_ASSESSMENT_ENABLED = '1';
     process.env.DI_V0_DS4_ASSESSMENT_WORKER_ENABLED = '1';
-    const liveProcessor = new Ds4AssessmentProcessorServiceV1(db as unknown as PrismaService);
+    const liveProcessor = new Ds4AssessmentProcessorServiceV1(
+      db as unknown as PrismaService,
+      new TripDiBoundaryAdmissionService(db as unknown as PrismaService),
+    );
     const liveService = new Ds4AssessmentServiceV1(db as unknown as PrismaService, liveProcessor);
     try {
       const pass = await liveService.runPass(new Date());

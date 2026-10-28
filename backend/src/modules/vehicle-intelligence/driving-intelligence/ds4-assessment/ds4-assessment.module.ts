@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { SchedulerLeaderElectionModule } from '@shared/scheduler-leader/scheduler-leader-election.module';
+import { TripDiBoundaryAdmissionService } from '../../trips/di-boundary-admission/trip-di-boundary-admission.service';
 import { Ds4AssessmentProcessorServiceV1 } from './ds4-assessment-processor.service.v1';
 import { Ds4AssessmentReadServiceV1 } from './ds4-assessment-read.service.v1';
 import { Ds4AssessmentSchedulerV1 } from './ds4-assessment.scheduler.v1';
@@ -12,6 +13,7 @@ import { Ds4AssessmentServiceV1 } from './ds4-assessment.service.v1';
 @Module({
   imports: [PrismaModule, SchedulerLeaderElectionModule],
   providers: [
+    TripDiBoundaryAdmissionService,
     Ds4AssessmentProcessorServiceV1,
     Ds4AssessmentServiceV1,
     Ds4AssessmentSchedulerV1,
