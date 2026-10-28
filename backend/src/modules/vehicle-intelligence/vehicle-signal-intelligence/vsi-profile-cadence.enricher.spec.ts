@@ -5,6 +5,7 @@ import {
   projectVsiSignalSemanticFingerprintFields,
 } from './vsi-profile-fingerprint.util';
 import type { VsiProfileEvaluationResult, VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
+import type { VsiLvStandbyTransmissionEvidenceInput } from './vsi-profile-cadence.types';
 
 const T0 = Date.parse('2026-10-01T10:00:00.000Z');
 
@@ -192,7 +193,7 @@ describe('vsi-profile-cadence.enricher', () => {
       linkActivatedAtMs: T0 - 1000,
       linkDeactivatedAtMs: null,
     };
-    const mkStandbyEvidence = (extraPairs: number) => {
+    const mkStandbyEvidence = (extraPairs: number): VsiLvStandbyTransmissionEvidenceInput => {
       const points = [];
       for (let c = 0; c < 3; c++) {
         for (let i = 0; i < 5; i++) {
@@ -228,7 +229,7 @@ describe('vsi-profile-cadence.enricher', () => {
           tripHistoryWindowComplete: true,
           activeOrIncompleteTripBlocksClassification: false,
         },
-      };
+      } satisfies VsiLvStandbyTransmissionEvidenceInput;
     };
     const first = enrichVsiProfileWithCadenceIntelligence(lvEval, {
       rpmEvidence: null,

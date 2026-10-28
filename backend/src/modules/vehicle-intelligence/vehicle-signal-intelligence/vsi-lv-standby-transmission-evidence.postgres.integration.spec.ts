@@ -73,6 +73,32 @@ function cadenceCtx(input: {
   };
 }
 
+/** Prisma create RETURNING must not assume columns absent on disposable DBs mid-migration. */
+async function seedVehicleLatestStateBinding(
+  prisma: PrismaClient,
+  input: {
+    vehicleId: string;
+    providerBindingId: string;
+    projectionAsOf: Date;
+  },
+) {
+  await prisma.vehicleLatestState.create({
+    data: {
+      vehicleId: input.vehicleId,
+      online: true,
+      providerBindingId: input.providerBindingId,
+      providerSource: 'DIMO',
+      providerFetchedAt: input.projectionAsOf,
+      sourceTimestamp: input.projectionAsOf,
+      updatedAt: input.projectionAsOf,
+    },
+    select: {
+      vehicleId: true,
+      providerBindingId: true,
+    },
+  });
+}
+
 (LIVE ? describe : describe.skip)(
   'VSI LV standby transmission evidence loader (PostgreSQL)',
   () => {
@@ -120,16 +146,10 @@ function cadenceCtx(input: {
       const projectionAsOf = new Date('2026-10-15T12:00:00.000Z');
       const baseMs = Date.parse('2026-10-01T00:00:00.000Z');
 
-      await prisma.vehicleLatestState.create({
-        data: {
-          vehicleId,
-          online: true,
-          providerBindingId: linkId,
-          providerSource: 'DIMO',
-          providerFetchedAt: projectionAsOf,
-          sourceTimestamp: projectionAsOf,
-          updatedAt: projectionAsOf,
-        },
+      await seedVehicleLatestStateBinding(prisma, {
+        vehicleId,
+        providerBindingId: linkId,
+        projectionAsOf,
       });
 
       for (let cluster = 0; cluster < 3; cluster += 1) {
@@ -171,16 +191,10 @@ function cadenceCtx(input: {
       const projectionAsOf = new Date('2026-10-15T12:00:00.000Z');
       const baseMs = Date.parse('2026-10-01T00:00:00.000Z');
 
-      await prisma.vehicleLatestState.create({
-        data: {
-          vehicleId,
-          online: true,
-          providerBindingId: linkId,
-          providerSource: 'DIMO',
-          providerFetchedAt: projectionAsOf,
-          sourceTimestamp: projectionAsOf,
-          updatedAt: projectionAsOf,
-        },
+      await seedVehicleLatestStateBinding(prisma, {
+        vehicleId,
+        providerBindingId: linkId,
+        projectionAsOf,
       });
 
       for (let i = 0; i < 5; i += 1) {
@@ -224,16 +238,10 @@ function cadenceCtx(input: {
       const linkActivatedAt = new Date('2026-09-01T00:00:00.000Z');
       const projectionAsOf = new Date('2026-10-10T00:00:00.000Z');
 
-      await prisma.vehicleLatestState.create({
-        data: {
-          vehicleId,
-          online: true,
-          providerBindingId: linkId,
-          providerSource: 'DIMO',
-          providerFetchedAt: projectionAsOf,
-          sourceTimestamp: projectionAsOf,
-          updatedAt: projectionAsOf,
-        },
+      await seedVehicleLatestStateBinding(prisma, {
+        vehicleId,
+        providerBindingId: linkId,
+        projectionAsOf,
       });
 
       await prisma.vehicleTrip.create({
