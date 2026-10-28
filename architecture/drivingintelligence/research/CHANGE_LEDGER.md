@@ -2429,7 +2429,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | CHANGE | Trip-scoped VSI fingerprint; revision reopen gated on RPM_1HZ authoritative inputs; fair revision probe cursor (`revision_last_probed_at`); trip-end defer schedule vs 72h deadline; run insert bound to live outbox claim; dedicated postgres CI workflow |
 | WHY | Code review runtime risks: rolling VSI window churn, unsafe revision reopen, defer timeline vs budget, stale worker persist |
-| VALIDATION | Jest rpm-hf-v1b + v1a; `ds4-rpm-hf-v1b-postgres-ci.sh`; workflow `ds4-rpm-hf-v1b-postgres-integration.yml` |
+| VALIDATION | Jest rpm-hf-v1b + v1a; `ds4-rpm-hf-v1b-postgres-ci.sh` (PR-path hook in `di-v0-s4a-postgres-ci.sh`) |
 | NON_EFFECTS | V1A contract unchanged; flags default OFF; no deploy |
 
 ### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
