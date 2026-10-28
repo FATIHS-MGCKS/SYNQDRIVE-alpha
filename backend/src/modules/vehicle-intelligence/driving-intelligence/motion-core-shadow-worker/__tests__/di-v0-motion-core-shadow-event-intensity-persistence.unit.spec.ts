@@ -1,12 +1,16 @@
 import { gunzipSync, gzipSync } from 'zlib';
 import type { MotionManoeuvreEvent } from '../../core/kinematics/motion-event.types';
 import {
+  DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_UNKNOWN,
   DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V1_LEGACY,
   DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY,
+  DI_V0_MOTION_CORE_SHADOW_EVENT_FLAGS_CONSUMPTION_POLICY,
+  DI_V0_MOTION_CORE_SHADOW_EVENT_FLAGS_SEMANTICS,
   DI_V0_MOTION_CORE_SHADOW_INTENSITY_USAGE_POLICY,
   DI_V0_MOTION_CORE_SHADOW_PERSISTENCE_CONTRACT_V2,
   mapMotionManoeuvreEventIntensity,
   readPersistedMotionEventIntensity,
+  readPersistedMotionEventIntensityForPayload,
   resolveMotionCoreShadowEventRowContract,
 } from '../di-v0-motion-core-shadow-event-row.contract';
 import { processDiV0MotionCoreShadowFromEvidenceAdaptation } from '../di-v0-motion-core-shadow-processor';
@@ -99,6 +103,10 @@ describe('DS4 event intensity persistence (event-row contract V2)', () => {
       ['durationS negative', { durationS: -1 }],
       ['steps non-integer', { steps: 1.5 }],
       ['coverageRatio NaN', { coverageRatio: Number.NaN }],
+      ['coverageRatio zero', { coverageRatio: 0 }],
+      ['coverageRatio above 1', { coverageRatio: 1.01 }],
+      ['meanAccelMps2 zero', { meanAccelMps2: 0 }],
+      ['meanAccelMps2 negative', { meanAccelMps2: -0.5 }],
       ['startUncertaintyS empty', { startUncertaintyS: '' }],
       ['endUncertaintyS missing', { endUncertaintyS: undefined as unknown as string }],
     ])('omits the intensity block instead of fabricating values when %s', (_name, patch) => {
@@ -111,6 +119,10 @@ describe('DS4 event intensity persistence (event-row contract V2)', () => {
     it('does not coerce a missing duration to zero', () => {
       const out = mapMotionManoeuvreEventIntensity(detectorEvent({ durationS: undefined as unknown as number }));
       expect(out).toBeUndefined();
+    });
+
+    it('accepts coverageRatio at the upper bound of 1', () => {
+      expect(mapMotionManoeuvreEventIntensity(detectorEvent({ coverageRatio: 1 }))).toBeDefined();
     });
   });
 
@@ -136,6 +148,14 @@ describe('DS4 event intensity persistence (event-row contract V2)', () => {
         'peakAccel1sMps2',
         'peakAccel2sMps2',
       ]);
+      expect(processed.payload.contract.persistence?.meanAccelMps2Semantics).toContain('SECANT');
+      expect(processed.payload.contract.persistence?.coverageRatioSemantics).toContain('USABLE_SAMPLES');
+      expect(processed.payload.contract.persistence?.eventFlagsSemantics).toBe(
+        DI_V0_MOTION_CORE_SHADOW_EVENT_FLAGS_SEMANTICS,
+      );
+      expect(processed.payload.contract.persistence?.eventFlagsConsumptionPolicy).toBe(
+        DI_V0_MOTION_CORE_SHADOW_EVENT_FLAGS_CONSUMPTION_POLICY,
+      );
       expect(processed.summary.eventRowContract).toBe(DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY);
       expect(resolveMotionCoreShadowEventRowContract(processed.payload)).toBe(
         DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY,
@@ -201,7 +221,7 @@ describe('DS4 event intensity persistence (event-row contract V2)', () => {
       expect(resolveMotionCoreShadowEventRowContract(decoded)).toBe(
         DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY,
       );
-      expect(decoded.events.map((e) => readPersistedMotionEventIntensity(e))).toEqual(
+      expect(decoded.events.map((e) => readPersistedMotionEventIntensityForPayload(decoded, e))).toEqual(
         processed.payload.events.map((e) => e.intensity ?? null),
       );
     });
@@ -272,6 +292,76 @@ describe('DS4 event intensity persistence (event-row contract V2)', () => {
       const dtos = mapMotionTripMapEvents(legacy, new Map(samples.map((s) => [s.bucketLabelUtc, s])));
       expect(dtos.length).toBe(legacy.events.length);
       expect(dtos.every((d) => d.peakAccel1sMps2 === null)).toBe(true);
+    });
+
+    it('fail-closes intensity consumption for legacy V1 payloads even when a row carries an intensity block', () => {
+      const legacy = legacyPayload();
+      const rowWithIntensity = {
+        ...legacy.events[0]!,
+        intensity: {
+          meanAccelMps2: 2,
+          durationS: 8,
+          steps: 8,
+          coverageRatio: 1,
+          startUncertaintyS: '±1 s label + unvalidated clock offset',
+          endUncertaintyS: '±1 s label + unvalidated clock offset',
+        },
+      };
+      expect(readPersistedMotionEventIntensity(rowWithIntensity)).not.toBeNull();
+      expect(readPersistedMotionEventIntensityForPayload(legacy, rowWithIntensity)).toBeNull();
+    });
+  });
+
+  describe('event-row contract resolution (UNKNOWN fail-closed)', () => {
+    it('resolves an unrecognised declared contract as UNKNOWN', () => {
+      const payload = {
+        contract: {
+          persistence: { eventRowContract: 'DI_V0_MOTION_CORE_EVENT_ROW_V99_FUTURE' },
+        },
+      };
+      expect(resolveMotionCoreShadowEventRowContract(payload)).toBe(
+        DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_UNKNOWN,
+      );
+    });
+
+    it('resolves persistence block without eventRowContract as UNKNOWN (not V1)', () => {
+      expect(
+        resolveMotionCoreShadowEventRowContract({
+          contract: {
+            persistence: { intensityUsagePolicy: 'ORDINAL_ONLY_NOT_PHYSICALLY_VALIDATED' } as {
+              eventRowContract?: unknown;
+            },
+          },
+        }),
+      ).toBe(DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_UNKNOWN);
+    });
+
+    it('fail-closes intensity consumption for UNKNOWN contract even with a valid intensity block', () => {
+      const payload = {
+        contract: {
+          persistence: { eventRowContract: 'DI_V0_MOTION_CORE_EVENT_ROW_V99_FUTURE' },
+        },
+      };
+      const row = {
+        intensity: {
+          meanAccelMps2: 2,
+          durationS: 8,
+          steps: 8,
+          coverageRatio: 1,
+          startUncertaintyS: 'x',
+          endUncertaintyS: 'y',
+        },
+      };
+      expect(readPersistedMotionEventIntensity(row)).not.toBeNull();
+      expect(readPersistedMotionEventIntensityForPayload(payload, row)).toBeNull();
+    });
+
+    it('rejects persisted intensity blocks with coverageRatio outside (0,1]', () => {
+      expect(
+        readPersistedMotionEventIntensity({
+          intensity: { meanAccelMps2: 1.2, durationS: 4, steps: 4, coverageRatio: 1.5, startUncertaintyS: 'x', endUncertaintyS: 'y' },
+        }),
+      ).toBeNull();
     });
   });
 });

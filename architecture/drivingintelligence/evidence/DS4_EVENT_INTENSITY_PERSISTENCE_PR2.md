@@ -42,7 +42,11 @@ File: `motion-core-shadow-worker/di-v0-motion-core-shadow-event-row.contract.ts`
 | Omission rule | `intensity` is **omitted** (not zero-filled, not nulled) when any constituent is non-finite, negative, non-integer (`steps`) or empty — never fabricated |
 | Excluded by contract | `peakAccel1sMps2`, `peakAccel2sMps2` (declared in `contract.persistence.intensityExcludedFields`) |
 | Usage policy | `contract.persistence.intensityUsagePolicy = ORDINAL_ONLY_NOT_PHYSICALLY_VALIDATED` with Fable B3 attenuation note |
-| Reader helpers | `resolveMotionCoreShadowEventRowContract(payload)` → V1 legacy / V2; `readPersistedMotionEventIntensity(row)` → block or `null` (legacy rows, missing block, malformed block) |
+| `meanAccelMps2` semantics | Positive **secant magnitude** `|Δv|/3.6/max(durationS,1)` from unrounded C4/C5.1 speeds; **direction exclusively in `kind`** (not sign). Kernel-attenuated (B3); ordinal/relative only — no absolute m/s² thresholds (`meanAccelMps2Semantics` constant) |
+| `coverageRatio` semantics | Usable 1 Hz samples in `[startLabel,endLabel]` ÷ `(span+1)`, including repaired/synthetic samples; **not** threshold-coverage (`coverageRatioSemantics`). Persisted only when **(0, 1]** (reject ≤0 or >1) |
+| Event `flags` | `eventFlagsSemantics = OPAQUE_CLASSIFICATION_TOKENS`; `eventFlagsConsumptionPolicy = MUST_NOT_PARSE_FLAGS_FOR_ACCEL_OR_PEAK_VALUES` — PR-3 must not recover 1 s step accelerations or peaks from flag strings (e.g. `SPIKE_BRACKET_PRE=…`) |
+| Contract resolution | `resolveMotionCoreShadowEventRowContract` → V1 legacy (no `contract.persistence`), V2 (recognised string), or **`UNKNOWN`** (unrecognised/future `eventRowContract` or persistence block without contract) |
+| Reader helpers | `readPersistedMotionEventIntensity(row)` validates block only; **`readPersistedMotionEventIntensityForPayload(payload, row)`** is the fail-closed PR-3 entry (returns `null` unless contract is V2) |
 
 ### Preserved semantics (regression-tested)
 
@@ -85,6 +89,8 @@ Synthetic drive used for detector-driven tests: 1 Hz, 0→72 km/h over 10 s, 10 
 | Post-PR-2 rows, reliable detector values | V2 | present | V2 | block returned verbatim |
 | Post-PR-2 rows, unreliable constituent | V2 | omitted for that row | V2 | `null` for that row only |
 | Malformed/partial block (defensive) | any | partial | as declared | `null` (never partially trusted) |
+| Future/unrecognised `eventRowContract` | present | any | **UNKNOWN** | `readPersistedMotionEventIntensityForPayload` → `null` (fail closed; trip-map/legacy row shape still readable) |
+| `coverageRatio` outside (0,1] | V2 | block present | V2 | omitted on write; `null` on read |
 
 No backfill, replay or rewrite of existing rows. New intensity appears only on runs produced after deploy of PR-2 (deploy **not** part of this PR).
 
@@ -113,4 +119,4 @@ No backfill, replay or rewrite of existing rows. New intensity appears only on r
 4. Omission-over-fabrication rule (no zero-fill, no null-fill for unreliable constituents).
 5. Whether `startUncertaintyS`/`endUncertaintyS` as free-text labels are acceptable for the persisted contract or should become structured before any consumer binds to them.
 
-**Status:** `FABLE_REVIEW = REQUESTED` (not performed in this PR). Decision `DI-DEC-DS4-INTENSITY-PERSIST-001` stays **PROPOSED** until recorded.
+**Status:** `FABLE_REVIEW = PASS_WITH_CONDITIONS` (2026-10-28 read-only review on PR #2209 @ `129f9509…`). Follow-up hardening on the same PR applied: secant/ordinal semantics, `(0,1]` coverageRatio gate, UNKNOWN contract fail-closed reader, opaque flags policy. Decision `DI-DEC-DS4-INTENSITY-PERSIST-001` remains **PROPOSED** (persistence contract validated; DS4 authority not activated).

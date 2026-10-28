@@ -12,6 +12,7 @@ import {
   DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V1_LEGACY,
   DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY,
   readPersistedMotionEventIntensity,
+  readPersistedMotionEventIntensityForPayload,
   resolveMotionCoreShadowEventRowContract,
 } from '../di-v0-motion-core-shadow-event-row.contract';
 import { buildMotionCoreShadowIntentKey } from '../di-v0-motion-core-shadow-intent';
@@ -108,7 +109,7 @@ async function workItemIdentity(db: PrismaClient, workItemId: string) {
       DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY,
     );
     for (const ev of decoded.events) {
-      const intensity = readPersistedMotionEventIntensity(ev);
+      const intensity = readPersistedMotionEventIntensityForPayload(decoded, ev);
       expect(intensity).not.toBeNull();
       expect(Number.isFinite(intensity!.meanAccelMps2)).toBe(true);
       expect(Number.isInteger(intensity!.steps)).toBe(true);

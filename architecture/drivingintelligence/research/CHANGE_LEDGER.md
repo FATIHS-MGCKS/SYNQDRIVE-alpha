@@ -2362,3 +2362,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `di-v0-motion-core-shadow-event-intensity-persistence.unit.spec.ts` 21/21; motion-core-shadow suite 14 suites / 72 tests; `di-v0-motion-core-shadow-event-intensity.postgres.integration.spec.ts` 2/2 on local ephemeral PostgreSQL 16 (`DI_V0_S4A_POSTGRES_INTEGRATION=1`); `npx tsc --noEmit` exit 0; `nest build` exit 0; `validate-graph.sh`, `validate-docs.sh`, `validate-module-registry.sh` |
 | NON_EFFECTS | Bundle versions V1–V4, intent keys, C4/C5.1/FSM/gap bridge/plausibility, event counts/classifications/boundaries, trip-map DTO (`peakAccel1sMps2` stays `null`), Trip UI, Tire/Brake/Rental/DriverScore calculations, flags, allowlists — all unchanged; no migration, no deploy, no production data mutation; DS4 authority not activated |
 | REMAINING | Fable review (`FABLE_REVIEW=REQUESTED`); motion-core Postgres specs not wired into CI; uncertainty labels persisted as free text |
+
+### DS4 event intensity persistence — Fable follow-up contract hardening (2026-10-28, PR #2209)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fable PASS_WITH_CONDITIONS remediation on same PR: document `meanAccelMps2` as positive secant magnitude (direction in `kind` only) + B3 ordinal policy; `coverageRatio` semantics and reject outside (0,1]; `resolveMotionCoreShadowEventRowContract` returns explicit `UNKNOWN` for unrecognised/future contracts; `readPersistedMotionEventIntensityForPayload` fail-closed for V1/UNKNOWN; `eventFlagsSemantics`/`eventFlagsConsumptionPolicy` (opaque flags, no accel/peak parsing in PR-3); unit tests for UNKNOWN, invalid coverageRatio, legacy V1 fail-closed |
+| WHY | Independent Fable review of persistence contract before merge |
+| NON_EFFECTS | Bundle versions, detection, event counts, trip-map DTO, Trip UI unchanged; no deploy |
