@@ -64,6 +64,7 @@ export async function loadLvStandbyTransmissionEvidenceFromDb(
 
   const linkEnd = ctx.linkDeactivatedAt?.getTime() ?? Number.POSITIVE_INFINITY;
   const points: VsiLvStandbyTransmissionMeasurementPoint[] = [];
+  const seenProviderTimestampMs = new Set<number>();
   for (const row of rows) {
     if (row.providerTimestamp == null) {
       continue;
@@ -72,6 +73,10 @@ export async function loadLvStandbyTransmissionEvidenceFromDb(
     if (providerTimestampMs < linkActivatedMs || providerTimestampMs > linkEnd) {
       continue;
     }
+    if (seenProviderTimestampMs.has(providerTimestampMs)) {
+      continue;
+    }
+    seenProviderTimestampMs.add(providerTimestampMs);
     points.push({
       observedAtMs: row.observedAt.getTime(),
       providerTimestampMs,
