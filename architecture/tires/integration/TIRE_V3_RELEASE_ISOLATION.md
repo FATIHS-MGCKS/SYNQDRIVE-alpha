@@ -16,6 +16,8 @@
 
 Deploy SHA = RC branch HEAD after CI gate success (not production `51adb234`).
 
+**RC HEAD (release gate audit):** `e94cae4efb` (branch `cursor/tire-v3-ui-authority-release-gate-b126`, PR #2207).
+
 ## Tire V3 commits (in `51adb234..4ba28a9`)
 
 | Commit | Description |
