@@ -403,7 +403,7 @@ export function computeDs4TripAssessmentV1(input: {
   }
 
   const acceptedTotal = summaries.acceptedAccelerationCount + summaries.acceptedDecelerationCount;
-  if (reasonCodes.includes('NO_VALID_DRIVING_EXPOSURE') && acceptedTotal === 0) {
+  if (reasonCodes.includes('NO_VALID_DRIVING_EXPOSURE')) {
     return {
       assessmentVersion: DS4_TRIP_ASSESSMENT_VERSION_V1,
       assessmentStatus: 'INSUFFICIENT_EVIDENCE',

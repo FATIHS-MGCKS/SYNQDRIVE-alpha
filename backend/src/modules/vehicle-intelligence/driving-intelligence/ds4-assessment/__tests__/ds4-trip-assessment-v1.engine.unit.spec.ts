@@ -302,6 +302,23 @@ describe('computeDs4TripAssessmentV1', () => {
     expect(result.eventSummaries.accelerationOrdinalValues.length).toBe(1);
   });
 
+  it('fail-closed: admissible events with zero exposure never RATED even when ordinal policy approved', () => {
+    const payload = basePayload();
+    payload.speeds = [];
+    payload.fsmLabels = [{ bucketLabelUtc: '2026-01-01T10:00:00Z', state: 'MOVING', evidenceQuality: 'DIRECT', reason: 'r', flags: [] }];
+    payload.summary!.speedNumericCount = 0;
+    const result = computeDs4TripAssessmentV1({
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
+      motionRun: motionRun(),
+      payload,
+      qualityPolicy: { ...DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT, ordinalTripRatingApproved: true },
+    });
+    expect(result.assessmentStatus).toBe('INSUFFICIENT_EVIDENCE');
+    expect(result.reasonCodes).toContain('NO_VALID_DRIVING_EXPOSURE');
+    expect(result.eventSummaries.ratedEventCount).toBe(1);
+    expect(result.eventSummaries.intensityAcceleration.admissibleEvents).toBe(1);
+  });
+
   it('legacy V1 payload yields unrated events (no intensity consumption)', () => {
     const payload = basePayload({
       contract: { ...basePayload().contract, persistence: undefined },

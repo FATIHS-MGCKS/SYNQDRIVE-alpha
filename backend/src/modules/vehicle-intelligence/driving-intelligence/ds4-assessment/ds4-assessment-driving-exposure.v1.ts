@@ -40,11 +40,16 @@ function resolveSpeedSeries(payload: DiV0MotionCoreShadowPayloadV1): {
   field: 'speeds' | 'c4Speeds';
 } {
   const preferred = payload.speeds ?? [];
-  if (preferred.length > 0) {
-    return { rows: [...preferred].sort((a, b) => a.bucketLabelUtc.localeCompare(b.bucketLabelUtc)), field: 'speeds' };
+  const raw = preferred.length > 0 ? preferred : (payload.c4Speeds ?? []);
+  const field: 'speeds' | 'c4Speeds' = preferred.length > 0 ? 'speeds' : 'c4Speeds';
+  const byLabel = new Map<string, DiV0MotionCoreShadowPersistedSpeedRow>();
+  for (const row of raw) {
+    byLabel.set(row.bucketLabelUtc, row);
   }
-  const c4 = payload.c4Speeds ?? [];
-  return { rows: [...c4].sort((a, b) => a.bucketLabelUtc.localeCompare(b.bucketLabelUtc)), field: 'c4Speeds' };
+  const rows = [...byLabel.values()].sort(
+    (a, b) => parseBucketLabelMs(a.bucketLabelUtc) - parseBucketLabelMs(b.bucketLabelUtc),
+  );
+  return { rows, field };
 }
 
 function fsmByLabel(fsmLabels: DiV0MotionCoreShadowPersistedFsmRow[]): Map<string, DiV0MotionCoreShadowPersistedFsmRow> {
@@ -132,7 +137,12 @@ export function deriveDs4DrivingExposureV1(input: {
       excludedGapIntervalCount += 1;
       continue;
     }
-    if (!qualifiesExposureSample(current, fsmMap.get(current.bucketLabelUtc))) {
+    const currentFsm = fsmMap.get(current.bucketLabelUtc);
+    const nextFsm = fsmMap.get(next.bucketLabelUtc);
+    if (!qualifiesExposureSample(current, currentFsm)) {
+      continue;
+    }
+    if (!qualifiesExposureSample(next, nextFsm)) {
       continue;
     }
     const speedKmh = current.speedKmh!;
@@ -141,7 +151,8 @@ export function deriveDs4DrivingExposureV1(input: {
     distanceKm += (speedKmh * dtS) / 3600;
   }
 
-  const derivable = rows.length >= 2 && input.speedAuthority != null;
+  const derivable =
+    input.speedAuthority != null && rows.length >= 2 && qualifyingIntervalCount > 0 && exposureSeconds > 0;
   const estimator = rows[0]?.estimator ?? null;
 
   return {

@@ -74,7 +74,7 @@ describe('deriveDs4DrivingExposureV1', () => {
     expect(exposure.provenance.speedAuthority).toBe('C4_ONLY');
   });
 
-  it('excludes intervals when FSM not MOVING+DIRECT or speed not usable', () => {
+  it('excludes intervals when either endpoint fails MOVING+DIRECT or usable speed', () => {
     const payload = basePayload({
       fsmLabels: [
         movingDirectFsm('2026-01-01T10:00:00Z'),
@@ -84,6 +84,72 @@ describe('deriveDs4DrivingExposureV1', () => {
       speeds: [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:01Z', 36), speedRow('2026-01-01T10:00:02Z', 36)],
     });
     const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.exposureSeconds).toBe(0);
+    expect(exposure.derivable).toBe(false);
+  });
+
+  it('regression: MOVING/DIRECT → STATIONARY does not integrate the crossing interval', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), { bucketLabelUtc: '2026-01-01T10:00:01Z', state: 'STOPPED', evidenceQuality: 'DIRECT', reason: 'r', flags: [] }],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 40), speedRow('2026-01-01T10:00:01Z', 0)],
+    });
+    expect(deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' }).exposureSeconds).toBe(0);
+  });
+
+  it('regression: MOVING/DIRECT → UNKNOWN FSM endpoint excludes interval', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), { bucketLabelUtc: '2026-01-01T10:00:01Z', state: 'MOVING', evidenceQuality: 'UNKNOWN', reason: 'r', flags: [] }],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 40), speedRow('2026-01-01T10:00:01Z', 40)],
+    });
+    expect(deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' }).exposureSeconds).toBe(0);
+  });
+
+  it('regression: valid speed → invalid speed at next endpoint excludes interval', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 40), speedRow('2026-01-01T10:00:01Z', 40, 'MISSING')],
+    });
+    expect(deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' }).exposureSeconds).toBe(0);
+  });
+
+  it('regression: missing intermediate bucket (gap > maxGapS) does not bridge', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:04Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:04Z', 36)],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.exposureSeconds).toBe(0);
+    expect(exposure.provenance.excludedGapIntervalCount).toBe(1);
+  });
+
+  it('regression: duplicate timestamps do not inflate exposure', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 36), speedRow('2026-01-01T10:00:00Z', 99), speedRow('2026-01-01T10:00:01Z', 36)],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.exposureSeconds).toBe(1);
+    expect(exposure.provenance.speedLabelCount).toBe(2);
+  });
+
+  it('regression: two valid consecutive moving samples integrate one interval', () => {
+    const payload = basePayload({
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 72), speedRow('2026-01-01T10:00:01Z', 72)],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C4_ONLY' });
+    expect(exposure.exposureSeconds).toBe(1);
+    expect(exposure.distanceKm).toBeCloseTo(72 / 3600, 8);
+  });
+
+  it('regression: C5_1_PREFERRED provenance partition preserved', () => {
+    const payload = basePayload({
+      contract: { ...basePayload().contract, speedAuthority: 'C5_1_PREFERRED' },
+      fsmLabels: [movingDirectFsm('2026-01-01T10:00:00Z'), movingDirectFsm('2026-01-01T10:00:01Z')],
+      speeds: [speedRow('2026-01-01T10:00:00Z', 50), speedRow('2026-01-01T10:00:01Z', 50)],
+    });
+    const exposure = deriveDs4DrivingExposureV1({ payload, speedAuthority: 'C5_1_PREFERRED' });
+    expect(exposure.provenance.speedAuthority).toBe('C5_1_PREFERRED');
     expect(exposure.exposureSeconds).toBe(1);
   });
 
