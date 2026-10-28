@@ -5,6 +5,12 @@ import {
   type DiV0S4ControlPlaneConfig,
 } from '../s4a-foundation/di-v0-s4a-control-plane';
 import {
+  isDiV0S4DiscoverySchedulingConfiguredV1,
+  isDiV0S4WorkerSchedulingConfiguredV1,
+  parseDiV0Ds4FleetMotionAdmissionPolicyV1,
+  type DiV0Ds4FleetMotionAdmissionPolicySnapshotV1,
+} from '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
+import {
   isDiV0S4DiscoveryContainmentAvailable,
   loadDiV0S4bDiscoveryContainment,
   type DiV0S4DiscoveryContainmentState,
@@ -26,6 +32,11 @@ export function loadDiV0S4bDiscoveryContainmentAtCompositionBoundary(): DiV0S4Di
   return loadDiV0S4bDiscoveryContainment(process.env);
 }
 
+/** Parsed once at Nest composition; not re-read until process restart. */
+export function loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary(): DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 {
+  return parseDiV0Ds4FleetMotionAdmissionPolicyV1(process.env);
+}
+
 /** S4B scheduling constants. Not contract limits: lease/heartbeat/budget come from DI_V0_S4_LIMITS. */
 export const DI_V0_S4B_TUNING = {
   discoveryIntervalMs: 5 * 60_000,
@@ -38,26 +49,20 @@ export const DI_V0_S4B_TUNING = {
 export function isDiV0S4DiscoveryConfigured(
   config: DiV0S4ControlPlaneConfig,
   containment: DiV0S4DiscoveryContainmentState = loadDiV0S4bDiscoveryContainmentAtCompositionBoundary(),
+  fleetMotionPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 = loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary(),
 ): boolean {
   return (
-    config.masterEnabled &&
-    config.discoveryEnabled &&
-    config.positionEnabled &&
-    config.organizationAllowlist.size > 0 &&
-    config.vehicleAllowlist.size > 0 &&
+    isDiV0S4DiscoverySchedulingConfiguredV1(config, fleetMotionPolicy) &&
     isDiV0S4DiscoveryContainmentAvailable(containment)
   );
 }
 
-/** Mirrors the `claim()` pre-transaction gate plus non-empty allowlists. */
-export function isDiV0S4WorkerConfigured(config: DiV0S4ControlPlaneConfig): boolean {
-  return (
-    config.masterEnabled &&
-    config.workerEnabled &&
-    config.positionEnabled &&
-    config.organizationAllowlist.size > 0 &&
-    config.vehicleAllowlist.size > 0
-  );
+/** Mirrors the `claim()` pre-transaction gate plus legacy allowlists when global rollout is OFF. */
+export function isDiV0S4WorkerConfigured(
+  config: DiV0S4ControlPlaneConfig,
+  fleetMotionPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 = loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary(),
+): boolean {
+  return isDiV0S4WorkerSchedulingConfiguredV1(config, fleetMotionPolicy);
 }
 
 const LEASE_OWNER_UNSAFE = /[^A-Za-z0-9_-]/g;

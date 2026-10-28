@@ -308,6 +308,7 @@ import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds
 import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
 import { DiV0S4ResearchModule } from './driving-intelligence/s4-research-worker/di-v0-s4-research.module';
 import { DiV0MotionCoreShadowModule } from './driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow.module';
+import { DiV0Ds4AssessmentModule } from './driving-intelligence/ds4-assessment/ds4-assessment.module';
 import { DiV0Ds4RpmHfV1aModule } from './driving-intelligence/rpm-hf-v1a/di-v0-ds4-rpm-hf-v1a.module';
 import { TireDs4ShadowModule } from './tires/ds4-shadow/tire-ds4-shadow.module';
 import { TireWearV3PriorModule } from './tires/wear-v3-prior/tire-wear-v3-prior.module';
@@ -322,6 +323,7 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
     DiV0TripSpeedQualityModule,
     DiV0S4ResearchModule,
     DiV0MotionCoreShadowModule,
+    DiV0Ds4AssessmentModule,
     DiV0Ds4RpmHfV1aModule,
     TireDs4ShadowModule,
     TireWearV3PriorModule,

@@ -13,6 +13,7 @@ import {
   DI_V0_MOTION_CORE_SHADOW_BUNDLE_VERSION_V4_C5_1_AND_FSM_GAP_BRIDGE,
 } from '../di-v0-motion-core-shadow.bundle.version';
 import type { DiV0MotionCoreShadowControlPlaneConfig } from '../di-v0-motion-core-shadow-control-plane';
+import { DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF } from '../../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
 import { buildMotionCoreShadowIntentKey } from '../di-v0-motion-core-shadow-intent';
 import { DiV0MotionCoreShadowOutboxRepository } from '../di-v0-motion-core-shadow-outbox.repository';
 import {
@@ -140,6 +141,7 @@ async function seedExtraCompletedPrimaryOnVehicle(
       organizationAllowlist: [scope.tenant.organizationId],
       vehicleAllowlist: [scope.tenant.vehicleId],
       controlPlane,
+      fleetMotionPolicy: DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
       limit,
       now,
     });

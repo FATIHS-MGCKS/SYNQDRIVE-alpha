@@ -1,0 +1,82 @@
+import { Injectable } from '@nestjs/common';
+import type { PrismaClient } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import { Ds4TripAssessmentRepositoryV1 } from './ds4-trip-assessment.repository.v1';
+
+export type Ds4AssessmentInternalReadDtoV1 = {
+  assessment: {
+    assessmentVersion: string;
+    assessmentStatus: string;
+    evidenceQuality: string | null;
+    reasonCodes: unknown;
+    speedAuthority: string | null;
+    eventRowContract: string | null;
+    inputFingerprint: string;
+    sourceMotionRunId: string;
+    pinnedSnapshotHash: string;
+    combinedInputIdentity: string;
+    computedAt: string;
+    completeness: unknown;
+    eventSummaries: unknown;
+    processingError: unknown;
+  } | null;
+  impact: {
+    scoreAuthority: string;
+    modelVersion: string;
+    operationalLoadIndex: number | null;
+    scorePublicationStatus: string;
+    publicationReason: string | null;
+    evidenceCompleteness: unknown;
+    operationalLoad: unknown;
+    computedAt: string;
+  } | null;
+};
+
+@Injectable()
+export class Ds4AssessmentReadServiceV1 {
+  private readonly repo: Ds4TripAssessmentRepositoryV1;
+
+  constructor(private readonly prisma: PrismaService) {
+    this.repo = new Ds4TripAssessmentRepositoryV1(prisma as unknown as PrismaClient);
+  }
+
+  async readForTrip(scope: {
+    organizationId: string;
+    vehicleId: string;
+    tripId: string;
+  }): Promise<Ds4AssessmentInternalReadDtoV1 | null> {
+    const bundle = await this.repo.readLatestBundleForTrip(scope);
+    if (!bundle?.assessment) return null;
+    const { assessment, impact } = bundle;
+    return {
+      assessment: {
+        assessmentVersion: assessment.assessmentVersion,
+        assessmentStatus: assessment.assessmentStatus,
+        evidenceQuality: assessment.evidenceQuality,
+        reasonCodes: assessment.reasonCodes,
+        speedAuthority: assessment.speedAuthority,
+        eventRowContract: assessment.eventRowContract,
+        inputFingerprint: assessment.inputFingerprint,
+        sourceMotionRunId: assessment.sourceMotionRunId,
+        pinnedSnapshotHash: assessment.pinnedSnapshotHash,
+        combinedInputIdentity: assessment.combinedInputIdentity,
+        computedAt: assessment.computedAt.toISOString(),
+        completeness: assessment.completenessJson,
+        eventSummaries: assessment.eventSummariesJson,
+        processingError: assessment.processingErrorJson,
+      },
+      impact: impact
+        ? {
+            scoreAuthority: impact.scoreAuthority,
+            modelVersion: impact.modelVersion,
+            operationalLoadIndex: impact.operationalLoadIndex,
+            scorePublicationStatus: impact.scorePublicationStatus,
+            publicationReason: impact.publicationReason,
+            evidenceCompleteness: impact.evidenceCompletenessJson,
+            operationalLoad: impact.operationalLoadJson,
+            computedAt: impact.computedAt.toISOString(),
+          }
+        : null,
+    };
+  }
+}

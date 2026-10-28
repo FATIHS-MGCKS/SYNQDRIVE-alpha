@@ -22,7 +22,6 @@ import {
   type DiV0S4TransitionId,
 } from './di-v0-s4a-contract';
 import {
-  evaluateDiV0S4Enablement,
   evaluateDiV0S4KillRow,
   evaluateDiV0S4MaintenanceEnablement,
   type DiV0S4ControlPlaneConfig,
@@ -30,6 +29,12 @@ import {
   type DiV0S4EnablementResult,
   type DiV0S4KillEvaluation,
 } from './di-v0-s4a-control-plane';
+import {
+  DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
+  evaluateDiV0S4EnablementWithFleetMotionPolicyV1,
+  isDiV0S4LegacyAllowlistAdmissionRequired,
+  type DiV0Ds4FleetMotionAdmissionPolicySnapshotV1,
+} from '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
 import { DiV0S4TransitionRejectedError, type DiV0S4RejectionCode } from './di-v0-s4a-errors';
 import {
   assertDiV0S4ExecutionIdentityConsistency,
@@ -204,6 +209,7 @@ export class DiV0S4WorkItemRepository {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly config: DiV0S4ControlPlaneConfig,
+    private readonly fleetMotionPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 = DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
   ) {}
 
   // ── T01 ──────────────────────────────────────────────────────────────────
@@ -305,14 +311,26 @@ export class DiV0S4WorkItemRepository {
     const orgs = [...this.config.organizationAllowlist];
     const vehicles = [...this.config.vehicleAllowlist];
     const onlyId = input.workItemId ?? null;
+    const legacyAllowlist = isDiV0S4LegacyAllowlistAdmissionRequired(this.fleetMotionPolicy);
 
     return this.inTx(tx, async (db) => {
-      const candidates = await db.$queryRaw<WorkItemRow[]>`
+      const candidates = legacyAllowlist
+        ? await db.$queryRaw<WorkItemRow[]>`
         SELECT ${this.rowColumns()} FROM di_v0_s4_work_items
         WHERE pipeline_version_key = ${pipelineVersionKey}
           AND attempt_count < ${DI_V0_S4_LIMITS.maxAttempts}
           AND organization_id = ANY(${orgs}::text[])
           AND vehicle_id = ANY(${vehicles}::text[])
+          AND (${onlyId}::text IS NULL OR id = ${onlyId}::text)
+          AND ((status IN ('PENDING', 'FAILED_RETRYABLE') AND next_attempt_at <= clock_timestamp())
+            OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))
+        ORDER BY next_attempt_at NULLS FIRST, id
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED`
+        : await db.$queryRaw<WorkItemRow[]>`
+        SELECT ${this.rowColumns()} FROM di_v0_s4_work_items
+        WHERE pipeline_version_key = ${pipelineVersionKey}
+          AND attempt_count < ${DI_V0_S4_LIMITS.maxAttempts}
           AND (${onlyId}::text IS NULL OR id = ${onlyId}::text)
           AND ((status IN ('PENDING', 'FAILED_RETRYABLE') AND next_attempt_at <= clock_timestamp())
             OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))
@@ -1038,7 +1056,13 @@ export class DiV0S4WorkItemRepository {
     vehicleOrganizationId: string | null,
     kill: DiV0S4KillEvaluation,
   ): DiV0S4EnablementResult {
-    return evaluateDiV0S4Enablement(this.config, role, { organizationId, vehicleId, vehicleOrganizationId }, kill);
+    return evaluateDiV0S4EnablementWithFleetMotionPolicyV1(
+      this.config,
+      this.fleetMotionPolicy,
+      role,
+      { organizationId, vehicleId, vehicleOrganizationId },
+      kill,
+    );
   }
 
   private async rowEnablement(

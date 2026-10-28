@@ -66,6 +66,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'di_v0_p2_auto_projection_v2',
   'di_v0_s4_research_v2',
   'di_v0_motion_core_shadow_v1',
+  'di_v0_ds4_assessment_v1',
   'di_v0_m7a_road_assignment_shadow_v1',
 ] as const;
 

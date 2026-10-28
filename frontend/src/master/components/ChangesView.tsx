@@ -73,6 +73,43 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T07:30:00.000Z',
   },
   {
+    id: 'ds4-pre-activation-readiness-2026-10-28',
+    version: '4.9.5006',
+    title: 'DS4 pre-activation readiness — exposure O(n) + postgres persistence assertions (Draft)',
+    summary: [
+      'Map-based duplicate FSM label counting in driving exposure (same fail-closed semantics).',
+      'Disposable Postgres integration asserts persisted eventSummariesJson exposure provenance, intensity quality counts, C4/C5.1 authority, zero-exposure INSUFFICIENT_EVIDENCE.',
+      'Read-only production audit recorded; no worker activation or deploy.',
+    ],
+    reason: 'Close technical prerequisites before DS4 assessment data collection (post PR #2218 merge).',
+    previousBehavior: 'FSM duplicate-label union used O(n²) scans; postgres suite did not assert persisted eventSummariesJson PR-A2 fields.',
+    details:
+      'backend: ds4-assessment-driving-exposure.v1.ts; ds4-assessment.postgres.integration.spec.ts; architecture evidence DS4_PRE_ACTIVATION_READINESS_2026-10-28.md.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T14:05:00.000Z',
+  },
+  {
+    id: 'ds4-assessment-l2-intensity-exposure-pr-a2-2026-10-28',
+    version: '4.9.5005',
+    title: 'DS4 Assessment L2 PR-A2 — intensity, exposure hardening (Draft, worker OFF)',
+    summary: [
+      'L2 event admissibility from persisted V2 intensity only (OK, coverageRatio=1, steps=durationS, duration tiers FULL_ELIGIBLE/BIN_ONLY).',
+      'Canonical exposure Es/D_km: both interval endpoints MOVING+DIRECT + usable speed; 1s grid gap; fail-closed duplicate labels; no C5.1→c4Speeds fallback.',
+      'Assessment input fingerprint binds L2 eligibility + exposure rule versions; zero exposure always INSUFFICIENT_EVIDENCE (never RATED).',
+      'ordinalTripRatingApproved=false; operationalLoadIndex=null; workers OFF.',
+    ],
+    reason:
+      'Implement Fable 2026-10-28 gates for ordinal event quality and exposure before calibrated Driving Impact V2 scoring.',
+    previousBehavior:
+      'PR-A L2 counted any consumable intensity row without duration tier gates or integrated driving exposure metadata.',
+    details:
+      'backend ds4-assessment: ds4-assessment-event-intensity-eligibility.v1.ts, ds4-assessment-driving-exposure.v1.ts, ds4-trip-assessment-v1.engine.ts; tests; architecture/drivingintelligence design + evidence PR-A2.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T12:30:00.000Z',
+  },
+  {
     id: 'ds4-event-intensity-persistence-pr2-2026-10-28',
     version: '4.9.5002',
     title: 'DS4 event intensity persistence — PR-2 (shadow payload, Draft, not deployed)',

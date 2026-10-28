@@ -2381,6 +2381,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | Motion detection, legacy HF/Impact V1, Trip UI/DriverScore/Rental/Brake/Tire customer paths unchanged; motion-core env allowlists untouched; no deploy |
 | REMAINING | Fable review quality policy + reference distribution calibration; PR-B consumer cutover |
 
+### DS4 Assessment L2 PR-A2 — intensity eligibility + driving exposure (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `ds4-assessment-event-intensity-eligibility.v1.ts` + `ds4-assessment-driving-exposure.v1.ts`; L2 engine wires admissible ordinals, exposure provenance, `NO_VALID_DRIVING_EXPOSURE`; quality policy V2 default; extended `eventSummariesJson` (no schema migration) |
+| WHY | Fable 2026-10-28: gate ordinal bins on validated V2 intensity + duration metadata; canonical Es/D_km for future calibrated impact without publishing numeric score |
+| VALIDATION | `npm run test:di:ds4-assessment` (unit + optional postgres) |
+| NON_EFFECTS | C4/C5.1 algorithms unchanged; `operationalLoadIndex` remains null; worker OFF; no consumer cutover |
+| REMAINING | Reference population calibration; Fable re-review of eligibility thresholds |
+
 ### DS4 RPM High Frequency V1A — data integration & admission (2026-10-28, Draft PR, not deployed)
 
 | Event | Detail |
@@ -2391,3 +2401,23 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | Jest: `ds4-rpm-hf-v1a/*`, `clickhouse-hf.trip-rpm.spec.ts`; `nest build`; replay fixture `rpm-production-interval-replay.json` |
 | NON_EFFECTS | Motion C5.1, Trip FSM, Driving Impact, DriverScore, Tire/Brake, DIMO fetch pipeline, HF mirror ingest unchanged; no DB migration; no deploy |
 | REMAINING | Live ClickHouse preflight gate before activation; V1B shadow engine + Fable before production allowlist |
+
+### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fail-closed duplicate label handling; C5_1_PREFERRED no c4Speeds fallback; 1s exposure grid gap; L2 rule bindings in assessment input fingerprint; zero-exposure fail-closed independent of manoeuvre count |
+| WHY | Independent Fable review PASS_WITH_CONDITIONS remediation on PR #2218 |
+| VALIDATION | `npm run test:di:ds4-assessment`; `test:di:ds4-assessment:postgres:ci`; merge with main (#2217) |
+| NON_EFFECTS | No score publication; workers OFF; no consumer cutover |
+| REMAINING | Impact V2 percentile gate on `assessmentStatus===RATED` before future activation |
+
+### DS4 pre-activation readiness — exposure perf + postgres persistence assertions (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | O(n) Map-based FSM duplicate-label counting in `ds4-assessment-driving-exposure.v1.ts`; postgres integration asserts persisted `eventSummariesJson` exposure provenance + intensity quality + zero-exposure path |
+| WHY | Close PR-A2 technical prerequisites before assessment worker data collection; production read-only audit baseline |
+| VALIDATION | `npm run test:di:ds4-assessment`; `test:di:ds4-assessment:postgres:ci`; evidence `evidence/DS4_PRE_ACTIVATION_READINESS_2026-10-28.md` |
+| NON_EFFECTS | No deploy; assessment/impact workers OFF; no numeric score; no consumer cutover |
+| REMAINING | Production deploy of #2212/#2215/#2218 stack; V2 intensity backfill on legacy motion payloads; owner activation record |
