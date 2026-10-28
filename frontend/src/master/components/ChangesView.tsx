@@ -40,7 +40,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.5011',
     title: 'Master Admin Intelligence Center — PR2 VSI read APIs & UI (Draft)',
     summary: [
-      'Read-only GET /admin/master-intelligence/vsi/* (MASTER_ADMIN + MFA): fleet overview, profile detail, scoped readonly composer signals, paginated revision history, as-of resolution, capability resolver delegate.',
+      'Read-only GET /admin/master-intelligence/vsi/* (MASTER_ADMIN RBAC; MFA deferred by owner): fleet overview, profile detail, scoped readonly composer signals, paginated revision history, as-of resolution, capability resolver delegate.',
       'Tenant/link scope validation, OPEN_TRIP semantic masking, NOT_CAPTURED when P5-H1 disabled, no materialize/DIMO/writes.',
       'VSI Master Admin UI: org/vehicle/link pickers, live DTO badges, signal table, revision/as-of sections, cross-links; nine-locale i18n.',
     ],
