@@ -36,25 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'ds4-rpm-hf-v1b-temporal-shadow-2026-10-28',
-    version: '4.9.5005',
-    title: 'DS4 RPM High Frequency V1B — post-trip temporal quality shadow (Draft, not deployed)',
-    summary: [
-      'Deterministic temporal coverage/interval/sequence analysis on top of V1A trip input; versioned shadow result contract with separate read-completeness vs temporal coverage vs admission slices.',
-      'Trip-scoped outbox + idempotent run persistence; leader-gated scheduler job ds4_rpm_hf_v1b_shadow_v1 (flags OFF by default).',
-      'Reuses V1A admission only — no alternate RPM pipeline, no customer scoring or API.',
-    ],
-    reason:
-      'Phase 2B shadow quality path after production V1A validation; bounded post-trip processing with explicit defer vs terminal semantics.',
-    previousBehavior:
-      'V1A provided read-only trip input only; no persisted RPM HF temporal quality shadow runs.',
-    details:
-      'backend: driving-intelligence/rpm-hf-v1b/*, prisma migration ds4_rpm_hf_v1b_shadow_v1, scheduler-leader.registry.ts, vehicle-intelligence.module.ts; architecture/drivingintelligence/research/CHANGE_LEDGER.md.',
-    affectsArchitecture: true,
-    module: 'Driving Intelligence',
-    createdAt: '2026-10-28T17:00:00.000Z',
-  },
-  {
     id: 'ds4-rpm-hf-v1a-data-integration-2026-10-28',
     version: '4.9.5004',
     title: 'DS4 RPM High Frequency V1A — trip-scoped HF read + admission (Draft, not deployed)',
