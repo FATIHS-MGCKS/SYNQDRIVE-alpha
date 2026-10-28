@@ -523,3 +523,15 @@ edges:
     relation: gates
     to: DI-DEC-V0-S4A-IMPL-001
     notes: P2 throughput ceiling before multi-worker scale
+
+  - id: DI-EDGE-155
+    from: DI-DEC-DS4-AUTHORITY-001
+    relation: supports
+    to: DI-EVID-CONSUMER-AUDIT-V1-001
+    notes: Consumer audit findings drive remediation PR-1 and cutover gates
+
+  - id: DI-EDGE-156
+    from: DI-DEC-DS4-AUTHORITY-001
+    relation: supports
+    to: DI-EVID-DS4-MIGRATION-DESIGN-001
+    notes: PR-0 migration design; no runtime activation

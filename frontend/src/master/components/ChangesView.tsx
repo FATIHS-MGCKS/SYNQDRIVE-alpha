@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ds4-authority-migration-pr0-2026-10-28',
+    version: '4.9.5001',
+    title: 'DS4 authoritative assessment migration — PR-0 (governance only)',
+    summary: [
+      'Owner decision DI-DEC-DS4-AUTHORITY-001: DS4 replaces legacy driving assessment; no permanent legacy fallback.',
+      'Design doc DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md (dependency graph, fail-closed FC-1..FC-7, blockers B1–B9, PR sequence).',
+      'Consumer Audit V1 findings register (4×P1, 4×P2, ADDENDUM-1/2) with acceptance criteria.',
+      'Brakes Health / Rental Driving Analysis / Rental Health → AUDIT_IN_PROGRESS bootstrap authorities.',
+      'TIRE-GAP-DI-GRAPH-NO-DS4-NODE-001 partially closed via DI design; no runtime or migration changes.',
+    ],
+    reason:
+      'Permanently record owner-approved DS4 authority migration before implementation PRs (PR-1+).',
+    previousBehavior:
+      'DS4 motion core shadow-only; legacy HF/Impact V1 authoritative; consumer audit gaps undocumented in registry.',
+    details:
+      'architecture/drivingintelligence/design/*, decisions/DECISION_REGISTER.md, brakes-health/, rental-driving-analysis/, rental-health/, SYNQDRIVE_RENTAL_ARCHITECTURE.md.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T00:00:00.000Z',
+  },
+  {
     id: 'vehicle-identity-p3-bridge-provenance-2026-10-27',
     version: '4.9.5000',
     title: 'Vehicle Identity P3 — canonical identity → Vehicle AI V2 → save + provenance',

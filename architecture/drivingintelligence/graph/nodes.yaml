@@ -1852,3 +1852,37 @@ nodes:
     source_paths:
       - architecture/drivingintelligence/evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md
       - backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository.ts
+
+  - id: DI-DEC-DS4-AUTHORITY-001
+    type: decision
+    title: DS4 Motion Core as single authoritative driving-behaviour assessment
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Owner-approved migration (PR-0 docs only, not runtime-activated): DS4 Motion → Assessment L2 → Impact V2
+      → aggregators; no permanent legacy fallback; fail-closed insufficient evidence; OBD misuse separate
+      from motion scoring.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+      - architecture/drivingintelligence/design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md
+    evidence:
+      - DI-EVID-CONSUMER-AUDIT-V1-001
+      - DI-EVID-DS4-MIGRATION-DESIGN-001
+
+  - id: DI-EVID-CONSUMER-AUDIT-V1-001
+    type: evidence
+    title: Driver Score and Rental Driving Analysis Consumer Audit V1 findings register
+    epistemic_status: CONFIRMED
+    source_type: AUDIT
+    summary: Read-only consumer audit @ 51adb234…; 4 P1, 4 P2, 2 ADDENDUM with remediation acceptance criteria.
+    source_paths:
+      - architecture/drivingintelligence/evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md
+
+  - id: DI-EVID-DS4-MIGRATION-DESIGN-001
+    type: evidence
+    title: DS4 authoritative assessment migration design (PR-0)
+    epistemic_status: CONFIRMED
+    source_type: DESIGN
+    summary: Dependency graph, fail-closed FC-1..FC-7, blockers B1–B9, PR sequence, historical provenance policy.
+    source_paths:
+      - architecture/drivingintelligence/design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md
