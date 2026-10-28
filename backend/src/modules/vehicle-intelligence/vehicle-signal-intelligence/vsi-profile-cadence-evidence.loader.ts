@@ -11,10 +11,12 @@ import type {
   VsiHfCadenceReadStatus,
   VsiLvCadenceEvidenceInput,
   VsiLvCadenceEvidencePoint,
+  VsiLvStandbyTransmissionEvidenceInput,
   VsiRpmCadenceEvidenceInput,
   VsiRpmCadenceSamplePoint,
   VsiRpmCadenceTripWindow,
 } from './vsi-profile-cadence.types';
+import { loadLvStandbyTransmissionEvidenceFromDb } from './vsi-lv-standby-transmission-evidence.loader';
 
 const RPM_HISTORY_DAYS = 14;
 const MAX_FINALIZED_TRIPS = 20;
@@ -29,6 +31,9 @@ export interface VsiProfileCadenceEvidencePort {
     ctx: VsiProfileCadenceLoadContext,
   ): Promise<VsiRpmCadenceEvidenceInput | null>;
   loadLvEvidence(ctx: VsiProfileCadenceLoadContext): Promise<VsiLvCadenceEvidenceInput | null>;
+  loadLvStandbyTransmissionEvidence(
+    ctx: VsiProfileCadenceLoadContext,
+  ): Promise<import('./vsi-profile-cadence.types').VsiLvStandbyTransmissionEvidenceInput | null>;
 }
 
 export type VsiProfileCadenceLoadContext = {
@@ -174,5 +179,11 @@ export class VsiProfileCadenceEvidenceLoader implements VsiProfileCadenceEvidenc
       linkActivatedAtMs: ctx.linkActivatedAt.getTime(),
       linkDeactivatedAtMs: ctx.linkDeactivatedAt?.getTime() ?? null,
     };
+  }
+
+  async loadLvStandbyTransmissionEvidence(
+    ctx: VsiProfileCadenceLoadContext,
+  ): Promise<VsiLvStandbyTransmissionEvidenceInput | null> {
+    return loadLvStandbyTransmissionEvidenceFromDb(this.prisma, ctx);
   }
 }
