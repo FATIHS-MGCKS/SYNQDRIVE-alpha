@@ -1,5 +1,10 @@
 /**
  * Minimal DS4 provider technical capability contract (evidence supply path — not trip quality).
+ *
+ * Canonical telemetry identity: `vehicle-intelligence/telemetry-source-family.ts` on `DimoVehicle.rawJson`.
+ * S4 persists `source_family` via `resolveDiV0SourceFamily` (same resolver). Tesla Model 3 software
+ * integration in production uses `syntheticDevice` without `aftermarketDevice` → `API_SYNTHETIC`.
+ * R1 hardware uses `aftermarketDevice.serial` prefix `R1-` → `RUPTELA_R1`.
  */
 
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';

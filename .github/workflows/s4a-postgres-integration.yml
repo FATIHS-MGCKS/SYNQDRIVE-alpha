@@ -268,6 +268,7 @@ jobs:
           npm run test:di:trip-speed-quality:postgres:ci
           npm run test:di:s4-research-worker:postgres:ci
           npm run test:di:ds4-assessment:postgres:ci
+          npm run test:di:ds4-fleet-motion-admission:postgres
 
   s4a-postgres-integration:
     name: S4A PostgreSQL integration
