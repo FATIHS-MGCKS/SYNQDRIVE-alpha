@@ -60,24 +60,32 @@ export function useVsiMasterIntelligenceData(input: {
         revisions = revisionsRes;
 
         if (asOf) {
-          revisionAsOf = await api.admin.masterIntelligenceVsi.revisionAsOf(
+          try {
+            revisionAsOf = await api.admin.masterIntelligenceVsi.revisionAsOf(
+              orgId,
+              vehicleId,
+              linkId,
+              asOf,
+            );
+          } catch {
+            revisionAsOf = null;
+          }
+        }
+
+        try {
+          capabilityExplanation = await api.admin.masterIntelligenceVsi.capabilityResolver(
             orgId,
             vehicleId,
             linkId,
-            asOf,
+            {
+              consumerModule: 'apds',
+              featureId: 'shadow_demand_profile_read',
+              evaluationTime: profile.evaluatedAt,
+            },
           );
+        } catch {
+          capabilityExplanation = null;
         }
-
-        capabilityExplanation = await api.admin.masterIntelligenceVsi.capabilityResolver(
-          orgId,
-          vehicleId,
-          linkId,
-          {
-            consumerModule: 'apds',
-            featureId: 'shadow_demand_profile_read',
-            evaluationTime: profile.evaluatedAt,
-          },
-        );
       }
 
       setState({

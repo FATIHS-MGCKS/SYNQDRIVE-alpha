@@ -89,7 +89,6 @@ function ProfileSummaryCard({ profile }: { profile: MasterVsiProfileSummaryDto }
 function VsiMasterIntelligenceContent() {
   const { t, locale } = useLanguage();
   const { context, setContextInUrl } = useMasterIntelligenceContext();
-
   const [orgOptions, setOrgOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [vehicleOptions, setVehicleOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [scopeLoading, setScopeLoading] = useState(false);
@@ -101,6 +100,14 @@ function VsiMasterIntelligenceContent() {
       providerSourceLinkId: context.providerSourceLinkId,
       asOf: context.asOf,
     });
+
+  useEffect(() => {
+    if (context.providerSourceLinkId || !context.orgId || !context.vehicleId) return;
+    const first = overview?.profiles[0]?.providerSourceLinkId;
+    if (first) {
+      setContextInUrl({ providerSourceLinkId: first }, { replace: true });
+    }
+  }, [context.orgId, context.vehicleId, context.providerSourceLinkId, overview, setContextInUrl]);
 
   const linkOptions = useMemo(
     () =>
