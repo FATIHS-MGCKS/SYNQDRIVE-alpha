@@ -26,6 +26,8 @@ export type MasterView =
   | 'vehicle-logbook'
   | 'battery-v2-shadow-inspection'
   | 'battery-v2-hv-inspection'
+  | 'vsi-intelligence'
+  | 'apds-intelligence'
   /** @deprecated URL redirect only */
   | 'hm-compatibility'
   /** @deprecated URL redirect only */

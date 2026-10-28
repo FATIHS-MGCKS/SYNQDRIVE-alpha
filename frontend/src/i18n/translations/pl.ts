@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
 import { batteryV2HvInspectionPL } from './battery-v2-hv-inspection.pl';
 import { tireWearV3Pl } from './tire.wearV3.pl';
 import { masterPhysicalDeviceInventoryPl } from './master.physicalDeviceInventory.pl';
+import { masterIntelligencePl } from './master.intelligence.pl';
 import { masterMotionPhysicsPl } from './master.motionPhysics.pl';
 import { masterVehicleIdentityPl } from './master.vehicleIdentity.pl';
 import { masterCvTechnicalSpecsPl } from './master.cv.technicalSpecs.pl';
@@ -176,6 +177,7 @@ export const pl = {
   'trips.drivingImpact.quality.unavailable': 'Brak wiarygodnej oceny obciążenia pojazdu.',
   'trips.drivingImpact.quality.r1Contained': 'Obciążenie pojazdu tymczasowo niedostępne (ograniczenie czasowe R1).',
   ...masterPhysicalDeviceInventoryPl,
+  ...masterIntelligencePl,
   ...masterMotionPhysicsPl,
 ...masterVehicleIdentityPl,
   ...masterCvTechnicalSpecsPl,

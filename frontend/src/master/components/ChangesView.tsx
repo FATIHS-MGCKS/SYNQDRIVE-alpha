@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-intelligence-center-pr1-2026-10-28',
+    version: '4.9.5010',
+    title: 'Master Admin Intelligence Center — PR1 navigation & UI foundation (Draft)',
+    summary: [
+      'Connectivity nav: VSI – Signal Intelligence and APDS – Adaptive Polling (MASTER_ADMIN only).',
+      'Shared intelligence module: URL context parse/build, cross-links, profile badges, evidence semantics, honest empty states (no live VSI/APDS APIs).',
+      'Nine-locale i18n for intelligence copy; presentation preview only until PR2/PR3 read APIs.',
+    ],
+    reason:
+      'Owner-accepted P0 plan: ship shared Master Admin shell before wiring read-only VSI (PR2) and APDS (PR3) backends.',
+    previousBehavior:
+      'No dedicated Master Admin surfaces for fleet signal intelligence or adaptive polling shadow review.',
+    details:
+      'frontend/src/master/intelligence/*, master navigation types/config/url/drilldown, App.tsx routes; PR2–PR5: APIs, vehicle/PDI deep integration, history.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-28T19:15:00.000Z',
+  },
+  {
     id: 'ds4-rpm-hf-v1a-data-integration-2026-10-28',
     version: '4.9.5004',
     title: 'DS4 RPM High Frequency V1A — trip-scoped HF read + admission (Draft, not deployed)',

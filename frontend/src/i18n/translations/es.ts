@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
 import { batteryV2HvInspectionES } from './battery-v2-hv-inspection.es';
 import { tireWearV3Es } from './tire.wearV3.es';
 import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
+import { masterIntelligenceEs } from './master.intelligence.es';
 import { masterMotionPhysicsEs } from './master.motionPhysics.es';
 import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
 import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
@@ -176,6 +177,7 @@ export const es = {
   'trips.drivingImpact.quality.unavailable': 'No hay una evaluación fiable de carga del vehículo.',
   'trips.drivingImpact.quality.r1Contained': 'Carga del vehículo no disponible temporalmente (contención temporal R1).',
   ...masterPhysicalDeviceInventoryEs,
+  ...masterIntelligenceEs,
   ...masterMotionPhysicsEs,
 ...masterVehicleIdentityEs,
   ...masterCvTechnicalSpecsEs,

@@ -18,6 +18,8 @@ import {
   Battery,
   BatteryCharging,
   Boxes,
+  Activity,
+  Gauge,
 } from 'lucide-react';
 import type { MasterNavGroupConfig, MasterNavItemConfig } from './master-nav.types';
 
@@ -31,6 +33,8 @@ export const MASTER_NAV_ITEMS: MasterNavItemConfig[] = [
   { id: 'vehicle-logbook', labelKey: 'master.nav.vehicleLogbook', icon: BookOpen, permissions: ['MASTER_ADMIN'] },
   { id: 'billing', labelKey: 'master.nav.billing', icon: CreditCard, permissions: ['MASTER_ADMIN', 'master-billing'], badge: 'billing-anomaly' },
   { id: 'platform-integrations', labelKey: 'master.nav.platformIntegrations', icon: Plug, permissions: ['MASTER_ADMIN'], badge: 'integration-attention', mobilePrimary: true },
+  { id: 'vsi-intelligence', labelKey: 'master.nav.vsiIntelligence', icon: Activity, permissions: ['MASTER_ADMIN'] },
+  { id: 'apds-intelligence', labelKey: 'master.nav.apdsIntelligence', icon: Gauge, permissions: ['MASTER_ADMIN'] },
   { id: 'high-mobility', labelKey: 'master.nav.highMobility', icon: Radio, permissions: ['MASTER_ADMIN'], badge: 'integration-outage' },
   { id: 'parts-accessories', labelKey: 'master.nav.partsAccessories', icon: Package, permissions: ['MASTER_ADMIN'] },
   { id: 'insurances', labelKey: 'master.nav.insurances', icon: Shield, permissions: ['MASTER_ADMIN'] },
@@ -52,7 +56,7 @@ export const MASTER_NAV_GROUPS: MasterNavGroupConfig[] = [
   { id: 'tenants', labelKey: 'master.nav.group.tenants', collapsible: false, defaultExpanded: true, items: ['organizations', 'prospects', 'security-access'] },
   { id: 'fleet', labelKey: 'master.nav.group.fleet', collapsible: false, defaultExpanded: true, items: ['vehicles', 'device-inventory', 'vehicle-logbook'] },
   { id: 'commerce', labelKey: 'master.nav.group.commerce', collapsible: false, defaultExpanded: true, items: ['billing'] },
-  { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['platform-integrations', 'high-mobility'] },
+  { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['platform-integrations', 'vsi-intelligence', 'apds-intelligence', 'high-mobility'] },
   { id: 'partners', labelKey: 'master.nav.group.partners', collapsible: true, defaultExpanded: true, items: ['parts-accessories', 'insurances', 'voice-assistant'] },
   { id: 'operations', labelKey: 'master.nav.group.operations', collapsible: true, defaultExpanded: true, items: ['platform-ops', 'support'] },
   { id: 'engineering', labelKey: 'master.nav.group.engineering', collapsible: true, defaultExpanded: false, items: ['battery-v2-shadow-inspection', 'battery-v2-hv-inspection', 'architektur', 'changes'] },

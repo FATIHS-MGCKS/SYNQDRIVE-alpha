@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
 import { batteryV2HvInspectionNL } from './battery-v2-hv-inspection.nl';
 import { tireWearV3Nl } from './tire.wearV3.nl';
 import { masterPhysicalDeviceInventoryNl } from './master.physicalDeviceInventory.nl';
+import { masterIntelligenceNl } from './master.intelligence.nl';
 import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
 import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
@@ -177,6 +178,7 @@ export const nl = {
   'trips.drivingImpact.quality.unavailable': 'Geen betrouwbare voertuigbelasting-evaluatie beschikbaar.',
   'trips.drivingImpact.quality.r1Contained': 'Voertuigbelasting tijdelijk niet beschikbaar (R1-tijdsbeperking).',
   ...masterPhysicalDeviceInventoryNl,
+  ...masterIntelligenceNl,
   ...masterMotionPhysicsNl,
 ...masterVehicleIdentityNl,
   ...masterCvTechnicalSpecsNl,

@@ -8,6 +8,7 @@ import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
 import { batteryV2HvInspectionFR } from './battery-v2-hv-inspection.fr';
 import { tireWearV3Fr } from './tire.wearV3.fr';
 import { masterPhysicalDeviceInventoryFr } from './master.physicalDeviceInventory.fr';
+import { masterIntelligenceFr } from './master.intelligence.fr';
 import { masterMotionPhysicsFr } from './master.motionPhysics.fr';
 import { masterVehicleIdentityFr } from './master.vehicleIdentity.fr';
 import { masterCvTechnicalSpecsFr } from './master.cv.technicalSpecs.fr';
@@ -917,6 +918,7 @@ export const fr = {
   ...dimoWebhookHealthFr,
   ...masterPlatformOpsDiS4Fr,
   ...masterPhysicalDeviceInventoryFr,
+  ...masterIntelligenceFr,
   ...masterMotionPhysicsFr,
 ...masterVehicleIdentityFr,
   ...masterCvTechnicalSpecsFr,
