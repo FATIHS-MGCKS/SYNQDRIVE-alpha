@@ -3,7 +3,7 @@ export const masterIntelligenceTr = {
   'master.nav.apdsIntelligence': 'APDS – uyarlanabilir polling',
   'master.intelligence.vsi.title': 'VSI – sinyal istihbaratı',
   'master.intelligence.vsi.description':
-    'Salt okunur sinyal profilleri, gözlemlenen kadans ve değerlendirme kanıtı. Canlı filo verisi PR2’de.',
+    'Salt okunur araç sinyal profilleri, gözlemlenen kadans, yakalanmışsa revizyon geçmişi ve capability resolver açıklamaları (üretim verisi).',
   'master.intelligence.apds.title': 'APDS – uyarlanabilir polling',
   'master.intelligence.apds.description':
     'Shadow uzlaştırma kararları ve bağlı gerçek poll kanıtı. Karar geçmişi PR3’te.',
@@ -72,4 +72,44 @@ export const masterIntelligenceTr = {
   'master.intelligence.blocked.title': 'Değerlendirme engellendi',
   'master.intelligence.blocked.body':
     'Profil sınıflandırması duraklatıldı ({{code}}). Eski etiket güncel gibi gösterilmemelidir.',
+
+  'master.intelligence.section.fleetOverview': 'Filo kapsamı ve profiller',
+  'master.intelligence.section.signals': 'Sinyal detayı',
+  'master.intelligence.section.revisions': 'Profil revizyon geçmişi',
+  'master.intelligence.section.capability': 'Capability resolver (salt okunur)',
+
+  'master.intelligence.vsi.picker.org': 'Organizasyon',
+  'master.intelligence.vsi.picker.vehicle': 'Araç',
+  'master.intelligence.vsi.picker.link': 'Sağlayıcı kaynak bağlantısı',
+  'master.intelligence.vsi.loading': 'VSI okuma modelleri yükleniyor…',
+  'master.intelligence.vsi.error': 'VSI intelligence yüklenemedi.',
+  'master.intelligence.vsi.retry': 'Yeniden dene',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Organizasyon ve araç seçin',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Kalıcı VSI profilleri için organizasyon ve araç seçin. Kapsam sunucuda doğrulanır.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Materialize VSI profili yok',
+  'master.intelligence.vsi.noProfiles.body':
+    'Bu araç için henüz capability profili yok. Bu, devre dışı revizyon geçmişi ile aynı değildir.',
+
+  'master.intelligence.vsi.decision.lv': 'LV karar kodu: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM karar kodu: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Kadans etiketleri gözlemlenen iletim desenlerini anlatır; yerel donanım yapılandırması değildir.',
+  'master.intelligence.vsi.signals.canonical': 'Kanonik sinyal',
+  'master.intelligence.vsi.signals.provider': 'Sağlayıcı adı',
+  'master.intelligence.vsi.signals.quality': 'Kalite / güven',
+  'master.intelligence.vsi.signals.observedAt': 'Son gözlem (UTC + yerel)',
+  'master.intelligence.vsi.signals.limitations': 'Sınırlamalar',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revizyon geçmişi: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1 yakalama kapalı. Eksik geçmiş profilin hiç değişmediği anlamına gelmez.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Daha fazla revizyon — API ile imleç sayfalama.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of revizyon çözümü',
+  'master.intelligence.vsi.asOf.decisionAt': 'Karar zamanı',
+  'master.intelligence.vsi.asOf.authority': 'Otorite',
 } as const;

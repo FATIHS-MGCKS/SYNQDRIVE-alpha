@@ -302,6 +302,9 @@ import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-
 import { VsiReadonlySignalComposerModule } from './vehicle-signal-intelligence/vsi-readonly-composer.module';
 import { VsiSignalProfileInspectionController } from './vehicle-signal-intelligence/vsi-signal-profile-inspection.controller';
 import { VsiCapabilityResolverController } from './vehicle-signal-intelligence/vsi-capability-resolver.controller';
+import { VsiMasterIntelligenceReadController } from './vehicle-signal-intelligence/vsi-master-intelligence-read.controller';
+import { VsiMasterIntelligenceReadService } from './vehicle-signal-intelligence/vsi-master-intelligence-read.service';
+import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-capability-resolver.service';
 import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds-p5.service';
@@ -319,6 +322,7 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
   imports: [
     forwardRef(() => DimoModule),
     VsiReadonlySignalComposerModule,
+    IamMfaModule,
     DiV0S4RuntimeModule,
     DiV0TripSpeedQualityModule,
     DiV0S4ResearchModule,
@@ -360,11 +364,12 @@ import { DiV0M7aRoadAssignmentShadowModule } from './driving-intelligence/m7a-ro
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, VehicleMotionPhysicsReferenceController, HvCapacityShadowEvaluationController, HvMeasurementQualityController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, VehicleMotionPhysicsReferenceController, HvCapacityShadowEvaluationController, HvMeasurementQualityController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController, VsiMasterIntelligenceReadController],
   providers: [
     VsiCapabilityResolverRepository,
     VsiApdsP5ReadonlyService,
     VsiCapabilityResolverService,
+    VsiMasterIntelligenceReadService,
     VehicleIntelligencePermissionGuard,
     BatteryService,
     TiresService,

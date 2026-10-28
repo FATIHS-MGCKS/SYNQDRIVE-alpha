@@ -3,7 +3,7 @@ export const masterIntelligenceIt = {
   'master.nav.apdsIntelligence': 'APDS – polling adattivo',
   'master.intelligence.vsi.title': 'VSI – intelligence segnale',
   'master.intelligence.vsi.description':
-    'Profili segnale in sola lettura, cadenza osservata e prove di valutazione. Dati live in PR2.',
+    'Profili segnale veicolo in sola lettura, cadenza osservata, storico revisioni se catturato e spiegazioni capability resolver dai dati di produzione.',
   'master.intelligence.apds.title': 'APDS – polling adattivo',
   'master.intelligence.apds.description':
     'Decisioni shadow di riconciliazione e prove di poll reale collegate. Storico in PR3.',
@@ -72,4 +72,44 @@ export const masterIntelligenceIt = {
   'master.intelligence.blocked.title': 'Valutazione bloccata',
   'master.intelligence.blocked.body':
     'Classificazione profilo in pausa ({{code}}). Un’etichetta precedente non deve essere mostrata come attuale.',
+
+  'master.intelligence.section.fleetOverview': 'Ambito flotta e profili',
+  'master.intelligence.section.signals': 'Dettaglio segnale',
+  'master.intelligence.section.revisions': 'Cronologia revisioni profilo',
+  'master.intelligence.section.capability': 'Capability resolver (sola lettura)',
+
+  'master.intelligence.vsi.picker.org': 'Organizzazione',
+  'master.intelligence.vsi.picker.vehicle': 'Veicolo',
+  'master.intelligence.vsi.picker.link': 'Link sorgente provider',
+  'master.intelligence.vsi.loading': 'Caricamento modelli VSI…',
+  'master.intelligence.vsi.error': 'Impossibile caricare l’intelligence VSI.',
+  'master.intelligence.vsi.retry': 'Riprova',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Seleziona organizzazione e veicolo',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Scegli organizzazione e veicolo per caricare i profili VSI persistiti. L’ambito è validato lato server.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Nessun profilo VSI materializzato',
+  'master.intelligence.vsi.noProfiles.body':
+    'Non esiste ancora un profilo capability per questo veicolo. Non equivale a cronologia revisioni disabilitata.',
+
+  'master.intelligence.vsi.decision.lv': 'Codice decisione LV: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'Codice decisione RPM: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Le etichette di cadenza descrivono pattern di trasmissione osservati, non la configurazione hardware nativa.',
+  'master.intelligence.vsi.signals.canonical': 'Segnale canonico',
+  'master.intelligence.vsi.signals.provider': 'Nome provider',
+  'master.intelligence.vsi.signals.quality': 'Qualità / fiducia',
+  'master.intelligence.vsi.signals.observedAt': 'Ultima osservazione (UTC + locale)',
+  'master.intelligence.vsi.signals.limitations': 'Limitazioni',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Cronologia: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'La cattura P5-H1 è disabilitata. La mancanza di cronologia non significa assenza di modifiche al profilo.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Altre revisioni — paginazione a cursore via API.',
+
+  'master.intelligence.vsi.asOf.title': 'Risoluzione revisione as-of',
+  'master.intelligence.vsi.asOf.decisionAt': 'Ora decisione',
+  'master.intelligence.vsi.asOf.authority': 'Autorità',
 } as const;

@@ -5,7 +5,7 @@ export const masterIntelligenceEn = {
 
   'master.intelligence.vsi.title': 'VSI – Signal Intelligence',
   'master.intelligence.vsi.description':
-    'Read-only signal capability profiles, observed cadence labels, and evaluation evidence. Live fleet data arrives in PR2.',
+    'Read-only vehicle signal profiles, observed cadence labels, revision history when captured, and capability resolver explanations from production data.',
   'master.intelligence.apds.title': 'APDS – Adaptive Polling',
   'master.intelligence.apds.description':
     'Shadow reconciliation decisions and linked real poll evidence. Live decision history arrives in PR3.',
@@ -87,6 +87,46 @@ export const masterIntelligenceEn = {
   'master.intelligence.blocked.title': 'Evaluation blocked',
   'master.intelligence.blocked.body':
     'Profile classification is paused ({{code}}). An older label must not be shown as current.',
+
+  'master.intelligence.section.fleetOverview': 'Fleet scope & profiles',
+  'master.intelligence.section.signals': 'Signal detail',
+  'master.intelligence.section.revisions': 'Profile revision history',
+  'master.intelligence.section.capability': 'Capability resolver (read-only)',
+
+  'master.intelligence.vsi.picker.org': 'Organization',
+  'master.intelligence.vsi.picker.vehicle': 'Vehicle',
+  'master.intelligence.vsi.picker.link': 'Provider source link',
+  'master.intelligence.vsi.loading': 'Loading VSI read models…',
+  'master.intelligence.vsi.error': 'Could not load VSI intelligence.',
+  'master.intelligence.vsi.retry': 'Retry',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Select organization and vehicle',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Choose an organization and vehicle to load persisted VSI signal profiles. Scope is validated server-side; no cross-tenant access.',
+
+  'master.intelligence.vsi.noProfiles.title': 'No VSI profiles materialized',
+  'master.intelligence.vsi.noProfiles.body':
+    'No signal capability profile exists yet for this vehicle. This is not the same as revision history being disabled.',
+
+  'master.intelligence.vsi.decision.lv': 'LV decision code: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM decision code: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence labels describe observed transmission patterns, not native hardware configuration.',
+  'master.intelligence.vsi.signals.canonical': 'Canonical signal',
+  'master.intelligence.vsi.signals.provider': 'Provider name',
+  'master.intelligence.vsi.signals.quality': 'Quality / confidence',
+  'master.intelligence.vsi.signals.observedAt': 'Last observation (UTC + local)',
+  'master.intelligence.vsi.signals.limitations': 'Limitations',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revision history: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1 revision capture is disabled in this environment. Missing history does not mean the profile never changed.',
+  'master.intelligence.vsi.revision.moreAvailable': 'More revisions available — use cursor pagination via API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of revision resolution',
+  'master.intelligence.vsi.asOf.decisionAt': 'Decision time',
+  'master.intelligence.vsi.asOf.authority': 'Authority',
 } as const;
 
 export type MasterIntelligenceTranslationKey = keyof typeof masterIntelligenceEn;

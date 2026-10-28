@@ -3689,6 +3689,62 @@ export const api = {
           body,
         ),
     },
+    masterIntelligenceVsi: {
+      overview: (organizationId: string, vehicleId: string) =>
+        get<import('../master/intelligence/vsi-master-intelligence-api.types').MasterVsiFleetOverviewDto>(
+          `/admin/master-intelligence/vsi/organizations/${encodeURIComponent(organizationId)}/vehicles/${encodeURIComponent(vehicleId)}/overview`,
+        ),
+      profile: (organizationId: string, vehicleId: string, providerSourceLinkId: string) =>
+        get<import('../master/intelligence/vsi-master-intelligence-api.types').MasterVsiProfileDetailDto>(
+          `/admin/master-intelligence/vsi/organizations/${encodeURIComponent(organizationId)}/vehicles/${encodeURIComponent(vehicleId)}/links/${encodeURIComponent(providerSourceLinkId)}/profile`,
+        ),
+      revisions: (
+        organizationId: string,
+        vehicleId: string,
+        providerSourceLinkId: string,
+        params?: { limit?: number; cursor?: string | null },
+      ) => {
+        const q = new URLSearchParams();
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.cursor) q.set('cursor', params.cursor);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('../master/intelligence/vsi-master-intelligence-api.types').MasterVsiRevisionHistoryPageDto>(
+          `/admin/master-intelligence/vsi/organizations/${encodeURIComponent(organizationId)}/vehicles/${encodeURIComponent(vehicleId)}/links/${encodeURIComponent(providerSourceLinkId)}/revisions${suffix}`,
+        );
+      },
+      revisionAsOf: (
+        organizationId: string,
+        vehicleId: string,
+        providerSourceLinkId: string,
+        decisionAt: string,
+        params?: { historicalLinkAttributionProven?: boolean },
+      ) => {
+        const q = new URLSearchParams({ decisionAt });
+        if (params?.historicalLinkAttributionProven) q.set('historicalLinkAttributionProven', 'true');
+        return get<import('../master/intelligence/vsi-master-intelligence-api.types').MasterVsiRevisionAsOfDto>(
+          `/admin/master-intelligence/vsi/organizations/${encodeURIComponent(organizationId)}/vehicles/${encodeURIComponent(vehicleId)}/links/${encodeURIComponent(providerSourceLinkId)}/revisions/as-of?${q.toString()}`,
+        );
+      },
+      signals: (organizationId: string, vehicleId: string, providerSourceLinkId: string) =>
+        get<unknown>(
+          `/admin/master-intelligence/vsi/organizations/${encodeURIComponent(organizationId)}/vehicles/${encodeURIComponent(vehicleId)}/links/${encodeURIComponent(providerSourceLinkId)}/signals`,
+        ),
+      capabilityResolver: (
+        organizationId: string,
+        vehicleId: string,
+        providerSourceLinkId: string,
+        params: { consumerModule: string; featureId: string; evaluationTime?: string },
+      ) => {
+        const q = new URLSearchParams({
+          consumerModule: params.consumerModule,
+          featureId: params.featureId,
+        });
+        if (params.evaluationTime) q.set('evaluationTime', params.evaluationTime);
+        return get<unknown>(
+          `/admin/master-intelligence/vsi/organizations/${encodeURIComponent(organizationId)}/vehicles/${encodeURIComponent(vehicleId)}/links/${encodeURIComponent(providerSourceLinkId)}/capability-resolver?${q.toString()}`,
+        );
+      },
+    },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>
         get<any>('/admin/monitoring/summary' + buildQuery(params)),

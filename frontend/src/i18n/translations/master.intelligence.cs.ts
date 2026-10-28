@@ -71,4 +71,44 @@ export const masterIntelligenceCs = {
   'master.intelligence.blocked.title': 'Vyhodnocení blokováno',
   'master.intelligence.blocked.body':
     'Klasifikace profilu pozastavena ({{code}}). Starší štítek nesmí být zobrazen jako aktuální.',
+
+  'master.intelligence.section.fleetOverview': 'Rozsah flotily a profily',
+  'master.intelligence.section.signals': 'Detail signálu',
+  'master.intelligence.section.revisions': 'Historie revizí profilu',
+  'master.intelligence.section.capability': 'Capability resolver (pouze čtení)',
+
+  'master.intelligence.vsi.picker.org': 'Organizace',
+  'master.intelligence.vsi.picker.vehicle': 'Vozidlo',
+  'master.intelligence.vsi.picker.link': 'Provider source link',
+  'master.intelligence.vsi.loading': 'Načítání VSI modelů…',
+  'master.intelligence.vsi.error': 'VSI data se nepodařilo načíst.',
+  'master.intelligence.vsi.retry': 'Zkusit znovu',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Vyberte organizaci a vozidlo',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Vyberte organizaci a vozidlo pro načtení uložených VSI profilů. Rozsah ověřuje server.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Žádné materializované VSI profily',
+  'master.intelligence.vsi.noProfiles.body':
+    'Pro toto vozidlo zatím neexistuje capability profil. To není totéž jako vypnutá historie revizí.',
+
+  'master.intelligence.vsi.decision.lv': 'LV rozhodovací kód: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM rozhodovací kód: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence štítky popisují pozorované vzory přenosu, ne nativní konfiguraci hardwaru.',
+  'master.intelligence.vsi.signals.canonical': 'Kanonický signál',
+  'master.intelligence.vsi.signals.provider': 'Název u providera',
+  'master.intelligence.vsi.signals.quality': 'Kvalita / jistota',
+  'master.intelligence.vsi.signals.observedAt': 'Poslední pozorování (UTC + místní)',
+  'master.intelligence.vsi.signals.limitations': 'Omezení',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Historie revizí: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'Záznam P5-H1 je vypnutý. Chybějící historie neznamená, že se profil neměnil.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Další revize — stránkování kurzorem přes API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of rozlišení revize',
+  'master.intelligence.vsi.asOf.decisionAt': 'Čas rozhodnutí',
+  'master.intelligence.vsi.asOf.authority': 'Autorita',
 } as const;

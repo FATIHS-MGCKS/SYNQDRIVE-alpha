@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-intelligence-center-pr2-2026-10-28',
+    version: '4.9.5011',
+    title: 'Master Admin Intelligence Center — PR2 VSI read APIs & UI (Draft)',
+    summary: [
+      'Read-only GET /admin/master-intelligence/vsi/* (MASTER_ADMIN + MFA): fleet overview, profile detail, scoped readonly composer signals, paginated revision history, as-of resolution, capability resolver delegate.',
+      'Tenant/link scope validation, OPEN_TRIP semantic masking, NOT_CAPTURED when P5-H1 disabled, no materialize/DIMO/writes.',
+      'VSI Master Admin UI: org/vehicle/link pickers, live DTO badges, signal table, revision/as-of sections, cross-links; nine-locale i18n.',
+    ],
+    reason:
+      'PR2 delivers production-data-backed read-only VSI intelligence on the PR1 URL shell without enabling APDS or P5-H1 capture.',
+    previousBehavior:
+      'PR1 intelligence pages showed presentation preview and honest empty states only.',
+    details:
+      'backend/.../vsi-master-intelligence-read.*; frontend/src/master/intelligence/VsiMasterIntelligenceView.tsx, useVsiMasterIntelligenceData.ts, api.admin.masterIntelligenceVsi.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-28T20:40:00.000Z',
+  },
+  {
     id: 'master-intelligence-center-pr1-2026-10-28',
     version: '4.9.5010',
     title: 'Master Admin Intelligence Center — PR1 navigation & UI foundation (Draft)',
