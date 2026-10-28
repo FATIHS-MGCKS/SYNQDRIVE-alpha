@@ -145,6 +145,19 @@ describe('master-vehicle-registration payloads', () => {
     });
   });
 
+  it('does not persist non-durable electrificationLevel or chemistry in register extraData', () => {
+    const extra = buildVehicleExtraData(
+      minimalRv({
+        electrificationLevel: 'BEV',
+        lvBatteryChemistry: 'Lead-Acid prose',
+        drivetrain: '4WD',
+      }),
+    );
+    expect(extra.electrificationLevel).toBeUndefined();
+    expect(extra.lvBatteryChemistry).toBeUndefined();
+    expect(extra.drivetrain).toBe('FOUR_WD');
+  });
+
   it('merges aiFieldProvenance into extraData when provided on registered vehicle', () => {
     const extra = buildVehicleExtraData(
       minimalRv({

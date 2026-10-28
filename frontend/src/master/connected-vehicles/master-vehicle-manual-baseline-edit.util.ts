@@ -1,4 +1,5 @@
 import { api } from '../../lib/api';
+import { normalizeLvBatteryTypeInput } from './vehicle-specification-canonical.util';
 
 export type ManualBatteryPayload = {
   batteryType?: string | null;
@@ -65,7 +66,7 @@ export async function upsertLvBatterySpecOnEdit(
   battery: ManualBatteryPayload,
 ): Promise<void> {
   const payload = {
-    batteryType: battery.batteryType ?? null,
+    batteryType: normalizeLvBatteryTypeInput(battery.batteryType) ?? battery.batteryType ?? null,
     batteryAmpere: battery.batteryAmpere ?? null,
     batteryVolt: battery.batteryVolt ?? null,
     sourceType: 'MANUAL' as const,

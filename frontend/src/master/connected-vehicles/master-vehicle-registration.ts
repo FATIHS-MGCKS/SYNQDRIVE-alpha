@@ -16,6 +16,11 @@ import {
   parseBrakeForceFrontPercent,
   parseVehicleRpmField,
 } from './vehicle-technical-spec.util';
+import {
+  normalizeCanonicalDrivetrain,
+  normalizeLvBatteryTypeInput,
+  stripNonPersistentVehicleSpecFields,
+} from './vehicle-specification-canonical.util';
 
 function parseOptionalNumber(value: string | number | undefined | null): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -145,7 +150,7 @@ export function buildVehicleExtraData(
   options?: { aiFieldProvenance?: VehicleAiFieldProvenanceMap },
 ): Record<string, unknown> {
   const aiFieldProvenance = options?.aiFieldProvenance ?? rv.aiFieldProvenance;
-  const out: Record<string, unknown> = {
+  const out: Record<string, unknown> = stripNonPersistentVehicleSpecFields({
     vehicleName: rv.vehicleName || `${rv.make} ${rv.model}`.trim(),
     licensePlate: rv.licensePlate || undefined,
     mileageKm: parseOptionalNumber(rv.mileage) ?? 0,
@@ -153,8 +158,8 @@ export function buildVehicleExtraData(
     vehicleType: rv.vehicleType,
     hardwareType: rv.hardwareType ?? 'UNKNOWN',
     notes: rv.notes || undefined,
-    drivetrain: rv.drivetrain || undefined,
-    electrificationLevel: rv.electrificationLevel?.trim() || undefined,
+    drivetrain:
+      normalizeCanonicalDrivetrain(rv.drivetrain) ?? (rv.drivetrain?.trim() || undefined),
     curbWeightKg: parseOptionalNumber(rv.curbWeight),
     systemMotorPowerKw: parseOptionalFloat(rv.systemMotorPowerKw),
     accel0To100S: parseOptionalFloat(rv.accel0To100S),
@@ -174,7 +179,7 @@ export function buildVehicleExtraData(
     ...(aiFieldProvenance && Object.keys(aiFieldProvenance).length > 0
       ? { aiFieldProvenance }
       : {}),
-  };
+  });
   const confirmedFieldKeys = buildRegistrationTechnicalConfirmedFieldKeys(rv);
   if (confirmedFieldKeys.length > 0) {
     out.technicalSpecificationSave = { confirmedFieldKeys };
@@ -199,8 +204,10 @@ export function buildVehicleManualSpecs(rv: RegisteredVehicle) {
   const manualSpecs: Record<string, unknown> = {};
 
   if (rv.batteryType || rv.batteryAmpere || rv.batteryVolt) {
+    const batteryType =
+      normalizeLvBatteryTypeInput(rv.batteryType) ?? (rv.batteryType?.trim() || null);
     manualSpecs.battery = {
-      batteryType: rv.batteryType || null,
+      batteryType,
       batteryAmpere: parseOptionalNumber(rv.batteryAmpere),
       batteryVolt: parseOptionalNumber(rv.batteryVolt),
     };

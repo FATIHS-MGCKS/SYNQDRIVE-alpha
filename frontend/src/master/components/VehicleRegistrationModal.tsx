@@ -1,3 +1,7 @@
+import {
+  deriveElectrificationLevelReadOnly,
+  normalizeLvBatteryTypeInput,
+} from '../connected-vehicles/vehicle-specification-canonical.util';
 import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, streamAiSpecs, streamAiTireSpecs } from '../../lib/api';
@@ -1087,9 +1091,13 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     lastSignal: isEditMode ? existingVehicle.lastSignal : (dimoVehicle?.lastSignal ?? ''),
     online: isEditMode ? existingVehicle.online : (dimoVehicle?.connectionStatus === 'Connected' || false),
     fuelType,
-    electrificationLevel: electrificationLevel.trim() || undefined,
+    electrificationLevel:
+      deriveElectrificationLevelReadOnly({ fuelType }) ??
+      (electrificationLevel.trim() || undefined),
     mileage: vehicleIdentity.odometer, licensePlate, vehicleType, operationalStatus, notes,
-    batteryType, batteryAmpere, batteryVolt, lvBatteryChemistry,
+    batteryType: normalizeLvBatteryTypeInput(batteryType) ?? batteryType.trim(),
+    batteryAmpere, batteryVolt,
+    lvBatteryChemistry: undefined,
     hvBatteryCapacityKwh, hvBatteryPresent, hvBatteryChemistry, hvBatteryCellFormat,
     hvBatteryGrossCapacityKwh, hvBatteryUsableCapacityKwh, hvBatteryNominalVoltage,
     hvBatteryArchitecture, hvBatteryThermalManagement,
@@ -1644,8 +1652,31 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                   Low Voltage Auxiliary Battery
                 </p>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div><label className={labelClass}>Type {aiTag}</label><input value={batteryType} onChange={e => setBatteryType(e.target.value)} className={inputClass} placeholder="e.g. AGM, EFB" /></div>
-                  <div><label className={labelClass}>Chemistry {aiTag}</label><input value={lvBatteryChemistry} onChange={e => setLvBatteryChemistry(e.target.value)} className={inputClass} placeholder="e.g. Lead-Acid" /></div>
+                  <div>
+                    <label className={labelClass}>LV construction type {aiTag}</label>
+                    <select
+                      value={batteryType}
+                      onChange={(e) => setBatteryType(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">—</option>
+                      <option value="AGM">AGM</option>
+                      <option value="EFB">EFB</option>
+                      <option value="LEAD_ACID">Lead-acid (flooded)</option>
+                      <option value="LITHIUM">Lithium</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Chemistry (AI hint only) {aiTag}</label>
+                    <input
+                      value={lvBatteryChemistry}
+                      onChange={(e) => setLvBatteryChemistry(e.target.value)}
+                      className={`${inputClass} opacity-70`}
+                      placeholder="Not saved — use LV construction type"
+                      title="Material chemistry is not persisted; Battery Health uses the LV construction type."
+                      readOnly
+                    />
+                  </div>
                   <div><label className={labelClass}>Capacity (Ah) {aiTag}</label><input value={batteryAmpere} onChange={e => setBatteryAmpere(e.target.value)} className={inputClass} placeholder="e.g. 70" /></div>
                   <div><label className={labelClass}>Voltage (V) {aiTag}</label><input value={batteryVolt} onChange={e => setBatteryVolt(e.target.value)} className={inputClass} placeholder="e.g. 12" /></div>
                 </div>
