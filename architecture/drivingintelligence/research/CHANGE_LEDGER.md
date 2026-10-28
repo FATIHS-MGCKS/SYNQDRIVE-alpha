@@ -2370,3 +2370,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Fable PASS_WITH_CONDITIONS remediation on same PR: document `meanAccelMps2` as positive secant magnitude (direction in `kind` only) + B3 ordinal policy; `coverageRatio` semantics and reject outside (0,1]; `resolveMotionCoreShadowEventRowContract` returns explicit `UNKNOWN` for unrecognised/future contracts; `readPersistedMotionEventIntensityForPayload` fail-closed for V1/UNKNOWN; `eventFlagsSemantics`/`eventFlagsConsumptionPolicy` (opaque flags, no accel/peak parsing in PR-3); unit tests for UNKNOWN, invalid coverageRatio, legacy V1 fail-closed |
 | WHY | Independent Fable review of persistence contract before merge |
 | NON_EFFECTS | Bundle versions, detection, event counts, trip-map DTO, Trip UI unchanged; no deploy |
+
+### DS4 Assessment L2 + Driving Impact V2 PR-A (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | New `ds4-assessment/` module: fleet admission (four canonical UUIDs), `computeDs4TripAssessmentV1`, `computeDs4DrivingImpactV2` (score publication disabled), tables `di_v0_ds4_trip_assessment_v1`, `di_v0_ds4_trip_driving_impact_v2`, outbox + leader scheduler (`di_v0_ds4_assessment_v1`, flags OFF); internal read `GET .../ds4-assessment` |
+| WHY | Owner decision DS4 single authority — implement productive-capable assessment infrastructure without consumer cutover or calibrated scoring |
+| VALIDATION | `npm run test:di:ds4-assessment`; optional postgres integration when `S4A_POSTGRES_LIVE`; `nest build`; architecture validators |
+| NON_EFFECTS | Motion detection, legacy HF/Impact V1, Trip UI/DriverScore/Rental/Brake/Tire customer paths unchanged; motion-core env allowlists untouched; no deploy |
+| REMAINING | Fable review quality policy + reference distribution calibration; PR-B consumer cutover |

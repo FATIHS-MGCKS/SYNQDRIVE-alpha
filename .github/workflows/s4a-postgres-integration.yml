@@ -21,6 +21,8 @@ on:
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research-worker/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/**'
+      - 'backend/scripts/test/di-v0-ds4-assessment-postgres-ci.sh'
       - 'backend/scripts/test/di-v0-s4a-*.sh'
       - 'backend/scripts/test/di-v0-s4-research-worker-postgres-ci.sh'
       - 'backend/scripts/test/ci-start-postgres.sh'
@@ -89,6 +91,8 @@ jobs:
               backend/src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/*) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research-worker/*) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/s4-research/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/*) return 0 ;;
+              backend/scripts/test/di-v0-ds4-assessment-postgres-ci.sh) return 0 ;;
               backend/scripts/test/di-v0-s4a-*) return 0 ;;
               backend/scripts/test/di-v0-p2-trip-speed-quality-postgres-ci.sh) return 0 ;;
               backend/scripts/test/di-v0-s4-research-worker-postgres-ci.sh) return 0 ;;
@@ -100,6 +104,9 @@ jobs:
               backend/scripts/ops/di-v0-s4-gate6-open-rekill-production/*) return 0 ;;
               backend/scripts/test/prisma-migrate-deploy-resilient.sh) return 0 ;;
               backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/*) return 0 ;;
+              backend/prisma/migrations/20261028120000_di_v0_ds4_assessment_l2_v1/*) return 0 ;;
+              backend/prisma/migrations/20261028143000_di_v0_ds4_assessment_fable_remediation_v1/*) return 0 ;;
+              backend/prisma/migrations/20261028160000_di_v0_ds4_assessment_versioned_outbox_v1/*) return 0 ;;
               backend/prisma/schema.prisma) return 0 ;;
               backend/package.json) return 0 ;;
               backend/package-lock.json) return 0 ;;
@@ -260,6 +267,7 @@ jobs:
           npm run test:di:s4p9b:backlog-quarantine:postgres
           npm run test:di:trip-speed-quality:postgres:ci
           npm run test:di:s4-research-worker:postgres:ci
+          npm run test:di:ds4-assessment:postgres:ci
 
   s4a-postgres-integration:
     name: S4A PostgreSQL integration

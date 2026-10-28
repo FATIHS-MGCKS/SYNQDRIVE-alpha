@@ -143,8 +143,9 @@ Summary: **0× P0**, **4× P1**, **4× P2**, **2× ADDENDUM** — each mapped to
 |----|-------|----------|
 | **PR-0** | Authority + migration design (this document) | **No** |
 | PR-1 | Consumer audit remediation (legacy path safety) | Yes (read gates) |
-| PR-2 | DS4 persisted event intensity — **implemented (Draft PR; event-row contract V2, no bundle bump)** | Yes (shadow payload only) |
-| PR-3 | DS4 assessment materializer L2 | Flagged OFF default |
+| PR-2 | DS4 persisted event intensity — **implemented (merged #2209; event-row contract V2)** | Yes (shadow payload only) |
+| **PR-A** | Assessment L2 + Impact V2 persistence (`di_v0_ds4_trip_assessment_v1`, `di_v0_ds4_trip_driving_impact_v2`; worker OFF) | Yes (non-productive default) |
+| PR-3 | DS4 assessment materializer L2 (superseded by PR-A implementation path) | Flagged OFF default |
 | PR-4 | Impact V2 + `scoreAuthority` + SHADOW mode | Flagged |
 | PR-5 | Aggregator authority switch | Mode flag |
 | PR-6 | Rental + bookings + BI | Mode flag |
