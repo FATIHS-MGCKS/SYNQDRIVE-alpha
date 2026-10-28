@@ -181,3 +181,12 @@ Newest entry last. Never rewrite or delete entries.
 | OBSERVED_EFFECT | All four cohort vehicles: V3 verification `INSUFFICIENT_EVIDENCE` (NULL measurement odometers; Arteon no measurements); rental `MEASUREMENT_REQUIRED`; DS4 β=0 |
 | VERDICT | **INCONCLUSIVE** for production GO — mechanics OK, evidence quality blocks authoritative replacement |
 | NON_EFFECTS | No model formula change; no deploy; no flags; no production mutation |
+
+### Tire V3 — production cutover operator runbook (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| WHY | Post–#2207 merge: empty `TIRE_WEAR_V3_CUTOVER_PRODUCTION.md`; owner requires executable global V3 cutover steps without shadow phase |
+| CHANGE | Filled `integration/TIRE_WEAR_V3_CUTOVER_PRODUCTION.md` (preflight, deploy, dual-flag activation, smoke tests, rollback, stop conditions, evidence limits) |
+| VALIDATION | Flag names and API paths cross-checked against `tire-wear-v3-cutover.config.ts`, `vehicle-intelligence.controller.ts`, DSRG deploy runbook |
+| NON_EFFECTS | Documentation only — no deploy, no production env mutation |
