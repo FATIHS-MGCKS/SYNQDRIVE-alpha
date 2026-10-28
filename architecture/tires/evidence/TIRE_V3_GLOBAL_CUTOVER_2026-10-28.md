@@ -77,3 +77,12 @@ No legacy GOOD fallback under authoritative V3; no fabricated point mm in insuff
 1. Authenticated org-scoped HTTP GET smokes when Clerk JWT available (`fleet.read`).
 2. Monitor hourly recalculation on scheduler LEADER for continued V2 snapshot suppression under authoritative flags.
 3. Customer communication: intervals / evidence class — not workshop gauge precision (see runbook §G).
+
+## Post-cutover monitoring (+~2h, 2026-10-28T21:43Z spot check)
+
+| Check | Result |
+|-------|--------|
+| Flags still true on shared env | YES |
+| Scheduler | 3001 LEADER / 3002 FOLLOWER |
+| Snapshots since activation | **0** (total **9246**, max `created_at` unchanged **2026-10-28T19:41:19.827Z**) |
+| Service validation `--mode=v3` (improved script) | **PASS** — all four wheels report `verificationStatus=INSUFFICIENT_EVIDENCE` where applicable; no legacy GOOD fallback |

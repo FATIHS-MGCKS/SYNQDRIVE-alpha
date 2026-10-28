@@ -222,3 +222,11 @@ Newest entry last. Never rewrite or delete entries.
 | OBSERVED_EFFECT | **PRODUCTION_VALIDATED** — see [`evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md`](../evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md) |
 | NON_EFFECTS | No binary redeploy; no migration; shadow write env off; authenticated HTTP smokes not run; historical V2 snapshots preserved |
 | REMAINING_GAPS | Org-scoped Clerk JWT GET smokes; long-window LEADER recalc snapshot suppression monitoring |
+
+### Tire V3 — post-cutover monitoring spot (+2h, 2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Append monitoring row to cutover evidence; re-run service `--mode=v3` with corrected `verificationStatus` parsing |
+| OBSERVED_EFFECT | 0 new V2 snapshots since activation; scheduler stable; P3 cohort `INSUFFICIENT_EVIDENCE` on verification axis |
+| NON_EFFECTS | No env or PM2 change |
