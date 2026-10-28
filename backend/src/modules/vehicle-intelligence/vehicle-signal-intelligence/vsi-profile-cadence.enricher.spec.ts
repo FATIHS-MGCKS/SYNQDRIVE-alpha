@@ -176,4 +176,69 @@ describe('vsi-profile-cadence.enricher', () => {
       fingerprintVsiProfileSemanticEvaluation(result),
     );
   });
+
+  it('attaches lvStandbyTransmissionProfile on lv_voltage without changing profile semantic fingerprint when label stable', () => {
+    const lvEval = minimalEval({
+      canonicalSignalKey: 'lv_voltage',
+      providerNativeSignalName: 'lowVoltageBatteryCurrentVoltage',
+    });
+    const lvEvidence = {
+      points: [
+        { observedAtMs: T0, providerTimestampMs: T0 },
+        { observedAtMs: T0 + 60_000, providerTimestampMs: T0 + 60_000 },
+        { observedAtMs: T0 + 120_000, providerTimestampMs: T0 + 120_000 },
+      ],
+      provenance: ['POSTGRES_BATTERY_MEASUREMENTS'],
+      linkActivatedAtMs: T0 - 1000,
+      linkDeactivatedAtMs: null,
+    };
+    const mkStandbyEvidence = (extraPairs: number) => {
+      const points = [];
+      for (let c = 0; c < 3; c++) {
+        for (let i = 0; i < 5; i++) {
+          const h = c * 90 + i * 8;
+          points.push({
+            observedAtMs: T0 + h * 3600 * 1000,
+            providerTimestampMs: T0 + h * 3600 * 1000,
+            providerObservationOutcome: 'NEW_OBSERVATION',
+          });
+        }
+      }
+      for (let i = 0; i < extraPairs; i++) {
+        points.push({
+          observedAtMs: T0 + (300 + i) * 3600 * 1000,
+          providerTimestampMs: T0 + (300 + i) * 3600 * 1000,
+          providerObservationOutcome: 'NEW_OBSERVATION',
+        });
+      }
+      return {
+        contractVersion: 'vsi-lv-standby-transmission-evidence-v1' as const,
+        points,
+        tripWindows: [],
+        linkActivatedAtMs: T0 - 1000,
+        linkDeactivatedAtMs: null,
+        evidenceWindowDays: 30,
+        windowStartMs: T0 - 30 * 86400000,
+        windowEndMs: T0 + 30 * 86400000,
+        provenance: ['POSTGRES_BATTERY_MEASUREMENTS'],
+      };
+    };
+    const first = enrichVsiProfileWithCadenceIntelligence(lvEval, {
+      rpmEvidence: null,
+      lvEvidence,
+      lvStandbyTransmissionEvidence: mkStandbyEvidence(0),
+    });
+    const second = enrichVsiProfileWithCadenceIntelligence(lvEval, {
+      rpmEvidence: null,
+      lvEvidence,
+      lvStandbyTransmissionEvidence: mkStandbyEvidence(2),
+    });
+    const lv1 = first.signals[0]?.cadenceIntelligence?.lvStandbyTransmissionProfile;
+    const lv2 = second.signals[0]?.cadenceIntelligence?.lvStandbyTransmissionProfile;
+    expect(lv1?.profile).toBe('LV_8H_OBSERVED');
+    expect(lv2?.profile).toBe('LV_8H_OBSERVED');
+    expect(fingerprintVsiProfileSemanticEvaluation(first)).toBe(
+      fingerprintVsiProfileSemanticEvaluation(second),
+    );
+  });
 });

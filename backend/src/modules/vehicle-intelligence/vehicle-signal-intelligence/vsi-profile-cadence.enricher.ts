@@ -4,8 +4,13 @@ import {
   analyzeEngineRpmCadence,
   analyzeLvVoltageCadence,
 } from './vsi-profile-cadence-stats.util';
+import {
+  mergeLvStandbyTransmissionProfileOntoLvCadence,
+  resolveLvStandbyTransmissionProfileV1,
+} from './vsi-lv-standby-transmission-profile-resolver.util';
 import type {
   VsiLvCadenceEvidenceInput,
+  VsiLvStandbyTransmissionEvidenceInput,
   VsiRpmCadenceEvidenceInput,
 } from './vsi-profile-cadence.types';
 import type { VsiSignalCadenceIntelligenceV2 } from './vsi-profile-cadence.types';
@@ -13,6 +18,7 @@ import type { VsiSignalCadenceIntelligenceV2 } from './vsi-profile-cadence.types
 export type VsiProfileCadenceEnrichmentInput = {
   rpmEvidence: VsiRpmCadenceEvidenceInput | null;
   lvEvidence: VsiLvCadenceEvidenceInput | null;
+  lvStandbyTransmissionEvidence?: VsiLvStandbyTransmissionEvidenceInput | null;
   priorCadenceByKey?: ReadonlyMap<string, VsiSignalCadenceIntelligenceV2>;
 };
 
@@ -83,8 +89,15 @@ export function enrichVsiProfileWithCadenceIntelligence(
     }
   }
 
-  const lvCadence =
-    input.lvEvidence != null ? analyzeLvVoltageCadence(input.lvEvidence) : null;
+  let lvCadence: VsiSignalCadenceIntelligenceV2 | null = null;
+  if (input.lvEvidence != null) {
+    const base = analyzeLvVoltageCadence(input.lvEvidence);
+    const standby =
+      input.lvStandbyTransmissionEvidence != null
+        ? resolveLvStandbyTransmissionProfileV1(input.lvStandbyTransmissionEvidence)
+        : null;
+    lvCadence = mergeLvStandbyTransmissionProfileOntoLvCadence(base, standby);
+  }
 
   const signals = evaluation.signals.map((signal) => {
     if (signal.canonicalSignalKey === 'engine_rpm') {
