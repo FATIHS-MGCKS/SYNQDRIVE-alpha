@@ -13115,6 +13115,7 @@ model DiV0Ds4AssessmentOutboxV1 {
   organizationId     String    @map("organization_id")
   tripId             String    @map("trip_id")
   vehicleId          String    @map("vehicle_id")
+  assessmentVersion  String    @map("assessment_version")
   inputFingerprint   String    @map("input_fingerprint")
   status             String    @map("status")
   attemptCount       Int       @default(0) @map("attempt_count")
@@ -13126,7 +13127,7 @@ model DiV0Ds4AssessmentOutboxV1 {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  @@unique([sourceMotionRunId, inputFingerprint], map: "di_v0_ds4_assessment_outbox_run_uq")
+  @@unique([sourceMotionRunId, assessmentVersion], map: "di_v0_ds4_assessment_outbox_run_version_uq")
   @@index([status, nextAttemptAt, createdAt], map: "di_v0_ds4_assessment_outbox_claim_idx")
   @@map("di_v0_ds4_assessment_outbox_v1")
 }

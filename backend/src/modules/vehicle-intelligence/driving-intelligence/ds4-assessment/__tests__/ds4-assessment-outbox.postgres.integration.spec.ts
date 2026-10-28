@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
-import { S4A_POSTGRES_LIVE } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
+import { DS4_POSTGRES_LIVE } from './ds4-assessment-postgres-harness';
+import { DS4_TRIP_ASSESSMENT_VERSION_V1 } from '../ds4-trip-assessment-v1.contract';
 import { Ds4AssessmentOutboxRepositoryV1 } from '../ds4-assessment-outbox.repository.v1';
 import { DI_V0_DS4_ASSESSMENT_TUNING } from '../ds4-assessment.config';
 
 const describePg =
-  process.env.DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION === '1' && S4A_POSTGRES_LIVE ? describe : describe.skip;
+  process.env.DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION === '1' && DS4_POSTGRES_LIVE ? describe : describe.skip;
 
 describePg('ds4-assessment outbox postgres integration', () => {
   let db: PrismaClient;
@@ -40,6 +41,7 @@ describePg('ds4-assessment outbox postgres integration', () => {
         organizationId: 'org-test',
         tripId: 'trip-test',
         vehicleId: 'veh-test',
+        assessmentVersion: DS4_TRIP_ASSESSMENT_VERSION_V1,
         inputFingerprint: `fp-${input.sourceMotionRunId}`,
         status: input.status,
         attemptCount: input.attemptCount ?? 0,
@@ -139,7 +141,8 @@ describePg('ds4-assessment outbox postgres integration', () => {
           maxProcessingAttempts: DI_V0_DS4_ASSESSMENT_TUNING.maxProcessingAttempts,
         }),
       ]);
-      expect(first.length + second.length).toBe(1);
+      const claimsForRun = [...first, ...second].filter((c) => c.sourceMotionRunId === runId);
+      expect(claimsForRun).toHaveLength(1);
     } finally {
       await db2.$disconnect();
     }

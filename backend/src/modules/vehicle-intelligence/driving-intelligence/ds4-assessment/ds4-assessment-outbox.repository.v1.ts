@@ -3,7 +3,10 @@ import { randomUUID } from 'crypto';
 import { gunzipSync } from 'zlib';
 import type { DiV0MotionCoreShadowPayloadV1 } from '../motion-core-shadow-worker/di-v0-motion-core-shadow.types';
 import { DS4_ASSESSMENT_FLEET_VEHICLES_V1, isVehicleInDs4AssessmentFleetV1 } from './ds4-assessment-fleet-admission.v1';
-import { computeDs4AssessmentInputFingerprintFromMotionSource } from './ds4-assessment-input-fingerprint';
+import {
+  computeDs4AssessmentInputFingerprintFromMotionSource,
+  computeDs4DiscoveryTerminalInputFingerprint,
+} from './ds4-assessment-input-fingerprint';
 import { DI_V0_DS4_ASSESSMENT_TUNING } from './ds4-assessment.config';
 import { DS4_TRIP_ASSESSMENT_VERSION_V1 } from './ds4-trip-assessment-v1.contract';
 
@@ -26,6 +29,43 @@ function decodeMotionPayloadGzip(payloadGzip: Buffer): DiV0MotionCoreShadowPaylo
 
 export class Ds4AssessmentOutboxRepositoryV1 {
   constructor(private readonly prisma: PrismaClient) {}
+
+  async persistDiscoveryTerminalOutbox(input: {
+    sourceMotionRunId: string;
+    organizationId: string;
+    tripId: string;
+    vehicleId: string;
+    reasonCode: 'DISCOVERY_PAYLOAD_REQUIRED' | 'DISCOVERY_SOURCE_IDENTITY_MISMATCH';
+    now: Date;
+    assessmentVersion?: string;
+  }): Promise<'inserted' | 'duplicate'> {
+    const assessmentVersion = input.assessmentVersion ?? DS4_TRIP_ASSESSMENT_VERSION_V1;
+    const inputFingerprint = computeDs4DiscoveryTerminalInputFingerprint({
+      sourceMotionRunId: input.sourceMotionRunId,
+      assessmentVersion,
+      reasonCode: input.reasonCode,
+    });
+    try {
+      await this.prisma.diV0Ds4AssessmentOutboxV1.create({
+        data: {
+          sourceMotionRunId: input.sourceMotionRunId,
+          organizationId: input.organizationId,
+          tripId: input.tripId,
+          vehicleId: input.vehicleId,
+          assessmentVersion,
+          inputFingerprint,
+          status: 'SKIPPED_INELIGIBLE',
+          attemptCount: DI_V0_DS4_ASSESSMENT_TUNING.maxProcessingAttempts,
+          nextAttemptAt: input.now,
+          lastErrorCode: input.reasonCode,
+          lastErrorAt: input.now,
+        },
+      });
+      return 'inserted';
+    } catch {
+      return 'duplicate';
+    }
+  }
 
   async discoverFromSucceededMotionRuns(input: { limit: number; now: Date }): Promise<number> {
     if (input.limit <= 0) return 0;
@@ -58,6 +98,7 @@ export class Ds4AssessmentOutboxRepositoryV1 {
         AND NOT EXISTS (
           SELECT 1 FROM di_v0_ds4_assessment_outbox_v1 o
           WHERE o.source_motion_run_id = r.id
+            AND o.assessment_version = ${DS4_TRIP_ASSESSMENT_VERSION_V1}
         )
       ORDER BY r.created_at ASC
       LIMIT ${input.limit}`;
@@ -75,6 +116,19 @@ export class Ds4AssessmentOutboxRepositoryV1 {
         payload,
       });
       if (!fingerprintResult.ok) {
+        const reasonCode =
+          fingerprintResult.code === 'PAYLOAD_REQUIRED'
+            ? 'DISCOVERY_PAYLOAD_REQUIRED'
+            : 'DISCOVERY_SOURCE_IDENTITY_MISMATCH';
+        const terminal = await this.persistDiscoveryTerminalOutbox({
+          sourceMotionRunId: row.id,
+          organizationId: row.organization_id,
+          tripId: row.trip_id,
+          vehicleId: row.vehicle_id,
+          reasonCode,
+          now: input.now,
+        });
+        if (terminal === 'inserted') inserted += 1;
         continue;
       }
       try {
@@ -84,6 +138,7 @@ export class Ds4AssessmentOutboxRepositoryV1 {
             organizationId: row.organization_id,
             tripId: row.trip_id,
             vehicleId: row.vehicle_id,
+            assessmentVersion: DS4_TRIP_ASSESSMENT_VERSION_V1,
             inputFingerprint: fingerprintResult.inputFingerprint,
             status: 'PENDING',
             nextAttemptAt: input.now,
@@ -91,7 +146,7 @@ export class Ds4AssessmentOutboxRepositoryV1 {
         });
         inserted += 1;
       } catch {
-        // unique violation — already queued
+        // unique violation — already queued for this assessment version
       }
     }
     return inserted;

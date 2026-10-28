@@ -31,3 +31,14 @@
 | Postgres CI | `npm run test:di:ds4-assessment:postgres:ci` in S4A workflow |
 
 Validation: `npm run test:di:ds4-assessment`, `npm run test:di:ds4-assessment:postgres:ci` (disposable PostgreSQL).
+
+## Fable final remediation (PR #2212)
+
+| Finding | Remediation |
+|---------|-------------|
+| S4A dormant audit | DS4-local postgres harness (`ds4-assessment-postgres-harness.ts`); no `s4a-foundation` test imports |
+| Production DB guard | Regenerated `production-database-guard-bundle.manifest.sha256` after `backend/package.json` script pins (`46b1fea1…` → `6301292b…`) |
+| Discovery starvation | Terminal outbox rows for `DISCOVERY_PAYLOAD_REQUIRED` / `DISCOVERY_SOURCE_IDENTITY_MISMATCH` (`SKIPPED_INELIGIBLE`) |
+| Versioned outbox | Migration `20261028160000`; unique `(source_motion_run_id, assessment_version)`; `qualityPolicyVersion` in input fingerprint |
+| Postgres coverage | Worker integration spec + 14-test CI gate (`discoverFromSucceededMotionRuns`, `runPass`, `processMotionRun`, poison recovery, version terminal) |
+| Legacy isolation | Frozen column baseline + unique index `trip_driving_impact_trip_id_key` (no DS4 columns on legacy table) |

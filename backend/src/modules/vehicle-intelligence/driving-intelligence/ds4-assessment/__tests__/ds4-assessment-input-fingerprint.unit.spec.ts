@@ -5,6 +5,7 @@ import {
   computeDs4AssessmentInputFingerprint,
   computeDs4AssessmentInputFingerprintFromMotionSource,
 } from '../ds4-assessment-input-fingerprint';
+import { DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT } from '../ds4-assessment-quality-policy.v1';
 
 describe('ds4-assessment-input-fingerprint', () => {
   const base = {
@@ -12,6 +13,7 @@ describe('ds4-assessment-input-fingerprint', () => {
     pinnedSnapshotHash: 'pin',
     combinedInputIdentity: 'ident',
     contentFingerprint: 'content-fp',
+    qualityPolicyVersion: DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT.policyVersion,
   };
 
   it('hashes assessment version and event row contract from payload resolution', () => {
@@ -61,5 +63,19 @@ describe('ds4-assessment-input-fingerprint', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('SOURCE_IDENTITY_MISMATCH');
+  });
+
+  it('includes quality policy version in assessment fingerprint', () => {
+    const a = computeDs4AssessmentInputFingerprint({
+      ...base,
+      eventRowContract: null,
+      qualityPolicyVersion: 'POLICY_A',
+    });
+    const b = computeDs4AssessmentInputFingerprint({
+      ...base,
+      eventRowContract: null,
+      qualityPolicyVersion: 'POLICY_B',
+    });
+    expect(a).not.toBe(b);
   });
 });

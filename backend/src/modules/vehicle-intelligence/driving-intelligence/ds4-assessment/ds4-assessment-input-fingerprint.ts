@@ -5,6 +5,7 @@ import {
   resolveMotionCoreShadowEventRowContract,
 } from '../motion-core-shadow-worker/di-v0-motion-core-shadow-event-row.contract';
 import type { DiV0MotionCoreShadowPayloadV1 } from '../motion-core-shadow-worker/di-v0-motion-core-shadow.types';
+import { DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT } from './ds4-assessment-quality-policy.v1';
 import { DS4_TRIP_ASSESSMENT_VERSION_V1 } from './ds4-trip-assessment-v1.contract';
 
 export function computeDs4AssessmentInputFingerprint(input: {
@@ -14,14 +15,30 @@ export function computeDs4AssessmentInputFingerprint(input: {
   contentFingerprint: string;
   eventRowContract: string | null;
   assessmentVersion?: string;
+  qualityPolicyVersion?: string;
 }): string {
   const payload = {
     assessmentVersion: input.assessmentVersion ?? DS4_TRIP_ASSESSMENT_VERSION_V1,
+    qualityPolicyVersion: input.qualityPolicyVersion ?? DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT.policyVersion,
     sourceMotionRunId: input.sourceMotionRunId,
     pinnedSnapshotHash: input.pinnedSnapshotHash,
     combinedInputIdentity: input.combinedInputIdentity,
     contentFingerprint: input.contentFingerprint,
     eventRowContract: input.eventRowContract,
+  };
+  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
+export function computeDs4DiscoveryTerminalInputFingerprint(input: {
+  sourceMotionRunId: string;
+  assessmentVersion?: string;
+  reasonCode: 'DISCOVERY_PAYLOAD_REQUIRED' | 'DISCOVERY_SOURCE_IDENTITY_MISMATCH';
+}): string {
+  const payload = {
+    kind: 'DS4_DISCOVERY_TERMINAL_V1',
+    assessmentVersion: input.assessmentVersion ?? DS4_TRIP_ASSESSMENT_VERSION_V1,
+    sourceMotionRunId: input.sourceMotionRunId,
+    reasonCode: input.reasonCode,
   };
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
@@ -51,6 +68,7 @@ export function computeDs4AssessmentInputFingerprintFromMotionSource(input: {
   summaryJson?: { contentFingerprint?: string | null; eventRowContract?: string | null } | null;
   payload: DiV0MotionCoreShadowPayloadV1 | null;
   assessmentVersion?: string;
+  qualityPolicyVersion?: string;
 }): Ds4MotionSourceFingerprintResult {
   if (!input.payload) {
     return { ok: false, code: 'PAYLOAD_REQUIRED' };
@@ -75,6 +93,7 @@ export function computeDs4AssessmentInputFingerprintFromMotionSource(input: {
     contentFingerprint: input.contentFingerprint,
     eventRowContract,
     assessmentVersion: input.assessmentVersion,
+    qualityPolicyVersion: input.qualityPolicyVersion,
   });
 
   return { ok: true, inputFingerprint, eventRowContract };

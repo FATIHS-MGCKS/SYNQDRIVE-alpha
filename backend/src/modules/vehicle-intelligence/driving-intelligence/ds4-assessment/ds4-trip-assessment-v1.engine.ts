@@ -103,6 +103,7 @@ export function computeDs4TripAssessmentV1(input: {
   now?: Date;
 }): Ds4TripAssessmentComputeResultV1 {
   const qualityPolicy = input.qualityPolicy ?? DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT;
+  const qualityPolicyVersion = qualityPolicy.policyVersion;
   const admission = evaluateDs4AssessmentFleetAdmissionV1(input.scope);
   if (!admission.admitted) {
     const reason: Ds4TripAssessmentReasonCodeV1 =
@@ -131,6 +132,7 @@ export function computeDs4TripAssessmentV1(input: {
         combinedInputIdentity: input.motionRun?.combinedInputIdentity ?? 'none',
         contentFingerprint: input.motionRun?.contentFingerprint ?? 'none',
         eventRowContract: null,
+        qualityPolicyVersion,
       }),
       sourceMotionRunId: input.motionRun?.id ?? '',
       processingError: null,
@@ -160,6 +162,7 @@ export function computeDs4TripAssessmentV1(input: {
         combinedInputIdentity: 'pending',
         contentFingerprint: 'pending',
         eventRowContract: null,
+        qualityPolicyVersion,
       }),
       sourceMotionRunId: '',
       processingError: null,
@@ -189,6 +192,7 @@ export function computeDs4TripAssessmentV1(input: {
         combinedInputIdentity: input.motionRun.combinedInputIdentity,
         contentFingerprint: input.motionRun.contentFingerprint,
         eventRowContract: null,
+        qualityPolicyVersion,
       }),
       sourceMotionRunId: input.motionRun.id,
       processingError: { code: 'MOTION_RUN_NOT_SUCCEEDED', message: input.motionRun.shadowStatus },
@@ -218,6 +222,7 @@ export function computeDs4TripAssessmentV1(input: {
         combinedInputIdentity: input.motionRun.combinedInputIdentity,
         contentFingerprint: input.motionRun.contentFingerprint,
         eventRowContract: null,
+        qualityPolicyVersion,
       }),
       sourceMotionRunId: input.motionRun.id,
       processingError: { code: 'PAYLOAD_DECODE_FAILED', message: 'missing payload' },
@@ -249,6 +254,7 @@ export function computeDs4TripAssessmentV1(input: {
       ? { contentFingerprint: input.motionRun.summaryContentFingerprint }
       : null,
     payload: input.payload,
+    qualityPolicyVersion,
   });
   if (!canonicalFingerprint.ok && canonicalFingerprint.code === 'SOURCE_IDENTITY_MISMATCH') {
     if (!reasonCodes.includes('SOURCE_IDENTITY_MISMATCH')) {
@@ -301,6 +307,7 @@ export function computeDs4TripAssessmentV1(input: {
         combinedInputIdentity: input.motionRun.combinedInputIdentity,
         contentFingerprint: input.motionRun.contentFingerprint,
         eventRowContract,
+        qualityPolicyVersion,
       });
 
   const completeness: Ds4TripAssessmentCompletenessV1 = {
