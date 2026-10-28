@@ -454,7 +454,7 @@ describePg('ds4-assessment postgres integration', () => {
     });
     expect(read?.assessment?.assessmentStatus).toBe('UNRATED_COUNTS_ONLY');
     expect(read?.impact?.operationalLoadIndex).toBeNull();
-    expect(read?.impact?.scorePublicationStatus).toBe('DISABLED_MODEL_NOT_CALIBRATED');
+    expect(read?.impact?.scorePublicationStatus).toBe('NOT_ELIGIBLE_ASSESSMENT_STATUS');
   });
 
   it('persists nullable speed authority without C4_ONLY coercion', async () => {
