@@ -198,3 +198,14 @@ Newest entry last. Never rewrite or delete entries.
 | CHANGE | Documentation only. `TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001` → **PARTIALLY_CLOSED** pointer: Driving Intelligence PR-2 (Draft, not deployed) persists `meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, uncertainty labels on new shadow runs under `DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1`; peaks excluded by contract |
 | WHY | Keep tire integration audit consistent with DI persistence state; data precondition for a future ordinal intensity channel |
 | NON_EFFECTS | No tire runtime, adapter, flag or model change; `tire-ds4-shadow-input.mapper.ts` still consumes the trip-map DTO (no intensity); tire consumer binding remains forbidden until Fable review of `DI-DEC-DS4-INTENSITY-PERSIST-001`; historical DS4 rows unchanged |
+
+### Tire V3 — authoritative customer read fail-closed hotfix (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | `TireHealthV3ReadService.enrichSummary` returned unchanged legacy summary when `computeCustomerRead` was null under authoritative flags (silent V2 GOOD / rental false-green; V2 snapshot suppression still active) |
+| WHY | Production cutover readiness audit HARD BLOCKER — no silent V2 fallback when both customer authority flags are ON |
+| CHANGE | `resolveCustomerReadForApi` + `buildAuthoritativeV3UnavailableRead`; authoritative path applies UNKNOWN/INSUFFICIENT stub; `TiresService.getWearAnalysis` attaches unavailable payload; rental policy blocks legacy GOOD clearance under V3 authority (`V3_READ_UNAVAILABLE`) |
+| EXPECTED_EFFECT | Failed or missing V3 compute never presents legacy V2 as authoritative wear; rental stays measurement-required without new HARD_BLOCK |
+| VALIDATION | Jest: `tire-health-v3-read*.spec`, `tires.service.v3-fail-closed.spec`, existing `tire-health-recalculate-v3-cutover.spec` |
+| NON_EFFECTS | Flags default OFF; no migration; no DS4/RPM changes; `persistShadow: false` unchanged; β=0 unchanged |
