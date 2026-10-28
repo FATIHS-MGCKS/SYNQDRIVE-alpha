@@ -8,10 +8,29 @@ import { buildPostActivationVehiclePatch } from './master-dimo-registration.mapp
 import type { MasterDimoActivationFinalizeInput } from './master-dimo-activation-extensions';
 import { applyMasterPostActivationVehicleScalarsInTransaction } from './master-dimo-post-activation.persistence';
 import { computeMasterDimoRegistrationPayloadFingerprint } from './master-dimo-registration-payload-fingerprint';
+import {
+  assertAiTechnicalFieldsConfirmed,
+  extractTechnicalSpecificationPatchInput,
+} from '@modules/vehicles/vehicle-technical-spec-patch.util';
+
+export function assertMasterRegistrationAiTechnicalFieldsConfirmed(
+  input: MasterDimoRegistrationInput,
+): void {
+  const extra = input.extraData ?? {};
+  const technicalInput = extractTechnicalSpecificationPatchInput(
+    extra as Record<string, unknown>,
+  );
+  if (!technicalInput) return;
+  assertAiTechnicalFieldsConfirmed(
+    technicalInput,
+    (extra as { aiFieldProvenance?: Record<string, { category?: string }> }).aiFieldProvenance,
+  );
+}
 
 export function buildMasterDimoActivationFinalizeInput(
   input: MasterDimoRegistrationInput,
 ): MasterDimoActivationFinalizeInput {
+  assertMasterRegistrationAiTechnicalFieldsConfirmed(input);
   const patch = buildPostActivationVehiclePatch(input);
   if (input.actorUserId) {
     patch.createdByUserId = input.actorUserId;
