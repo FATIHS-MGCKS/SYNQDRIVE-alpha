@@ -63,18 +63,16 @@ fi
 echo "S4A Postgres CI suite OK (${EXPECTED_POSTGRES_TESTS}/${EXPECTED_POSTGRES_TESTS})"
 
 run_v1b_postgres_if_relevant() {
-  local base="${GITHUB_EVENT_PULL_REQUEST_BASE_SHA:-}"
-  local head="${GITHUB_SHA:-HEAD}"
-  if [[ -z "$base" ]]; then
+  if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
     return 0
   fi
-  git fetch --no-tags --depth=1 origin "$base" 2>/dev/null || true
-  if git diff --name-only "$base" "$head" 2>/dev/null | grep -qE 'rpm-hf-v1b|20261028180000_ds4_rpm_hf_v1b'; then
-    echo "DS4 RPM HF V1B Postgres: running (V1B paths changed vs ${base:0:12})"
+  git fetch --no-tags --depth=1 origin main 2>/dev/null || true
+  if git diff --name-only origin/main...HEAD 2>/dev/null | grep -qE 'rpm-hf-v1b|20261028180000_ds4_rpm_hf_v1b'; then
+    echo "DS4 RPM HF V1B Postgres: running (V1B paths changed vs origin/main)"
     DS4_RPM_HF_V1B_POSTGRES_REQUIRED=1 bash scripts/test/ds4-rpm-hf-v1b-postgres-ci.sh
     return 0
   fi
-  echo "DS4 RPM HF V1B Postgres: skipped (no V1B-relevant paths in PR diff)"
+  echo "DS4 RPM HF V1B Postgres: skipped (no V1B-relevant paths vs origin/main)"
 }
 
 run_v1b_postgres_if_relevant
