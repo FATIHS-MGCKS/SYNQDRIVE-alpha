@@ -3,7 +3,7 @@ export const masterIntelligenceEs = {
   'master.nav.apdsIntelligence': 'APDS – polling adaptativo',
   'master.intelligence.vsi.title': 'VSI – inteligencia de señales',
   'master.intelligence.vsi.description':
-    'Perfiles de señal de solo lectura, cadencia observada y evidencia de evaluación. Datos en vivo en PR2.',
+    'Perfiles de señal del vehículo en solo lectura, cadencia observada, historial de revisiones si está capturado y explicaciones del capability resolver desde datos de producción.',
   'master.intelligence.apds.title': 'APDS – polling adaptativo',
   'master.intelligence.apds.description':
     'Decisiones shadow de reconciliación y evidencia de poll real vinculada. Historial en PR3.',
@@ -72,4 +72,44 @@ export const masterIntelligenceEs = {
   'master.intelligence.blocked.title': 'Evaluación bloqueada',
   'master.intelligence.blocked.body':
     'Clasificación de perfil en pausa ({{code}}). Una etiqueta anterior no debe mostrarse como actual.',
+
+  'master.intelligence.section.fleetOverview': 'Alcance de flota y perfiles',
+  'master.intelligence.section.signals': 'Detalle de señales',
+  'master.intelligence.section.revisions': 'Historial de revisiones del perfil',
+  'master.intelligence.section.capability': 'Capability resolver (solo lectura)',
+
+  'master.intelligence.vsi.picker.org': 'Organización',
+  'master.intelligence.vsi.picker.vehicle': 'Vehículo',
+  'master.intelligence.vsi.picker.link': 'Enlace de origen del proveedor',
+  'master.intelligence.vsi.loading': 'Cargando modelos VSI…',
+  'master.intelligence.vsi.error': 'No se pudo cargar la inteligencia VSI.',
+  'master.intelligence.vsi.retry': 'Reintentar',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Seleccione organización y vehículo',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Elija organización y vehículo para cargar perfiles VSI persistidos. El alcance se valida en el servidor.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Sin perfiles VSI materializados',
+  'master.intelligence.vsi.noProfiles.body':
+    'Aún no hay perfil de capability para este vehículo. No es lo mismo que historial de revisiones desactivado.',
+
+  'master.intelligence.vsi.decision.lv': 'Código de decisión LV: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'Código de decisión RPM: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Las etiquetas de cadencia describen patrones de transmisión observados, no configuración nativa del hardware.',
+  'master.intelligence.vsi.signals.canonical': 'Señal canónica',
+  'master.intelligence.vsi.signals.provider': 'Nombre del proveedor',
+  'master.intelligence.vsi.signals.quality': 'Calidad / confianza',
+  'master.intelligence.vsi.signals.observedAt': 'Última observación (UTC + local)',
+  'master.intelligence.vsi.signals.limitations': 'Limitaciones',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Historial: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'La captura P5-H1 está desactivada. La falta de historial no significa que el perfil no haya cambiado.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Hay más revisiones — paginación por cursor vía API.',
+
+  'master.intelligence.vsi.asOf.title': 'Resolución de revisión as-of',
+  'master.intelligence.vsi.asOf.decisionAt': 'Hora de decisión',
+  'master.intelligence.vsi.asOf.authority': 'Autoridad',
 } as const;

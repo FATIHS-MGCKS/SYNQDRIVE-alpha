@@ -4,7 +4,7 @@ export const masterIntelligenceDe = {
 
   'master.intelligence.vsi.title': 'VSI – Signal Intelligence',
   'master.intelligence.vsi.description':
-    'Schreibgeschützte Signalprofil-Auswertung, beobachtete Übertragungs-Cadence und Evidenz. Live-Daten folgen in PR2.',
+    'Schreibgeschützte Fahrzeug-Signalprofile, beobachtete Übertragungs-Cadence, Revisionshistorie (falls erfasst) und Capability-Resolver-Erklärungen aus Produktionsdaten.',
   'master.intelligence.apds.title': 'APDS – Adaptives Polling',
   'master.intelligence.apds.description':
     'Shadow-Abgleichsentscheidungen und verknüpfte echte Poll-Evidenz. Entscheidungshistorie folgt in PR3.',
@@ -87,4 +87,45 @@ export const masterIntelligenceDe = {
   'master.intelligence.blocked.title': 'Auswertung blockiert',
   'master.intelligence.blocked.body':
     'Profil-Klassifikation pausiert ({{code}}). Ein älteres Label darf nicht als aktuell angezeigt werden.',
+
+  'master.intelligence.section.fleetOverview': 'Flottenkontext & Profile',
+  'master.intelligence.section.signals': 'Signal-Detail',
+  'master.intelligence.section.revisions': 'Profil-Revisionshistorie',
+  'master.intelligence.section.capability': 'Capability-Resolver (nur Lesen)',
+
+  'master.intelligence.vsi.picker.org': 'Organisation',
+  'master.intelligence.vsi.picker.vehicle': 'Fahrzeug',
+  'master.intelligence.vsi.picker.link': 'Provider-Quell-Link',
+  'master.intelligence.vsi.loading': 'VSI-Lesemodelle werden geladen…',
+  'master.intelligence.vsi.error': 'VSI-Intelligence konnte nicht geladen werden.',
+  'master.intelligence.vsi.retry': 'Erneut versuchen',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Organisation und Fahrzeug wählen',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Wählen Sie Organisation und Fahrzeug, um persistierte VSI-Signalprofile zu laden. Der Scope wird serverseitig geprüft — kein mandantenübergreifender Zugriff.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Keine VSI-Profile materialisiert',
+  'master.intelligence.vsi.noProfiles.body':
+    'Für dieses Fahrzeug existiert noch kein Signal-Capability-Profil. Das ist nicht dasselbe wie deaktivierte Revisionshistorie.',
+
+  'master.intelligence.vsi.decision.lv': 'LV-Entscheidungscode: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM-Entscheidungscode: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence-Labels beschreiben beobachtete Übertragungsmuster, keine bestätigte Hardware-Konfiguration.',
+  'master.intelligence.vsi.signals.canonical': 'Kanonisches Signal',
+  'master.intelligence.vsi.signals.provider': 'Provider-Name',
+  'master.intelligence.vsi.signals.quality': 'Qualität / Vertrauen',
+  'master.intelligence.vsi.signals.observedAt': 'Letzte Beobachtung (UTC + lokal)',
+  'master.intelligence.vsi.signals.limitations': 'Einschränkungen',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revisionshistorie: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1-Revisionserfassung ist in dieser Umgebung deaktiviert. Fehlende Historie bedeutet nicht, dass sich das Profil nie geändert hat.',
+  'master.intelligence.vsi.revision.moreAvailable':
+    'Weitere Revisionen verfügbar — Cursor-Pagination über die API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of-Revisionsauflösung',
+  'master.intelligence.vsi.asOf.decisionAt': 'Entscheidungszeit',
+  'master.intelligence.vsi.asOf.authority': 'Autorität',
 } as const;

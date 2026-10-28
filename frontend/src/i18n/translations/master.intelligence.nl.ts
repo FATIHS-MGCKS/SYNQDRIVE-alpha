@@ -72,4 +72,44 @@ export const masterIntelligenceNl = {
   'master.intelligence.blocked.title': 'Evaluatie geblokkeerd',
   'master.intelligence.blocked.body':
     'Profielclassificatie gepauzeerd ({{code}}). Een ouder label mag niet als actueel worden getoond.',
+
+  'master.intelligence.section.fleetOverview': 'Vlootscope en profielen',
+  'master.intelligence.section.signals': 'Signaaldetail',
+  'master.intelligence.section.revisions': 'Profielrevisiegeschiedenis',
+  'master.intelligence.section.capability': 'Capability resolver (alleen lezen)',
+
+  'master.intelligence.vsi.picker.org': 'Organisatie',
+  'master.intelligence.vsi.picker.vehicle': 'Voertuig',
+  'master.intelligence.vsi.picker.link': 'Provider bronlink',
+  'master.intelligence.vsi.loading': 'VSI-leesmodellen laden…',
+  'master.intelligence.vsi.error': 'VSI-intelligence kon niet worden geladen.',
+  'master.intelligence.vsi.retry': 'Opnieuw',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Kies organisatie en voertuig',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Kies organisatie en voertuig om opgeslagen VSI-profielen te laden. Scope wordt server-side gevalideerd.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Geen VSI-profielen gematerialiseerd',
+  'master.intelligence.vsi.noProfiles.body':
+    'Er is nog geen capability-profiel voor dit voertuig. Dat is niet hetzelfde als uitgeschakelde revisiehistorie.',
+
+  'master.intelligence.vsi.decision.lv': 'LV-beslissingscode: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM-beslissingscode: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence-labels beschrijven waargenomen transmissiepatronen, geen native hardwareconfiguratie.',
+  'master.intelligence.vsi.signals.canonical': 'Canoniek signaal',
+  'master.intelligence.vsi.signals.provider': 'Providernaam',
+  'master.intelligence.vsi.signals.quality': 'Kwaliteit / vertrouwen',
+  'master.intelligence.vsi.signals.observedAt': 'Laatste waarneming (UTC + lokaal)',
+  'master.intelligence.vsi.signals.limitations': 'Beperkingen',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revisiehistorie: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1-registratie is uitgeschakeld. Ontbrekende historie betekent niet dat het profiel nooit wijzigde.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Meer revisies — cursorpaginering via API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of revisie-oplossing',
+  'master.intelligence.vsi.asOf.decisionAt': 'Beslissingstijd',
+  'master.intelligence.vsi.asOf.authority': 'Autoriteit',
 } as const;

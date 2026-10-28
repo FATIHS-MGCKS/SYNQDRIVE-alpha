@@ -107,6 +107,6 @@ describe('SignalProfileBadge presentation', () => {
     act(() => {
       root.render(createElement(LanguageProvider, null, createElement(VsiMasterIntelligenceView)));
     });
-    expect(document.querySelector('.sm\\:grid-cols-2')).toBeTruthy();
+    expect(document.querySelector('.sm\\:grid-cols-3')).toBeTruthy();
   });
 });
