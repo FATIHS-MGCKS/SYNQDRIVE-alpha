@@ -14,6 +14,8 @@ import { Ds4RpmHfV1bOutboxRepository } from './ds4-rpm-hf-v1b-outbox.repository'
 import { processDs4RpmHfV1bShadowTrip } from './ds4-rpm-hf-v1b-processor';
 import { DS4_RPM_HF_V1B_ENGINE_VERSION } from './ds4-rpm-hf-v1b.contract';
 import { computeDs4RpmHfV1bInputFingerprint } from './ds4-rpm-hf-v1b-input-fingerprint';
+import { computeDs4RpmHfV1bDeferNextAttemptAt } from './ds4-rpm-hf-v1b-readiness-schedule';
+import { isTripInputEligibleForAutomaticRevision } from './ds4-rpm-hf-v1b-revision-eligibility';
 import { Ds4RpmHfV1bRunRepository } from './ds4-rpm-hf-v1b-run.repository';
 
 export type Ds4RpmHfV1bPassResult = {
@@ -163,21 +165,25 @@ export class Ds4RpmHfV1bShadowService {
     }
 
     if (processed.kind === 'DEFER') {
-      const delay = Math.min(
-        DS4_RPM_HF_V1B_TUNING.baseRetryDelayMs * row.attemptCount,
-        DS4_RPM_HF_V1B_TUNING.maxRetryDelayMs,
-      );
+      const nextAt =
+        computeDs4RpmHfV1bDeferNextAttemptAt({
+          tripEndIso: tripInput.tripEndIso,
+          attemptCount: row.attemptCount,
+          nowMs: now.getTime(),
+        }) ?? new Date(now.getTime() + DS4_RPM_HF_V1B_TUNING.baseRetryDelayMs);
       await this.outbox.markFailedRetryable(
         row.outboxId,
         row.claimToken,
         processed.deferReasonCode,
-        new Date(now.getTime() + delay),
+        nextAt,
       );
       return 'DEFER';
     }
 
     if (processed.kind === 'SUCCEEDED') {
-      const insert = await this.runs.insertRun({
+      const insert = await this.runs.insertRunWithActiveClaim({
+        outboxId: row.outboxId,
+        claimToken: row.claimToken,
         runId: randomUUID(),
         organizationId: row.organizationId,
         vehicleId: row.vehicleId,
@@ -187,7 +193,11 @@ export class Ds4RpmHfV1bShadowService {
         shadowStatus: 'SUCCEEDED',
         summary: processed.result,
         computedAt: now,
+        now,
       });
+      if (insert.outcome === 'claim_lost') {
+        return 'FAILED';
+      }
       if (insert.outcome === 'sql_error') {
         await this.outbox.markFailedRetryable(
           row.outboxId,
@@ -202,7 +212,9 @@ export class Ds4RpmHfV1bShadowService {
     }
 
     if (processed.result) {
-      await this.runs.insertRun({
+      await this.runs.insertRunWithActiveClaim({
+        outboxId: row.outboxId,
+        claimToken: row.claimToken,
         runId: randomUUID(),
         organizationId: row.organizationId,
         vehicleId: row.vehicleId,
@@ -212,6 +224,7 @@ export class Ds4RpmHfV1bShadowService {
         shadowStatus: processed.persistStatus,
         summary: processed.result,
         computedAt: now,
+        now,
       });
     }
     await this.outbox.markSkipped(row.outboxId, row.claimToken, processed.rejectionReasonCode);
@@ -228,11 +241,15 @@ export class Ds4RpmHfV1bShadowService {
     });
     for (const row of probes) {
       try {
+        await this.outbox.touchRevisionProbe(row.outboxId, now);
         const tripInput = await this.tripInputService.buildTripInput({
           organizationId: row.organizationId,
           vehicleId: row.vehicleId,
           tripId: row.tripId,
         });
+        if (!isTripInputEligibleForAutomaticRevision(tripInput)) {
+          continue;
+        }
         const liveFingerprint = computeDs4RpmHfV1bInputFingerprint(tripInput);
         if (row.succeededInputFingerprint === liveFingerprint) continue;
         await this.outbox.reopenForInputRevision(row.outboxId, now);

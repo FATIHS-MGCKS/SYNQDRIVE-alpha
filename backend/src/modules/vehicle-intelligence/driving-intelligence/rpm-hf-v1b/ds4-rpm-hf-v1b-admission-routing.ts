@@ -1,5 +1,9 @@
 import type { Ds4RpmHfV1aTripInputV1 } from '../rpm-hf-v1a/ds4-rpm-hf-v1a.contract';
 import type { Ds4RpmHfV1bShadowProcessingOutcome } from './ds4-rpm-hf-v1b.contract';
+import {
+  computeDs4RpmHfV1bDeferNextAttemptAt,
+  readinessDeadlineMs,
+} from './ds4-rpm-hf-v1b-readiness-schedule';
 
 export type Ds4RpmHfV1bAdmissionRouting = {
   outcome: Ds4RpmHfV1bShadowProcessingOutcome;
@@ -82,12 +86,6 @@ export function routeDs4RpmHfV1bFromV1aAdmission(
   return terminal('TERMINAL_INELIGIBLE', a.reasonCode || 'V1A_ADMISSION_BLOCKED', false);
 }
 
-function readinessDeadlineMs(tripEndIso: string, windowMs: number): number | null {
-  const tripEndMs = Date.parse(tripEndIso);
-  if (!Number.isFinite(tripEndMs)) return null;
-  return tripEndMs + windowMs;
-}
-
 function defer(
   code: string,
   attemptCount: number,
@@ -100,6 +98,14 @@ function defer(
   }
   if (attemptCount >= options.maxDeferAttempts) {
     return terminal('TERMINAL_INELIGIBLE', `${code}_DEFER_ATTEMPT_BUDGET_EXCEEDED`, false);
+  }
+  const next = computeDs4RpmHfV1bDeferNextAttemptAt({
+    tripEndIso,
+    attemptCount,
+    nowMs: options.nowMs,
+  });
+  if (next == null) {
+    return terminal('TERMINAL_INELIGIBLE', `${code}_READINESS_WINDOW_EXHAUSTED`, false);
   }
   return {
     outcome: 'DEFER_RETRY',

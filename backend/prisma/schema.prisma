@@ -13084,6 +13084,7 @@ model Ds4RpmHfV1bShadowOutboxV1 {
   claimToken                 String?   @map("claim_token")
   claimExpiresAt             DateTime? @map("claim_expires_at") @db.Timestamptz(6)
   succeededInputFingerprint  String?   @map("succeeded_input_fingerprint")
+  revisionLastProbedAt       DateTime? @map("revision_last_probed_at") @db.Timestamptz(6)
   createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 

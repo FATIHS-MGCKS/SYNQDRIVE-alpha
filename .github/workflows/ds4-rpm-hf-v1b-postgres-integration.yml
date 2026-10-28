@@ -1,0 +1,62 @@
+name: DS4 RPM HF V1B PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1b/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1a/**'
+      - 'backend/scripts/test/ds4-rpm-hf-v1b-postgres-ci.sh'
+      - 'backend/scripts/test/di-v0-s4a-postgres-bootstrap.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/prisma/migrations/20261028180000_ds4_rpm_hf_v1b_shadow_v1/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/ds4-rpm-hf-v1b-postgres-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  S4A_PG_USER: s4a_ci_test
+  S4A_PG_PASSWORD: s4a_ci_test_local
+  S4A_PG_DB: postgres
+  DI_V0_S4A_PG_ADMIN_URL: postgresql://s4a_ci_test:s4a_ci_test_local@127.0.0.1:5432/postgres
+  DI_V0_S4A_DB_PREFIX: synqdrive_s4a_ci
+
+jobs:
+  ds4-rpm-hf-v1b-postgres:
+    name: DS4 RPM HF V1B PostgreSQL integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: ds4-rpm-hf-v1b-ci-postgres
+          CI_PG_USER: ${{ env.S4A_PG_USER }}
+          CI_PG_PASSWORD: ${{ env.S4A_PG_PASSWORD }}
+          CI_PG_DB: ${{ env.S4A_PG_DB }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies and generate Prisma client
+        working-directory: backend
+        run: npm ci && npx prisma generate
+
+      - name: Run DS4 RPM HF V1B PostgreSQL suite
+        working-directory: backend
+        env:
+          DI_V0_S4A_PG_ADMIN_URL: ${{ env.DI_V0_S4A_PG_ADMIN_URL }}
+          DI_V0_S4A_DB_PREFIX: ${{ env.DI_V0_S4A_DB_PREFIX }}
+          DS4_RPM_HF_V1B_POSTGRES_REQUIRED: '1'
+        run: bash scripts/test/ds4-rpm-hf-v1b-postgres-ci.sh

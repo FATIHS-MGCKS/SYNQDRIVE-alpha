@@ -4,12 +4,13 @@ import { DS4_RPM_HF_V1A_CONTRACT_VERSION } from '../../rpm-hf-v1a/ds4-rpm-hf-v1a
 
 function minimalTripInput(
   rpmPoints: Array<{ recordedAtIso: string; valueRpm: number }>,
+  tripId = 'trip-a',
 ): Ds4RpmHfV1aTripInputV1 {
   return {
     contractVersion: DS4_RPM_HF_V1A_CONTRACT_VERSION,
     organizationId: 'org-a',
     vehicleId: 'veh-a',
-    tripId: 'trip-a',
+    tripId,
     providerSourceLinkId: 'link-a',
     tripStartIso: '2026-01-01T10:00:00.000Z',
     tripEndIso: '2026-01-01T10:05:00.000Z',
@@ -56,14 +57,14 @@ function minimalTripInput(
     vsiActiveRpmProfileSnapshot: {
       contractVersion: 'vsi-active-rpm-profile-v1',
       activeProfile: 'RPM_1HZ',
-      evaluatedTripIds: ['trip-a'],
-      qualifyingTripCount: 1,
+      evaluatedTripIds: [tripId, 'trip-other'],
+      qualifyingTripCount: 2,
       agreementRatio: 1,
       classificationDecisionCode: 'FAST',
       classificationDecisionSummary: 'fixture',
       tripClassifications: [
         {
-          tripId: 'trip-a',
+          tripId,
           endMs: Date.parse('2026-01-01T10:05:00.000Z'),
           profile: 'RPM_1HZ',
           intervalMedianSeconds: 1,
@@ -72,6 +73,17 @@ function minimalTripInput(
           rpmPointCount: 3,
           fractionIntervalsLe2s: 1,
           decisionCode: 'FAST_1_2S_BUCKET_PATTERN',
+        },
+        {
+          tripId: 'trip-other',
+          endMs: Date.parse('2026-01-01T09:00:00.000Z'),
+          profile: 'RPM_STANDARD',
+          intervalMedianSeconds: 5,
+          intervalP95Seconds: 8,
+          intervalCount: 10,
+          rpmPointCount: 11,
+          fractionIntervalsLe2s: 0.2,
+          decisionCode: 'OTHER_TRIP',
         },
       ],
       profileSemanticFingerprint: 'vsi-fp-1',
@@ -101,20 +113,53 @@ describe('ds4-rpm-hf-v1b-input-fingerprint', () => {
       { recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 900 },
       { recordedAtIso: '2026-01-01T10:00:02.000Z', valueRpm: 911 },
     ];
-    const fpBase = computeDs4RpmHfV1bInputFingerprint(minimalTripInput(base));
-    const fpAlt = computeDs4RpmHfV1bInputFingerprint(minimalTripInput(altered));
-    expect(fpBase).not.toBe(fpAlt);
+    expect(computeDs4RpmHfV1bInputFingerprint(minimalTripInput(base))).not.toBe(
+      computeDs4RpmHfV1bInputFingerprint(minimalTripInput(altered)),
+    );
   });
 
-  it('includes VSI provenance (not vehicle-level promotion alone)', () => {
+  it('ignores foreign trip classifications in the rolling VSI window', () => {
     const points = [{ recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 800 }];
     const input = minimalTripInput(points);
     const fp1 = computeDs4RpmHfV1bInputFingerprint(input);
     input.vsiActiveRpmProfileSnapshot = {
       ...input.vsiActiveRpmProfileSnapshot!,
-      profileSemanticFingerprint: 'vsi-fp-2',
+      tripClassifications: [
+        ...(input.vsiActiveRpmProfileSnapshot!.tripClassifications ?? []),
+        {
+          tripId: 'trip-third',
+          endMs: Date.parse('2026-01-01T08:00:00.000Z'),
+          profile: 'RPM_STANDARD',
+          intervalMedianSeconds: 4,
+          intervalP95Seconds: 6,
+          intervalCount: 5,
+          rpmPointCount: 6,
+          fractionIntervalsLe2s: 0.1,
+          decisionCode: 'OTHER',
+        },
+      ],
     };
-    const fp2 = computeDs4RpmHfV1bInputFingerprint(input);
-    expect(fp1).not.toBe(fp2);
+    expect(computeDs4RpmHfV1bInputFingerprint(input)).toBe(fp1);
+  });
+
+  it('ignores vehicle-level profile semantic fingerprint churn', () => {
+    const points = [{ recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 800 }];
+    const input = minimalTripInput(points);
+    const fp1 = computeDs4RpmHfV1bInputFingerprint(input);
+    input.vsiActiveRpmProfileSnapshot = {
+      ...input.vsiActiveRpmProfileSnapshot!,
+      profileSemanticFingerprint: 'vsi-fp-changed',
+      activeProfile: 'RPM_STANDARD',
+    };
+    input.admission.vehicleActiveRpmProfile = 'RPM_STANDARD';
+    expect(computeDs4RpmHfV1bInputFingerprint(input)).toBe(fp1);
+  });
+
+  it('includes data-quality invalid/duplicate counts', () => {
+    const points = [{ recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 800 }];
+    const a = minimalTripInput(points);
+    const b = minimalTripInput(points);
+    b.dataQuality.invalidValueCount = 1;
+    expect(computeDs4RpmHfV1bInputFingerprint(a)).not.toBe(computeDs4RpmHfV1bInputFingerprint(b));
   });
 });

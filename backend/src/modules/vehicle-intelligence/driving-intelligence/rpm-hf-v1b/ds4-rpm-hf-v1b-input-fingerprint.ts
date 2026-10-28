@@ -23,25 +23,30 @@ function canonicalRpmSeriesDigest(
   return h.digest('hex');
 }
 
-function vsiClassificationProvenance(tripInput: Ds4RpmHfV1aTripInputV1): {
+/** Trip-scoped VSI provenance only — no foreign rolling-window trips or vehicle-level promotion fields. */
+function tripScopedVsiProvenance(tripInput: Ds4RpmHfV1aTripInputV1): {
   tripRpmProfile: string;
   iceRpmApplicability: string;
-  snapshotTripClassifications: ReadonlyArray<{ tripId: string; profile: string }>;
-  profileSemanticFingerprint: string | null;
+  authoritativeTripClassification: {
+    tripId: string;
+    profile: string;
+    decisionCode: string;
+  } | null;
 } {
   const snap = tripInput.vsiActiveRpmProfileSnapshot;
+  const row = snap?.tripClassifications?.find((c) => c.tripId === tripInput.tripId);
   return {
     tripRpmProfile: tripInput.admission.tripRpmProfile,
     iceRpmApplicability: tripInput.admission.iceRpmApplicability,
-    snapshotTripClassifications:
-      snap?.tripClassifications?.map((c) => ({ tripId: c.tripId, profile: c.profile })) ?? [],
-    profileSemanticFingerprint: snap?.profileSemanticFingerprint ?? null,
+    authoritativeTripClassification: row
+      ? { tripId: row.tripId, profile: row.profile, decisionCode: row.decisionCode }
+      : null,
   };
 }
 
 /**
  * Deterministic input identity for idempotent SUCCESS runs and bounded input-revision detection.
- * Excludes computedAt and other processing-time fields.
+ * Excludes computedAt, vehicle-level active profile, and other trips' classifications.
  */
 export function computeDs4RpmHfV1bInputFingerprint(tripInput: Ds4RpmHfV1aTripInputV1): string {
   const payload = {
@@ -54,10 +59,12 @@ export function computeDs4RpmHfV1bInputFingerprint(tripInput: Ds4RpmHfV1aTripInp
     providerSourceLinkId: tripInput.providerSourceLinkId,
     tripStartIso: tripInput.tripStartIso,
     tripEndIso: tripInput.tripEndIso,
-    vsi: vsiClassificationProvenance(tripInput),
+    vsi: tripScopedVsiProvenance(tripInput),
     chStatus: tripInput.clickHouseRead.status,
     tenantScopeViolation: tripInput.clickHouseRead.tenantScopeViolation,
     completenessLabel: tripInput.dataQuality.completenessLabel,
+    invalidValueCount: tripInput.dataQuality.invalidValueCount,
+    duplicateTimestampCount: tripInput.dataQuality.duplicateTimestampCount,
     rpmSeriesDigest: canonicalRpmSeriesDigest(tripInput.rpmPoints),
   };
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');

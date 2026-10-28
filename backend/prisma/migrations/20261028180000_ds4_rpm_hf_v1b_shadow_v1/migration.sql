@@ -38,6 +38,7 @@ CREATE TABLE ds4_rpm_hf_v1b_shadow_outbox_v1 (
   claim_expires_at TIMESTAMPTZ,
   /** Fingerprint of last SUCCEEDED shadow input; used for bounded input-revision reopen only. */
   succeeded_input_fingerprint TEXT,
+  revision_last_probed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT ds4_rpm_hf_v1b_shadow_outbox_status_chk CHECK (

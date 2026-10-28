@@ -4,8 +4,11 @@ import { DS4_RPM_HF_V1B_ENGINE_VERSION } from '../ds4-rpm-hf-v1b.contract';
 import { Ds4RpmHfV1bOutboxRepository } from '../ds4-rpm-hf-v1b-outbox.repository';
 import { Ds4RpmHfV1bRunRepository } from '../ds4-rpm-hf-v1b-run.repository';
 
-const S4A_POSTGRES_LIVE = process.env.DI_V0_S4A_POSTGRES_INTEGRATION === '1';
-(S4A_POSTGRES_LIVE ? describe : describe.skip)('ds4-rpm-hf-v1b shadow outbox (postgres)', () => {
+const DS4_RPM_HF_V1B_POSTGRES_LIVE =
+  process.env.DI_V0_S4A_POSTGRES_INTEGRATION === '1' &&
+  process.env.DS4_RPM_HF_V1B_POSTGRES_INTEGRATION === '1';
+
+(DS4_RPM_HF_V1B_POSTGRES_LIVE ? describe : describe.skip)('ds4-rpm-hf-v1b shadow outbox (postgres)', () => {
   let db: PrismaClient;
   let outbox: Ds4RpmHfV1bOutboxRepository;
   let runs: Ds4RpmHfV1bRunRepository;
@@ -32,6 +35,14 @@ const S4A_POSTGRES_LIVE = process.env.DI_V0_S4A_POSTGRES_INTEGRATION === '1';
     const names = new Set(indexes.map((i) => i.indexname));
     expect(names.has('ds4_rpm_hf_v1b_shadow_outbox_trip_engine_uq')).toBe(true);
     expect(names.has('ds4_rpm_hf_v1b_shadow_runs_succeeded_fp_uq')).toBe(true);
+
+    const cols = await db.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'ds4_rpm_hf_v1b_shadow_outbox_v1'
+        AND column_name IN ('succeeded_input_fingerprint', 'revision_last_probed_at')`;
+    const colSet = new Set(cols.map((c) => c.column_name));
+    expect(colSet.has('succeeded_input_fingerprint')).toBe(true);
+    expect(colSet.has('revision_last_probed_at')).toBe(true);
   });
 
   afterEach(async () => {
@@ -192,6 +203,104 @@ const S4A_POSTGRES_LIVE = process.env.DI_V0_S4A_POSTGRES_INTEGRATION === '1';
     const [{ status }] = await db.$queryRaw<Array<{ status: string }>>`
       SELECT status FROM ds4_rpm_hf_v1b_shadow_outbox_v1 WHERE outbox_id = ${outboxId}::uuid`;
     expect(status).toBe('PENDING');
+  }, 60_000);
+
+  it('blocks stale worker SUCCEEDED run insert after lease reclaim', async () => {
+    const now = new Date();
+    const trip = randomUUID();
+    const staleToken = randomUUID();
+    const rows = await db.$queryRaw<Array<{ outbox_id: string }>>`
+      INSERT INTO ds4_rpm_hf_v1b_shadow_outbox_v1 (
+        organization_id, vehicle_id, trip_id, engine_version, status, next_attempt_at,
+        claim_token, claim_expires_at, attempt_count
+      ) VALUES (
+        ${orgId}, ${vehicleId}, ${trip}, ${DS4_RPM_HF_V1B_ENGINE_VERSION}, 'PROCESSING', ${now},
+        ${staleToken}, ${new Date(now.getTime() - 5_000)}, 1
+      )
+      RETURNING outbox_id`;
+    const outboxId = rows[0]!.outbox_id;
+    outboxIds.push(outboxId);
+
+    const reclaimed = await outbox.claimBatch(1, now);
+    expect(reclaimed.length).toBe(1);
+    const liveToken = reclaimed[0]!.claimToken;
+
+    const staleInsert = await runs.insertRunWithActiveClaim({
+      outboxId,
+      claimToken: staleToken,
+      runId: randomUUID(),
+      organizationId: orgId,
+      vehicleId,
+      tripId: trip,
+      engineVersion: DS4_RPM_HF_V1B_ENGINE_VERSION,
+      inputFingerprint: 'fp-stale',
+      shadowStatus: 'SUCCEEDED',
+      summary: { inputFingerprint: 'fp-stale' } as never,
+      computedAt: now,
+      now,
+    });
+    expect(staleInsert.outcome).toBe('claim_lost');
+
+    const liveInsert = await runs.insertRunWithActiveClaim({
+      outboxId,
+      claimToken: liveToken,
+      runId: randomUUID(),
+      organizationId: orgId,
+      vehicleId,
+      tripId: trip,
+      engineVersion: DS4_RPM_HF_V1B_ENGINE_VERSION,
+      inputFingerprint: 'fp-live',
+      shadowStatus: 'SUCCEEDED',
+      summary: { inputFingerprint: 'fp-live' } as never,
+      computedAt: now,
+      now,
+    });
+    expect(liveInsert.outcome).toBe('inserted');
+    if (liveInsert.outcome === 'inserted') {
+      runIds.push(liveInsert.runId);
+    }
+  }, 60_000);
+
+  it('orders revision probe by revision_last_probed_at NULLS FIRST then touch cursor', async () => {
+    const now = new Date();
+    const tripA = randomUUID();
+    const tripB = randomUUID();
+    const rowsA = await db.$queryRaw<Array<{ outbox_id: string }>>`
+      INSERT INTO ds4_rpm_hf_v1b_shadow_outbox_v1 (
+        organization_id, vehicle_id, trip_id, engine_version, status, next_attempt_at,
+        succeeded_input_fingerprint, revision_last_probed_at, updated_at
+      ) VALUES (
+        ${orgId}, ${vehicleId}, ${tripA}, ${DS4_RPM_HF_V1B_ENGINE_VERSION}, 'SUCCEEDED', ${now},
+        'fp-a', ${new Date(now.getTime() - 60_000)}, ${now}
+      )
+      RETURNING outbox_id`;
+    const rowsB = await db.$queryRaw<Array<{ outbox_id: string }>>`
+      INSERT INTO ds4_rpm_hf_v1b_shadow_outbox_v1 (
+        organization_id, vehicle_id, trip_id, engine_version, status, next_attempt_at,
+        succeeded_input_fingerprint, revision_last_probed_at, updated_at
+      ) VALUES (
+        ${orgId}, ${vehicleId}, ${tripB}, ${DS4_RPM_HF_V1B_ENGINE_VERSION}, 'SUCCEEDED', ${now},
+        'fp-b', NULL, ${now}
+      )
+      RETURNING outbox_id`;
+    const outboxA = rowsA[0]!.outbox_id;
+    const outboxB = rowsB[0]!.outbox_id;
+    outboxIds.push(outboxA, outboxB);
+
+    const first = await outbox.listSucceededForRevisionProbe({
+      organizationAllowlist: [orgId],
+      vehicleAllowlist: [vehicleId],
+      limit: 2,
+    });
+    expect(first[0]!.outboxId).toBe(outboxB);
+
+    await outbox.touchRevisionProbe(outboxB, now);
+    const second = await outbox.listSucceededForRevisionProbe({
+      organizationAllowlist: [orgId],
+      vehicleAllowlist: [vehicleId],
+      limit: 2,
+    });
+    expect(second[0]!.outboxId).toBe(outboxA);
   }, 60_000);
 
   it('transitions FAILED_RETRYABLE and respects tenant-scoped rows', async () => {

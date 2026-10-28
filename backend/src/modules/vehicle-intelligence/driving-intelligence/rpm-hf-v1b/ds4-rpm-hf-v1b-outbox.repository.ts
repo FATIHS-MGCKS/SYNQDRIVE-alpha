@@ -152,7 +152,7 @@ export class Ds4RpmHfV1bOutboxRepository {
       WHERE status = 'SUCCEEDED'
         AND organization_id = ANY(${input.organizationAllowlist}::text[])
         AND vehicle_id = ANY(${input.vehicleAllowlist}::text[])
-      ORDER BY updated_at ASC
+      ORDER BY revision_last_probed_at ASC NULLS FIRST, updated_at ASC, outbox_id ASC
       LIMIT ${input.limit}`;
     return rows.map((r) => ({
       outboxId: r.outbox_id,
@@ -175,6 +175,13 @@ export class Ds4RpmHfV1bOutboxRepository {
         AND status = 'SUCCEEDED'
       RETURNING outbox_id`;
     return rows.length > 0;
+  }
+
+  async touchRevisionProbe(outboxId: string, now: Date): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE ds4_rpm_hf_v1b_shadow_outbox_v1
+      SET revision_last_probed_at = ${now}, updated_at = ${now}
+      WHERE outbox_id = ${outboxId}::uuid AND status = 'SUCCEEDED'`;
   }
 
   async claimBatch(limit: number, now: Date): Promise<Ds4RpmHfV1bOutboxRow[]> {
