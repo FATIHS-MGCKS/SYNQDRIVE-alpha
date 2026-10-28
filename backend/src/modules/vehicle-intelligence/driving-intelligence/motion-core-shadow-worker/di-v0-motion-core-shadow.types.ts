@@ -2,6 +2,11 @@ import type { MotionFsmMode, MotionFsmStopEpisode } from '../core/kinematics/mot
 import type { MotionManoeuvreEvent } from '../core/kinematics/motion-event.types';
 import type { MotionCoreSpeedQuality } from '../core/kinematics/speed-sample.types';
 import type { DiV0MotionCoreShadowSparseSamplePersisted } from './di-v0-motion-core-shadow-evidence.adapter';
+import {
+  mapMotionManoeuvreEventIntensity,
+  type DiV0MotionCoreShadowPersistedEventIntensityV1,
+  type DiV0MotionCoreShadowPersistenceContract,
+} from './di-v0-motion-core-shadow-event-row.contract';
 
 export type DiV0MotionCoreShadowProcessingMode = 'POST_TRIP_RETROSPECTIVE';
 
@@ -45,6 +50,11 @@ export type DiV0MotionCoreShadowPersistedEventRow = {
   deltaKmh: number;
   quality: string;
   flags: string[];
+  /**
+   * Event-row contract V2 only. Absent on legacy (V1) payloads and on rows whose detector intensity was
+   * not reliably available. Ordinal use only (see `DI_V0_MOTION_CORE_SHADOW_INTENSITY_USAGE_POLICY`).
+   */
+  intensity?: DiV0MotionCoreShadowPersistedEventIntensityV1;
 };
 
 export type DiV0MotionCoreShadowTimeSemantics = {
@@ -74,6 +84,8 @@ export type DiV0MotionCoreShadowQualityContract = {
     bundle: string;
   };
   speedAuthority: DiV0MotionCoreShadowSpeedAuthority;
+  /** Persisted row-shape contract; absent on payloads written before event-row contract V2. */
+  persistence?: DiV0MotionCoreShadowPersistenceContract;
   knownLimitations?: string[];
   timeSemantics: DiV0MotionCoreShadowTimeSemantics;
   sparse: {
@@ -119,9 +131,12 @@ export type DiV0MotionCoreShadowSummaryJson = {
   eventAcceptedCount: number;
   eventArtefactSuspectCount: number;
   contentFingerprint: string;
+  /** Absent on summaries written before event-row contract V2. */
+  eventRowContract?: string;
 };
 
 export function mapMotionManoeuvreEventToPersisted(row: MotionManoeuvreEvent): DiV0MotionCoreShadowPersistedEventRow {
+  const intensity = mapMotionManoeuvreEventIntensity(row);
   return {
     kind: row.kind,
     startLabel: row.startLabel,
@@ -131,5 +146,6 @@ export function mapMotionManoeuvreEventToPersisted(row: MotionManoeuvreEvent): D
     deltaKmh: row.deltaKmh,
     quality: row.quality,
     flags: row.flags ?? [],
+    ...(intensity ? { intensity } : {}),
   };
 }

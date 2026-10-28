@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ds4-event-intensity-persistence-pr2-2026-10-28',
+    version: '4.9.5002',
+    title: 'DS4 event intensity persistence — PR-2 (shadow payload, Draft, not deployed)',
+    summary: [
+      'Persisted DS4 ACCELERATION/DECELERATION event rows now carry optional intensity (meanAccelMps2, durationS, steps, coverageRatio, start/end uncertainty labels).',
+      'Explicit event-row contract DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1 in payload.contract.persistence + summary_json.eventRowContract; legacy payloads resolve as V1 with intensity=null.',
+      'Bundle versions V1–V4 and outbox intent keys unchanged (no reprocessing); peakAccel1s/2s excluded by contract; ordinal-only usage policy (Fable B3).',
+      'Event counts, classifications, boundaries, trip-map DTO and Trip UI unchanged; Fable review requested (DI-DEC-DS4-INTENSITY-PERSIST-001, PROPOSED).',
+    ],
+    reason:
+      'Close blocker B2 of the DS4 authority migration: persist already-computed intensity without changing detection, admission or counts.',
+    previousBehavior:
+      'mapMotionManoeuvreEventToPersisted dropped all intensity fields; shadow rows stored kind/boundaries/speeds/Δv/quality/flags only.',
+    details:
+      'backend motion-core-shadow-worker: di-v0-motion-core-shadow-event-row.contract.ts, .types.ts, -processor.ts + unit/postgres specs; architecture/drivingintelligence evidence/DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md, decisions, graph, change ledger; tires gap pointer.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-28T01:00:00.000Z',
+  },
+  {
     id: 'ds4-authority-migration-pr0-2026-10-28',
     version: '4.9.5001',
     title: 'DS4 authoritative assessment migration — PR-0 (governance only)',

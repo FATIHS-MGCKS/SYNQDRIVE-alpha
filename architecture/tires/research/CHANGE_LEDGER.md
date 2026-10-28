@@ -181,3 +181,11 @@ Newest entry last. Never rewrite or delete entries.
 | OBSERVED_EFFECT | All four cohort vehicles: V3 verification `INSUFFICIENT_EVIDENCE` (NULL measurement odometers; Arteon no measurements); rental `MEASUREMENT_REQUIRED`; DS4 β=0 |
 | VERDICT | **INCONCLUSIVE** for production GO — mechanics OK, evidence quality blocks authoritative replacement |
 | NON_EFFECTS | No model formula change; no deploy; no flags; no production mutation |
+
+### Cross-module — DI PR-2 persists DS4 event intensity (gap pointer only) (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Documentation only. `TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001` → **PARTIALLY_CLOSED** pointer: Driving Intelligence PR-2 (Draft, not deployed) persists `meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, uncertainty labels on new shadow runs under `DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1`; peaks excluded by contract |
+| WHY | Keep tire integration audit consistent with DI persistence state; data precondition for a future ordinal intensity channel |
+| NON_EFFECTS | No tire runtime, adapter, flag or model change; `tire-ds4-shadow-input.mapper.ts` still consumes the trip-map DTO (no intensity); tire consumer binding remains forbidden until Fable review of `DI-DEC-DS4-INTENSITY-PERSIST-001`; historical DS4 rows unchanged |

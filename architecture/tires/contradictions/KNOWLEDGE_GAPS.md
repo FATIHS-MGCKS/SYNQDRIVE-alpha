@@ -4,7 +4,7 @@ Every gap has a graph node (`TIRE-GAP-*`). Closing a gap requires evidence and a
 
 | ID | Gap | Epistemic | Blocking for |
 |----|-----|-----------|--------------|
-| TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001 | Persisted DS4 event rows lack `meanAccelMps2`, `durationS`, peak values (Fable B7); consumer must re-derive from labels and Δv | CONFIRMED | ordinal intensity in shadow adapter |
+| TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001 | Persisted DS4 event rows lack `meanAccelMps2`, `durationS`, peak values (Fable B7); consumer must re-derive from labels and Δv. **PARTIALLY_CLOSED (2026-10-28 DI PR-2, Draft, not deployed):** DI event-row contract `DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1` persists `meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, uncertainty labels on **new** runs only ([`DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md`](../../drivingintelligence/evidence/DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md)); peaks intentionally never persisted; historical rows stay V1; the tire adapter still consumes the trip-map DTO (no intensity) and must not bind before Fable review of `DI-DEC-DS4-INTENSITY-PERSIST-001` | CONFIRMED | ordinal intensity in shadow adapter |
 | TIRE-GAP-DS4-COVERAGE-ALLOWLIST-001 | DS4 shadow covers 4 of 6 Production vehicles (allowlist) | CONFIRMED | fleet-wide shadow comparison |
 | TIRE-GAP-DS4-OUT-OF-SAMPLE-VALIDITY-001 | Detector/P1/P2 tuned on four drives; fleet behaviour unverified | UNKNOWN | any numeric use; Fable required |
 | TIRE-GAP-DS4-INTENSITY-ATTENUATION-B3-001 | Systematic −0.13…−0.55 m/s² attenuation; intensities not physically validated | CONFIRMED | absolute thresholds (forbidden) |
