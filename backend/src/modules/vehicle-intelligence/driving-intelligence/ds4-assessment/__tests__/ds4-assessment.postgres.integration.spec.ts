@@ -69,11 +69,52 @@ describePg('ds4-assessment postgres integration', () => {
           unknownNotCountedAsConfirmedStandstill: true,
         },
       },
-      speeds: [],
+      speeds: speedAuthority
+        ? [
+            {
+              bucketLabelUtc: '2026-01-01T10:00:00Z',
+              speedKmh: 36,
+              quality: 'OK',
+              estimator: 'C4',
+              flags: [],
+              support: [],
+            },
+            {
+              bucketLabelUtc: '2026-01-01T10:00:01Z',
+              speedKmh: 36,
+              quality: 'OK',
+              estimator: 'C4',
+              flags: [],
+              support: [],
+            },
+            {
+              bucketLabelUtc: '2026-01-01T10:00:02Z',
+              speedKmh: 36,
+              quality: 'OK',
+              estimator: 'C4',
+              flags: [],
+              support: [],
+            },
+          ]
+        : [],
       fsmLabels: speedAuthority
         ? [
             {
               bucketLabelUtc: '2026-01-01T10:00:00Z',
+              state: 'MOVING',
+              evidenceQuality: 'DIRECT',
+              reason: 'r',
+              flags: [],
+            },
+            {
+              bucketLabelUtc: '2026-01-01T10:00:01Z',
+              state: 'MOVING',
+              evidenceQuality: 'DIRECT',
+              reason: 'r',
+              flags: [],
+            },
+            {
+              bucketLabelUtc: '2026-01-01T10:00:02Z',
               state: 'MOVING',
               evidenceQuality: 'DIRECT',
               reason: 'r',
@@ -84,8 +125,8 @@ describePg('ds4-assessment postgres integration', () => {
       stopEpisodes: [],
       events: [],
       summary: {
-        labelCount: speedAuthority ? 1 : 0,
-        speedNumericCount: 0,
+        labelCount: speedAuthority ? 3 : 0,
+        speedNumericCount: speedAuthority ? 3 : 0,
         eventCount: 0,
         eventAcceptedCount: 0,
         eventArtefactSuspectCount: 0,
