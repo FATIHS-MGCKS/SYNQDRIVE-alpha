@@ -13064,7 +13064,7 @@ model DiV0Ds4TripAssessmentV1 {
   pinnedSnapshotHash         String   @map("pinned_snapshot_hash")
   combinedInputIdentity      String   @map("combined_input_identity")
   eventRowContract           String?  @map("event_row_contract")
-  speedAuthority             String   @map("speed_authority")
+  speedAuthority             String?  @map("speed_authority")
   inputFingerprint           String   @map("input_fingerprint")
   computedAt                 DateTime @map("computed_at") @db.Timestamptz(6)
   assessmentStatus           String   @map("assessment_status")

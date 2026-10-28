@@ -9,7 +9,7 @@ export type Ds4AssessmentInternalReadDtoV1 = {
     assessmentStatus: string;
     evidenceQuality: string | null;
     reasonCodes: unknown;
-    speedAuthority: string;
+    speedAuthority: string | null;
     eventRowContract: string | null;
     inputFingerprint: string;
     sourceMotionRunId: string;

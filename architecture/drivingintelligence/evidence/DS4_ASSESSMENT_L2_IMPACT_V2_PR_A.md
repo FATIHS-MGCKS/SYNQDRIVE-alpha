@@ -18,3 +18,16 @@
 - Assessment quality policy V1
 - Ordinal-only intensity consumption on V2 event rows
 - Null score publication contract
+
+## Fable remediation (PR #2212)
+
+| Area | Change |
+|------|--------|
+| Outbox retry | `FAILED_RETRYABLE` claimable after `next_attempt_at`; `maxProcessingAttempts` → `FAILED_TERMINAL` |
+| Lease recovery | Expired `PROCESSING` rows recovered with `FOR UPDATE SKIP LOCKED` |
+| Fingerprint | Canonical payload-resolved `eventRowContract` via `computeDs4AssessmentInputFingerprintFromMotionSource` |
+| Speed authority | Nullable column; no `C4_ONLY` coercion on persist |
+| Latest read | `source_motion_run_created_at DESC`, tie-break `computed_at`, advisory lock on persist |
+| Postgres CI | `npm run test:di:ds4-assessment:postgres:ci` in S4A workflow |
+
+Validation: `npm run test:di:ds4-assessment`, `npm run test:di:ds4-assessment:postgres:ci` (disposable PostgreSQL).

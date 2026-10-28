@@ -11,13 +11,19 @@ export type Ds4AssessmentPersistResultV1 =
   | { outcome: 'superseded_skipped'; existingAssessmentId: string }
   | { outcome: 'sql_error'; message: string };
 
+const latestAssessmentOrderBy = [
+  { sourceMotionRunCreatedAt: 'desc' as const },
+  { computedAt: 'desc' as const },
+  { id: 'desc' as const },
+];
+
 export class Ds4TripAssessmentRepositoryV1 {
   constructor(private readonly prisma: PrismaClient) {}
 
   async findLatestAssessmentForTrip(tripId: string): Promise<{ id: string; sourceMotionRunCreatedAt: Date } | null> {
     const row = await this.prisma.diV0Ds4TripAssessmentV1.findFirst({
       where: { tripId },
-      orderBy: { computedAt: 'desc' },
+      orderBy: latestAssessmentOrderBy,
       select: { id: true, sourceMotionRunCreatedAt: true },
     });
     return row;
@@ -46,16 +52,37 @@ export class Ds4TripAssessmentRepositoryV1 {
       return { outcome: 'idempotent_duplicate', assessmentId: existing.id };
     }
 
-    const latest = await this.findLatestAssessmentForTrip(input.scope.tripId);
-    if (latest && latest.sourceMotionRunCreatedAt.getTime() > input.sourceMotionRunCreatedAt.getTime()) {
-      return { outcome: 'superseded_skipped', existingAssessmentId: latest.id };
-    }
-
     const assessmentId = randomUUID();
     const impactId = randomUUID();
 
     try {
-      await this.prisma.$transaction(async (tx) => {
+      const inserted = await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.scope.tripId}))`;
+
+        const latest = await tx.diV0Ds4TripAssessmentV1.findFirst({
+          where: { tripId: input.scope.tripId },
+          orderBy: latestAssessmentOrderBy,
+          select: { id: true, sourceMotionRunCreatedAt: true },
+        });
+        if (
+          latest &&
+          latest.sourceMotionRunCreatedAt.getTime() > input.sourceMotionRunCreatedAt.getTime()
+        ) {
+          return { kind: 'superseded' as const, existingAssessmentId: latest.id };
+        }
+
+        const dup = await tx.diV0Ds4TripAssessmentV1.findFirst({
+          where: {
+            tripId: input.scope.tripId,
+            assessmentVersion: DS4_TRIP_ASSESSMENT_VERSION_V1,
+            inputFingerprint: input.assessment.inputFingerprint,
+          },
+          select: { id: true },
+        });
+        if (dup) {
+          return { kind: 'duplicate' as const, assessmentId: dup.id };
+        }
+
         await tx.diV0Ds4TripAssessmentV1.create({
           data: {
             id: assessmentId,
@@ -67,7 +94,7 @@ export class Ds4TripAssessmentRepositoryV1 {
             pinnedSnapshotHash: input.assessment.completeness.pinnedSnapshotHash,
             combinedInputIdentity: input.assessment.completeness.combinedInputIdentity,
             eventRowContract: input.assessment.eventRowContract,
-            speedAuthority: input.assessment.speedAuthority ?? 'C4_ONLY',
+            speedAuthority: input.assessment.speedAuthority,
             inputFingerprint: input.assessment.inputFingerprint,
             computedAt: input.computedAt,
             assessmentStatus: input.assessment.assessmentStatus,
@@ -97,7 +124,15 @@ export class Ds4TripAssessmentRepositoryV1 {
             computedAt: input.computedAt,
           },
         });
+        return { kind: 'inserted' as const };
       });
+
+      if (inserted.kind === 'superseded') {
+        return { outcome: 'superseded_skipped', existingAssessmentId: inserted.existingAssessmentId };
+      }
+      if (inserted.kind === 'duplicate') {
+        return { outcome: 'idempotent_duplicate', assessmentId: inserted.assessmentId };
+      }
       return { outcome: 'inserted', assessmentId, impactId };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -126,7 +161,7 @@ export class Ds4TripAssessmentRepositoryV1 {
         vehicleId: scope.vehicleId,
         tripId: scope.tripId,
       },
-      orderBy: { computedAt: 'desc' },
+      orderBy: latestAssessmentOrderBy,
     });
     if (!assessment) return null;
     const impact = await this.prisma.diV0Ds4TripDrivingImpactV2.findUnique({

@@ -18,7 +18,11 @@ import {
   evaluateDs4AssessmentQualityFromMotionPayload,
   type Ds4AssessmentQualityPolicyV1,
 } from './ds4-assessment-quality-policy.v1';
-import { computeDs4AssessmentInputFingerprint } from './ds4-assessment-input-fingerprint';
+import {
+  computeDs4AssessmentInputFingerprint,
+  computeDs4AssessmentInputFingerprintFromMotionSource,
+  resolveCanonicalEventRowContractForDs4Assessment,
+} from './ds4-assessment-input-fingerprint';
 
 export type Ds4AssessmentMotionRunSourceV1 = {
   id: string;
@@ -236,12 +240,25 @@ export function computeDs4TripAssessmentV1(input: {
   }
 
   const contractResolution = resolveMotionCoreShadowEventRowContract(input.payload);
-  const eventRowContract =
-    contractResolution === DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V2_INTENSITY
-      ? contractResolution
-      : contractResolution === DI_V0_MOTION_CORE_SHADOW_EVENT_ROW_CONTRACT_V1_LEGACY
-        ? contractResolution
-        : null;
+  const canonicalFingerprint = computeDs4AssessmentInputFingerprintFromMotionSource({
+    sourceMotionRunId: input.motionRun.id,
+    pinnedSnapshotHash: input.motionRun.pinnedSnapshotHash,
+    combinedInputIdentity: input.motionRun.combinedInputIdentity,
+    contentFingerprint: input.motionRun.contentFingerprint,
+    summaryJson: input.motionRun.summaryContentFingerprint
+      ? { contentFingerprint: input.motionRun.summaryContentFingerprint }
+      : null,
+    payload: input.payload,
+  });
+  if (!canonicalFingerprint.ok && canonicalFingerprint.code === 'SOURCE_IDENTITY_MISMATCH') {
+    if (!reasonCodes.includes('SOURCE_IDENTITY_MISMATCH')) {
+      reasonCodes.push('SOURCE_IDENTITY_MISMATCH');
+    }
+  }
+
+  const eventRowContract = canonicalFingerprint.ok
+    ? canonicalFingerprint.eventRowContract
+    : resolveCanonicalEventRowContractForDs4Assessment(input.payload);
 
   const speedAuthority: Ds4SpeedAuthorityPartitionV1 | null =
     qualityEval.speedAuthority === 'AMBIGUOUS' ? null : qualityEval.speedAuthority;
@@ -276,13 +293,15 @@ export function computeDs4TripAssessmentV1(input: {
   summaries.accelerationOrdinalValues.sort((a, b) => a - b);
   summaries.decelerationOrdinalValues.sort((a, b) => a - b);
 
-  const inputFingerprint = computeDs4AssessmentInputFingerprint({
-    sourceMotionRunId: input.motionRun.id,
-    pinnedSnapshotHash: input.motionRun.pinnedSnapshotHash,
-    combinedInputIdentity: input.motionRun.combinedInputIdentity,
-    contentFingerprint: input.motionRun.contentFingerprint,
-    eventRowContract,
-  });
+  const inputFingerprint = canonicalFingerprint.ok
+    ? canonicalFingerprint.inputFingerprint
+    : computeDs4AssessmentInputFingerprint({
+        sourceMotionRunId: input.motionRun.id,
+        pinnedSnapshotHash: input.motionRun.pinnedSnapshotHash,
+        combinedInputIdentity: input.motionRun.combinedInputIdentity,
+        contentFingerprint: input.motionRun.contentFingerprint,
+        eventRowContract,
+      });
 
   const completeness: Ds4TripAssessmentCompletenessV1 = {
     motionRunSucceeded: true,
