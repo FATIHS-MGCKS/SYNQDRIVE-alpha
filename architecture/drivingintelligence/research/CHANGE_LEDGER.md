@@ -2402,6 +2402,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | Motion C5.1, Trip FSM, Driving Impact, DriverScore, Tire/Brake, DIMO fetch pipeline, HF mirror ingest unchanged; no DB migration; no deploy |
 | REMAINING | Live ClickHouse preflight gate before activation; V1B shadow engine + Fable before production allowlist |
 
+### DS4 RPM High Frequency V1B — post-trip temporal quality shadow (2026-10-28, Draft PR, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | V1A read-only trip input only; no versioned post-trip RPM HF shadow persistence or temporal coverage contract |
+| CHANGE | `rpm-hf-v1b/`: deterministic temporal engine, versioned shadow result contract, trip outbox + run persistence (`ds4_rpm_hf_v1b_shadow_*`), leader-gated scheduler (`ds4_rpm_hf_v1b_shadow_v1`). Consumes **only** `Ds4RpmHfV1aTripInputService.buildTripInput()` — no alternate RPM pipeline. Flags default OFF |
+| WHY | Phase 2B shadow quality validation after prod V1A smoke; bounded post-trip processing with VSI rolling trip classification provenance (no vehicle-level promotion) |
+| VALIDATION | Jest `rpm-hf-v1b/*`; Prisma migration `20261028180000_ds4_rpm_hf_v1b_shadow_v1`; scheduler registry entry; `nest build` |
+| NON_EFFECTS | V1A contract unchanged; motion-core shadow scheduler untouched; no customer scoring/API/UI; no deploy/backfill |
+| REMAINING | Owner allowlist pilot + Fable review before any production flag enable |
+
 ### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
 
 | Event | Detail |
