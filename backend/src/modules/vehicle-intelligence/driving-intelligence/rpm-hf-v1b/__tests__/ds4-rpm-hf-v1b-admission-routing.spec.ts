@@ -75,8 +75,14 @@ function baseTripInput(
 }
 
 describe('ds4-rpm-hf-v1b-admission-routing', () => {
+  const routingOpts = (nowIso: string) => ({
+    maxDeferAttempts: 6,
+    nowMs: Date.parse(nowIso),
+    postTripReadinessWindowMs: 72 * 60 * 60_000,
+  });
+
   it('RPM_1HZ + complete HF → SUCCEEDED persist path', () => {
-    const r = routeDs4RpmHfV1bFromV1aAdmission(baseTripInput(), 1, 6);
+    const r = routeDs4RpmHfV1bFromV1aAdmission(baseTripInput(), 1, routingOpts('2026-10-28T12:00:00.000Z'));
     expect(r.outcome).toBe('SUCCEEDED');
     expect(r.shouldPersistAnalysis).toBe(true);
   });
@@ -93,7 +99,7 @@ describe('ds4-rpm-hf-v1b-admission-routing', () => {
         },
       }),
       1,
-      6,
+      routingOpts('2026-10-28T12:00:00.000Z'),
     );
     expect(r.outcome).toBe('TERMINAL_INELIGIBLE');
   });
@@ -109,13 +115,13 @@ describe('ds4-rpm-hf-v1b-admission-routing', () => {
         },
       }),
       1,
-      6,
+      routingOpts('2026-10-28T12:00:00.000Z'),
     );
     expect(r.outcome).toBe('DEFER_RETRY');
     expect(r.deferReasonCode).toBe('HF_RPM_DATA_MISSING');
   });
 
-  it('VSI unclassified → defer until budget exhausted', () => {
+  it('VSI unclassified → defer until attempt budget exhausted', () => {
     const late = routeDs4RpmHfV1bFromV1aAdmission(
       baseTripInput({
         admission: {
@@ -127,9 +133,28 @@ describe('ds4-rpm-hf-v1b-admission-routing', () => {
         },
       }),
       6,
-      6,
+      routingOpts('2026-10-28T12:00:00.000Z'),
     );
     expect(late.outcome).toBe('TERMINAL_INELIGIBLE');
+    expect(late.rejectionReasonCode).toBe('TRIP_RPM_PROFILE_UNCLASSIFIED_DEFER_ATTEMPT_BUDGET_EXCEEDED');
+  });
+
+  it('readiness window exhausted is distinct from defer attempt budget', () => {
+    const r = routeDs4RpmHfV1bFromV1aAdmission(
+      baseTripInput({
+        admission: {
+          tripRpmProfile: 'UNCLASSIFIED',
+          processingStatus: 'DISABLED_TRIP_NOT_CLASSIFIED',
+          processingAllowed: false,
+          reasonCode: 'TRIP_RPM_PROFILE_UNCLASSIFIED',
+          reasonSummary: 'wait vsi',
+        },
+      }),
+      1,
+      routingOpts('2026-11-01T12:00:00.000Z'),
+    );
+    expect(r.outcome).toBe('TERMINAL_INELIGIBLE');
+    expect(r.rejectionReasonCode).toBe('TRIP_RPM_PROFILE_UNCLASSIFIED_READINESS_WINDOW_EXHAUSTED');
   });
 
   it('tenant scope violation → terminal failed closed', () => {
@@ -149,7 +174,7 @@ describe('ds4-rpm-hf-v1b-admission-routing', () => {
         },
       }),
       1,
-      6,
+      routingOpts('2026-10-28T12:00:00.000Z'),
     );
     expect(r.outcome).toBe('TERMINAL_FAILED');
   });

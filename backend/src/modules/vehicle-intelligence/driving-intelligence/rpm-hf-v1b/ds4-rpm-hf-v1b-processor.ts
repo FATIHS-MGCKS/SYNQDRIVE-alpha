@@ -44,11 +44,11 @@ export function processDs4RpmHfV1bShadowTrip(input: {
     return { kind: 'IDEMPOTENT', fingerprint };
   }
 
-  const routing = routeDs4RpmHfV1bFromV1aAdmission(
-    input.tripInput,
-    input.attemptCount,
-    DS4_RPM_HF_V1B_TUNING.maxDeferAttempts,
-  );
+  const routing = routeDs4RpmHfV1bFromV1aAdmission(input.tripInput, input.attemptCount, {
+    maxDeferAttempts: DS4_RPM_HF_V1B_TUNING.maxDeferAttempts,
+    nowMs: input.computedAt.getTime(),
+    postTripReadinessWindowMs: DS4_RPM_HF_V1B_TUNING.postTripReadinessWindowMs,
+  });
 
   const temporal = computeDs4RpmHfV1bTemporalAnalysis({
     tripStartIso: input.tripInput.tripStartIso,

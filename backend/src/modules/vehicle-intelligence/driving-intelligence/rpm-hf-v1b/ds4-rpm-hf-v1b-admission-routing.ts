@@ -8,14 +8,22 @@ export type Ds4RpmHfV1bAdmissionRouting = {
   shouldPersistAnalysis: boolean;
 };
 
+export type Ds4RpmHfV1bAdmissionRoutingOptions = {
+  maxDeferAttempts: number;
+  nowMs: number;
+  /** Wall-clock readiness window after trip end for HF/VSI materialization. */
+  postTripReadinessWindowMs: number;
+};
+
 /**
  * Maps V1A admission (sole authority) to V1B worker routing.
- * Transient readiness → DEFER_RETRY (bounded by outbox attempts).
+ * Transient readiness → DEFER_RETRY within post-trip window and attempt budget.
+ * READINESS_WINDOW_EXHAUSTED vs *_DEFER_ATTEMPT_BUDGET_EXCEEDED are distinct terminal codes.
  */
 export function routeDs4RpmHfV1bFromV1aAdmission(
   tripInput: Ds4RpmHfV1aTripInputV1,
   attemptCount: number,
-  maxDeferAttempts: number,
+  options: Ds4RpmHfV1bAdmissionRoutingOptions,
 ): Ds4RpmHfV1bAdmissionRouting {
   const a = tripInput.admission;
   const ch = tripInput.clickHouseRead;
@@ -45,15 +53,15 @@ export function routeDs4RpmHfV1bFromV1aAdmission(
   }
 
   if (a.processingStatus === 'DISABLED_CH_UNAVAILABLE') {
-    return defer('CLICKHOUSE_UNAVAILABLE', attemptCount, maxDeferAttempts);
+    return defer('CLICKHOUSE_UNAVAILABLE', attemptCount, options, tripInput.tripEndIso);
   }
 
   if (a.processingStatus === 'DISABLED_NO_HF_DATA') {
-    return defer('HF_RPM_DATA_MISSING', attemptCount, maxDeferAttempts);
+    return defer('HF_RPM_DATA_MISSING', attemptCount, options, tripInput.tripEndIso);
   }
 
   if (a.processingStatus === 'DISABLED_TRIP_NOT_CLASSIFIED') {
-    return defer('TRIP_RPM_PROFILE_UNCLASSIFIED', attemptCount, maxDeferAttempts);
+    return defer('TRIP_RPM_PROFILE_UNCLASSIFIED', attemptCount, options, tripInput.tripEndIso);
   }
 
   if (a.processingAllowed && a.processingStatus === 'ENABLED') {
@@ -61,7 +69,7 @@ export function routeDs4RpmHfV1bFromV1aAdmission(
       return terminal('TERMINAL_INELIGIBLE', 'HF_READ_NOT_COMPLETE', false);
     }
     if (tripInput.clickHouseRead.status !== 'SUCCESS') {
-      return defer('HF_READ_NOT_SUCCESS', attemptCount, maxDeferAttempts);
+      return defer('HF_READ_NOT_SUCCESS', attemptCount, options, tripInput.tripEndIso);
     }
     return {
       outcome: 'SUCCEEDED',
@@ -74,13 +82,24 @@ export function routeDs4RpmHfV1bFromV1aAdmission(
   return terminal('TERMINAL_INELIGIBLE', a.reasonCode || 'V1A_ADMISSION_BLOCKED', false);
 }
 
+function readinessDeadlineMs(tripEndIso: string, windowMs: number): number | null {
+  const tripEndMs = Date.parse(tripEndIso);
+  if (!Number.isFinite(tripEndMs)) return null;
+  return tripEndMs + windowMs;
+}
+
 function defer(
   code: string,
   attemptCount: number,
-  maxDeferAttempts: number,
+  options: Ds4RpmHfV1bAdmissionRoutingOptions,
+  tripEndIso: string,
 ): Ds4RpmHfV1bAdmissionRouting {
-  if (attemptCount >= maxDeferAttempts) {
-    return terminal('TERMINAL_INELIGIBLE', `${code}_DEFER_BUDGET_EXCEEDED`, false);
+  const deadline = readinessDeadlineMs(tripEndIso, options.postTripReadinessWindowMs);
+  if (deadline != null && options.nowMs >= deadline) {
+    return terminal('TERMINAL_INELIGIBLE', `${code}_READINESS_WINDOW_EXHAUSTED`, false);
+  }
+  if (attemptCount >= options.maxDeferAttempts) {
+    return terminal('TERMINAL_INELIGIBLE', `${code}_DEFER_ATTEMPT_BUDGET_EXCEEDED`, false);
   }
   return {
     outcome: 'DEFER_RETRY',

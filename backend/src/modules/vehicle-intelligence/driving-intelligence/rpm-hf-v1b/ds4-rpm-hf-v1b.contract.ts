@@ -64,6 +64,7 @@ export type Ds4RpmHfV1bIntervalStats = {
 export type Ds4RpmHfV1bSequenceStats = {
   continuousSequenceCount: number;
   longestContinuousSequenceSeconds: number | null;
+  /** Sum of per-sequence point-to-point spans (gap rule applied); excludes inter-sequence gaps. */
   observedSequenceDurationSeconds: number | null;
   sequenceGapRuleSeconds: typeof DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS;
 };

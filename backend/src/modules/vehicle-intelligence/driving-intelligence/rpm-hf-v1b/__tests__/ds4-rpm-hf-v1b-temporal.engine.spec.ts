@@ -68,4 +68,35 @@ describe('ds4-rpm-hf-v1b-temporal.engine', () => {
     expect(analysis.intervals.gapCountOver2Seconds).toBe(1);
     expect(analysis.intervals.longestObservedGapSeconds).toBe(8);
   });
+
+  it('does not treat 60s between two points as 60s continuous observed duration', () => {
+    const analysis = computeDs4RpmHfV1bTemporalAnalysis({
+      tripStartIso: '2026-01-01T10:00:00.000Z',
+      tripEndIso: '2026-01-01T10:02:00.000Z',
+      points: [
+        { recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 1000 },
+        { recordedAtIso: '2026-01-01T10:01:01.000Z', valueRpm: 1100 },
+      ],
+      invalidValueCount: 0,
+      duplicateTimestampCount: 0,
+    });
+    expect(analysis.sequences.continuousSequenceCount).toBe(2);
+    expect(analysis.sequences.observedSequenceDurationSeconds).toBe(0);
+  });
+
+  it('sums 1s-interval continuous observation within a sequence', () => {
+    const analysis = computeDs4RpmHfV1bTemporalAnalysis({
+      tripStartIso: '2026-01-01T10:00:00.000Z',
+      tripEndIso: '2026-01-01T10:00:05.000Z',
+      points: [
+        { recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 1000 },
+        { recordedAtIso: '2026-01-01T10:00:02.000Z', valueRpm: 1000 },
+        { recordedAtIso: '2026-01-01T10:00:03.000Z', valueRpm: 1000 },
+      ],
+      invalidValueCount: 0,
+      duplicateTimestampCount: 0,
+    });
+    expect(analysis.sequences.continuousSequenceCount).toBe(1);
+    expect(analysis.sequences.observedSequenceDurationSeconds).toBe(2);
+  });
 });

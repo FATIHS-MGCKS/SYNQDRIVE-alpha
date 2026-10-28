@@ -128,11 +128,11 @@ describe('ds4-rpm-hf-v1b-processor', () => {
     expect(second.kind).toBe('IDEMPOTENT');
   });
 
-  it('changed HF fingerprint allows new revision (different point count)', () => {
+  it('changed HF RPM values allow new revision (same point count)', () => {
     const revised = tiguanEnabledInput();
-    revised.dataQuality.totalMatchingCount = 124;
-    revised.dataQuality.returnedPointCount = 124;
-    revised.rpmPoints.push({ recordedAtIso: '2026-10-28T11:58:34.000Z', valueRpm: 900 });
+    revised.rpmPoints = revised.rpmPoints.map((p, i) =>
+      i === 10 ? { ...p, valueRpm: p.valueRpm + 50 } : p,
+    );
     const out = processDs4RpmHfV1bShadowTrip({
       tripInput: revised,
       attemptCount: 1,

@@ -1,4 +1,21 @@
-import { parseDiV0S4Allowlist, parseDiV0S4BooleanFlag } from '../s4a-foundation/di-v0-s4a-control-plane';
+/** V1B-local env parsing (no s4a-foundation import — dormant S4 audit boundary). */
+
+const ALLOWLIST_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+function parseDs4RpmHfV1bBooleanFlag(value: string | undefined): boolean {
+  if (value == null || value.trim() === '') return false;
+  const normalized = value.trim().toLowerCase();
+  return ['1', 'true', 'yes', 'on'].includes(normalized);
+}
+
+function parseDs4RpmHfV1bAllowlist(value: string | undefined): ReadonlySet<string> {
+  if (value == null || value.trim() === '') return new Set();
+  const entries = value.split(',').map((entry) => entry.trim());
+  for (const entry of entries) {
+    if (!ALLOWLIST_ID_PATTERN.test(entry)) return new Set();
+  }
+  return new Set(entries);
+}
 
 export const DS4_RPM_HF_V1B_ENV = {
   shadowEnabled: 'DS4_RPM_HF_V1B_SHADOW_ENABLED',
@@ -20,10 +37,10 @@ export function parseDs4RpmHfV1bControlPlaneConfig(
   env: Readonly<Record<string, string | undefined>>,
 ): Ds4RpmHfV1bControlPlaneConfig {
   return {
-    shadowEnabled: parseDiV0S4BooleanFlag(env[DS4_RPM_HF_V1B_ENV.shadowEnabled]),
-    workerEnabled: parseDiV0S4BooleanFlag(env[DS4_RPM_HF_V1B_ENV.workerEnabled]),
-    organizationAllowlist: parseDiV0S4Allowlist(env[DS4_RPM_HF_V1B_ENV.organizationAllowlist]),
-    vehicleAllowlist: parseDiV0S4Allowlist(env[DS4_RPM_HF_V1B_ENV.vehicleAllowlist]),
+    shadowEnabled: parseDs4RpmHfV1bBooleanFlag(env[DS4_RPM_HF_V1B_ENV.shadowEnabled]),
+    workerEnabled: parseDs4RpmHfV1bBooleanFlag(env[DS4_RPM_HF_V1B_ENV.workerEnabled]),
+    organizationAllowlist: parseDs4RpmHfV1bAllowlist(env[DS4_RPM_HF_V1B_ENV.organizationAllowlist]),
+    vehicleAllowlist: parseDs4RpmHfV1bAllowlist(env[DS4_RPM_HF_V1B_ENV.vehicleAllowlist]),
   };
 }
 

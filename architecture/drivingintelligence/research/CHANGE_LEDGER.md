@@ -2413,6 +2413,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | V1A contract unchanged; motion-core shadow scheduler untouched; no customer scoring/API/UI; no deploy/backfill |
 | REMAINING | Owner allowlist pilot + Fable review before any production flag enable |
 
+### DS4 RPM HF V1B — PR #2224 targeted hardening (2026-10-28, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Lease recovery for expired `PROCESSING` claims; claim-token fencing; canonical RPM series input fingerprint; bounded SUCCEEDED outbox reopen for input revision (`succeeded_input_fingerprint`); 72h post-trip readiness window vs defer attempt budget; temporal `observedSequenceDurationSeconds` excludes inter-sequence gaps; V1B-local control-plane env parsing (no `s4a-foundation` import); postgres integration spec `ds4-rpm-hf-v1b-outbox.postgres.integration.spec.ts` |
+| WHY | Independent code review on PR #2224 — worker safety, idempotency/revision semantics, VSI defer correctness, S4 dormant audit boundary |
+| VALIDATION | Jest `rpm-hf-v1b/*`; optional `DI_V0_S4A_POSTGRES_INTEGRATION=1` outbox postgres spec; `nest build`; S4 unit dormant audit |
+| NON_EFFECTS | V1A unchanged; flags default OFF; no deploy |
+| REMAINING | Merge review; owner pilot allowlist when ready |
+
 ### DS4 Assessment L2 PR-A2 hardening — exposure integrity + fingerprint binding (2026-10-28, PR #2218)
 
 | Event | Detail |

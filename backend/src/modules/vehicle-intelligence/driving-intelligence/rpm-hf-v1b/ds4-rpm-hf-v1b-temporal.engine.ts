@@ -200,28 +200,32 @@ function computeContinuousSequences(
 
   let sequenceCount = 1;
   let longest = 0;
+  let totalContinuousObservedSeconds = 0;
   let seqStart = points[0]!.recordedAtMs;
   let seqPrev = points[0]!.recordedAtMs;
+
+  const closeSequence = (): void => {
+    const spanSec = (seqPrev - seqStart) / 1000;
+    longest = Math.max(longest, spanSec);
+    totalContinuousObservedSeconds += spanSec;
+  };
 
   for (let i = 1; i < points.length; i += 1) {
     const curr = points[i]!.recordedAtMs;
     const gapSec = (curr - seqPrev) / 1000;
     if (gapSec > DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS) {
-      longest = Math.max(longest, (seqPrev - seqStart) / 1000);
+      closeSequence();
       sequenceCount += 1;
       seqStart = curr;
     }
     seqPrev = curr;
   }
-  longest = Math.max(longest, (seqPrev - seqStart) / 1000);
-
-  const totalObservedSpan =
-    points.length >= 2 ? (points[points.length - 1]!.recordedAtMs - points[0]!.recordedAtMs) / 1000 : 0;
+  closeSequence();
 
   return {
     continuousSequenceCount: sequenceCount,
     longestContinuousSequenceSeconds: points.length >= 2 ? longest : 0,
-    observedSequenceDurationSeconds: totalObservedSpan,
+    observedSequenceDurationSeconds: points.length >= 1 ? totalContinuousObservedSeconds : null,
     sequenceGapRuleSeconds: DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS,
   };
 }

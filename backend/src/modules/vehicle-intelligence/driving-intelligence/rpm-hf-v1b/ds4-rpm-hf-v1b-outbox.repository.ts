@@ -1,7 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { DS4_RPM_HF_V1B_ENGINE_VERSION } from './ds4-rpm-hf-v1b.contract';
 import { DS4_RPM_HF_V1B_TUNING } from './ds4-rpm-hf-v1b.config';
-import type { Ds4RpmHfV1bControlPlaneConfig } from './ds4-rpm-hf-v1b-control-plane';
 
 export type Ds4RpmHfV1bOutboxStatus =
   | 'PENDING'
@@ -21,8 +20,19 @@ export type Ds4RpmHfV1bOutboxRow = {
   nextAttemptAt: Date;
   lastErrorCode: string | null;
   claimToken: string;
+  succeededInputFingerprint: string | null;
 };
 
+/**
+ * Outbox lifecycle (Postgres-backed):
+ * - Discovery inserts one row per (org, trip, engine_version); ON CONFLICT DO NOTHING caps rediscovery.
+ * - Retry: FAILED_RETRYABLE with next_attempt_at; claim uses SKIP LOCKED.
+ * - Lease recovery: expired PROCESSING (claim_expires_at <= now) is reclaimable with a new claim_token.
+ * - Completion fencing: mark* mutations require matching claim_token + PROCESSING.
+ * - Input revision (bounded): after SUCCEEDED, runPass may reopen to PENDING when live fingerprint differs
+ *   from succeeded_input_fingerprint (see shadow service). Same fingerprint + engine → idempotent SUCCESS run index.
+ * - Automatic re-run after SUCCEEDED is not via duplicate outbox rows — only explicit revision reopen.
+ */
 type DiscoveryCandidate = {
   organization_id: string;
   trip_id: string;
@@ -113,6 +123,60 @@ export class Ds4RpmHfV1bOutboxRepository {
     return rows.length > 0;
   }
 
+  async listSucceededForRevisionProbe(input: {
+    organizationAllowlist: readonly string[];
+    vehicleAllowlist: readonly string[];
+    limit: number;
+  }): Promise<
+    Array<{
+      outboxId: string;
+      organizationId: string;
+      tripId: string;
+      vehicleId: string;
+      succeededInputFingerprint: string | null;
+    }>
+  > {
+    if (input.limit <= 0) return [];
+    if (input.organizationAllowlist.length === 0 || input.vehicleAllowlist.length === 0) return [];
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        outbox_id: string;
+        organization_id: string;
+        trip_id: string;
+        vehicle_id: string;
+        succeeded_input_fingerprint: string | null;
+      }>
+    >`
+      SELECT outbox_id, organization_id, trip_id, vehicle_id, succeeded_input_fingerprint
+      FROM ds4_rpm_hf_v1b_shadow_outbox_v1
+      WHERE status = 'SUCCEEDED'
+        AND organization_id = ANY(${input.organizationAllowlist}::text[])
+        AND vehicle_id = ANY(${input.vehicleAllowlist}::text[])
+      ORDER BY updated_at ASC
+      LIMIT ${input.limit}`;
+    return rows.map((r) => ({
+      outboxId: r.outbox_id,
+      organizationId: r.organization_id,
+      tripId: r.trip_id,
+      vehicleId: r.vehicle_id,
+      succeededInputFingerprint: r.succeeded_input_fingerprint,
+    }));
+  }
+
+  async reopenForInputRevision(outboxId: string, now: Date): Promise<boolean> {
+    const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
+      UPDATE ds4_rpm_hf_v1b_shadow_outbox_v1
+      SET status = 'PENDING',
+          next_attempt_at = ${now},
+          claim_token = NULL,
+          claim_expires_at = NULL,
+          updated_at = ${now}
+      WHERE outbox_id = ${outboxId}::uuid
+        AND status = 'SUCCEEDED'
+      RETURNING outbox_id`;
+    return rows.length > 0;
+  }
+
   async claimBatch(limit: number, now: Date): Promise<Ds4RpmHfV1bOutboxRow[]> {
     const claimExpiresAt = new Date(now.getTime() + DS4_RPM_HF_V1B_TUNING.claimLeaseMs);
     return this.prisma.$transaction(async (tx) => {
@@ -128,13 +192,20 @@ export class Ds4RpmHfV1bOutboxRepository {
           next_attempt_at: Date;
           last_error_code: string | null;
           claim_token: string;
+          succeeded_input_fingerprint: string | null;
         }>
       >`
         WITH pick AS (
           SELECT outbox_id
           FROM ds4_rpm_hf_v1b_shadow_outbox_v1
-          WHERE status IN ('PENDING', 'FAILED_RETRYABLE')
+          WHERE (
+            status IN ('PENDING', 'FAILED_RETRYABLE')
             AND next_attempt_at <= ${now}
+          ) OR (
+            status = 'PROCESSING'
+            AND claim_expires_at IS NOT NULL
+            AND claim_expires_at <= ${now}
+          )
           ORDER BY next_attempt_at ASC, created_at ASC
           LIMIT ${limit}
           FOR UPDATE SKIP LOCKED
@@ -148,7 +219,8 @@ export class Ds4RpmHfV1bOutboxRepository {
         FROM pick
         WHERE o.outbox_id = pick.outbox_id
         RETURNING o.outbox_id, o.organization_id, o.trip_id, o.vehicle_id, o.engine_version,
-          o.status, o.attempt_count, o.next_attempt_at, o.last_error_code, o.claim_token`;
+          o.status, o.attempt_count, o.next_attempt_at, o.last_error_code, o.claim_token,
+          o.succeeded_input_fingerprint`;
       return claimed.map((r) => ({
         outboxId: r.outbox_id,
         organizationId: r.organization_id,
@@ -160,6 +232,7 @@ export class Ds4RpmHfV1bOutboxRepository {
         nextAttemptAt: r.next_attempt_at,
         lastErrorCode: r.last_error_code,
         claimToken: r.claim_token,
+        succeededInputFingerprint: r.succeeded_input_fingerprint,
       }));
     });
   }
@@ -176,11 +249,22 @@ export class Ds4RpmHfV1bOutboxRepository {
     return rows.length > 0;
   }
 
-  async markSucceeded(outboxId: string, claimToken: string): Promise<boolean> {
+  async markSucceeded(
+    outboxId: string,
+    claimToken: string,
+    succeededInputFingerprint: string,
+  ): Promise<boolean> {
     const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
       UPDATE ds4_rpm_hf_v1b_shadow_outbox_v1
-      SET status = 'SUCCEEDED', claim_token = NULL, claim_expires_at = NULL, last_error_code = NULL, updated_at = now()
-      WHERE outbox_id = ${outboxId}::uuid AND claim_token = ${claimToken} AND status = 'PROCESSING'
+      SET status = 'SUCCEEDED',
+          succeeded_input_fingerprint = ${succeededInputFingerprint},
+          claim_token = NULL,
+          claim_expires_at = NULL,
+          last_error_code = NULL,
+          updated_at = now()
+      WHERE outbox_id = ${outboxId}::uuid
+        AND claim_token = ${claimToken}
+        AND status = 'PROCESSING'
       RETURNING outbox_id`;
     return rows.length > 0;
   }

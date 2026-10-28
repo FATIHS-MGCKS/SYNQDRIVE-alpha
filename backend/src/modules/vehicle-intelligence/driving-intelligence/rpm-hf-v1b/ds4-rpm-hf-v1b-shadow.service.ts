@@ -13,6 +13,7 @@ import { evaluateDs4RpmHfV1bEnablement } from './ds4-rpm-hf-v1b-control-plane';
 import { Ds4RpmHfV1bOutboxRepository } from './ds4-rpm-hf-v1b-outbox.repository';
 import { processDs4RpmHfV1bShadowTrip } from './ds4-rpm-hf-v1b-processor';
 import { DS4_RPM_HF_V1B_ENGINE_VERSION } from './ds4-rpm-hf-v1b.contract';
+import { computeDs4RpmHfV1bInputFingerprint } from './ds4-rpm-hf-v1b-input-fingerprint';
 import { Ds4RpmHfV1bRunRepository } from './ds4-rpm-hf-v1b-run.repository';
 
 export type Ds4RpmHfV1bPassResult = {
@@ -77,6 +78,8 @@ export class Ds4RpmHfV1bShadowService {
       limit: this.runtimeConfig.batchLimit * 3,
       now,
     });
+
+    await this.probeBoundedInputRevisions(now);
 
     const claimed = await this.outbox.claimBatch(this.runtimeConfig.batchLimit, now);
     const result = { ...empty, configured: true, discovered, claimed: claimed.length };
@@ -155,7 +158,7 @@ export class Ds4RpmHfV1bShadowService {
     });
 
     if (processed.kind === 'IDEMPOTENT') {
-      await this.outbox.markSucceeded(row.outboxId, row.claimToken);
+      await this.outbox.markSucceeded(row.outboxId, row.claimToken, processed.fingerprint);
       return 'SUCCEEDED';
     }
 
@@ -194,7 +197,7 @@ export class Ds4RpmHfV1bShadowService {
         );
         return 'FAILED';
       }
-      await this.outbox.markSucceeded(row.outboxId, row.claimToken);
+      await this.outbox.markSucceeded(row.outboxId, row.claimToken, processed.fingerprint);
       return 'SUCCEEDED';
     }
 
@@ -213,5 +216,33 @@ export class Ds4RpmHfV1bShadowService {
     }
     await this.outbox.markSkipped(row.outboxId, row.claimToken, processed.rejectionReasonCode);
     return 'TERMINAL';
+  }
+
+  /** Bounded explicit input-revision reopen (not unbounded rediscovery). */
+  private async probeBoundedInputRevisions(now: Date): Promise<void> {
+    const cp = this.runtimeConfig.controlPlane;
+    const probes = await this.outbox.listSucceededForRevisionProbe({
+      organizationAllowlist: [...cp.organizationAllowlist],
+      vehicleAllowlist: [...cp.vehicleAllowlist],
+      limit: DS4_RPM_HF_V1B_TUNING.revisionProbeLimitPerPass,
+    });
+    for (const row of probes) {
+      try {
+        const tripInput = await this.tripInputService.buildTripInput({
+          organizationId: row.organizationId,
+          vehicleId: row.vehicleId,
+          tripId: row.tripId,
+        });
+        const liveFingerprint = computeDs4RpmHfV1bInputFingerprint(tripInput);
+        if (row.succeededInputFingerprint === liveFingerprint) continue;
+        await this.outbox.reopenForInputRevision(row.outboxId, now);
+      } catch (error) {
+        this.logger.warn(
+          `rpm hf v1b revision probe skipped tripId=${row.tripId}: ${
+            error instanceof Error ? error.message.slice(0, 120) : 'unknown'
+          }`,
+        );
+      }
+    }
   }
 }

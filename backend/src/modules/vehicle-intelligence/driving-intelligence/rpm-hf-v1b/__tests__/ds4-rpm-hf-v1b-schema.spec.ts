@@ -14,5 +14,6 @@ describe('ds4-rpm-hf-v1b schema migration', () => {
     expect(sql).toContain('ds4_rpm_hf_v1b_shadow_outbox_v1');
     expect(sql).toContain('ds4_rpm_hf_v1b_shadow_runs_succeeded_fp_uq');
     expect(sql).toContain('ds4_rpm_hf_v1b_shadow_outbox_trip_engine_uq');
+    expect(sql).toContain('succeeded_input_fingerprint');
   });
 });

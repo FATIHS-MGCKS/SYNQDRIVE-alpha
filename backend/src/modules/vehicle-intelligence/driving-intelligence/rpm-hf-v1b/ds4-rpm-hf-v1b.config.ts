@@ -15,6 +15,10 @@ export const DS4_RPM_HF_V1B_TUNING = {
   claimLeaseMs: 5 * 60_000,
   maxProcessingAttempts: 8,
   maxDeferAttempts: 6,
+  /** Post-trip HF/VSI readiness window from trip end (defer path). */
+  postTripReadinessWindowMs: 72 * 60 * 60_000,
+  /** Max SUCCEEDED outbox rows probed per pass for input-revision reopen. */
+  revisionProbeLimitPerPass: 5,
 } as const;
 
 export class Ds4RpmHfV1bConfigError extends Error {
