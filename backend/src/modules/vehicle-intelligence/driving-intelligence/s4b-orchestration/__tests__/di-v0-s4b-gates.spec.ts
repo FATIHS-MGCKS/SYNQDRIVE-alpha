@@ -10,6 +10,7 @@ import {
   DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
   loadDiV0S4bDiscoveryContainment,
 } from '../di-v0-s4b-discovery-containment';
+import { DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF } from '../../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
 import { buildDiV0S4RuntimePipelineManifest } from '../di-v0-s4b-pipeline-manifest';
 
 const ON = {
@@ -66,6 +67,7 @@ describe('DI V0 S4B discovery gates', () => {
       config,
       buildDiV0S4RuntimePipelineManifest(config),
       loadDiV0S4bDiscoveryContainment({}),
+      DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
     );
     expect(service.isConfigured()).toBe(false);
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'DISABLED', candidates: 0, created: 0 });
@@ -90,6 +92,7 @@ describe('DI V0 S4B discovery gates', () => {
       config,
       buildDiV0S4RuntimePipelineManifest(config),
       DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+      DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
     );
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'DISABLED' });
     expect(calls).not.toHaveBeenCalled();
@@ -105,6 +108,7 @@ describe('DI V0 S4B discovery gates', () => {
       config,
       buildDiV0S4RuntimePipelineManifest(config),
       loadDiV0S4bDiscoveryContainment({}),
+      DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
     );
     expect(service.isConfigured()).toBe(false);
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({

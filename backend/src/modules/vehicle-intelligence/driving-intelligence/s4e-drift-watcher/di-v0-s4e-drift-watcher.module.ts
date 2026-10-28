@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import type { DiV0S4ControlPlaneConfig } from '../s4a-foundation/di-v0-s4a-control-plane';
 import { DiV0S4WorkItemRepository } from '../s4a-foundation/di-v0-s4a-work-item.repository';
 import { DiV0S4bOrchestrationModule } from '../s4b-orchestration/di-v0-s4b-orchestration.module';
+import { loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary } from '../s4b-orchestration/di-v0-s4b-config';
 import { DI_V0_S4B_CONTROL_PLANE_CONFIG } from '../s4b-orchestration/di-v0-s4b-tokens';
 import { DiV0S4DriftWatcherScheduler } from './di-v0-s4e-drift-watcher.scheduler';
 import { DiV0S4DriftWatcherService } from './di-v0-s4e-drift-watcher.service';
@@ -16,7 +17,8 @@ import { DI_V0_S4E_DRIFT_WATCHER_SERVICE, DI_V0_S4E_MAINTENANCE_SERVICE, DI_V0_S
   providers: [
     {
       provide: DI_V0_S4E_WORK_ITEM_REPOSITORY,
-      useFactory: (prisma: PrismaService, config: DiV0S4ControlPlaneConfig) => new DiV0S4WorkItemRepository(prisma, config),
+      useFactory: (prisma: PrismaService, config: DiV0S4ControlPlaneConfig) =>
+        new DiV0S4WorkItemRepository(prisma, config, loadDiV0Ds4FleetMotionAdmissionPolicyAtCompositionBoundary()),
       inject: [PrismaService, DI_V0_S4B_CONTROL_PLANE_CONFIG],
     },
     {

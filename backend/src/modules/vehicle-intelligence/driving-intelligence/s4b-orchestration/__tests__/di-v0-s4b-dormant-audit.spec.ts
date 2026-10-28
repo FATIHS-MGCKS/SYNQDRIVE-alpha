@@ -13,6 +13,7 @@ const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
+const FLEET_MOTION_ADMISSION_DIR = path.join(__dirname, '../../fleet-motion-admission');
 const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
 const VI_MODULE = path.join(REPO_ROOT, 'backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts');
 
@@ -62,6 +63,7 @@ const ALLOWED_IMPORTS = new Set([
   '../s4a-foundation/di-v0-s4a-errors',
   '../s4a-foundation/di-v0-s4a-identity',
   '../s4a-foundation/di-v0-s4a-work-item.repository',
+  '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1',
 ]);
 
 describe('DI V0 S4B dormant-by-construction audit', () => {
@@ -97,6 +99,7 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
           file.startsWith(S4D_DIR + path.sep) ||
           file.startsWith(S4E_DIR + path.sep) ||
           file.startsWith(S4F_DIR + path.sep) ||
+          file.startsWith(FLEET_MOTION_ADMISSION_DIR + path.sep) ||
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
           file === VI_MODULE
         ) {

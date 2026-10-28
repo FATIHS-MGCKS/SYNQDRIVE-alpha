@@ -7,6 +7,12 @@ import { isDiV0S4Rejection, type DiV0S4RejectionCode } from '../s4a-foundation/d
 import type { DiV0S4WorkItemRepository } from '../s4a-foundation/di-v0-s4a-work-item.repository';
 import { DI_V0_S4B_TUNING, isDiV0S4DiscoveryConfigured } from './di-v0-s4b-config';
 import {
+  isDiV0S4DiscoverySchedulingConfiguredV1,
+  isDiV0S4LegacyAllowlistAdmissionRequired,
+  DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
+  type DiV0Ds4FleetMotionAdmissionPolicySnapshotV1,
+} from '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
+import {
   isDiV0S4DiscoveryContainmentAvailable,
   type DiV0S4DiscoveryContainmentState,
 } from './di-v0-s4b-discovery-containment';
@@ -51,10 +57,11 @@ export class DiV0S4DiscoveryService {
     private readonly config: DiV0S4ControlPlaneConfig,
     private readonly pipeline: DiV0S4RuntimePipeline,
     private readonly discoveryContainment: DiV0S4DiscoveryContainmentState,
+    private readonly fleetMotionPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 = DI_V0_DS4_FLEET_MOTION_ADMISSION_POLICY_DEFAULT_OFF,
   ) {}
 
   isConfigured(): boolean {
-    return isDiV0S4DiscoveryConfigured(this.config, this.discoveryContainment);
+    return isDiV0S4DiscoveryConfigured(this.config, this.discoveryContainment, this.fleetMotionPolicy);
   }
 
   async runDiscoveryPass(options: { limit?: number } = {}): Promise<DiV0S4DiscoveryPassResult> {
@@ -67,11 +74,7 @@ export class DiV0S4DiscoveryService {
       stopReason: null,
     };
     if (
-      this.config.masterEnabled &&
-      this.config.discoveryEnabled &&
-      this.config.positionEnabled &&
-      this.config.organizationAllowlist.size > 0 &&
-      this.config.vehicleAllowlist.size > 0 &&
+      isDiV0S4DiscoverySchedulingConfiguredV1(this.config, this.fleetMotionPolicy) &&
       !isDiV0S4DiscoveryContainmentAvailable(this.discoveryContainment)
     ) {
       return { ...result, status: 'CONTAINMENT_UNAVAILABLE', stopReason: 'CONTAINMENT_UNAVAILABLE' };
@@ -141,9 +144,11 @@ export class DiV0S4DiscoveryService {
       return Promise.resolve([]);
     }
     const notBefore = this.discoveryContainment.notBeforeUtc;
-    const orgs = [...this.config.organizationAllowlist];
-    const vehicles = [...this.config.vehicleAllowlist];
-    return this.prisma.$queryRaw<DiscoveryCandidateRow[]>`
+    const legacyAllowlist = isDiV0S4LegacyAllowlistAdmissionRequired(this.fleetMotionPolicy);
+    if (legacyAllowlist) {
+      const orgs = [...this.config.organizationAllowlist];
+      const vehicles = [...this.config.vehicleAllowlist];
+      return this.prisma.$queryRaw<DiscoveryCandidateRow[]>`
       SELECT t.id AS trip_id, v.organization_id, t.vehicle_id, d.raw_json AS dimo_raw_json
       FROM vehicle_trips t
       JOIN vehicles v ON v.id = t.vehicle_id
@@ -162,6 +167,41 @@ export class DiV0S4DiscoveryService {
         AND v.registry_lifecycle::text = 'ACTIVE'
         AND v.organization_id = ANY(${orgs}::text[])
         AND t.vehicle_id = ANY(${vehicles}::text[])
+        AND a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int) <= clock_timestamp()
+        AND (dts.state::text = 'RESTING' OR dts.state IS NULL)
+        AND (dts.active_trip_id IS NULL OR dts.active_trip_id::text <> t.id::text)
+        AND NOT EXISTS (
+          SELECT 1 FROM trip_repairs r
+          WHERE r.trip_id = t.id AND r.status = 'PROPOSED'
+        )
+        AND (t.raw_detection_meta->'diV0BoundaryAdmissionV1'->>'revisionKey') IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM di_v0_s4_work_items w
+          WHERE w.organization_id = v.organization_id AND w.trip_id = t.id
+            AND w.pipeline_version_key = ${this.pipeline.pipelineVersionKey}
+            AND w.run_purpose = 'PRIMARY' AND w.status <> 'SUPERSEDED'
+        )
+      ORDER BY a.anchor ASC, t.id ASC
+      LIMIT ${limit}`;
+    }
+
+    return this.prisma.$queryRaw<DiscoveryCandidateRow[]>`
+      SELECT t.id AS trip_id, v.organization_id, t.vehicle_id, d.raw_json AS dimo_raw_json
+      FROM vehicle_trips t
+      JOIN vehicles v ON v.id = t.vehicle_id
+      LEFT JOIN dimo_vehicles d ON d.id = v.dimo_vehicle_id
+      LEFT JOIN vehicle_trip_detection_states dts ON dts.vehicle_id = t.vehicle_id
+      CROSS JOIN LATERAL (
+        SELECT GREATEST(
+          t.end_time AT TIME ZONE 'UTC',
+          t.created_at AT TIME ZONE 'UTC',
+          (SELECT max(r.applied_at) FROM trip_repairs r WHERE r.trip_id = t.id AND r.status = 'APPLIED') AT TIME ZONE 'UTC'
+        ) AS anchor
+      ) a
+      WHERE t.trip_status::text = 'COMPLETED'
+        AND t.end_time IS NOT NULL
+        AND t.end_time >= ${notBefore}
+        AND v.registry_lifecycle::text = 'ACTIVE'
         AND a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int) <= clock_timestamp()
         AND (dts.state::text = 'RESTING' OR dts.state IS NULL)
         AND (dts.active_trip_id IS NULL OR dts.active_trip_id::text <> t.id::text)

@@ -39,7 +39,7 @@
 
 | Priority | Change |
 |----------|--------|
-| P0 | Motion-core + S4 control plane: replace fixed four-vehicle env allowlists with **tenant-safe rollout policy** (org-scoped enablement, optional staged vehicle lists — not hardcoded UUID table in assessment code) |
+| P0 | Motion-core + S4 control plane: replace fixed four-vehicle env allowlists with **tenant-safe rollout policy** (org-scoped enablement, optional staged vehicle lists — not hardcoded UUID table in assessment code) | **Implemented (PR-F):** `DS4_FLEET_MOTION_ADMISSION_POLICY_V1` + `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED` (default OFF) |
 | P0 | Assessment processor: load `Vehicle.organizationId` + trip org on `processMotionRun` and pass into scope eligibility (DB-backed tenancy) |
 | P1 | Wire trip DI boundary admission check before persist (fail-closed `PENDING` / explicit reason, not legacy HF) |
 | P1 | Internal/public read API: expose assessment status + reason codes for non-rated states (no numeric legacy substitute) |

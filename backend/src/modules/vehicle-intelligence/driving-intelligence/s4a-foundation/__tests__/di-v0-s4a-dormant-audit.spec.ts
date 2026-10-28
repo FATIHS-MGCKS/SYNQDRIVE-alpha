@@ -22,7 +22,8 @@ const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
-/** Post-S4 motion-core shadow (default OFF); read-only S4 evidence + outbox — not S4A runtime. */
+/** Shared DS4 fleet rollout policy (pure); consumed by S4B / S4E / motion-core / S4A repository. */
+const FLEET_MOTION_ADMISSION_DIR = path.join(__dirname, '../../fleet-motion-admission');
 const MOTION_CORE_SHADOW_DIR = path.join(__dirname, '../../motion-core-shadow-worker');
 /** Post-S4 frozen M7A road-assignment shadow (default OFF); read-only S4 evidence + outbox — not S4A runtime. */
 const M7A_ROAD_ASSIGNMENT_SHADOW_DIR = path.join(__dirname, '../../m7a-road-assignment-shadow-worker');
@@ -71,6 +72,7 @@ const ALLOWED_IMPORTS = new Set([
   '../shadow-persistence/di-v0-shadow-validation',
   '../s4d-replay/di-v0-s4d-replay-types',
   '../s4d-replay/di-v0-s4d-verified-snapshot',
+  '../fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1',
 ]);
 
 const ALLOWED_MUTATION_TABLES = new Set([
@@ -110,6 +112,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4D_DIR + path.sep) ||
           file.startsWith(S4E_DIR + path.sep) ||
           file.startsWith(S4F_DIR + path.sep) ||
+          file.startsWith(FLEET_MOTION_ADMISSION_DIR + path.sep) ||
           file.startsWith(MOTION_CORE_SHADOW_DIR + path.sep) ||
           file.startsWith(M7A_ROAD_ASSIGNMENT_SHADOW_DIR + path.sep) ||
           file.startsWith(S4_RESEARCH_DIR + path.sep) ||
