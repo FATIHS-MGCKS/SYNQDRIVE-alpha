@@ -1,6 +1,6 @@
-# Tires Health — Current State (bootstrap V0.1, 2026-10-24)
+# Tires Health — Current State (bootstrap V0.1, 2026-10-24; V3 cutover attestation 2026-10-28)
 
-Registry coverage: `AUDIT_IN_PROGRESS`. Repository baseline `1c1e3bfa4`; Production baseline `c169ddfab` (`VERIFIED_READ_ONLY`). Three status axes are kept separate: registry coverage (this header), epistemic state (per statement below), decision/validation status (`decisions/DECISION_REGISTER.md`).
+Registry coverage: `AUDIT_IN_PROGRESS`. Repository baseline `1c1e3bfa4`; Production baseline `c169ddfab` (`VERIFIED_READ_ONLY`, 2026-10-24). **Production customer wear authority:** Tire Wear V3 authoritative since 2026-10-28T20:24:39Z on binary `6ec3844c3293e8b4a5863fe75562fd82f8f3a839` — see [`evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md`](evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md). Three status axes are kept separate: registry coverage (this header), epistemic state (per statement below), decision/validation status (`decisions/DECISION_REGISTER.md`).
 
 ## 1. Ownership and boundaries
 
@@ -75,3 +75,16 @@ Full comparison and target architecture: [`integration/DS4_MOTION_INTEGRATION_AU
 ## 7. Known gaps (canonical list in `contradictions/KNOWLEDGE_GAPS.md`)
 
 Sparse ground truth; DS4 intensity fields not persisted; allowlist coverage; out-of-sample validity; B3 attenuation; mixed speed authority; no DS4 node in DI graph; setup-count reconciliation; SynqDrive Code views not updated (documentation-only constraint).
+
+## 8. Tire Wear V3 customer authority (production, CONFIRMED 2026-10-28)
+
+| Aspect | State | Epistemic |
+|--------|-------|-----------|
+| Global cutover flags | Both customer read flags **true** on shared production env | CONFIRMED (VPS env + service validation) |
+| Customer presentation | `wearReadModel=v3` + `wearV3` on summary/detail/wear-analysis stack when authoritative | CONFIRMED (4-vehicle service probe) |
+| V2 snapshot writes | Suppressed when authoritative (`shouldSuppressV2TireWearSnapshotWrites`) | INFERRED (0 new rows in cutover window; hourly recalc not re-proven over 24h) |
+| V3 prior shadow persist | Customer reads `persistShadow: false`; table empty | CONFIRMED |
+| Fail-closed | #2222 — no silent legacy GOOD when V3 compute unavailable | CONFIRMED (code on deployed SHA + post-cutover rental states) |
+| HTTP contract smokes | Org JWT GET endpoints | UNKNOWN (not executed) |
+
+P3 cohort post-cutover: verification insufficient / baseline estimate bands; rental **measurement required** or **unknown** — not fleet-wide GOOD clearance.

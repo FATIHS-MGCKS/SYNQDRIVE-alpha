@@ -209,3 +209,34 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Failed or missing V3 compute never presents legacy V2 as authoritative wear; rental stays measurement-required without new HARD_BLOCK |
 | VALIDATION | Jest: `tire-health-v3-read*.spec`, `tires.service.v3-fail-closed.spec`, existing `tire-health-recalculate-v3-cutover.spec` |
 | NON_EFFECTS | Flags default OFF; no migration; no DS4/RPM changes; `persistShadow: false` unchanged; β=0 unchanged |
+
+### Tire V3 — global production activation (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Production customer tire read authority **V2**; both `TIRE_WEAR_V3_CUSTOMER_READ_*` unset/false on VPS |
+| WHY | Owner explicit GO for global authoritative V3 on binary `6ec3844c3` (#2222 fail-closed) despite missing authenticated HTTP baseline |
+| CHANGE | Shared `/opt/synqdrive/shared/backend.env`: `TIRE_WEAR_V3_CUSTOMER_READ_ENABLED=true` + `TIRE_WEAR_V3_CUSTOMER_READ_AUTHORITATIVE=true`; rolling PM2 `--update-env` both replicas; env backup `backend.env.bak-tire-v3-cutover-20261028202439` |
+| EXPECTED_EFFECT | All customer tire summary/detail/wear-analysis paths present `wearReadModel=v3` + `wearV3`; V2 snapshot writes suppressed on recalculate; rental fail-closed on insufficient evidence |
+| VALIDATION | T-0: CI gate PASS, V2 service baseline PASS (9246 snapshots); post: service-level V3 PASS 4/4 P3 vehicles; 0 new snapshots / 0 prior-shadow rows since activation timestamp; scheduler 1 LEADER |
+| OBSERVED_EFFECT | **PRODUCTION_VALIDATED** — see [`evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md`](../evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md) |
+| NON_EFFECTS | No binary redeploy; no migration; shadow write env off; authenticated HTTP smokes not run; historical V2 snapshots preserved |
+| REMAINING_GAPS | Org-scoped Clerk JWT GET smokes; long-window LEADER recalc snapshot suppression monitoring |
+
+### Tire V3 — post-cutover monitoring spot (+2h, 2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Append monitoring row to cutover evidence; re-run service `--mode=v3` with corrected `verificationStatus` parsing |
+| OBSERVED_EFFECT | 0 new V2 snapshots since activation; scheduler stable; P3 cohort `INSUFFICIENT_EVIDENCE` on verification axis |
+| NON_EFFECTS | No env or PM2 change |
+
+### Tire V3 — read-only pipeline + physics audit (2026-10-28, P3 cohort)
+
+| Event | Detail |
+|-------|--------|
+| WHY | Owner request: trace 14 pipeline stages and determine actual V3 consumption of vehicle-dynamics parameters after global cutover |
+| CHANGE | Documentation only — [`evidence/TIRE_V3_PIPELINE_PHYSICS_AUDIT_2026-10-28.md`](../evidence/TIRE_V3_PIPELINE_PHYSICS_AUDIT_2026-10-28.md) (`TIRE-EVID-PROD-V3-PIPELINE-PHYSICS-AUDIT-2026-10-28-001`) |
+| OBSERVED_EFFECT | Pipeline PARTIAL: ledger → V3 → rental → UI authority PASS; DS4 tire evidence only Tesla/Tiguan at ≤2 % ledger coverage, 0 `VERIFIED` temporal rows; V3 output invariant to `curbWeightKg`, `frontWeightDistributionPct`, `driveType`, `brakeForceFrontPercent` and DS4 severity (β=0); observed M3 43–71 J/kg/km vs reference 15 (sRel 2.85–4.74); Tesla ledger 6.9 % of odometer delta (935 unattributed Apr–Jun trips) |
+| NON_EFFECTS | No deploy, flag, coefficient, β, or production-table change; offline replay with `persistShadow:false`; 0 shadow rows, snapshots 9246 unchanged |
+| REMAINING_GAPS | Severity reference recalibration before any β>0; DS4 tire allowlist/catch-up scope; measurement-with-odometer intake; Arteon `brake_force_front_percent=1` data quality |

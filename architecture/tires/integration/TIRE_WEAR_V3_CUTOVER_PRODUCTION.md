@@ -282,3 +282,16 @@ Reference evidence: `architecture/tires/validation/P3_OFFLINE_E2E_2026-10-27.md`
 | Version | Date (UTC) | Notes |
 |---------|------------|--------|
 | 1.0 | 2026-10-28 | Initial operator runbook post–#2207 merge; production audit 9512ff95, main ahead with #2207 |
+| 1.1 | 2026-10-28 | §H — production global activation attestation (`6ec3844c3`, service-level validation) |
+
+---
+
+## H. Production activation attestation (executed 2026-10-28)
+
+Global authoritative V3 activated per §C on binary **`6ec3844c3293e8b4a5863fe75562fd82f8f3a839`** without binary redeploy. Canonical evidence: [`../evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md`](../evidence/TIRE_V3_GLOBAL_CUTOVER_2026-10-28.md).
+
+| Outcome | Value |
+|---------|--------|
+| `GLOBAL_V3_AUTHORITY` | YES |
+| Authenticated HTTP smoke | NOT VERIFIED |
+| Rollback | Not required (flag rollback §E.1 remains available) |
