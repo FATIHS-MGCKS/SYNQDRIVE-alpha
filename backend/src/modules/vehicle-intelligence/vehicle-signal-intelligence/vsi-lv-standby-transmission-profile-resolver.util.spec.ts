@@ -28,6 +28,7 @@ function point(
 function evidence(
   points: VsiLvStandbyTransmissionEvidenceInput['points'],
   trips: VsiRpmCadenceTripWindow[] = [],
+  loadIntegrity?: Partial<VsiLvStandbyTransmissionEvidenceInput['loadIntegrity']>,
 ): VsiLvStandbyTransmissionEvidenceInput {
   return {
     contractVersion: 'vsi-lv-standby-transmission-evidence-v1',
@@ -39,6 +40,14 @@ function evidence(
     windowStartMs: BASE_MS - 30 * 86400000,
     windowEndMs: BASE_MS + 30 * 24 * 3600 * 1000,
     provenance: ['POSTGRES_BATTERY_MEASUREMENTS'],
+    loadIntegrity: {
+      sourceLinkAttribution: 'VERIFIED',
+      sourceLinkAttributionCode: 'VERIFIED',
+      lvMeasurementWindowComplete: true,
+      tripHistoryWindowComplete: true,
+      activeOrIncompleteTripBlocksClassification: false,
+      ...loadIntegrity,
+    },
   };
 }
 
@@ -219,5 +228,51 @@ describe('vsi-lv-standby-transmission-profile-resolver', () => {
     });
     expect(result.eligible).toBe(true);
     expect(result.gapBand).toBe('8H');
+  });
+
+  it('forces UNKNOWN when LV measurement window is truncated', () => {
+    const resolution = resolveLvStandbyTransmissionProfileV1(
+      evidence([...eightHourSeries(5, 0), ...eightHourSeries(5, 90)], [], {
+        lvMeasurementWindowComplete: false,
+      }),
+    );
+    expect(resolution.profile).toBe('UNKNOWN');
+    expect(resolution.classificationDecisionCode).toBe('LV_MEASUREMENT_WINDOW_TRUNCATED');
+  });
+
+  it('forces UNKNOWN when source link attribution fails', () => {
+    const resolution = resolveLvStandbyTransmissionProfileV1(
+      evidence([...eightHourSeries(5, 0), ...eightHourSeries(5, 90)], [], {
+        sourceLinkAttribution: 'FAILED',
+        sourceLinkAttributionCode: 'VLS_PROVIDER_BINDING_MISMATCH',
+      }),
+    );
+    expect(resolution.profile).toBe('UNKNOWN');
+    expect(resolution.classificationDecisionCode).toBe('SOURCE_LINK_ATTRIBUTION_FAILED');
+  });
+
+  it('forces UNKNOWN when an active trip blocks the evidence window', () => {
+    const resolution = resolveLvStandbyTransmissionProfileV1(
+      evidence([...eightHourSeries(5, 0)], [], {
+        activeOrIncompleteTripBlocksClassification: true,
+      }),
+    );
+    expect(resolution.profile).toBe('UNKNOWN');
+    expect(resolution.classificationDecisionCode).toBe('ACTIVE_OR_INCOMPLETE_TRIP_IN_WINDOW');
+  });
+
+  it('classifies CONTRADICTORY_8H_AND_24H when both ladders meet stability without dominance', () => {
+    const points: VsiLvStandbyTransmissionEvidenceInput['points'][number][] = [];
+    for (const clusterStart of [0, 200, 400]) {
+      points.push(point(clusterStart + 0));
+      points.push(point(clusterStart + 24));
+      points.push(point(clusterStart + 48));
+      for (let i = 0; i < 5; i++) {
+        points.push(point(clusterStart + 60 + i * 8));
+      }
+    }
+    const resolution = resolveLvStandbyTransmissionProfileV1(evidence(points));
+    expect(resolution.profile).toBe('UNKNOWN');
+    expect(resolution.classificationDecisionCode).toBe('CONTRADICTORY_8H_AND_24H_EVIDENCE');
   });
 });

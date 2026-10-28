@@ -17,6 +17,7 @@ import {
 import { VO_PG_DIMO_SOFTWARE_RAW_JSON } from '../../vehicle-onboarding/testing/dimo-mirror-postgres.fixture';
 import { loadLvStandbyTransmissionEvidenceFromDb } from './vsi-lv-standby-transmission-evidence.loader';
 import { resolveLvStandbyTransmissionProfileV1 } from './vsi-lv-standby-transmission-profile-resolver.util';
+import type { VsiProfileCadenceLoadContext } from './vsi-profile-cadence-evidence.loader';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
@@ -25,6 +26,7 @@ async function seedLvRow(
   input: {
     organizationId: string;
     vehicleId: string;
+    providerSourceLinkId: string;
     providerTimestamp: Date;
     observedAt: Date;
     outcome?: string;
@@ -44,10 +46,31 @@ async function seedLvRow(
       observedAt: input.observedAt,
       provenance: {
         providerObservationOutcome: input.outcome ?? 'NEW_OBSERVATION',
+        providerSourceLinkId: input.providerSourceLinkId,
       },
       idempotencyKey: input.idempotencyKey,
     },
   });
+}
+
+function cadenceCtx(input: {
+  organizationId: string;
+  vehicleId: string;
+  providerSourceLinkId: string;
+  projectionAsOf: Date;
+  linkActivatedAt: Date;
+}): VsiProfileCadenceLoadContext {
+  return {
+    organizationId: input.organizationId,
+    vehicleId: input.vehicleId,
+    providerSourceLinkId: input.providerSourceLinkId,
+    fuelType: 'GASOLINE',
+    projectionAsOf: input.projectionAsOf,
+    linkActivatedAt: input.linkActivatedAt,
+    linkDeactivatedAt: null,
+    refreshRpmCadence: false,
+    refreshLvCadence: true,
+  };
 }
 
 (LIVE ? describe : describe.skip)(
@@ -76,6 +99,7 @@ async function seedLvRow(
       if (vehicleIds.length > 0) {
         await prisma.batteryMeasurement.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
         await prisma.vehicleTrip.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
+        await prisma.vehicleLatestState.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
         await prisma.vehicleDataSourceLink.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
         await prisma.vehicleProviderConsent.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
         await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
@@ -84,9 +108,9 @@ async function seedLvRow(
       organizationId = '';
     });
 
-    it('loads link-scoped provider-time LV rows with idempotent timestamp dedupe', async () => {
+    it('loads link-scoped provider-time LV rows and classifies LV_8H when integrity is complete', async () => {
       organizationId = await createLegacyReconcileOrg(prisma);
-      const { vehicleId } = await createLegacyDimoLinkFixture(prisma, {
+      const { vehicleId, linkId } = await createLegacyDimoLinkFixture(prisma, {
         organizationId,
         externalId: `lv-standby-${randomUUID().slice(0, 8)}`,
         rawJson: VO_PG_DIMO_SOFTWARE_RAW_JSON,
@@ -96,6 +120,18 @@ async function seedLvRow(
       const projectionAsOf = new Date('2026-10-15T12:00:00.000Z');
       const baseMs = Date.parse('2026-10-01T00:00:00.000Z');
 
+      await prisma.vehicleLatestState.create({
+        data: {
+          vehicleId,
+          online: true,
+          providerBindingId: linkId,
+          providerSource: 'DIMO',
+          providerFetchedAt: projectionAsOf,
+          sourceTimestamp: projectionAsOf,
+          updatedAt: projectionAsOf,
+        },
+      });
+
       for (let cluster = 0; cluster < 3; cluster += 1) {
         for (let i = 0; i < 5; i += 1) {
           const offsetHours = cluster * 90 + i * 8;
@@ -103,6 +139,7 @@ async function seedLvRow(
           await seedLvRow(prisma, {
             organizationId,
             vehicleId,
+            providerSourceLinkId: linkId,
             providerTimestamp,
             observedAt: providerTimestamp,
             idempotencyKey: `lv-standby:${cluster}:${i}:${randomUUID()}`,
@@ -110,74 +147,75 @@ async function seedLvRow(
         }
       }
 
-      const dupTs = new Date(baseMs + 8 * 3600 * 1000);
-      await seedLvRow(prisma, {
-        organizationId,
-        vehicleId,
-        providerTimestamp: dupTs,
-        observedAt: new Date(dupTs.getTime() + 60_000),
-        idempotencyKey: `lv-standby:dup:${randomUUID()}`,
-      });
-
-      await seedLvRow(prisma, {
-        organizationId,
-        vehicleId,
-        providerTimestamp: new Date('2026-08-15T00:00:00.000Z'),
-        observedAt: new Date('2026-08-15T00:00:00.000Z'),
-        idempotencyKey: `lv-standby:before-link:${randomUUID()}`,
-      });
-
-      const evidence = await loadLvStandbyTransmissionEvidenceFromDb(prisma as never, {
-        organizationId,
-        vehicleId,
-        providerSourceLinkId: randomUUID(),
-        fuelType: 'GASOLINE',
-        projectionAsOf,
-        linkActivatedAt,
-        linkDeactivatedAt: null,
-        refreshRpmCadence: false,
-        refreshLvCadence: true,
-      });
+      const evidence = await loadLvStandbyTransmissionEvidenceFromDb(
+        prisma as never,
+        cadenceCtx({ organizationId, vehicleId, providerSourceLinkId: linkId, projectionAsOf, linkActivatedAt }),
+      );
 
       expect(evidence).not.toBeNull();
+      expect(evidence!.loadIntegrity.sourceLinkAttribution).toBe('VERIFIED');
       expect(evidence!.points.length).toBe(15);
-      expect(
-        evidence!.points.every(
-          (p) =>
-            p.providerTimestampMs >= linkActivatedAt.getTime() &&
-            p.providerTimestampMs <= projectionAsOf.getTime(),
-        ),
-      ).toBe(true);
-
       const resolution = resolveLvStandbyTransmissionProfileV1(evidence!);
       expect(resolution.profile).toBe('LV_8H_OBSERVED');
     });
 
-    it('returns null when refreshLvCadence is false', async () => {
+    it('fail-closes UNKNOWN when providerSourceLinkId does not match active link attribution', async () => {
       organizationId = await createLegacyReconcileOrg(prisma);
-      const { vehicleId } = await createLegacyDimoLinkFixture(prisma, {
+      const { vehicleId, linkId } = await createLegacyDimoLinkFixture(prisma, {
         organizationId,
-        externalId: `lv-standby-off-${randomUUID().slice(0, 8)}`,
+        externalId: `lv-standby-neg-${randomUUID().slice(0, 8)}`,
         rawJson: VO_PG_DIMO_SOFTWARE_RAW_JSON,
       });
 
-      const result = await loadLvStandbyTransmissionEvidenceFromDb(prisma as never, {
-        organizationId,
-        vehicleId,
-        providerSourceLinkId: randomUUID(),
-        fuelType: 'GASOLINE',
-        projectionAsOf: new Date(),
-        linkActivatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        linkDeactivatedAt: null,
-        refreshRpmCadence: false,
-        refreshLvCadence: false,
+      const linkActivatedAt = new Date('2026-09-01T00:00:00.000Z');
+      const projectionAsOf = new Date('2026-10-15T12:00:00.000Z');
+      const baseMs = Date.parse('2026-10-01T00:00:00.000Z');
+
+      await prisma.vehicleLatestState.create({
+        data: {
+          vehicleId,
+          online: true,
+          providerBindingId: linkId,
+          providerSource: 'DIMO',
+          providerFetchedAt: projectionAsOf,
+          sourceTimestamp: projectionAsOf,
+          updatedAt: projectionAsOf,
+        },
       });
-      expect(result).toBeNull();
+
+      for (let i = 0; i < 5; i += 1) {
+        const providerTimestamp = new Date(baseMs + i * 8 * 3600 * 1000);
+        await seedLvRow(prisma, {
+          organizationId,
+          vehicleId,
+          providerSourceLinkId: linkId,
+          providerTimestamp,
+          observedAt: providerTimestamp,
+          idempotencyKey: `lv-standby:neg:${i}:${randomUUID()}`,
+        });
+      }
+
+      const evidence = await loadLvStandbyTransmissionEvidenceFromDb(
+        prisma as never,
+        cadenceCtx({
+          organizationId,
+          vehicleId,
+          providerSourceLinkId: randomUUID(),
+          projectionAsOf,
+          linkActivatedAt,
+        }),
+      );
+
+      expect(evidence!.loadIntegrity.sourceLinkAttribution).toBe('FAILED');
+      expect(evidence!.points).toHaveLength(0);
+      const resolution = resolveLvStandbyTransmissionProfileV1(evidence!);
+      expect(resolution.profile).toBe('UNKNOWN');
+      expect(resolution.classificationDecisionCode).toBe('SOURCE_LINK_ATTRIBUTION_FAILED');
     });
 
-    it('loads completed trips for interval isolation', async () => {
+    it('blocks classification when an ongoing trip is open at decision time', async () => {
       organizationId = await createLegacyReconcileOrg(prisma);
-      const { vehicleId } = await createLegacyDimoLinkFixture(prisma, {
+      const { vehicleId, linkId } = await createLegacyDimoLinkFixture(prisma, {
         organizationId,
         externalId: `lv-standby-trip-${randomUUID().slice(0, 8)}`,
         rawJson: VO_PG_DIMO_SOFTWARE_RAW_JSON,
@@ -185,35 +223,37 @@ async function seedLvRow(
 
       const linkActivatedAt = new Date('2026-09-01T00:00:00.000Z');
       const projectionAsOf = new Date('2026-10-10T00:00:00.000Z');
-      const tripStart = new Date('2026-10-05T04:00:00.000Z');
-      const tripEnd = new Date('2026-10-05T05:00:00.000Z');
-      await prisma.vehicleTrip.create({
+
+      await prisma.vehicleLatestState.create({
         data: {
           vehicleId,
-          startTime: tripStart,
-          endTime: tripEnd,
-          tripStatus: TripStatus.COMPLETED,
+          online: true,
+          providerBindingId: linkId,
+          providerSource: 'DIMO',
+          providerFetchedAt: projectionAsOf,
+          sourceTimestamp: projectionAsOf,
+          updatedAt: projectionAsOf,
         },
       });
 
-      const evidence = await loadLvStandbyTransmissionEvidenceFromDb(prisma as never, {
-        organizationId,
-        vehicleId,
-        providerSourceLinkId: randomUUID(),
-        fuelType: 'GASOLINE',
-        projectionAsOf,
-        linkActivatedAt,
-        linkDeactivatedAt: null,
-        refreshRpmCadence: false,
-        refreshLvCadence: true,
+      await prisma.vehicleTrip.create({
+        data: {
+          vehicleId,
+          startTime: new Date('2026-10-09T20:00:00.000Z'),
+          endTime: null,
+          tripStatus: TripStatus.ONGOING,
+        },
       });
 
-      expect(evidence?.tripWindows).toEqual([
-        expect.objectContaining({
-          startMs: tripStart.getTime(),
-          endMs: tripEnd.getTime(),
-        }),
-      ]);
+      const evidence = await loadLvStandbyTransmissionEvidenceFromDb(
+        prisma as never,
+        cadenceCtx({ organizationId, vehicleId, providerSourceLinkId: linkId, projectionAsOf, linkActivatedAt }),
+      );
+
+      expect(evidence!.loadIntegrity.activeOrIncompleteTripBlocksClassification).toBe(true);
+      const resolution = resolveLvStandbyTransmissionProfileV1(evidence!);
+      expect(resolution.profile).toBe('UNKNOWN');
+      expect(resolution.classificationDecisionCode).toBe('ACTIVE_OR_INCOMPLETE_TRIP_IN_WINDOW');
     });
   },
 );

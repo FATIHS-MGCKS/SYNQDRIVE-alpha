@@ -116,6 +116,14 @@ export type VsiLvStandbyTransmissionMeasurementPoint = {
   providerObservationOutcome: string | null;
 };
 
+export type VsiLvStandbyTransmissionEvidenceLoadIntegrity = {
+  sourceLinkAttribution: 'VERIFIED' | 'FAILED';
+  sourceLinkAttributionCode: string;
+  lvMeasurementWindowComplete: boolean;
+  tripHistoryWindowComplete: boolean;
+  activeOrIncompleteTripBlocksClassification: boolean;
+};
+
 export type VsiLvStandbyTransmissionEvidenceInput = {
   contractVersion: 'vsi-lv-standby-transmission-evidence-v1';
   points: readonly VsiLvStandbyTransmissionMeasurementPoint[];
@@ -126,6 +134,7 @@ export type VsiLvStandbyTransmissionEvidenceInput = {
   windowStartMs: number;
   windowEndMs: number;
   provenance: string[];
+  loadIntegrity: VsiLvStandbyTransmissionEvidenceLoadIntegrity;
 };
 
 export type VsiLvStandbyTransmissionProfileLabel =

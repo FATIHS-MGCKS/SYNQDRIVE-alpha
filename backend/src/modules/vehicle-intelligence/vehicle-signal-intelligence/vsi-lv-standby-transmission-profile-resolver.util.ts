@@ -184,6 +184,33 @@ function resolveEvidenceConfidence(
   return 'LOW';
 }
 
+function buildUnknownStandbyResolution(
+  evidence: VsiLvStandbyTransmissionEvidenceInput,
+  input: {
+    classificationDecisionCode: string;
+    limitations: string[];
+  },
+): VsiLvStandbyTransmissionProfileV1 {
+  return {
+    contractVersion: VSI_LV_STANDBY_TRANSMISSION_PROFILE_CONTRACT_VERSION,
+    profile: 'UNKNOWN',
+    classificationDecisionCode: input.classificationDecisionCode,
+    evidenceConfidence: 'LOW',
+    qualifyingPairCount: 0,
+    independentRestPeriodCount: 0,
+    evidenceWindow: {
+      days: evidence.evidenceWindowDays,
+      fromMs: evidence.windowStartMs,
+      toMs: evidence.windowEndMs,
+    },
+    provenance: [...evidence.provenance],
+    limitations: input.limitations,
+    profileSemanticFingerprint: buildLvStandbyTransmissionProfileSemanticFingerprint({
+      profile: 'UNKNOWN',
+    }),
+  };
+}
+
 export function buildLvStandbyTransmissionProfileSemanticFingerprint(input: {
   profile: VsiLvStandbyTransmissionProfileLabel;
 }): string {
@@ -201,6 +228,36 @@ export function resolveLvStandbyTransmissionProfileV1(
     'INGEST_TIME_MEASUREMENT_CONTEXT_NOT_USED_FOR_PROVIDER_TIME_CLASSIFICATION',
     'MISSING_INTERMEDIATE_LV_SAMPLES_NOT_24H_DEVICE_PROOF',
   ];
+
+  const integrity = evidence.loadIntegrity;
+  if (integrity.sourceLinkAttribution !== 'VERIFIED') {
+    return buildUnknownStandbyResolution(evidence, {
+      classificationDecisionCode: 'SOURCE_LINK_ATTRIBUTION_FAILED',
+      limitations: [
+        ...limitations,
+        `SOURCE_LINK_ATTRIBUTION:${integrity.sourceLinkAttributionCode}`,
+      ],
+    });
+  }
+  if (!integrity.lvMeasurementWindowComplete) {
+    return buildUnknownStandbyResolution(evidence, {
+      classificationDecisionCode: 'LV_MEASUREMENT_WINDOW_TRUNCATED',
+      limitations: [...limitations, 'LV_STANDBY_EVIDENCE_ROW_CAP_EXCEEDED'],
+    });
+  }
+  if (!integrity.tripHistoryWindowComplete) {
+    return buildUnknownStandbyResolution(evidence, {
+      classificationDecisionCode: 'TRIP_HISTORY_WINDOW_TRUNCATED',
+      limitations: [...limitations, 'LV_STANDBY_TRIP_HISTORY_CAP_EXCEEDED'],
+    });
+  }
+  if (integrity.activeOrIncompleteTripBlocksClassification) {
+    return buildUnknownStandbyResolution(evidence, {
+      classificationDecisionCode: 'ACTIVE_OR_INCOMPLETE_TRIP_IN_WINDOW',
+      limitations: [...limitations, 'OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION'],
+    });
+  }
+
   const linkEnd = evidence.linkDeactivatedAtMs ?? Number.POSITIVE_INFINITY;
   const scoped = evidence.points.filter(
     (p) =>
@@ -268,7 +325,14 @@ export function resolveLvStandbyTransmissionProfileV1(
     restPeriodsWith24h >= VSI_LV_STANDBY_MIN_INDEPENDENT_REST_PERIODS_24H &&
     band24.length > band8.length;
 
-  if (meets8h && meets24h) {
+  const strong8hEvidence =
+    band8.length >= VSI_LV_STANDBY_MIN_QUALIFYING_PAIRS_8H &&
+    restPeriodsWith8h >= VSI_LV_STANDBY_MIN_INDEPENDENT_REST_PERIODS_8H;
+  const strong24hEvidence =
+    band24.length >= VSI_LV_STANDBY_MIN_QUALIFYING_PAIRS_24H &&
+    restPeriodsWith24h >= VSI_LV_STANDBY_MIN_INDEPENDENT_REST_PERIODS_24H;
+
+  if (strong8hEvidence && strong24hEvidence) {
     profile = 'UNKNOWN';
     classificationDecisionCode = 'CONTRADICTORY_8H_AND_24H_EVIDENCE';
   } else if (meets8h) {

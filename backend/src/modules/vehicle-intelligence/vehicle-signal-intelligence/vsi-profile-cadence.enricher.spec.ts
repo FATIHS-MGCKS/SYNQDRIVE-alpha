@@ -221,6 +221,13 @@ describe('vsi-profile-cadence.enricher', () => {
         windowStartMs: T0 - 30 * 86400000,
         windowEndMs: T0 + 30 * 86400000,
         provenance: ['POSTGRES_BATTERY_MEASUREMENTS'],
+        loadIntegrity: {
+          sourceLinkAttribution: 'VERIFIED',
+          sourceLinkAttributionCode: 'VERIFIED',
+          lvMeasurementWindowComplete: true,
+          tripHistoryWindowComplete: true,
+          activeOrIncompleteTripBlocksClassification: false,
+        },
       };
     };
     const first = enrichVsiProfileWithCadenceIntelligence(lvEval, {
