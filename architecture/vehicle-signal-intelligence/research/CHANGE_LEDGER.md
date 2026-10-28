@@ -4,6 +4,7 @@ Append-only architecture change record.
 
 | Date | Change | Phase | Evidence |
 |------|--------|-------|----------|
+| 2026-10-27 | **P2 active RPM profile resolver V1.1 (active cadence)** — classify from contiguous measurement sequences (**>8 s** gap break) + trip active-interval corroboration (≤8 s); mixed fast/slow qualifying sequences without interval dominance → `UNKNOWN`; verified production export `rpm-production-neue-trips-verified.json`; Audi zero false FAST | P2 | `vsi-active-rpm-sequence-cadence.util.ts`, `vsi-active-rpm-profile-resolver.util.ts`, replay + production-neue specs |
 | 2026-10-27 | **P2 active RPM monotonic evidence gate** — operational cadence merge rejects stale rolling windows via max `tripClassifications.endMs`; reverse-order PG regression | P2 | `vsi-profile-operational-refresh.util.ts`, operational-refresh + PG specs |
 | 2026-10-27 | **P2 active RPM operational evidence refresh** — merge cadence snapshot on stable `cadenceSemanticFingerprint`; rolling trip ids update without `profileRevision` bump; PG integration | P2 | `vsi-profile-operational-refresh.util.ts`, `vsi-active-rpm-profile-operational-refresh.postgres.integration.spec.ts` |
 | 2026-10-27 | **P2 active RPM profile resolver V1 precision** — multi-feature trip class (median+P95+≤2s fraction); window known-trip quorum; semantic fingerprint excludes trip ids; production interval replay fixture | P2 | `vsi-active-rpm-profile-resolver.util.ts`, `vsi-active-rpm-profile-real-replay.spec.ts`, `fixtures/rpm-production-interval-replay.json` |
