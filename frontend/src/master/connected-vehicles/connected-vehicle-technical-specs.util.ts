@@ -1,4 +1,5 @@
 import type { TranslationKey } from '../../i18n/translations/en';
+import { formatFrontRearWeightDistribution } from './vehicle-technical-spec.util';
 
 export type MotionPhysicsEvidenceTierUi = 'ESTIMATED' | 'CONFIRMED' | 'VERIFIED' | null;
 
@@ -8,6 +9,9 @@ export type ConnectedVehicleTechnicalSpecsView = {
   year: number | null;
   fuelType: string;
   curbWeightKg: number | null;
+  engineDisplacementCc: number | null;
+  cylinderCount: number | null;
+  frontToRearWeightDistribution: string;
   systemMotorPowerKw: number | null;
   accel0To100S: number | null;
   variantAssumption: string | null;
@@ -33,6 +37,10 @@ export function buildTechnicalSpecsView(input: {
   year?: number | null;
   fuelType?: string | null;
   curbWeight?: string | number | null;
+  engineDisplacementCc?: string | number | null;
+  cylinderCount?: string | number | null;
+  frontToRearWeightDistribution?: string | null;
+  frontWeightDistributionPct?: number | null;
   systemMotorPowerKw?: string | number | null;
   accel0To100S?: string | number | null;
   variantAssumption?: string | null;
@@ -61,6 +69,12 @@ export function buildTechnicalSpecsView(input: {
     year: input.year ?? null,
     fuelType: input.fuelType?.trim() || '—',
     curbWeightKg: ref?.curbMassKg ?? curbFromVehicle,
+    engineDisplacementCc: parseNum(input.engineDisplacementCc),
+    cylinderCount: parseNum(input.cylinderCount),
+    frontToRearWeightDistribution:
+      input.frontToRearWeightDistribution?.trim() ||
+      formatFrontRearWeightDistribution(input.frontWeightDistributionPct ?? null) ||
+      '—',
     systemMotorPowerKw: ref?.systemMotorPowerKw ?? powerFromVehicle,
     accel0To100S: ref?.accel0To100S ?? accelFromVehicle,
     variantAssumption: ref?.variantAssumption?.trim() || variantFromVehicle,

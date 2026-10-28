@@ -376,13 +376,15 @@ export class VsiSignalProfileMaterializationService {
           : null,
     };
     const priorCadenceByKey = extractPriorCadenceByKey(existingProfile?.signalsSnapshot);
-    const [rpmEvidence, lvEvidence] = await Promise.all([
+    const [rpmEvidence, lvEvidence, lvStandbyTransmissionEvidence] = await Promise.all([
       this.cadenceEvidence.loadRpmEvidence(cadenceCtx),
       this.cadenceEvidence.loadLvEvidence(cadenceCtx),
+      this.cadenceEvidence.loadLvStandbyTransmissionEvidence(cadenceCtx),
     ]);
     evaluation = enrichVsiProfileWithCadenceIntelligence(evaluation, {
       rpmEvidence,
       lvEvidence,
+      lvStandbyTransmissionEvidence,
       priorCadenceByKey,
     });
 

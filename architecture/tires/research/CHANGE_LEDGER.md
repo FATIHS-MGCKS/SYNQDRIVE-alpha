@@ -190,3 +190,11 @@ Newest entry last. Never rewrite or delete entries.
 | CHANGE | Filled `integration/TIRE_WEAR_V3_CUTOVER_PRODUCTION.md` (preflight, deploy, dual-flag activation, smoke tests, rollback, stop conditions, evidence limits) |
 | VALIDATION | Flag names and API paths cross-checked against `tire-wear-v3-cutover.config.ts`, `vehicle-intelligence.controller.ts`, DSRG deploy runbook |
 | NON_EFFECTS | Documentation only — no deploy, no production env mutation |
+
+### Cross-module — DI PR-2 persists DS4 event intensity (gap pointer only) (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Documentation only. `TIRE-GAP-DS4-PERSISTED-INTENSITY-FIELDS-001` → **PARTIALLY_CLOSED** pointer: Driving Intelligence PR-2 (Draft, not deployed) persists `meanAccelMps2`, `durationS`, `steps`, `coverageRatio`, uncertainty labels on new shadow runs under `DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1`; peaks excluded by contract |
+| WHY | Keep tire integration audit consistent with DI persistence state; data precondition for a future ordinal intensity channel |
+| NON_EFFECTS | No tire runtime, adapter, flag or model change; `tire-ds4-shadow-input.mapper.ts` still consumes the trip-map DTO (no intensity); tire consumer binding remains forbidden until Fable review of `DI-DEC-DS4-INTENSITY-PERSIST-001`; historical DS4 rows unchanged |

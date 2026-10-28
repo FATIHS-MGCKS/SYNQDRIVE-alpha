@@ -1886,3 +1886,33 @@ nodes:
     summary: Dependency graph, fail-closed FC-1..FC-7, blockers B1–B9, PR sequence, historical provenance policy.
     source_paths:
       - architecture/drivingintelligence/design/DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md
+
+  - id: DI-DEC-DS4-INTENSITY-PERSIST-001
+    type: decision
+    title: DS4 event intensity persistence via event-row contract V2 (ordinal-only)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      PR-2: persist meanAccelMps2, durationS, steps, coverageRatio, startUncertaintyS, endUncertaintyS on
+      shadow event rows under DI_V0_MOTION_CORE_EVENT_ROW_V2_INTENSITY_ORDINAL_V1; bundle versions and
+      intent keys unchanged; legacy payloads resolve as V1 with intensity=null; peaks excluded; omission
+      over fabrication; Fable review requested before any consumer binds.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+      - architecture/drivingintelligence/evidence/DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/di-v0-motion-core-shadow-event-row.contract.ts
+    evidence:
+      - DI-EVID-DS4-INTENSITY-PERSISTENCE-PR2-001
+
+  - id: DI-EVID-DS4-INTENSITY-PERSISTENCE-PR2-001
+    type: evidence
+    title: DS4 event intensity persistence PR-2 contract, root cause and validation record
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Root-cause trace (mapper drop point), event-row contract V2, backward-compatibility matrix, unit +
+      local PostgreSQL round-trip results, Fable review request.
+    source_paths:
+      - architecture/drivingintelligence/evidence/DS4_EVENT_INTENSITY_PERSISTENCE_PR2.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/__tests__/di-v0-motion-core-shadow-event-intensity-persistence.unit.spec.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/motion-core-shadow-worker/__tests__/di-v0-motion-core-shadow-event-intensity.postgres.integration.spec.ts

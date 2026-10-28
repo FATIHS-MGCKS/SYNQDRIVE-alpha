@@ -43,6 +43,7 @@ import type {
   DiV0MotionCoreShadowSummaryJson,
 } from './di-v0-motion-core-shadow.types';
 import { mapMotionManoeuvreEventToPersisted as mapEvent } from './di-v0-motion-core-shadow.types';
+import { DI_V0_MOTION_CORE_SHADOW_PERSISTENCE_CONTRACT_V2 } from './di-v0-motion-core-shadow-event-row.contract';
 import { motionFsmSparseVehicleSpeedFromR1 } from '../r1-obd-acquisition/di-v0-r1-vehicle-speed-ds4-boundary';
 import { MOTION_FSM_GAP_BRIDGE_V1_VERSION } from '../core/kinematics/motion-fsm-gap-bridge-v1';
 import type { MotionFsmGapBridgeAuxiliary } from '../core/kinematics/motion-fsm-gap-bridge-v1';
@@ -229,6 +230,7 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
         bundle: bundleVersion,
       },
       speedAuthority: c5_1PreferredSpeedEnabled ? 'C5_1_PREFERRED' : 'C4_ONLY',
+      persistence: DI_V0_MOTION_CORE_SHADOW_PERSISTENCE_CONTRACT_V2,
       knownLimitations: c5_1PreferredSpeedEnabled ? [...DI_V0_MOTION_CORE_C5_1_KNOWN_OFFLINE_LIMITATIONS] : undefined,
       timeSemantics: {
         processingMode: DI_V0_MOTION_CORE_SHADOW_PROCESSING_MODE,
@@ -285,6 +287,7 @@ export function processDiV0MotionCoreShadowFromEvidenceAdaptation(
     eventAcceptedCount: payload.summary.eventAcceptedCount,
     eventArtefactSuspectCount: payload.summary.eventArtefactSuspectCount,
     contentFingerprint: payloadFingerprint,
+    eventRowContract: DI_V0_MOTION_CORE_SHADOW_PERSISTENCE_CONTRACT_V2.eventRowContract,
   };
 
   return { intentKey, payload, summary, payloadFingerprint };

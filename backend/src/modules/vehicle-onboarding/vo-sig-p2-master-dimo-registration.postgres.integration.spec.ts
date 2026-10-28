@@ -456,7 +456,7 @@ function masterDimoHarness(prisma: PrismaClient) {
     expect(vehicle.mileageKm).toBe(1000);
   });
 
-  it('rejects unsupported engine displacement and cylinder count on register-from-dimo', async () => {
+  it('persists engine displacement and cylinder count on register-from-dimo', async () => {
     const orgId = await createOrg(prisma);
     const dimoId = randomUUID();
     await insertDimoMirrorForPostgresTests(prisma, {
@@ -465,15 +465,18 @@ function masterDimoHarness(prisma: PrismaClient) {
       vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
       rawJson: TESLA_RAW,
     });
-    await expect(
-      harness.masterRegistration.register({
-        organizationId: orgId,
-        stationId: null,
-        dimoVehicleId: dimoId,
-        extraData: { engineDisplacementCc: 1998 },
-        actorUserId: null,
-      }),
-    ).rejects.toMatchObject({ code: 'UNSUPPORTED_MASTER_REGISTRATION_FIELDS' });
+    const result = await harness.masterRegistration.register({
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      extraData: { engineDisplacementCc: 1998, cylinderCount: 4 },
+      actorUserId: null,
+    });
+    expect(result.vehicle.engineDisplacementCc).toBe(1998);
+    expect(result.vehicle.cylinderCount).toBe(4);
+    const row = await prisma.vehicle.findFirstOrThrow({ where: { id: result.vehicle.id } });
+    expect(row.engineDisplacementCc).toBe(1998);
+    expect(row.cylinderCount).toBe(4);
   });
 
   it('persists full master form scalar parity inside activation transaction', async () => {

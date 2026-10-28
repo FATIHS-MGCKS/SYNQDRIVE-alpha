@@ -55,6 +55,8 @@ export async function applyMasterPostActivationVehicleScalarsInTransaction(
   addInt('max_rpm', patch.maxRpm);
   addFloat('brake_force_front_percent', patch.brakeForceFrontPercent);
   addFloat('front_weight_distribution_pct', patch.frontWeightDistributionPct);
+  addInt('engine_displacement_cc', patch.engineDisplacementCc);
+  addInt('cylinder_count', patch.cylinderCount);
   addFloat('tank_capacity_liters', patch.tankCapacityLiters);
   addInt('service_interval_manufacturer_km', patch.serviceIntervalManufacturerKm);
   addInt('service_interval_manufacturer_months', patch.serviceIntervalManufacturerMonths);

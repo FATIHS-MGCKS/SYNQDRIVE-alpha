@@ -693,7 +693,9 @@ nodes:
     epistemic_status: CONFIRMED
     summary: >
       A tire consumer must derive duration from start/end labels and mean from Δv/duration; the detector's
-      own meanAccelMps2 and coverageRatio are not persisted (Fable B7).
+      own meanAccelMps2 and coverageRatio are not persisted (Fable B7). PARTIALLY_CLOSED 2026-10-28: DI PR-2
+      (Draft, not deployed) persists them under event-row contract V2 for new runs only; peaks never
+      persisted; tire adapter must not bind before Fable review of DI-DEC-DS4-INTENSITY-PERSIST-001.
     evidence:
       - TIRE-EVID-CODE-DS4-PERSISTED-EVENT-ROW-001
       - TIRE-EVID-PROD-DS4-SHADOW-RUNS-2026-10-24-001
