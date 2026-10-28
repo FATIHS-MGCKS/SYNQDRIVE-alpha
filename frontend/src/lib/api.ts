@@ -7427,6 +7427,17 @@ export const api = {
         sourceConfidence?: number;
       },
     ) => post<any>(`/vehicles/${vehicleId}/battery`, data),
+    updateBatterySpec: (
+      vehicleId: string,
+      id: string,
+      data: {
+        batteryType?: string | null;
+        batteryAmpere?: number | null;
+        batteryVolt?: number | null;
+        sourceType?: string;
+        sourceConfidence?: number;
+      },
+    ) => patch<any>(`/vehicles/${vehicleId}/battery/${id}`, data),
     tires: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/tires`),
     tireWearAnalysis: (vehicleId: string) => get<TireWearAnalysis | null>(`/vehicles/${vehicleId}/tires/wear-analysis`),
     tireHealthSummary: (vehicleId: string) => get<TireHealthSummaryResponse | null>(`/vehicles/${vehicleId}/tires/summary`),
@@ -7490,6 +7501,8 @@ export const api = {
     ) => post<BrakeServiceLifecycleResult>(`/vehicles/${vehicleId}/brake-health/service`, data),
     brakeHealthRecalculate: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/brake-health/recalculate`, {}),
     createBrakeSpec: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/brakes`, data),
+    updateBrakeSpec: (vehicleId: string, id: string, data: any) =>
+      patch<any>(`/vehicles/${vehicleId}/brakes/${id}`, data),
     tripProfile: (vehicleId: string) => get<TripProfile>(`/vehicles/${vehicleId}/trip-profile`),
     // ── Trips tab (Vehicle Detail) ─────────────────────────────────────────
     // List/timeline: tripsTimeline (canonical merge) → fallback trips + energyEvents
