@@ -275,4 +275,23 @@ Executed at audit SHA (no production DB):
 
 ---
 
-**FINAL_VERDICT:** Architecture is **multi-lane by design**; completeness on **Connected Vehicle edit** was incomplete for idle/max/brake on production baseline. **PR #2213 is necessary and sufficient for that subset** (verified by unit tests). **Broader AI V2 field set** remains **registration-first** or **reference-table**; several modal fields are **still not durable on edit-save** (P1). Recommend merge #2213 for P0-1, then scoped follow-ups for P1/P2.
+**FINAL_VERDICT:** Architecture is **multi-lane by design**; completeness on **Connected Vehicle edit** was incomplete for idle/max/brake on production baseline. **PR #2213** closes that P0 subset. **P1 completion (branch `cursor/vehicle-ai-v2-p1-persistence-f8cd`)** extends confirmed technical PATCH + manual baseline APIs on edit; see **§ P1 resolution matrix** below.
+
+---
+
+## P1 resolution matrix (2026-10-28 implementation)
+
+| Field | Prior gap | Storage path (edit) | Test evidence | Remaining limits |
+|-------|-----------|---------------------|---------------|------------------|
+| `tankCapacityLiters` | Edit omitted | `vehicles.tank_capacity_liters` via `vehicle-technical-spec-patch.util` + CV `buildMasterVehiclePhysicsSpecPatch` | `vehicle-technical-spec-patch.util.spec.ts`; `vehicle-technical-spec.util.test.ts`; PG spec `vehicle-technical-spec-patch.postgres.integration.spec.ts` (opt-in) | CV panel still may not display tank |
+| `serviceIntervalManufacturerKm/Months` | Edit omitted | `vehicles.service_interval_manufacturer_*` | Same unit + PG tests | — |
+| `oilChangeIntervalKm/Months` | Edit omitted | `vehicles.oil_change_interval_*` | Same unit + PG tests | — |
+| `drivetrain` | Edit omitted | `vehicles.drive_type` via `mapMasterFormDrivetrainToDriveType` | Same unit + PG tests | Form values must be FWD/RWD/AWD/4WD |
+| Tire reference dims | Edit omitted | `api.vehicles.upsertTires` on diff (`applyManualBaselinesOnEdit`) | `master-vehicle-registration.test.ts` | Tread/measurement paths unchanged |
+| LV battery spec (type/A/V) | Edit omitted | `api.vehicleIntelligence.createBatterySpec` on diff | `master-vehicle-registration.test.ts` | No `lvBatteryChemistry` column — **not persistable** |
+| Brake reference dims | Edit omitted | `api.vehicleIntelligence.createBrakeSpec` on diff (not health measurements) | `master-vehicle-registration.test.ts` | Workshop measurements still use `recordBrakeService` only when confirmed |
+| `electrificationLevel` | No column | **Not in edit PATCH** — `VEHICLE_AI_V2_EDIT_NON_PERSISTENT_FIELDS` | Documented only | Still in register `extraData` for fuel/HV heuristics; lost on reload |
+| `lvBatteryChemistry` | No column | **Not persistable** — same constant | Documented only | UI must not imply save |
+| Registration AI parity | Register skipped `assertAiTechnicalFieldsConfirmed` | `technicalSpecificationSave.confirmedFieldKeys` in `buildVehicleExtraData` + `assertMasterRegistrationAiTechnicalFieldsConfirmed` in activation finalize | `master-vehicle-registration.test.ts` | — |
+
+**Regression preserved:** PR #2210 displacement/cylinders/weight; PR #2213 idle/max/brake; HV master, motion physics, brake health measurement protection unchanged.
