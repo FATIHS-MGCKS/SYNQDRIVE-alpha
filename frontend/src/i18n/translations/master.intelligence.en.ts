@@ -177,6 +177,9 @@ export const masterIntelligenceEn = {
   'master.intelligence.vsi.signals.observedAt': 'Last observation (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitations',
 
+  'master.intelligence.vsi.revision.loading': 'Loading revision history…',
+  'master.intelligence.vsi.revision.loadError': 'Revision history could not be loaded.',
+  'master.intelligence.vsi.revision.retry': 'Retry revision history',
   'master.intelligence.vsi.revision.notCaptured': 'Revision history: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'P5-H1 revision capture is disabled in this environment. Missing history does not mean the profile never changed.',

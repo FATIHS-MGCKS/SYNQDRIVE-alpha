@@ -171,6 +171,9 @@ export const masterIntelligencePl = {
   'master.intelligence.vsi.signals.observedAt': 'Ostatnia obserwacja (UTC + lokalnie)',
   'master.intelligence.vsi.signals.limitations': 'Ograniczenia',
 
+  'master.intelligence.vsi.revision.loading': 'Ładowanie historii rewizji…',
+  'master.intelligence.vsi.revision.loadError': 'Nie udało się załadować historii rewizji.',
+  'master.intelligence.vsi.revision.retry': 'Ponów ładowanie historii rewizji',
   'master.intelligence.vsi.revision.notCaptured': 'Historia rewizji: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'Rejestracja P5-H1 jest wyłączona. Brak historii nie oznacza braku zmian profilu.',

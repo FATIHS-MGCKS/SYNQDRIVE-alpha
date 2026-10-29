@@ -151,6 +151,9 @@ export const masterIntelligenceEs = {
   'master.intelligence.vsi.signals.observedAt': 'Última observación (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitaciones',
 
+  'master.intelligence.vsi.revision.loading': 'Cargando historial de revisiones…',
+  'master.intelligence.vsi.revision.loadError': 'No se pudo cargar el historial de revisiones.',
+  'master.intelligence.vsi.revision.retry': 'Reintentar historial de revisiones',
   'master.intelligence.vsi.revision.notCaptured': 'Historial: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'La captura P5-H1 está desactivada. La falta de historial no significa que el perfil no haya cambiado.',

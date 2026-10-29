@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-master-intelligence-revision-di-hotfix-2026-10-29',
+    version: '4.9.5015',
+    title: 'VSI Master Intelligence — revision history DI hotfix (Draft)',
+    summary: [
+      '@Injectable() on VsiProfileRevisionHistoryRepository so PrismaService injects when P5H1 revision capture is enabled (fixes production TypeError on GET …/revisions).',
+      'Nest TestingModule DI regression spec for getRevisionHistoryPage (empty + mapped rows).',
+      'VSI hook isolates revision-history failures: overview/profile/link picker preserved; localized revision error + section retry.',
+    ],
+    reason:
+      'Production @ 440db6722: Master Admin VSI 500 on revisions because repository lacked Nest @Injectable(); frontend cleared all state on revision failure.',
+    previousBehavior:
+      'listRevisionsForLink threw TypeError (undefined prisma); any revision 500 wiped overview and emptied provider link selector.',
+    details:
+      'vsi-profile-revision-history.repository.ts; vsi-master-intelligence-revision-history.nest-di.spec.ts; useVsiMasterIntelligenceData.ts; VsiMasterIntelligenceView.tsx; master.intelligence.* i18n (9 locales).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-29T10:35:00.000Z',
+  },
+  {
     id: 'master-intelligence-center-pr5-vehicle-detail-2026-10-29',
     version: '4.9.5014',
     title: 'Master Intelligence Center PR5 — Vehicle Detail integration (Draft)',

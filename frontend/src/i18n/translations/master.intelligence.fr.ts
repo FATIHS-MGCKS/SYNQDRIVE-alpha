@@ -171,6 +171,9 @@ export const masterIntelligenceFr = {
   'master.intelligence.vsi.signals.observedAt': 'Dernière observation (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitations',
 
+  'master.intelligence.vsi.revision.loading': 'Chargement de l’historique des révisions…',
+  'master.intelligence.vsi.revision.loadError': 'Impossible de charger l’historique des révisions.',
+  'master.intelligence.vsi.revision.retry': 'Réessayer l’historique des révisions',
   'master.intelligence.vsi.revision.notCaptured': 'Historique : NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'La capture P5-H1 est désactivée. L’absence d’historique ne signifie pas l’absence de changements.',

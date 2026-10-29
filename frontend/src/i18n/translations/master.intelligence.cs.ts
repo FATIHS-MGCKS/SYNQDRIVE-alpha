@@ -150,6 +150,9 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.signals.observedAt': 'Poslední pozorování (UTC + místní)',
   'master.intelligence.vsi.signals.limitations': 'Omezení',
 
+  'master.intelligence.vsi.revision.loading': 'Načítání historie revizí…',
+  'master.intelligence.vsi.revision.loadError': 'Historii revizí se nepodařilo načíst.',
+  'master.intelligence.vsi.revision.retry': 'Opakovat načtení historie revizí',
   'master.intelligence.vsi.revision.notCaptured': 'Historie revizí: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'Záznam P5-H1 je vypnutý. Chybějící historie neznamená, že se profil neměnil.',
