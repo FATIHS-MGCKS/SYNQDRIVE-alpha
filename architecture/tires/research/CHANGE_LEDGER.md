@@ -138,8 +138,19 @@ Newest entry last. Never rewrite or delete entries.
 | CHANGE | `tire-measurement-v3-ingestion.ts`; `TireLifecycleService.recordMeasurement` mount-period validation, explicit vs inferred odometer persistence, post-save `computeForSetup({ persistShadow: false })` + `v3Ingestion` assessment; OperatorTireMeasureFlow odometer confirm + V3 warnings; DTO `manualConfirmOdometer` |
 | EXPECTED_EFFECT | New measurements can feed V3 verification policy when odometer explicitly confirmed; insufficient evidence returns operator-visible warnings; V2 kFactor/recalculate unchanged |
 | VALIDATION | Jest `tire-measurement-v3-ingestion.spec.ts`, `tire-lifecycle-record-measurement-v3.spec.ts`, `operatorTireMeasure.utils.test.ts` |
-| NON_EFFECTS | No migration; shadow writer OFF; no scheduler; no production backfill; Health quick-measure still may auto-confirm odometer when `odometerKm` sent (V2-compat) |
+| NON_EFFECTS | No migration; shadow writer OFF; no scheduler; no production backfill; superseded by measurement integrity P1 for quick-measure auto-confirm removal |
 | EVIDENCE | Read-only fleet odometer audit (Tiguan/Tesla/Audi/Arteon): NULL measurement odometers + `mileage_km` vs install anchor retrograde flags documented in agent artifacts |
+
+### Tire V3 measurement integrity P1 — explicit odometer provenance (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | `addTireHealthMeasurement` auto-set `manualConfirmOdometer` when `odometerKm` present; registration/bootstrap could infer telemetry odometer; workshop source treated as explicit without finite km |
+| WHY | Evidence readiness P1: forward-only ground-truth intake for V3 verification/calibration without inventing historical odometers or changing wear math |
+| CHANGE | Controller requires explicit `manualConfirmOdometer`; registration `manual_registration` persisted + verification-excluded + no inferred odometer; plausibility guard on confirmed odometer; `assessV3Ingestion` evidenceClass + workshop/registration warnings; operator post-save V3 toast; i18n en/de keys |
+| EXPECTED_EFFECT | New manual/workshop measurements store explicit odometer only when confirmed/report-backed; unverified tread still savable; one-point vs two-point V3 rules visible in operator UI |
+| VALIDATION | Jest ingestion + lifecycle P1 specs; `operatorTireMeasure.utils.test.ts`; `npm run i18n:check` |
+| NON_EFFECTS | No production deploy; β=0; DS4 unchanged; historical rows untouched; no backfill |
 
 ### Tire V3 cutover P1 — post-commit compute + persistShadow safety (2026-10-27)
 
