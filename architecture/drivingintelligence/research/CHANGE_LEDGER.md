@@ -2480,3 +2480,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `jest ds4-longitudinal-load-observables.v1.spec.ts`; `jest ds4-assessment-read.service.v1.unit.spec.ts`; backend `tsc --noEmit` |
 | NON_EFFECTS | No worker/scheduler change; no customer score; no Driving Impact mutation; exposureGate remains UNCALIBRATED |
 | REMAINING | Layer-3 fleet calibration and operational load index remain out of scope |
+
+### DS4 R1 shadow speed safety P1 — intensity endpoint evidence gates (2026-10-29)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `motion-event-intensity-endpoint-evidence.v1.ts`; shadow processor applies `applyMotionEventIntensityEvidenceGatesV1` after universal plausibility; marks `ARTEFACT_SUSPECT` + `INTENSITY_ENDPOINT_EVIDENCE` / `SHARED_CONFLICT_KNOT` when speed samples carry abstained/conflict QC flags or opposite secants share an isolated spike knot |
+| WHY | Production Arteon trip `630dc631…`: ABSTAINED/CONFLICT 220 km/h knot produced admissible BIN_ONLY ACCEL/BRAKE secants (~26–27 m/s²) because spike-bracket skipped `oppositeFollows` pairs; fail closed before DS4 intensity eligibility without caps or zeroing kinematics |
+| VALIDATION | `motion-event-intensity-endpoint-evidence.v1.spec.ts`; `npm run test:di:ds4-assessment`; `npm run test:di:s4a`; motion P1/P2 + shadow processor unit regressions |
+| NON_EFFECTS | No C4/C5.1 speed rewrite; no Tesla API_SYNTHETIC L2 resolver change; no persisted row mutation/backfill; no deploy/flags |
+| REMAINING | Owner review; optional processor integration fixture against full S4 evidence adaptation |
