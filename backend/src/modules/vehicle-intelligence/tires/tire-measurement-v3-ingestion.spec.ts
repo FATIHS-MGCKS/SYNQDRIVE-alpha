@@ -188,6 +188,92 @@ describe('tire-measurement-v3-ingestion', () => {
     );
   });
 
+  it('requires measurement timestamp inside mount period for verificationEligible', () => {
+    const assessment = assessV3Ingestion({
+      legacySource: 'manual',
+      evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT,
+      measuredAt: new Date('2025-12-01T00:00:00Z'),
+      mountPeriod: mount,
+      explicitOdometerKm: 2000,
+      inferredAnchor: {
+        odometerKm: 2000,
+        source: 'MANUAL_CONFIRMED' as never,
+        capturedAt: new Date(),
+        evidenceId: null,
+        status: TireOdometerAnchorStatus.ANCHORED,
+        confidence: 85,
+        plausibilityIssue: null,
+        clientValueIgnored: false,
+      },
+      treadValues: { frontLeftMm: 7, frontRightMm: null, rearLeftMm: null, rearRightMm: null },
+      priorResult: null,
+    });
+    expect(assessment.verificationEligible).toBe(false);
+    expect(assessment.warnings.map((w) => w.code)).toContain('V3_MEASUREMENT_OUTSIDE_MOUNT_PERIOD');
+  });
+
+  it('allows workshop ground truth with explicit odometer as verification eligible', () => {
+    const assessment = assessV3Ingestion({
+      legacySource: 'workshop',
+      evidenceSource: TireEvidenceSource.WORKSHOP_MEASUREMENT,
+      measuredAt: new Date('2026-02-01T00:00:00Z'),
+      mountPeriod: mount,
+      explicitOdometerKm: 2500,
+      inferredAnchor: {
+        odometerKm: 2500,
+        source: 'MANUAL_CONFIRMED' as never,
+        capturedAt: new Date(),
+        evidenceId: null,
+        status: TireOdometerAnchorStatus.ANCHORED,
+        confidence: 90,
+        plausibilityIssue: null,
+        clientValueIgnored: false,
+      },
+      treadValues: { frontLeftMm: 6.8, frontRightMm: 6.8, rearLeftMm: 6.8, rearRightMm: 6.8 },
+      priorResult: { rated: true, setupFlags: ['RATE_INSUFFICIENT_POINTS'], wheels: [] } as never,
+      workshopName: 'Reifen Müller',
+    });
+    expect(assessment.verificationEligible).toBe(true);
+    expect(assessment.posteriorCalibrationEligible).toBe(false);
+    expect(assessment.warnings.map((w) => w.code)).toContain('V3_VERIFICATION_ANCHOR_ONE_POINT');
+  });
+
+  it('does not set posteriorCalibrationEligible from empty setupFlags alone', () => {
+    const assessment = assessV3Ingestion({
+      legacySource: 'manual',
+      evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT,
+      measuredAt: new Date('2026-02-01T00:00:00Z'),
+      mountPeriod: mount,
+      explicitOdometerKm: 2000,
+      inferredAnchor: {
+        odometerKm: 2000,
+        source: 'MANUAL_CONFIRMED' as never,
+        capturedAt: new Date(),
+        evidenceId: null,
+        status: TireOdometerAnchorStatus.ANCHORED,
+        confidence: 85,
+        plausibilityIssue: null,
+        clientValueIgnored: false,
+      },
+      treadValues: { frontLeftMm: 6.5, frontRightMm: null, rearLeftMm: null, rearRightMm: null },
+      priorResult: {
+        rated: true,
+        setupFlags: [],
+        wheels: [
+          {
+            position: 'FL',
+            wearRate: {
+              source: 'measurement_fused',
+              measurementUncertaintyMmPerKm: { lo: 0.00001, hi: 0.00002 },
+            },
+            flags: [],
+          },
+        ],
+      } as never,
+    });
+    expect(assessment.posteriorCalibrationEligible).toBe(true);
+  });
+
   it('classifies unverified manual ground truth without confirm', () => {
     const assessment = assessV3Ingestion({
       legacySource: 'manual',
