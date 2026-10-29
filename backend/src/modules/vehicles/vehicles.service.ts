@@ -798,6 +798,7 @@ export class VehiclesService {
     adminEnrichment?: {
       motionReference?: {
         systemMotorPowerKw: number | null;
+        systemPowerDefinition: string | null;
         accel0To100S: number | null;
         variantAssumption: string | null;
       } | null;
@@ -911,6 +912,8 @@ export class VehiclesService {
           : '',
       motionPhysicsVariantAssumption:
         adminEnrichment?.motionReference?.variantAssumption?.trim() ?? '',
+      systemPowerDefinition:
+        adminEnrichment?.motionReference?.systemPowerDefinition?.trim() ?? '',
       connectionModality:
         adminEnrichment?.connectionIdentity?.connectionModality ?? null,
       telemetryConnectionFamily:
@@ -1897,6 +1900,7 @@ export class VehiclesService {
           },
           select: {
             systemMotorPowerKw: true,
+            systemPowerDefinition: true,
             accel0To100S: true,
             variantAssumption: true,
           },

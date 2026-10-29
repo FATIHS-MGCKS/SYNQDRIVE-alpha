@@ -12,9 +12,11 @@ import {
   hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave,
   hasUnconfirmedManualMotionPhysicsEdits,
   formatMotionPhysicsUserErrorMessage,
+  hydrateSystemPowerDefinitionFormState,
   MOTION_PHYSICS_SYNC_REASON_CODES,
   motionPhysicsFormMatchesSnapshot,
   snapshotMotionPhysicsFormFields,
+  validateMotionPhysicsReferenceCreatePayload,
   resolveMotionPhysicsPendingAfterAiApply,
   resolveMotionPhysicsCurbMassKg,
   shouldSyncMotionPhysicsReferenceOnSave,
@@ -141,6 +143,44 @@ describe('motion-physics-reference-sync.util', () => {
     expect(
       hasMotionPhysicsFormValues({ curbWeight: '', systemMotorPowerKw: '', accel0To100S: '' }),
     ).toBe(false);
+  });
+
+  it('accepts definition-only manual confirm payload', () => {
+    const body = buildMotionPhysicsReferenceCreateBody({
+      curbWeight: '',
+      systemMotorPowerKw: '',
+      accel0To100S: '',
+      variantAssumption: '',
+      systemPowerDefinition: 'OEM_RATED_MOTOR_KW',
+      source: 'MANUAL_ENTRY',
+      manualOperatorConfirm: true,
+    });
+    expect(body.systemPowerDefinition).toBe('OEM_RATED_MOTOR_KW');
+    expect(validateMotionPhysicsReferenceCreatePayload(body)).toBeNull();
+  });
+
+  it('hydrates definition from active reference over registered vehicle fallback', () => {
+    expect(
+      hydrateSystemPowerDefinitionFormState('OEM_RATED_SYSTEM_KW', 'OEM_RATED_MOTOR_KW'),
+    ).toBe('OEM_RATED_SYSTEM_KW');
+    expect(hydrateSystemPowerDefinitionFormState(null, 'OEM_RATED_MOTOR_KW')).toBe(
+      'OEM_RATED_MOTOR_KW',
+    );
+    expect(hydrateSystemPowerDefinitionFormState(null, 'invalid')).toBe('');
+  });
+
+  it('save-reload snapshot preserves systemPowerDefinition from reference', () => {
+    const baseline = snapshotMotionPhysicsFromActiveReference({
+      systemMotorPowerKw: 150,
+      systemPowerDefinition: 'OEM_RATED_SYSTEM_KW',
+    });
+    expect(baseline.systemPowerDefinition).toBe('OEM_RATED_SYSTEM_KW');
+    expect(
+      motionPhysicsFormMatchesSnapshot(
+        { ...baseline, systemPowerDefinition: 'OEM_RATED_SYSTEM_KW' },
+        baseline,
+      ),
+    ).toBe(true);
   });
 
   it('blocks manual confirm when VERIFIED; allows re-confirm when CONFIRMED', () => {
