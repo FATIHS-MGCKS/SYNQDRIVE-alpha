@@ -43,6 +43,24 @@ export const masterIntelligencePl = {
   'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Powiązano — status bez sukcesu',
   'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Dowód rzeczywistego polla niedostępny',
 
+  'master.intelligence.pdi.loading': 'Ładowanie intelligence urządzenia…',
+  'master.intelligence.pdi.error': 'Nie udało się załadować PDI device intelligence.',
+  'master.intelligence.pdi.section.identity': 'Podsumowanie tożsamości',
+  'master.intelligence.pdi.section.timeline': 'Oś czasu',
+  'master.intelligence.pdi.section.episodes': 'Epizody połączenia',
+  'master.intelligence.pdi.section.drift': 'Monitoring tożsamości',
+  'master.intelligence.pdi.snapshotNotHistory':
+    'Bieżący stan i live mirror to migawki — nie pełna historia.',
+  'master.intelligence.pdi.notApplicableR1':
+    'Monitoring fizycznego R1 nie dotyczy (np. integracja Tesla tylko software).',
+  'master.intelligence.pdi.noDriftHistory':
+    'Brak persistowanej historii driftu. Brak wpisów nie dowodzi braku driftu.',
+  'master.intelligence.pdi.episodeNotPoll':
+    'Epizody połączenia to persistowana evidencja lifecycle — nie wykonanie polla APDS.',
+  'master.intelligence.pdi.noEpisodes': 'Brak epizodów dla bieżącego zakresu pojazdu.',
+  'master.intelligence.pdi.emptyTimeline': 'Brak wpisów timeline w persistowanej historii.',
+  'master.intelligence.pdi.evaluatedAt': 'Evidencja oceniona',
+
   'master.intelligence.section.context': 'Kontekst URL',
   'master.intelligence.section.crossLinks': 'Odnośniki',
   'master.intelligence.section.previewComponents': 'Podgląd prezentacji (bez danych na żywo)',

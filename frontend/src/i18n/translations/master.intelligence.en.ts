@@ -50,6 +50,24 @@ export const masterIntelligenceEn = {
   'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Linked — non-success status',
   'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Real poll evidence not available',
 
+  'master.intelligence.pdi.loading': 'Loading device intelligence…',
+  'master.intelligence.pdi.error': 'Could not load PDI device intelligence.',
+  'master.intelligence.pdi.section.identity': 'Identity summary',
+  'master.intelligence.pdi.section.timeline': 'Chronological timeline',
+  'master.intelligence.pdi.section.episodes': 'Connection episodes',
+  'master.intelligence.pdi.section.drift': 'Identity monitoring',
+  'master.intelligence.pdi.snapshotNotHistory':
+    'Current inventory and live mirror observations are snapshots — not a full historical record.',
+  'master.intelligence.pdi.notApplicableR1':
+    'Physical Ruptela R1 identity monitoring does not apply (e.g. software-only Tesla integration).',
+  'master.intelligence.pdi.noDriftHistory':
+    'No persisted drift event history. Missing records does not prove there was no drift.',
+  'master.intelligence.pdi.episodeNotPoll':
+    'Connection episodes are persisted lifecycle evidence — not APDS poll execution.',
+  'master.intelligence.pdi.noEpisodes': 'No connection episodes for the current vehicle scope.',
+  'master.intelligence.pdi.emptyTimeline': 'No timeline entries in persisted history.',
+  'master.intelligence.pdi.evaluatedAt': 'Evidence evaluated',
+
   'master.intelligence.section.context': 'URL context',
   'master.intelligence.section.crossLinks': 'Cross-links',
   'master.intelligence.section.previewComponents': 'Presentation preview (not live data)',

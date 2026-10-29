@@ -3808,6 +3808,16 @@ export const api = {
         );
       },
     },
+    masterIntelligencePdi: {
+      intelligence: (physicalDeviceId: string, organizationId?: string | null) => {
+        const q = organizationId
+          ? `?organizationId=${encodeURIComponent(organizationId)}`
+          : '';
+        return get<import('../master/physical-device-inventory/pdi-master-intelligence-api.types').MasterPdiDeviceIntelligenceDto>(
+          `/admin/master-intelligence/pdi/devices/${encodeURIComponent(physicalDeviceId)}/intelligence${q}`,
+        );
+      },
+    },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>
         get<any>('/admin/monitoring/summary' + buildQuery(params)),
