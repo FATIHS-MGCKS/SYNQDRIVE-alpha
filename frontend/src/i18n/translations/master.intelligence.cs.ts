@@ -150,6 +150,35 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.signals.observedAt': 'Poslední pozorování (UTC + místní)',
   'master.intelligence.vsi.signals.limitations': 'Omezení',
 
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Otáčky motoru (RPM) používají dvě oddělené vrstvy evidence. Stav snímku pochází z nejnovějšího balíčku vehicle latest state; HF/kadence z mirrorovaných HF bodů a dokončených jízd. Nejsou zaměnitelné.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snímek (vehicle latest state)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Okno pozorování: nejnovější přiřazený provider bundle při materializaci profilu (ne HF historie).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / kadence (okna jízd)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Okno pozorování: obohacení HF kadence v rozsahu linku (typicky až 14 dní dokončených jízd).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Empirické pozorování',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Čerstvost',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Poslední platné pozorování',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Kvalita / jistota',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Původ',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'Počet HF vzorků',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Aktivní RPM profil',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profil vyhodnocen',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Dokončené jízdy v okně kadence',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Rozhodnutí klasifikace',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Podpůrné klasifikace jízd',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'Klasifikace kadence RPM pro tento pohon neplatí (např. BEV).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'V persistovaném profilu chybí HF kadence (chybí nebo prázdné cadenceIntelligence).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Snímek',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/kadence',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    'Profil {{profile}} · {{samples}} HF vzorků (viz panel)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'Viz panel níže',
+
   'master.intelligence.vsi.revision.loading': 'Načítání historie revizí…',
   'master.intelligence.vsi.revision.loadError': 'Historii revizí se nepodařilo načíst.',
   'master.intelligence.vsi.revision.retry': 'Opakovat načtení historie revizí',

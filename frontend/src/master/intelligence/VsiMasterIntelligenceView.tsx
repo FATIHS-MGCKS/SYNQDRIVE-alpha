@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MasterPageHeader, MasterPageSection } from '../shell';
 import { MasterIntelligenceContextProvider } from './MasterIntelligenceContextProvider';
@@ -25,6 +25,11 @@ import {
   mapSummaryToLvBadge,
   mapSummaryToRpmBadge,
 } from './vsi-master-intelligence-ui.utils';
+import {
+  buildEngineRpmDualProvenanceView,
+  ENGINE_RPM_CANONICAL_KEY,
+} from './vsi-engine-rpm-dual-provenance.utils';
+import { VsiEngineRpmDualProvenancePanel } from './VsiEngineRpmDualProvenancePanel';
 import type { MasterVsiProfileSummaryDto } from './vsi-master-intelligence-api.types';
 import { resolvePhysicalDeviceIdForVehicle } from './resolve-vehicle-physical-device';
 
@@ -340,21 +345,74 @@ function VsiMasterIntelligenceContent() {
                 </tr>
               </thead>
               <tbody>
-                {profile.signals.map((signal) => (
-                  <tr key={signal.canonicalSignalKey} className="border-t border-border/40">
-                    <td className="px-2 py-1.5 font-mono">{signal.canonicalSignalKey}</td>
-                    <td className="px-2 py-1.5">{signal.providerNativeSignalName}</td>
-                    <td className="px-2 py-1.5">
-                      {signal.qualityClassification ?? '—'} / {signal.confidenceLevel ?? '—'}
-                    </td>
-                    <td className="px-2 py-1.5 tabular-nums">
-                      {formatUtcProvenance(signal.lastValidObservationAt, locale)}
-                    </td>
-                    <td className="px-2 py-1.5 text-muted-foreground">
-                      {signal.limitations.length ? signal.limitations.join(', ') : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {profile.signals.map((signal) => {
+                  const isEngineRpm = signal.canonicalSignalKey === ENGINE_RPM_CANONICAL_KEY;
+                  const dual = isEngineRpm ? buildEngineRpmDualProvenanceView(profile, signal) : null;
+                  return (
+                    <Fragment key={signal.canonicalSignalKey}>
+                      <tr className="border-t border-border/40">
+                        <td className="px-2 py-1.5 font-mono">{signal.canonicalSignalKey}</td>
+                        <td className="px-2 py-1.5">{signal.providerNativeSignalName}</td>
+                        <td className="px-2 py-1.5">
+                          {isEngineRpm && dual ? (
+                            <div className="space-y-1">
+                              <p>
+                                <span className="text-muted-foreground">
+                                  {t('master.intelligence.vsi.signals.rpmDual.snapshotShort' as never)}:{' '}
+                                </span>
+                                {dual.snapshot.empiricalObservation}
+                                {dual.snapshot.qualityClassification
+                                  ? ` · ${dual.snapshot.qualityClassification}`
+                                  : ''}
+                              </p>
+                              {dual.rpmApplicability !== 'NOT_APPLICABLE' && dual.cadence.hasHfEvidence ? (
+                                <p>
+                                  <span className="text-muted-foreground">
+                                    {t('master.intelligence.vsi.signals.rpmDual.cadenceShort' as never)}:{' '}
+                                  </span>
+                                  {t('master.intelligence.vsi.signals.rpmDual.hfEvidenceLine' as never, {
+                                    profile: dual.cadence.activeRpmProfile ?? 'UNKNOWN',
+                                    samples:
+                                      dual.cadence.observedSampleCount != null
+                                        ? String(dual.cadence.observedSampleCount)
+                                        : '—',
+                                  })}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <>
+                              {signal.qualityClassification ?? '—'} / {signal.confidenceLevel ?? '—'}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 tabular-nums">
+                          {isEngineRpm && dual ? (
+                            <span className="text-muted-foreground">
+                              {t('master.intelligence.vsi.signals.rpmDual.seePanel' as never)}
+                            </span>
+                          ) : (
+                            formatUtcProvenance(signal.lastValidObservationAt, locale)
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5 text-muted-foreground">
+                          {signal.limitations.length ? signal.limitations.join(', ') : '—'}
+                        </td>
+                      </tr>
+                      {isEngineRpm && dual ? (
+                        <tr className="border-t border-border/40">
+                          <td colSpan={5} className="px-2 py-2">
+                            <VsiEngineRpmDualProvenancePanel
+                              dual={dual}
+                              formatTimestamp={(iso) => formatUtcProvenance(iso, locale)}
+                              t={(key, params) => t(key as never, params as never)}
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

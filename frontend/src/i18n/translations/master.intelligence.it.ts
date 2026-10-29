@@ -151,6 +151,35 @@ export const masterIntelligenceIt = {
   'master.intelligence.vsi.signals.observedAt': 'Ultima osservazione (UTC + locale)',
   'master.intelligence.vsi.signals.limitations': 'Limitazioni',
 
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Il regime motore (RPM) usa due piani di evidenza separati. Lo stato snapshot proviene dall’ultimo bundle vehicle latest state; HF/cadenza dai punti ad alta frequenza mirrorati e dai viaggi finalizzati. Non sono intercambiabili.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (vehicle latest state)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Finestra di osservazione: ultimo bundle provider attribuito alla materializzazione del profilo (non storico HF).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / cadenza (finestre viaggio)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Finestra di osservazione: arricchimento cadenza HF legato al link (fino a 14 giorni di viaggi finalizzati).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Osservazione empirica',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Freschezza',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Ultima osservazione valida',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Qualità / confidenza',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Provenienza',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'Conteggio campioni HF',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Profilo RPM attivo',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profilo valutato il',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Viaggi finalizzati nella finestra cadenza',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Decisione di classificazione',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Classificazioni viaggio di supporto',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'La classificazione cadenza RPM non si applica a questo powertrain (es. BEV).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'Nessuna evidenza HF cadenza nel profilo persistito (cadenceIntelligence assente o vuoto).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Snapshot',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/cadenza',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    'Profilo {{profile}} · {{samples}} campioni HF (vedi pannello)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'Vedi pannello sotto',
+
   'master.intelligence.vsi.revision.loading': 'Caricamento cronologia revisioni…',
   'master.intelligence.vsi.revision.loadError': 'Impossibile caricare la cronologia delle revisioni.',
   'master.intelligence.vsi.revision.retry': 'Riprova cronologia revisioni',

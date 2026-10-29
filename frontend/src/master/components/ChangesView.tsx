@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-rpm-dual-provenance-ui-2026-10-29',
+    version: '4.9.5017',
+    title: 'VSI Master Admin — engine RPM dual provenance UI (Draft)',
+    summary: [
+      'Master Admin signal table for powertrainCombustionEngineSpeed (engine_rpm): separate Snapshot (VLS empiricalObservation, freshness, lastValidObservationAt) vs HF/cadence (observedSampleCount, activeRpmProfile, profile evaluatedAt, trip classifications, provenance).',
+      'Does not relabel snapshot NEVER_OBSERVED when ClickHouse HF cadence evidence exists; Tesla NOT_APPLICABLE path unchanged.',
+      'Read-only UI + utils regression tests (Audi RPM_STANDARD, Tiguan UNKNOWN, no HF, N/A); master.intelligence.vsi.signals.rpmDual.* i18n (9 locales). No backend or RPM classification changes.',
+    ],
+    reason:
+      'Production audit: empirical plane is VLS snapshot-only while cadence/RPM profile lives in cadenceIntelligence — single table column implied global NEVER_OBSERVED despite HF samples.',
+    previousBehavior:
+      'engine_rpm row showed only snapshot quality/observation fields; HF cadence and active RPM profile were not surfaced in Master Admin VSI overview.',
+    details:
+      'vsi-engine-rpm-dual-provenance.utils.ts; VsiEngineRpmDualProvenancePanel.tsx; VsiMasterIntelligenceView.tsx; vsi-engine-rpm-dual-provenance.ui.test.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-29T22:35:00.000Z',
+  },
+  {
     id: 'vsi-master-intelligence-load-loop-hotfix-2026-10-29',
     version: '4.9.5016',
     title: 'VSI Master Intelligence — infinite loading hook stability (Draft)',
