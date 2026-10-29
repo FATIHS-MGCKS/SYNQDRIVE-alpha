@@ -247,7 +247,7 @@ jobs:
       - name: Vehicle tech spec PATCH postgres guard contract
         working-directory: backend
         run: bash scripts/test/vehicle-tech-spec-patch-postgres-guard.contract.sh
-      - name: Vehicle technical spec PATCH PostgreSQL integration (7 tests)
+      - name: Vehicle technical spec PATCH PostgreSQL integration (10 tests)
         working-directory: backend
         run: bash scripts/test/vehicle-tech-spec-patch-postgres-ci.sh
         env:

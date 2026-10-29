@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Mandatory CI: vehicle-technical-spec-patch.postgres.integration.spec.ts (7 tests, no describe.skip).
+# Mandatory CI: vehicle-technical-spec-patch.postgres.integration.spec.ts (10 tests, no describe.skip).
 set -euo pipefail
 
 log() { printf '[vehicle-tech-spec-patch-postgres-ci] %s\n' "$*"; }
@@ -19,7 +19,7 @@ log "DATABASE_URL target verified (CI-local disposable)"
 log "Applying Prisma schema (db push for ephemeral CI database)"
 npx prisma db push --accept-data-loss --skip-generate
 
-log "Running vehicle-technical-spec-patch.postgres.integration (expect 7 executed tests)"
+log "Running vehicle-technical-spec-patch.postgres.integration (expect 10 executed tests)"
 JEST_OUT="$(mktemp)"
 set +e
 npm test -- --testPathPatterns='vehicle-technical-spec-patch.postgres.integration' --runInBand --verbose 2>&1 | tee "$JEST_OUT"
@@ -36,10 +36,10 @@ if grep -Eq 'Tests:[[:space:]]+0 passed' "$JEST_OUT" || grep -Eq 'Test Suites:[[
   exit 1
 fi
 
-if ! grep -Eq 'Tests:[[:space:]]+7 passed' "$JEST_OUT"; then
-  log "FAIL: expected exactly 7 passing tests in vehicle-technical-spec-patch.postgres.integration"
+if ! grep -Eq 'Tests:[[:space:]]+10 passed' "$JEST_OUT"; then
+  log "FAIL: expected exactly 10 passing tests in vehicle-technical-spec-patch.postgres.integration"
   grep 'Tests:' "$JEST_OUT" || true
   exit 1
 fi
 
-log "vehicle-tech-spec-patch-postgres-ci completed successfully (7/7)"
+log "vehicle-tech-spec-patch-postgres-ci completed successfully (10/10)"
