@@ -1,5 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
-import { DS4_RPM_HF_V1B_ENGINE_VERSION } from './ds4-rpm-hf-v1b.contract';
+import {
+  DS4_RPM_HF_V1B_ENGINE_VERSION,
+  DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE,
+} from './ds4-rpm-hf-v1b.contract';
 import { DS4_RPM_HF_V1B_TUNING } from './ds4-rpm-hf-v1b.config';
 
 export type Ds4RpmHfV1bOutboxStatus =
@@ -62,8 +65,11 @@ export class Ds4RpmHfV1bOutboxRepository {
       if (page.length === 0) break;
       for (const c of page) {
         if (inserted >= input.limit) break;
-        const did = await this.tryInsertCandidate(c, input.now);
+        const did = await this.tryInsertCandidate(c, input.now, DS4_RPM_HF_V1B_ENGINE_VERSION);
         if (did) inserted += 1;
+        if (inserted >= input.limit) break;
+        const didTier = await this.tryInsertCandidate(c, input.now, DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE);
+        if (didTier) inserted += 1;
       }
       const last = page[page.length - 1]!;
       cursor = { endTime: last.end_time, tripId: last.trip_id };
@@ -111,12 +117,16 @@ export class Ds4RpmHfV1bOutboxRepository {
       LIMIT ${input.pageSize}`;
   }
 
-  private async tryInsertCandidate(c: DiscoveryCandidate, now: Date): Promise<boolean> {
+  private async tryInsertCandidate(
+    c: DiscoveryCandidate,
+    now: Date,
+    engineVersion: string,
+  ): Promise<boolean> {
     const rows = await this.prisma.$queryRaw<Array<{ outbox_id: string }>>`
       INSERT INTO ds4_rpm_hf_v1b_shadow_outbox_v1 (
         organization_id, vehicle_id, trip_id, engine_version, status, next_attempt_at
       ) VALUES (
-        ${c.organization_id}, ${c.vehicle_id}, ${c.trip_id}, ${DS4_RPM_HF_V1B_ENGINE_VERSION}, 'PENDING', ${now}
+        ${c.organization_id}, ${c.vehicle_id}, ${c.trip_id}, ${engineVersion}, 'PENDING', ${now}
       )
       ON CONFLICT (organization_id, trip_id, engine_version) DO NOTHING
       RETURNING outbox_id`;
@@ -127,6 +137,7 @@ export class Ds4RpmHfV1bOutboxRepository {
     organizationAllowlist: readonly string[];
     vehicleAllowlist: readonly string[];
     limit: number;
+    engineVersion?: string;
   }): Promise<
     Array<{
       outboxId: string;
@@ -138,6 +149,7 @@ export class Ds4RpmHfV1bOutboxRepository {
   > {
     if (input.limit <= 0) return [];
     if (input.organizationAllowlist.length === 0 || input.vehicleAllowlist.length === 0) return [];
+    const engineVersion = input.engineVersion ?? DS4_RPM_HF_V1B_ENGINE_VERSION;
     const rows = await this.prisma.$queryRaw<
       Array<{
         outbox_id: string;
@@ -150,6 +162,7 @@ export class Ds4RpmHfV1bOutboxRepository {
       SELECT outbox_id, organization_id, trip_id, vehicle_id, succeeded_input_fingerprint
       FROM ds4_rpm_hf_v1b_shadow_outbox_v1
       WHERE status = 'SUCCEEDED'
+        AND engine_version = ${engineVersion}
         AND organization_id = ANY(${input.organizationAllowlist}::text[])
         AND vehicle_id = ANY(${input.vehicleAllowlist}::text[])
       ORDER BY revision_last_probed_at ASC NULLS FIRST, updated_at ASC, outbox_id ASC

@@ -1,5 +1,6 @@
 import type {
   VsiActiveRpmProfileResolutionV1,
+  VsiRpmCadenceTierResolutionV1,
   VsiSignalCadenceIntelligenceV2,
 } from '../../vehicle-signal-intelligence/vsi-profile-cadence.types';
 
@@ -13,9 +14,10 @@ export function readEngineRpmCadenceFromSignalsSnapshot(
 ): {
   cadence: VsiSignalCadenceIntelligenceV2 | null;
   activeRpmProfile: VsiActiveRpmProfileResolutionV1 | null;
+  rpmCadenceTierResolution: VsiRpmCadenceTierResolutionV1 | null;
 } {
   if (!Array.isArray(signalsSnapshot)) {
-    return { cadence: null, activeRpmProfile: null };
+    return { cadence: null, activeRpmProfile: null, rpmCadenceTierResolution: null };
   }
   for (const raw of signalsSnapshot) {
     const row = raw as SnapshotSignalRow;
@@ -26,7 +28,8 @@ export function readEngineRpmCadenceFromSignalsSnapshot(
     return {
       cadence,
       activeRpmProfile: cadence?.activeRpmProfile ?? null,
+      rpmCadenceTierResolution: cadence?.rpmCadenceTierResolution ?? null,
     };
   }
-  return { cadence: null, activeRpmProfile: null };
+  return { cadence: null, activeRpmProfile: null, rpmCadenceTierResolution: null };
 }

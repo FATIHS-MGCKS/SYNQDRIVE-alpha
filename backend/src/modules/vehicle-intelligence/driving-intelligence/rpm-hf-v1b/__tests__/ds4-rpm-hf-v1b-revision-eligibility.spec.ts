@@ -53,6 +53,8 @@ function baseInput(overrides: Partial<Ds4RpmHfV1aTripInputV1['admission']> = {})
     },
     rpmPoints: [{ recordedAtIso: '2026-01-01T10:00:01.000Z', valueRpm: 900 }],
     vsiActiveRpmProfileSnapshot: null,
+    vsiRpmCadenceTierSnapshot: null,
+    tierEvidence: null,
     readOnly: true,
     productionActivationForbidden: true,
   };

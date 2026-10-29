@@ -1,5 +1,5 @@
 import { buildSyntheticRpmPointsFromIntervals } from '../../rpm-hf-v1a/ds4-rpm-hf-v1a-data-quality';
-import { computeDs4RpmHfV1bTemporalAnalysis } from '../ds4-rpm-hf-v1b-temporal.engine';
+import { computeDs4RpmHfV1bTemporalAnalysis, DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S } from '../ds4-rpm-hf-v1b-temporal.engine';
 
 describe('ds4-rpm-hf-v1b-temporal.engine', () => {
   it('computes bucket coverage at canonical trip boundaries (off-by-one safe)', () => {
@@ -98,5 +98,25 @@ describe('ds4-rpm-hf-v1b-temporal.engine', () => {
     });
     expect(analysis.sequences.continuousSequenceCount).toBe(1);
     expect(analysis.sequences.observedSequenceDurationSeconds).toBe(2);
+  });
+
+  it('uses 2s bucket semantics and 3s sequence gap for RPM_2S profile without inventing points', () => {
+    const analysis = computeDs4RpmHfV1bTemporalAnalysis(
+      {
+        tripStartIso: '2026-01-01T10:00:00.000Z',
+        tripEndIso: '2026-01-01T10:00:20.000Z',
+        points: [
+          { recordedAtIso: '2026-01-01T10:00:00.000Z', valueRpm: 1000 },
+          { recordedAtIso: '2026-01-01T10:00:02.000Z', valueRpm: 1100 },
+          { recordedAtIso: '2026-01-01T10:00:04.000Z', valueRpm: 1200 },
+        ],
+        invalidValueCount: 0,
+        duplicateTimestampCount: 0,
+      },
+      DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S,
+    );
+    expect(analysis.rpmValues.validPointCount).toBe(3);
+    expect(analysis.sequences.sequenceGapRuleSeconds).toBe(3);
+    expect(analysis.sequences.observedSequenceDurationSeconds).toBe(4);
   });
 });
