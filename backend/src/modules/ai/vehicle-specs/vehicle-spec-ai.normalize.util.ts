@@ -1,5 +1,8 @@
 import type { VehicleSpecContext } from './vehicle-spec-ai.types';
 import {
+  normalizeMotionSystemPowerDefinition,
+} from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-reference.domain';
+import {
   normalizeCanonicalDrivetrain,
   normalizeElectrificationLevel,
   normalizeLvBatteryTypeInput,
@@ -33,6 +36,7 @@ const VARIANT_DEPENDENT_NUMERIC_KEYS = [
   'maxRpm',
   'curbWeightKg',
   'systemMotorPowerKw',
+  'systemPowerDefinition',
   'accel0To100S',
   'hvBatteryGrossCapacityKwh',
   'hvBatteryUsableCapacityKwh',
@@ -158,6 +162,10 @@ export function normalizeVehicleSpecValues(
     out.batteryType = null;
   }
   applyElectrificationHvSafety(out);
+  out.systemPowerDefinition = normalizeMotionSystemPowerDefinition(out.systemPowerDefinition);
+  if (num(out.systemMotorPowerKw) == null && out.systemPowerDefinition != null) {
+    out.systemPowerDefinition = null;
+  }
   return out;
 }
 

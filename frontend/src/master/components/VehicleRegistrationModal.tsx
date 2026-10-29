@@ -27,21 +27,24 @@ import {
 } from '../connected-vehicles/ai-spec-field-merge.util';
 import {
   buildMotionPhysicsReferenceCreateBody,
-  mergeMotionPhysicsReferenceFromCreateResponse,
   canConfirmEstimatedAiMotionReference,
   canConfirmManualMotionValues,
   formatMotionPhysicsUserErrorMessage,
   hasMotionPhysicsFormValues,
   hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave,
   hasUnconfirmedManualMotionPhysicsEdits,
+  hydrateSystemPowerDefinitionFormState,
   isMotionPhysicsReferenceReadOnly,
+  mergeMotionPhysicsReferenceFromCreateResponse,
   MOTION_PHYSICS_SYNC_REASON_CODES,
   MOTION_SYSTEM_POWER_DEFINITION_OPTIONS,
   motionPhysicsReferenceSourceForSave,
+  parseMotionSystemPowerDefinitionOption,
   resolveMotionPhysicsPendingAfterAiApply,
   shouldSyncMotionPhysicsReferenceOnSave,
   snapshotMotionPhysicsFormFields,
   snapshotMotionPhysicsFromActiveReference,
+  validateMotionPhysicsReferenceCreatePayload,
   type AiSpecsApplyProvenance,
   type MotionPhysicsFormSnapshot,
   type MotionPhysicsPendingCreateSource,
@@ -274,6 +277,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     setSystemMotorPowerKw(v.systemMotorPowerKw ?? '');
     setAccel0To100S(v.accel0To100S ?? '');
     setMotionPhysicsVariantAssumption(v.motionPhysicsVariantAssumption ?? '');
+    setSystemPowerDefinition(hydrateSystemPowerDefinitionFormState(undefined, v.systemPowerDefinition));
     motionPhysicsManualEditedRef.current = false;
     motionPhysicsPendingCreateSourceRef.current = null;
     motionPhysicsLoadedBaselineRef.current = null;
@@ -553,6 +557,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         setMotionPhysicsVariantAssumption,
         specs.variantAssumption,
       );
+      const aiDefinition = parseMotionSystemPowerDefinitionOption(specs.systemPowerDefinition);
+      if (
+        aiDefinition &&
+        shouldApplyAiSpecToEmptyField(systemPowerDefinitionRef.current, aiDefinition)
+      ) {
+        setSystemPowerDefinition(aiDefinition);
+        appliedMotionFromAi = true;
+      }
       motionPhysicsPendingCreateSourceRef.current = resolveMotionPhysicsPendingAfterAiApply({
         provenance,
         appliedMotionFromAi,
@@ -709,8 +721,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       if (ref.accel0To100S != null) setAccel0To100S(String(ref.accel0To100S));
       if (ref.variantAssumption) setMotionPhysicsVariantAssumption(ref.variantAssumption);
       if (ref.systemPowerDefinition) {
-        const def = ref.systemPowerDefinition as MotionSystemPowerDefinitionOption;
-        if ((MOTION_SYSTEM_POWER_DEFINITION_OPTIONS as readonly string[]).includes(def)) {
+        const def = parseMotionSystemPowerDefinitionOption(ref.systemPowerDefinition);
+        if (def) {
           setSystemPowerDefinition(def);
         }
       }
@@ -733,7 +745,10 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       systemMotorPowerKw: vehicle.systemMotorPowerKw ?? '',
       accel0To100S: vehicle.accel0To100S ?? '',
       variantAssumption: vehicle.motionPhysicsVariantAssumption ?? '',
-      systemPowerDefinition: '',
+      systemPowerDefinition: hydrateSystemPowerDefinitionFormState(
+        undefined,
+        vehicle.systemPowerDefinition,
+      ),
     });
   }, []);
 
@@ -749,12 +764,20 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       return;
     }
 
+    const vehicleId = existingVehicle.id;
+    let cancelled = false;
+
+    setSystemPowerDefinition(
+      hydrateSystemPowerDefinitionFormState(undefined, existingVehicle.systemPowerDefinition),
+    );
+
     motionPhysicsNoReferenceSessionBaselineRef.current =
       snapshotMotionPhysicsBaselineFromVehicle(existingVehicle);
 
     api.vehicles.motionPhysicsReference
-      .getActive(organizationId, existingVehicle.id)
+      .getActive(organizationId, vehicleId)
       .then((ref) => {
+        if (cancelled) return;
         if (!ref) {
           setMotionPhysicsReferenceId(null);
           setMotionPhysicsEvidenceTier(null);
@@ -764,6 +787,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         applyActiveMotionPhysicsReference(ref);
       })
       .catch((error) => {
+        if (cancelled) return;
         setMotionPhysicsReferenceId(null);
         setMotionPhysicsEvidenceTier(null);
         motionPhysicsLoadedBaselineRef.current = null;
@@ -775,6 +799,10 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           ),
         );
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     isOpen,
     isEditMode,
@@ -844,21 +872,30 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     });
     if (!hasMotionValues) return;
 
+    const createBody = buildMotionPhysicsReferenceCreateBody({
+      curbWeight,
+      systemMotorPowerKw,
+      accel0To100S,
+      variantAssumption: motionPhysicsVariantAssumption,
+      systemPowerDefinition,
+      source: 'MANUAL_ENTRY',
+      manualOperatorConfirm: true,
+    });
+    const payloadError = validateMotionPhysicsReferenceCreatePayload(createBody);
+    if (payloadError) {
+      setMotionPhysicsSyncError(
+        `${t('master.motionPhysics.manualConfirmError')} (${payloadError})`,
+      );
+      return;
+    }
+
     setMotionPhysicsManualConfirming(true);
     setMotionPhysicsSyncError('');
     try {
       const created = await api.vehicles.motionPhysicsReference.create(
         organizationId,
         existingVehicle.id,
-        buildMotionPhysicsReferenceCreateBody({
-          curbWeight,
-          systemMotorPowerKw,
-          accel0To100S,
-          variantAssumption: motionPhysicsVariantAssumption,
-          systemPowerDefinition,
-          source: 'MANUAL_ENTRY',
-          manualOperatorConfirm: true,
-        }),
+        createBody,
       );
 
       let reloaded: Awaited<ReturnType<typeof api.vehicles.motionPhysicsReference.getActive>> = null;

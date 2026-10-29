@@ -670,6 +670,7 @@ export function mapAdminVehicleDtoToRegisteredVehicle(
     systemMotorPowerKw: str('systemMotorPowerKw'),
     accel0To100S: str('accel0To100S'),
     motionPhysicsVariantAssumption: str('motionPhysicsVariantAssumption'),
+    systemPowerDefinition: str('systemPowerDefinition'),
     connectionModality:
       dto.connectionModality != null && String(dto.connectionModality).trim() !== ''
         ? String(dto.connectionModality)
