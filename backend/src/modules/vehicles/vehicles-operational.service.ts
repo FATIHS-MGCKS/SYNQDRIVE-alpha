@@ -256,15 +256,14 @@ export class VehiclesOperationalService {
     const orgScope = query?.organizationId ? { organizationId: query.organizationId } : {};
 
     const [
-      platformSummary,
       registeredActive,
       registeredOffboarded,
       registeredArchived,
       registeredAll,
       unregisteredCount,
       dimoLinkedActive,
+      activeFleetFreshness,
     ] = await Promise.all([
-      this.connectivitySummary.getPlatformSummary(),
       this.prisma.vehicle.count({ where: activeListWhere }),
       this.prisma.vehicle.count({
         where: { registryLifecycle: 'OFFBOARDED', ...orgScope },
@@ -282,6 +281,7 @@ export class VehiclesOperationalService {
           dimoVehicleId: { not: null },
         },
       }),
+      this.computeActiveRegisteredFleetFreshness(activeListWhere),
     ]);
 
     const platformCtx = await this.loadPlatformDimoContext();
@@ -310,9 +310,45 @@ export class VehiclesOperationalService {
         withAttention,
         dimoLinked: dimoLinkedActive,
       },
-      freshness: platformSummary.freshness,
+      freshness: activeFleetFreshness,
       attentionQueue,
     };
+  }
+
+  /** Operational overview freshness — ACTIVE registered cohort only (matches fleet count). */
+  private async computeActiveRegisteredFleetFreshness(
+    where: Prisma.VehicleWhereInput,
+  ): Promise<VehiclesOperationalOverviewDto['freshness']> {
+    const now = Date.now();
+    const vehicles = await this.prisma.vehicle.findMany({
+      where,
+      select: {
+        latestState: { select: { lastSeenAt: true, updatedAt: true } },
+        dimoVehicle: { select: { lastSignal: true } },
+      },
+    });
+
+    const freshness: VehiclesOperationalOverviewDto['freshness'] = {
+      live: 0,
+      standby: 0,
+      signal_delayed: 0,
+      offline: 0,
+      no_signal: 0,
+    };
+
+    for (const vehicle of vehicles) {
+      const resolved = resolveTelemetryFreshness(
+        {
+          lastSignal: vehicle.dimoVehicle?.lastSignal ?? null,
+          latestStateUpdatedAt:
+            vehicle.latestState?.lastSeenAt ?? vehicle.latestState?.updatedAt ?? null,
+        },
+        now,
+      );
+      freshness[resolved.freshness] += 1;
+    }
+
+    return freshness;
   }
 
   async getAttentionQueue(limit = 8): Promise<VehicleAttentionQueueItemDto[]> {

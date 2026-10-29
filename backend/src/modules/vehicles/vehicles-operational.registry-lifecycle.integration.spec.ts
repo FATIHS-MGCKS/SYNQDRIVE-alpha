@@ -103,8 +103,10 @@ describe('VehiclesOperationalService registryLifecycle (integration query path)'
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(9)
-      .mockResolvedValueOnce(3);
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(2);
     (prisma.dimoVehicle.count as jest.Mock).mockResolvedValue(1);
+    findMany.mockResolvedValue([]);
     const overview = await svc.getOverview();
     expect(overview.counts.registered).toBe(4);
     expect(overview.counts.registeredAll).toBe(9);
@@ -119,6 +121,7 @@ describe('VehiclesOperationalService registryLifecycle (integration query path)'
     const vehicleCount = prisma.vehicle.count as jest.Mock;
     vehicleCount.mockResolvedValue(0);
     (prisma.dimoVehicle.count as jest.Mock).mockResolvedValue(0);
+    findMany.mockResolvedValue([]);
     await svc.getOverview({ organizationId: 'org-42' });
     expect(vehicleCount.mock.calls[0][0]).toEqual({
       where: { registryLifecycle: 'ACTIVE', organizationId: 'org-42' },

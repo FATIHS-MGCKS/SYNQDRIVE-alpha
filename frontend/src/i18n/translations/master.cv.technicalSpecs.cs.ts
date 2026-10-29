@@ -92,7 +92,7 @@ export const masterCvTechnicalSpecsCs = {
   'master.cv.technicalSpecs.unitKm': 'km',
   'master.cv.technicalSpecs.unitMonths': 'měsíce',
   'master.cv.technicalSpecs.unitMm': 'mm',
-  'master.cv.technicalSpecs.unitAmpere': 'A',
+  'master.cv.technicalSpecs.unitAmpere': 'Ah',
   'master.cv.technicalSpecs.unitVolt': 'V',
   'master.cv.technicalSpecs.unitKwh': 'kWh',
   'master.cv.technicalSpecs.value.unknown': 'Neznámý',
