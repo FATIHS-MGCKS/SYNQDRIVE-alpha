@@ -151,6 +151,9 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.signals.observedAt': 'Son gözlem (UTC + yerel)',
   'master.intelligence.vsi.signals.limitations': 'Sınırlamalar',
 
+  'master.intelligence.vsi.revision.loading': 'Revizyon geçmişi yükleniyor…',
+  'master.intelligence.vsi.revision.loadError': 'Revizyon geçmişi yüklenemedi.',
+  'master.intelligence.vsi.revision.retry': 'Revizyon geçmişini yeniden dene',
   'master.intelligence.vsi.revision.notCaptured': 'Revizyon geçmişi: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'P5-H1 yakalama kapalı. Eksik geçmiş profilin hiç değişmediği anlamına gelmez.',

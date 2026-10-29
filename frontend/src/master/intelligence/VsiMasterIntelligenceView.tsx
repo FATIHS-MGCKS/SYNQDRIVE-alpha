@@ -94,7 +94,19 @@ function VsiMasterIntelligenceContent() {
   const [vehicleOptions, setVehicleOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [scopeLoading, setScopeLoading] = useState(false);
 
-  const { overview, profile, revisions, revisionAsOf, capabilityExplanation, loading, error, refresh } =
+  const {
+    overview,
+    profile,
+    revisions,
+    revisionAsOf,
+    capabilityExplanation,
+    loading,
+    error,
+    revisionsError,
+    revisionsLoading,
+    refresh,
+    refreshRevisions,
+  } =
     useVsiMasterIntelligenceData({
       orgId: context.orgId,
       vehicleId: context.vehicleId,
@@ -346,6 +358,27 @@ function VsiMasterIntelligenceContent() {
               </tbody>
             </table>
           </div>
+        </MasterPageSection>
+      ) : null}
+
+      {revisionsError ? (
+        <MasterPageSection title={t('master.intelligence.section.revisions' as never)}>
+          <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+            <p>{t('master.intelligence.vsi.revision.loadError' as never)}</p>
+            <p className="mt-1 font-mono">{revisionsError}</p>
+            <button type="button" className="mt-2 underline" onClick={() => void refreshRevisions()}>
+              {t('master.intelligence.vsi.revision.retry' as never)}
+            </button>
+          </div>
+        </MasterPageSection>
+      ) : null}
+
+      {revisionsLoading ? (
+        <MasterPageSection title={t('master.intelligence.section.revisions' as never)}>
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            {t('master.intelligence.vsi.revision.loading' as never)}
+          </p>
         </MasterPageSection>
       ) : null}
 

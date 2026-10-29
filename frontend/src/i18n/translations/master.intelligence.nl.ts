@@ -151,6 +151,9 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.signals.observedAt': 'Laatste waarneming (UTC + lokaal)',
   'master.intelligence.vsi.signals.limitations': 'Beperkingen',
 
+  'master.intelligence.vsi.revision.loading': 'Revisiehistorie laden…',
+  'master.intelligence.vsi.revision.loadError': 'Revisiehistorie kon niet worden geladen.',
+  'master.intelligence.vsi.revision.retry': 'Revisiehistorie opnieuw laden',
   'master.intelligence.vsi.revision.notCaptured': 'Revisiehistorie: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'P5-H1-registratie is uitgeschakeld. Ontbrekende historie betekent niet dat het profiel nooit wijzigde.',

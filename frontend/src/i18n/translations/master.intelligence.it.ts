@@ -151,6 +151,9 @@ export const masterIntelligenceIt = {
   'master.intelligence.vsi.signals.observedAt': 'Ultima osservazione (UTC + locale)',
   'master.intelligence.vsi.signals.limitations': 'Limitazioni',
 
+  'master.intelligence.vsi.revision.loading': 'Caricamento cronologia revisioni…',
+  'master.intelligence.vsi.revision.loadError': 'Impossibile caricare la cronologia delle revisioni.',
+  'master.intelligence.vsi.revision.retry': 'Riprova cronologia revisioni',
   'master.intelligence.vsi.revision.notCaptured': 'Cronologia: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'La cattura P5-H1 è disabilitata. La mancanza di cronologia non significa assenza di modifiche al profilo.',

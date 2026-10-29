@@ -15,6 +15,8 @@ export type VsiMasterIntelligenceLoadState = {
   capabilityExplanation: unknown | null;
   loading: boolean;
   error: string | null;
+  revisionsError: string | null;
+  revisionsLoading: boolean;
 };
 
 const emptyLoad: VsiMasterIntelligenceLoadState = {
@@ -25,7 +27,13 @@ const emptyLoad: VsiMasterIntelligenceLoadState = {
   capabilityExplanation: null,
   loading: false,
   error: null,
+  revisionsError: null,
+  revisionsLoading: false,
 };
+
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : 'VSI data could not be loaded';
+}
 
 export function useVsiMasterIntelligenceData(input: {
   orgId: string | null;
@@ -35,30 +43,14 @@ export function useVsiMasterIntelligenceData(input: {
 }) {
   const [state, setState] = useState<VsiMasterIntelligenceLoadState>(emptyLoad);
 
-  const load = useCallback(async () => {
-    const { orgId, vehicleId, providerSourceLinkId, asOf } = input;
-    if (!orgId || !vehicleId) {
-      setState({ ...emptyLoad });
-      return;
-    }
-
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      const overview = await api.admin.masterIntelligenceVsi.overview(orgId, vehicleId);
-      let profile: MasterVsiProfileDetailDto | null = null;
-      let revisions: MasterVsiRevisionHistoryPageDto | null = null;
-      let revisionAsOf: MasterVsiRevisionAsOfDto | null = null;
-      let capabilityExplanation: unknown | null = null;
-
-      const linkId = providerSourceLinkId ?? overview.profiles[0]?.providerSourceLinkId ?? null;
-      if (linkId) {
-        const [profileRes, revisionsRes] = await Promise.all([
-          api.admin.masterIntelligenceVsi.profile(orgId, vehicleId, linkId),
-          api.admin.masterIntelligenceVsi.revisions(orgId, vehicleId, linkId, { limit: 20 }),
-        ]);
-        profile = profileRes;
-        revisions = revisionsRes;
-
+  const loadRevisionsForLink = useCallback(
+    async (orgId: string, vehicleId: string, linkId: string, asOf: string | null) => {
+      setState((prev) => ({ ...prev, revisionsLoading: true, revisionsError: null }));
+      try {
+        const revisions = await api.admin.masterIntelligenceVsi.revisions(orgId, vehicleId, linkId, {
+          limit: 20,
+        });
+        let revisionAsOf: MasterVsiRevisionAsOfDto | null = null;
         if (asOf) {
           try {
             revisionAsOf = await api.admin.masterIntelligenceVsi.revisionAsOf(
@@ -70,6 +62,58 @@ export function useVsiMasterIntelligenceData(input: {
           } catch {
             revisionAsOf = null;
           }
+        }
+        setState((prev) => ({
+          ...prev,
+          revisions,
+          revisionAsOf,
+          revisionsLoading: false,
+          revisionsError: null,
+        }));
+      } catch (e) {
+        setState((prev) => ({
+          ...prev,
+          revisions: null,
+          revisionAsOf: null,
+          revisionsLoading: false,
+          revisionsError: errorMessage(e),
+        }));
+      }
+    },
+    [],
+  );
+
+  const load = useCallback(async () => {
+    const { orgId, vehicleId, providerSourceLinkId, asOf } = input;
+    if (!orgId || !vehicleId) {
+      setState({ ...emptyLoad });
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      loading: true,
+      error: null,
+      revisionsError: null,
+      revisionsLoading: false,
+    }));
+    try {
+      const overview = await api.admin.masterIntelligenceVsi.overview(orgId, vehicleId);
+      let profile: MasterVsiProfileDetailDto | null = null;
+      let capabilityExplanation: unknown | null = null;
+
+      const linkId = providerSourceLinkId ?? overview.profiles[0]?.providerSourceLinkId ?? null;
+      if (linkId) {
+        try {
+          profile = await api.admin.masterIntelligenceVsi.profile(orgId, vehicleId, linkId);
+        } catch (e) {
+          setState({
+            ...emptyLoad,
+            overview,
+            loading: false,
+            error: errorMessage(e),
+          });
+          return;
         }
 
         try {
@@ -86,29 +130,57 @@ export function useVsiMasterIntelligenceData(input: {
         } catch {
           capabilityExplanation = null;
         }
+
+        setState({
+          overview,
+          profile,
+          revisions: null,
+          revisionAsOf: null,
+          capabilityExplanation,
+          loading: false,
+          error: null,
+          revisionsError: null,
+          revisionsLoading: true,
+        });
+
+        await loadRevisionsForLink(orgId, vehicleId, linkId, asOf);
+        return;
       }
 
       setState({
         overview,
         profile,
-        revisions,
-        revisionAsOf,
+        revisions: null,
+        revisionAsOf: null,
         capabilityExplanation,
         loading: false,
         error: null,
+        revisionsError: null,
+        revisionsLoading: false,
       });
     } catch (e) {
       setState({
         ...emptyLoad,
         loading: false,
-        error: e instanceof Error ? e.message : 'VSI data could not be loaded',
+        error: errorMessage(e),
       });
     }
-  }, [input.orgId, input.vehicleId, input.providerSourceLinkId, input.asOf]);
+  }, [input, loadRevisionsForLink]);
+
+  const refreshRevisions = useCallback(async () => {
+    const { orgId, vehicleId, providerSourceLinkId, asOf } = input;
+    if (!orgId || !vehicleId) return;
+    const linkId =
+      providerSourceLinkId ??
+      state.overview?.profiles[0]?.providerSourceLinkId ??
+      null;
+    if (!linkId) return;
+    await loadRevisionsForLink(orgId, vehicleId, linkId, asOf);
+  }, [input, state.overview, loadRevisionsForLink]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  return { ...state, refresh: load };
+  return { ...state, refresh: load, refreshRevisions };
 }

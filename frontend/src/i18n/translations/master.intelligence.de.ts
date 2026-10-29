@@ -171,6 +171,9 @@ export const masterIntelligenceDe = {
   'master.intelligence.vsi.signals.observedAt': 'Letzte Beobachtung (UTC + lokal)',
   'master.intelligence.vsi.signals.limitations': 'Einschränkungen',
 
+  'master.intelligence.vsi.revision.loading': 'Revisionshistorie wird geladen…',
+  'master.intelligence.vsi.revision.loadError': 'Revisionshistorie konnte nicht geladen werden.',
+  'master.intelligence.vsi.revision.retry': 'Revisionshistorie erneut laden',
   'master.intelligence.vsi.revision.notCaptured': 'Revisionshistorie: NOT_CAPTURED',
   'master.intelligence.vsi.revision.notCapturedExplain':
     'P5-H1-Revisionserfassung ist in dieser Umgebung deaktiviert. Fehlende Historie bedeutet nicht, dass sich das Profil nie geändert hat.',
