@@ -43,6 +43,24 @@ export const masterIntelligenceDe = {
   'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Verknüpft — Status ohne Erfolg',
   'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Echte Poll-Evidenz nicht verfügbar',
 
+  'master.intelligence.pdi.loading': 'Geräte-Intelligence wird geladen…',
+  'master.intelligence.pdi.error': 'PDI-Geräte-Intelligence konnte nicht geladen werden.',
+  'master.intelligence.pdi.section.identity': 'Identitätsübersicht',
+  'master.intelligence.pdi.section.timeline': 'Chronologische Timeline',
+  'master.intelligence.pdi.section.episodes': 'Verbindungs-Episoden',
+  'master.intelligence.pdi.section.drift': 'Identitäts-Monitoring',
+  'master.intelligence.pdi.snapshotNotHistory':
+    'Aktueller Bestand und Live-Spiegel sind Momentaufnahmen — keine vollständige Historie.',
+  'master.intelligence.pdi.notApplicableR1':
+    'Physisches Ruptela-R1-Monitoring gilt nicht (z. B. reine Software/Tesla-Integration).',
+  'master.intelligence.pdi.noDriftHistory':
+    'Keine persistierte Drift-Ereignishistorie. Fehlende Einträge beweisen kein „kein Drift“.',
+  'master.intelligence.pdi.episodeNotPoll':
+    'Verbindungs-Episoden sind persistierte Lifecycle-Evidenz — keine APDS-Poll-Ausführung.',
+  'master.intelligence.pdi.noEpisodes': 'Keine Episoden für den aktuellen Fahrzeug-Scope.',
+  'master.intelligence.pdi.emptyTimeline': 'Keine Timeline-Einträge in persistierter Historie.',
+  'master.intelligence.pdi.evaluatedAt': 'Evidenz bewertet',
+
   'master.intelligence.section.context': 'URL-Kontext',
   'master.intelligence.section.crossLinks': 'Querverweise',
   'master.intelligence.section.previewComponents': 'Darstellungsvorschau (keine Live-Daten)',

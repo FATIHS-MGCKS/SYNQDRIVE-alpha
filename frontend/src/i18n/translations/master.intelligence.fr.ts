@@ -43,6 +43,24 @@ export const masterIntelligenceFr = {
   'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Lié — statut sans succès',
   'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Preuve de poll réel indisponible',
 
+  'master.intelligence.pdi.loading': 'Chargement de l’intelligence appareil…',
+  'master.intelligence.pdi.error': 'Impossible de charger l’intelligence PDI.',
+  'master.intelligence.pdi.section.identity': 'Résumé d’identité',
+  'master.intelligence.pdi.section.timeline': 'Chronologie',
+  'master.intelligence.pdi.section.episodes': 'Épisodes de connexion',
+  'master.intelligence.pdi.section.drift': 'Surveillance d’identité',
+  'master.intelligence.pdi.snapshotNotHistory':
+    'Inventaire actuel et miroir live = instantanés, pas un historique complet.',
+  'master.intelligence.pdi.notApplicableR1':
+    'Monitoring R1 physique non applicable (ex. intégration Tesla logicielle).',
+  'master.intelligence.pdi.noDriftHistory':
+    'Pas d’historique d’événements drift persisté. L’absence d’enregistrements ne prouve pas l’absence de drift.',
+  'master.intelligence.pdi.episodeNotPoll':
+    'Les épisodes de connexion sont une preuve lifecycle persistée — pas une exécution de poll APDS.',
+  'master.intelligence.pdi.noEpisodes': 'Aucun épisode pour le périmètre véhicule actuel.',
+  'master.intelligence.pdi.emptyTimeline': 'Aucune entrée de chronologie persistée.',
+  'master.intelligence.pdi.evaluatedAt': 'Preuve évaluée',
+
   'master.intelligence.section.context': 'Contexte URL',
   'master.intelligence.section.crossLinks': 'Liens croisés',
   'master.intelligence.section.previewComponents': 'Aperçu de présentation (pas de données live)',

@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-intelligence-center-pr4-pdi-2026-10-29',
+    version: '4.9.5013',
+    title: 'Master Admin PDI device intelligence read APIs & UI (Draft)',
+    summary: [
+      'Read-only GET /admin/master-intelligence/pdi/devices/* intelligence + paginated connection episodes; reuses PDI inventory, assignments, audit, DIMO episodes, live R1 drift observation (no persisted drift history).',
+      'Device detail dialog: identity summary, timeline, episodes, drift semantics, VSI/APDS/vehicle cross-links; pdiDeviceId deep links.',
+      'MASTER_ADMIN RBAC without new MFA on read controller; nine-locale i18n.',
+    ],
+    reason: 'PR4 extends Master Intelligence with historical PDI evidence and canonical cross-navigation without provisioning or authority changes.',
+    previousBehavior: 'PDI detail showed operational actions and short audit list only; no connection episode or intelligence read layer.',
+    details:
+      'pdi-master-intelligence-read.*; PhysicalDeviceIntelligencePanel.tsx; api.admin.masterIntelligencePdi.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-29T06:00:00.000Z',
+  },
+  {
     id: 'master-intelligence-center-pr3-apds-2026-10-29',
     version: '4.9.5012',
     title: 'Master Admin Intelligence Center — PR3 APDS read APIs & UI (Draft)',
