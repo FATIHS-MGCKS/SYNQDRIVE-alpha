@@ -1,0 +1,392 @@
+{
+  "packageId": "ds4-l3b-decision-package-20261029",
+  "generatedAtUtc": "2026-10-29T16:13:08.490Z",
+  "upstreamBatchId": "ds4-historical-batch-v1-20261029",
+  "productionSha": "1bafb2aa3bd53722179c033adce552e88a9a44ab",
+  "immutableSources": [
+    "inputs/batch-dataset-summary.json",
+    "inputs/layer2-observables-index.json",
+    "inputs/event-intensity-dataset.jsonl",
+    "inputs/quality-exclusion-report.json",
+    "inputs/cohort-manifest.json"
+  ],
+  "population157": {
+    "totalTrips": 157,
+    "candidates": 116,
+    "excluded": 41
+  },
+  "partA": {
+    "primary116": {
+      "ARTEON": {
+        "tripCount": 20,
+        "accelAdmissibleEvents": 58,
+        "brakeAdmissibleEvents": 94,
+        "fullEvents": 46,
+        "binOnlyEvents": 94,
+        "layer2_accelImpulseNullTrips": 4,
+        "layer2_brakeImpulseNullTrips": 0,
+        "exclusionReasonCounts": {}
+      },
+      "AUDI_A4": {
+        "tripCount": 51,
+        "accelAdmissibleEvents": 308,
+        "brakeAdmissibleEvents": 452,
+        "fullEvents": 368,
+        "binOnlyEvents": 377,
+        "layer2_accelImpulseNullTrips": 3,
+        "layer2_brakeImpulseNullTrips": 0,
+        "exclusionReasonCounts": {}
+      },
+      "TIGUAN": {
+        "tripCount": 45,
+        "accelAdmissibleEvents": 121,
+        "brakeAdmissibleEvents": 278,
+        "fullEvents": 212,
+        "binOnlyEvents": 179,
+        "layer2_accelImpulseNullTrips": 9,
+        "layer2_brakeImpulseNullTrips": 0,
+        "exclusionReasonCounts": {}
+      },
+      "TESLA_M3": {
+        "tripCount": 0,
+        "accelAdmissibleEvents": 0,
+        "brakeAdmissibleEvents": 0,
+        "fullEvents": 0,
+        "binOnlyEvents": 0,
+        "layer2_accelImpulseNullTrips": 0,
+        "layer2_brakeImpulseNullTrips": 0,
+        "exclusionReasonCounts": {}
+      }
+    },
+    "full157": {
+      "ARTEON": {
+        "tripCount": 22,
+        "accelAdmissibleEvents": 60,
+        "brakeAdmissibleEvents": 94,
+        "fullEvents": 46,
+        "binOnlyEvents": 94,
+        "layer2_accelImpulseNullTrips": 5,
+        "layer2_brakeImpulseNullTrips": 1,
+        "exclusionReasonCounts": {
+          "ZERO_RATED_EVENTS": 2,
+          "ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS": 1
+        }
+      },
+      "AUDI_A4": {
+        "tripCount": 55,
+        "accelAdmissibleEvents": 308,
+        "brakeAdmissibleEvents": 452,
+        "fullEvents": 368,
+        "binOnlyEvents": 377,
+        "layer2_accelImpulseNullTrips": 6,
+        "layer2_brakeImpulseNullTrips": 3,
+        "exclusionReasonCounts": {
+          "ZERO_RATED_EVENTS": 4,
+          "EXPOSURE_NOT_DERIVABLE": 3,
+          "ASSESSMENT_STATUS_NOT_ELIGIBLE": 3
+        }
+      },
+      "TIGUAN": {
+        "tripCount": 47,
+        "accelAdmissibleEvents": 121,
+        "brakeAdmissibleEvents": 278,
+        "fullEvents": 212,
+        "binOnlyEvents": 179,
+        "layer2_accelImpulseNullTrips": 11,
+        "layer2_brakeImpulseNullTrips": 2,
+        "exclusionReasonCounts": {
+          "EXPOSURE_NOT_DERIVABLE": 2,
+          "ZERO_RATED_EVENTS": 2,
+          "ASSESSMENT_STATUS_NOT_ELIGIBLE": 2
+        }
+      },
+      "TESLA_M3": {
+        "tripCount": 33,
+        "accelAdmissibleEvents": 111,
+        "brakeAdmissibleEvents": 139,
+        "fullEvents": 114,
+        "binOnlyEvents": 89,
+        "layer2_accelImpulseNullTrips": 33,
+        "layer2_brakeImpulseNullTrips": 33,
+        "exclusionReasonCounts": {
+          "EXPOSURE_NOT_DERIVABLE": 33,
+          "EVIDENCE_QUALITY_NOT_PRESENT": 33,
+          "ZERO_RATED_EVENTS": 5
+        }
+      }
+    }
+  },
+  "partB": {
+    "intensityDefinition": "Event-level mean longitudinal acceleration magnitude meanAccelMps2 (m/s²) from DS4 event intensity eligibility records; ACCELERATION and DECELERATION kinds analyzed separately; FULL = classification ADMISSIBLE_FULL / durationTier FULL_ELIGIBLE only (≥3 s eligible steps in motion event detector policy).",
+    "units": "m/s² (meanAccelMps2)",
+    "ACCEL_FULL": {
+      "n": 207,
+      "min": 1.341,
+      "p10": 1.4558,
+      "p25": 1.547,
+      "p50": 1.708,
+      "p75": 1.8625,
+      "p90": 2.1151999999999997,
+      "p95": 2.2110999999999996,
+      "p99": 2.8894999999999995,
+      "max": 3.078,
+      "mean": 1.751696,
+      "eventCount": 207,
+      "tripCount": 81,
+      "vehicleCount": 3
+    },
+    "BRAKE_FULL": {
+      "n": 419,
+      "min": 1.31,
+      "p10": 1.5408,
+      "p25": 1.6465,
+      "p50": 1.819,
+      "p75": 2.0175,
+      "p90": 2.2925999999999997,
+      "p95": 2.4931999999999994,
+      "p99": 2.9729199999999993,
+      "max": 3.565,
+      "mean": 1.879234,
+      "eventCount": 419,
+      "tripCount": 100,
+      "vehicleCount": 3
+    },
+    "BIN_ONLY_counts": {
+      "ACCEL": 264,
+      "BRAKE": 386,
+      "total": 650
+    }
+  },
+  "partC": {
+    "modelVersion": "DS4_LOAD_OBSERVABLES_V1",
+    "exposureGate": "UNCALIBRATED",
+    "published_B_k_distributions": {
+      "ACCEL": {
+        "n": 100,
+        "min": 2.834,
+        "p10": 4.5759,
+        "p25": 8.927,
+        "p50": 16.4835,
+        "p75": 35.12925,
+        "p90": 53.00450000000001,
+        "p95": 58.4612,
+        "p99": 74.32109000000004,
+        "max": 82.052,
+        "mean": 23.16678
+      },
+      "BRAKE": {
+        "n": 116,
+        "min": 2.808,
+        "p10": 6.617,
+        "p25": 18.10625,
+        "p50": 31.9145,
+        "p75": 54.976,
+        "p90": 73.8035,
+        "p95": 82.81524999999999,
+        "p99": 116.83314999999995,
+        "max": 130.535,
+        "mean": 37.962793
+      }
+    },
+    "tripLevel_a50_a90_amax_fromEvents_candidatesOnly": {
+      "ACCEL_a50": {
+        "n": 31,
+        "min": 1.488,
+        "p10": 1.513,
+        "p25": 1.6030000000000002,
+        "p50": 1.685,
+        "p75": 1.8337500000000002,
+        "p90": 1.949,
+        "p95": 2.0067500000000003,
+        "p99": 2.08715,
+        "max": 2.117,
+        "mean": 1.718065
+      },
+      "ACCEL_a90": {
+        "n": 0,
+        "min": null,
+        "p10": null,
+        "p25": null,
+        "p50": null,
+        "p75": null,
+        "p90": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "mean": null
+      },
+      "ACCEL_amax": {
+        "n": 100,
+        "min": 1.417,
+        "p10": 1.5286,
+        "p25": 1.664,
+        "p50": 1.8565,
+        "p75": 2.1487499999999997,
+        "p90": 2.6104000000000003,
+        "p95": 2.983,
+        "p99": 5.269970000000111,
+        "max": 26.75,
+        "mean": 2.23242
+      },
+      "BRAKE_a50": {
+        "n": 65,
+        "min": 1.504,
+        "p10": 1.645,
+        "p25": 1.697,
+        "p50": 1.787,
+        "p75": 1.904,
+        "p90": 2.0326,
+        "p95": 2.1816,
+        "p99": 2.2994,
+        "max": 2.4210000000000003,
+        "mean": 1.818762
+      },
+      "BRAKE_a90": {
+        "n": 5,
+        "min": 1.882,
+        "p10": 1.99236,
+        "p25": 2.1579,
+        "p50": 2.215,
+        "p75": 2.2336,
+        "p90": 2.23924,
+        "p95": 2.2411200000000004,
+        "p99": 2.242624,
+        "max": 2.2430000000000003,
+        "mean": 2.1463
+      },
+      "BRAKE_amax": {
+        "n": 116,
+        "min": 1.404,
+        "p10": 1.6925,
+        "p25": 1.91525,
+        "p50": 2.1384999999999996,
+        "p75": 2.41975,
+        "p90": 2.9000000000000004,
+        "p95": 3.115,
+        "p99": 4.773699999999992,
+        "max": 27.396,
+        "mean": 2.435957
+      }
+    },
+    "nullSemantics": {
+      "accelImpulseNullTrips_all157": 55,
+      "brakeImpulseNullTrips_all157": 39,
+      "a90_nullReason": "L2 sets intensityP90FullMps2 null unless fullEventCount>=10 per kind per trip",
+      "a50_nullReason": "L2 sets intensityMedianFullMps2 null unless fullEventCount>=3 per kind per trip"
+    }
+  },
+  "partD": {
+    "vehicleConcentration_candidates": {
+      "ARTEON": 0.1724137931034483,
+      "AUDI_A4": 0.4396551724137931,
+      "TIGUAN": 0.3879310344827586,
+      "TESLA_M3": 0
+    },
+    "eventDependenceNote": "Events are nested within trips and vehicles; pooled event percentiles treat events as i.i.d. (optimistic precision).",
+    "selectionBias_excluded41": {
+      "tripCount": 41,
+      "meanAdmissibleEventsPerTrip": 6.146341463414634,
+      "zeroEventTrips": 12,
+      "exclusionReasonCounts": {
+        "EXPOSURE_NOT_DERIVABLE": 38,
+        "EVIDENCE_QUALITY_NOT_PRESENT": 33,
+        "ZERO_RATED_EVENTS": 13,
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE": 5,
+        "ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS": 1
+      },
+      "byVehicle": {
+        "ARTEON": {
+          "tripCount": 2,
+          "accelAdmissibleEvents": 2,
+          "brakeAdmissibleEvents": 0,
+          "fullEvents": 0,
+          "binOnlyEvents": 0,
+          "layer2_accelImpulseNullTrips": 1,
+          "layer2_brakeImpulseNullTrips": 1,
+          "exclusionReasonCounts": {
+            "ZERO_RATED_EVENTS": 2,
+            "ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS": 1
+          }
+        },
+        "AUDI_A4": {
+          "tripCount": 4,
+          "accelAdmissibleEvents": 0,
+          "brakeAdmissibleEvents": 0,
+          "fullEvents": 0,
+          "binOnlyEvents": 0,
+          "layer2_accelImpulseNullTrips": 3,
+          "layer2_brakeImpulseNullTrips": 3,
+          "exclusionReasonCounts": {
+            "ZERO_RATED_EVENTS": 4,
+            "EXPOSURE_NOT_DERIVABLE": 3,
+            "ASSESSMENT_STATUS_NOT_ELIGIBLE": 3
+          }
+        },
+        "TIGUAN": {
+          "tripCount": 2,
+          "accelAdmissibleEvents": 0,
+          "brakeAdmissibleEvents": 0,
+          "fullEvents": 0,
+          "binOnlyEvents": 0,
+          "layer2_accelImpulseNullTrips": 2,
+          "layer2_brakeImpulseNullTrips": 2,
+          "exclusionReasonCounts": {
+            "EXPOSURE_NOT_DERIVABLE": 2,
+            "ZERO_RATED_EVENTS": 2,
+            "ASSESSMENT_STATUS_NOT_ELIGIBLE": 2
+          }
+        },
+        "TESLA_M3": {
+          "tripCount": 33,
+          "accelAdmissibleEvents": 111,
+          "brakeAdmissibleEvents": 139,
+          "fullEvents": 114,
+          "binOnlyEvents": 89,
+          "layer2_accelImpulseNullTrips": 33,
+          "layer2_brakeImpulseNullTrips": 33,
+          "exclusionReasonCounts": {
+            "EXPOSURE_NOT_DERIVABLE": 33,
+            "EVIDENCE_QUALITY_NOT_PRESENT": 33,
+            "ZERO_RATED_EVENTS": 5
+          }
+        }
+      }
+    },
+    "selectionBias_candidates116": {
+      "meanAdmissibleEventsPerTrip": 11.301724137931034
+    },
+    "tailStability_BRAKE_FULL_p95": {
+      "baseline": 2.4931999999999994,
+      "leaveOneVehicleOut_p95": {
+        "ARTEON": 2.5174,
+        "AUDI_A4": 2.2759,
+        "TIGUAN": 2.6284,
+        "TESLA_M3": 2.4931999999999994
+      },
+      "maxAbsDelta_leaveOneVehicle": 0.21729999999999938,
+      "top5_leaveOneTrip_absDelta": [
+        {
+          "droppedTripId": "614c5faa-12c1-4a9d-9a27-5d441c0ef8cd",
+          "deltaFromBaseline": -0.05439999999999978
+        },
+        {
+          "droppedTripId": "6e1c7902-5f43-4c88-8b32-f9a711fc9347",
+          "deltaFromBaseline": -0.049600000000000755
+        },
+        {
+          "droppedTripId": "da7d60ed-04e9-430a-bf7f-a8d4d740135b",
+          "deltaFromBaseline": -0.03319999999999945
+        },
+        {
+          "droppedTripId": "37843185-fd59-4527-a9bd-d580d5431906",
+          "deltaFromBaseline": -0.0259999999999998
+        },
+        {
+          "droppedTripId": "b34e6757-d1cc-4b17-8e8e-5d4197a6b56e",
+          "deltaFromBaseline": -0.0259999999999998
+        }
+      ]
+    },
+    "disclaimer": "LOO checks are descriptive sensitivity only; not fleet generalizability proof."
+  }
+}

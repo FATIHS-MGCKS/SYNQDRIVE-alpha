@@ -1,0 +1,33 @@
+{
+  "packageId": "ds4-l3b-decision-package-20261029",
+  "questions": {
+    "1_sufficientForPreliminaryC4DescriptiveResearch": {
+      "answer": "YES_WITH_SCOPE",
+      "rationale": "116 strict candidates yield 565+914 admissible events and stable pooled FULL intensity bands for ICE-heavy subset (0 Tesla candidates). Suitable for within-cohort descriptive reference under C4_ONLY authority, not for calibrated customer classes or C5.1 transfer."
+    },
+    "2_distributionStability": {
+      "answer": "MODERATE",
+      "rationale": "Pooled BRAKE FULL p95 ~2.49 m/s²; leave-one-vehicle-out p95 shifts ≤~0.15 m/s² for Audi/Tiguan/Arteon; top leave-one-trip outliers exist (single-trip amax up to ~27 m/s²) indicating heavy trip clustering."
+    },
+    "3_vehicleIdentityEffect": {
+      "answer": "STRONG",
+      "rationale": "Candidates: 44% Audi, 39% Tiguan, 17% Arteon, 0% Tesla (all Tesla excluded). Excluded 41 trips are 33/33 Tesla evidence-quality failures. Vehicle label dominates selection and event mix."
+    },
+    "4_c4ToC5Transferability": {
+      "answer": "LOW",
+      "rationale": "C4 batch is pre-activation Path-B with no effective C5.1 runs. Speed authority, exposure provenance, and Tesla API_SYNTHETIC quality gates differ materially from post-activation C5.1 (48 Production trips inventoried; 2 pilot offline C5.1 references only)."
+    },
+    "5_evidenceBeforeCalibratedIntensityClasses": {
+      "required": [
+        "Dedicated C5.1 offline replay cohort using post-activation manifest pins (48 trips) with full l2 export including exposureSeconds",
+        "Balanced vehicle representation including Tesla after evidence-quality resolution",
+        "Explicit BIN_ONLY policy decision separate from FULL ordinal research",
+        "Independent validation split; no customer threshold inference from empirical percentiles alone"
+      ]
+    },
+    "6_fableMethodologyReviewReady": {
+      "answer": "YES_FOR_SCOPED_REVIEW",
+      "rationale": "C4 descriptive baselines, exclusion anatomy, and C5.1 inventory are documented; reviewers must treat Tesla exclusion and missing L2 exposure fields as explicit constraints."
+    }
+  }
+}

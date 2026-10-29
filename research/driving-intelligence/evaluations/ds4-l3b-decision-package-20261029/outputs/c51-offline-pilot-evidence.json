@@ -1,0 +1,52 @@
+{
+  "source": "immutable pilot offline replay artifacts (not batch v1)",
+  "pilotPath": "/opt/cursor/artifacts/ds4-historical-offline-replay-pilot-20261029",
+  "productionSha": "1bafb2aa3bd53722179c033adce552e88a9a44ab",
+  "effectiveC51PreferredTrips": [
+    {
+      "tripId": "5b43a2a3-ea98-4cab-8150-c23095591b04",
+      "label": "TESLA_M3",
+      "pilotBucket": "LEGACY",
+      "workItemCompletedAtUtc": "2026-10-27T13:04:07.664Z",
+      "speedAuthority": "C5_1_PREFERRED",
+      "layer2PublishedInPilot": {
+        "accelImpulseMps": "see pilot result JSON",
+        "brakeImpulseMps": "see pilot result JSON",
+        "exposureSeconds": "present in pilot per-trip l2 blob only"
+      },
+      "note": "Post-activation Tesla; excluded from Path-B batch cohort (had prod motion path)."
+    },
+    {
+      "tripId": "aed7ebb1-b2fe-4911-8ad5-d97254443c0c",
+      "label": "TIGUAN",
+      "pilotBucket": "PATH_A",
+      "workItemCompletedAtUtc": "2026-10-28T20:01:44.192Z",
+      "speedAuthority": "C5_1_PREFERRED",
+      "offlineReplayLayer2": {
+        "exposureSeconds": 1217,
+        "distanceKm": 15.016870381044555,
+        "exposureCoverageRatio": 0.987825,
+        "acceleration": {
+          "admissibleEventCount": 5,
+          "fullEventCount": 4,
+          "binOnlyEventCount": 1,
+          "specificLongitudinalImpulseMps": 45.864
+        },
+        "deceleration": {
+          "admissibleEventCount": 12,
+          "fullEventCount": 8,
+          "binOnlyEventCount": 4,
+          "specificLongitudinalImpulseMps": 85.745
+        }
+      }
+    }
+  ],
+  "aggregatePilotC51EventCounts": {
+    "trips": 2,
+    "admissibleAccelEvents": 5,
+    "admissibleBrakeEvents": 12,
+    "fullEvents": 12,
+    "binOnlyEvents": 5,
+    "disclaimer": "Pilot-only; not merged into C4 batch statistics."
+  }
+}

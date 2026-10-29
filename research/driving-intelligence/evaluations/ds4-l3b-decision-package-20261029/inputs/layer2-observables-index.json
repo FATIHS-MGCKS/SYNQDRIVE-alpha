@@ -1,0 +1,2566 @@
+[
+  {
+    "tripId": "000d0530-09c0-4071-9b91-ea2621a2b14a",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 6.938,
+      "brakeImpulseMps": 25.326,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "00578ab7-6999-4503-97bd-d793339cace2",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 21.362,
+      "brakeImpulseMps": 59.081,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "041b8b4f-43d4-48d5-bfb2-4a5a7ab4443c",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 9.886,
+      "brakeImpulseMps": 36.776,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "055646f6-9e82-4cb9-a244-9146f430a15e",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.425,
+      "brakeImpulseMps": 11.978,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "072b97a2-314b-4ab3-acb9-31e849bfbb92",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 25.819,
+      "brakeImpulseMps": 40.957,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "08f2e58c-fb66-4c35-bb94-7a98e3a8a3aa",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 10.947,
+      "brakeImpulseMps": 30.039,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "0cde545c-2f60-4e97-aa42-41495642e0f4",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 74.243,
+      "brakeImpulseMps": 130.535,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "0ecf583d-43b3-4f83-894b-9f3f83a5fe0f",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 14.787,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "0ee895a6-8767-4374-b903-2df7bce1803d",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 11.036,
+      "brakeImpulseMps": 27.889,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "0effed9d-0766-4e8e-a55f-62318e4ed636",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "0f8d2f76-9b09-4aba-8c56-fa7e2ce1c5a8",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "106479d8-e4e3-458c-ac9e-b2e501857cb2",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "11672ae2-67f4-4513-aedc-469cfea365dc",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 32.378,
+      "brakeImpulseMps": 56.726,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "11f5a645-752e-4b8a-b20a-9f1fc3a6673e",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "12bc216b-a593-4c5f-a8fb-0e934fa77a32",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 59.225,
+      "brakeImpulseMps": 72.125,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "1451b625-973b-494a-bbd1-41de55ff5498",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "15f58bbc-efa4-4178-b1a4-2a92946db2e2",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "168567f4-7eee-4614-a889-161d5c44d3fe",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.77,
+      "brakeImpulseMps": 11.638,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "16e83a59-e6e5-4d06-b1e0-08f82b9edb03",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 10.847,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "189bcf30-bfd8-467a-9a3b-303e6cdad64c",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 31.174,
+      "brakeImpulseMps": 54.186,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "19966c90-582b-4440-a767-b6abab05ac67",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "1d89b2fc-5cb1-42ce-a39d-a1388e97688b",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 7.81,
+      "brakeImpulseMps": 10.698,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "212cbcd4-6ac3-45cf-aa29-71280a20806f",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 11.483,
+      "brakeImpulseMps": 52.174,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "2237b42a-a7a0-4121-ab3c-1049312054b0",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 42.908,
+      "brakeImpulseMps": 44.984,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "23ac8ad8-61c2-41e0-9287-9c5ed19d995f",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "24deb8af-d9fd-4341-8b10-1b43fca70e52",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 0,
+      "brakeImpulseMps": 0,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "ZERO_RATED_EVENTS"
+      ]
+    }
+  },
+  {
+    "tripId": "27cccc88-b975-4d7d-b249-3a00612b4d31",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 34.743,
+      "brakeImpulseMps": 58.131,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "296b4997-8f2d-4bad-b958-3471d65a8881",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 9.638,
+      "brakeImpulseMps": 27.41,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "299a0ffc-3820-4b76-a2ad-538d2c85a646",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "29dff715-c2ce-4db6-8333-9b56bf855f00",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 5.157,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "2a478b12-73b6-48b4-b7d7-d1bb3ab9b390",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 43.5,
+      "brakeImpulseMps": 69.394,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "2bbec474-9d1c-43fd-b50b-54065ab90fa8",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 13.592,
+      "brakeImpulseMps": 6.296,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "30796c34-615c-4f1b-b21b-3a0b1afddaf4",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 16.076,
+      "brakeImpulseMps": 29.385,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "31d92e3f-0e85-43b8-9480-bb80ae89a447",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "371cba40-3148-47a7-ab76-2bd44f7290e8",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 9.77,
+      "brakeImpulseMps": 17.684,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "37843185-fd59-4527-a9bd-d580d5431906",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 7.085,
+      "brakeImpulseMps": 20.484,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "3815920e-19f6-4af5-b5d5-172efe1ceb89",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 13.79,
+      "brakeImpulseMps": 5.14,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "38df2b3d-0ab9-4b04-8b56-b991eb50210f",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    }
+  },
+  {
+    "tripId": "3964c15c-f107-44b2-988f-04772655d446",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    }
+  },
+  {
+    "tripId": "39f795a2-7de1-4cd8-9568-f7b42fda36d0",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 3.854,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "3a45e2d5-d3dc-4f4e-b2cf-7c68d6621fe3",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.425,
+      "brakeImpulseMps": 9.988,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "3c34a8ea-5ba4-445d-8158-01fb18cc6fa3",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 6.248,
+      "brakeImpulseMps": 30.148,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "3eb11f40-1e15-4f93-a8c5-cadfe160a8ae",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 12.934,
+      "brakeImpulseMps": 69.584,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "3f8e8ff9-36cd-4269-9b94-b6fe8d500614",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 44.723,
+      "brakeImpulseMps": 82.404,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "3fb1938f-0add-4d4c-ad3e-3b8a0b493260",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "3fd4f006-41ec-4349-bebd-11a322a9d9dc",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 12.216,
+      "brakeImpulseMps": 30.014,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "49b3dd9b-dceb-486b-a58c-a858385139f6",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 56.398,
+      "brakeImpulseMps": 58.373,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "4aa6e908-a484-49bc-941d-414152f6747b",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 3.378,
+      "brakeImpulseMps": 27.633,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "4c9c31b4-5aa9-4efc-b4b1-533b85bb980f",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 22.625,
+      "brakeImpulseMps": 36.026,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "4e325b5d-1e4b-4b5e-8ca9-a1863bed2b1b",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 6.546,
+      "brakeImpulseMps": 7.577,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "52f2ea04-74a1-45d4-acf3-6ddd5594de8e",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 3.024,
+      "brakeImpulseMps": 3.324,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "53bbbea9-5fda-49e7-8e1f-64e0f742aefb",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.35,
+      "brakeImpulseMps": 25.727,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "56250310-a066-421a-949c-7f4dbd520217",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 8.856,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "5739eb1c-5f37-4cdc-a064-f94ac0d22d8b",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 9.068,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "578b77e7-178b-4600-bbbc-c00564f82b08",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 19.773,
+      "brakeImpulseMps": 24.039,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "57f7926d-96eb-40ab-bd6d-e4ab7ec6fd88",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 13.424,
+      "brakeImpulseMps": 38.428,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "588f50ad-bc00-4c6a-8c8b-8a612672b2aa",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.59,
+      "brakeImpulseMps": 3.538,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "5a9d72ba-889e-4769-9bd8-6547d16a3659",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 9.504,
+      "brakeImpulseMps": 73.108,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "5b890e1b-b793-4373-8c69-81abc291e38b",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 3.328,
+      "brakeImpulseMps": 4.32,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "613a969d-00b3-459c-b393-2dda5fff9414",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 36.756,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "614c5faa-12c1-4a9d-9a27-5d441c0ef8cd",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 49.192,
+      "brakeImpulseMps": 66.567,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "630dc631-503f-43f2-b323-216cf0afc561",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 53.5,
+      "brakeImpulseMps": 54.792,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "632dc9c5-a8d9-45ce-a269-abe89d22d677",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 28.678,
+      "brakeImpulseMps": 72.938,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "6490582e-6f3c-41ad-93c2-e46c5d79d875",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 20.951,
+      "brakeImpulseMps": 37.625,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "65fc1342-5c2d-4b97-a861-0cd4b55b09c2",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 10.434,
+      "brakeImpulseMps": 30.93,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "6676f366-c192-4e27-97f1-8fcfd9302b4d",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "67ad8699-a7f9-4f2e-9e0e-0e4a8e575261",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 26.762,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "67c59626-f0bd-41a1-9f8a-cc3fad8b985f",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 9.284,
+      "brakeImpulseMps": 34.517,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "682b174b-9e7b-4872-a4e4-2d8ed8bdbb79",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 17.21,
+      "brakeImpulseMps": 38.223,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "6bb3ddf2-48ca-4a9f-8d29-141f760f78e3",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 36.288,
+      "brakeImpulseMps": 71.693,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "6e1c7902-5f43-4c88-8b32-f9a711fc9347",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 60.093,
+      "brakeImpulseMps": 97.654,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "6f1090c0-5718-416a-827e-f294258a240c",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 15.145,
+      "brakeImpulseMps": 30.193,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "6f25760e-73ee-458c-acf6-0ed1064e6465",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 13.6,
+      "brakeImpulseMps": 53.225,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "722211e7-20e7-400a-a547-8f001d4990c4",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 7.427,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "72617129-0b33-4ef7-92ae-33ce1c4feffc",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "73ac5fd1-ef0f-427c-80e8-e75fb6506fe2",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 45.763,
+      "brakeImpulseMps": 70.256,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "7493870b-8a52-41bb-a8e0-36a24ef0498e",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 6.032,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "76afdb1b-abdd-4c1d-bfc8-a44c86c218d6",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 53.351,
+      "brakeImpulseMps": 67.592,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "7ad8ca50-be0e-4295-a71f-d1e14ce2fca2",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 29.188,
+      "brakeImpulseMps": 27.674,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "7b3fe123-15a1-4c19-bb78-20ef986b8e7b",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 39.57,
+      "brakeImpulseMps": 39.481,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "7ddfd361-acf0-4595-b8c0-94dfd06cb58b",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.449,
+      "brakeImpulseMps": 18.49,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "7f37fd56-4529-42f6-b4db-03ec4b79f10d",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 8.354,
+      "brakeImpulseMps": 18.247,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "813feafd-53a7-43e6-a8e3-b377ccb9cf47",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 28.841,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "820ac255-7a37-4afa-bdbf-2777c023fe7a",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "84b14b8a-e0d3-4430-a0e9-89a050b919e6",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    }
+  },
+  {
+    "tripId": "8574efe6-f346-4a09-9bf8-6ac01edead9b",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 10.716,
+      "brakeImpulseMps": 3.344,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "86e20400-5f5d-410f-8db9-bb3b2f4db866",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 6.508,
+      "brakeImpulseMps": 20.948,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "889789fd-d67b-4fad-889f-7d858583788d",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 12.875,
+      "brakeImpulseMps": 54.909,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "8994beec-0305-4db9-939e-de7884216f55",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "89e9cf5c-a2be-4d87-9782-7cc932bae28b",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 59.89,
+      "brakeImpulseMps": 84.049,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "8a46e901-8c03-442f-9881-ae58d3b33df3",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "8aaf08be-3a92-4b73-959e-8662d6fc8906",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 42.797,
+      "brakeImpulseMps": 77.021,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "8ba833db-fb17-4fb4-a344-aecf89e612c1",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "8f0b4d37-bf1e-4fa1-8616-4d9c62e7ccbc",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    }
+  },
+  {
+    "tripId": "913e780d-0e44-4744-b6a0-781c72772437",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 40.835,
+      "brakeImpulseMps": 75.959,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "914d6d71-9bc1-43d8-882c-3b1bcfaa78a1",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "98113ec4-59b4-4a61-8f38-b4f16ed91298",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 19.718,
+      "brakeImpulseMps": 61.338,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "988a0bad-d6f0-47f3-a11b-120a2bcda8b6",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "99df4060-6e15-46b9-aa88-0aed2d8a5efd",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 4.938,
+      "brakeImpulseMps": 12.159,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "9ead317c-8725-4373-b9ac-8bb84d5549be",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 7.646,
+      "brakeImpulseMps": 2.808,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "a1c8593b-c16b-46ab-a138-12b1b86a254f",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 20.134,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "a30cac06-bf29-4d74-a73e-2e5a9947c8e9",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 18.842,
+      "brakeImpulseMps": 37.588,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "a3a9a5d4-73bf-44f3-b24c-034508f9b749",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 52.966,
+      "brakeImpulseMps": 35.619,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "a512d12a-77a8-414a-af42-5ddb2823841c",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 82.052,
+      "brakeImpulseMps": 65.376,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "a5a059db-d8e1-4fe3-9ee6-6f448b47f695",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "abbd40f0-cbe2-4a70-926d-ce7477e8e9e9",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 14.528,
+      "brakeImpulseMps": 25.842,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "adc9814c-455c-4bd0-a37a-7bc8a52b6e8c",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 28.001,
+      "brakeImpulseMps": 48.774,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "ae294bf1-7795-45a6-89ab-9e994da3e061",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "ZERO_RATED_EVENTS",
+        "ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS"
+      ]
+    }
+  },
+  {
+    "tripId": "af4236ab-8109-4a69-837c-b37eb75be9f1",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 5.388,
+      "brakeImpulseMps": 38.635,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "b23e8161-a6db-4778-a960-9a1a59f087b0",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 44.387,
+      "brakeImpulseMps": 118.402,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "b2a18fc4-61c1-4726-87bf-4197123a443d",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "b34e6757-d1cc-4b17-8e8e-5d4197a6b56e",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 7.085,
+      "brakeImpulseMps": 20.484,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "b42eaaa3-2097-4550-9563-2459bd7e2811",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 19.334,
+      "brakeImpulseMps": 35.411,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "b9840f41-6c08-4376-8beb-aa56a8cea0ee",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 39.872,
+      "brakeImpulseMps": 58.431,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "ba478ea9-60a0-4e99-be61-b526e7e45865",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 31.963,
+      "brakeImpulseMps": 74.499,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "bbe90c36-5700-43d5-aca0-2ff12f05d020",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 12.276,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "bc310e1b-5c87-488a-9a19-ceb40991cbe4",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 6.288,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "be07d73f-91cf-4d1c-8aea-bd550e595b08",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 19.463,
+      "brakeImpulseMps": 42.243,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "be80f104-035d-433a-9c55-1e8e2e31bc28",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 12.86,
+      "brakeImpulseMps": 52.714,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "bf00d930-f8ba-4a30-923a-15f95d44f986",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 58.421,
+      "brakeImpulseMps": 88.717,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "c069cc9b-6665-4681-bd1a-875cdd4e1b36",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "c0ec3b30-d798-4324-b78e-86e305a00b83",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 26.394,
+      "brakeImpulseMps": 78.29,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "c188c4d5-447b-40f9-bd0e-af17ab6a9b23",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "c26d3c13-867c-4be7-bb24-0704e4fd09fb",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 7.026,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "c319617a-1d3b-44c4-a4cc-396a7da30be1",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 29.61,
+      "brakeImpulseMps": 55.177,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "c40355b9-1863-4366-a21e-514cd75220fb",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 2.92,
+      "brakeImpulseMps": 6.938,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "c65e7b49-358c-4f9b-b34f-0354aa1f1949",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "ASSESSMENT_STATUS_NOT_ELIGIBLE"
+      ]
+    }
+  },
+  {
+    "tripId": "c66a91b3-a603-40a1-a8ef-3ac77603773b",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "c70b513f-9c06-4e88-bd53-29f075f02343",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 25.743,
+      "brakeImpulseMps": 45.166,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "d0af9cc7-ce0d-4e40-9854-2c1341e83bed",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 10.823,
+      "brakeImpulseMps": 34.834,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "d32c5c0b-e7a0-4d4f-92be-e2071f170485",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": 5.52,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "d7958194-28a2-4b24-a9c2-c1713992fa74",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 43.415,
+      "brakeImpulseMps": 107.943,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "d836fe46-f5fc-4f57-bf91-faa93b7b3f81",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 2.834,
+      "brakeImpulseMps": 9.522,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "d9001892-582b-42dc-a446-43024e40ecce",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 54.398,
+      "brakeImpulseMps": 33.369,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "d9128787-709a-451d-9c7c-364330683425",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "da7d60ed-04e9-430a-bf7f-a8d4d740135b",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 48.414,
+      "brakeImpulseMps": 79.901,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "dad8ec32-2c71-4a01-87f1-98bc79319a79",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 10.274,
+      "brakeImpulseMps": 20.236,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "de72034b-696a-495d-bd1a-cb6098faa886",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "dec9a316-dc8d-4235-9ac8-df4f2994b5ab",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 0,
+      "brakeImpulseMps": 0,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "ZERO_RATED_EVENTS"
+      ]
+    }
+  },
+  {
+    "tripId": "e29854a7-b9ae-4ce6-bda3-afe8ff31297a",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "e3624b7d-ae61-42eb-82a1-a4f46b0f8794",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 16.891,
+      "brakeImpulseMps": 44.703,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "e4f56a9d-ff8f-406f-aff0-61c15fb36b33",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "e7acf258-0a4f-4e6f-9e4d-eb7be29fa9ef",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 7.244,
+      "brakeImpulseMps": 30.211,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "e87dcc28-09cd-430d-a9ce-4e30f9b8684f",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "efad939c-4e42-4666-98bb-cac397201cc3",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 18.742,
+      "brakeImpulseMps": 24.327,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "f123d957-0058-404a-887f-a980ef0a38d4",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 15.938,
+      "brakeImpulseMps": 21.611,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "f38ba584-90da-4b79-80f9-bdfd14747988",
+    "label": "TESLA_M3",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": null,
+      "brakeImpulseMps": null,
+      "reasonCodes": [
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    },
+    "qualityClassification": {
+      "eligible": false,
+      "exclusionReasons": [
+        "EXPOSURE_NOT_DERIVABLE",
+        "ZERO_RATED_EVENTS",
+        "EVIDENCE_QUALITY_NOT_PRESENT"
+      ]
+    }
+  },
+  {
+    "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 22.284,
+      "brakeImpulseMps": 27.591,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "f502a4a0-02d2-421d-bb39-7c9af25ba38e",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 9.118,
+      "brakeImpulseMps": 32.899,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "f54fb726-3f49-4b13-9ba1-0f37dd509c04",
+    "label": "ARTEON",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 6.14,
+      "brakeImpulseMps": 14.675,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "f7e826f4-a1f5-4342-b97c-b175a1264c0e",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 49.247,
+      "brakeImpulseMps": 47.632,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "fcd7c026-7350-4ff4-b949-ab9e7a3b1392",
+    "label": "TIGUAN",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 3.062,
+      "brakeImpulseMps": 19.073,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "fd7ebe6d-2e6d-4561-9856-27cf785eced9",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 23.309,
+      "brakeImpulseMps": 43.337,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  },
+  {
+    "tripId": "fe0ebdaf-3a8d-4045-8c5b-8e151e5216e5",
+    "label": "AUDI_A4",
+    "speedAuthority": "C4_ONLY",
+    "layer2": {
+      "exposureGate": "UNCALIBRATED",
+      "accelImpulseMps": 23.659,
+      "brakeImpulseMps": 27.984,
+      "reasonCodes": []
+    },
+    "qualityClassification": {
+      "eligible": true,
+      "exclusionReasons": []
+    }
+  }
+]

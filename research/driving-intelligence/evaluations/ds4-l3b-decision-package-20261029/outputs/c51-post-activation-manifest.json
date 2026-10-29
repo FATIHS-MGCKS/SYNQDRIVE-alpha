@@ -1,0 +1,445 @@
+{
+  "manifestId": "ds4-c51-post-activation-manifest-20261029",
+  "activationSinceUtc": "2026-10-23T21:47:00.000Z",
+  "eligibilityRule": "TESLA_M3|TIGUAN vehicle admission + work_item.completed_at >= activationSinceUtc",
+  "tripCount": 48,
+  "byVehicle": {
+    "TESLA_M3": 13,
+    "TIGUAN": 35
+  },
+  "source": "production read-only SQL (pinned S4 work items)",
+  "trips": [
+    {
+      "tripId": "b304e9ad-0dcb-4b69-a93e-5364078a20a1",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 10:16:00.891528+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:7e5449916538c887e57b0044e91a93ac5f240571bc790fdd197bca778715876e",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:8162060012388729d3ae159697784cc21242633f69c1161ffdd8be8c43945428",
+      "distanceKm": 6.1,
+      "durationMinutes": 23
+    },
+    {
+      "tripId": "e4baba8a-76e1-4cbe-8eed-eae324447244",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-24 10:21:02.915692+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:7a48e2014109f131a75937c53ef05a821524b8391d45ecd34e9e6712c4623e96",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:3c95143168dac36fa27302a5400bd22aab2baec865658971315ad048a1d247f6",
+      "distanceKm": 11,
+      "durationMinutes": 28.1474
+    },
+    {
+      "tripId": "13e3448a-5abb-480c-ad10-92e03cf3e5db",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-24 11:15:40.538817+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:9bdd713400f638f379922f1724c674682ccb7b5b3772689e371577ac6dab8f62",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:3d48d2970050d8d8c1e00fdc39025d35fd32e209b65f560db73d4bbb741ea2f4",
+      "distanceKm": 15,
+      "durationMinutes": 29.87098333333333
+    },
+    {
+      "tripId": "b99ddebb-9f8b-49f5-8d03-3f8c0c1f1d09",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-24 15:03:42.265027+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:47dd845d0c5f6a99702c04f442c060ac541745f2a24f1223e8e448a821b86629",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:67f39748e769a0b5fe4df7662d9a45f971bfb1c462098e7b04ffa0fc9af52d42",
+      "distanceKm": 5,
+      "durationMinutes": 20.3
+    },
+    {
+      "tripId": "8af6a2e4-bb41-43b5-bbcf-a12a589eb769",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-24 17:03:23.075134+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:a41fb8ae8bd1a49cb52dd28f9804ab39f9ab83f662931a53ed5f7f1c3850dbab",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:a0b56582f82ffae75a2fe77e0a408ab52691c7c89a86488e9c0b5023d62dfc79",
+      "distanceKm": 4,
+      "durationMinutes": 14.41666666666667
+    },
+    {
+      "tripId": "2976d45f-2278-47f9-aacd-d4adaa3c96cc",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 17:23:23.398681+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:53a88dfb2eaab254d5ec050688f75afa202af3f66195891ccdb8e5d16613468c",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:f1c282abc2b85289a6d5966fe427f211e9431cc9f54cc7aa7fcb143d6da44c0f",
+      "distanceKm": 4.9,
+      "durationMinutes": 9.430866666666667
+    },
+    {
+      "tripId": "02d51d1f-9547-46db-b61e-e9c97340af46",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 17:23:40.911322+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:1de0c3b62ecbfb9693bb6123e664efa33919e5b3219b85865ad70f0de4b2afeb",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:7a5e24bdbb9463c736ba5181d31c732e95cd73dc2e9081aaa42b08d5e1157c40",
+      "distanceKm": 0.4,
+      "durationMinutes": 3.222633333333333
+    },
+    {
+      "tripId": "d79285f5-d5c7-4ea8-a833-4aff323c5b57",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 17:23:53.897722+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:74c6cff1325f93ff6ce28405f5dc493f67f50c251b3e29844ac484e9578f8ade",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:644988e52a5d90700cb275859f2cae029d51c8e196bf92da4440274a87ead606",
+      "distanceKm": 10.3,
+      "durationMinutes": 29.5204
+    },
+    {
+      "tripId": "4c34de6e-9b37-48e6-9d2e-3d09c5a5634e",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 17:33:23.364407+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:e450fc57f6567fe2c235f68776e42b001365f628199ac0024db7af5df1dfde75",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:90bc7f3f4e68918484e7d38d0337b963cbdc4a2375a926b3e3180261ed147ea6",
+      "distanceKm": 1.1,
+      "durationMinutes": 4.013966666666667
+    },
+    {
+      "tripId": "9ce1cb58-2c1d-4a4c-bc35-abc15fb82ca1",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 17:33:42.758506+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:02fd760ea8f7bbf09e5b86191e3f3b741338e7815635f5235d6def131a2eeeea",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:b9b7aab209fc6a7ca589febdf2318bee4e6dfaebe51d3d99e27fd73b9c1eb5c6",
+      "distanceKm": 2.1,
+      "durationMinutes": 41.01083333333333
+    },
+    {
+      "tripId": "15930210-06da-4f6e-9908-e3dde23c7b05",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-24 19:30:19.144303+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:a6678f49e382fd37ed25d51e5585dada83edb01c05c794ab33a09fed674f7587",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:d47956b280991c456096b467aee98ed33c3a5dc425864d47a87f30151d06dd99",
+      "distanceKm": 0,
+      "durationMinutes": 6.885316666666666
+    },
+    {
+      "tripId": "cb7709a7-dfba-4203-9402-d1f8a0bbdaab",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-24 19:30:40.932579+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:043632200a341d067254f209dc497f0d0629947dd24d6efc1034ad8de06a9add",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:c17ed5678547a2212e2c9b6cf754ea8fd8b6aebadd6460efdad718a371ba57f3",
+      "distanceKm": 12,
+      "durationMinutes": 19.0104
+    },
+    {
+      "tripId": "21c804eb-f567-4809-8404-da2ace02143d",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 19:50:10.818537+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:e6017ab5ce339a41f3e3c5fe86529cbc1476f9ce02e7bcfd164f6fe92f36d2ed",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:573ef54760128059e1d5ed69ff7dcdb32a22968d385481098ef2ddbee60270ff",
+      "distanceKm": 6,
+      "durationMinutes": 19.48333333333333
+    },
+    {
+      "tripId": "0fefe46a-cb45-4ea3-b320-130337e174fb",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 21:40:19.015065+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:02848d817ca790cc13c803f945bdd5fc52e8d649005e590e41e4e5e50a7b760a",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:c2595c0a6a77e713aa6db99c8a93a3d7e4f8c9e3a86e7bb64c87cd25bbf71651",
+      "distanceKm": 0,
+      "durationMinutes": 120.7
+    },
+    {
+      "tripId": "07eb7798-39dd-43e4-b661-2cfa00cb0a1a",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-24 21:40:31.407439+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:9ee16c16693025cc19811ec5063e9c5436c5fa04151fede0661115765b5934cf",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:767b233a7edd3930b0f3819e9bf56dd1d65115a9fe0c9bcb83ad58331f689ce7",
+      "distanceKm": 0,
+      "durationMinutes": 132
+    },
+    {
+      "tripId": "def454a0-1e7d-4080-859a-3ef2b46472f8",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-25 09:58:03.958908+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:f9b85d848e88690876ae2368ceb4a9dc9a3b8bd64775331be44e08cfd111f244",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:385fd0a77ca9fdce1d2b68d2cba3124138bdafd7114d97e5d77be319f0005998",
+      "distanceKm": 2,
+      "durationMinutes": 9.583333333333334
+    },
+    {
+      "tripId": "b26f9ddd-9b40-48c8-93cb-a598a2063211",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-25 11:08:04.545013+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:1897d08aac870fe70f13d3a699ccb49b7a17648b83a907e324639a2bf6ce329b",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:922b00351dfe1a26f9c96940c8b126570c74fa69dfe0e70011184c14dc458062",
+      "distanceKm": 12,
+      "durationMinutes": 23.53308333333333
+    },
+    {
+      "tripId": "90a903f6-6371-4b8e-a76a-ebb9071df1d5",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-25 12:37:21.152303+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:81b4115a4cd036143d2b407602d25b147beee64a6ac1b7b3ce776f38dec03e71",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:7fe90a05644d574b87a66ee3a016e707f090866a9b7c30b0bb49b6711f1fa2ae",
+      "distanceKm": 1.4,
+      "durationMinutes": 7.288516666666666
+    },
+    {
+      "tripId": "1ea72d87-dd40-47c5-b566-7ac16bb43c2a",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-25 14:17:21.266152+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:84784daade6ffbafdcb2150f79a20f2c1fac8e2474f7e366d5946f3ef0d26012",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:d4577b94876f5ed14750a72feb63a0682cd4f68c05ab0478e23e4ddba8746f58",
+      "distanceKm": 1.4,
+      "durationMinutes": 4.688416666666667
+    },
+    {
+      "tripId": "c70e23d2-7a2c-407b-b21f-a50702e1cb07",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-25 15:27:04.523425+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:e23506851b565a0099bb3b5f820e63732a2a6fb9b7f8f0bf92e3ecd4db46c6ca",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:06271ae86a6d6f9c57e540704eb10a06a9788a5d128db1b10d44ff57a2b88952",
+      "distanceKm": 23,
+      "durationMinutes": 25.34426666666667
+    },
+    {
+      "tripId": "67522ad7-e416-42a9-8ef6-5b304d322830",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-25 21:53:27.630163+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:276d2de857650ce11991e24feace2614c6059b941ab50ed3721c5c2ebbaa5613",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:dfde4af632fbe7bf97e8ef8e707019a19b3e007e945f69e3213cb580a931eff8",
+      "distanceKm": 3,
+      "durationMinutes": 5.787966666666667
+    },
+    {
+      "tripId": "ce179ac6-583d-4101-bf91-c2963186f210",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-25 21:53:34.964121+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c9c2b855f329d547eaf23eef2dbd2d401504832e363e4aebfc4b1f23c26e0543",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:d51e44d78c2b524200c977eef76f1a565b40e8ef3e39e39ddc2a8f5b6220121b",
+      "distanceKm": 2.1,
+      "durationMinutes": 5.414633333333334
+    },
+    {
+      "tripId": "c4b308c7-1e19-4340-9771-f900d06f4da1",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 00:13:28.975165+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:bd5330ce95b2688fc6d4f1abb7116a24a15b2323b913a40f8d19dbe5250b699f",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:03975c417b2f3662bb0ff0db0ef5d6dee87984acd4a746525165424521a2c84e",
+      "distanceKm": 23,
+      "durationMinutes": 26.04661666666667
+    },
+    {
+      "tripId": "d11af729-7474-4577-a2e2-8f3396df40a1",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 03:04:40.282103+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:4a5211ff3b361b163e0b2da112feefd9a71580aef6b18f22a4aca2f78ff089f9",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:92861637133813dc701c637cfb854fc2dd999099d511078bede8d1f42f56ceec",
+      "distanceKm": 0.6,
+      "durationMinutes": null
+    },
+    {
+      "tripId": "0ced919c-ed37-43ab-b18f-44da0edfda74",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 16:14:05.546793+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:96bd887e0cce5c15cebc0406d78295410846f09f52674d0a56587be6408af43e",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:f930004507bde2a47b07c5c1bf7c315cbca55327b8ff81545c077a3d7393ae72",
+      "distanceKm": 3,
+      "durationMinutes": 11.3
+    },
+    {
+      "tripId": "a628c854-a4a2-4dcd-a31a-02afc02ee13a",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 16:53:42.828195+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:ea8fae2fbfa9717c47399cd2b7193cd1504ef289740e5e30dad0eb01ae85edd4",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:a4f8af7eb2e36a1758a597cac52febdb685c05b31376158a92617bc35d00b2db",
+      "distanceKm": 1,
+      "durationMinutes": 3.4177
+    },
+    {
+      "tripId": "d2033ec1-8b3b-436f-9f7e-92c0ceb357b8",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 17:33:42.562461+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0d3e910fa8ed09e8bbb7037804b0c5c4e1b5a593d10cd0cc201fc196c4207c9d",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:c38360968a268e4420845aabbc2621849a47452d3aaf00578d9f1c1933717c20",
+      "distanceKm": 1,
+      "durationMinutes": 6.316666666666666
+    },
+    {
+      "tripId": "679934d5-855c-4c03-bf81-7d6e17fb82ff",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 18:13:41.295455+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:cd67d085bda4a381cfcd1aaf04959e7ea2904f1ea765ec094a18fcc31e05acae",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:c1f0c40a5dfbb999fd04f3a555c27e8e6b59de1951443770b706bdc2c11d91ee",
+      "distanceKm": 2,
+      "durationMinutes": 7.925183333333333
+    },
+    {
+      "tripId": "051177ea-88e4-4814-a25d-dca752f17b67",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-26 19:33:42.474938+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:aad37fe11b096205a8bba2cd205020dba73e73014ccad101f859efacc91b7e0e",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:03e7db8e78981039bbc2d31c22212f5927f46a5ecbf052296ac3b47a510fc475",
+      "distanceKm": 11,
+      "durationMinutes": 27.89658333333333
+    },
+    {
+      "tripId": "c8c321a8-2b08-4c9f-8ae2-13da7aa38d80",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 03:33:49.844133+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:9223edd7ab8b2d0e4cc7d8797dbe615ed2f484e46a37571e18854e9a52c61c31",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:2f01712e0dc816fa05d91183e903f4d4737bfc3ab6b7a370849d1eb87068e210",
+      "distanceKm": 2,
+      "durationMinutes": 2.39205
+    },
+    {
+      "tripId": "6ef2f1c1-d36a-4bb5-983a-c25ea56fc8ad",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-27 09:16:31.764388+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:16063e4c4c7c6d392aa09279c5c06aa3f832db703dc8e508d3345a8448a0515c",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:d51230fe1d5a5f530db779a32dc6a1f1d754e6140b61c0445dd594b87ee1d72a",
+      "distanceKm": 8.3,
+      "durationMinutes": 26.4514
+    },
+    {
+      "tripId": "7e72506d-b693-4910-8c1f-00849c9a3af3",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 11:11:29.391916+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:767bd2021409a8ea357c660a8ae04559a84c3cf4d9a3282d1218b970988a554c",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:f26f6ac26f4045f48a7e45da67a3416b7b9be5103d2311a2bb367112dd330b16",
+      "distanceKm": 4,
+      "durationMinutes": 84.28218333333334
+    },
+    {
+      "tripId": "b373f596-e580-4733-9163-24c441787d66",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 11:44:58.94417+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:b3cee4cfa462760759750b35cbf2d2cf86edd553558b7ac980f4b8e01f379b9f",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:3b42bf2d32fdb9ab311be20a2caf3bf16cd1b3e93e307cc63064abb302df1317",
+      "distanceKm": 10,
+      "durationMinutes": 18.16666666666667
+    },
+    {
+      "tripId": "5b43a2a3-ea98-4cab-8150-c23095591b04",
+      "label": "TESLA_M3",
+      "workItemCompletedAt": "2026-10-27 13:04:07.664232+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:0674b37081de496c171196993e6e03d2dc1478fac081f439d2ad06f6e88ac35d",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:eff1454f4929e905b2e8ea033cd4ec0875a775ecb6c3849bc7b4f34a01b27063",
+      "distanceKm": 15.1,
+      "durationMinutes": 41.30296666666667
+    },
+    {
+      "tripId": "29b8bb31-bc76-4b0f-a92f-c8897e982988",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 16:25:27.291155+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:4e65581dff6e34c604b8056d622449cc5bbe9212c82d87e8018b3884d5027e1e",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:9503c4290718507d09be13ddd34f4a926855f2df6c91c26c3fc7a33a520c8947",
+      "distanceKm": 2,
+      "durationMinutes": 11.25
+    },
+    {
+      "tripId": "0e276eb6-0f53-455f-8d12-bd81d2693a4d",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 16:55:27.306384+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:81ed133489db57158191768cfbba0022f42b020ba4dc593f511962a263f14b30",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:bc5eae1630570c02bb58c3bd4d6ee9bb2d5c03543653b111c5cacfe72b85fcd7",
+      "distanceKm": 5,
+      "durationMinutes": 27
+    },
+    {
+      "tripId": "f1bf4ae6-fb29-4e59-b39a-f9ea17d0714f",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 17:30:27.395729+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:1cf5cd9011f99a00d62ae6f7e8d31271b2566842283430f374b3e16fe8ee1c1e",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:8862ca69adecf9aeef6dc2fcc0b3c28e972efd55892b3c8d4ec9654b727efd60",
+      "distanceKm": 1,
+      "durationMinutes": 5.440866666666667
+    },
+    {
+      "tripId": "4f629778-5919-4159-978d-892e44e75e86",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 21:05:29.230581+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:9b5caf4658a72a7d7e44347cf871d98fc90e57711d93bef3e903acd38fdb7fb4",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:da30c6ea1f7f7690eaa824d27074d51c58aa25496a900ce48ae8dd000935c6a1",
+      "distanceKm": 16,
+      "durationMinutes": 21.95896666666667
+    },
+    {
+      "tripId": "b661a71f-3854-4952-91c9-bf2b12808150",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-27 21:05:47.188996+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:8e58c3cee941a228d6d8f1fb2f87c6fe5fa1948ee1b5af5d600edcf440cc9cd5",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:311728ae0945bae961bad4e4ad3bb2b4bf97b9aff57224e8d686f75485199f97",
+      "distanceKm": 0.4,
+      "durationMinutes": 1.033333333333333
+    },
+    {
+      "tripId": "dbdded5c-ee72-40f3-91bb-62d5a1b7f7ff",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 11:14:06.132374+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:4aae4fa0520e1165c14fb5108d2ff2ea875e6117e2acf2b5fadcc543f2c85aa7",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:d6daa226fe8051c3914f9ecfde028e2e64c056597e9eaf9a2d23e80b1208990f",
+      "distanceKm": 23,
+      "durationMinutes": 33.31666666666667
+    },
+    {
+      "tripId": "c0448fea-e7c3-4658-b2fd-417c452f70d7",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 12:14:07.036706+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:8c274613c285fb5a4cf0f48813d465b9af117504b21d5ca622f984ed03b30bad",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:cc1e9cb185b88136b4774653a23e1601127a67b8bca6892241a73c0f8c55f886",
+      "distanceKm": 2,
+      "durationMinutes": 5.56215
+    },
+    {
+      "tripId": "0a14d29d-167c-4f28-851b-5c6f6e7f3e5d",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 13:40:28.059834+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:283c3e7992bb85a884240b897f3fd6bc30b94c31cff2ae1ba156bcbce7c6894a",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:a11af1f0f84e1b83bf096fa179923001a97522acd971957cfffe74d039917830",
+      "distanceKm": 3,
+      "durationMinutes": 13.18333333333333
+    },
+    {
+      "tripId": "2ccf0d2a-d5b8-4612-aabe-b4c1f387d9af",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 14:05:19.673121+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:196e4e86ba71d2982a4a7ddf5253f4261f3147294e3b9cb1e540ca572b82a627",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:137d8ade78b71c4dfb500fea6ecddfd9cb22262aebd2a70ac5c5371b1b6fff67",
+      "distanceKm": 2,
+      "durationMinutes": 7.883333333333334
+    },
+    {
+      "tripId": "41743ff3-6e82-4dca-8cde-3203b4c5ccd5",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 14:10:19.362654+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c1d0fa5e23e9f0cbda61cd3c482ecb09c6a735734ccb1b9efea83913eed136c3",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:becf289702cfc8bc3418eaa555f74600df462cf90d82fca8a5cac6175b1906ca",
+      "distanceKm": 0,
+      "durationMinutes": 1.45
+    },
+    {
+      "tripId": "4dcc7cbf-9d1c-4efa-b395-6ad540091143",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 16:11:51.069473+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:7eafe60151c763bf5c72984ea35d48710be3f478e5a87cbf3ccbe20b46cf995b",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:1cd60286be65d620a391787d2a2d596174601ea9baefa09ee422826892deb825",
+      "distanceKm": 22,
+      "durationMinutes": 30.45
+    },
+    {
+      "tripId": "aed7ebb1-b2fe-4911-8ad5-d97254443c0c",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-28 20:01:44.192317+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:3a0868671fd52bb06fc04200aa9c7d010b04510e9f96678caf99c42ca806f379",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:c07f8de77ae7009378026074f3827cde07110797573934d81e45460fc47db712",
+      "distanceKm": 15,
+      "durationMinutes": 41
+    },
+    {
+      "tripId": "20be43c4-6ed4-4854-868b-de9b9cf92b1a",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-29 10:54:36.814862+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:538f2c4c95ae2a7796a4090d4d25ea85434bf03ed69ce0ab0f62b8e488f2cd33",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:71cda993beecef4ce1df8a7c55c40798c1bc9bda42fcc8cb8ccdcf0e3f8eae0f",
+      "distanceKm": 4,
+      "durationMinutes": 16.937
+    },
+    {
+      "tripId": "132d106c-e38f-48cf-979d-41e96e0466ae",
+      "label": "TIGUAN",
+      "workItemCompletedAt": "2026-10-29 15:50:22.265337+00",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:af5c8e873d4451337b10e34ef6f43ee831cf478e47017868f568a277a67955db",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:fa8394e2cd572241c9bb712129c79e51ab5eb97579c8085c67f016162e56b591",
+      "distanceKm": 6,
+      "durationMinutes": 15.19708333333333
+    }
+  ]
+}
