@@ -9,6 +9,50 @@ import {
 
 export const TOTAL_CANONICAL_CONTRACT_SURFACES = 65;
 
+/**
+ * Canonical display/storage units for Vehicle Specifications V3 (semantics only — numeric values unchanged).
+ * Frontend i18n unit labels must match these semantics (e.g. LV charge capacity → Ah, not A).
+ */
+export const VEHICLE_SPEC_CANONICAL_UNITS = {
+  motorPowerKw: 'kW',
+  systemMotorPowerKw: 'kW',
+  acOnboardChargerKw: 'kW',
+  dcFastChargeMaxKw: 'kW',
+  hvBatteryUsableCapacityKwh: 'kWh',
+  hvBatteryGrossCapacityKwh: 'kWh',
+  hvBatteryCapacityKwh: 'kWh',
+  lvBatteryAmpere: 'Ah',
+  lvBatteryChargeCapacity: 'Ah',
+  lvBatteryVolt: 'V',
+  electricCurrent: 'A',
+  torque: 'Nm',
+  engineDisplacementCc: 'cm³',
+  curbWeightKg: 'kg',
+  vehicleLengthMm: 'mm',
+  vehicleWidthMm: 'mm',
+  vehicleHeightMm: 'mm',
+  brakeRotorDiameterMm: 'mm',
+  brakePadThicknessMm: 'mm',
+  percentage: '%',
+  idleRpm: 'rpm',
+  maxRpm: 'rpm',
+  tankCapacityLiters: 'L',
+} as const;
+
+/** Legacy AI JSON keys mapped to canonical persisted/API field names (no value coercion). */
+export const VEHICLE_SPEC_LEGACY_AI_FIELD_ALIASES: Readonly<Record<string, string>> = {
+  batteryType: 'lvBatteryType',
+  batteryAmpere: 'lvBatteryAmpere',
+  batteryVolt: 'lvBatteryVolt',
+  hvBatteryCapacityKwh: 'hvBatteryUsableCapacityKwh',
+  frontToRearWeightDistribution: 'frontWeightDistributionPct',
+  brakeForceDistribution: 'brakeForceFrontPercent',
+};
+
+export function resolveVehicleSpecLegacyAiAlias(fieldKey: string): string {
+  return VEHICLE_SPEC_LEGACY_AI_FIELD_ALIASES[fieldKey] ?? fieldKey;
+}
+
 export const NON_PERSISTENT_VEHICLE_SPEC_INPUT_FIELDS = [
   'electrificationLevel',
   'lvBatteryChemistry',
