@@ -49,6 +49,10 @@ import {
   resolveWheelInitialTread,
 } from './tire-wear-v3-prior.math';
 import { TireWearV3PriorRepository } from './tire-wear-v3-prior.repository';
+import {
+  assessPosteriorCalibrationEligibleFromPrior,
+  filterTrustedV3NumericalMeasurementRows,
+} from './tire-wear-v3-numerical-evidence';
 import { resolveV3VerificationStatus } from './tire-wear-v3-verification.resolver';
 import type {
   TireWearV3MeasurementPoint,
@@ -168,6 +172,9 @@ export class TireWearV3PriorService {
       measurementsRawAll,
       activePeriod,
     );
+    const trustedNumericalMeasurements = filterTrustedV3NumericalMeasurementRows(
+      measurementsRaw,
+    );
 
     const rotationEvents = await this.prisma.tirePositionHistory.findMany({
       where: { tireSetId: tireSetupId },
@@ -199,6 +206,9 @@ export class TireWearV3PriorService {
     if (measurementsRawAll.length > measurementsRaw.length) {
       setupFlags.push('MEASUREMENTS_EXCLUDED_OUTSIDE_MOUNT_PERIOD');
     }
+    if (measurementsRaw.length > trustedNumericalMeasurements.length) {
+      setupFlags.push('MEASUREMENTS_EXCLUDED_UNTRUSTED_NUMERICAL_SOURCE');
+    }
     if (ledgerRowsAll.length > ledgerRows.length) {
       setupFlags.push('LEDGER_ROWS_EXCLUDED_OUTSIDE_MOUNT_PERIOD');
     }
@@ -216,7 +226,7 @@ export class TireWearV3PriorService {
       anchorOdometerKm: periodAnchorOdometer,
       currentOdometerKm,
       ledgerDistanceKm,
-      measurementOdometers: measurementsRaw
+      measurementOdometers: trustedNumericalMeasurements
         .map((m) => m.odometerAtMeasurement)
         .filter((o): o is number => o != null && Number.isFinite(o)),
     });
@@ -263,7 +273,7 @@ export class TireWearV3PriorService {
       );
       const field = wheelField(position);
       const measurementPoints: TireWearV3MeasurementPoint[] = [];
-      for (const m of measurementsRaw) {
+      for (const m of trustedNumericalMeasurements) {
         const tread = m[field];
         if (tread == null || !Number.isFinite(tread)) continue;
         measurementPoints.push({
@@ -271,7 +281,7 @@ export class TireWearV3PriorService {
           odometerKm: m.odometerAtMeasurement,
           treadMm: tread,
           source: m.source,
-          isCalibrationPoint: m.isCalibrationPoint,
+          isCalibrationPoint: m.isCalibrationPoint ?? false,
         });
       }
 

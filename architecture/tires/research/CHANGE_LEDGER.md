@@ -220,3 +220,14 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Failed or missing V3 compute never presents legacy V2 as authoritative wear; rental stays measurement-required without new HARD_BLOCK |
 | VALIDATION | Jest: `tire-health-v3-read*.spec`, `tires.service.v3-fail-closed.spec`, existing `tire-health-recalculate-v3-cutover.spec` |
 | NON_EFFECTS | Flags default OFF; no migration; no DS4/RPM changes; `persistShadow: false` unchanged; β=0 unchanged |
+
+### Tire V3 measurement numerical evidence safety follow-up (2026-10-29)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Post–#2232: `computeForSetup` could still consume mount-period rows excluded from verification (e.g. `ai_confirmed` with finite odometer) for rate segments and projection anchors; ingest `verificationEligible` did not require mount-period timestamp; `posteriorCalibrationEligible` could be inferred from setup flags rather than fused wheel rates |
+| WHY | Close numerical evidence-integrity gaps without changing DS4, dynamic β, physics, or production cutover state |
+| CHANGE | `tire-wear-v3-numerical-evidence.ts` trusted-row filter + posterior eligibility from per-wheel `measurement_fused`; `TireWearV3PriorService.computeForSetup` uses trusted rows only for rate/odometer validation/projection; `assessV3Ingestion` mount-period gate on verification + posterior from prior wheels |
+| EXPECTED_EFFECT | Excluded sources never silently drive trusted V3 numbers; single accepted point cannot imply empirical rate calibration |
+| VALIDATION | Jest: `tire-wear-v3-numerical-evidence.spec`, extended `tire-measurement-v3-ingestion.spec`, `tire-wear-v3-prior.service.spec`, existing P3 consumer + rental fail-closed + productive isolation specs |
+| NON_EFFECTS | No deploy, migration, DS4, β, or V2 writer changes; global V3 fail-closed semantics preserved |

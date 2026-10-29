@@ -14,6 +14,7 @@ import {
 } from './tire-odometer-anchor';
 import type { RecordTireMeasurementCommand } from './tire-lifecycle.service';
 import type { TireWearV3PriorSetupResult } from './wear-v3-prior/tire-wear-v3-prior.types';
+import { assessPosteriorCalibrationEligibleFromPrior } from './wear-v3-prior/tire-wear-v3-numerical-evidence';
 
 export const TIRE_MEASUREMENT_TREAD_MIN_MM = 0;
 export const TIRE_MEASUREMENT_TREAD_MAX_MM = 20;
@@ -156,15 +157,7 @@ function buildMeasurementRowForV3Assessment(args: {
 export function assessPosteriorCalibrationEligible(
   prior: TireWearV3PriorSetupResult | null | undefined,
 ): boolean {
-  if (!prior?.rated) return false;
-  const blocked = new Set([
-    'RATE_INSUFFICIENT_POINTS',
-    'RATE_INSUFFICIENT_SPAN',
-    'RATE_ROTATION_UNVERIFIED',
-    'ROTATION_DURING_MOUNT_PERIOD',
-    'VERIFICATION_ROTATION_IDENTITY_UNVERIFIED',
-  ]);
-  return !prior.setupFlags.some((f) => blocked.has(f));
+  return assessPosteriorCalibrationEligibleFromPrior(prior);
 }
 
 export function assessV3Ingestion(args: {
@@ -258,9 +251,15 @@ export function assessV3Ingestion(args: {
 
   const accepted = isAcceptedVerificationMeasurement(row);
   const verificationExcluded = isVerificationExcludedLegacySource(args.legacySource);
+  const inMountPeriod = assertMeasuredAtInMountPeriod(args.measuredAt, args.mountPeriod);
   const verificationEligible =
-    groundTruth && !verificationExcluded && accepted.accepted;
-  const posteriorCalibrationEligible = assessPosteriorCalibrationEligible(args.priorResult);
+    groundTruth &&
+    !verificationExcluded &&
+    accepted.accepted &&
+    inMountPeriod;
+  const posteriorCalibrationEligible = assessPosteriorCalibrationEligibleFromPrior(
+    args.priorResult,
+  );
 
   if (groundTruth && !accepted.accepted && accepted.flags.includes('VERIFICATION_NO_TREAD_VALUES')) {
     warnings.push({
@@ -280,13 +279,10 @@ export function assessV3Ingestion(args: {
       message:
         'Empirical wear-rate calibration requires at least two spaced measurements with explicit odometer — a single point can anchor verification only.',
     });
-  }
-
-  if (groundTruth && verificationEligible && posteriorCalibrationEligible) {
     warnings.push({
       code: 'V3_VERIFICATION_ANCHOR_ONE_POINT',
       message:
-        'This measurement can anchor V3 verification cadence; rate calibration still requires additional spaced points.',
+        'This measurement can anchor V3 verification cadence; empirical rate calibration requires additional spaced points.',
     });
   }
 

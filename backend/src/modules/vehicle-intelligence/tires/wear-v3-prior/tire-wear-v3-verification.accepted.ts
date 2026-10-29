@@ -20,6 +20,7 @@ export interface RawTreadMeasurementRow {
   rearRightMm: number | null;
   source: string;
   evidenceSource: TireEvidenceSource | null;
+  isCalibrationPoint?: boolean;
 }
 
 export interface AcceptedVerificationMeasurement {
