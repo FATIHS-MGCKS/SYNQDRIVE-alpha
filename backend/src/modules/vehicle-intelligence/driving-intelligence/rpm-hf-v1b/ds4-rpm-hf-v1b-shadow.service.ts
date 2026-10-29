@@ -12,10 +12,15 @@ import {
 import { evaluateDs4RpmHfV1bEnablement } from './ds4-rpm-hf-v1b-control-plane';
 import { Ds4RpmHfV1bOutboxRepository } from './ds4-rpm-hf-v1b-outbox.repository';
 import { processDs4RpmHfV1bShadowTrip } from './ds4-rpm-hf-v1b-processor';
-import { DS4_RPM_HF_V1B_ENGINE_VERSION } from './ds4-rpm-hf-v1b.contract';
-import { computeDs4RpmHfV1bInputFingerprint } from './ds4-rpm-hf-v1b-input-fingerprint';
+import { processDs4RpmHfV1bShadowTripTierAware } from './ds4-rpm-hf-v1b-tier-processor';
+import {
+  DS4_RPM_HF_V1B_ENGINE_VERSION,
+  DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE,
+} from './ds4-rpm-hf-v1b.contract';
+import { computeDs4RpmHfV1bInputFingerprint, computeDs4RpmHfV1bTierAwareInputFingerprint } from './ds4-rpm-hf-v1b-input-fingerprint';
 import { computeDs4RpmHfV1bDeferNextAttemptAt } from './ds4-rpm-hf-v1b-readiness-schedule';
 import { isTripInputEligibleForAutomaticRevision } from './ds4-rpm-hf-v1b-revision-eligibility';
+import { isTripInputEligibleForTierAwareAutomaticRevision } from './ds4-rpm-hf-v1b-revision-eligibility';
 import { Ds4RpmHfV1bRunRepository } from './ds4-rpm-hf-v1b-run.repository';
 
 export type Ds4RpmHfV1bPassResult = {
@@ -81,7 +86,13 @@ export class Ds4RpmHfV1bShadowService {
       now,
     });
 
-    await this.probeBoundedInputRevisions(now);
+    await this.probeBoundedInputRevisions(now, DS4_RPM_HF_V1B_ENGINE_VERSION, computeDs4RpmHfV1bInputFingerprint, isTripInputEligibleForAutomaticRevision);
+    await this.probeBoundedInputRevisions(
+      now,
+      DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE,
+      computeDs4RpmHfV1bTierAwareInputFingerprint,
+      isTripInputEligibleForTierAwareAutomaticRevision,
+    );
 
     const claimed = await this.outbox.claimBatch(this.runtimeConfig.batchLimit, now);
     const result = { ...empty, configured: true, discovered, claimed: claimed.length };
@@ -113,6 +124,7 @@ export class Ds4RpmHfV1bShadowService {
       organizationId: string;
       tripId: string;
       vehicleId: string;
+      engineVersion: string;
       claimToken: string;
       attemptCount: number;
     },
@@ -143,7 +155,7 @@ export class Ds4RpmHfV1bShadowService {
     const existingFp = await this.runs.findSucceededFingerprint({
       organizationId: row.organizationId,
       tripId: row.tripId,
-      engineVersion: DS4_RPM_HF_V1B_ENGINE_VERSION,
+      engineVersion: row.engineVersion,
     });
 
     const tripInput = await this.tripInputService.buildTripInput({
@@ -152,12 +164,20 @@ export class Ds4RpmHfV1bShadowService {
       tripId: row.tripId,
     });
 
-    const processed = processDs4RpmHfV1bShadowTrip({
-      tripInput,
-      attemptCount: row.attemptCount,
-      computedAt: now,
-      existingSucceededFingerprint: existingFp,
-    });
+    const isTierAware = row.engineVersion === DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE;
+    const processed = isTierAware
+      ? processDs4RpmHfV1bShadowTripTierAware({
+          tripInput,
+          attemptCount: row.attemptCount,
+          computedAt: now,
+          existingSucceededFingerprint: existingFp,
+        })
+      : processDs4RpmHfV1bShadowTrip({
+          tripInput,
+          attemptCount: row.attemptCount,
+          computedAt: now,
+          existingSucceededFingerprint: existingFp,
+        });
 
     if (processed.kind === 'IDEMPOTENT') {
       await this.outbox.markSucceeded(row.outboxId, row.claimToken, processed.fingerprint);
@@ -231,13 +251,18 @@ export class Ds4RpmHfV1bShadowService {
     return 'TERMINAL';
   }
 
-  /** Bounded explicit input-revision reopen (not unbounded rediscovery). */
-  private async probeBoundedInputRevisions(now: Date): Promise<void> {
+  private async probeBoundedInputRevisions(
+    now: Date,
+    engineVersion: string,
+    fingerprintFn: (tripInput: import('../rpm-hf-v1a/ds4-rpm-hf-v1a.contract').Ds4RpmHfV1aTripInputV1) => string,
+    eligibleFn: (tripInput: import('../rpm-hf-v1a/ds4-rpm-hf-v1a.contract').Ds4RpmHfV1aTripInputV1) => boolean,
+  ): Promise<void> {
     const cp = this.runtimeConfig.controlPlane;
     const probes = await this.outbox.listSucceededForRevisionProbe({
       organizationAllowlist: [...cp.organizationAllowlist],
       vehicleAllowlist: [...cp.vehicleAllowlist],
       limit: DS4_RPM_HF_V1B_TUNING.revisionProbeLimitPerPass,
+      engineVersion,
     });
     for (const row of probes) {
       try {
@@ -247,15 +272,15 @@ export class Ds4RpmHfV1bShadowService {
           vehicleId: row.vehicleId,
           tripId: row.tripId,
         });
-        if (!isTripInputEligibleForAutomaticRevision(tripInput)) {
+        if (!eligibleFn(tripInput)) {
           continue;
         }
-        const liveFingerprint = computeDs4RpmHfV1bInputFingerprint(tripInput);
+        const liveFingerprint = fingerprintFn(tripInput);
         if (row.succeededInputFingerprint === liveFingerprint) continue;
         await this.outbox.reopenForInputRevision(row.outboxId, now);
       } catch (error) {
         this.logger.warn(
-          `rpm hf v1b revision probe skipped tripId=${row.tripId}: ${
+          `rpm hf v1b revision probe skipped tripId=${row.tripId} engine=${engineVersion}: ${
             error instanceof Error ? error.message.slice(0, 120) : 'unknown'
           }`,
         );

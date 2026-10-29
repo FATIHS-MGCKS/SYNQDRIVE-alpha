@@ -15,6 +15,47 @@ import {
 
 const GAP_OVER_2S_THRESHOLD = 2;
 
+export type Ds4RpmHfV1bTemporalCadenceProfile = {
+  nominalCadenceSeconds: 1 | 2 | 3;
+  bucketWidthSeconds: number;
+  sequenceMaxGapSeconds: number;
+  interPointGapReportThresholdSeconds: number;
+};
+
+export const DS4_RPM_HF_V1B_TEMPORAL_PROFILE_1S: Ds4RpmHfV1bTemporalCadenceProfile = {
+  nominalCadenceSeconds: 1,
+  bucketWidthSeconds: 1,
+  sequenceMaxGapSeconds: DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS,
+  interPointGapReportThresholdSeconds: GAP_OVER_2S_THRESHOLD,
+};
+
+export const DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S: Ds4RpmHfV1bTemporalCadenceProfile = {
+  nominalCadenceSeconds: 2,
+  bucketWidthSeconds: 2,
+  sequenceMaxGapSeconds: 3,
+  interPointGapReportThresholdSeconds: 3,
+};
+
+export const DS4_RPM_HF_V1B_TEMPORAL_PROFILE_3S: Ds4RpmHfV1bTemporalCadenceProfile = {
+  nominalCadenceSeconds: 3,
+  bucketWidthSeconds: 3,
+  sequenceMaxGapSeconds: 4,
+  interPointGapReportThresholdSeconds: 4,
+};
+
+export function resolveTemporalCadenceProfileForTier(
+  tier: 'RPM_1S' | 'RPM_2S' | 'RPM_3S',
+): Ds4RpmHfV1bTemporalCadenceProfile {
+  switch (tier) {
+    case 'RPM_2S':
+      return DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S;
+    case 'RPM_3S':
+      return DS4_RPM_HF_V1B_TEMPORAL_PROFILE_3S;
+    default:
+      return DS4_RPM_HF_V1B_TEMPORAL_PROFILE_1S;
+  }
+}
+
 export type Ds4RpmHfV1bTemporalAnalysis = {
   tripWindow: Ds4RpmHfV1bTemporalTripWindow;
   rpmValues: Ds4RpmHfV1bRpmValueStats;
@@ -27,11 +68,14 @@ export type Ds4RpmHfV1bTemporalAnalysis = {
  * Deterministic temporal quality analysis bound to canonical trip boundaries.
  * Bucket indices use UTC epoch seconds: floor(ms/1000).
  */
-export function computeDs4RpmHfV1bTemporalAnalysis(input: Ds4RpmHfV1bTemporalEngineInput): Ds4RpmHfV1bTemporalAnalysis {
+export function computeDs4RpmHfV1bTemporalAnalysis(
+  input: Ds4RpmHfV1bTemporalEngineInput,
+  cadenceProfile: Ds4RpmHfV1bTemporalCadenceProfile = DS4_RPM_HF_V1B_TEMPORAL_PROFILE_1S,
+): Ds4RpmHfV1bTemporalAnalysis {
   const tripStartMs = Date.parse(input.tripStartIso);
   const tripEndMs = Date.parse(input.tripEndIso);
   if (!Number.isFinite(tripStartMs) || !Number.isFinite(tripEndMs) || tripEndMs < tripStartMs) {
-    return emptyAnalysis(input, tripStartMs, tripEndMs);
+    return emptyAnalysis(input, tripStartMs, tripEndMs, cadenceProfile);
   }
 
   const sorted = [...input.points]
@@ -39,14 +83,15 @@ export function computeDs4RpmHfV1bTemporalAnalysis(input: Ds4RpmHfV1bTemporalEng
     .filter((p) => Number.isFinite(p.recordedAtMs))
     .sort((a, b) => a.recordedAtMs - b.recordedAtMs);
 
-  const tripStartBucket = Math.floor(tripStartMs / 1000);
-  const tripEndBucket = Math.floor(tripEndMs / 1000);
+  const bucketWidthMs = cadenceProfile.bucketWidthSeconds * 1000;
+  const tripStartBucket = Math.floor(tripStartMs / bucketWidthMs);
+  const tripEndBucket = Math.floor(tripEndMs / bucketWidthMs);
   const eligibleBuckets = Math.max(0, tripEndBucket - tripStartBucket + 1);
 
   const inWindow = sorted.filter((p) => p.recordedAtMs >= tripStartMs && p.recordedAtMs <= tripEndMs);
   const observedBucketSet = new Set<number>();
   for (const p of inWindow) {
-    observedBucketSet.add(Math.floor(p.recordedAtMs / 1000));
+    observedBucketSet.add(Math.floor(p.recordedAtMs / bucketWidthMs));
   }
 
   const rpmValues = inWindow.map((p) => p.valueRpm).filter((v) => Number.isFinite(v));
@@ -87,10 +132,12 @@ export function computeDs4RpmHfV1bTemporalAnalysis(input: Ds4RpmHfV1bTemporalEng
     { startMs: tripStartMs, endMs: tripEndMs },
   ]);
   const sortedIntervals = [...intervals].sort((a, b) => a - b);
-  const gapCountOver2Seconds = intervals.filter((i) => i > GAP_OVER_2S_THRESHOLD).length;
+  const gapCountOverThreshold = intervals.filter(
+    (i) => i > cadenceProfile.interPointGapReportThresholdSeconds,
+  ).length;
   const longestObservedGapSeconds = sortedIntervals.length > 0 ? sortedIntervals[sortedIntervals.length - 1]! : null;
 
-  const sequences = computeContinuousSequences(inWindow);
+  const sequences = computeContinuousSequences(inWindow, cadenceProfile.sequenceMaxGapSeconds);
 
   return {
     tripWindow: {
@@ -123,7 +170,7 @@ export function computeDs4RpmHfV1bTemporalAnalysis(input: Ds4RpmHfV1bTemporalEng
       medianIntervalSeconds: medianSeconds(intervals),
       p95IntervalSeconds: percentileSeconds(sortedIntervals, 95),
       maxIntervalSeconds: longestObservedGapSeconds,
-      gapCountOver2Seconds,
+      gapCountOver2Seconds: gapCountOverThreshold,
       longestObservedGapSeconds,
     },
     sequences,
@@ -188,13 +235,14 @@ function computeInternalMissingBucketCount(
  */
 function computeContinuousSequences(
   points: ReadonlyArray<{ recordedAtMs: number }>,
+  sequenceMaxGapSeconds: number,
 ): Ds4RpmHfV1bSequenceStats {
   if (points.length === 0) {
     return {
       continuousSequenceCount: 0,
       longestContinuousSequenceSeconds: null,
       observedSequenceDurationSeconds: null,
-      sequenceGapRuleSeconds: DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS,
+      sequenceGapRuleSeconds: sequenceMaxGapSeconds,
     };
   }
 
@@ -213,7 +261,7 @@ function computeContinuousSequences(
   for (let i = 1; i < points.length; i += 1) {
     const curr = points[i]!.recordedAtMs;
     const gapSec = (curr - seqPrev) / 1000;
-    if (gapSec > DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS) {
+    if (gapSec > sequenceMaxGapSeconds) {
       closeSequence();
       sequenceCount += 1;
       seqStart = curr;
@@ -226,7 +274,7 @@ function computeContinuousSequences(
     continuousSequenceCount: sequenceCount,
     longestContinuousSequenceSeconds: points.length >= 2 ? longest : 0,
     observedSequenceDurationSeconds: points.length >= 1 ? totalContinuousObservedSeconds : null,
-    sequenceGapRuleSeconds: DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS,
+    sequenceGapRuleSeconds: sequenceMaxGapSeconds,
   };
 }
 
@@ -234,6 +282,7 @@ function emptyAnalysis(
   input: Ds4RpmHfV1bTemporalEngineInput,
   tripStartMs: number,
   tripEndMs: number,
+  cadenceProfile: Ds4RpmHfV1bTemporalCadenceProfile,
 ): Ds4RpmHfV1bTemporalAnalysis {
   const tripDurationSeconds =
     Number.isFinite(tripStartMs) && Number.isFinite(tripEndMs) && tripEndMs >= tripStartMs
@@ -277,7 +326,7 @@ function emptyAnalysis(
       continuousSequenceCount: 0,
       longestContinuousSequenceSeconds: null,
       observedSequenceDurationSeconds: null,
-      sequenceGapRuleSeconds: DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS,
+      sequenceGapRuleSeconds: cadenceProfile.sequenceMaxGapSeconds,
     },
   };
 }

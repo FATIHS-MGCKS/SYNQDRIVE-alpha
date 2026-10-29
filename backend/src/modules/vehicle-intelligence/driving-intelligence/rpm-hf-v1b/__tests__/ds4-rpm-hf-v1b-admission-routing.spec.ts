@@ -68,6 +68,8 @@ function baseTripInput(
     },
     rpmPoints: [],
     vsiActiveRpmProfileSnapshot: null,
+    vsiRpmCadenceTierSnapshot: null,
+    tierEvidence: null,
     readOnly: true,
     productionActivationForbidden: true,
     ...rest,

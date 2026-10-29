@@ -3,7 +3,9 @@ import type {
   VsiActiveRpmProfileLabel,
   VsiActiveRpmProfileResolutionV1,
   VsiIceRpmApplicability,
+  VsiRpmCadenceTierResolutionV1,
 } from '../../vehicle-signal-intelligence/vsi-profile-cadence.types';
+import type { Ds4RpmHfTierEvidenceV1 } from '../ds4-rpm-hf-tier-evidence.types';
 
 export const DS4_RPM_HF_V1A_CONTRACT_VERSION = 'ds4-rpm-hf-v1a-v1' as const;
 
@@ -90,6 +92,10 @@ export type Ds4RpmHfV1aTripInputV1 = {
   /** Valid RPM points when processing allowed and read succeeded. */
   rpmPoints: Array<{ recordedAtIso: string; valueRpm: number }>;
   vsiActiveRpmProfileSnapshot: VsiActiveRpmProfileResolutionV1 | null;
+  /** Link-scoped operational tier block (Phase 2); not used for legacy V1A admission. */
+  vsiRpmCadenceTierSnapshot: VsiRpmCadenceTierResolutionV1 | null;
+  /** Per-trip tier row + freshness binding for tier-aware V1B only. */
+  tierEvidence: Ds4RpmHfTierEvidenceV1 | null;
   readOnly: true;
   productionActivationForbidden: true;
 };

@@ -69,3 +69,57 @@ export function computeDs4RpmHfV1bInputFingerprint(tripInput: Ds4RpmHfV1aTripInp
   };
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
+
+function tierMaterialEvidenceSlice(
+  tierEvidence: NonNullable<Ds4RpmHfV1aTripInputV1['tierEvidence']>,
+): Record<string, unknown> | null {
+  if (tierEvidence.status !== 'AVAILABLE' || !tierEvidence.tripClassification) {
+    return {
+      status: tierEvidence.status,
+      tripId: tierEvidence.tripId,
+    };
+  }
+  const row = tierEvidence.tripClassification;
+  return {
+    status: tierEvidence.status,
+    tripId: tierEvidence.tripId,
+    endMs: row.endMs,
+    tier: row.tier,
+    cadenceConfidence: row.cadenceConfidence,
+    tripCoverageBand: row.tripCoverageBand,
+    analysisReadiness: row.analysisReadiness,
+    decisionCode: row.decisionCode,
+    intervalEvidenceUsed: row.intervalEvidenceUsed,
+  };
+}
+
+/**
+ * Tier-aware shadow fingerprint — legacy {@link computeDs4RpmHfV1bInputFingerprint} unchanged.
+ * Excludes block-level evidenceObservedAt and rolling vehicle tier summary.
+ */
+export function computeDs4RpmHfV1bTierAwareInputFingerprint(
+  tripInput: Ds4RpmHfV1aTripInputV1,
+): string {
+  const legacyCore = {
+    organizationId: tripInput.organizationId,
+    vehicleId: tripInput.vehicleId,
+    tripId: tripInput.tripId,
+    providerSourceLinkId: tripInput.providerSourceLinkId,
+    tripStartIso: tripInput.tripStartIso,
+    tripEndIso: tripInput.tripEndIso,
+    chStatus: tripInput.clickHouseRead.status,
+    tenantScopeViolation: tripInput.clickHouseRead.tenantScopeViolation,
+    completenessLabel: tripInput.dataQuality.completenessLabel,
+    invalidValueCount: tripInput.dataQuality.invalidValueCount,
+    duplicateTimestampCount: tripInput.dataQuality.duplicateTimestampCount,
+    rpmSeriesDigest: canonicalRpmSeriesDigest(tripInput.rpmPoints),
+  };
+  const payload = {
+    contractVersion: DS4_RPM_HF_V1B_CONTRACT_VERSION,
+    engineVersion: 'ds4-rpm-hf-v1b-engine-v1-tier-aware',
+    v1aContractVersion: tripInput.contractVersion,
+    ...legacyCore,
+    tierEvidence: tripInput.tierEvidence ? tierMaterialEvidenceSlice(tripInput.tierEvidence) : null,
+  };
+  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
