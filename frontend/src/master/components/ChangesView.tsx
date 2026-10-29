@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-master-intelligence-load-loop-hotfix-2026-10-29',
+    version: '4.9.5016',
+    title: 'VSI Master Intelligence — infinite loading hook stability (Draft)',
+    summary: [
+      'Stable useCallback deps on orgId/vehicleId/providerSourceLinkId/asOf (fixes PR #2242 [input] identity loop → permanent “VSI-Lesemodelle werden geladen…”).',
+      'Load-generation guard so stale overview/profile/revision responses cannot overwrite after rapid vehicle switch.',
+      'Hook regression tests: stable rerender, vehicle change, revision failure isolation, stale concurrency, empty profiles, StrictMode.',
+    ],
+    reason:
+      'Production @ ebe901538: inline hook input + load deps [input] retriggered useEffect every render; loading never settled; empty provider link picker.',
+    previousBehavior:
+      'Every parent render created new input object → new load → effect loop; spinner permanent despite successful API responses.',
+    details:
+      'useVsiMasterIntelligenceData.ts; useVsiMasterIntelligenceData.test.ts; preserves #2242 revision failure isolation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-29T14:40:00.000Z',
+  },
+  {
     id: 'vsi-master-intelligence-revision-di-hotfix-2026-10-29',
     version: '4.9.5015',
     title: 'VSI Master Intelligence — revision history DI hotfix (Draft)',

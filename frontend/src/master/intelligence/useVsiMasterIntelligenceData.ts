@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type {
   MasterVsiFleetOverviewDto,
@@ -41,28 +41,46 @@ export function useVsiMasterIntelligenceData(input: {
   providerSourceLinkId: string | null;
   asOf: string | null;
 }) {
+  const { orgId, vehicleId, providerSourceLinkId, asOf } = input;
   const [state, setState] = useState<VsiMasterIntelligenceLoadState>(emptyLoad);
+  const loadGenerationRef = useRef(0);
 
   const loadRevisionsForLink = useCallback(
-    async (orgId: string, vehicleId: string, linkId: string, asOf: string | null) => {
-      setState((prev) => ({ ...prev, revisionsLoading: true, revisionsError: null }));
+    async (
+      orgIdArg: string,
+      vehicleIdArg: string,
+      linkId: string,
+      asOfArg: string | null,
+      generation: number,
+    ) => {
+      const isCurrent = () => loadGenerationRef.current === generation;
+      setState((prev) =>
+        isCurrent() ? { ...prev, revisionsLoading: true, revisionsError: null } : prev,
+      );
       try {
-        const revisions = await api.admin.masterIntelligenceVsi.revisions(orgId, vehicleId, linkId, {
-          limit: 20,
-        });
+        const revisions = await api.admin.masterIntelligenceVsi.revisions(
+          orgIdArg,
+          vehicleIdArg,
+          linkId,
+          {
+            limit: 20,
+          },
+        );
+        if (!isCurrent()) return;
         let revisionAsOf: MasterVsiRevisionAsOfDto | null = null;
-        if (asOf) {
+        if (asOfArg) {
           try {
             revisionAsOf = await api.admin.masterIntelligenceVsi.revisionAsOf(
-              orgId,
-              vehicleId,
+              orgIdArg,
+              vehicleIdArg,
               linkId,
-              asOf,
+              asOfArg,
             );
           } catch {
             revisionAsOf = null;
           }
         }
+        if (!isCurrent()) return;
         setState((prev) => ({
           ...prev,
           revisions,
@@ -71,6 +89,7 @@ export function useVsiMasterIntelligenceData(input: {
           revisionsError: null,
         }));
       } catch (e) {
+        if (!isCurrent()) return;
         setState((prev) => ({
           ...prev,
           revisions: null,
@@ -84,11 +103,14 @@ export function useVsiMasterIntelligenceData(input: {
   );
 
   const load = useCallback(async () => {
-    const { orgId, vehicleId, providerSourceLinkId, asOf } = input;
     if (!orgId || !vehicleId) {
+      loadGenerationRef.current += 1;
       setState({ ...emptyLoad });
       return;
     }
+
+    const generation = ++loadGenerationRef.current;
+    const isCurrent = () => loadGenerationRef.current === generation;
 
     setState((prev) => ({
       ...prev,
@@ -99,6 +121,7 @@ export function useVsiMasterIntelligenceData(input: {
     }));
     try {
       const overview = await api.admin.masterIntelligenceVsi.overview(orgId, vehicleId);
+      if (!isCurrent()) return;
       let profile: MasterVsiProfileDetailDto | null = null;
       let capabilityExplanation: unknown | null = null;
 
@@ -107,6 +130,7 @@ export function useVsiMasterIntelligenceData(input: {
         try {
           profile = await api.admin.masterIntelligenceVsi.profile(orgId, vehicleId, linkId);
         } catch (e) {
+          if (!isCurrent()) return;
           setState({
             ...emptyLoad,
             overview,
@@ -115,6 +139,8 @@ export function useVsiMasterIntelligenceData(input: {
           });
           return;
         }
+
+        if (!isCurrent()) return;
 
         try {
           capabilityExplanation = await api.admin.masterIntelligenceVsi.capabilityResolver(
@@ -131,6 +157,8 @@ export function useVsiMasterIntelligenceData(input: {
           capabilityExplanation = null;
         }
 
+        if (!isCurrent()) return;
+
         setState({
           overview,
           profile,
@@ -143,7 +171,7 @@ export function useVsiMasterIntelligenceData(input: {
           revisionsLoading: true,
         });
 
-        await loadRevisionsForLink(orgId, vehicleId, linkId, asOf);
+        await loadRevisionsForLink(orgId, vehicleId, linkId, asOf, generation);
         return;
       }
 
@@ -159,24 +187,32 @@ export function useVsiMasterIntelligenceData(input: {
         revisionsLoading: false,
       });
     } catch (e) {
+      if (!isCurrent()) return;
       setState({
         ...emptyLoad,
         loading: false,
         error: errorMessage(e),
       });
     }
-  }, [input, loadRevisionsForLink]);
+  }, [orgId, vehicleId, providerSourceLinkId, asOf, loadRevisionsForLink]);
 
   const refreshRevisions = useCallback(async () => {
-    const { orgId, vehicleId, providerSourceLinkId, asOf } = input;
     if (!orgId || !vehicleId) return;
     const linkId =
       providerSourceLinkId ??
       state.overview?.profiles[0]?.providerSourceLinkId ??
       null;
     if (!linkId) return;
-    await loadRevisionsForLink(orgId, vehicleId, linkId, asOf);
-  }, [input, state.overview, loadRevisionsForLink]);
+    const generation = ++loadGenerationRef.current;
+    await loadRevisionsForLink(orgId, vehicleId, linkId, asOf, generation);
+  }, [
+    orgId,
+    vehicleId,
+    providerSourceLinkId,
+    asOf,
+    state.overview,
+    loadRevisionsForLink,
+  ]);
 
   useEffect(() => {
     void load();
