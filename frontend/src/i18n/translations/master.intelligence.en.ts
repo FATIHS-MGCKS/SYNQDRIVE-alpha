@@ -8,7 +8,47 @@ export const masterIntelligenceEn = {
     'Read-only vehicle signal profiles, observed cadence labels, revision history when captured, and capability resolver explanations from production data.',
   'master.intelligence.apds.title': 'APDS – Adaptive Polling',
   'master.intelligence.apds.description':
-    'Shadow reconciliation decisions and linked real poll evidence. Live decision history arrives in PR3.',
+    'Read-only shadow reconciliation decisions, activation epoch history, real poll evidence when linked, and historical VSI correlation. Simulated next-poll times are not executed polls.',
+
+  'master.intelligence.apds.loading': 'Loading APDS read models…',
+  'master.intelligence.apds.error': 'Could not load APDS intelligence.',
+  'master.intelligence.apds.latestDecision': 'Latest persisted decision',
+  'master.intelligence.apds.activeEpoch': 'Active epoch',
+  'master.intelligence.apds.decisionsForVehicle': 'decisions for this vehicle in epoch',
+  'master.intelligence.apds.shadowNotReal':
+    'Shadow recommendations and simulated next-poll timestamps are not proof of a real scheduled or executed poll.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'Historical VSI correlation is research evidence — it did not necessarily drive this APDS decision at runtime.',
+  'master.intelligence.apds.openVsiAsOf': 'Open VSI with decision as-of time',
+
+  'master.intelligence.apds.empty.selectScope.title': 'Select organization and vehicle',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Choose scope to load persisted shadow decisions and epochs. Provider source link enables VSI correlation; scope is validated server-side.',
+
+  'master.intelligence.apds.section.epochs': 'Activation epoch timeline',
+  'master.intelligence.apds.section.decisions': 'Decision explorer',
+  'master.intelligence.apds.section.detail': 'Decision detail',
+
+  'master.intelligence.apds.col.time': 'Decision time',
+  'master.intelligence.apds.col.reason': 'Reason',
+  'master.intelligence.apds.col.policy': 'Policy',
+  'master.intelligence.apds.col.realPoll': 'Real poll link',
+
+  'master.intelligence.apds.detail.shadow': 'Shadow recommendation (persisted outputs)',
+  'master.intelligence.apds.detail.realPoll': 'Real poll evidence',
+  'master.intelligence.apds.detail.vsiCorrelation': 'VSI historical correlation',
+
+  'master.intelligence.apds.availability.AVAILABLE': 'Shadow evidence available',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'APDS shadow not activated for this scope',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'No reconciliation decisions captured',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Persisted history unavailable',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Evidence incomplete for this scope',
+
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Not linked to a real poll',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Linked — poll log not verified',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Linked — success recorded',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Linked — non-success status',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Real poll evidence not available',
 
   'master.intelligence.section.context': 'URL context',
   'master.intelligence.section.crossLinks': 'Cross-links',

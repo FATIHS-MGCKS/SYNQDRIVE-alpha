@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-intelligence-center-pr3-apds-2026-10-29',
+    version: '4.9.5012',
+    title: 'Master Admin Intelligence Center — PR3 APDS read APIs & UI (Draft)',
+    summary: [
+      'Read-only GET /admin/master-intelligence/apds/* (MASTER_ADMIN RBAC; MFA deferred by owner): overview, epoch history, paginated decisions, decision detail, VSI as-of correlation, real poll evidence lookup.',
+      'Strict shadow vs real poll semantics; simulatedNextPollAt is not execution proof; tenant/org/vehicle scope; masked provider identifiers.',
+      'APDS Master Admin UI replaces PR1 placeholder; decision explorer with detail panel, epoch timeline, VSI cross-nav with as-of; nine-locale i18n.',
+    ],
+    reason:
+      'PR3 delivers production-data-backed read-only APDS shadow observability integrated with PR1 navigation and PR2 VSI correlation.',
+    previousBehavior:
+      'APDS intelligence page was an honest placeholder without live decision or epoch data.',
+    details:
+      'backend/.../apds-master-intelligence-read.*; frontend ApdsMasterIntelligenceView.tsx, useApdsMasterIntelligenceData.ts, api.admin.masterIntelligenceApds.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-28T23:30:00.000Z',
+  },
+  {
     id: 'master-intelligence-center-pr2-2026-10-28',
     version: '4.9.5011',
     title: 'Master Admin Intelligence Center — PR2 VSI read APIs & UI (Draft)',
