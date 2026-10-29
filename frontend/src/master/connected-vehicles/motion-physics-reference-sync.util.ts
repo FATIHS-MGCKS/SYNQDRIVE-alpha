@@ -15,6 +15,13 @@ export const MOTION_SYSTEM_POWER_DEFINITION_OPTIONS = [
   'OEM_RATED_SYSTEM_KW_ESTIMATED',
 ] as const;
 
+/** Must stay aligned with backend MOTION_SYSTEM_POWER_DEFINITION_LEGACY_ALIASES. */
+const MOTION_SYSTEM_POWER_DEFINITION_LEGACY_ALIASES: Readonly<
+  Record<string, MotionSystemPowerDefinitionOption>
+> = {
+  OEM_RATED_ENGINE_KW: 'OEM_RATED_MOTOR_KW',
+};
+
 export type MotionSystemPowerDefinitionOption = (typeof MOTION_SYSTEM_POWER_DEFINITION_OPTIONS)[number];
 
 export const MOTION_PHYSICS_SYNC_REASON_CODES = {
@@ -422,7 +429,7 @@ export function snapshotMotionPhysicsFromActiveReference(ref: {
     systemMotorPowerKw: ref.systemMotorPowerKw != null ? String(ref.systemMotorPowerKw) : '',
     accel0To100S: ref.accel0To100S != null ? String(ref.accel0To100S) : '',
     variantAssumption: ref.variantAssumption ?? '',
-    systemPowerDefinition: ref.systemPowerDefinition?.trim() ?? '',
+    systemPowerDefinition: parseMotionSystemPowerDefinitionOption(ref.systemPowerDefinition),
   });
 }
 
@@ -440,7 +447,8 @@ export function buildMotionPhysicsReferenceCreateBody(input: {
     systemMotorPowerKw: parseMotionPhysicsDecimalField(input.systemMotorPowerKw),
     accel0To100S: parseMotionPhysicsDecimalField(input.accel0To100S),
     variantAssumption: input.variantAssumption.trim() || null,
-    systemPowerDefinition: input.systemPowerDefinition.trim() || null,
+    systemPowerDefinition:
+      parseMotionSystemPowerDefinitionOption(input.systemPowerDefinition) || null,
     source: input.source,
     manualOperatorConfirm: input.manualOperatorConfirm === true ? true : undefined,
   };
@@ -469,6 +477,8 @@ export function parseMotionSystemPowerDefinitionOption(
   raw: unknown,
 ): MotionSystemPowerDefinitionOption | '' {
   const token = String(raw ?? '').trim().toUpperCase();
+  const legacy = MOTION_SYSTEM_POWER_DEFINITION_LEGACY_ALIASES[token];
+  if (legacy) return legacy;
   if ((MOTION_SYSTEM_POWER_DEFINITION_OPTIONS as readonly string[]).includes(token)) {
     return token as MotionSystemPowerDefinitionOption;
   }

@@ -132,6 +132,7 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 import { VehicleDetailObservabilityService } from './observability/vehicle-detail-observability.service';
 import { classifyVehicleDetailProviderError } from './observability/vehicle-detail-log.util';
+import { normalizeMotionSystemPowerDefinition } from '@modules/vehicle-intelligence/motion-physics-reference/motion-physics-reference.domain';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -913,7 +914,9 @@ export class VehiclesService {
       motionPhysicsVariantAssumption:
         adminEnrichment?.motionReference?.variantAssumption?.trim() ?? '',
       systemPowerDefinition:
-        adminEnrichment?.motionReference?.systemPowerDefinition?.trim() ?? '',
+        normalizeMotionSystemPowerDefinition(
+          adminEnrichment?.motionReference?.systemPowerDefinition,
+        ) ?? '',
       connectionModality:
         adminEnrichment?.connectionIdentity?.connectionModality ?? null,
       telemetryConnectionFamily:
