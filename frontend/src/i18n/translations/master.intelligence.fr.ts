@@ -179,4 +179,18 @@ export const masterIntelligenceFr = {
   'master.intelligence.vsi.asOf.title': 'Résolution de révision as-of',
   'master.intelligence.vsi.asOf.decisionAt': 'Heure de décision',
   'master.intelligence.vsi.asOf.authority': 'Autorité',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Résumés en lecture seule des API VSI, APDS et PDI. Les badges reflètent des preuves observées ou persistées — pas une preuve matérielle.',
+  'master.intelligence.vehicleDetail.loading': 'Chargement des résumés intelligence…',
+  'master.intelligence.vehicleDetail.error': 'Impossible de charger les résumés intelligence pour ce véhicule.',
+  'master.intelligence.vehicleDetail.openVsi': 'Ouvrir le détail VSI',
+  'master.intelligence.vehicleDetail.openApds': 'Ouvrir le détail APDS',
+  'master.intelligence.vehicleDetail.openPdi': 'Ouvrir le détail appareil',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'Aucune décision persistée dans le périmètre.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Aucun appareil physique installé unique attribué à ce véhicule.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Plusieurs liens source fournisseur — lien principal affiché ; confirmez le lien dans VSI/APDS avant toute hypothèse inter-véhicules.',
 } as const;

@@ -158,4 +158,18 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.asOf.title': 'As-of rozlišení revize',
   'master.intelligence.vsi.asOf.decisionAt': 'Čas rozhodnutí',
   'master.intelligence.vsi.asOf.authority': 'Autorita',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Souhrny pouze ke čtení z API VSI, APDS a PDI. Štítky odrážejí pozorované nebo persistované důkazy — ne hardware důkaz.',
+  'master.intelligence.vehicleDetail.loading': 'Načítání souhrnů intelligence…',
+  'master.intelligence.vehicleDetail.error': 'Souhrny intelligence pro toto vozidlo se nepodařilo načíst.',
+  'master.intelligence.vehicleDetail.openVsi': 'Otevřít detail VSI',
+  'master.intelligence.vehicleDetail.openApds': 'Otevřít detail APDS',
+  'master.intelligence.vehicleDetail.openPdi': 'Otevřít detail zařízení',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'V rozsahu není persistované rozhodnutí.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Tomuto vozidlu není přiřazeno jediné nainstalované fyzické zařízení.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Více provider source linků — zobrazen primární link; ověřte link ve VSI/APDS před předpoklady napříč vozidly.',
 } as const;

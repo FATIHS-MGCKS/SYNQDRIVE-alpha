@@ -179,4 +179,18 @@ export const masterIntelligencePl = {
   'master.intelligence.vsi.asOf.title': 'Rozstrzygnięcie rewizji as-of',
   'master.intelligence.vsi.asOf.decisionAt': 'Czas decyzji',
   'master.intelligence.vsi.asOf.authority': 'Autorytet',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Podsumowania tylko do odczytu z API VSI, APDS i PDI. Etykiety odzwierciedlają obserwacje lub trwałe dowody — nie dowód sprzętu.',
+  'master.intelligence.vehicleDetail.loading': 'Ładowanie podsumowań intelligence…',
+  'master.intelligence.vehicleDetail.error': 'Nie udało się załadować podsumowań intelligence dla tego pojazdu.',
+  'master.intelligence.vehicleDetail.openVsi': 'Otwórz szczegóły VSI',
+  'master.intelligence.vehicleDetail.openApds': 'Otwórz szczegóły APDS',
+  'master.intelligence.vehicleDetail.openPdi': 'Otwórz szczegóły urządzenia',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'Brak trwałej decyzji w zakresie.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Brak pojedynczego zainstalowanego urządzenia fizycznego przypisanego do tego pojazdu.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Wiele linków źródłowych dostawcy — pokazano link główny; potwierdź link w VSI/APDS przed założeniami między pojazdami.',
 } as const;

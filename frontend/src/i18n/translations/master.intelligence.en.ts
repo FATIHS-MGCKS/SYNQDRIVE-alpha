@@ -185,6 +185,19 @@ export const masterIntelligenceEn = {
   'master.intelligence.vsi.asOf.title': 'As-of revision resolution',
   'master.intelligence.vsi.asOf.decisionAt': 'Decision time',
   'master.intelligence.vsi.asOf.authority': 'Authority',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Read-only summaries from VSI, APDS, and PDI APIs. Labels reflect observed or persisted evidence — not hardware proof.',
+  'master.intelligence.vehicleDetail.loading': 'Loading intelligence summaries…',
+  'master.intelligence.vehicleDetail.error': 'Could not load intelligence summaries for this vehicle.',
+  'master.intelligence.vehicleDetail.openVsi': 'Open VSI detail',
+  'master.intelligence.vehicleDetail.openApds': 'Open APDS detail',
+  'master.intelligence.vehicleDetail.openPdi': 'Open device detail',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'No persisted decision in scope.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice': 'No single installed physical device attributed to this vehicle.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Multiple provider source links — primary link shown; confirm link on VSI/APDS before cross-vehicle assumptions.',
 } as const;
 
 export type MasterIntelligenceTranslationKey = keyof typeof masterIntelligenceEn;

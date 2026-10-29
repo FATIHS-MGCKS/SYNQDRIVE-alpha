@@ -26,6 +26,7 @@ import {
   mapSummaryToRpmBadge,
 } from './vsi-master-intelligence-ui.utils';
 import type { MasterVsiProfileSummaryDto } from './vsi-master-intelligence-api.types';
+import { resolvePhysicalDeviceIdForVehicle } from './resolve-vehicle-physical-device';
 
 function formatUtcProvenance(iso: string | null | undefined, locale: string): string {
   if (!iso) return '—';
@@ -108,6 +109,13 @@ function VsiMasterIntelligenceContent() {
       setContextInUrl({ providerSourceLinkId: first }, { replace: true });
     }
   }, [context.orgId, context.vehicleId, context.providerSourceLinkId, overview, setContextInUrl]);
+
+  useEffect(() => {
+    if (!context.orgId || !context.vehicleId || context.physicalDeviceId) return;
+    void resolvePhysicalDeviceIdForVehicle(context.orgId, context.vehicleId).then((id) => {
+      if (id) setContextInUrl({ physicalDeviceId: id }, { replace: true });
+    });
+  }, [context.orgId, context.vehicleId, context.physicalDeviceId, setContextInUrl]);
 
   const linkOptions = useMemo(
     () =>
