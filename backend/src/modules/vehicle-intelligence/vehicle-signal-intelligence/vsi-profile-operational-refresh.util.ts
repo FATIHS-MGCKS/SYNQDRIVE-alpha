@@ -76,6 +76,24 @@ export function maxActiveRpmTripEndMs(
   return max;
 }
 
+/** Latest reliable trip end timestamp from cadence rolling evidence (active RPM or tier resolution). */
+export function maxCadenceRollingTripEndMs(
+  cadence: VsiSignalCadenceIntelligenceV2 | undefined,
+): number | null {
+  const fromActive = maxActiveRpmTripEndMs(cadence);
+  const tierRows = cadence?.rpmCadenceTierResolution?.tripClassifications;
+  let fromTier: number | null = null;
+  if (tierRows?.length) {
+    for (const row of tierRows) {
+      if (!Number.isFinite(row.endMs)) continue;
+      fromTier = fromTier == null ? row.endMs : Math.max(fromTier, row.endMs);
+    }
+  }
+  if (fromActive == null) return fromTier;
+  if (fromTier == null) return fromActive;
+  return Math.max(fromActive, fromTier);
+}
+
 /**
  * Rejects stale active RPM rolling windows that share the same cadence semantic fingerprint.
  * LV cadence (no activeRpmProfile) is not gated here.
@@ -84,14 +102,14 @@ export function isIncomingActiveRpmEvidenceMonotonic(
   persisted: VsiSignalCadenceIntelligenceV2,
   incoming: VsiSignalCadenceIntelligenceV2,
 ): boolean {
-  if (!persisted.activeRpmProfile) {
+  if (!persisted.activeRpmProfile && !persisted.rpmCadenceTierResolution) {
     return true;
   }
-  if (!incoming.activeRpmProfile) {
+  if (!incoming.activeRpmProfile && !incoming.rpmCadenceTierResolution) {
     return false;
   }
-  const persistedMax = maxActiveRpmTripEndMs(persisted);
-  const incomingMax = maxActiveRpmTripEndMs(incoming);
+  const persistedMax = maxCadenceRollingTripEndMs(persisted);
+  const incomingMax = maxCadenceRollingTripEndMs(incoming);
   if (persistedMax == null || incomingMax == null) {
     return false;
   }
@@ -101,8 +119,14 @@ export function isIncomingActiveRpmEvidenceMonotonic(
   if (incomingMax > persistedMax) {
     return true;
   }
-  const persistedIds = persisted.activeRpmProfile.evaluatedTripIds;
-  const incomingIds = incoming.activeRpmProfile.evaluatedTripIds;
+  const persistedIds =
+    persisted.activeRpmProfile?.evaluatedTripIds ??
+    persisted.rpmCadenceTierResolution?.evaluatedTripIds ??
+    [];
+  const incomingIds =
+    incoming.activeRpmProfile?.evaluatedTripIds ??
+    incoming.rpmCadenceTierResolution?.evaluatedTripIds ??
+    [];
   if (JSON.stringify(persistedIds) === JSON.stringify(incomingIds)) {
     return true;
   }
