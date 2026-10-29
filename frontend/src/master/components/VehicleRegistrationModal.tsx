@@ -1642,6 +1642,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                         {t('master.motionPhysics.systemPowerDefinition.option.estimated')}
                       </option>
                     </select>
+                    {isEditMode && !motionPhysicsFieldsDisabled && (
+                      <p
+                        className="text-[10px] text-muted-foreground mt-1"
+                        data-testid="motion-physics-system-power-definition-persist-hint"
+                      >
+                        {t('master.motionPhysics.systemPowerDefinition.persistHint')}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className={labelClass}>{t('master.motionPhysics.systemMotorPowerKw')} {aiTag}</label>
