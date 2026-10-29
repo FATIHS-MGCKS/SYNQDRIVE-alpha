@@ -13,6 +13,14 @@ describe('Ds4AssessmentReadServiceV1 — longitudinalLoadObservablesV1 (AP2)', (
 
   function mockPrismaWithBundle(assessment: Record<string, unknown>, impact: Record<string, unknown> | null) {
     const prisma = {
+      diV0Ds4WorkItem: {
+        findFirst: jest.fn().mockResolvedValue({ sourceFamily: 'RUPTELA_R1' }),
+      },
+      diV0S4EvidenceSnapshot: {
+        findFirst: jest.fn().mockResolvedValue({
+          channelManifest: [{ channel: 'R1_OBD', outcome: 'PRESENT' }, { channel: 'POSITION', outcome: 'PRESENT' }],
+        }),
+      },
       diV0Ds4TripAssessmentV1: {
         findFirst: jest.fn().mockResolvedValue(assessment),
       },

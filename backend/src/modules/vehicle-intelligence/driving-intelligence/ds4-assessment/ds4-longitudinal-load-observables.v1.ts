@@ -30,6 +30,10 @@ import {
   type Ds4LongitudinalLoadObservablesV1,
   type Ds4LongitudinalLoadReasonCodeV1,
 } from './ds4-longitudinal-load-observables.v1.contract';
+import {
+  resolveDs4LongitudinalEvidenceQualityForLayer2V1,
+  type Ds4LongitudinalEvidenceQualityContextV1,
+} from './ds4-longitudinal-evidence-quality.v1';
 
 const ADMISSIBLE_CLASSIFICATIONS = new Set(['ADMISSIBLE_FULL', 'ADMISSIBLE_BIN_ONLY']);
 const FULL_CLASSIFICATION = 'ADMISSIBLE_FULL';
@@ -236,12 +240,14 @@ function validateRecords(records: readonly Ds4EventIntensityEligibilityRecordV1[
 function buildDs4LongitudinalLoadObservablesInputCoreV1(input: {
   assessmentStatus: Ds4TripAssessmentStatusV1;
   evidenceQuality: string | null;
+  longitudinalEvidenceSupplementaryReasonCodes?: Ds4LongitudinalLoadReasonCodeV1[];
   speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
   eventSummaries: Ds4TripAssessmentEventSummariesV1;
 }): Ds4LongitudinalLoadObservablesInputV1 {
   return {
     assessmentStatus: input.assessmentStatus,
     evidenceQuality: input.evidenceQuality,
+    longitudinalEvidenceSupplementaryReasonCodes: input.longitudinalEvidenceSupplementaryReasonCodes,
     speedAuthority: input.speedAuthority,
     ratedEventCount: input.eventSummaries.ratedEventCount,
     unratedEventCount: input.eventSummaries.unratedEventCount,
@@ -251,15 +257,39 @@ function buildDs4LongitudinalLoadObservablesInputCoreV1(input: {
   };
 }
 
+function buildLayer2InputWithEvidenceContext(
+  assessmentStatus: Ds4TripAssessmentStatusV1,
+  assessmentEvidenceQuality: string | null,
+  speedAuthority: Ds4SpeedAuthorityPartitionV1 | null,
+  eventSummaries: Ds4TripAssessmentEventSummariesV1,
+  context: Ds4LongitudinalEvidenceQualityContextV1 | null | undefined,
+): Ds4LongitudinalLoadObservablesInputV1 {
+  const resolved = resolveDs4LongitudinalEvidenceQualityForLayer2V1({
+    assessmentEvidenceQuality,
+    speedAuthority,
+    eventSummaries,
+    context,
+  });
+  return buildDs4LongitudinalLoadObservablesInputCoreV1({
+    assessmentStatus,
+    evidenceQuality: resolved.layer2EvidenceQualityInput,
+    longitudinalEvidenceSupplementaryReasonCodes: resolved.supplementaryReasonCodes,
+    speedAuthority,
+    eventSummaries,
+  });
+}
+
 export function buildDs4LongitudinalLoadObservablesInputV1(
   assessment: Ds4TripAssessmentComputeResultV1,
+  context?: Ds4LongitudinalEvidenceQualityContextV1 | null,
 ): Ds4LongitudinalLoadObservablesInputV1 {
-  return buildDs4LongitudinalLoadObservablesInputCoreV1({
-    assessmentStatus: assessment.assessmentStatus,
-    evidenceQuality: assessment.evidenceQuality,
-    speedAuthority: assessment.speedAuthority,
-    eventSummaries: assessment.eventSummaries,
-  });
+  return buildLayer2InputWithEvidenceContext(
+    assessment.assessmentStatus,
+    assessment.evidenceQuality,
+    assessment.speedAuthority,
+    assessment.eventSummaries,
+    context,
+  );
 }
 
 /** Read-side adapter: persisted assessment row + eventSummariesJson (no motion recompute). */
@@ -268,16 +298,19 @@ export function buildDs4LongitudinalLoadObservablesInputFromPersistedAssessmentV
   evidenceQuality: string | null;
   speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
   eventSummariesJson: unknown;
+  evidenceQualityContext?: Ds4LongitudinalEvidenceQualityContextV1 | null;
 }): Ds4LongitudinalLoadObservablesInputV1 {
-  return buildDs4LongitudinalLoadObservablesInputCoreV1({
-    assessmentStatus: input.assessmentStatus,
-    evidenceQuality: input.evidenceQuality,
-    speedAuthority: input.speedAuthority,
-    eventSummaries: coerceDs4TripAssessmentEventSummariesFromPersistedJsonV1(
-      input.eventSummariesJson,
-      input.speedAuthority,
-    ),
-  });
+  const eventSummaries = coerceDs4TripAssessmentEventSummariesFromPersistedJsonV1(
+    input.eventSummariesJson,
+    input.speedAuthority,
+  );
+  return buildLayer2InputWithEvidenceContext(
+    input.assessmentStatus,
+    input.evidenceQuality,
+    input.speedAuthority,
+    eventSummaries,
+    input.evidenceQualityContext,
+  );
 }
 
 export function projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1(input: {
@@ -285,8 +318,11 @@ export function projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1
   evidenceQuality: string | null;
   speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
   eventSummariesJson: unknown;
+  evidenceQualityContext?: Ds4LongitudinalEvidenceQualityContextV1 | null;
 }): Ds4LongitudinalLoadObservablesV1 {
-  return computeDs4LongitudinalLoadObservablesV1(buildDs4LongitudinalLoadObservablesInputFromPersistedAssessmentV1(input));
+  return computeDs4LongitudinalLoadObservablesV1(
+    buildDs4LongitudinalLoadObservablesInputFromPersistedAssessmentV1(input),
+  );
 }
 
 function emptyIntensityKindCounts(): Ds4TripAssessmentEventSummariesV1['intensityAcceleration'] {
@@ -392,6 +428,9 @@ export function computeDs4LongitudinalLoadObservablesV1(
 
   if (input.evidenceQuality !== 'PRESENT') {
     reasonCodes.push('EVIDENCE_QUALITY_NOT_PRESENT');
+    for (const code of input.longitudinalEvidenceSupplementaryReasonCodes ?? []) {
+      if (!reasonCodes.includes(code)) reasonCodes.push(code);
+    }
     return failResult(input, reasonCodes, collectionComplete);
   }
 
