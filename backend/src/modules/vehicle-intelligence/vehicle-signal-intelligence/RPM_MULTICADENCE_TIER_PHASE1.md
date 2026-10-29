@@ -2,14 +2,21 @@
 
 ## Tier assignment (R1)
 
-Active P50 on intervals ≤ 8 s:
+Active **P50** for tier selection uses the **FABLE replay ceil-index percentile** on sorted active intervals (≤ 8 s), not the arithmetic median when *n* is even. Stored `p50ActiveSeconds` is this tier-driving percentile.
 
 - `RPM_1S` if P50 ≤ 1 s  
 - `RPM_2S` if P50 ≤ 2 s (and > 1 s)  
 - `RPM_3S` if P50 ≤ 3 s (and > 2 s)  
 - `SPARSE` if P50 > 3 s  
 
-P75 / P90 gates unchanged (spread + confidence).
+P75 / P90 use the same percentile indexing (spread + confidence).
+
+## Digests
+
+| Digest | Recomputable from fixture? |
+|--------|----------------------------|
+| `fixtureInputDigest` | Yes — hash of trip window + interval inputs |
+| `seriesDigest` | No — export-attested SHA-256 over full `(recordedAtIso, valueRpm)` series |
 
 | Field | Meaning |
 | --- | --- |

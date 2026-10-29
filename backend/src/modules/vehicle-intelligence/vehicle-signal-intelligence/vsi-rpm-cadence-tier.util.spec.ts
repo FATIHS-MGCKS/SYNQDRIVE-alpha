@@ -94,12 +94,25 @@ describe('vsi-rpm-cadence-tier.util unit', () => {
     expect(result.tier).toBe('UNKNOWN');
   });
 
-  it('mixed fast/slow inside active band: P50 selects tier; spread affects confidence', () => {
+  it('FABLE P50 uses ceil-index percentile (even 1s/3s mix → p50=1, not median 2)', () => {
     const intervals = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
     const result = classifyVsiRpmCadenceTierV1({
       intervalsSec: intervals,
       rpmPointCount: 21,
       tripDurationSeconds: 80,
+    });
+    expect(result.p50ActiveSeconds).toBe(1);
+    expect(result.tierCandidateSeconds).toBe(1);
+    expect(result.tier).toBe('UNKNOWN');
+    expect(result.decisionCode).toBe('QUORUM');
+  });
+
+  it('uniform 2s active band: P50 selects RPM_2S tier; spread affects confidence', () => {
+    const intervals = Array.from({ length: 40 }, () => 2);
+    const result = classifyVsiRpmCadenceTierV1({
+      intervalsSec: intervals,
+      rpmPointCount: 41,
+      tripDurationSeconds: 200,
     });
     expect(result.tier).toBe('RPM_2S');
     expect(result.p50ActiveSeconds).toBe(2);
@@ -177,13 +190,14 @@ describe('vsi-rpm-cadence-tier sensitivity matrix (frozen tuning knobs)', () => 
     expect(loose.tier).toBe('RPM_2S');
   });
 
-  it('P50 boundary 1.799 resolves to tier 2 (FABLE 371cba40 shape)', () => {
+  it('P50 tier uses FABLE ceil-index percentile (371cba40 shape → RPM_2S)', () => {
     const intervals = [...Array.from({ length: 20 }, () => 1.799), ...Array.from({ length: 18 }, () => 3)];
     const result = classifyVsiRpmCadenceTierV1({
       intervalsSec: intervals,
       rpmPointCount: intervals.length + 1,
       tripDurationSeconds: 2000,
     });
-    expect(result.tierCandidateSeconds).toBe(2);
+    expect(result.p50ActiveSeconds).toBe(1.799);
+    expect(result.tier).toBe('RPM_2S');
   });
 });

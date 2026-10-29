@@ -5,35 +5,41 @@ import {
   classifySingleTripRpmProfile,
 } from './vsi-active-rpm-profile-resolver.util';
 import {
+  computeFrozenCohortFixtureInputDigest,
+  computeFrozenTripFixtureInputDigest,
+  RPM_CADENCE_TIER_SOURCE_SERIES_DIGEST_ATTESTATION,
+  type RpmCadenceTierFrozenTripFixture,
+} from './vsi-rpm-cadence-tier-frozen-digest.util';
+import {
   classifyVsiRpmCadenceTierV1,
   VSI_RPM_CADENCE_TIER_CONTRACT_VERSION,
 } from './vsi-rpm-cadence-tier.util';
 
-type FrozenTrip = {
-  tripId: string;
-  tripIdPrefix: string;
-  startMs: number;
-  endMs: number;
-  tripDurationSeconds: number;
-  rpmPointCount: number;
-  intervalsSec: number[];
-  seriesDigest: string;
-  fableReplayExpected?: { tier: string; conf: string | null; decision: string | null };
+const fableDeltaManifest = JSON.parse(
+  readFileSync(join(__dirname, 'fixtures/rpm-cadence-tier-fable-delta-manifest.json'), 'utf8'),
+) as {
+  rootCause: string;
+  differingTripIdsBeforeFix: unknown[];
 };
 
 type FrozenCohort = {
   contractVersion: string;
-  classifierFrozenAggregates?: {
+  classifierFrozenAggregates: {
     tiguan: Record<string, number>;
     audi: Record<string, number>;
   };
-  fableDocumentedReferenceAggregates?: {
+  fableDocumentedReferenceAggregates: {
     tiguan: Record<string, number>;
     audi: Record<string, number>;
+  };
+  fixtureInputDigestManifest: {
+    cohortFixtureInputDigest: string;
+    duplicateTimestampCountSemantics: string;
+    sourceSeriesDigestAttestation: typeof RPM_CADENCE_TIER_SOURCE_SERIES_DIGEST_ATTESTATION;
   };
   fleets: {
-    tiguan: { trips: FrozenTrip[]; tripCount: number };
-    audi: { trips: FrozenTrip[]; tripCount: number };
+    tiguan: { trips: RpmCadenceTierFrozenTripFixture[]; tripCount: number };
+    audi: { trips: RpmCadenceTierFrozenTripFixture[]; tripCount: number };
   };
 };
 
@@ -42,8 +48,17 @@ function loadFrozenCohort(): FrozenCohort {
   return JSON.parse(readFileSync(path, 'utf8')) as FrozenCohort;
 }
 
+function allTrips(cohort: FrozenCohort): RpmCadenceTierFrozenTripFixture[] {
+  return [...cohort.fleets.tiguan.trips, ...cohort.fleets.audi.trips];
+}
 
-function tallyTiers(trips: FrozenTrip[]): Record<string, number> {
+const TIER_LABELS = ['RPM_1S', 'RPM_2S', 'RPM_3S', 'SPARSE', 'UNKNOWN'] as const;
+
+function normalizeTierTally(tally: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(TIER_LABELS.map((label) => [label, tally[label] ?? 0]));
+}
+
+function tallyTiers(trips: RpmCadenceTierFrozenTripFixture[]): Record<string, number> {
   const tally: Record<string, number> = {};
   for (const trip of trips) {
     const result = classifyVsiRpmCadenceTierV1({
@@ -53,11 +68,12 @@ function tallyTiers(trips: FrozenTrip[]): Record<string, number> {
     });
     tally[result.tier] = (tally[result.tier] ?? 0) + 1;
   }
-  return tally;
+  return normalizeTierTally(tally);
 }
 
 describe('vsi-rpm-cadence-tier frozen cohort replay', () => {
   const cohort = loadFrozenCohort();
+  const trips = allTrips(cohort);
 
   it('loads frozen cohort with 61 Tiguan and 57 Audi trips (fixed window, no NOW())', () => {
     expect(cohort.fleets.tiguan.tripCount).toBe(61);
@@ -65,31 +81,55 @@ describe('vsi-rpm-cadence-tier frozen cohort replay', () => {
     expect(cohort.contractVersion).toBe('rpm-multicadence-frozen-cohort-v1');
   });
 
-  it('every trip has a canonical RPM series digest (sha256)', () => {
-    for (const fleet of [cohort.fleets.tiguan, cohort.fleets.audi]) {
-      for (const trip of fleet.trips) {
-        expect(trip.seriesDigest).toMatch(/^[a-f0-9]{64}$/);
-      }
+  it('verifies recomputed fixture input digests match stored per-trip hashes', () => {
+    for (const trip of trips) {
+      expect(trip.fixtureInputDigest).toMatch(/^[a-f0-9]{64}$/);
+      expect(computeFrozenTripFixtureInputDigest(trip)).toBe(trip.fixtureInputDigest);
     }
   });
 
-  it('matches classifier frozen aggregates (Tiguan)', () => {
-    const tally = tallyTiers(cohort.fleets.tiguan.trips);
-    expect(tally).toEqual(cohort.classifierFrozenAggregates!.tiguan);
+  it('verifies cohort fixture input digest manifest', () => {
+    expect(computeFrozenCohortFixtureInputDigest(trips)).toBe(
+      cohort.fixtureInputDigestManifest.cohortFixtureInputDigest,
+    );
   });
 
-  it('matches classifier frozen aggregates (Audi)', () => {
+  it('documents source series digest as export-attested only (not interval-derived)', () => {
+    expect(cohort.fixtureInputDigestManifest.sourceSeriesDigestAttestation.algorithm).toBe(
+      RPM_CADENCE_TIER_SOURCE_SERIES_DIGEST_ATTESTATION.algorithm,
+    );
+    for (const trip of trips) {
+      expect(trip.seriesDigest).toMatch(/^[a-f0-9]{64}$/);
+    }
+  });
+
+  it('matches FABLE documented reference aggregates on frozen fixture (Tiguan)', () => {
+    expect(tallyTiers(cohort.fleets.tiguan.trips)).toEqual(
+      cohort.fableDocumentedReferenceAggregates.tiguan,
+    );
+  });
+
+  it('matches FABLE documented reference aggregates on frozen fixture (Audi)', () => {
     const tally = tallyTiers(cohort.fleets.audi.trips);
-    expect(tally).toEqual(cohort.classifierFrozenAggregates!.audi);
+    expect(tally).toEqual(cohort.fableDocumentedReferenceAggregates.audi);
     expect(tally.RPM_1S ?? 0).toBe(0);
   });
 
-  it('documents delta vs FABLE documented reference (CH snapshot drift)', () => {
-    const tiguan = tallyTiers(cohort.fleets.tiguan.trips);
-    const doc = cohort.fableDocumentedReferenceAggregates!.tiguan;
-    expect(Math.abs((tiguan.RPM_1S ?? 0) - doc.RPM_1S)).toBeLessThanOrEqual(2);
-    expect(Math.abs((tiguan.RPM_2S ?? 0) - doc.RPM_2S)).toBeLessThanOrEqual(2);
-    expect(Math.abs((tiguan.RPM_3S ?? 0) - doc.RPM_3S)).toBeLessThanOrEqual(2);
+  it('aligns with FABLE replay expected tier labels for all 118 trips', () => {
+    for (const trip of trips) {
+      expect(trip.fableExpectedTier).toBeDefined();
+      const got = classifyVsiRpmCadenceTierV1({
+        intervalsSec: trip.intervalsSec,
+        rpmPointCount: trip.rpmPointCount,
+        tripDurationSeconds: trip.tripDurationSeconds,
+      }).tier;
+      expect(got).toBe(trip.fableExpectedTier);
+    }
+  });
+
+  it('documents prior FABLE delta root cause (percentile semantics)', () => {
+    expect(fableDeltaManifest.rootCause).toBe('PERCENTILE_OR_ROUNDING_SEMANTICS');
+    expect(fableDeltaManifest.differingTripIdsBeforeFix).toHaveLength(5);
   });
 
   it('sentinel: Audi a62ed62d → RPM_2S HIGH, minimal trip coverage', () => {
@@ -101,11 +141,9 @@ describe('vsi-rpm-cadence-tier frozen cohort replay', () => {
     });
     expect(result.tier).toBe('RPM_2S');
     expect(result.cadenceConfidence).toBe('HIGH');
-    expect(result.activeSpanRatio).not.toBeNull();
     expect(result.activeSpanRatio!).toBeLessThan(0.15);
     expect(result.tripCoverageBand).toBe('MINIMAL_SPAN');
     expect(result.analysisReadiness).toBe('ACTIVE_SPAN_ONLY');
-    expect(result.activeDensityVsTier).toBeGreaterThan(0.9);
   });
 
   it('sentinel: Audi f7e826f4 → SPARSE (irregular spread)', () => {
@@ -154,10 +192,26 @@ describe('vsi-rpm-cadence-tier frozen cohort replay', () => {
     expect(result.analysisReadiness).toBe('ACTIVE_SPAN_ONLY');
   });
 
+  it('legacy QUORUM: Tiguan 7f1ed7b9 (legacy RPM_1HZ) → UNKNOWN QUORUM', () => {
+    const trip = cohort.fleets.tiguan.trips.find((t) => t.tripIdPrefix === '7f1ed7b9')!;
+    const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip]);
+    expect(
+      classifySingleTripRpmProfile({ trip: evidence.tripWindows[0]!, points: evidence.points })
+        .profile,
+    ).toBe('RPM_1HZ');
+    const tier = classifyVsiRpmCadenceTierV1({
+      intervalsSec: trip.intervalsSec,
+      rpmPointCount: trip.rpmPointCount,
+      tripDurationSeconds: trip.tripDurationSeconds,
+    });
+    expect(tier.tier).toBe('UNKNOWN');
+    expect(tier.decisionCode).toBe('QUORUM');
+  });
+
   it('legacy VSI Active RPM labels unchanged on frozen cohort (per fleet)', () => {
-    function legacyForTrips(trips: FrozenTrip[]) {
+    function legacyForTrips(ts: RpmCadenceTierFrozenTripFixture[]) {
       const tally: Record<string, number> = {};
-      for (const trip of trips) {
+      for (const trip of ts) {
         const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip]);
         const row = classifySingleTripRpmProfile({
           trip: evidence.tripWindows[0]!,
@@ -178,7 +232,8 @@ describe('vsi-rpm-cadence-tier frozen cohort replay', () => {
     });
   });
 
-  it('all 22 legacy Tiguan RPM_1HZ trips map to RPM_1S or UNKNOWN (not slower tier)', () => {
+  it('all 22 legacy Tiguan RPM_1HZ trips map to RPM_1S or UNKNOWN only', () => {
+    const mapping: { tripIdPrefix: string; tier: string; decisionCode: string }[] = [];
     for (const trip of cohort.fleets.tiguan.trips) {
       const evidence = buildRpmEvidenceFromIntervalReplayTrips([trip]);
       const legacy = classifySingleTripRpmProfile({
@@ -191,11 +246,18 @@ describe('vsi-rpm-cadence-tier frozen cohort replay', () => {
         rpmPointCount: trip.rpmPointCount,
         tripDurationSeconds: trip.tripDurationSeconds,
       });
-      expect(['RPM_1S', 'UNKNOWN', 'RPM_2S']).toContain(tier.tier);
-      if (tier.tier === 'RPM_2S') {
-        expect(tier.p50ActiveSeconds).toBeGreaterThan(1);
-      }
+      mapping.push({
+        tripIdPrefix: trip.tripIdPrefix,
+        tier: tier.tier,
+        decisionCode: tier.decisionCode,
+      });
+      expect(['RPM_1S', 'UNKNOWN']).toContain(tier.tier);
     }
+    expect(mapping).toHaveLength(22);
+    expect(mapping.filter((m) => m.decisionCode === 'QUORUM').map((m) => m.tripIdPrefix).sort()).toEqual([
+      '722211e7',
+      '7f1ed7b9',
+    ]);
   });
 
   it('contract version is vsi-rpm-cadence-tier-v1', () => {

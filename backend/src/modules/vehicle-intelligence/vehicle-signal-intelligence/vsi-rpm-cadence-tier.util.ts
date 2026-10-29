@@ -1,7 +1,4 @@
 import {
-  medianSeconds,
-} from './vsi-profile-cadence-stats.util';
-import {
   splitIntervalsIntoActiveMeasurementSequences,
   VSI_ACTIVE_RPM_ACTIVE_SEQUENCE_GAP_BREAK_SECONDS,
   VSI_ACTIVE_RPM_MIN_SEQUENCE_INTERVALS,
@@ -81,7 +78,7 @@ function shareLe(active: number[], threshold: number): number | null {
 }
 
 /** Matches FABLE offline replay percentile indexing (frozen cohort evidence). */
-function fablePercentileSeconds(sorted: readonly number[], p: number): number | null {
+export function fablePercentileSeconds(sorted: readonly number[], p: number): number | null {
   if (sorted.length === 0) return null;
   const idx = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.max(0, Math.min(sorted.length - 1, idx))] ?? null;
@@ -211,7 +208,8 @@ export function classifyVsiRpmCadenceTierV1(input: VsiRpmCadenceTierInput): VsiR
     0,
   );
 
-  const p50 = medianSeconds(active);
+  /** Active P50 for R1 uses FABLE replay ceil-index percentile (not arithmetic median when n is even). */
+  const p50 = fablePercentileSeconds(sortedActive, 50);
   const p75 = fablePercentileSeconds(sortedActive, 75);
   const p90 = fablePercentileSeconds(sortedActive, 90);
   const share1 = shareLe(active, 1);
