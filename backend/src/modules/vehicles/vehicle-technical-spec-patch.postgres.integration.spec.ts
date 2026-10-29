@@ -18,6 +18,11 @@ import { randomUUID } from 'node:crypto';
 import { ensureOrganizationProductEntitlement } from '@modules/vehicle-onboarding/testing/org-product-test.harness';
 import { VehiclesService } from './vehicles.service';
 import { parseRegistrationIdentityProvenance } from '@modules/vehicle-onboarding/vehicle-identity-review/vehicle-identity-provenance.util';
+import {
+  applyMasterDimoActivationFinalizeInTransaction,
+  buildMasterDimoActivationFinalizeInput,
+} from '@modules/vehicle-onboarding/master-dimo/master-dimo-registration-artifacts';
+import type { MasterDimoRegistrationInput } from '@modules/vehicle-onboarding/master-dimo/master-dimo-registration.types';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BatteryService } from '@modules/vehicle-intelligence/battery/battery.service';
 import { BrakesService } from '@modules/vehicle-intelligence/brakes/brakes.service';
@@ -142,6 +147,19 @@ async function brakeServiceCreate(
     brakeReferenceSpec: new BrakeReferenceSpecService(ps),
   } as unknown as BrakesService;
   return BrakesService.prototype.create.call(serviceCtx, vehicleId, data);
+}
+
+function buildBatteryActivationFinalize(
+  organizationId: string,
+  battery: NonNullable<MasterDimoRegistrationInput['manualSpecs']>['battery'],
+) {
+  return buildMasterDimoActivationFinalizeInput({
+    organizationId,
+    stationId: null,
+    dimoVehicleId: randomUUID(),
+    actorUserId: null,
+    manualSpecs: { battery },
+  });
 }
 
 (LIVE ? describe : describe.skip)(
@@ -390,6 +408,87 @@ async function brakeServiceCreate(
 
       expect(second?.tankCapacityLiters).toBe(55);
       expect(first?.tankCapacityLiters).toBe(55);
+    });
+
+    it('creates LV battery on activation finalize only for canonical type', async () => {
+      await prisma.$transaction(async (tx) => {
+        await applyMasterDimoActivationFinalizeInTransaction(
+          tx,
+          vehicleId,
+          buildBatteryActivationFinalize(organizationId, {
+            batteryType: 'efb',
+            batteryAmpere: 70,
+            batteryVolt: 12,
+          }),
+        );
+      });
+      const rows = await prisma.vehicleBatterySpec.findMany({ where: { vehicleId } });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.batteryType).toBe('EFB');
+    });
+
+    it('rejects invalid LV battery type without partial persistence', async () => {
+      await prisma.$transaction(async (tx) => {
+        await applyMasterDimoActivationFinalizeInTransaction(
+          tx,
+          vehicleId,
+          buildBatteryActivationFinalize(organizationId, {
+            batteryType: 'legacy-unknown',
+            batteryAmpere: 70,
+            batteryVolt: 12,
+          }),
+        );
+      });
+      expect(await prisma.vehicleBatterySpec.count({ where: { vehicleId } })).toBe(0);
+
+      await prisma.$transaction(async (tx) => {
+        await applyMasterDimoActivationFinalizeInTransaction(
+          tx,
+          vehicleId,
+          buildBatteryActivationFinalize(organizationId, {
+            batteryType: null,
+            batteryAmpere: 70,
+            batteryVolt: 12,
+          }),
+        );
+      });
+      expect(await prisma.vehicleBatterySpec.count({ where: { vehicleId } })).toBe(0);
+    });
+
+    it('tenant isolation: battery rows remain scoped to the vehicle org', async () => {
+      const otherOrgId = randomUUID();
+      await prisma.organization.create({
+        data: {
+          id: otherOrgId,
+          companyName: `OTHER ${otherOrgId.slice(0, 8)}`,
+          businessType: BusinessType.FLEET,
+        },
+      });
+      await ensureOrganizationProductEntitlement(prisma, otherOrgId, ProductSlug.FLEET);
+
+      await prisma.$transaction(async (tx) => {
+        await applyMasterDimoActivationFinalizeInTransaction(
+          tx,
+          vehicleId,
+          buildBatteryActivationFinalize(organizationId, {
+            batteryType: 'AGM',
+            batteryAmpere: 70,
+            batteryVolt: 12,
+          }),
+        );
+      });
+
+      const scoped = await prisma.vehicleBatterySpec.findMany({
+        where: { vehicle: { organizationId } },
+      });
+      const foreign = await prisma.vehicleBatterySpec.findMany({
+        where: { vehicle: { organizationId: otherOrgId } },
+      });
+      expect(scoped).toHaveLength(1);
+      expect(foreign).toHaveLength(0);
+
+      await prisma.organizationProduct.deleteMany({ where: { organizationId: otherOrgId } });
+      await prisma.organization.deleteMany({ where: { id: otherOrgId } });
     });
   },
 );

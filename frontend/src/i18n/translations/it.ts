@@ -60,6 +60,16 @@ export const it = {
   'settings.accountInfo': 'Informazioni account', 'settings.companyProfile': 'Profilo azienda', 'settings.stationsBranches': 'Stazioni e filiali', 'settings.usersRoles': 'Utenti e ruoli', 'settings.billingSubscription': 'Fatturazione e abbonamento', 'settings.firmLogo': 'Logo azienda', 'settings.documents': 'Documenti', 'settings.createNewLocation': 'Crea nuova sede', 'settings.inviteUser': 'Invita utente', 'settings.paymentMethod': 'Metodo di pagamento', 'settings.subscriptionSummary': 'Riepilogo abbonamento', 'settings.invoiceHistory': 'Storico fatture', 'settings.vehicles': 'Veicoli', 'settings.connectedVehicles': 'Veicoli connessi', 'settings.dataSync': 'Sincronizzazione dati',
 
   // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  // ─── Master — Vehicle registration spec contract (V3) ───
+  'master.registration.lvBatteryConstructionType.label': 'Tipo batteria LV',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Piombo-acido (a bagno libero)',
+  'master.registration.lvBatteryChemistryHint.label': 'Chimica (solo suggerimento IA)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Non salvata — usare il tipo LV',
+  'master.registration.lvBatteryChemistryHint.title': 'La chimica del materiale non viene persistita; Battery Health usa il tipo di costruzione LV.',
+  'master.registration.lvBatteryType.legacyLabel': 'Valore legacy salvato (scegli tipo per aggiornare)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Seleziona un tipo LV supportato prima di capacità o tensione.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Tipo LV non supportato. Scegli AGM, EFB, piombo-acido o litio.',
+
   'master.cv.registryLifecycle.active': 'Attivo',
   'master.cv.registryLifecycle.offboarded': 'Fuori dal parco attivo',
   'master.cv.registryLifecycle.archived': 'Archiviato',

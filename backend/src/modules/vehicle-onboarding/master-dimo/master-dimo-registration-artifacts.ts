@@ -12,6 +12,7 @@ import {
   assertAiTechnicalFieldsConfirmed,
   extractTechnicalSpecificationPatchInput,
 } from '@modules/vehicles/vehicle-technical-spec-patch.util';
+import { normalizeLvBatteryTypeInput } from '@modules/vehicles/vehicle-specification-canonical.contract';
 
 export function assertMasterRegistrationAiTechnicalFieldsConfirmed(
   input: MasterDimoRegistrationInput,
@@ -71,11 +72,11 @@ async function applyLowVoltageBatterySpecIdempotentInTransaction(
   battery: MasterDimoActivationFinalizeInput['lowVoltageBattery'],
 ): Promise<void> {
   if (!battery) return;
-  const hasAny =
-    (battery.batteryType != null && String(battery.batteryType).trim() !== '') ||
-    battery.batteryAmpere != null ||
-    battery.batteryVolt != null;
-  if (!hasAny) return;
+
+  const normalizedType = normalizeLvBatteryTypeInput(battery.batteryType);
+  if (!normalizedType) {
+    return;
+  }
 
   const existing = await tx.vehicleBatterySpec.findFirst({
     where: { vehicleId },
@@ -86,7 +87,7 @@ async function applyLowVoltageBatterySpecIdempotentInTransaction(
   await tx.vehicleBatterySpec.create({
     data: {
       vehicleId,
-      batteryType: battery.batteryType?.trim() || null,
+      batteryType: normalizedType,
       batteryAmpere: battery.batteryAmpere ?? null,
       batteryVolt: battery.batteryVolt ?? null,
       sourceType: BatterySourceType.MANUAL,
