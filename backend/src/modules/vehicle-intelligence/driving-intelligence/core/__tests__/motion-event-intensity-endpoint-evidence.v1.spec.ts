@@ -216,6 +216,92 @@ describe('motion event intensity endpoint evidence gates (Arteon P1)', () => {
     expect(suspect?.flags.some((f) => f.includes('INTENSITY_ENDPOINT_EVIDENCE'))).toBe(true);
   });
 
+  it('valid neighbors stay admissible with corrupt 27.41→220.01→22.76 knot (no trip-wide exclusion)', () => {
+    const tripSeries: MotionCoreSpeedSample[] = [
+      sample('2026-10-09T17:50:00Z', 30),
+      sample('2026-10-09T17:50:01Z', 35),
+      sample('2026-10-09T17:50:02Z', 42),
+      sample('2026-10-09T17:50:03Z', 50),
+      sample('2026-10-09T17:50:04Z', 58),
+      sample('2026-10-09T17:50:05Z', 58),
+      sample('2026-10-09T17:50:06Z', 55),
+      sample('2026-10-09T17:50:07Z', 50),
+      sample('2026-10-09T17:50:08Z', 40),
+      sample('2026-10-09T17:50:09Z', 30),
+      sample('2026-10-09T17:50:10Z', 27.41),
+      sample('2026-10-09T17:50:11Z', 100),
+      sample(
+        '2026-10-09T17:50:12Z',
+        220.01,
+        'JITTER_SUSPECT',
+        ['SPEED_EVIDENCE_ABSTAINED', 'CROSS_SOURCE_CONFLICT'],
+      ),
+      sample('2026-10-09T17:50:13Z', 100),
+      sample('2026-10-09T17:50:14Z', 22.76),
+      sample('2026-10-09T17:50:15Z', 22),
+      sample('2026-10-09T17:50:16Z', 24),
+      sample('2026-10-09T17:50:17Z', 28),
+      sample('2026-10-09T17:50:18Z', 34),
+      sample('2026-10-09T17:50:19Z', 42),
+      sample('2026-10-09T17:50:20Z', 50),
+    ];
+
+    const events = detectMotionManoeuvreEvents(
+      0,
+      tripSeries,
+      'C4_ADAPTIVE_L3',
+      MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
+      MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
+    );
+    applyMotionEventIntensityEvidenceGatesV1(events, tripSeries);
+
+    const corruptSecants = events.filter((e) => (e.meanAccelMps2 ?? 0) > 15);
+    expect(corruptSecants).toHaveLength(2);
+    expect(corruptSecants.every((e) => e.quality === 'ARTEFACT_SUSPECT')).toBe(true);
+    expect(corruptSecants.every((e) => e.flags.some((f) => f.includes('INTENSITY_ENDPOINT_EVIDENCE')))).toBe(true);
+
+    const trustedEvents = events.filter((e) => e.quality !== 'ARTEFACT_SUSPECT');
+    expect(trustedEvents.length).toBeGreaterThanOrEqual(2);
+    expect(events.some((e) => e.quality === 'ARTEFACT_SUSPECT')).toBe(true);
+    expect(trustedEvents.length).toBeLessThan(events.length);
+
+    const persistedRows = events.map((e) => ({
+      kind: e.kind,
+      startLabel: e.startLabel,
+      endLabel: e.endLabel,
+      startSpeedKmh: e.startSpeedKmh,
+      endSpeedKmh: e.endSpeedKmh,
+      deltaKmh: e.deltaKmh,
+      quality: e.quality,
+      flags: e.flags,
+      intensity: {
+        meanAccelMps2: e.meanAccelMps2,
+        durationS: e.durationS,
+        steps: e.steps,
+        coverageRatio: e.coverageRatio,
+        startUncertaintyS: e.startUncertaintyS,
+        endUncertaintyS: e.endUncertaintyS,
+      },
+    }));
+
+    const agg = aggregateDs4EventIntensityEligibilityV1({
+      payload: payloadWithEvents(persistedRows),
+      speedAuthority: 'C4_ONLY',
+    });
+
+    const excluded = agg.records.filter((r) => r.classification === 'EXCLUDED_ARTEFACT');
+    expect(excluded).toHaveLength(2);
+    expect(excluded.every((r) => r.meanAccelMps2 === null)).toBe(true);
+    expect(excluded.every((r) => r.meanAccelMps2 !== 0)).toBe(true);
+
+    const admissible = agg.records.filter(
+      (r) => r.classification === 'ADMISSIBLE_BIN_ONLY' || r.classification === 'ADMISSIBLE_FULL',
+    );
+    expect(admissible.length).toBeGreaterThanOrEqual(2);
+    expect(admissible.every((r) => r.meanAccelMps2 != null && r.meanAccelMps2 > 0 && r.meanAccelMps2 < 10)).toBe(true);
+    expect(agg.records.filter((r) => r.meanAccelMps2 === 0)).toHaveLength(0);
+  });
+
   it('valid BIN_ONLY 2s secant remains admissible', () => {
     const series = [
       sample('2026-10-01T10:00:00Z', 30),
