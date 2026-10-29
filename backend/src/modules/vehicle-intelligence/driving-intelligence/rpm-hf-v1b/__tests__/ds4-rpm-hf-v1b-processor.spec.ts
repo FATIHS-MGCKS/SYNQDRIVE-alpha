@@ -70,6 +70,8 @@ function tiguanEnabledInput(): Ds4RpmHfV1aTripInputV1 {
       tripClassifications: [{ tripId: TIGUAN_TRIP, endMs: Date.parse('2026-10-28T11:58:33.729Z'), profile: 'RPM_1HZ', intervalMedianSeconds: 1, intervalP95Seconds: 2, intervalCount: 122, rpmPointCount: 123, fractionIntervalsLe2s: 1, decisionCode: 'FAST_1_2S_BUCKET_PATTERN' }],
       profileSemanticFingerprint: 'fixture-fp',
     },
+    vsiRpmCadenceTierSnapshot: null,
+    tierEvidence: null,
     readOnly: true,
     productionActivationForbidden: true,
   };
@@ -89,6 +91,8 @@ describe('ds4-rpm-hf-v1b-processor', () => {
     expect(out.result.rpmValues.validPointCount).toBe(123);
     expect(out.result.readCompleteness.hfReadCompletenessLabel).toBe('COMPLETE');
     expect(out.result.vsiTripClassification.tripRpmProfile).toBe('RPM_1HZ');
+    expect(out.result.shadowVariant).toBe('legacy');
+    expect(out.result.engineVersion).toBe('ds4-rpm-hf-v1b-engine-v1');
   });
 
   it('Audi RPM_STANDARD → terminal without success persist', () => {

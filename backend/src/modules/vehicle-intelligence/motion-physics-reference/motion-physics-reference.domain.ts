@@ -44,6 +44,25 @@ export interface MotionPhysicsIdentityFingerprint {
   variantLabel?: string | null;
 }
 
+/** Canonical semantics for how systemMotorPowerKw should be interpreted (Master UI: Art der Leistungsangabe). */
+export const MOTION_SYSTEM_POWER_DEFINITION_VALUES = [
+  'OEM_RATED_MOTOR_KW',
+  'OEM_RATED_SYSTEM_KW',
+  'OEM_RATED_SYSTEM_KW_ESTIMATED',
+] as const;
+
+export type MotionSystemPowerDefinition = (typeof MOTION_SYSTEM_POWER_DEFINITION_VALUES)[number];
+
+export function normalizeMotionSystemPowerDefinition(value: unknown): MotionSystemPowerDefinition | null {
+  if (value == null) return null;
+  const raw = String(value).trim().toUpperCase();
+  if (!raw) return null;
+  if ((MOTION_SYSTEM_POWER_DEFINITION_VALUES as readonly string[]).includes(raw)) {
+    return raw as MotionSystemPowerDefinition;
+  }
+  return null;
+}
+
 export interface MotionPhysicsReferencePayload {
   curbMassKg?: number | null;
   systemMotorPowerKw?: number | null;

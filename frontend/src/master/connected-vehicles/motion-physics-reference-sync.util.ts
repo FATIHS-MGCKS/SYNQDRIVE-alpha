@@ -445,3 +445,41 @@ export function buildMotionPhysicsReferenceCreateBody(input: {
     manualOperatorConfirm: input.manualOperatorConfirm === true ? true : undefined,
   };
 }
+
+/** Returns a reason code when create payload has no persistable motion fields. */
+export function validateMotionPhysicsReferenceCreatePayload(input: {
+  curbMassKg?: number | null;
+  systemMotorPowerKw?: number | null;
+  accel0To100S?: number | null;
+  systemPowerDefinition?: string | null;
+}): MotionPhysicsSyncReasonCode | null {
+  const definition = input.systemPowerDefinition?.trim();
+  if (
+    input.curbMassKg == null &&
+    input.systemMotorPowerKw == null &&
+    input.accel0To100S == null &&
+    !definition
+  ) {
+    return MOTION_PHYSICS_SYNC_REASON_CODES.REFERENCE_CREATE_FAILED;
+  }
+  return null;
+}
+
+export function parseMotionSystemPowerDefinitionOption(
+  raw: unknown,
+): MotionSystemPowerDefinitionOption | '' {
+  const token = String(raw ?? '').trim().toUpperCase();
+  if ((MOTION_SYSTEM_POWER_DEFINITION_OPTIONS as readonly string[]).includes(token)) {
+    return token as MotionSystemPowerDefinitionOption;
+  }
+  return '';
+}
+
+export function hydrateSystemPowerDefinitionFormState(
+  fromReference: string | null | undefined,
+  fromRegisteredVehicle: string | null | undefined,
+): MotionSystemPowerDefinitionOption | '' {
+  const fromRef = parseMotionSystemPowerDefinitionOption(fromReference);
+  if (fromRef) return fromRef;
+  return parseMotionSystemPowerDefinitionOption(fromRegisteredVehicle);
+}

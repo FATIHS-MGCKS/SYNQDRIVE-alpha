@@ -6,7 +6,11 @@ import {
 import type { HfTripRpmPointsReadResult } from '@modules/clickhouse/clickhouse-hf.types';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VsiCapabilityResolverRepository } from '../../vehicle-signal-intelligence/vsi-capability-resolver.repository';
-import type { VsiActiveRpmProfileResolutionV1 } from '../../vehicle-signal-intelligence/vsi-profile-cadence.types';
+import type {
+  VsiActiveRpmProfileResolutionV1,
+  VsiRpmCadenceTierResolutionV1,
+} from '../../vehicle-signal-intelligence/vsi-profile-cadence.types';
+import { resolveTierEvidenceForTrip } from '../rpm-hf-v1b/ds4-rpm-hf-v1b-tier-evidence.util';
 import { resolveIceRpmApplicability } from '../../vehicle-signal-intelligence/vsi-profile-cadence-stats.util';
 import {
   buildAdmissionForTripIdentityFailure,
@@ -74,6 +78,7 @@ export class Ds4RpmHfV1aTripInputService {
     const iceRpmApplicability = resolveIceRpmApplicability(fuelType);
 
     let activeRpmProfileSnapshot: VsiActiveRpmProfileResolutionV1 | null = null;
+    let rpmCadenceTierSnapshot: VsiRpmCadenceTierResolutionV1 | null = null;
     let tripRpmProfile = resolveTripRpmProfileFromVsi({
       tripId: params.tripId,
       tripClassifications: [],
@@ -89,6 +94,7 @@ export class Ds4RpmHfV1aTripInputService {
       if (profileCtx?.signals?.length) {
         const parsed = readEngineRpmCadenceFromSignalsSnapshot(profileCtx.signals);
         activeRpmProfileSnapshot = parsed.activeRpmProfile;
+        rpmCadenceTierSnapshot = parsed.rpmCadenceTierResolution;
         vehicleActiveRpmProfile = parsed.activeRpmProfile?.activeProfile ?? null;
         tripRpmProfile = resolveTripRpmProfileFromVsi({
           tripId: params.tripId,
@@ -113,6 +119,7 @@ export class Ds4RpmHfV1aTripInputService {
         admission,
         read: null,
         activeRpmProfileSnapshot,
+        rpmCadenceTierSnapshot,
         points: [],
       });
     }
@@ -190,6 +197,7 @@ export class Ds4RpmHfV1aTripInputService {
       admission,
       read,
       activeRpmProfileSnapshot,
+      rpmCadenceTierSnapshot,
       points,
     });
   }
@@ -202,12 +210,36 @@ export class Ds4RpmHfV1aTripInputService {
     admission: Ds4RpmHfV1aTripInputV1['admission'];
     read: HfTripRpmPointsReadResult | null;
     activeRpmProfileSnapshot: VsiActiveRpmProfileResolutionV1 | null;
+    rpmCadenceTierSnapshot: VsiRpmCadenceTierResolutionV1 | null;
     points: HfTripRpmPointsReadResult['points'];
   }): Ds4RpmHfV1aTripInputV1 {
     const dataQuality = buildDs4RpmHfV1aDataQuality({
       read: input.read,
       points: input.points,
     });
+
+    const hfReadComplete =
+      input.read != null &&
+      input.read.status === 'SUCCESS' &&
+      input.read.completenessStatus === 'COMPLETE' &&
+      input.read.offset === 0;
+    const hfDataPresent =
+      input.read != null &&
+      input.read.available &&
+      input.read.status === 'SUCCESS' &&
+      input.read.returnedCount > 0;
+
+    const tierEvidence =
+      input.tripEndIso != null && input.tripEndIso !== ''
+        ? resolveTierEvidenceForTrip({
+            tripId: input.params.tripId,
+            tripEndIso: input.tripEndIso,
+            providerSourceLinkId: input.linkId,
+            tierSnapshot: input.rpmCadenceTierSnapshot,
+            hfReadComplete,
+            hfDataPresent,
+          })
+        : null;
 
     return {
       contractVersion: DS4_RPM_HF_V1A_CONTRACT_VERSION,
@@ -230,6 +262,8 @@ export class Ds4RpmHfV1aTripInputService {
         valueRpm: p.valueRpm,
       })),
       vsiActiveRpmProfileSnapshot: input.activeRpmProfileSnapshot,
+      vsiRpmCadenceTierSnapshot: input.rpmCadenceTierSnapshot,
+      tierEvidence,
       readOnly: true,
       productionActivationForbidden: true,
     };

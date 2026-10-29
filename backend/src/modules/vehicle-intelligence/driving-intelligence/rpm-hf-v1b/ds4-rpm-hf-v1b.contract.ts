@@ -1,8 +1,11 @@
 import type { Ds4RpmHfV1aTripInputV1 } from '../rpm-hf-v1a/ds4-rpm-hf-v1a.contract';
 import { DS4_RPM_HF_V1A_CONTRACT_VERSION } from '../rpm-hf-v1a/ds4-rpm-hf-v1a.contract';
-import type { Ds4RpmHfV1bTemporalAnalysis } from './ds4-rpm-hf-v1b-temporal.engine';
+import type { Ds4RpmHfTierAnalysisMode, Ds4RpmHfTierEvidenceV1 } from '../ds4-rpm-hf-tier-evidence.types';
+import type { Ds4RpmHfV1bTemporalCadenceProfile } from './ds4-rpm-hf-v1b-temporal.engine';
 
 export const DS4_RPM_HF_V1B_ENGINE_VERSION = 'ds4-rpm-hf-v1b-engine-v1' as const;
+export const DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE =
+  'ds4-rpm-hf-v1b-engine-v1-tier-aware' as const;
 export const DS4_RPM_HF_V1B_CONTRACT_VERSION = 'ds4-rpm-hf-v1b-v1' as const;
 
 /** Max adjacent interval (seconds) to stay in one continuous observed sequence. */
@@ -66,7 +69,7 @@ export type Ds4RpmHfV1bSequenceStats = {
   longestContinuousSequenceSeconds: number | null;
   /** Sum of per-sequence point-to-point spans (gap rule applied); excludes inter-sequence gaps. */
   observedSequenceDurationSeconds: number | null;
-  sequenceGapRuleSeconds: typeof DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS;
+  sequenceGapRuleSeconds: number;
 };
 
 export type Ds4RpmHfV1bReadCompletenessSlice = {
@@ -84,6 +87,20 @@ export type Ds4RpmHfV1bAdmissionSlice = {
   tripRpmProfile: string;
 };
 
+export type Ds4RpmHfV1bShadowVariant = 'legacy' | 'tier-aware';
+
+export type Ds4RpmHfV1bTierEvidenceResultSlice = {
+  availability: Ds4RpmHfTierEvidenceV1['status'] | 'NOT_AVAILABLE';
+  tripId: string;
+  tier: string | null;
+  cadenceConfidence: string | null;
+  tripCoverageBand: string | null;
+  analysisReadiness: string | null;
+  decisionCode: string | null;
+  analysisMode: Ds4RpmHfTierAnalysisMode | null;
+  temporalCadenceProfile: Ds4RpmHfV1bTemporalCadenceProfile | null;
+};
+
 export type Ds4RpmHfV1bShadowResultV1 = {
   contractVersion: typeof DS4_RPM_HF_V1B_CONTRACT_VERSION;
   organizationId: string;
@@ -91,7 +108,11 @@ export type Ds4RpmHfV1bShadowResultV1 = {
   tripId: string;
   providerSourceLinkId: string | null;
   v1aContractVersion: typeof DS4_RPM_HF_V1A_CONTRACT_VERSION;
-  engineVersion: typeof DS4_RPM_HF_V1B_ENGINE_VERSION;
+  engineVersion:
+    | typeof DS4_RPM_HF_V1B_ENGINE_VERSION
+    | typeof DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE;
+  shadowVariant: Ds4RpmHfV1bShadowVariant;
+  tierEvidence?: Ds4RpmHfV1bTierEvidenceResultSlice;
   inputFingerprint: string;
   computedAtIso: string;
   vsiTripClassification: Ds4RpmHfV1bVsiTripClassificationProvenance;
@@ -119,12 +140,15 @@ export type Ds4RpmHfV1bTemporalEngineInput = {
 
 export function buildV1bResultFromV1aInput(input: {
   tripInput: Ds4RpmHfV1aTripInputV1;
-  temporal: Ds4RpmHfV1bTemporalAnalysis;
+  temporal: import('./ds4-rpm-hf-v1b-temporal.engine').Ds4RpmHfV1bTemporalAnalysis;
   processingOutcome: Ds4RpmHfV1bShadowProcessingOutcome;
   deferReasonCode: string | null;
   rejectionReasonCode: string | null;
   inputFingerprint: string;
   computedAt: Date;
+  engineVersion?: typeof DS4_RPM_HF_V1B_ENGINE_VERSION | typeof DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE;
+  shadowVariant?: Ds4RpmHfV1bShadowVariant;
+  tierEvidence?: Ds4RpmHfV1bTierEvidenceResultSlice;
 }): Ds4RpmHfV1bShadowResultV1 {
   const snap = input.tripInput.vsiActiveRpmProfileSnapshot;
   const classifications =
@@ -137,7 +161,9 @@ export function buildV1bResultFromV1aInput(input: {
     tripId: input.tripInput.tripId,
     providerSourceLinkId: input.tripInput.providerSourceLinkId,
     v1aContractVersion: DS4_RPM_HF_V1A_CONTRACT_VERSION,
-    engineVersion: DS4_RPM_HF_V1B_ENGINE_VERSION,
+    engineVersion: input.engineVersion ?? DS4_RPM_HF_V1B_ENGINE_VERSION,
+    shadowVariant: input.shadowVariant ?? 'legacy',
+    tierEvidence: input.tierEvidence,
     inputFingerprint: input.inputFingerprint,
     computedAtIso: input.computedAt.toISOString(),
     vsiTripClassification: {

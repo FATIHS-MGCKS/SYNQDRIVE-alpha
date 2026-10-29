@@ -88,6 +88,8 @@ function minimalTripInput(
       ],
       profileSemanticFingerprint: 'vsi-fp-1',
     },
+    vsiRpmCadenceTierSnapshot: null,
+    tierEvidence: null,
     readOnly: true,
     productionActivationForbidden: true,
   };
