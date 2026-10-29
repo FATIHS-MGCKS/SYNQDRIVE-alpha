@@ -5,7 +5,10 @@ import {
   normalizeElectrificationLevel,
   normalizeLvBatteryTypeInput,
   NON_PERSISTENT_VEHICLE_SPEC_INPUT_FIELDS,
+  resolveVehicleSpecLegacyAiAlias,
   TOTAL_CANONICAL_CONTRACT_SURFACES,
+  VEHICLE_SPEC_CANONICAL_UNITS,
+  VEHICLE_SPEC_LEGACY_AI_FIELD_ALIASES,
 } from './vehicle-specification-canonical.contract';
 
 describe('vehicle-specification-canonical.contract', () => {
@@ -52,5 +55,27 @@ describe('vehicle-specification-canonical.contract', () => {
   it('maps identity powerKind to powertrainType tokens', () => {
     expect(mapPowerKindToPowertrainType('COMBUSTION')).toBe('COMBUSTION');
     expect(mapPowerKindToPowertrainType('invalid')).toBeNull();
+  });
+
+  it('keeps kW power separate from kWh energy capacity units', () => {
+    expect(VEHICLE_SPEC_CANONICAL_UNITS.systemMotorPowerKw).toBe('kW');
+    expect(VEHICLE_SPEC_CANONICAL_UNITS.hvBatteryUsableCapacityKwh).toBe('kWh');
+    expect(VEHICLE_SPEC_CANONICAL_UNITS.hvBatteryGrossCapacityKwh).toBe('kWh');
+    expect(VEHICLE_SPEC_CANONICAL_UNITS.lvBatteryAmpere).toBe('Ah');
+    expect(VEHICLE_SPEC_CANONICAL_UNITS.lvBatteryChargeCapacity).toBe('Ah');
+    expect(VEHICLE_SPEC_CANONICAL_UNITS.electricCurrent).toBe('A');
+  });
+
+  it('resolves legacy AI aliases to canonical field names', () => {
+    expect(VEHICLE_SPEC_LEGACY_AI_FIELD_ALIASES.hvBatteryCapacityKwh).toBe(
+      'hvBatteryUsableCapacityKwh',
+    );
+    expect(resolveVehicleSpecLegacyAiAlias('brakeForceDistribution')).toBe(
+      'brakeForceFrontPercent',
+    );
+    expect(resolveVehicleSpecLegacyAiAlias('frontToRearWeightDistribution')).toBe(
+      'frontWeightDistributionPct',
+    );
+    expect(resolveVehicleSpecLegacyAiAlias('engineDisplacementCc')).toBe('engineDisplacementCc');
   });
 });
