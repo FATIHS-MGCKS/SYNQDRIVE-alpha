@@ -159,4 +159,18 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.asOf.title': 'As-of revisie-oplossing',
   'master.intelligence.vsi.asOf.decisionAt': 'Beslissingstijd',
   'master.intelligence.vsi.asOf.authority': 'Autoriteit',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Alleen-lezen samenvattingen uit VSI-, APDS- en PDI-API’s. Labels weerspiegelen waargenomen of bewaarde evidence — geen hardwarebewijs.',
+  'master.intelligence.vehicleDetail.loading': 'Intelligence-samenvattingen laden…',
+  'master.intelligence.vehicleDetail.error': 'Kon intelligence-samenvattingen voor dit voertuig niet laden.',
+  'master.intelligence.vehicleDetail.openVsi': 'VSI-detail openen',
+  'master.intelligence.vehicleDetail.openApds': 'APDS-detail openen',
+  'master.intelligence.vehicleDetail.openPdi': 'Apparaatdetail openen',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'Geen persistenter besluit binnen scope.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Geen enkel geïnstalleerd fysiek apparaat aan dit voertuig toegeschreven.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Meerdere provider-bronlinks — primaire link getoond; bevestig link in VSI/APDS vóór aannames over andere voertuigen.',
 } as const;

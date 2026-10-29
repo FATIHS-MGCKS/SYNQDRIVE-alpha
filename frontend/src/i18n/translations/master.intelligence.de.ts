@@ -180,4 +180,18 @@ export const masterIntelligenceDe = {
   'master.intelligence.vsi.asOf.title': 'As-of-Revisionsauflösung',
   'master.intelligence.vsi.asOf.decisionAt': 'Entscheidungszeit',
   'master.intelligence.vsi.asOf.authority': 'Autorität',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Schreibgeschützte Zusammenfassungen aus VSI-, APDS- und PDI-APIs. Labels beschreiben beobachtete oder persistierte Evidenz — kein Hardware-Nachweis.',
+  'master.intelligence.vehicleDetail.loading': 'Intelligence-Zusammenfassungen werden geladen…',
+  'master.intelligence.vehicleDetail.error': 'Intelligence-Zusammenfassungen für dieses Fahrzeug konnten nicht geladen werden.',
+  'master.intelligence.vehicleDetail.openVsi': 'VSI-Detail öffnen',
+  'master.intelligence.vehicleDetail.openApds': 'APDS-Detail öffnen',
+  'master.intelligence.vehicleDetail.openPdi': 'Gerätedetail öffnen',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'Keine persistierte Entscheidung im Scope.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Kein eindeutig installiertes physisches Gerät diesem Fahrzeug zugeordnet.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Mehrere Provider-Source-Links — primärer Link angezeigt; Link auf VSI/APDS prüfen, bevor fahrzeugübergreifende Annahmen getroffen werden.',
 } as const;

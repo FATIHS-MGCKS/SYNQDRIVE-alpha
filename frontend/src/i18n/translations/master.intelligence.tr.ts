@@ -159,4 +159,18 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.asOf.title': 'As-of revizyon çözümü',
   'master.intelligence.vsi.asOf.decisionAt': 'Karar zamanı',
   'master.intelligence.vsi.asOf.authority': 'Otorite',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'VSI, APDS ve PDI API’lerinden salt okunur özetler. Rozetler gözlemlenen veya kalıcı kanıtı yansıtır — donanım kanıtı değildir.',
+  'master.intelligence.vehicleDetail.loading': 'Intelligence özetleri yükleniyor…',
+  'master.intelligence.vehicleDetail.error': 'Bu araç için intelligence özetleri yüklenemedi.',
+  'master.intelligence.vehicleDetail.openVsi': 'VSI ayrıntısını aç',
+  'master.intelligence.vehicleDetail.openApds': 'APDS ayrıntısını aç',
+  'master.intelligence.vehicleDetail.openPdi': 'Cihaz ayrıntısını aç',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'Kapsamda kalıcı karar yok.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Bu araca atanan tek bir kurulu fiziksel cihaz yok.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Birden fazla sağlayıcı kaynak bağlantısı — birincil bağlantı gösterildi; araçlar arası varsayımlardan önce VSI/APDS’de bağlantıyı doğrulayın.',
 } as const;

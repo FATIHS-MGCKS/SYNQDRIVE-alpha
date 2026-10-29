@@ -158,5 +158,19 @@ export const masterIntelligenceIt = {
 
   'master.intelligence.vsi.asOf.title': 'Risoluzione revisione as-of',
   'master.intelligence.vsi.asOf.decisionAt': 'Ora decisione',
-  'master.intelligence.vsi.asOf.authority': 'Autorità',
+  'master.intelligence.vsi.asOf.authority': 'Autorita',
+
+  'master.intelligence.vehicleDetail.sectionTitle': 'Master Intelligence',
+  'master.intelligence.vehicleDetail.readOnlyNote':
+    'Riepiloghi in sola lettura dalle API VSI, APDS e PDI. Le etichette riflettono evidenze osservate o persistite — non prova hardware.',
+  'master.intelligence.vehicleDetail.loading': 'Caricamento riepiloghi intelligence…',
+  'master.intelligence.vehicleDetail.error': 'Impossibile caricare i riepiloghi intelligence per questo veicolo.',
+  'master.intelligence.vehicleDetail.openVsi': 'Apri dettaglio VSI',
+  'master.intelligence.vehicleDetail.openApds': 'Apri dettaglio APDS',
+  'master.intelligence.vehicleDetail.openPdi': 'Apri dettaglio dispositivo',
+  'master.intelligence.vehicleDetail.noApdsDecision': 'Nessuna decisione persistita nell’ambito.',
+  'master.intelligence.vehicleDetail.noPhysicalDevice':
+    'Nessun singolo dispositivo fisico installato attribuito a questo veicolo.',
+  'master.intelligence.vehicleDetail.multipleLinks':
+    'Più link sorgente provider — mostrato il link primario; confermare il link in VSI/APDS prima di ipotesi cross-veicolo.',
 } as const;

@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-intelligence-center-pr5-vehicle-detail-2026-10-29',
+    version: '4.9.5014',
+    title: 'Master Intelligence Center PR5 — Vehicle Detail integration (Draft)',
+    summary: [
+      'Connected vehicle detail drawer: compact VSI/APDS/PDI intelligence section using existing read APIs only (MASTER_ADMIN).',
+      'Canonical cross-navigation org/vehicle/link/device; VSI/APDS auto-resolve physicalDeviceId for PDI links when unambiguous.',
+      'Four-vehicle QA fixtures + navigation tests; nine-locale vehicleDetail keys.',
+    ],
+    reason: 'End-to-end acceptance of Master Intelligence Center PR1–PR4 from fleet vehicle detail.',
+    previousBehavior: 'Intelligence modules reachable only via nav; vehicle detail had no intelligence entry points.',
+    details:
+      'ConnectedVehicleIntelligenceSection.tsx; resolve-vehicle-physical-device.ts; vehicle-detail-intelligence.test.ts; no new backend aggregate.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-29T08:30:00.000Z',
+  },
+  {
     id: 'master-intelligence-center-pr4-pdi-2026-10-29',
     version: '4.9.5013',
     title: 'Master Admin PDI device intelligence read APIs & UI (Draft)',

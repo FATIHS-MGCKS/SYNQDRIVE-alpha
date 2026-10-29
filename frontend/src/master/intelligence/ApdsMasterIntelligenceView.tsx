@@ -11,6 +11,7 @@ import { api } from '../../lib/api';
 import { cn } from '../../components/ui/utils';
 import { useApdsMasterIntelligenceData } from './useApdsMasterIntelligenceData';
 import type { MasterApdsDecisionSummaryDto } from './apds-master-intelligence-api.types';
+import { resolvePhysicalDeviceIdForVehicle } from './resolve-vehicle-physical-device';
 
 function formatTime(iso: string | null | undefined, locale: string): string {
   if (!iso) return '—';
@@ -102,6 +103,13 @@ function ApdsMasterIntelligenceContent() {
       }
     })();
   }, [context.orgId, context.vehicleId]);
+
+  useEffect(() => {
+    if (!context.orgId || !context.vehicleId || context.physicalDeviceId) return;
+    void resolvePhysicalDeviceIdForVehicle(context.orgId, context.vehicleId).then((id) => {
+      if (id) setContextInUrl({ physicalDeviceId: id }, { replace: true });
+    });
+  }, [context.orgId, context.vehicleId, context.physicalDeviceId, setContextInUrl]);
 
   const selectDecision = useCallback(
     (row: MasterApdsDecisionSummaryDto) => {
