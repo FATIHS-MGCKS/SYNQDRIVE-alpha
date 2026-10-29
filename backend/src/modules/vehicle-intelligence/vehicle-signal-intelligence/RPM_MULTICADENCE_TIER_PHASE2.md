@@ -19,3 +19,7 @@ Per rolling link-scoped trip window (same 3–5 trips as `activeRpmProfile`):
 - Provenance + `evidenceObservedAt` (latest HF timestamp in rolling window).
 
 Missing HF / preserved prior cadence paths keep prior tier block when RPM cadence is preserved.
+
+Operational refresh merges **legacy `activeRpmProfile` and `rpmCadenceTierResolution` independently** by rolling `tripClassifications.endMs` monotonicity per block (stale tier cannot overwrite fresher persisted tier when legacy advances, and vice versa).
+
+Per-trip tier snapshots include diagnostic percentiles and density fields (no raw time series).

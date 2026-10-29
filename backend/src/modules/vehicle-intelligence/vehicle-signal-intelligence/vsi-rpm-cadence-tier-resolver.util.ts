@@ -65,6 +65,13 @@ export function classifySingleTripRpmCadenceTier(input: {
       activeIntervalCount: tierResult.activeIntervalCount,
       tripDurationSeconds: durationSec,
     },
+    p50ActiveSeconds: tierResult.p50ActiveSeconds,
+    p75ActiveSeconds: tierResult.p75ActiveSeconds,
+    p90ActiveSeconds: tierResult.p90ActiveSeconds,
+    activeSpanRatio: tierResult.activeSpanRatio,
+    activeDensityVsTier: tierResult.activeDensityVsTier,
+    tierPuritySharePlusOne: tierResult.tierPuritySharePlusOne,
+    longestSequenceIntervals: tierResult.longestSequenceIntervals,
   };
 }
 

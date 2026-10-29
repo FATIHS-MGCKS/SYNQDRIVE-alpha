@@ -80,6 +80,13 @@ export type VsiRpmCadenceTierTripClassificationV1 = {
     activeIntervalCount: number;
     tripDurationSeconds: number;
   };
+  p50ActiveSeconds: number | null;
+  p75ActiveSeconds: number | null;
+  p90ActiveSeconds: number | null;
+  activeSpanRatio: number | null;
+  activeDensityVsTier: number | null;
+  tierPuritySharePlusOne: number | null;
+  longestSequenceIntervals: number;
 };
 
 export type VsiRpmCadenceTierRollingSummaryV1 = {

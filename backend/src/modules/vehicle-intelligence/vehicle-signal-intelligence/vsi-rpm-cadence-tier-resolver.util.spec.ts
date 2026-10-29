@@ -36,6 +36,8 @@ describe('vsi-rpm-cadence-tier-resolver', () => {
     });
     expect(row.tier).toBe(trip.fableExpectedTier);
     expect(row.tripId).toBe(trip.tripId);
+    expect(row.p50ActiveSeconds).not.toBeNull();
+    expect(row.longestSequenceIntervals).toBeGreaterThan(0);
   });
 
   it('does not change legacy RPM_1HZ classification when tier is attached', () => {
