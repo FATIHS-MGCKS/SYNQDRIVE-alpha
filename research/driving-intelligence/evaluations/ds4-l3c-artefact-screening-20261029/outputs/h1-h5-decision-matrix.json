@@ -1,0 +1,49 @@
+[
+  {
+    "id": "H1_artefact_screening",
+    "status": "PASS_WITH_FINDINGS",
+    "admissibleScreened": 1479,
+    "confirmedArtefacts": 2,
+    "suspectedArtefacts": 2,
+    "indeterminateAdmissible": 0,
+    "physicsBoundMps2": 10
+  },
+  {
+    "id": "H2_percentile_resolvability_BRAKE_P95",
+    "status": "PASS",
+    "halfWidth": 0.1755,
+    "threshold": 0.3135000000000001
+  },
+  {
+    "id": "H3_vehicle_robustness_BRAKE_P95",
+    "status": "NOT_EVALUABLE",
+    "note": "Bootstrap CI on 116-trip aggregate only; LOO vehicle P95 shifts recorded — formal PASS requires CI envelope comparison not fully implemented",
+    "looVehicleP95": {
+      "ARTEON": 2.69,
+      "AUDI_A4": 2.395,
+      "TIGUAN": 2.629
+    },
+    "baselineP95": 2.629
+  },
+  {
+    "id": "H4_trip_influence_BRAKE_P95",
+    "status": "PASS",
+    "maxAbsLooTripDelta": -0.1160000000000001,
+    "bootstrapHalfWidth": 0.1755
+  },
+  {
+    "id": "H5_temporal_stability",
+    "status": "FAIL",
+    "temporal": {
+      "split": "median_trip_endLabel_utc",
+      "earlyTrips": 59,
+      "lateTrips": 57,
+      "BRAKE_tripWeighted_P95": {
+        "early": 2.746,
+        "late": 2.41,
+        "delta": -0.33599999999999985
+      }
+    },
+    "bootstrapHalfWidth": 0.1755
+  }
+]

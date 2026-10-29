@@ -1,0 +1,30 @@
+{
+  "policyId": "DS4_L3C_ARTEFACT_SCREENING_V1",
+  "purpose": "Research-only artefact screening for Layer 3 reference analysis; NOT a customer harsh-driving threshold.",
+  "physicalPlausibility": {
+    "reference": "Dry asphalt passenger vehicle tyre-road friction mu approx 0.9-1.0; peak longitudinal deceleration rarely exceeds ~1.0g sustained over multi-second event means.",
+    "conservativeMaxMeanLongitudinalMps2": 10.0,
+    "rationale": "~1.02g mean over full event duration exceeds plausible sustained passenger-car longitudinal means; values above indicate speed-reconstruction spike (GPS/OBD integration artefact), not driving behaviour.",
+    "reasonCodeConfirmed": "PHYSICALLY_IMPLAUSIBLE_MEAN_INTENSITY"
+  },
+  "impliedDeltaV": {
+    "check": "deltaV_mps = meanAccelMps2 * durationS",
+    "conservativeMaxDeltaV_mps": 20.0,
+    "reasonCodeConfirmed": "IMPLIED_DELTA_V_EXCEEDS_PLAUSIBLE"
+  },
+  "mirrorPair": {
+    "description": "Adjacent opposite-sign admissible events with similar magnitude suggesting speed spike reversal",
+    "maxGapBetweenEventStartsSeconds": 3,
+    "intensityRatioMin": 0.75,
+    "intensityRatioMax": 1.33,
+    "minIntensityForPairMps2": 5.0,
+    "reasonCodeConfirmed": "MIRROR_OPPOSITE_SIGN_SPEED_SPIKE_PAIR",
+    "reasonCodeSuspected": "MIRROR_PAIR_SUSPECTED_WEAK_TIMING"
+  },
+  "tierHandling": {
+    "FULL_events_above_plausibility": "CONFIRMED (artefact)",
+    "BIN_ONLY_events_above_plausibility": "CONFIRMED (artefact)",
+    "plausible_FULL_events": "RETAIN (no screen)"
+  },
+  "evidenceClasses": ["CONFIRMED", "SUSPECTED", "INDETERMINATE", "CLEAR"]
+}

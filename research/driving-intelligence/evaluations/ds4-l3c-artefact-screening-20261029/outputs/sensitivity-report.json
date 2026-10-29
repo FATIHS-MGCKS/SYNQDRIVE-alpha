@@ -1,0 +1,85 @@
+{
+  "vehicleConcentration": "C4_pre_screen_116_descriptive_aggregate",
+  "iccBrakeFullLogIntensity": {
+    "icc": 0.118466,
+    "designEffect": 1.377905,
+    "meanClusterSize": 4.19
+  },
+  "looVehicle": {
+    "ARTEON": 2.69,
+    "AUDI_A4": 2.395,
+    "TIGUAN": 2.629
+  },
+  "looTripTop10": [
+    {
+      "tripId": "37843185-fd59-4527-a9bd-d580d5431906",
+      "label": "TIGUAN",
+      "p95": 2.513,
+      "deltaFromBaseline": -0.1160000000000001
+    },
+    {
+      "tripId": "b34e6757-d1cc-4b17-8e8e-5d4197a6b56e",
+      "label": "TIGUAN",
+      "p95": 2.513,
+      "deltaFromBaseline": -0.1160000000000001
+    },
+    {
+      "tripId": "578b77e7-178b-4600-bbbc-c00564f82b08",
+      "label": "AUDI_A4",
+      "p95": 2.628,
+      "deltaFromBaseline": -0.0009999999999998899
+    },
+    {
+      "tripId": "abbd40f0-cbe2-4a70-926d-ce7477e8e9e9",
+      "label": "AUDI_A4",
+      "p95": 2.628,
+      "deltaFromBaseline": -0.0009999999999998899
+    },
+    {
+      "tripId": "f123d957-0058-404a-887f-a980ef0a38d4",
+      "label": "AUDI_A4",
+      "p95": 2.628,
+      "deltaFromBaseline": -0.0009999999999998899
+    },
+    {
+      "tripId": "000d0530-09c0-4071-9b91-ea2621a2b14a",
+      "label": "ARTEON",
+      "p95": 2.629,
+      "deltaFromBaseline": 0
+    },
+    {
+      "tripId": "00578ab7-6999-4503-97bd-d793339cace2",
+      "label": "AUDI_A4",
+      "p95": 2.629,
+      "deltaFromBaseline": 0
+    },
+    {
+      "tripId": "041b8b4f-43d4-48d5-bfb2-4a5a7ab4443c",
+      "label": "AUDI_A4",
+      "p95": 2.629,
+      "deltaFromBaseline": 0
+    },
+    {
+      "tripId": "072b97a2-314b-4ab3-acb9-31e849bfbb92",
+      "label": "AUDI_A4",
+      "p95": 2.629,
+      "deltaFromBaseline": 0
+    },
+    {
+      "tripId": "08f2e58c-fb66-4c35-bb94-7a98e3a8a3aa",
+      "label": "TIGUAN",
+      "p95": 2.629,
+      "deltaFromBaseline": 0
+    }
+  ],
+  "temporal": {
+    "split": "median_trip_endLabel_utc",
+    "earlyTrips": 59,
+    "lateTrips": 57,
+    "BRAKE_tripWeighted_P95": {
+      "early": 2.746,
+      "late": 2.41,
+      "delta": -0.33599999999999985
+    }
+  }
+}

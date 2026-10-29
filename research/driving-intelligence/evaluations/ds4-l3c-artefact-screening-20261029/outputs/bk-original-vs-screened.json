@@ -1,0 +1,2123 @@
+{
+  "impacts": [
+    {
+      "tripId": "0cde545c-2f60-4e97-aa42-41495642e0f4",
+      "label": "AUDI_A4",
+      "eventId": 20,
+      "kind": "ACCELERATION",
+      "tier": "BIN_ONLY",
+      "intensity": 5.053,
+      "durationS": 2,
+      "originalBk_mps": 74.243,
+      "screenedBk_mps": 74.243,
+      "bkDelta_mps": 0,
+      "verdict": "SUSPECTED",
+      "reasonCodes": [
+        "MIRROR_PAIR_SUSPECTED_WEAK_TIMING"
+      ]
+    },
+    {
+      "tripId": "0cde545c-2f60-4e97-aa42-41495642e0f4",
+      "label": "AUDI_A4",
+      "eventId": 19,
+      "kind": "DECELERATION",
+      "tier": "BIN_ONLY",
+      "intensity": 4.987,
+      "durationS": 2,
+      "originalBk_mps": 130.535,
+      "screenedBk_mps": 130.535,
+      "bkDelta_mps": 0,
+      "verdict": "SUSPECTED",
+      "reasonCodes": [
+        "MIRROR_PAIR_SUSPECTED_WEAK_TIMING"
+      ]
+    },
+    {
+      "tripId": "630dc631-503f-43f2-b323-216cf0afc561",
+      "label": "ARTEON",
+      "eventId": 9,
+      "kind": "ACCELERATION",
+      "tier": "BIN_ONLY",
+      "intensity": 26.75,
+      "durationS": 2,
+      "originalBk_mps": 53.5,
+      "screenedBk_mps": 0,
+      "bkDelta_mps": 53.5,
+      "verdict": "CONFIRMED",
+      "reasonCodes": [
+        "PHYSICALLY_IMPLAUSIBLE_MEAN_INTENSITY",
+        "IMPLIED_DELTA_V_EXCEEDS_PLAUSIBLE",
+        "MIRROR_OPPOSITE_SIGN_SPEED_SPIKE_PAIR"
+      ]
+    },
+    {
+      "tripId": "630dc631-503f-43f2-b323-216cf0afc561",
+      "label": "ARTEON",
+      "eventId": 10,
+      "kind": "DECELERATION",
+      "tier": "BIN_ONLY",
+      "intensity": 27.396,
+      "durationS": 2,
+      "originalBk_mps": 54.792,
+      "screenedBk_mps": 0,
+      "bkDelta_mps": 54.792,
+      "verdict": "CONFIRMED",
+      "reasonCodes": [
+        "PHYSICALLY_IMPLAUSIBLE_MEAN_INTENSITY",
+        "IMPLIED_DELTA_V_EXCEEDS_PLAUSIBLE",
+        "MIRROR_OPPOSITE_SIGN_SPEED_SPIKE_PAIR"
+      ]
+    }
+  ],
+  "maxBkDistortion": {
+    "tripId": "630dc631-503f-43f2-b323-216cf0afc561",
+    "label": "ARTEON",
+    "kind": "DECELERATION",
+    "original": 54.792,
+    "screened": 0,
+    "delta": 54.792
+  },
+  "byTrip": [
+    {
+      "tripId": "000d0530-09c0-4071-9b91-ea2621a2b14a",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 6.938,
+        "brakeBk": 25.326
+      },
+      "screened": {
+        "accelBk": 6.938,
+        "brakeBk": 25.326
+      }
+    },
+    {
+      "tripId": "00578ab7-6999-4503-97bd-d793339cace2",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 21.362,
+        "brakeBk": 59.081
+      },
+      "screened": {
+        "accelBk": 21.362,
+        "brakeBk": 59.081
+      }
+    },
+    {
+      "tripId": "041b8b4f-43d4-48d5-bfb2-4a5a7ab4443c",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 9.886,
+        "brakeBk": 36.776
+      },
+      "screened": {
+        "accelBk": 9.886,
+        "brakeBk": 36.776
+      }
+    },
+    {
+      "tripId": "055646f6-9e82-4cb9-a244-9146f430a15e",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.425,
+        "brakeBk": 11.978
+      },
+      "screened": {
+        "accelBk": 4.425,
+        "brakeBk": 11.978
+      }
+    },
+    {
+      "tripId": "072b97a2-314b-4ab3-acb9-31e849bfbb92",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 25.819,
+        "brakeBk": 40.957
+      },
+      "screened": {
+        "accelBk": 25.819,
+        "brakeBk": 40.957
+      }
+    },
+    {
+      "tripId": "08f2e58c-fb66-4c35-bb94-7a98e3a8a3aa",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 10.947,
+        "brakeBk": 30.039
+      },
+      "screened": {
+        "accelBk": 10.947,
+        "brakeBk": 30.039
+      }
+    },
+    {
+      "tripId": "0cde545c-2f60-4e97-aa42-41495642e0f4",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 74.243,
+        "brakeBk": 130.535
+      },
+      "screened": {
+        "accelBk": 74.243,
+        "brakeBk": 130.535
+      }
+    },
+    {
+      "tripId": "0ecf583d-43b3-4f83-894b-9f3f83a5fe0f",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 14.787
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 14.787
+      }
+    },
+    {
+      "tripId": "0ee895a6-8767-4374-b903-2df7bce1803d",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 11.036,
+        "brakeBk": 27.889
+      },
+      "screened": {
+        "accelBk": 11.036,
+        "brakeBk": 27.889
+      }
+    },
+    {
+      "tripId": "0effed9d-0766-4e8e-a55f-62318e4ed636",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 7.388,
+        "brakeBk": 4.692
+      }
+    },
+    {
+      "tripId": "0f8d2f76-9b09-4aba-8c56-fa7e2ce1c5a8",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 9.042,
+        "brakeBk": 7.76
+      }
+    },
+    {
+      "tripId": "106479d8-e4e3-458c-ac9e-b2e501857cb2",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "11672ae2-67f4-4513-aedc-469cfea365dc",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 32.378,
+        "brakeBk": 56.726
+      },
+      "screened": {
+        "accelBk": 32.378,
+        "brakeBk": 56.726
+      }
+    },
+    {
+      "tripId": "11f5a645-752e-4b8a-b20a-9f1fc3a6673e",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 48.064,
+        "brakeBk": 47.829
+      }
+    },
+    {
+      "tripId": "12bc216b-a593-4c5f-a8fb-0e934fa77a32",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 59.225,
+        "brakeBk": 72.125
+      },
+      "screened": {
+        "accelBk": 59.225,
+        "brakeBk": 72.125
+      }
+    },
+    {
+      "tripId": "1451b625-973b-494a-bbd1-41de55ff5498",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "14c41c06-0a54-49d1-b5d2-f9d7373e638d",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 3.338
+      }
+    },
+    {
+      "tripId": "15f58bbc-efa4-4178-b1a4-2a92946db2e2",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 28.758,
+        "brakeBk": 34.313
+      }
+    },
+    {
+      "tripId": "168567f4-7eee-4614-a889-161d5c44d3fe",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.77,
+        "brakeBk": 11.638
+      },
+      "screened": {
+        "accelBk": 4.77,
+        "brakeBk": 11.638
+      }
+    },
+    {
+      "tripId": "16e83a59-e6e5-4d06-b1e0-08f82b9edb03",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 10.847
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 10.847
+      }
+    },
+    {
+      "tripId": "189bcf30-bfd8-467a-9a3b-303e6cdad64c",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 31.174,
+        "brakeBk": 54.186
+      },
+      "screened": {
+        "accelBk": 31.174,
+        "brakeBk": 54.186
+      }
+    },
+    {
+      "tripId": "19966c90-582b-4440-a767-b6abab05ac67",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 10.71,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "1d89b2fc-5cb1-42ce-a39d-a1388e97688b",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 7.81,
+        "brakeBk": 10.698
+      },
+      "screened": {
+        "accelBk": 7.81,
+        "brakeBk": 10.698
+      }
+    },
+    {
+      "tripId": "212cbcd4-6ac3-45cf-aa29-71280a20806f",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 11.483,
+        "brakeBk": 52.174
+      },
+      "screened": {
+        "accelBk": 11.483,
+        "brakeBk": 52.174
+      }
+    },
+    {
+      "tripId": "2237b42a-a7a0-4121-ab3c-1049312054b0",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 42.908,
+        "brakeBk": 44.984
+      },
+      "screened": {
+        "accelBk": 42.908,
+        "brakeBk": 44.984
+      }
+    },
+    {
+      "tripId": "23ac8ad8-61c2-41e0-9287-9c5ed19d995f",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 3.482
+      }
+    },
+    {
+      "tripId": "24deb8af-d9fd-4341-8b10-1b43fca70e52",
+      "label": "AUDI_A4",
+      "eligible": false,
+      "original": {
+        "accelBk": 0,
+        "brakeBk": 0
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "27cccc88-b975-4d7d-b249-3a00612b4d31",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 34.743,
+        "brakeBk": 58.131
+      },
+      "screened": {
+        "accelBk": 34.743,
+        "brakeBk": 58.131
+      }
+    },
+    {
+      "tripId": "296b4997-8f2d-4bad-b958-3471d65a8881",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 9.638,
+        "brakeBk": 27.41
+      },
+      "screened": {
+        "accelBk": 9.638,
+        "brakeBk": 27.41
+      }
+    },
+    {
+      "tripId": "299a0ffc-3820-4b76-a2ad-538d2c85a646",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 25.275,
+        "brakeBk": 14.875
+      }
+    },
+    {
+      "tripId": "29dff715-c2ce-4db6-8333-9b56bf855f00",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 5.157
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 5.157
+      }
+    },
+    {
+      "tripId": "2a478b12-73b6-48b4-b7d7-d1bb3ab9b390",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 43.5,
+        "brakeBk": 69.394
+      },
+      "screened": {
+        "accelBk": 43.5,
+        "brakeBk": 69.394
+      }
+    },
+    {
+      "tripId": "2bbec474-9d1c-43fd-b50b-54065ab90fa8",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 13.592,
+        "brakeBk": 6.296
+      },
+      "screened": {
+        "accelBk": 13.592,
+        "brakeBk": 6.296
+      }
+    },
+    {
+      "tripId": "30796c34-615c-4f1b-b21b-3a0b1afddaf4",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 16.076,
+        "brakeBk": 29.385
+      },
+      "screened": {
+        "accelBk": 16.076,
+        "brakeBk": 29.385
+      }
+    },
+    {
+      "tripId": "31d92e3f-0e85-43b8-9480-bb80ae89a447",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 4.833,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 44.52,
+        "brakeBk": 71.298
+      }
+    },
+    {
+      "tripId": "371cba40-3148-47a7-ab76-2bd44f7290e8",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 9.77,
+        "brakeBk": 17.684
+      },
+      "screened": {
+        "accelBk": 9.77,
+        "brakeBk": 17.684
+      }
+    },
+    {
+      "tripId": "37843185-fd59-4527-a9bd-d580d5431906",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 7.085,
+        "brakeBk": 20.484
+      },
+      "screened": {
+        "accelBk": 7.085,
+        "brakeBk": 20.484
+      }
+    },
+    {
+      "tripId": "3815920e-19f6-4af5-b5d5-172efe1ceb89",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 13.79,
+        "brakeBk": 5.14
+      },
+      "screened": {
+        "accelBk": 13.79,
+        "brakeBk": 5.14
+      }
+    },
+    {
+      "tripId": "38df2b3d-0ab9-4b04-8b56-b991eb50210f",
+      "label": "TIGUAN",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "3964c15c-f107-44b2-988f-04772655d446",
+      "label": "AUDI_A4",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "39f795a2-7de1-4cd8-9568-f7b42fda36d0",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 3.854
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 3.854
+      }
+    },
+    {
+      "tripId": "3a45e2d5-d3dc-4f4e-b2cf-7c68d6621fe3",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.425,
+        "brakeBk": 9.988
+      },
+      "screened": {
+        "accelBk": 4.425,
+        "brakeBk": 9.988
+      }
+    },
+    {
+      "tripId": "3c34a8ea-5ba4-445d-8158-01fb18cc6fa3",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 6.248,
+        "brakeBk": 30.148
+      },
+      "screened": {
+        "accelBk": 6.248,
+        "brakeBk": 30.148
+      }
+    },
+    {
+      "tripId": "3eb11f40-1e15-4f93-a8c5-cadfe160a8ae",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 12.934,
+        "brakeBk": 69.584
+      },
+      "screened": {
+        "accelBk": 12.934,
+        "brakeBk": 69.584
+      }
+    },
+    {
+      "tripId": "3f8e8ff9-36cd-4269-9b94-b6fe8d500614",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 44.723,
+        "brakeBk": 82.404
+      },
+      "screened": {
+        "accelBk": 44.723,
+        "brakeBk": 82.404
+      }
+    },
+    {
+      "tripId": "3fb1938f-0add-4d4c-ad3e-3b8a0b493260",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 50.833,
+        "brakeBk": 42.941
+      }
+    },
+    {
+      "tripId": "3fd4f006-41ec-4349-bebd-11a322a9d9dc",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 12.216,
+        "brakeBk": 30.014
+      },
+      "screened": {
+        "accelBk": 12.216,
+        "brakeBk": 30.014
+      }
+    },
+    {
+      "tripId": "49b3dd9b-dceb-486b-a58c-a858385139f6",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 56.398,
+        "brakeBk": 58.373
+      },
+      "screened": {
+        "accelBk": 56.398,
+        "brakeBk": 58.373
+      }
+    },
+    {
+      "tripId": "4aa6e908-a484-49bc-941d-414152f6747b",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 3.378,
+        "brakeBk": 27.633
+      },
+      "screened": {
+        "accelBk": 3.378,
+        "brakeBk": 27.633
+      }
+    },
+    {
+      "tripId": "4c9c31b4-5aa9-4efc-b4b1-533b85bb980f",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 22.625,
+        "brakeBk": 36.026
+      },
+      "screened": {
+        "accelBk": 22.625,
+        "brakeBk": 36.026
+      }
+    },
+    {
+      "tripId": "4e325b5d-1e4b-4b5e-8ca9-a1863bed2b1b",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 6.546,
+        "brakeBk": 7.577
+      },
+      "screened": {
+        "accelBk": 6.546,
+        "brakeBk": 7.577
+      }
+    },
+    {
+      "tripId": "52f2ea04-74a1-45d4-acf3-6ddd5594de8e",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 3.024,
+        "brakeBk": 3.324
+      },
+      "screened": {
+        "accelBk": 3.024,
+        "brakeBk": 3.324
+      }
+    },
+    {
+      "tripId": "53bbbea9-5fda-49e7-8e1f-64e0f742aefb",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.35,
+        "brakeBk": 25.727
+      },
+      "screened": {
+        "accelBk": 4.35,
+        "brakeBk": 25.727
+      }
+    },
+    {
+      "tripId": "56250310-a066-421a-949c-7f4dbd520217",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 8.856
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 8.856
+      }
+    },
+    {
+      "tripId": "5739eb1c-5f37-4cdc-a064-f94ac0d22d8b",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 9.068
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 9.068
+      }
+    },
+    {
+      "tripId": "578b77e7-178b-4600-bbbc-c00564f82b08",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 19.773,
+        "brakeBk": 24.039
+      },
+      "screened": {
+        "accelBk": 19.773,
+        "brakeBk": 24.039
+      }
+    },
+    {
+      "tripId": "57f7926d-96eb-40ab-bd6d-e4ab7ec6fd88",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 13.424,
+        "brakeBk": 38.428
+      },
+      "screened": {
+        "accelBk": 13.424,
+        "brakeBk": 38.428
+      }
+    },
+    {
+      "tripId": "588f50ad-bc00-4c6a-8c8b-8a612672b2aa",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.59,
+        "brakeBk": 3.538
+      },
+      "screened": {
+        "accelBk": 4.59,
+        "brakeBk": 3.538
+      }
+    },
+    {
+      "tripId": "5a9d72ba-889e-4769-9bd8-6547d16a3659",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 9.504,
+        "brakeBk": 73.108
+      },
+      "screened": {
+        "accelBk": 9.504,
+        "brakeBk": 73.108
+      }
+    },
+    {
+      "tripId": "5b890e1b-b793-4373-8c69-81abc291e38b",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 3.328,
+        "brakeBk": 4.32
+      },
+      "screened": {
+        "accelBk": 3.328,
+        "brakeBk": 4.32
+      }
+    },
+    {
+      "tripId": "613a969d-00b3-459c-b393-2dda5fff9414",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 36.756
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 36.756
+      }
+    },
+    {
+      "tripId": "614c5faa-12c1-4a9d-9a27-5d441c0ef8cd",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 49.192,
+        "brakeBk": 66.567
+      },
+      "screened": {
+        "accelBk": 49.192,
+        "brakeBk": 66.567
+      }
+    },
+    {
+      "tripId": "630dc631-503f-43f2-b323-216cf0afc561",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 53.5,
+        "brakeBk": 54.792
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "632dc9c5-a8d9-45ce-a269-abe89d22d677",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 28.678,
+        "brakeBk": 72.938
+      },
+      "screened": {
+        "accelBk": 28.678,
+        "brakeBk": 72.938
+      }
+    },
+    {
+      "tripId": "6490582e-6f3c-41ad-93c2-e46c5d79d875",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 20.951,
+        "brakeBk": 37.625
+      },
+      "screened": {
+        "accelBk": 20.951,
+        "brakeBk": 37.625
+      }
+    },
+    {
+      "tripId": "65fc1342-5c2d-4b97-a861-0cd4b55b09c2",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 10.434,
+        "brakeBk": 30.93
+      },
+      "screened": {
+        "accelBk": 10.434,
+        "brakeBk": 30.93
+      }
+    },
+    {
+      "tripId": "6676f366-c192-4e27-97f1-8fcfd9302b4d",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 10.138,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "67ad8699-a7f9-4f2e-9e0e-0e4a8e575261",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 26.762
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 26.762
+      }
+    },
+    {
+      "tripId": "67c59626-f0bd-41a1-9f8a-cc3fad8b985f",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 9.284,
+        "brakeBk": 34.517
+      },
+      "screened": {
+        "accelBk": 9.284,
+        "brakeBk": 34.517
+      }
+    },
+    {
+      "tripId": "682b174b-9e7b-4872-a4e4-2d8ed8bdbb79",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 17.21,
+        "brakeBk": 38.223
+      },
+      "screened": {
+        "accelBk": 17.21,
+        "brakeBk": 38.223
+      }
+    },
+    {
+      "tripId": "6bb3ddf2-48ca-4a9f-8d29-141f760f78e3",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 36.288,
+        "brakeBk": 71.693
+      },
+      "screened": {
+        "accelBk": 36.288,
+        "brakeBk": 71.693
+      }
+    },
+    {
+      "tripId": "6e1c7902-5f43-4c88-8b32-f9a711fc9347",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 60.093,
+        "brakeBk": 97.654
+      },
+      "screened": {
+        "accelBk": 60.093,
+        "brakeBk": 97.654
+      }
+    },
+    {
+      "tripId": "6f1090c0-5718-416a-827e-f294258a240c",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 15.145,
+        "brakeBk": 30.193
+      },
+      "screened": {
+        "accelBk": 15.145,
+        "brakeBk": 30.193
+      }
+    },
+    {
+      "tripId": "6f25760e-73ee-458c-acf6-0ed1064e6465",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 13.6,
+        "brakeBk": 53.225
+      },
+      "screened": {
+        "accelBk": 13.6,
+        "brakeBk": 53.225
+      }
+    },
+    {
+      "tripId": "722211e7-20e7-400a-a547-8f001d4990c4",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 7.427
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 7.427
+      }
+    },
+    {
+      "tripId": "72617129-0b33-4ef7-92ae-33ce1c4feffc",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 33.815,
+        "brakeBk": 77.179
+      }
+    },
+    {
+      "tripId": "73ac5fd1-ef0f-427c-80e8-e75fb6506fe2",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 45.763,
+        "brakeBk": 70.256
+      },
+      "screened": {
+        "accelBk": 45.763,
+        "brakeBk": 70.256
+      }
+    },
+    {
+      "tripId": "7493870b-8a52-41bb-a8e0-36a24ef0498e",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 6.032
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 6.032
+      }
+    },
+    {
+      "tripId": "76afdb1b-abdd-4c1d-bfc8-a44c86c218d6",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 53.351,
+        "brakeBk": 67.592
+      },
+      "screened": {
+        "accelBk": 53.351,
+        "brakeBk": 67.592
+      }
+    },
+    {
+      "tripId": "7a9d6a28-d91a-4919-98d8-d92fbea1573e",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 11.196,
+        "brakeBk": 11.583
+      }
+    },
+    {
+      "tripId": "7ad8ca50-be0e-4295-a71f-d1e14ce2fca2",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 29.188,
+        "brakeBk": 27.674
+      },
+      "screened": {
+        "accelBk": 29.188,
+        "brakeBk": 27.674
+      }
+    },
+    {
+      "tripId": "7b3fe123-15a1-4c19-bb78-20ef986b8e7b",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 39.57,
+        "brakeBk": 39.481
+      },
+      "screened": {
+        "accelBk": 39.57,
+        "brakeBk": 39.481
+      }
+    },
+    {
+      "tripId": "7ddfd361-acf0-4595-b8c0-94dfd06cb58b",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.449,
+        "brakeBk": 18.49
+      },
+      "screened": {
+        "accelBk": 4.449,
+        "brakeBk": 18.49
+      }
+    },
+    {
+      "tripId": "7f37fd56-4529-42f6-b4db-03ec4b79f10d",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 8.354,
+        "brakeBk": 18.247
+      },
+      "screened": {
+        "accelBk": 8.354,
+        "brakeBk": 18.247
+      }
+    },
+    {
+      "tripId": "813feafd-53a7-43e6-a8e3-b377ccb9cf47",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 28.841
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 28.841
+      }
+    },
+    {
+      "tripId": "820ac255-7a37-4afa-bdbf-2777c023fe7a",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 7.949,
+        "brakeBk": 5.739
+      }
+    },
+    {
+      "tripId": "84b14b8a-e0d3-4430-a0e9-89a050b919e6",
+      "label": "AUDI_A4",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "8574efe6-f346-4a09-9bf8-6ac01edead9b",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 10.716,
+        "brakeBk": 3.344
+      },
+      "screened": {
+        "accelBk": 10.716,
+        "brakeBk": 3.344
+      }
+    },
+    {
+      "tripId": "86e20400-5f5d-410f-8db9-bb3b2f4db866",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 6.508,
+        "brakeBk": 20.948
+      },
+      "screened": {
+        "accelBk": 6.508,
+        "brakeBk": 20.948
+      }
+    },
+    {
+      "tripId": "889789fd-d67b-4fad-889f-7d858583788d",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 12.875,
+        "brakeBk": 54.909
+      },
+      "screened": {
+        "accelBk": 12.875,
+        "brakeBk": 54.909
+      }
+    },
+    {
+      "tripId": "8994beec-0305-4db9-939e-de7884216f55",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 33.294,
+        "brakeBk": 38.184
+      }
+    },
+    {
+      "tripId": "89e9cf5c-a2be-4d87-9782-7cc932bae28b",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 59.89,
+        "brakeBk": 84.049
+      },
+      "screened": {
+        "accelBk": 59.89,
+        "brakeBk": 84.049
+      }
+    },
+    {
+      "tripId": "8a46e901-8c03-442f-9881-ae58d3b33df3",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 12.354,
+        "brakeBk": 16.917
+      }
+    },
+    {
+      "tripId": "8aaf08be-3a92-4b73-959e-8662d6fc8906",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 42.797,
+        "brakeBk": 77.021
+      },
+      "screened": {
+        "accelBk": 42.797,
+        "brakeBk": 77.021
+      }
+    },
+    {
+      "tripId": "8ba833db-fb17-4fb4-a344-aecf89e612c1",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 19.484,
+        "brakeBk": 24.376
+      }
+    },
+    {
+      "tripId": "8f0b4d37-bf1e-4fa1-8616-4d9c62e7ccbc",
+      "label": "AUDI_A4",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "913e780d-0e44-4744-b6a0-781c72772437",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 40.835,
+        "brakeBk": 75.959
+      },
+      "screened": {
+        "accelBk": 40.835,
+        "brakeBk": 75.959
+      }
+    },
+    {
+      "tripId": "914d6d71-9bc1-43d8-882c-3b1bcfaa78a1",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 3.19
+      }
+    },
+    {
+      "tripId": "98113ec4-59b4-4a61-8f38-b4f16ed91298",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 19.718,
+        "brakeBk": 61.338
+      },
+      "screened": {
+        "accelBk": 19.718,
+        "brakeBk": 61.338
+      }
+    },
+    {
+      "tripId": "988a0bad-d6f0-47f3-a11b-120a2bcda8b6",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "99df4060-6e15-46b9-aa88-0aed2d8a5efd",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 4.938,
+        "brakeBk": 12.159
+      },
+      "screened": {
+        "accelBk": 4.938,
+        "brakeBk": 12.159
+      }
+    },
+    {
+      "tripId": "9ead317c-8725-4373-b9ac-8bb84d5549be",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 7.646,
+        "brakeBk": 2.808
+      },
+      "screened": {
+        "accelBk": 7.646,
+        "brakeBk": 2.808
+      }
+    },
+    {
+      "tripId": "a1c8593b-c16b-46ab-a138-12b1b86a254f",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 20.134
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 20.134
+      }
+    },
+    {
+      "tripId": "a30cac06-bf29-4d74-a73e-2e5a9947c8e9",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 18.842,
+        "brakeBk": 37.588
+      },
+      "screened": {
+        "accelBk": 18.842,
+        "brakeBk": 37.588
+      }
+    },
+    {
+      "tripId": "a3a9a5d4-73bf-44f3-b24c-034508f9b749",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 52.966,
+        "brakeBk": 35.619
+      },
+      "screened": {
+        "accelBk": 52.966,
+        "brakeBk": 35.619
+      }
+    },
+    {
+      "tripId": "a512d12a-77a8-414a-af42-5ddb2823841c",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 82.052,
+        "brakeBk": 65.376
+      },
+      "screened": {
+        "accelBk": 82.052,
+        "brakeBk": 65.376
+      }
+    },
+    {
+      "tripId": "a5a059db-d8e1-4fe3-9ee6-6f448b47f695",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 12.876,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "abbd40f0-cbe2-4a70-926d-ce7477e8e9e9",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 14.528,
+        "brakeBk": 25.842
+      },
+      "screened": {
+        "accelBk": 14.528,
+        "brakeBk": 25.842
+      }
+    },
+    {
+      "tripId": "adc9814c-455c-4bd0-a37a-7bc8a52b6e8c",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 28.001,
+        "brakeBk": 48.774
+      },
+      "screened": {
+        "accelBk": 28.001,
+        "brakeBk": 48.774
+      }
+    },
+    {
+      "tripId": "ae294bf1-7795-45a6-89ab-9e994da3e061",
+      "label": "ARTEON",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "af4236ab-8109-4a69-837c-b37eb75be9f1",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 5.388,
+        "brakeBk": 38.635
+      },
+      "screened": {
+        "accelBk": 5.388,
+        "brakeBk": 38.635
+      }
+    },
+    {
+      "tripId": "b23e8161-a6db-4778-a960-9a1a59f087b0",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 44.387,
+        "brakeBk": 118.402
+      },
+      "screened": {
+        "accelBk": 44.387,
+        "brakeBk": 118.402
+      }
+    },
+    {
+      "tripId": "b2a18fc4-61c1-4726-87bf-4197123a443d",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 13.812,
+        "brakeBk": 30.738
+      }
+    },
+    {
+      "tripId": "b34e6757-d1cc-4b17-8e8e-5d4197a6b56e",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 7.085,
+        "brakeBk": 20.484
+      },
+      "screened": {
+        "accelBk": 7.085,
+        "brakeBk": 20.484
+      }
+    },
+    {
+      "tripId": "b42eaaa3-2097-4550-9563-2459bd7e2811",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 19.334,
+        "brakeBk": 35.411
+      },
+      "screened": {
+        "accelBk": 19.334,
+        "brakeBk": 35.411
+      }
+    },
+    {
+      "tripId": "b9840f41-6c08-4376-8beb-aa56a8cea0ee",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 39.872,
+        "brakeBk": 58.431
+      },
+      "screened": {
+        "accelBk": 39.872,
+        "brakeBk": 58.431
+      }
+    },
+    {
+      "tripId": "ba478ea9-60a0-4e99-be61-b526e7e45865",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 31.963,
+        "brakeBk": 74.499
+      },
+      "screened": {
+        "accelBk": 31.963,
+        "brakeBk": 74.499
+      }
+    },
+    {
+      "tripId": "bbe90c36-5700-43d5-aca0-2ff12f05d020",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 12.276
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 12.276
+      }
+    },
+    {
+      "tripId": "bc310e1b-5c87-488a-9a19-ceb40991cbe4",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 6.288
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 6.288
+      }
+    },
+    {
+      "tripId": "be07d73f-91cf-4d1c-8aea-bd550e595b08",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 19.463,
+        "brakeBk": 42.243
+      },
+      "screened": {
+        "accelBk": 19.463,
+        "brakeBk": 42.243
+      }
+    },
+    {
+      "tripId": "be80f104-035d-433a-9c55-1e8e2e31bc28",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 12.86,
+        "brakeBk": 52.714
+      },
+      "screened": {
+        "accelBk": 12.86,
+        "brakeBk": 52.714
+      }
+    },
+    {
+      "tripId": "bf00d930-f8ba-4a30-923a-15f95d44f986",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 58.421,
+        "brakeBk": 88.717
+      },
+      "screened": {
+        "accelBk": 58.421,
+        "brakeBk": 88.717
+      }
+    },
+    {
+      "tripId": "c069cc9b-6665-4681-bd1a-875cdd4e1b36",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 35.259,
+        "brakeBk": 28.86
+      }
+    },
+    {
+      "tripId": "c0ec3b30-d798-4324-b78e-86e305a00b83",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 26.394,
+        "brakeBk": 78.29
+      },
+      "screened": {
+        "accelBk": 26.394,
+        "brakeBk": 78.29
+      }
+    },
+    {
+      "tripId": "c188c4d5-447b-40f9-bd0e-af17ab6a9b23",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 14.403,
+        "brakeBk": 17.732
+      }
+    },
+    {
+      "tripId": "c26d3c13-867c-4be7-bb24-0704e4fd09fb",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 7.026
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 7.026
+      }
+    },
+    {
+      "tripId": "c319617a-1d3b-44c4-a4cc-396a7da30be1",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 29.61,
+        "brakeBk": 55.177
+      },
+      "screened": {
+        "accelBk": 29.61,
+        "brakeBk": 55.177
+      }
+    },
+    {
+      "tripId": "c40355b9-1863-4366-a21e-514cd75220fb",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 2.92,
+        "brakeBk": 6.938
+      },
+      "screened": {
+        "accelBk": 2.92,
+        "brakeBk": 6.938
+      }
+    },
+    {
+      "tripId": "c65e7b49-358c-4f9b-b34f-0354aa1f1949",
+      "label": "TIGUAN",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "c66a91b3-a603-40a1-a8ef-3ac77603773b",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 30.565,
+        "brakeBk": 12.418
+      }
+    },
+    {
+      "tripId": "c70b513f-9c06-4e88-bd53-29f075f02343",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 25.743,
+        "brakeBk": 45.166
+      },
+      "screened": {
+        "accelBk": 25.743,
+        "brakeBk": 45.166
+      }
+    },
+    {
+      "tripId": "d0af9cc7-ce0d-4e40-9854-2c1341e83bed",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 10.823,
+        "brakeBk": 34.834
+      },
+      "screened": {
+        "accelBk": 10.823,
+        "brakeBk": 34.834
+      }
+    },
+    {
+      "tripId": "d32c5c0b-e7a0-4d4f-92be-e2071f170485",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": null,
+        "brakeBk": 5.52
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 5.52
+      }
+    },
+    {
+      "tripId": "d7958194-28a2-4b24-a9c2-c1713992fa74",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 43.415,
+        "brakeBk": 107.943
+      },
+      "screened": {
+        "accelBk": 43.415,
+        "brakeBk": 107.943
+      }
+    },
+    {
+      "tripId": "d836fe46-f5fc-4f57-bf91-faa93b7b3f81",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 2.834,
+        "brakeBk": 9.522
+      },
+      "screened": {
+        "accelBk": 2.834,
+        "brakeBk": 9.522
+      }
+    },
+    {
+      "tripId": "d9001892-582b-42dc-a446-43024e40ecce",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 54.398,
+        "brakeBk": 33.369
+      },
+      "screened": {
+        "accelBk": 54.398,
+        "brakeBk": 33.369
+      }
+    },
+    {
+      "tripId": "d9128787-709a-451d-9c7c-364330683425",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "da7d60ed-04e9-430a-bf7f-a8d4d740135b",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 48.414,
+        "brakeBk": 79.901
+      },
+      "screened": {
+        "accelBk": 48.414,
+        "brakeBk": 79.901
+      }
+    },
+    {
+      "tripId": "dad8ec32-2c71-4a01-87f1-98bc79319a79",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 10.274,
+        "brakeBk": 20.236
+      },
+      "screened": {
+        "accelBk": 10.274,
+        "brakeBk": 20.236
+      }
+    },
+    {
+      "tripId": "de72034b-696a-495d-bd1a-cb6098faa886",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 3,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "dec9a316-dc8d-4235-9ac8-df4f2994b5ab",
+      "label": "ARTEON",
+      "eligible": false,
+      "original": {
+        "accelBk": 0,
+        "brakeBk": 0
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "e29854a7-b9ae-4ce6-bda3-afe8ff31297a",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 17.514,
+        "brakeBk": 39.642
+      }
+    },
+    {
+      "tripId": "e3624b7d-ae61-42eb-82a1-a4f46b0f8794",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 16.891,
+        "brakeBk": 44.703
+      },
+      "screened": {
+        "accelBk": 16.891,
+        "brakeBk": 44.703
+      }
+    },
+    {
+      "tripId": "e4f56a9d-ff8f-406f-aff0-61c15fb36b33",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 3.278,
+        "brakeBk": 2.96
+      }
+    },
+    {
+      "tripId": "e7acf258-0a4f-4e6f-9e4d-eb7be29fa9ef",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 7.244,
+        "brakeBk": 30.211
+      },
+      "screened": {
+        "accelBk": 7.244,
+        "brakeBk": 30.211
+      }
+    },
+    {
+      "tripId": "e87dcc28-09cd-430d-a9ce-4e30f9b8684f",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 32.258,
+        "brakeBk": 9.242
+      }
+    },
+    {
+      "tripId": "efad939c-4e42-4666-98bb-cac397201cc3",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 18.742,
+        "brakeBk": 24.327
+      },
+      "screened": {
+        "accelBk": 18.742,
+        "brakeBk": 24.327
+      }
+    },
+    {
+      "tripId": "f123d957-0058-404a-887f-a980ef0a38d4",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 15.938,
+        "brakeBk": 21.611
+      },
+      "screened": {
+        "accelBk": 15.938,
+        "brakeBk": 21.611
+      }
+    },
+    {
+      "tripId": "f38ba584-90da-4b79-80f9-bdfd14747988",
+      "label": "TESLA_M3",
+      "eligible": false,
+      "original": {
+        "accelBk": null,
+        "brakeBk": null
+      },
+      "screened": {
+        "accelBk": 0,
+        "brakeBk": 0
+      }
+    },
+    {
+      "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 22.284,
+        "brakeBk": 27.591
+      },
+      "screened": {
+        "accelBk": 22.284,
+        "brakeBk": 27.591
+      }
+    },
+    {
+      "tripId": "f502a4a0-02d2-421d-bb39-7c9af25ba38e",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 9.118,
+        "brakeBk": 32.899
+      },
+      "screened": {
+        "accelBk": 9.118,
+        "brakeBk": 32.899
+      }
+    },
+    {
+      "tripId": "f54fb726-3f49-4b13-9ba1-0f37dd509c04",
+      "label": "ARTEON",
+      "eligible": true,
+      "original": {
+        "accelBk": 6.14,
+        "brakeBk": 14.675
+      },
+      "screened": {
+        "accelBk": 6.14,
+        "brakeBk": 14.675
+      }
+    },
+    {
+      "tripId": "f7e826f4-a1f5-4342-b97c-b175a1264c0e",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 49.247,
+        "brakeBk": 47.632
+      },
+      "screened": {
+        "accelBk": 49.247,
+        "brakeBk": 47.632
+      }
+    },
+    {
+      "tripId": "fcd7c026-7350-4ff4-b949-ab9e7a3b1392",
+      "label": "TIGUAN",
+      "eligible": true,
+      "original": {
+        "accelBk": 3.062,
+        "brakeBk": 19.073
+      },
+      "screened": {
+        "accelBk": 3.062,
+        "brakeBk": 19.073
+      }
+    },
+    {
+      "tripId": "fd7ebe6d-2e6d-4561-9856-27cf785eced9",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 23.309,
+        "brakeBk": 43.337
+      },
+      "screened": {
+        "accelBk": 23.309,
+        "brakeBk": 43.337
+      }
+    },
+    {
+      "tripId": "fe0ebdaf-3a8d-4045-8c5b-8e151e5216e5",
+      "label": "AUDI_A4",
+      "eligible": true,
+      "original": {
+        "accelBk": 23.659,
+        "brakeBk": 27.984
+      },
+      "screened": {
+        "accelBk": 23.659,
+        "brakeBk": 27.984
+      }
+    }
+  ]
+}

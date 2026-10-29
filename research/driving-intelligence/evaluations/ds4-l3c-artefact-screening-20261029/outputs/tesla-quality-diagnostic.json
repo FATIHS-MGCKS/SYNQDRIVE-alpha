@@ -1,0 +1,18 @@
+{
+  "path_b_tesla_trips": 33,
+  "pre_screen_candidates": 0,
+  "exclusionReasons": {
+    "EXPOSURE_NOT_DERIVABLE": 33,
+    "EVIDENCE_QUALITY_NOT_PRESENT": 33,
+    "ZERO_RATED_EVENTS": 5
+  },
+  "sourceFamily": "API_SYNTHETIC (all 33 from cohort-manifest)",
+  "codePath": {
+    "l2Gate": "input.evidenceQuality !== 'PRESENT' => EVIDENCE_QUALITY_NOT_PRESENT",
+    "assessmentField": "evidenceQuality := payload.contract.sparse.channelOutcome (ds4-trip-assessment-v1.engine)",
+    "requiredForL2": "exact string PRESENT"
+  },
+  "classification": "UNMAPPED_LINEAGE",
+  "rationale": "Assessment copies sparse.channelOutcome, not a normalized PRESENT flag; Tesla API_SYNTHETIC replays yield channelOutcome != PRESENT so L2 fails deterministically without absent DB field — computed assessment path but failing gate mapping, not gate weakened.",
+  "synthesizeEvidence": false
+}

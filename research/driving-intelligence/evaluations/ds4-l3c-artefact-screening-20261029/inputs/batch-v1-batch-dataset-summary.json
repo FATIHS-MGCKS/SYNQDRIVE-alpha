@@ -1,0 +1,43 @@
+{
+  "batchId": "ds4-historical-batch-v1-20261029",
+  "productionSha": "1bafb2aa3bd53722179c033adce552e88a9a44ab",
+  "codeSha": "1bafb2aa3bd53722179c033adce552e88a9a44ab",
+  "generatedAtUtc": "2026-10-29T15:44:16.490Z",
+  "cohortUniqueTrips": 157,
+  "processedTripFiles": 157,
+  "summary": {
+    "replaySuccess": 157,
+    "replayFailures": 0,
+    "layer2Success": 157,
+    "determinismPass": 157,
+    "accelAdmissibleEvents": 565,
+    "brakeAdmissibleEvents": 914,
+    "fullEvents": 740,
+    "binOnlyEvents": 739,
+    "c4Trips": 157,
+    "c5_1Trips": 0,
+    "calibrationCandidates": 116,
+    "qualityExclusions": {
+      "EXPOSURE_NOT_DERIVABLE": 38,
+      "EVIDENCE_QUALITY_NOT_PRESENT": 33,
+      "ZERO_RATED_EVENTS": 13,
+      "ASSESSMENT_STATUS_NOT_ELIGIBLE": 5,
+      "ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS": 1
+    }
+  },
+  "byVehicle": {
+    "ARTEON": 22,
+    "AUDI_A4": 55,
+    "TIGUAN": 47,
+    "TESLA_M3": 33
+  },
+  "bySpeedAuthority": {
+    "C4_ONLY": 157
+  },
+  "reproducibility": {
+    "motionEngineSha": "1bafb2aa3bd53722179c033adce552e88a9a44ab",
+    "l2ModelVersion": "DS4_LOAD_OBSERVABLES_V1",
+    "exposureGate": "UNCALIBRATED",
+    "readOnlyProductionDb": true
+  }
+}

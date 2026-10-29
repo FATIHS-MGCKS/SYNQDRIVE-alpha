@@ -1,0 +1,42 @@
+{
+  "verifiedAtUtc": "2026-10-29T17:17:20.451Z",
+  "files": {
+    "eventIntensityJsonl": {
+      "path": "/workspace/research/driving-intelligence/evaluations/ds4-l3c-artefact-screening-20261029/inputs/event-intensity-dataset.jsonl",
+      "sha256": "d90be1786243fcfac471594f841b46495a62acda0c14fdd64efe0d12d86f6834",
+      "sizeBytes": 887647
+    },
+    "layer2Index": {
+      "path": "/workspace/research/driving-intelligence/evaluations/ds4-l3c-artefact-screening-20261029/inputs/layer2-observables-index.json",
+      "sha256": "ccaed4f248790eb446efba832d8668f98ff23486c81feb0b764863149044a09a",
+      "sizeBytes": 61707
+    },
+    "cohortManifest": {
+      "path": "/workspace/research/driving-intelligence/evaluations/ds4-l3c-artefact-screening-20261029/inputs/cohort-manifest.json",
+      "sha256": "75440d855534b3aa83648289e052dea01b68f264efc8affeeb73735b17200ccc",
+      "sizeBytes": 119806
+    },
+    "batchSummary": {
+      "path": "/workspace/research/driving-intelligence/evaluations/ds4-l3c-artefact-screening-20261029/inputs/batch-v1-batch-dataset-summary.json",
+      "sha256": "68e956bcf2fa37065ed4d3f9cd68d3c700422a52f5d6050102285f6b98e5849c",
+      "sizeBytes": 1182
+    }
+  },
+  "originalsUnmodified": true,
+  "jsonlTimingEvidence": {
+    "fieldsPresent": [
+      "startLabel",
+      "endLabel",
+      "durationS",
+      "meanAccelMps2",
+      "coverageRatio",
+      "eventQuality",
+      "classification",
+      "kind",
+      "eventIndex"
+    ],
+    "speedSeriesInJsonl": false,
+    "neighborEventEvidence": "startLabel ordering within trip sufficient for mirror-pair timing; no per-label speed in export",
+    "verdict": "SUFFICIENT_FOR_DOCUMENTED_SCREENING_WITH_INDETERMINATE_WHERE_TIMING_MISSING"
+  }
+}
