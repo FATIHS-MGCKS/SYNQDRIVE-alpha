@@ -15,7 +15,12 @@
  */
 
 import type { Ds4EventIntensityEligibilityRecordV1 } from './ds4-assessment-event-intensity-eligibility.v1';
-import type { Ds4TripAssessmentComputeResultV1 } from './ds4-trip-assessment-v1.engine';
+import type {
+  Ds4TripAssessmentComputeResultV1,
+  Ds4TripAssessmentEventSummariesV1,
+} from './ds4-trip-assessment-v1.engine';
+import type { Ds4SpeedAuthorityPartitionV1, Ds4TripAssessmentStatusV1 } from './ds4-trip-assessment-v1.contract';
+import { emptyDs4DrivingExposureV1, type Ds4DrivingExposureV1 } from './ds4-assessment-driving-exposure.v1';
 import {
   DS4_LONGITUDINAL_LOAD_ELIGIBLE_ASSESSMENT_STATUSES_V1,
   DS4_LONGITUDINAL_LOAD_EXPOSURE_GATE_UNCALIBRATED,
@@ -228,18 +233,129 @@ function validateRecords(records: readonly Ds4EventIntensityEligibilityRecordV1[
   return null;
 }
 
+function buildDs4LongitudinalLoadObservablesInputCoreV1(input: {
+  assessmentStatus: Ds4TripAssessmentStatusV1;
+  evidenceQuality: string | null;
+  speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
+  eventSummaries: Ds4TripAssessmentEventSummariesV1;
+}): Ds4LongitudinalLoadObservablesInputV1 {
+  return {
+    assessmentStatus: input.assessmentStatus,
+    evidenceQuality: input.evidenceQuality,
+    speedAuthority: input.speedAuthority,
+    ratedEventCount: input.eventSummaries.ratedEventCount,
+    unratedEventCount: input.eventSummaries.unratedEventCount,
+    artefactSuspectCount: input.eventSummaries.artefactSuspectCount,
+    drivingExposure: input.eventSummaries.drivingExposure,
+    eventIntensityRecords: input.eventSummaries.eventIntensityRecords,
+  };
+}
+
 export function buildDs4LongitudinalLoadObservablesInputV1(
   assessment: Ds4TripAssessmentComputeResultV1,
 ): Ds4LongitudinalLoadObservablesInputV1 {
-  return {
+  return buildDs4LongitudinalLoadObservablesInputCoreV1({
     assessmentStatus: assessment.assessmentStatus,
     evidenceQuality: assessment.evidenceQuality,
     speedAuthority: assessment.speedAuthority,
-    ratedEventCount: assessment.eventSummaries.ratedEventCount,
-    unratedEventCount: assessment.eventSummaries.unratedEventCount,
-    artefactSuspectCount: assessment.eventSummaries.artefactSuspectCount,
-    drivingExposure: assessment.eventSummaries.drivingExposure,
-    eventIntensityRecords: assessment.eventSummaries.eventIntensityRecords,
+    eventSummaries: assessment.eventSummaries,
+  });
+}
+
+/** Read-side adapter: persisted assessment row + eventSummariesJson (no motion recompute). */
+export function buildDs4LongitudinalLoadObservablesInputFromPersistedAssessmentV1(input: {
+  assessmentStatus: Ds4TripAssessmentStatusV1;
+  evidenceQuality: string | null;
+  speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
+  eventSummariesJson: unknown;
+}): Ds4LongitudinalLoadObservablesInputV1 {
+  return buildDs4LongitudinalLoadObservablesInputCoreV1({
+    assessmentStatus: input.assessmentStatus,
+    evidenceQuality: input.evidenceQuality,
+    speedAuthority: input.speedAuthority,
+    eventSummaries: coerceDs4TripAssessmentEventSummariesFromPersistedJsonV1(
+      input.eventSummariesJson,
+      input.speedAuthority,
+    ),
+  });
+}
+
+export function projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1(input: {
+  assessmentStatus: Ds4TripAssessmentStatusV1;
+  evidenceQuality: string | null;
+  speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
+  eventSummariesJson: unknown;
+}): Ds4LongitudinalLoadObservablesV1 {
+  return computeDs4LongitudinalLoadObservablesV1(buildDs4LongitudinalLoadObservablesInputFromPersistedAssessmentV1(input));
+}
+
+function emptyIntensityKindCounts(): Ds4TripAssessmentEventSummariesV1['intensityAcceleration'] {
+  return {
+    totalEvents: 0,
+    acceptedEvents: 0,
+    excludedArtefacts: 0,
+    unratedEvents: 0,
+    admissibleEvents: 0,
+    fullEligibleEvents: 0,
+    binOnlyEvents: 0,
+    admissibleShareOfAccepted: null,
+    admissibleDurationSeconds: [],
+    admissibleMeanAccelMps2: [],
+  };
+}
+
+/**
+ * Coerce persisted JSON into the Layer-2 input shape. Historical rows missing PR-A2 fields fail closed via compute gates.
+ */
+export function coerceDs4TripAssessmentEventSummariesFromPersistedJsonV1(
+  json: unknown,
+  speedAuthorityFallback: Ds4SpeedAuthorityPartitionV1 | null,
+): Ds4TripAssessmentEventSummariesV1 {
+  const authority = speedAuthorityFallback ?? 'C4_ONLY';
+  const emptyExposure = emptyDs4DrivingExposureV1(authority);
+  if (json == null || typeof json !== 'object' || Array.isArray(json)) {
+    return {
+      acceptedAccelerationCount: 0,
+      acceptedDecelerationCount: 0,
+      artefactSuspectCount: 0,
+      ratedEventCount: 0,
+      unratedEventCount: 0,
+      accelerationOrdinalValues: [],
+      decelerationOrdinalValues: [],
+      intensityAcceleration: emptyIntensityKindCounts(),
+      intensityDeceleration: emptyIntensityKindCounts(),
+      drivingExposure: emptyExposure,
+      eventIntensityRecords: [],
+      usableTemporalCoverage: { labelCount: 0, directFsmLabelCount: 0, speedNumericCount: 0 },
+    };
+  }
+  const raw = json as Record<string, unknown>;
+  const exposureRaw = raw.drivingExposure;
+  let drivingExposure = emptyExposure;
+  if (exposureRaw != null && typeof exposureRaw === 'object' && !Array.isArray(exposureRaw)) {
+    drivingExposure = { ...emptyExposure, ...(exposureRaw as Ds4DrivingExposureV1) };
+  }
+  const recordsRaw = raw.eventIntensityRecords;
+  const eventIntensityRecords = Array.isArray(recordsRaw)
+    ? (recordsRaw as Ds4EventIntensityEligibilityRecordV1[])
+    : [];
+  return {
+    acceptedAccelerationCount: typeof raw.acceptedAccelerationCount === 'number' ? raw.acceptedAccelerationCount : 0,
+    acceptedDecelerationCount: typeof raw.acceptedDecelerationCount === 'number' ? raw.acceptedDecelerationCount : 0,
+    artefactSuspectCount: typeof raw.artefactSuspectCount === 'number' ? raw.artefactSuspectCount : 0,
+    ratedEventCount: typeof raw.ratedEventCount === 'number' ? raw.ratedEventCount : 0,
+    unratedEventCount: typeof raw.unratedEventCount === 'number' ? raw.unratedEventCount : 0,
+    accelerationOrdinalValues: Array.isArray(raw.accelerationOrdinalValues)
+      ? (raw.accelerationOrdinalValues as number[])
+      : [],
+    decelerationOrdinalValues: Array.isArray(raw.decelerationOrdinalValues)
+      ? (raw.decelerationOrdinalValues as number[])
+      : [],
+    intensityAcceleration: emptyIntensityKindCounts(),
+    intensityDeceleration: emptyIntensityKindCounts(),
+    drivingExposure,
+    eventIntensityRecords,
+    usableTemporalCoverage: { labelCount: 0, directFsmLabelCount: 0, speedNumericCount: 0 },
   };
 }
 
