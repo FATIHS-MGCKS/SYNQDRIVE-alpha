@@ -1,6 +1,13 @@
 import type { PrismaClient } from '@prisma/client';
-import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+import type { TelemetrySourceFamily } from '../../telemetry-source-family';
 import type { Ds4LongitudinalEvidenceChannelManifestEntryV1, Ds4LongitudinalEvidenceQualityContextV1 } from './ds4-longitudinal-evidence-quality.v1';
+
+const KNOWN_SOURCE_FAMILIES = new Set<TelemetrySourceFamily>(['RUPTELA_R1', 'API_SYNTHETIC', 'UNKNOWN']);
+
+function parseSourceFamily(raw: unknown): TelemetrySourceFamily | null {
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  return KNOWN_SOURCE_FAMILIES.has(raw as TelemetrySourceFamily) ? (raw as TelemetrySourceFamily) : null;
+}
 
 function parseChannelManifest(raw: unknown): Ds4LongitudinalEvidenceQualityContextV1['channelManifest'] {
   if (!Array.isArray(raw)) return undefined;
@@ -26,37 +33,37 @@ export async function loadDs4LongitudinalEvidenceQualityContextV1(
     sparseChannelOutcome: string | null;
   },
 ): Promise<Ds4LongitudinalEvidenceQualityContextV1 | null> {
-  const workItemModel = (prisma as { diV0S4WorkItem?: { findFirst: typeof prisma.diV0S4WorkItem.findFirst } })
-    .diV0S4WorkItem;
-  const snapshotModel = (prisma as { diV0S4EvidenceSnapshot?: { findFirst: typeof prisma.diV0S4EvidenceSnapshot.findFirst } })
-    .diV0S4EvidenceSnapshot;
-  if (!workItemModel?.findFirst || !snapshotModel?.findFirst) {
+  if (!scope.pinnedSnapshotHash?.trim()) {
     return null;
   }
 
-  const wi = await workItemModel.findFirst({
-    where: {
-      organizationId: scope.organizationId,
-      tripId: scope.tripId,
-      pinnedSnapshotHash: scope.pinnedSnapshotHash,
-    },
-    select: { sourceFamily: true },
-    orderBy: { completedAt: 'desc' },
-  });
-  if (!wi?.sourceFamily) return null;
+  const workRows = await prisma.$queryRaw<Array<{ source_family: string }>>`
+    SELECT source_family
+    FROM di_v0_s4_work_items
+    WHERE organization_id = ${scope.organizationId}
+      AND trip_id = ${scope.tripId}
+      AND pinned_snapshot_hash = ${scope.pinnedSnapshotHash}
+    ORDER BY completed_at DESC NULLS LAST
+    LIMIT 1
+  `;
 
-  const snap = await snapshotModel.findFirst({
-    where: {
-      organizationId: scope.organizationId,
-      tripId: scope.tripId,
-      snapshotHash: scope.pinnedSnapshotHash,
-    },
-    select: { channelManifest: true },
-  });
+  const sourceFamily = parseSourceFamily(workRows[0]?.source_family);
+  if (sourceFamily == null) {
+    return null;
+  }
+
+  const snapshotRows = await prisma.$queryRaw<Array<{ channel_manifest: unknown }>>`
+    SELECT channel_manifest
+    FROM di_v0_s4_evidence_snapshots
+    WHERE organization_id = ${scope.organizationId}
+      AND trip_id = ${scope.tripId}
+      AND snapshot_hash = ${scope.pinnedSnapshotHash}
+    LIMIT 1
+  `;
 
   return {
-    sourceFamily: wi.sourceFamily as DiV0S4SourceFamily,
-    channelManifest: parseChannelManifest(snap?.channelManifest),
+    sourceFamily,
+    channelManifest: parseChannelManifest(snapshotRows[0]?.channel_manifest),
     sparseChannelOutcome: scope.sparseChannelOutcome,
   };
 }

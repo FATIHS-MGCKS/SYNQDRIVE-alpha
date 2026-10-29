@@ -1,4 +1,4 @@
-import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+import type { TelemetrySourceFamily } from '../../telemetry-source-family';
 import type { Ds4SpeedAuthorityPartitionV1 } from './ds4-trip-assessment-v1.contract';
 import type { Ds4TripAssessmentEventSummariesV1 } from './ds4-trip-assessment-v1.engine';
 import type { Ds4LongitudinalLoadReasonCodeV1 } from './ds4-longitudinal-load-observables.v1.contract';
@@ -13,7 +13,7 @@ export type Ds4LongitudinalEvidenceChannelManifestEntryV1 = {
 };
 
 export type Ds4LongitudinalEvidenceQualityContextV1 = {
-  sourceFamily: DiV0S4SourceFamily | null;
+  sourceFamily: TelemetrySourceFamily | null;
   channelManifest?: readonly Ds4LongitudinalEvidenceChannelManifestEntryV1[];
   /** Sparse R1 channel outcome (same as assessment.evidenceQuality today); never mutated. */
   sparseChannelOutcome?: string | null;

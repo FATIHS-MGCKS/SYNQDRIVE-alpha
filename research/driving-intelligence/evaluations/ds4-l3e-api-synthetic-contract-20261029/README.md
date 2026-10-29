@@ -13,9 +13,9 @@ Run (from repo):
 
 ```bash
 cd backend
-npx ts-node --transpile-only scripts/test/ds4-l3e-api-synthetic-contract-spike.harness.ts
+npx ts-node --transpile-only scripts/research/ds4-l3e-api-synthetic-contract-spike.harness.ts
 ```
 
-Harness entrypoint: `backend/scripts/test/ds4-l3e-api-synthetic-contract-spike.harness.ts` (ts-node compatibility only; not production code).
+Harness entrypoint: `backend/scripts/research/ds4-l3e-api-synthetic-contract-spike.harness.ts` (research-only; not production code).
 
 Pins: immutable pilot evidence under `/opt/cursor/artifacts/ds4-historical-offline-replay-pilot-20261029/evidence/`.

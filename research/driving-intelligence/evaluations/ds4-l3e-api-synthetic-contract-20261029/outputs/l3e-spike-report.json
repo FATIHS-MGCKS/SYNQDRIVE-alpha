@@ -1,7 +1,7 @@
 {
   "packageId": "ds4-l3e-api-synthetic-contract-20261029",
   "contractVersion": "20261029",
-  "generatedAtUtc": "2026-10-29T17:44:32.438Z",
+  "generatedAtUtc": "2026-10-29T18:42:22.579Z",
   "pilotEvidenceRoot": "/opt/cursor/artifacts/ds4-historical-offline-replay-pilot-20261029/evidence",
   "productionGateUnchanged": true,
   "trips": [
