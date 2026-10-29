@@ -89,6 +89,19 @@ export function computeDs4DrivingImpactV2(input: {
     };
   }
 
+  if (assessment.assessmentStatus !== 'RATED') {
+    return {
+      modelVersion: DS4_IMPACT_V2_MODEL_VERSION,
+      scoreAuthority: DS4_IMPACT_V2_SCORE_AUTHORITY,
+      operationalLoadIndex: null,
+      scorePublicationStatus: 'NOT_ELIGIBLE_ASSESSMENT_STATUS',
+      publicationReason: assessment.assessmentStatus,
+      evidenceCompleteness,
+      operationalLoad,
+      sourceAssessmentFingerprint: assessment.inputFingerprint,
+    };
+  }
+
   const percentile = reference.resolveOperationalLoadIndexPercentile({
     speedAuthority: assessment.speedAuthority,
     accelerationOrdinalValues: assessment.eventSummaries.accelerationOrdinalValues,

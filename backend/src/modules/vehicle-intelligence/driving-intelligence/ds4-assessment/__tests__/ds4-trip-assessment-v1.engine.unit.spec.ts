@@ -5,6 +5,8 @@ import {
 import type { DiV0MotionCoreShadowPayloadV1 } from '../../motion-core-shadow-worker/di-v0-motion-core-shadow.types';
 import { DS4_ASSESSMENT_FLEET_VEHICLES_V1 } from '../ds4-assessment-fleet-admission.v1';
 import { computeDs4DrivingImpactV2 } from '../ds4-driving-impact-v2.engine';
+import type { Ds4ReferenceDistributionLookupV1 } from '../ds4-reference-distribution.v1';
+import { DS4_REFERENCE_DISTRIBUTION_V1_UNCALIBRATED } from '../ds4-reference-distribution.v1';
 import { DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT } from '../ds4-assessment-quality-policy.v1';
 import { computeDs4TripAssessmentV1 } from '../ds4-trip-assessment-v1.engine';
 
@@ -358,5 +360,49 @@ describe('computeDs4DrivingImpactV2', () => {
     expect(impact.scorePublicationStatus).toBe('DISABLED_MODEL_NOT_CALIBRATED');
     expect(impact.publicationReason).toBe('MODEL_NOT_CALIBRATED');
     expect(impact.scoreAuthority).toBe('DS4');
+  });
+
+  it('does not call percentile resolver for UNRATED_COUNTS_ONLY assessments', () => {
+    const payload = basePayload({
+      events: [],
+      summary: { ...basePayload().summary, eventCount: 0, eventAcceptedCount: 0 },
+    });
+    const assessment = computeDs4TripAssessmentV1({
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
+      motionRun: motionRun(),
+      payload,
+    });
+    expect(assessment.assessmentStatus).toBe('UNRATED_COUNTS_ONLY');
+    const resolve = jest.fn(() => 42);
+    const reference: Ds4ReferenceDistributionLookupV1 = {
+      version: DS4_REFERENCE_DISTRIBUTION_V1_UNCALIBRATED.version,
+      calibrated: true,
+      resolveOperationalLoadIndexPercentile: resolve,
+    };
+    const impact = computeDs4DrivingImpactV2({ assessment, referenceDistribution: reference });
+    expect(resolve).not.toHaveBeenCalled();
+    expect(impact.operationalLoadIndex).toBeNull();
+    expect(impact.scorePublicationStatus).toBe('NOT_ELIGIBLE_ASSESSMENT_STATUS');
+  });
+
+  it('preserves RATED resolver path but keeps publication disabled under uncalibrated policy', () => {
+    const assessment = computeDs4TripAssessmentV1({
+      scope: { organizationId: TIGUAN.organizationId, vehicleId: TIGUAN.vehicleId, tripId: SCOPE_TRIP_ID },
+      motionRun: motionRun(),
+      payload: basePayload(),
+      qualityPolicy: { ...DS4_ASSESSMENT_QUALITY_POLICY_V1_DEFAULT, ordinalTripRatingApproved: true },
+    });
+    expect(assessment.assessmentStatus).toBe('RATED');
+    const resolve = jest.fn(() => 55);
+    const reference: Ds4ReferenceDistributionLookupV1 = {
+      version: DS4_REFERENCE_DISTRIBUTION_V1_UNCALIBRATED.version,
+      calibrated: true,
+      resolveOperationalLoadIndexPercentile: resolve,
+    };
+    const impact = computeDs4DrivingImpactV2({ assessment, referenceDistribution: reference });
+    expect(resolve).toHaveBeenCalledTimes(1);
+    expect(impact.operationalLoadIndex).toBe(55);
+    expect(impact.scorePublicationStatus).toBe('DISABLED_MODEL_NOT_CALIBRATED');
+    expect(impact.publicationReason).toBe('MODEL_NOT_CALIBRATED');
   });
 });

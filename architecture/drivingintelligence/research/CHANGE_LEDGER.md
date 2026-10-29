@@ -2460,3 +2460,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-assessment`; `test:di:ds4-assessment:postgres:ci`; evidence `evidence/DS4_PRE_ACTIVATION_READINESS_2026-10-28.md` |
 | NON_EFFECTS | No deploy; assessment/impact workers OFF; no numeric score; no consumer cutover |
 | REMAINING | Production deploy of #2212/#2215/#2218 stack; V2 intensity backfill on legacy motion payloads; owner activation record |
+
+### DS4 assessment collection safety — V2-only discovery + cutoff fail-closed (2026-10-28)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `discoverFromSucceededMotionRuns` filters V2 contract + `DI_V0_DS4_ASSESSMENT_MIN_MOTION_RUN_CREATED_AT`; summary/payload contract validation; Impact V2 percentile resolver gated on `assessmentStatus===RATED` only |
+| WHY | Safe shadow collection for post-L2 Motion V2 without V1 starvation or numeric score leakage under unapproved policy |
+| VALIDATION | `npm run test:di:ds4-assessment`; postgres integration when `DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION=1` |
+| NON_EFFECTS | No deploy; no production env activation; workers remain OFF without explicit cutoff |
+| REMAINING | Owner sets cutoff + enables worker for collection; ordinal rating still unapproved |
