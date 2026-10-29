@@ -11,6 +11,7 @@ export function useVehicleDetailMasterIntelligence(input: {
   organizationId: string | null;
   vehicleId: string | null;
 }) {
+  const { enabled, organizationId, vehicleId } = input;
   const [vsiOverview, setVsiOverview] = useState<MasterVsiFleetOverviewDto | null>(null);
   const [apdsOverview, setApdsOverview] = useState<MasterApdsOverviewDto | null>(null);
   const [physicalDevice, setPhysicalDevice] = useState<PhysicalDeviceListItemDto | null>(null);
@@ -18,7 +19,6 @@ export function useVehicleDetailMasterIntelligence(input: {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { organizationId, vehicleId } = input;
     if (!organizationId || !vehicleId) {
       setVsiOverview(null);
       setApdsOverview(null);
@@ -59,12 +59,12 @@ export function useVehicleDetailMasterIntelligence(input: {
     } finally {
       setLoading(false);
     }
-  }, [input.organizationId, input.vehicleId]);
+  }, [organizationId, vehicleId]);
 
   useEffect(() => {
-    if (!input.enabled) return;
+    if (!enabled) return;
     void load();
-  }, [input.enabled, load]);
+  }, [enabled, load]);
 
   const primaryLink = useMemo(
     () => pickPrimaryProviderSourceLink(vsiOverview?.profiles ?? [], apdsOverview?.providerSourceLinkId ?? null),
