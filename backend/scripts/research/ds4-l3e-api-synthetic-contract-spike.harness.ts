@@ -1,6 +1,8 @@
 /**
- * L3-E research spike entrypoint (lives under backend/scripts/test for ts-node compatibility).
+ * L3-E research spike entrypoint.
  * Research artifacts: research/driving-intelligence/evaluations/ds4-l3e-api-synthetic-contract-20261029/
+ *
+ * cd backend && npx ts-node --transpile-only scripts/research/ds4-l3e-api-synthetic-contract-spike.harness.ts
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

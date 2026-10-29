@@ -12,15 +12,19 @@ describe('Ds4AssessmentReadServiceV1 — longitudinalLoadObservablesV1 (AP2)', (
   const scope = { organizationId: 'org-1', vehicleId: 'veh-1', tripId: 'trip-1' };
 
   function mockPrismaWithBundle(assessment: Record<string, unknown>, impact: Record<string, unknown> | null) {
+    const queryRaw = jest
+      .fn()
+      .mockResolvedValueOnce([{ source_family: 'RUPTELA_R1' }])
+      .mockResolvedValueOnce([
+        {
+          channel_manifest: [
+            { channel: 'R1_OBD', outcome: 'PRESENT' },
+            { channel: 'POSITION', outcome: 'PRESENT' },
+          ],
+        },
+      ]);
     const prisma = {
-      diV0Ds4WorkItem: {
-        findFirst: jest.fn().mockResolvedValue({ sourceFamily: 'RUPTELA_R1' }),
-      },
-      diV0S4EvidenceSnapshot: {
-        findFirst: jest.fn().mockResolvedValue({
-          channelManifest: [{ channel: 'R1_OBD', outcome: 'PRESENT' }, { channel: 'POSITION', outcome: 'PRESENT' }],
-        }),
-      },
+      $queryRaw: queryRaw,
       diV0Ds4TripAssessmentV1: {
         findFirst: jest.fn().mockResolvedValue(assessment),
       },
@@ -28,7 +32,7 @@ describe('Ds4AssessmentReadServiceV1 — longitudinalLoadObservablesV1 (AP2)', (
         findUnique: jest.fn().mockResolvedValue(impact),
       },
     };
-    return prisma;
+    return { prisma, queryRaw };
   }
 
   it('projects Layer-2 observables from persisted eventSummariesJson using AP1 kernel', async () => {
@@ -72,7 +76,7 @@ describe('Ds4AssessmentReadServiceV1 — longitudinalLoadObservablesV1 (AP2)', (
       eventSummariesJson,
       processingErrorJson: null,
     };
-    const prisma = mockPrismaWithBundle(assessment, null);
+    const { prisma } = mockPrismaWithBundle(assessment, null);
     const service = new Ds4AssessmentReadServiceV1(prisma as never);
 
     const out = await service.readForTrip(scope);
@@ -100,7 +104,7 @@ describe('Ds4AssessmentReadServiceV1 — longitudinalLoadObservablesV1 (AP2)', (
       eventSummariesJson: {},
       processingErrorJson: null,
     };
-    const prisma = mockPrismaWithBundle(assessment, null);
+    const { prisma } = mockPrismaWithBundle(assessment, null);
     const service = new Ds4AssessmentReadServiceV1(prisma as never);
     const out = await service.readForTrip(scope);
     expect(out?.longitudinalLoadObservablesV1?.reasonCodes).toContain('DRIVING_EXPOSURE_NOT_DERIVABLE');
