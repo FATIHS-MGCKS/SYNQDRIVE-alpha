@@ -2470,3 +2470,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-assessment`; postgres integration when `DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION=1` |
 | NON_EFFECTS | No deploy; no production env activation; workers remain OFF without explicit cutoff |
 | REMAINING | Owner sets cutoff + enables worker for collection; ordinal rating still unapproved |
+
+### DS4 Layer 2 AP2 — longitudinal load observables read projection (2026-10-29)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Extend internal `GET …/trips/:tripId/ds4-assessment` response with optional `longitudinalLoadObservablesV1`; deterministic AP1 kernel projection from persisted `eventSummariesJson` (no motion recompute, no schema migration) |
+| WHY | Expose Layer-2 load observables on existing authorized internal read path after AP1 kernel merge (#2239) |
+| VALIDATION | `jest ds4-longitudinal-load-observables.v1.spec.ts`; `jest ds4-assessment-read.service.v1.unit.spec.ts`; backend `tsc --noEmit` |
+| NON_EFFECTS | No worker/scheduler change; no customer score; no Driving Impact mutation; exposureGate remains UNCALIBRATED |
+| REMAINING | Layer-3 fleet calibration and operational load index remain out of scope |
