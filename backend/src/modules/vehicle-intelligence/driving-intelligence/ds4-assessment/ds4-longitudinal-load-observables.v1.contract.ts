@@ -12,6 +12,10 @@ export type Ds4LongitudinalLoadExposureGateV1 = typeof DS4_LONGITUDINAL_LOAD_EXP
 
 export type Ds4LongitudinalLoadReasonCodeV1 =
   | 'EVIDENCE_QUALITY_NOT_PRESENT'
+  | 'LONGITUDINAL_EVIDENCE_API_SYNTHETIC_POSITION_NOT_PRESENT'
+  | 'LONGITUDINAL_EVIDENCE_API_SYNTHETIC_SPEED_AUTHORITY_AMBIGUOUS'
+  | 'LONGITUDINAL_EVIDENCE_API_SYNTHETIC_EXPOSURE_OR_TEMPORAL_FAIL'
+  | 'LONGITUDINAL_EVIDENCE_API_SYNTHETIC_RATED_EVENTS_ABSENT'
   | 'ASSESSMENT_STATUS_NOT_ELIGIBLE'
   | 'DRIVING_EXPOSURE_NOT_DERIVABLE'
   | 'EXPOSURE_SECONDS_INVALID'
@@ -76,6 +80,8 @@ export type Ds4LongitudinalLoadObservablesV1 = {
 export type Ds4LongitudinalLoadObservablesInputV1 = {
   assessmentStatus: Ds4TripAssessmentStatusV1;
   evidenceQuality: string | null;
+  /** API_SYNTHETIC family-specific detail when EVIDENCE_QUALITY_NOT_PRESENT (additive). */
+  longitudinalEvidenceSupplementaryReasonCodes?: Ds4LongitudinalLoadReasonCodeV1[];
   speedAuthority: Ds4SpeedAuthorityPartitionV1 | null;
   ratedEventCount: number;
   unratedEventCount: number;
