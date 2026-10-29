@@ -29,6 +29,11 @@ describe('vehicle-spec-ai systemPowerDefinition', () => {
       systemPowerDefinition: 'oem_rated_motor_kw',
     });
     expect(normalized.systemPowerDefinition).toBe('OEM_RATED_MOTOR_KW');
+    const legacy = normalizeVehicleSpecValues({
+      systemMotorPowerKw: 110,
+      systemPowerDefinition: 'OEM_RATED_ENGINE_KW',
+    });
+    expect(legacy.systemPowerDefinition).toBe('OEM_RATED_MOTOR_KW');
     const invalid = normalizeVehicleSpecValues({
       systemMotorPowerKw: 150,
       systemPowerDefinition: 'COMBINED_SYSTEM',

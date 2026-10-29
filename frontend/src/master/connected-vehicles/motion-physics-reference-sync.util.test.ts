@@ -15,6 +15,7 @@ import {
   hydrateSystemPowerDefinitionFormState,
   MOTION_PHYSICS_SYNC_REASON_CODES,
   motionPhysicsFormMatchesSnapshot,
+  parseMotionSystemPowerDefinitionOption,
   snapshotMotionPhysicsFormFields,
   validateMotionPhysicsReferenceCreatePayload,
   resolveMotionPhysicsPendingAfterAiApply,
@@ -379,6 +380,75 @@ describe('motion-physics-reference-sync.util', () => {
           baseline,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe('systemPowerDefinition legacy OEM_RATED_ENGINE_KW compatibility', () => {
+    it('hydrates legacy token to OEM_RATED_MOTOR_KW', () => {
+      expect(hydrateSystemPowerDefinitionFormState('OEM_RATED_ENGINE_KW', undefined)).toBe(
+        'OEM_RATED_MOTOR_KW',
+      );
+    });
+
+    it('hydrates canonical Tesla EV system token unchanged', () => {
+      expect(hydrateSystemPowerDefinitionFormState('OEM_RATED_SYSTEM_KW', undefined)).toBe(
+        'OEM_RATED_SYSTEM_KW',
+      );
+    });
+
+    it('snapshot from active reference normalizes legacy token for routine-save baseline', () => {
+      const baseline = snapshotMotionPhysicsFromActiveReference({
+        systemMotorPowerKw: 200,
+        accel0To100S: 5.3,
+        variantAssumption: 'A4 3.0 TDI',
+        systemPowerDefinition: 'OEM_RATED_ENGINE_KW',
+      });
+      expect(baseline.systemPowerDefinition).toBe('OEM_RATED_MOTOR_KW');
+      expect(
+        hasMotionPhysicsValuesAtRiskOnRoutineVehicleSave({
+          evidenceTier: 'CONFIRMED',
+          referenceId: 'ref-a4',
+          loadedReferenceBaseline: baseline,
+          noReferenceSessionBaseline: null,
+          currentForm: {
+            ...baseline,
+            systemMotorPowerKw: '200',
+            accel0To100S: '5.3',
+          },
+          pendingCreateSource: null,
+          manualMotionEdited: false,
+        }),
+      ).toBe(false);
+    });
+
+    it('buildMotionPhysicsReferenceCreateBody maps legacy input to canonical token', () => {
+      const body = buildMotionPhysicsReferenceCreateBody({
+        curbWeight: '',
+        systemMotorPowerKw: '110',
+        accel0To100S: '9.1',
+        variantAssumption: 'Tiguan',
+        systemPowerDefinition: 'OEM_RATED_ENGINE_KW',
+        source: 'MANUAL_ENTRY',
+        manualOperatorConfirm: true,
+      });
+      expect(body.systemPowerDefinition).toBe('OEM_RATED_MOTOR_KW');
+      expect(body.systemMotorPowerKw).toBe(110);
+    });
+
+    it('rejects unknown definition tokens in parse (fail-closed)', () => {
+      expect(parseMotionSystemPowerDefinitionOption('COMBINED_SYSTEM')).toBe('');
+    });
+
+    it('does not sync over CONFIRMED reference on routine save', () => {
+      expect(
+        shouldSyncMotionPhysicsReferenceOnSave({
+          evidenceTier: 'CONFIRMED',
+          referenceId: 'ref-confirmed',
+          pendingCreateSource: 'MISTRAL_AI',
+          hasMotionValues: true,
+          manualMotionEdited: false,
+        }),
+      ).toBe(false);
     });
   });
 });
