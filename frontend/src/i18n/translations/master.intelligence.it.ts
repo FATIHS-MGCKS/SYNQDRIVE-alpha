@@ -3,10 +3,44 @@ export const masterIntelligenceIt = {
   'master.nav.apdsIntelligence': 'APDS – polling adattivo',
   'master.intelligence.vsi.title': 'VSI – intelligence segnale',
   'master.intelligence.vsi.description':
-    'Profili segnale in sola lettura, cadenza osservata e prove di valutazione. Dati live in PR2.',
+    'Profili segnale veicolo in sola lettura, cadenza osservata, storico revisioni se catturato e spiegazioni capability resolver dai dati di produzione.',
   'master.intelligence.apds.title': 'APDS – polling adattivo',
   'master.intelligence.apds.description':
-    'Decisioni shadow di riconciliazione e prove di poll reale collegate. Storico in PR3.',
+    'Decisioni shadow di riconciliazione in sola lettura, cronologia epoche, prove di poll reale se collegate e correlazione VSI storica. I next poll simulati non sono poll eseguiti.',
+
+  'master.intelligence.apds.loading': 'Caricamento modelli di lettura APDS…',
+  'master.intelligence.apds.error': 'Impossibile caricare l’intelligence APDS.',
+  'master.intelligence.apds.latestDecision': 'Ultima decisione persistita',
+  'master.intelligence.apds.activeEpoch': 'Epoca attiva',
+  'master.intelligence.apds.decisionsForVehicle': 'decisioni per questo veicolo nell’epoca',
+  'master.intelligence.apds.shadowNotReal':
+    'Le raccomandazioni shadow e i timestamp di next poll simulato non provano un poll reale pianificato o eseguito.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'La correlazione VSI storica è evidenza di ricerca — non ha necessariamente guidato questa decisione APDS a runtime.',
+  'master.intelligence.apds.openVsiAsOf': 'Apri VSI con ora as-of della decisione',
+  'master.intelligence.apds.empty.selectScope.title': 'Seleziona organizzazione e veicolo',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Scegli l’ambito per caricare decisioni shadow ed epoche persistite. Il link sorgente provider abilita la correlazione VSI; ambito validato lato server.',
+  'master.intelligence.apds.section.epochs': 'Cronologia epoche di attivazione',
+  'master.intelligence.apds.section.decisions': 'Esploratore decisioni',
+  'master.intelligence.apds.section.detail': 'Dettaglio decisione',
+  'master.intelligence.apds.col.time': 'Ora decisione',
+  'master.intelligence.apds.col.reason': 'Motivo',
+  'master.intelligence.apds.col.policy': 'Policy',
+  'master.intelligence.apds.col.realPoll': 'Collegamento poll reale',
+  'master.intelligence.apds.detail.shadow': 'Raccomandazione shadow (output persistiti)',
+  'master.intelligence.apds.detail.realPoll': 'Evidenza poll reale',
+  'master.intelligence.apds.detail.vsiCorrelation': 'Correlazione VSI storica',
+  'master.intelligence.apds.availability.AVAILABLE': 'Evidenza shadow disponibile',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'Shadow APDS non attivo per questo ambito',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'Nessuna decisione di riconciliazione catturata',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Storico persistito non disponibile',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Evidenza incompleta per questo ambito',
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Non collegato a poll reale',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Collegato — log poll non verificato',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Collegato — successo registrato',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Collegato — stato senza successo',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Evidenza poll reale non disponibile',
   'master.intelligence.section.context': 'Contesto URL',
   'master.intelligence.section.crossLinks': 'Collegamenti incrociati',
   'master.intelligence.section.previewComponents': 'Anteprima presentazione (nessun dato live)',
@@ -72,4 +106,44 @@ export const masterIntelligenceIt = {
   'master.intelligence.blocked.title': 'Valutazione bloccata',
   'master.intelligence.blocked.body':
     'Classificazione profilo in pausa ({{code}}). Un’etichetta precedente non deve essere mostrata come attuale.',
+
+  'master.intelligence.section.fleetOverview': 'Ambito flotta e profili',
+  'master.intelligence.section.signals': 'Dettaglio segnale',
+  'master.intelligence.section.revisions': 'Cronologia revisioni profilo',
+  'master.intelligence.section.capability': 'Capability resolver (sola lettura)',
+
+  'master.intelligence.vsi.picker.org': 'Organizzazione',
+  'master.intelligence.vsi.picker.vehicle': 'Veicolo',
+  'master.intelligence.vsi.picker.link': 'Link sorgente provider',
+  'master.intelligence.vsi.loading': 'Caricamento modelli VSI…',
+  'master.intelligence.vsi.error': 'Impossibile caricare l’intelligence VSI.',
+  'master.intelligence.vsi.retry': 'Riprova',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Seleziona organizzazione e veicolo',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Scegli organizzazione e veicolo per caricare i profili VSI persistiti. L’ambito è validato lato server.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Nessun profilo VSI materializzato',
+  'master.intelligence.vsi.noProfiles.body':
+    'Non esiste ancora un profilo capability per questo veicolo. Non equivale a cronologia revisioni disabilitata.',
+
+  'master.intelligence.vsi.decision.lv': 'Codice decisione LV: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'Codice decisione RPM: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Le etichette di cadenza descrivono pattern di trasmissione osservati, non la configurazione hardware nativa.',
+  'master.intelligence.vsi.signals.canonical': 'Segnale canonico',
+  'master.intelligence.vsi.signals.provider': 'Nome provider',
+  'master.intelligence.vsi.signals.quality': 'Qualità / fiducia',
+  'master.intelligence.vsi.signals.observedAt': 'Ultima osservazione (UTC + locale)',
+  'master.intelligence.vsi.signals.limitations': 'Limitazioni',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Cronologia: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'La cattura P5-H1 è disabilitata. La mancanza di cronologia non significa assenza di modifiche al profilo.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Altre revisioni — paginazione a cursore via API.',
+
+  'master.intelligence.vsi.asOf.title': 'Risoluzione revisione as-of',
+  'master.intelligence.vsi.asOf.decisionAt': 'Ora decisione',
+  'master.intelligence.vsi.asOf.authority': 'Autorità',
 } as const;

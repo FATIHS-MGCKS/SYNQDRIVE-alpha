@@ -6,7 +6,41 @@ export const masterIntelligenceNl = {
     'Alleen-lezen signaalprofielen, waargenomen cadans en bewijs. Live vlootdata in PR2.',
   'master.intelligence.apds.title': 'APDS – adaptief pollen',
   'master.intelligence.apds.description':
-    'Shadow-reconciliatiebeslissingen en gekoppeld echt poll-bewijs. Geschiedenis in PR3.',
+    'Alleen-lezen shadow-reconciliatiebeslissingen, epochgeschiedenis, echt poll-bewijs indien gekoppeld en historische VSI-correlatie. Gesimuleerde next-poll tijden zijn geen uitgevoerde polls.',
+
+  'master.intelligence.apds.loading': 'APDS-leesmodellen laden…',
+  'master.intelligence.apds.error': 'APDS intelligence kon niet worden geladen.',
+  'master.intelligence.apds.latestDecision': 'Laatste opgeslagen beslissing',
+  'master.intelligence.apds.activeEpoch': 'Actieve epoch',
+  'master.intelligence.apds.decisionsForVehicle': 'beslissingen voor dit voertuig in epoch',
+  'master.intelligence.apds.shadowNotReal':
+    'Shadow-aanbevelingen en gesimuleerde next-poll timestamps zijn geen bewijs van een geplande of uitgevoerde echte poll.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'Historische VSI-correlatie is onderzoeksbewijs — het stuurde deze APDS-beslissing niet per se tijdens runtime.',
+  'master.intelligence.apds.openVsiAsOf': 'VSI openen met as-of tijd van beslissing',
+  'master.intelligence.apds.empty.selectScope.title': 'Selecteer organisatie en voertuig',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Kies scope om opgeslagen shadow-beslissingen en epochs te laden. Providerbronlink maakt VSI-correlatie mogelijk; scope wordt server-side gevalideerd.',
+  'master.intelligence.apds.section.epochs': 'Tijdlijn activeringsepochs',
+  'master.intelligence.apds.section.decisions': 'Beslissingsverkenner',
+  'master.intelligence.apds.section.detail': 'Beslissingsdetail',
+  'master.intelligence.apds.col.time': 'Beslissingstijd',
+  'master.intelligence.apds.col.reason': 'Reden',
+  'master.intelligence.apds.col.policy': 'Beleid',
+  'master.intelligence.apds.col.realPoll': 'Echte poll-koppeling',
+  'master.intelligence.apds.detail.shadow': 'Shadow-aanbeveling (opgeslagen outputs)',
+  'master.intelligence.apds.detail.realPoll': 'Echt poll-bewijs',
+  'master.intelligence.apds.detail.vsiCorrelation': 'Historische VSI-correlatie',
+  'master.intelligence.apds.availability.AVAILABLE': 'Shadow-bewijs beschikbaar',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'APDS shadow niet geactiveerd voor deze scope',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'Geen reconciliation-beslissingen vastgelegd',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Opgeslagen geschiedenis niet beschikbaar',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Onvolledig bewijs voor deze scope',
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Niet gekoppeld aan echte poll',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Gekoppeld — poll-log niet geverifieerd',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Gekoppeld — succes geregistreerd',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Gekoppeld — status zonder succes',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Echt poll-bewijs niet beschikbaar',
   'master.intelligence.section.context': 'URL-context',
   'master.intelligence.section.crossLinks': 'Kruislinks',
   'master.intelligence.section.previewComponents': 'Presentatiepreview (geen live data)',
@@ -72,4 +106,44 @@ export const masterIntelligenceNl = {
   'master.intelligence.blocked.title': 'Evaluatie geblokkeerd',
   'master.intelligence.blocked.body':
     'Profielclassificatie gepauzeerd ({{code}}). Een ouder label mag niet als actueel worden getoond.',
+
+  'master.intelligence.section.fleetOverview': 'Vlootscope en profielen',
+  'master.intelligence.section.signals': 'Signaaldetail',
+  'master.intelligence.section.revisions': 'Profielrevisiegeschiedenis',
+  'master.intelligence.section.capability': 'Capability resolver (alleen lezen)',
+
+  'master.intelligence.vsi.picker.org': 'Organisatie',
+  'master.intelligence.vsi.picker.vehicle': 'Voertuig',
+  'master.intelligence.vsi.picker.link': 'Provider bronlink',
+  'master.intelligence.vsi.loading': 'VSI-leesmodellen laden…',
+  'master.intelligence.vsi.error': 'VSI-intelligence kon niet worden geladen.',
+  'master.intelligence.vsi.retry': 'Opnieuw',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Kies organisatie en voertuig',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Kies organisatie en voertuig om opgeslagen VSI-profielen te laden. Scope wordt server-side gevalideerd.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Geen VSI-profielen gematerialiseerd',
+  'master.intelligence.vsi.noProfiles.body':
+    'Er is nog geen capability-profiel voor dit voertuig. Dat is niet hetzelfde als uitgeschakelde revisiehistorie.',
+
+  'master.intelligence.vsi.decision.lv': 'LV-beslissingscode: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM-beslissingscode: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence-labels beschrijven waargenomen transmissiepatronen, geen native hardwareconfiguratie.',
+  'master.intelligence.vsi.signals.canonical': 'Canoniek signaal',
+  'master.intelligence.vsi.signals.provider': 'Providernaam',
+  'master.intelligence.vsi.signals.quality': 'Kwaliteit / vertrouwen',
+  'master.intelligence.vsi.signals.observedAt': 'Laatste waarneming (UTC + lokaal)',
+  'master.intelligence.vsi.signals.limitations': 'Beperkingen',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revisiehistorie: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1-registratie is uitgeschakeld. Ontbrekende historie betekent niet dat het profiel nooit wijzigde.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Meer revisies — cursorpaginering via API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of revisie-oplossing',
+  'master.intelligence.vsi.asOf.decisionAt': 'Beslissingstijd',
+  'master.intelligence.vsi.asOf.authority': 'Autoriteit',
 } as const;

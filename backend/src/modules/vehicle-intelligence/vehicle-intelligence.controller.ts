@@ -555,8 +555,7 @@ export class VehicleIntelligenceController {
       measuredAt: body.measuredAt,
       workshopName: body.workshopName,
       source: body.source,
-      manualConfirmOdometer:
-        body.manualConfirmOdometer ?? (body.odometerKm != null ? true : undefined),
+      manualConfirmOdometer: body.manualConfirmOdometer,
       shouldCalibrate: true,
       triggerRecalculate: true,
     });

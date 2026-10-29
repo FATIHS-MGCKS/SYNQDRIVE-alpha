@@ -60,6 +60,16 @@ export const cs = {
   'settings.accountInfo': 'Informace o uctu', 'settings.companyProfile': 'Profil firmy', 'settings.stationsBranches': 'Stanice a pobocky', 'settings.usersRoles': 'Uzivatele a role', 'settings.billingSubscription': 'Fakturace a predplatne', 'settings.firmLogo': 'Logo firmy', 'settings.documents': 'Dokumenty', 'settings.createNewLocation': 'Vytvorit novou lokaci', 'settings.inviteUser': 'Pozvat uzivatele', 'settings.paymentMethod': 'Zpusob platby', 'settings.subscriptionSummary': 'Souhrn predplatneho', 'settings.invoiceHistory': 'Historie faktur', 'settings.vehicles': 'Vozidla', 'settings.connectedVehicles': 'Pripojena vozidla', 'settings.dataSync': 'Synchronizace dat',
 
   // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  // ─── Master — Vehicle registration spec contract (V3) ───
+  'master.registration.lvBatteryConstructionType.label': 'Typ LV baterie',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Olověná (zalitá)',
+  'master.registration.lvBatteryChemistryHint.label': 'Chemie (pouze nápověda AI)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Neukládá se — použijte typ LV',
+  'master.registration.lvBatteryChemistryHint.title': 'Chemie materiálu se neukládá; Battery Health používá typ konstrukce LV.',
+  'master.registration.lvBatteryType.legacyLabel': 'Uložená legacy hodnota (vyberte typ pro aktualizaci)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Před kapacitou nebo napětím vyberte podporovaný typ LV.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Nepodporovaný typ LV. Zvolte AGM, EFB, olověnou nebo lithiovou.',
+
   'master.cv.registryLifecycle.active': 'Aktivni',
   'master.cv.registryLifecycle.offboarded': 'Vyrazeno z provozu',
   'master.cv.registryLifecycle.archived': 'Archivovano',

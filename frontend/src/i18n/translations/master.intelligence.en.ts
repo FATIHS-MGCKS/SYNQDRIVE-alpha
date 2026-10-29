@@ -5,10 +5,50 @@ export const masterIntelligenceEn = {
 
   'master.intelligence.vsi.title': 'VSI – Signal Intelligence',
   'master.intelligence.vsi.description':
-    'Read-only signal capability profiles, observed cadence labels, and evaluation evidence. Live fleet data arrives in PR2.',
+    'Read-only vehicle signal profiles, observed cadence labels, revision history when captured, and capability resolver explanations from production data.',
   'master.intelligence.apds.title': 'APDS – Adaptive Polling',
   'master.intelligence.apds.description':
-    'Shadow reconciliation decisions and linked real poll evidence. Live decision history arrives in PR3.',
+    'Read-only shadow reconciliation decisions, activation epoch history, real poll evidence when linked, and historical VSI correlation. Simulated next-poll times are not executed polls.',
+
+  'master.intelligence.apds.loading': 'Loading APDS read models…',
+  'master.intelligence.apds.error': 'Could not load APDS intelligence.',
+  'master.intelligence.apds.latestDecision': 'Latest persisted decision',
+  'master.intelligence.apds.activeEpoch': 'Active epoch',
+  'master.intelligence.apds.decisionsForVehicle': 'decisions for this vehicle in epoch',
+  'master.intelligence.apds.shadowNotReal':
+    'Shadow recommendations and simulated next-poll timestamps are not proof of a real scheduled or executed poll.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'Historical VSI correlation is research evidence — it did not necessarily drive this APDS decision at runtime.',
+  'master.intelligence.apds.openVsiAsOf': 'Open VSI with decision as-of time',
+
+  'master.intelligence.apds.empty.selectScope.title': 'Select organization and vehicle',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Choose scope to load persisted shadow decisions and epochs. Provider source link enables VSI correlation; scope is validated server-side.',
+
+  'master.intelligence.apds.section.epochs': 'Activation epoch timeline',
+  'master.intelligence.apds.section.decisions': 'Decision explorer',
+  'master.intelligence.apds.section.detail': 'Decision detail',
+
+  'master.intelligence.apds.col.time': 'Decision time',
+  'master.intelligence.apds.col.reason': 'Reason',
+  'master.intelligence.apds.col.policy': 'Policy',
+  'master.intelligence.apds.col.realPoll': 'Real poll link',
+
+  'master.intelligence.apds.detail.shadow': 'Shadow recommendation (persisted outputs)',
+  'master.intelligence.apds.detail.realPoll': 'Real poll evidence',
+  'master.intelligence.apds.detail.vsiCorrelation': 'VSI historical correlation',
+
+  'master.intelligence.apds.availability.AVAILABLE': 'Shadow evidence available',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'APDS shadow not activated for this scope',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'No reconciliation decisions captured',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Persisted history unavailable',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Evidence incomplete for this scope',
+
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Not linked to a real poll',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Linked — poll log not verified',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Linked — success recorded',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Linked — non-success status',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Real poll evidence not available',
 
   'master.intelligence.section.context': 'URL context',
   'master.intelligence.section.crossLinks': 'Cross-links',
@@ -87,6 +127,46 @@ export const masterIntelligenceEn = {
   'master.intelligence.blocked.title': 'Evaluation blocked',
   'master.intelligence.blocked.body':
     'Profile classification is paused ({{code}}). An older label must not be shown as current.',
+
+  'master.intelligence.section.fleetOverview': 'Fleet scope & profiles',
+  'master.intelligence.section.signals': 'Signal detail',
+  'master.intelligence.section.revisions': 'Profile revision history',
+  'master.intelligence.section.capability': 'Capability resolver (read-only)',
+
+  'master.intelligence.vsi.picker.org': 'Organization',
+  'master.intelligence.vsi.picker.vehicle': 'Vehicle',
+  'master.intelligence.vsi.picker.link': 'Provider source link',
+  'master.intelligence.vsi.loading': 'Loading VSI read models…',
+  'master.intelligence.vsi.error': 'Could not load VSI intelligence.',
+  'master.intelligence.vsi.retry': 'Retry',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Select organization and vehicle',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Choose an organization and vehicle to load persisted VSI signal profiles. Scope is validated server-side; no cross-tenant access.',
+
+  'master.intelligence.vsi.noProfiles.title': 'No VSI profiles materialized',
+  'master.intelligence.vsi.noProfiles.body':
+    'No signal capability profile exists yet for this vehicle. This is not the same as revision history being disabled.',
+
+  'master.intelligence.vsi.decision.lv': 'LV decision code: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM decision code: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence labels describe observed transmission patterns, not native hardware configuration.',
+  'master.intelligence.vsi.signals.canonical': 'Canonical signal',
+  'master.intelligence.vsi.signals.provider': 'Provider name',
+  'master.intelligence.vsi.signals.quality': 'Quality / confidence',
+  'master.intelligence.vsi.signals.observedAt': 'Last observation (UTC + local)',
+  'master.intelligence.vsi.signals.limitations': 'Limitations',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revision history: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1 revision capture is disabled in this environment. Missing history does not mean the profile never changed.',
+  'master.intelligence.vsi.revision.moreAvailable': 'More revisions available — use cursor pagination via API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of revision resolution',
+  'master.intelligence.vsi.asOf.decisionAt': 'Decision time',
+  'master.intelligence.vsi.asOf.authority': 'Authority',
 } as const;
 
 export type MasterIntelligenceTranslationKey = keyof typeof masterIntelligenceEn;

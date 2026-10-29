@@ -61,6 +61,16 @@ export const nl = {
   'settings.accountInfo': 'Accountgegevens', 'settings.companyProfile': 'Bedrijfsprofiel', 'settings.stationsBranches': 'Stations en filialen', 'settings.usersRoles': 'Gebruikers en rollen', 'settings.billingSubscription': 'Facturering en abonnement', 'settings.firmLogo': 'Bedrijfslogo', 'settings.documents': 'Documenten', 'settings.createNewLocation': 'Nieuwe locatie aanmaken', 'settings.inviteUser': 'Gebruiker uitnodigen', 'settings.paymentMethod': 'Betaalmethode', 'settings.subscriptionSummary': 'Abonnementsoverzicht', 'settings.invoiceHistory': 'Factuurgeschiedenis', 'settings.vehicles': 'Voertuigen', 'settings.connectedVehicles': 'Verbonden voertuigen', 'settings.dataSync': 'Gegevenssynchronisatie',
 
   // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  // ─── Master — Vehicle registration spec contract (V3) ───
+  'master.registration.lvBatteryConstructionType.label': 'LV-bouwtype',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Loodzuur (nat)',
+  'master.registration.lvBatteryChemistryHint.label': 'Chemie (alleen AI-hint)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Wordt niet opgeslagen — gebruik LV-bouwtype',
+  'master.registration.lvBatteryChemistryHint.title': 'Materiaalchemie wordt niet opgeslagen; Battery Health gebruikt het LV-bouwtype.',
+  'master.registration.lvBatteryType.legacyLabel': 'Opgeslagen legacy-waarde (kies type om bij te werken)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers': 'Kies een ondersteund LV-bouwtype voordat u capaciteit of spanning invult.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid': 'Niet-ondersteund LV-bouwtype. Kies AGM, EFB, loodzuur of lithium.',
+
   'master.cv.registryLifecycle.active': 'Actief',
   'master.cv.registryLifecycle.offboarded': 'Uit actief bestand',
   'master.cv.registryLifecycle.archived': 'Gearchiveerd',

@@ -4,10 +4,44 @@ export const masterIntelligencePl = {
 
   'master.intelligence.vsi.title': 'VSI – inteligencja sygnałów',
   'master.intelligence.vsi.description':
-    'Tylko do odczytu: profile sygnałów, obserwowana kadencja transmisji i dowody oceny. Dane floty na żywo w PR2.',
+    'Tylko do odczytu: profile sygnałów pojazdu, obserwowana kadencja, historia rewizji (gdy włączona) i wyjaśnienia capability resolver z danych produkcyjnych.',
   'master.intelligence.apds.title': 'APDS – polling adaptacyjny',
   'master.intelligence.apds.description':
-    'Decyzje shadow reconciliation i powiązane dowody rzeczywistego polla. Historia decyzji w PR3.',
+    'Tylko do odczytu: decyzje shadow reconciliation, historia epok, dowody rzeczywistego polla (gdy powiązane) i historyczna korelacja VSI. Symulowane czasy next poll to nie wykonane polle.',
+
+  'master.intelligence.apds.loading': 'Ładowanie modeli odczytu APDS…',
+  'master.intelligence.apds.error': 'Nie udało się załadować APDS intelligence.',
+  'master.intelligence.apds.latestDecision': 'Ostatnia zapisana decyzja',
+  'master.intelligence.apds.activeEpoch': 'Aktywna epoka',
+  'master.intelligence.apds.decisionsForVehicle': 'decyzji dla tego pojazdu w epoce',
+  'master.intelligence.apds.shadowNotReal':
+    'Rekomendacje shadow i symulowane znaczniki next poll nie dowodzą zaplanowanego ani wykonanego rzeczywistego polla.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'Historyczna korelacja VSI to dowód badawczy — nie musiała kierować tą decyzją APDS w runtime.',
+  'master.intelligence.apds.openVsiAsOf': 'Otwórz VSI z czasem as-of decyzji',
+  'master.intelligence.apds.empty.selectScope.title': 'Wybierz organizację i pojazd',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Wybierz zakres, aby załadować zapisane decyzje shadow i epoki. Link źródła providera umożliwia korelację VSI; zakres weryfikowany po stronie serwera.',
+  'master.intelligence.apds.section.epochs': 'Oś czasu epok aktywacji',
+  'master.intelligence.apds.section.decisions': 'Eksplorator decyzji',
+  'master.intelligence.apds.section.detail': 'Szczegóły decyzji',
+  'master.intelligence.apds.col.time': 'Czas decyzji',
+  'master.intelligence.apds.col.reason': 'Powód',
+  'master.intelligence.apds.col.policy': 'Polityka',
+  'master.intelligence.apds.col.realPoll': 'Powiązanie z rzeczywistym pollem',
+  'master.intelligence.apds.detail.shadow': 'Rekomendacja shadow (zapisane wyjścia)',
+  'master.intelligence.apds.detail.realPoll': 'Dowód rzeczywistego polla',
+  'master.intelligence.apds.detail.vsiCorrelation': 'Historyczna korelacja VSI',
+  'master.intelligence.apds.availability.AVAILABLE': 'Dostępna evidencja shadow',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'Shadow APDS nieaktywny dla tego zakresu',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'Brak zarejestrowanych decyzji reconciliation',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Zapisana historia niedostępna',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Niepełna evidencja dla tego zakresu',
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Brak powiązania z rzeczywistym pollem',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Powiązano — log polla niezweryfikowany',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Powiązano — zarejestrowano sukces',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Powiązano — status bez sukcesu',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Dowód rzeczywistego polla niedostępny',
 
   'master.intelligence.section.context': 'Kontekst URL',
   'master.intelligence.section.crossLinks': 'Odnośniki',
@@ -87,4 +121,44 @@ export const masterIntelligencePl = {
   'master.intelligence.blocked.title': 'Ocena zablokowana',
   'master.intelligence.blocked.body':
     'Klasyfikacja profilu wstrzymana ({{code}}). Starsza etykieta nie może być pokazana jako aktualna.',
+
+  'master.intelligence.section.fleetOverview': 'Zakres floty i profile',
+  'master.intelligence.section.signals': 'Szczegóły sygnału',
+  'master.intelligence.section.revisions': 'Historia rewizji profilu',
+  'master.intelligence.section.capability': 'Capability resolver (tylko odczyt)',
+
+  'master.intelligence.vsi.picker.org': 'Organizacja',
+  'master.intelligence.vsi.picker.vehicle': 'Pojazd',
+  'master.intelligence.vsi.picker.link': 'Link źródła providera',
+  'master.intelligence.vsi.loading': 'Ładowanie modeli odczytu VSI…',
+  'master.intelligence.vsi.error': 'Nie udało się załadować VSI.',
+  'master.intelligence.vsi.retry': 'Ponów',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Wybierz organizację i pojazd',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Wybierz organizację i pojazd, aby załadować zapisane profile VSI. Zakres jest weryfikowany po stronie serwera.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Brak zmaterializowanych profili VSI',
+  'master.intelligence.vsi.noProfiles.body':
+    'Dla tego pojazdu nie ma jeszcze profilu capability. To nie to samo co wyłączona historia rewizji.',
+
+  'master.intelligence.vsi.decision.lv': 'Kod decyzji LV: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'Kod decyzji RPM: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Etykiety cadence opisują obserwowane wzorce transmisji, nie konfigurację sprzętu.',
+  'master.intelligence.vsi.signals.canonical': 'Sygnał kanoniczny',
+  'master.intelligence.vsi.signals.provider': 'Nazwa u providera',
+  'master.intelligence.vsi.signals.quality': 'Jakość / pewność',
+  'master.intelligence.vsi.signals.observedAt': 'Ostatnia obserwacja (UTC + lokalnie)',
+  'master.intelligence.vsi.signals.limitations': 'Ograniczenia',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Historia rewizji: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'Rejestracja P5-H1 jest wyłączona. Brak historii nie oznacza braku zmian profilu.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Dostępne kolejne rewizje — paginacja kursorem przez API.',
+
+  'master.intelligence.vsi.asOf.title': 'Rozstrzygnięcie rewizji as-of',
+  'master.intelligence.vsi.asOf.decisionAt': 'Czas decyzji',
+  'master.intelligence.vsi.asOf.authority': 'Autorytet',
 } as const;

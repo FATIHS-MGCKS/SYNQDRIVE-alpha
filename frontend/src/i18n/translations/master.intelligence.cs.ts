@@ -6,7 +6,41 @@ export const masterIntelligenceCs = {
     'Profily signálů pouze ke čtení, pozorovaná kadence a důkazy vyhodnocení. Živá data v PR2.',
   'master.intelligence.apds.title': 'APDS – adaptivní polling',
   'master.intelligence.apds.description':
-    'Shadow rozhodnutí reconciliace a propojené důkazy reálného pollu. Historie v PR3.',
+    'Shadow rozhodnutí reconciliace pouze ke čtení, historie epoch, důkazy reálného pollu (pokud propojeno) a historická korelace VSI. Simulované časy next poll nejsou provedené polly.',
+
+  'master.intelligence.apds.loading': 'Načítání APDS read modelů…',
+  'master.intelligence.apds.error': 'APDS intelligence se nepodařilo načíst.',
+  'master.intelligence.apds.latestDecision': 'Poslední uložené rozhodnutí',
+  'master.intelligence.apds.activeEpoch': 'Aktivní epocha',
+  'master.intelligence.apds.decisionsForVehicle': 'rozhodnutí pro toto vozidlo v epoše',
+  'master.intelligence.apds.shadowNotReal':
+    'Shadow doporučení a simulované časové značky next poll nejsou důkazem naplánovaného ani provedeného reálného pollu.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'Historická korelace VSI je výzkumný důkaz — nemusela řídit toto APDS rozhodnutí za běhu.',
+  'master.intelligence.apds.openVsiAsOf': 'Otevřít VSI s časem as-of rozhodnutí',
+  'master.intelligence.apds.empty.selectScope.title': 'Vyberte organizaci a vozidlo',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Zvolte rozsah pro načtení uložených shadow rozhodnutí a epoch. Odkaz zdroje providera umožní korelaci VSI; rozsah ověřuje server.',
+  'master.intelligence.apds.section.epochs': 'Časová osa epoch aktivace',
+  'master.intelligence.apds.section.decisions': 'Prohlížeč rozhodnutí',
+  'master.intelligence.apds.section.detail': 'Detail rozhodnutí',
+  'master.intelligence.apds.col.time': 'Čas rozhodnutí',
+  'master.intelligence.apds.col.reason': 'Důvod',
+  'master.intelligence.apds.col.policy': 'Politika',
+  'master.intelligence.apds.col.realPoll': 'Odkaz na reálný poll',
+  'master.intelligence.apds.detail.shadow': 'Shadow doporučení (uložené výstupy)',
+  'master.intelligence.apds.detail.realPoll': 'Důkaz reálného pollu',
+  'master.intelligence.apds.detail.vsiCorrelation': 'Historická korelace VSI',
+  'master.intelligence.apds.availability.AVAILABLE': 'Shadow důkazy k dispozici',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'APDS shadow pro tento rozsah neaktivní',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'Žádná zachycená rozhodnutí reconciliace',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Uložená historie nedostupná',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Neúplné důkazy pro tento rozsah',
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Nepřipojeno k reálnému pollu',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Připojeno — log pollu neověřen',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Připojeno — zaznamenán úspěch',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Připojeno — stav bez úspěchu',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Důkaz reálného pollu nedostupný',
   'master.intelligence.section.context': 'Kontext URL',
   'master.intelligence.section.crossLinks': 'Přechody',
   'master.intelligence.section.previewComponents': 'Náhled prezentace (ne živá data)',
@@ -71,4 +105,44 @@ export const masterIntelligenceCs = {
   'master.intelligence.blocked.title': 'Vyhodnocení blokováno',
   'master.intelligence.blocked.body':
     'Klasifikace profilu pozastavena ({{code}}). Starší štítek nesmí být zobrazen jako aktuální.',
+
+  'master.intelligence.section.fleetOverview': 'Rozsah flotily a profily',
+  'master.intelligence.section.signals': 'Detail signálu',
+  'master.intelligence.section.revisions': 'Historie revizí profilu',
+  'master.intelligence.section.capability': 'Capability resolver (pouze čtení)',
+
+  'master.intelligence.vsi.picker.org': 'Organizace',
+  'master.intelligence.vsi.picker.vehicle': 'Vozidlo',
+  'master.intelligence.vsi.picker.link': 'Provider source link',
+  'master.intelligence.vsi.loading': 'Načítání VSI modelů…',
+  'master.intelligence.vsi.error': 'VSI data se nepodařilo načíst.',
+  'master.intelligence.vsi.retry': 'Zkusit znovu',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Vyberte organizaci a vozidlo',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Vyberte organizaci a vozidlo pro načtení uložených VSI profilů. Rozsah ověřuje server.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Žádné materializované VSI profily',
+  'master.intelligence.vsi.noProfiles.body':
+    'Pro toto vozidlo zatím neexistuje capability profil. To není totéž jako vypnutá historie revizí.',
+
+  'master.intelligence.vsi.decision.lv': 'LV rozhodovací kód: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM rozhodovací kód: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence štítky popisují pozorované vzory přenosu, ne nativní konfiguraci hardwaru.',
+  'master.intelligence.vsi.signals.canonical': 'Kanonický signál',
+  'master.intelligence.vsi.signals.provider': 'Název u providera',
+  'master.intelligence.vsi.signals.quality': 'Kvalita / jistota',
+  'master.intelligence.vsi.signals.observedAt': 'Poslední pozorování (UTC + místní)',
+  'master.intelligence.vsi.signals.limitations': 'Omezení',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Historie revizí: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'Záznam P5-H1 je vypnutý. Chybějící historie neznamená, že se profil neměnil.',
+  'master.intelligence.vsi.revision.moreAvailable': 'Další revize — stránkování kurzorem přes API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of rozlišení revize',
+  'master.intelligence.vsi.asOf.decisionAt': 'Čas rozhodnutí',
+  'master.intelligence.vsi.asOf.authority': 'Autorita',
 } as const;

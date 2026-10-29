@@ -12,6 +12,17 @@ export const tr = {
   ...masterVehicleIdentityTr,
   ...masterCvTechnicalSpecsTr,
   ...masterIntelligenceTr,
+  'master.registration.lvBatteryConstructionType.label': 'LV yapı tipi',
+  'master.registration.lvBatteryConstructionType.leadAcid': 'Kurşun-asit (açık)',
+  'master.registration.lvBatteryChemistryHint.label': 'Kimya (yalnızca AI ipucu)',
+  'master.registration.lvBatteryChemistryHint.placeholder': 'Kaydedilmez — LV yapı tipini kullanın',
+  'master.registration.lvBatteryChemistryHint.title':
+    'Malzeme kimyası kalıcı değildir; Battery Health LV yapı tipini kullanır.',
+  'master.registration.lvBatteryType.legacyLabel': 'Kayıtlı legacy değer (güncellemek için tip seçin)',
+  'master.registration.lvBatteryType.lvBatteryTypeRequiredForNumbers':
+    'Kapasite veya voltaj girmeden önce desteklenen bir LV yapı tipi seçin.',
+  'master.registration.lvBatteryType.lvBatteryTypeInvalid':
+    'Desteklenmeyen LV yapı tipi. AGM, EFB, kurşun-asit veya lityum seçin.',
   'trips.drivingImpact.quality.partial': 'Sınırlı veri kapsamı — değerlendirme eksik olabilir.',
   'trips.drivingImpact.quality.stale': 'Değerlendirme güncel olmayabilir (yolculuk verileri değişti).',
   'trips.drivingImpact.quality.pending': 'Driving Impact değerlendirmesi devam ediyor.',

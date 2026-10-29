@@ -4,10 +4,44 @@ export const masterIntelligenceDe = {
 
   'master.intelligence.vsi.title': 'VSI – Signal Intelligence',
   'master.intelligence.vsi.description':
-    'Schreibgeschützte Signalprofil-Auswertung, beobachtete Übertragungs-Cadence und Evidenz. Live-Daten folgen in PR2.',
+    'Schreibgeschützte Fahrzeug-Signalprofile, beobachtete Übertragungs-Cadence, Revisionshistorie (falls erfasst) und Capability-Resolver-Erklärungen aus Produktionsdaten.',
   'master.intelligence.apds.title': 'APDS – Adaptives Polling',
   'master.intelligence.apds.description':
-    'Shadow-Abgleichsentscheidungen und verknüpfte echte Poll-Evidenz. Entscheidungshistorie folgt in PR3.',
+    'Schreibgeschützte Shadow-Abgleichsentscheidungen, Epochenhistorie, echte Poll-Evidenz (wenn verknüpft) und historische VSI-Korrelation. Simulierte Next-Poll-Zeiten sind keine ausgeführten Polls.',
+
+  'master.intelligence.apds.loading': 'APDS-Lesemodelle werden geladen…',
+  'master.intelligence.apds.error': 'APDS-Intelligence konnte nicht geladen werden.',
+  'master.intelligence.apds.latestDecision': 'Letzte persistierte Entscheidung',
+  'master.intelligence.apds.activeEpoch': 'Aktive Epoche',
+  'master.intelligence.apds.decisionsForVehicle': 'Entscheidungen für dieses Fahrzeug in der Epoche',
+  'master.intelligence.apds.shadowNotReal':
+    'Shadow-Empfehlungen und simulierte Next-Poll-Zeitstempel sind kein Nachweis für einen geplanten oder ausgeführten echten Poll.',
+  'master.intelligence.apds.vsiNotRuntimeDriver':
+    'Historische VSI-Korrelation ist Forschungsevidenz — sie hat diese APDS-Entscheidung zur Laufzeit nicht zwingend bestimmt.',
+  'master.intelligence.apds.openVsiAsOf': 'VSI mit Entscheidungs-as-of-Zeit öffnen',
+  'master.intelligence.apds.empty.selectScope.title': 'Organisation und Fahrzeug wählen',
+  'master.intelligence.apds.empty.selectScope.body':
+    'Scope wählen, um persistierte Shadow-Entscheidungen und Epochen zu laden. Provider-Quell-Link ermöglicht VSI-Korrelation; Scope wird serverseitig geprüft.',
+  'master.intelligence.apds.section.epochs': 'Aktivierungs-Epochen-Timeline',
+  'master.intelligence.apds.section.decisions': 'Entscheidungs-Explorer',
+  'master.intelligence.apds.section.detail': 'Entscheidungsdetail',
+  'master.intelligence.apds.col.time': 'Entscheidungszeit',
+  'master.intelligence.apds.col.reason': 'Grund',
+  'master.intelligence.apds.col.policy': 'Policy',
+  'master.intelligence.apds.col.realPoll': 'Echter Poll-Link',
+  'master.intelligence.apds.detail.shadow': 'Shadow-Empfehlung (persistierte Outputs)',
+  'master.intelligence.apds.detail.realPoll': 'Echte Poll-Evidenz',
+  'master.intelligence.apds.detail.vsiCorrelation': 'Historische VSI-Korrelation',
+  'master.intelligence.apds.availability.AVAILABLE': 'Shadow-Evidenz verfügbar',
+  'master.intelligence.apds.availability.NOT_ACTIVATED': 'APDS-Shadow für diesen Scope nicht aktiviert',
+  'master.intelligence.apds.availability.NO_DECISIONS_CAPTURED': 'Keine Abgleichsentscheidungen erfasst',
+  'master.intelligence.apds.availability.HISTORY_UNAVAILABLE': 'Persistierte Historie nicht verfügbar',
+  'master.intelligence.apds.availability.EVIDENCE_INCOMPLETE': 'Evidenz für diesen Scope unvollständig',
+  'master.intelligence.apds.realPoll.NOT_LINKED': 'Nicht mit echtem Poll verknüpft',
+  'master.intelligence.apds.realPoll.LINKED_UNVERIFIED': 'Verknüpft — Poll-Log nicht verifiziert',
+  'master.intelligence.apds.realPoll.LINKED_SUCCESS': 'Verknüpft — Erfolg erfasst',
+  'master.intelligence.apds.realPoll.LINKED_NON_SUCCESS': 'Verknüpft — Status ohne Erfolg',
+  'master.intelligence.apds.realPoll.NOT_AVAILABLE': 'Echte Poll-Evidenz nicht verfügbar',
 
   'master.intelligence.section.context': 'URL-Kontext',
   'master.intelligence.section.crossLinks': 'Querverweise',
@@ -87,4 +121,45 @@ export const masterIntelligenceDe = {
   'master.intelligence.blocked.title': 'Auswertung blockiert',
   'master.intelligence.blocked.body':
     'Profil-Klassifikation pausiert ({{code}}). Ein älteres Label darf nicht als aktuell angezeigt werden.',
+
+  'master.intelligence.section.fleetOverview': 'Flottenkontext & Profile',
+  'master.intelligence.section.signals': 'Signal-Detail',
+  'master.intelligence.section.revisions': 'Profil-Revisionshistorie',
+  'master.intelligence.section.capability': 'Capability-Resolver (nur Lesen)',
+
+  'master.intelligence.vsi.picker.org': 'Organisation',
+  'master.intelligence.vsi.picker.vehicle': 'Fahrzeug',
+  'master.intelligence.vsi.picker.link': 'Provider-Quell-Link',
+  'master.intelligence.vsi.loading': 'VSI-Lesemodelle werden geladen…',
+  'master.intelligence.vsi.error': 'VSI-Intelligence konnte nicht geladen werden.',
+  'master.intelligence.vsi.retry': 'Erneut versuchen',
+
+  'master.intelligence.vsi.empty.selectScope.title': 'Organisation und Fahrzeug wählen',
+  'master.intelligence.vsi.empty.selectScope.body':
+    'Wählen Sie Organisation und Fahrzeug, um persistierte VSI-Signalprofile zu laden. Der Scope wird serverseitig geprüft — kein mandantenübergreifender Zugriff.',
+
+  'master.intelligence.vsi.noProfiles.title': 'Keine VSI-Profile materialisiert',
+  'master.intelligence.vsi.noProfiles.body':
+    'Für dieses Fahrzeug existiert noch kein Signal-Capability-Profil. Das ist nicht dasselbe wie deaktivierte Revisionshistorie.',
+
+  'master.intelligence.vsi.decision.lv': 'LV-Entscheidungscode: {{code}}',
+  'master.intelligence.vsi.decision.rpm': 'RPM-Entscheidungscode: {{code}}',
+
+  'master.intelligence.vsi.signals.intro':
+    'Cadence-Labels beschreiben beobachtete Übertragungsmuster, keine bestätigte Hardware-Konfiguration.',
+  'master.intelligence.vsi.signals.canonical': 'Kanonisches Signal',
+  'master.intelligence.vsi.signals.provider': 'Provider-Name',
+  'master.intelligence.vsi.signals.quality': 'Qualität / Vertrauen',
+  'master.intelligence.vsi.signals.observedAt': 'Letzte Beobachtung (UTC + lokal)',
+  'master.intelligence.vsi.signals.limitations': 'Einschränkungen',
+
+  'master.intelligence.vsi.revision.notCaptured': 'Revisionshistorie: NOT_CAPTURED',
+  'master.intelligence.vsi.revision.notCapturedExplain':
+    'P5-H1-Revisionserfassung ist in dieser Umgebung deaktiviert. Fehlende Historie bedeutet nicht, dass sich das Profil nie geändert hat.',
+  'master.intelligence.vsi.revision.moreAvailable':
+    'Weitere Revisionen verfügbar — Cursor-Pagination über die API.',
+
+  'master.intelligence.vsi.asOf.title': 'As-of-Revisionsauflösung',
+  'master.intelligence.vsi.asOf.decisionAt': 'Entscheidungszeit',
+  'master.intelligence.vsi.asOf.authority': 'Autorität',
 } as const;
