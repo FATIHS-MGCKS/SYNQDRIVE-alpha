@@ -72,8 +72,13 @@
       {
         "canonicalSignalKey": "provider_last_successful_fetch",
         "empiricalObservation": "OBSERVED",
-        "qualityClassification": "UNKNOWN",
-        "limitations": ["EMPIRICAL_EXTRACTOR_NOT_IMPLEMENTED_PROVIDER_LAST_SUCCESSFUL_FETCH"]
+        "qualityClassification": "OBSERVED_FRESH",
+        "freshnessClassification": "FRESH",
+        "lastProviderFetchAt": "2026-10-30T11:59:30.000Z",
+        "limitations": [
+          "PROVIDER_FETCH_TIME_NOT_SOURCE_ADVANCE_PROOF",
+          "PROVIDER_LAST_SUCCESSFUL_FETCH_WALL_CLOCK_NOT_PHYSICAL_SIGNAL"
+        ]
       }
     ]
   }

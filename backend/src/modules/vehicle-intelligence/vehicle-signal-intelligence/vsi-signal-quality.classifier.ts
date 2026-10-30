@@ -95,6 +95,25 @@ export function classifyVsiSignalQuality(input: VsiSignalQualityInput): VsiSigna
     return VsiSignalQualityClassification.UNKNOWN;
   }
 
+  if (signal.canonicalSignalKey === 'provider_last_successful_fetch') {
+    if (signal.empiricalObservation === VsiEmpiricalObservationStatus.NEVER_OBSERVED) {
+      return VsiSignalQualityClassification.NEVER_OBSERVED;
+    }
+    if (!signal.lastProviderFetchAt) {
+      return VsiSignalQualityClassification.UNKNOWN;
+    }
+    if (signal.freshnessClassification === 'STALE') {
+      return VsiSignalQualityClassification.OBSERVED_STALE;
+    }
+    if (
+      signal.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED &&
+      signal.freshnessClassification === 'FRESH'
+    ) {
+      return VsiSignalQualityClassification.OBSERVED_FRESH;
+    }
+    return VsiSignalQualityClassification.UNKNOWN;
+  }
+
   if (signal.empiricalObservation === VsiEmpiricalObservationStatus.NEVER_OBSERVED) {
     return VsiSignalQualityClassification.NEVER_OBSERVED;
   }
