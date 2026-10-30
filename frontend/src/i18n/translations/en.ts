@@ -3628,6 +3628,16 @@ export const en = {
 
   // ─── Health & Errors ───
   'health.aiHealthCare': 'AI Health Care',
+  'health.aiTireSpec.applyFailed': 'Failed to apply AI tire spec.',
+  'health.aiTireSpec.applySuccess': 'AI tire spec applied.',
+  'health.aiTireSpec.seasonMismatchWarning':
+    'AI tire spec was saved. Setup season was not changed — it still differs from the AI season suggestion.',
+  'health.aiTireSpec.staleBinding':
+    'Tire setup changed after the AI fetch. Please run AI tire spec again before applying.',
+  'health.aiTireSpec.missingGenerationBinding': 'Apply is missing generation binding. Fetch AI tire spec again.',
+  'health.aiTireSpec.missingActiveSetup': 'No active tire setup found.',
+  'health.aiTireSpec.identityMismatch':
+    'AI tire spec identity does not match the tire setup or the fetch request.',
   'health.poweredByAi': 'Powered by AI',
   'health.errorCodes': 'Error Codes',
   'health.noActiveErrors': 'No Active Error Codes',

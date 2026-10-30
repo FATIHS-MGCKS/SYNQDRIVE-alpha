@@ -31,5 +31,16 @@ export const tr = {
   'trips.drivingImpact.quality.legacyCompat': 'Eski yolculuk skoru yansımasından legacy değerlendirme — güncel Driving Impact hattı değil.',
   'trips.drivingImpact.quality.unavailable': 'Güvenilir araç yükü değerlendirmesi yok.',
   'trips.drivingImpact.quality.r1Contained': 'Araç yükü geçici olarak kullanılamıyor (R1 zaman sınırı).',
+  'health.aiTireSpec.applyFailed': 'AI lastik spesifikasyonu uygulanamadı.',
+  'health.aiTireSpec.applySuccess': 'AI lastik spesifikasyonu uygulandı.',
+  'health.aiTireSpec.seasonMismatchWarning':
+    'AI spesifikasyonu kaydedildi. Kurulum mevsimi değiştirilmedi ve AI önerisinden farklı.',
+  'health.aiTireSpec.staleBinding':
+    'AI çekiminden sonra lastik kurulumu değişti. Uygulamadan önce AI spesifikasyonunu yeniden alın.',
+  'health.aiTireSpec.missingGenerationBinding':
+    'Uygulama için üretim bağlantısı eksik. AI lastik spesifikasyonunu yeniden alın.',
+  'health.aiTireSpec.missingActiveSetup': 'Aktif lastik kurulumu bulunamadı.',
+  'health.aiTireSpec.identityMismatch':
+    'AI spesifikasyon kimliği kurulum veya istek ile eşleşmiyor.',
   ...tireWearV3Tr,
 } satisfies PartialTranslationDictionary;

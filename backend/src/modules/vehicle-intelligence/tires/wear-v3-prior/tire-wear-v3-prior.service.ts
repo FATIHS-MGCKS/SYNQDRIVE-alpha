@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TireBaselineStatus, TireEvidenceSource, TireOdometerAnchorStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import type { AiTireSpec } from '../tire-health.config';
+import { AiTireSpec, parseAiTireSpec, resolveArchetype, resolveReplacementThreshold } from '../tire-health.config';
 import type { WheelPos } from '../tire-evidence-provenance';
 import {
   TIRE_WEAR_V3_PRIOR_CONFIG,
@@ -74,12 +74,6 @@ function wheelField(position: WheelPos): 'frontLeftMm' | 'frontRightMm' | 'rearL
       return 'frontLeftMm';
   }
 }
-
-function parseAiTireSpec(raw: unknown): AiTireSpec | null {
-  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  return raw as AiTireSpec;
-}
-
 @Injectable()
 export class TireWearV3PriorService {
   constructor(

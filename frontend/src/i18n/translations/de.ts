@@ -3738,6 +3738,16 @@ export const de: Record<TranslationKey, string> = {
 
   // ─── Health & Errors ───
   'health.aiHealthCare': 'KI-Gesundheitscheck',
+  'health.aiTireSpec.applyFailed': 'KI-Reifenspezifikation konnte nicht übernommen werden.',
+  'health.aiTireSpec.applySuccess': 'KI-Reifenspezifikation übernommen.',
+  'health.aiTireSpec.seasonMismatchWarning':
+    'KI-Reifenspezifikation gespeichert. Die Setup-Saison wurde nicht geändert und weicht vom KI-Vorschlag ab.',
+  'health.aiTireSpec.staleBinding':
+    'Reifen-Setup wurde nach dem KI-Abruf geändert. Bitte KI-Reifenspec erneut abrufen.',
+  'health.aiTireSpec.missingGenerationBinding': 'Apply ohne Generierungsbindung. Bitte KI-Reifenspec erneut abrufen.',
+  'health.aiTireSpec.missingActiveSetup': 'Kein aktives Reifen-Setup gefunden.',
+  'health.aiTireSpec.identityMismatch':
+    'Identität der KI-Reifenspec passt nicht zum Setup oder zur Abruf-Anfrage.',
   'health.poweredByAi': 'KI-gestuetzt',
   'health.errorCodes': 'Fehlercodes',
   'health.noActiveErrors': 'Keine aktiven Fehlercodes',

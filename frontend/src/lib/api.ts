@@ -7585,9 +7585,49 @@ export const api = {
     addTireHealthMeasurement: (vehicleId: string, data: any) =>
       post<any>(`/vehicles/${vehicleId}/tires/measurement`, data),
     recalculateTireHealth: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/tires/recalculate`, {}),
-    applyAiTireSpec: (vehicleId: string, payload: { jobId?: string; aiTireSpec?: Record<string, unknown> }) =>
-      post<{ success: boolean; setupId?: string; appliedFields?: string[]; message?: string }>(`/vehicles/${vehicleId}/tires/ai-spec/apply`, payload),
-    startAiTireSpecJob: (params: { brand: string; model: string; year: number; tireSize: string; loadIndex: string; speedIndex: string; vehicleId?: string }) =>
+    applyAiTireSpec: (
+      vehicleId: string,
+      payload: {
+        jobId?: string;
+        aiTireSpec?: Record<string, unknown>;
+        generationBinding?: {
+          tireSetupId: string;
+          setupUpdatedAt: string;
+          requestTireSize: string;
+          requestLoadIndex: string;
+          requestSpeedIndex: string;
+        };
+        tireSize?: string;
+        loadIndex?: string;
+        speedIndex?: string;
+        tireSetupId?: string;
+        userConfirmedSpec?: boolean;
+      },
+    ) =>
+      post<{
+        success: boolean;
+        setupId?: string;
+        appliedFields?: string[];
+        message?: string;
+        code?: string;
+        setupSpecWarnings?: Array<{
+          code: string;
+          message: string;
+          setupValue: string | null;
+          specValue: string | null;
+          precedence: 'setup_manual' | 'spec_user_confirmed';
+        }>;
+      }>(`/vehicles/${vehicleId}/tires/ai-spec/apply`, payload),
+    startAiTireSpecJob: (params: {
+      brand: string;
+      model: string;
+      year: number;
+      tireSize: string;
+      loadIndex: string;
+      speedIndex: string;
+      vehicleId?: string;
+      tireSetupId?: string;
+    }) =>
       post<{ jobId: string; status: string }>('/vehicles/register/ai-tire-specs', params),
     getAiTireSpecJobStatus: (jobId: string) =>
       get<{ jobId: string; status: string; createdAt: string; startedAt: string | null; completedAt: string | null; errorMessage: string | null; confidenceScore: number | null; result: Record<string, unknown> | null; resultReady: boolean; input: Record<string, string | number> }>(`/vehicles/register/ai-tire-specs/${jobId}/status`),
@@ -9186,6 +9226,13 @@ export interface TireHealthDetailResponse {
   rotationHistory: any[];
   measurements: any[];
   alerts: TireAlert[];
+  setupSpecConflicts?: Array<{
+    code: 'SEASON_MISMATCH' | 'AXLE_IDENTITY_MISMATCH';
+    message: string;
+    setupValue: string | null;
+    specValue: string | null;
+    precedence: 'setup_manual' | 'spec_user_confirmed';
+  }>;
 }
 
 export type SohPublicationState = 'INITIAL_CALIBRATION' | 'STABILIZING' | 'STABLE';

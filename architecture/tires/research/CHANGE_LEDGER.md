@@ -231,3 +231,33 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Excluded sources never silently drive trusted V3 numbers; single accepted point cannot imply empirical rate calibration |
 | VALIDATION | Jest: `tire-wear-v3-numerical-evidence.spec`, extended `tire-measurement-v3-ingestion.spec`, `tire-wear-v3-prior.service.spec`, existing P3 consumer + rental fail-closed + productive isolation specs |
 | NON_EFFECTS | No deploy, migration, DS4, β, or V2 writer changes; global V3 fail-closed semantics preserved |
+
+### Tire spec P0 integrity hardening — aiTireSpec read/apply (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Stored `aiTireSpec` could be read without tire_v2 range validation; legacy direct apply skipped job binding guards; setup vs AI season/size conflicts were silent |
+| WHY | P0 data-integrity hardening without V3 formula, DS4, calibration, or DB backfill changes |
+| CHANGE | `parseValidatedAiTireSpecFromStorage` + shared legacy aliases on read; `guardDirectAiTireSpecApply` on direct apply; `detectAiTireSpecSetupConflicts` on apply + tire detail; rental apply sends tire identity + `tireSetupId`; V3 prior uses `parseAiTireSpec` only |
+| EXPECTED_EFFECT | Invalid historical AI numerics fail closed on read; cross-setup direct apply blocked; conflicts reported explicitly; raw JSON in DB unchanged |
+| VALIDATION | Jest: `ai-tire-spec-read*.spec`, `ai-tire-spec-setup-consistency.util.spec`, `ai-tire-spec-direct-apply.guard.spec`, `ai-tire-spec-apply.util.spec`, `ai-tire-spec-job-binding.util.spec` |
+| NON_EFFECTS | No new AI prompt; no V3 math/DS4/calibration activation; no migration or production deploy |
+
+### PR #2264 review remediation — payload binding + stale SSE (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Server-side payload identity validation (`ai-tire-spec-payload-identity.util`); generation binding for direct apply; block apply on axle/LI/SI mismatch; season-only warnings; physical-axle ambiguous binding; preserve source URLs on read; rental warning banner + 9-locale keys |
+| VALIDATION | Jest ai-tire-spec* (54 passed); frontend i18n:check PASS |
+
+### PR #2264 final hardening — setup-wide axle binding + production parser audit (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Identical front/rear setups falsely rejected as `AMBIGUOUS_AXLE_BINDING` despite single setup-wide `aiTireSpec` JSON column |
+| WHY | Align apply guards with persistence: one blob per `VehicleTireSetup`; unified axle identity must accept `setup_wide` binding |
+| CHANGE | `setupHasUnifiedAxleIdentity`, `resolvePayloadBindingScope` (`setup_wide` \| `front_axle` \| `rear_axle`); staggered setups remain single-axle match; read-only production parser audit script `backend/scripts/ops/tire-ai-spec-historical-parser-audit.ts` |
+| EXPECTED_EFFECT | Square setups apply without false ambiguous binding; staggered and generation-binding failures unchanged fail-closed |
+| VALIDATION | Jest ai-tire-spec* (57 passed); production read-only SSH psql audit: 4 stored blobs examined |
+| OBSERVED_EFFECT | Production audit: 4/4 records parse under legacy permissive and new validated read; 4/4 differ only on `confidenceScore` (normalized scale); zero fields nullified by new parser |
+| NON_EFFECTS | No schema/migration; no production writes/backfill; no V3 formula/DS4/calibration/AI prompt changes |

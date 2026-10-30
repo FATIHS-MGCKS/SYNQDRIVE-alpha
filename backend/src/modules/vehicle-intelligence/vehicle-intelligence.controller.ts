@@ -90,6 +90,9 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
+import { resolveDirectApplyTargetSetup } from './tires/ai-tire-spec-direct-apply.guard';
+import { preflightDirectAiTireSpecApply } from './tires/ai-tire-spec-apply-preflight.util';
+import type { TireSetupIdentitySnapshot } from './tires/ai-tire-spec-job-binding.util';
 import { buildAiTireSpecApplySetupUpdate } from './tires/ai-tire-spec-apply.util';
 import { normalizeTireSpecConfidenceScore } from './tires/ai-tire-spec-confidence.util';
 import {
@@ -399,18 +402,82 @@ export class VehicleIntelligenceController {
       return result;
     }
 
-    // Direct flow (legacy): normalize + persist raw aiTireSpec blob
+    // Direct flow (legacy): normalize + persist raw aiTireSpec blob (binding guard required)
     if (body.aiTireSpec) {
-      const setup = await this.prisma.vehicleTireSetup.findFirst({
+      if (!body.generationBinding) {
+        return {
+          success: false,
+          code: 'MISSING_GENERATION_BINDING',
+          message: 'Direct apply requires generationBinding from AI fetch time',
+        };
+      }
+
+      const setupSelect = {
+        id: true,
+        vehicleId: true,
+        status: true,
+        removedAt: true,
+        updatedAt: true,
+        frontDimension: true,
+        rearDimension: true,
+        loadIndexFront: true,
+        loadIndexRear: true,
+        speedIndexFront: true,
+        speedIndexRear: true,
+        tireSeason: true,
+        initialTreadEvidenceSource: true,
+        initialTreadDepthMm: true,
+        initialTreadFrontMm: true,
+        initialTreadRearMm: true,
+      };
+
+      const tireSetupId =
+        body.generationBinding.tireSetupId ?? body.tireSetupId ?? null;
+
+      const boundSetup = tireSetupId
+        ? await this.prisma.vehicleTireSetup.findFirst({
+            where: { id: tireSetupId, vehicleId },
+            select: setupSelect,
+          })
+        : null;
+
+      const activeSetups = await this.prisma.vehicleTireSetup.findMany({
         where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
+        select: setupSelect,
         orderBy: { createdAt: 'desc' },
       });
-      if (!setup) return { success: false, message: 'No active tire setup found' };
+
+      const target = resolveDirectApplyTargetSetup({
+        tireSetupId,
+        activeSetups: activeSetups as TireSetupIdentitySnapshot[],
+        boundSetup: boundSetup as TireSetupIdentitySnapshot | null,
+      });
+
+      if (!target.ok) {
+        return { success: false, message: target.message, code: target.code };
+      }
+
+      const setupRow = activeSetups.find((s) => s.id === target.setup.id);
+      if (!setupRow?.updatedAt) {
+        return { success: false, message: 'No active tire setup found' };
+      }
 
       const normalized = normalizeAiTireSpecResult(body.aiTireSpec);
       const validation = validateAiTireSpec(normalized);
       if (!validation.hasStructuredData) {
         return { success: false, message: 'No structured tire spec data after normalization' };
+      }
+
+      const userConfirmedSpec = body.userConfirmedSpec === true;
+      const specForApply = { ...normalized, userConfirmedSpec };
+
+      const preflight = preflightDirectAiTireSpecApply({
+        setup: setupRow as TireSetupIdentitySnapshot & { updatedAt: Date },
+        spec: specForApply,
+        generationBinding: body.generationBinding,
+      });
+      if (!preflight.ok) {
+        return { success: false, message: preflight.message, code: preflight.code };
       }
 
       const confidenceScore = normalizeTireSpecConfidenceScore(normalized.confidenceScore);
@@ -420,22 +487,22 @@ export class VehicleIntelligenceController {
         confidenceScore,
         completedAt: null,
         specSourceType: 'ai_agent',
-        userConfirmedSpec: body.userConfirmedSpec === true,
+        userConfirmedSpec,
       });
 
       const setupUpdate = buildAiTireSpecApplySetupUpdate({
         setup: {
-          initialTreadEvidenceSource: setup.initialTreadEvidenceSource,
-          initialTreadDepthMm: setup.initialTreadDepthMm,
-          initialTreadFrontMm: setup.initialTreadFrontMm,
-          initialTreadRearMm: setup.initialTreadRearMm,
+          initialTreadEvidenceSource: setupRow.initialTreadEvidenceSource,
+          initialTreadDepthMm: setupRow.initialTreadDepthMm,
+          initialTreadFrontMm: setupRow.initialTreadFrontMm,
+          initialTreadRearMm: setupRow.initialTreadRearMm,
         },
         persisted,
         confidenceScore,
       });
 
       await this.prisma.vehicleTireSetup.update({
-        where: { id: setup.id },
+        where: { id: setupRow.id },
         data: setupUpdate as any,
       });
 
@@ -444,7 +511,13 @@ export class VehicleIntelligenceController {
       } catch { /* recalculation best-effort */ }
 
       const appliedFields = Object.entries(normalized).filter(([, v]) => v != null).map(([k]) => k);
-      return { success: true, setupId: setup.id, appliedFields };
+      return {
+        success: true,
+        setupId: setupRow.id,
+        appliedFields,
+        setupSpecWarnings:
+          preflight.setupSpecWarnings.length > 0 ? preflight.setupSpecWarnings : undefined,
+      };
     }
 
     return { success: false, message: 'Provide either jobId or aiTireSpec' };
