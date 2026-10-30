@@ -12,7 +12,7 @@ const fixtures = JSON.parse(
     signals: Array<Record<string, unknown>>;
   };
   teslaEv: { vehicle: VsiP0aProfileAuditBundle['vehicle']; signals: Array<Record<string, unknown>> };
-  providerFetchObservedUnknownQuality: { signals: Array<{ empiricalObservation: string; qualityClassification: string; limitations: string[] }> };
+  providerFetchObservedUnknownQuality: { signals: Array<{ empiricalObservation: string; qualityClassification: string; freshnessClassification?: string; limitations: string[] }> };
 };
 import {
   assembleVsiP0aMatrixDocument,
@@ -139,7 +139,7 @@ describe('vsi-p0a signal integrity audit engine', () => {
     expect(row?.findingClass).toBe('MISLEADING_PRESENTATION');
   });
 
-  it('provider_last_successful_fetch OBSERVED with UNKNOWN quality → CONFIRMED_BUG P0', () => {
+  it('provider_last_successful_fetch OBSERVED with aligned fetch-recency quality is not P0 bug', () => {
     const s = fixtures.providerFetchObservedUnknownQuality.signals[0];
     const result = classifyVsiP0aSignalFinding({
       vehicle: fixtures.audiRpmReference.vehicle as never,
@@ -148,17 +148,17 @@ describe('vsi-p0a signal integrity audit engine', () => {
       declaredSupport: 'UNKNOWN',
       snapshotObservation: s.empiricalObservation,
       snapshotQuality: s.qualityClassification,
-      snapshotConfidence: null,
+      snapshotConfidence: 'MEDIUM',
       hfAvailability: 'NOT_SUPPORTED_BY_PIPELINE',
       hfSampleCount: null,
       activeCadenceProfile: null,
-      freshness: null,
-      provenance: [],
+      freshness: s.freshnessClassification ?? 'FRESH',
+      provenance: ['VEHICLE_LATEST_STATE'],
       limitations: s.limitations,
       materializedInProfile: true,
     });
-    expect(result.findingClass).toBe('CONFIRMED_BUG');
-    expect(result.severity).toBe('P0');
+    expect(result.findingClass).not.toBe('CONFIRMED_BUG');
+    expect(result.evidenceReference).not.toMatch(/observed_unknown_quality/);
   });
 
   it('P1-a differential: cadence analyzer output avoids cadence_provenance_duplicate_entries', () => {
