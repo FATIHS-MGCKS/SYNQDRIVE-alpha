@@ -6,6 +6,8 @@ import { resolveDs4LongitudinalEvidenceQualityForLayer2V1 } from '../../ds4-asse
 import { emptyDs4DrivingExposureV1 } from '../../ds4-assessment/ds4-assessment-driving-exposure.v1';
 import {
   applyMotionEventIntensityEvidenceGatesV1,
+  applyMotionEventSharedKnotSpikePairGate,
+  assessSharedKnotSpikePairIndicatorsV1,
   detectMotionManoeuvreEvents,
   MOTION_CORE_EVENT_GUARDS_V0_1_DEV,
   MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
@@ -483,5 +485,218 @@ describe('motion event intensity endpoint evidence gates (Arteon P1)', () => {
     applyMotionEventIntensityEvidenceGatesV1(events, series);
     const ev = events.find((e) => e.durationS === 2 && e.kind === 'ACCELERATION');
     expect(ev?.quality).not.toBe('ARTEFACT_SUSPECT');
+  });
+
+  describe('SHARED_KNOT_SPIKE_PAIR safety gate', () => {
+    const dbdded5cKnot = '2026-10-28T10:46:17Z';
+
+    function dbdded5cSpikeSeries(): MotionCoreSpeedSample[] {
+      const labels = [
+        '2026-10-28T10:46:05Z',
+        '2026-10-28T10:46:06Z',
+        '2026-10-28T10:46:07Z',
+        '2026-10-28T10:46:08Z',
+        '2026-10-28T10:46:09Z',
+        '2026-10-28T10:46:10Z',
+        '2026-10-28T10:46:11Z',
+        '2026-10-28T10:46:12Z',
+        '2026-10-28T10:46:13Z',
+        '2026-10-28T10:46:14Z',
+        '2026-10-28T10:46:15Z',
+        '2026-10-28T10:46:16Z',
+        dbdded5cKnot,
+        '2026-10-28T10:46:18Z',
+        '2026-10-28T10:46:19Z',
+        '2026-10-28T10:46:20Z',
+        '2026-10-28T10:46:21Z',
+      ];
+      const speeds = [
+        71.3, 70.1, 69.9, 70.0, 70.0, 70.1, 69.3, 66.0, 61.0, 57.7, 63.0, 100.1, 119.82, 83.2, 58.2, 58.1, 58.3,
+      ];
+      return labels.map((label, i) => sample(label, speeds[i]!));
+    }
+
+    function dbdded5cRepairEvidence() {
+      return [
+        { bucketLabelUtc: '2026-10-28T10:46:15Z', q5Evidence: 'VIOLATION', q6Evidence: 'VIOLATION' },
+        { bucketLabelUtc: dbdded5cKnot, q5Evidence: 'VIOLATION', q6Evidence: 'VIOLATION' },
+        { bucketLabelUtc: '2026-10-28T10:46:18Z', q5Evidence: 'VIOLATION', q6Evidence: 'VIOLATION' },
+      ];
+    }
+
+    it('dbdded5c-style plateau spike pair: indices 2/3 marked ARTEFACT_SUSPECT with SHARED_KNOT_SPIKE_PAIR flag', () => {
+      const series = dbdded5cSpikeSeries();
+      const events = detectMotionManoeuvreEvents(
+        0,
+        series,
+        'C4_ADAPTIVE_L3',
+        MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
+        MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
+      );
+      applyMotionEventIntensityEvidenceGatesV1(events, series, {
+        c51RepairEvidence: dbdded5cRepairEvidence(),
+      });
+      const accel = events.find(
+        (e) => e.kind === 'ACCELERATION' && e.startLabel === '2026-10-28T10:46:15Z' && e.endLabel === dbdded5cKnot,
+      );
+      const brake = events.find(
+        (e) => e.kind === 'DECELERATION' && e.startLabel === dbdded5cKnot && e.endLabel === '2026-10-28T10:46:19Z',
+      );
+      expect(accel?.quality).toBe('ARTEFACT_SUSPECT');
+      expect(brake?.quality).toBe('ARTEFACT_SUSPECT');
+      expect(accel?.flags.some((f) => f.startsWith('SHARED_KNOT_SPIKE_PAIR='))).toBe(true);
+      expect(brake?.flags.some((f) => f.startsWith('SHARED_KNOT_SPIKE_PAIR='))).toBe(true);
+      const agg = aggregateDs4EventIntensityEligibilityV1({
+        payload: payloadWithEvents(
+          events.map((e, idx) => ({
+            kind: e.kind,
+            startLabel: e.startLabel,
+            endLabel: e.endLabel,
+            startSpeedKmh: e.startSpeedKmh,
+            endSpeedKmh: e.endSpeedKmh,
+            deltaKmh: e.deltaKmh,
+            quality: e.quality,
+            flags: e.flags,
+            intensity: {
+              meanAccelMps2: e.meanAccelMps2,
+              durationS: e.durationS,
+              steps: e.steps,
+              coverageRatio: e.coverageRatio,
+              startUncertaintyS: e.startUncertaintyS,
+              endUncertaintyS: e.endUncertaintyS,
+            },
+          })),
+        ),
+        speedAuthority: 'C5_1_PREFERRED',
+      });
+      const idx2 = agg.records.find((r) => r.startLabel === '2026-10-28T10:46:15Z' && r.kind === 'ACCELERATION');
+      const idx3 = agg.records.find((r) => r.startLabel === dbdded5cKnot && r.kind === 'DECELERATION');
+      expect(idx2?.classification).toBe('EXCLUDED_ARTEFACT');
+      expect(idx3?.classification).toBe('EXCLUDED_ARTEFACT');
+    });
+
+    it('hard braking ACCEL→DECEL at shared peak without spike reversion stays admissible', () => {
+      const series = [
+        sample('2026-10-01T10:00:00Z', 55),
+        sample('2026-10-01T10:00:01Z', 62),
+        sample('2026-10-01T10:00:02Z', 70),
+        sample('2026-10-01T10:00:03Z', 78),
+        sample('2026-10-01T10:00:04Z', 86),
+        sample('2026-10-01T10:00:05Z', 94),
+        sample('2026-10-01T10:00:06Z', 100),
+        sample('2026-10-01T10:00:07Z', 92),
+        sample('2026-10-01T10:00:08Z', 82),
+        sample('2026-10-01T10:00:09Z', 70),
+        sample('2026-10-01T10:00:10Z', 58),
+      ];
+      const events = detectMotionManoeuvreEvents(
+        0,
+        series,
+        'C4_ADAPTIVE_L3',
+        MOTION_CORE_EVENT_GUARDS_V0_1_DEV.usableQualities,
+        MOTION_EVENT_V0_3_CANDIDATE_OPTIONS,
+      );
+      applyMotionEventIntensityEvidenceGatesV1(events, series);
+      const trusted = events.filter((e) => e.quality !== 'ARTEFACT_SUSPECT');
+      expect(trusted.length).toBeGreaterThan(0);
+      expect(trusted.some((e) => e.flags.some((f) => f.startsWith('SHARED_KNOT_SPIKE_PAIR=')))).toBe(false);
+    });
+
+    it('missing knot samples: fail closed (no SHARED_KNOT_SPIKE_PAIR confirmation)', () => {
+      const accel: MotionManoeuvreEvent = {
+        trip: 0,
+        kind: 'ACCELERATION',
+        startLabel: '2026-10-01T10:00:00Z',
+        endLabel: '2026-10-01T10:00:02Z',
+        startUncertaintyS: '',
+        endUncertaintyS: '',
+        startSpeedKmh: 30,
+        endSpeedKmh: 120,
+        deltaKmh: 90,
+        meanAccelMps2: 12,
+        peakAccel1sMps2: 12,
+        peakAccel2sMps2: null,
+        durationS: 2,
+        steps: 2,
+        coverageRatio: 1,
+        quality: 'OK',
+        source: 'TEST',
+        algorithmVersion: 'TEST',
+        flags: [],
+      };
+      const decel: MotionManoeuvreEvent = {
+        ...accel,
+        kind: 'DECELERATION',
+        startLabel: '2026-10-01T10:00:02Z',
+        endLabel: '2026-10-01T10:00:04Z',
+        endSpeedKmh: 30,
+        deltaKmh: 90,
+      };
+      const sparseSeries = [sample('2026-10-01T10:00:00Z', 30), sample('2026-10-01T10:00:02Z', 120)];
+      applyMotionEventSharedKnotSpikePairGate([accel, decel], sparseSeries);
+      expect(accel.quality).toBe('OK');
+      expect(decel.quality).toBe('OK');
+    });
+
+    it('assessSharedKnotSpikePairIndicatorsV1 counts geometry and C5.1 independently', () => {
+      const series = dbdded5cSpikeSeries();
+      const ordered = series.filter((s) => s.valueKmh != null).sort((a, b) => a.label.localeCompare(b.label));
+      const ki = ordered.findIndex((s) => s.label === dbdded5cKnot);
+      const assessment = assessSharedKnotSpikePairIndicatorsV1({
+        accel: {
+          trip: 0,
+          kind: 'ACCELERATION',
+          startLabel: '2026-10-28T10:46:15Z',
+          endLabel: dbdded5cKnot,
+          startUncertaintyS: '',
+          endUncertaintyS: '',
+          startSpeedKmh: 63,
+          endSpeedKmh: 119.8,
+          deltaKmh: 56.9,
+          meanAccelMps2: 7.898,
+          peakAccel1sMps2: 7.898,
+          peakAccel2sMps2: null,
+          durationS: 2,
+          steps: 2,
+          coverageRatio: 1,
+          quality: 'OK',
+          source: 'TEST',
+          algorithmVersion: 'TEST',
+          flags: [],
+        },
+        decel: {
+          trip: 0,
+          kind: 'DECELERATION',
+          startLabel: dbdded5cKnot,
+          endLabel: '2026-10-28T10:46:19Z',
+          startUncertaintyS: '',
+          endUncertaintyS: '',
+          startSpeedKmh: 119.8,
+          endSpeedKmh: 58.2,
+          deltaKmh: 61.6,
+          meanAccelMps2: 8.561,
+          peakAccel1sMps2: 8.561,
+          peakAccel2sMps2: null,
+          durationS: 2,
+          steps: 2,
+          coverageRatio: 1,
+          quality: 'OK',
+          source: 'TEST',
+          algorithmVersion: 'TEST',
+          flags: [],
+        },
+        knot: ordered[ki]!,
+        prev: ordered[ki - 1]!,
+        next: ordered[ki + 1]!,
+        c51RepairEvidence: new Map([
+          [dbdded5cKnot, { q5: 'VIOLATION', q6: 'VIOLATION' }],
+        ]),
+      });
+      expect(assessment.classicSharedConflictKnot).toBe(false);
+      expect(assessment.physicsCorridorSpikeReversion).toBe(true);
+      expect(assessment.c51Q5Q6Violation).toBe(true);
+      expect(assessment.independentIndicatorCount).toBe(2);
+      expect(assessment.confirmedArtefactPair).toBe(true);
+    });
   });
 });
