@@ -7,10 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { DS4_LAYER2_HISTORICAL_EXPORT_RECONSTRUCTION_MODE_V1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export.v1.contract';
-import {
-  assertDeployShaMatchesEvaluationCheckoutV1,
-  resolveEvaluationCodeShaFromGitCheckoutV1,
-} from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export-evaluation-attestation.v1';
+import { assertEvaluationCodeCheckoutAttestationV1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export-evaluation-attestation.v1';
 import {
   buildDs4Layer2HistoricalExportArtifactsV1,
   defaultCollectionCutoffUtcForExportV1,
@@ -37,8 +34,10 @@ async function main(): Promise<void> {
     throw new Error('--out-dir is required');
   }
 
-  const evaluationCodeSha = resolveEvaluationCodeShaFromGitCheckoutV1(REPO_ROOT);
-  assertDeployShaMatchesEvaluationCheckoutV1({ deployShaAssertion, evaluationCodeSha });
+  const { evaluationCodeSha } = assertEvaluationCodeCheckoutAttestationV1({
+    cwd: REPO_ROOT,
+    deployShaAssertion,
+  });
 
   const prisma = new PrismaClient();
   try {
