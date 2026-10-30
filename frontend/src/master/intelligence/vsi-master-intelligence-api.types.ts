@@ -39,6 +39,7 @@ export type MasterVsiSignalDetailDto = {
   evidenceProvenance: string[];
   limitations: string[];
   cadenceIntelligence: Record<string, unknown> | null;
+  powertrainApplicability?: 'APPLICABLE' | 'NOT_APPLICABLE' | 'UNKNOWN' | null;
 };
 
 export type MasterVsiProfileDetailDto = MasterVsiProfileSummaryDto & {

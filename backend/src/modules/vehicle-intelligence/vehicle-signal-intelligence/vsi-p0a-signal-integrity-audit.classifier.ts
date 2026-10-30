@@ -93,8 +93,16 @@ export function classifyVsiP0aSignalFinding(input: VsiP0aClassifierInput): {
 
   if (
     input.applicability === 'NOT_APPLICABLE' &&
-    input.snapshotObservation === 'NEVER_OBSERVED'
+    (input.snapshotObservation === 'NEVER_OBSERVED' ||
+      input.snapshotObservation === 'NOT_APPLICABLE')
   ) {
+    if (input.snapshotObservation === 'NOT_APPLICABLE') {
+      return {
+        findingClass: 'EXPECTED_BEHAVIOR',
+        severity: 'P3',
+        evidenceReference: 'powertrain_not_applicable_correctly_materialized',
+      };
+    }
     return {
       findingClass: 'MISLEADING_PRESENTATION',
       severity: 'P1',

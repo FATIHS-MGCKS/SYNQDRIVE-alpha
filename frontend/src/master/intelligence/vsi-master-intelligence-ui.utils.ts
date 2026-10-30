@@ -63,3 +63,15 @@ export function evidenceKindFromSummary(
   }
   return 'observed';
 }
+
+const EMPIRICAL_I18N_KEYS: Record<string, string> = {
+  NOT_APPLICABLE: 'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE',
+  NEVER_OBSERVED: 'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED',
+  OBSERVED: 'master.intelligence.vsi.signals.empirical.OBSERVED',
+  OBSERVED_STALE: 'master.intelligence.vsi.signals.empirical.OBSERVED_STALE',
+};
+
+export function empiricalObservationLabelKey(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  return EMPIRICAL_I18N_KEYS[raw] ?? null;
+}

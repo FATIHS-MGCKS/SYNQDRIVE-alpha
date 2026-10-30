@@ -176,6 +176,10 @@ export const masterIntelligenceEn = {
   'master.intelligence.vsi.signals.quality': 'Quality / confidence',
   'master.intelligence.vsi.signals.observedAt': 'Last observation (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitations',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Not applicable (powertrain)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Never observed',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Observed',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Observed (stale)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Engine RPM uses two separate evidence planes. Snapshot status comes from the latest vehicle latest-state bundle; HF/cadence status comes from mirrored high-frequency points and finalized trips. They are not interchangeable.',

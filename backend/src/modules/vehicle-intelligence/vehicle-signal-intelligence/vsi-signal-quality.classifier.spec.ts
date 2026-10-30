@@ -53,6 +53,16 @@ describe('vsi-signal-quality.classifier', () => {
     expect(quality).toBe(VsiSignalQualityClassification.OBSERVED_STALE);
   });
 
+  it('classifies NOT_APPLICABLE empirical axis', () => {
+    const quality = classifyVsiSignalQuality({
+      signal: baseSignal({
+        empiricalObservation: VsiEmpiricalObservationStatus.NOT_APPLICABLE,
+      }),
+      profileLimitations: [],
+    });
+    expect(quality).toBe(VsiSignalQualityClassification.NOT_APPLICABLE);
+  });
+
   it('classifies provider_last_successful_fetch from fetch recency, not sensor FRESH axis', () => {
     const freshMeta = classifyVsiSignalQuality({
       signal: baseSignal({

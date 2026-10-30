@@ -150,6 +150,10 @@ export const masterIntelligenceIt = {
   'master.intelligence.vsi.signals.quality': 'Qualità / fiducia',
   'master.intelligence.vsi.signals.observedAt': 'Ultima osservazione (UTC + locale)',
   'master.intelligence.vsi.signals.limitations': 'Limitazioni',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Non applicabile (powertrain)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Mai osservato',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Osservato',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Osservato (obsoleto)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Il regime motore (RPM) usa due piani di evidenza separati. Lo stato snapshot proviene dall’ultimo bundle vehicle latest state; HF/cadenza dai punti ad alta frequenza mirrorati e dai viaggi finalizzati. Non sono intercambiabili.',

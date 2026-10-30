@@ -101,7 +101,7 @@ describe('vsi-p0a signal integrity audit engine', () => {
     expect(rpm?.evidenceReference).toBe('lane_a_never_observed_lane_b_hf_rpm_profile');
   });
 
-  it('Tesla: engine_rpm and fuel_level are NOT_APPLICABLE but shown NEVER_OBSERVED', () => {
+  it('Tesla: engine_rpm and fuel_level are NOT_APPLICABLE when fuel type is ELECTRIC', () => {
     for (const key of ['engine_rpm', 'fuel_level_relative'] as const) {
       expect(
         resolveVsiP0aApplicability(key, fixtures.teslaEv.vehicle as never),
@@ -112,16 +112,22 @@ describe('vsi-p0a signal integrity audit engine', () => {
       profileRow: {
         ...baseBundle({ vehicle: fixtures.teslaEv.vehicle as never }).profileRow,
         signalsSnapshot: fixtures.teslaEv.signals.map((s) =>
-          signalFingerprint({ ...s, canonicalSignalKey: s.canonicalSignalKey }),
+          signalFingerprint({
+            ...s,
+            canonicalSignalKey: s.canonicalSignalKey,
+            empiricalObservation: 'NOT_APPLICABLE',
+            qualityClassification: 'NOT_APPLICABLE',
+          }),
         ),
       },
     });
     const rows = buildVsiP0aMatrixRows(bundle);
     const er = rows.find((r) => r.canonicalSignal === 'engine_rpm');
-    expect(er?.findingClass).toBe('MISLEADING_PRESENTATION');
+    expect(er?.findingClass).toBe('EXPECTED_BEHAVIOR');
+    expect(er?.evidenceReference).toBe('powertrain_not_applicable_correctly_materialized');
   });
 
-  it('ICE: hv_battery_soc NOT_APPLICABLE presentation', () => {
+  it('ICE: hv_battery_soc NOT_APPLICABLE when materialized correctly', () => {
     const bundle = baseBundle({
       vehicle: fixtures.audiRpmReference.vehicle as never,
       profileRow: {
@@ -129,14 +135,15 @@ describe('vsi-p0a signal integrity audit engine', () => {
         signalsSnapshot: [
           signalFingerprint({
             canonicalSignalKey: 'hv_battery_soc',
-            empiricalObservation: 'NEVER_OBSERVED',
+            empiricalObservation: 'NOT_APPLICABLE',
+            qualityClassification: 'NOT_APPLICABLE',
           }),
         ],
       },
     });
     const row = buildVsiP0aMatrixRows(bundle).find((r) => r.canonicalSignal === 'hv_battery_soc');
     expect(row?.applicability).toBe('NOT_APPLICABLE');
-    expect(row?.findingClass).toBe('MISLEADING_PRESENTATION');
+    expect(row?.findingClass).toBe('EXPECTED_BEHAVIOR');
   });
 
   it('provider_last_successful_fetch OBSERVED with aligned fetch-recency quality is not P0 bug', () => {
@@ -234,6 +241,66 @@ describe('vsi-p0a signal integrity audit engine', () => {
       materializedInProfile: true,
     });
     expect(result.findingClass).toBe('CONFIRMED_BUG');
+  });
+
+  it('P1-C differential: five FC-APPLICABILITY matrix rows fixed when NOT_APPLICABLE materialized', () => {
+    const tesla = VSI_P0A_DEFAULT_COHORT_V1.vehicles[0];
+    const iceVehicles = VSI_P0A_DEFAULT_COHORT_V1.vehicles.slice(1);
+    const cases: Array<{
+      vehicle: (typeof VSI_P0A_DEFAULT_COHORT_V1.vehicles)[number];
+      canonicalSignal: 'engine_rpm' | 'fuel_level_relative' | 'hv_battery_soc';
+    }> = [
+      { vehicle: tesla, canonicalSignal: 'engine_rpm' },
+      { vehicle: tesla, canonicalSignal: 'fuel_level_relative' },
+      ...iceVehicles.map((vehicle) => ({
+        vehicle,
+        canonicalSignal: 'hv_battery_soc' as const,
+      })),
+    ];
+    expect(cases).toHaveLength(5);
+
+    for (const { vehicle, canonicalSignal } of cases) {
+      const applicability = resolveVsiP0aApplicability(canonicalSignal, vehicle);
+      expect(applicability).toBe('NOT_APPLICABLE');
+
+      const before = classifyVsiP0aSignalFinding({
+        vehicle,
+        canonicalSignal,
+        applicability,
+        declaredSupport: 'UNKNOWN',
+        snapshotObservation: 'NEVER_OBSERVED',
+        snapshotQuality: 'NEVER_OBSERVED',
+        snapshotConfidence: 'LOW',
+        hfAvailability: 'NOT_SUPPORTED_BY_PIPELINE',
+        hfSampleCount: null,
+        activeCadenceProfile: null,
+        freshness: 'UNKNOWN',
+        provenance: [],
+        limitations: [],
+        materializedInProfile: true,
+      });
+      expect(before.findingClass).toBe('MISLEADING_PRESENTATION');
+      expect(before.evidenceReference).toBe('not_applicable_shown_as_never_observed');
+
+      const after = classifyVsiP0aSignalFinding({
+        vehicle,
+        canonicalSignal,
+        applicability,
+        declaredSupport: 'UNKNOWN',
+        snapshotObservation: 'NOT_APPLICABLE',
+        snapshotQuality: 'NOT_APPLICABLE',
+        snapshotConfidence: 'LOW',
+        hfAvailability: 'NOT_SUPPORTED_BY_PIPELINE',
+        hfSampleCount: null,
+        activeCadenceProfile: null,
+        freshness: 'UNKNOWN',
+        provenance: [],
+        limitations: ['POWERTRAIN_SIGNAL_NOT_APPLICABLE'],
+        materializedInProfile: true,
+      });
+      expect(after.findingClass).toBe('EXPECTED_BEHAVIOR');
+      expect(after.evidenceReference).toBe('powertrain_not_applicable_correctly_materialized');
+    }
   });
 
   it('assemble document row counts for default cohort keys', () => {

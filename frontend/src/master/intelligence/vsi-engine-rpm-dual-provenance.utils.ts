@@ -137,7 +137,11 @@ export function buildEngineRpmDualProvenanceView(
     snapshot: parseEngineRpmSnapshotEvidence(signal),
     cadence: parseEngineRpmCadenceEvidence(signal),
     profileEvaluatedAt: profile.evaluatedAt,
-    rpmApplicability: profile.rpmApplicability,
+    rpmApplicability:
+      signal.empiricalObservation === 'NOT_APPLICABLE' ||
+      signal.powertrainApplicability === 'NOT_APPLICABLE'
+        ? 'NOT_APPLICABLE'
+        : profile.rpmApplicability,
     showDualPanel: signal.canonicalSignalKey === ENGINE_RPM_CANONICAL_KEY,
   };
 }

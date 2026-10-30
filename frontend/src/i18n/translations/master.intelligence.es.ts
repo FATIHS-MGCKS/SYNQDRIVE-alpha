@@ -150,6 +150,10 @@ export const masterIntelligenceEs = {
   'master.intelligence.vsi.signals.quality': 'Calidad / confianza',
   'master.intelligence.vsi.signals.observedAt': 'Última observación (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitaciones',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'No aplicable (tren motriz)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nunca observado',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Observado',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Observado (obsoleto)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Las RPM del motor usan dos planos de evidencia separados. El estado snapshot proviene del último bundle vehicle latest state; HF/cadencia de puntos HF reflejados y viajes finalizados. No son intercambiables.',

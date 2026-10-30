@@ -39,6 +39,7 @@ import {
   VsiEmpiricalObservationStatus,
   type VsiEvidenceOrigin,
 } from './vehicle-signal-evidence.contract';
+import { applyVsiProfileSignalPowertrainApplicability } from './vsi-signal-powertrain-applicability.util';
 
 export type VsiProfileEvaluatorInput = {
   organizationId: string;
@@ -54,6 +55,8 @@ export type VsiProfileEvaluatorInput = {
   priorProvenStrictSourceAdvanceAt?: Date | null;
   projectionAsOf?: Date;
   dtcConfirmedComplete?: VsiDtcConfirmedCompleteEvidence | null;
+  /** Vehicle registry / Spec V3 fuel type (Prisma FuelType string). */
+  fuelType?: string | null;
 };
 
 function isoOrNull(
@@ -269,6 +272,10 @@ export function evaluateVsiSignalProfile(
     return row;
   });
 
+  const withApplicability = signals.map((row) =>
+    applyVsiProfileSignalPowertrainApplicability(row, input.fuelType ?? null),
+  );
+
   return {
     contractVersion: VSI_PROFILE_CONTRACT_VERSION,
     organizationId: input.organizationId,
@@ -292,7 +299,7 @@ export function evaluateVsiSignalProfile(
       ? input.latestState?.providerFetchedAt ?? null
       : null,
     lastProvenStrictSourceAdvanceAt,
-    signals,
+    signals: withApplicability,
     profileLimitations,
   };
 }

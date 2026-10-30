@@ -170,6 +170,10 @@ export const masterIntelligencePl = {
   'master.intelligence.vsi.signals.quality': 'Jakość / pewność',
   'master.intelligence.vsi.signals.observedAt': 'Ostatnia obserwacja (UTC + lokalnie)',
   'master.intelligence.vsi.signals.limitations': 'Ograniczenia',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Nie dotyczy (napęd)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nigdy nie obserwowano',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Obserwowano',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Obserwowano (nieaktualne)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Obroty silnika (RPM) korzystają z dwóch oddzielnych warstw dowodów. Status migawki pochodzi z najnowszego pakietu vehicle latest state; HF/kadencja z punktów wysokiej częstotliwości i zakończonych tras. Nie są zamienne.',
