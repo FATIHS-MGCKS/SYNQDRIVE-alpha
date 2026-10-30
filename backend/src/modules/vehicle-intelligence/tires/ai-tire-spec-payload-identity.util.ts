@@ -23,8 +23,10 @@ export interface AiTireSpecApplyGenerationBinding {
   requestSpeedIndex: string;
 }
 
+export type SetupAxleBindingScope = 'setup_wide' | 'front_axle' | 'rear_axle';
+
 export type PayloadIdentityValidationResult =
-  | { ok: true; matchedAxleCount: 1 }
+  | { ok: true; matchedAxleCount: 1; bindingScope: SetupAxleBindingScope }
   | { ok: false; code: string; message: string };
 
 function tuplesEqual(a: TireAxleIdentityTuple, b: TireAxleIdentityTuple): boolean {
@@ -33,6 +35,73 @@ function tuplesEqual(a: TireAxleIdentityTuple, b: TireAxleIdentityTuple): boolea
     a.loadIndex === b.loadIndex &&
     a.speedIndex === b.speedIndex
   );
+}
+
+function buildPhysicalFrontTuple(
+  setup: Pick<
+    TireSetupIdentitySnapshot,
+    'frontDimension' | 'loadIndexFront' | 'speedIndexFront'
+  >,
+): TireAxleIdentityTuple | null {
+  const dimension = normalizeTireSizeForCompare(setup.frontDimension);
+  const loadIndex = normalizeLoadSpeedIndex(setup.loadIndexFront);
+  const speedIndex = normalizeLoadSpeedIndex(setup.speedIndexFront);
+  if (!dimension || !loadIndex || !speedIndex) return null;
+  return { dimension, loadIndex, speedIndex };
+}
+
+function buildPhysicalRearTuple(
+  setup: Pick<
+    TireSetupIdentitySnapshot,
+    'rearDimension' | 'loadIndexRear' | 'speedIndexRear'
+  >,
+): TireAxleIdentityTuple | null {
+  const dimension = normalizeTireSizeForCompare(setup.rearDimension);
+  const loadIndex = normalizeLoadSpeedIndex(setup.loadIndexRear);
+  const speedIndex = normalizeLoadSpeedIndex(setup.speedIndexRear);
+  if (!dimension || !loadIndex || !speedIndex) return null;
+  return { dimension, loadIndex, speedIndex };
+}
+
+/**
+ * aiTireSpec is persisted once per VehicleTireSetup (setup-wide JSON).
+ * When front and rear axle identities are identical, one AI variant represents the whole set.
+ */
+export function setupHasUnifiedAxleIdentity(
+  setup: Pick<
+    TireSetupIdentitySnapshot,
+    | 'frontDimension'
+    | 'rearDimension'
+    | 'loadIndexFront'
+    | 'loadIndexRear'
+    | 'speedIndexFront'
+    | 'speedIndexRear'
+  >,
+): boolean {
+  const front = buildPhysicalFrontTuple(setup);
+  const rear = buildPhysicalRearTuple(setup);
+  if (!front || !rear) return false;
+  return tuplesEqual(front, rear);
+}
+
+export function resolvePayloadBindingScope(
+  identity: AiTireSpecPayloadIdentity,
+  setup: TireSetupIdentitySnapshot,
+): SetupAxleBindingScope | null {
+  const jobTuple = buildJobAxleIdentityTuple(identity);
+  if (!jobTuple) return null;
+
+  const front = buildPhysicalFrontTuple(setup);
+  const rear = buildPhysicalRearTuple(setup);
+  const frontMatch = front != null && tuplesEqual(front, jobTuple);
+  const rearMatch = rear != null && tuplesEqual(rear, jobTuple);
+
+  if (frontMatch && rearMatch) {
+    return setupHasUnifiedAxleIdentity(setup) ? 'setup_wide' : null;
+  }
+  if (frontMatch) return 'front_axle';
+  if (rearMatch) return 'rear_axle';
+  return null;
 }
 
 /** Identity extracted from normalized AI spec payload (never from client-only fields). */
@@ -64,7 +133,7 @@ export function countMatchingSetupAxlesForIdentity(
   return countPhysicalAxlesMatchingIdentity(identity, setup);
 }
 
-/** Count front and rear axles separately — identical staggered sizes must not bind to both. */
+/** Count front and rear axles separately. */
 export function countPhysicalAxlesMatchingIdentity(
   identity: AiTireSpecPayloadIdentity,
   setup: Pick<
@@ -81,30 +150,17 @@ export function countPhysicalAxlesMatchingIdentity(
   if (!jobTuple) return 0;
 
   let matches = 0;
-  const frontDim = normalizeTireSizeForCompare(setup.frontDimension);
-  const frontLoad = normalizeLoadSpeedIndex(setup.loadIndexFront);
-  const frontSpeed = normalizeLoadSpeedIndex(setup.speedIndexFront);
-  if (frontDim && frontLoad && frontSpeed) {
-    if (tuplesEqual({ dimension: frontDim, loadIndex: frontLoad, speedIndex: frontSpeed }, jobTuple)) {
-      matches += 1;
-    }
-  }
-
-  const rearDim = normalizeTireSizeForCompare(setup.rearDimension);
-  const rearLoad = normalizeLoadSpeedIndex(setup.loadIndexRear);
-  const rearSpeed = normalizeLoadSpeedIndex(setup.speedIndexRear);
-  if (rearDim && rearLoad && rearSpeed) {
-    if (tuplesEqual({ dimension: rearDim, loadIndex: rearLoad, speedIndex: rearSpeed }, jobTuple)) {
-      matches += 1;
-    }
-  }
-
+  const front = buildPhysicalFrontTuple(setup);
+  const rear = buildPhysicalRearTuple(setup);
+  if (front && tuplesEqual(front, jobTuple)) matches += 1;
+  if (rear && tuplesEqual(rear, jobTuple)) matches += 1;
   return matches;
 }
 
 /**
  * Validates AI spec payload identity against server setup axles.
- * Rejects ambiguous (0 or >1 matching axle tuples on staggered setups).
+ * Setup-wide aiTireSpec: identical front/rear identities allow a single variant for the full set.
+ * Staggered setups require an exact single-axle match.
  */
 export function validatePayloadIdentityAgainstSetup(
   spec: AiTireSpec,
@@ -129,24 +185,25 @@ export function validatePayloadIdentityAgainstSetup(
     };
   }
 
-  const matchCount = countPhysicalAxlesMatchingIdentity(identity, setup);
-  if (matchCount === 0) {
-    return {
-      ok: false,
-      code: 'PAYLOAD_AXLE_IDENTITY_MISMATCH',
-      message: 'AI spec identity does not match any complete axle on the tire setup',
-    };
-  }
-  if (matchCount > 1) {
+  const bindingScope = resolvePayloadBindingScope(identity, setup);
+  if (!bindingScope) {
+    const matchCount = countPhysicalAxlesMatchingIdentity(identity, setup);
+    if (matchCount === 0) {
+      return {
+        ok: false,
+        code: 'PAYLOAD_AXLE_IDENTITY_MISMATCH',
+        message: 'AI spec identity does not match any complete axle on the tire setup',
+      };
+    }
     return {
       ok: false,
       code: 'AMBIGUOUS_AXLE_BINDING',
       message:
-        'AI spec identity matches more than one setup axle; apply rejected to avoid cross-axle assignment',
+        'AI spec identity matches conflicting setup axles; staggered setup requires an explicit single-axle match',
     };
   }
 
-  return { ok: true, matchedAxleCount: 1 };
+  return { ok: true, matchedAxleCount: 1, bindingScope };
 }
 
 function identityTuplesEqual(
@@ -216,18 +273,12 @@ export function validateApplyGenerationBinding(args: {
     };
   }
 
-  const requestOnSetup = countPhysicalAxlesMatchingIdentity(requestIdentity, args.setup);
-  if (requestOnSetup !== 1) {
+  const requestScope = resolvePayloadBindingScope(requestIdentity, args.setup);
+  if (!requestScope) {
     return {
       ok: false,
-      code:
-        requestOnSetup === 0
-          ? 'GENERATION_AXLE_IDENTITY_MISMATCH'
-          : 'AMBIGUOUS_AXLE_BINDING',
-      message:
-        requestOnSetup === 0
-          ? 'Generation request identity does not match any complete setup axle'
-          : 'Generation request identity is ambiguous across setup axles',
+      code: 'GENERATION_AXLE_IDENTITY_MISMATCH',
+      message: 'Generation request identity does not match a valid setup axle binding',
     };
   }
 

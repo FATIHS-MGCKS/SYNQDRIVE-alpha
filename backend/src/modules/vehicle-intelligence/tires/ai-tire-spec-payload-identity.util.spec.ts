@@ -43,8 +43,8 @@ describe('validatePayloadIdentityAgainstSetup', () => {
     if (!r.ok) expect(r.code).toBe('PAYLOAD_AXLE_IDENTITY_MISMATCH');
   });
 
-  it('rejects ambiguous binding when front and rear share identical identity', () => {
-    const staggeredSame = {
+  it('accepts setup-wide binding when front and rear share identical identity', () => {
+    const unifiedSetup = {
       ...frontSetup,
       rearDimension: '225/45R17',
       loadIndexRear: '94',
@@ -57,14 +57,34 @@ describe('validatePayloadIdentityAgainstSetup', () => {
     } as AiTireSpec;
     expect(countPhysicalAxlesMatchingIdentity(
       { tireSize: '225/45R17', loadIndex: '94', speedIndex: 'Y' },
-      staggeredSame,
+      unifiedSetup,
     )).toBe(2);
-    const r = validatePayloadIdentityAgainstSetup(spec, staggeredSame);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.code).toBe('AMBIGUOUS_AXLE_BINDING');
+    const r = validatePayloadIdentityAgainstSetup(spec, unifiedSetup);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.bindingScope).toBe('setup_wide');
   });
 
-  it('accepts rear-only match on staggered setup', () => {
+  it('accepts front-axle binding on staggered setup', () => {
+    const staggered = {
+      ...frontSetup,
+      frontDimension: '245/40R18',
+      loadIndexFront: '97',
+      speedIndexFront: 'W',
+      rearDimension: '225/45R17',
+      loadIndexRear: '94',
+      speedIndexRear: 'Y',
+    };
+    const spec = {
+      tireSizeRaw: '245/40R18',
+      loadIndex: '97',
+      speedIndex: 'W',
+    } as AiTireSpec;
+    const r = validatePayloadIdentityAgainstSetup(spec, staggered);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.bindingScope).toBe('front_axle');
+  });
+
+  it('accepts rear-axle binding on staggered setup', () => {
     const staggered = {
       ...frontSetup,
       frontDimension: '245/40R18',
@@ -79,7 +99,50 @@ describe('validatePayloadIdentityAgainstSetup', () => {
       loadIndex: '94',
       speedIndex: 'Y',
     } as AiTireSpec;
-    expect(validatePayloadIdentityAgainstSetup(spec, staggered).ok).toBe(true);
+    const r = validatePayloadIdentityAgainstSetup(spec, staggered);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.bindingScope).toBe('rear_axle');
+  });
+
+  it('rejects generation binding when request identity does not match any axle', () => {
+    const staggered = {
+      ...frontSetup,
+      frontDimension: '245/40R18',
+      loadIndexFront: '97',
+      speedIndexFront: 'W',
+      rearDimension: '225/45R17',
+      loadIndexRear: '94',
+      speedIndexRear: 'Y',
+    };
+    const spec = {
+      tireSizeRaw: '245/40R18',
+      loadIndex: '97',
+      speedIndex: 'W',
+    } as AiTireSpec;
+    const r = validateApplyGenerationBinding({
+      binding: {
+        tireSetupId: 'setup-1',
+        setupUpdatedAt: '2026-10-30T10:00:00.000Z',
+        requestTireSize: '225/45R17',
+        requestLoadIndex: '94',
+        requestSpeedIndex: 'Y',
+      },
+      setup: staggered,
+      spec,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('PAYLOAD_GENERATION_IDENTITY_MISMATCH');
+  });
+
+  it('rejects payload with no matching axle', () => {
+    const spec = {
+      tireSizeRaw: '255/40R18',
+      loadIndex: '99',
+      speedIndex: 'Y',
+    } as AiTireSpec;
+    const r = validatePayloadIdentityAgainstSetup(spec, frontSetup);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('PAYLOAD_AXLE_IDENTITY_MISMATCH');
   });
 });
 

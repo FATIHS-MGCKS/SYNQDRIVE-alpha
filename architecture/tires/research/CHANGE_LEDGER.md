@@ -249,3 +249,15 @@ Newest entry last. Never rewrite or delete entries.
 |-------|--------|
 | CHANGE | Server-side payload identity validation (`ai-tire-spec-payload-identity.util`); generation binding for direct apply; block apply on axle/LI/SI mismatch; season-only warnings; physical-axle ambiguous binding; preserve source URLs on read; rental warning banner + 9-locale keys |
 | VALIDATION | Jest ai-tire-spec* (54 passed); frontend i18n:check PASS |
+
+### PR #2264 final hardening — setup-wide axle binding + production parser audit (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Identical front/rear setups falsely rejected as `AMBIGUOUS_AXLE_BINDING` despite single setup-wide `aiTireSpec` JSON column |
+| WHY | Align apply guards with persistence: one blob per `VehicleTireSetup`; unified axle identity must accept `setup_wide` binding |
+| CHANGE | `setupHasUnifiedAxleIdentity`, `resolvePayloadBindingScope` (`setup_wide` \| `front_axle` \| `rear_axle`); staggered setups remain single-axle match; read-only production parser audit script `backend/scripts/ops/tire-ai-spec-historical-parser-audit.ts` |
+| EXPECTED_EFFECT | Square setups apply without false ambiguous binding; staggered and generation-binding failures unchanged fail-closed |
+| VALIDATION | Jest ai-tire-spec* (57 passed); production read-only SSH psql audit: 4 stored blobs examined |
+| OBSERVED_EFFECT | Production audit: 4/4 records parse under legacy permissive and new validated read; 4/4 differ only on `confidenceScore` (normalized scale); zero fields nullified by new parser |
+| NON_EFFECTS | No schema/migration; no production writes/backfill; no V3 formula/DS4/calibration/AI prompt changes |
