@@ -23,6 +23,34 @@ describe('ai-tire-spec-registration-persist', () => {
     expect(blob.newTreadDepthMm).toBeNull();
   });
 
+  it('applies authoritative registration tire identity over LLM fields', () => {
+    const json = buildNormalizedRegistrationAiTireSpecJson(
+      {
+        matchedBrand: 'Audi',
+        matchedModel: 'A4',
+        tireSizeRaw: '255/40R18',
+        loadIndex: '99',
+        speedIndex: 'W',
+        newTreadDepthMm: 9,
+      },
+      null,
+      {
+        brandModelFront: 'Michelin Pilot Sport 4',
+        frontDimension: '225/45R17',
+        loadIndexFront: '94',
+        speedIndexFront: 'Y',
+      },
+    );
+    expect(json).not.toBeNull();
+    const blob = json as Record<string, unknown>;
+    expect(blob.matchedBrand).toBe('Michelin');
+    expect(blob.matchedModel).toBe('Pilot Sport 4');
+    expect(blob.tireSizeRaw).toBe('225/45R17');
+    expect(blob.loadIndex).toBe('94');
+    expect(blob.speedIndex).toBe('Y');
+    expect(blob.newTreadDepthMm).toBeNull();
+  });
+
   it('skips overwrite when existing spec is user confirmed', () => {
     const json = buildNormalizedRegistrationAiTireSpecJson(
       { matchedBrand: 'Other' },

@@ -7,6 +7,10 @@ import {
 } from './ai-tire-spec-normalizer';
 import { processAiTireSpecCompactLlmOutput } from './ai-tire-spec-compact-pipeline.util';
 import { AI_TIRE_SPEC_V3_COMPACT_SCHEMA_VERSION } from './ai-tire-spec-canonical.contract';
+import {
+  type RegistrationTireIdentityInput,
+  resolveRegistrationTireIdentityContext,
+} from './ai-tire-spec-registration-identity.util';
 
 /**
  * Normalize registration/DIMO raw aiTireSpec before persistence.
@@ -15,13 +19,15 @@ import { AI_TIRE_SPEC_V3_COMPACT_SCHEMA_VERSION } from './ai-tire-spec-canonical
 export function buildNormalizedRegistrationAiTireSpecJson(
   raw: Record<string, unknown>,
   existingAiTireSpec: unknown,
+  tireIdentity: RegistrationTireIdentityInput = {},
 ): Prisma.InputJsonValue | null {
   const existing = parseAiTireSpec(existingAiTireSpec);
   if (existing?.userConfirmedSpec === true) {
     return null;
   }
 
-  const compact = processAiTireSpecCompactLlmOutput(raw, {});
+  const identityCtx = resolveRegistrationTireIdentityContext(tireIdentity);
+  const compact = processAiTireSpecCompactLlmOutput(raw, identityCtx);
   const normalized = normalizeAiTireSpecResult(compact);
   const validation = validateAiTireSpec(normalized);
   if (!validation.hasStructuredData) {

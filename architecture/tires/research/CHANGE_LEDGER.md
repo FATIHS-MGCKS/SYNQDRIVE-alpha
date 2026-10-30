@@ -272,3 +272,14 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | New AI fetches omit excluded fields; optional/EU/UTQG/OE/newTread null without catalog alignment; V3 prior formulas unchanged |
 | VALIDATION | Jest: `ai-tire-spec-compact-pipeline*`, `ai-tire-spec-canonical.contract.spec`, `ai-tire-spec*`, `vehicle-spec-ai.service.spec` |
 | NON_EFFECTS | No DB migration; no V3 math changes; PR2264 apply guards preserved; V2 still reads legacy bias fields from old blobs |
+
+### Tire AI tire_v3_compact final hardening — depth evidence + registration identity (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Compact pipeline retained LLM `newTreadDepthMm` when request/setup identity aligned; registration persist ran compact pipeline without tire-side identity context |
+| WHY | Identity match is not manufacturer catalog evidence; knowledge-only LLM must not establish verified nominal tread; registration must not conflate vehicle fields with tire brand/model |
+| CHANGE | `applyCompactEvidenceGate`: always null `newTreadDepthMm` unless `catalogNominalTreadEvidence === true` (future catalog/OCR paths only); `resolveRegistrationTireIdentityContext` + registration DIMO persist passes `brandModelFront` / front LI·SI·size; prompt instructs LLM to always null nominal depth |
+| EXPECTED_EFFECT | All current LLM/job/stream/registration writes store `newTreadDepthMm: null`; setup initial tread + historical V2 blobs unchanged; optional tier still fail-closed |
+| VALIDATION | Jest: compact pipeline, registration identity/persist specs; tire-spec suite |
+| NON_EFFECTS | No migration/backfill; no V3 formula/DS4 changes; no merge/deploy in this workstream |

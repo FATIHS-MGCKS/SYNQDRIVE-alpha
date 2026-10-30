@@ -118,7 +118,7 @@ Fill verifiable tire specifications for this exact tire identity.
 Rules:
 - All schema keys must be present; use null for unknown values
 - tireSizeRaw and loadIndex/speedIndex must match the provided TIRE_SIZE / LOAD_INDEX / SPEED_INDEX when given
-- newTreadDepthMm: factory nominal new tread in mm only when catalog-certain for this variant; else null
+- newTreadDepthMm: always null from this knowledge agent (nominal depth requires independent catalog proof; never infer from memory)
 - Optional EU/UTQG/OE fields: null unless you are certain for this exact variant (never guess)
 - tireArchetype: null if unsure; do not contradict runFlat / evOptimized sidewall marks
 - Do not output excluded legacy fields (biases, UTQG traction/temp, max inflation, etc.)`;

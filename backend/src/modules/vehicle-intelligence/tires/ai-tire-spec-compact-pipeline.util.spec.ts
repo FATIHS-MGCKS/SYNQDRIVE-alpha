@@ -57,7 +57,7 @@ describe('processAiTireSpecCompactLlmOutput', () => {
     expect(out.oeHomologation).toBeNull();
   });
 
-  it('keeps newTreadDepthMm when identity aligns with authoritative context', () => {
+  it('nulls newTreadDepthMm for knowledge-only LLM even when identity aligns', () => {
     const out = processAiTireSpecCompactLlmOutput(
       {
         matchedBrand: 'Michelin',
@@ -65,6 +65,22 @@ describe('processAiTireSpecCompactLlmOutput', () => {
         newTreadDepthMm: 8.2,
       },
       ctx,
+    );
+    expect(out.newTreadDepthMm).toBeNull();
+  });
+
+  it('keeps newTreadDepthMm only with catalogNominalTreadEvidence and full identity match', () => {
+    const out = processAiTireSpecCompactLlmOutput(
+      {
+        matchedBrand: 'Michelin',
+        matchedModel: 'Pilot Sport 4',
+        tireSizeRaw: '225/45R17',
+        loadIndex: '94',
+        speedIndex: 'Y',
+        newTreadDepthMm: 8.2,
+      },
+      ctx,
+      { catalogNominalTreadEvidence: true },
     );
     expect(out.newTreadDepthMm).toBe(8.2);
   });

@@ -18,6 +18,14 @@ export interface AiTireSpecAuthoritativeIdentityContext {
   speedIndex?: string | null;
 }
 
+export interface AiTireSpecCompactProcessOptions {
+  /**
+   * Independent tire-specific catalog/label proof for nominal new tread depth.
+   * Knowledge-only LLM output must NEVER set this — only future EPREL/OCR/user attestation paths.
+   */
+  catalogNominalTreadEvidence?: boolean;
+}
+
 function normalizeCatalogToken(v: string | null | undefined): string {
   return (v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -133,20 +141,25 @@ export function reconcileCompactArchetypeMarks(
 
 /**
  * Fail-closed evidence gate for compact LLM output (knowledge-only — no EPREL/OCR).
- * Optional tier + newTreadDepthMm require authoritative catalog context alignment.
+ * Identity alignment alone does not verify nominal new tread depth.
  */
 export function applyCompactEvidenceGate(
   spec: Record<string, unknown>,
   ctx: AiTireSpecAuthoritativeIdentityContext,
+  options: AiTireSpecCompactProcessOptions = {},
 ): Record<string, unknown> {
   const next = { ...spec };
-  const catalogOk = hasAuthoritativeIdentity(ctx);
 
-  if (!catalogOk) {
+  for (const key of AI_TIRE_SPEC_V3_COMPACT_OPTIONAL_KEYS) {
+    next[key] = null;
+  }
+
+  const catalogOk = hasAuthoritativeIdentity(ctx);
+  const allowNominalTread =
+    options.catalogNominalTreadEvidence === true && catalogOk;
+
+  if (!allowNominalTread) {
     next.newTreadDepthMm = null;
-    for (const key of AI_TIRE_SPEC_V3_COMPACT_OPTIONAL_KEYS) {
-      next[key] = null;
-    }
     return next;
   }
 
@@ -166,14 +179,8 @@ export function applyCompactEvidenceGate(
     normalizeLoadSpeedIndex(String(next.speedIndex ?? '')) ===
     normalizeLoadSpeedIndex(ctx.speedIndex ?? '');
 
-  const aligned = brandOk && modelOk && sizeOk && liOk && siOk;
-
-  if (!aligned) {
+  if (!(brandOk && modelOk && sizeOk && liOk && siOk)) {
     next.newTreadDepthMm = null;
-  }
-
-  for (const key of AI_TIRE_SPEC_V3_COMPACT_OPTIONAL_KEYS) {
-    next[key] = null;
   }
 
   return next;
@@ -182,6 +189,7 @@ export function applyCompactEvidenceGate(
 export function processAiTireSpecCompactLlmOutput(
   raw: Record<string, unknown> | null | undefined,
   ctx: AiTireSpecAuthoritativeIdentityContext = {},
+  options: AiTireSpecCompactProcessOptions = {},
 ): Record<string, unknown> {
   if (!raw || typeof raw !== 'object') {
     return pickCompactShape({});
@@ -192,7 +200,7 @@ export function processAiTireSpecCompactLlmOutput(
   const dim = reconcileCompactTireDimensions(spec);
   spec = dim.spec;
   spec = reconcileCompactArchetypeMarks(spec);
-  spec = applyCompactEvidenceGate(spec, ctx);
+  spec = applyCompactEvidenceGate(spec, ctx, options);
 
   for (const key of AI_TIRE_SPEC_V3_COMPACT_CORE_KEYS) {
     if (!(key in spec)) spec[key] = null;
