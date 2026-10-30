@@ -84,8 +84,8 @@ export function parseValidatedAiTireSpecFromStorage(raw: unknown): AiTireSpec | 
       normalized.confidenceScore ??
       normalizeTireSpecConfidenceScore(obj.tireSpecConfidence) ??
       normalizeTireSpecConfidenceScore(obj.confidenceScore),
-    manufacturerSourceUrl: null,
-    labelSourceUrl: null,
+    manufacturerSourceUrl: readMetadataString(obj.manufacturerSourceUrl),
+    labelSourceUrl: readMetadataString(obj.labelSourceUrl),
   };
 }
 

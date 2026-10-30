@@ -23,11 +23,7 @@ import {
   type TireSetupIdentitySnapshot,
 } from '../../vehicle-intelligence/tires/ai-tire-spec-job-binding.util';
 import { mapAiTireSpecLegacyAliases } from '../../vehicle-intelligence/tires/ai-tire-spec-legacy-alias.util';
-import {
-  detectAiTireSpecSetupConflicts,
-  toTireSetupSpecConsistencyInput,
-  type AiTireSpecSetupConflict,
-} from '../../vehicle-intelligence/tires/ai-tire-spec-setup-consistency.util';
+import { preflightJobAiTireSpecApply } from '../../vehicle-intelligence/tires/ai-tire-spec-apply-preflight.util';
 
 // ── Input DTO ─────────────────────────────────────────────────────────────────
 export interface StartAiTireSpecJobInput {
@@ -76,7 +72,7 @@ export interface AiTireSpecApplyResult {
   message?: string;
   idempotentReplay?: boolean;
   code?: string;
-  setupSpecConflicts?: AiTireSpecSetupConflict[];
+  setupSpecWarnings?: import('../../vehicle-intelligence/tires/ai-tire-spec-setup-consistency.util').AiTireSpecSetupConflict[];
 }
 
 @Injectable()
@@ -312,6 +308,20 @@ export class AiTireSpecJobService {
       null;
 
     const userConfirmedSpec = options.userConfirmedSpec === true;
+    const specForApply = { ...normalized, userConfirmedSpec };
+
+    const preflight = preflightJobAiTireSpecApply({
+      setup: setup as TireSetupIdentitySnapshot,
+      spec: specForApply,
+      jobIdentity: {
+        tireSize: job.tireSize,
+        loadIndex: job.loadIndex,
+        speedIndex: job.speedIndex,
+      },
+    });
+    if (!preflight.ok) {
+      return { success: false, message: preflight.message, code: preflight.code };
+    }
 
     const persisted = buildPersistedAiTireSpec(normalized, {
       jobId: job.id,
@@ -382,16 +392,12 @@ export class AiTireSpecJobService {
       .filter(([, v]) => v != null)
       .map(([k]) => k);
 
-    const setupSpecConflicts = detectAiTireSpecSetupConflicts(
-      toTireSetupSpecConsistencyInput(setup),
-      { ...normalized, userConfirmedSpec },
-    );
-
     return {
       success: true,
       setupId: setup.id,
       appliedFields,
-      setupSpecConflicts: setupSpecConflicts.length > 0 ? setupSpecConflicts : undefined,
+      setupSpecWarnings:
+        preflight.setupSpecWarnings.length > 0 ? preflight.setupSpecWarnings : undefined,
     };
   }
 

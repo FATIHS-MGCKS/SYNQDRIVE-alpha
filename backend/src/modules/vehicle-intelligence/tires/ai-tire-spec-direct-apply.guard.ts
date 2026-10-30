@@ -1,73 +1,67 @@
 import { TireSetupStatus } from '@prisma/client';
-import {
-  validateJobTireSetupBinding,
-  type TireSetupIdentitySnapshot,
-} from './ai-tire-spec-job-binding.util';
+import type { TireSetupIdentitySnapshot } from './ai-tire-spec-job-binding.util';
+import { isActiveTireSetup } from './ai-tire-spec-job-binding.util';
 
-export interface DirectAiTireSpecApplyIdentity {
-  tireSize: string;
-  loadIndex: string;
-  speedIndex: string;
-  tireSetupId?: string | null;
-}
-
-export type DirectAiTireSpecApplyGuardResult =
+export type DirectApplyTargetSetupResult =
   | {
       ok: true;
       setup: TireSetupIdentitySnapshot;
       bindingReason: 'bound_setup' | 'single_active_setup';
     }
-  | { ok: false; message: string; code?: string };
+  | { ok: false; message: string; code: string };
 
 /**
- * Shared guard for legacy direct aiTireSpec apply (no job id).
- * Requires complete tire identity and validates setup binding like AiTireSpecJob apply.
+ * Resolve target setup for direct apply using server state only.
+ * Client tireSize/load/speed are not trusted for setup selection.
  */
-export function guardDirectAiTireSpecApply(args: {
-  vehicleId: string;
-  identity: DirectAiTireSpecApplyIdentity;
+export function resolveDirectApplyTargetSetup(args: {
+  tireSetupId: string | null | undefined;
   activeSetups: TireSetupIdentitySnapshot[];
   boundSetup: TireSetupIdentitySnapshot | null;
-}): DirectAiTireSpecApplyGuardResult {
-  const tireSize = args.identity.tireSize?.trim();
-  const loadIndex = args.identity.loadIndex?.trim();
-  const speedIndex = args.identity.speedIndex?.trim();
-  if (!tireSize || !loadIndex || !speedIndex) {
+}): DirectApplyTargetSetupResult {
+  const active = args.activeSetups.filter(
+    (s) => s.removedAt == null && s.status === TireSetupStatus.ACTIVE,
+  );
+
+  if (args.tireSetupId) {
+    if (!args.boundSetup) {
+      return {
+        ok: false,
+        code: 'SETUP_NOT_FOUND',
+        message: 'Bound tire setup was not found for this vehicle',
+      };
+    }
+    if (args.boundSetup.id !== args.tireSetupId) {
+      return {
+        ok: false,
+        code: 'SETUP_ID_MISMATCH',
+        message: 'Tire setup binding is inconsistent',
+      };
+    }
+    if (!isActiveTireSetup(args.boundSetup)) {
+      return {
+        ok: false,
+        code: 'SETUP_NOT_ACTIVE',
+        message: 'Bound tire setup is no longer active; apply rejected',
+      };
+    }
+    return { ok: true, setup: args.boundSetup, bindingReason: 'bound_setup' };
+  }
+
+  if (active.length === 0) {
     return {
       ok: false,
-      code: 'INCOMPLETE_APPLY_IDENTITY',
-      message: 'Direct apply requires tireSize, loadIndex, and speedIndex for setup binding',
+      code: 'NO_ACTIVE_SETUP',
+      message: 'No active tire setup found for this vehicle',
+    };
+  }
+  if (active.length > 1) {
+    return {
+      ok: false,
+      code: 'AMBIGUOUS_ACTIVE_SETUP',
+      message: 'Direct apply requires tireSetupId when multiple active setups exist',
     };
   }
 
-  const binding = validateJobTireSetupBinding(
-    {
-      tireSize,
-      loadIndex,
-      speedIndex,
-      vehicleId: args.vehicleId,
-      tireSetupId: args.identity.tireSetupId ?? null,
-    },
-    args.activeSetups.filter(
-      (s) => s.removedAt == null && s.status === TireSetupStatus.ACTIVE,
-    ),
-    args.boundSetup,
-  );
-
-  if (!binding.ok) {
-    return { ok: false, code: binding.code, message: binding.message };
-  }
-
-  const setup =
-    args.identity.tireSetupId && args.boundSetup
-      ? args.boundSetup
-      : args.activeSetups.length === 1
-        ? args.activeSetups[0]!
-        : null;
-
-  if (!setup) {
-    return { ok: false, code: 'NO_APPLICABLE_SETUP', message: 'No applicable tire setup found' };
-  }
-
-  return { ok: true, setup, bindingReason: binding.reason };
+  return { ok: true, setup: active[0]!, bindingReason: 'single_active_setup' };
 }

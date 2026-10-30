@@ -7590,6 +7590,13 @@ export const api = {
       payload: {
         jobId?: string;
         aiTireSpec?: Record<string, unknown>;
+        generationBinding?: {
+          tireSetupId: string;
+          setupUpdatedAt: string;
+          requestTireSize: string;
+          requestLoadIndex: string;
+          requestSpeedIndex: string;
+        };
         tireSize?: string;
         loadIndex?: string;
         speedIndex?: string;
@@ -7603,7 +7610,7 @@ export const api = {
         appliedFields?: string[];
         message?: string;
         code?: string;
-        setupSpecConflicts?: Array<{
+        setupSpecWarnings?: Array<{
           code: string;
           message: string;
           setupValue: string | null;

@@ -66,7 +66,7 @@ function specSeasonNormalized(spec: AiTireSpec): string | null {
   return SPEC_SEASON_TO_SETUP[key] ?? null;
 }
 
-function resolveSpecTireSizeRaw(spec: AiTireSpec): string | null {
+export function resolveSpecTireSizeRaw(spec: AiTireSpec): string | null {
   const raw = spec.tireSizeRaw?.trim();
   if (raw) return raw;
   const { widthMm, aspectRatio, rimDiameterInch } = spec;
@@ -144,4 +144,17 @@ export function detectAiTireSpecSetupConflicts(
   }
 
   return conflicts;
+}
+
+export function partitionSetupSpecConflicts(conflicts: AiTireSpecSetupConflict[]): {
+  blocking: AiTireSpecSetupConflict[];
+  warnings: AiTireSpecSetupConflict[];
+} {
+  const blocking: AiTireSpecSetupConflict[] = [];
+  const warnings: AiTireSpecSetupConflict[] = [];
+  for (const c of conflicts) {
+    if (c.code === 'SEASON_MISMATCH') warnings.push(c);
+    else blocking.push(c);
+  }
+  return { blocking, warnings };
 }

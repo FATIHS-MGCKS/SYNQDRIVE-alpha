@@ -242,3 +242,10 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Invalid historical AI numerics fail closed on read; cross-setup direct apply blocked; conflicts reported explicitly; raw JSON in DB unchanged |
 | VALIDATION | Jest: `ai-tire-spec-read*.spec`, `ai-tire-spec-setup-consistency.util.spec`, `ai-tire-spec-direct-apply.guard.spec`, `ai-tire-spec-apply.util.spec`, `ai-tire-spec-job-binding.util.spec` |
 | NON_EFFECTS | No new AI prompt; no V3 math/DS4/calibration activation; no migration or production deploy |
+
+### PR #2264 review remediation — payload binding + stale SSE (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Server-side payload identity validation (`ai-tire-spec-payload-identity.util`); generation binding for direct apply; block apply on axle/LI/SI mismatch; season-only warnings; physical-axle ambiguous binding; preserve source URLs on read; rental warning banner + 9-locale keys |
+| VALIDATION | Jest ai-tire-spec* (54 passed); frontend i18n:check PASS |

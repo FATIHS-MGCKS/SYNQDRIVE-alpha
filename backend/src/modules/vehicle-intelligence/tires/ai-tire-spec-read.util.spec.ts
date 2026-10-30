@@ -44,4 +44,14 @@ describe('parseValidatedAiTireSpecFromStorage', () => {
     expect(parsed!.specSourceType).toBe('ai_agent');
     expect(parsed!.confidenceScore).toBeNull();
   });
+
+  it('preserves manufacturer source URLs on read when stored', () => {
+    const parsed = parseValidatedAiTireSpecFromStorage({
+      matchedBrand: 'Michelin',
+      manufacturerSourceUrl: 'https://example.com/mfg',
+      labelSourceUrl: 'https://example.com/label',
+    });
+    expect(parsed!.manufacturerSourceUrl).toBe('https://example.com/mfg');
+    expect(parsed!.labelSourceUrl).toBe('https://example.com/label');
+  });
 });

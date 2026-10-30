@@ -603,6 +603,16 @@ export const fr = {
   'trips.start': 'Depart',
   'trips.destination': 'Destination',
   'health.aiHealthCare': 'Sante IA',
+  'health.aiTireSpec.applyFailed': 'Echec de l’application de la spec pneu IA.',
+  'health.aiTireSpec.applySuccess': 'Spec pneu IA appliquee.',
+  'health.aiTireSpec.seasonMismatchWarning':
+    'Spec pneu IA enregistree. La saison du setup n’a pas ete modifiee et differe de la suggestion IA.',
+  'health.aiTireSpec.staleBinding':
+    'Le setup pneu a change apres l’appel IA. Relancez la spec pneu IA avant d’appliquer.',
+  'health.aiTireSpec.missingGenerationBinding': 'Application sans lien de generation. Relancez la spec pneu IA.',
+  'health.aiTireSpec.missingActiveSetup': 'Aucun setup pneu actif.',
+  'health.aiTireSpec.identityMismatch':
+    'L’identite de la spec IA ne correspond pas au setup ou a la requete d’appel.',
   'health.poweredByAi': 'Propulse par IA',
   'health.errorCodes': 'Codes erreur',
   'health.noActiveErrors': 'Aucun code erreur actif',
