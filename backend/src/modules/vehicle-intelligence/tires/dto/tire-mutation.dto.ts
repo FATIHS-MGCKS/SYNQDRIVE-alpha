@@ -325,6 +325,19 @@ export class ApplyAiTireSpecDto {
   @IsOptional() @IsObject()
   aiTireSpec?: Record<string, unknown>;
 
+  /** Required for legacy direct apply — binds spec to setup axle identity. */
+  @IsOptional() @IsString() @MaxLength(64)
+  tireSize?: string;
+
+  @IsOptional() @IsString() @MaxLength(16)
+  loadIndex?: string;
+
+  @IsOptional() @IsString() @MaxLength(8)
+  speedIndex?: string;
+
+  @IsOptional() @IsString()
+  tireSetupId?: string;
+
   @IsOptional() @IsBoolean()
   userConfirmedSpec?: boolean;
 }

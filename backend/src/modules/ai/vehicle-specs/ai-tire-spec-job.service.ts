@@ -22,20 +22,12 @@ import {
   validateJobTireSetupBinding,
   type TireSetupIdentitySnapshot,
 } from '../../vehicle-intelligence/tires/ai-tire-spec-job-binding.util';
-
-function mapTireSpecAliases(
-  raw: Record<string, unknown> | null,
-): Record<string, unknown> | null {
-  if (!raw) return null;
-  return {
-    ...raw,
-    legalMinimumMm: raw.legalMinimumMm ?? raw.legalMinTreadDepthMm,
-    recommendedReplacementDepthMm:
-      raw.recommendedReplacementDepthMm ?? raw.practicalReplacementDepthMm,
-    operationalReplacementDepthMm:
-      raw.operationalReplacementDepthMm ?? raw.winterRecommendedMinDepthMm,
-  };
-}
+import { mapAiTireSpecLegacyAliases } from '../../vehicle-intelligence/tires/ai-tire-spec-legacy-alias.util';
+import {
+  detectAiTireSpecSetupConflicts,
+  toTireSetupSpecConsistencyInput,
+  type AiTireSpecSetupConflict,
+} from '../../vehicle-intelligence/tires/ai-tire-spec-setup-consistency.util';
 
 // ── Input DTO ─────────────────────────────────────────────────────────────────
 export interface StartAiTireSpecJobInput {
@@ -83,6 +75,8 @@ export interface AiTireSpecApplyResult {
   appliedFields?: string[];
   message?: string;
   idempotentReplay?: boolean;
+  code?: string;
+  setupSpecConflicts?: AiTireSpecSetupConflict[];
 }
 
 @Injectable()
@@ -243,6 +237,7 @@ export class AiTireSpecJobService {
       loadIndexRear: true,
       speedIndexFront: true,
       speedIndexRear: true,
+      tireSeason: true,
       initialTreadEvidenceSource: true,
       initialTreadDepthMm: true,
       initialTreadFrontMm: true,
@@ -387,7 +382,17 @@ export class AiTireSpecJobService {
       .filter(([, v]) => v != null)
       .map(([k]) => k);
 
-    return { success: true, setupId: setup.id, appliedFields };
+    const setupSpecConflicts = detectAiTireSpecSetupConflicts(
+      toTireSetupSpecConsistencyInput(setup),
+      { ...normalized, userConfirmedSpec },
+    );
+
+    return {
+      success: true,
+      setupId: setup.id,
+      appliedFields,
+      setupSpecConflicts: setupSpecConflicts.length > 0 ? setupSpecConflicts : undefined,
+    };
   }
 
   // ── Internal: async job execution ───────────────────────────────────────────
@@ -457,7 +462,7 @@ export class AiTireSpecJobService {
         return;
       }
 
-      const specsForNormalize = mapTireSpecAliases(rawSpecs);
+      const specsForNormalize = mapAiTireSpecLegacyAliases(rawSpecs);
       const normalized = normalizeAiTireSpecResult(specsForNormalize);
       const validation = validateAiTireSpec(normalized);
 

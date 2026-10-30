@@ -1040,9 +1040,34 @@ export function HealthErrorsView({
 
   const handleApplyAiTireSpec = async () => {
     if (!vehicleId || !aiTireResult) return;
+    const activeSetup = resolveActiveSetup(tiresData);
+    if (!activeSetup) {
+      setTireActionError('No active tire setup found.');
+      return;
+    }
+    if (!editSetupForm.frontDimension.trim() || !editSetupForm.loadIndex.trim() || !editSetupForm.speedIndex.trim()) {
+      setTireActionError('Tire size, load index, and speed index are required before applying AI spec.');
+      return;
+    }
     setAiTireApplying(true);
+    setTireActionError(null);
     try {
-      await api.vehicleIntelligence.applyAiTireSpec(vehicleId, { aiTireSpec: aiTireResult });
+      const result = await api.vehicleIntelligence.applyAiTireSpec(vehicleId, {
+        aiTireSpec: aiTireResult,
+        tireSize: editSetupForm.frontDimension.trim(),
+        loadIndex: editSetupForm.loadIndex.trim(),
+        speedIndex: editSetupForm.speedIndex.trim(),
+        tireSetupId: activeSetup.id,
+      });
+      if (!result.success) {
+        setTireActionError(result.message || 'Failed to apply AI tire spec');
+        return;
+      }
+      if (result.setupSpecConflicts?.length) {
+        setTireActionError(
+          result.setupSpecConflicts.map((c) => c.message).join(' · '),
+        );
+      }
       setAiTireResult(null);
       refreshTireWear();
       loadTireDetail();
