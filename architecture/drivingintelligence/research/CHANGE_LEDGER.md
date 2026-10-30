@@ -2519,3 +2519,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Close PR #2256 review blockers without expanding export architecture |
 | VALIDATION | `npm run test:di:ds4-layer2-export` (23); `npm run test:di:s4a` (125/125); `di-v0-s4a-dormant-audit`; `production-database-guard-bootstrap-dry-run.sh` |
 | NON_EFFECTS | No S4A guard edits; no deploy/production writes; no second L2 engine |
+
+### 2026-10-30 — DS4 Layer-2 P2 offline reconstruction pilot (draft PR)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Isolated P2 research adapter: pinned 8-trip cohort, revision selector, read-only motion loader, `p2_*` artifacts, CLI gated by `DS4_LAYER2_P2_PRODUCTION_RECONSTRUCTION_AUTHORIZED=1`; reuses canonical DS4 assessment + L2 projector |
+| WHY | Implement feasibility-audit pilot without P1 persistence or bulk backfill |
+| VALIDATION | `npm run test:di:ds4-layer2-p2-offline` (12); production-database-guard manifest regen |
+| NON_EFFECTS | No production assessment writes; no worker replay; no merge into P1 export |
+| EVIDENCE | `architecture/drivingintelligence/research/DS4_LAYER2_P2_OFFLINE_RECONSTRUCTION_PILOT_2026-10-30.md` |
+
+### 2026-10-30 — DS4 Layer-2 P2 pilot hardening (draft PR #2258)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Cohort pins `expectedVehicleId` + `expectedSourceFamily`; runtime scope assert before compute; motion payload `sparse.channelOutcome` threaded into evidence loader; revision tie-break `created_at` desc + `motionRunId` asc; `test:di:ds4-layer2-p2-offline` in S4A unit CI job |
+| WHY | Close architecture-audit gaps (identity, Tesla API_SYNTHETIC context, deterministic selection, CI coverage) |
+| VALIDATION | `npm run test:di:ds4-layer2-p2-offline` (18); S4A workflow unit job |
+| NON_EFFECTS | No production reconstruction; no assessment persistence |
