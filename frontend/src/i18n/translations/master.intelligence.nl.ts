@@ -151,6 +151,35 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.signals.observedAt': 'Laatste waarneming (UTC + lokaal)',
   'master.intelligence.vsi.signals.limitations': 'Beperkingen',
 
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Motortoerental (RPM) gebruikt twee aparte bewijslagen. Snapshotstatus komt uit de nieuwste vehicle-latest-state-bundle; HF/cadans uit gespiegelde HF-punten en afgeronde ritten. Ze zijn niet uitwisselbaar.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (vehicle latest state)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Observatievenster: nieuwste toegewezen providerbundle bij profielmaterialisatie (geen HF-geschiedenis).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / cadans (ritvensters)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Observatievenster: link-gebonden HF-cadansverrijking (typisch tot 14 dagen afgeronde ritten).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Empirische observatie',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Versheid',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Laatste geldige observatie',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Kwaliteit / vertrouwen',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Herkomst',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'Aantal HF-monsters',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Actief RPM-profiel',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profiel geëvalueerd op',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Afgeronde ritten in cadansvenster',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Classificatiebeslissing',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Ondersteunende ritclassificaties',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'RPM-cadansclassificatie is niet van toepassing voor dit aandrijftype (bijv. BEV).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'Geen HF-cadansbewijs in het opgeslagen profiel (cadenceIntelligence ontbreekt of leeg).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Snapshot',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/cadans',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    'Profiel {{profile}} · {{samples}} HF-monsters (zie paneel)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'Zie paneel hieronder',
+
   'master.intelligence.vsi.revision.loading': 'Revisiehistorie laden…',
   'master.intelligence.vsi.revision.loadError': 'Revisiehistorie kon niet worden geladen.',
   'master.intelligence.vsi.revision.retry': 'Revisiehistorie opnieuw laden',

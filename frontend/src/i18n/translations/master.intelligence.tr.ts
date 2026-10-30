@@ -149,6 +149,35 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.signals.provider': 'Sağlayıcı adı',
   'master.intelligence.vsi.signals.quality': 'Kalite / güven',
   'master.intelligence.vsi.signals.observedAt': 'Son gözlem (UTC + yerel)',
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Motor devri (RPM) iki ayrı kanıt düzlemi kullanır. Anlık görüntü durumu en son vehicle latest state paketinden gelir; HF/kadans yansıtılmış yüksek frekanslı noktalardan ve tamamlanan seferlerden gelir. Birbirinin yerine geçmez.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Anlık görüntü (vehicle latest state)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Gözlem penceresi: profil materializasyonunda en son atfedilen sağlayıcı paketi (HF geçmişi değil).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / kadans (sefer pencereleri)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Gözlem penceresi: link kapsamlı HF kadans zenginleştirmesi (genelde 14 güne kadar tamamlanan seferler).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Ampirik gözlem',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Tazelik',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Son geçerli gözlem',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Kalite / güven',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Köken',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'HF örnek sayısı',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Aktif RPM profili',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profil değerlendirme zamanı',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Kadans penceresindeki tamamlanan seferler',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Sınıflandırma kararı',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Destekleyici sefer sınıflandırmaları',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'RPM kadans sınıflandırması bu güç aktarımı için geçerli değil (ör. BEV).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'Kalıcı profilde HF kadans kanıtı yok (cadenceIntelligence eksik veya boş).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Anlık görüntü',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/kadans',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    '{{profile}} profili · {{samples}} HF örneği (panele bakın)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'Aşağıdaki panele bakın',
+
   'master.intelligence.vsi.signals.limitations': 'Sınırlamalar',
 
   'master.intelligence.vsi.revision.loading': 'Revizyon geçmişi yükleniyor…',

@@ -171,6 +171,35 @@ export const masterIntelligenceDe = {
   'master.intelligence.vsi.signals.observedAt': 'Letzte Beobachtung (UTC + lokal)',
   'master.intelligence.vsi.signals.limitations': 'Einschränkungen',
 
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Motordrehzahl (RPM) nutzt zwei getrennte Evidenz-Ebenen. Der Snapshot-Status stammt aus dem neuesten Vehicle-Latest-State-Bundle; HF/Kadenz aus gespiegelten Hochfrequenzpunkten und abgeschlossenen Fahrten. Sie sind nicht austauschbar.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (Vehicle Latest State)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Beobachtungsfenster: jüngstes zugeordnetes Provider-Bundle bei Profil-Materialisierung (keine HF-Historie).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / Kadenz (Fahrtfenster)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Beobachtungsfenster: linkbezogene HF-Kadenz-Anreicherung (typisch bis zu 14 Tage abgeschlossener Fahrten).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Empirische Beobachtung',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Aktualität',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Letzte gültige Beobachtung',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Qualität / Konfidenz',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Herkunft',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'HF-Stichprobenanzahl',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Aktives RPM-Profil',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profil ausgewertet am',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Abgeschlossene Fahrten im Kadenzfenster',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Klassifikationsentscheidung',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Unterstützende Fahrt-Klassifikationen',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'RPM-Kadenz-Klassifikation ist für diesen Antrieb nicht anwendbar (z. B. batterieelektrisch).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'Keine HF-Kadenz-Evidenz im persistierten Profil (cadenceIntelligence fehlt oder leer).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Snapshot',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/Kadenz',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    'Profil {{profile}} · {{samples}} HF-Stichproben (siehe Panel)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'Dual-Panel unten',
+
   'master.intelligence.vsi.revision.loading': 'Revisionshistorie wird geladen…',
   'master.intelligence.vsi.revision.loadError': 'Revisionshistorie konnte nicht geladen werden.',
   'master.intelligence.vsi.revision.retry': 'Revisionshistorie erneut laden',

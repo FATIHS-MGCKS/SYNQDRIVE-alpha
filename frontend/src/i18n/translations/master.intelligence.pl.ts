@@ -171,6 +171,35 @@ export const masterIntelligencePl = {
   'master.intelligence.vsi.signals.observedAt': 'Ostatnia obserwacja (UTC + lokalnie)',
   'master.intelligence.vsi.signals.limitations': 'Ograniczenia',
 
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Obroty silnika (RPM) korzystają z dwóch oddzielnych warstw dowodów. Status migawki pochodzi z najnowszego pakietu vehicle latest state; HF/kadencja z punktów wysokiej częstotliwości i zakończonych tras. Nie są zamienne.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Migawka (vehicle latest state)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Okno obserwacji: najnowszy przypisany pakiet providera przy materializacji profilu (bez historii HF).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / kadencja (okna tras)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Okno obserwacji: wzbogacenie kadencji HF w zakresie linku (zwykle do 14 dni zakończonych tras).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Obserwacja empiryczna',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Świeżość',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Ostatnia ważna obserwacja',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Jakość / pewność',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Pochodzenie',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'Liczba próbek HF',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Aktywny profil RPM',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profil oceniono',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Zakończone trasy w oknie kadencji',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Decyzja klasyfikacji',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Wspierające klasyfikacje tras',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'Klasyfikacja kadencji RPM nie ma zastosowania dla tego napędu (np. BEV).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'Brak dowodów kadencji HF w zapisanym profilu (brak lub puste cadenceIntelligence).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Migawka',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/kadencja',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    'Profil {{profile}} · {{samples}} próbek HF (patrz panel)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'Patrz panel poniżej',
+
   'master.intelligence.vsi.revision.loading': 'Ładowanie historii rewizji…',
   'master.intelligence.vsi.revision.loadError': 'Nie udało się załadować historii rewizji.',
   'master.intelligence.vsi.revision.retry': 'Ponów ładowanie historii rewizji',

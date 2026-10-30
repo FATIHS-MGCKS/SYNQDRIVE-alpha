@@ -177,6 +177,35 @@ export const masterIntelligenceEn = {
   'master.intelligence.vsi.signals.observedAt': 'Last observation (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitations',
 
+  'master.intelligence.vsi.signals.rpmDual.intro':
+    'Engine RPM uses two separate evidence planes. Snapshot status comes from the latest vehicle latest-state bundle; HF/cadence status comes from mirrored high-frequency points and finalized trips. They are not interchangeable.',
+  'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (vehicle latest state)',
+  'master.intelligence.vsi.signals.rpmDual.snapshotWindow':
+    'Observation window: latest attributed provider bundle at profile materialization (not HF history).',
+  'master.intelligence.vsi.signals.rpmDual.cadenceHeading': 'HF / cadence (trip windows)',
+  'master.intelligence.vsi.signals.rpmDual.cadenceWindow':
+    'Observation window: link-scoped HF cadence enrichment (typically up to 14 days of finalized trips).',
+  'master.intelligence.vsi.signals.rpmDual.empirical': 'Empirical observation',
+  'master.intelligence.vsi.signals.rpmDual.freshness': 'Freshness',
+  'master.intelligence.vsi.signals.rpmDual.lastValid': 'Last valid observation',
+  'master.intelligence.vsi.signals.rpmDual.quality': 'Quality / confidence',
+  'master.intelligence.vsi.signals.rpmDual.provenance': 'Provenance',
+  'master.intelligence.vsi.signals.rpmDual.observedSamples': 'HF sample count',
+  'master.intelligence.vsi.signals.rpmDual.activeProfile': 'Active RPM profile',
+  'master.intelligence.vsi.signals.rpmDual.profileEvaluatedAt': 'Profile evaluated at',
+  'master.intelligence.vsi.signals.rpmDual.finalizedTrips': 'Finalized trips in cadence window',
+  'master.intelligence.vsi.signals.rpmDual.decision': 'Classification decision',
+  'master.intelligence.vsi.signals.rpmDual.tripSupport': 'Supporting trip classifications',
+  'master.intelligence.vsi.signals.rpmDual.notApplicable':
+    'RPM cadence classification is not applicable for this powertrain (e.g. battery-electric).',
+  'master.intelligence.vsi.signals.rpmDual.noHfEvidence':
+    'No HF cadence evidence in the persisted profile (missing or empty cadenceIntelligence).',
+  'master.intelligence.vsi.signals.rpmDual.snapshotShort': 'Snapshot',
+  'master.intelligence.vsi.signals.rpmDual.cadenceShort': 'HF/cadence',
+  'master.intelligence.vsi.signals.rpmDual.hfEvidenceLine':
+    '{{profile}} profile · {{samples}} HF samples (see panel)',
+  'master.intelligence.vsi.signals.rpmDual.seePanel': 'See dual panel below',
+
   'master.intelligence.vsi.revision.loading': 'Loading revision history…',
   'master.intelligence.vsi.revision.loadError': 'Revision history could not be loaded.',
   'master.intelligence.vsi.revision.retry': 'Retry revision history',
