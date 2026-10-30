@@ -2490,3 +2490,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `motion-event-intensity-endpoint-evidence.v1.spec.ts`; `npm run test:di:ds4-assessment`; `npm run test:di:s4a`; motion P1/P2 + shadow processor unit regressions |
 | NON_EFFECTS | No C4/C5.1 speed rewrite; no Tesla API_SYNTHETIC L2 resolver change; no persisted row mutation/backfill; no deploy/flags |
 | REMAINING | Owner review; optional processor integration fixture against full S4 evidence adaptation |
+
+### DS4 Layer-2 historical export P1 — persisted assessment read-only CLI (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `ds4-layer2-historical-export.v1.*` + research CLI; artifacts `manifest.json`, `assessments.csv`, `longitudinal_events.csv`, `exclusions.csv`, `coverage_summary.json`; design `design/DS4_LAYER2_HISTORICAL_EXPORT_V1.md` |
+| WHY | Reproducible research export for persisted L2 assessments (P1 scope: assessment rows only) without new persistence, backfill, or motion-only recomputation |
+| VALIDATION | `npm run test:di:ds4-layer2-export` |
+| NON_EFFECTS | No deploy/flags/migrations/worker changes; no production data in git; no motion-only annex |
+| REMAINING | Optional production read-only smoke to local artifacts; batch automation outside P1 PR |
