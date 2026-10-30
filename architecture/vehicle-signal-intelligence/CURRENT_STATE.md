@@ -120,6 +120,7 @@
 
 ```bash
 cd backend && npm test -- --testPathPattern=vehicle-signal-intelligence/vsi-profile
+cd backend && npx jest --testPathPatterns=vsi-p0a-signal-integrity-audit
 VSI03_READONLY_COMPOSER_PG=1 bash scripts/test/vsi03-p2c-postgres-ci.sh
 bash architecture/scripts/validate-module-registry.sh
 ```
