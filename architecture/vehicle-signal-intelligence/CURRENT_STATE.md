@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-29 (Master Admin engine RPM dual provenance UI — snapshot vs HF cadence read-only) |
+| **Last updated** | 2026-10-30 (P0-a read-only Signal Integrity Matrix audit tooling + evidence export) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
