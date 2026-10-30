@@ -11,7 +11,7 @@
 
 Hybrid / PHEV: HV-pack signals remain **applicable**; ICE-centric signals remain **applicable** — not collapsed to pure ICE or BEV.
 
-`OTHER` fuel: ICE signals applicable; HV-pack signals **not** applicable (mild-hybrid-safe default without inventing pack telemetry).
+`OTHER` fuel: ICE/HV gated signals → **UNKNOWN** (no unproven ICE default). Proven `OBSERVED`/`OBSERVED_STALE` rows are never downgraded to `NOT_APPLICABLE` when fuel metadata disagrees (`powertrainApplicability: UNKNOWN`).
 
 ## Root cause (FC-APPLICABILITY)
 

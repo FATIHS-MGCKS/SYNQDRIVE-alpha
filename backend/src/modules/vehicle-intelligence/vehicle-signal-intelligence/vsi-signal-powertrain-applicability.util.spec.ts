@@ -41,11 +41,27 @@ describe('vsi-signal-powertrain-applicability.util', () => {
     expect(resolveVsiSignalPowertrainApplicability('hv_battery_soc', undefined)).toBe('UNKNOWN');
   });
 
-  it('OTHER fuel keeps ICE signals applicable and HV not applicable', () => {
-    expect(resolveVsiSignalPowertrainApplicability('engine_rpm', 'OTHER')).toBe('APPLICABLE');
-    expect(resolveVsiSignalPowertrainApplicability('hv_battery_soc', 'OTHER')).toBe(
-      'NOT_APPLICABLE',
+  it('OTHER fuel is ambiguous — fail-closed UNKNOWN for powertrain-gated signals', () => {
+    expect(resolveVsiSignalPowertrainApplicability('engine_rpm', 'OTHER')).toBe('UNKNOWN');
+    expect(resolveVsiSignalPowertrainApplicability('hv_battery_soc', 'OTHER')).toBe('UNKNOWN');
+  });
+
+  it('proven empirical observation is not downgraded when fuelType disagrees', () => {
+    const applied = applyVsiProfileSignalPowertrainApplicability(
+      {
+        canonicalSignalKey: 'hv_battery_soc' as const,
+        empiricalObservation: VsiEmpiricalObservationStatus.OBSERVED,
+        lastValidObservationAt: '2026-10-15T10:00:00.000Z',
+        lastSourceTimestamp: '2026-10-15T10:00:00.000Z',
+        freshnessClassification: 'FRESH' as const,
+        limitations: [] as string[],
+        powertrainApplicability: undefined as 'APPLICABLE' | 'NOT_APPLICABLE' | 'UNKNOWN' | undefined,
+      },
+      'GASOLINE',
     );
+    expect(applied.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(applied.powertrainApplicability).toBe('UNKNOWN');
+    expect(applied.lastValidObservationAt).toBe('2026-10-15T10:00:00.000Z');
   });
 
   it('apply overwrites empirical axis for NOT_APPLICABLE', () => {

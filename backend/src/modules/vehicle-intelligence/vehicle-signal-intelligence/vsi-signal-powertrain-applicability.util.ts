@@ -54,6 +54,9 @@ export function resolveVsiSignalPowertrainApplicability(
   if (!normalized) {
     return 'UNKNOWN';
   }
+  if ((def.evOnly || def.iceOnly) && normalized === 'OTHER') {
+    return 'UNKNOWN';
+  }
   if (def.evOnly) {
     return hasHighVoltagePackApplicability(normalized) ? 'APPLICABLE' : 'NOT_APPLICABLE';
   }
@@ -82,6 +85,12 @@ export function applyVsiProfileSignalPowertrainApplicability<
     return { ...row, powertrainApplicability: 'APPLICABLE' };
   }
   if (applicability === 'UNKNOWN') {
+    return { ...row, powertrainApplicability: 'UNKNOWN' };
+  }
+  const provenEmpiricalObservation =
+    row.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED ||
+    row.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED_STALE;
+  if (applicability === 'NOT_APPLICABLE' && provenEmpiricalObservation) {
     return { ...row, powertrainApplicability: 'UNKNOWN' };
   }
   return {
