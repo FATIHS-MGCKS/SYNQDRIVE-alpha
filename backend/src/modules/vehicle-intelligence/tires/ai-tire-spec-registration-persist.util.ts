@@ -5,7 +5,8 @@ import {
   normalizeAiTireSpecResult,
   validateAiTireSpec,
 } from './ai-tire-spec-normalizer';
-import { AI_TIRE_SPEC_SCHEMA_VERSION } from './ai-tire-spec-canonical.contract';
+import { processAiTireSpecCompactLlmOutput } from './ai-tire-spec-compact-pipeline.util';
+import { AI_TIRE_SPEC_V3_COMPACT_SCHEMA_VERSION } from './ai-tire-spec-canonical.contract';
 
 /**
  * Normalize registration/DIMO raw aiTireSpec before persistence.
@@ -20,7 +21,8 @@ export function buildNormalizedRegistrationAiTireSpecJson(
     return null;
   }
 
-  const normalized = normalizeAiTireSpecResult(raw);
+  const compact = processAiTireSpecCompactLlmOutput(raw, {});
+  const normalized = normalizeAiTireSpecResult(compact);
   const validation = validateAiTireSpec(normalized);
   if (!validation.hasStructuredData) {
     return null;
@@ -36,6 +38,6 @@ export function buildNormalizedRegistrationAiTireSpecJson(
 
   return {
     ...persisted,
-    schemaVersion: AI_TIRE_SPEC_SCHEMA_VERSION,
+    schemaVersion: AI_TIRE_SPEC_V3_COMPACT_SCHEMA_VERSION,
   } as Prisma.InputJsonValue;
 }

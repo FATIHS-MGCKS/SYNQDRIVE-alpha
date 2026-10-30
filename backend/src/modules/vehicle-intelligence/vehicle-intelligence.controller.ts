@@ -90,6 +90,7 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
+import { processAiTireSpecCompactLlmOutput } from './tires/ai-tire-spec-compact-pipeline.util';
 import { resolveDirectApplyTargetSetup } from './tires/ai-tire-spec-direct-apply.guard';
 import { preflightDirectAiTireSpecApply } from './tires/ai-tire-spec-apply-preflight.util';
 import type { TireSetupIdentitySnapshot } from './tires/ai-tire-spec-job-binding.util';
@@ -462,7 +463,17 @@ export class VehicleIntelligenceController {
         return { success: false, message: 'No active tire setup found' };
       }
 
-      const normalized = normalizeAiTireSpecResult(body.aiTireSpec);
+      const compactRaw = processAiTireSpecCompactLlmOutput(
+        body.aiTireSpec as Record<string, unknown>,
+        {
+          brand: null,
+          model: null,
+          tireSize: body.generationBinding.requestTireSize,
+          loadIndex: body.generationBinding.requestLoadIndex,
+          speedIndex: body.generationBinding.requestSpeedIndex,
+        },
+      );
+      const normalized = normalizeAiTireSpecResult(compactRaw);
       const validation = validateAiTireSpec(normalized);
       if (!validation.hasStructuredData) {
         return { success: false, message: 'No structured tire spec data after normalization' };

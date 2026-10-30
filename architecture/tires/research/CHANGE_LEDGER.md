@@ -261,3 +261,14 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | Jest ai-tire-spec* (57 passed); production read-only SSH psql audit: 4 stored blobs examined |
 | OBSERVED_EFFECT | Production audit: 4/4 records parse under legacy permissive and new validated read; 4/4 differ only on `confidenceScore` (normalized scale); zero fields nullified by new parser |
 | NON_EFFECTS | No schema/migration; no production writes/backfill; no V3 formula/DS4/calibration/AI prompt changes |
+
+### Tire AI tire_v3_compact LLM contract (P1) (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Mistral strict JSON requested 50 `tire_v2` fields including bias/sensitivity scores |
+| WHY | Reduce hallucinated OEM surface; align LLM output with V3 + PR2264 identity needs only |
+| CHANGE | `AI_TIRE_SPEC_V3_COMPACT_*` (14 CORE + 10 OPTIONAL LLM keys); `buildTireSpecJsonSchema` + prompt; `processAiTireSpecCompactLlmOutput` (authoritative identity, dimension reconcile, archetype/mark consistency, evidence fail-closed); new writes `schemaVersion: tire_v3_compact`; historical 50-field read/normalize unchanged |
+| EXPECTED_EFFECT | New AI fetches omit excluded fields; optional/EU/UTQG/OE/newTread null without catalog alignment; V3 prior formulas unchanged |
+| VALIDATION | Jest: `ai-tire-spec-compact-pipeline*`, `ai-tire-spec-canonical.contract.spec`, `ai-tire-spec*`, `vehicle-spec-ai.service.spec` |
+| NON_EFFECTS | No DB migration; no V3 math changes; PR2264 apply guards preserved; V2 still reads legacy bias fields from old blobs |
