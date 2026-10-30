@@ -36,7 +36,25 @@ export type Ds4Layer2P2RevisionSelectionResultV1 = {
 };
 
 const SELECTION_POLICY =
-  'V2 collection-eligible + exposure-derivable + known speed authority (C4_ONLY or C5_1_PREFERRED); latest created_at among eligible; never mix revisions';
+  'V2 collection-eligible + exposure-derivable + known speed authority (C4_ONLY or C5_1_PREFERRED); latest created_at among eligible; motionRunId lexicographic tie-break; never mix revisions';
+
+function compareCandidatesAscending(
+  a: Ds4Layer2P2MotionRevisionCandidateV1,
+  b: Ds4Layer2P2MotionRevisionCandidateV1,
+): number {
+  const byCreated = a.createdAtUtc.localeCompare(b.createdAtUtc);
+  if (byCreated !== 0) return byCreated;
+  return a.motionRunId.localeCompare(b.motionRunId);
+}
+
+function compareEligibleForSelection(
+  a: Ds4Layer2P2MotionRevisionCandidateV1,
+  b: Ds4Layer2P2MotionRevisionCandidateV1,
+): number {
+  const byCreatedDesc = b.createdAtUtc.localeCompare(a.createdAtUtc);
+  if (byCreatedDesc !== 0) return byCreatedDesc;
+  return a.motionRunId.localeCompare(b.motionRunId);
+}
 
 function rejectionReasons(candidate: Ds4Layer2P2MotionRevisionCandidateV1): string[] {
   const reasons: string[] = [];
@@ -67,12 +85,10 @@ export function selectDs4Layer2P2MotionRevisionV1(input: {
     throw new Error(`No motion revisions for trip ${input.tripId}`);
   }
 
-  const sorted = [...input.candidates].sort((a, b) => a.createdAtUtc.localeCompare(b.createdAtUtc));
+  const sorted = [...input.candidates].sort(compareCandidatesAscending);
   const eligible = sorted.filter(isEligible);
   const selected =
-    eligible.length > 0
-      ? eligible.reduce((latest, cur) => (cur.createdAtUtc >= latest.createdAtUtc ? cur : latest))
-      : null;
+    eligible.length > 0 ? [...eligible].sort(compareEligibleForSelection)[0]! : null;
 
   if (!selected) {
     throw new Error(`No eligible motion revision for trip ${input.tripId}`);

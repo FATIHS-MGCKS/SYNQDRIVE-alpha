@@ -2529,3 +2529,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-layer2-p2-offline` (12); production-database-guard manifest regen |
 | NON_EFFECTS | No production assessment writes; no worker replay; no merge into P1 export |
 | EVIDENCE | `architecture/drivingintelligence/research/DS4_LAYER2_P2_OFFLINE_RECONSTRUCTION_PILOT_2026-10-30.md` |
+
+### 2026-10-30 — DS4 Layer-2 P2 pilot hardening (draft PR #2258)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Cohort pins `expectedVehicleId` + `expectedSourceFamily`; runtime scope assert before compute; motion payload `sparse.channelOutcome` threaded into evidence loader; revision tie-break `created_at` desc + `motionRunId` asc; `test:di:ds4-layer2-p2-offline` in S4A unit CI job |
+| WHY | Close architecture-audit gaps (identity, Tesla API_SYNTHETIC context, deterministic selection, CI coverage) |
+| VALIDATION | `npm run test:di:ds4-layer2-p2-offline` (18); S4A workflow unit job |
+| NON_EFFECTS | No production reconstruction; no assessment persistence |

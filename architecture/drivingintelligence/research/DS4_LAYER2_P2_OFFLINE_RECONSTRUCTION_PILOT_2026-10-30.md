@@ -12,17 +12,17 @@ Reconstruct Layer-2 research rows for **eight** motion-only trips from the feasi
 | VW Tiguan | 3 | `C5_1_PREFERRED` |
 | Tesla Model 3 | 1 | `C5_1_PREFERRED` |
 
-Trip IDs are pinned in `ds4-layer2-p2-offline-reconstruction.cohort.v1.ts` (sourced from audit `initialP2CohortRecommendation`).
+Trip IDs are pinned in `ds4-layer2-p2-offline-reconstruction.cohort.v1.ts` (sourced from audit `initialP2CohortRecommendation`). Each entry also pins **expected vehicle UUID** (DS4 calibration cohort roles) and **expected source family** (`RUPTELA_R1` / `API_SYNTHETIC`); runtime rejects scope mismatches before offline compute.
 
 ## Architecture
 
 - **Read path:** `di_v0_motion_core_shadow_runs_v1` (SELECT) + S4 work-item source family; **no** writes.
-- **Compute path (canonical, unchanged):** `computeDs4TripAssessmentV1` → exposure + intensity eligibility → `projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1` with `resolveDs4LongitudinalEvidenceQualityForLayer2V1` via loader context.
+- **Compute path (canonical, unchanged):** `computeDs4TripAssessmentV1` → exposure + intensity eligibility → `projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1` with `resolveDs4LongitudinalEvidenceQualityForLayer2V1` via loader context (`sparseChannelOutcome` from motion payload `contract.sparse`, not null).
 - **Isolation:** `reconstructionMode=NEWLY_COMPUTED_OFFLINE`; artifacts prefixed `p2_*`; P1 export remains `PERSISTED_ASSESSMENT_ONLY`.
 
 ## Revision selection
 
-Per trip: enumerate all `SUCCEEDED` runs → score candidates → select latest `created_at` among runs that are V2 collection-eligible, exposure-derivable, and have known speed authority. Record all candidates in `p2_revision_selection.csv` with rejection reasons. Never mix revisions.
+Per trip: enumerate all `SUCCEEDED` runs → score candidates → select latest `created_at` among runs that are V2 collection-eligible, exposure-derivable, and have known speed authority; **tie-break** equal timestamps with lexicographic `motionRunId` (ascending). Record all candidates in `p2_revision_selection.csv` with rejection reasons. Never mix revisions.
 
 ## Operator entry
 

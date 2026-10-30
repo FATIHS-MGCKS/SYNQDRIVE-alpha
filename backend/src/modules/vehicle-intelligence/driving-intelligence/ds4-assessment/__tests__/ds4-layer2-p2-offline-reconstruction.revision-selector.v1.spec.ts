@@ -71,4 +71,24 @@ describe('selectDs4Layer2P2MotionRevisionV1', () => {
       }),
     ).toThrow(/No eligible motion revision/);
   });
+
+  it('breaks created_at ties with lexicographic motionRunId (ascending wins)', () => {
+    const ts = '2026-10-02T10:00:00.000Z';
+    const result = selectDs4Layer2P2MotionRevisionV1({
+      tripId: 'trip-tie',
+      candidates: [
+        candidate({ motionRunId: 'run-z-last', createdAtUtc: ts }),
+        candidate({ motionRunId: 'run-a-first', createdAtUtc: ts }),
+      ],
+    });
+    expect(result.selected.motionRunId).toBe('run-a-first');
+    const stable = selectDs4Layer2P2MotionRevisionV1({
+      tripId: 'trip-tie',
+      candidates: [
+        candidate({ motionRunId: 'run-z-last', createdAtUtc: ts }),
+        candidate({ motionRunId: 'run-a-first', createdAtUtc: ts }),
+      ],
+    });
+    expect(stable.selected.motionRunId).toBe(result.selected.motionRunId);
+  });
 });

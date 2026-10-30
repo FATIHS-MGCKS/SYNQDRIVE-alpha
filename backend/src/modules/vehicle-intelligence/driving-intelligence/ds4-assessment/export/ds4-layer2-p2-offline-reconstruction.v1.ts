@@ -23,6 +23,13 @@ export class Ds4Layer2P2OfflineReconstructionErrorV1 extends Error {
   }
 }
 
+/** Same sparse channel outcome persisted on assessments (`evidenceQuality` / motion contract). */
+export function resolveDs4Layer2P2SparseChannelOutcomeFromMotionPayloadV1(
+  payload: DiV0MotionCoreShadowPayloadV1,
+): string | null {
+  return payload.contract?.sparse?.channelOutcome ?? null;
+}
+
 export function decodeMotionCoreShadowPayloadGzipV1(
   payloadGzip: Buffer | null | undefined,
 ): { payload: DiV0MotionCoreShadowPayloadV1 | null; corrupt: boolean } {
