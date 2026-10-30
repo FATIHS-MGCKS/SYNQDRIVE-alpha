@@ -2500,3 +2500,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `motion-event-intensity-endpoint-evidence.v1.spec.ts`; `npm run test:di:ds4-assessment`; `npm run test:di:s4a`; motion P1/P2 + shadow processor unit regressions |
 | NON_EFFECTS | No C4/C5.1 speed rewrite; no Tesla API_SYNTHETIC L2 resolver change; no persisted row mutation/backfill; no deploy/flags |
 | REMAINING | Owner review; optional processor integration fixture against full S4 evidence adaptation |
+
+### DS4 Layer-2 historical export P1 — persisted assessment read-only CLI (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `ds4-layer2-historical-export.v1.*` + research CLI; artifacts `manifest.json`, `assessments.csv`, `longitudinal_events.csv`, `exclusions.csv`, `coverage_summary.json`; design `design/DS4_LAYER2_HISTORICAL_EXPORT_V1.md` |
+| WHY | Reproducible research export for persisted L2 assessments (P1 scope: assessment rows only) without new persistence, backfill, or motion-only recomputation |
+| VALIDATION | `npm run test:di:ds4-layer2-export` |
+| NON_EFFECTS | No deploy/flags/migrations/worker changes; no production data in git; no motion-only annex |
+| REMAINING | Optional production read-only smoke to local artifacts; batch automation outside P1 PR |
+
+### DS4 Layer-2 historical export P1 hardening — S4A SQL, attestation, JSON integrity (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Export loader → explicit SQL repository (no `diV0S4*` delegates); `evaluationCodeSha` from git HEAD; fail-closed `eventSummariesJson` integrity gate; guard bundle manifest SHA regen for `test:di:ds4-layer2-export` npm script |
+| WHY | Close PR #2256 review blockers without expanding export architecture |
+| VALIDATION | `npm run test:di:ds4-layer2-export` (23); `npm run test:di:s4a` (125/125); `di-v0-s4a-dormant-audit`; `production-database-guard-bootstrap-dry-run.sh` |
+| NON_EFFECTS | No S4A guard edits; no deploy/production writes; no second L2 engine |
