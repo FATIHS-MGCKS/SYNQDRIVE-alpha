@@ -179,6 +179,7 @@
     "test:di:motion-fsm-gap-bridge-safety": "jest motion-fsm-gap-bridge-v1 --runInBand",
     "test:di:ds4-assessment": "jest src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment --runInBand",
     "test:di:ds4-layer2-export": "jest ds4-layer2-historical-export --runInBand",
+    "test:di:ds4-layer2-p2-offline": "jest ds4-layer2-p2-offline-reconstruction --runInBand",
     "research:ds4-layer2-export": "ts-node scripts/research/ds4-layer2-historical-export.cli.ts",
     "test:di:ds4-assessment:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-outbox.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-worker.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-processor-tenancy.postgres.integration.spec.ts",
     "test:di:ds4-assessment:postgres:ci": "DI_V0_S4A_POSTGRES_REQUIRED=1 bash scripts/test/di-v0-ds4-assessment-postgres-ci.sh",
