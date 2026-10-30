@@ -2548,3 +2548,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `bash architecture/drivingintelligence/scripts/validate-docs.sh`; `bash architecture/drivingintelligence/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh` |
 | NON_EFFECTS | **No** production flag/env changes; **no** runtime code; **no** migrations; **no** V1B admission/VSI tier changes; **no** DS4 Motion/Driving Impact/Tire/Trip FSM/customer behavior; active Audi+Arteon V1B shadow canary unaffected |
 | REMAINING | Future P1–P5 implementation PRs; DS4 optional consumer contract; Fable review before any RPM-derived load/wear/scoring |
+
+### 2026-10-30 — RPM Reference Intelligence V1 library (Phase 5A, shadow-safe)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Pure library `rpm-reference-intelligence-v1/` — contract `ds4-rpm-reference-intelligence-v1`, reference spec + HF admission inputs, normalized position, idle proximity, operating bands, time-weighted exposure on eligible continuous sequences only; DI consumer interface types only |
+| WHY | Implement ADR `DI-DEC-RPM-REF-INTEL-001` P2 metrics calculator without V1B admission changes, persistence, flags, or DS4/Tire/Impact integration |
+| VALIDATION | `npm run test:di:rpm-ref-intel-v1`; `bash architecture/drivingintelligence/scripts/validate-docs.sh`; `bash architecture/drivingintelligence/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh` |
+| NON_EFFECTS | **No** production deploy; **no** canary/env flag changes; **no** V1B shadow processor or admission edits; **no** migrations/workers; **no** customer-facing surfaces |
+| REMAINING | P1 reference reader wiring optional; P3 shadow persistence; P4 DS4 optional consumer; localization N/A (developer contract only) |
