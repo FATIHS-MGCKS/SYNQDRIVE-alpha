@@ -1,6 +1,7 @@
 import type { Ds4RpmHfV1aTripInputV1 } from '../rpm-hf-v1a/ds4-rpm-hf-v1a.contract';
 import { DS4_RPM_HF_V1A_CONTRACT_VERSION } from '../rpm-hf-v1a/ds4-rpm-hf-v1a.contract';
 import type { Ds4RpmHfTierAnalysisMode, Ds4RpmHfTierEvidenceV1 } from '../ds4-rpm-hf-tier-evidence.types';
+import { buildDs4RpmHfV1bAdmissionQualityExposure } from './ds4-rpm-hf-v1b-quality-exposure';
 import type { Ds4RpmHfV1bTemporalCadenceProfile } from './ds4-rpm-hf-v1b-temporal.engine';
 
 export const DS4_RPM_HF_V1B_ENGINE_VERSION = 'ds4-rpm-hf-v1b-engine-v1' as const;
@@ -79,12 +80,34 @@ export type Ds4RpmHfV1bReadCompletenessSlice = {
   returnedPointCount: number;
 };
 
+export type Ds4RpmHfV1bQualityScope = 'OBSERVED_HF_TEMPORAL';
+
+/**
+ * Additive admission-facing quality contract (Phase 4I).
+ * Separates temporal analysis method (e.g. HIGH_RESOLUTION) from full-trip coverage / TIER_ANALYTICS_OK.
+ */
+export type Ds4RpmHfV1bAdmissionQualityExposureV1 = {
+  contractVersion: 'ds4-rpm-hf-v1b-admission-quality-v1';
+  cadenceTier: string | null;
+  cadenceConfidence: string | null;
+  analysisMode: Ds4RpmHfTierAnalysisMode | null;
+  analysisReadiness: string | null;
+  tripCoverageBand: string | null;
+  observedBucketCoverageRatio: number | null;
+  qualityScope: Ds4RpmHfV1bQualityScope;
+  /** True only when VSI analysisReadiness is TIER_ANALYTICS_OK. */
+  tierAnalyticsReady: boolean;
+  /** Explicit guard: never true; observed-bucket temporal scope ≠ full-trip coverage. */
+  impliesFullTripCoverage: false;
+};
+
 export type Ds4RpmHfV1bAdmissionSlice = {
   processingStatus: string;
   processingAllowed: boolean;
   reasonCode: string;
   iceRpmApplicability: string;
   tripRpmProfile: string;
+  qualityExposure: Ds4RpmHfV1bAdmissionQualityExposureV1;
 };
 
 export type Ds4RpmHfV1bShadowVariant = 'legacy' | 'tier-aware';
@@ -185,6 +208,11 @@ export function buildV1bResultFromV1aInput(input: {
       reasonCode: input.tripInput.admission.reasonCode,
       iceRpmApplicability: input.tripInput.admission.iceRpmApplicability,
       tripRpmProfile: input.tripInput.admission.tripRpmProfile,
+      qualityExposure: buildDs4RpmHfV1bAdmissionQualityExposure({
+        shadowVariant: input.shadowVariant ?? 'legacy',
+        temporalCoverage: input.temporal.coverage,
+        tierEvidence: input.tierEvidence,
+      }),
     },
     temporalTripWindow: input.temporal.tripWindow,
     rpmValues: input.temporal.rpmValues,

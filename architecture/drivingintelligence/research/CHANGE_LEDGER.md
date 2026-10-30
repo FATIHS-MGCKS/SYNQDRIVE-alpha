@@ -2413,6 +2413,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | V1A contract unchanged; motion-core shadow scheduler untouched; no customer scoring/API/UI; no deploy/backfill |
 | REMAINING | Owner allowlist pilot + Fable review before any production flag enable |
 
+### DS4 RPM HF V1B — Phase 4I admission quality exposure (2026-10-30, Draft PR, not deployed)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Tier-aware shadow persisted tier metadata under `tierEvidence` only; flat `admission` could be read as full-trip enablement alongside `HIGH_RESOLUTION` |
+| CHANGE | Additive `admission.qualityExposure` (`ds4-rpm-hf-v1b-admission-quality-v1`): cadence tier/confidence, analysisMode, analysisReadiness, tripCoverageBand, observedBucketCoverageRatio, `qualityScope: OBSERVED_HF_TEMPORAL`, `tierAnalyticsReady`, `impliesFullTripCoverage: false` |
+| WHY | Phase 4H audit: downstream interpretation gap — separate temporal method from full-trip / TIER_ANALYTICS_OK |
+| VALIDATION | Jest `ds4-rpm-hf-v1b-quality-exposure.spec.ts` (Phase 4H Tiguan-shaped fixtures); existing rpm-hf-v1b processor/tier/fingerprint specs |
+| NON_EFFECTS | No VSI classifier/threshold changes; no admission routing or temporal/RPM math changes; input fingerprints unchanged; flags default OFF |
+
 ### DS4 RPM HF V1B — PR #2224 targeted hardening (2026-10-28, not deployed)
 
 | Event | Detail |
