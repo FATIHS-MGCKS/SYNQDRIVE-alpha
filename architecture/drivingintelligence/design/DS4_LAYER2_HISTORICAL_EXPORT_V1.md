@@ -28,7 +28,7 @@ Reproducible, **read-only** research export of persisted DS4 trip assessments wi
 
 ## Artifacts
 
-1. `manifest.json` — schema version, UTC timestamp, org id, deploy SHA, contract versions, collection cutoff, source collection id, row counts, SHA-256 checksums, `reconstructionMode`.
+1. `manifest.json` — schema version, UTC timestamp, org id, **evaluationCodeSha** (git HEAD at export run), contract versions, collection cutoff, source collection id, row counts, SHA-256 checksums, `reconstructionMode`. Historical assessment/motion provenance remains on each CSV row (`computed_at_utc`, pins, fingerprints); it is not the evaluation code identity.
 2. `assessments.csv` — one row per assessment identity; trip exposure (E_s, D, coverage); ACCEL/BRAKE L2 metrics (B_k, I_k, Phi_k, Phi_d, S_k, intensity stats). **NULL preserved as empty cells.**
 3. `longitudinal_events.csv` — one row per **admissible** persisted `eventIntensityRecords` entry (FULL / BIN_ONLY).
 4. `exclusions.csv` — `EXCLUDED_ARTEFACT` and `UNRATED` records with reason codes and explicit null-intensity semantics.
@@ -57,11 +57,10 @@ Reproducible, **read-only** research export of persisted DS4 trip assessments wi
 cd backend
 npx ts-node scripts/research/ds4-layer2-historical-export.cli.ts \
   --organization-id=<uuid> \
-  --out-dir=/path/to/artifacts \
-  --deploy-sha=7ab55a0d22223ad9de5bc6691b726e169d377517
+  --out-dir=/path/to/artifacts
 ```
 
-Optional: `--collection-cutoff-utc=` (defaults to documented proposed collection boundary).
+Optional: `--deploy-sha=<40-char-git-sha>` must match checkout `HEAD` (assertion only). Optional: `--collection-cutoff-utc=` (defaults to documented proposed collection boundary).
 
 ## Tests
 

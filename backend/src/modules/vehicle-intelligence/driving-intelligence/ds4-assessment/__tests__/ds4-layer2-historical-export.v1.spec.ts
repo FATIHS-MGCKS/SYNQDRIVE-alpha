@@ -135,7 +135,7 @@ function baseAssessment(overrides: Record<string, unknown> = {}) {
 function buildExportInput(rows: Ds4Layer2HistoricalExportAssessmentRowV1[]) {
   return {
     organizationId: ORG,
-    deploySha: '7ab55a0d22223ad9de5bc6691b726e169d377517',
+    evaluationCodeSha: '62ea0c4c3793ec1582838c1fd1218d03654ae759',
     exportedAt: new Date('2026-10-30T10:00:00.000Z'),
     collectionCutoffUtc: defaultCollectionCutoffUtcForExportV1(),
     sourceCollection: {
@@ -303,37 +303,35 @@ describe('ds4-layer2-historical-export.v1', () => {
 
   it('loader performs read-only prisma operations (no writes)', async () => {
     const assessment = baseAssessment();
-    const findMany = jest.fn().mockResolvedValue([assessment]);
-    const motionFind = jest.fn().mockResolvedValue({
-      id: 'run-1',
-      organizationId: ORG,
-      vehicleId: 'veh-a',
-      tripId: 'trip-1',
-      pinnedSnapshotHash: 'snap-1',
-      combinedInputIdentity: 'cii-1',
-      shadowBundleVersion: 'bundle',
-      contentFingerprint: 'cf',
-      workItemId: 'wi-1',
-      shadowStatus: 'SUCCEEDED',
-    });
-    const workFind = jest.fn().mockResolvedValue({ sourceFamily: 'RUPTELA_R1', organizationId: ORG, tripId: 'trip-1' });
     const queryRaw = jest
       .fn()
+      .mockResolvedValueOnce([assessment])
+      .mockResolvedValueOnce([
+        {
+          id: 'run-1',
+          organizationId: ORG,
+          vehicleId: 'veh-a',
+          tripId: 'trip-1',
+          pinnedSnapshotHash: 'snap-1',
+          combinedInputIdentity: 'cii-1',
+          shadowBundleVersion: 'bundle',
+          contentFingerprint: 'cf',
+          workItemId: 'wi-1',
+          shadowStatus: 'SUCCEEDED',
+        },
+      ])
+      .mockResolvedValueOnce([{ sourceFamily: 'RUPTELA_R1', organizationId: ORG, tripId: 'trip-1' }])
       .mockResolvedValueOnce([{ source_family: 'RUPTELA_R1' }])
       .mockResolvedValueOnce([{ channel_manifest: [{ channel: 'POSITION', outcome: 'PRESENT' }] }]);
 
     const prisma = {
-      diV0Ds4TripAssessmentV1: { findMany },
-      diV0MotionCoreShadowRunV1: { findUnique: motionFind },
-      diV0S4WorkItem: { findUnique: workFind },
       $queryRaw: queryRaw,
       $executeRaw: jest.fn(),
     };
 
     const rows = await loadPersistedDs4Layer2HistoricalExportRowsV1(prisma as never, ORG);
     expect(rows).toHaveLength(1);
-    expect(findMany).toHaveBeenCalled();
+    expect(queryRaw).toHaveBeenCalled();
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
-    expect(Object.keys(prisma)).not.toContain('create');
   });
 });

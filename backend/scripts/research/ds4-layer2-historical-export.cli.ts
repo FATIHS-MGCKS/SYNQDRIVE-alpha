@@ -8,12 +8,16 @@ import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { DS4_LAYER2_HISTORICAL_EXPORT_RECONSTRUCTION_MODE_V1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export.v1.contract';
 import {
+  assertDeployShaMatchesEvaluationCheckoutV1,
+  resolveEvaluationCodeShaFromGitCheckoutV1,
+} from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export-evaluation-attestation.v1';
+import {
   buildDs4Layer2HistoricalExportArtifactsV1,
   defaultCollectionCutoffUtcForExportV1,
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export.v1';
 import { loadPersistedDs4Layer2HistoricalExportRowsV1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/export/ds4-layer2-historical-export.loader.v1';
 
-const DEFAULT_DEPLOY_SHA = '7ab55a0d22223ad9de5bc6691b726e169d377517';
+const REPO_ROOT = path.resolve(__dirname, '../../..');
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
@@ -23,7 +27,7 @@ function parseArg(prefix: string): string | undefined {
 async function main(): Promise<void> {
   const organizationId = parseArg('--organization-id');
   const outDir = parseArg('--out-dir');
-  const deploySha = parseArg('--deploy-sha') ?? DEFAULT_DEPLOY_SHA;
+  const deployShaAssertion = parseArg('--deploy-sha');
   const collectionCutoff = parseArg('--collection-cutoff-utc') ?? defaultCollectionCutoffUtcForExportV1();
 
   if (!organizationId) {
@@ -33,13 +37,16 @@ async function main(): Promise<void> {
     throw new Error('--out-dir is required');
   }
 
+  const evaluationCodeSha = resolveEvaluationCodeShaFromGitCheckoutV1(REPO_ROOT);
+  assertDeployShaMatchesEvaluationCheckoutV1({ deployShaAssertion, evaluationCodeSha });
+
   const prisma = new PrismaClient();
   try {
     const rows = await loadPersistedDs4Layer2HistoricalExportRowsV1(prisma, organizationId);
     const exportedAt = new Date();
     const artifacts = buildDs4Layer2HistoricalExportArtifactsV1({
       organizationId,
-      deploySha,
+      evaluationCodeSha,
       exportedAt,
       collectionCutoffUtc: collectionCutoff,
       sourceCollection: {
@@ -67,7 +74,7 @@ async function main(): Promise<void> {
         {
           ok: true,
           organizationId,
-          deploySha,
+          evaluationCodeSha,
           assessmentRows: rows.length,
           distinctTrips: new Set(rows.map((r) => r.tripId)).size,
           outDir,

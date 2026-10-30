@@ -6,32 +6,20 @@ import {
   Ds4Layer2HistoricalExportIntegrityErrorV1,
   type Ds4Layer2HistoricalExportMotionPinV1,
 } from './ds4-layer2-historical-export.v1';
+import { Ds4Layer2HistoricalExportReadRepositoryV1 } from './ds4-layer2-historical-export.repository.v1';
 
 export async function loadPersistedDs4Layer2HistoricalExportRowsV1(
   prisma: PrismaClient,
   organizationId: string,
 ): Promise<Ds4Layer2HistoricalExportAssessmentRowV1[]> {
-  const assessments = await prisma.diV0Ds4TripAssessmentV1.findMany({
-    where: { organizationId },
-    orderBy: [{ vehicleId: 'asc' }, { tripId: 'asc' }, { inputFingerprint: 'asc' }],
-  });
+  const repo = new Ds4Layer2HistoricalExportReadRepositoryV1(prisma);
+  const assessments = await repo.loadAssessmentsForOrganization(organizationId);
 
   const rows: Ds4Layer2HistoricalExportAssessmentRowV1[] = [];
   for (const assessment of assessments) {
-    const motion = await prisma.diV0MotionCoreShadowRunV1.findUnique({
-      where: { id: assessment.sourceMotionRunId },
-      select: {
-        id: true,
-        organizationId: true,
-        vehicleId: true,
-        tripId: true,
-        pinnedSnapshotHash: true,
-        combinedInputIdentity: true,
-        shadowBundleVersion: true,
-        contentFingerprint: true,
-        workItemId: true,
-        shadowStatus: true,
-      },
+    const motion = await repo.loadMotionRunPin({
+      motionRunId: assessment.sourceMotionRunId,
+      organizationId,
     });
     if (!motion) {
       throw new Ds4Layer2HistoricalExportIntegrityErrorV1(
@@ -44,9 +32,10 @@ export async function loadPersistedDs4Layer2HistoricalExportRowsV1(
       );
     }
 
-    const workItem = await prisma.diV0S4WorkItem.findUnique({
-      where: { id: motion.workItemId },
-      select: { sourceFamily: true, organizationId: true, tripId: true },
+    const workItem = await repo.loadWorkItemPin({
+      workItemId: motion.workItemId,
+      organizationId,
+      tripId: motion.tripId,
     });
     if (workItem && workItem.organizationId !== organizationId) {
       throw new Ds4Layer2HistoricalExportIntegrityErrorV1(

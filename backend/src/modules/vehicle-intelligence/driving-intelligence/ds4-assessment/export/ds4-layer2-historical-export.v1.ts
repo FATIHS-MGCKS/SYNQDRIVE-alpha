@@ -14,6 +14,7 @@ import {
   DS4_LAYER2_HISTORICAL_EXPORT_RECONSTRUCTION_MODE_V1,
   DS4_LAYER2_HISTORICAL_EXPORT_SCHEMA_VERSION_V1,
 } from './ds4-layer2-historical-export.v1.contract';
+import { assertPersistedEventSummariesJsonIntegrityForLayer2ExportV1 } from './ds4-layer2-historical-export-event-summaries-integrity.v1';
 
 export class Ds4Layer2HistoricalExportIntegrityErrorV1 extends Error {
   constructor(message: string) {
@@ -60,7 +61,7 @@ export type Ds4Layer2HistoricalExportAssessmentRowV1 = {
 
 export type Ds4Layer2HistoricalExportBuildInputV1 = {
   organizationId: string;
-  deploySha: string;
+  evaluationCodeSha: string;
   exportedAt: Date;
   collectionCutoffUtc: string;
   sourceCollection: {
@@ -141,6 +142,11 @@ export function buildAssessmentExportRowV1(input: {
   evidenceQualityContext: Ds4LongitudinalEvidenceQualityContextV1 | null;
 }): Ds4Layer2HistoricalExportAssessmentRowV1 {
   assertMotionRunPinMatchesAssessmentV1({ assessment: input.assessment, motion: input.motionPin });
+  assertPersistedEventSummariesJsonIntegrityForLayer2ExportV1({
+    assessmentId: input.assessment.id,
+    eventRowContract: input.assessment.eventRowContract,
+    eventSummariesJson: input.assessment.eventSummariesJson,
+  });
   const speedAuthority = (input.assessment.speedAuthority ?? null) as Ds4SpeedAuthorityPartitionV1 | null;
   const eventSummaries = coerceDs4TripAssessmentEventSummariesFromPersistedJsonV1(
     input.assessment.eventSummariesJson,
@@ -513,7 +519,12 @@ export function buildDs4Layer2HistoricalExportArtifactsV1(
     exportSchemaVersion: DS4_LAYER2_HISTORICAL_EXPORT_SCHEMA_VERSION_V1,
     exportedAtUtc: input.exportedAt.toISOString(),
     organizationId: input.organizationId,
-    deployShaUsedForEvaluation: input.deploySha,
+    evaluationCodeSha: input.evaluationCodeSha,
+    evaluationCodeAttestation: {
+      evaluationCodeSha: input.evaluationCodeSha,
+      note:
+        'Layer-2 observables are re-projected at export time from persisted assessment JSON using the exporter code at evaluationCodeSha; per-row computed_at_utc and motion/assessment provenance identify historical compute, not this export checkout.',
+    },
     contractVersions: DS4_LAYER2_HISTORICAL_EXPORT_CONTRACT_VERSIONS_V1,
     collectionCutoffUtc: input.collectionCutoffUtc,
     sourceCollection: input.sourceCollection,

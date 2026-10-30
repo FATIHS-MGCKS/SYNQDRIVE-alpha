@@ -2500,3 +2500,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-layer2-export` |
 | NON_EFFECTS | No deploy/flags/migrations/worker changes; no production data in git; no motion-only annex |
 | REMAINING | Optional production read-only smoke to local artifacts; batch automation outside P1 PR |
+
+### DS4 Layer-2 historical export P1 hardening — S4A SQL, attestation, JSON integrity (2026-10-30)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Export loader → explicit SQL repository (no `diV0S4*` delegates); `evaluationCodeSha` from git HEAD; fail-closed `eventSummariesJson` integrity gate; guard bundle manifest SHA regen for `test:di:ds4-layer2-export` npm script |
+| WHY | Close PR #2256 review blockers without expanding export architecture |
+| VALIDATION | `npm run test:di:ds4-layer2-export` (23); `npm run test:di:s4a` (125/125); `di-v0-s4a-dormant-audit`; `production-database-guard-bootstrap-dry-run.sh` |
+| NON_EFFECTS | No S4A guard edits; no deploy/production writes; no second L2 engine |
