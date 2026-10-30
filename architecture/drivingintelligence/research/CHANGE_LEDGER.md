@@ -2549,17 +2549,6 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | **No** production flag/env changes; **no** runtime code; **no** migrations; **no** V1B admission/VSI tier changes; **no** DS4 Motion/Driving Impact/Tire/Trip FSM/customer behavior; active Audi+Arteon V1B shadow canary unaffected |
 | REMAINING | Future P1–P5 implementation PRs; DS4 optional consumer contract; Fable review before any RPM-derived load/wear/scoring |
 
-<<<<<<< HEAD
-### 2026-10-30 — RPM Reference Intelligence V1 library (Phase 5A, shadow-safe)
-
-| Field | Detail |
-|-------|--------|
-| CHANGE | Pure library `rpm-reference-intelligence-v1/` — contract `ds4-rpm-reference-intelligence-v1`, reference spec + HF admission inputs, normalized position, idle proximity, operating bands, time-weighted exposure on eligible continuous sequences only; DI consumer interface types only |
-| WHY | Implement ADR `DI-DEC-RPM-REF-INTEL-001` P2 metrics calculator without V1B admission changes, persistence, flags, or DS4/Tire/Impact integration |
-| VALIDATION | `npm run test:di:rpm-ref-intel-v1`; P1 hardening: V1B temporal gap binding + UNKNOWN provenance + production DB guard manifest regen |
-| NON_EFFECTS | **No** production deploy; **no** canary/env flag changes; **no** V1B shadow processor or admission edits; **no** migrations/workers; **no** customer-facing surfaces |
-| REMAINING | P1 reference reader wiring optional; P3 shadow persistence; P4 DS4 optional consumer; localization N/A (developer contract only) |
-=======
 ### 2026-10-30 — DS4 SHARED_KNOT_SPIKE_PAIR safety P1 (motion intensity evidence)
 
 | Field | Detail |
@@ -2569,4 +2558,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `motion-event-intensity-endpoint-evidence.v1.spec.ts` (dbdded5c fixture, hard-braking counterexample, missing-evidence fail-closed); `npm run test:di:ds4-assessment`; P2 differential harness `ds4-shared-knot-spike-pair-p2-differential.harness.ts` (124→122 admissible) |
 | NON_EFFECTS | No P2 CLI/reconstruction change; no DB writes/backfill/deploy/flags; no Tire/Brake/Driving Impact/customer scores |
 | REMAINING | Existing persisted shadow payloads unchanged until shadow recompute; C4-only paths need two geometry-independent indicators without C5.1 (see assessSharedKnotSpikePairIndicatorsV1) |
->>>>>>> origin/main
+
+### 2026-10-30 — RPM Reference Intelligence V1 library (Phase 5A, shadow-safe)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Pure library `rpm-reference-intelligence-v1/` — contract `ds4-rpm-reference-intelligence-v1`, reference spec + HF admission inputs, normalized position, idle proximity, operating bands, time-weighted exposure on eligible continuous sequences only; DI consumer interface types only |
+| WHY | Implement ADR `DI-DEC-RPM-REF-INTEL-001` P2 metrics calculator without V1B admission changes, persistence, flags, or DS4/Tire/Impact integration |
+| VALIDATION | `npm run test:di:rpm-ref-intel-v1`; P1 hardening: V1B temporal gap binding + UNKNOWN provenance + production DB guard manifest regen |
+| NON_EFFECTS | **No** production deploy; **no** canary/env flag changes; **no** V1B shadow processor or admission edits; **no** migrations/workers; **no** customer-facing surfaces |
+| REMAINING | P1 reference reader wiring optional; P3 shadow persistence; P4 DS4 optional consumer; localization N/A (developer contract only) |
+
