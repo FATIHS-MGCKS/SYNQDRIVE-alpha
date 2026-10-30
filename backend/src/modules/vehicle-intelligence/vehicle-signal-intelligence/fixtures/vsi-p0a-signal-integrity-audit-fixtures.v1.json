@@ -25,7 +25,7 @@
         "cadenceIntelligence": {
           "activeRpmProfile": { "activeProfile": "RPM_STANDARD" },
           "observedSampleCount": 2076,
-          "provenance": ["CLICKHOUSE_TELEMETRY_HF_POINTS", "CLICKHOUSE_TELEMETRY_HF_POINTS"],
+          "provenance": ["CLICKHOUSE_TELEMETRY_HF_POINTS"],
           "evaluationWindowStart": "2026-10-16T00:00:00.000Z",
           "evaluationWindowEnd": "2026-10-30T12:00:00.000Z",
           "tripClassifications": [{ "tripId": "t1" }, { "tripId": "t2" }]
