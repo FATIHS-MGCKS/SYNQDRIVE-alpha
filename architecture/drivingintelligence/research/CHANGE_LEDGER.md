@@ -2549,9 +2549,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | **No** production flag/env changes; **no** runtime code; **no** migrations; **no** V1B admission/VSI tier changes; **no** DS4 Motion/Driving Impact/Tire/Trip FSM/customer behavior; active Audi+Arteon V1B shadow canary unaffected |
 | REMAINING | Future P1–P5 implementation PRs; DS4 optional consumer contract; Fable review before any RPM-derived load/wear/scoring |
 
-### 2026-10-30 — DS4 SHARED_KNOT_SPIKE_PAIR safety P1 (motion intensity evidence)
+### 2026-10-31 — DS4 Layer-2 P3B Motion Physics context resolver (research-only)
 
 | Field | Detail |
+|-------|--------|
+| CHANGE | `resolveDs4Layer2MotionPhysicsContextV1` + contract under `ds4-assessment/research/`; architecture note [`DS4_LAYER2_P3_MOTION_PHYSICS_CONTEXT_V1.md`](./DS4_LAYER2_P3_MOTION_PHYSICS_CONTEXT_V1.md); unit tests with mocked deps |
+| WHY | Minimal read-only reference resolver for future Layer-2 offline vehicle-physics diagnostics without production wiring |
+| VALIDATION | `npm test -- --testPathPatterns=ds4-layer2-p3-motion-physics-context.resolver.v1.spec`; `npx tsc -p tsconfig.build.json --noEmit` |
+| NON_EFFECTS | **No** motion-core/assessment/admission integration; **no** schema migrations; **no** production writes; **no** B/I/Phi/S changes |
+
 |-------|--------|
 | CHANGE | `applyMotionEventSharedKnotSpikePairGate` in `motion-event-intensity-endpoint-evidence.v1.ts`; wired from `applyMotionEventIntensityEvidenceGatesV1` with optional C5.1 Q5/Q6 repair evidence; shadow processor passes `speedRepairs` |
 | WHY | Tiguan trip `dbdded5c-ee72-40f3-91bb-62d5a1b7f7ff`: K3 `REVERSION_EXPLAINED_BY_OPPOSITE_EVENT` + non-isolated shared knot let BIN_ONLY 7.898/8.561 m/s² secants stay `OK`; multi-indicator fail-closed gate marks pair `ARTEFACT_SUSPECT` + `SHARED_KNOT_SPIKE_PAIR` flag |
