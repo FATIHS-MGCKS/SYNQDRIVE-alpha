@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { Ds4RpmHfV1bShadowResultV1 } from './ds4-rpm-hf-v1b.contract';
+import type { Ds4RpmHfV1bShadowPersistedSummaryV1 } from '../rpm-reference-intelligence-v1/ds4-rpm-reference-intelligence-v1-v1b-shadow-attach';
 
 export type Ds4RpmHfV1bInsertRunResult =
   | { outcome: 'inserted'; runId: string }
@@ -34,7 +34,7 @@ export class Ds4RpmHfV1bRunRepository {
     engineVersion: string;
     inputFingerprint: string;
     shadowStatus: 'SUCCEEDED' | 'TERMINAL_INELIGIBLE' | 'TERMINAL_FAILED';
-    summary: Ds4RpmHfV1bShadowResultV1;
+    summary: Ds4RpmHfV1bShadowPersistedSummaryV1;
     computedAt: Date;
   }): Promise<Ds4RpmHfV1bInsertRunResult> {
     try {
@@ -70,7 +70,7 @@ export class Ds4RpmHfV1bRunRepository {
     engineVersion: string;
     inputFingerprint: string;
     shadowStatus: 'SUCCEEDED' | 'TERMINAL_INELIGIBLE' | 'TERMINAL_FAILED';
-    summary: Ds4RpmHfV1bShadowResultV1;
+    summary: Ds4RpmHfV1bShadowPersistedSummaryV1;
     computedAt: Date;
     now: Date;
   }): Promise<Ds4RpmHfV1bInsertRunResult> {
@@ -114,7 +114,7 @@ export class Ds4RpmHfV1bRunRepository {
     tripId: string;
     engineVersion: string;
     inputFingerprint: string;
-    summary: Ds4RpmHfV1bShadowResultV1;
+    summary: Ds4RpmHfV1bShadowPersistedSummaryV1;
     computedAt: Date;
   }): Promise<Ds4RpmHfV1bInsertRunResult> {
     const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`

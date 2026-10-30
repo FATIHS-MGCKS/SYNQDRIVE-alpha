@@ -2567,5 +2567,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Implement ADR `DI-DEC-RPM-REF-INTEL-001` P2 metrics calculator without V1B admission changes, persistence, flags, or DS4/Tire/Impact integration |
 | VALIDATION | `npm run test:di:rpm-ref-intel-v1`; P1 hardening: V1B temporal gap binding + UNKNOWN provenance + production DB guard manifest regen |
 | NON_EFFECTS | **No** production deploy; **no** canary/env flag changes; **no** V1B shadow processor or admission edits; **no** migrations/workers; **no** customer-facing surfaces |
-| REMAINING | P1 reference reader wiring optional; P3 shadow persistence; P4 DS4 optional consumer; localization N/A (developer contract only) |
+| REMAINING | P4 DS4 optional consumer; localization N/A (developer contract only); spec edits do not reopen historical attachments (`REFERENCE_SNAPSHOT_AT_CALCULATION_TIME_NO_SPEC_REPLAY`) |
+
+### 2026-10-30 — RPM Reference Intelligence V1 V1B shadow attach (Phase 5B, flag-gated)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | `DS4_RPM_REF_INTEL_V1_V1B_ATTACH_ENABLED` (default OFF); `Ds4RpmHfV1bShadowService` attaches optional `rpmReferenceIntelligenceV1` to `summary_json` on V1B SUCCEEDED runs only; shared vehicle reference mapper + V1B temporal binding from `qualityExposure` / `tierEvidence` |
+| WHY | ADR `DI-DEC-RPM-REF-INTEL-001` P3 — persist reference metrics additively without changing V1B admission, canary flags, or customer surfaces |
+| VALIDATION | `npm run test:di:rpm-ref-intel-v1`; failure-isolated try/catch; no new DB table |
+| NON_EFFECTS | **No** `DS4_RPM_HF_V1B_*` changes; **no** deploy/canary activation; **no** DS4/Tire/Impact; **no** spec-revision replay/backfill |
+| REMAINING | P4 DS4 optional consumer; production attach flag remains OFF until owner scope |
 

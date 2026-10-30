@@ -22,6 +22,8 @@ import { computeDs4RpmHfV1bDeferNextAttemptAt } from './ds4-rpm-hf-v1b-readiness
 import { isTripInputEligibleForAutomaticRevision } from './ds4-rpm-hf-v1b-revision-eligibility';
 import { isTripInputEligibleForTierAwareAutomaticRevision } from './ds4-rpm-hf-v1b-revision-eligibility';
 import { Ds4RpmHfV1bRunRepository } from './ds4-rpm-hf-v1b-run.repository';
+import { parseDs4RpmRefIntelV1V1bAttachEnabled } from '../rpm-reference-intelligence-v1/ds4-rpm-reference-intelligence-v1-v1b-attach.config';
+import { applyRpmReferenceIntelligenceV1V1bShadowAttachment } from '../rpm-reference-intelligence-v1/ds4-rpm-reference-intelligence-v1-v1b-shadow-attach';
 
 export type Ds4RpmHfV1bPassResult = {
   configured: boolean;
@@ -47,12 +49,14 @@ export class Ds4RpmHfV1bShadowService {
   private readonly runtimeConfig: Ds4RpmHfV1bRuntimeConfig;
   private readonly outbox: Ds4RpmHfV1bOutboxRepository;
   private readonly runs: Ds4RpmHfV1bRunRepository;
+  private readonly refIntelV1V1bAttachEnabled: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly tripInputService: Ds4RpmHfV1aTripInputService,
   ) {
     this.runtimeConfig = parseDs4RpmHfV1bRuntimeConfig(process.env);
+    this.refIntelV1V1bAttachEnabled = parseDs4RpmRefIntelV1V1bAttachEnabled(process.env);
     this.outbox = new Ds4RpmHfV1bOutboxRepository(prisma as unknown as PrismaClient);
     this.runs = new Ds4RpmHfV1bRunRepository(prisma as unknown as PrismaClient);
   }
@@ -139,8 +143,13 @@ export class Ds4RpmHfV1bShadowService {
     if (!leaseOk) return 'FAILED';
 
     const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: row.vehicleId },
-      select: { organizationId: true },
+      where: { id: row.vehicleId, organizationId: row.organizationId },
+      select: {
+        organizationId: true,
+        idleRpm: true,
+        maxRpm: true,
+        registrationIdentityProvenance: true,
+      },
     });
     const enable = evaluateDs4RpmHfV1bEnablement(this.runtimeConfig.controlPlane, {
       organizationId: row.organizationId,
@@ -201,17 +210,36 @@ export class Ds4RpmHfV1bShadowService {
     }
 
     if (processed.kind === 'SUCCEEDED') {
+      const runId = randomUUID();
+      const summary =
+        vehicle != null
+          ? applyRpmReferenceIntelligenceV1V1bShadowAttachment({
+              summary: processed.result,
+              tripInput,
+              vehicle: {
+                organizationId: vehicle.organizationId,
+                idleRpm: vehicle.idleRpm != null ? Number(vehicle.idleRpm) : null,
+                maxRpm: vehicle.maxRpm != null ? Number(vehicle.maxRpm) : null,
+                registrationIdentityProvenance: vehicle.registrationIdentityProvenance,
+              },
+              runId,
+              inputFingerprint: processed.fingerprint,
+              computedAt: now,
+              attachEnabled: this.refIntelV1V1bAttachEnabled,
+              logger: this.logger,
+            })
+          : processed.result;
       const insert = await this.runs.insertRunWithActiveClaim({
         outboxId: row.outboxId,
         claimToken: row.claimToken,
-        runId: randomUUID(),
+        runId,
         organizationId: row.organizationId,
         vehicleId: row.vehicleId,
         tripId: row.tripId,
         engineVersion: processed.result.engineVersion,
         inputFingerprint: processed.fingerprint,
         shadowStatus: 'SUCCEEDED',
-        summary: processed.result,
+        summary,
         computedAt: now,
         now,
       });

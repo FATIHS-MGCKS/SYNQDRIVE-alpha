@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rpm-reference-intelligence-v1-v1b-attach-phase5b-2026-10-30',
+    version: '4.9.5019',
+    title: 'RPM Reference Intelligence V1 — V1B shadow attach (Phase 5B, flag OFF)',
+    summary: [
+      'Optional `rpmReferenceIntelligenceV1` block on V1B shadow `summary_json` when `DS4_RPM_REF_INTEL_V1_V1B_ATTACH_ENABLED=true` (default false).',
+      'Integration in `Ds4RpmHfV1bShadowService` after SUCCEEDED admission only; vehicle idle/max + provenance from widened vehicle select; V1B qualityExposure/tierEvidence for temporal gaps.',
+      'Failure-isolated attachment; no V1B flag/canary/admission/fingerprint changes; no new table or customer surfaces.',
+    ],
+    reason:
+      'ADR DI-DEC-RPM-REF-INTEL-001 P3 shadow persistence without altering Audi+Arteon V1B canary behavior.',
+    previousBehavior:
+      'Phase 5A library only — no persisted reference metrics on V1B runs.',
+    details:
+      'rpm-reference-intelligence-v1-v1b-shadow-attach.ts; DS4_RPM_REF_INTEL_V1_V1B_ATTACH_ENABLED; npm run test:di:rpm-ref-intel-v1.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-30T22:45:00.000Z',
+  },
+  {
     id: 'rpm-reference-intelligence-v1-phase5a-2026-10-30',
     version: '4.9.5018',
     title: 'RPM Reference Intelligence V1 — pure library (Phase 5A, shadow-safe)',
