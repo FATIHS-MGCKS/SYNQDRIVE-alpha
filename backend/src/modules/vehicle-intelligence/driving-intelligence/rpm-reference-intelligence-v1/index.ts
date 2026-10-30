@@ -24,6 +24,12 @@ export {
   DS4_RPM_REF_INTEL_IDLE_PROXIMITY_NORMALIZED_MAX,
 } from './ds4-rpm-reference-intelligence-v1.engine';
 
+export {
+  resolveDs4RpmReferenceIntelligenceV1SequenceMaxGap,
+  type Ds4RpmReferenceIntelligenceV1AuthoritativeV1bTemporalV1,
+  type Ds4RpmReferenceIntelligenceV1SequenceGapResolution,
+} from './ds4-rpm-reference-intelligence-v1-v1b-temporal-binding';
+
 export type {
   Ds4RpmReferenceIntelligenceV1ConsumerContractRef,
   Ds4RpmReferenceIntelligenceV1ConsumerReadModel,

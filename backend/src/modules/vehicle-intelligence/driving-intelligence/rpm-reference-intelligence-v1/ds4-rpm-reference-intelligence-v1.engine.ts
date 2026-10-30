@@ -1,4 +1,4 @@
-import { DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS } from '../rpm-hf-v1b/ds4-rpm-hf-v1b.contract';
+import { resolveDs4RpmReferenceIntelligenceV1SequenceMaxGap } from './ds4-rpm-reference-intelligence-v1-v1b-temporal-binding';
 import {
   DS4_RPM_REF_INTEL_REASON,
   DS4_RPM_REFERENCE_INTELLIGENCE_V1_CONTRACT_VERSION,
@@ -303,6 +303,7 @@ function resolveAvailability(input: {
     DS4_RPM_REF_INTEL_REASON.HF_TELEMETRY_MISSING,
     DS4_RPM_REF_INTEL_REASON.HF_ADMISSION_NOT_ELIGIBLE,
     DS4_RPM_REF_INTEL_REASON.ICE_RPM_NOT_APPLICABLE,
+    DS4_RPM_REF_INTEL_REASON.V1B_TEMPORAL_PROFILE_UNAVAILABLE,
   ];
   const blocking = input.reasonCodes.filter((c) => blockingCodes.includes(c));
   if (blocking.length > 0) return 'UNKNOWN';
@@ -310,7 +311,9 @@ function resolveAvailability(input: {
   if (
     input.reasonCodes.includes(DS4_RPM_REF_INTEL_REASON.INSUFFICIENT_ELIGIBLE_OBSERVATION) ||
     input.reasonCodes.includes(DS4_RPM_REF_INTEL_REASON.REFERENCE_SPEC_UNAVAILABLE) ||
-    input.reasonCodes.includes(DS4_RPM_REF_INTEL_REASON.VSI_TIER_ANALYTICS_NOT_READY)
+    input.reasonCodes.includes(DS4_RPM_REF_INTEL_REASON.VSI_TIER_ANALYTICS_NOT_READY) ||
+    input.reasonCodes.includes(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_UNKNOWN) ||
+    input.reasonCodes.includes(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_DOWNGRADED)
   ) {
     return 'PARTIAL';
   }
@@ -325,11 +328,15 @@ export function computeDs4RpmReferenceIntelligenceV1(
   input: Ds4RpmReferenceIntelligenceV1ComputeInput,
 ): Ds4RpmReferenceIntelligenceV1Result {
   const reasonCodes: Ds4RpmReferenceIntelligenceV1ReasonCode[] = [];
-  const sequenceMaxGapSeconds =
-    input.sequenceMaxGapSeconds ?? DS4_RPM_HF_V1B_CONTINUOUS_SEQUENCE_MAX_GAP_SECONDS;
   const minEligibleWeightedSeconds =
     input.minEligibleWeightedSecondsForKnown ??
     DS4_RPM_REF_INTEL_DEFAULT_MIN_ELIGIBLE_WEIGHTED_SECONDS;
+
+  const gapResolution = resolveDs4RpmReferenceIntelligenceV1SequenceMaxGap({
+    authoritativeV1bTemporal: input.hf.authoritativeV1bTemporal,
+    qualityExposure: input.hf.qualityExposure,
+  });
+  const sequenceMaxGapSeconds = gapResolution.sequenceMaxGapSeconds;
 
   const pairConsistent =
     input.reference.idleRpm == null ||
@@ -353,6 +360,13 @@ export function computeDs4RpmReferenceIntelligenceV1(
     reasonCodes.push(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_DOWNGRADED);
   }
 
+  if (
+    input.reference.idleRpmProvenance === 'UNKNOWN' ||
+    input.reference.maxRpmProvenance === 'UNKNOWN'
+  ) {
+    reasonCodes.push(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_UNKNOWN);
+  }
+
   if (input.reference.idleRpm == null || input.reference.maxRpm == null) {
     reasonCodes.push(DS4_RPM_REF_INTEL_REASON.REFERENCE_SPEC_UNAVAILABLE);
   }
@@ -373,6 +387,15 @@ export function computeDs4RpmReferenceIntelligenceV1(
     reasonCodes.push(DS4_RPM_REF_INTEL_REASON.HF_TELEMETRY_MISSING);
   }
 
+  const needsAuthoritativeTemporalGap =
+    input.hf.admission.processingAllowed &&
+    inWindowPoints.length > 0 &&
+    input.reference.iceRpmApplicability !== 'NOT_APPLICABLE';
+
+  if (needsAuthoritativeTemporalGap && sequenceMaxGapSeconds == null) {
+    reasonCodes.push(DS4_RPM_REF_INTEL_REASON.V1B_TEMPORAL_PROFILE_UNAVAILABLE);
+  }
+
   const referenceSpan =
     input.reference.idleRpm != null &&
     input.reference.maxRpm != null &&
@@ -387,7 +410,9 @@ export function computeDs4RpmReferenceIntelligenceV1(
     input.hf.admission.processingAllowed;
 
   const eligibleSequences =
-    input.hf.admission.processingAllowed && inWindowPoints.length > 0
+    input.hf.admission.processingAllowed &&
+    inWindowPoints.length > 0 &&
+    sequenceMaxGapSeconds != null
       ? splitContinuousSequences(inWindowPoints, sequenceMaxGapSeconds)
       : [];
 
@@ -400,6 +425,8 @@ export function computeDs4RpmReferenceIntelligenceV1(
       if (seq.length < 2) return acc;
       return acc + (seq[seq.length - 1]!.recordedAtMs - seq[0]!.recordedAtMs) / 1000;
     }, 0),
+    authoritativeSequenceMaxGapSeconds: sequenceMaxGapSeconds,
+    authoritativeCadenceTier: gapResolution.cadenceTier,
   };
 
   let metrics: Ds4RpmReferenceIntelligenceV1MetricsV1 | null = null;
@@ -408,7 +435,8 @@ export function computeDs4RpmReferenceIntelligenceV1(
   if (
     inWindowPoints.length > 0 &&
     input.hf.admission.processingAllowed &&
-    input.reference.iceRpmApplicability !== 'NOT_APPLICABLE'
+    input.reference.iceRpmApplicability !== 'NOT_APPLICABLE' &&
+    sequenceMaxGapSeconds != null
   ) {
     if (referenceSpan != null && referenceNormalizedEligible) {
       const computed = computeMetrics({

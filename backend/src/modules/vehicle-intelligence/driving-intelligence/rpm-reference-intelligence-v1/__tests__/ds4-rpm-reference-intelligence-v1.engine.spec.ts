@@ -3,8 +3,15 @@ import {
   computeDs4RpmReferenceIntelligenceV1,
   DS4_RPM_REF_INTEL_REASON,
   DS4_RPM_REFERENCE_INTELLIGENCE_V1_CONTRACT_VERSION,
+  type Ds4RpmReferenceIntelligenceV1AuthoritativeV1bTemporalV1,
 } from '../index';
 import { buildDs4RpmHfV1bAdmissionQualityExposure } from '../../rpm-hf-v1b/ds4-rpm-hf-v1b-quality-exposure';
+import {
+  DS4_RPM_HF_V1B_TEMPORAL_PROFILE_1S,
+  DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S,
+  DS4_RPM_HF_V1B_TEMPORAL_PROFILE_3S,
+  resolveTemporalCadenceProfileForTier,
+} from '../../rpm-hf-v1b/ds4-rpm-hf-v1b-temporal.engine';
 
 const TRIP_START = '2026-10-30T10:00:00.000Z';
 const TRIP_END = '2026-10-30T10:00:30.000Z';
@@ -14,6 +21,15 @@ function baseAdmission(overrides?: Partial<{ processingAllowed: boolean }>) {
     processingAllowed: true,
     iceRpmApplicability: 'APPLICABLE' as const,
     ...overrides,
+  };
+}
+
+function authoritativeTier(
+  tier: 'RPM_1S' | 'RPM_2S' | 'RPM_3S',
+): Ds4RpmReferenceIntelligenceV1AuthoritativeV1bTemporalV1 {
+  return {
+    cadenceTier: tier,
+    temporalCadenceProfile: resolveTemporalCadenceProfileForTier(tier),
   };
 }
 
@@ -67,7 +83,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
         analysisMode: 'HIGH_RESOLUTION',
         analysisReadiness: 'TIER_ANALYTICS_OK',
         decisionCode: null,
-        temporalCadenceProfile: null,
+        temporalCadenceProfile: DS4_RPM_HF_V1B_TEMPORAL_PROFILE_1S,
       },
     });
 
@@ -79,6 +95,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
         points,
         admission: baseAdmission(),
         qualityExposure,
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
       },
       minEligibleWeightedSecondsForKnown: 3,
     });
@@ -87,6 +104,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
     expect(out.semanticGuard.normalizedRpmIsEngineLoadProxy).toBe(false);
     expect(out.availability).toBe('KNOWN');
     expect(out.referenceQuality.referenceTrustTier).toBe('OEM_USER_CONFIRMED');
+    expect(out.hfQuality.authoritativeSequenceMaxGapSeconds).toBe(2);
     expect(out.metrics?.normalizedPosition?.observedSampleCount).toBe(15);
     expect(out.metrics?.normalizedPosition?.rawNormalizedMin).toBeCloseTo((850 - 800) / (6500 - 800), 5);
     expect(out.metrics?.timeWeightedExposure.impliesFullTripCoverage).toBe(false);
@@ -129,7 +147,27 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
     expect(out.metrics).toBeNull();
   });
 
-  it('flags sparse gaps without interpolating missing intervals', () => {
+  it('returns UNKNOWN when authoritative V1B temporal profile is missing', () => {
+    const out = computeDs4RpmReferenceIntelligenceV1({
+      tripStartIso: TRIP_START,
+      tripEndIso: TRIP_END,
+      reference: buildDs4RpmReferenceIntelligenceV1ReferenceBlock({
+        idleRpm: 800,
+        maxRpm: 6500,
+        iceRpmApplicability: 'APPLICABLE',
+      }),
+      hf: {
+        points: densePoints(TRIP_START, 6, 1, 2000),
+        admission: baseAdmission(),
+      },
+    });
+
+    expect(out.reasonCodes).toContain(DS4_RPM_REF_INTEL_REASON.V1B_TEMPORAL_PROFILE_UNAVAILABLE);
+    expect(out.availability).toBe('UNKNOWN');
+    expect(out.metrics).toBeNull();
+  });
+
+  it('flags sparse gaps without interpolating missing intervals (RPM_1S gap rule)', () => {
     const points = [
       { recordedAtIso: TRIP_START, valueRpm: 900 },
       { recordedAtIso: '2026-10-30T10:00:01.000Z', valueRpm: 950 },
@@ -145,13 +183,66 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
         maxRpm: 6000,
         iceRpmApplicability: 'APPLICABLE',
       }),
-      hf: { points, admission: baseAdmission() },
+      hf: {
+        points,
+        admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
+      },
       minEligibleWeightedSecondsForKnown: 1,
     });
 
+    expect(out.hfQuality.authoritativeSequenceMaxGapSeconds).toBe(2);
     expect(out.hfQuality.eligibleContinuousSequenceCount).toBe(2);
     expect(out.metrics?.timeWeightedExposure.totalEligibleWeightedSeconds).toBe(2);
     expect(out.metrics?.timeWeightedExposure.uncoveredTripMassRatio).toBeGreaterThan(0.9);
+  });
+
+  it('uses tier-specific sequence gap limits (RPM_2S vs RPM_3S)', () => {
+    const points = [
+      { recordedAtIso: TRIP_START, valueRpm: 1000 },
+      { recordedAtIso: '2026-10-30T10:00:01.000Z', valueRpm: 1100 },
+      { recordedAtIso: '2026-10-30T10:00:05.000Z', valueRpm: 2000 },
+      { recordedAtIso: '2026-10-30T10:00:06.000Z', valueRpm: 2100 },
+    ];
+
+    const reference = buildDs4RpmReferenceIntelligenceV1ReferenceBlock({
+      idleRpm: 800,
+      maxRpm: 6000,
+      iceRpmApplicability: 'APPLICABLE',
+    });
+
+    const rpm2s = computeDs4RpmReferenceIntelligenceV1({
+      tripStartIso: TRIP_START,
+      tripEndIso: TRIP_END,
+      reference,
+      hf: {
+        points,
+        admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_2S'),
+      },
+      minEligibleWeightedSecondsForKnown: 1,
+    });
+    expect(rpm2s.hfQuality.authoritativeSequenceMaxGapSeconds).toBe(
+      DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S.sequenceMaxGapSeconds,
+    );
+    expect(rpm2s.hfQuality.eligibleContinuousSequenceCount).toBe(2);
+
+    const rpm3s = computeDs4RpmReferenceIntelligenceV1({
+      tripStartIso: TRIP_START,
+      tripEndIso: TRIP_END,
+      reference,
+      hf: {
+        points,
+        admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_3S'),
+      },
+      minEligibleWeightedSecondsForKnown: 1,
+    });
+    expect(rpm3s.hfQuality.authoritativeSequenceMaxGapSeconds).toBe(
+      DS4_RPM_HF_V1B_TEMPORAL_PROFILE_3S.sequenceMaxGapSeconds,
+    );
+    expect(rpm3s.hfQuality.eligibleContinuousSequenceCount).toBe(1);
+    expect(rpm3s.metrics?.timeWeightedExposure.totalEligibleWeightedSeconds).toBe(6);
   });
 
   it('returns PARTIAL with spec-unavailable reason when idle/max missing but HF present', () => {
@@ -166,6 +257,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
       hf: {
         points: densePoints(TRIP_START, 8, 1, 2500),
         admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
       },
     });
 
@@ -185,11 +277,13 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
       hf: {
         points: densePoints(TRIP_START, 6, 1, 2000),
         admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
       },
     });
 
     expect(out.reasonCodes).toContain(DS4_RPM_REF_INTEL_REASON.REFERENCE_PAIR_INCONSISTENT);
     expect(out.referenceQuality.pairConsistent).toBe(false);
+    expect(out.metrics?.normalizedPosition).toBeNull();
   });
 
   it('fail-closes for ICE not applicable (BEV)', () => {
@@ -202,6 +296,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
       hf: {
         points: densePoints(TRIP_START, 6, 1, 2000),
         admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
       },
     });
 
@@ -222,6 +317,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
       hf: {
         points: densePoints(TRIP_START, 6, 1, 4500),
         admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
       },
       minEligibleWeightedSecondsForKnown: 1,
     });
@@ -255,7 +351,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
         analysisMode: 'HIGH_RESOLUTION',
         analysisReadiness: 'LIMITED_TRIP',
         decisionCode: null,
-        temporalCadenceProfile: null,
+        temporalCadenceProfile: DS4_RPM_HF_V1B_TEMPORAL_PROFILE_2S,
       },
     });
 
@@ -273,6 +369,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
         points: densePoints(TRIP_START, 8, 1, 2200),
         admission: baseAdmission(),
         qualityExposure,
+        authoritativeV1bTemporal: authoritativeTier('RPM_2S'),
       },
       minEligibleWeightedSecondsForKnown: 3,
     });
@@ -299,6 +396,7 @@ describe('ds4-rpm-reference-intelligence-v1 engine', () => {
           { recordedAtIso: '2026-10-30T10:00:01.000Z', valueRpm: 950 },
         ],
         admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
       },
       minEligibleWeightedSecondsForKnown: 10,
     });
@@ -319,5 +417,72 @@ describe('ds4-rpm-reference-intelligence-v1 reference input', () => {
     });
     expect(block.idleRpmProvenance).toBe('USER_CONFIRMED');
     expect(block.maxRpmProvenance).toBe('AI_ESTIMATED');
+  });
+
+  it('maps missing and unrecognized provenance to UNKNOWN (not AI_ESTIMATED)', () => {
+    const missing = buildDs4RpmReferenceIntelligenceV1ReferenceBlock({
+      idleRpm: 800,
+      maxRpm: 6500,
+      iceRpmApplicability: 'APPLICABLE',
+    });
+    expect(missing.idleRpmProvenance).toBe('UNKNOWN');
+    expect(missing.maxRpmProvenance).toBe('UNKNOWN');
+
+    const unrecognized = buildDs4RpmReferenceIntelligenceV1ReferenceBlock({
+      idleRpm: 800,
+      maxRpm: 6500,
+      idleRpmProvenance: { category: 'VENDOR_GUESS' },
+      maxRpmProvenance: { category: 'USER_CONFIRMED' },
+      iceRpmApplicability: 'APPLICABLE',
+    });
+    expect(unrecognized.idleRpmProvenance).toBe('UNKNOWN');
+  });
+
+  it('surfaces conflicting USER vs AI provenance without OEM trust', () => {
+    const out = computeDs4RpmReferenceIntelligenceV1({
+      tripStartIso: TRIP_START,
+      tripEndIso: TRIP_END,
+      reference: buildDs4RpmReferenceIntelligenceV1ReferenceBlock({
+        idleRpm: 800,
+        maxRpm: 6500,
+        idleRpmProvenance: { category: 'USER_CONFIRMED' },
+        maxRpmProvenance: { category: 'AI_ESTIMATED' },
+        iceRpmApplicability: 'APPLICABLE',
+      }),
+      hf: {
+        points: densePoints(TRIP_START, 6, 1, 2000),
+        admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
+      },
+      minEligibleWeightedSecondsForKnown: 1,
+    });
+
+    expect(out.reasonCodes).toContain(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_DOWNGRADED);
+    expect(out.reasonCodes).not.toContain(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_UNKNOWN);
+    expect(out.referenceQuality.referenceTrustTier).toBe('DOWNGRADED_ESTIMATE');
+  });
+
+  it('surfaces UNKNOWN provenance when categories are missing or unrecognized', () => {
+    const out = computeDs4RpmReferenceIntelligenceV1({
+      tripStartIso: TRIP_START,
+      tripEndIso: TRIP_END,
+      reference: buildDs4RpmReferenceIntelligenceV1ReferenceBlock({
+        idleRpm: 800,
+        maxRpm: 6500,
+        idleRpmProvenance: { category: 'VENDOR_GUESS' },
+        maxRpmProvenance: undefined,
+        iceRpmApplicability: 'APPLICABLE',
+      }),
+      hf: {
+        points: densePoints(TRIP_START, 6, 1, 2000),
+        admission: baseAdmission(),
+        authoritativeV1bTemporal: authoritativeTier('RPM_1S'),
+      },
+      minEligibleWeightedSecondsForKnown: 1,
+    });
+
+    expect(out.reasonCodes).toContain(DS4_RPM_REF_INTEL_REASON.REFERENCE_PROVENANCE_UNKNOWN);
+    expect(out.referenceQuality.idleRpmProvenance).toBe('UNKNOWN');
+    expect(out.referenceQuality.maxRpmProvenance).toBe('UNKNOWN');
   });
 });

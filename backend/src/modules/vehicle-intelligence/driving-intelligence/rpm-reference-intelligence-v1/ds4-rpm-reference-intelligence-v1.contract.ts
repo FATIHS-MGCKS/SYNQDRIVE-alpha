@@ -1,5 +1,6 @@
 import type { VsiIceRpmApplicability } from '../../vehicle-signal-intelligence/vsi-profile-cadence.types';
 import type { Ds4RpmHfV1bAdmissionQualityExposureV1 } from '../rpm-hf-v1b/ds4-rpm-hf-v1b.contract';
+import type { Ds4RpmReferenceIntelligenceV1AuthoritativeV1bTemporalV1 } from './ds4-rpm-reference-intelligence-v1-v1b-temporal-binding';
 
 export const DS4_RPM_REFERENCE_INTELLIGENCE_V1_CONTRACT_VERSION =
   'ds4-rpm-reference-intelligence-v1' as const;
@@ -12,6 +13,8 @@ export const DS4_RPM_REF_INTEL_REASON = {
   REFERENCE_SPEC_UNAVAILABLE: 'RPM_REF_INTEL_REFERENCE_SPEC_UNAVAILABLE',
   REFERENCE_PAIR_INCONSISTENT: 'RPM_REF_INTEL_REFERENCE_PAIR_INCONSISTENT',
   REFERENCE_PROVENANCE_DOWNGRADED: 'RPM_REF_INTEL_REFERENCE_PROVENANCE_DOWNGRADED',
+  REFERENCE_PROVENANCE_UNKNOWN: 'RPM_REF_INTEL_REFERENCE_PROVENANCE_UNKNOWN',
+  V1B_TEMPORAL_PROFILE_UNAVAILABLE: 'RPM_REF_INTEL_V1B_TEMPORAL_PROFILE_UNAVAILABLE',
   INSUFFICIENT_ELIGIBLE_OBSERVATION: 'RPM_REF_INTEL_INSUFFICIENT_ELIGIBLE_OBSERVATION',
   VSI_TIER_ANALYTICS_NOT_READY: 'RPM_REF_INTEL_VSI_TIER_ANALYTICS_NOT_READY',
   NORMALIZED_OUT_OF_RANGE_OBSERVED: 'RPM_REF_INTEL_NORMALIZED_OUT_OF_RANGE_OBSERVED',
@@ -26,6 +29,7 @@ export type Ds4RpmReferenceSpecProvenanceClass =
   | 'USER_CONFIRMED'
   | 'AI_ESTIMATED'
   | 'KNOWLEDGE_ONLY'
+  | 'UNKNOWN'
   | 'MISSING';
 
 export type Ds4RpmReferenceIntelligenceV1ReferenceQualityV1 = {
@@ -44,6 +48,8 @@ export type Ds4RpmReferenceIntelligenceV1HfQualityV1 = {
   observedPointCount: number;
   eligibleContinuousSequenceCount: number;
   eligibleObservedDurationSeconds: number;
+  authoritativeSequenceMaxGapSeconds: number | null;
+  authoritativeCadenceTier: string | null;
 };
 
 export type Ds4RpmReferenceIntelligenceV1ReferenceSnapshotV1 = {
@@ -150,9 +156,9 @@ export type Ds4RpmReferenceIntelligenceV1ComputeInput = {
     points: ReadonlyArray<Ds4RpmReferenceIntelligenceV1HfPoint>;
     admission: Ds4RpmReferenceIntelligenceV1HfAdmissionSlice;
     qualityExposure?: Ds4RpmHfV1bAdmissionQualityExposureV1 | null;
+    /** Authoritative V1B/VSI temporal evidence for sequence gap limits (not inferred from HF). */
+    authoritativeV1bTemporal?: Ds4RpmReferenceIntelligenceV1AuthoritativeV1bTemporalV1 | null;
   };
-  /** Continuous-sequence gap rule (seconds); defaults to V1B 1s profile when omitted. */
-  sequenceMaxGapSeconds?: number;
   /** Minimum eligible weighted seconds before band/normalized aggregates publish as KNOWN. */
   minEligibleWeightedSecondsForKnown?: number;
 };

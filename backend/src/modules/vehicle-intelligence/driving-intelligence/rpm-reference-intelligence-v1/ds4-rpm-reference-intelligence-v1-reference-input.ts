@@ -21,8 +21,8 @@ function mapProvenanceClass(input: {
   if (category === 'USER_CONFIRMED') return 'USER_CONFIRMED';
   if (category === 'AI_ESTIMATED') return 'AI_ESTIMATED';
   if (category === 'KNOWLEDGE_ONLY') return 'KNOWLEDGE_ONLY';
-  if (!category) return 'MISSING';
-  return 'AI_ESTIMATED';
+  if (!category) return 'UNKNOWN';
+  return 'UNKNOWN';
 }
 
 /**
