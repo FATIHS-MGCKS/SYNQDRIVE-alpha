@@ -20,6 +20,10 @@ import {
   type VsiP0aProfileAuditBundle,
 } from './vsi-p0a-signal-integrity-audit.engine';
 import { resolveVsiP0aApplicability, classifyVsiP0aSignalFinding } from './vsi-p0a-signal-integrity-audit.classifier';
+import {
+  analyzeEngineRpmCadence,
+  analyzeLvVoltageCadence,
+} from './vsi-profile-cadence-stats.util';
 import { VSI_P0A_DEFAULT_COHORT_V1 } from './vsi-p0a-audit-cohort.v1';
 import type { VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
 
@@ -74,7 +78,7 @@ function signalFingerprint(partial: Record<string, unknown>): VsiProfileSignalFi
 }
 
 describe('vsi-p0a signal integrity audit engine', () => {
-  it('Audi: snapshot NEVER_OBSERVED + HF RPM_STANDARD → MISLEADING_PRESENTATION', () => {
+  it('Audi: snapshot NEVER_OBSERVED + HF RPM_STANDARD → MISLEADING_PRESENTATION (deduped cadence provenance)', () => {
     const ref = fixtures.audiRpmReference;
     const bundle = baseBundle({
       vehicle: ref.vehicle,
@@ -93,8 +97,8 @@ describe('vsi-p0a signal integrity audit engine', () => {
     const rpm = rows.find((r) => r.canonicalSignal === 'engine_rpm');
     expect(rpm?.snapshotObservation).toBe('NEVER_OBSERVED');
     expect(rpm?.activeCadenceProfile).toBe('RPM_STANDARD');
-    expect(rpm?.findingClass).toBe('CONFIRMED_BUG');
-    expect(rpm?.evidenceReference).toBe('cadence_provenance_duplicate_entries');
+    expect(rpm?.findingClass).toBe('MISLEADING_PRESENTATION');
+    expect(rpm?.evidenceReference).toBe('lane_a_never_observed_lane_b_hf_rpm_profile');
   });
 
   it('Tesla: engine_rpm and fuel_level are NOT_APPLICABLE but shown NEVER_OBSERVED', () => {
@@ -155,6 +159,61 @@ describe('vsi-p0a signal integrity audit engine', () => {
     });
     expect(result.findingClass).toBe('CONFIRMED_BUG');
     expect(result.severity).toBe('P0');
+  });
+
+  it('P1-a differential: cadence analyzer output avoids cadence_provenance_duplicate_entries', () => {
+    const ref = fixtures.audiRpmReference;
+    const trip = { tripId: 't1', startMs: Date.parse('2026-10-30T10:00:00.000Z'), endMs: Date.parse('2026-10-30T10:10:00.000Z') };
+    const rpmCadence = analyzeEngineRpmCadence({
+      iceRpmApplicability: 'APPLICABLE',
+      tripWindows: [trip],
+      points: [
+        { recordedAtMs: trip.startMs, value: 900 },
+        { recordedAtMs: trip.startMs + 5000, value: 900 },
+        { recordedAtMs: trip.startMs + 10000, value: 900 },
+        { recordedAtMs: trip.startMs + 15000, value: 900 },
+      ],
+      provenance: ['CLICKHOUSE_TELEMETRY_HF_POINTS'],
+      hfReadStatus: 'SUCCESS',
+    });
+    expect(rpmCadence.provenance).toEqual(['CLICKHOUSE_TELEMETRY_HF_POINTS']);
+
+    const lvCadence = analyzeLvVoltageCadence({
+      points: [
+        { observedAtMs: Date.parse('2026-10-30T09:00:00.000Z'), providerTimestampMs: null },
+        { observedAtMs: Date.parse('2026-10-30T09:05:00.000Z'), providerTimestampMs: null },
+        { observedAtMs: Date.parse('2026-10-30T09:10:00.000Z'), providerTimestampMs: null },
+      ],
+      provenance: ['POSTGRES_BATTERY_MEASUREMENTS'],
+      linkActivatedAtMs: Date.parse('2026-10-01T00:00:00.000Z'),
+      linkDeactivatedAtMs: null,
+    });
+    expect(lvCadence.provenance).toEqual(['POSTGRES_BATTERY_MEASUREMENTS']);
+
+    for (const cadence of [rpmCadence, lvCadence]) {
+      const dup =
+        cadence.provenance.length > 1 &&
+        new Set(cadence.provenance).size < cadence.provenance.length;
+      expect(dup).toBe(false);
+    }
+
+    const rpmRow = classifyVsiP0aSignalFinding({
+      vehicle: ref.vehicle as never,
+      canonicalSignal: 'engine_rpm',
+      applicability: 'APPLICABLE',
+      declaredSupport: 'UNKNOWN',
+      snapshotObservation: 'NEVER_OBSERVED',
+      snapshotQuality: 'NEVER_OBSERVED',
+      snapshotConfidence: 'LOW',
+      hfAvailability: 'SUPPORTED_WITH_SAMPLES',
+      hfSampleCount: rpmCadence.observedSampleCount,
+      activeCadenceProfile: 'RPM_STANDARD',
+      freshness: 'UNKNOWN',
+      provenance: rpmCadence.provenance,
+      limitations: [],
+      materializedInProfile: true,
+    });
+    expect(rpmRow.evidenceReference).not.toBe('cadence_provenance_duplicate_entries');
   });
 
   it('duplicate cadence provenance → CONFIRMED_BUG', () => {
