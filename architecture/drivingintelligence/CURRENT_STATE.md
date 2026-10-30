@@ -65,7 +65,7 @@ Do **not** say "HF Recovery V2 not deployed" — say **code deployed, feature di
 | **RPM HF V1B shadow** | **IMPLEMENTED** (flag-gated) — temporal engine, outbox/runs, tier-aware processor, Phase 4I `admission.qualityExposure`; control plane `DS4_RPM_HF_V1B_*` |
 | **VSI tier evidence** | **IMPLEMENTED** — VSI owns cadence tier classification; V1B consumes snapshot only (no synthetic tiers) |
 | **Vehicle spec idle/max** | **IMPLEMENTED** — `vehicles.idle_rpm` / `max_rpm` + provenance; **not** wired into V1B admission today |
-| **RPM Reference Intelligence** | **NOT YET IMPLEMENTED** — owner-approved small RPM-workstream component; see ADR [`design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md`](design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md) (`DI-DEC-RPM-REF-INTEL-001`) |
+| **RPM Reference Intelligence** | **IMPLEMENTED (library only, Phase 5A)** — `rpm-reference-intelligence-v1/` pure calculator + tests; **no** Nest worker, persistence, V1B wiring, or DS4 consumer; see ADR [`design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md`](design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md) (`DI-DEC-RPM-REF-INTEL-001`) |
 | **DS4 consumes RPM reference metrics** | **NOT YET IMPLEMENTED** — future versioned optional interface only |
 
 ## Production path today (CONFIRMED)

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rpm-reference-intelligence-v1-phase5a-2026-10-30',
+    version: '4.9.5018',
+    title: 'RPM Reference Intelligence V1 — pure library (Phase 5A, shadow-safe)',
+    summary: [
+      'Backend `rpm-reference-intelligence-v1/`: contract `ds4-rpm-reference-intelligence-v1`, deterministic normalization, idle proximity, operating bands, time-weighted exposure on eligible continuous HF sequences only.',
+      'Separates vehicle spec provenance quality from V1B HF admission qualityExposure; explicit reason codes; normalized RPM is not engine load.',
+      'DI consumer interface types only — no V1B processor wiring, persistence, workers, flags, DS4/Tire/Impact/customer changes.',
+    ],
+    reason:
+      'Implement ADR DI-DEC-RPM-REF-INTEL-001 P2 metrics library without altering Audi+Arteon V1B shadow canary semantics.',
+    previousBehavior:
+      'ADR approved boundaries only; no reference intelligence calculator in repository.',
+    details:
+      'backend/.../rpm-reference-intelligence-v1/*; npm run test:di:rpm-ref-intel-v1; architecture/drivingintelligence CURRENT_STATE + CHANGE_LEDGER + ADR implementation table.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-30T19:00:00.000Z',
+  },
+  {
     id: 'vsi-rpm-dual-provenance-ui-2026-10-29',
     version: '4.9.5017',
     title: 'VSI Master Admin — engine RPM dual provenance UI (Draft)',
