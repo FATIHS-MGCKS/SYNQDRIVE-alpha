@@ -2538,3 +2538,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Close architecture-audit gaps (identity, Tesla API_SYNTHETIC context, deterministic selection, CI coverage) |
 | VALIDATION | `npm run test:di:ds4-layer2-p2-offline` (18); S4A workflow unit job |
 | NON_EFFECTS | No production reconstruction; no assessment persistence |
+
+### 2026-10-30 — DS4 SHARED_KNOT_SPIKE_PAIR safety P1 (motion intensity evidence)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | `applyMotionEventSharedKnotSpikePairGate` in `motion-event-intensity-endpoint-evidence.v1.ts`; wired from `applyMotionEventIntensityEvidenceGatesV1` with optional C5.1 Q5/Q6 repair evidence; shadow processor passes `speedRepairs` |
+| WHY | Tiguan trip `dbdded5c-ee72-40f3-91bb-62d5a1b7f7ff`: K3 `REVERSION_EXPLAINED_BY_OPPOSITE_EVENT` + non-isolated shared knot let BIN_ONLY 7.898/8.561 m/s² secants stay `OK`; multi-indicator fail-closed gate marks pair `ARTEFACT_SUSPECT` + `SHARED_KNOT_SPIKE_PAIR` flag |
+| VALIDATION | `motion-event-intensity-endpoint-evidence.v1.spec.ts` (dbdded5c fixture, hard-braking counterexample, missing-evidence fail-closed); `npm run test:di:ds4-assessment`; P2 differential harness `ds4-shared-knot-spike-pair-p2-differential.harness.ts` (124→122 admissible) |
+| NON_EFFECTS | No P2 CLI/reconstruction change; no DB writes/backfill/deploy/flags; no Tire/Brake/Driving Impact/customer scores |
+| REMAINING | Existing persisted shadow payloads unchanged until shadow recompute; C4-only paths need two geometry-independent indicators without C5.1 (see assessSharedKnotSpikePairIndicatorsV1) |
