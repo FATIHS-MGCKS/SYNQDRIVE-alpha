@@ -32,11 +32,15 @@ function eventSpeedSeriesFromPayload(payload: DiV0MotionCoreShadowPayloadV1): Mo
     label: r.bucketLabelUtc,
     valueKmh: r.speedKmh,
     quality: r.quality as MotionCoreSpeedSample['quality'],
+    estimator: r.estimator,
+    supportLabels: r.support ?? [],
+    supportSpanS: null,
     flags: r.flags ?? [],
   }));
 }
 
 function persistedToMotionEvent(row: DiV0MotionCoreShadowPersistedEventRow): MotionManoeuvreEvent {
+  const mean = row.intensity?.meanAccelMps2 ?? 0;
   return {
     trip: 0,
     kind: row.kind as MotionManoeuvreEvent['kind'],
@@ -47,8 +51,8 @@ function persistedToMotionEvent(row: DiV0MotionCoreShadowPersistedEventRow): Mot
     startSpeedKmh: row.startSpeedKmh,
     endSpeedKmh: row.endSpeedKmh,
     deltaKmh: row.deltaKmh,
-    meanAccelMps2: row.intensity?.meanAccelMps2 ?? 0,
-    peakAccel1sMps2: null,
+    meanAccelMps2: mean,
+    peakAccel1sMps2: mean,
     peakAccel2sMps2: null,
     durationS: row.intensity?.durationS ?? 0,
     steps: row.intensity?.steps ?? 0,
@@ -108,7 +112,12 @@ function summarize(
     },
     payload,
   });
-  const l2 = projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1(assessment);
+  const l2 = projectDs4LongitudinalLoadObservablesV1FromPersistedAssessmentV1({
+    assessmentStatus: assessment.assessmentStatus,
+    evidenceQuality: assessment.evidenceQuality,
+    speedAuthority: assessment.speedAuthority,
+    eventSummariesJson: assessment.eventSummaries,
+  });
   const accelVals = agg.admissibleOrdinalValues.acceleration;
   const brakeVals = agg.admissibleOrdinalValues.deceleration;
   return {

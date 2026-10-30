@@ -2539,6 +2539,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | VALIDATION | `npm run test:di:ds4-layer2-p2-offline` (18); S4A workflow unit job |
 | NON_EFFECTS | No production reconstruction; no assessment persistence |
 
+### 2026-10-30 — RPM Reference Intelligence ownership boundaries (Phase 5 ADR, documentation-only)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | ADR [`design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md`](../design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md); decision `DI-DEC-RPM-REF-INTEL-001`; graph evidence `DI-EVID-RPM-REF-INTEL-ADR-001`; cross-refs in DI README/CURRENT_STATE, VSI cross-workstream contracts, VSI change ledger |
+| WHY | Owner-approved Phase 5 architecture: register boundaries between VSI, RPM HF V1A/V1B, Vehicle Specifications reference metadata, RPM Reference Intelligence (small RPM-workstream component), and DS4 — without implementation or canary interference |
+| VALIDATION | `bash architecture/drivingintelligence/scripts/validate-docs.sh`; `bash architecture/drivingintelligence/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh` |
+| NON_EFFECTS | **No** production flag/env changes; **no** runtime code; **no** migrations; **no** V1B admission/VSI tier changes; **no** DS4 Motion/Driving Impact/Tire/Trip FSM/customer behavior; active Audi+Arteon V1B shadow canary unaffected |
+| REMAINING | Future P1–P5 implementation PRs; DS4 optional consumer contract; Fable review before any RPM-derived load/wear/scoring |
+
 ### 2026-10-30 — DS4 SHARED_KNOT_SPIKE_PAIR safety P1 (motion intensity evidence)
 
 | Field | Detail |

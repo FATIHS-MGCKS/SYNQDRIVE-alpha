@@ -297,6 +297,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T01:00:00.000Z',
   },
   {
+    id: 'rpm-reference-intelligence-adr-2026-10-30',
+    version: '4.9.5002',
+    title: 'RPM Reference Intelligence — ownership boundaries ADR (Phase 5, docs only)',
+    summary: [
+      'Decision DI-DEC-RPM-REF-INTEL-001: VSI owns RPM profiles + cadence tier evidence; RPM HF V1A/V1B owns HF observation, admission, qualityExposure.',
+      'Vehicle Specifications idleRpm/maxRpm are reference metadata only — never substitute missing HF; must not modify V1B admission gates.',
+      'RPM Reference Intelligence is a small future RPM-workstream component (normalized position, bands, time-weighted exposure) — NOT YET IMPLEMENTED.',
+      'DS4 remains motion/event authority; optional future versioned consumer interface with temporal alignment; no RPM load/wear/scoring without owner approval.',
+    ],
+    reason:
+      'Register owner-approved Phase 5 architecture without runtime, migration, or canary interference.',
+    previousBehavior:
+      'RPM boundaries scattered across V1B/VSI code comments and audit notes; no single ADR for reference metadata vs HF vs DS4.',
+    details:
+      'architecture/drivingintelligence/design/RPM_REFERENCE_INTELLIGENCE_AND_DI_OWNERSHIP_BOUNDARIES_ADR_2026-10-30.md, decisions/DECISION_REGISTER.md, VSI_CROSS_WORKSTREAM_CONTRACTS.md, SYNQDRIVE_RENTAL_ARCHITECTURE.md.',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-30T17:00:00.000Z',
+  },
+  {
     id: 'ds4-authority-migration-pr0-2026-10-28',
     version: '4.9.5001',
     title: 'DS4 authoritative assessment migration — PR-0 (governance only)',
