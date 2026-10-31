@@ -142,6 +142,7 @@ describe('ds4-rpm-hf-v1a-data-quality edge cases', () => {
         orgId: 'o',
         vehicleId: 'v',
         tripId: 't',
+        tokenId: 424242,
       },
       {
         recordedAtMs: t0,
@@ -152,6 +153,7 @@ describe('ds4-rpm-hf-v1a-data-quality edge cases', () => {
         orgId: 'o',
         vehicleId: 'v',
         tripId: 't',
+        tokenId: 424242,
       },
     ];
     const dq = buildDs4RpmHfV1aDataQuality({
