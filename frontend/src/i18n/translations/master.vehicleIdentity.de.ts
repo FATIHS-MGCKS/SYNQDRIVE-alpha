@@ -52,4 +52,14 @@ export const masterVehicleIdentityDe = {
   'master.vehicleIdentity.field.electrificationGrade': 'Elektrifizierungsgrad',
   'master.vehicleIdentity.extractionStatus': 'OCR-Status: {status}',
   'master.vehicleIdentity.documentLinked': 'Dokument: {id}',
+  'master.vehicleIdentity.uploadToolbar': 'Fahrzeugschein hochladen',
+  'master.vehicleIdentity.uploadUseToolbar': 'Nutzen Sie „Fahrzeugschein hochladen“ in der Spezifikationsleiste oben.',
+  'master.vehicleIdentity.zb1DialogTitle': 'Fahrzeugschein (ZB-I)',
+  'master.vehicleIdentity.zb1DialogDescription':
+    'PDF oder Bild hochladen, extrahierte Felder prüfen und bestätigte Werte in das Spezifikationsformular übernehmen.',
+  'master.vehicleIdentity.applyToRegistrationForm': 'In Spezifikationsformular übernehmen',
+  'master.vehicleIdentity.applyToFormBlockedVin': 'Übernahme blockiert — FIN-Konflikt zuerst bestätigen.',
+  'master.vehicleIdentity.applyToFormConflict': 'Keine Werte übernommen — Felder bestätigen oder Konflikte klären.',
+  'master.vehicleIdentity.applyToFormEmpty': 'Keine bestätigten Felder zum Übernehmen.',
+  'master.vehicleIdentity.applyToFormSuccess': 'Bestätigte Werte ins Spezifikationsformular übernommen (Speichern zum Persistieren).',
 };

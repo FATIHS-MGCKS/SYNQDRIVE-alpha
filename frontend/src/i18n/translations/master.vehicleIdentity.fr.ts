@@ -52,4 +52,14 @@ export const masterVehicleIdentityFr = {
   'master.vehicleIdentity.field.electrificationGrade': 'Niveau d’électrification',
   'master.vehicleIdentity.extractionStatus': 'Statut OCR : {status}',
   'master.vehicleIdentity.documentLinked': 'Document : {id}',
+  'master.vehicleIdentity.uploadToolbar': 'Téléverser la carte grise',
+  'master.vehicleIdentity.uploadUseToolbar': 'Utilisez « Téléverser la carte grise » dans la barre de spécification ci-dessus.',
+  'master.vehicleIdentity.zb1DialogTitle': 'Carte grise (ZB-I)',
+  'master.vehicleIdentity.zb1DialogDescription':
+    'Téléversez un PDF ou une image, vérifiez les champs extraits et appliquez les valeurs confirmées au formulaire.',
+  'master.vehicleIdentity.applyToRegistrationForm': 'Appliquer au formulaire de spécification',
+  'master.vehicleIdentity.applyToFormBlockedVin': 'Application bloquée — accusez réception du conflit VIN.',
+  'master.vehicleIdentity.applyToFormConflict': 'Aucune valeur appliquée — confirmez les champs ou résolvez les conflits.',
+  'master.vehicleIdentity.applyToFormEmpty': 'Aucun champ confirmé à appliquer.',
+  'master.vehicleIdentity.applyToFormSuccess': 'Valeurs confirmées appliquées au formulaire (enregistrer pour persister).',
 };
