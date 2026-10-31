@@ -391,6 +391,7 @@ export class TireWearV3PriorService {
               anchorOdometerKm: latestMeas.odometerKm,
               currentOdometerKm: currentOdometerKm!,
               rateMmPerKm: rateMmPerKmForProjection,
+              anchorUncertaintyMm: sigmaMeasMm,
             })
           : projectTreadMm({
               anchorTreadMm: initial.treadMm,
