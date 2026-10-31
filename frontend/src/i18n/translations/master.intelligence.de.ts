@@ -170,6 +170,10 @@ export const masterIntelligenceDe = {
   'master.intelligence.vsi.signals.quality': 'Qualität / Vertrauen',
   'master.intelligence.vsi.signals.observedAt': 'Letzte Beobachtung (UTC + lokal)',
   'master.intelligence.vsi.signals.limitations': 'Einschränkungen',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Nicht anwendbar (Antrieb)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nie beobachtet',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Beobachtet',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Beobachtet (veraltet)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Motordrehzahl (RPM) nutzt zwei getrennte Evidenz-Ebenen. Der Snapshot-Status stammt aus dem neuesten Vehicle-Latest-State-Bundle; HF/Kadenz aus gespiegelten Hochfrequenzpunkten und abgeschlossenen Fahrten. Sie sind nicht austauschbar.',

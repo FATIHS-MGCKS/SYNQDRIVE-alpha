@@ -56,11 +56,14 @@ function extractCadenceLabels(signals: VsiProfileSignalFingerprintV1[]): {
     lvEvidenceConfidence: lvStandby?.evidenceConfidence ?? lvCadence?.evidenceConfidence ?? null,
     rpmActiveProfile: rpmProfile?.activeProfile ?? 'UNKNOWN',
     rpmApplicability:
-      rpmCadence?.observedDensityLabel === 'NOT_APPLICABLE'
+      rpm?.empiricalObservation === 'NOT_APPLICABLE' ||
+      rpm?.powertrainApplicability === 'NOT_APPLICABLE'
         ? 'NOT_APPLICABLE'
-        : rpmProfile
-          ? 'APPLICABLE'
-          : 'UNKNOWN',
+        : rpmCadence?.observedDensityLabel === 'NOT_APPLICABLE'
+          ? 'NOT_APPLICABLE'
+          : rpmProfile
+            ? 'APPLICABLE'
+            : 'UNKNOWN',
     rpmClassificationDecisionCode: rpmProfile?.classificationDecisionCode ?? null,
     observedDensityLabel: rpmCadence?.observedDensityLabel ?? null,
     signalLimitations: [
@@ -126,6 +129,7 @@ function mapSignalDetail(signal: VsiProfileSignalFingerprintV1): MasterVsiSignal
     cadenceIntelligence: signal.cadenceIntelligence
       ? (signal.cadenceIntelligence as unknown as Record<string, unknown>)
       : null,
+    powertrainApplicability: signal.powertrainApplicability ?? null,
   };
 }
 

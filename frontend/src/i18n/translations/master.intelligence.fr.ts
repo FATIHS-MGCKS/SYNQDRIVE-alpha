@@ -170,6 +170,10 @@ export const masterIntelligenceFr = {
   'master.intelligence.vsi.signals.quality': 'Qualité / confiance',
   'master.intelligence.vsi.signals.observedAt': 'Dernière observation (UTC + local)',
   'master.intelligence.vsi.signals.limitations': 'Limitations',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Non applicable (motorisation)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Jamais observé',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Observé',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Observé (périmé)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Le régime moteur (RPM) repose sur deux plans de preuve distincts. L’état instantané vient du dernier bundle vehicle latest state ; HF/cadence vient des points haute fréquence miroir et des trajets finalisés. Ils ne sont pas interchangeables.',

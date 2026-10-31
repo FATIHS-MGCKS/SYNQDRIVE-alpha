@@ -72,6 +72,7 @@ describe('evaluateVsiSignalProfile', () => {
         hardwareTypeLegacy: 'LTE_R1',
         link: baseLink,
         identity: hardwareIdentity,
+        fuelType: 'GASOLINE',
         latestState: {
           vehicleId: 'veh-1',
           providerBindingId: 'link-1',
@@ -99,6 +100,9 @@ describe('evaluateVsiSignalProfile', () => {
     const lv = result.signals.find((s) => s.canonicalSignalKey === 'lv_voltage');
     expect(lv?.declaredSupport).toBe('LISTED');
     expect(lv?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(
+      result.signals.find((s) => s.canonicalSignalKey === 'hv_battery_soc')?.empiricalObservation,
+    ).toBe(VsiEmpiricalObservationStatus.NOT_APPLICABLE);
     expect(result.signals.find((s) => s.canonicalSignalKey === 'provider_source_timestamp')?.strictSourceAdvanced).toBe(
       true,
     );
@@ -127,6 +131,7 @@ describe('evaluateVsiSignalProfile', () => {
         hardwareTypeLegacy: 'LTE_R1',
         link: baseLink,
         identity: softwareIdentity,
+        fuelType: 'ELECTRIC',
         latestState: {
           vehicleId: 'veh-tesla',
           providerBindingId: 'link-1',
@@ -155,6 +160,12 @@ describe('evaluateVsiSignalProfile', () => {
     expect(lv?.declaredSupport).toBe('LISTED');
     expect(lv?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
     expect(hv?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(result.signals.find((s) => s.canonicalSignalKey === 'engine_rpm')?.empiricalObservation).toBe(
+      VsiEmpiricalObservationStatus.NOT_APPLICABLE,
+    );
+    expect(
+      result.signals.find((s) => s.canonicalSignalKey === 'fuel_level_relative')?.empiricalObservation,
+    ).toBe(VsiEmpiricalObservationStatus.NOT_APPLICABLE);
     expect(result.profileLimitations).toContain('SOFTWARE_INTEGRATION_STRATIFICATION_ACTIVE');
   });
 

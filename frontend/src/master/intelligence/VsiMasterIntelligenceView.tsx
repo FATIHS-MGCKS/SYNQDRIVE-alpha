@@ -24,6 +24,7 @@ import {
   mapObservedDensity,
   mapSummaryToLvBadge,
   mapSummaryToRpmBadge,
+  empiricalObservationLabelKey,
 } from './vsi-master-intelligence-ui.utils';
 import {
   buildEngineRpmDualProvenanceView,
@@ -360,7 +361,15 @@ function VsiMasterIntelligenceContent() {
                                 <span className="text-muted-foreground">
                                   {t('master.intelligence.vsi.signals.rpmDual.snapshotShort' as never)}:{' '}
                                 </span>
-                                {dual.snapshot.empiricalObservation}
+                                {(() => {
+                                  const empKey = empiricalObservationLabelKey(
+                                    dual.snapshot.empiricalObservation,
+                                  );
+                                  const empLabel = empKey
+                                    ? t(empKey as never)
+                                    : dual.snapshot.empiricalObservation;
+                                  return empLabel;
+                                })()}
                                 {dual.snapshot.qualityClassification
                                   ? ` · ${dual.snapshot.qualityClassification}`
                                   : ''}
@@ -382,7 +391,15 @@ function VsiMasterIntelligenceContent() {
                             </div>
                           ) : (
                             <>
-                              {signal.qualityClassification ?? '—'} / {signal.confidenceLevel ?? '—'}
+                              {(() => {
+                                const q = signal.qualityClassification ?? '—';
+                                const empKey = empiricalObservationLabelKey(signal.empiricalObservation);
+                                const empNote =
+                                  signal.empiricalObservation === 'NOT_APPLICABLE' && empKey
+                                    ? t(empKey as never)
+                                    : null;
+                                return empNote ? `${empNote} · ${q}` : `${q} / ${signal.confidenceLevel ?? '—'}`;
+                              })()}
                             </>
                           )}
                         </td>

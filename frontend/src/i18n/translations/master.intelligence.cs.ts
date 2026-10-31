@@ -149,6 +149,10 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.signals.quality': 'Kvalita / jistota',
   'master.intelligence.vsi.signals.observedAt': 'Poslední pozorování (UTC + místní)',
   'master.intelligence.vsi.signals.limitations': 'Omezení',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Neplatí (pohon)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nikdy pozorováno',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Pozorováno',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Pozorováno (zastaralé)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Otáčky motoru (RPM) používají dvě oddělené vrstvy evidence. Stav snímku pochází z nejnovějšího balíčku vehicle latest state; HF/kadence z mirrorovaných HF bodů a dokončených jízd. Nejsou zaměnitelné.',

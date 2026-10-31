@@ -150,6 +150,10 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.signals.quality': 'Kwaliteit / vertrouwen',
   'master.intelligence.vsi.signals.observedAt': 'Laatste waarneming (UTC + lokaal)',
   'master.intelligence.vsi.signals.limitations': 'Beperkingen',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Niet van toepassing (aandrijflijn)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nooit waargenomen',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Waargenomen',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Waargenomen (verouderd)',
 
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Motortoerental (RPM) gebruikt twee aparte bewijslagen. Snapshotstatus komt uit de nieuwste vehicle-latest-state-bundle; HF/cadans uit gespiegelde HF-punten en afgeronde ritten. Ze zijn niet uitwisselbaar.',

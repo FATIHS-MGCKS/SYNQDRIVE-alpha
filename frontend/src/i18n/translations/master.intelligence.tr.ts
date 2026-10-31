@@ -149,6 +149,10 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.signals.provider': 'Sağlayıcı adı',
   'master.intelligence.vsi.signals.quality': 'Kalite / güven',
   'master.intelligence.vsi.signals.observedAt': 'Son gözlem (UTC + yerel)',
+  'master.intelligence.vsi.signals.empirical.NOT_APPLICABLE': 'Uygulanamaz (tahrik)',
+  'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Hiç gözlemlenmedi',
+  'master.intelligence.vsi.signals.empirical.OBSERVED': 'Gözlemlendi',
+  'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Gözlemlendi (eski)',
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Motor devri (RPM) iki ayrı kanıt düzlemi kullanır. Anlık görüntü durumu en son vehicle latest state paketinden gelir; HF/kadans yansıtılmış yüksek frekanslı noktalardan ve tamamlanan seferlerden gelir. Birbirinin yerine geçmez.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Anlık görüntü (vehicle latest state)',
