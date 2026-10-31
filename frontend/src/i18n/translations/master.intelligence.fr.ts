@@ -322,4 +322,27 @@ export const masterIntelligenceFr = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} liens source — les preuves concernent uniquement le lien sélectionné.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} signaux · révision profil {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Résumé des preuves',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Chronologie des preuves',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Voies de provenance',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'Détail preuve RPM',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'Détail cadence LV',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Limitations',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profil évalué le',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Véhicule',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Lien source',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Révision profil {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'Profil standby LV',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Décision de classification',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Confiance de preuve',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Échantillons observés',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Aucune intelligence cadence LV pour ce signal.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Régimes de cadence disponibles',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Résolution de tier',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Libellé de densité observée',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Attribution et limites de lien',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Autres limitations',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Le signal sélectionné est masqué par les filtres. Ajustez les filtres ou effacez la sélection.',
 } as const;

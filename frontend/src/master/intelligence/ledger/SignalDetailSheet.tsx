@@ -23,6 +23,8 @@ export type SignalDetailSheetProps = {
   hasPrevious?: boolean;
   hasNext?: boolean;
   className?: string;
+  /** Radix Dialog close focus — use to restore ledger row focus. */
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 export function SignalDetailSheet({
@@ -37,6 +39,7 @@ export function SignalDetailSheet({
   hasPrevious = false,
   hasNext = false,
   className,
+  onCloseAutoFocus,
 }: SignalDetailSheetProps) {
   const { t } = useLanguage();
 
@@ -45,6 +48,7 @@ export function SignalDetailSheet({
       <SheetContent
         side="right"
         showCloseButton
+        onCloseAutoFocus={onCloseAutoFocus}
         {...(!description ? { 'aria-describedby': undefined } : {})}
         className={cn(
           'flex w-full flex-col gap-0 p-0 sm:max-w-none',

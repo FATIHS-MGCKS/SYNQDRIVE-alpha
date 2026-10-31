@@ -28,7 +28,11 @@ import {
 import type { MasterVsiProfileSummaryDto } from './vsi-master-intelligence-api.types';
 import { resolvePhysicalDeviceIdForVehicle } from './resolve-vehicle-physical-device';
 import { VsiSignalLedgerTab } from './ledger/VsiSignalLedgerTab';
-import { EMPTY_VSI_LEDGER_FILTERS, type VsiIntelligenceTab } from './vsi-ledger-url.types';
+import {
+  EMPTY_VSI_LEDGER_FILTERS,
+  type VsiIntelligenceTab,
+  type VsiLedgerFilterState,
+} from './vsi-ledger-url.types';
 import {
   ledgerContextForVehicleChange,
   pruneLedgerFiltersForSignals,
@@ -256,29 +260,45 @@ function VsiMasterIntelligenceContent() {
     [setContextInUrl],
   );
 
+  const ledgerFilters = context.ledgerFilters;
   const onFiltersChange = useCallback(
-    (patch: Partial<typeof context.ledgerFilters>) => {
-      setContextInUrl(
-        { ledgerFilters: { ...context.ledgerFilters, ...patch } },
-        { replace: true },
-      );
+    (patch: Partial<VsiLedgerFilterState>) => {
+      setContextInUrl({ ledgerFilters: { ...ledgerFilters, ...patch } }, { replace: true });
     },
-    [context.ledgerFilters, setContextInUrl],
+    [ledgerFilters, setContextInUrl],
   );
 
   const onFiltersClear = useCallback(() => {
     setContextInUrl({ ledgerFilters: { ...EMPTY_VSI_LEDGER_FILTERS } }, { replace: true });
   }, [setContextInUrl]);
 
-  const onSelectSignal = useCallback(
+  const onOpenSignal = useCallback(
     (canonicalSignalKey: string) => {
-      setContextInUrl(
-        { signalKey: canonicalSignalKey, vsiTab: 'ledger' },
-        { replace: true },
-      );
+      setContextInUrl({ signalKey: canonicalSignalKey, vsiTab: 'ledger' });
     },
     [setContextInUrl],
   );
+
+  const onCloseSignal = useCallback(() => {
+    setContextInUrl({ signalKey: null }, { replace: true });
+  }, [setContextInUrl]);
+
+  const onNavigateSignal = useCallback(
+    (canonicalSignalKey: string) => {
+      setContextInUrl({ signalKey: canonicalSignalKey, vsiTab: 'ledger' }, { replace: true });
+    },
+    [setContextInUrl],
+  );
+
+  const vehicleContextLabel = useMemo(() => {
+    const v = vehicleOptions.find((o) => o.id === context.vehicleId);
+    return v?.label ?? context.vehicleId;
+  }, [vehicleOptions, context.vehicleId]);
+
+  const linkContextLabel = useMemo(() => {
+    const link = linkOptions.find((l) => l.id === selectedLinkId);
+    return link?.label ?? selectedLinkId;
+  }, [linkOptions, selectedLinkId]);
 
   const hasScope = Boolean(context.orgId && context.vehicleId);
   const activeTab = context.vsiTab;
@@ -442,7 +462,11 @@ function VsiMasterIntelligenceContent() {
               onFiltersChange={onFiltersChange}
               onFiltersClear={onFiltersClear}
               selectedSignalKey={context.signalKey}
-              onSelectSignal={onSelectSignal}
+              onOpenSignal={onOpenSignal}
+              onCloseSignal={onCloseSignal}
+              onNavigateSignal={onNavigateSignal}
+              vehicleContextLabel={vehicleContextLabel ?? null}
+              linkContextLabel={linkContextLabel ?? null}
               formatTimestamp={formatTimestamp}
             />
           ) : !loading && !error ? (

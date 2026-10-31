@@ -12,6 +12,9 @@ export { limitationCodesGrouped } from './limitation-group.util';
 export { EvidenceTimestamp } from './EvidenceTimestamp';
 export type { EvidenceTimestampKind } from './EvidenceTimestamp';
 export { SignalDetailSheet } from './SignalDetailSheet';
+export { VsiSignalDetailContent } from './VsiSignalDetailContent';
+export { parseLvCadenceEvidence } from './parse-lv-cadence-evidence.util';
+export { parseRpmCadenceDetail } from './parse-rpm-cadence-detail.util';
 export {
   dimensionLabelKey,
   dimensionValueKey,
