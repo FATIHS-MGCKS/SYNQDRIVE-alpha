@@ -141,5 +141,6 @@ function makeSyntheticPoint(recordedAtMs: number, valueRpm: number): HfTripRpmPo
     orgId: 'org-fixture',
     vehicleId: 'vehicle-fixture',
     tripId: 'trip-fixture',
+    tokenId: null,
   };
 }
