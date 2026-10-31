@@ -181,6 +181,15 @@ export const masterIntelligenceEn = {
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Observed',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Observed (stale)',
 
+  'master.intelligence.vsi.signals.rpmCombined.heading': 'Combined RPM availability (derived)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Proven live (fresh snapshot)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_HISTORICAL_ONLY':
+    'Proven historical only (HF cadence; snapshot not live)',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_PROVEN': 'Not proven',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_APPLICABLE': 'Not applicable (powertrain)',
+  'master.intelligence.vsi.signals.rpmCombined.attributionLimited':
+    'HF evidence not attributed to this source link',
+
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Engine RPM uses two separate evidence planes. Snapshot status comes from the latest vehicle latest-state bundle; HF/cadence status comes from mirrored high-frequency points and finalized trips. They are not interchangeable.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (vehicle latest state)',

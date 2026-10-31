@@ -38,6 +38,8 @@ export type VsiEngineRpmDualProvenanceView = {
   cadence: VsiEngineRpmCadenceEvidenceView;
   profileEvaluatedAt: string | null;
   rpmApplicability: MasterVsiProfileSummaryDto['rpmApplicability'];
+  combinedEvidenceAvailabilityV1: MasterVsiSignalDetailDto['rpmCombinedEvidenceAvailabilityV1'];
+  combinedEvidenceLimitationsV1: string[];
   showDualPanel: boolean;
 };
 
@@ -142,6 +144,8 @@ export function buildEngineRpmDualProvenanceView(
       signal.powertrainApplicability === 'NOT_APPLICABLE'
         ? 'NOT_APPLICABLE'
         : profile.rpmApplicability,
+    combinedEvidenceAvailabilityV1: signal.rpmCombinedEvidenceAvailabilityV1 ?? null,
+    combinedEvidenceLimitationsV1: signal.rpmCombinedEvidenceLimitationsV1 ?? [],
     showDualPanel: signal.canonicalSignalKey === ENGINE_RPM_CANONICAL_KEY,
   };
 }

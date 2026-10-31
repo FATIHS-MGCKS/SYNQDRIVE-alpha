@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-30 (P1-c signal powertrain applicability; P1-b provider fetch meta quality; P1-a cadence provenance dedup; P0-a audit) |
+| **Last updated** | 2026-10-31 (P1-d RPM combined dual-lane evidence; P1-c signal powertrain applicability; P0-a audit follow-ups) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -115,6 +115,7 @@
 - **P1-a cadence provenance dedup** — PR #2263; cadence analyzer provenance tags deduped (FC-PROV-DEDUP).
 - **P1-b provider fetch meta quality** — PR #2265; `provider_last_successful_fetch` fetch-recency quality (FC-FETCH-QUALITY).
 - **P1-c signal powertrain applicability** — `NOT_APPLICABLE` empirical status from `vehicle.fuelType` + registry `iceOnly`/`evOnly`; fixes five P0-a MISLEADING rows (FC-APPLICABILITY); evidence [`evidence/VSI_P1C_SIGNAL_APPLICABILITY_2026-10-30.md`](evidence/VSI_P1C_SIGNAL_APPLICABILITY_2026-10-30.md).
+- **P1-d RPM combined dual-lane evidence** — additive `rpmCombinedEvidenceAvailabilityV1` on Master read `engine_rpm` (lanes unchanged); Audi reference → `PROVEN_HISTORICAL_ONLY`; evidence [`evidence/VSI_P1D_RPM_EVIDENCE_QUALITY_2026-10-31.md`](evidence/VSI_P1D_RPM_EVIDENCE_QUALITY_2026-10-31.md).
 
 ## Explicit non-goals (this slice)
 

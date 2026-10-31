@@ -154,6 +154,15 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Pozorováno',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Pozorováno (zastaralé)',
 
+  'master.intelligence.vsi.signals.rpmCombined.heading': 'Kombinovaná dostupnost RPM (odvozená)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Prokázáno live (čerstvý snapshot)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_HISTORICAL_ONLY':
+    'Pouze historicky prokázáno (HF kadence; snapshot není live)',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_PROVEN': 'Neprokázáno',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_APPLICABLE': 'Neplatí (pohon)',
+  'master.intelligence.vsi.signals.rpmCombined.attributionLimited':
+    'HF evidence není přiřazena k tomuto source link',
+
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Otáčky motoru (RPM) používají dvě oddělené vrstvy evidence. Stav snímku pochází z nejnovějšího balíčku vehicle latest state; HF/kadence z mirrorovaných HF bodů a dokončených jízd. Nejsou zaměnitelné.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snímek (vehicle latest state)',

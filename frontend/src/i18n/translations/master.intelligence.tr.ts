@@ -153,6 +153,16 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Hiç gözlemlenmedi',
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Gözlemlendi',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Gözlemlendi (eski)',
+
+  'master.intelligence.vsi.signals.rpmCombined.heading': 'Birleşik RPM kullanılabilirliği (türetilmiş)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Canlı kanıtlandı (taze snapshot)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_HISTORICAL_ONLY':
+    'Yalnızca geçmişte kanıtlandı (HF kadans; snapshot canlı değil)',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_PROVEN': 'Kanıtlanmadı',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_APPLICABLE': 'Uygulanamaz (tahrik)',
+  'master.intelligence.vsi.signals.rpmCombined.attributionLimited':
+    'HF kanıtı bu source link ile ilişkilendirilmedi',
+
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Motor devri (RPM) iki ayrı kanıt düzlemi kullanır. Anlık görüntü durumu en son vehicle latest state paketinden gelir; HF/kadans yansıtılmış yüksek frekanslı noktalardan ve tamamlanan seferlerden gelir. Birbirinin yerine geçmez.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Anlık görüntü (vehicle latest state)',

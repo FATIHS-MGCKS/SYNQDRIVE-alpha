@@ -97,8 +97,8 @@ describe('vsi-p0a signal integrity audit engine', () => {
     const rpm = rows.find((r) => r.canonicalSignal === 'engine_rpm');
     expect(rpm?.snapshotObservation).toBe('NEVER_OBSERVED');
     expect(rpm?.activeCadenceProfile).toBe('RPM_STANDARD');
-    expect(rpm?.findingClass).toBe('MISLEADING_PRESENTATION');
-    expect(rpm?.evidenceReference).toBe('lane_a_never_observed_lane_b_hf_rpm_profile');
+    expect(rpm?.findingClass).toBe('EXPECTED_BEHAVIOR');
+    expect(rpm?.evidenceReference).toBe('rpm_dual_lane_combined_historical_only_v1');
   });
 
   it('Tesla: engine_rpm and fuel_level are NOT_APPLICABLE when fuel type is ELECTRIC', () => {

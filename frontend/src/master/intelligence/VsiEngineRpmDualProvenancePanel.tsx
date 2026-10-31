@@ -9,7 +9,8 @@ type Props = {
 };
 
 export function VsiEngineRpmDualProvenancePanel({ dual, formatTimestamp, t }: Props) {
-  const { snapshot, cadence, profileEvaluatedAt, rpmApplicability } = dual;
+  const { snapshot, cadence, profileEvaluatedAt, rpmApplicability, combinedEvidenceAvailabilityV1 } =
+    dual;
 
   return (
     <div
@@ -17,6 +18,15 @@ export function VsiEngineRpmDualProvenancePanel({ dual, formatTimestamp, t }: Pr
       data-testid="vsi-engine-rpm-dual-provenance"
     >
       <p className="text-muted-foreground">{t('master.intelligence.vsi.signals.rpmDual.intro')}</p>
+
+      {combinedEvidenceAvailabilityV1 ? (
+        <p className="font-medium" data-testid="vsi-rpm-combined-evidence">
+          {t('master.intelligence.vsi.signals.rpmCombined.heading' as never)}:{' '}
+          {t(
+            `master.intelligence.vsi.signals.rpmCombined.${combinedEvidenceAvailabilityV1}` as never,
+          )}
+        </p>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
         <section aria-labelledby="vsi-rpm-snapshot-heading">
