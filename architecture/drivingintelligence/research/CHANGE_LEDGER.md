@@ -2603,3 +2603,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | **No** `DS4_RPM_HF_V1B_*` changes; **no** deploy/canary activation; **no** DS4/Tire/Impact; **no** spec-revision replay/backfill |
 | REMAINING | P4 DS4 optional consumer; production attach flag remains OFF until owner scope |
 
+### 2026-10-31 — DS4 Layer-2 P4B event kinematics evidence sidecar (research)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Read-only P4B sidecar `DS4_LAYER2_P4B_EVENT_KINEMATICS_EVIDENCE_V1`: pinned payload loader, strict P2 join (`tripId`+`sourceMotionRunId`+`eventIndex`), boundary/window speed evidence, peak explicitly unavailable |
+| WHY | Persisted Motion V2 payloads carry boundary speeds; peaks excluded from shadow contract — versioned research artifacts without mutating P2 or motion-core |
+| VALIDATION | `npm run test:di:ds4-layer2-p4b-event-speed`; CLI `npm run research:ds4-layer2-p4b-event-speed` (read-only DB) |
+| NON_EFFECTS | **No** production writes/deploy; **no** motion-core/admission/P2 CSV changes; **no** peak reconstruction |
+| REMAINING | Empirical 129-event sidecar from Production DB requires operator `DATABASE_URL` CLI run; peaks remain unavailable until contract extension |
+

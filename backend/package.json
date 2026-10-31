@@ -182,6 +182,8 @@
     "test:di:ds4-layer2-p2-offline": "jest ds4-layer2-p2-offline-reconstruction --runInBand",
     "test:di:ds4-layer2-p3c-physics": "jest ds4-layer2-p3c-physics-diagnostics --runInBand",
     "research:ds4-layer2-p3c-physics": "ts-node -r tsconfig-paths/register scripts/research/ds4-layer2-p3c-offline-physics-diagnostics.cli.ts",
+    "test:di:ds4-layer2-p4b-event-speed": "jest ds4-layer2-p4b-event-kinematics-evidence --runInBand",
+    "research:ds4-layer2-p4b-event-speed": "ts-node -r tsconfig-paths/register scripts/research/ds4-layer2-p4b-event-speed-sidecar.cli.ts",
     "research:ds4-layer2-export": "ts-node scripts/research/ds4-layer2-historical-export.cli.ts",
     "test:di:ds4-assessment:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 DI_V0_DS4_ASSESSMENT_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-outbox.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-worker.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/ds4-assessment/__tests__/ds4-assessment-processor-tenancy.postgres.integration.spec.ts",
     "test:di:ds4-assessment:postgres:ci": "DI_V0_S4A_POSTGRES_REQUIRED=1 bash scripts/test/di-v0-ds4-assessment-postgres-ci.sh",
