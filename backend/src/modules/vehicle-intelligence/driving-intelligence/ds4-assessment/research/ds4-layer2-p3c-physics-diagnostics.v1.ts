@@ -5,11 +5,12 @@ import type {
   Ds4Layer2P2AssessmentTripRowV1,
   Ds4Layer2P3cEventDiagnosticRowV1,
   Ds4Layer2P3cLimitationReasonV1,
+  Ds4Layer2P3cNumericDiagnosticAvailabilityV1,
   Ds4Layer2P3cPhysicsContextRowV1,
-  Ds4Layer2P3cPhysicsDiagnosticAvailabilityV1,
   Ds4Layer2P3cSidecarBuildInputV1,
   Ds4Layer2P3cSidecarArtifactsV1,
   Ds4Layer2P3cTemporalReferenceEvidenceV1,
+  Ds4Layer2P3cVehicleReferenceResolutionV1,
 } from './ds4-layer2-p3c-physics-diagnostics.v1.contract';
 import {
   DS4_LAYER2_P3C_PHYSICS_DIAGNOSTICS_SCHEMA_VERSION_V1,
@@ -21,10 +22,10 @@ import {
   physicsReferenceAllowsDiagnostics,
   resolveMotionPhysicsForTripWindowV1,
 } from './ds4-layer2-p3c-temporal-motion-physics.v1';
-import type {
-  Ds4Layer2MotionPhysicsContextReferenceSnapshotV1,
-  Ds4Layer2MotionPhysicsContextVehicleSnapshotV1,
-} from './ds4-layer2-p3-motion-physics-context.v1.contract';
+import {
+  classifyDs4Layer2P3cTemporalProvenanceV1,
+  provenanceLimitationReasons,
+} from './ds4-layer2-p3c-temporal-provenance.v1';
 
 const IMPULSE_TOLERANCE = 1e-3;
 
@@ -83,10 +84,9 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
   assessmentTrips: readonly Ds4Layer2P2AssessmentTripRowV1[];
   resolveVehicleReference(input: {
     vehicleId: string;
-  }): Promise<{
-    vehicle: Ds4Layer2MotionPhysicsContextVehicleSnapshotV1;
-    reference: Ds4Layer2MotionPhysicsContextReferenceSnapshotV1;
-  } | null>;
+    tripStartUtc: Date;
+    tripEndUtc: Date;
+  }): Promise<Ds4Layer2P3cVehicleReferenceResolutionV1 | null>;
 }): Promise<{
   physicsContextRows: Ds4Layer2P3cPhysicsContextRowV1[];
   eventDiagnosticRows: Ds4Layer2P3cEventDiagnosticRowV1[];
@@ -106,6 +106,9 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
 
   const availabilityCounts: Record<string, number> = {};
   const unavailableByReason: Record<string, number> = {};
+  const temporalProvenanceCounts: Record<string, number> = {};
+  let historicalEvidenceSupportedCount = 0;
+  let retrospectiveCount = 0;
 
   for (const trip of input.assessmentTrips) {
     const tripEvents = eventsByTrip.get(trip.tripId) ?? [];
@@ -114,8 +117,15 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
     const tripStartUtc = new Date(Math.min(...starts));
     const tripEndUtc = new Date(Math.max(...ends));
 
-    const resolved = await input.resolveVehicleReference({ vehicleId: trip.vehicleId });
-    if (resolved == null) {
+    const resolution = await input.resolveVehicleReference({
+      vehicleId: trip.vehicleId,
+      tripStartUtc,
+      tripEndUtc,
+    });
+
+    if (resolution == null || resolution.reference == null) {
+      const temporalProvenance = 'REFERENCE_UNAVAILABLE' as const;
+      temporalProvenanceCounts[temporalProvenance] = (temporalProvenanceCounts[temporalProvenance] ?? 0) + 1;
       physicsContextRows.push({
         organizationId: input.organizationId,
         vehicleId: trip.vehicleId,
@@ -123,20 +133,34 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
         tripStartUtc: tripStartUtc.toISOString(),
         tripEndUtc: tripEndUtc.toISOString(),
         motionReferenceId: null,
+        referenceResolutionSource: resolution?.resolutionSource ?? 'PERSISTED_POINT_IN_TIME',
         referenceApplicability: 'MISSING',
         referenceEvidenceTier: null,
         referenceEffectiveFrom: null,
         referenceEffectiveTo: null,
+        referenceCreatedAtUtc: resolution?.referenceCreatedAtUtc ?? null,
         temporalReferenceEvidence: 'TEMPORAL_AMBIGUOUS',
+        temporalProvenance,
+        historicalEvidenceSupported: false,
         currentReferenceApplicability: 'MISSING',
         avgAccelReferenceMps2: null,
         curbMassKg: null,
-        limitationReasonsJson: jsonReasons(['REFERENCE_APPLICABILITY_BLOCKED']),
+        limitationReasonsJson: jsonReasons([
+          'REFERENCE_APPLICABILITY_BLOCKED',
+          'HISTORICAL_APPLICABILITY_NOT_EVIDENCED',
+        ]),
       });
       for (const ev of tripEvents) {
-        eventDiagnosticRows.push(unavailableEventRow(ev, 'MISSING', 'TEMPORAL_AMBIGUOUS', [
-          'REFERENCE_APPLICABILITY_BLOCKED',
-        ]));
+        eventDiagnosticRows.push(
+          unavailableEventRow(ev, {
+            applicability: 'MISSING',
+            temporal: 'TEMPORAL_AMBIGUOUS',
+            temporalProvenance,
+            historicalEvidenceSupported: false,
+            referenceEvidenceTier: null,
+            reasons: ['REFERENCE_APPLICABILITY_BLOCKED', 'HISTORICAL_APPLICABILITY_NOT_EVIDENCED'],
+          }),
+        );
       }
       continue;
     }
@@ -146,11 +170,33 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
       vehicleId: trip.vehicleId,
       tripStartUtc,
       tripEndUtc,
-      vehicle: resolved.vehicle,
-      reference: resolved.reference,
+      vehicle: resolution.vehicle,
+      reference: resolution.reference,
     });
 
-    const ctxReasons = referenceLimitations(atTripEnd);
+    const { temporalProvenance, historicalEvidenceSupported } = classifyDs4Layer2P3cTemporalProvenanceV1({
+      resolutionSource: resolution.resolutionSource,
+      referenceCreatedAtUtc: resolution.referenceCreatedAtUtc
+        ? new Date(resolution.referenceCreatedAtUtc)
+        : null,
+      tripStartUtc,
+      tripEndUtc,
+      temporalReferenceEvidence: temporalEvidence,
+      atTripEnd,
+    });
+
+    temporalProvenanceCounts[temporalProvenance] = (temporalProvenanceCounts[temporalProvenance] ?? 0) + 1;
+    if (historicalEvidenceSupported) historicalEvidenceSupportedCount += 1;
+    if (temporalProvenance === 'RETROSPECTIVE_REFERENCE') retrospectiveCount += 1;
+
+    const ctxReasons: Ds4Layer2P3cLimitationReasonV1[] = [
+      ...referenceLimitations(atTripEnd),
+      ...provenanceLimitationReasons({
+        temporalProvenance,
+        historicalEvidenceSupported,
+        referenceApplicability: atTripEnd.applicability,
+      }),
+    ];
     if (temporalEvidence !== 'EFFECTIVE_AT_TRIP_END') {
       ctxReasons.push('TEMPORAL_REFERENCE_NOT_APPLICABLE_AT_TRIP');
     }
@@ -212,11 +258,15 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
       tripStartUtc: tripStartUtc.toISOString(),
       tripEndUtc: tripEndUtc.toISOString(),
       motionReferenceId: atTripEnd.motionReferenceId,
+      referenceResolutionSource: resolution.resolutionSource,
       referenceApplicability: atTripEnd.applicability,
       referenceEvidenceTier: atTripEnd.evidenceTier,
       referenceEffectiveFrom: atTripEnd.effectiveFrom,
       referenceEffectiveTo: atTripEnd.effectiveTo,
+      referenceCreatedAtUtc: resolution.referenceCreatedAtUtc,
       temporalReferenceEvidence: temporalEvidence,
+      temporalProvenance,
+      historicalEvidenceSupported,
       currentReferenceApplicability: atNow.applicability,
       avgAccelReferenceMps2: avgRef,
       curbMassKg: curbMass,
@@ -228,14 +278,16 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
         ev,
         atTripEnd,
         temporalEvidence,
+        temporalProvenance,
+        historicalEvidenceSupported,
         avgRef,
         curbMass,
         diagnosticsAllowed,
       });
       eventDiagnosticRows.push(row);
-      availabilityCounts[row.diagnosticAvailability] =
-        (availabilityCounts[row.diagnosticAvailability] ?? 0) + 1;
-      if (row.diagnosticAvailability === 'UNAVAILABLE') {
+      availabilityCounts[row.numericDiagnosticAvailability] =
+        (availabilityCounts[row.numericDiagnosticAvailability] ?? 0) + 1;
+      if (row.numericDiagnosticAvailability === 'UNAVAILABLE') {
         const parsed = JSON.parse(row.limitationReasonsJson) as string[];
         for (const reason of parsed) {
           unavailableByReason[reason] = (unavailableByReason[reason] ?? 0) + 1;
@@ -256,7 +308,10 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
     limitationRows,
     summary: {
       admissibleP2EventCount: input.admissibleEvents.length,
-      eventDiagnosticAvailabilityCounts: availabilityCounts,
+      numericDiagnosticAvailabilityCounts: availabilityCounts,
+      temporalProvenanceCounts,
+      historicalEvidenceSupportedTripCount: historicalEvidenceSupportedCount,
+      retrospectiveReferenceTripCount: retrospectiveCount,
       unavailableByReason,
       tripCount: input.assessmentTrips.length,
     },
@@ -265,9 +320,14 @@ export async function buildDs4Layer2P3cPhysicsDiagnosticsV1(input: {
 
 function unavailableEventRow(
   ev: Ds4Layer2P2AdmissibleEventRowV1,
-  applicability: Ds4Layer2MotionPhysicsContextV1['applicability'],
-  temporal: Ds4Layer2P3cTemporalReferenceEvidenceV1,
-  reasons: Ds4Layer2P3cLimitationReasonV1[],
+  input: {
+    applicability: Ds4Layer2MotionPhysicsContextV1['applicability'];
+    temporal: Ds4Layer2P3cTemporalReferenceEvidenceV1;
+    temporalProvenance: import('./ds4-layer2-p3c-physics-diagnostics.v1.contract').Ds4Layer2P3cTemporalProvenanceV1;
+    historicalEvidenceSupported: boolean;
+    referenceEvidenceTier: string | null;
+    reasons: Ds4Layer2P3cLimitationReasonV1[];
+  },
 ): Ds4Layer2P3cEventDiagnosticRowV1 {
   return {
     tripId: ev.tripId,
@@ -282,10 +342,13 @@ function unavailableEventRow(
     avgAccelReferenceMps2: null,
     accelRatioToReference: null,
     estimatedNetLongitudinalForceN: null,
-    diagnosticAvailability: 'UNAVAILABLE',
-    referenceApplicability: applicability,
-    temporalReferenceEvidence: temporal,
-    limitationReasonsJson: jsonReasons(reasons),
+    numericDiagnosticAvailability: 'UNAVAILABLE',
+    referenceEvidenceTier: input.referenceEvidenceTier,
+    referenceApplicability: input.applicability,
+    temporalReferenceEvidence: input.temporal,
+    temporalProvenance: input.temporalProvenance,
+    historicalEvidenceSupported: input.historicalEvidenceSupported,
+    limitationReasonsJson: jsonReasons(input.reasons),
   };
 }
 
@@ -293,28 +356,46 @@ function buildEventDiagnosticRow(input: {
   ev: Ds4Layer2P2AdmissibleEventRowV1;
   atTripEnd: Ds4Layer2MotionPhysicsContextV1;
   temporalEvidence: Ds4Layer2P3cTemporalReferenceEvidenceV1;
+  temporalProvenance: import('./ds4-layer2-p3c-physics-diagnostics.v1.contract').Ds4Layer2P3cTemporalProvenanceV1;
+  historicalEvidenceSupported: boolean;
   avgRef: number | null;
   curbMass: number | null;
   diagnosticsAllowed: boolean;
 }): Ds4Layer2P3cEventDiagnosticRowV1 {
-  const reasons: Ds4Layer2P3cLimitationReasonV1[] = [...referenceLimitations(input.atTripEnd)];
+  const reasons: Ds4Layer2P3cLimitationReasonV1[] = [
+    ...referenceLimitations(input.atTripEnd),
+    ...provenanceLimitationReasons({
+      temporalProvenance: input.temporalProvenance,
+      historicalEvidenceSupported: input.historicalEvidenceSupported,
+      referenceApplicability: input.atTripEnd.applicability,
+    }),
+  ];
 
   if (!input.diagnosticsAllowed) {
     if (input.temporalEvidence !== 'EFFECTIVE_AT_TRIP_END') {
       reasons.push('TEMPORAL_REFERENCE_NOT_APPLICABLE_AT_TRIP');
     }
-    return unavailableEventRow(
-      input.ev,
-      input.atTripEnd.applicability,
-      input.temporalEvidence,
-      reasons.length ? reasons : ['REFERENCE_APPLICABILITY_BLOCKED'],
-    );
+    return unavailableEventRow(input.ev, {
+      applicability: input.atTripEnd.applicability,
+      temporal: input.temporalEvidence,
+      temporalProvenance: input.temporalProvenance,
+      historicalEvidenceSupported: input.historicalEvidenceSupported,
+      referenceEvidenceTier: input.atTripEnd.evidenceTier,
+      reasons: reasons.length ? reasons : ['REFERENCE_APPLICABILITY_BLOCKED'],
+    });
   }
 
   const signed = signedMeanAccel(input.ev.eventKind, input.ev.meanAccelMps2);
   if (signed == null) {
     reasons.push('NON_FINITE_EVENT_ACCEL');
-    return unavailableEventRow(input.ev, input.atTripEnd.applicability, input.temporalEvidence, reasons);
+    return unavailableEventRow(input.ev, {
+      applicability: input.atTripEnd.applicability,
+      temporal: input.temporalEvidence,
+      temporalProvenance: input.temporalProvenance,
+      historicalEvidenceSupported: input.historicalEvidenceSupported,
+      referenceEvidenceTier: input.atTripEnd.evidenceTier,
+      reasons,
+    });
   }
 
   let accelRatio: number | null = null;
@@ -336,7 +417,7 @@ function buildEventDiagnosticRow(input: {
   }
 
   const hasPrimaryDiagnostic = forceN != null || (accelRatio != null && input.ev.eventKind === 'ACCELERATION');
-  const availability: Ds4Layer2P3cPhysicsDiagnosticAvailabilityV1 = hasPrimaryDiagnostic
+  const availability: Ds4Layer2P3cNumericDiagnosticAvailabilityV1 = hasPrimaryDiagnostic
     ? 'AVAILABLE'
     : 'UNAVAILABLE';
 
@@ -353,9 +434,12 @@ function buildEventDiagnosticRow(input: {
     avgAccelReferenceMps2: input.avgRef,
     accelRatioToReference: accelRatio,
     estimatedNetLongitudinalForceN: forceN,
-    diagnosticAvailability: availability,
+    numericDiagnosticAvailability: availability,
+    referenceEvidenceTier: input.atTripEnd.evidenceTier,
     referenceApplicability: input.atTripEnd.applicability,
     temporalReferenceEvidence: input.temporalEvidence,
+    temporalProvenance: input.temporalProvenance,
+    historicalEvidenceSupported: input.historicalEvidenceSupported,
     limitationReasonsJson: jsonReasons(reasons),
   };
 }
@@ -387,11 +471,15 @@ export function buildDs4Layer2P3cSidecarArtifactsV1(
     'trip_start_utc',
     'trip_end_utc',
     'motion_reference_id',
+    'reference_resolution_source',
     'reference_applicability',
     'reference_evidence_tier',
     'reference_effective_from',
     'reference_effective_to',
+    'reference_created_at_utc',
     'temporal_reference_evidence',
+    'temporal_provenance',
+    'historical_evidence_supported',
     'current_reference_applicability',
     'avg_accel_reference_mps2',
     'curb_mass_kg',
@@ -411,9 +499,12 @@ export function buildDs4Layer2P3cSidecarArtifactsV1(
     'avg_accel_reference_mps2',
     'accel_ratio_to_reference',
     'estimated_net_longitudinal_force_n',
-    'diagnostic_availability',
+    'numeric_diagnostic_availability',
+    'reference_evidence_tier',
     'reference_applicability',
     'temporal_reference_evidence',
+    'temporal_provenance',
+    'historical_evidence_supported',
     'limitation_reasons_json',
   ] as const;
 
@@ -429,11 +520,15 @@ export function buildDs4Layer2P3cSidecarArtifactsV1(
             trip_start_utc: row.tripStartUtc,
             trip_end_utc: row.tripEndUtc,
             motion_reference_id: row.motionReferenceId,
+            reference_resolution_source: row.referenceResolutionSource,
             reference_applicability: row.referenceApplicability,
             reference_evidence_tier: row.referenceEvidenceTier,
             reference_effective_from: row.referenceEffectiveFrom,
             reference_effective_to: row.referenceEffectiveTo,
+            reference_created_at_utc: row.referenceCreatedAtUtc,
             temporal_reference_evidence: row.temporalReferenceEvidence,
+            temporal_provenance: row.temporalProvenance,
+            historical_evidence_supported: row.historicalEvidenceSupported,
             current_reference_applicability: row.currentReferenceApplicability,
             avg_accel_reference_mps2: row.avgAccelReferenceMps2,
             curb_mass_kg: row.curbMassKg,
@@ -464,9 +559,12 @@ export function buildDs4Layer2P3cSidecarArtifactsV1(
             avg_accel_reference_mps2: row.avgAccelReferenceMps2,
             accel_ratio_to_reference: row.accelRatioToReference,
             estimated_net_longitudinal_force_n: row.estimatedNetLongitudinalForceN,
-            diagnostic_availability: row.diagnosticAvailability,
+            numeric_diagnostic_availability: row.numericDiagnosticAvailability,
+            reference_evidence_tier: row.referenceEvidenceTier,
             reference_applicability: row.referenceApplicability,
             temporal_reference_evidence: row.temporalReferenceEvidence,
+            temporal_provenance: row.temporalProvenance,
+            historical_evidence_supported: row.historicalEvidenceSupported,
             limitation_reasons_json: row.limitationReasonsJson,
           };
           return csvCell(map[c]);

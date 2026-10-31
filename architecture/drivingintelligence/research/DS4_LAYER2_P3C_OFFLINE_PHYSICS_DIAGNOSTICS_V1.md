@@ -30,7 +30,19 @@ Attach versioned Motion Physics diagnostics to the **pinned 11-trip P2 cohort** 
 
 ## Temporal gates
 
-Reference resolved at **trip end** (`asOfUtc`). Fail-closed when reference postdates trip, expired before trip, or effective window ambiguous. Distinguishes **trip-time applicability** vs **current** reference row (both exported on context rows).
+Reference resolved at **trip end** (`asOfUtc`) using P3B on the selected row. Window overlap checks (`effectiveFrom` / `effectiveTo`) are **not** historical proof.
+
+**Temporal provenance** (separate from evidence tier and numeric availability):
+
+| Value | Meaning |
+|-------|---------|
+| `HISTORICALLY_EVIDENCED` | Persisted point-in-time row (`PERSISTED_POINT_IN_TIME`) with `createdAt ≤ tripEnd` |
+| `RETROSPECTIVE_REFERENCE` | Fixture snapshot or active-only lookup — exploratory, not historical proof |
+| `TEMPORAL_EVIDENCE_MISSING` | Window/postdate/expiry ambiguity |
+| `IDENTITY_MISMATCH` | Identity gate failure |
+| `REFERENCE_UNAVAILABLE` | No usable row |
+
+Fixture `effectiveFrom` dates are **authoring metadata only** and must not be treated as independently evidenced historical applicability.
 
 ## Outputs
 

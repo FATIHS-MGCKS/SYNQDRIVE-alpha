@@ -59,6 +59,7 @@ describe('DS4 Layer-2 P3C physics diagnostics', () => {
   it('accounts for all 129 admissible events with no Arteon vehicles', async () => {
     const { admissibleEvents, assessmentTrips } = loadDs4Layer2P2PinnedInputsFromDirV1(FIXTURE_P2_DIR);
     const fixture = loadDs4Layer2P3cMotionPhysicsReferenceFixtureV1(REF_FIXTURE);
+    expect(fixture.effectiveFromNotHistoricalEvidence).toBe(true);
     const built = await buildDs4Layer2P3cPhysicsDiagnosticsV1({
       organizationId: 'faa710c9-6d91-4079-a7d5-91fdccdec14a',
       admissibleEvents,
@@ -73,7 +74,41 @@ describe('DS4 Layer-2 P3C physics diagnostics', () => {
     expect(built.summary.admissibleP2EventCount).toBe(129);
   });
 
-  it('preserves Tesla/Audi confirmed and Tiguan estimated applicability', async () => {
+  it('marks fixture cohort as retrospective with no historical evidence support', async () => {
+    const { admissibleEvents, assessmentTrips } = loadDs4Layer2P2PinnedInputsFromDirV1(FIXTURE_P2_DIR);
+    const fixture = loadDs4Layer2P3cMotionPhysicsReferenceFixtureV1(REF_FIXTURE);
+    const built = await buildDs4Layer2P3cPhysicsDiagnosticsV1({
+      organizationId: 'faa710c9-6d91-4079-a7d5-91fdccdec14a',
+      admissibleEvents,
+      assessmentTrips,
+      resolveVehicleReference: createReferenceResolverFromFixtureV1(fixture),
+    });
+
+    expect(built.summary.retrospectiveReferenceTripCount).toBe(11);
+    expect(built.summary.historicalEvidenceSupportedTripCount).toBe(0);
+    for (const row of built.eventDiagnosticRows) {
+      expect(row.temporalProvenance).toBe('RETROSPECTIVE_REFERENCE');
+      expect(row.historicalEvidenceSupported).toBe(false);
+      expect(row.limitationReasonsJson).toContain('RETROSPECTIVE_REFERENCE_PROVENANCE');
+      expect(row.limitationReasonsJson).toContain('HISTORICAL_APPLICABILITY_NOT_EVIDENCED');
+    }
+  });
+
+  it('preserves numeric invariance for all 129 fixture-derived diagnostics', async () => {
+    const { admissibleEvents, assessmentTrips } = loadDs4Layer2P2PinnedInputsFromDirV1(FIXTURE_P2_DIR);
+    const fixture = loadDs4Layer2P3cMotionPhysicsReferenceFixtureV1(REF_FIXTURE);
+    const built = await buildDs4Layer2P3cPhysicsDiagnosticsV1({
+      organizationId: 'faa710c9-6d91-4079-a7d5-91fdccdec14a',
+      admissibleEvents,
+      assessmentTrips,
+      resolveVehicleReference: createReferenceResolverFromFixtureV1(fixture),
+    });
+
+    expect(built.eventDiagnosticRows.every((r) => r.numericDiagnosticAvailability === 'AVAILABLE')).toBe(true);
+    expect(built.eventDiagnosticRows.filter((r) => r.estimatedNetLongitudinalForceN != null)).toHaveLength(129);
+  });
+
+  it('preserves Tesla/Audi confirmed and Tiguan estimated evidence tiers separately from provenance', async () => {
     const { admissibleEvents, assessmentTrips } = loadDs4Layer2P2PinnedInputsFromDirV1(FIXTURE_P2_DIR);
     const fixture = loadDs4Layer2P3cMotionPhysicsReferenceFixtureV1(REF_FIXTURE);
     const built = await buildDs4Layer2P3cPhysicsDiagnosticsV1({
@@ -96,6 +131,7 @@ describe('DS4 Layer-2 P3C physics diagnostics', () => {
     expect(teslaCtx?.referenceApplicability).toBe('AVAILABLE_CONFIRMED_UNVERIFIED');
     expect(audiCtx?.referenceApplicability).toBe('AVAILABLE_CONFIRMED_UNVERIFIED');
     expect(tiguanCtx?.referenceApplicability).toBe('ESTIMATED_ONLY');
+    expect(teslaCtx?.temporalProvenance).toBe('RETROSPECTIVE_REFERENCE');
 
     const tiguanEvent = built.eventDiagnosticRows.find(
       (r) => r.vehicleId === DS4_LAYER2_P2_PINNED_11_VEHICLE_IDS_V1.VW_TIGUAN,
@@ -119,6 +155,7 @@ describe('DS4 Layer-2 P3C physics diagnostics', () => {
     for (const row of brakes) {
       expect(row.accelRatioToReference).toBeNull();
       expect(row.limitationReasonsJson).toContain('BRAKING_EVENT_NO_ACCEL_REFERENCE_RATIO');
+      expect(row.signedMeanAccelMps2).toBeLessThan(0);
     }
   });
 

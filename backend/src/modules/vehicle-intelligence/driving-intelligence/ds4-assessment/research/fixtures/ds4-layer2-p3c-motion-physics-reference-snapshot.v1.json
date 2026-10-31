@@ -1,7 +1,9 @@
 {
   "schemaVersion": "DS4_LAYER2_P3C_MOTION_PHYSICS_REFERENCE_FIXTURE_V1",
   "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
-  "note": "Read-only production-aligned snapshots for pinned P2 cohort research; not live DB.",
+  "referenceInputProvenance": "FIXTURE_SNAPSHOT",
+  "effectiveFromNotHistoricalEvidence": true,
+  "note": "Scalar values are production-aligned for exploratory research. effectiveFrom dates are fixture authoring only and must not be treated as independently evidenced historical applicability.",
   "vehicles": {
     "68868291-5478-42cd-b0c4-cc77b2a78e21": {
       "vehicleLine": "TESLA_MODEL_3",

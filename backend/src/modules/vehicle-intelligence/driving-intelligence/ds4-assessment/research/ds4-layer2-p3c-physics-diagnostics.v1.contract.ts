@@ -1,4 +1,8 @@
 import type { Ds4Layer2MotionPhysicsApplicabilityV1 } from './ds4-layer2-p3-motion-physics-context.v1.contract';
+import type {
+  Ds4Layer2MotionPhysicsContextReferenceSnapshotV1,
+  Ds4Layer2MotionPhysicsContextVehicleSnapshotV1,
+} from './ds4-layer2-p3-motion-physics-context.v1.contract';
 
 export const DS4_LAYER2_P3C_PHYSICS_DIAGNOSTICS_SCHEMA_VERSION_V1 =
   'DS4_LAYER2_P3C_PHYSICS_DIAGNOSTICS_V1' as const;
@@ -12,15 +16,26 @@ export const DS4_LAYER2_P3C_SIDEcar_ARTIFACT_FILES_V1 = [
   'p3c_limitations.csv',
 ] as const;
 
+/** Separate from P3B evidence tier and numeric diagnostic availability. */
+export type Ds4Layer2P3cTemporalProvenanceV1 =
+  | 'HISTORICALLY_EVIDENCED'
+  | 'RETROSPECTIVE_REFERENCE'
+  | 'TEMPORAL_EVIDENCE_MISSING'
+  | 'IDENTITY_MISMATCH'
+  | 'REFERENCE_UNAVAILABLE';
+
+export type Ds4Layer2P3cReferenceResolutionSourceV1 =
+  | 'FIXTURE_SNAPSHOT'
+  | 'PERSISTED_POINT_IN_TIME'
+  | 'PERSISTED_ACTIVE_ONLY';
+
 export type Ds4Layer2P3cTemporalReferenceEvidenceV1 =
   | 'EFFECTIVE_AT_TRIP_END'
   | 'REFERENCE_POSTDATES_TRIP'
   | 'REFERENCE_EXPIRED_BEFORE_TRIP'
   | 'TEMPORAL_AMBIGUOUS';
 
-export type Ds4Layer2P3cPhysicsDiagnosticAvailabilityV1 =
-  | 'AVAILABLE'
-  | 'UNAVAILABLE';
+export type Ds4Layer2P3cNumericDiagnosticAvailabilityV1 = 'AVAILABLE' | 'UNAVAILABLE';
 
 export type Ds4Layer2P3cLimitationReasonV1 =
   | 'REFERENCE_APPLICABILITY_BLOCKED'
@@ -31,7 +46,18 @@ export type Ds4Layer2P3cLimitationReasonV1 =
   | 'NON_FINITE_EVENT_ACCEL'
   | 'BRAKING_EVENT_NO_ACCEL_REFERENCE_RATIO'
   | 'TEMPORAL_REFERENCE_NOT_APPLICABLE_AT_TRIP'
-  | 'P2_IMPULSE_CONSISTENCY_MISMATCH';
+  | 'P2_IMPULSE_CONSISTENCY_MISMATCH'
+  | 'RETROSPECTIVE_REFERENCE_PROVENANCE'
+  | 'HISTORICAL_APPLICABILITY_NOT_EVIDENCED'
+  | 'CONFIRMED_UNVERIFIED_REFERENCE';
+
+export type Ds4Layer2P3cVehicleReferenceResolutionV1 = {
+  vehicle: Ds4Layer2MotionPhysicsContextVehicleSnapshotV1;
+  reference: Ds4Layer2MotionPhysicsContextReferenceSnapshotV1 | null;
+  resolutionSource: Ds4Layer2P3cReferenceResolutionSourceV1;
+  referenceCreatedAtUtc: string | null;
+  selectedFromSupersededRow: boolean;
+};
 
 export type Ds4Layer2P2AdmissibleEventRowV1 = {
   offlineReconstructionKey: string;
@@ -68,11 +94,15 @@ export type Ds4Layer2P3cPhysicsContextRowV1 = {
   tripStartUtc: string;
   tripEndUtc: string;
   motionReferenceId: string | null;
+  referenceResolutionSource: Ds4Layer2P3cReferenceResolutionSourceV1;
   referenceApplicability: Ds4Layer2MotionPhysicsApplicabilityV1;
   referenceEvidenceTier: string | null;
   referenceEffectiveFrom: string | null;
   referenceEffectiveTo: string | null;
+  referenceCreatedAtUtc: string | null;
   temporalReferenceEvidence: Ds4Layer2P3cTemporalReferenceEvidenceV1;
+  temporalProvenance: Ds4Layer2P3cTemporalProvenanceV1;
+  historicalEvidenceSupported: boolean;
   currentReferenceApplicability: Ds4Layer2MotionPhysicsApplicabilityV1;
   avgAccelReferenceMps2: number | null;
   curbMassKg: number | null;
@@ -92,9 +122,12 @@ export type Ds4Layer2P3cEventDiagnosticRowV1 = {
   avgAccelReferenceMps2: number | null;
   accelRatioToReference: number | null;
   estimatedNetLongitudinalForceN: number | null;
-  diagnosticAvailability: Ds4Layer2P3cPhysicsDiagnosticAvailabilityV1;
+  numericDiagnosticAvailability: Ds4Layer2P3cNumericDiagnosticAvailabilityV1;
+  referenceEvidenceTier: string | null;
   referenceApplicability: Ds4Layer2MotionPhysicsApplicabilityV1;
   temporalReferenceEvidence: Ds4Layer2P3cTemporalReferenceEvidenceV1;
+  temporalProvenance: Ds4Layer2P3cTemporalProvenanceV1;
+  historicalEvidenceSupported: boolean;
   limitationReasonsJson: string;
 };
 
