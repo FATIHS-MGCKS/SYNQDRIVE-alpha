@@ -35,3 +35,27 @@ export type {
   Ds4RpmReferenceIntelligenceV1ConsumerReadModel,
   Ds4RpmReferenceIntelligenceV1OptionalAttachment,
 } from './ds4-rpm-reference-intelligence-v1-di-consumer.interface';
+
+export {
+  parseDs4RpmRefIntelV1V1bAttachEnabled,
+  DS4_RPM_REF_INTEL_V1_V1B_ATTACH_ENV,
+} from './ds4-rpm-reference-intelligence-v1-v1b-attach.config';
+
+export {
+  buildDs4RpmReferenceIntelligenceV1ReferenceFromVehicleRow,
+  extractVehicleRpmReferenceFieldProvenance,
+  mapRegistrationFieldProvenanceForRpmReference,
+  type Ds4RpmReferenceIntelligenceV1VehicleReferenceRow,
+} from './ds4-rpm-reference-intelligence-v1-vehicle-reference.mapper';
+
+export {
+  applyRpmReferenceIntelligenceV1V1bShadowAttachment,
+  buildAuthoritativeV1bTemporalFromShadowResult,
+  buildDs4RpmReferenceIntelligenceV1ComputeInputFromV1bShadow,
+  buildRpmReferenceIntelligenceV1V1bShadowAttachment,
+  shouldAttachRpmReferenceIntelligenceV1ToV1bSummary,
+  DS4_RPM_REF_INTEL_V1_V1B_ATTACHMENT_REVISION_POLICY,
+  DS4_RPM_REF_INTEL_V1_V1B_SHADOW_ATTACH_CONTRACT_VERSION,
+  type Ds4RpmHfV1bShadowPersistedSummaryV1,
+  type Ds4RpmReferenceIntelligenceV1V1bShadowSummaryAttachmentV1,
+} from './ds4-rpm-reference-intelligence-v1-v1b-shadow-attach';

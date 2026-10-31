@@ -74,7 +74,7 @@ This ADR records **owner-approved boundaries** and a **small future component** 
 | RPM HF V1A trip input | **IMPLEMENTED** — `ds4-rpm-hf-v1a/`; ClickHouse trip-scoped `engine_rpm` reads; no `idleRpm`/`maxRpm` usage |
 | RPM HF V1B shadow | **IMPLEMENTED** — `ds4-rpm-hf-v1b/`; flags `DS4_RPM_HF_V1B_*`; outbox/runs tables; tier-aware path; Phase 4I `qualityExposure` on processor output |
 | Vehicle idle/max persistence | **IMPLEMENTED** — Prisma `vehicles.idle_rpm`, `vehicles.max_rpm`; canonical units `rpm`; provenance via registration identity document |
-| RPM Reference Intelligence module | **IMPLEMENTED (library only, Phase 5A)** — `rpm-reference-intelligence-v1/` pure calculator + unit tests; **no** Nest scheduler, persistence, or production consumer |
+| RPM Reference Intelligence module | **IMPLEMENTED (library Phase 5A; V1B shadow attach Phase 5B)** — `rpm-reference-intelligence-v1/`; optional V1B `summary_json` attachment behind `DS4_RPM_REF_INTEL_V1_V1B_ATTACH_ENABLED` (default OFF) |
 | DS4 consumption of RPM reference metrics | **NOT YET IMPLEMENTED** — no versioned interface in production |
 | RPM → engine-load / wear / Driving Impact | **FORBIDDEN** until separate validated model + owner approval (see Non-goals) |
 
@@ -208,9 +208,9 @@ Any DS4 or cross-domain consumer must:
 | Phase | Content | Status |
 |-------|---------|--------|
 | **P0 — Boundaries (this ADR)** | Ownership, flows, provenance, non-goals | **CURRENT (DOCUMENTATION)** |
-| **P1 — Reference reader** | Read-only vehicle spec + provenance snapshot for RPM workstream tests | **NOT YET IMPLEMENTED** |
+| **P1 — Reference reader** | Read-only vehicle spec + provenance snapshot for RPM workstream tests | **IMPLEMENTED (Phase 5B mapper)** — `buildDs4RpmReferenceIntelligenceV1ReferenceFromVehicleRow`; wired from V1B shadow service vehicle select when attach flag ON |
 | **P2 — Reference metrics library** | Pure functions: normalization, bands, time-weighting on admitted spans | **IMPLEMENTED (Phase 5A library)** — `rpm-reference-intelligence-v1/`; no consumer wiring |
-| **P3 — Shadow persistence** | Optional attachment to V1B runs or sibling table; flags default OFF | **NOT YET IMPLEMENTED** |
+| **P3 — Shadow persistence** | Optional attachment to V1B runs or sibling table; flags default OFF | **IMPLEMENTED (Phase 5B attach, flag `DS4_RPM_REF_INTEL_V1_V1B_ATTACH_ENABLED` default OFF)** — optional `rpmReferenceIntelligenceV1` on V1B `summary_json`; no sibling table; no spec-revision replay |
 | **P4 — DS4 optional consumer** | Versioned read interface + alignment tests; Fable review | **NOT YET IMPLEMENTED** |
 | **P5 — Product surfaces** | Customer UI / fleet analytics | **FORBIDDEN** until owner scope |
 
