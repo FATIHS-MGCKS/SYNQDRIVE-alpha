@@ -155,6 +155,15 @@ export const masterIntelligenceEs = {
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Observado',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Observado (obsoleto)',
 
+  'master.intelligence.vsi.signals.rpmCombined.heading': 'Disponibilidad RPM combinada (derivada)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Probado en vivo (snapshot fresco)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_HISTORICAL_ONLY':
+    'Solo probado históricamente (cadencia HF; snapshot no en vivo)',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_PROVEN': 'No probado',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_APPLICABLE': 'No aplicable (tren motriz)',
+  'master.intelligence.vsi.signals.rpmCombined.attributionLimited':
+    'Evidencia HF no atribuida a este source link',
+
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Las RPM del motor usan dos planos de evidencia separados. El estado snapshot proviene del último bundle vehicle latest state; HF/cadencia de puntos HF reflejados y viajes finalizados. No son intercambiables.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (vehicle latest state)',

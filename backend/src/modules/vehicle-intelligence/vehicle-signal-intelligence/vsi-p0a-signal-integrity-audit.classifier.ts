@@ -11,6 +11,53 @@ import type {
   VsiP0aSignalIntegrityMatrixRow,
 } from './vsi-p0a-signal-integrity-audit.types';
 import type { VsiP0aAuditCohortVehicle } from './vsi-p0a-signal-integrity-audit.types';
+import {
+  resolveVsiRpmCombinedEvidenceAvailabilityV1,
+  type VsiRpmCombinedEvidenceInputV1,
+} from './vsi-engine-rpm-combined-evidence-v1.util';
+
+function buildP0aEngineRpmCombinedInput(input: VsiP0aClassifierInput): VsiRpmCombinedEvidenceInputV1 {
+  const rpmApplicability =
+    input.applicability === 'NOT_APPLICABLE'
+      ? 'NOT_APPLICABLE'
+      : input.applicability === 'APPLICABLE'
+        ? 'APPLICABLE'
+        : 'UNKNOWN';
+  const hfSamples = input.hfSampleCount ?? null;
+  return {
+    rpmApplicability,
+    powertrainApplicability:
+      input.applicability === 'NOT_APPLICABLE'
+        ? 'NOT_APPLICABLE'
+        : input.applicability === 'APPLICABLE'
+          ? 'APPLICABLE'
+          : 'UNKNOWN',
+    profileLimitations: input.limitations.filter((l) =>
+      [
+        'MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS',
+        'LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK',
+        'PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY',
+      ].includes(l),
+    ),
+    snapshot: {
+      empiricalObservation: input.snapshotObservation ?? 'UNKNOWN',
+      freshnessClassification: input.freshness,
+      lastValidObservationAt: null,
+      qualityClassification: input.snapshotQuality,
+    },
+    cadence: {
+      observedSampleCount: hfSamples,
+      finalizedTripCount: input.hfAvailability === 'SUPPORTED_WITH_SAMPLES' ? 1 : null,
+      activeRpmProfile: input.activeCadenceProfile,
+      provenance: input.provenance,
+      limitations: input.limitations,
+      tripClassificationCount:
+        input.hfAvailability === 'SUPPORTED_WITH_SAMPLES' && hfSamples != null && hfSamples > 0
+          ? 1
+          : 0,
+    },
+  };
+}
 
 export function resolveVsiP0aApplicability(
   key: VsiCanonicalSignalKey,
@@ -84,6 +131,16 @@ export function classifyVsiP0aSignalFinding(input: VsiP0aClassifierInput): {
     input.activeCadenceProfile &&
     input.activeCadenceProfile !== 'UNKNOWN'
   ) {
+    const combined = resolveVsiRpmCombinedEvidenceAvailabilityV1(
+      buildP0aEngineRpmCombinedInput(input),
+    );
+    if (combined.availability === 'PROVEN_HISTORICAL_ONLY') {
+      return {
+        findingClass: 'EXPECTED_BEHAVIOR',
+        severity: 'P3',
+        evidenceReference: 'rpm_dual_lane_combined_historical_only_v1',
+      };
+    }
     return {
       findingClass: 'MISLEADING_PRESENTATION',
       severity: 'P1',

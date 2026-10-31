@@ -155,6 +155,15 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Waargenomen',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Waargenomen (verouderd)',
 
+  'master.intelligence.vsi.signals.rpmCombined.heading': 'Gecombineerde RPM-beschikbaarheid (afgeleid)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Live bewezen (verse snapshot)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_HISTORICAL_ONLY':
+    'Alleen historisch bewezen (HF-cadans; snapshot niet live)',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_PROVEN': 'Niet bewezen',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_APPLICABLE': 'Niet van toepassing (aandrijflijn)',
+  'master.intelligence.vsi.signals.rpmCombined.attributionLimited':
+    'HF-bewijs niet toegeschreven aan deze source link',
+
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Motortoerental (RPM) gebruikt twee aparte bewijslagen. Snapshotstatus komt uit de nieuwste vehicle-latest-state-bundle; HF/cadans uit gespiegelde HF-punten en afgeronde ritten. Ze zijn niet uitwisselbaar.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Snapshot (vehicle latest state)',

@@ -175,6 +175,15 @@ export const masterIntelligenceFr = {
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Observé',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Observé (périmé)',
 
+  'master.intelligence.vsi.signals.rpmCombined.heading': 'Disponibilité RPM combinée (dérivée)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Prouvé en direct (snapshot frais)',
+  'master.intelligence.vsi.signals.rpmCombined.PROVEN_HISTORICAL_ONLY':
+    'Prouvé historique uniquement (cadence HF ; snapshot non live)',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_PROVEN': 'Non prouvé',
+  'master.intelligence.vsi.signals.rpmCombined.NOT_APPLICABLE': 'Non applicable (motorisation)',
+  'master.intelligence.vsi.signals.rpmCombined.attributionLimited':
+    'Preuve HF non attribuée à ce source link',
+
   'master.intelligence.vsi.signals.rpmDual.intro':
     'Le régime moteur (RPM) repose sur deux plans de preuve distincts. L’état instantané vient du dernier bundle vehicle latest state ; HF/cadence vient des points haute fréquence miroir et des trajets finalisés. Ils ne sont pas interchangeables.',
   'master.intelligence.vsi.signals.rpmDual.snapshotHeading': 'Instantané (vehicle latest state)',

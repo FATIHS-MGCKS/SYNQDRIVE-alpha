@@ -7,6 +7,10 @@ import type {
   MasterVsiSignalDetailDto,
 } from './vsi-master-intelligence-read.types';
 import type { VsiProfileRevisionHistoryRowV1 } from './vsi-profile-revision-history.types';
+import {
+  buildVsiRpmCombinedEvidenceInputFromProfileSignal,
+  resolveVsiRpmCombinedEvidenceAvailabilityV1,
+} from './vsi-engine-rpm-combined-evidence-v1.util';
 
 const OPEN_TRIP_BLOCK = 'OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION';
 
@@ -112,8 +116,12 @@ export function mapProfileRowToSummary(
   };
 }
 
-function mapSignalDetail(signal: VsiProfileSignalFingerprintV1): MasterVsiSignalDetailDto {
-  return {
+function mapSignalDetail(
+  signal: VsiProfileSignalFingerprintV1,
+  rpmApplicability: MasterVsiProfileSummaryDto['rpmApplicability'],
+  profileLimitations: string[],
+): MasterVsiSignalDetailDto {
+  const base: MasterVsiSignalDetailDto = {
     canonicalSignalKey: signal.canonicalSignalKey,
     providerNativeSignalName: signal.providerNativeSignalName,
     declaredSupport: signal.declaredSupport,
@@ -131,6 +139,22 @@ function mapSignalDetail(signal: VsiProfileSignalFingerprintV1): MasterVsiSignal
       : null,
     powertrainApplicability: signal.powertrainApplicability ?? null,
   };
+  if (signal.canonicalSignalKey === 'engine_rpm') {
+    const combined = resolveVsiRpmCombinedEvidenceAvailabilityV1(
+      buildVsiRpmCombinedEvidenceInputFromProfileSignal({
+        rpmApplicability,
+        profileLimitations,
+        signal,
+      }),
+    );
+    return {
+      ...base,
+      rpmCombinedEvidenceContractV1: combined.contractVersion,
+      rpmCombinedEvidenceAvailabilityV1: combined.availability,
+      rpmCombinedEvidenceLimitationsV1: combined.limitations,
+    };
+  }
+  return base;
 }
 
 export function mapProfileRowToDetail(
@@ -139,10 +163,11 @@ export function mapProfileRowToDetail(
 ): MasterVsiProfileDetailDto {
   const summary = mapProfileRowToSummary(row, provider);
   const signals = parseSignalsSnapshot(row.signalsSnapshot);
+  const limitations = summary.profileLimitations;
   return {
     ...summary,
     contentFingerprintPrefix: maskFingerprintPrefix(row.contentFingerprint),
-    signals: signals.map(mapSignalDetail),
+    signals: signals.map((s) => mapSignalDetail(s, summary.rpmApplicability, limitations)),
     fetchTimeIsNotNewSignalProof: true,
   };
 }

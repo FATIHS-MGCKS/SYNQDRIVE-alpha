@@ -115,6 +115,16 @@ describe('vsi-engine-rpm-dual-provenance.utils', () => {
     const dual = buildEngineRpmDualProvenanceView(baseProfile(), signal);
     expect(dual.snapshot.empiricalObservation).toBe('NEVER_OBSERVED');
     expect(dual.cadence.hasHfEvidence).toBe(true);
+    expect(dual.cadence.activeRpmProfile).toBe('RPM_STANDARD');
+  });
+
+  it('Audi: combined availability PROVEN_HISTORICAL_ONLY from read DTO', () => {
+    const signal = engineSignal(AUDI_CADENCE, {
+      rpmCombinedEvidenceAvailabilityV1: 'PROVEN_HISTORICAL_ONLY',
+      rpmCombinedEvidenceContractV1: 'vsi-rpm-combined-evidence-v1',
+    });
+    const dual = buildEngineRpmDualProvenanceView(baseProfile(), signal);
+    expect(dual.combinedEvidenceAvailabilityV1).toBe('PROVEN_HISTORICAL_ONLY');
   });
 
   it('Tiguan: HF evidence with RPM profile UNKNOWN', () => {

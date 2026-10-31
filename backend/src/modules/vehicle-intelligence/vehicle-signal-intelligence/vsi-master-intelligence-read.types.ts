@@ -1,4 +1,6 @@
 import type { VsiProfileRevisionAsOfAuthority } from './vsi-profile-revision-as-of.types';
+import type { VsiRpmCombinedEvidenceAvailabilityV1 } from './vsi-engine-rpm-combined-evidence-v1.util';
+import { VSI_RPM_COMBINED_EVIDENCE_CONTRACT_V1 } from './vsi-engine-rpm-combined-evidence-v1.util';
 
 export type VsiMasterIntelligenceHistoryCaptureStatus =
   | 'CAPTURE_ENABLED'
@@ -40,6 +42,9 @@ export type MasterVsiSignalDetailDto = {
   limitations: string[];
   cadenceIntelligence: Record<string, unknown> | null;
   powertrainApplicability: 'APPLICABLE' | 'NOT_APPLICABLE' | 'UNKNOWN' | null;
+  rpmCombinedEvidenceContractV1?: typeof VSI_RPM_COMBINED_EVIDENCE_CONTRACT_V1;
+  rpmCombinedEvidenceAvailabilityV1?: VsiRpmCombinedEvidenceAvailabilityV1 | null;
+  rpmCombinedEvidenceLimitationsV1?: string[];
 };
 
 export type MasterVsiProfileDetailDto = MasterVsiProfileSummaryDto & {

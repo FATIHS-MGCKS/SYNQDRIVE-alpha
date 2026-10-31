@@ -40,6 +40,14 @@ export type MasterVsiSignalDetailDto = {
   limitations: string[];
   cadenceIntelligence: Record<string, unknown> | null;
   powertrainApplicability?: 'APPLICABLE' | 'NOT_APPLICABLE' | 'UNKNOWN' | null;
+  rpmCombinedEvidenceContractV1?: 'vsi-rpm-combined-evidence-v1';
+  rpmCombinedEvidenceAvailabilityV1?:
+    | 'PROVEN_LIVE'
+    | 'PROVEN_HISTORICAL_ONLY'
+    | 'NOT_PROVEN'
+    | 'NOT_APPLICABLE'
+    | null;
+  rpmCombinedEvidenceLimitationsV1?: string[];
 };
 
 export type MasterVsiProfileDetailDto = MasterVsiProfileSummaryDto & {
