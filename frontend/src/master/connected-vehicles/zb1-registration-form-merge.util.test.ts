@@ -43,6 +43,17 @@ describe('buildZb1RegistrationFormPatch', () => {
     });
   });
 
+  it('blocks apply when FIN mismatch is flagged even after acknowledgment', () => {
+    const result = buildZb1RegistrationFormPatch(
+      [{ fieldCode: 'p1DisplacementCc', value: 1968, conflict: false, baselineValue: null }],
+      { p1DisplacementCc: true },
+      emptyCurrent,
+      { vinMismatchBlocked: true, vinMismatchAcknowledged: true },
+    );
+    expect(result.blockedReason).toBe('VIN_MISMATCH');
+    expect(result.patch).toEqual({});
+  });
+
   it('applies confirmed value over existing specification when user confirmed the field', () => {
     const result = buildZb1RegistrationFormPatch(
       [{ fieldCode: 'p1DisplacementCc', value: 1968, conflict: true, baselineValue: 1400 }],

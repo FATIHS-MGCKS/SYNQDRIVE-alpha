@@ -1359,20 +1359,33 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {isEditMode && existingVehicle?.id && organizationId && isVehicleIdentityP2Enabled() ? (
-                <button
-                  type="button"
-                  data-testid="vehicle-registration-upload-zb1"
-                  onClick={() => setZb1DialogOpen(true)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
-                    isDarkMode
-                      ? 'border-border/60 text-foreground hover:bg-muted/80'
-                      : 'border-border bg-white/80 text-foreground hover:bg-white shadow-sm'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  {t('master.vehicleIdentity.uploadToolbar' as never)}
-                </button>
+              {isEditMode && existingVehicle?.id && organizationId ? (
+                isVehicleIdentityP2Enabled() ? (
+                  <button
+                    type="button"
+                    data-testid="vehicle-registration-upload-zb1"
+                    onClick={() => setZb1DialogOpen(true)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                      isDarkMode
+                        ? 'border-border/60 text-foreground hover:bg-muted/80'
+                        : 'border-border bg-white/80 text-foreground hover:bg-white shadow-sm'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {t('master.vehicleIdentity.uploadToolbar' as never)}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="vehicle-registration-upload-zb1-disabled"
+                    disabled
+                    title={t('master.vehicleIdentity.p2ToolbarDisabledHint' as never)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border opacity-50 cursor-not-allowed border-border/60 text-muted-foreground"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {t('master.vehicleIdentity.uploadToolbar' as never)}
+                  </button>
+                )
               ) : null}
               <button
                 type="button"

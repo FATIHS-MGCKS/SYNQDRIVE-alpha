@@ -62,4 +62,8 @@ export const masterVehicleIdentityTr = {
   'master.vehicleIdentity.applyToFormConflict': 'Değer uygulanmadı — alanları onaylayın veya çakışmaları çözün.',
   'master.vehicleIdentity.applyToFormEmpty': 'Uygulanacak onaylı alan yok.',
   'master.vehicleIdentity.applyToFormSuccess': 'Onaylı değerler forma uygulandı (kalıcı kayıt için kaydedin).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'Belgedeki FIN bu araçla eşleşmiyor — bu belgedeki spesifikasyon alanları uygulanamaz.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Ruhsat yükleme bu ortamda etkin değil (araç kimliği P2).',
 };

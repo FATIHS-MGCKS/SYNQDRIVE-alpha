@@ -134,7 +134,10 @@ export function VehicleIdentityP2Panel({
   }, [enabled, organizationId, vehicleId, refreshSnapshot]);
 
   const onUpload = async (file: File) => {
-    if (!snapshot?.capabilities.zb1UploadEnabled) return;
+    if (!snapshot?.capabilities.zb1UploadEnabled) {
+      setError(t('master.vehicleIdentity.uploadDisabled'));
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -260,7 +263,7 @@ export function VehicleIdentityP2Panel({
       },
     );
     if (result.blockedReason === 'VIN_MISMATCH') {
-      setApplyFormMsg(t('master.vehicleIdentity.applyToFormBlockedVin'));
+      setApplyFormMsg(t('master.vehicleIdentity.applyToFormVinMismatchDocument'));
       return;
     }
     if (Object.keys(result.patch).length === 0) {

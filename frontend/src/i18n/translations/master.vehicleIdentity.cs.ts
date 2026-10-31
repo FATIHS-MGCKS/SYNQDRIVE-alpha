@@ -62,4 +62,8 @@ export const masterVehicleIdentityCs = {
   'master.vehicleIdentity.applyToFormConflict': 'Žádné hodnoty nebyly použity — potvrďte pole nebo vyřešte konflikty.',
   'master.vehicleIdentity.applyToFormEmpty': 'Žádná potvrzená pole k použití.',
   'master.vehicleIdentity.applyToFormSuccess': 'Potvrzené hodnoty použity ve formuláři (uložte pro trvalé uložení).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'FIN dokumentu neodpovídá tomuto vozidlu — pole specifikace z tohoto dokumentu nelze použít.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Nahrání technického průkazu není v tomto prostředí aktivní (identita vozidla P2).',
 };

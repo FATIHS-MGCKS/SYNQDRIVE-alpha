@@ -62,4 +62,8 @@ export const masterVehicleIdentityPl = {
   'master.vehicleIdentity.applyToFormConflict': 'Brak zastosowanych wartości — potwierdź pola lub rozwiąż konflikty.',
   'master.vehicleIdentity.applyToFormEmpty': 'Brak potwierdzonych pól do zastosowania.',
   'master.vehicleIdentity.applyToFormSuccess': 'Potwierdzone wartości zastosowano w formularzu (zapisz, aby utrwalić).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'FIN dokumentu nie pasuje do tego pojazdu — nie można zastosować pól specyfikacji z tego dokumentu.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Przesyłanie dowodu rejestracyjnego nie jest włączone w tym środowisku (identyfikacja pojazdu P2).',
 };

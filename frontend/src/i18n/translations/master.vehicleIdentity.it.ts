@@ -62,4 +62,8 @@ export const masterVehicleIdentityIt = {
   'master.vehicleIdentity.applyToFormConflict': 'Nessun valore applicato — conferma i campi o risolvi i conflitti.',
   'master.vehicleIdentity.applyToFormEmpty': 'Nessun campo confermato da applicare.',
   'master.vehicleIdentity.applyToFormSuccess': 'Valori confermati applicati al modulo (salva per persistere).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'Il FIN del documento non corrisponde a questo veicolo — i campi specifiche da questo documento non possono essere applicati.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Il caricamento del libretto di circolazione non è attivo in questo ambiente (identità veicolo P2).',
 };

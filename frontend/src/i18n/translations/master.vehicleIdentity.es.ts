@@ -62,4 +62,8 @@ export const masterVehicleIdentityEs = {
   'master.vehicleIdentity.applyToFormConflict': 'No se aplicaron valores — confirme campos o resuelva conflictos.',
   'master.vehicleIdentity.applyToFormEmpty': 'No hay campos confirmados para aplicar.',
   'master.vehicleIdentity.applyToFormSuccess': 'Valores confirmados aplicados al formulario (guarde para persistir).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'El VIN del documento no coincide con este vehículo — no se pueden aplicar campos de especificación de este documento.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'La subida del permiso de circulación no está activa en este entorno (identidad del vehículo P2).',
 };

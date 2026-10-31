@@ -62,4 +62,8 @@ export const masterVehicleIdentityEn = {
   'master.vehicleIdentity.applyToFormConflict': 'No values applied — confirm fields or resolve conflicts.',
   'master.vehicleIdentity.applyToFormEmpty': 'No confirmed fields to apply.',
   'master.vehicleIdentity.applyToFormSuccess': 'Confirmed values applied to the specification form (save to persist).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'Document FIN does not match this vehicle — specification fields from this document cannot be applied.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Registration certificate upload is not enabled in this environment (Vehicle Identity P2).',
 };

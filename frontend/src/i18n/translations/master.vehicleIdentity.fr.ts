@@ -62,4 +62,8 @@ export const masterVehicleIdentityFr = {
   'master.vehicleIdentity.applyToFormConflict': 'Aucune valeur appliquée — confirmez les champs ou résolvez les conflits.',
   'master.vehicleIdentity.applyToFormEmpty': 'Aucun champ confirmé à appliquer.',
   'master.vehicleIdentity.applyToFormSuccess': 'Valeurs confirmées appliquées au formulaire (enregistrer pour persister).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'Le FIN du document ne correspond pas à ce véhicule — les champs de spécification de ce document ne peuvent pas être appliqués.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Le téléversement de carte grise n’est pas activé dans cet environnement (identité véhicule P2).',
 };

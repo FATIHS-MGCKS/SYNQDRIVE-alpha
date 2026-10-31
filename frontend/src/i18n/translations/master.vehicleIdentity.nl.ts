@@ -62,4 +62,8 @@ export const masterVehicleIdentityNl = {
   'master.vehicleIdentity.applyToFormConflict': 'Geen waarden toegepast — bevestig velden of los conflicten op.',
   'master.vehicleIdentity.applyToFormEmpty': 'Geen bevestigde velden om toe te passen.',
   'master.vehicleIdentity.applyToFormSuccess': 'Bevestigde waarden toegepast op het formulier (opslaan om te bewaren).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'FIN van het document komt niet overeen met dit voertuig — specificatievelden uit dit document kunnen niet worden toegepast.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Kentekenbewijs uploaden is niet ingeschakeld in deze omgeving (voertuigidentiteit P2).',
 };

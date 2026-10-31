@@ -62,4 +62,8 @@ export const masterVehicleIdentityDe = {
   'master.vehicleIdentity.applyToFormConflict': 'Keine Werte übernommen — Felder bestätigen oder Konflikte klären.',
   'master.vehicleIdentity.applyToFormEmpty': 'Keine bestätigten Felder zum Übernehmen.',
   'master.vehicleIdentity.applyToFormSuccess': 'Bestätigte Werte ins Spezifikationsformular übernommen (Speichern zum Persistieren).',
+  'master.vehicleIdentity.applyToFormVinMismatchDocument':
+    'FIN des Dokuments passt nicht zu diesem Fahrzeug — Spezifikationsfelder aus diesem Dokument können nicht übernommen werden.',
+  'master.vehicleIdentity.p2ToolbarDisabledHint':
+    'Fahrzeugschein-Upload ist in dieser Umgebung nicht aktiv (Fahrzeugidentität P2).',
 };

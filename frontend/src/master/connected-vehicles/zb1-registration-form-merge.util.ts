@@ -29,6 +29,10 @@ function str(v: string | number | null | undefined): string {
 /**
  * Maps confirmed ZB-I review fields into registration modal specification fields.
  * Never maps VIN (E) onto the vehicle record from this helper.
+ *
+ * Fail-closed: when the uploaded document FIN does not match the vehicle FIN,
+ * no specification fields are applied from the document (acknowledgment is for
+ * review visibility only, not for importing document data onto this vehicle).
  */
 export function buildZb1RegistrationFormPatch(
   rows: Zb1ReviewFieldRow[],
@@ -36,7 +40,7 @@ export function buildZb1RegistrationFormPatch(
   current: Zb1RegistrationFormCurrent,
   opts: { vinMismatchBlocked: boolean; vinMismatchAcknowledged: boolean },
 ): Zb1ApplyToFormResult {
-  if (opts.vinMismatchBlocked && !opts.vinMismatchAcknowledged) {
+  if (opts.vinMismatchBlocked) {
     return {
       patch: {},
       skippedConflicts: [],
