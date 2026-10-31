@@ -2549,6 +2549,24 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | **No** production flag/env changes; **no** runtime code; **no** migrations; **no** V1B admission/VSI tier changes; **no** DS4 Motion/Driving Impact/Tire/Trip FSM/customer behavior; active Audi+Arteon V1B shadow canary unaffected |
 | REMAINING | Future P1–P5 implementation PRs; DS4 optional consumer contract; Fable review before any RPM-derived load/wear/scoring |
 
+### 2026-10-31 — DS4 Layer-2 P3C offline physics diagnostics sidecar
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | P3C sidecar exporter + pinned 11-trip P2 attestation/fixtures; temporal P3B wrapper; architecture [`DS4_LAYER2_P3C_OFFLINE_PHYSICS_DIAGNOSTICS_V1.md`](./DS4_LAYER2_P3C_OFFLINE_PHYSICS_DIAGNOSTICS_V1.md) |
+| WHY | Independent Motion Physics diagnostics for pinned P2 cohort without mutating canonical kinematic outputs |
+| VALIDATION | `npm run test:di:ds4-layer2-p3c-physics`; `npm run research:ds4-layer2-p3c-physics` |
+| NON_EFFECTS | **No** P2 CSV mutation; **no** admission/eligibility/production writes; **no** B/I/Phi/S recompute in P2 path |
+
+### 2026-10-31 — DS4 Layer-2 P3C temporal provenance hardening (PR #2270)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | `classifyDs4Layer2P3cTemporalProvenanceV1`; read-only `selectMotionPhysicsReferenceEffectiveAtTripV1` + optional Prisma historical resolver; fixture `effectiveFrom` labeled `RETROSPECTIVE_REFERENCE` / `FIXTURE_SNAPSHOT`; sidecar CSV columns `temporalProvenance`, `historicalEvidenceSupported`, `numericDiagnosticAvailability`; production DB guard manifest regen for P3C npm scripts |
+| WHY | Fixture `2025-01-01` effectiveFrom must not read as independently evidenced historical applicability; separate numeric availability from evidence tier and temporal provenance |
+| VALIDATION | `npm run test:di:ds4-layer2-p3c-physics`; `ds4-layer2-p3c-historical-motion-physics-resolver.v1.spec`; `bash backend/scripts/test/production-database-guard-bootstrap-dry-run.sh`; `npx tsc -p tsconfig.build.json --noEmit` |
+| NON_EFFECTS | **No** P3B production resolver semantic change; **no** P2 checksum/CSV mutation; **no** fabricated historical reference rows; **no** deploy/merge |
+
 ### 2026-10-31 — DS4 Layer-2 P3B Motion Physics context resolver (research-only)
 
 | Field | Detail |
