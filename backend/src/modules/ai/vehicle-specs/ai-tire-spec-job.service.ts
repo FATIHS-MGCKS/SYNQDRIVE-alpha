@@ -24,6 +24,7 @@ import {
 } from '../../vehicle-intelligence/tires/ai-tire-spec-job-binding.util';
 import { mapAiTireSpecLegacyAliases } from '../../vehicle-intelligence/tires/ai-tire-spec-legacy-alias.util';
 import { preflightJobAiTireSpecApply } from '../../vehicle-intelligence/tires/ai-tire-spec-apply-preflight.util';
+import { processAiTireSpecCompactLlmOutput } from '../../vehicle-intelligence/tires/ai-tire-spec-compact-pipeline.util';
 
 // ── Input DTO ─────────────────────────────────────────────────────────────────
 export interface StartAiTireSpecJobInput {
@@ -469,7 +470,14 @@ export class AiTireSpecJobService {
       }
 
       const specsForNormalize = mapAiTireSpecLegacyAliases(rawSpecs);
-      const normalized = normalizeAiTireSpecResult(specsForNormalize);
+      const compactRaw = processAiTireSpecCompactLlmOutput(specsForNormalize ?? {}, {
+        brand: job.brand,
+        model: job.model,
+        tireSize: job.tireSize,
+        loadIndex: job.loadIndex,
+        speedIndex: job.speedIndex,
+      });
+      const normalized = normalizeAiTireSpecResult(compactRaw);
       const validation = validateAiTireSpec(normalized);
 
       if (validation.warnings.length > 0) {

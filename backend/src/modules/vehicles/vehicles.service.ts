@@ -2728,6 +2728,12 @@ export class VehiclesService {
       const normalizedJson = buildNormalizedRegistrationAiTireSpecJson(
         tr.aiTireSpec as Record<string, unknown>,
         existingSetup?.aiTireSpec,
+        {
+          brandModelFront: tr.brandModelFront ?? null,
+          frontDimension: tr.frontDimension ?? null,
+          loadIndexFront: tr.loadIndexFront ?? null,
+          speedIndexFront: tr.speedIndexFront ?? null,
+        },
       );
       if (normalizedJson) {
         await this.prisma.vehicleTireSetup.update({
