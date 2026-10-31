@@ -1,0 +1,34 @@
+{
+  "schema": "DS4_TIG22_DEEP_VALIDATION_INPUT_MANIFEST_V1",
+  "tripId": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "generatedAtUtc": "2026-10-23T22:06:00.252Z",
+  "codeSha": "716f93fedd9d5408fa1db2de5b4cd1a786d9685c",
+  "inputs": [
+    {
+      "path": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_s4_evidence_container.bin",
+      "sha256": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "bytes": 886052
+    },
+    {
+      "path": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/TIGUAN_2026-10-22_1Hz.csv",
+      "sha256": "9c8933c223e58706d1cc1ce82fe8c623e2429d3bd1f4f570e10353f9f3b9aaa2",
+      "bytes": 191132
+    },
+    {
+      "path": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/TRIP_IDENTITY.json",
+      "sha256": "ef0b340630ffe04b80e8997434b996cc93a0d017efb66a141294e9d3d29e1ea8",
+      "bytes": 1893
+    },
+    {
+      "path": "research/driving-intelligence/evaluations/ds4-tig22-deep-validation-20261023/inputs/tiguan-prod-shadow-v4/di_v0_motion_core_shadow_payload.json",
+      "sha256": "ddcf32cd111ef21859e7df9f20915190efbe89aa416a22132e02c7d658712ccd",
+      "bytes": 1099811
+    }
+  ],
+  "references": {
+    "pr2136": "ds4-speed-video-reference-20261023",
+    "pr2139": "event_eval_lib.cjs (v2_gap2s) vendored under scripts/",
+    "pr2147": "DS4 research archive index on main (when present)",
+    "productionIntegration": "PR #2145/#2146 @ 716f93fed"
+  }
+}
