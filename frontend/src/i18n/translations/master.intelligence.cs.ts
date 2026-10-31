@@ -211,13 +211,35 @@ export const masterIntelligenceCs = {
   'master.intelligence.vehicleDetail.loading': 'Načítání souhrnů intelligence…',
   'master.intelligence.vehicleDetail.error': 'Souhrny intelligence pro toto vozidlo se nepodařilo načíst.',
   'master.intelligence.vehicleDetail.openVsi': 'Otevřít detail VSI',
+  'master.intelligence.vehicleDetail.openVsiOverview': 'Otevřít přehled VSI',
+  'master.intelligence.vehicleDetail.openVsiLedger': 'Otevřít evidenci',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Otevřít detail signálu otáček motoru',
   'master.intelligence.vehicleDetail.openApds': 'Otevřít detail APDS',
   'master.intelligence.vehicleDetail.openPdi': 'Otevřít detail zařízení',
   'master.intelligence.vehicleDetail.noApdsDecision': 'V rozsahu není persistované rozhodnutí.',
   'master.intelligence.vehicleDetail.noPhysicalDevice':
     'Tomuto vozidlu není přiřazeno jediné nainstalované fyzické zařízení.',
   'master.intelligence.vehicleDetail.multipleLinks':
-    'Více provider source linků — zobrazen primární link; ověřte link ve VSI/APDS před předpoklady napříč vozidly.',
+    'Více provider source linků — před navigací VSI/APDS vyberte link.',
+  'master.intelligence.vehicleDetail.selectSourceLink.title': 'Provider source link',
+  'master.intelligence.vehicleDetail.selectSourceLink.hint':
+    'Vyberte persistovaný provider link. Souhrny a navigace platí pouze pro vybraný link.',
+  'master.intelligence.vehicleDetail.selectSourceLink.stale':
+    'Předchozí volba neodpovídá tomuto vozidlu. Vyberte link znovu.',
+  'master.intelligence.vehicleDetail.selectSourceLink.required':
+    'Vyberte provider source link pro povolení navigace intelligence u tohoto vozidla.',
+  'master.intelligence.vehicleDetail.selectSourceLink.summaryPending':
+    'Vyberte provider source link pro zobrazení souhrnů LV/RPM.',
+  'master.intelligence.vehicleDetail.selectSourceLink.apdsPending':
+    'Vyberte provider source link pro načtení souhrnu APDS pro tento link.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.notApplicable':
+    'Detail signálu otáček motoru pro tento profil neplatí (persistovaná aplicability VSI).',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.unknownApplicability':
+    'Detail otáček není k dispozici, dokud VSI nehlásí aplicable RPM evidenci pro tento link.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.evaluationBlocked':
+    'Detail otáček není k dispozici, dokud je vyhodnocení profilu blokováno.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
+    'Detail otáček vyžaduje vybraný provider source link.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Nezávislé dimenze důkazů',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Použitelnost',

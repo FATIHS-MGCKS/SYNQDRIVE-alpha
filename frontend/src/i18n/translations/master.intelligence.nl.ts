@@ -212,13 +212,35 @@ export const masterIntelligenceNl = {
   'master.intelligence.vehicleDetail.loading': 'Intelligence-samenvattingen laden…',
   'master.intelligence.vehicleDetail.error': 'Kon intelligence-samenvattingen voor dit voertuig niet laden.',
   'master.intelligence.vehicleDetail.openVsi': 'VSI-detail openen',
+  'master.intelligence.vehicleDetail.openVsiOverview': 'VSI-overzicht openen',
+  'master.intelligence.vehicleDetail.openVsiLedger': 'Bewijsledger openen',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Detail motorsignal toerental openen',
   'master.intelligence.vehicleDetail.openApds': 'APDS-detail openen',
   'master.intelligence.vehicleDetail.openPdi': 'Apparaatdetail openen',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Geen persistenter besluit binnen scope.',
   'master.intelligence.vehicleDetail.noPhysicalDevice':
     'Geen enkel geïnstalleerd fysiek apparaat aan dit voertuig toegeschreven.',
   'master.intelligence.vehicleDetail.multipleLinks':
-    'Meerdere provider-bronlinks — primaire link getoond; bevestig link in VSI/APDS vóór aannames over andere voertuigen.',
+    'Meerdere provider-bronlinks — kies een link vóór VSI/APDS-navigatie.',
+  'master.intelligence.vehicleDetail.selectSourceLink.title': 'Provider-bronlink',
+  'master.intelligence.vehicleDetail.selectSourceLink.hint':
+    'Kies welke persistenter providerlink u gebruikt. Samenvattingen en navigatie gelden alleen voor de gekozen link.',
+  'master.intelligence.vehicleDetail.selectSourceLink.stale':
+    'De vorige keuze hoort niet meer bij dit voertuig. Kies opnieuw een link.',
+  'master.intelligence.vehicleDetail.selectSourceLink.required':
+    'Selecteer een provider-bronlink om intelligencenavigatie voor dit voertuig in te schakelen.',
+  'master.intelligence.vehicleDetail.selectSourceLink.summaryPending':
+    'Selecteer een provider-bronlink om LV/RPM-samenvattingen te zien.',
+  'master.intelligence.vehicleDetail.selectSourceLink.apdsPending':
+    'Selecteer een provider-bronlink om het APDS-samenvatting voor die link te laden.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.notApplicable':
+    'Motortoerentaldetail is niet van toepassing op dit profiel (persistente VSI-toepasbaarheid).',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.unknownApplicability':
+    'Toerentaldetail niet beschikbaar tot VSI toepasbare RPM-evidence voor deze link rapporteert.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.evaluationBlocked':
+    'Toerentaldetail niet beschikbaar zolang profielevaluatie geblokkeerd is.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
+    'Toerentaldetail vereist een geselecteerde provider-bronlink.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Onafhankelijke bewijsdimensies',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Toepasbaarheid',

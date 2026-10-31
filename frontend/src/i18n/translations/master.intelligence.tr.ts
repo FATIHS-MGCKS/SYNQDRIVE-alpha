@@ -213,13 +213,35 @@ export const masterIntelligenceTr = {
   'master.intelligence.vehicleDetail.loading': 'Intelligence özetleri yükleniyor…',
   'master.intelligence.vehicleDetail.error': 'Bu araç için intelligence özetleri yüklenemedi.',
   'master.intelligence.vehicleDetail.openVsi': 'VSI ayrıntısını aç',
+  'master.intelligence.vehicleDetail.openVsiOverview': 'VSI özetini aç',
+  'master.intelligence.vehicleDetail.openVsiLedger': 'Kanıt defterini aç',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Motor RPM sinyal ayrıntısını aç',
   'master.intelligence.vehicleDetail.openApds': 'APDS ayrıntısını aç',
   'master.intelligence.vehicleDetail.openPdi': 'Cihaz ayrıntısını aç',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Kapsamda kalıcı karar yok.',
   'master.intelligence.vehicleDetail.noPhysicalDevice':
     'Bu araca atanan tek bir kurulu fiziksel cihaz yok.',
   'master.intelligence.vehicleDetail.multipleLinks':
-    'Birden fazla sağlayıcı kaynak bağlantısı — birincil bağlantı gösterildi; araçlar arası varsayımlardan önce VSI/APDS’de bağlantıyı doğrulayın.',
+    'Birden fazla sağlayıcı kaynak bağlantısı — VSI/APDS gezinmesinden önce bir bağlantı seçin.',
+  'master.intelligence.vehicleDetail.selectSourceLink.title': 'Sağlayıcı kaynak bağlantısı',
+  'master.intelligence.vehicleDetail.selectSourceLink.hint':
+    'Kalıcı sağlayıcı bağlantısını seçin. Özetler ve gezinme yalnızca seçilen bağlantı için geçerlidir.',
+  'master.intelligence.vehicleDetail.selectSourceLink.stale':
+    'Önceki seçim bu araçla eşleşmiyor. Bağlantıyı yeniden seçin.',
+  'master.intelligence.vehicleDetail.selectSourceLink.required':
+    'Bu araç için intelligence gezinmesini etkinleştirmek üzere bir kaynak bağlantısı seçin.',
+  'master.intelligence.vehicleDetail.selectSourceLink.summaryPending':
+    'LV/RPM özetlerini görmek için bir kaynak bağlantısı seçin.',
+  'master.intelligence.vehicleDetail.selectSourceLink.apdsPending':
+    'Bu bağlantı için APDS özetini yüklemek üzere bir kaynak bağlantısı seçin.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.notApplicable':
+    'Motor RPM sinyal ayrıntısı bu profil için geçerli değil (kalıcı VSI uygulanabilirliği).',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.unknownApplicability':
+    'VSI bu bağlantı için uygulanabilir RPM kanıtı bildirene kadar RPM ayrıntısı kullanılamaz.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.evaluationBlocked':
+    'Profil değerlendirmesi engelliyken RPM ayrıntısı kullanılamaz.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
+    'RPM ayrıntısı seçilmiş bir sağlayıcı kaynak bağlantısı gerektirir.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Bağımsız kanıt boyutları',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Uygulanabilirlik',
