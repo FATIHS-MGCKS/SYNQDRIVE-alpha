@@ -2,7 +2,10 @@ import { Body, Controller, Get, Param, Post, Req, UnauthorizedException, UseGuar
 import { Throttle } from '@nestjs/throttler';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { OneAutoProviderService } from './oneauto-provider.service';
 
 type AuthedRequest = {
@@ -10,7 +13,7 @@ type AuthedRequest = {
 };
 
 @Controller('admin/organizations/:orgId/oneauto')
-@UseGuards(RolesGuard, OrgScopingGuard)
+@UseGuards(RolesGuard, OrgScopingGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 @Throttle({ default: { ttl: 60_000, limit: 60 } })
 export class OneAutoProviderController {
@@ -36,6 +39,7 @@ export class OneAutoProviderController {
   }
 
   @Post('vehicles/:vehicleId/execute')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ONEAUTO_PROVIDER_EXECUTE)
   execute(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -45,6 +49,7 @@ export class OneAutoProviderController {
       idempotencyKey: string;
       confirmedPriceMinor: number;
       pricingSourceVersion: string;
+      quoteIssuedAt: string;
       acknowledgeIndicativeNotGuaranteed: boolean;
     },
     @Req() req: AuthedRequest,
@@ -60,6 +65,7 @@ export class OneAutoProviderController {
       idempotencyKey: body.idempotencyKey,
       confirmedPriceMinor: body.confirmedPriceMinor,
       pricingSourceVersion: body.pricingSourceVersion,
+      quoteIssuedAt: body.quoteIssuedAt,
       acknowledgeIndicativeNotGuaranteed: body.acknowledgeIndicativeNotGuaranteed === true,
       masterAdminUserId,
     });

@@ -36,6 +36,8 @@ export default registerAs('oneautoProvider', () => ({
   requestTimeoutMs: intEnv('ONEAUTO_REQUEST_TIMEOUT_MS', 30_000),
   maxRetries: intEnv('ONEAUTO_MAX_RETRIES', 2),
   orgDailyBudgetMinor: intEnv('ONEAUTO_ORG_DAILY_BUDGET_MINOR', 0),
+  quoteTtlMs: intEnv('ONEAUTO_QUOTE_TTL_MS', 5 * 60_000),
+  jobTtlMs: intEnv('ONEAUTO_JOB_TTL_MS', 24 * 60 * 60_000),
   indicativePriceMinorBySku: loadSkuPriceMinorMap(),
   pricingCatalogVersion: process.env.ONEAUTO_PRICING_CATALOG_VERSION?.trim() || 'synqdrive-catalog-v1',
   maxPollAttempts: intEnv('ONEAUTO_MAX_POLL_ATTEMPTS', 12),

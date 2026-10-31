@@ -13,6 +13,6 @@ export class OneAutoProviderProcessor extends WorkerHost {
   }
 
   async process(job: Job<OneAutoProviderJobPayload>): Promise<void> {
-    await this.execution.processJob(job.data.jobId);
+    await this.execution.processJob(job.data.jobId, job.data.phase ?? 'initial');
   }
 }

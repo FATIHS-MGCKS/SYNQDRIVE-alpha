@@ -1,10 +1,13 @@
+import { isOneAutoSkuContractVerified } from './oneauto-verified-contracts';
+
 export type OneAutoExecutionMode = 'SYNC' | 'ASYNC_POLL';
 
 export type OneAutoCatalogAvailability =
   | 'AVAILABLE'
   | 'DISABLED_FLAG'
   | 'PRICE_NOT_CONFIGURED'
-  | 'PATH_UNVERIFIED';
+  | 'PATH_UNVERIFIED'
+  | 'CONTRACT_UNVERIFIED';
 
 export type OneAutoServiceCatalogEntry = {
   serviceSku: string;
@@ -127,7 +130,9 @@ export function resolveCatalogEntryForRuntime(
   const configuredPrice = opts.indicativePriceMinorBySku[entry.serviceSku] ?? null;
   let availabilityStatus: OneAutoCatalogAvailability = entry.availabilityStatus;
   if (!opts.providerEnabled) availabilityStatus = 'DISABLED_FLAG';
+  else if (!isOneAutoSkuContractVerified(entry.serviceSku)) availabilityStatus = 'CONTRACT_UNVERIFIED';
   else if (configuredPrice == null) availabilityStatus = 'PRICE_NOT_CONFIGURED';
+  else availabilityStatus = 'AVAILABLE';
   return {
     ...entry,
     indicativePriceMinor: configuredPrice,

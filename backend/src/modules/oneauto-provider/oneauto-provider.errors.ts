@@ -34,3 +34,25 @@ export function oneAutoConfirmationRequiredException() {
     message: 'Explicit cost confirmation is required before execution',
   });
 }
+
+export function oneAutoContractUnverifiedException(serviceSku: string) {
+  return new BadRequestException({
+    code: 'CONTRACT_UNVERIFIED',
+    message: 'One Auto provider contract is not verified for this service',
+    serviceSku,
+  });
+}
+
+export function oneAutoQuoteExpiredException() {
+  return new BadRequestException({
+    code: 'ONEAUTO_QUOTE_EXPIRED',
+    message: 'Cost quotation expired — request a new quote before execution',
+  });
+}
+
+export function oneAutoBindingMismatchException() {
+  return new ForbiddenException({
+    code: 'ONEAUTO_BINDING_MISMATCH',
+    message: 'Organization, vehicle, or VIN binding failed server-side validation',
+  });
+}

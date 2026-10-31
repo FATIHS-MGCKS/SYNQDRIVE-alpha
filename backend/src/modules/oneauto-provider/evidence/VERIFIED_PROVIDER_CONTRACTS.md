@@ -32,7 +32,9 @@ Sources consulted (2026-10-31, no live paid calls from this workstream):
 ## SynqDrive P1 safety
 
 - Feature flag `ONEAUTO_ENABLED=false` by default.
-- Allowlisted HTTP paths only (`oneauto-allowlist.ts`).
-- VIN-only request parameters (no unrelated PII).
-- Cost confirmation + idempotency before enqueueing billable work.
+- HTTP allowlist built **only** from `ONEAUTO_VERIFIED_PROVIDER_CONTRACTS` (empty → no outbound paths).
+- Catalog placeholders are **not** executable (`CONTRACT_UNVERIFIED`) until attestation entry exists.
+- VIN-only request parameters (verified param name required on contract entry).
+- Cost confirmation + quote TTL + idempotency before enqueueing billable work.
+- Master Admin MFA step-up on execute (`MASTER_ONEAUTO_PROVIDER_EXECUTE`) when IAM MFA flags enforce step-up.
 - External responses persisted in `OneAutoProviderResponse` only — no auto-write to vehicle specification or service history.

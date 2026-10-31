@@ -50,6 +50,7 @@ export class OneAutoHttpClient {
   async getVinLookup(input: {
     relativePath: string;
     vin: string;
+    vinQueryParameter?: 'vin';
   }): Promise<OneAutoHttpResult> {
     this.assertOutboundAllowed();
     const vin = normalizeVin(input.vin);
@@ -61,7 +62,8 @@ export class OneAutoHttpClient {
     const cfg = this.cfg();
     const base = (cfg?.baseUrl ?? '').replace(/\/+$/, '');
     const path = input.relativePath.replace(/^\/+/, '');
-    const url = `${base}/${path}?vin=${encodeURIComponent(vin)}`;
+    const vinParam = input.vinQueryParameter ?? 'vin';
+    const url = `${base}/${path}?${encodeURIComponent(vinParam)}=${encodeURIComponent(vin)}`;
 
     const apiKey = process.env.ONEAUTO_API_KEY?.trim();
     if (!apiKey) {

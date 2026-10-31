@@ -1,7 +1,9 @@
-import { ONEAUTO_SERVICE_CATALOG } from '../catalog/oneauto-service-catalog';
+import { ONEAUTO_VERIFIED_PROVIDER_CONTRACTS } from '../catalog/oneauto-verified-contracts';
 
 const ALLOWLIST = new Set(
-  ONEAUTO_SERVICE_CATALOG.map((e) => `${e.httpMethod}:${normalizePath(e.providerPathTemplate)}`),
+  [...ONEAUTO_VERIFIED_PROVIDER_CONTRACTS.values()].map(
+    (c) => `${c.httpMethod}:${normalizePath(c.providerPathTemplate)}`,
+  ),
 );
 
 function normalizePath(path: string): string {
@@ -11,6 +13,8 @@ function normalizePath(path: string): string {
 export function assertOneAutoAllowlistedPath(method: string, relativePath: string): void {
   const key = `${method.toUpperCase()}:${normalizePath(relativePath)}`;
   if (!ALLOWLIST.has(key)) {
-    throw new Error(`ONEAUTO_PATH_NOT_ALLOWLISTED:${key}`);
+    throw Object.assign(new Error(`ONEAUTO_PATH_NOT_ALLOWLISTED:${key}`), {
+      code: 'CONTRACT_UNVERIFIED',
+    });
   }
 }

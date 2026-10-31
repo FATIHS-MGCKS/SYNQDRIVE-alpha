@@ -3220,6 +3220,9 @@ model OneAutoProviderJob {
   costConfirmedByUserId       String?                  @map("cost_confirmed_by_user_id")
   initiatingMasterAdminUserId String                   @map("initiating_master_admin_user_id")
   confirmedPriceMinor         Int?                     @map("confirmed_price_minor")
+  budgetReservedMinor         Int?                     @map("budget_reserved_minor")
+  quoteIssuedAt               DateTime?                @map("quote_issued_at")
+  initialProviderDispatchAt   DateTime?                @map("initial_provider_dispatch_at")
   actualChargeMinor           Int?                     @map("actual_charge_minor")
   actualChargeKnown           Boolean                  @default(false) @map("actual_charge_known")
   pollAttemptCount            Int                      @default(0) @map("poll_attempt_count")
@@ -3235,6 +3238,7 @@ model OneAutoProviderJob {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, vehicleId])
+  @@index([organizationId, costConfirmedAt])
   @@index([status])
   @@map("one_auto_provider_jobs")
 }
@@ -3245,6 +3249,7 @@ model OneAutoProviderResponse {
   httpStatus           Int?     @map("http_status")
   providerStatusHeader String?  @map("provider_status_header")
   responseBodyJson     Json?    @map("response_body_json")
+  responsePhase        String?  @map("response_phase")
   fetchedAt            DateTime @default(now()) @map("fetched_at")
 
   job OneAutoProviderJob @relation(fields: [jobId], references: [id], onDelete: Cascade)

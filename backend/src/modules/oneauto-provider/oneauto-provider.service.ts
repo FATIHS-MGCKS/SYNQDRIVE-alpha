@@ -1,22 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OneAutoProviderJobStatus } from '@prisma/client';
+import { OneAutoProviderJobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
-  getOneAutoCatalogEntry,
   ONEAUTO_SERVICE_CATALOG,
   resolveCatalogEntryForRuntime,
 } from './catalog/oneauto-service-catalog';
+import { assertOneAutoSkuExecutable } from './catalog/oneauto-contract-gate.util';
+import { buildOneAutoContractGateReport } from './catalog/oneauto-verified-contracts';
 import { isValidVin, normalizeVin } from './client/oneauto-vin.util';
 import { OneAutoProviderExecutionService } from './oneauto-provider-execution.service';
 import {
   oneAutoBudgetExceededException,
+  oneAutoBindingMismatchException,
   oneAutoConfirmationRequiredException,
+  oneAutoContractUnverifiedException,
   oneAutoCrossTenantException,
   oneAutoDisabledException,
   oneAutoInvalidVinException,
   oneAutoJobNotFoundException,
   oneAutoPriceMismatchException,
+  oneAutoQuoteExpiredException,
   oneAutoUnavailableException,
 } from './oneauto-provider.errors';
 
@@ -25,6 +29,8 @@ type RuntimeCfg = {
   indicativePriceMinorBySku?: Record<string, number>;
   pricingCatalogVersion?: string;
   orgDailyBudgetMinor?: number;
+  quoteTtlMs?: number;
+  jobTtlMs?: number;
 };
 
 @Injectable()
@@ -54,7 +60,11 @@ export class OneAutoProviderService {
 
   getCatalog() {
     return {
-      services: this.resolvedCatalog(),
+      services: this.resolvedCatalog().map((entry) => ({
+        ...entry,
+        contractGate: buildOneAutoContractGateReport(entry.serviceSku),
+        executable: entry.availabilityStatus === 'AVAILABLE',
+      })),
       indicativePricingDisclaimer:
         'Published indicative prices are not guaranteed billing amounts. Actual cost remains UNKNOWN until provider billing evidence exists.',
     };
@@ -63,12 +73,15 @@ export class OneAutoProviderService {
   getServiceAvailability(serviceSku: string) {
     const entry = this.resolvedCatalog().find((e) => e.serviceSku === serviceSku);
     if (!entry) {
-      return { serviceSku, available: false, reason: 'UNKNOWN_SKU' as const };
+      return { serviceSku, available: false, executable: false, reason: 'UNKNOWN_SKU' as const };
     }
+    const gate = buildOneAutoContractGateReport(serviceSku);
     return {
       serviceSku,
       available: entry.availabilityStatus === 'AVAILABLE',
+      executable: entry.availabilityStatus === 'AVAILABLE',
       availabilityStatus: entry.availabilityStatus,
+      contractGate: gate,
       indicativePriceMinor: entry.indicativePriceMinor,
       currency: entry.currency,
       pricingSourceVersion: entry.pricingSourceVersion,
@@ -78,11 +91,16 @@ export class OneAutoProviderService {
   async quote(orgId: string, vehicleId: string, serviceSku: string) {
     this.assertFeatureEnabledForQuote();
     const { vehicle, entry } = await this.loadVehicleAndSku(orgId, vehicleId, serviceSku);
-    const vin = normalizeVin(vehicle.vin);
-    if (!isValidVin(vin)) throw oneAutoInvalidVinException();
+    this.assertVehicleBinding(orgId, vehicleId, vehicle.vin);
+    if (entry.availabilityStatus === 'CONTRACT_UNVERIFIED') {
+      throw oneAutoContractUnverifiedException(serviceSku);
+    }
     if (entry.availabilityStatus !== 'AVAILABLE') {
       throw oneAutoUnavailableException(`Service not available: ${entry.availabilityStatus}`);
     }
+    const vin = normalizeVin(vehicle.vin)!;
+    const quoteIssuedAt = new Date();
+    const quoteTtlMs = this.runtimeCfg().quoteTtlMs ?? 5 * 60_000;
     return {
       organizationId: orgId,
       vehicleId,
@@ -93,6 +111,9 @@ export class OneAutoProviderService {
       pricingSourceVersion: entry.pricingSourceVersion,
       executionMode: entry.executionMode,
       indicativeNotGuaranteed: true,
+      quoteIssuedAt: quoteIssuedAt.toISOString(),
+      quoteExpiresAt: new Date(quoteIssuedAt.getTime() + quoteTtlMs).toISOString(),
+      contractGate: buildOneAutoContractGateReport(serviceSku),
     };
   }
 
@@ -103,6 +124,7 @@ export class OneAutoProviderService {
     idempotencyKey: string;
     confirmedPriceMinor: number;
     pricingSourceVersion: string;
+    quoteIssuedAt: string;
     acknowledgeIndicativeNotGuaranteed: boolean;
     masterAdminUserId: string;
   }) {
@@ -125,37 +147,59 @@ export class OneAutoProviderService {
       return this.toJobDto(existing);
     }
 
-    const quote = await this.quote(input.orgId, input.vehicleId, input.serviceSku);
-    if (quote.estimatedPriceMinor == null) {
+    try {
+      assertOneAutoSkuExecutable(input.serviceSku);
+    } catch {
+      throw oneAutoContractUnverifiedException(input.serviceSku);
+    }
+
+    const quoteIssuedAtMs = Date.parse(input.quoteIssuedAt);
+    if (Number.isNaN(quoteIssuedAtMs)) {
+      throw oneAutoQuoteExpiredException();
+    }
+    const quoteTtlMs = cfg.quoteTtlMs ?? 5 * 60_000;
+    if (Date.now() - quoteIssuedAtMs > quoteTtlMs) {
+      throw oneAutoQuoteExpiredException();
+    }
+
+    const freshQuote = await this.quote(input.orgId, input.vehicleId, input.serviceSku);
+    if (freshQuote.estimatedPriceMinor == null) {
       throw oneAutoUnavailableException('Price not configured for SKU');
     }
     if (
-      quote.estimatedPriceMinor !== input.confirmedPriceMinor ||
-      quote.pricingSourceVersion !== input.pricingSourceVersion
+      freshQuote.estimatedPriceMinor !== input.confirmedPriceMinor ||
+      freshQuote.pricingSourceVersion !== input.pricingSourceVersion
     ) {
       throw oneAutoPriceMismatchException();
     }
 
-    await this.assertBudgetAllows(input.orgId, input.confirmedPriceMinor);
-
+    const jobTtlMs = cfg.jobTtlMs ?? 24 * 60 * 60_000;
     const now = new Date();
-    const job = await this.prisma.oneAutoProviderJob.create({
-      data: {
-        organizationId: input.orgId,
-        vehicleId: input.vehicleId,
-        vinSnapshot: quote.vinSnapshot!,
-        serviceSku: input.serviceSku,
-        status: OneAutoProviderJobStatus.CREATED,
-        idempotencyKey: input.idempotencyKey.trim(),
-        estimatedPriceMinor: quote.estimatedPriceMinor,
-        currency: quote.currency,
-        pricingSourceVersion: quote.pricingSourceVersion,
-        costConfirmedAt: now,
-        costConfirmedByUserId: input.masterAdminUserId,
-        initiatingMasterAdminUserId: input.masterAdminUserId,
-        confirmedPriceMinor: input.confirmedPriceMinor,
-        actualChargeKnown: false,
-      },
+    const expiresAt = new Date(now.getTime() + jobTtlMs);
+
+    const job = await this.prisma.$transaction(async (tx) => {
+      await this.assertBudgetAllowsTx(tx, input.orgId, input.confirmedPriceMinor);
+      return tx.oneAutoProviderJob.create({
+        data: {
+          organizationId: input.orgId,
+          vehicleId: input.vehicleId,
+          vinSnapshot: freshQuote.vinSnapshot,
+          serviceSku: input.serviceSku,
+          status: OneAutoProviderJobStatus.CREATED,
+          idempotencyKey: input.idempotencyKey.trim(),
+          estimatedPriceMinor: freshQuote.estimatedPriceMinor,
+          currency: freshQuote.currency,
+          pricingSourceVersion: freshQuote.pricingSourceVersion,
+          costConfirmedAt: now,
+          costConfirmedByUserId: input.masterAdminUserId,
+          initiatingMasterAdminUserId: input.masterAdminUserId,
+          confirmedPriceMinor: input.confirmedPriceMinor,
+          budgetReservedMinor: input.confirmedPriceMinor,
+          quoteIssuedAt: new Date(quoteIssuedAtMs),
+          actualChargeKnown: false,
+          expiresAt,
+        },
+      });
     });
 
     this.logger.log(
@@ -203,6 +247,12 @@ export class OneAutoProviderService {
     if (cfg.enabled !== true) throw oneAutoDisabledException();
   }
 
+  private assertVehicleBinding(orgId: string, vehicleId: string, vin: string | null) {
+    const normalized = normalizeVin(vin);
+    if (!isValidVin(normalized)) throw oneAutoInvalidVinException();
+    if (!orgId?.trim() || !vehicleId?.trim()) throw oneAutoBindingMismatchException();
+  }
+
   private async loadVehicleAndSku(orgId: string, vehicleId: string, serviceSku: string) {
     const entry = this.resolvedCatalog().find((e) => e.serviceSku === serviceSku);
     if (!entry) throw oneAutoUnavailableException('Unknown service SKU');
@@ -214,12 +264,16 @@ export class OneAutoProviderService {
     return { vehicle, entry };
   }
 
-  private async assertBudgetAllows(orgId: string, additionalMinor: number) {
+  private async assertBudgetAllowsTx(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    additionalMinor: number,
+  ) {
     const cap = this.runtimeCfg().orgDailyBudgetMinor ?? 0;
     if (cap <= 0) return;
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
-    const agg = await this.prisma.oneAutoProviderJob.aggregate({
+    const agg = await tx.oneAutoProviderJob.aggregate({
       where: {
         organizationId: orgId,
         costConfirmedAt: { gte: startOfDay },
@@ -233,9 +287,9 @@ export class OneAutoProviderService {
           ],
         },
       },
-      _sum: { confirmedPriceMinor: true },
+      _sum: { budgetReservedMinor: true },
     });
-    const spent = agg._sum.confirmedPriceMinor ?? 0;
+    const spent = agg._sum.budgetReservedMinor ?? 0;
     if (spent + additionalMinor > cap) throw oneAutoBudgetExceededException();
   }
 
@@ -257,6 +311,8 @@ export class OneAutoProviderService {
     actualChargeKnown: boolean;
     pollAttemptCount: number;
     lastErrorCode: string | null;
+    initialProviderDispatchAt: Date | null;
+    expiresAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
   }) {
@@ -278,6 +334,8 @@ export class OneAutoProviderService {
       actualChargeKnown: job.actualChargeKnown,
       pollAttemptCount: job.pollAttemptCount,
       lastErrorCode: job.lastErrorCode,
+      initialProviderDispatchAt: job.initialProviderDispatchAt,
+      expiresAt: job.expiresAt,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };
