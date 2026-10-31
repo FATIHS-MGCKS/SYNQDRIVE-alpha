@@ -279,4 +279,28 @@ export const masterIntelligenceTr = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Uyumlu ifadeler: canlı snapshot hiç RPM taşımadı; tarihsel HF yolculuk kanıtı mevcut.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'VSI intelligence bölümleri',
+  'master.intelligence.vsi.tabs.overview': 'Genel bakış',
+  'master.intelligence.vsi.tabs.ledger': 'Sinyal defteri',
+  'master.intelligence.vsi.tabs.revisions': 'Revizyonlar',
+  'master.intelligence.vsi.ledger.filters.search': 'Sinyal ara',
+  'master.intelligence.vsi.ledger.filters.clear': 'Filtreleri temizle',
+  'master.intelligence.vsi.ledger.filters.group': 'Defter filtreleri',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Sınırlamalı',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'Atfedilebilir HF',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Uygulanamazları gizle',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{total}} sinyalden {{shown}}',
+  'master.intelligence.vsi.ledger.col.signal': 'Sinyal',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Kalite / güven',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Son geçerli gözlem',
+  'master.intelligence.vsi.ledger.col.limitations': 'Sınırlamalar',
+  'master.intelligence.vsi.ledger.col.provenance': 'Kanıt',
+  'master.intelligence.vsi.ledger.col.action': 'Ayrıntıyı aç',
+  'master.intelligence.vsi.ledger.table.caption': 'Araç sinyal kanıt defteri',
+  'master.intelligence.vsi.ledger.selectSignal': '{{signal}} sinyalini seç',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'Filtrelere uyan sinyal yok.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} kaynak bağlantısı — kanıt yalnızca seçili bağlantı için geçerlidir.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} sinyal · profil revizyonu {{revision}}',
 } as const;

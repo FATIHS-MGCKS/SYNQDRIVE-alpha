@@ -278,4 +278,28 @@ export const masterIntelligenceIt = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Affermazioni compatibili: lo snapshot live non ha mai riportato RPM mentre esistono evidenze HF storiche.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'Sezioni intelligence VSI',
+  'master.intelligence.vsi.tabs.overview': 'Panoramica',
+  'master.intelligence.vsi.tabs.ledger': 'Registro segnali',
+  'master.intelligence.vsi.tabs.revisions': 'Revisioni',
+  'master.intelligence.vsi.ledger.filters.search': 'Cerca segnali',
+  'master.intelligence.vsi.ledger.filters.clear': 'Cancella filtri',
+  'master.intelligence.vsi.ledger.filters.group': 'Filtri registro',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Con limitazioni',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'HF attribuibile',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Nascondi non applicabile',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{shown}} di {{total}} segnali',
+  'master.intelligence.vsi.ledger.col.signal': 'Segnale',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Qualità / confidenza',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Ultima osservazione valida',
+  'master.intelligence.vsi.ledger.col.limitations': 'Limitazioni',
+  'master.intelligence.vsi.ledger.col.provenance': 'Evidenza',
+  'master.intelligence.vsi.ledger.col.action': 'Apri dettaglio',
+  'master.intelligence.vsi.ledger.table.caption': 'Registro evidenze segnali veicolo',
+  'master.intelligence.vsi.ledger.selectSignal': 'Seleziona segnale {{signal}}',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'Nessun segnale corrisponde ai filtri.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} link sorgente — l’evidenza vale solo per il link selezionato.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} segnali · revisione profilo {{revision}}',
 } as const;

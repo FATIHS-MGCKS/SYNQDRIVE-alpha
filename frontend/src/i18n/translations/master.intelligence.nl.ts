@@ -278,4 +278,28 @@ export const masterIntelligenceNl = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Compatibele uitspraken: live snapshot droeg nooit RPM terwijl historisch HF-ritbewijs bestaat.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'VSI-intelligence-onderdelen',
+  'master.intelligence.vsi.tabs.overview': 'Overzicht',
+  'master.intelligence.vsi.tabs.ledger': 'Signaalregister',
+  'master.intelligence.vsi.tabs.revisions': 'Revisies',
+  'master.intelligence.vsi.ledger.filters.search': 'Signalen zoeken',
+  'master.intelligence.vsi.ledger.filters.clear': 'Filters wissen',
+  'master.intelligence.vsi.ledger.filters.group': 'Registerfilters',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Met beperkingen',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'Toeschrijfbaar HF',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Verberg niet van toepassing',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{shown}} van {{total}} signalen',
+  'master.intelligence.vsi.ledger.col.signal': 'Signaal',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Kwaliteit / vertrouwen',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Laatste geldige observatie',
+  'master.intelligence.vsi.ledger.col.limitations': 'Beperkingen',
+  'master.intelligence.vsi.ledger.col.provenance': 'Bewijs',
+  'master.intelligence.vsi.ledger.col.action': 'Detail openen',
+  'master.intelligence.vsi.ledger.table.caption': 'Bewijsregister voertuigsignalen',
+  'master.intelligence.vsi.ledger.selectSignal': 'Selecteer signaal {{signal}}',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'Geen signalen komen overeen met de filters.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} bronlinks — bewijs geldt alleen voor de geselecteerde link.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} signalen · profielrevisie {{revision}}',
 } as const;
