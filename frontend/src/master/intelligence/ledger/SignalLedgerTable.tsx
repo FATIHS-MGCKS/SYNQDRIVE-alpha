@@ -1,13 +1,8 @@
-import { Fragment } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { cn } from '../../../components/ui/utils';
 import type { MasterVsiProfileDetailDto, MasterVsiSignalDetailDto } from '../vsi-master-intelligence-api.types';
-import {
-  buildEngineRpmDualProvenanceView,
-  ENGINE_RPM_CANONICAL_KEY,
-} from '../vsi-engine-rpm-dual-provenance.utils';
-import { VsiEngineRpmDualProvenancePanel } from '../VsiEngineRpmDualProvenancePanel';
+import { ENGINE_RPM_CANONICAL_KEY } from '../vsi-engine-rpm-dual-provenance.utils';
 import { countSignalLimitations, hasAttributableHfEvidence } from '../vsi-ledger-filter.util';
 import { dedupeProvenanceTagsForDisplay } from './dedupe-provenance-display.util';
 import { EvidenceDimensionChip } from './EvidenceDimensionChip';
@@ -19,14 +14,14 @@ export type SignalLedgerTableProps = {
   selectedSignalKey: string | null;
   onSelectSignal: (canonicalSignalKey: string) => void;
   formatTimestamp: (iso: string | null | undefined) => string;
+  registerRowRef?: (canonicalSignalKey: string, el: HTMLButtonElement | null) => void;
 };
 
 export function SignalLedgerTable({
-  profile,
   signals,
   selectedSignalKey,
   onSelectSignal,
-  formatTimestamp,
+  registerRowRef,
 }: SignalLedgerTableProps) {
   const { t } = useLanguage();
 
@@ -86,116 +81,101 @@ export function SignalLedgerTable({
             {signals.map((signal) => {
               const isSelected = selectedSignalKey === signal.canonicalSignalKey;
               const isEngineRpm = signal.canonicalSignalKey === ENGINE_RPM_CANONICAL_KEY;
-              const dual = isEngineRpm ? buildEngineRpmDualProvenanceView(profile, signal) : null;
               const limCount = countSignalLimitations(signal);
               const attributionLimited =
                 (signal.rpmCombinedEvidenceLimitationsV1?.length ?? 0) > 0;
 
               return (
-                <Fragment key={signal.canonicalSignalKey}>
-                  <tr
-                    className={cn(
-                      'border-t border-border/40',
-                      isSelected && 'bg-muted/30',
+                <tr
+                  key={signal.canonicalSignalKey}
+                  className={cn('border-t border-border/40', isSelected && 'bg-muted/30')}
+                >
+                  <td className="sticky left-0 z-[1] bg-background px-2 py-1.5 align-top">
+                    <button
+                      type="button"
+                      ref={(el) => registerRowRef?.(signal.canonicalSignalKey, el)}
+                      className="w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                      aria-selected={isSelected}
+                      onClick={() => onSelectSignal(signal.canonicalSignalKey)}
+                      aria-label={t('master.intelligence.vsi.ledger.selectSignal' as never, {
+                        signal: signal.canonicalSignalKey,
+                      })}
+                    >
+                      <span className="block font-mono text-[11px]">{signal.canonicalSignalKey}</span>
+                      <span className="block text-[10px] text-muted-foreground">
+                        {signal.providerNativeSignalName}
+                      </span>
+                    </button>
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    <EvidenceDimensionChip
+                      kind="applicability"
+                      value={signal.powertrainApplicability ?? null}
+                      className="min-h-0 py-0.5"
+                    />
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    <EvidenceDimensionChip
+                      kind="declared"
+                      value={signal.declaredSupport || null}
+                      className="min-h-0 py-0.5"
+                    />
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    <EvidenceDimensionChip
+                      kind="observation"
+                      value={signal.empiricalObservation || null}
+                      className="min-h-0 py-0.5"
+                    />
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    <EvidenceDimensionChip
+                      kind="freshness"
+                      value={signal.freshnessClassification}
+                      className="min-h-0 py-0.5"
+                    />
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    <div className="flex flex-col gap-1">
+                      <EvidenceDimensionChip
+                        kind="quality"
+                        value={signal.qualityClassification}
+                        className="min-h-0 py-0.5"
+                      />
+                      <EvidenceDimensionChip
+                        kind="confidence"
+                        value={signal.confidenceLevel}
+                        className="min-h-0 py-0.5"
+                      />
+                    </div>
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    {isEngineRpm ? (
+                      <EvidenceDimensionChip
+                        kind="combinedRpm"
+                        value={signal.rpmCombinedEvidenceAvailabilityV1 ?? null}
+                        attributionLimited={attributionLimited}
+                        className="min-h-0 py-0.5"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
-                  >
-                    <td className="sticky left-0 z-[1] bg-background px-2 py-1.5 align-top">
-                      <button
-                        type="button"
-                        className="w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                        aria-selected={isSelected}
-                        onClick={() => onSelectSignal(signal.canonicalSignalKey)}
-                        aria-label={t('master.intelligence.vsi.ledger.selectSignal' as never, {
-                          signal: signal.canonicalSignalKey,
-                        })}
-                      >
-                        <span className="block font-mono text-[11px]">{signal.canonicalSignalKey}</span>
-                        <span className="block text-[10px] text-muted-foreground">
-                          {signal.providerNativeSignalName}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="px-1 py-1 align-top">
-                      <EvidenceDimensionChip
-                        kind="applicability"
-                        value={signal.powertrainApplicability ?? null}
-                        className="min-h-0 py-0.5"
-                      />
-                    </td>
-                    <td className="px-1 py-1 align-top">
-                      <EvidenceDimensionChip
-                        kind="declared"
-                        value={signal.declaredSupport || null}
-                        className="min-h-0 py-0.5"
-                      />
-                    </td>
-                    <td className="px-1 py-1 align-top">
-                      <EvidenceDimensionChip
-                        kind="observation"
-                        value={signal.empiricalObservation || null}
-                        className="min-h-0 py-0.5"
-                      />
-                    </td>
-                    <td className="px-1 py-1 align-top">
-                      <EvidenceDimensionChip
-                        kind="freshness"
-                        value={signal.freshnessClassification}
-                        className="min-h-0 py-0.5"
-                      />
-                    </td>
-                    <td className="px-1 py-1 align-top">
-                      <div className="flex flex-col gap-1">
-                        <EvidenceDimensionChip
-                          kind="quality"
-                          value={signal.qualityClassification}
-                          className="min-h-0 py-0.5"
-                        />
-                        <EvidenceDimensionChip
-                          kind="confidence"
-                          value={signal.confidenceLevel}
-                          className="min-h-0 py-0.5"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-1 py-1 align-top">
-                      {isEngineRpm ? (
-                        <EvidenceDimensionChip
-                          kind="combinedRpm"
-                          value={signal.rpmCombinedEvidenceAvailabilityV1 ?? null}
-                          attributionLimited={attributionLimited}
-                          className="min-h-0 py-0.5"
-                        />
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1 align-top">
-                      <EvidenceTimestamp
-                        kind="observation"
-                        iso={signal.lastValidObservationAt}
-                        showUtc={false}
-                      />
-                    </td>
-                    <td className="px-2 py-1 tabular-nums align-top">{limCount || '—'}</td>
-                    <td className="px-2 py-1 align-top">
-                      <ProvenanceMarkers signal={signal} />
-                    </td>
-                    <td className="px-2 py-1 align-top">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
-                    </td>
-                  </tr>
-                  {isEngineRpm && dual ? (
-                    <tr className="border-t border-border/40 bg-muted/10">
-                      <td colSpan={11} className="px-2 py-2">
-                        <VsiEngineRpmDualProvenancePanel
-                          dual={dual}
-                          formatTimestamp={formatTimestamp}
-                          t={(key, params) => t(key as never, params as never)}
-                        />
-                      </td>
-                    </tr>
-                  ) : null}
-                </Fragment>
+                  </td>
+                  <td className="px-2 py-1 align-top">
+                    <EvidenceTimestamp
+                      kind="observation"
+                      iso={signal.lastValidObservationAt}
+                      showUtc={false}
+                    />
+                  </td>
+                  <td className="px-2 py-1 tabular-nums align-top">{limCount || '—'}</td>
+                  <td className="px-2 py-1 align-top">
+                    <ProvenanceMarkers signal={signal} />
+                  </td>
+                  <td className="px-2 py-1 align-top">
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  </td>
+                </tr>
               );
             })}
           </tbody>
@@ -206,17 +186,20 @@ export function SignalLedgerTable({
         {signals.map((signal) => {
           const isSelected = selectedSignalKey === signal.canonicalSignalKey;
           const isEngineRpm = signal.canonicalSignalKey === ENGINE_RPM_CANONICAL_KEY;
-          const dual = isEngineRpm ? buildEngineRpmDualProvenanceView(profile, signal) : null;
           return (
             <li key={signal.canonicalSignalKey}>
               <button
                 type="button"
+                ref={(el) => registerRowRef?.(signal.canonicalSignalKey, el)}
                 className={cn(
                   'w-full rounded-lg border border-border/60 p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isSelected && 'border-border bg-muted/30',
                 )}
                 aria-selected={isSelected}
                 onClick={() => onSelectSignal(signal.canonicalSignalKey)}
+                aria-label={t('master.intelligence.vsi.ledger.selectSignal' as never, {
+                  signal: signal.canonicalSignalKey,
+                })}
               >
                 <p className="font-mono text-xs">{signal.canonicalSignalKey}</p>
                 <p className="text-[11px] text-muted-foreground">{signal.providerNativeSignalName}</p>
@@ -241,15 +224,6 @@ export function SignalLedgerTable({
                   ) : null}
                 </div>
               </button>
-              {isEngineRpm && dual ? (
-                <div className="mt-2 rounded-lg border border-border/40 p-2">
-                  <VsiEngineRpmDualProvenancePanel
-                    dual={dual}
-                    formatTimestamp={formatTimestamp}
-                    t={(key, params) => t(key as never, params as never)}
-                  />
-                </div>
-              ) : null}
             </li>
           );
         })}

@@ -301,4 +301,27 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} source linků — důkazy platí pouze pro vybraný link.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} signálů · revize profilu {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Souhrn důkazů',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Časová osa důkazů',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Provenienční stopy',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'Detail důkazu RPM',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'Detail kadence LV',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Omezení',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profil vyhodnocen',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Vozidlo',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Zdrojový odkaz',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Revize profilu {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'LV standby profil',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Rozhodnutí klasifikace',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Spolehlivost důkazu',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Počet pozorovaných vzorků',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Pro tento signál není zaznamenána LV kadence.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Dostupné režimy kadence',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Rozlišení tier',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Štítek pozorované hustoty',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Atribuce a limity odkazu',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Další omezení',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Vybraný signál je skryt filtry. Upravte filtry nebo zrušte výběr.',
 } as const;

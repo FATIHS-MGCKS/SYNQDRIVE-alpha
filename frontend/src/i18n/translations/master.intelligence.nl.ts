@@ -302,4 +302,27 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} bronlinks — bewijs geldt alleen voor de geselecteerde link.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} signalen · profielrevisie {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Bewijssamenvatting',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Bewijstijdlijn',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Provenance-sporen',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'RPM-bewijsdetail',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'LV-cadansdetail',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Beperkingen',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profiel geëvalueerd op',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Voertuig',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Bronlink',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Profielrevisie {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'LV-standbyprofiel',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Classificatiebeslissing',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Bewijsvertrouwen',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Geobserveerde steekproeven',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Geen LV-cadansintelligence voor dit signaal.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Beschikbare cadansregimes',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Tier-resolutie',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Geobserveerde dichtheidslabel',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Attributie en linklimieten',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Overige beperkingen',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Geselecteerd signaal is verborgen door filters. Pas filters aan of wis de selectie.',
 } as const;

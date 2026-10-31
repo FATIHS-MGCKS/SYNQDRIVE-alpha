@@ -303,4 +303,27 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} kaynak bağlantısı — kanıt yalnızca seçili bağlantı için geçerlidir.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} sinyal · profil revizyonu {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Kanıt özeti',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Kanıt zaman çizelgesi',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Provenans izleri',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'RPM kanıt detayı',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'LV kadans detayı',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Sınırlamalar',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profil değerlendirme zamanı',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Araç',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Kaynak bağlantısı',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Profil revizyonu {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'LV bekleme profili',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Sınıflandırma kararı',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Kanıt güveni',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Gözlemlenen örnek sayısı',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Bu sinyal için LV kadans intelligence kaydı yok.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Mevcut kadans rejimleri',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Tier çözümlemesi',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Gözlemlenen yoğunluk etiketi',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Atıf ve bağlantı sınırları',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Diğer sınırlamalar',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Seçili sinyal filtreler tarafından gizlendi. Filtreleri ayarlayın veya seçimi temizleyin.',
 } as const;

@@ -326,4 +326,27 @@ export const masterIntelligenceDe = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} Provider-Source-Links — Evidenz gilt nur für den gewählten Link.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} Signale · Profilrevision {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Evidenz-Zusammenfassung',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Evidenz-Zeitachse',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Provenienz-Spuren',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'RPM-Evidenzdetail',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'LV-Cadence-Detail',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Limitierungen',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profil ausgewertet am',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Fahrzeug',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Source-Link',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Profilrevision {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'LV-Standby-Profil',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Klassifikationsentscheidung',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Evidenz-Konfidenz',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Beobachtete Stichproben',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Keine LV-Cadence-Intelligence für dieses Signal.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Verfügbare Cadence-Regime',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Tier-Auflösung',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Beobachtete Dichte',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Attribution und Source-Link-Grenzen',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Weitere Limitierungen',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Ausgewähltes Signal ist durch Filter ausgeblendet. Filter anpassen oder Auswahl löschen.',
 } as const;

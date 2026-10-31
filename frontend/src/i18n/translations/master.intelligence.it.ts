@@ -302,4 +302,27 @@ export const masterIntelligenceIt = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} link sorgente — l’evidenza vale solo per il link selezionato.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} segnali · revisione profilo {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Riepilogo evidenze',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Timeline evidenze',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Percorsi di provenienza',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'Dettaglio evidenza RPM',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'Dettaglio cadenza LV',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Limitazioni',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profilo valutato il',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Veicolo',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Link sorgente',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Revisione profilo {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'Profilo standby LV',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Decisione di classificazione',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Confidenza evidenza',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Campioni osservati',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Nessuna intelligence cadenza LV per questo segnale.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Regimi di cadenza disponibili',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Risoluzione tier',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Etichetta densità osservata',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Attribuzione e limiti del link',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Altre limitazioni',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Il segnale selezionato è nascosto dai filtri. Modifica i filtri o cancella la selezione.',
 } as const;
