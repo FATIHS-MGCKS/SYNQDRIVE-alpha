@@ -23,6 +23,45 @@ import type { TireSpecCompactEvalCase } from '../../src/modules/vehicle-intellig
 
 const JSON_MODEL = process.env.MISTRAL_JSON_MODEL?.trim() || 'mistral-small-latest';
 
+function tireSpecPromptContextFromIdentity(
+  identity: TireSpecCompactEvalCase['authoritativeIdentity'],
+): Parameters<typeof buildTireSpecPrompt>[0] {
+  return {
+    brand: identity.brand ?? undefined,
+    model: identity.model ?? undefined,
+    tireSize: identity.tireSize ?? undefined,
+    loadIndex: identity.loadIndex ?? undefined,
+    speedIndex: identity.speedIndex ?? undefined,
+  };
+}
+
+/** Align with MistralLlmService.extractMessageContent — text chunks only. */
+function extractMessageContent(
+  content: string | ReadonlyArray<{ type?: string; text?: string }> | null | undefined,
+): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+    .join('');
+}
+
+function extractMistralAssistantContent(
+  content: string | ReadonlyArray<unknown> | null | undefined,
+): string {
+  if (typeof content === 'string' || content == null) {
+    return extractMessageContent(content);
+  }
+  const textParts = content.map((chunk): { text?: string } => {
+    if (typeof chunk !== 'object' || chunk === null || !('text' in chunk)) {
+      return {};
+    }
+    const textValue = chunk.text;
+    return typeof textValue === 'string' ? { text: textValue } : {};
+  });
+  return extractMessageContent(textParts);
+}
+
 /** P2 audit simulated raw payloads — offline pipeline validation only. */
 const P2_SIMULATED_RAW: Record<string, Record<string, unknown>> = {
   S1: {
@@ -101,13 +140,7 @@ function buildLiveFetcher(apiKey: string): CompactEvalLlmFetcher {
 
   return async (evalCase: TireSpecCompactEvalCase) => {
     const ctx = evalCase.authoritativeIdentity;
-    const { system, user } = buildTireSpecPrompt({
-      brand: ctx.brand,
-      model: ctx.model,
-      tireSize: ctx.tireSize,
-      loadIndex: ctx.loadIndex,
-      speedIndex: ctx.speedIndex,
-    });
+    const { system, user } = buildTireSpecPrompt(tireSpecPromptContextFromIdentity(ctx));
 
     const response = await client.chat.complete({
       model: JSON_MODEL,
@@ -127,12 +160,7 @@ function buildLiveFetcher(apiKey: string): CompactEvalLlmFetcher {
     });
 
     const choice = response.choices?.[0];
-    const content =
-      typeof choice?.message?.content === 'string'
-        ? choice.message.content
-        : Array.isArray(choice?.message?.content)
-          ? choice.message.content.map((c: { text?: string }) => c.text ?? '').join('')
-          : '';
+    const content = extractMistralAssistantContent(choice?.message?.content);
 
     const parsed = JSON.parse(content) as Record<string, unknown>;
     parseTireSpecJson(parsed);
