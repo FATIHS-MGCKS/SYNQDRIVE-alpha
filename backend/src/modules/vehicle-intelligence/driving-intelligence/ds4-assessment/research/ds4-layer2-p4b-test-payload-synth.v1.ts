@@ -15,6 +15,14 @@ export function buildDs4Layer2P4bSyntheticPayloadsFromP2EventsV1(
     /** When true on C5_1 trips, emit pass-through repair rows at each event start label (legacy-40 reproduction). */
     c51PassThroughGridRepairRows?: boolean;
     inWindowRepairState?: 'REPAIR_ACCEPTED' | 'REPAIR_REJECTED' | 'UNCERTAIN' | 'PASS_THROUGH_NO_REPAIR';
+    /**
+     * Research harness (P4E A5): align motion boundary Δv to P2 meanAccel×T so secant residual ≈ 0 offline.
+     * Key: `${tripId}#${eventIndex}` → meanAccelMps2 from P2 intensity (not motion engine).
+     */
+    meanAccelMps2ByEventKey?: ReadonlyMap<string, number>;
+    alignBoundaryToMeanAccel?: boolean;
+    /** Linear start/end window samples for shape-index diagnostics when includeWindowSpeedSamples is true. */
+    linearInWindowSpeedSamples?: boolean;
   },
 ): Map<string, Ds4Layer2P4bLoadedMotionPayloadV1> {
   const boundary = options?.boundarySpeedKmh ?? 42;
@@ -44,13 +52,25 @@ export function buildDs4Layer2P4bSyntheticPayloadsFromP2EventsV1(
           flags: [] as string[],
         };
       }
+      let startSpeedKmh = boundary;
+      let endSpeedKmh = boundary + 1;
+      const eventKey = `${match.tripId}#${match.eventIndex}`;
+      if (options?.alignBoundaryToMeanAccel && options.meanAccelMps2ByEventKey?.has(eventKey)) {
+        const mean = options.meanAccelMps2ByEventKey.get(eventKey)!;
+        const deltaKmh = mean * match.durationS * 3.6;
+        if (match.eventKind === 'DECELERATION') {
+          endSpeedKmh = startSpeedKmh - deltaKmh;
+        } else {
+          endSpeedKmh = startSpeedKmh + deltaKmh;
+        }
+      }
       return {
         kind: match.eventKind,
         startLabel: match.startLabelUtc,
         endLabel: match.endLabelUtc,
-        startSpeedKmh: boundary,
-        endSpeedKmh: boundary + 1,
-        deltaKmh: 1,
+        startSpeedKmh,
+        endSpeedKmh,
+        deltaKmh: endSpeedKmh - startSpeedKmh,
         quality: 'OK',
         flags: [] as string[],
       };
@@ -59,14 +79,38 @@ export function buildDs4Layer2P4bSyntheticPayloadsFromP2EventsV1(
     const speeds: DiV0MotionCoreShadowPayloadV1['speeds'] = [];
     if (options?.includeWindowSpeedSamples) {
       for (const ev of runEvents) {
-        speeds.push({
-          bucketLabelUtc: ev.startLabelUtc,
-          speedKmh: boundary,
-          quality: 'OK',
-          support: [],
-          estimator: 'TEST',
-          flags: [],
-        });
+        const motionEv = motionEvents[ev.eventIndex];
+        const startK = motionEv?.startSpeedKmh ?? boundary;
+        const endK = motionEv?.endSpeedKmh ?? boundary;
+        if (options.linearInWindowSpeedSamples) {
+          speeds.push({
+            bucketLabelUtc: ev.startLabelUtc,
+            speedKmh: startK,
+            quality: 'OK',
+            support: [],
+            estimator: 'TEST',
+            flags: [],
+          });
+          if (ev.endLabelUtc !== ev.startLabelUtc) {
+            speeds.push({
+              bucketLabelUtc: ev.endLabelUtc,
+              speedKmh: endK,
+              quality: 'OK',
+              support: [],
+              estimator: 'TEST',
+              flags: [],
+            });
+          }
+        } else {
+          speeds.push({
+            bucketLabelUtc: ev.startLabelUtc,
+            speedKmh: startK,
+            quality: 'OK',
+            support: [],
+            estimator: 'TEST',
+            flags: [],
+          });
+        }
       }
     }
 
