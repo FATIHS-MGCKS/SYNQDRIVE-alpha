@@ -4,7 +4,7 @@ import {
   resolveRegistrationLvBatteryFormState,
   resolveRegistrationLvBatteryForSubmit,
 } from '../connected-vehicles/vehicle-specification-canonical.util';
-import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera } from 'lucide-react';
+import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera, FileText } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, streamAiSpecs, streamAiTireSpecs } from '../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -61,7 +61,9 @@ import {
   type ExteriorImageBufferEntry,
 } from './ExteriorImagesEditor';
 import { VehicleIdentityP2Panel } from './VehicleIdentityP2Panel';
+import { MasterZb1RegistrationDialog } from './MasterZb1RegistrationDialog';
 import { isVehicleIdentityP2Enabled } from '../connected-vehicles/vehicle-identity-p2.util';
+import type { Zb1RegistrationFormPatch } from '../connected-vehicles/zb1-registration-form-merge.util';
 
 interface VehicleRegistrationModalProps {
   isDarkMode: boolean;
@@ -122,6 +124,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const [aiSteps, setAiSteps] = useState<AgentStep[]>([]);
   const [aiLiveStep, setAiLiveStep] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [zb1DialogOpen, setZb1DialogOpen] = useState(false);
   const [batteryValidationError, setBatteryValidationError] = useState<string | null>(null);
 
   // Assignment
@@ -1098,6 +1101,24 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
     tireAiAbortRef.current = controller;
   }, [tireFrontBrandModel, tireFrontDimension, tireFrontLoadIndex, tireFrontSpeedIndex, vehicleIdentity.year]);
 
+  const applyZb1PatchToRegistrationForm = useCallback((patch: Zb1RegistrationFormPatch) => {
+    if (patch.engineDisplacementCc != null) {
+      setEngineDisplacementCc(patch.engineDisplacementCc);
+    }
+    if (patch.fuelType != null) {
+      setFuelType(patch.fuelType);
+    }
+    if (patch.curbWeight != null) {
+      setCurbWeight(patch.curbWeight);
+    }
+  }, []);
+
+  const zb1RegistrationFormCurrent = {
+    engineDisplacementCc,
+    fuelType,
+    curbWeight,
+  };
+
   const toggleSection = (s: string) => setExpandedSections(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
   if (!isOpen) return null;
@@ -1275,8 +1296,12 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 : (isDarkMode ? 'surface-premium border-neutral-700/50' : 'bg-gradient-to-r from-purple-50/60 to-indigo-50/60 border-purple-200/30')
         }`}>
 
-          {/* ── Row 1: Status badge + button ── */}
-          <div className="flex items-center justify-between">
+          {/* ── Row 1: Status badge + spec actions (AI fetch, ZB-I upload) ── */}
+          <div
+            className="flex items-center justify-between"
+            data-testid="vehicle-registration-spec-actions"
+            data-oneauto-future-action="reserved"
+          >
             <div className="flex items-center gap-3">
               {/* Animated status indicator */}
               <div className={`relative w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -1333,21 +1358,50 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
               </div>
             </div>
 
-            {/* Fetch AI button */}
-            <button
-              type="button"
-              data-testid="vehicle-registration-fetch-ai-specs"
-              onClick={handleFetchAi}
-              disabled={aiLoading || (!vehicleIdentity.vin && !vehicleIdentity.make)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                aiLoading || (!vehicleIdentity.vin && !vehicleIdentity.make)
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
-              } ${isDarkMode ? 'bg-purple-600/80 text-purple-100 hover:bg-purple-600' : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm'}`}
-            >
-              {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              {aiLoading ? 'AI lädt…' : aiSteps.length > 0 || aiDegraded ? 'Erneut abrufen' : 'Fetch AI Specs'}
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {isEditMode && existingVehicle?.id && organizationId ? (
+                isVehicleIdentityP2Enabled() ? (
+                  <button
+                    type="button"
+                    data-testid="vehicle-registration-upload-zb1"
+                    onClick={() => setZb1DialogOpen(true)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                      isDarkMode
+                        ? 'border-border/60 text-foreground hover:bg-muted/80'
+                        : 'border-border bg-white/80 text-foreground hover:bg-white shadow-sm'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {t('master.vehicleIdentity.uploadToolbar' as never)}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="vehicle-registration-upload-zb1-disabled"
+                    disabled
+                    title={t('master.vehicleIdentity.p2ToolbarDisabledHint' as never)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border opacity-50 cursor-not-allowed border-border/60 text-muted-foreground"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {t('master.vehicleIdentity.uploadToolbar' as never)}
+                  </button>
+                )
+              ) : null}
+              <button
+                type="button"
+                data-testid="vehicle-registration-fetch-ai-specs"
+                onClick={handleFetchAi}
+                disabled={aiLoading || (!vehicleIdentity.vin && !vehicleIdentity.make)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                  aiLoading || (!vehicleIdentity.vin && !vehicleIdentity.make)
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
+                } ${isDarkMode ? 'bg-purple-600/80 text-purple-100 hover:bg-purple-600' : 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm'}`}
+              >
+                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                {aiLoading ? 'AI lädt…' : aiSteps.length > 0 || aiDegraded ? 'Erneut abrufen' : 'Fetch AI Specs'}
+              </button>
+            </div>
           </div>
 
           {/* ── Progress bar ── */}
@@ -1506,6 +1560,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
                 isDarkMode={isDarkMode}
                 organizationId={organizationId}
                 vehicleId={existingVehicle.id}
+                hideDocumentUpload
+                registrationFormCurrent={zb1RegistrationFormCurrent}
+                onApplyToRegistrationForm={applyZb1PatchToRegistrationForm}
               />
             </div>
           ) : null}
@@ -2310,6 +2367,21 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           </div>
         </div>
       </div>
+
+      {isEditMode && existingVehicle?.id && organizationId && isVehicleIdentityP2Enabled() ? (
+        <MasterZb1RegistrationDialog
+          open={zb1DialogOpen}
+          onOpenChange={setZb1DialogOpen}
+          isDarkMode={isDarkMode}
+          organizationId={organizationId}
+          vehicleId={existingVehicle.id}
+          registrationFormCurrent={zb1RegistrationFormCurrent}
+          onApplyToRegistrationForm={(patch) => {
+            applyZb1PatchToRegistrationForm(patch);
+            setZb1DialogOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

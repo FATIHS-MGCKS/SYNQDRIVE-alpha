@@ -376,6 +376,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T00:00:00.000Z',
   },
   {
+    id: 'master-zb1-additive-toolbar-2026-10-29',
+    version: '4.9.5001',
+    title: 'Master vehicle spec — additive ZB-I upload toolbar + form apply',
+    summary: [
+      'Preserves manual spec entry, Fetch AI Specs, AI field merge, save/update, service/history blocks, and ConnectedVehiclesHub navigation.',
+      'New spec-actions control `vehicle-registration-upload-zb1` opens `MasterZb1RegistrationDialog` (PDF/image → existing document extraction + review).',
+      'Embedded `VehicleIdentityP2Panel` keeps review path but defers upload to toolbar; apply-to-form maps confirmed P.1/P.3/G kerb mass into registration fields with VIN-mismatch gate.',
+      'One Auto API: integration contract documented only (`ONEAUTO_MASTER_SPEC_INTEGRATION.md`); `data-oneauto-future-action=reserved` on spec-actions row — no paid API or placeholder button.',
+      'Nine-locale `master.vehicleIdentity.uploadToolbar` + apply/dialog copy; unit tests for merge util + modal regression.',
+    ],
+    reason:
+      'Operators need Fahrzeugschein upload beside existing AI spec actions without redesigning the registration modal or duplicating document pipelines.',
+    previousBehavior:
+      'ZB-I upload lived only inside the embedded P2 panel when flags enabled; no dedicated toolbar entry or apply-to-registration-form bridge for specification fields.',
+    details:
+      'frontend: VehicleRegistrationModal.tsx, MasterZb1RegistrationDialog.tsx, VehicleIdentityP2Panel.tsx, zb1-registration-form-merge.util.ts, ONEAUTO_MASTER_SPEC_INTEGRATION.md; tests: zb1-registration-form-merge.util.test.ts, VehicleRegistrationModal.zb1-additive.test.tsx.',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-29T12:00:00.000Z',
+  },
+  {
     id: 'vehicle-identity-p3-bridge-provenance-2026-10-27',
     version: '4.9.5000',
     title: 'Vehicle Identity P3 — canonical identity → Vehicle AI V2 → save + provenance',
