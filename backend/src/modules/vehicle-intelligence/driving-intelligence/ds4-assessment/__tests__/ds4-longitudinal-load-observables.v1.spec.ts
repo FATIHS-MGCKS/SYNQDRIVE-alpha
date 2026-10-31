@@ -230,6 +230,81 @@ describe('computeDs4LongitudinalLoadObservablesV1', () => {
     expect(out.acceleration.intensityMaxAdmissibleMps2).toBeNull();
   });
 
+  it('P4E A2 — kind-scoped zero load when other kind has admissible events (Tiguan c0448fea pattern)', () => {
+    const records = [
+      admissibleRecord({ eventIndex: 0, kind: 'DECELERATION', meanAccelMps2: 1.654, durationS: 3, classification: 'ADMISSIBLE_FULL' }),
+      admissibleRecord({ eventIndex: 1, kind: 'DECELERATION', meanAccelMps2: 1.619, durationS: 2, classification: 'ADMISSIBLE_BIN_ONLY' }),
+      admissibleRecord({ eventIndex: 2, kind: 'DECELERATION', meanAccelMps2: 1.436, durationS: 2, classification: 'ADMISSIBLE_BIN_ONLY' }),
+    ];
+    const out = computeDs4LongitudinalLoadObservablesV1(
+      baseInput({
+        ratedEventCount: 3,
+        eventIntensityRecords: records,
+        drivingExposure: exposure({ exposureSeconds: 255, distanceKm: 2.299643177374085 }),
+      }),
+    );
+    expect(out.acceleration.admissibleEventCount).toBe(0);
+    expect(out.acceleration.specificLongitudinalImpulseMps).toBe(0);
+    expect(out.acceleration.normalizedMeanAccelMps2).toBe(0);
+    expect(out.acceleration.eventFrequencyPerMinute).toBe(0);
+    expect(out.acceleration.maneuverTimeShare).toBe(0);
+    expect(out.acceleration.impulseSemantics).toBe('SPECIFIC_LONGITUDINAL_IMPULSE_MPS');
+    expect(out.deceleration.admissibleEventCount).toBe(3);
+    expect(out.deceleration.specificLongitudinalImpulseMps).toBeCloseTo(11.072, 3);
+  });
+
+  it('P4E A2 — kind-scoped zero load for braking-only-absent kind (Tesla dfc7c443 pattern)', () => {
+    const out = computeDs4LongitudinalLoadObservablesV1(
+      baseInput({
+        ratedEventCount: 1,
+        eventIntensityRecords: [
+          admissibleRecord({ eventIndex: 2, kind: 'ACCELERATION', meanAccelMps2: 1.636, durationS: 3, classification: 'ADMISSIBLE_FULL' }),
+        ],
+        drivingExposure: exposure({ exposureSeconds: 188, distanceKm: 1.4482014138231247 }),
+      }),
+    );
+    expect(out.deceleration.admissibleEventCount).toBe(0);
+    expect(out.deceleration.specificLongitudinalImpulseMps).toBe(0);
+    expect(out.deceleration.normalizedMeanAccelMps2).toBe(0);
+    expect(out.deceleration.eventFrequencyPerMinute).toBe(0);
+    expect(out.deceleration.maneuverTimeShare).toBe(0);
+    expect(out.acceleration.specificLongitudinalImpulseMps).toBeCloseTo(4.908, 3);
+  });
+
+  it('P4E A2 — UNRATED events of a kind block zero-load for that kind (negative control)', () => {
+    const out = computeDs4LongitudinalLoadObservablesV1(
+      baseInput({
+        ratedEventCount: 1,
+        unratedEventCount: 1,
+        eventIntensityRecords: [
+          admissibleRecord({ eventIndex: 0, kind: 'ACCELERATION', meanAccelMps2: 1.6, durationS: 3 }),
+          {
+            ...admissibleRecord({ eventIndex: 1, kind: 'DECELERATION', meanAccelMps2: 2.5, durationS: 3 }),
+            classification: 'UNRATED',
+            durationTier: 'UNRATED',
+            reasonCodes: ['EVENT_QUALITY_NOT_OK'],
+          },
+        ],
+      }),
+    );
+    expect(out.acceleration.admissibleEventCount).toBe(1);
+    expect(out.deceleration.admissibleEventCount).toBe(0);
+    expect(out.deceleration.specificLongitudinalImpulseMps).toBeNull();
+    expect(out.deceleration.impulseSemantics).toBe('UNAVAILABLE');
+  });
+
+  it('P4E A2 — insufficient exposure still fails closed (negative control)', () => {
+    const out = computeDs4LongitudinalLoadObservablesV1(
+      baseInput({
+        eventIntensityRecords: [admissibleRecord({ eventIndex: 0, kind: 'DECELERATION' })],
+        drivingExposure: exposure({ derivable: false, exposureSeconds: 0 }),
+      }),
+    );
+    expect(out.reasonCodes).toContain('DRIVING_EXPOSURE_NOT_DERIVABLE');
+    expect(out.acceleration.specificLongitudinalImpulseMps).toBeNull();
+    expect(out.deceleration.specificLongitudinalImpulseMps).toBeNull();
+  });
+
   it('nulls metrics when only excluded events exist', () => {
     const out = computeDs4LongitudinalLoadObservablesV1(
       baseInput({
