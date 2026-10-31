@@ -230,6 +230,8 @@ export interface HfTripRpmPointRow {
   orgId: string;
   vehicleId: string;
   tripId: string;
+  /** DIMO device token when mirrored; used for VSI source-link HF attribution checks. */
+  tokenId: number | null;
 }
 
 export type HfTripRpmPointsCompletenessStatus =
