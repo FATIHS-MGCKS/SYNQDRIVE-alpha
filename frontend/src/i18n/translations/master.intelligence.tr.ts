@@ -153,6 +153,7 @@ export const masterIntelligenceTr = {
   'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Hiç gözlemlenmedi',
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Gözlemlendi',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Gözlemlendi (eski)',
+  'master.intelligence.vsi.signals.empirical.NOT_OBSERVED_IN_WINDOW': 'Pencerede gözlemlenmedi',
 
   'master.intelligence.vsi.signals.rpmCombined.heading': 'Birleşik RPM kullanılabilirliği (türetilmiş)',
   'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Canlı kanıtlandı (taze snapshot)',
@@ -219,4 +220,63 @@ export const masterIntelligenceTr = {
     'Bu araca atanan tek bir kurulu fiziksel cihaz yok.',
   'master.intelligence.vehicleDetail.multipleLinks':
     'Birden fazla sağlayıcı kaynak bağlantısı — birincil bağlantı gösterildi; araçlar arası varsayımlardan önce VSI/APDS’de bağlantıyı doğrulayın.',
+
+  'master.intelligence.vsi.ledger.summary.ariaLabel': 'Bağımsız kanıt boyutları',
+  'master.intelligence.vsi.ledger.dimension.applicability': 'Uygulanabilirlik',
+  'master.intelligence.vsi.ledger.dimension.declared': 'Bildirilen destek',
+  'master.intelligence.vsi.ledger.dimension.observation': 'Gözlem',
+  'master.intelligence.vsi.ledger.dimension.freshness': 'Güncellik',
+  'master.intelligence.vsi.ledger.dimension.quality': 'Kalite',
+  'master.intelligence.vsi.ledger.dimension.confidence': 'Güven',
+  'master.intelligence.vsi.ledger.dimension.combinedRpm': 'Birleşik RPM kanıtı',
+
+  'master.intelligence.vsi.ledger.applicability.APPLICABLE': 'Uygulanabilir',
+  'master.intelligence.vsi.ledger.applicability.NOT_APPLICABLE': 'Uygulanamaz',
+  'master.intelligence.vsi.ledger.applicability.UNKNOWN': 'Bilinmiyor',
+
+  'master.intelligence.vsi.ledger.declared.LISTED': 'Katalogda listelenmiş',
+  'master.intelligence.vsi.ledger.declared.NOT_LISTED': 'Listelenmemiş',
+  'master.intelligence.vsi.ledger.declared.UNKNOWN': 'Bilinmiyor',
+
+  'master.intelligence.vsi.ledger.freshness.FRESH': 'Güncel',
+  'master.intelligence.vsi.ledger.freshness.STALE': 'Eski',
+  'master.intelligence.vsi.ledger.freshness.UNKNOWN': 'Bilinmiyor',
+
+  'master.intelligence.vsi.ledger.quality.NEVER_OBSERVED': 'Hiç gözlemlenmedi (kalite ekseni)',
+  'master.intelligence.vsi.ledger.quality.UNKNOWN': 'Bilinmiyor (kalite ekseni)',
+  'master.intelligence.vsi.ledger.quality.STALE_META': 'Eski (meta kalite)',
+
+  'master.intelligence.vsi.ledger.provenance.snapshotHeading': 'Snapshot kökeni (Lane A)',
+  'master.intelligence.vsi.ledger.provenance.cadenceHeading': 'Cadence kökeni (Lane B)',
+  'master.intelligence.vsi.ledger.provenance.empty': 'Kayıt yok',
+  'master.intelligence.vsi.ledger.provenance.laneSnapshot': 'Snapshot kanıt etiketleri',
+  'master.intelligence.vsi.ledger.provenance.laneCadence': 'Cadence kanıt etiketleri',
+
+  'master.intelligence.vsi.ledger.limitation.unknownCodeHint':
+    'Bu kod için sözlük girişi yok — sınıflandırıcının ham çıktısı geçerlidir.',
+  'master.intelligence.vsi.ledger.limitation.RPM_HF_SOURCE_LINK_ATTRIBUTION_UNPROVEN':
+    'HF örnekleri var ancak bu kaynak bağlantısına atanamıyor; tarihsel kanıt verilmez.',
+  'master.intelligence.vsi.ledger.limitation.ICE_RPM_SNAPSHOT_ONLY_NOT_HISTORICAL_CADENCE':
+    'Snapshot lane HF cadence kanıtlamaz; cadence ayrı değerlendirilir.',
+  'master.intelligence.vsi.ledger.limitation.OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION':
+    'Açık bir yolculuk bu profil revizyonu için LV standby sınıflandırmasını engeller.',
+  'master.intelligence.vsi.ledger.limitation.MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS':
+    'Birden fazla aktif kaynak bağlantısı bildirilen katalog atamasını belirsizleştirir.',
+  'master.intelligence.vsi.ledger.limitation.LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK':
+    'Son araç durumu bu kaynak bağlantısına atanamadı.',
+  'master.intelligence.vsi.ledger.limitation.PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY':
+    'Sağlayıcı kimliği bildirilen katalogla uyuşmuyor (yalnızca DIMO).',
+
+  'master.intelligence.vsi.ledger.timestamp.observation': 'Son geçerli gözlem',
+  'master.intelligence.vsi.ledger.timestamp.source': 'Kaynak zaman damgası',
+  'master.intelligence.vsi.ledger.timestamp.providerFetch': 'Sağlayıcı getirisi',
+  'master.intelligence.vsi.ledger.timestamp.utc': 'UTC',
+  'master.intelligence.vsi.ledger.timestamp.fetchNotObservation':
+    'Sağlayıcı getirme zamanı yeni sensör ölçümünü kanıtlamaz.',
+
+  'master.intelligence.vsi.ledger.sheet.previous': 'Önceki sinyal',
+  'master.intelligence.vsi.ledger.sheet.next': 'Sonraki sinyal',
+
+  'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
+    'Uyumlu ifadeler: canlı snapshot hiç RPM taşımadı; tarihsel HF yolculuk kanıtı mevcut.',
 } as const;
