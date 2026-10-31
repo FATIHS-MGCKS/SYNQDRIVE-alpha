@@ -28,7 +28,11 @@ import {
 import type { MasterVsiProfileSummaryDto } from './vsi-master-intelligence-api.types';
 import { resolvePhysicalDeviceIdForVehicle } from './resolve-vehicle-physical-device';
 import { VsiSignalLedgerTab } from './ledger/VsiSignalLedgerTab';
-import { EMPTY_VSI_LEDGER_FILTERS, type VsiIntelligenceTab } from './vsi-ledger-url.types';
+import {
+  EMPTY_VSI_LEDGER_FILTERS,
+  type VsiIntelligenceTab,
+  type VsiLedgerFilterState,
+} from './vsi-ledger-url.types';
 import {
   ledgerContextForVehicleChange,
   pruneLedgerFiltersForSignals,
@@ -256,14 +260,12 @@ function VsiMasterIntelligenceContent() {
     [setContextInUrl],
   );
 
+  const ledgerFilters = context.ledgerFilters;
   const onFiltersChange = useCallback(
-    (patch: Partial<typeof context.ledgerFilters>) => {
-      setContextInUrl(
-        { ledgerFilters: { ...context.ledgerFilters, ...patch } },
-        { replace: true },
-      );
+    (patch: Partial<VsiLedgerFilterState>) => {
+      setContextInUrl({ ledgerFilters: { ...ledgerFilters, ...patch } }, { replace: true });
     },
-    [context.ledgerFilters, setContextInUrl],
+    [ledgerFilters, setContextInUrl],
   );
 
   const onFiltersClear = useCallback(() => {

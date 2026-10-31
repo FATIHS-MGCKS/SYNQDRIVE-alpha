@@ -109,6 +109,63 @@ describe('VSI signal detail URL history', () => {
     expect(parsed.signalKey).toBe('engine_rpm');
     expect(parsed.ledgerFilters.q).toBe('rpm');
   });
+
+  it('close uses replaceState so back after close does not trap on a stale signalKey entry', () => {
+    window.history.replaceState(null, '', '/master?view=vsi-intelligence&tab=ledger');
+    pushMasterIntelligenceUrl('vsi-intelligence', {
+      ...EMPTY_MASTER_INTELLIGENCE_CONTEXT,
+      vsiTab: 'ledger',
+      signalKey: 'engine_rpm',
+      ledgerFilters: { ...EMPTY_VSI_LEDGER_FILTERS },
+    });
+    pushMasterIntelligenceUrl(
+      'vsi-intelligence',
+      {
+        ...EMPTY_MASTER_INTELLIGENCE_CONTEXT,
+        vsiTab: 'ledger',
+        signalKey: null,
+        ledgerFilters: { ...EMPTY_VSI_LEDGER_FILTERS },
+      },
+      { replace: true },
+    );
+    expect(window.location.search).not.toContain('signalKey');
+    window.history.back();
+    const afterBack = parseMasterIntelligenceContext(window.location.search);
+    expect(afterBack.signalKey).toBeNull();
+    expect(afterBack.vsiTab).toBe('ledger');
+  });
+
+  it('in-sheet signal navigation uses replaceState only', () => {
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    window.history.replaceState(null, '', '/master?view=vsi-intelligence&tab=ledger');
+    pushMasterIntelligenceUrl('vsi-intelligence', {
+      ...EMPTY_MASTER_INTELLIGENCE_CONTEXT,
+      vsiTab: 'ledger',
+      signalKey: 'engine_rpm',
+      ledgerFilters: { ...EMPTY_VSI_LEDGER_FILTERS },
+    });
+    const pushesAfterOpen = pushSpy.mock.calls.length;
+    pushMasterIntelligenceUrl(
+      'vsi-intelligence',
+      {
+        ...EMPTY_MASTER_INTELLIGENCE_CONTEXT,
+        vsiTab: 'ledger',
+        signalKey: 'vehicle_speed',
+        ledgerFilters: { ...EMPTY_VSI_LEDGER_FILTERS },
+      },
+      { replace: true },
+    );
+    expect(pushSpy.mock.calls.length).toBe(pushesAfterOpen);
+    expect(parseMasterIntelligenceContext(window.location.search).signalKey).toBe('vehicle_speed');
+  });
+
+  it('direct deep link with valid signalKey selects ledger tab', () => {
+    const ctx = parseMasterIntelligenceContext(
+      '?view=vsi-intelligence&signalKey=engine_rpm&vehicleId=00000000-0000-4000-8000-000000000002',
+    );
+    expect(ctx.vsiTab).toBe('ledger');
+    expect(ctx.signalKey).toBe('engine_rpm');
+  });
 });
 
 describe('VSI signal detail parsers', () => {
@@ -334,8 +391,7 @@ describe('VsiSignalLedgerTab detail sheet integration', () => {
     expect(onNavigate).toHaveBeenCalled();
   });
 
-  it('restores focus to originating row after close', async () => {
-    vi.useFakeTimers();
+  it('restores focus to visible ledger row on close via onCloseAutoFocus', async () => {
     let selected: string | null = 'engine_rpm';
     const profile = buildTestProfileDetail([
       AUDI_ENGINE_RPM_SIGNAL,
@@ -390,15 +446,71 @@ describe('VsiSignalLedgerTab detail sheet integration', () => {
     );
     expect(closeBtn).toBeTruthy();
     act(() => closeBtn!.click());
-    act(() => {
-      vi.runAllTimers();
-    });
     await act(async () => {
       await Promise.resolve();
     });
     expect(selected).toBeNull();
     const focused = document.activeElement as HTMLElement;
     expect(focused?.textContent).toContain('engine_rpm');
-    vi.useRealTimers();
+  });
+
+  it('does not restore focus to a row hidden by filters after close', async () => {
+    let selected: string | null = 'engine_rpm';
+    let filters = { ...EMPTY_VSI_LEDGER_FILTERS };
+    const profile = buildTestProfileDetail([AUDI_ENGINE_RPM_SIGNAL, STALE_OBSERVATION_SIGNAL]);
+
+    const renderLedger = () => {
+      act(() => {
+        root.render(
+          createElement(
+            LanguageProvider,
+            null,
+            createElement(VsiSignalLedgerTab, {
+              profile,
+              multiLinkCount: 1,
+              filters,
+              onFiltersChange: (patch) => {
+                filters = { ...filters, ...patch };
+                renderLedger();
+              },
+              onFiltersClear: () => {},
+              selectedSignalKey: selected,
+              onOpenSignal: (k) => {
+                selected = k;
+                renderLedger();
+              },
+              onCloseSignal: () => {
+                selected = null;
+                renderLedger();
+              },
+              onNavigateSignal: (k) => {
+                selected = k;
+                renderLedger();
+              },
+              vehicleContextLabel: null,
+              linkContextLabel: null,
+              formatTimestamp: (iso) => iso ?? '—',
+            }),
+          ),
+        );
+      });
+    };
+
+    renderLedger();
+    filters = { ...EMPTY_VSI_LEDGER_FILTERS, q: 'no-match-xyz' };
+    selected = null;
+    renderLedger();
+
+    const speedRow = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('vehicle_speed'),
+    ) as HTMLButtonElement | undefined;
+    speedRow?.focus();
+    const focusedBefore = document.activeElement;
+    expect(focusedBefore).toBeTruthy();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(document.activeElement).toBe(focusedBefore);
   });
 });

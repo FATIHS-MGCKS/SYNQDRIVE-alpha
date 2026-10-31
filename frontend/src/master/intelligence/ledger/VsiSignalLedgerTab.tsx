@@ -70,23 +70,26 @@ export function VsiSignalLedgerTab({
     }
   }, [sheetOpen, selectedSignalKey]);
 
-  useEffect(() => {
-    if (sheetOpen) return;
-    const key = lastOpenedKeyRef.current;
-    if (!key) return;
-    const id = window.setTimeout(() => {
-      rowRefs.current.get(key)?.focus({ preventScroll: true });
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [sheetOpen]);
+  const restoreLedgerRowFocus = useCallback(
+    (event: Event) => {
+      const key = lastOpenedKeyRef.current;
+      if (!key) return;
+      const rowStillVisible = filtered.some((s) => s.canonicalSignalKey === key);
+      const row = rowStillVisible ? rowRefs.current.get(key) : null;
+      if (!row) return;
+      event.preventDefault();
+      row.focus({ preventScroll: true });
+    },
+    [filtered],
+  );
 
   const handleSheetOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) {
+      if (!open && selectedSignalKey) {
         onCloseSignal();
       }
     },
-    [onCloseSignal],
+    [onCloseSignal, selectedSignalKey],
   );
 
   const filteredIndex = selectedInFilter
@@ -174,6 +177,7 @@ export function VsiSignalLedgerTab({
           hasNext={hasNext}
           onPrevious={onPrevious}
           onNext={onNext}
+          onCloseAutoFocus={restoreLedgerRowFocus}
         >
           <VsiSignalDetailContent
             profile={profile}
