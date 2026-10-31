@@ -322,4 +322,27 @@ export const masterIntelligencePl = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} linków źródłowych — dowody dotyczą tylko wybranego linku.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} sygnałów · rewizja profilu {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Podsumowanie dowodów',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Oś czasu dowodów',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Ścieżki pochodzenia',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'Szczegóły dowodów RPM',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'Szczegóły kadencji LV',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Ograniczenia',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profil oceniono',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Pojazd',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Link źródła',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Rewizja profilu {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'Profil standby LV',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Decyzja klasyfikacji',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Pewność dowodu',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Liczba próbek',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'Brak intelligence kadencji LV dla tego sygnału.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Dostępne reżimy kadencji',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Rozstrzygnięcie tier',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Etykieta gęstości',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Atrybucja i limity linku',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Inne ograniczenia',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Wybrany sygnał jest ukryty przez filtry. Dostosuj filtry lub wyczyść wybór.',
 } as const;

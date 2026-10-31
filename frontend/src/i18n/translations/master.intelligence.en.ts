@@ -330,6 +330,29 @@ export const masterIntelligenceEn = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} provider source links — evidence applies to the selected link only.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} signals · profile revision {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Evidence summary',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Evidence timeline',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Provenance lanes',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'RPM evidence detail',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'LV cadence detail',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Limitations',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Profile evaluated at',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Vehicle',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Source link',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Profile revision {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'LV standby profile',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Classification decision',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Evidence confidence',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Observed sample count',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'No LV cadence intelligence recorded for this signal.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Available cadence regimes',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Tier resolution',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Observed density label',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Attribution and source-link limits',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Other limitations',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'Selected signal is hidden by current filters. Adjust filters or clear the selection.',
 } as const;
 
 export type MasterIntelligenceTranslationKey = keyof typeof masterIntelligenceEn;

@@ -302,4 +302,27 @@ export const masterIntelligenceEs = {
   'master.intelligence.vsi.ledger.multiLinkNotice':
     '{{count}} enlaces fuente — la evidencia aplica solo al enlace seleccionado.',
   'master.intelligence.vsi.ledger.footerMeta': '{{count}} señales · revisión de perfil {{revision}}',
+
+  'master.intelligence.vsi.ledger.detail.section.summary': 'Resumen de evidencia',
+  'master.intelligence.vsi.ledger.detail.section.timeline': 'Línea temporal de evidencia',
+  'master.intelligence.vsi.ledger.detail.section.provenance': 'Vías de procedencia',
+  'master.intelligence.vsi.ledger.detail.section.rpm': 'Detalle de evidencia RPM',
+  'master.intelligence.vsi.ledger.detail.section.lv': 'Detalle de cadencia LV',
+  'master.intelligence.vsi.ledger.detail.section.limitations': 'Limitaciones',
+  'master.intelligence.vsi.ledger.detail.timeline.evaluatedAt': 'Perfil evaluado el',
+  'master.intelligence.vsi.ledger.detail.context.vehicle': 'Vehículo',
+  'master.intelligence.vsi.ledger.detail.context.link': 'Enlace de origen',
+  'master.intelligence.vsi.ledger.detail.context.revision': 'Revisión de perfil {{revision}}',
+  'master.intelligence.vsi.ledger.detail.lv.standbyProfile': 'Perfil standby LV',
+  'master.intelligence.vsi.ledger.detail.lv.classification': 'Decisión de clasificación',
+  'master.intelligence.vsi.ledger.detail.lv.confidence': 'Confianza de evidencia',
+  'master.intelligence.vsi.ledger.detail.lv.sampleCount': 'Muestras observadas',
+  'master.intelligence.vsi.ledger.detail.lv.empty': 'No hay inteligencia de cadencia LV para esta señal.',
+  'master.intelligence.vsi.ledger.detail.rpm.regimes': 'Regímenes de cadencia disponibles',
+  'master.intelligence.vsi.ledger.detail.rpm.tierResolution': 'Resolución de tier',
+  'master.intelligence.vsi.ledger.detail.rpm.density': 'Etiqueta de densidad observada',
+  'master.intelligence.vsi.ledger.detail.limitations.attributionGroup': 'Atribución y límites de enlace',
+  'master.intelligence.vsi.ledger.detail.limitations.otherGroup': 'Otras limitaciones',
+  'master.intelligence.vsi.ledger.detail.hiddenByFilters':
+    'La señal seleccionada está oculta por los filtros. Ajuste los filtros o borre la selección.',
 } as const;
