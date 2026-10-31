@@ -283,3 +283,14 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | All current LLM/job/stream/registration writes store `newTreadDepthMm: null`; setup initial tread + historical V2 blobs unchanged; optional tier still fail-closed |
 | VALIDATION | Jest: compact pipeline, registration identity/persist specs; tire-spec suite |
 | NON_EFFECTS | No migration/backfill; no V3 formula/DS4 changes; no merge/deploy in this workstream |
+
+### Tire AI tire_v3_compact P2A — Mistral eval harness + optional evidence review (2026-10-31)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | No non-persistent way to score live Mistral output against compact pipeline + documented cohort |
+| WHY | Production activation requires real LLM evidence and explicit optional-field policy |
+| CHANGE | `ai-tire-spec-compact-eval.*` + `scripts/ops/tire-v3-compact-mistral-eval.readonly.ts`; `TIRE_V3_COMPACT_OPTIONAL_EVIDENCE_POLICY.md` |
+| EXPECTED_EFFECT | Operators run harness with `MISTRAL_API_KEY` or `--fixture=p2-simulated`; JSON report with rejected fields and season consistency |
+| VALIDATION | Jest `ai-tire-spec-compact-eval.util.spec.ts`; script smoke with fixture flag |
+| NON_EFFECTS | No normalizer/gate changes; no deploy; PR2264/V3 formulas unchanged |
