@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { assertOneAutoAllowlistedPath } from './oneauto-allowlist';
+import { ONEAUTO_HTTP_FETCH, type OneAutoHttpFetchImpl } from './oneauto-http-fetch.token';
 import { normalizeVin } from './oneauto-vin.util';
 
 export type OneAutoHttpResult = {
@@ -10,20 +11,16 @@ export type OneAutoHttpResult = {
   redactedRequestPath: string;
 };
 
-export type OneAutoHttpClientDeps = {
-  fetchImpl?: typeof fetch;
-};
-
 @Injectable()
 export class OneAutoHttpClient {
   private readonly logger = new Logger(OneAutoHttpClient.name);
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: OneAutoHttpFetchImpl;
 
   constructor(
     private readonly config: ConfigService,
-    deps: OneAutoHttpClientDeps = {},
+    @Optional() @Inject(ONEAUTO_HTTP_FETCH) fetchImpl?: OneAutoHttpFetchImpl,
   ) {
-    this.fetchImpl = deps.fetchImpl ?? fetch;
+    this.fetchImpl = fetchImpl ?? fetch;
   }
 
   private cfg() {
