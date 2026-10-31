@@ -294,3 +294,14 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | Operators run harness with `MISTRAL_API_KEY` or `--fixture=p2-simulated`; JSON report with rejected fields and season consistency |
 | VALIDATION | Jest `ai-tire-spec-compact-eval.util.spec.ts`; script smoke with fixture flag |
 | NON_EFFECTS | No normalizer/gate changes; no deploy; PR2264/V3 formulas unchanged |
+
+### Tire Wear V3 P2 — C5 temporal weight + C2/C3 safety + shadow plan (2026-10-31)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | V3 DS4 temporal weight used missing `tripDurationSeconds` → silent 0.5; projection treated anchors as exact; OLS rate σ could collapse to ~0 |
+| WHY | Fable review P2: fix adapter contract mismatch; widen only where σ_m already defined; prepare calibration snapshots without enabling writer |
+| CHANGE | `tire-wear-v3-ds4-payload.util` accountableFraction/tripWindowSeconds; repository pre-resolves weight; C2 `projectTreadMm` optional measurement anchor σ; C3 noise floor on OLS σ; `TIRE_WEAR_V3_P2_CALIBRATION_SHADOW_PERSISTENCE_PLAN.md` |
+| EXPECTED_EFFECT | `ds4SeverityCoverage` reflects accountableFraction; measurement-anchored tread/remaining km intervals widen; fused rate intervals less overconfident on sparse points |
+| VALIDATION | Jest wear-v3-prior + p2 regression specs (84 tests in pattern scope) |
+| NON_EFFECTS | β=0; shadow write env default OFF; no DS4 motion engine change; no C1/C4/C6–C8 |
