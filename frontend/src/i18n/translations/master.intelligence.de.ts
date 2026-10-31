@@ -174,6 +174,7 @@ export const masterIntelligenceDe = {
   'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nie beobachtet',
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Beobachtet',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Beobachtet (veraltet)',
+  'master.intelligence.vsi.signals.empirical.NOT_OBSERVED_IN_WINDOW': 'Im Fenster nicht beobachtet',
 
   'master.intelligence.vsi.signals.rpmCombined.heading': 'Kombinierte RPM-Verfügbarkeit (abgeleitet)',
   'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Live nachgewiesen (frischer Snapshot)',
@@ -239,4 +240,63 @@ export const masterIntelligenceDe = {
     'Kein eindeutig installiertes physisches Gerät diesem Fahrzeug zugeordnet.',
   'master.intelligence.vehicleDetail.multipleLinks':
     'Mehrere Provider-Source-Links — primärer Link angezeigt; Link auf VSI/APDS prüfen, bevor fahrzeugübergreifende Annahmen getroffen werden.',
+
+  'master.intelligence.vsi.ledger.summary.ariaLabel': 'Unabhängige Evidenzdimensionen',
+  'master.intelligence.vsi.ledger.dimension.applicability': 'Anwendbarkeit',
+  'master.intelligence.vsi.ledger.dimension.declared': 'Deklarierte Unterstützung',
+  'master.intelligence.vsi.ledger.dimension.observation': 'Beobachtung',
+  'master.intelligence.vsi.ledger.dimension.freshness': 'Aktualität',
+  'master.intelligence.vsi.ledger.dimension.quality': 'Qualität',
+  'master.intelligence.vsi.ledger.dimension.confidence': 'Konfidenz',
+  'master.intelligence.vsi.ledger.dimension.combinedRpm': 'Kombinierte RPM-Evidenz',
+
+  'master.intelligence.vsi.ledger.applicability.APPLICABLE': 'Anwendbar',
+  'master.intelligence.vsi.ledger.applicability.NOT_APPLICABLE': 'Nicht anwendbar',
+  'master.intelligence.vsi.ledger.applicability.UNKNOWN': 'Unbekannt',
+
+  'master.intelligence.vsi.ledger.declared.LISTED': 'Im Katalog gelistet',
+  'master.intelligence.vsi.ledger.declared.NOT_LISTED': 'Nicht gelistet',
+  'master.intelligence.vsi.ledger.declared.UNKNOWN': 'Unbekannt',
+
+  'master.intelligence.vsi.ledger.freshness.FRESH': 'Aktuell',
+  'master.intelligence.vsi.ledger.freshness.STALE': 'Veraltet',
+  'master.intelligence.vsi.ledger.freshness.UNKNOWN': 'Unbekannt',
+
+  'master.intelligence.vsi.ledger.quality.NEVER_OBSERVED': 'Nie beobachtet (Qualitätsachse)',
+  'master.intelligence.vsi.ledger.quality.UNKNOWN': 'Unbekannt (Qualitätsachse)',
+  'master.intelligence.vsi.ledger.quality.STALE_META': 'Veraltet (Meta-Qualität)',
+
+  'master.intelligence.vsi.ledger.provenance.snapshotHeading': 'Snapshot-Provenienz (Lane A)',
+  'master.intelligence.vsi.ledger.provenance.cadenceHeading': 'Cadence-Provenienz (Lane B)',
+  'master.intelligence.vsi.ledger.provenance.empty': 'Keine Einträge',
+  'master.intelligence.vsi.ledger.provenance.laneSnapshot': 'Snapshot-Evidenz-Tags',
+  'master.intelligence.vsi.ledger.provenance.laneCadence': 'Cadence-Evidenz-Tags',
+
+  'master.intelligence.vsi.ledger.limitation.unknownCodeHint':
+    'Kein Glossareintrag für diesen Limitierungscode — Rohausgabe des Klassifikators maßgeblich.',
+  'master.intelligence.vsi.ledger.limitation.RPM_HF_SOURCE_LINK_ATTRIBUTION_UNPROVEN':
+    'HF-Stichproben existieren, können aber diesem Source-Link nicht zugeordnet werden; historischer Nachweis entfällt.',
+  'master.intelligence.vsi.ledger.limitation.ICE_RPM_SNAPSHOT_ONLY_NOT_HISTORICAL_CADENCE':
+    'Snapshot-Lane belegt keine HF-Cadence; Cadence wird separat bewertet.',
+  'master.intelligence.vsi.ledger.limitation.OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION':
+    'Eine offene Fahrt blockiert die LV-Standby-Klassifikation für diese Profilrevision.',
+  'master.intelligence.vsi.ledger.limitation.MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS':
+    'Mehrere aktive Source-Links machen die Katalog-Zuordnung mehrdeutig.',
+  'master.intelligence.vsi.ledger.limitation.LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK':
+    'Letzter Fahrzeugstatus konnte diesem Source-Link nicht zugeordnet werden.',
+  'master.intelligence.vsi.ledger.limitation.PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY':
+    'Provider-Identität entspricht nicht den Katalogerwartungen (nur DIMO).',
+
+  'master.intelligence.vsi.ledger.timestamp.observation': 'Letzte gültige Beobachtung',
+  'master.intelligence.vsi.ledger.timestamp.source': 'Quell-Zeitstempel',
+  'master.intelligence.vsi.ledger.timestamp.providerFetch': 'Provider-Abruf',
+  'master.intelligence.vsi.ledger.timestamp.utc': 'UTC',
+  'master.intelligence.vsi.ledger.timestamp.fetchNotObservation':
+    'Provider-Abrufzeit belegt keine neue Sensormessung.',
+
+  'master.intelligence.vsi.ledger.sheet.previous': 'Vorheriges Signal',
+  'master.intelligence.vsi.ledger.sheet.next': 'Nächstes Signal',
+
+  'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
+    'Kompatible Aussagen: Live-Snapshot trug nie RPM, während historische HF-Fahrt-Evidenz existiert.',
 } as const;

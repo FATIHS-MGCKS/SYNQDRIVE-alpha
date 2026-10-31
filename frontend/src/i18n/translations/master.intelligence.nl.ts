@@ -154,6 +154,7 @@ export const masterIntelligenceNl = {
   'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nooit waargenomen',
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Waargenomen',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Waargenomen (verouderd)',
+  'master.intelligence.vsi.signals.empirical.NOT_OBSERVED_IN_WINDOW': 'Niet waargenomen in venster',
 
   'master.intelligence.vsi.signals.rpmCombined.heading': 'Gecombineerde RPM-beschikbaarheid (afgeleid)',
   'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Live bewezen (verse snapshot)',
@@ -218,4 +219,63 @@ export const masterIntelligenceNl = {
     'Geen enkel geïnstalleerd fysiek apparaat aan dit voertuig toegeschreven.',
   'master.intelligence.vehicleDetail.multipleLinks':
     'Meerdere provider-bronlinks — primaire link getoond; bevestig link in VSI/APDS vóór aannames over andere voertuigen.',
+
+  'master.intelligence.vsi.ledger.summary.ariaLabel': 'Onafhankelijke bewijsdimensies',
+  'master.intelligence.vsi.ledger.dimension.applicability': 'Toepasbaarheid',
+  'master.intelligence.vsi.ledger.dimension.declared': 'Gedeclareerde ondersteuning',
+  'master.intelligence.vsi.ledger.dimension.observation': 'Observatie',
+  'master.intelligence.vsi.ledger.dimension.freshness': 'Actualiteit',
+  'master.intelligence.vsi.ledger.dimension.quality': 'Kwaliteit',
+  'master.intelligence.vsi.ledger.dimension.confidence': 'Vertrouwen',
+  'master.intelligence.vsi.ledger.dimension.combinedRpm': 'Gecombineerd RPM-bewijs',
+
+  'master.intelligence.vsi.ledger.applicability.APPLICABLE': 'Toepasbaar',
+  'master.intelligence.vsi.ledger.applicability.NOT_APPLICABLE': 'Niet van toepassing',
+  'master.intelligence.vsi.ledger.applicability.UNKNOWN': 'Onbekend',
+
+  'master.intelligence.vsi.ledger.declared.LISTED': 'In catalogus',
+  'master.intelligence.vsi.ledger.declared.NOT_LISTED': 'Niet in catalogus',
+  'master.intelligence.vsi.ledger.declared.UNKNOWN': 'Onbekend',
+
+  'master.intelligence.vsi.ledger.freshness.FRESH': 'Actueel',
+  'master.intelligence.vsi.ledger.freshness.STALE': 'Verouderd',
+  'master.intelligence.vsi.ledger.freshness.UNKNOWN': 'Onbekend',
+
+  'master.intelligence.vsi.ledger.quality.NEVER_OBSERVED': 'Nooit geobserveerd (kwaliteitsas)',
+  'master.intelligence.vsi.ledger.quality.UNKNOWN': 'Onbekend (kwaliteitsas)',
+  'master.intelligence.vsi.ledger.quality.STALE_META': 'Verouderd (meta-kwaliteit)',
+
+  'master.intelligence.vsi.ledger.provenance.snapshotHeading': 'Snapshot-provenance (Lane A)',
+  'master.intelligence.vsi.ledger.provenance.cadenceHeading': 'Cadence-provenance (Lane B)',
+  'master.intelligence.vsi.ledger.provenance.empty': 'Geen vermeldingen',
+  'master.intelligence.vsi.ledger.provenance.laneSnapshot': 'Snapshot-bewijstags',
+  'master.intelligence.vsi.ledger.provenance.laneCadence': 'Cadence-bewijstags',
+
+  'master.intelligence.vsi.ledger.limitation.unknownCodeHint':
+    'Geen woordenlijst voor deze code — ruwe classifier-uitvoer is leidend.',
+  'master.intelligence.vsi.ledger.limitation.RPM_HF_SOURCE_LINK_ATTRIBUTION_UNPROVEN':
+    'HF-monsters bestaan maar kunnen niet aan deze bronlink worden toegeschreven; historisch bewijs wordt ingetrokken.',
+  'master.intelligence.vsi.ledger.limitation.ICE_RPM_SNAPSHOT_ONLY_NOT_HISTORICAL_CADENCE':
+    'Snapshot-lane bewijst geen HF-cadence; cadence wordt apart beoordeeld.',
+  'master.intelligence.vsi.ledger.limitation.OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION':
+    'Een open rit blokkeert LV-standby-classificatie voor deze profielrevisie.',
+  'master.intelligence.vsi.ledger.limitation.MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS':
+    'Meerdere actieve bronlinks maken catalogusattributie dubbelzinnig.',
+  'master.intelligence.vsi.ledger.limitation.LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK':
+    'Laatste voertuigstatus kon niet aan deze bronlink worden toegeschreven.',
+  'master.intelligence.vsi.ledger.limitation.PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY':
+    'Provideridentiteit komt niet overeen met catalogus (alleen DIMO).',
+
+  'master.intelligence.vsi.ledger.timestamp.observation': 'Laatste geldige observatie',
+  'master.intelligence.vsi.ledger.timestamp.source': 'Brontimestamp',
+  'master.intelligence.vsi.ledger.timestamp.providerFetch': 'Provider-fetch',
+  'master.intelligence.vsi.ledger.timestamp.utc': 'UTC',
+  'master.intelligence.vsi.ledger.timestamp.fetchNotObservation':
+    'Provider-fetchtijd bewijst geen nieuwe sensormeting.',
+
+  'master.intelligence.vsi.ledger.sheet.previous': 'Vorig signaal',
+  'master.intelligence.vsi.ledger.sheet.next': 'Volgend signaal',
+
+  'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
+    'Compatibele uitspraken: live snapshot droeg nooit RPM terwijl historisch HF-ritbewijs bestaat.',
 } as const;

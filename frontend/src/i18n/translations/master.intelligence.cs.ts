@@ -153,6 +153,7 @@ export const masterIntelligenceCs = {
   'master.intelligence.vsi.signals.empirical.NEVER_OBSERVED': 'Nikdy pozorováno',
   'master.intelligence.vsi.signals.empirical.OBSERVED': 'Pozorováno',
   'master.intelligence.vsi.signals.empirical.OBSERVED_STALE': 'Pozorováno (zastaralé)',
+  'master.intelligence.vsi.signals.empirical.NOT_OBSERVED_IN_WINDOW': 'V okně nepozorováno',
 
   'master.intelligence.vsi.signals.rpmCombined.heading': 'Kombinovaná dostupnost RPM (odvozená)',
   'master.intelligence.vsi.signals.rpmCombined.PROVEN_LIVE': 'Prokázáno live (čerstvý snapshot)',
@@ -217,4 +218,63 @@ export const masterIntelligenceCs = {
     'Tomuto vozidlu není přiřazeno jediné nainstalované fyzické zařízení.',
   'master.intelligence.vehicleDetail.multipleLinks':
     'Více provider source linků — zobrazen primární link; ověřte link ve VSI/APDS před předpoklady napříč vozidly.',
+
+  'master.intelligence.vsi.ledger.summary.ariaLabel': 'Nezávislé dimenze důkazů',
+  'master.intelligence.vsi.ledger.dimension.applicability': 'Použitelnost',
+  'master.intelligence.vsi.ledger.dimension.declared': 'Deklarovaná podpora',
+  'master.intelligence.vsi.ledger.dimension.observation': 'Pozorování',
+  'master.intelligence.vsi.ledger.dimension.freshness': 'Aktuálnost',
+  'master.intelligence.vsi.ledger.dimension.quality': 'Kvalita',
+  'master.intelligence.vsi.ledger.dimension.confidence': 'Spolehlivost',
+  'master.intelligence.vsi.ledger.dimension.combinedRpm': 'Kombinovaný důkaz RPM',
+
+  'master.intelligence.vsi.ledger.applicability.APPLICABLE': 'Použitelné',
+  'master.intelligence.vsi.ledger.applicability.NOT_APPLICABLE': 'Nepoužitelné',
+  'master.intelligence.vsi.ledger.applicability.UNKNOWN': 'Neznámé',
+
+  'master.intelligence.vsi.ledger.declared.LISTED': 'V katalogu',
+  'master.intelligence.vsi.ledger.declared.NOT_LISTED': 'Není v katalogu',
+  'master.intelligence.vsi.ledger.declared.UNKNOWN': 'Neznámé',
+
+  'master.intelligence.vsi.ledger.freshness.FRESH': 'Aktuální',
+  'master.intelligence.vsi.ledger.freshness.STALE': 'Zastaralé',
+  'master.intelligence.vsi.ledger.freshness.UNKNOWN': 'Neznámé',
+
+  'master.intelligence.vsi.ledger.quality.NEVER_OBSERVED': 'Nikdy nepozorováno (osa kvality)',
+  'master.intelligence.vsi.ledger.quality.UNKNOWN': 'Neznámé (osa kvality)',
+  'master.intelligence.vsi.ledger.quality.STALE_META': 'Zastaralé (meta kvalita)',
+
+  'master.intelligence.vsi.ledger.provenance.snapshotHeading': 'Provenance snapshot (Lane A)',
+  'master.intelligence.vsi.ledger.provenance.cadenceHeading': 'Provenance cadence (Lane B)',
+  'master.intelligence.vsi.ledger.provenance.empty': 'Žádné záznamy',
+  'master.intelligence.vsi.ledger.provenance.laneSnapshot': 'Tagy důkazu snapshot',
+  'master.intelligence.vsi.ledger.provenance.laneCadence': 'Tagy důkazu cadence',
+
+  'master.intelligence.vsi.ledger.limitation.unknownCodeHint':
+    'Pro tento kód není glosář — rozhodující je surový výstup klasifikátoru.',
+  'master.intelligence.vsi.ledger.limitation.RPM_HF_SOURCE_LINK_ATTRIBUTION_UNPROVEN':
+    'Vzorky HF existují, ale nelze je přiřadit k tomuto source linku; historický důkaz se neuděluje.',
+  'master.intelligence.vsi.ledger.limitation.ICE_RPM_SNAPSHOT_ONLY_NOT_HISTORICAL_CADENCE':
+    'Snapshot lane neprokazuje HF cadence; cadence se hodnotí zvlášť.',
+  'master.intelligence.vsi.ledger.limitation.OPEN_TRIP_BLOCKS_STANDBY_CLASSIFICATION':
+    'Otevřená jízda blokuje klasifikaci LV standby pro tuto revizi profilu.',
+  'master.intelligence.vsi.ledger.limitation.MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS':
+    'Více aktivních source linků zvyšuje nejednoznačnost katalogu.',
+  'master.intelligence.vsi.ledger.limitation.LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK':
+    'Poslední stav vozidla nebyl přiřazen k tomuto source linku.',
+  'master.intelligence.vsi.ledger.limitation.PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY':
+    'Identita providera neodpovídá katalogu (pouze DIMO).',
+
+  'master.intelligence.vsi.ledger.timestamp.observation': 'Poslední platné pozorování',
+  'master.intelligence.vsi.ledger.timestamp.source': 'Časová značka zdroje',
+  'master.intelligence.vsi.ledger.timestamp.providerFetch': 'Stažení u providera',
+  'master.intelligence.vsi.ledger.timestamp.utc': 'UTC',
+  'master.intelligence.vsi.ledger.timestamp.fetchNotObservation':
+    'Čas stažení u providera neprokazuje nové měření senzoru.',
+
+  'master.intelligence.vsi.ledger.sheet.previous': 'Předchozí signál',
+  'master.intelligence.vsi.ledger.sheet.next': 'Další signál',
+
+  'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
+    'Slučitelná tvrzení: live snapshot nikdy nenesl RPM, zatímco existují historické HF důkazy z jízd.',
 } as const;
