@@ -96,6 +96,40 @@ function kindBucket(record: Ds4EventIntensityEligibilityRecordV1): 'acceleration
   return null;
 }
 
+function countKindNonAdmissibleRecords(
+  records: readonly Ds4EventIntensityEligibilityRecordV1[],
+  kind: 'acceleration' | 'deceleration',
+): number {
+  let count = 0;
+  for (const record of records) {
+    if (kindBucket(record) !== kind) continue;
+    if (!isAdmissibleRecord(record)) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Kind-scoped zero-load gate (P4E A2): true zero B/I/Phi/S only when this kind has zero admissible
+ * events, collection is complete, trip exposure gates are open, and there is no UNRATED/EXCLUDED
+ * evidence for this kind in the intensity record set.
+ */
+function isKindZeroLoadValidV1(input: {
+  kindAdmissibleCount: number;
+  kindNonAdmissibleCount: number;
+  collectionComplete: boolean;
+  canComputeMetrics: boolean;
+  tripLevelZeroLoadValid: boolean;
+  tripAdmissibleCount: number;
+}): boolean {
+  if (!input.canComputeMetrics || !input.collectionComplete || input.kindAdmissibleCount !== 0) {
+    return false;
+  }
+  if (input.kindNonAdmissibleCount > 0) {
+    return false;
+  }
+  return input.tripLevelZeroLoadValid || input.tripAdmissibleCount > 0;
+}
+
 function roundDisplay(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
@@ -464,7 +498,7 @@ export function computeDs4LongitudinalLoadObservablesV1(
   }
 
   const excludedCount = input.unratedEventCount + input.artefactSuspectCount;
-  const zeroLoadValid = actualAdmissible === 0 && excludedCount === 0 && collectionComplete;
+  const tripLevelZeroLoadValid = actualAdmissible === 0 && excludedCount === 0 && collectionComplete;
   if (actualAdmissible === 0 && excludedCount > 0) {
     reasonCodes.push('ZERO_ADMISSIBLE_WITH_EXCLUDED_EVENTS');
   }
@@ -486,6 +520,23 @@ export function computeDs4LongitudinalLoadObservablesV1(
   const accelAcc = accumulateKind(records.filter((r) => kindBucket(r) === 'acceleration'));
   const decelAcc = accumulateKind(records.filter((r) => kindBucket(r) === 'deceleration'));
 
+  const accelZeroLoadValid = isKindZeroLoadValidV1({
+    kindAdmissibleCount: accelAcc.admissible.length,
+    kindNonAdmissibleCount: countKindNonAdmissibleRecords(records, 'acceleration'),
+    collectionComplete,
+    canComputeMetrics,
+    tripLevelZeroLoadValid,
+    tripAdmissibleCount: actualAdmissible,
+  });
+  const decelZeroLoadValid = isKindZeroLoadValidV1({
+    kindAdmissibleCount: decelAcc.admissible.length,
+    kindNonAdmissibleCount: countKindNonAdmissibleRecords(records, 'deceleration'),
+    collectionComplete,
+    canComputeMetrics,
+    tripLevelZeroLoadValid,
+    tripAdmissibleCount: actualAdmissible,
+  });
+
   return {
     modelVersion: DS4_LONGITUDINAL_LOAD_OBSERVABLES_MODEL_VERSION_V1,
     exposureGate: DS4_LONGITUDINAL_LOAD_EXPOSURE_GATE_UNCALIBRATED,
@@ -496,8 +547,8 @@ export function computeDs4LongitudinalLoadObservablesV1(
     exposureCoverageRatio: coverageRatio == null ? null : roundDisplay(coverageRatio, 6),
     reasonCodes,
     collectionComplete,
-    acceleration: computeKindMetrics(accelAcc, eS, dKm, canComputeMetrics, zeroLoadValid),
-    deceleration: computeKindMetrics(decelAcc, eS, dKm, canComputeMetrics, zeroLoadValid),
+    acceleration: computeKindMetrics(accelAcc, eS, dKm, canComputeMetrics, accelZeroLoadValid),
+    deceleration: computeKindMetrics(decelAcc, eS, dKm, canComputeMetrics, decelZeroLoadValid),
   };
 }
 
