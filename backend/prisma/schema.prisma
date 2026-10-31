@@ -1657,6 +1657,7 @@ model Organization {
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
+  oneAutoProviderJobs                                       OneAutoProviderJob[]
   physicalDevices                                           PhysicalDevice[]
   physicalDeviceAssignments                                 PhysicalDeviceAssignment[]
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
@@ -3179,6 +3180,7 @@ model Vehicle {
   licensePlateAssignments                VehicleLicensePlateAssignment[]
   completedOnboardingCases               VehicleOnboardingCase[]         @relation("OnboardingCaseCompletedVehicle")
   registryLifecycleOutboxEvents          VehicleRegistryLifecycleOutbox[]
+  oneAutoProviderJobs                    OneAutoProviderJob[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -3190,6 +3192,70 @@ model Vehicle {
   @@index([registryLifecycle])
   @@unique([organizationId, id])
   @@map("vehicles")
+}
+
+enum OneAutoProviderJobStatus {
+  CREATED
+  QUEUED
+  RUNNING
+  AWAITING_PROVIDER
+  SUCCEEDED
+  FAILED
+  EXPIRED
+}
+
+model OneAutoProviderJob {
+  id                          String                   @id @default(cuid())
+  organizationId              String                   @map("organization_id")
+  vehicleId                   String                   @map("vehicle_id")
+  vinSnapshot                 String                   @map("vin_snapshot")
+  serviceSku                  String                   @map("service_sku")
+  status                      OneAutoProviderJobStatus @default(CREATED)
+  idempotencyKey              String                   @map("idempotency_key")
+  providerRequestId           String?                  @map("provider_request_id")
+  estimatedPriceMinor         Int?                     @map("estimated_price_minor")
+  currency                    String                   @default("GBP")
+  pricingSourceVersion        String?                  @map("pricing_source_version")
+  costConfirmedAt             DateTime?                @map("cost_confirmed_at")
+  costConfirmedByUserId       String?                  @map("cost_confirmed_by_user_id")
+  initiatingMasterAdminUserId String                   @map("initiating_master_admin_user_id")
+  confirmedPriceMinor         Int?                     @map("confirmed_price_minor")
+  budgetReservedMinor         Int?                     @map("budget_reserved_minor")
+  quoteIssuedAt               DateTime?                @map("quote_issued_at")
+  initialProviderDispatchAt   DateTime?                @map("initial_provider_dispatch_at")
+  actualChargeMinor           Int?                     @map("actual_charge_minor")
+  actualChargeKnown           Boolean                  @default(false) @map("actual_charge_known")
+  pollAttemptCount            Int                      @default(0) @map("poll_attempt_count")
+  lastErrorCode               String?                  @map("last_error_code")
+  lastErrorMessageRedacted    String?                  @map("last_error_message_redacted")
+  expiresAt                   DateTime?                @map("expires_at")
+  createdAt                   DateTime                 @default(now()) @map("created_at")
+  updatedAt                   DateTime                 @updatedAt @map("updated_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  responses    OneAutoProviderResponse[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, vehicleId])
+  @@index([organizationId, costConfirmedAt])
+  @@index([status])
+  @@map("one_auto_provider_jobs")
+}
+
+model OneAutoProviderResponse {
+  id                   String   @id @default(cuid())
+  jobId                String   @map("job_id")
+  httpStatus           Int?     @map("http_status")
+  providerStatusHeader String?  @map("provider_status_header")
+  responseBodyJson     Json?    @map("response_body_json")
+  responsePhase        String?  @map("response_phase")
+  fetchedAt            DateTime @default(now()) @map("fetched_at")
+
+  job OneAutoProviderJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("one_auto_provider_responses")
 }
 
 enum ComplaintUrgency {
