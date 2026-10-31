@@ -299,4 +299,31 @@ export const masterIntelligenceDe = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Kompatible Aussagen: Live-Snapshot trug nie RPM, während historische HF-Fahrt-Evidenz existiert.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'VSI-Intelligence-Bereiche',
+  'master.intelligence.vsi.tabs.overview': 'Übersicht',
+  'master.intelligence.vsi.tabs.ledger': 'Signal-Ledger',
+  'master.intelligence.vsi.tabs.revisions': 'Revisionen',
+
+  'master.intelligence.vsi.ledger.filters.search': 'Signale suchen',
+  'master.intelligence.vsi.ledger.filters.clear': 'Filter zurücksetzen',
+  'master.intelligence.vsi.ledger.filters.group': 'Ledger-Filter',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Mit Limitierungen',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'Mit zuordenbarem HF',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Nicht anwendbare ausblenden',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{shown}} von {{total}} Signalen',
+
+  'master.intelligence.vsi.ledger.col.signal': 'Signal',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Qualität / Konfidenz',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Letzte gültige Beobachtung',
+  'master.intelligence.vsi.ledger.col.limitations': 'Limitierungen',
+  'master.intelligence.vsi.ledger.col.provenance': 'Evidenz',
+  'master.intelligence.vsi.ledger.col.action': 'Detail öffnen',
+
+  'master.intelligence.vsi.ledger.table.caption': 'Fahrzeug-Signal-Evidenz-Ledger',
+  'master.intelligence.vsi.ledger.selectSignal': 'Signal {{signal}} auswählen',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'Keine Signale entsprechen den Filtern.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} Provider-Source-Links — Evidenz gilt nur für den gewählten Link.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} Signale · Profilrevision {{revision}}',
 } as const;

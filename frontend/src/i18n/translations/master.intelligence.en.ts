@@ -303,6 +303,33 @@ export const masterIntelligenceEn = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Compatible statements: live snapshot never carried RPM while historical HF trip evidence exists.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'VSI intelligence sections',
+  'master.intelligence.vsi.tabs.overview': 'Overview',
+  'master.intelligence.vsi.tabs.ledger': 'Signal ledger',
+  'master.intelligence.vsi.tabs.revisions': 'Revisions',
+
+  'master.intelligence.vsi.ledger.filters.search': 'Search signals',
+  'master.intelligence.vsi.ledger.filters.clear': 'Clear filters',
+  'master.intelligence.vsi.ledger.filters.group': 'Ledger filters',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Has limitations',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'Has attributable HF',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Hide not applicable',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{shown}} of {{total}} signals shown',
+
+  'master.intelligence.vsi.ledger.col.signal': 'Signal',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Quality / confidence',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Last valid observation',
+  'master.intelligence.vsi.ledger.col.limitations': 'Limitations',
+  'master.intelligence.vsi.ledger.col.provenance': 'Evidence',
+  'master.intelligence.vsi.ledger.col.action': 'Open detail',
+
+  'master.intelligence.vsi.ledger.table.caption': 'Vehicle signal evidence ledger',
+  'master.intelligence.vsi.ledger.selectSignal': 'Select signal {{signal}}',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'No signals match the current filters.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} provider source links — evidence applies to the selected link only.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} signals · profile revision {{revision}}',
 } as const;
 
 export type MasterIntelligenceTranslationKey = keyof typeof masterIntelligenceEn;

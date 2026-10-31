@@ -44,6 +44,9 @@ describe('Master Intelligence URL', () => {
       policyVersion: 'P25_APD_B2_V1',
       apdEpochId: null,
       asOf: '2026-10-28T10:00:00.000Z',
+      vsiTab: 'overview',
+      signalKey: null,
+      ledgerFilters: emptyIntelligenceContext().ledgerFilters,
       rejectedParams: [],
     });
     expect(qs).toContain('view=apds-intelligence');
@@ -62,6 +65,9 @@ describe('Master Intelligence URL', () => {
         policyVersion: null,
         apdEpochId: null,
         asOf: null,
+        vsiTab: 'overview',
+        signalKey: null,
+        ledgerFilters: emptyIntelligenceContext().ledgerFilters,
         rejectedParams: [],
       }),
     ).toBe(true);
@@ -75,6 +81,9 @@ describe('Master Intelligence URL', () => {
         policyVersion: null,
         apdEpochId: null,
         asOf: null,
+        vsiTab: 'overview',
+        signalKey: null,
+        ledgerFilters: emptyIntelligenceContext().ledgerFilters,
         rejectedParams: [],
       }),
     ).toBe(false);

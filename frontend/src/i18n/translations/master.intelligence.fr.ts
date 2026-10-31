@@ -298,4 +298,28 @@ export const masterIntelligenceFr = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Affirmations compatibles : le snapshot live n’a jamais porté de RPM alors que des preuves HF historiques existent.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'Sections intelligence VSI',
+  'master.intelligence.vsi.tabs.overview': 'Vue d’ensemble',
+  'master.intelligence.vsi.tabs.ledger': 'Registre des signaux',
+  'master.intelligence.vsi.tabs.revisions': 'Révisions',
+  'master.intelligence.vsi.ledger.filters.search': 'Rechercher des signaux',
+  'master.intelligence.vsi.ledger.filters.clear': 'Effacer les filtres',
+  'master.intelligence.vsi.ledger.filters.group': 'Filtres du registre',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Avec limitations',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'HF attribuable',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Masquer non applicable',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{shown}} sur {{total}} signaux',
+  'master.intelligence.vsi.ledger.col.signal': 'Signal',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Qualité / confiance',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Dernière observation valide',
+  'master.intelligence.vsi.ledger.col.limitations': 'Limitations',
+  'master.intelligence.vsi.ledger.col.provenance': 'Preuves',
+  'master.intelligence.vsi.ledger.col.action': 'Ouvrir le détail',
+  'master.intelligence.vsi.ledger.table.caption': 'Registre de preuves des signaux véhicule',
+  'master.intelligence.vsi.ledger.selectSignal': 'Sélectionner le signal {{signal}}',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'Aucun signal ne correspond aux filtres.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} liens source — les preuves concernent uniquement le lien sélectionné.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} signaux · révision profil {{revision}}',
 } as const;

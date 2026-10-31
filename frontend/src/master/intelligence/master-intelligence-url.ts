@@ -5,6 +5,7 @@ import type {
   MasterIntelligenceView,
 } from './master-intelligence.types';
 import { EMPTY_MASTER_INTELLIGENCE_CONTEXT } from './master-intelligence.types';
+import { appendVsiLedgerParams, parseVsiLedgerUrlFields } from './vsi-ledger-url.util';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -57,6 +58,8 @@ export function parseMasterIntelligenceContext(search: string): MasterIntelligen
   const params = new URLSearchParams(search);
   const rejected: string[] = [];
 
+  const ledger = parseVsiLedgerUrlFields(params, rejected);
+
   return {
     orgId: sanitizeUuid(params.get('orgId'), rejected, 'orgId'),
     vehicleId: sanitizeUuid(params.get('vehicleId'), rejected, 'vehicleId'),
@@ -66,6 +69,9 @@ export function parseMasterIntelligenceContext(search: string): MasterIntelligen
     policyVersion: sanitizeText(params.get('policyVersion'), rejected, 'policyVersion', 64),
     apdEpochId: sanitizeUuid(params.get('apdEpochId'), rejected, 'apdEpochId'),
     asOf: sanitizeIso(params.get('asOf'), rejected, 'asOf'),
+    vsiTab: ledger.vsiTab,
+    signalKey: ledger.signalKey,
+    ledgerFilters: ledger.ledgerFilters,
     rejectedParams: rejected,
   };
 }
@@ -86,6 +92,10 @@ export function buildMasterIntelligenceSearch(
   if (context.apdEpochId) params.set('apdEpochId', context.apdEpochId);
   if (context.asOf) params.set('asOf', context.asOf);
 
+  if (view === 'vsi-intelligence') {
+    appendVsiLedgerParams(params, context);
+  }
+
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
@@ -97,6 +107,9 @@ export function mergeMasterIntelligenceContext(
   return {
     ...base,
     ...patch,
+    ledgerFilters: patch.ledgerFilters
+      ? { ...base.ledgerFilters, ...patch.ledgerFilters }
+      : base.ledgerFilters,
     rejectedParams: patch.rejectedParams ?? base.rejectedParams,
   };
 }

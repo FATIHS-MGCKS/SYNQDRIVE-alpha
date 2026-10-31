@@ -277,4 +277,28 @@ export const masterIntelligenceCs = {
 
   'master.intelligence.vsi.ledger.compatibility.neverObservedWithHistoricalRpm':
     'Slučitelná tvrzení: live snapshot nikdy nenesl RPM, zatímco existují historické HF důkazy z jízd.',
+
+  'master.intelligence.vsi.tabs.ariaLabel': 'Sekce VSI intelligence',
+  'master.intelligence.vsi.tabs.overview': 'Přehled',
+  'master.intelligence.vsi.tabs.ledger': 'Registr signálů',
+  'master.intelligence.vsi.tabs.revisions': 'Revize',
+  'master.intelligence.vsi.ledger.filters.search': 'Hledat signály',
+  'master.intelligence.vsi.ledger.filters.clear': 'Vymazat filtry',
+  'master.intelligence.vsi.ledger.filters.group': 'Filtry registru',
+  'master.intelligence.vsi.ledger.filters.hasLimitations': 'Má limitace',
+  'master.intelligence.vsi.ledger.filters.hasHf': 'Má přiřaditelné HF',
+  'master.intelligence.vsi.ledger.filters.hideNA': 'Skrýt neplatné',
+  'master.intelligence.vsi.ledger.filters.resultCount': '{{shown}} z {{total}} signálů',
+  'master.intelligence.vsi.ledger.col.signal': 'Signál',
+  'master.intelligence.vsi.ledger.col.qualityConfidence': 'Kvalita / spolehlivost',
+  'master.intelligence.vsi.ledger.col.lastObservation': 'Poslední platné pozorování',
+  'master.intelligence.vsi.ledger.col.limitations': 'Limitace',
+  'master.intelligence.vsi.ledger.col.provenance': 'Důkazy',
+  'master.intelligence.vsi.ledger.col.action': 'Otevřít detail',
+  'master.intelligence.vsi.ledger.table.caption': 'Registr důkazů signálů vozidla',
+  'master.intelligence.vsi.ledger.selectSignal': 'Vybrat signál {{signal}}',
+  'master.intelligence.vsi.ledger.emptyFiltered': 'Žádný signál neodpovídá filtrům.',
+  'master.intelligence.vsi.ledger.multiLinkNotice':
+    '{{count}} source linků — důkazy platí pouze pro vybraný link.',
+  'master.intelligence.vsi.ledger.footerMeta': '{{count}} signálů · revize profilu {{revision}}',
 } as const;

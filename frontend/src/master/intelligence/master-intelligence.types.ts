@@ -1,5 +1,10 @@
 /** Canonical Master Intelligence URL + presentation types (display-only; no classification logic). */
 
+import type { VsiIntelligenceTab, VsiLedgerFilterState } from './vsi-ledger-url.types';
+import { EMPTY_VSI_LEDGER_FILTERS } from './vsi-ledger-url.types';
+
+export type { VsiIntelligenceTab, VsiLedgerFilterState };
+
 export type MasterIntelligenceView = 'vsi-intelligence' | 'apds-intelligence';
 
 export type LvStandbyProfileLabel = 'LV_8H_OBSERVED' | 'LV_24H_OBSERVED' | 'UNKNOWN';
@@ -35,6 +40,11 @@ export type MasterIntelligenceContextState = {
   policyVersion: string | null;
   apdEpochId: string | null;
   asOf: string | null;
+  /** VSI Evidence Ledger tab (vsi-intelligence only). */
+  vsiTab: VsiIntelligenceTab;
+  /** Selected signal for ledger row highlight; detail sheet is P2-E. */
+  signalKey: string | null;
+  ledgerFilters: VsiLedgerFilterState;
   /** Invalid query values dropped at parse time (for UI hints). */
   rejectedParams: string[];
 };
@@ -48,6 +58,9 @@ export const EMPTY_MASTER_INTELLIGENCE_CONTEXT: MasterIntelligenceContextState =
   policyVersion: null,
   apdEpochId: null,
   asOf: null,
+  vsiTab: 'overview',
+  signalKey: null,
+  ledgerFilters: { ...EMPTY_VSI_LEDGER_FILTERS },
   rejectedParams: [],
 };
 
