@@ -376,6 +376,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T00:00:00.000Z',
   },
   {
+    id: 'oneauto-p1-provider-foundation-2026-10-31',
+    version: '4.9.5002',
+    title: 'One Auto API — Master Admin provider foundation (backend P1)',
+    summary: [
+      'Additive backend module: typed service catalog (six SKUs), allowlisted sandbox/live HTTP client, cost confirmation + org budget guards, BullMQ job lifecycle, external response store only.',
+      'Master Admin routes under `admin/organizations/:orgId/oneauto/*`; default OFF (`ONEAUTO_ENABLED=false`); no auto-write to vehicle specs or service history.',
+      'Provider paths and response fields remain PATH_UNVERIFIED until OpenAPI attestation; indicative prices via `ONEAUTO_INDICATIVE_PRICE_*_MINOR` env only.',
+    ],
+    reason:
+      'Secure extensible One Auto integration for future Master workflows without altering existing manual spec, AI merge, or ZB-I flows.',
+    previousBehavior:
+      'One Auto documented as future-only in `ONEAUTO_MASTER_SPEC_INTEGRATION.md` with no backend execution path.',
+    details:
+      'backend: `modules/oneauto-provider/*`, Prisma `OneAutoProviderJob` / `OneAutoProviderResponse`, `ONEAUTO_*` env; tests: foundation + security + service specs (mocked fetch).',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-31T16:00:00.000Z',
+  },
+  {
     id: 'master-zb1-additive-toolbar-2026-10-29',
     version: '4.9.5001',
     title: 'Master vehicle spec — additive ZB-I upload toolbar + form apply',
