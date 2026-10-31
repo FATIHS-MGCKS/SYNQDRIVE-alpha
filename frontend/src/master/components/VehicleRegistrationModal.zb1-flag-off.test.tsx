@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { VehicleRegistrationModal } from './VehicleRegistrationModal';
 import type { RegisteredVehicle } from '../data/platform-data';
+import { testMasterOrganization } from './vehicle-registration-modal.test-fixtures';
 
 vi.mock('./ExteriorImagesEditor', () => ({
   ExteriorImagesEditor: () => createElement('div', { 'data-testid': 'exterior-images-stub' }),
@@ -129,7 +130,7 @@ describe('VehicleRegistrationModal ZB1 flag OFF toolbar', () => {
             isDarkMode: false,
             isOpen: true,
             onClose: vi.fn(),
-            organizations: [{ id: 'org-1', company_name: 'Org', status: 'Active' }],
+            organizations: [testMasterOrganization()],
             existingVehicle: minimalExistingVehicle(),
             initialOrganizationId: 'org-1',
             onRegister: vi.fn(),
