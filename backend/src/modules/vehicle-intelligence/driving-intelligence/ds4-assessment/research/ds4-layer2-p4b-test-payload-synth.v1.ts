@@ -12,6 +12,9 @@ export function buildDs4Layer2P4bSyntheticPayloadsFromP2EventsV1(
     boundarySpeedKmh?: number;
     includeWindowSpeedSamples?: boolean;
     repairInWindow?: boolean;
+    /** When true on C5_1 trips, emit pass-through repair rows at each event start label (legacy-40 reproduction). */
+    c51PassThroughGridRepairRows?: boolean;
+    inWindowRepairState?: 'REPAIR_ACCEPTED' | 'REPAIR_REJECTED' | 'UNCERTAIN' | 'PASS_THROUGH_NO_REPAIR';
   },
 ): Map<string, Ds4Layer2P4bLoadedMotionPayloadV1> {
   const boundary = options?.boundarySpeedKmh ?? 42;
@@ -71,7 +74,7 @@ export function buildDs4Layer2P4bSyntheticPayloadsFromP2EventsV1(
     if (options?.repairInWindow && runEvents[0]) {
       speedRepairs.push({
         bucketLabelUtc: runEvents[0]!.startLabelUtc,
-        repairState: 'REPAIRED',
+        repairState: options.inWindowRepairState ?? 'REPAIR_ACCEPTED',
         c4SpeedKmh: boundary,
         c4Quality: 'OK',
         preferredSpeedKmh: boundary,
@@ -80,6 +83,21 @@ export function buildDs4Layer2P4bSyntheticPayloadsFromP2EventsV1(
         q5Evidence: null,
         q6Evidence: null,
       });
+    }
+    if (options?.c51PassThroughGridRepairRows && pinned.speedAuthority === 'C5_1_PREFERRED') {
+      for (const ev of runEvents) {
+        speedRepairs.push({
+          bucketLabelUtc: ev.startLabelUtc,
+          repairState: 'PASS_THROUGH_NO_REPAIR',
+          c4SpeedKmh: boundary,
+          c4Quality: 'OK',
+          preferredSpeedKmh: boundary,
+          preferredQuality: 'OK',
+          rejectionReason: null,
+          q5Evidence: null,
+          q6Evidence: null,
+        });
+      }
     }
 
     const payload: DiV0MotionCoreShadowPayloadV1 = {
