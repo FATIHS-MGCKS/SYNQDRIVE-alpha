@@ -61,6 +61,7 @@ describe('ClickHouseHfService.getTripRpmHfPoints', () => {
             org_id: 'wrong-org',
             vehicle_id: 'veh-1',
             trip_id: 'trip-1',
+            token_id: 42,
             recorded_at: '2026-10-27 10:00:01.000',
             value_float: 1500,
             unit: 'rpm',

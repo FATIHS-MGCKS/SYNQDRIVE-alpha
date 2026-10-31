@@ -817,6 +817,7 @@ export class ClickHouseHfService {
             org_id,
             vehicle_id,
             trip_id,
+            token_id,
             recorded_at,
             value_float,
             unit,
@@ -850,6 +851,7 @@ export class ClickHouseHfService {
         org_id: string;
         vehicle_id: string;
         trip_id: string | null;
+        token_id: string | number | null;
         recorded_at: string;
         value_float: number | string | null;
         unit: string | null;
@@ -904,6 +906,11 @@ export class ClickHouseHfService {
           continue;
         }
         seenTimestamps.set(recordedAtMs, (seenTimestamps.get(recordedAtMs) ?? 0) + 1);
+        const tokenRaw = r.token_id;
+        const tokenId =
+          tokenRaw == null || tokenRaw === ''
+            ? null
+            : Number(tokenRaw);
         points.push({
           recordedAtMs,
           recordedAtIso: iso,
@@ -913,6 +920,7 @@ export class ClickHouseHfService {
           orgId: r.org_id,
           vehicleId: r.vehicle_id,
           tripId: r.trip_id!,
+          tokenId: tokenId != null && Number.isFinite(tokenId) ? tokenId : null,
         });
       }
 

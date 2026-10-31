@@ -393,6 +393,9 @@ export function analyzeEngineRpmCadence(
     'SPEED_ZERO_NOT_IGNITION_OFF_PROOF',
     'MISSING_GPS_NOT_STATIONARY_PROOF',
   ];
+  if (input.attributionLimitations?.length) {
+    limitations.push(...input.attributionLimitations);
+  }
   let provenance = dedupeCadenceProvenanceTags(input.provenance);
 
   if (input.iceRpmApplicability === 'NOT_APPLICABLE') {

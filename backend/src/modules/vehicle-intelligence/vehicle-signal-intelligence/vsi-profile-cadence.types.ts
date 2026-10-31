@@ -149,6 +149,8 @@ export type VsiRpmCadenceEvidenceInput = {
   points: readonly VsiRpmCadenceSamplePoint[];
   provenance: string[];
   hfReadStatus: VsiHfCadenceReadStatus;
+  /** Fail-closed HF source-link attribution limitations (P1-F). */
+  attributionLimitations?: readonly string[];
 };
 
 export type VsiLvCadenceEvidencePoint = {
