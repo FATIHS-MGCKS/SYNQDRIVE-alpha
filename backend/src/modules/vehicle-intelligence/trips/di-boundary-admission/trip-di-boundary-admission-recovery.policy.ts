@@ -92,7 +92,9 @@ export function isTripDiBoundaryAdmissionRecoveryEnabled(
 }
 
 /**
- * Same S4 master + explicit allowlist membership as discovery/admission cohorts.
+ * Legacy synchronous allowlist-only check (tests / quick guards).
+ * Production recovery passes use `evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1`
+ * (S4 fleet rollout policy, ACTIVE registry, provider capability, kill switch).
  */
 export function isTripDiBoundaryAdmissionRecoveryVehicleEligible(
   policy: TripDiBoundaryAdmissionRecoveryPolicy,

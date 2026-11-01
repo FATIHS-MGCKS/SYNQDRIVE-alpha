@@ -28,10 +28,22 @@ import {
 import {
   computeTripDiBoundaryAdmissionRecoveryEligibleFrom,
   isTripDiBoundaryAdmissionRecoveryEnabled,
-  isTripDiBoundaryAdmissionRecoveryVehicleEligible,
   readTripDiBoundaryAdmissionRecoveryPolicyFromEnv,
   type TripDiBoundaryAdmissionRecoveryPolicy,
 } from './trip-di-boundary-admission-recovery.policy';
+import {
+  evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1,
+  type TripDiBoundaryAdmissionRecoveryVehicleContextV1,
+} from './trip-di-boundary-admission-recovery.eligibility.v1';
+import {
+  loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv,
+  loadTripDiBoundaryAdmissionRecoveryVehicleContextV1,
+  listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1,
+  readDiV0S4KillEvaluationForRecovery,
+} from './trip-di-boundary-admission-recovery.fleet-cohort.v1';
+import type { DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 } from '../../driving-intelligence/fleet-motion-admission/di-v0-ds4-fleet-motion-admission-policy.v1';
+import type { DiV0S4KillEvaluation } from '../../driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
+import { TripDiBoundaryAdmissionRecoveryFleetBudget } from './trip-di-boundary-admission-recovery.fleet-budget';
 import {
   classifyTripDiBoundaryAdmissionRecoveryCandidate,
   computeMissingAdmissionScanCap,
@@ -43,7 +55,6 @@ import {
   writeTripDiBoundaryAdmissionRecoveryScanCursor,
   type TripDiBoundaryAdmissionRecoveryScanCursor,
 } from './trip-di-boundary-admission-recovery.cursor';
-import type { TripDiBoundaryAdmissionRecoveryFleetBudget } from './trip-di-boundary-admission-recovery.fleet-budget';
 import { getTripDiBoundaryAdmissionRecoveryMetrics } from './trip-di-boundary-admission-recovery.metrics';
 import { register } from 'prom-client';
 
@@ -242,6 +253,9 @@ export class TripDiBoundaryAdmissionService {
       now?: Date;
       policy?: TripDiBoundaryAdmissionRecoveryPolicy;
       fleetBudget?: TripDiBoundaryAdmissionRecoveryFleetBudget;
+      fleetPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
+      kill?: DiV0S4KillEvaluation;
+      vehicleContext?: TripDiBoundaryAdmissionRecoveryVehicleContextV1;
     },
   ): Promise<{
     mode: 'DISABLED' | 'SHADOW' | 'WRITER';
@@ -303,13 +317,26 @@ export class TripDiBoundaryAdmissionService {
     if (!isTripDiBoundaryAdmissionRecoveryEnabled(policy)) {
       return emptyDisabled(Date.now() - startedMs);
     }
-    if (
-      !isTripDiBoundaryAdmissionRecoveryVehicleEligible(policy, {
+    const fleetPolicy =
+      options?.fleetPolicy ?? loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv();
+    const kill = options?.kill ?? (await readDiV0S4KillEvaluationForRecovery(this.prisma));
+    const vehicleContext =
+      options?.vehicleContext ??
+      (await loadTripDiBoundaryAdmissionRecoveryVehicleContextV1(this.prisma, vehicleId));
+    if (vehicleContext == null) {
+      return emptyDisabled(Date.now() - startedMs);
+    }
+    const eligibility = evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1({
+      policy,
+      fleetPolicy,
+      kill,
+      vehicle: {
+        ...vehicleContext,
         organizationId,
-        vehicleId,
         vehicleOrganizationId: organizationId,
-      })
-    ) {
+      },
+    });
+    if (!eligibility.eligible) {
       return emptyDisabled(Date.now() - startedMs);
     }
     const eligibleFrom = computeTripDiBoundaryAdmissionRecoveryEligibleFrom(policy, now);
@@ -488,6 +515,68 @@ export class TripDiBoundaryAdmissionService {
       alreadyCurrent,
       capTruncated,
       durationMs,
+    };
+  }
+
+  /**
+   * Activity-independent fleet sweep: eligible ACTIVE vehicles get a bounded recovery pass
+   * without running full trip reconciliation / DIMO repair.
+   */
+  async runDurableAdmissionRecoveryFleetPass(options?: {
+    now?: Date;
+    policy?: TripDiBoundaryAdmissionRecoveryPolicy;
+    fleetPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
+  }): Promise<{
+    vehiclesEligible: number;
+    vehiclesScanned: number;
+    writerAttempts: number;
+    released: number;
+    durationMs: number;
+  }> {
+    const startedMs = Date.now();
+    const policy = options?.policy ?? readTripDiBoundaryAdmissionRecoveryPolicyFromEnv();
+    if (!isTripDiBoundaryAdmissionRecoveryEnabled(policy)) {
+      return {
+        vehiclesEligible: 0,
+        vehiclesScanned: 0,
+        writerAttempts: 0,
+        released: 0,
+        durationMs: Date.now() - startedMs,
+      };
+    }
+    const fleetPolicy =
+      options?.fleetPolicy ?? loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv();
+    const kill = await readDiV0S4KillEvaluationForRecovery(this.prisma);
+    const vehicles = await listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1(this.prisma, {
+      policy,
+      fleetPolicy,
+      kill,
+    });
+    const fleetBudget = new TripDiBoundaryAdmissionRecoveryFleetBudget(policy.globalMaxPerPass);
+    let vehiclesScanned = 0;
+    let writerAttempts = 0;
+    let released = 0;
+    for (const { organizationId, vehicleId } of vehicles) {
+      if (fleetBudget.remainingAttempts <= 0) break;
+      const beforeRemaining = fleetBudget.remainingAttempts;
+      const result = await this.runDurableAdmissionRecoveryPass(organizationId, vehicleId, {
+        now: options?.now,
+        policy,
+        fleetPolicy,
+        kill,
+        fleetBudget,
+      });
+      if (result.mode === 'DISABLED') continue;
+      vehiclesScanned += 1;
+      writerAttempts += beforeRemaining - fleetBudget.remainingAttempts;
+      released += result.released;
+    }
+    return {
+      vehiclesEligible: vehicles.length,
+      vehiclesScanned,
+      writerAttempts,
+      released,
+      durationMs: Date.now() - startedMs,
     };
   }
 

@@ -4,7 +4,22 @@ Date: 2026-11-01 (UTC)
 Workstream: `TRIP_LIFECYCLE_P0_DURABLE_ADMISSION_RECOVERY` (extends PR #2293 branch)  
 Production activation: **OFF** (no env changes in this PR)
 
-## Problem
+## Global fleet rollout (2026-11-01 follow-up)
+
+Owner decision: direct production writer ON, shadow OFF, fleet-wide supported providers (`RUPTELA_R1`, `API_SYNTHETIC`) — no recovery-specific vehicle allowlist when `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED=true`.
+
+- **Eligibility v1:** `evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1` — ACTIVE registry, tenancy, S4 DISCOVERY enablement via fleet-motion policy, kill switch, provider capability (UNKNOWN/UNSUPPORTED fail closed).
+- **Fleet cohort SQL:** `listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1` — all ACTIVE vehicles; no VLS token / fast-activity gate.
+- **Guaranteed recurring coverage:** `TripReconciliationScheduler.admissionRecoveryFleetPass` every 30m, leader key `trip_di_boundary_admission_recovery_fleet`, calls `runDurableAdmissionRecoveryFleetPass` (admission-only; no DIMO reconcile window).
+- **Production env (activation):** `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_ACTIVATED_AT_UTC`, `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_WRITER_ENABLED=true`, `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_SHADOW_OBSERVE_ENABLED=false`, lookback 48, max 32/vehicle, global 64/pass, plus `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED=true`.
+
+| ACTIVE fleet (org `faa710c9-…`, read-only VPS 2026-11-01) | Provider | VLS token |
+|-------------------------------------------------------------|----------|-----------|
+| Tesla M3 `68868291-…` | API_SYNTHETIC | 186946 |
+| Tiguan `19fedd4b-…` | RUPTELA_R1 | 192922 |
+| Audi A4 `c10351f8-…` | RUPTELA_R1 | 187361 |
+| Arteon `8c850ff1-…` | RUPTELA_R1 | 187784 |
+
 
 Eligible `COMPLETED` trips can remain without `diV0BoundaryAdmissionV1` when direct finalize/reconciliation hooks are skipped (e.g. LIVE_FSM gap-split parent + CANCELLED suffix). No bounded eventual-consistency path existed.
 
@@ -16,7 +31,7 @@ Eligible `COMPLETED` trips can remain without `diV0BoundaryAdmissionV1` when dir
 - **Shadow strict read-only:** when writer is OFF, recovery performs no `INSERT`/`UPDATE`/`DELETE` (including scan cursor/carrier operational metadata on `vehicle_trips.raw_detection_meta`).
 - **Scan fairness:** missing-admission lane capped via `computeMissingAdmissionScanCap` (reserves ≥8 keyset slots per 32-trip cap) so guarded missing rows cannot consume the entire batch; keyset cursor advances only from keyset lane when writer is ON.
 - **Cursor:** single carrier row per vehicle (`diV0BoundaryAdmissionRecoveryCursorCarrierV1` + `scanCursor`); transactional `FOR UPDATE` writes; invalid cursor timestamps ignored; documented as operational metadata only (not boundary/admission fingerprints).
-- Eligibility lower bound: `max(activationHorizon, now − lookbackHours)`; S4 org/vehicle allowlists; per-vehicle cap 32; global cap 64 per pass.
+- Eligibility lower bound: `max(activationHorizon, now − lookbackHours)`; S4 + fleet-motion rollout policy + provider capability; per-vehicle cap 32; global cap 64 per pass.
 - PR #2293 partial-extension hook preserved as fast path; recovery independent of boundary-scanned trip ids.
 
 ## Metrics (bounded labels)
@@ -35,7 +50,7 @@ Deploying this PR alone does **not** set activation or writer flags. Historical 
 
 ## Validation
 
-- Unit: `trip-di-boundary-admission-recovery.policy.unit.spec.ts`, `trip-di-boundary-admission-recovery.util.unit.spec.ts`, `trip-di-boundary-admission-recovery.cursor.unit.spec.ts`
+- Unit: `trip-di-boundary-admission-recovery.policy.unit.spec.ts`, `trip-di-boundary-admission-recovery.eligibility.v1.unit.spec.ts`, `trip-di-boundary-admission-recovery.util.unit.spec.ts`, `trip-di-boundary-admission-recovery.cursor.unit.spec.ts`, `trip-reconciliation.scheduler.spec.ts` (fleet pass leader)
 - PostgreSQL (gated `S4A_POSTGRES_LIVE`): `trip-di-boundary-admission-recovery.postgres.integration.spec.ts`, `trip-di-boundary-admission-recovery.reliability.postgres.integration.spec.ts` (strict shadow DB diff, guarded-missing + **true stale revision** via committed `boundaryRepair` drift, S4 PRIMARY duplicate guard, cursor concurrency, keyset restart)
 
 ## Recovery scheduling coverage (read-only, repository)

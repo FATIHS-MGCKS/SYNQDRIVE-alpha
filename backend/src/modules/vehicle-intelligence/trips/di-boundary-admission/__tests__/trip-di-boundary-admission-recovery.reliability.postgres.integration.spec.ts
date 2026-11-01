@@ -20,6 +20,10 @@ import {
   PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE,
   buildBoundaryRepairGeneration,
 } from '../../boundary-repair.state.util';
+import {
+  ensureRecoveryPostgresHarness,
+  seedRecoverySupportedDimoIdentityForTenant,
+} from './trip-di-boundary-admission-recovery.test-harness';
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)(
   'Trip DI boundary admission recovery reliability (PostgreSQL)',
@@ -31,6 +35,7 @@ import {
     beforeAll(async () => {
       admin = newS4aClient();
       admission = new TripDiBoundaryAdmissionService(admin as never);
+      await ensureRecoveryPostgresHarness(admin);
     });
 
     afterAll(async () => {
@@ -42,6 +47,7 @@ import {
 
     async function tenant(): Promise<S4aTenant> {
       const t = await seedS4aTenant(admin, 3_600);
+      await seedRecoverySupportedDimoIdentityForTenant(admin, t);
       tenants.push(t);
       return t;
     }

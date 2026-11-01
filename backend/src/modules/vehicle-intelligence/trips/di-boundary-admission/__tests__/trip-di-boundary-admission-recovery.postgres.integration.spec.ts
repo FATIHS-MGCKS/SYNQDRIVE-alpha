@@ -11,6 +11,10 @@ import {
 import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
 import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
 import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-admission-recovery.policy';
+import {
+  ensureRecoveryPostgresHarness,
+  seedRecoverySupportedDimoIdentityForTenant,
+} from './trip-di-boundary-admission-recovery.test-harness';
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)(
   'Trip DI boundary admission durable recovery (PostgreSQL)',
@@ -22,6 +26,7 @@ import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-
     beforeAll(async () => {
       admin = newS4aClient();
       admission = new TripDiBoundaryAdmissionService(admin as never);
+      await ensureRecoveryPostgresHarness(admin);
     });
 
     afterAll(async () => {
@@ -33,6 +38,7 @@ import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-
 
     async function tenant(recent = true): Promise<S4aTenant> {
       const t = await seedS4aTenant(admin, recent ? 3_600 : 3 * 86_400);
+      await seedRecoverySupportedDimoIdentityForTenant(admin, t);
       tenants.push(t);
       if (recent) {
         const end = new Date(Date.now() - 60_000);

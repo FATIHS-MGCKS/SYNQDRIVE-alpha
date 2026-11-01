@@ -260,6 +260,17 @@ export class TripReconciliationService {
     };
   }
 
+  /** Leader-scheduled admission-only fleet sweep (no DIMO reconciliation window). */
+  async runDurableAdmissionRecoveryFleetPass(): Promise<{
+    vehiclesEligible: number;
+    vehiclesScanned: number;
+    writerAttempts: number;
+    released: number;
+    durationMs: number;
+  }> {
+    return this.diBoundaryAdmission.runDurableAdmissionRecoveryFleetPass();
+  }
+
   private async resolveOrganizationId(vehicleId: string): Promise<string> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },

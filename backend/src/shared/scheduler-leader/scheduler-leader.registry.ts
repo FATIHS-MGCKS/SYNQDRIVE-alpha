@@ -8,6 +8,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'trip_reconciliation_fast',
   'trip_reconciliation_warm',
   'trip_reconciliation_cold',
+  'trip_di_boundary_admission_recovery_fleet',
   'trip_tracking_recovery',
   'snapshot_wake_handoff_recovery',
   'trip_analysis_recovery',

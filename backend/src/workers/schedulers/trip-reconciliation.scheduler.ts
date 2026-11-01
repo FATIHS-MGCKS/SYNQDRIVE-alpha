@@ -38,6 +38,25 @@ export class TripReconciliationScheduler {
     @Optional() private readonly configService?: ConfigService,
   ) {}
 
+  @Interval(30 * 60_000)
+  async admissionRecoveryFleetPass(): Promise<void> {
+    if (!this.leaderGuard.shouldRun('trip_di_boundary_admission_recovery_fleet')) return;
+    const policy = readTripDiBoundaryAdmissionRecoveryPolicyFromEnv();
+    if (policy.recoveryActivationHorizonUtc == null) return;
+    try {
+      const result = await this.reconciliation.runDurableAdmissionRecoveryFleetPass();
+      if (result.vehiclesScanned > 0 || result.released > 0) {
+        this.logger.log(
+          `DI boundary admission recovery fleet pass: eligible=${result.vehiclesEligible} scanned=${result.vehiclesScanned} released=${result.released} writerAttempts=${result.writerAttempts} durationMs=${result.durationMs}`,
+        );
+      }
+    } catch (err: unknown) {
+      this.logger.warn(
+        `DI boundary admission recovery fleet pass failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
   // ─── FAST REPAIR (every 15 minutes) ───────────────────────────────────────
 
   @Interval(15 * 60_000)
