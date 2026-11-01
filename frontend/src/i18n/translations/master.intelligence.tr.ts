@@ -215,7 +215,7 @@ export const masterIntelligenceTr = {
   'master.intelligence.vehicleDetail.openVsi': 'VSI ayrıntısını aç',
   'master.intelligence.vehicleDetail.openVsiOverview': 'VSI özetini aç',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Kanıt defterini aç',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Motor RPM sinyal ayrıntısını aç',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Kanıt defterinde motor RPM aç',
   'master.intelligence.vehicleDetail.openApds': 'APDS ayrıntısını aç',
   'master.intelligence.vehicleDetail.openPdi': 'Cihaz ayrıntısını aç',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Kapsamda kalıcı karar yok.',
@@ -242,6 +242,8 @@ export const masterIntelligenceTr = {
     'Profil değerlendirmesi engelliyken RPM ayrıntısı kullanılamaz.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'RPM ayrıntısı seçilmiş bir sağlayıcı kaynak bağlantısı gerektirir.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'İnceleme için defter ve sinyal ayrıntısını açar. Uygulanabilirlik burada birleşik RPM kanıtı (canlı veya geçmiş) değildir—VSI ayrıntısı kanıta dayalı kalır.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Bağımsız kanıt boyutları',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Uygulanabilirlik',

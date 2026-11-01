@@ -4,6 +4,7 @@ import {
   buildVehicleDetailIntelligenceNavContext,
   pickPrimaryProviderSourceLink,
   profileForProviderSourceLink,
+  resolveNavPhysicalDeviceIdForProviderContext,
   VEHICLE_DETAIL_ENGINE_RPM_SIGNAL_KEY,
 } from '../intelligence/vehicle-detail-intelligence.utils';
 import {
@@ -86,6 +87,43 @@ describe('vehicle detail intelligence utils', () => {
     expect(assessEngineRpmDeepLinkEligibility(audi).eligible).toBe(true);
   });
 
+  it('engine_rpm eligibility uses applicability only, not combined RPM proof tiers', () => {
+    const audi = VSI_OVERVIEW_BY_VEHICLE[QA_VEHICLE_AUDI_A4]!.profiles[0]!;
+    const result = assessEngineRpmDeepLinkEligibility(audi);
+    expect(result.reasonKey).toBe('eligible');
+    expect(result.reasonKey).not.toMatch(/PROVEN_/);
+  });
+
+  it('omits physicalDeviceId from provider navigation when multiple source links exist', () => {
+    expect(
+      resolveNavPhysicalDeviceIdForProviderContext({
+        profileCount: 2,
+        navigationReady: true,
+        physicalDeviceId: VEHICLE_DETAIL_QA_DEVICE,
+      }),
+    ).toBeNull();
+  });
+
+  it('includes physicalDeviceId for single-link provider navigation when device is resolved', () => {
+    expect(
+      resolveNavPhysicalDeviceIdForProviderContext({
+        profileCount: 1,
+        navigationReady: true,
+        physicalDeviceId: VEHICLE_DETAIL_QA_DEVICE,
+      }),
+    ).toBe(VEHICLE_DETAIL_QA_DEVICE);
+  });
+
+  it('omits physicalDeviceId when navigation is not ready', () => {
+    expect(
+      resolveNavPhysicalDeviceIdForProviderContext({
+        profileCount: 1,
+        navigationReady: false,
+        physicalDeviceId: VEHICLE_DETAIL_QA_DEVICE,
+      }),
+    ).toBeNull();
+  });
+
   it('UNKNOWN rpm applicability does not enable engine_rpm deep link', () => {
     const profile = VSI_OVERVIEW_BY_VEHICLE[QA_VEHICLE_VW_ARTEON]!.profiles[0]!;
     const unknownApplicability = { ...profile, rpmApplicability: 'UNKNOWN' as const };
@@ -162,6 +200,30 @@ describe('vehicle detail intelligence navigation', () => {
     const params = new URLSearchParams(window.location.search);
     expect(params.get('view')).toBe('device-inventory');
     expect(params.get('pdiDeviceId')).toBe(VEHICLE_DETAIL_QA_DEVICE);
+  });
+
+  it('multi-link VSI navigation omits physicalDeviceId from URL', () => {
+    const profiles = VSI_OVERVIEW_BY_VEHICLE[QA_VEHICLE_VW_TIGUAN]!.profiles;
+    const second = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    const doubled = [...profiles, { ...profiles[0]!, providerSourceLinkId: second }];
+    const pick = pickPrimaryProviderSourceLink(doubled, second);
+    const deviceId = resolveNavPhysicalDeviceIdForProviderContext({
+      profileCount: doubled.length,
+      navigationReady: pick.navigationReady,
+      physicalDeviceId: VEHICLE_DETAIL_QA_DEVICE,
+    });
+    const qs = buildMasterIntelligenceSearch(
+      'vsi-intelligence',
+      buildVehicleDetailIntelligenceNavContext({
+        organizationId: VEHICLE_DETAIL_QA_ORG,
+        vehicleId: QA_VEHICLE_VW_TIGUAN,
+        providerSourceLinkId: pick.linkId,
+        physicalDeviceId: deviceId,
+        vsiTarget: 'engine_rpm_detail',
+      }),
+    );
+    expect(qs).not.toContain('physicalDeviceId=');
+    expect(qs).toContain('signalKey=engine_rpm');
   });
 
   it('engine_rpm deep link preserves org, vehicle, and link context', () => {

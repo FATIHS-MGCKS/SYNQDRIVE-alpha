@@ -234,7 +234,7 @@ export const masterIntelligencePl = {
   'master.intelligence.vehicleDetail.openVsi': 'Otwórz szczegóły VSI',
   'master.intelligence.vehicleDetail.openVsiOverview': 'Otwórz przegląd VSI',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Otwórz rejestr dowodów',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Otwórz szczegół sygnału RPM silnika',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Otwórz RPM silnika w rejestrze dowodów',
   'master.intelligence.vehicleDetail.openApds': 'Otwórz szczegóły APDS',
   'master.intelligence.vehicleDetail.openPdi': 'Otwórz szczegóły urządzenia',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Brak trwałej decyzji w zakresie.',
@@ -261,6 +261,8 @@ export const masterIntelligencePl = {
     'Szczegół RPM niedostępny, gdy ocena profilu jest zablokowana.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'Szczegół RPM wymaga wybranego linku źródłowego dostawcy.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Otwiera rejestr i szczegół sygnału do weryfikacji. Zastosowanie nie oznacza dowodu RPM (live ani historycznego)—szczegół VSI pozostaje oparty na dowodach.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Niezależne wymiary dowodów',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Zastosowanie',

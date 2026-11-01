@@ -133,4 +133,18 @@ export function formatProviderLinkLabel(profile: MasterVsiProfileSummaryDto): st
   return `${provider} · rev ${profile.profileRevision}`;
 }
 
+/**
+ * PDI list resolution proves at most one INSTALLED device on the vehicle, not binding to a
+ * specific provider source link. Omit device id from VSI/APDS URL context when multiple links exist.
+ */
+export function resolveNavPhysicalDeviceIdForProviderContext(input: {
+  profileCount: number;
+  navigationReady: boolean;
+  physicalDeviceId: string | null;
+}): string | null {
+  if (!input.navigationReady || !input.physicalDeviceId) return null;
+  if (input.profileCount > 1) return null;
+  return input.physicalDeviceId;
+}
+
 export { EMPTY_MASTER_INTELLIGENCE_CONTEXT };

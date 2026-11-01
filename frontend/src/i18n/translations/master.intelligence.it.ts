@@ -214,7 +214,7 @@ export const masterIntelligenceIt = {
   'master.intelligence.vehicleDetail.openVsi': 'Apri dettaglio VSI',
   'master.intelligence.vehicleDetail.openVsiOverview': 'Apri panoramica VSI',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Apri registro evidenze',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Apri dettaglio segnale RPM motore',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Apri RPM motore nel registro evidenze',
   'master.intelligence.vehicleDetail.openApds': 'Apri dettaglio APDS',
   'master.intelligence.vehicleDetail.openPdi': 'Apri dettaglio dispositivo',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Nessuna decisione persistita nell’ambito.',
@@ -241,6 +241,8 @@ export const masterIntelligenceIt = {
     'Dettaglio RPM non disponibile mentre la valutazione del profilo è bloccata.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'Il dettaglio RPM richiede un link sorgente provider selezionato.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Apre registro e dettaglio segnale per revisione. L’applicabilità non è prova RPM combinata (live o storica)—il dettaglio VSI resta guidato dalle evidenze.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Dimensioni di evidenza indipendenti',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Applicabilità',

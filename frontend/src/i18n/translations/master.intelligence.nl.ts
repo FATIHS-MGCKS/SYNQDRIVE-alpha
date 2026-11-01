@@ -214,7 +214,7 @@ export const masterIntelligenceNl = {
   'master.intelligence.vehicleDetail.openVsi': 'VSI-detail openen',
   'master.intelligence.vehicleDetail.openVsiOverview': 'VSI-overzicht openen',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Bewijsledger openen',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Detail motorsignal toerental openen',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Motortoerental in bewijsledger openen',
   'master.intelligence.vehicleDetail.openApds': 'APDS-detail openen',
   'master.intelligence.vehicleDetail.openPdi': 'Apparaatdetail openen',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Geen persistenter besluit binnen scope.',
@@ -241,6 +241,8 @@ export const masterIntelligenceNl = {
     'Toerentaldetail niet beschikbaar zolang profielevaluatie geblokkeerd is.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'Toerentaldetail vereist een geselecteerde provider-bronlink.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Opent ledger en signaaldetail ter beoordeling. Toepasbaarheid is hier geen gecombineerd RPM-bewijs (live of historisch)—VSI-detail blijft evidence-gedreven.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Onafhankelijke bewijsdimensies',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Toepasbaarheid',

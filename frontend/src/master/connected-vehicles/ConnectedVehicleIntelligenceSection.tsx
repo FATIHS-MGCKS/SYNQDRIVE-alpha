@@ -13,6 +13,7 @@ import { navigateMasterIntelligenceCrossLink } from '../intelligence/master-inte
 import {
   assessEngineRpmDeepLinkEligibility,
   buildVehicleDetailIntelligenceNavContext,
+  resolveNavPhysicalDeviceIdForProviderContext,
 } from '../intelligence/vehicle-detail-intelligence.utils';
 import {
   evidenceKindFromSummary,
@@ -52,14 +53,27 @@ function ConnectedVehicleIntelligenceSectionBody({ organizationId, vehicleId }: 
     });
 
   const physicalDeviceId = physicalDevice?.id ?? null;
+  const providerNavPhysicalDeviceId = resolveNavPhysicalDeviceIdForProviderContext({
+    profileCount: profiles.length,
+    navigationReady: linkPick.navigationReady,
+    physicalDeviceId,
+  });
 
   const navContext = (vsiTarget?: 'overview' | 'ledger' | 'engine_rpm_detail') =>
     buildVehicleDetailIntelligenceNavContext({
       organizationId,
       vehicleId,
       providerSourceLinkId: linkPick.linkId,
-      physicalDeviceId,
+      physicalDeviceId: providerNavPhysicalDeviceId,
       vsiTarget,
+    });
+
+  const pdiNavContext = () =>
+    buildVehicleDetailIntelligenceNavContext({
+      organizationId,
+      vehicleId,
+      providerSourceLinkId: linkPick.linkId,
+      physicalDeviceId,
     });
 
   const navigationBlocked = !linkPick.navigationReady;
@@ -82,8 +96,8 @@ function ConnectedVehicleIntelligenceSectionBody({ organizationId, vehicleId }: 
     navigateMasterIntelligenceCrossLink('apds-intelligence', navContext());
   };
   const openPdi = () => {
-    if (!physicalDeviceId) return;
-    navigateMasterIntelligenceCrossLink('device-inventory', navContext());
+    if (!physicalDeviceId || navigationBlocked) return;
+    navigateMasterIntelligenceCrossLink('device-inventory', pdiNavContext());
   };
 
   const lv = activeProfile ? mapSummaryToLvBadge(activeProfile) : null;
@@ -182,14 +196,19 @@ function ConnectedVehicleIntelligenceSectionBody({ organizationId, vehicleId }: 
                   {t('master.intelligence.vehicleDetail.openVsiLedger' as never)}
                 </button>
                 {rpmEligibility.eligible ? (
-                  <button
-                    type="button"
-                    className="text-left text-xs font-medium text-primary underline disabled:opacity-50"
-                    onClick={openEngineRpmDetail}
-                    disabled={navigationBlocked}
-                  >
-                    {t('master.intelligence.vehicleDetail.openEngineRpmDetail' as never)}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="text-left text-xs font-medium text-primary underline disabled:opacity-50"
+                      onClick={openEngineRpmDetail}
+                      disabled={navigationBlocked}
+                    >
+                      {t('master.intelligence.vehicleDetail.openEngineRpmDetail' as never)}
+                    </button>
+                    <p className="text-[10px] text-muted-foreground">
+                      {t('master.intelligence.vehicleDetail.engineRpmDeepLinkNote' as never)}
+                    </p>
+                  </>
                 ) : linkPick.navigationReady && activeProfile ? (
                   <p className="text-[10px] text-muted-foreground">
                     {t(

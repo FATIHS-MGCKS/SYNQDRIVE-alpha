@@ -240,7 +240,7 @@ export const masterIntelligenceEn = {
   'master.intelligence.vehicleDetail.openVsi': 'Open VSI detail',
   'master.intelligence.vehicleDetail.openVsiOverview': 'Open VSI overview',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Open evidence ledger',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Open engine RPM signal detail',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Open engine RPM in evidence ledger',
   'master.intelligence.vehicleDetail.openApds': 'Open APDS detail',
   'master.intelligence.vehicleDetail.openPdi': 'Open device detail',
   'master.intelligence.vehicleDetail.noApdsDecision': 'No persisted decision in scope.',
@@ -266,6 +266,8 @@ export const masterIntelligenceEn = {
     'Engine RPM detail is unavailable while profile evaluation is blocked.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'Engine RPM detail requires a selected provider source link.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Opens ledger and signal detail for review. Applicability here is not combined RPM proof (live or historical)—VSI detail remains evidence-driven.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Independent evidence dimensions',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Applicability',

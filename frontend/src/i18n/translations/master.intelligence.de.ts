@@ -235,7 +235,7 @@ export const masterIntelligenceDe = {
   'master.intelligence.vehicleDetail.openVsi': 'VSI-Detail öffnen',
   'master.intelligence.vehicleDetail.openVsiOverview': 'VSI-Übersicht öffnen',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Evidenz-Ledger öffnen',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Motor-RPM-Signaldetail öffnen',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Motor-RPM im Evidenz-Ledger öffnen',
   'master.intelligence.vehicleDetail.openApds': 'APDS-Detail öffnen',
   'master.intelligence.vehicleDetail.openPdi': 'Gerätedetail öffnen',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Keine persistierte Entscheidung im Scope.',
@@ -262,6 +262,8 @@ export const masterIntelligenceDe = {
     'Motor-RPM-Detail nicht verfügbar, solange die Profilauswertung blockiert ist.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'Motor-RPM-Detail erfordert einen gewählten Provider-Source-Link.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Öffnet Ledger und Signaldetail zur Prüfung. Anwendbarkeit ist hier kein kombinierter RPM-Nachweis (live oder historisch)—VSI-Detail bleibt evidenzbasiert.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Unabhängige Evidenzdimensionen',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Anwendbarkeit',

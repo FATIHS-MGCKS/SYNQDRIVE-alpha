@@ -213,7 +213,7 @@ export const masterIntelligenceCs = {
   'master.intelligence.vehicleDetail.openVsi': 'Otevřít detail VSI',
   'master.intelligence.vehicleDetail.openVsiOverview': 'Otevřít přehled VSI',
   'master.intelligence.vehicleDetail.openVsiLedger': 'Otevřít evidenci',
-  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Otevřít detail signálu otáček motoru',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Otevřít otáčky motoru v evidenci',
   'master.intelligence.vehicleDetail.openApds': 'Otevřít detail APDS',
   'master.intelligence.vehicleDetail.openPdi': 'Otevřít detail zařízení',
   'master.intelligence.vehicleDetail.noApdsDecision': 'V rozsahu není persistované rozhodnutí.',
@@ -240,6 +240,8 @@ export const masterIntelligenceCs = {
     'Detail otáček není k dispozici, dokud je vyhodnocení profilu blokováno.',
   'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
     'Detail otáček vyžaduje vybraný provider source link.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Otevře ledger a detail signálu k revizi. Použitelnost zde není kombinovaný důkaz RPM (live ani historický)—detail VSI zůstává evidencí.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Nezávislé dimenze důkazů',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Použitelnost',
