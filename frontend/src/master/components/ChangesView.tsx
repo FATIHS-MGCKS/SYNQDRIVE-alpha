@@ -395,6 +395,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-31T16:00:00.000Z',
   },
   {
+    id: 'oneauto-p2-master-admin-ui-2026-11-01',
+    version: '4.9.5003',
+    title: 'One Auto API — Master Admin service dialog (frontend P2)',
+    summary: [
+      'Spec-actions button `vehicle-registration-oneauto-api` opens `OneAutoServiceDialog` beside Fetch AI Specs and ZB-I upload (edit mode only).',
+      'Catalog, quote, explicit cost confirmation, MFA step-up on execute, bounded job polling, and read-only result viewer call existing P1 routes only — no browser calls to One Auto.',
+      'CONTRACT_UNVERIFIED / disabled provider SKUs remain visible but non-executable; no auto-import into vehicle specifications or service history.',
+      'Nine-locale `master.oneAuto.*` keys; component tests for catalog safety, quote gate, MFA, polling, and context binding.',
+    ],
+    reason:
+      'Master operators need a gated UI on top of P1 provider foundation without duplicating backend logic or bypassing contract/MFA gates.',
+    previousBehavior:
+      'Reserved integration marker on spec-actions row; no Master Admin One Auto UI.',
+    details:
+      'frontend: `master/oneauto/*`, VehicleRegistrationModal.tsx, i18n `master.oneAuto.*`; tests: OneAutoServiceDialog.test.tsx, VehicleRegistrationModal.oneauto.test.tsx.',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
     id: 'master-zb1-additive-toolbar-2026-10-29',
     version: '4.9.5001',
     title: 'Master vehicle spec — additive ZB-I upload toolbar + form apply',
