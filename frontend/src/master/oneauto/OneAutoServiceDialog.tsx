@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { AppDialog } from '../../components/patterns/app-dialog';
 import { Button } from '../../components/ui/button';
@@ -298,10 +299,12 @@ export function OneAutoServiceDialog({
       <AppDialog open={open} onOpenChange={onOpenChange} maxWidthClassName="sm:max-w-2xl">
         <div className="flex flex-col max-h-[min(90vh,100dvh)]">
           <div className="border-b border-border px-6 py-4 pr-12">
-            <h2 className="text-lg font-semibold">{t('master.oneAuto.dialogTitle' as never)}</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <DialogPrimitive.Title className="text-lg font-semibold">
+              {t('master.oneAuto.dialogTitle' as never)}
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="text-sm text-muted-foreground mt-1">
               {t('master.oneAuto.dialogDescription' as never)}
-            </p>
+            </DialogPrimitive.Description>
             <p className="text-xs text-muted-foreground mt-2" data-testid="oneauto-context-binding">
               {organizationName} · {vehicleLabel} · {t('master.oneAuto.vinLabel' as never)}{' '}
               {maskVin(vin)}
