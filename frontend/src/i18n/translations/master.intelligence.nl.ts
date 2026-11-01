@@ -47,6 +47,28 @@ export const masterIntelligenceNl = {
   'master.intelligence.pdi.section.timeline': 'Chronologische tijdlijn',
   'master.intelligence.pdi.section.episodes': 'Verbindingsepisodes',
   'master.intelligence.pdi.section.drift': 'Identiteitsmonitoring',
+  'master.intelligence.pdi.section.bindings': 'Provider-koppelingen',
+  'master.intelligence.pdi.section.crossNav': 'Kruisnavigatie',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Geen voertuigscope voor dit apparaat — provider-koppelingen kunnen niet voor navigatie worden gebruikt.',
+  'master.intelligence.pdi.bindings.noneForScope': 'Geen provider-koppelingen in het huidige antwoord.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Voertuig en organisatie per rij weerspiegelen de huidige identiteitsattributie (CURRENT_VEHICLE_ONLY), geen per-koppeling bewijs.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Meerdere koppelingen — selecteer er één voordat u VSI-, APDS- of voertuiglinks opent.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'De geselecteerde koppeling staat niet meer in de lijst. Kies een actuele koppeling.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Koppelingsstatus',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Actief',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Inactief',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Onbekend',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Voertuig (attributie)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organisatie (attributie)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Voertuig/org-attributie onbekend voor deze scope.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'Apparaatorganisatie komt niet overeen met paneelcontext — links uitgeschakeld.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Selecteer een provider-koppeling om kruisnavigatie in te schakelen.',
   'master.intelligence.pdi.snapshotNotHistory': 'Huidige snapshot en live mirror zijn geen volledige historie.',
   'master.intelligence.pdi.notApplicableR1': 'Fysieke R1-monitoring niet van toepassing (bijv. Tesla software-only).',
   'master.intelligence.pdi.noDriftHistory': 'Geen persistenter drift-geschiedenis. Geen records ≠ geen drift.',

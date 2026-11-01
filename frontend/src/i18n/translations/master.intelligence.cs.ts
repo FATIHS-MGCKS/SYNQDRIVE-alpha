@@ -47,6 +47,28 @@ export const masterIntelligenceCs = {
   'master.intelligence.pdi.section.timeline': 'Časová osa',
   'master.intelligence.pdi.section.episodes': 'Epizody připojení',
   'master.intelligence.pdi.section.drift': 'Monitoring identity',
+  'master.intelligence.pdi.section.bindings': 'Vazby poskytovatele',
+  'master.intelligence.pdi.section.crossNav': 'Křížová navigace',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'U tohoto zařízení chybí rozsah vozidla — vazby nelze použít pro navigaci.',
+  'master.intelligence.pdi.bindings.noneForScope': 'V aktuální odpovědi nejsou žádné vazby poskytovatele.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Vozidlo a organizace v řádku odrážejí aktuální atribuci identity (CURRENT_VEHICLE_ONLY), ne důkaz na vazbu.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Více vazeb — vyberte jednu před otevřením odkazů VSI, APDS nebo vozidla.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'Vybraná vazba už není v seznamu. Zvolte aktuální vazbu.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Stav vazby',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Aktivní',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Neaktivní',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Neznámý',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Vozidlo (atribuce)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organizace (atribuce)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Atribuce vozidla/org pro tento rozsah neznámá.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'Organizace zařízení neodpovídá kontextu panelu — odkazy zakázány.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Vyberte vazbu poskytovatele pro zapnutí křížové navigace.',
   'master.intelligence.pdi.snapshotNotHistory': 'Aktuální stav a live mirror jsou snímky — ne plná historie.',
   'master.intelligence.pdi.notApplicableR1': 'Fyzický R1 monitoring neplatí (např. softwarová Tesla).',
   'master.intelligence.pdi.noDriftHistory': 'Bez persistované historie driftu. Chybějící záznamy nejsou důkazem bez driftu.',

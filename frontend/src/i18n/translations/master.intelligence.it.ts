@@ -47,6 +47,28 @@ export const masterIntelligenceIt = {
   'master.intelligence.pdi.section.timeline': 'Timeline cronologica',
   'master.intelligence.pdi.section.episodes': 'Episodi di connessione',
   'master.intelligence.pdi.section.drift': 'Monitoraggio identità',
+  'master.intelligence.pdi.section.bindings': 'Collegamenti provider',
+  'master.intelligence.pdi.section.crossNav': 'Navigazione incrociata',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Nessun ambito veicolo per questo dispositivo — i collegamenti non possono essere usati per la navigazione.',
+  'master.intelligence.pdi.bindings.noneForScope': 'Nessun collegamento provider nella risposta attuale.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Veicolo e organizzazione per riga riflettono l’attribuzione identità corrente (CURRENT_VEHICLE_ONLY), non prova per collegamento.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Più collegamenti — selezionarne uno prima di aprire VSI, APDS o il veicolo.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'Il collegamento selezionato non è più nell’elenco. Scegliere un collegamento attuale.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Stato collegamento',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Attivo',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Inattivo',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Sconosciuto',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Veicolo (attribuzione)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organizzazione (attribuzione)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Attribuzione veicolo/org sconosciuta per questo ambito.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'L’organizzazione del dispositivo non corrisponde al contesto del pannello — link disabilitati.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Selezionare un collegamento provider per abilitare la navigazione incrociata.',
   'master.intelligence.pdi.snapshotNotHistory': 'Inventario attuale e mirror live sono snapshot, non storico completo.',
   'master.intelligence.pdi.notApplicableR1': 'Monitoraggio R1 fisico non applicabile (es. Tesla solo software).',
   'master.intelligence.pdi.noDriftHistory': 'Nessuna cronologia drift persistita. Assenza record ≠ nessun drift.',

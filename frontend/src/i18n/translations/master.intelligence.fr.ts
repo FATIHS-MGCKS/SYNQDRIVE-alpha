@@ -49,6 +49,28 @@ export const masterIntelligenceFr = {
   'master.intelligence.pdi.section.timeline': 'Chronologie',
   'master.intelligence.pdi.section.episodes': 'Épisodes de connexion',
   'master.intelligence.pdi.section.drift': 'Surveillance d’identité',
+  'master.intelligence.pdi.section.bindings': 'Liaisons fournisseur',
+  'master.intelligence.pdi.section.crossNav': 'Navigation croisée',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Aucun périmètre véhicule pour cet appareil — les liaisons ne peuvent pas être utilisées pour la navigation.',
+  'master.intelligence.pdi.bindings.noneForScope': 'Aucune liaison fournisseur dans la réponse actuelle.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Véhicule et organisation par ligne reflètent l’attribution d’identité actuelle (CURRENT_VEHICLE_ONLY), pas une preuve par liaison.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Plusieurs liaisons — sélectionnez-en une avant d’ouvrir VSI, APDS ou le véhicule.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'La liaison sélectionnée n’est plus dans la liste. Choisissez une liaison actuelle.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Statut de liaison',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Active',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Inactive',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Inconnu',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Véhicule (attribution)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organisation (attribution)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Attribution véhicule/org inconnue pour ce périmètre.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'L’organisation de l’appareil ne correspond pas au contexte du panneau — liens désactivés.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Sélectionnez une liaison fournisseur pour activer la navigation croisée.',
   'master.intelligence.pdi.snapshotNotHistory':
     'Inventaire actuel et miroir live = instantanés, pas un historique complet.',
   'master.intelligence.pdi.notApplicableR1':

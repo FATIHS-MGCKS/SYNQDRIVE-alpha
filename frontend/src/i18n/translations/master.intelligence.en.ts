@@ -56,6 +56,27 @@ export const masterIntelligenceEn = {
   'master.intelligence.pdi.section.timeline': 'Chronological timeline',
   'master.intelligence.pdi.section.episodes': 'Connection episodes',
   'master.intelligence.pdi.section.drift': 'Identity monitoring',
+  'master.intelligence.pdi.section.bindings': 'Provider bindings',
+  'master.intelligence.pdi.section.crossNav': 'Cross-navigation',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'No vehicle scope on this device — provider bindings cannot be scoped for navigation.',
+  'master.intelligence.pdi.bindings.noneForScope': 'No provider bindings in the current response.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Vehicle and organization on each row reflect current identity attribution (CURRENT_VEHICLE_ONLY), not per-binding proof.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Multiple provider bindings — select one before opening VSI, APDS, or vehicle intelligence links.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'The selected provider binding is no longer in the list. Choose a current binding.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Link status',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Active',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Inactive',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Unknown',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Vehicle (attribution)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organization (attribution)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Vehicle/org attribution unknown for this scope.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'Device organization does not match the panel context — cross-links are disabled.',
+  'master.intelligence.pdi.bindings.navPending': 'Select a provider binding to enable cross-navigation.',
   'master.intelligence.pdi.snapshotNotHistory':
     'Current inventory and live mirror observations are snapshots — not a full historical record.',
   'master.intelligence.pdi.notApplicableR1':

@@ -47,6 +47,28 @@ export const masterIntelligenceEs = {
   'master.intelligence.pdi.section.timeline': 'Línea temporal',
   'master.intelligence.pdi.section.episodes': 'Episodios de conexión',
   'master.intelligence.pdi.section.drift': 'Monitorización de identidad',
+  'master.intelligence.pdi.section.bindings': 'Enlaces de proveedor',
+  'master.intelligence.pdi.section.crossNav': 'Navegación cruzada',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Sin ámbito de vehículo en este dispositivo — los enlaces no pueden usarse para navegar.',
+  'master.intelligence.pdi.bindings.noneForScope': 'No hay enlaces de proveedor en la respuesta actual.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Vehículo y organización por fila reflejan la atribución de identidad actual (CURRENT_VEHICLE_ONLY), no prueba por enlace.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Varios enlaces — seleccione uno antes de abrir VSI, APDS o el vehículo.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'El enlace seleccionado ya no está en la lista. Elija un enlace actual.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Estado del enlace',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Activo',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Inactivo',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Desconocido',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Vehículo (atribución)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organización (atribución)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Atribución vehículo/org desconocida para este ámbito.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'La organización del dispositivo no coincide con el contexto del panel — enlaces desactivados.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Seleccione un enlace de proveedor para habilitar la navegación cruzada.',
   'master.intelligence.pdi.snapshotNotHistory': 'Inventario actual y espejo live son instantáneas, no historial completo.',
   'master.intelligence.pdi.notApplicableR1': 'Monitorización R1 física no aplicable (p. ej. Tesla solo software).',
   'master.intelligence.pdi.noDriftHistory': 'Sin historial persistido de drift. Sin registros no prueba ausencia de drift.',
