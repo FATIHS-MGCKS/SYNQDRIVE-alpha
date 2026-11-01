@@ -9,6 +9,7 @@ import {
   buildPdiIntelligenceNavContext,
   formatPdiLinkStatus,
   pickPdiProviderSourceLink,
+  pdiLinkStatusAllowsNavigation,
   resolvePdiCrossNavScope,
 } from './pdi-provider-binding.utils';
 
@@ -89,6 +90,7 @@ describe('pdi provider binding utils', () => {
       identity: baseIdentity(),
       panelOrganizationId: ORG_B,
       bindingPick: pick,
+      bindings: [binding(LINK_1)],
       bindingCount: 1,
     });
     expect(scope.crossOrgMismatch).toBe(true);
@@ -101,6 +103,7 @@ describe('pdi provider binding utils', () => {
       identity: baseIdentity({ currentVehicleId: null, currentOrganizationId: null }),
       panelOrganizationId: ORG_A,
       bindingPick: pick,
+      bindings: [binding(LINK_1)],
       bindingCount: 1,
     });
     expect(scope.missingVehicleScope).toBe(true);
@@ -112,12 +115,53 @@ describe('pdi provider binding utils', () => {
     expect(formatPdiLinkStatus(null)).toBe('UNKNOWN');
   });
 
+  it('inactive or unknown link status blocks navigation', () => {
+    expect(pdiLinkStatusAllowsNavigation('ACTIVE')).toBe(true);
+    expect(pdiLinkStatusAllowsNavigation('INACTIVE')).toBe(false);
+    expect(pdiLinkStatusAllowsNavigation(null)).toBe(false);
+    const inactivePick = pickPdiProviderSourceLink([binding(LINK_1, 'INACTIVE')], null);
+    const scope = resolvePdiCrossNavScope({
+      identity: baseIdentity(),
+      panelOrganizationId: ORG_A,
+      bindingPick: inactivePick,
+      bindings: [binding(LINK_1, 'INACTIVE')],
+      bindingCount: 1,
+    });
+    expect(scope.inactiveOrIncompleteLink).toBe(true);
+    expect(scope.navigationReady).toBe(false);
+    expect(buildPdiIntelligenceNavContext({ scope })).toBeNull();
+  });
+
+  it('binding switch replaces providerSourceLinkId in scope without stale link id', () => {
+    const bindings = [binding(LINK_1), binding(LINK_2)];
+    const scopeA = resolvePdiCrossNavScope({
+      identity: baseIdentity(),
+      panelOrganizationId: ORG_A,
+      bindingPick: pickPdiProviderSourceLink(bindings, LINK_1),
+      bindings,
+      bindingCount: 2,
+    });
+    const scopeB = resolvePdiCrossNavScope({
+      identity: baseIdentity(),
+      panelOrganizationId: ORG_A,
+      bindingPick: pickPdiProviderSourceLink(bindings, LINK_2),
+      bindings,
+      bindingCount: 2,
+    });
+    expect(scopeA.providerSourceLinkId).toBe(LINK_1);
+    expect(scopeB.providerSourceLinkId).toBe(LINK_2);
+    expect(scopeA.orgId).toBe(scopeB.orgId);
+    expect(scopeA.vehicleId).toBe(scopeB.vehicleId);
+  });
+
   it('omits physicalDeviceId from VSI URL when multiple bindings', () => {
-    const pick = pickPdiProviderSourceLink([binding(LINK_1), binding(LINK_2)], LINK_1);
+    const bindings = [binding(LINK_1), binding(LINK_2)];
+    const pick = pickPdiProviderSourceLink(bindings, LINK_1);
     const scope = resolvePdiCrossNavScope({
       identity: baseIdentity(),
       panelOrganizationId: ORG_A,
       bindingPick: pick,
+      bindings,
       bindingCount: 2,
     });
     expect(scope.providerNavPhysicalDeviceId).toBeNull();
@@ -135,6 +179,7 @@ describe('pdi provider binding utils', () => {
       identity: baseIdentity(),
       panelOrganizationId: ORG_A,
       bindingPick: pick,
+      bindings: [binding(LINK_1)],
       bindingCount: 1,
     });
     expect(scope.providerNavPhysicalDeviceId).toBe(DEVICE_ID);
@@ -146,6 +191,7 @@ describe('pdi provider binding utils', () => {
       identity: baseIdentity({ currentVehicleId: null }),
       panelOrganizationId: ORG_A,
       bindingPick: pick,
+      bindings: [],
       bindingCount: 0,
     });
     expect(scope.navigationReady).toBe(false);
@@ -160,6 +206,7 @@ describe('pdi cross navigation URLs', () => {
       identity: baseIdentity(),
       panelOrganizationId: ORG_A,
       bindingPick: pick,
+      bindings: [binding(LINK_1)],
       bindingCount: 1,
     });
     window.history.replaceState(null, '', '/master?view=device-inventory');
@@ -180,6 +227,7 @@ describe('pdi cross navigation URLs', () => {
       identity: baseIdentity(),
       panelOrganizationId: ORG_A,
       bindingPick: pick,
+      bindings: [binding(LINK_1)],
       bindingCount: 1,
     });
     window.history.replaceState(null, '', '/master?view=device-inventory');

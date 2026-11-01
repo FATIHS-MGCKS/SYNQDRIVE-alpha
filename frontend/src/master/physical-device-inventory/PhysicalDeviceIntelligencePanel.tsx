@@ -57,6 +57,7 @@ function PhysicalDeviceIntelligencePanelBody({ physicalDeviceId, organizationId 
     identity: data.identity,
     panelOrganizationId: organizationId ?? null,
     bindingPick,
+    bindings: data.providerBindings,
     bindingCount: data.providerBindings.length,
   });
 

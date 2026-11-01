@@ -54,10 +54,16 @@ export function formatPdiLinkStatus(linkStatus: string | null | undefined): stri
   return linkStatus;
 }
 
+/** Cross-navigation requires explicit ACTIVE link status from the DTO — no inference from device INSTALLED. */
+export function pdiLinkStatusAllowsNavigation(linkStatus: string | null | undefined): boolean {
+  return formatPdiLinkStatus(linkStatus) === 'ACTIVE';
+}
+
 export type PdiCrossNavScope = {
   navigationReady: boolean;
   crossOrgMismatch: boolean;
   missingVehicleScope: boolean;
+  inactiveOrIncompleteLink: boolean;
   orgId: string | null;
   vehicleId: string | null;
   providerSourceLinkId: string | null;
@@ -70,6 +76,7 @@ export function resolvePdiCrossNavScope(input: {
   identity: MasterPdiDeviceIntelligenceDto['identity'];
   panelOrganizationId: string | null;
   bindingPick: PdiProviderBindingPick;
+  bindings: PdiProviderBindingRow[];
   bindingCount: number;
 }): PdiCrossNavScope {
   const physicalDeviceId = input.identity.physicalDeviceId;
@@ -83,12 +90,26 @@ export function resolvePdiCrossNavScope(input: {
       input.panelOrganizationId.trim() !== orgId.trim(),
   );
 
-  const navigationReady =
-    input.bindingPick.navigationReady && !missingVehicleScope && !crossOrgMismatch;
+  const selectedBinding =
+    input.bindingPick.linkId != null
+      ? input.bindings.find((b) => b.providerSourceLinkId === input.bindingPick.linkId)
+      : null;
+  const inactiveOrIncompleteLink = Boolean(
+    input.bindingPick.navigationReady &&
+      (!selectedBinding || !pdiLinkStatusAllowsNavigation(selectedBinding.linkStatus)),
+  );
+
+  const scopeReady =
+    input.bindingPick.navigationReady &&
+    !missingVehicleScope &&
+    !crossOrgMismatch &&
+    !inactiveOrIncompleteLink;
+
+  const navigationReady = scopeReady;
 
   const providerNavPhysicalDeviceId = resolveNavPhysicalDeviceIdForProviderContext({
     profileCount: input.bindingCount,
-    navigationReady: input.bindingPick.navigationReady && !missingVehicleScope && !crossOrgMismatch,
+    navigationReady: scopeReady,
     physicalDeviceId,
   });
 
@@ -96,6 +117,7 @@ export function resolvePdiCrossNavScope(input: {
     navigationReady,
     crossOrgMismatch,
     missingVehicleScope,
+    inactiveOrIncompleteLink,
     orgId: orgId ?? null,
     vehicleId: vehicleId ?? null,
     providerSourceLinkId: input.bindingPick.linkId,
