@@ -61,6 +61,7 @@ export type TireCalibrationSetupSummaryRowDto = {
   snapshotCount: number;
   latestSnapshotAt: string | null;
   wheelPositions: string[];
+  mountPeriodIds: string[];
 };
 
 export type TireCalibrationSetupListDto = {

@@ -37,6 +37,8 @@ function MetricTile({ label, value }: { label: string; value: string | number | 
   );
 }
 
+const WHEEL_POSITIONS = ['FL', 'FR', 'RL', 'RR'] as const;
+
 export function TireCalibrationCenterView({ organizations }: Props) {
   const { t, locale } = useLanguage();
   const [url, setUrl] = useState<TireCalibrationCenterUrlState>(() =>
@@ -113,7 +115,7 @@ export function TireCalibrationCenterView({ organizations }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [hasScope, loadSummary, t, url]);
+  }, [hasScope, loadSummary, t, url.orgId, url.vehicleId, url.tireSetupId, url.wheelPosition, url.mountPeriodId]);
 
   useEffect(() => {
     void refresh();
@@ -184,6 +186,11 @@ export function TireCalibrationCenterView({ organizations }: Props) {
     (a, b) => b[1] - a[1],
   );
 
+  const selectedSetup = setups?.items.find((s) => s.tireSetupId === url.tireSetupId);
+  const wheelFilterOptions =
+    selectedSetup?.wheelPositions?.length ? selectedSetup.wheelPositions : [...WHEEL_POSITIONS];
+  const mountFilterOptions = selectedSetup?.mountPeriodIds ?? [];
+
   return (
     <>
       <MasterPageHeader
@@ -191,8 +198,12 @@ export function TireCalibrationCenterView({ organizations }: Props) {
         description={t('master.intelligence.tireCalibration.description' as never)}
         actions={
           <Button type="button" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <RefreshCw className="h-4 w-4" aria-hidden />}
-            <span className="sr-only">Refresh</span>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+            )}
+            <span className="ml-1.5">{t('master.intelligence.tireCalibration.action.refresh' as never)}</span>
           </Button>
         }
       />
@@ -265,6 +276,10 @@ export function TireCalibrationCenterView({ organizations }: Props) {
                   value={summary?.writer.lastSnapshotsInserted}
                 />
                 <MetricTile
+                  label={t('master.intelligence.tireCalibration.metric.existing' as never)}
+                  value={summary?.writer.lastSnapshotsExisting}
+                />
+                <MetricTile
                   label={t('master.intelligence.tireCalibration.metric.skipped' as never)}
                   value={summary?.writer.lastSetupsSkipped}
                 />
@@ -287,6 +302,8 @@ export function TireCalibrationCenterView({ organizations }: Props) {
                     orgId: e.target.value || null,
                     vehicleId: null,
                     tireSetupId: null,
+                    wheelPosition: null,
+                    mountPeriodId: null,
                     snapshotId: null,
                   })
                 }
@@ -306,7 +323,13 @@ export function TireCalibrationCenterView({ organizations }: Props) {
                 value={url.vehicleId ?? ''}
                 disabled={!url.orgId}
                 onChange={(e) =>
-                  syncUrl({ vehicleId: e.target.value || null, tireSetupId: null, snapshotId: null })
+                  syncUrl({
+                    vehicleId: e.target.value || null,
+                    tireSetupId: null,
+                    wheelPosition: null,
+                    mountPeriodId: null,
+                    snapshotId: null,
+                  })
                 }
               >
                 <option value="">—</option>
@@ -323,7 +346,14 @@ export function TireCalibrationCenterView({ organizations }: Props) {
                 className="rounded border border-border bg-background px-2 py-1.5 font-mono text-[11px]"
                 value={url.tireSetupId ?? ''}
                 disabled={!url.vehicleId}
-                onChange={(e) => syncUrl({ tireSetupId: e.target.value || null, snapshotId: null })}
+                onChange={(e) =>
+                  syncUrl({
+                    tireSetupId: e.target.value || null,
+                    wheelPosition: null,
+                    mountPeriodId: null,
+                    snapshotId: null,
+                  })
+                }
               >
                 <option value="">—</option>
                 {(setups?.items ?? []).map((s) => (
@@ -334,6 +364,50 @@ export function TireCalibrationCenterView({ organizations }: Props) {
               </select>
             </label>
           </div>
+          {hasScope && url.tab === 'snapshots' ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">{t('master.intelligence.tireCalibration.picker.wheel' as never)}</span>
+                <select
+                  className="rounded border border-border bg-background px-2 py-1.5 font-mono text-[11px]"
+                  value={url.wheelPosition ?? ''}
+                  onChange={(e) =>
+                    syncUrl({
+                      wheelPosition: e.target.value || null,
+                      snapshotId: null,
+                    })
+                  }
+                >
+                  <option value="">{t('master.intelligence.tireCalibration.filter.allWheels' as never)}</option>
+                  {wheelFilterOptions.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">{t('master.intelligence.tireCalibration.picker.mountPeriod' as never)}</span>
+                <select
+                  className="rounded border border-border bg-background px-2 py-1.5 font-mono text-[11px]"
+                  value={url.mountPeriodId ?? ''}
+                  onChange={(e) =>
+                    syncUrl({
+                      mountPeriodId: e.target.value || null,
+                      snapshotId: null,
+                    })
+                  }
+                >
+                  <option value="">{t('master.intelligence.tireCalibration.filter.allMountPeriods' as never)}</option>
+                  {mountFilterOptions.map((mp) => (
+                    <option key={mp} value={mp}>
+                      {mp.slice(0, 8)}…
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
         </MasterPageSection>
       )}
 
@@ -378,7 +452,14 @@ export function TireCalibrationCenterView({ organizations }: Props) {
                         <td className="px-3 py-2 tabular-nums">
                           {new Date(row.predictionCreatedAt).toLocaleString(locale)}
                         </td>
-                        <td className="px-3 py-2">{row.pairingEligible ? '✓' : '—'}</td>
+                        <td className="px-3 py-2">
+                          <span className="sr-only">
+                            {row.pairingEligible
+                              ? t('master.intelligence.tireCalibration.col.pairingEligible.yes' as never)
+                              : t('master.intelligence.tireCalibration.col.pairingEligible.no' as never)}
+                          </span>
+                          <span aria-hidden>{row.pairingEligible ? '✓' : '—'}</span>
+                        </td>
                         <td className="px-3 py-2 font-mono text-[10px]">
                           {row.physicalTireId ??
                             t('master.intelligence.tireCalibration.physical.unconfirmed' as never)}

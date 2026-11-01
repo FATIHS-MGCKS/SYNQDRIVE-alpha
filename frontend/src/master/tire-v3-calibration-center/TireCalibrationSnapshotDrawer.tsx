@@ -18,6 +18,30 @@ function Metric({ label, value }: { label: string; value: string | number | null
   );
 }
 
+function eligibilityNotes(
+  detail: TireCalibrationSnapshotDetailDto,
+  t: (key: never) => string,
+): string[] {
+  const pred = detail.payload?.prediction as Record<string, unknown> | undefined;
+  const prov = detail.payload?.provenance as Record<string, unknown> | undefined;
+  const notes: string[] = [];
+
+  notes.push(
+    detail.pairingEligible
+      ? t('master.intelligence.tireCalibration.drawer.eligibility.pairingEligible' as never)
+      : t('master.intelligence.tireCalibration.drawer.eligibility.observationalOnly' as never),
+  );
+
+  if (pred?.physicalIdentityAmbiguous === true) {
+    notes.push(t('master.intelligence.tireCalibration.drawer.eligibility.identityAmbiguous' as never));
+  }
+  if (prov?.rotationDuringMountPeriod === true) {
+    notes.push(t('master.intelligence.tireCalibration.drawer.eligibility.rotationDuringMount' as never));
+  }
+
+  return notes;
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +54,7 @@ export function TireCalibrationSnapshotDrawer({ open, onOpenChange, detail, load
 
   const pred = detail?.payload?.prediction as Record<string, unknown> | undefined;
   const dq = detail?.payload?.dataQuality as Record<string, unknown> | undefined;
+  const prov = detail?.payload?.provenance as Record<string, unknown> | undefined;
   const predictedTread = pred?.predictedTreadMm as { lo: number; hi: number } | null | undefined;
   const displayTread = pred?.displayTreadMm as { lo: number; hi: number } | null | undefined;
   const remainingKm = pred?.remainingKm as { lo: number; hi: number } | null | undefined;
@@ -38,6 +63,10 @@ export function TireCalibrationSnapshotDrawer({ open, onOpenChange, detail, load
     detail?.physicalIdentityStatus === 'CONFIRMED' && detail.physicalTireId
       ? detail.physicalTireId
       : t('master.intelligence.tireCalibration.physical.unconfirmed' as never);
+
+  const pairingModeLabel = detail?.pairingEligible
+    ? t('master.intelligence.tireCalibration.drawer.pairingMode.pairingEligible' as never)
+    : t('master.intelligence.tireCalibration.drawer.pairingMode.observationalOnly' as never);
 
   return (
     <SignalDetailSheet
@@ -77,11 +106,25 @@ export function TireCalibrationSnapshotDrawer({ open, onOpenChange, detail, load
           </section>
 
           <section>
-            <h3 className="mb-2 font-medium">{t('master.intelligence.tireCalibration.drawer.section.quality' as never)}</h3>
+            <h3 className="mb-2 font-medium">{t('master.intelligence.tireCalibration.drawer.section.eligibility' as never)}</h3>
+            <Metric label={t('master.intelligence.tireCalibration.drawer.pairingMode' as never)} value={pairingModeLabel} />
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-muted-foreground">
+              {eligibilityNotes(detail, t).map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="mb-2 font-medium">{t('master.intelligence.tireCalibration.drawer.section.temporal' as never)}</h3>
             <div className="grid grid-cols-2 gap-2">
               <Metric
                 label={t('master.intelligence.tireCalibration.drawer.ds4Coverage' as never)}
                 value={dq?.ds4SeverityCoverage as number | undefined}
+              />
+              <Metric
+                label={t('master.intelligence.tireCalibration.drawer.temporalQuality' as never)}
+                value={dq?.temporalQuality as string | undefined}
               />
               <Metric
                 label={t('master.intelligence.tireCalibration.drawer.dynamicBeta' as never)}
@@ -92,12 +135,12 @@ export function TireCalibrationSnapshotDrawer({ open, onOpenChange, detail, load
                 value={dq?.dynamicFactor as number | undefined}
               />
               <Metric
-                label={t('master.intelligence.tireCalibration.drawer.pairingEligible' as never)}
-                value={
-                  detail.pairingEligible
-                    ? t('master.intelligence.tireCalibration.value.yes' as never)
-                    : t('master.intelligence.tireCalibration.value.no' as never)
-                }
+                label={t('master.intelligence.tireCalibration.drawer.sourceComputedAt' as never)}
+                value={detail.sourceComputedAt}
+              />
+              <Metric
+                label={t('master.intelligence.tireCalibration.drawer.latestMeasurementAt' as never)}
+                value={detail.latestSourceMeasurementAt}
               />
             </div>
           </section>
@@ -108,6 +151,28 @@ export function TireCalibrationSnapshotDrawer({ open, onOpenChange, detail, load
               <Metric
                 label={t('master.intelligence.tireCalibration.drawer.sourceCutoffUtc' as never)}
                 value={detail.sourceDataCutoffAt}
+              />
+              <Metric
+                label={t('master.intelligence.tireCalibration.drawer.rotationDuringMount' as never)}
+                value={
+                  prov?.rotationDuringMountPeriod === true
+                    ? t('master.intelligence.tireCalibration.value.yes' as never)
+                    : prov?.rotationDuringMountPeriod === false
+                      ? t('master.intelligence.tireCalibration.value.no' as never)
+                      : null
+                }
+              />
+              <Metric
+                label={t('master.intelligence.tireCalibration.drawer.ledgerRowCount' as never)}
+                value={prov?.ledgerRowCount as number | undefined}
+              />
+              <Metric
+                label={t('master.intelligence.tireCalibration.drawer.ledgerDistanceKm' as never)}
+                value={prov?.ledgerDistanceKm as number | undefined}
+              />
+              <Metric
+                label={t('master.intelligence.tireCalibration.drawer.odometerAnchorStatus' as never)}
+                value={prov?.odometerAnchorStatus as string | null | undefined}
               />
               <Metric
                 label={t('master.intelligence.tireCalibration.drawer.eligibilityDigest' as never)}

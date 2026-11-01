@@ -12,6 +12,12 @@ import {
   type TireWearV3CalibrationSnapshotRef,
 } from './tire-wear-v3-calibration-pairing.policy';
 import {
+  buildSnapshotListKeysetWhere,
+  decodeSnapshotListCursor,
+  encodeSnapshotListCursor,
+  sanitizeCalibrationSnapshotPayloadForMasterRead,
+} from './tire-wear-v3-calibration-center-read.util';
+import {
   TIRE_CALIBRATION_CENTER_DEFAULT_PAGE_SIZE,
   TIRE_CALIBRATION_CENTER_MAX_PAGE_SIZE,
   type TireCalibrationGlobalSummaryDto,
@@ -430,11 +436,32 @@ export class TireWearV3CalibrationShadowMasterReadService {
             _count: { _all: true },
           });
 
+    const mountGroups =
+      setupIds.length === 0
+        ? []
+        : await this.prisma.tireWearV3CalibrationSnapshotV1.groupBy({
+            by: ['tireSetupId', 'mountPeriodId'],
+            where: {
+              organizationId: args.organizationId,
+              vehicleId: args.vehicleId,
+              tireSetupId: { in: setupIds },
+            },
+            _count: { _all: true },
+          });
+
     const wheelsBySetup = new Map<string, Set<string>>();
     for (const g of wheelGroups) {
       const set = wheelsBySetup.get(g.tireSetupId) ?? new Set<string>();
       set.add(g.wheelPosition);
       wheelsBySetup.set(g.tireSetupId, set);
+    }
+
+    const mountsBySetup = new Map<string, Set<string>>();
+    for (const g of mountGroups) {
+      if (g.mountPeriodId == null) continue;
+      const set = mountsBySetup.get(g.tireSetupId) ?? new Set<string>();
+      set.add(g.mountPeriodId);
+      mountsBySetup.set(g.tireSetupId, set);
     }
 
     return {
@@ -445,6 +472,7 @@ export class TireWearV3CalibrationShadowMasterReadService {
         snapshotCount: r._count._all,
         latestSnapshotAt: r._max.predictionCreatedAt?.toISOString() ?? null,
         wheelPositions: [...(wheelsBySetup.get(r.tireSetupId) ?? new Set())].sort(),
+        mountPeriodIds: [...(mountsBySetup.get(r.tireSetupId) ?? new Set())].sort(),
       })),
     };
   }
@@ -461,21 +489,16 @@ export class TireWearV3CalibrationShadowMasterReadService {
     await this.assertSetupScope(args);
 
     const limit = this.clampPageLimit(args.limit);
-    const cursorDate = args.cursor ? new Date(args.cursor) : null;
-    if (args.cursor && Number.isNaN(cursorDate!.getTime())) {
-      throw new NotFoundException('Invalid snapshot list cursor');
-    }
+    const cursor = args.cursor ? decodeSnapshotListCursor(args.cursor) : null;
 
-    const where = {
+    const where = buildSnapshotListKeysetWhere({
       organizationId: args.organizationId,
       vehicleId: args.vehicleId,
       tireSetupId: args.tireSetupId,
-      ...(args.wheelPosition ? { wheelPosition: args.wheelPosition } : {}),
-      ...(args.mountPeriodId ? { mountPeriodId: args.mountPeriodId } : {}),
-      ...(cursorDate
-        ? { predictionCreatedAt: { lt: cursorDate } }
-        : {}),
-    };
+      wheelPosition: args.wheelPosition,
+      mountPeriodId: args.mountPeriodId,
+      cursor,
+    });
 
     const rows = await this.prisma.tireWearV3CalibrationSnapshotV1.findMany({
       where,
@@ -499,7 +522,10 @@ export class TireWearV3CalibrationShadowMasterReadService {
     const page = hasMore ? rows.slice(0, limit) : rows;
     const nextCursor =
       hasMore && page.length > 0
-        ? page[page.length - 1]!.predictionCreatedAt.toISOString()
+        ? encodeSnapshotListCursor({
+            predictionCreatedAt: page[page.length - 1]!.predictionCreatedAt,
+            id: page[page.length - 1]!.id,
+          })
         : null;
 
     return {
@@ -544,7 +570,9 @@ export class TireWearV3CalibrationShadowMasterReadService {
       throw new NotFoundException('Calibration snapshot not found for scope');
     }
 
-    const payload = row.snapshotPayload as unknown as TireWearV3CalibrationSnapshotPayload;
+    const payload = sanitizeCalibrationSnapshotPayloadForMasterRead(
+      row.snapshotPayload as unknown as TireWearV3CalibrationSnapshotPayload,
+    );
     const physicalIdentityStatus =
       row.physicalTireId != null &&
       payload?.prediction?.physicalIdentityAmbiguous !== true

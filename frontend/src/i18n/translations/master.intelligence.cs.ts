@@ -420,5 +420,30 @@ export const masterIntelligenceCs = {
   'master.intelligence.tireCalibration.drawer.sourceCutoffUtc': 'Source cutoff (UTC)',
   'master.intelligence.tireCalibration.value.yes': 'Yes',
   'master.intelligence.tireCalibration.value.no': 'No',
+  'master.intelligence.tireCalibration.action.refresh': 'Refresh',
+  'master.intelligence.tireCalibration.filter.allWheels': 'All wheels',
+  'master.intelligence.tireCalibration.filter.allMountPeriods': 'All mount periods',
+  'master.intelligence.tireCalibration.col.pairingEligible.yes': 'Pairing eligible',
+  'master.intelligence.tireCalibration.col.pairingEligible.no': 'Not pairing eligible',
+  'master.intelligence.tireCalibration.drawer.section.eligibility': 'Pairing eligibility',
+  'master.intelligence.tireCalibration.drawer.eligibility.pairingEligible':
+    'Persisted snapshot flag: eligible for prospective calibration pairing under current policy.',
+  'master.intelligence.tireCalibration.drawer.eligibility.observationalOnly':
+    'Persisted snapshot flag: observational-only — not eligible for pairing (pairingEligible=false at write time).',
+  'master.intelligence.tireCalibration.drawer.eligibility.identityAmbiguous':
+    'Physical tire identity was ambiguous when this snapshot was written.',
+  'master.intelligence.tireCalibration.drawer.eligibility.rotationDuringMount':
+    'Rotation events occurred during this mount period (persisted provenance).',
+  'master.intelligence.tireCalibration.drawer.section.temporal': 'Temporal & DS4 quality',
+  'master.intelligence.tireCalibration.drawer.temporalQuality': 'Temporal quality (persisted)',
+  'master.intelligence.tireCalibration.drawer.sourceComputedAt': 'Prediction computed at (UTC)',
+  'master.intelligence.tireCalibration.drawer.latestMeasurementAt': 'Latest measurement in inputs (UTC)',
+  'master.intelligence.tireCalibration.drawer.ledgerRowCount': 'Trip ledger rows',
+  'master.intelligence.tireCalibration.drawer.ledgerDistanceKm': 'Ledger distance (km)',
+  'master.intelligence.tireCalibration.drawer.rotationDuringMount': 'Rotation during mount',
+  'master.intelligence.tireCalibration.drawer.odometerAnchorStatus': 'Odometer anchor status',
+  'master.intelligence.tireCalibration.drawer.pairingMode': 'Snapshot pairing mode',
+  'master.intelligence.tireCalibration.drawer.pairingMode.pairingEligible': 'Pairing-eligible snapshot',
+  'master.intelligence.tireCalibration.drawer.pairingMode.observationalOnly': 'Observational-only snapshot',
   'master.intelligence.tireCalibration.drawer.loadMore': 'Load more snapshots',
 } as const;

@@ -117,7 +117,23 @@ describe('TireWearV3CalibrationShadowMasterReadService scoping', () => {
       pairingEligible: false,
       measurementIdsUsed: [],
       snapshotPayload: {
-        prediction: { physicalIdentityAmbiguous: true },
+        schemaVersion: 'v1',
+        identity: {
+          organizationId: 'org-1',
+          vehicleId: 'veh-1',
+          tireSetupId: 'setup-1',
+          mountPeriodId: 'mp-1',
+          wheelPosition: 'FL',
+          physicalTireId: null,
+        },
+        prediction: {
+          physicalIdentityAmbiguous: true,
+          inputFingerprint: 'secret-full-fingerprint',
+          calibrationEligibilityDigest: 'secret-full-digest',
+          pairingEligible: false,
+        },
+        dataQuality: { temporalQuality: 'NOT_AVAILABLE', ds4SeverityCoverage: 0 },
+        provenance: { rotationDuringMountPeriod: false, ledgerRowCount: 0, ledgerDistanceKm: 0 },
       },
     });
 
@@ -130,6 +146,8 @@ describe('TireWearV3CalibrationShadowMasterReadService scoping', () => {
 
     expect(detail.physicalIdentityStatus).toBe('UNCONFIRMED');
     expect(detail.physicalTireId).toBeNull();
+    expect(detail.payload.prediction).not.toHaveProperty('inputFingerprint');
+    expect(detail.payload.prediction).not.toHaveProperty('calibrationEligibilityDigest');
   });
 
   it('rejects vehicle listing when vehicle not in organization', async () => {
