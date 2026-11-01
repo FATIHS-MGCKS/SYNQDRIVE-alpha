@@ -85,11 +85,15 @@ function ConnectedVehicleIntelligenceSectionBody({ organizationId, vehicleId }: 
   };
   const openVsiLedger = () => {
     if (navigationBlocked) return;
-    navigateMasterIntelligenceCrossLink('vsi-intelligence', navContext('ledger'));
+    navigateMasterIntelligenceCrossLink('vsi-intelligence', navContext('ledger'), {
+      hygiene: { preserveVsiLedgerState: true },
+    });
   };
   const openEngineRpmDetail = () => {
     if (navigationBlocked || !rpmEligibility.eligible) return;
-    navigateMasterIntelligenceCrossLink('vsi-intelligence', navContext('engine_rpm_detail'));
+    navigateMasterIntelligenceCrossLink('vsi-intelligence', navContext('engine_rpm_detail'), {
+      hygiene: { preserveVsiLedgerState: true },
+    });
   };
   const openApds = () => {
     if (navigationBlocked) return;
@@ -97,7 +101,9 @@ function ConnectedVehicleIntelligenceSectionBody({ organizationId, vehicleId }: 
   };
   const openPdi = () => {
     if (!physicalDeviceId || navigationBlocked) return;
-    navigateMasterIntelligenceCrossLink('device-inventory', pdiNavContext());
+    navigateMasterIntelligenceCrossLink('device-inventory', pdiNavContext(), {
+      hygiene: { physicalDeviceIdProven: true },
+    });
   };
 
   const lv = activeProfile ? mapSummaryToLvBadge(activeProfile) : null;
