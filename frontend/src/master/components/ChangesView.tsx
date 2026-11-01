@@ -376,7 +376,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T00:00:00.000Z',
   },
   {
-    id: 'tire-v3-calibration-shadow-p3-2026-11-01',
+    id: 'tire-v3-calibration-center-p3-1-2026-11-01',
+    version: '4.9.5004',
+    title: 'Master Admin — Tire V3 Calibration Center (P3.1 read-only UI)',
+    summary: [
+      'Engineering nav entry and four-tab dashboard: overview, snapshots, accuracy (not evaluable), data quality (sampled rejections).',
+      'Read-only list/detail APIs for org-scoped snapshot exploration; snapshot drawer with prediction payload sections.',
+      'Writer telemetry labeled replica-local; no customer V3 or writer activation from UI.',
+    ],
+    reason: 'Operational monitoring for calibration shadow P3 without implying persisted measurement pairs or accuracy metrics.',
+    previousBehavior: 'Calibration shadow inspectable via raw Master Admin API only (PR #2289).',
+    details:
+      'backend: tire-wear-v3-calibration-center read routes; frontend: master/tire-v3-calibration-center/*; master.intelligence.tireCalibration.* i18n.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-11-01T09:30:00.000Z',
+  },
+  {
     version: '4.9.5003',
     title: 'Tire Wear V3 — calibration shadow P3 (snapshots + writer, default OFF)',
     summary: [

@@ -35,11 +35,27 @@ Scheduler job: `tire_wear_v3_calibration_shadow_writer` (singleton leader via `S
 
 ## Master Admin inspection (read-only)
 
-- `GET /api/v1/admin/master-intelligence/tire-wear-v3-calibration-shadow/summary`
-- `GET /api/v1/admin/master-intelligence/tire-wear-v3-calibration-shadow/writer-health`
-- `GET /api/v1/admin/master-intelligence/tire-wear-v3-calibration-shadow/organizations/:orgId/vehicles/:vehicleId/setups/:tireSetupId`
+Global:
 
-Requires `MASTER_ADMIN` role.
+- `GET /api/v1/admin/master-intelligence/tire-wear-v3-calibration-shadow/summary`
+- `GET /api/v1/admin/master-intelligence/tire-wear-v3-calibration-shadow/writer-health` — includes `telemetryScope: REPLICA_LOCAL` (last tick counters are per API replica, not fleet-global)
+
+Scoped explorer (org → vehicle → setup → snapshot; bounded pagination):
+
+- `GET .../organizations?limit=&offset=`
+- `GET .../organizations/:orgId/vehicles?limit=&offset=`
+- `GET .../organizations/:orgId/vehicles/:vehicleId/setups`
+- `GET .../organizations/:orgId/vehicles/:vehicleId/setups/:tireSetupId/snapshots?wheelPosition=&mountPeriodId=&limit=&cursor=`
+- `GET .../organizations/:orgId/vehicles/:vehicleId/setups/:tireSetupId/snapshots/:snapshotId`
+- `GET .../organizations/:orgId/vehicles/:vehicleId/setups/:tireSetupId/quality` — sampled policy re-evaluation (`scope: SAMPLED_POLICY_REEVALUATION`), not global census
+
+Legacy (deprecated):
+
+- `GET .../organizations/:orgId/vehicles/:vehicleId/setups/:tireSetupId`
+
+Master UI: Engineering → **Tire V3 Calibration Center** (`tire-v3-calibration-center` view). Read-only; does not enable writer or recompute V3.
+
+Requires `MASTER_ADMIN` role. Every scoped route asserts org/vehicle/setup/snapshot identity chain.
 
 ## Idempotency
 
@@ -65,4 +81,4 @@ Policy module `tire-wear-v3-calibration-pairing.policy.ts` — prospective match
 ## Deferred
 
 - Persisted pairing result rows / batch calibration jobs
-- Dedicated Master UI (API sufficient for P3)
+- Independent measurement-pair store for accuracy MAE/bias (Calibration Center accuracy tab remains NOT_EVALUABLE until then)
