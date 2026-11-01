@@ -413,6 +413,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     module: 'Vehicle Onboarding',
     createdAt: '2026-11-01T08:40:00.000Z',
   },
+  {
+    id: 'oneauto-p2-master-admin-ui-2026-11-01',
     version: '4.9.5003',
     title: 'One Auto API — Master Admin service dialog (frontend P2)',
     summary: [
