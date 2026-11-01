@@ -196,6 +196,7 @@ describe('vehicle detail intelligence navigation', () => {
         providerSourceLinkId: VEHICLE_DETAIL_QA_LINK,
         physicalDeviceId: VEHICLE_DETAIL_QA_DEVICE,
       }),
+      { hygiene: { physicalDeviceIdProven: true } },
     );
     const params = new URLSearchParams(window.location.search);
     expect(params.get('view')).toBe('device-inventory');
@@ -237,6 +238,7 @@ describe('vehicle detail intelligence navigation', () => {
         physicalDeviceId: null,
         vsiTarget: 'engine_rpm_detail',
       }),
+      { hygiene: { preserveVsiLedgerState: true } },
     );
     const ctx = parseMasterIntelligenceContext(window.location.search);
     expect(ctx.orgId).toBe(VEHICLE_DETAIL_QA_ORG);

@@ -72,7 +72,9 @@ function PhysicalDeviceIntelligencePanelBody({ physicalDeviceId, organizationId 
   const openVsiLedger = () => {
     const ctx = buildPdiIntelligenceNavContext({ scope: navScope, vsiTarget: 'ledger' });
     if (!ctx) return;
-    navigateMasterIntelligenceCrossLink('vsi-intelligence', ctx);
+    navigateMasterIntelligenceCrossLink('vsi-intelligence', ctx, {
+      hygiene: { preserveVsiLedgerState: true },
+    });
   };
 
   const openApds = () => {
