@@ -78,7 +78,7 @@ describe('TripReconciliationScheduler cohort independence', () => {
       expect.any(Date),
       expect.any(Date),
       'warm',
-      { useDimoSegmentFallback: true },
+      expect.objectContaining({ useDimoSegmentFallback: true, recoveryFleetBudget: expect.anything() }),
     );
   });
 
@@ -96,7 +96,7 @@ describe('TripReconciliationScheduler cohort independence', () => {
       expect.any(Date),
       expect.any(Date),
       'cold',
-      { useDimoSegmentFallback: true },
+      expect.objectContaining({ useDimoSegmentFallback: true, recoveryFleetBudget: expect.anything() }),
     );
   });
 });

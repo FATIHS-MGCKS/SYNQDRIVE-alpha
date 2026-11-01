@@ -12,9 +12,10 @@ import {
 } from '../../../driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { DiV0S4WorkItemRepository } from '../../../driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository';
 import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
-import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
+import { buildTripDiBoundaryRevisionKey, readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
 import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-admission-recovery.policy';
 import { TripDiBoundaryAdmissionRecoveryFleetBudget } from '../trip-di-boundary-admission-recovery.fleet-budget';
+import { isDiV0S4Rejection } from '../../../driving-intelligence/s4a-foundation/di-v0-s4a-errors';
 import {
   PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE,
   buildBoundaryRepairGeneration,
@@ -100,6 +101,59 @@ import {
         await admission.tryReleaseForTripTransactional(tripId);
       }
       return tripId;
+    }
+
+    async function loadTripRevisionScope(t: S4aTenant, tripId: string) {
+      const rows = await admin.$queryRaw<
+        Array<{
+          trip_status: string;
+          start_time: Date;
+          end_time: Date;
+          dimo_segment_id: string | null;
+          merge_parent_trip_id: string | null;
+          raw_detection_meta: unknown;
+        }>
+      >`SELECT trip_status, start_time, end_time, dimo_segment_id, merge_parent_trip_id, raw_detection_meta
+        FROM vehicle_trips WHERE id = ${tripId}`;
+      const row = rows[0]!;
+      return {
+        organizationId: t.organizationId,
+        vehicleId: t.vehicleId,
+        tripId,
+        tripStatus: row.trip_status,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        dimoSegmentId: row.dimo_segment_id,
+        mergeParentTripId: row.merge_parent_trip_id,
+        rawDetectionMeta: row.raw_detection_meta,
+      };
+    }
+
+    /** Drift canonical boundary inputs while preserving the existing admission record (true stale revision). */
+    async function applyCommittedBoundaryRepairDrift(t: S4aTenant, tripId: string) {
+      const scope = await loadTripRevisionScope(t, tripId);
+      const admissionBefore = readTripDiBoundaryAdmissionV1(scope.rawDetectionMeta);
+      expect(admissionBefore).not.toBeNull();
+      const auditId = randomUUID();
+      await admin.$executeRawUnsafe(
+        `UPDATE vehicle_trips SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb) || $1::jsonb WHERE id = $2`,
+        JSON.stringify({
+          boundaryRepair: {
+            auditId,
+            providerSegmentId: scope.dimoSegmentId ?? `seg-${tripId}`,
+            newStartTime: scope.startTime.toISOString(),
+            newEndTime: scope.endTime!.toISOString(),
+          },
+        }),
+        tripId,
+      );
+      const afterScope = await loadTripRevisionScope(t, tripId);
+      const currentRevisionKey = buildTripDiBoundaryRevisionKey(afterScope);
+      expect(admissionBefore!.revisionKey).not.toEqual(currentRevisionKey);
+      expect(readTripDiBoundaryAdmissionV1(afterScope.rawDetectionMeta)?.revisionKey).toBe(
+        admissionBefore!.revisionKey,
+      );
+      return { admissionBefore: admissionBefore!, currentRevisionKey };
     }
 
     async function insertGuardedMissingTrip(t: S4aTenant, endOffsetMinutes: number): Promise<string> {
@@ -315,25 +369,14 @@ import {
       expect(result.scanOutcome).toBe('none_in_window');
     });
 
-    it('guarded missing-admission rows do not starve stale-revision keyset recovery', async () => {
+    it('guarded missing-admission rows do not starve true stale-revision keyset recovery', async () => {
       const t = await tenant();
       await setResting(t.vehicleId);
       for (let i = 0; i < 35; i += 1) {
         await insertGuardedMissingTrip(t, 120 + i);
       }
       const staleTripId = await insertCompletedTrip(t, 2, true);
-      await admin.$executeRawUnsafe(
-        `UPDATE vehicle_trips SET raw_detection_meta = (raw_detection_meta - 'diV0BoundaryAdmissionV1')
-          || jsonb_build_object('boundaryRepair', jsonb_build_object(
-            'auditId', $1::text,
-            'providerSegmentId', 'seg-stale',
-            'newStartTime', (SELECT start_time::text FROM vehicle_trips WHERE id = $2),
-            'newEndTime', (SELECT end_time::text FROM vehicle_trips WHERE id = $2)
-          ))
-         WHERE id = $2`,
-        randomUUID(),
-        staleTripId,
-      );
+      const { admissionBefore, currentRevisionKey } = await applyCommittedBoundaryRepairDrift(t, staleTripId);
       const policy = policyFor(t, true, { maxTripsPerVehicle: 32 });
       let releasedTotal = 0;
       for (let pass = 0; pass < 15 && releasedTotal < 1; pass += 1) {
@@ -348,7 +391,30 @@ import {
       expect(releasedTotal).toBeGreaterThanOrEqual(1);
       const rows = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
         SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${staleTripId}`;
-      expect(readTripDiBoundaryAdmissionV1(rows[0]?.raw_detection_meta)).not.toBeNull();
+      const admissionAfter = readTripDiBoundaryAdmissionV1(rows[0]?.raw_detection_meta);
+      expect(admissionAfter).not.toBeNull();
+      expect(admissionAfter!.revisionKey).toBe(currentRevisionKey);
+      expect(admissionAfter!.revisionKey).not.toBe(admissionBefore.revisionKey);
+
+      const config = s4aConfigFor([t]);
+      const manifest = s4aManifestFor(config);
+      const repo = new DiV0S4WorkItemRepository(admin, config);
+      const primaryInput = {
+        tripId: staleTripId,
+        sourceFamily: 'RUPTELA_R1' as const,
+        runPurpose: 'PRIMARY' as const,
+        pipelineManifest: manifest,
+        expectedOrganizationId: t.organizationId,
+        expectedVehicleId: t.vehicleId,
+      };
+      const first = await repo.createWorkItem(primaryInput);
+      expect(first.workItemId).toBeTruthy();
+      try {
+        await repo.createWorkItem(primaryInput);
+        throw new Error('expected duplicate PRIMARY rejection');
+      } catch (err) {
+        expect(isDiV0S4Rejection(err, 'DUPLICATE_WORK_ITEM')).toBe(true);
+      }
     });
 
     it('keyset cursor persists across passes and clears when keyset exhausts window', async () => {

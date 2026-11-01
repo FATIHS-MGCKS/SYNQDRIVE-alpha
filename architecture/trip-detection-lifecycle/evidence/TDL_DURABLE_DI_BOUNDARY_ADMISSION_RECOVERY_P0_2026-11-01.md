@@ -36,4 +36,16 @@ Deploying this PR alone does **not** set activation or writer flags. Historical 
 ## Validation
 
 - Unit: `trip-di-boundary-admission-recovery.policy.unit.spec.ts`, `trip-di-boundary-admission-recovery.util.unit.spec.ts`, `trip-di-boundary-admission-recovery.cursor.unit.spec.ts`
-- PostgreSQL (gated `S4A_POSTGRES_LIVE`): `trip-di-boundary-admission-recovery.postgres.integration.spec.ts`, `trip-di-boundary-admission-recovery.reliability.postgres.integration.spec.ts` (strict shadow DB diff, guarded-missing starvation, cursor concurrency, keyset restart)
+- PostgreSQL (gated `S4A_POSTGRES_LIVE`): `trip-di-boundary-admission-recovery.postgres.integration.spec.ts`, `trip-di-boundary-admission-recovery.reliability.postgres.integration.spec.ts` (strict shadow DB diff, guarded-missing + **true stale revision** via committed `boundaryRepair` drift, S4 PRIMARY duplicate guard, cursor concurrency, keyset restart)
+
+## Recovery scheduling coverage (read-only, repository)
+
+Durable recovery runs in `TripReconciliationService.executeReconcileWindow` **`finally`** (every tier that reaches reconcile), bounded by recovery policy lookback (default 48h) and S4 org/vehicle allowlists when activated.
+
+| Provider cohort | Representative vehicle | DIMO token (authority) | Recurring reconcile entry |
+|-----------------|------------------------|-------------------------|---------------------------|
+| Tiguan `RUPTELA_R1` | `19fedd4b-c4e8-4de8-a125-dab293326e7e` | **192922** (TDL P1B) | **Fast** when `vehicle_latest_state.lastSeenAt` or trip FSM activity within recency window; **Warm/Cold** when `vehicle_latest_state.dimo_token_id` is set (same gate as `getVehiclesWithDimoTokens`) |
+| Audi A4 `RUPTELA_R1` | `c10351f8-b6a2-4258-947f-631aeaa6d359` | **187361** (KS MS 661 evidence) | Same as Tiguan |
+| Tesla `API_SYNTHETIC` | link `805b271c-ba87-4776-9e39-23e24d595c53` / token **186946** (VO-SIG B1) | **186946** | **Warm/Cold** only if `vehicle_latest_state.dimo_token_id` is populated (scheduler does not filter on source family). **Fast** via recent `lastSeenAt`/FSM activity regardless of token. Additional non-scheduler entry: `reconcileAdmissionAfterFinalization` after trip finalize |
+
+**Tesla gap (conditional):** If `vehicle_latest_state.dimo_token_id` is null while the DIMO link token exists, Tesla is excluded from warm/cold cohorts until VLS is backfilled; fast tier + post-finalize reconcile still invoke recovery when those paths run. Minimal correction before relying on warm/cold-only coverage: ensure snapshot/VLS writers persist `dimoTokenId` for API_SYNTHETIC-linked vehicles (no recovery-specific scheduler fork required).
