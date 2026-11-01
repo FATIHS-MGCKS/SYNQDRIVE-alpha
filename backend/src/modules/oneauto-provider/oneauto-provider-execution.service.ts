@@ -9,6 +9,11 @@ import { OneAutoHttpClient } from './client/oneauto-http.client';
 import { assertOneAutoSkuExecutable } from './catalog/oneauto-contract-gate.util';
 import { getVerifiedOneAutoContract } from './catalog/oneauto-verified-contracts';
 import { isValidVin, normalizeVin } from './client/oneauto-vin.util';
+import { assertOneAutoPositiveOrgBudgetWhenEnabled } from './oneauto-execution-budget-guard.util';
+import {
+  evaluateSuccessResultErrorEnvelope,
+  mergeEnvelopeDiagnostic,
+} from './oneauto-response-envelope.util';
 import { redactOneAutoErrorMessage, redactProviderResponseBody } from './oneauto-provider-redact.util';
 
 export type OneAutoProviderJobPayload = {
@@ -78,9 +83,20 @@ export class OneAutoProviderExecutionService {
       return;
     }
 
-    const cfgEnabled = this.config.get<{ enabled?: boolean }>('oneautoProvider')?.enabled === true;
+    const runtimeCfg = this.config.get<{ enabled?: boolean; orgDailyBudgetMinor?: number }>('oneautoProvider');
+    const cfgEnabled = runtimeCfg?.enabled === true;
     if (!cfgEnabled) {
       await this.failJob(jobId, 'ONEAUTO_DISABLED', 'Provider disabled');
+      return;
+    }
+    try {
+      assertOneAutoPositiveOrgBudgetWhenEnabled(runtimeCfg ?? {});
+    } catch (err: unknown) {
+      const code =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? (err as { code: string }).code
+          : 'ONEAUTO_BUDGET_NOT_CONFIGURED';
+      await this.failJob(jobId, code, 'Organization daily budget not configured for enabled provider');
       return;
     }
 
@@ -141,15 +157,34 @@ export class OneAutoProviderExecutionService {
         vin: job.vinSnapshot,
       });
 
+      const envelopeEval = evaluateSuccessResultErrorEnvelope(
+        result.httpStatus,
+        result.body,
+        contract,
+      );
+      const bodyForPersistence =
+        envelopeEval.ok === false
+          ? mergeEnvelopeDiagnostic(result.body, envelopeEval.diagnostic)
+          : result.body;
+
       await this.prisma.oneAutoProviderResponse.create({
         data: {
           jobId,
           httpStatus: result.httpStatus,
           providerStatusHeader: result.providerStatusHeader,
-          responseBodyJson: redactProviderResponseBody(result.body) as Prisma.InputJsonValue,
+          responseBodyJson: redactProviderResponseBody(bodyForPersistence) as Prisma.InputJsonValue,
           responsePhase: phase,
         },
       });
+
+      if (!envelopeEval.ok && result.httpStatus === 200) {
+        await this.failJob(
+          jobId,
+          envelopeEval.code,
+          'Provider JSON envelope did not indicate success (billing may still apply)',
+        );
+        return;
+      }
 
       if (result.httpStatus === 206) {
         if (!contract.http206CompleteSuccessAllowed) {

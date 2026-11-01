@@ -42,4 +42,6 @@ export default registerAs('oneautoProvider', () => ({
   pricingCatalogVersion: process.env.ONEAUTO_PRICING_CATALOG_VERSION?.trim() || 'synqdrive-catalog-v1',
   maxPollAttempts: intEnv('ONEAUTO_MAX_POLL_ATTEMPTS', 12),
   pollIntervalMs: intEnv('ONEAUTO_POLL_INTERVAL_MS', 5_000),
+  /** Hard cap on provider response bytes read into memory (fail closed when exceeded). */
+  maxResponseBytes: intEnv('ONEAUTO_MAX_RESPONSE_BYTES', 1_048_576),
 }));

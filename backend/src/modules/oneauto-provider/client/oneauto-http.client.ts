@@ -1,9 +1,14 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { OneAutoProviderHttpContract } from '../catalog/oneauto-contract-types';
+import { assertOneAutoPositiveOrgBudgetWhenEnabled } from '../oneauto-execution-budget-guard.util';
 import { assertOneAutoAllowlistedPath } from './oneauto-allowlist';
 import { ONEAUTO_HTTP_FETCH, type OneAutoHttpFetchImpl } from './oneauto-http-fetch.token';
-import { normalizeVin } from './oneauto-vin.util';
+import {
+  nonJsonResponsePlaceholder,
+  readBoundedResponseText,
+} from './oneauto-http-response-body.util';
+import { isValidVin, normalizeVin } from './oneauto-vin.util';
 
 export type OneAutoHttpResult = {
   httpStatus: number;
@@ -13,6 +18,7 @@ export type OneAutoHttpResult = {
 };
 
 const ALLOWED_BASE_HOSTS = new Set(['sandbox.oneautoapi.com', 'api.oneautoapi.com']);
+const DEFAULT_MAX_RESPONSE_BYTES = 1_048_576;
 
 function assertAllowedBaseUrl(baseUrl: string): void {
   let parsed: URL;
@@ -51,6 +57,8 @@ export class OneAutoHttpClient {
       baseUrl?: string;
       requestTimeoutMs?: number;
       maxRetries?: number;
+      orgDailyBudgetMinor?: number;
+      maxResponseBytes?: number;
     }>('oneautoProvider');
   }
 
@@ -59,6 +67,7 @@ export class OneAutoHttpClient {
     if (!cfg?.enabled) {
       throw Object.assign(new Error('One Auto provider disabled'), { code: 'ONEAUTO_DISABLED' });
     }
+    assertOneAutoPositiveOrgBudgetWhenEnabled(cfg);
     if (!cfg.apiKeyPresent) {
       throw Object.assign(new Error('One Auto API key not configured'), { code: 'ONEAUTO_API_KEY_MISSING' });
     }
@@ -85,9 +94,10 @@ export class OneAutoHttpClient {
     }
 
     const vin = normalizeVin(input.vin);
-    if (!vin) {
+    if (!isValidVin(vin)) {
       throw Object.assign(new Error('Invalid VIN'), { code: 'ONEAUTO_INVALID_VIN' });
     }
+    const validatedVin = vin as string;
 
     assertOneAutoAllowlistedPath(contract.httpMethod, contract.providerPathTemplate);
 
@@ -97,7 +107,7 @@ export class OneAutoHttpClient {
 
     const path = contract.providerPathTemplate.replace(/^\/+/, '');
     const vinParam = contract.vinQueryParameter;
-    const url = `${base}/${path}?${encodeURIComponent(vinParam)}=${encodeURIComponent(vin)}`;
+    const url = `${base}/${path}?${encodeURIComponent(vinParam)}=${encodeURIComponent(validatedVin)}`;
 
     const apiKey = process.env.ONEAUTO_API_KEY?.trim();
     if (!apiKey) {
@@ -105,12 +115,14 @@ export class OneAutoHttpClient {
     }
 
     const headerName = contract.authHeaderName;
+    const maxResponseBytes = cfg?.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
     const attempts = 1;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), cfg?.requestTimeoutMs ?? 30_000);
       const res = await this.fetchImpl(url, {
         method: 'GET',
+        redirect: 'manual',
         headers: {
           [headerName]: apiKey,
           Accept: 'application/json',
@@ -121,12 +133,12 @@ export class OneAutoHttpClient {
 
       const providerStatusHeader = res.headers.get('status') ?? res.headers.get('Status');
       let body: unknown = null;
-      const text = await res.text();
+      const text = await readBoundedResponseText(res, maxResponseBytes);
       if (text) {
         try {
           body = JSON.parse(text);
         } catch {
-          body = { _rawPreview: text.slice(0, 512) };
+          body = nonJsonResponsePlaceholder(text);
         }
       }
 
@@ -140,9 +152,15 @@ export class OneAutoHttpClient {
         body,
         redactedRequestPath: path,
       };
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string') {
+        throw err;
+      }
+      const isAbort =
+        err instanceof Error &&
+        (err.name === 'AbortError' || err.message.toLowerCase().includes('aborted'));
       throw Object.assign(new Error('One Auto provider request failed'), {
-        code: 'ONEAUTO_PROVIDER_TIMEOUT',
+        code: isAbort ? 'ONEAUTO_PROVIDER_TIMEOUT' : 'ONEAUTO_PROVIDER_REQUEST_FAILED',
         cause: err,
       });
     }

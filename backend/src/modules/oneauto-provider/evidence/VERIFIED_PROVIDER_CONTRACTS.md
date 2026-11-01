@@ -60,6 +60,7 @@ Service page URLs are listed on each entry in `oneauto-documented-contracts.ts` 
 - Path allowlist: **execution-verified** contracts only.
 - **No automatic retries** for billable requests (`ONEAUTO_MAX_RETRIES` default **0**).
 - API keys never logged.
+- **P2.5E:** `redirect: manual`; bounded response read (`ONEAUTO_MAX_RESPONSE_BYTES`); HTTP 200 `success===false` fails job; `isValidVin` at HTTP client; positive `ONEAUTO_ORG_DAILY_BUDGET_MINOR` required when enabled.
 
 ## Async / billing safety
 
@@ -67,6 +68,7 @@ Service page URLs are listed on each entry in `oneauto-documented-contracts.ts` 
 - **Callbacks / webhooks** are documented but **not activated**.
 - **HTTP 206** is **not** job success unless `http206CompleteSuccessAllowed` on execution-verified entry.
 - `actualChargeKnown` remains **false** until provider billing evidence exists.
+- **P2.5E:** HTTP 200 with OpenAPI `success:false` does **not** complete jobs (`ONEAUTO_PROVIDER_ENVELOPE_FAILURE`); envelope does not prove non-billing.
 
 ## DE PrePay reference prices (EUR minor, VAT excluded)
 
