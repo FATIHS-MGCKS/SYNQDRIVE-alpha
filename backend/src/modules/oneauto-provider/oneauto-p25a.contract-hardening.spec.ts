@@ -51,11 +51,11 @@ describe('OneAuto P2.5A documented contracts', () => {
     expect(paths).toEqual(
       expect.arrayContaining([
         'ezyvin/servicehistory/',
-        'oneauto/oeserviceschedulefromvin',
-        'oneauto/oebuilddecode',
-        'oneauto/oebuildsheeteuropefromvin',
-        'ezyvin/vinlookup',
-        'oneauto/recallcheckfromvin',
+        'oneauto/oeserviceschedulefromvin/v2',
+        'oneauto/oebuilddecode/v2',
+        'oneauto/oebuildsheeteuropefromvin/v2',
+        'ezyvin/vinlookup/',
+        'oneauto/recallcheckfromvin/v2',
       ]),
     );
   });
@@ -84,7 +84,7 @@ describe('OneAuto P2.5A documented contracts', () => {
       'ASYNC_CAPABLE',
     );
     expect(ONEAUTO_DOCUMENTED_PROVIDER_CONTRACTS.get('RECALL_CHECK')?.asyncCapability).toBe(
-      'ASYNC_UNVERIFIED',
+      'SYNC_ONLY',
     );
   });
 });
@@ -233,7 +233,7 @@ describe('OneAutoHttpClient contract-driven HTTP', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('vehicle_identification_number=WBA12345678901234');
-    expect(url).toContain('sandbox.oneautoapi.com/ezyvin/vinlookup');
+    expect(url).toContain('sandbox.oneautoapi.com/ezyvin/vinlookup/');
     expect((init.headers as Record<string, string>)['x-api-key']).toBe('test-key-redacted');
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
