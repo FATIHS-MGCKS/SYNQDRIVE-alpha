@@ -49,6 +49,28 @@ export const masterIntelligencePl = {
   'master.intelligence.pdi.section.timeline': 'Oś czasu',
   'master.intelligence.pdi.section.episodes': 'Epizody połączenia',
   'master.intelligence.pdi.section.drift': 'Monitoring tożsamości',
+  'master.intelligence.pdi.section.bindings': 'Powiązania providera',
+  'master.intelligence.pdi.section.crossNav': 'Nawigacja między modułami',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Brak zakresu pojazdu dla tego urządzenia — powiązań providera nie można użyć do nawigacji.',
+  'master.intelligence.pdi.bindings.noneForScope': 'Brak powiązań providera w bieżącej odpowiedzi.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Pojazd i organizacja w wierszu odzwierciedlają bieżącą atrybucję tożsamości (CURRENT_VEHICLE_ONLY), nie dowód per binding.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Wiele powiązań providera — wybierz jedno przed otwarciem linków VSI, APDS lub pojazdu.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'Wybrane powiązanie providera nie ma już na liście. Wybierz aktualne powiązanie.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Status linku',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Aktywny',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Nieaktywny',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Nieznany',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Pojazd (atrybucja)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organizacja (atrybucja)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Atrybucja pojazdu/org nieznana dla tego zakresu.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'Organizacja urządzenia nie pasuje do kontekstu panelu — linki wyłączone.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Wybierz powiązanie providera, aby włączyć nawigację między modułami.',
   'master.intelligence.pdi.snapshotNotHistory':
     'Bieżący stan i live mirror to migawki — nie pełna historia.',
   'master.intelligence.pdi.notApplicableR1':

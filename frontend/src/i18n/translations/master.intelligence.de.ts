@@ -49,6 +49,28 @@ export const masterIntelligenceDe = {
   'master.intelligence.pdi.section.timeline': 'Chronologische Timeline',
   'master.intelligence.pdi.section.episodes': 'Verbindungs-Episoden',
   'master.intelligence.pdi.section.drift': 'Identitäts-Monitoring',
+  'master.intelligence.pdi.section.bindings': 'Provider-Bindings',
+  'master.intelligence.pdi.section.crossNav': 'Quernavigation',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Kein Fahrzeug-Scope für dieses Gerät — Provider-Bindings können nicht für Navigation eingegrenzt werden.',
+  'master.intelligence.pdi.bindings.noneForScope': 'Keine Provider-Bindings in der aktuellen Antwort.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Fahrzeug und Organisation je Zeile spiegeln die aktuelle Identitäts-Zuordnung (CURRENT_VEHICLE_ONLY), keinen Nachweis pro Binding.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Mehrere Provider-Bindings — wählen Sie eines, bevor Sie VSI-, APDS- oder Fahrzeug-Links öffnen.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'Das gewählte Provider-Binding ist nicht mehr in der Liste. Bitte aktuelles Binding wählen.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Link-Status',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Aktiv',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Inaktiv',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Unbekannt',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Fahrzeug (Zuordnung)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organisation (Zuordnung)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Fahrzeug-/Org-Zuordnung für diesen Scope unbekannt.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'Geräte-Organisation passt nicht zum Panel-Kontext — Querverweise deaktiviert.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Provider-Binding wählen, um Quernavigation zu aktivieren.',
   'master.intelligence.pdi.snapshotNotHistory':
     'Aktueller Bestand und Live-Spiegel sind Momentaufnahmen — keine vollständige Historie.',
   'master.intelligence.pdi.notApplicableR1':

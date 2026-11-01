@@ -47,6 +47,28 @@ export const masterIntelligenceTr = {
   'master.intelligence.pdi.section.timeline': 'Zaman çizelgesi',
   'master.intelligence.pdi.section.episodes': 'Bağlantı epizodları',
   'master.intelligence.pdi.section.drift': 'Kimlik izleme',
+  'master.intelligence.pdi.section.bindings': 'Sağlayıcı bağlantıları',
+  'master.intelligence.pdi.section.crossNav': 'Çapraz gezinme',
+  'master.intelligence.pdi.bindings.noVehicleScope':
+    'Bu cihazda araç kapsamı yok — sağlayıcı bağlantıları gezinme için kullanılamaz.',
+  'master.intelligence.pdi.bindings.noneForScope': 'Geçerli yanıtta sağlayıcı bağlantısı yok.',
+  'master.intelligence.pdi.bindings.attributionNote':
+    'Satırdaki araç ve organizasyon güncel kimlik atamasını yansıtır (CURRENT_VEHICLE_ONLY), bağlantı başına kanıt değildir.',
+  'master.intelligence.pdi.bindings.selectRequired':
+    'Birden fazla bağlantı — VSI, APDS veya araç bağlantılarını açmadan birini seçin.',
+  'master.intelligence.pdi.bindings.staleSelection':
+    'Seçilen sağlayıcı bağlantısı artık listede değil. Güncel bir bağlantı seçin.',
+  'master.intelligence.pdi.bindings.linkStatus': 'Bağlantı durumu',
+  'master.intelligence.pdi.bindings.status.ACTIVE': 'Aktif',
+  'master.intelligence.pdi.bindings.status.INACTIVE': 'Pasif',
+  'master.intelligence.pdi.bindings.status.UNKNOWN': 'Bilinmiyor',
+  'master.intelligence.pdi.bindings.vehicleScope': 'Araç (atama)',
+  'master.intelligence.pdi.bindings.orgScope': 'Organizasyon (atama)',
+  'master.intelligence.pdi.bindings.scopeUnknown': 'Bu kapsam için araç/org ataması bilinmiyor.',
+  'master.intelligence.pdi.bindings.crossOrgBlocked':
+    'Cihaz organizasyonu panel bağlamıyla uyuşmuyor — bağlantılar devre dışı.',
+  'master.intelligence.pdi.bindings.navPending':
+    'Çapraz gezinmeyi etkinleştirmek için bir sağlayıcı bağlantısı seçin.',
   'master.intelligence.pdi.snapshotNotHistory': 'Güncel envanter ve canlı ayna anlık görüntüdür — tam geçmiş değildir.',
   'master.intelligence.pdi.notApplicableR1': 'Fiziksel R1 izleme uygulanmaz (ör. yalnızca yazılım Tesla).',
   'master.intelligence.pdi.noDriftHistory': 'Kalıcı drift geçmişi yok. Kayıt yokluğu drift yokluğunu kanıtlamaz.',
