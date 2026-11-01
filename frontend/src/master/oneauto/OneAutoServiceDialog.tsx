@@ -523,7 +523,7 @@ export function OneAutoServiceDialog({
                     <dt className="text-muted-foreground inline">
                       {t('master.oneAuto.resultProvenance' as never)}:{' '}
                     </dt>
-                    <dd className="inline">One Auto API (P1 external store)</dd>
+                    <dd className="inline">{t('master.oneAuto.resultProvenanceValue' as never)}</dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground inline">

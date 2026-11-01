@@ -31,6 +31,7 @@ export const masterOneAutoEn = {
   'master.oneAuto.billingUnknown': 'Unknown until provider billing evidence',
   'master.oneAuto.resultTitle': 'Provider result (read-only)',
   'master.oneAuto.resultProvenance': 'Source',
+  'master.oneAuto.resultProvenanceValue': 'One Auto API (P1 external store)',
   'master.oneAuto.resultSku': 'Service',
   'master.oneAuto.resultRetrieved': 'Retrieved',
   'master.oneAuto.resultVehicleBinding': 'Vehicle binding (VIN)',

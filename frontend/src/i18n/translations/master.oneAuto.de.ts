@@ -31,6 +31,7 @@ export const masterOneAutoDe = {
   'master.oneAuto.billingUnknown': 'Unbekannt bis Provider-Abrechnungsnachweis',
   'master.oneAuto.resultTitle': 'Provider-Ergebnis (nur lesen)',
   'master.oneAuto.resultProvenance': 'Quelle',
+  'master.oneAuto.resultProvenanceValue': 'One Auto API (P1 externer Speicher)',
   'master.oneAuto.resultSku': 'Dienst',
   'master.oneAuto.resultRetrieved': 'Abgerufen',
   'master.oneAuto.resultVehicleBinding': 'Fahrzeugbindung (FIN)',
