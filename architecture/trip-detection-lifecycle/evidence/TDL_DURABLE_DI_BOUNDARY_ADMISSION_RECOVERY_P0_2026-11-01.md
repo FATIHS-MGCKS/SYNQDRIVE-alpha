@@ -13,12 +13,15 @@ Eligible `COMPLETED` trips can remain without `diV0BoundaryAdmissionV1` when dir
 - `TripDiBoundaryAdmissionService.runDurableAdmissionRecoveryPass` — bounded SQL candidate scan + `tryReleaseForTripTransactional` (FOR UPDATE, revision-bound).
 - Invoked from existing `TripReconciliationService.executeReconcileWindow` after LIVE_FSM window release (same leader-controlled reconciliation scheduler; no new poller).
 - Fail-closed activation: `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_ACTIVATED_AT_UTC` must be set explicitly; writer `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_WRITER_ENABLED` defaults false (shadow observe logs/metrics only).
+- **Shadow strict read-only:** when writer is OFF, recovery performs no `INSERT`/`UPDATE`/`DELETE` (including scan cursor/carrier operational metadata on `vehicle_trips.raw_detection_meta`).
+- **Scan fairness:** missing-admission lane capped via `computeMissingAdmissionScanCap` (reserves ≥8 keyset slots per 32-trip cap) so guarded missing rows cannot consume the entire batch; keyset cursor advances only from keyset lane when writer is ON.
+- **Cursor:** single carrier row per vehicle (`diV0BoundaryAdmissionRecoveryCursorCarrierV1` + `scanCursor`); transactional `FOR UPDATE` writes; invalid cursor timestamps ignored; documented as operational metadata only (not boundary/admission fingerprints).
 - Eligibility lower bound: `max(activationHorizon, now − lookbackHours)`; S4 org/vehicle allowlists; per-vehicle cap 32; global cap 64 per pass.
 - PR #2293 partial-extension hook preserved as fast path; recovery independent of boundary-scanned trip ids.
 
 ## Metrics (bounded labels)
 
-`synqdrive_trip_di_boundary_admission_recovery_*` — pass mode, candidates scanned, attempts, successes, guard codes, transient errors, oldest unadmitted age, pass duration.
+`synqdrive_trip_di_boundary_admission_recovery_*` — pass mode, candidates scanned, attempts, successes, guard codes, transient errors, oldest unadmitted age (**per-vehicle batch**, labels `vehicle_id` + `coverage=batch`; not emitted in shadow mode), pass duration.
 
 ## Activation write matrix (deploy without env changes)
 
@@ -32,5 +35,5 @@ Deploying this PR alone does **not** set activation or writer flags. Historical 
 
 ## Validation
 
-- Unit: `trip-di-boundary-admission-recovery.policy.unit.spec.ts`, `trip-di-boundary-admission-recovery.util.unit.spec.ts`
-- PostgreSQL (gated `S4A_POSTGRES_LIVE`): `trip-di-boundary-admission-recovery.postgres.integration.spec.ts`
+- Unit: `trip-di-boundary-admission-recovery.policy.unit.spec.ts`, `trip-di-boundary-admission-recovery.util.unit.spec.ts`, `trip-di-boundary-admission-recovery.cursor.unit.spec.ts`
+- PostgreSQL (gated `S4A_POSTGRES_LIVE`): `trip-di-boundary-admission-recovery.postgres.integration.spec.ts`, `trip-di-boundary-admission-recovery.reliability.postgres.integration.spec.ts` (strict shadow DB diff, guarded-missing starvation, cursor concurrency, keyset restart)

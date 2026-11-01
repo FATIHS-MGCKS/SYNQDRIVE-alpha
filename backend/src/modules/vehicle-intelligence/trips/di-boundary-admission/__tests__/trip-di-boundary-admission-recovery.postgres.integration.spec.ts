@@ -76,6 +76,31 @@ import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-
       });
     }
 
+    async function snapshotVehicleTrips(
+      vehicleId: string,
+    ): Promise<Array<{ id: string; raw_detection_meta: unknown }>> {
+      return admin.$queryRaw`
+        SELECT id, raw_detection_meta FROM vehicle_trips WHERE vehicle_id = ${vehicleId} ORDER BY id`;
+    }
+
+    it('shadow mode is strictly read-only across all vehicle_trips rows', async () => {
+      const t = await tenant();
+      await setResting(t.vehicleId);
+      await admin.$executeRawUnsafe(
+        `UPDATE vehicle_trips SET raw_detection_meta = (raw_detection_meta - 'diV0BoundaryAdmissionV1') WHERE id = $1`,
+        t.tripId,
+      );
+      const before = await snapshotVehicleTrips(t.vehicleId);
+      const result = await admission.runDurableAdmissionRecoveryPass(t.organizationId, t.vehicleId, {
+        policy: policyFor(t, false),
+      });
+      const after = await snapshotVehicleTrips(t.vehicleId);
+      expect(result.mode).toBe('SHADOW');
+      expect(result.needsRelease).toBeGreaterThanOrEqual(1);
+      expect(result.released).toBe(0);
+      expect(after).toEqual(before);
+    });
+
     it('shadow mode observes missing admission without writing', async () => {
       const t = await tenant();
       await setResting(t.vehicleId);

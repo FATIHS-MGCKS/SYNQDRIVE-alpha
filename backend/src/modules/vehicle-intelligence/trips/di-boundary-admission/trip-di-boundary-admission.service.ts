@@ -34,6 +34,7 @@ import {
 } from './trip-di-boundary-admission-recovery.policy';
 import {
   classifyTripDiBoundaryAdmissionRecoveryCandidate,
+  computeMissingAdmissionScanCap,
   listKeysetRecoveryCandidateTripIds,
   listMissingAdmissionRecoveryCandidateTripIds,
 } from './trip-di-boundary-admission-recovery.util';
@@ -280,14 +281,23 @@ export class TripDiBoundaryAdmissionService {
       outcome: 'none_in_window' | 'zero_unadmitted_in_batch' | 'cap_truncated' | 'unadmitted_observed',
       ageSec: number,
     ) => {
+      if (!writerActive) return;
       for (const label of [
         'none_in_window',
         'zero_unadmitted_in_batch',
         'cap_truncated',
         'unadmitted_observed',
       ] as const) {
-        metrics.oldestUnadmittedEligibleAgeSeconds.set({ outcome: label }, label === outcome ? ageSec : 0);
+        metrics.oldestUnadmittedEligibleAgeSeconds.set(
+          { outcome: label, vehicle_id: vehicleId, coverage: 'batch' },
+          label === outcome ? ageSec : 0,
+        );
       }
+    };
+
+    const persistScanCursor = async (next: TripDiBoundaryAdmissionRecoveryScanCursor | null) => {
+      if (!writerActive) return;
+      await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, next);
     };
 
     if (!isTripDiBoundaryAdmissionRecoveryEnabled(policy)) {
@@ -317,11 +327,12 @@ export class TripDiBoundaryAdmissionService {
 
     const scanLimit = policy.maxTripsPerVehicle;
     const cursor = await readTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId);
+    const missingCap = computeMissingAdmissionScanCap(scanLimit);
     const missingIds = await listMissingAdmissionRecoveryCandidateTripIds(this.prisma, {
       vehicleId,
       eligibleFrom,
       now,
-      limit: scanLimit,
+      limit: missingCap,
     });
     const keysetLimit = Math.max(0, scanLimit - missingIds.length);
     const keysetIds =
@@ -334,6 +345,7 @@ export class TripDiBoundaryAdmissionService {
             limit: keysetLimit,
           })
         : [];
+    const keysetIdSet = new Set(keysetIds);
     const tripIds = [...missingIds, ...keysetIds.filter((id) => !missingIds.includes(id))];
 
     const capTruncated =
@@ -345,7 +357,7 @@ export class TripDiBoundaryAdmissionService {
 
     if (tripIds.length === 0) {
       setGaugeOutcome('none_in_window', 0);
-      await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, null);
+      await persistScanCursor(null);
       const durationMs = Date.now() - startedMs;
       metrics.passDurationMs.observe({ mode }, durationMs);
       return {
@@ -368,7 +380,7 @@ export class TripDiBoundaryAdmissionService {
     let guarded = 0;
     let alreadyCurrent = 0;
     let oldestUnadmittedAgeSec = 0;
-    let lastScannedScope: TripDiBoundaryAdmissionScope | null = null;
+    let lastKeysetScannedScope: TripDiBoundaryAdmissionScope | null = null;
 
     let writerAttempts = 0;
 
@@ -379,7 +391,9 @@ export class TripDiBoundaryAdmissionService {
         skipped += 1;
         continue;
       }
-      lastScannedScope = scope;
+      if (keysetIdSet.has(tripId)) {
+        lastKeysetScannedScope = scope;
+      }
       const outcome = classifyTripDiBoundaryAdmissionRecoveryCandidate(scope);
       if (outcome.kind === 'ALREADY_CURRENT') {
         alreadyCurrent += 1;
@@ -440,15 +454,15 @@ export class TripDiBoundaryAdmissionService {
       }
     }
 
-    if (lastScannedScope?.endTime && lastScannedScope.tripId) {
+    if (writerActive && lastKeysetScannedScope?.endTime && lastKeysetScannedScope.tripId) {
       const nextCursor: TripDiBoundaryAdmissionRecoveryScanCursor = {
-        endTimeUtc: lastScannedScope.endTime.toISOString(),
-        tripId: lastScannedScope.tripId,
+        endTimeUtc: lastKeysetScannedScope.endTime.toISOString(),
+        tripId: lastKeysetScannedScope.tripId,
       };
-      if (tripIds.length < scanLimit) {
-        await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, null);
+      if (keysetIds.length < keysetLimit) {
+        await persistScanCursor(null);
       } else {
-        await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, nextCursor);
+        await persistScanCursor(nextCursor);
       }
     }
 

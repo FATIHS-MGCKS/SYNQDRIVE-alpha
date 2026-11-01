@@ -3,7 +3,7 @@ import {
   readTripDiBoundaryAdmissionV1,
   type TripDiBoundaryAdmissionScope,
 } from '../trip-di-boundary-admission';
-import { classifyTripDiBoundaryAdmissionRecoveryCandidate } from '../trip-di-boundary-admission-recovery.util';
+import { classifyTripDiBoundaryAdmissionRecoveryCandidate, computeMissingAdmissionScanCap } from '../trip-di-boundary-admission-recovery.util';
 import { buildTripDiBoundaryAdmissionPatch } from '../trip-di-boundary-admission';
 
 function scope(partial: Partial<TripDiBoundaryAdmissionScope> & Pick<TripDiBoundaryAdmissionScope, 'tripId'>): TripDiBoundaryAdmissionScope {
@@ -24,6 +24,14 @@ function scope(partial: Partial<TripDiBoundaryAdmissionScope> & Pick<TripDiBound
     proposedBoundaryRepairCount: partial.proposedBoundaryRepairCount ?? 0,
   };
 }
+
+describe('computeMissingAdmissionScanCap', () => {
+  it('reserves minimum keyset slots from scan limit', () => {
+    expect(computeMissingAdmissionScanCap(32)).toBe(24);
+    expect(computeMissingAdmissionScanCap(8)).toBe(0);
+    expect(computeMissingAdmissionScanCap(10)).toBe(2);
+  });
+});
 
 describe('classifyTripDiBoundaryAdmissionRecoveryCandidate', () => {
   it('NEEDS_RELEASE when admission missing', () => {

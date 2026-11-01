@@ -102,6 +102,31 @@ import {
       return tripId;
     }
 
+    async function insertGuardedMissingTrip(t: S4aTenant, endOffsetMinutes: number): Promise<string> {
+      const tripId = randomUUID();
+      const end = new Date(Date.now() - endOffsetMinutes * 60_000);
+      const start = new Date(end.getTime() - 15 * 60_000);
+      await admin.$executeRawUnsafe(
+        `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at, raw_detection_meta)
+         VALUES ($1, $2, 'COMPLETED', $3, $4, $5, NOW(), $6::jsonb)`,
+        tripId,
+        t.vehicleId,
+        start,
+        end,
+        `seg-${tripId}`,
+        JSON.stringify({
+          boundaryRefresh: {
+            state: 'PENDING',
+            generation: `gen-${tripId}`,
+            requestedAt: new Date().toISOString(),
+            attempts: 1,
+            stages: { route: 'pending', behavior: 'pending', drivingImpact: 'pending' },
+          },
+        }),
+      );
+      return tripId;
+    }
+
     it('33+ starvation: missing admission is found when older trips are already current', async () => {
       const t = await tenant();
       await setResting(t.vehicleId);
@@ -288,6 +313,88 @@ import {
       });
       expect(result.released).toBe(0);
       expect(result.scanOutcome).toBe('none_in_window');
+    });
+
+    it('guarded missing-admission rows do not starve stale-revision keyset recovery', async () => {
+      const t = await tenant();
+      await setResting(t.vehicleId);
+      for (let i = 0; i < 35; i += 1) {
+        await insertGuardedMissingTrip(t, 120 + i);
+      }
+      const staleTripId = await insertCompletedTrip(t, 2, true);
+      await admin.$executeRawUnsafe(
+        `UPDATE vehicle_trips SET raw_detection_meta = (raw_detection_meta - 'diV0BoundaryAdmissionV1')
+          || jsonb_build_object('boundaryRepair', jsonb_build_object(
+            'auditId', $1::text,
+            'providerSegmentId', 'seg-stale',
+            'newStartTime', (SELECT start_time::text FROM vehicle_trips WHERE id = $2),
+            'newEndTime', (SELECT end_time::text FROM vehicle_trips WHERE id = $2)
+          ))
+         WHERE id = $2`,
+        randomUUID(),
+        staleTripId,
+      );
+      const policy = policyFor(t, true, { maxTripsPerVehicle: 32 });
+      let releasedTotal = 0;
+      for (let pass = 0; pass < 15 && releasedTotal < 1; pass += 1) {
+        const result = await admission.runDurableAdmissionRecoveryPass(t.organizationId, t.vehicleId, {
+          policy,
+        });
+        if (pass === 0) {
+          expect(result.guarded).toBeGreaterThan(0);
+        }
+        releasedTotal += result.released;
+      }
+      expect(releasedTotal).toBeGreaterThanOrEqual(1);
+      const rows = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+        SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${staleTripId}`;
+      expect(readTripDiBoundaryAdmissionV1(rows[0]?.raw_detection_meta)).not.toBeNull();
+    });
+
+    it('keyset cursor persists across passes and clears when keyset exhausts window', async () => {
+      const t = await tenant();
+      await setResting(t.vehicleId);
+      const ids: string[] = [];
+      for (let i = 40; i >= 1; i -= 1) {
+        ids.push(await insertCompletedTrip(t, i, true));
+      }
+      const staleId = ids[0]!;
+      await admin.$executeRawUnsafe(
+        `UPDATE vehicle_trips SET raw_detection_meta = (raw_detection_meta - 'diV0BoundaryAdmissionV1') WHERE id = $1`,
+        staleId,
+      );
+      const policy = policyFor(t, true, { maxTripsPerVehicle: 5 });
+      await admission.runDurableAdmissionRecoveryPass(t.organizationId, t.vehicleId, { policy });
+      const afterFirst = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+        SELECT raw_detection_meta FROM vehicle_trips
+        WHERE vehicle_id = ${t.vehicleId}
+          AND (raw_detection_meta->>'diV0BoundaryAdmissionRecoveryCursorCarrierV1') = 'true'`;
+      expect(afterFirst.length).toBe(1);
+      expect(afterFirst[0]?.raw_detection_meta).toMatchObject({
+        scanCursor: expect.objectContaining({ tripId: expect.any(String) }),
+      });
+      await admission.runDurableAdmissionRecoveryPass(t.organizationId, t.vehicleId, { policy });
+      const admitted = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
+        SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${staleId}`;
+      expect(readTripDiBoundaryAdmissionV1(admitted[0]?.raw_detection_meta)).not.toBeNull();
+    });
+
+    it('concurrent writer passes keep a single cursor carrier row', async () => {
+      const t = await tenant();
+      await setResting(t.vehicleId);
+      for (let i = 0; i < 10; i += 1) {
+        await insertCompletedTrip(t, 10 + i, false);
+      }
+      const policy = policyFor(t, true, { maxTripsPerVehicle: 8, globalMaxPerPass: 20 });
+      await Promise.all([
+        admission.runDurableAdmissionRecoveryPass(t.organizationId, t.vehicleId, { policy }),
+        admission.runDurableAdmissionRecoveryPass(t.organizationId, t.vehicleId, { policy }),
+      ]);
+      const carriers = await admin.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM vehicle_trips
+        WHERE vehicle_id = ${t.vehicleId}
+          AND (raw_detection_meta->>'diV0BoundaryAdmissionRecoveryCursorCarrierV1') = 'true'`;
+      expect(carriers.length).toBe(1);
     });
   },
 );

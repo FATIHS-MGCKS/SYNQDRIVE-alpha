@@ -8,6 +8,15 @@ import {
 } from './trip-di-boundary-admission';
 import type { TripDiBoundaryAdmissionRecoveryScanCursor } from './trip-di-boundary-admission-recovery.cursor';
 
+/** Minimum keyset scan slots reserved so guarded missing-admission rows cannot starve stale-revision recovery. */
+export const RECOVERY_MIN_KEYSET_SCAN_SLOTS = 8;
+
+export function computeMissingAdmissionScanCap(scanLimit: number): number {
+  if (scanLimit <= 0) return 0;
+  const reservedKeyset = Math.min(RECOVERY_MIN_KEYSET_SCAN_SLOTS, scanLimit);
+  return Math.max(0, scanLimit - reservedKeyset);
+}
+
 export type TripDiBoundaryAdmissionRecoveryCandidateOutcome =
   | { kind: 'NEEDS_RELEASE'; tripId: string }
   | { kind: 'ALREADY_CURRENT'; tripId: string }
@@ -161,7 +170,11 @@ export async function listTripDiBoundaryAdmissionRecoveryCandidateTripIds(
     limit: number;
   },
 ): Promise<string[]> {
-  const missing = await listMissingAdmissionRecoveryCandidateTripIds(prisma, params);
+  const missingCap = computeMissingAdmissionScanCap(params.limit);
+  const missing = await listMissingAdmissionRecoveryCandidateTripIds(prisma, {
+    ...params,
+    limit: missingCap,
+  });
   if (missing.length >= params.limit) return missing.slice(0, params.limit);
   const rest = await listKeysetRecoveryCandidateTripIds(prisma, {
     ...params,

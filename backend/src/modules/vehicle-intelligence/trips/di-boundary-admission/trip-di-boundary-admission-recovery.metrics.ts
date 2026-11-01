@@ -67,8 +67,8 @@ export function registerTripDiBoundaryAdmissionRecoveryMetrics(
 
   const oldestUnadmittedEligibleAgeSeconds = new Gauge({
     name: 'synqdrive_trip_di_boundary_admission_recovery_oldest_unadmitted_eligible_age_seconds',
-    help: 'Age in seconds of oldest unadmitted trip observed in this capped scan batch (not full cohort)',
-    labelNames: ['outcome'],
+    help: 'Age in seconds of oldest unadmitted trip in this capped per-vehicle batch (coverage=batch; not full fleet cohort)',
+    labelNames: ['outcome', 'vehicle_id', 'coverage'],
     registers: [registry],
   });
 
