@@ -2623,3 +2623,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | **No** S4 worker/discovery code change; **no** scoring; **no** historical replay |
 | REMAINING | Owner-authorized read-only Production eligibility before any Tiguan replay |
 
+### 2026-11-01 — Durable DI boundary admission recovery (Fable P0, extends PR #2293)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | `runDurableAdmissionRecoveryPass` on reconciliation tick — bounded COMPLETED/RESTING scan, `tryReleaseForTripTransactional`, shadow/writer activation env gates; Prometheus `synqdrive_trip_di_boundary_admission_recovery_*` |
+| WHY | Direct finalize/LIVE_FSM/scanner paths leave eligible trips permanently unadmitted; S4 discovery requires admission revision |
+| VALIDATION | `trip-di-boundary-admission-recovery.*.spec.ts`; existing S4 T01 postgres harness unchanged |
+| NON_EFFECTS | **No** S4 physics/C5.1; **no** scoring; **no** production env activation; **no** automatic historical backfill |
+| REMAINING | Owner sets `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_ACTIVATED_AT_UTC` + writer flag in controlled rollout; historical trips (e.g. `2245f107…`) require separate approval |
+

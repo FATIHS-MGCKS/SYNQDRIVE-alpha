@@ -385,6 +385,14 @@ export class TripReconciliationService {
           `DI boundary admission LIVE_FSM split recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
         );
       }
+      try {
+        const organizationId = await this.resolveOrganizationId(vehicleId);
+        await this.diBoundaryAdmission.runDurableAdmissionRecoveryPass(organizationId, vehicleId);
+      } catch (err: unknown) {
+        this.logger.warn(
+          `DI boundary admission durable recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+        );
+      }
     } catch (err: unknown) {
       this.logger.warn(
         `Reconciliation failed for vehicle ${vehicleId} [${tier}]: ${(err as Error).message}`,

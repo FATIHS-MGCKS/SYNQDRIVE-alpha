@@ -25,6 +25,19 @@ import {
   hasCommittedPartialTripBoundaryExtension,
   partialExtensionAllowsAdmissionDuringRetryableRefresh,
 } from '../boundary-repair.state.util';
+import {
+  computeTripDiBoundaryAdmissionRecoveryEligibleFrom,
+  isTripDiBoundaryAdmissionRecoveryEnabled,
+  isTripDiBoundaryAdmissionRecoveryVehicleEligible,
+  readTripDiBoundaryAdmissionRecoveryPolicyFromEnv,
+  type TripDiBoundaryAdmissionRecoveryPolicy,
+} from './trip-di-boundary-admission-recovery.policy';
+import {
+  classifyTripDiBoundaryAdmissionRecoveryCandidate,
+  listTripDiBoundaryAdmissionRecoveryCandidateTripIds,
+} from './trip-di-boundary-admission-recovery.util';
+import { getTripDiBoundaryAdmissionRecoveryMetrics } from './trip-di-boundary-admission-recovery.metrics';
+import { register } from 'prom-client';
 
 export type TryReleaseAfterPartialTripBoundaryExtensionResult =
   | { released: true }
@@ -208,6 +221,184 @@ export class TripDiBoundaryAdmissionService {
     }
     const ok = await this.tryReleaseForTripTransactional(tripId, 'RECONCILIATION');
     return ok ? { released: true } : { released: false, reason: 'RELEASE_GUARDS' };
+  }
+
+  /**
+   * Bounded durable recovery fallback: idempotent admission for eligible COMPLETED trips when direct hooks fail.
+   * Defaults OFF until TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_ACTIVATED_AT_UTC is set; writer defaults OFF (shadow observe).
+   */
+  async runDurableAdmissionRecoveryPass(
+    organizationId: string,
+    vehicleId: string,
+    options?: {
+      now?: Date;
+      policy?: TripDiBoundaryAdmissionRecoveryPolicy;
+    },
+  ): Promise<{
+    mode: 'DISABLED' | 'SHADOW' | 'WRITER';
+    scanned: number;
+    needsRelease: number;
+    released: number;
+    skipped: number;
+    guarded: number;
+    alreadyCurrent: number;
+    durationMs: number;
+  }> {
+    const startedMs = Date.now();
+    const now = options?.now ?? new Date();
+    const policy = options?.policy ?? readTripDiBoundaryAdmissionRecoveryPolicyFromEnv();
+    if (!isTripDiBoundaryAdmissionRecoveryEnabled(policy)) {
+      return {
+        mode: 'DISABLED',
+        scanned: 0,
+        needsRelease: 0,
+        released: 0,
+        skipped: 0,
+        guarded: 0,
+        alreadyCurrent: 0,
+        durationMs: Date.now() - startedMs,
+      };
+    }
+    if (
+      !isTripDiBoundaryAdmissionRecoveryVehicleEligible(policy, {
+        organizationId,
+        vehicleId,
+        vehicleOrganizationId: organizationId,
+      })
+    ) {
+      return {
+        mode: 'DISABLED',
+        scanned: 0,
+        needsRelease: 0,
+        released: 0,
+        skipped: 0,
+        guarded: 0,
+        alreadyCurrent: 0,
+        durationMs: Date.now() - startedMs,
+      };
+    }
+    const eligibleFrom = computeTripDiBoundaryAdmissionRecoveryEligibleFrom(policy, now);
+    if (eligibleFrom == null) {
+      return {
+        mode: 'DISABLED',
+        scanned: 0,
+        needsRelease: 0,
+        released: 0,
+        skipped: 0,
+        guarded: 0,
+        alreadyCurrent: 0,
+        durationMs: Date.now() - startedMs,
+      };
+    }
+
+    const writerActive = policy.writerEnabled;
+    const mode: 'SHADOW' | 'WRITER' = writerActive ? 'WRITER' : 'SHADOW';
+    if (!writerActive && !policy.shadowObserveEnabled) {
+      return {
+        mode: 'DISABLED',
+        scanned: 0,
+        needsRelease: 0,
+        released: 0,
+        skipped: 0,
+        guarded: 0,
+        alreadyCurrent: 0,
+        durationMs: Date.now() - startedMs,
+      };
+    }
+
+    const metrics = getTripDiBoundaryAdmissionRecoveryMetrics(register);
+    metrics.passTotal.inc({ mode });
+
+    const tripIds = await listTripDiBoundaryAdmissionRecoveryCandidateTripIds(this.prisma, {
+      vehicleId,
+      eligibleFrom,
+      now,
+      limit: Math.min(policy.maxTripsPerVehicle, policy.globalMaxPerPass),
+    });
+
+    let needsRelease = 0;
+    let released = 0;
+    let skipped = 0;
+    let guarded = 0;
+    let alreadyCurrent = 0;
+    let oldestUnadmittedAgeSec = 0;
+    let attemptsThisPass = 0;
+
+    for (const tripId of tripIds) {
+      if (attemptsThisPass >= policy.globalMaxPerPass) break;
+      metrics.candidatesScannedTotal.inc();
+      const scope = await this.loadScope(tripId);
+      if (!scope) {
+        skipped += 1;
+        continue;
+      }
+      const outcome = classifyTripDiBoundaryAdmissionRecoveryCandidate(scope);
+      if (outcome.kind === 'ALREADY_CURRENT') {
+        alreadyCurrent += 1;
+        continue;
+      }
+      if (outcome.kind === 'GUARDED') {
+        guarded += 1;
+        metrics.guardRejectedTotal.inc({ code: outcome.code });
+        if (outcome.code === 'BOUNDARY_REFRESH_IN_FLIGHT') {
+          metrics.revisionMismatchObservedTotal.inc();
+        }
+        continue;
+      }
+
+      needsRelease += 1;
+      const existing = readTripDiBoundaryAdmissionV1(scope.rawDetectionMeta);
+      if (existing != null) {
+        metrics.revisionMismatchObservedTotal.inc();
+      }
+      const endMs = scope.endTime?.getTime() ?? now.getTime();
+      const ageSec = Math.max(0, Math.floor((now.getTime() - endMs) / 1000));
+      oldestUnadmittedAgeSec = Math.max(oldestUnadmittedAgeSec, ageSec);
+
+      if (!writerActive) {
+        this.logger.log(
+          `DI boundary admission recovery SHADOW would release trip=${tripId} vehicle=${vehicleId}`,
+        );
+        continue;
+      }
+
+      attemptsThisPass += 1;
+      metrics.admissionAttemptsTotal.inc({ mode: 'WRITER' });
+      try {
+        const scopeBefore = await this.loadScope(tripId);
+        const blockBefore = scopeBefore ? canReleaseTripDiBoundaryAdmission(scopeBefore) : 'TRIP_NOT_COMPLETED';
+        const ok = await this.tryReleaseForTripTransactional(tripId, 'RECONCILIATION');
+        if (ok) {
+          released += 1;
+          metrics.admissionsSucceededTotal.inc({ mode: 'WRITER' });
+        } else {
+          skipped += 1;
+          metrics.guardRejectedTotal.inc({ code: blockBefore ?? 'TRIP_NOT_COMPLETED' });
+        }
+      } catch (err) {
+        skipped += 1;
+        metrics.transientErrorsTotal.inc();
+        this.logger.warn(
+          `DI boundary admission recovery release failed trip=${tripId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    if (needsRelease > 0 || oldestUnadmittedAgeSec > 0) {
+      metrics.oldestUnadmittedEligibleAgeSeconds.set(oldestUnadmittedAgeSec);
+    }
+    const durationMs = Date.now() - startedMs;
+    metrics.passDurationMs.observe({ mode }, durationMs);
+    return {
+      mode,
+      scanned: tripIds.length,
+      needsRelease,
+      released,
+      skipped,
+      guarded,
+      alreadyCurrent,
+      durationMs,
+    };
   }
 
   async releaseForBoundaryScannedTripIds(tripIds: readonly string[]): Promise<{ released: number; skipped: number }> {

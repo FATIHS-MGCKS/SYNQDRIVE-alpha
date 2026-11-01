@@ -4,6 +4,7 @@ Append-only record for this authority directory.
 
 | Date (UTC) | Change | Workstream | Evidence |
 |------------|--------|------------|----------|
+| 2026-11-01 | **P0** durable DI boundary admission recovery — bounded reconciliation fallback (`runDurableAdmissionRecoveryPass`), shadow/writer activation policy, Prometheus metrics; extends PR #2293 partial-extension hook; production activation OFF | TDL admission reliability | [TDL_DURABLE_DI_BOUNDARY_ADMISSION_RECOVERY_P0_2026-11-01.md](../evidence/TDL_DURABLE_DI_BOUNDARY_ADMISSION_RECOVERY_P0_2026-11-01.md) |
 | 2026-10-22 | P1B.10 hardening — atomic JSONB first-write insert; split-first-trip meta preservation; finalize shadow guard; PostgreSQL concurrency integration | TDL P1B | [TDL_P1B10_DURABLE_START_SHADOW_EVIDENCE_2026-10-22.md](../evidence/TDL_P1B10_DURABLE_START_SHADOW_EVIDENCE_2026-10-22.md) |
 | 2026-10-22 | P1B.10 durable per-trip start-shadow evidence on `VehicleTrip.rawDetectionMeta.startBoundaryAdmissionShadowV1`; orchestration persist on start confirm; mid-gap split follow-on `NOT_EXECUTED`; non-blocking persist errors | TDL P1B | [TDL_P1B10_DURABLE_START_SHADOW_EVIDENCE_2026-10-22.md](../evidence/TDL_P1B10_DURABLE_START_SHADOW_EVIDENCE_2026-10-22.md) |
 | 2026-10-17 | P1B.5 hardening — strict UUID allowlist parse (max 16, malformed list fail-closed), shadow route-fetch attempt/error counters (pre-provider), expanded pilot matrix tests | TDL P1B | [TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md](../evidence/TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md) |
