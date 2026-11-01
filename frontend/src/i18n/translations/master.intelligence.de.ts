@@ -233,13 +233,37 @@ export const masterIntelligenceDe = {
   'master.intelligence.vehicleDetail.loading': 'Intelligence-Zusammenfassungen werden geladen…',
   'master.intelligence.vehicleDetail.error': 'Intelligence-Zusammenfassungen für dieses Fahrzeug konnten nicht geladen werden.',
   'master.intelligence.vehicleDetail.openVsi': 'VSI-Detail öffnen',
+  'master.intelligence.vehicleDetail.openVsiOverview': 'VSI-Übersicht öffnen',
+  'master.intelligence.vehicleDetail.openVsiLedger': 'Evidenz-Ledger öffnen',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Motor-RPM im Evidenz-Ledger öffnen',
   'master.intelligence.vehicleDetail.openApds': 'APDS-Detail öffnen',
   'master.intelligence.vehicleDetail.openPdi': 'Gerätedetail öffnen',
   'master.intelligence.vehicleDetail.noApdsDecision': 'Keine persistierte Entscheidung im Scope.',
   'master.intelligence.vehicleDetail.noPhysicalDevice':
     'Kein eindeutig installiertes physisches Gerät diesem Fahrzeug zugeordnet.',
   'master.intelligence.vehicleDetail.multipleLinks':
-    'Mehrere Provider-Source-Links — primärer Link angezeigt; Link auf VSI/APDS prüfen, bevor fahrzeugübergreifende Annahmen getroffen werden.',
+    'Mehrere Provider-Source-Links — vor Navigation VSI/APDS einen Link auswählen.',
+  'master.intelligence.vehicleDetail.selectSourceLink.title': 'Provider-Source-Link',
+  'master.intelligence.vehicleDetail.selectSourceLink.hint':
+    'Persistierten Provider-Link wählen. Zusammenfassungen und Navigation gelten nur für den gewählten Link.',
+  'master.intelligence.vehicleDetail.selectSourceLink.stale':
+    'Die frühere Auswahl passt nicht mehr zu diesem Fahrzeug. Link erneut wählen.',
+  'master.intelligence.vehicleDetail.selectSourceLink.required':
+    'Provider-Source-Link wählen, um die Intelligence-Navigation für dieses Fahrzeug zu aktivieren.',
+  'master.intelligence.vehicleDetail.selectSourceLink.summaryPending':
+    'Provider-Source-Link wählen, um LV/RPM-Zusammenfassungen anzuzeigen.',
+  'master.intelligence.vehicleDetail.selectSourceLink.apdsPending':
+    'Provider-Source-Link wählen, um die APDS-Zusammenfassung für diesen Link zu laden.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.notApplicable':
+    'Motor-RPM-Detail ist für dieses Profil nicht anwendbar (persistierte VSI-Anwendbarkeit).',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.unknownApplicability':
+    'Motor-RPM-Detail erst verfügbar, wenn VSI anwendbare RPM-Evidenz für diesen Link meldet.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.evaluationBlocked':
+    'Motor-RPM-Detail nicht verfügbar, solange die Profilauswertung blockiert ist.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
+    'Motor-RPM-Detail erfordert einen gewählten Provider-Source-Link.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Öffnet Ledger und Signaldetail zur Prüfung. Anwendbarkeit ist hier kein kombinierter RPM-Nachweis (live oder historisch)—VSI-Detail bleibt evidenzbasiert.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Unabhängige Evidenzdimensionen',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Anwendbarkeit',

@@ -238,12 +238,36 @@ export const masterIntelligenceEn = {
   'master.intelligence.vehicleDetail.loading': 'Loading intelligence summaries…',
   'master.intelligence.vehicleDetail.error': 'Could not load intelligence summaries for this vehicle.',
   'master.intelligence.vehicleDetail.openVsi': 'Open VSI detail',
+  'master.intelligence.vehicleDetail.openVsiOverview': 'Open VSI overview',
+  'master.intelligence.vehicleDetail.openVsiLedger': 'Open evidence ledger',
+  'master.intelligence.vehicleDetail.openEngineRpmDetail': 'Open engine RPM in evidence ledger',
   'master.intelligence.vehicleDetail.openApds': 'Open APDS detail',
   'master.intelligence.vehicleDetail.openPdi': 'Open device detail',
   'master.intelligence.vehicleDetail.noApdsDecision': 'No persisted decision in scope.',
   'master.intelligence.vehicleDetail.noPhysicalDevice': 'No single installed physical device attributed to this vehicle.',
   'master.intelligence.vehicleDetail.multipleLinks':
-    'Multiple provider source links — primary link shown; confirm link on VSI/APDS before cross-vehicle assumptions.',
+    'Multiple provider source links — select one before opening VSI, APDS, or scoped summaries.',
+  'master.intelligence.vehicleDetail.selectSourceLink.title': 'Provider source link',
+  'master.intelligence.vehicleDetail.selectSourceLink.hint':
+    'Choose which persisted provider link to use. Summaries and navigation apply only to the selected link.',
+  'master.intelligence.vehicleDetail.selectSourceLink.stale':
+    'The previous selection no longer matches this vehicle. Choose a link again.',
+  'master.intelligence.vehicleDetail.selectSourceLink.required':
+    'Select a provider source link to enable intelligence navigation for this vehicle.',
+  'master.intelligence.vehicleDetail.selectSourceLink.summaryPending':
+    'Select a provider source link to view LV/RPM summaries for this vehicle.',
+  'master.intelligence.vehicleDetail.selectSourceLink.apdsPending':
+    'Select a provider source link to load APDS summary for that link.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.notApplicable':
+    'Engine RPM signal detail is not applicable for this profile (persisted VSI applicability).',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.unknownApplicability':
+    'Engine RPM detail is unavailable until VSI reports applicable RPM evidence for this link.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.evaluationBlocked':
+    'Engine RPM detail is unavailable while profile evaluation is blocked.',
+  'master.intelligence.vehicleDetail.engineRpmUnavailable.noProfile':
+    'Engine RPM detail requires a selected provider source link.',
+  'master.intelligence.vehicleDetail.engineRpmDeepLinkNote':
+    'Opens ledger and signal detail for review. Applicability here is not combined RPM proof (live or historical)—VSI detail remains evidence-driven.',
 
   'master.intelligence.vsi.ledger.summary.ariaLabel': 'Independent evidence dimensions',
   'master.intelligence.vsi.ledger.dimension.applicability': 'Applicability',
