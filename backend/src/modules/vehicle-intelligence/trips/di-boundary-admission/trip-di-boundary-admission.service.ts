@@ -20,6 +20,11 @@ import {
   LIVE_FSM_AUTO_RECONCILIATION_MAX_TRIPS_PER_VEHICLE,
   readLiveFsmAutomaticAdmissionPolicyFromEnv,
 } from './trip-di-boundary-admission-live-fsm-auto.policy';
+import { hasCommittedPartialTripBoundaryExtension } from '../boundary-repair.state.util';
+
+export type TryReleaseAfterPartialTripBoundaryExtensionResult =
+  | { released: true }
+  | { released: false; reason: 'TRIP_NOT_FOUND' | 'VEHICLE_MISMATCH' | 'BOUNDARY_REPAIR_NOT_COMMITTED' | 'RELEASE_GUARDS' };
 
 @Injectable()
 export class TripDiBoundaryAdmissionService {
@@ -158,6 +163,26 @@ export class TripDiBoundaryAdmissionService {
     }
     const ok = await this.tryReleaseForTripTransactional(tripId, 'LIVE_FSM_SETTLEMENT');
     return { ok, eligibility };
+  }
+
+  /**
+   * After successful PARTIAL_TRIP_BOUNDARY_EXTENSION on the trip row (post-repair transaction).
+   * Idempotent via tryReleaseForTripTransactional; does not enqueue S4 work items.
+   */
+  async tryReleaseAfterPartialTripBoundaryExtension(
+    tripId: string,
+    expectedVehicleId: string,
+  ): Promise<TryReleaseAfterPartialTripBoundaryExtensionResult> {
+    const scope = await this.loadScope(tripId);
+    if (!scope) return { released: false, reason: 'TRIP_NOT_FOUND' };
+    if (scope.vehicleId !== expectedVehicleId) {
+      return { released: false, reason: 'VEHICLE_MISMATCH' };
+    }
+    if (!hasCommittedPartialTripBoundaryExtension(scope.rawDetectionMeta)) {
+      return { released: false, reason: 'BOUNDARY_REPAIR_NOT_COMMITTED' };
+    }
+    const ok = await this.tryReleaseForTripTransactional(tripId, 'RECONCILIATION');
+    return ok ? { released: true } : { released: false, reason: 'RELEASE_GUARDS' };
   }
 
   async releaseForBoundaryScannedTripIds(tripIds: readonly string[]): Promise<{ released: number; skipped: number }> {

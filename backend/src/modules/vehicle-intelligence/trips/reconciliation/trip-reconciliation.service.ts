@@ -1186,6 +1186,25 @@ export class TripReconciliationService {
         return { handled: true, proposed: false, applied: false, rejected: false };
       }
 
+      if (this.diBoundaryAdmission) {
+        try {
+          const admissionOutcome =
+            await this.diBoundaryAdmission.tryReleaseAfterPartialTripBoundaryExtension(
+              classification.tripId,
+              input.vehicleId,
+            );
+          if (!admissionOutcome.released) {
+            this.logger.debug(
+              `DI boundary admission deferred after partial extension trip=${classification.tripId}: ${admissionOutcome.reason ?? 'RELEASE_GUARDS'}`,
+            );
+          }
+        } catch (err: unknown) {
+          this.logger.warn(
+            `DI boundary admission release failed after partial extension trip=${classification.tripId}: ${(err as Error).message}`,
+          );
+        }
+      }
+
       await this.finalizeBoundaryRepairRefresh(
         classification.tripId,
         input.vehicleId,

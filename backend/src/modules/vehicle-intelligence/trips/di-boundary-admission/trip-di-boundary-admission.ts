@@ -7,6 +7,7 @@ import {
   isBoundaryRefreshRetryable,
   readBoundaryRefreshRecord,
   readCurrentBoundaryRepairGeneration,
+  hasCommittedPartialTripBoundaryExtension,
 } from '../boundary-repair.state.util';
 
 export const TRIP_DI_BOUNDARY_ADMISSION_V1_KEY = 'diV0BoundaryAdmissionV1';
@@ -104,7 +105,13 @@ export function canReleaseTripDiBoundaryAdmission(scope: TripDiBoundaryAdmission
   if (scope.activeTripId != null && scope.activeTripId === scope.tripId) return 'FSM_STILL_ACTIVE_ON_TRIP';
   if (scope.proposedBoundaryRepairCount > 0) return 'PROPOSED_BOUNDARY_REPAIR_OPEN';
   const refresh = readBoundaryRefreshRecord(scope.rawDetectionMeta);
-  if (isBoundaryRefreshRetryable(refresh)) return 'BOUNDARY_REFRESH_IN_FLIGHT';
+  if (isBoundaryRefreshRetryable(refresh)) {
+    // Route/behavior refresh must not block DI admission once canonical boundaries are
+    // durably committed via PARTIAL_TRIP_BOUNDARY_EXTENSION on the trip row.
+    if (!hasCommittedPartialTripBoundaryExtension(scope.rawDetectionMeta)) {
+      return 'BOUNDARY_REFRESH_IN_FLIGHT';
+    }
+  }
   return null;
 }
 

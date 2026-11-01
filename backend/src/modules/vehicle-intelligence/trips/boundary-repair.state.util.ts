@@ -106,6 +106,20 @@ export function readCurrentBoundaryRepairGeneration(
   });
 }
 
+/** Matches `REPAIR_TYPES.PARTIAL_TRIP_BOUNDARY_EXTENSION` written by boundary repair commit. */
+export const PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE = 'PARTIAL_TRIP_BOUNDARY_EXTENSION';
+
+export function hasCommittedPartialTripBoundaryExtension(raw: unknown): boolean {
+  const meta = readRawDetectionMeta(raw);
+  const repair = meta.boundaryRepair;
+  if (repair == null || typeof repair !== 'object' || Array.isArray(repair)) {
+    return false;
+  }
+  return (
+    (repair as Record<string, unknown>).repairType === PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE
+  );
+}
+
 export function boundaryRefreshGenerationMatchesRepair(
   refresh: BoundaryRefreshRecord,
   raw: unknown,

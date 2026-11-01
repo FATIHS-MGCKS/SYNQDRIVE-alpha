@@ -12,6 +12,7 @@ import {
   setKillState,
   type S4aTenant,
 } from '../../../driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
+import { PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE } from '../../boundary-repair.state.util';
 import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
 import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
 
@@ -133,5 +134,45 @@ import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
     const rows = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
       SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${t.tripId}`;
     expect(readTripDiBoundaryAdmissionV1(rows[0]?.raw_detection_meta)).not.toBeNull();
+  });
+
+  it('tryReleaseAfterPartialTripBoundaryExtension releases under PENDING boundary refresh', async () => {
+    const t = await tenant();
+    await admin.$executeRawUnsafe(
+      `UPDATE vehicle_trips SET raw_detection_meta = (COALESCE(raw_detection_meta, '{}'::jsonb) - 'diV0BoundaryAdmissionV1') || $1::jsonb WHERE id = $2`,
+      JSON.stringify({
+        boundaryRefresh: {
+          state: 'PENDING',
+          generation: 'gen-partial-ext-1',
+          requestedAt: new Date().toISOString(),
+          attempts: 1,
+          stages: { route: 'pending', behavior: 'pending', drivingImpact: 'pending' },
+        },
+        boundaryRepair: {
+          repairType: PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE,
+          auditId: randomUUID(),
+          providerSegmentId: t.dimoSegmentId,
+          newStartTime: t.startTime.toISOString(),
+          newEndTime: t.endTime.toISOString(),
+        },
+      }),
+      t.tripId,
+    );
+    expect(await admission.tryReleaseForTripTransactional(t.tripId)).toBe(false);
+    const first = await admission.tryReleaseAfterPartialTripBoundaryExtension(t.tripId, t.vehicleId);
+    expect(first).toEqual({ released: true });
+    const second = await admission.tryReleaseAfterPartialTripBoundaryExtension(t.tripId, t.vehicleId);
+    expect(second).toEqual({ released: true });
+    const rows = await admin.$queryRaw<
+      Array<{ raw_detection_meta: unknown; organization_id: string }>
+    >`SELECT raw_detection_meta, organization_id FROM vehicle_trips vt JOIN vehicles v ON v.id = vt.vehicle_id WHERE vt.id = ${t.tripId}`;
+    const meta = rows[0]?.raw_detection_meta;
+    expect(readTripDiBoundaryAdmissionV1(meta)?.releasedBy).toBe('RECONCILIATION');
+  });
+
+  it('tryReleaseAfterPartialTripBoundaryExtension rejects without committed repair meta', async () => {
+    const t = await tenant();
+    const outcome = await admission.tryReleaseAfterPartialTripBoundaryExtension(t.tripId, t.vehicleId);
+    expect(outcome).toEqual({ released: false, reason: 'BOUNDARY_REPAIR_NOT_COMMITTED' });
   });
 });
