@@ -26,7 +26,7 @@ import {
   DRIVING_INTELLIGENCE_JOB_ERROR_CODES,
 } from '../driving-intelligence-jobs/driving-intelligence-jobs.errors';
 import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provider-request-context.util';
-import { listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList } from './trip-customer-list-reconciled-gap-split-suffix.util';
+import { listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList, applyHiddenCustomerSuffixTripExclusion } from './trip-customer-list-reconciled-gap-split-suffix.util';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -137,14 +137,14 @@ export class TripsService {
       { from: options?.from, to: options?.to },
     );
 
-    const where = scopedVehicleTripWhere(organizationId, vehicleId);
+    const where = applyHiddenCustomerSuffixTripExclusion(
+      scopedVehicleTripWhere(organizationId, vehicleId),
+      hiddenSuffixIds,
+    );
     if (options?.from || options?.to) {
       where.startTime = {};
       if (options.from) where.startTime.gte = options.from;
       if (options.to) where.startTime.lte = options.to;
-    }
-    if (hiddenSuffixIds.length > 0) {
-      where.id = { notIn: hiddenSuffixIds };
     }
     const driverFilter = buildTripDriverIdentityFilter({
       driverCustomerId: options?.driverCustomerId,

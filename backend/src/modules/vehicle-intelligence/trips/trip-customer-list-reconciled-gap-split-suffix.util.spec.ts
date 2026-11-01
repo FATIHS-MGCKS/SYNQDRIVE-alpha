@@ -1,7 +1,11 @@
 import {
+  applyHiddenCustomerSuffixTripExclusion,
   filterCustomerVisibleTrips,
+  hasExplicitPartialTripBoundaryExtensionEvidence,
   listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList,
+  parseSplitSecondStartAtEpochMs,
   shouldHideReconciledGapSplitSuffixFromCustomerList,
+  splitSecondStartAtMatchesSuffixStart,
 } from './trip-customer-list-reconciled-gap-split-suffix.util';
 
 const CANONICAL_ID = '2245f107-0dda-412f-9903-dbfe1cd725a7';
@@ -15,7 +19,6 @@ function tiguanIncidentParent() {
     tripStatus: 'COMPLETED',
     startTime: new Date('2026-10-31T18:59:00.000Z'),
     endDetectionMode: 'MID_TRIP_GAP_SPLIT',
-    isRepaired: true,
     rawDetectionMeta: {
       splitReason: 'live_mid_trip_gap_split',
       splitTriggeredBy: 'LIVE_FSM',
@@ -35,12 +38,44 @@ function tiguanIncidentSuffix(withSplitFrom: boolean) {
     tripStatus: 'CANCELLED',
     startTime: SPLIT_SECOND_START,
     endDetectionMode: 'MID_TRIP_GAP_SPLIT',
-    isRepaired: false,
     rawDetectionMeta: withSplitFrom
       ? { splitFrom: CANONICAL_ID, splitTriggeredBy: 'LIVE_FSM', discardReason: 'too_short_no_distance' }
       : { discardReason: 'too_short_no_distance' },
   };
 }
+
+describe('hasExplicitPartialTripBoundaryExtensionEvidence', () => {
+  it('rejects isRepaired-only parent meta', () => {
+    expect(hasExplicitPartialTripBoundaryExtensionEvidence({})).toBe(false);
+    expect(
+      hasExplicitPartialTripBoundaryExtensionEvidence({
+        splitTriggeredBy: 'LIVE_FSM',
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts boundaryRepair PARTIAL_TRIP_BOUNDARY_EXTENSION', () => {
+    expect(
+      hasExplicitPartialTripBoundaryExtensionEvidence({
+        boundaryRepair: { repairType: 'PARTIAL_TRIP_BOUNDARY_EXTENSION' },
+      }),
+    ).toBe(true);
+  });
+});
+
+describe('parseSplitSecondStartAtEpochMs', () => {
+  it('rejects malformed timestamps', () => {
+    expect(parseSplitSecondStartAtEpochMs('not-a-valid-timestamp')).toBeNull();
+    expect(parseSplitSecondStartAtEpochMs('2026-10-31 19:16:54')).toBeNull();
+    expect(parseSplitSecondStartAtEpochMs('')).toBeNull();
+  });
+
+  it('accepts Tiguan production anchor', () => {
+    expect(parseSplitSecondStartAtEpochMs(SPLIT_SECOND_START.toISOString())).toBe(
+      SPLIT_SECOND_START.getTime(),
+    );
+  });
+});
 
 describe('shouldHideReconciledGapSplitSuffixFromCustomerList', () => {
   it('hides Tiguan incident suffix when parent has splitSecondStartAt anchor (no splitFrom on suffix)', () => {
@@ -61,6 +96,19 @@ describe('shouldHideReconciledGapSplitSuffixFromCustomerList', () => {
     ).toBe(true);
   });
 
+  it('does not hide when parent is isRepaired-only without boundary extension meta', () => {
+    const parent = {
+      ...tiguanIncidentParent(),
+      rawDetectionMeta: {
+        splitTriggeredBy: 'LIVE_FSM',
+        splitSecondStartAt: SPLIT_SECOND_START.toISOString(),
+      },
+    };
+    expect(
+      shouldHideReconciledGapSplitSuffixFromCustomerList(tiguanIncidentSuffix(false), parent),
+    ).toBe(false);
+  });
+
   it('keeps independent CANCELLED too_short trip without reconciled LIVE_FSM parent', () => {
     const independent = {
       id: 'independent-cancelled',
@@ -73,11 +121,21 @@ describe('shouldHideReconciledGapSplitSuffixFromCustomerList', () => {
     ).toBe(false);
   });
 
-  it('keeps suffix when parent boundary extension not proven', () => {
-    const parent = { ...tiguanIncidentParent(), isRepaired: false, rawDetectionMeta: { splitTriggeredBy: 'LIVE_FSM' } };
+  it('fail-closed when splitSecondStartAt malformed', () => {
+    const parent = {
+      ...tiguanIncidentParent(),
+      rawDetectionMeta: {
+        splitTriggeredBy: 'LIVE_FSM',
+        splitSecondStartAt: 'not-a-valid-timestamp',
+        boundaryRepair: { repairType: 'PARTIAL_TRIP_BOUNDARY_EXTENSION' },
+      },
+    };
     expect(
       shouldHideReconciledGapSplitSuffixFromCustomerList(tiguanIncidentSuffix(false), parent),
     ).toBe(false);
+    expect(splitSecondStartAtMatchesSuffixStart('not-a-valid-timestamp', SPLIT_SECOND_START)).toBe(
+      false,
+    );
   });
 
   it('keeps legitimate COMPLETED trip unchanged in batch filter', () => {
@@ -95,13 +153,35 @@ describe('shouldHideReconciledGapSplitSuffixFromCustomerList', () => {
   });
 });
 
+describe('applyHiddenCustomerSuffixTripExclusion', () => {
+  it('merges notIn trip ids into prisma where', () => {
+    const where = applyHiddenCustomerSuffixTripExclusion({ vehicleId: VEHICLE_ID }, ['a', 'b']);
+    expect(where).toEqual({ vehicleId: VEHICLE_ID, id: { notIn: ['a', 'b'] } });
+  });
+});
+
 describe('listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList', () => {
-  it('returns empty when prisma yields no rows', async () => {
+  it('filters SQL rows with safe lineage matching in application code', async () => {
     const prisma = {
-      $queryRaw: jest.fn().mockResolvedValue([]),
+      $queryRaw: jest.fn().mockResolvedValue([
+        {
+          suffix_id: SUFFIX_ID,
+          parent_id: CANONICAL_ID,
+          suffix_start: SPLIT_SECOND_START,
+          split_from: null,
+          split_second_start_at: SPLIT_SECOND_START.toISOString(),
+        },
+        {
+          suffix_id: 'wrong-suffix',
+          parent_id: CANONICAL_ID,
+          suffix_start: new Date('2026-10-31T20:00:00.000Z'),
+          split_from: null,
+          split_second_start_at: SPLIT_SECOND_START.toISOString(),
+        },
+      ]),
     };
     await expect(
       listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList(prisma, VEHICLE_ID),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual([SUFFIX_ID]);
   });
 });

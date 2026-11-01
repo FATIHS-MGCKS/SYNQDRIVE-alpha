@@ -45,7 +45,7 @@ import {
   R1_CONTAINED_HF_ABUSE_EVENT_TYPES,
   shouldWithholdR1PersistedDrivingStressScore,
 } from '../r1-temporal-containment';
-import { listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList } from './trip-customer-list-reconciled-gap-split-suffix.util';
+import { listReconciledGapSplitSuffixTripIdsHiddenFromCustomerList, applyHiddenCustomerSuffixTripExclusion } from './trip-customer-list-reconciled-gap-split-suffix.util';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -356,11 +356,15 @@ export class TripAnalyticsCanonicalService {
       this.prisma,
       vehicleId,
     );
-    const where = scopedVehicleTripWhere(organizationId, vehicleId);
-    if (hiddenSuffixIds.length > 0) {
-      where.id = { notIn: hiddenSuffixIds };
-    }
-    const impactWhere = { vehicleId, vehicle: { organizationId } };
+    const where = applyHiddenCustomerSuffixTripExclusion(
+      scopedVehicleTripWhere(organizationId, vehicleId),
+      hiddenSuffixIds,
+    );
+    const impactWhere = {
+      vehicleId,
+      vehicle: { organizationId },
+      ...(hiddenSuffixIds.length > 0 ? { tripId: { notIn: hiddenSuffixIds } } : {}),
+    };
 
     const [tripSummary, impactAvg] = await Promise.all([
       this.prisma.vehicleTrip.aggregate({
