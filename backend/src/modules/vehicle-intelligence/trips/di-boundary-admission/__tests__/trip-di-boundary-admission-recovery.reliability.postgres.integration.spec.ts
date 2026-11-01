@@ -11,6 +11,7 @@ import {
   type S4aTenant,
 } from '../../../driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { DiV0S4WorkItemRepository } from '../../../driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
 import { buildTripDiBoundaryRevisionKey, readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
 import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-admission-recovery.policy';
@@ -34,7 +35,7 @@ import {
 
     beforeAll(async () => {
       admin = newS4aClient();
-      admission = new TripDiBoundaryAdmissionService(admin as never);
+      admission = new TripDiBoundaryAdmissionService(admin as never, new TripMetricsService());
       await ensureRecoveryPostgresHarness(admin);
     });
 

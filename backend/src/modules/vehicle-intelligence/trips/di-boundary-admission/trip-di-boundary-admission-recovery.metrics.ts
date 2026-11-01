@@ -14,7 +14,7 @@ export interface TripDiBoundaryAdmissionRecoveryMetricsHandles {
   passDurationMs: Histogram<string>;
 }
 
-let cached: TripDiBoundaryAdmissionRecoveryMetricsHandles | null = null;
+const handlesByRegistry = new WeakMap<Registry, TripDiBoundaryAdmissionRecoveryMetricsHandles>();
 
 export function registerTripDiBoundaryAdmissionRecoveryMetrics(
   registry: Registry,
@@ -103,8 +103,10 @@ export function registerTripDiBoundaryAdmissionRecoveryMetrics(
 export function getTripDiBoundaryAdmissionRecoveryMetrics(
   registry: Registry,
 ): TripDiBoundaryAdmissionRecoveryMetricsHandles {
+  let cached = handlesByRegistry.get(registry);
   if (cached == null) {
     cached = registerTripDiBoundaryAdmissionRecoveryMetrics(registry);
+    handlesByRegistry.set(registry, cached);
   }
   return cached;
 }

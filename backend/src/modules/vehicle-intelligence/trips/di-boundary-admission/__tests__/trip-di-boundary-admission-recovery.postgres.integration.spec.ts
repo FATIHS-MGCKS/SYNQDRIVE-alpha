@@ -8,6 +8,7 @@ import {
   seedS4aTenant,
   type S4aTenant,
 } from '../../../driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
 import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
 import type { TripDiBoundaryAdmissionRecoveryPolicy } from '../trip-di-boundary-admission-recovery.policy';
@@ -21,11 +22,13 @@ import {
   () => {
     let admin: PrismaClient;
     let admission: TripDiBoundaryAdmissionService;
+    let tripMetrics: TripMetricsService;
     const tenants: S4aTenant[] = [];
 
     beforeAll(async () => {
       admin = newS4aClient();
-      admission = new TripDiBoundaryAdmissionService(admin as never);
+      tripMetrics = new TripMetricsService();
+      admission = new TripDiBoundaryAdmissionService(admin as never, tripMetrics);
       await ensureRecoveryPostgresHarness(admin);
     });
 
@@ -139,6 +142,9 @@ import {
       });
       expect(first.mode).toBe('WRITER');
       expect(first.released).toBeGreaterThanOrEqual(1);
+      const metricsText = await tripMetrics.getMetrics();
+      expect(metricsText).toContain('synqdrive_trip_di_boundary_admission_recovery_pass_total{mode="WRITER"}');
+      expect(metricsText).toContain('synqdrive_trip_di_boundary_admission_recovery_success_total{mode="WRITER"}');
       const rows = await admin.$queryRaw<Array<{ raw_detection_meta: unknown }>>`
         SELECT raw_detection_meta FROM vehicle_trips WHERE id = ${t.tripId}`;
       expect(readTripDiBoundaryAdmissionV1(rows[0]?.raw_detection_meta)).not.toBeNull();
