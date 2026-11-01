@@ -317,6 +317,17 @@ Newest entry last. Never rewrite or delete entries.
 | VALIDATION | Jest calibration-shadow + pairing + writer + scheduler specs |
 | NON_EFFECTS | Customer read path unchanged; β=0; P3A prior shadow flag unchanged; no production activation in PR |
 
+### Tire Wear V3 Calibration Center P3.1 — Master Admin UI (2026-11-01)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | PR #2289 calibration shadow APIs only; no Master UI |
+| WHY | Operational monitoring dashboard + snapshot drawer without implying persisted pairs or accuracy |
+| CHANGE | Paginated read routes + snapshot detail; Engineering nav `tire-v3-calibration-center`; 9-locale `master.intelligence.tireCalibration.*` |
+| EXPECTED_EFFECT | MASTER_ADMIN can inspect writer replica-local stats, snapshots, sampled rejection histogram, honest NOT_EVALUABLE accuracy tab |
+| VALIDATION | Jest master-read security/scoping; frontend nav regression tests |
+| NON_EFFECTS | Customer V3; writer default OFF; no pair persistence |
+
 ### Tire Wear V3 Calibration Shadow P3 — PR #2289 pre-merge hardening (2026-11-01)
 
 | Event | Detail |
