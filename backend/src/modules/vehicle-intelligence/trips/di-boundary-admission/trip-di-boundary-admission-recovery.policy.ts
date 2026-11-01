@@ -7,6 +7,7 @@
  * scan may proceed if other guards pass — explicit legacy/data-gap fallback, not an active-drive bypass.
  */
 import {
+  parseDiV0S4BooleanFlag,
   parseDiV0S4ControlPlaneConfig,
   type DiV0S4ControlPlaneConfig,
 } from '../../driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
@@ -32,12 +33,21 @@ export const TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_MAX_TRIPS_PER_VEHICLE_ENV =
 export const TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_MAX_PER_PASS_ENV =
   'TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_MAX_PER_PASS';
 
+/**
+ * Recovery-only fleet-wide authorization (does not toggle DS4 fleet-motion / Motion-Core rollout).
+ * When true, recovery eligibility uses canonical tenant UUID gates instead of legacy S4 allowlists.
+ */
+export const TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_AUTHORIZED_ENV =
+  'TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_AUTHORIZED';
+
 export const DEFAULT_RECOVERY_LOOKBACK_HOURS = 48;
 export const DEFAULT_RECOVERY_MAX_TRIPS_PER_VEHICLE = 32;
 export const DEFAULT_RECOVERY_GLOBAL_MAX_PER_PASS = 64;
 
 export interface TripDiBoundaryAdmissionRecoveryPolicy {
   s4: DiV0S4ControlPlaneConfig;
+  /** Recovery-scoped global authorization (independent of DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED). */
+  recoveryGlobalAuthorized: boolean;
   /** Null ⇒ recovery disabled (no scan, no writes). */
   recoveryActivationHorizonUtc: Date | null;
   writerEnabled: boolean;
@@ -67,6 +77,9 @@ export function readTripDiBoundaryAdmissionRecoveryPolicyFromEnv(
     'false';
   return {
     s4: parseDiV0S4ControlPlaneConfig(env),
+    recoveryGlobalAuthorized: parseDiV0S4BooleanFlag(
+      env[TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_AUTHORIZED_ENV],
+    ),
     recoveryActivationHorizonUtc: activationHorizonUtc,
     writerEnabled,
     shadowObserveEnabled,

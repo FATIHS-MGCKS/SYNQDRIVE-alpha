@@ -68,6 +68,7 @@ import {
           organizationAllowlist: new Set([t.organizationId]),
           vehicleAllowlist: new Set([t.vehicleId]),
         },
+        recoveryGlobalAuthorized: false,
         recoveryActivationHorizonUtc: new Date('2020-01-01T00:00:00.000Z'),
         writerEnabled: writer,
         shadowObserveEnabled: true,
@@ -467,6 +468,17 @@ import {
         WHERE vehicle_id = ${t.vehicleId}
           AND (raw_detection_meta->>'diV0BoundaryAdmissionRecoveryCursorCarrierV1') = 'true'`;
       expect(carriers.length).toBe(1);
+    });
+
+    it('fails closed when caller organizationId does not match persisted vehicle ownership', async () => {
+      const t = await tenant();
+      await setResting(t.vehicleId);
+      await insertCompletedTrip(t, 5, false);
+      const policy = policyFor(t, true);
+      const wrongOrg = randomUUID();
+      const result = await admission.runDurableAdmissionRecoveryPass(wrongOrg, t.vehicleId, { policy });
+      expect(result.mode).toBe('DISABLED');
+      expect(result.released).toBe(0);
     });
   },
 );

@@ -10,6 +10,10 @@ import {
 } from './trip-di-boundary-admission-recovery.eligibility.v1';
 import type { TripDiBoundaryAdmissionRecoveryPolicy } from './trip-di-boundary-admission-recovery.policy';
 import { isTripDiBoundaryAdmissionRecoveryEnabled } from './trip-di-boundary-admission-recovery.policy';
+import {
+  computeTripDiBoundaryAdmissionRecoveryFleetPassRotationSeed,
+  rotateTripDiBoundaryAdmissionRecoveryFleetVehiclesV1,
+} from './trip-di-boundary-admission-recovery.fleet-fairness.v1';
 
 export type TripDiBoundaryAdmissionRecoveryFleetVehicleV1 = {
   organizationId: string;
@@ -61,19 +65,24 @@ export async function readDiV0S4KillEvaluationForRecovery(
   }
 }
 
-export function loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv(
+export function loadTripDiBoundaryAdmissionRecoveryDs4FleetMotionPolicyFromEnv(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): DiV0Ds4FleetMotionAdmissionPolicySnapshotV1 {
   return parseDiV0Ds4FleetMotionAdmissionPolicyV1(env);
 }
+
+/** @deprecated use loadTripDiBoundaryAdmissionRecoveryDs4FleetMotionPolicyFromEnv */
+export const loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv =
+  loadTripDiBoundaryAdmissionRecoveryDs4FleetMotionPolicyFromEnv;
 
 /** ACTIVE registry vehicles eligible for recovery (provider + S4 + kill), independent of VLS token or fast cohort. */
 export async function listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1(
   prisma: Pick<PrismaService, '$queryRaw'>,
   params: {
     policy: TripDiBoundaryAdmissionRecoveryPolicy;
-    fleetPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
+    ds4FleetMotionPolicy: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
     kill: DiV0S4KillEvaluation;
+    now?: Date;
   },
 ): Promise<TripDiBoundaryAdmissionRecoveryFleetVehicleV1[]> {
   if (!isTripDiBoundaryAdmissionRecoveryEnabled(params.policy)) return [];
@@ -104,7 +113,7 @@ export async function listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1(
     };
     const decision = evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1({
       policy: params.policy,
-      fleetPolicy: params.fleetPolicy,
+      ds4FleetMotionPolicy: params.ds4FleetMotionPolicy,
       kill: params.kill,
       vehicle,
     });
@@ -112,5 +121,7 @@ export async function listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1(
       eligible.push({ organizationId: row.organization_id, vehicleId: row.vehicle_id });
     }
   }
-  return eligible;
+  const now = params.now ?? new Date();
+  const seed = computeTripDiBoundaryAdmissionRecoveryFleetPassRotationSeed(now);
+  return rotateTripDiBoundaryAdmissionRecoveryFleetVehiclesV1(eligible, seed);
 }

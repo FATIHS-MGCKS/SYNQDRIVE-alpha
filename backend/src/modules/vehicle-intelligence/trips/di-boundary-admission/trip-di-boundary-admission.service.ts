@@ -36,7 +36,7 @@ import {
   type TripDiBoundaryAdmissionRecoveryVehicleContextV1,
 } from './trip-di-boundary-admission-recovery.eligibility.v1';
 import {
-  loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv,
+  loadTripDiBoundaryAdmissionRecoveryDs4FleetMotionPolicyFromEnv,
   loadTripDiBoundaryAdmissionRecoveryVehicleContextV1,
   listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1,
   readDiV0S4KillEvaluationForRecovery,
@@ -254,6 +254,7 @@ export class TripDiBoundaryAdmissionService {
       policy?: TripDiBoundaryAdmissionRecoveryPolicy;
       fleetBudget?: TripDiBoundaryAdmissionRecoveryFleetBudget;
       fleetPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
+      ds4FleetMotionPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
       kill?: DiV0S4KillEvaluation;
       vehicleContext?: TripDiBoundaryAdmissionRecoveryVehicleContextV1;
     },
@@ -317,8 +318,10 @@ export class TripDiBoundaryAdmissionService {
     if (!isTripDiBoundaryAdmissionRecoveryEnabled(policy)) {
       return emptyDisabled(Date.now() - startedMs);
     }
-    const fleetPolicy =
-      options?.fleetPolicy ?? loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv();
+    const ds4FleetMotionPolicy =
+      options?.ds4FleetMotionPolicy ??
+      options?.fleetPolicy ??
+      loadTripDiBoundaryAdmissionRecoveryDs4FleetMotionPolicyFromEnv();
     const kill = options?.kill ?? (await readDiV0S4KillEvaluationForRecovery(this.prisma));
     const vehicleContext =
       options?.vehicleContext ??
@@ -326,18 +329,26 @@ export class TripDiBoundaryAdmissionService {
     if (vehicleContext == null) {
       return emptyDisabled(Date.now() - startedMs);
     }
+    if (organizationId !== vehicleContext.organizationId) {
+      return emptyDisabled(Date.now() - startedMs);
+    }
     const eligibility = evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1({
       policy,
-      fleetPolicy,
+      ds4FleetMotionPolicy,
       kill,
-      vehicle: {
-        ...vehicleContext,
-        organizationId,
-        vehicleOrganizationId: organizationId,
-      },
+      vehicle: vehicleContext,
     });
     if (!eligibility.eligible) {
       return emptyDisabled(Date.now() - startedMs);
+    }
+    if (
+      policy.recoveryGlobalAuthorized &&
+      !eligibility.s4DiscoveryPipelineAligned &&
+      eligibility.s4DiscoveryPipelineFailedTerms.length > 0
+    ) {
+      this.logger.warn(
+        `DI boundary admission recovery S4 discovery pipeline mismatch vehicle=${vehicleId} org=${vehicleContext.organizationId} terms=${eligibility.s4DiscoveryPipelineFailedTerms.join(',')}`,
+      );
     }
     const eligibleFrom = computeTripDiBoundaryAdmissionRecoveryEligibleFrom(policy, now);
     if (eligibleFrom == null) {
@@ -526,6 +537,7 @@ export class TripDiBoundaryAdmissionService {
     now?: Date;
     policy?: TripDiBoundaryAdmissionRecoveryPolicy;
     fleetPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
+    ds4FleetMotionPolicy?: DiV0Ds4FleetMotionAdmissionPolicySnapshotV1;
   }): Promise<{
     vehiclesEligible: number;
     vehiclesScanned: number;
@@ -544,13 +556,17 @@ export class TripDiBoundaryAdmissionService {
         durationMs: Date.now() - startedMs,
       };
     }
-    const fleetPolicy =
-      options?.fleetPolicy ?? loadTripDiBoundaryAdmissionRecoveryFleetPolicyFromEnv();
+    const ds4FleetMotionPolicy =
+      options?.ds4FleetMotionPolicy ??
+      options?.fleetPolicy ??
+      loadTripDiBoundaryAdmissionRecoveryDs4FleetMotionPolicyFromEnv();
     const kill = await readDiV0S4KillEvaluationForRecovery(this.prisma);
+    const now = options?.now ?? new Date();
     const vehicles = await listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1(this.prisma, {
       policy,
-      fleetPolicy,
+      ds4FleetMotionPolicy,
       kill,
+      now,
     });
     const fleetBudget = new TripDiBoundaryAdmissionRecoveryFleetBudget(policy.globalMaxPerPass);
     let vehiclesScanned = 0;
@@ -560,9 +576,9 @@ export class TripDiBoundaryAdmissionService {
       if (fleetBudget.remainingAttempts <= 0) break;
       const beforeRemaining = fleetBudget.remainingAttempts;
       const result = await this.runDurableAdmissionRecoveryPass(organizationId, vehicleId, {
-        now: options?.now,
+        now,
         policy,
-        fleetPolicy,
+        ds4FleetMotionPolicy,
         kill,
         fleetBudget,
       });

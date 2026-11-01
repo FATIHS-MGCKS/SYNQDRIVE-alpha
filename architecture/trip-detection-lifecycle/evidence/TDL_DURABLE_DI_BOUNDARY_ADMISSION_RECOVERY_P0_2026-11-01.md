@@ -6,12 +6,12 @@ Production activation: **OFF** (no env changes in this PR)
 
 ## Global fleet rollout (2026-11-01 follow-up)
 
-Owner decision: direct production writer ON, shadow OFF, fleet-wide supported providers (`RUPTELA_R1`, `API_SYNTHETIC`) — no recovery-specific vehicle allowlist when `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED=true`.
+Owner decision: direct production writer ON, shadow OFF, fleet-wide supported providers — use `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_AUTHORIZED=true` (not `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED`).
 
 - **Eligibility v1:** `evaluateTripDiBoundaryAdmissionRecoveryVehicleEligibilityV1` — ACTIVE registry, tenancy, S4 DISCOVERY enablement via fleet-motion policy, kill switch, provider capability (UNKNOWN/UNSUPPORTED fail closed).
 - **Fleet cohort SQL:** `listTripDiBoundaryAdmissionRecoveryFleetVehiclesV1` — all ACTIVE vehicles; no VLS token / fast-activity gate.
 - **Guaranteed recurring coverage:** `TripReconciliationScheduler.admissionRecoveryFleetPass` every 30m, leader key `trip_di_boundary_admission_recovery_fleet`, calls `runDurableAdmissionRecoveryFleetPass` (admission-only; no DIMO reconcile window).
-- **Production env (activation):** `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_ACTIVATED_AT_UTC`, `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_WRITER_ENABLED=true`, `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_SHADOW_OBSERVE_ENABLED=false`, lookback 48, max 32/vehicle, global 64/pass, plus `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED=true`.
+- **Production env (activation):** recovery activation timestamp, `TRIP_DI_BOUNDARY_ADMISSION_RECOVERY_GLOBAL_AUTHORIZED=true`, writer ON, shadow OFF, lookback/caps; **do not** set `DI_V0_DS4_FLEET_MOTION_GLOBAL_ROLLOUT_AUTHORIZED` solely for recovery.
 
 | ACTIVE fleet (org `faa710c9-…`, read-only VPS 2026-11-01) | Provider | VLS token |
 |-------------------------------------------------------------|----------|-----------|

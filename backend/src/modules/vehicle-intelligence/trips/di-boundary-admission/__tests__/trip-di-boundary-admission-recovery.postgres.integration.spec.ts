@@ -65,6 +65,7 @@ import {
           organizationAllowlist: new Set([t.organizationId]),
           vehicleAllowlist: new Set([t.vehicleId]),
         },
+        recoveryGlobalAuthorized: false,
         recoveryActivationHorizonUtc: new Date('2020-01-01T00:00:00.000Z'),
         writerEnabled: writer,
         shadowObserveEnabled: true,
