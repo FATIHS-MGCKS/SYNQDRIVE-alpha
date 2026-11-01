@@ -1,6 +1,11 @@
 # One Auto API — provider contracts (SynqDrive)
 
-Last updated: **2026-11-01** (P2.5A contract hardening). No live paid provider calls from this workstream.
+Last updated: **2026-11-01** (P2.5B OpenAPI evidence alignment). No live paid provider calls from this workstream.
+
+## OpenAPI evidence (P2.5B)
+
+Canonical six-SKU contract snapshot: `docs/provider-evidence/oneauto-six-sku-openapi-evidence.json` (OpenAPI **3.0.3**).  
+Regression: `oneauto-p25b-openapi-contract-alignment.spec.ts`.
 
 ## Evidence states (orthogonal)
 
@@ -31,11 +36,11 @@ Sandbox host: `https://sandbox.oneautoapi.com`. Live host: `https://api.oneautoa
 | SKU | Path | Async capability (documented) |
 |-----|------|--------------------------------|
 | OE_SERVICE_HISTORY_EU | `ezyvin/servicehistory/` | ASYNC_CAPABLE → catalog `ASYNC_POLL` |
-| OE_SERVICE_SCHEDULE | `oneauto/oeserviceschedulefromvin` | ASYNC_CAPABLE → `ASYNC_POLL` |
-| OE_BUILD_DECODE | `oneauto/oebuilddecode` | ASYNC_CAPABLE → `ASYNC_CAPABLE` |
-| OE_BUILD_SHEET_EU | `oneauto/oebuildsheeteuropefromvin` | ASYNC_CAPABLE → `ASYNC_POLL` |
-| OE_VIN_LOOKUP_EU | `ezyvin/vinlookup` | ASYNC_CAPABLE → `ASYNC_CAPABLE` |
-| RECALL_CHECK | `oneauto/recallcheckfromvin` | ASYNC_UNVERIFIED → `ASYNC_UNVERIFIED` |
+| OE_SERVICE_SCHEDULE | `oneauto/oeserviceschedulefromvin/v2` | ASYNC_CAPABLE → `ASYNC_POLL` |
+| OE_BUILD_DECODE | `oneauto/oebuilddecode/v2` | ASYNC_CAPABLE → `ASYNC_CAPABLE` |
+| OE_BUILD_SHEET_EU | `oneauto/oebuildsheeteuropefromvin/v2` | ASYNC_CAPABLE → `ASYNC_POLL` |
+| OE_VIN_LOOKUP_EU | `ezyvin/vinlookup/` | ASYNC_CAPABLE → `ASYNC_CAPABLE` |
+| RECALL_CHECK | `oneauto/recallcheckfromvin/v2` | SYNC_ONLY (OpenAPI: VIN only, no callback params) → `SYNC` |
 
 Service page URLs are listed on each entry in `oneauto-documented-contracts.ts` (`evidenceSources`).
 

@@ -10,6 +10,14 @@ export type OneAutoAuthHeaderName = 'x-api-key';
 /** Official VIN query parameter for documented EU/VIN services. */
 export type OneAutoVinQueryParameter = 'vehicle_identification_number';
 
+export type OneAutoOptionalQueryParameterName = 'callback_url' | 'return_data_in_callback';
+
+/** Documented optional query parameters from OpenAPI evidence (not sent until execution-verified). */
+export type OneAutoOptionalQueryParameter = {
+  name: OneAutoOptionalQueryParameterName;
+  schemaType: 'string' | 'boolean';
+};
+
 export type OneAutoHttpMethod = 'GET';
 
 export type OneAutoAsyncCapability =
@@ -30,6 +38,9 @@ export type OneAutoDocumentedProviderContract = {
   providerPathTemplate: string;
   authHeaderName: OneAutoAuthHeaderName;
   vinQueryParameter: OneAutoVinQueryParameter;
+  optionalQueryParameters: readonly OneAutoOptionalQueryParameter[];
+  /** OpenAPI 200 response uses success / result / error envelope (opaque at runtime). */
+  responseEnvelope: 'SUCCESS_RESULT_ERROR';
   asyncCapability: OneAutoAsyncCapability;
   /** Vendor docs support callback_url — not activated in SynqDrive. */
   callbackSupported: boolean;
