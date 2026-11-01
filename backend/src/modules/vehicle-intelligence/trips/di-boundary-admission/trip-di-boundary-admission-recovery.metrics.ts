@@ -10,6 +10,7 @@ export interface TripDiBoundaryAdmissionRecoveryMetricsHandles {
   transientErrorsTotal: Counter<string>;
   revisionMismatchObservedTotal: Counter<string>;
   oldestUnadmittedEligibleAgeSeconds: Gauge<string>;
+  scanCapTruncatedTotal: Counter<string>;
   passDurationMs: Histogram<string>;
 }
 
@@ -66,7 +67,14 @@ export function registerTripDiBoundaryAdmissionRecoveryMetrics(
 
   const oldestUnadmittedEligibleAgeSeconds = new Gauge({
     name: 'synqdrive_trip_di_boundary_admission_recovery_oldest_unadmitted_eligible_age_seconds',
-    help: 'Age in seconds of oldest eligible COMPLETED trip still missing current admission (recovery window)',
+    help: 'Age in seconds of oldest unadmitted trip observed in this capped scan batch (not full cohort)',
+    labelNames: ['outcome'],
+    registers: [registry],
+  });
+
+  const scanCapTruncatedTotal = new Counter({
+    name: 'synqdrive_trip_di_boundary_admission_recovery_scan_cap_truncated_total',
+    help: 'Recovery scans that hit per-vehicle or fleet caps before exhausting eligible window',
     registers: [registry],
   });
 
@@ -87,6 +95,7 @@ export function registerTripDiBoundaryAdmissionRecoveryMetrics(
     transientErrorsTotal,
     revisionMismatchObservedTotal,
     oldestUnadmittedEligibleAgeSeconds,
+    scanCapTruncatedTotal,
     passDurationMs,
   };
 }

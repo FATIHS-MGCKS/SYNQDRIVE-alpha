@@ -67,9 +67,11 @@ import { buildIntraTripGapSplitRepairAuditId } from './intra-trip-gap-split-repa
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import type { SplitTripAtGapResult } from '../decision/decision.types';
 import { TripDiBoundaryAdmissionService } from '../di-boundary-admission/trip-di-boundary-admission.service';
+import type { TripDiBoundaryAdmissionRecoveryFleetBudget } from '../di-boundary-admission/trip-di-boundary-admission-recovery.fleet-budget';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
+  recoveryFleetBudget?: TripDiBoundaryAdmissionRecoveryFleetBudget;
 }
 
 interface RepairCandidate {
@@ -385,18 +387,21 @@ export class TripReconciliationService {
           `DI boundary admission LIVE_FSM split recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
         );
       }
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Reconciliation failed for vehicle ${vehicleId} [${tier}]: ${(err as Error).message}`,
+      );
+    } finally {
       try {
         const organizationId = await this.resolveOrganizationId(vehicleId);
-        await this.diBoundaryAdmission.runDurableAdmissionRecoveryPass(organizationId, vehicleId);
+        await this.diBoundaryAdmission.runDurableAdmissionRecoveryPass(organizationId, vehicleId, {
+          fleetBudget: options?.recoveryFleetBudget,
+        });
       } catch (err: unknown) {
         this.logger.warn(
           `DI boundary admission durable recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
         );
       }
-    } catch (err: unknown) {
-      this.logger.warn(
-        `Reconciliation failed for vehicle ${vehicleId} [${tier}]: ${(err as Error).message}`,
-      );
     }
 
     return {

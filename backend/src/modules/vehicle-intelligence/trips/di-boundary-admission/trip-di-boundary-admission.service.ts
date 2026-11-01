@@ -34,8 +34,15 @@ import {
 } from './trip-di-boundary-admission-recovery.policy';
 import {
   classifyTripDiBoundaryAdmissionRecoveryCandidate,
-  listTripDiBoundaryAdmissionRecoveryCandidateTripIds,
+  listKeysetRecoveryCandidateTripIds,
+  listMissingAdmissionRecoveryCandidateTripIds,
 } from './trip-di-boundary-admission-recovery.util';
+import {
+  readTripDiBoundaryAdmissionRecoveryScanCursor,
+  writeTripDiBoundaryAdmissionRecoveryScanCursor,
+  type TripDiBoundaryAdmissionRecoveryScanCursor,
+} from './trip-di-boundary-admission-recovery.cursor';
+import type { TripDiBoundaryAdmissionRecoveryFleetBudget } from './trip-di-boundary-admission-recovery.fleet-budget';
 import { getTripDiBoundaryAdmissionRecoveryMetrics } from './trip-di-boundary-admission-recovery.metrics';
 import { register } from 'prom-client';
 
@@ -233,31 +240,58 @@ export class TripDiBoundaryAdmissionService {
     options?: {
       now?: Date;
       policy?: TripDiBoundaryAdmissionRecoveryPolicy;
+      fleetBudget?: TripDiBoundaryAdmissionRecoveryFleetBudget;
     },
   ): Promise<{
     mode: 'DISABLED' | 'SHADOW' | 'WRITER';
+    scanOutcome:
+      | 'disabled'
+      | 'none_in_window'
+      | 'zero_unadmitted_in_batch'
+      | 'cap_truncated'
+      | 'unadmitted_observed';
     scanned: number;
     needsRelease: number;
     released: number;
     skipped: number;
     guarded: number;
     alreadyCurrent: number;
+    capTruncated: boolean;
     durationMs: number;
   }> {
+    const emptyDisabled = (durationMs: number) => ({
+      mode: 'DISABLED' as const,
+      scanOutcome: 'disabled' as const,
+      scanned: 0,
+      needsRelease: 0,
+      released: 0,
+      skipped: 0,
+      guarded: 0,
+      alreadyCurrent: 0,
+      capTruncated: false,
+      durationMs,
+    });
     const startedMs = Date.now();
     const now = options?.now ?? new Date();
     const policy = options?.policy ?? readTripDiBoundaryAdmissionRecoveryPolicyFromEnv();
+    const metrics = getTripDiBoundaryAdmissionRecoveryMetrics(register);
+
+    const setGaugeOutcome = (
+      outcome: 'none_in_window' | 'zero_unadmitted_in_batch' | 'cap_truncated' | 'unadmitted_observed',
+      ageSec: number,
+    ) => {
+      for (const label of [
+        'none_in_window',
+        'zero_unadmitted_in_batch',
+        'cap_truncated',
+        'unadmitted_observed',
+      ] as const) {
+        metrics.oldestUnadmittedEligibleAgeSeconds.set({ outcome: label }, label === outcome ? ageSec : 0);
+      }
+    };
+
     if (!isTripDiBoundaryAdmissionRecoveryEnabled(policy)) {
-      return {
-        mode: 'DISABLED',
-        scanned: 0,
-        needsRelease: 0,
-        released: 0,
-        skipped: 0,
-        guarded: 0,
-        alreadyCurrent: 0,
-        durationMs: Date.now() - startedMs,
-      };
+      return emptyDisabled(Date.now() - startedMs);
     }
     if (
       !isTripDiBoundaryAdmissionRecoveryVehicleEligible(policy, {
@@ -266,55 +300,67 @@ export class TripDiBoundaryAdmissionService {
         vehicleOrganizationId: organizationId,
       })
     ) {
-      return {
-        mode: 'DISABLED',
-        scanned: 0,
-        needsRelease: 0,
-        released: 0,
-        skipped: 0,
-        guarded: 0,
-        alreadyCurrent: 0,
-        durationMs: Date.now() - startedMs,
-      };
+      return emptyDisabled(Date.now() - startedMs);
     }
     const eligibleFrom = computeTripDiBoundaryAdmissionRecoveryEligibleFrom(policy, now);
     if (eligibleFrom == null) {
-      return {
-        mode: 'DISABLED',
-        scanned: 0,
-        needsRelease: 0,
-        released: 0,
-        skipped: 0,
-        guarded: 0,
-        alreadyCurrent: 0,
-        durationMs: Date.now() - startedMs,
-      };
+      return emptyDisabled(Date.now() - startedMs);
     }
 
     const writerActive = policy.writerEnabled;
     const mode: 'SHADOW' | 'WRITER' = writerActive ? 'WRITER' : 'SHADOW';
     if (!writerActive && !policy.shadowObserveEnabled) {
+      return emptyDisabled(Date.now() - startedMs);
+    }
+
+    metrics.passTotal.inc({ mode });
+
+    const scanLimit = policy.maxTripsPerVehicle;
+    const cursor = await readTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId);
+    const missingIds = await listMissingAdmissionRecoveryCandidateTripIds(this.prisma, {
+      vehicleId,
+      eligibleFrom,
+      now,
+      limit: scanLimit,
+    });
+    const keysetLimit = Math.max(0, scanLimit - missingIds.length);
+    const keysetIds =
+      keysetLimit > 0
+        ? await listKeysetRecoveryCandidateTripIds(this.prisma, {
+            vehicleId,
+            eligibleFrom,
+            now,
+            cursor,
+            limit: keysetLimit,
+          })
+        : [];
+    const tripIds = [...missingIds, ...keysetIds.filter((id) => !missingIds.includes(id))];
+
+    const capTruncated =
+      missingIds.length >= scanLimit ||
+      (keysetLimit > 0 && keysetIds.length >= keysetLimit && tripIds.length >= scanLimit);
+    if (capTruncated) {
+      metrics.scanCapTruncatedTotal.inc();
+    }
+
+    if (tripIds.length === 0) {
+      setGaugeOutcome('none_in_window', 0);
+      await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, null);
+      const durationMs = Date.now() - startedMs;
+      metrics.passDurationMs.observe({ mode }, durationMs);
       return {
-        mode: 'DISABLED',
+        mode,
+        scanOutcome: 'none_in_window',
         scanned: 0,
         needsRelease: 0,
         released: 0,
         skipped: 0,
         guarded: 0,
         alreadyCurrent: 0,
-        durationMs: Date.now() - startedMs,
+        capTruncated: false,
+        durationMs,
       };
     }
-
-    const metrics = getTripDiBoundaryAdmissionRecoveryMetrics(register);
-    metrics.passTotal.inc({ mode });
-
-    const tripIds = await listTripDiBoundaryAdmissionRecoveryCandidateTripIds(this.prisma, {
-      vehicleId,
-      eligibleFrom,
-      now,
-      limit: Math.min(policy.maxTripsPerVehicle, policy.globalMaxPerPass),
-    });
 
     let needsRelease = 0;
     let released = 0;
@@ -322,16 +368,18 @@ export class TripDiBoundaryAdmissionService {
     let guarded = 0;
     let alreadyCurrent = 0;
     let oldestUnadmittedAgeSec = 0;
-    let attemptsThisPass = 0;
+    let lastScannedScope: TripDiBoundaryAdmissionScope | null = null;
+
+    let writerAttempts = 0;
 
     for (const tripId of tripIds) {
-      if (attemptsThisPass >= policy.globalMaxPerPass) break;
       metrics.candidatesScannedTotal.inc();
       const scope = await this.loadScope(tripId);
       if (!scope) {
         skipped += 1;
         continue;
       }
+      lastScannedScope = scope;
       const outcome = classifyTripDiBoundaryAdmissionRecoveryCandidate(scope);
       if (outcome.kind === 'ALREADY_CURRENT') {
         alreadyCurrent += 1;
@@ -362,7 +410,15 @@ export class TripDiBoundaryAdmissionService {
         continue;
       }
 
-      attemptsThisPass += 1;
+      const canAttemptWriter =
+        options?.fleetBudget != null
+          ? options.fleetBudget.consume(1) >= 1
+          : writerAttempts < policy.globalMaxPerPass;
+      if (!canAttemptWriter) {
+        break;
+      }
+      writerAttempts += 1;
+
       metrics.admissionAttemptsTotal.inc({ mode: 'WRITER' });
       try {
         const scopeBefore = await this.loadScope(tripId);
@@ -384,19 +440,39 @@ export class TripDiBoundaryAdmissionService {
       }
     }
 
-    if (needsRelease > 0 || oldestUnadmittedAgeSec > 0) {
-      metrics.oldestUnadmittedEligibleAgeSeconds.set(oldestUnadmittedAgeSec);
+    if (lastScannedScope?.endTime && lastScannedScope.tripId) {
+      const nextCursor: TripDiBoundaryAdmissionRecoveryScanCursor = {
+        endTimeUtc: lastScannedScope.endTime.toISOString(),
+        tripId: lastScannedScope.tripId,
+      };
+      if (tripIds.length < scanLimit) {
+        await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, null);
+      } else {
+        await writeTripDiBoundaryAdmissionRecoveryScanCursor(this.prisma, vehicleId, nextCursor);
+      }
     }
+
+    let scanOutcome: 'zero_unadmitted_in_batch' | 'cap_truncated' | 'unadmitted_observed' =
+      'zero_unadmitted_in_batch';
+    if (needsRelease > 0) {
+      scanOutcome = capTruncated ? 'cap_truncated' : 'unadmitted_observed';
+    } else if (capTruncated) {
+      scanOutcome = 'cap_truncated';
+    }
+    setGaugeOutcome(scanOutcome, oldestUnadmittedAgeSec);
+
     const durationMs = Date.now() - startedMs;
     metrics.passDurationMs.observe({ mode }, durationMs);
     return {
       mode,
+      scanOutcome,
       scanned: tripIds.length,
       needsRelease,
       released,
       skipped,
       guarded,
       alreadyCurrent,
+      capTruncated,
       durationMs,
     };
   }

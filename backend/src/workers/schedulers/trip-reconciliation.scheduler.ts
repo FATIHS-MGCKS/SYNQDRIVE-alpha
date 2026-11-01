@@ -9,6 +9,11 @@ import {
   loadFastReconciliationCohortConfig,
 } from './snapshot-polling/fast-reconciliation-cohort';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
+import {
+  DEFAULT_RECOVERY_GLOBAL_MAX_PER_PASS,
+  readTripDiBoundaryAdmissionRecoveryPolicyFromEnv,
+} from '../../modules/vehicle-intelligence/trips/di-boundary-admission/trip-di-boundary-admission-recovery.policy';
+import { TripDiBoundaryAdmissionRecoveryFleetBudget } from '../../modules/vehicle-intelligence/trips/di-boundary-admission/trip-di-boundary-admission-recovery.fleet-budget';
 
 /**
  * TripReconciliationScheduler
@@ -66,6 +71,11 @@ export class TripReconciliationScheduler {
       );
     }
 
+    const recoveryPolicy = readTripDiBoundaryAdmissionRecoveryPolicyFromEnv();
+    const recoveryFleetBudget = new TripDiBoundaryAdmissionRecoveryFleetBudget(
+      recoveryPolicy.globalMaxPerPass,
+    );
+
     for (const vehicleId of vehicleIds) {
       try {
         const result = await this.reconciliation.reconcileWindow(
@@ -73,7 +83,7 @@ export class TripReconciliationScheduler {
           from,
           to,
           'fast',
-          { useDimoSegmentFallback: true },
+          { useDimoSegmentFallback: true, recoveryFleetBudget },
         );
         if (result.repairsApplied > 0 || result.repairsProposed > 0) {
           this.logger.log(
@@ -97,6 +107,10 @@ export class TripReconciliationScheduler {
 
     const vehicles = await this.getVehiclesWithDimoTokens();
     let repaired = 0;
+    const recoveryFleetBudget = new TripDiBoundaryAdmissionRecoveryFleetBudget(
+      readTripDiBoundaryAdmissionRecoveryPolicyFromEnv().globalMaxPerPass ??
+        DEFAULT_RECOVERY_GLOBAL_MAX_PER_PASS,
+    );
 
     for (const vehicleId of vehicles) {
       try {
@@ -105,7 +119,7 @@ export class TripReconciliationScheduler {
           from,
           to,
           'warm',
-          { useDimoSegmentFallback: true },
+          { useDimoSegmentFallback: true, recoveryFleetBudget },
         );
         repaired += result.repairsApplied;
       } catch (err: unknown) {
@@ -127,6 +141,10 @@ export class TripReconciliationScheduler {
 
     const vehicles = await this.getVehiclesWithDimoTokens();
     let repaired = 0;
+    const recoveryFleetBudget = new TripDiBoundaryAdmissionRecoveryFleetBudget(
+      readTripDiBoundaryAdmissionRecoveryPolicyFromEnv().globalMaxPerPass ??
+        DEFAULT_RECOVERY_GLOBAL_MAX_PER_PASS,
+    );
 
     for (const vehicleId of vehicles) {
       try {
@@ -135,7 +153,7 @@ export class TripReconciliationScheduler {
           from,
           to,
           'cold',
-          { useDimoSegmentFallback: true },
+          { useDimoSegmentFallback: true, recoveryFleetBudget },
         );
         repaired += result.repairsApplied;
       } catch (err: unknown) {

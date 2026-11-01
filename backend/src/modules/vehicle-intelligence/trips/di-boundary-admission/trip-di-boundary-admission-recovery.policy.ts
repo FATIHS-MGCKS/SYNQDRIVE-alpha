@@ -1,6 +1,10 @@
 /**
  * Fail-closed durable DI boundary admission recovery (Fable P0).
  * Writer defaults OFF; activation requires an explicit persistent UTC timestamp (never process start).
+ *
+ * FSM RESTING contract: when `vehicle_trip_detection_states` row exists, state must be RESTING and
+ * active_trip_id must not reference the candidate trip. When no detection row exists (LEFT JOIN null),
+ * scan may proceed if other guards pass — explicit legacy/data-gap fallback, not an active-drive bypass.
  */
 import {
   parseDiV0S4ControlPlaneConfig,

@@ -20,9 +20,15 @@ Eligible `COMPLETED` trips can remain without `diV0BoundaryAdmissionV1` when dir
 
 `synqdrive_trip_di_boundary_admission_recovery_*` — pass mode, candidates scanned, attempts, successes, guard codes, transient errors, oldest unadmitted age, pass duration.
 
-## Historical trips
+## Activation write matrix (deploy without env changes)
 
-Pre-activation trips (e.g. Tiguan `2245f107…`) are **not** auto-recovered by design; require separate operator approval and eligibility.
+| Path | Recovery `ACTIVATED_AT` | Recovery `WRITER` | Production writes on deploy |
+|------|-------------------------|-------------------|-----------------------------|
+| A. Partial extension direct hook (`tryReleaseAfterPartialTripBoundaryExtension`) | not required | not required | **Possible today** when reconciliation applies a committed partial extension (existing #2293 behavior unchanged) |
+| B. Recovery shadow scan | required | OFF (default) | **No** admission writes; metrics/logs only |
+| C. Recovery writer (`tryReleaseForTripTransactional` via sweeper) | required | ON (operator) | **Yes** — bounded `diV0BoundaryAdmissionV1` patches only |
+
+Deploying this PR alone does **not** set activation or writer flags. Historical trips before activation horizon are never scanned for recovery.
 
 ## Validation
 
