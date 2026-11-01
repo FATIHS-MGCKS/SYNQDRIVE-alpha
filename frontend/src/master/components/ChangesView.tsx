@@ -376,6 +376,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T00:00:00.000Z',
   },
   {
+    id: 'tire-v3-calibration-shadow-p3-2026-11-01',
+    version: '4.9.5003',
+    title: 'Tire Wear V3 — calibration shadow P3 (snapshots + writer, default OFF)',
+    summary: [
+      'Additive table `tire_wear_v3_calibration_snapshot_v1` for immutable per-wheel V3 predictions; reuses `computeForSetup` with `persistShadow: false`.',
+      'Leader scheduler `tire_wear_v3_calibration_shadow_writer` and `TIRE_WEAR_V3_CALIBRATION_SHADOW_WRITE_ENABLED` (default false); pairing policy + Master Admin read-only inspection API.',
+      'Separate from P3A `tire_wear_v3_prior_shadow_v1`; no customer UI or wear-equation changes.',
+    ],
+    reason:
+      'Prospective calibration evidence for independent tread measurements without activating production writes in this PR.',
+    previousBehavior:
+      'P2 calibration shadow persistence plan only; no calibration snapshot store or scheduled writer.',
+    details:
+      'backend: wear-v3-calibration-shadow/*, migration 20261101120000; architecture/tires/integration/TIRE_WEAR_V3_CALIBRATION_SHADOW_P3.md.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-11-01T02:00:00.000Z',
+  },
+  {
     id: 'oneauto-p1-provider-foundation-2026-10-31',
     version: '4.9.5002',
     title: 'One Auto API — Master Admin provider foundation (backend P1)',
