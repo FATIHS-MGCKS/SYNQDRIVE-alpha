@@ -376,6 +376,42 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-28T00:00:00.000Z',
   },
   {
+    id: 'tire-v3-calibration-center-p3-1-2026-11-01',
+    version: '4.9.5004',
+    title: 'Master Admin — Tire V3 Calibration Center (P3.1 read-only UI)',
+    summary: [
+      'Engineering nav entry and four-tab dashboard: overview, snapshots, accuracy (not evaluable), data quality (sampled rejections).',
+      'Read-only list/detail APIs for org-scoped snapshot exploration; snapshot drawer with prediction payload sections.',
+      'Writer telemetry labeled replica-local; no customer V3 or writer activation from UI.',
+    ],
+    reason: 'Operational monitoring for calibration shadow P3 without implying persisted measurement pairs or accuracy metrics.',
+    previousBehavior: 'Calibration shadow inspectable via raw Master Admin API only (PR #2289).',
+    details:
+      'backend: tire-wear-v3-calibration-center read routes; frontend: master/tire-v3-calibration-center/*; master.intelligence.tireCalibration.* i18n.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-11-01T09:30:00.000Z',
+  },
+  {
+    version: '4.9.5003',
+    title: 'Tire Wear V3 — calibration shadow P3 (snapshots + writer, default OFF)',
+    summary: [
+      'Additive table `tire_wear_v3_calibration_snapshot_v1` for immutable per-wheel V3 predictions; reuses `computeForSetup` with `persistShadow: false`.',
+      'Leader scheduler `tire_wear_v3_calibration_shadow_writer` and `TIRE_WEAR_V3_CALIBRATION_SHADOW_WRITE_ENABLED` (default false); pairing policy + Master Admin read-only inspection API.',
+      'Pre-merge hardening: calibration eligibility digest gate (no odometer-only churn), physical tire id + temporal leakage fields, DB immutability trigger, org-scoped eligibility.',
+      'Separate from P3A `tire_wear_v3_prior_shadow_v1`; no customer UI or wear-equation changes.',
+    ],
+    reason:
+      'Prospective calibration evidence for independent tread measurements without activating production writes in this PR.',
+    previousBehavior:
+      'P2 calibration shadow persistence plan only; no calibration snapshot store or scheduled writer.',
+    details:
+      'backend: wear-v3-calibration-shadow/*, migrations 20261101120000 + 20261101183000; architecture/tires/integration/TIRE_WEAR_V3_CALIBRATION_SHADOW_P3.md.',
+    affectsArchitecture: true,
+    module: 'Tires Health',
+    createdAt: '2026-11-01T02:00:00.000Z',
+  },
+  {
     id: 'oneauto-p1-provider-foundation-2026-10-31',
     version: '4.9.5002',
     title: 'One Auto API — Master Admin provider foundation (backend P1)',
