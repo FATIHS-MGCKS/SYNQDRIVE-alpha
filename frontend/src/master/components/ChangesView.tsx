@@ -450,6 +450,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-11-01T08:40:00.000Z',
   },
   {
+    id: 'oneauto-p25e-a-offline-security-hardening-2026-11-01',
+    version: '4.9.5006',
+    title: 'One Auto API — P2.5E-A offline security hardening',
+    summary: [
+      'Fail-closed SUCCESS_RESULT_ERROR envelope on HTTP 200 (`success:false` / malformed success never completes jobs).',
+      'HTTP client enforces `isValidVin`, manual redirects, bounded response bytes; non-JSON bodies stored without raw preview text.',
+      'Positive finite `ONEAUTO_ORG_DAILY_BUDGET_MINOR` required when `ONEAUTO_ENABLED=true`; default disabled installs unchanged.',
+      'Execution-verified registry remains empty; mocked regression tests only — no live provider calls.',
+    ],
+    reason: 'Remediate P2.5D live-readiness findings before any sandbox attestation.',
+    previousBehavior:
+      'HTTP 200 could mark jobs SUCCEEDED regardless of OpenAPI success flag; HTTP client lacked VIN regex, redirect policy, and response size cap.',
+    details:
+      'backend: envelope + budget guard utils, HTTP/execution service updates, `oneauto-p25e-offline-security-hardening.spec.ts`; architecture `oneauto-provider/P1_CHANGE_RECORD.md`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-11-01T22:15:00.000Z',
+  },
+  {
     id: 'oneauto-p2-master-admin-ui-2026-11-01',
     version: '4.9.5003',
     title: 'One Auto API — Master Admin service dialog (frontend P2)',

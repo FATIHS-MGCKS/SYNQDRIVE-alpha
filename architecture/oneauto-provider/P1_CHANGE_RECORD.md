@@ -18,3 +18,9 @@
 - **Harness:** `oneauto-p25c-vin-lookup-offline-harness.spec.ts` — mocked fetch only; synthetic VIN; no live sandbox.
 - **Util:** `catalog/oneauto-documented-request.util.ts` — URL builder for documented GET (offline).
 - **Non-effects:** `ONEAUTO_EXECUTION_VERIFIED_PROVIDER_CONTRACTS` remains empty in production; harness uses ephemeral test fixtures only.
+
+## P2.5E-A — Offline security hardening (2026-11-01)
+
+- **Scope:** Fail-closed SUCCESS_RESULT_ERROR envelope on HTTP 200; HTTP client `isValidVin`; redirect manual + response byte cap; positive org budget required when `ONEAUTO_ENABLED=true`.
+- **Tests:** `oneauto-p25e-offline-security-hardening.spec.ts` (mocked only).
+- **Non-effects:** `ONEAUTO_EXECUTION_VERIFIED_PROVIDER_CONTRACTS` remains empty; no live provider calls; no SKU promotions.

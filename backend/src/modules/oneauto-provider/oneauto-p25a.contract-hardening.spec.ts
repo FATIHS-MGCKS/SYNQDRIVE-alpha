@@ -156,6 +156,8 @@ describe('OneAutoHttpClient contract-driven HTTP', () => {
       baseUrl: 'https://sandbox.oneautoapi.com',
       requestTimeoutMs: 5000,
       maxRetries: 0,
+      orgDailyBudgetMinor: 10_000,
+      maxResponseBytes: 1_048_576,
     }),
   } as unknown as ConfigService;
 
@@ -252,6 +254,7 @@ describe('OneAutoHttpClient contract-driven HTTP', () => {
         baseUrl: 'https://evil.example.com',
         requestTimeoutMs: 5000,
         maxRetries: 0,
+        orgDailyBudgetMinor: 10_000,
       }),
     } as unknown as ConfigService;
     const client = new OneAutoHttpClient(badHostConfig);
@@ -291,8 +294,8 @@ describe('OneAutoProviderExecutionService async and 206 policy', () => {
     const config = {
       get: (key?: string) =>
         key === 'oneautoProvider'
-          ? { enabled: true, maxPollAttempts: 2, pollIntervalMs: 1 }
-          : { enabled: true },
+          ? { enabled: true, orgDailyBudgetMinor: 500, maxPollAttempts: 2, pollIntervalMs: 1 }
+          : { enabled: true, orgDailyBudgetMinor: 500 },
     } as unknown as ConfigService;
     const queue = { add: jest.fn() };
     const svc = new OneAutoProviderExecutionService(

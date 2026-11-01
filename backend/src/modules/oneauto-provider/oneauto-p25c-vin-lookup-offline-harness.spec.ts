@@ -48,6 +48,8 @@ function sandboxEnabledConfig(): ConfigService {
       baseUrl: SANDBOX_BASE,
       requestTimeoutMs: 5_000,
       maxRetries: 0,
+      orgDailyBudgetMinor: 10_000,
+      maxResponseBytes: 1_048_576,
     }),
   } as unknown as ConfigService;
 }
@@ -121,9 +123,15 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('documents HTTP client does not re-check isValidVin (service layer gate)', () => {
-      expect(isValidVin('NOT-A-VIN')).toBe(false);
-      expect(normalizeVin('NOT-A-VIN')).toBe('NOT-A-VIN');
+    it('rejects invalid VIN before any mocked fetch', async () => {
+      process.env.ONEAUTO_API_KEY = 'offline-harness-redacted-key';
+      ONEAUTO_EXECUTION_VERIFIED_PROVIDER_CONTRACTS.set(SKU, executionVerifiedFixture());
+      const fetchMock = jest.fn();
+      const client = new OneAutoHttpClient(sandboxEnabledConfig(), fetchMock);
+      await expect(
+        client.executeProviderGet({ contract: executionVerifiedFixture(), vin: 'NOT-A-VIN' }),
+      ).rejects.toMatchObject({ code: 'ONEAUTO_INVALID_VIN' });
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('sends GET with x-api-key and Accept application/json without logging the key', async () => {
@@ -145,6 +153,7 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
       expect(url).toBe(
         `${SANDBOX_BASE}/ezyvin/vinlookup/?vehicle_identification_number=${SYNTHETIC_VIN}`,
       );
+      expect(init.redirect).toBe('manual');
       expect(new URL(url).hostname).toBe('sandbox.oneautoapi.com');
       const headers = init.headers as Record<string, string>;
       expect(headers['x-api-key']).toBe('offline-harness-redacted-key');
@@ -163,6 +172,7 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
           baseUrl: 'https://evil.example.com',
           requestTimeoutMs: 5_000,
           maxRetries: 0,
+          orgDailyBudgetMinor: 10_000,
         }),
       } as unknown as ConfigService;
       const fetchMock = jest.fn();
@@ -180,7 +190,7 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
       const client = new OneAutoHttpClient(sandboxEnabledConfig(), fetchMock);
       await expect(
         client.executeProviderGet({ contract: executionVerifiedFixture(), vin: SYNTHETIC_VIN }),
-      ).rejects.toMatchObject({ code: 'ONEAUTO_PROVIDER_TIMEOUT' });
+      ).rejects.toMatchObject({ code: 'ONEAUTO_PROVIDER_REQUEST_FAILED' });
     });
   });
 
@@ -209,7 +219,7 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
       expect(result.redactedRequestPath).toBe('ezyvin/vinlookup/');
     });
 
-    it('stores non-JSON bodies as _rawPreview only (schema UNKNOWN)', async () => {
+    it('stores non-JSON bodies without raw preview text', async () => {
       process.env.ONEAUTO_API_KEY = 'offline-harness-redacted-key';
       ONEAUTO_EXECUTION_VERIFIED_PROVIDER_CONTRACTS.set(SKU, executionVerifiedFixture());
       const fetchMock = jest.fn().mockResolvedValue({
@@ -223,7 +233,7 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
         vin: SYNTHETIC_VIN,
       });
       expect(result.httpStatus).toBe(502);
-      expect(result.body).toEqual({ _rawPreview: 'upstream unavailable' });
+      expect(result.body).toEqual({ _nonJsonResponse: true, byteLength: expect.any(Number) });
     });
 
     it('redacts sensitive keys when persisting provider JSON', () => {
@@ -252,8 +262,8 @@ describe('OneAuto P2.5C OE_VIN_LOOKUP_EU offline contract harness', () => {
       const config = {
         get: (key?: string) =>
           key === 'oneautoProvider'
-            ? { enabled: true, maxPollAttempts: 2, pollIntervalMs: 1 }
-            : { enabled: true },
+            ? { enabled: true, orgDailyBudgetMinor: 500, maxPollAttempts: 2, pollIntervalMs: 1 }
+            : { enabled: true, orgDailyBudgetMinor: 500 },
       } as unknown as ConfigService;
       const queue = { add: jest.fn() };
       return {
