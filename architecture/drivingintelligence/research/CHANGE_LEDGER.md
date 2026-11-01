@@ -2613,3 +2613,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | **No** production writes/deploy; **no** motion-core/admission/P2 CSV changes; **no** peak reconstruction |
 | REMAINING | Empirical 129-event sidecar from Production DB requires operator `DATABASE_URL` CLI run; peaks remain unavailable until contract extension |
 
+### 2026-10-31 — Tiguan partial boundary extension → DI admission release (trips reconciliation hook)
+
+| Field | Detail |
+|-------|--------|
+| CHANGE | Trips module releases `diV0BoundaryAdmissionV1` after committed `PARTIAL_TRIP_BOUNDARY_EXTENSION`; S4 discovery eligibility unchanged (still requires matching admission revision) |
+| WHY | Post-repair `boundaryRefresh` PENDING blocked `canRelease`; Tiguan canonical trip never received admission via boundary-scanned release path |
+| VALIDATION | `trip-di-boundary-admission.unit.spec.ts`; postgres harness when live |
+| NON_EFFECTS | **No** S4 worker/discovery code change; **no** scoring; **no** historical replay |
+| REMAINING | Owner-authorized read-only Production eligibility before any Tiguan replay |
+
