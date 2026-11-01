@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -55,8 +56,10 @@ import {
   writeTripDiBoundaryAdmissionRecoveryScanCursor,
   type TripDiBoundaryAdmissionRecoveryScanCursor,
 } from './trip-di-boundary-admission-recovery.cursor';
-import { getTripDiBoundaryAdmissionRecoveryMetrics } from './trip-di-boundary-admission-recovery.metrics';
-import { register } from 'prom-client';
+import {
+  getTripDiBoundaryAdmissionRecoveryMetrics,
+  type TripDiBoundaryAdmissionRecoveryMetricsHandles,
+} from './trip-di-boundary-admission-recovery.metrics';
 
 export type TryReleaseAfterPartialTripBoundaryExtensionResult =
   | { released: true }
@@ -74,8 +77,26 @@ export type TryReleaseAfterPartialTripBoundaryExtensionResult =
 @Injectable()
 export class TripDiBoundaryAdmissionService {
   private readonly logger = new Logger(TripDiBoundaryAdmissionService.name);
+  private recoveryMetricsHandles: TripDiBoundaryAdmissionRecoveryMetricsHandles | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
+  ) {}
+
+  /** Authoritative Prometheus registry (same as GET /api/v1/metrics). */
+  private recoveryMetrics(): TripDiBoundaryAdmissionRecoveryMetricsHandles {
+    if (this.recoveryMetricsHandles == null) {
+      const registry = this.tripMetrics?.registry;
+      if (registry == null) {
+        throw new Error(
+          'TripDiBoundaryAdmissionService recovery metrics require TripMetricsService.registry',
+        );
+      }
+      this.recoveryMetricsHandles = getTripDiBoundaryAdmissionRecoveryMetrics(registry);
+    }
+    return this.recoveryMetricsHandles;
+  }
 
   async loadScope(tripId: string): Promise<TripDiBoundaryAdmissionScope | null> {
     const rows = await this.prisma.$queryRaw<
@@ -290,7 +311,7 @@ export class TripDiBoundaryAdmissionService {
     const startedMs = Date.now();
     const now = options?.now ?? new Date();
     const policy = options?.policy ?? readTripDiBoundaryAdmissionRecoveryPolicyFromEnv();
-    const metrics = getTripDiBoundaryAdmissionRecoveryMetrics(register);
+    const metrics = this.recoveryMetrics();
 
     const setGaugeOutcome = (
       outcome: 'none_in_window' | 'zero_unadmitted_in_batch' | 'cap_truncated' | 'unadmitted_observed',

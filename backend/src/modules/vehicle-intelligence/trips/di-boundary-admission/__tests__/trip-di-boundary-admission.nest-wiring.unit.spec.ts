@@ -21,6 +21,14 @@ describe('Trip DI boundary admission Nest wiring', () => {
     expect(orchestrationSrc).toContain('releaseLiveFsmSplitSegmentsAfterFinalization');
     expect(reconciliationSrc).toContain('private readonly diBoundaryAdmission: TripDiBoundaryAdmissionService');
     expect(reconciliationSrc).not.toContain('diBoundaryAdmission?: TripDiBoundaryAdmissionService');
-    expect(reconciliationSrc).toContain('tryReleaseAfterPartialTripBoundaryExtension');
+    const serviceSrc = fs.readFileSync(
+      path.join(
+        repoRoot,
+        'src/modules/vehicle-intelligence/trips/di-boundary-admission/trip-di-boundary-admission.service.ts',
+      ),
+      'utf8',
+    );
+    expect(serviceSrc).toContain('@Optional() private readonly tripMetrics?: TripMetricsService');
+    expect(serviceSrc).toContain('getTripDiBoundaryAdmissionRecoveryMetrics(registry)');
   });
 });
