@@ -5,12 +5,14 @@ export type OneAutoCatalogAvailability =
   | 'PATH_UNVERIFIED'
   | 'CONTRACT_UNVERIFIED';
 
-export type OneAutoExecutionMode = 'SYNC' | 'ASYNC_POLL';
+export type OneAutoExecutionMode = 'SYNC' | 'ASYNC_POLL' | 'ASYNC_CAPABLE' | 'ASYNC_UNVERIFIED';
 
 export type OneAutoContractGateReport = {
   serviceSku: string;
   executable: boolean;
-  reason: 'CONTRACT_UNVERIFIED' | 'EXECUTABLE';
+  reason: 'CONTRACT_UNVERIFIED' | 'DOCUMENTED_NOT_EXECUTABLE' | 'EXECUTABLE';
+  documentationState?: 'DOCUMENTED' | 'UNVERIFIED';
+  executionVerificationState?: 'EXECUTION_VERIFIED' | 'UNVERIFIED';
   unverifiedFields: string[];
 };
 

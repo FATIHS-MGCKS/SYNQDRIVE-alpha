@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { OneAutoProviderHttpContract } from '../catalog/oneauto-contract-types';
 import { assertOneAutoAllowlistedPath } from './oneauto-allowlist';
 import { ONEAUTO_HTTP_FETCH, type OneAutoHttpFetchImpl } from './oneauto-http-fetch.token';
 import { normalizeVin } from './oneauto-vin.util';
@@ -10,6 +11,25 @@ export type OneAutoHttpResult = {
   body: unknown;
   redactedRequestPath: string;
 };
+
+const ALLOWED_BASE_HOSTS = new Set(['sandbox.oneautoapi.com', 'api.oneautoapi.com']);
+
+function assertAllowedBaseUrl(baseUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw Object.assign(new Error('One Auto base URL invalid'), { code: 'ONEAUTO_BASE_URL_INVALID' });
+  }
+  if (parsed.protocol !== 'https:') {
+    throw Object.assign(new Error('One Auto base URL must be https'), { code: 'ONEAUTO_BASE_URL_INVALID' });
+  }
+  if (!ALLOWED_BASE_HOSTS.has(parsed.hostname.toLowerCase())) {
+    throw Object.assign(new Error('One Auto base URL host not allowlisted'), {
+      code: 'ONEAUTO_BASE_URL_NOT_ALLOWLISTED',
+    });
+  }
+}
 
 @Injectable()
 export class OneAutoHttpClient {
@@ -44,22 +64,39 @@ export class OneAutoHttpClient {
     }
   }
 
-  async getVinLookup(input: {
-    relativePath: string;
+  /**
+   * Contract-driven GET — requires execution-verified contract (allowlisted path, official auth/VIN param).
+   */
+  async executeProviderGet(input: {
+    contract: OneAutoProviderHttpContract;
     vin: string;
-    vinQueryParameter?: 'vin';
   }): Promise<OneAutoHttpResult> {
     this.assertOutboundAllowed();
+    const contract = input.contract;
+    if (contract.evidenceState !== 'EXECUTION_VERIFIED') {
+      throw Object.assign(new Error('One Auto contract not execution-verified'), {
+        code: 'CONTRACT_UNVERIFIED',
+      });
+    }
+    if (contract.httpMethod !== 'GET') {
+      throw Object.assign(new Error('One Auto unsupported HTTP method'), {
+        code: 'ONEAUTO_METHOD_NOT_ALLOWLISTED',
+      });
+    }
+
     const vin = normalizeVin(input.vin);
     if (!vin) {
       throw Object.assign(new Error('Invalid VIN'), { code: 'ONEAUTO_INVALID_VIN' });
     }
-    assertOneAutoAllowlistedPath('GET', input.relativePath);
+
+    assertOneAutoAllowlistedPath(contract.httpMethod, contract.providerPathTemplate);
 
     const cfg = this.cfg();
     const base = (cfg?.baseUrl ?? '').replace(/\/+$/, '');
-    const path = input.relativePath.replace(/^\/+/, '');
-    const vinParam = input.vinQueryParameter ?? 'vin';
+    assertAllowedBaseUrl(base.startsWith('http') ? base : `https://${base}`);
+
+    const path = contract.providerPathTemplate.replace(/^\/+/, '');
+    const vinParam = contract.vinQueryParameter;
     const url = `${base}/${path}?${encodeURIComponent(vinParam)}=${encodeURIComponent(vin)}`;
 
     const apiKey = process.env.ONEAUTO_API_KEY?.trim();
@@ -67,52 +104,58 @@ export class OneAutoHttpClient {
       throw Object.assign(new Error('One Auto API key not configured'), { code: 'ONEAUTO_API_KEY_MISSING' });
     }
 
-    let lastError: unknown;
-    const attempts = Math.max(1, (cfg?.maxRetries ?? 0) + 1);
-    for (let attempt = 1; attempt <= attempts; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), cfg?.requestTimeoutMs ?? 30_000);
-        const res = await this.fetchImpl(url, {
-          method: 'GET',
-          headers: {
-            Authorization: apiKey,
-            Accept: 'application/json',
-          },
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+    const headerName = contract.authHeaderName;
+    const attempts = 1;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), cfg?.requestTimeoutMs ?? 30_000);
+      const res = await this.fetchImpl(url, {
+        method: 'GET',
+        headers: {
+          [headerName]: apiKey,
+          Accept: 'application/json',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
 
-        const providerStatusHeader = res.headers.get('status') ?? res.headers.get('Status');
-        let body: unknown = null;
-        const text = await res.text();
-        if (text) {
-          try {
-            body = JSON.parse(text);
-          } catch {
-            body = { _rawPreview: text.slice(0, 512) };
-          }
+      const providerStatusHeader = res.headers.get('status') ?? res.headers.get('Status');
+      let body: unknown = null;
+      const text = await res.text();
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = { _rawPreview: text.slice(0, 512) };
         }
-
-        this.logger.log(
-          `OneAuto GET ${path} http=${res.status} sandbox=${cfg?.sandbox === true} attempt=${attempt}`,
-        );
-
-        return {
-          httpStatus: res.status,
-          providerStatusHeader,
-          body,
-          redactedRequestPath: path,
-        };
-      } catch (err) {
-        lastError = err;
-        if (attempt >= attempts) break;
       }
-    }
 
-    throw Object.assign(new Error('One Auto provider request failed'), {
-      code: 'ONEAUTO_PROVIDER_TIMEOUT',
-      cause: lastError,
+      this.logger.log(
+        `OneAuto GET ${path} http=${res.status} sandbox=${cfg?.sandbox === true} attempts=${attempts}`,
+      );
+
+      return {
+        httpStatus: res.status,
+        providerStatusHeader,
+        body,
+        redactedRequestPath: path,
+      };
+    } catch (err) {
+      throw Object.assign(new Error('One Auto provider request failed'), {
+        code: 'ONEAUTO_PROVIDER_TIMEOUT',
+        cause: err,
+      });
+    }
+  }
+
+  /** @deprecated Use executeProviderGet with execution-verified contract */
+  async getVinLookup(_input: {
+    relativePath: string;
+    vin: string;
+    vinQueryParameter?: never;
+  }): Promise<OneAutoHttpResult> {
+    throw Object.assign(new Error('One Auto HTTP client requires execution-verified contract'), {
+      code: 'CONTRACT_UNVERIFIED',
     });
   }
 }

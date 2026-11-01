@@ -395,7 +395,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-31T16:00:00.000Z',
   },
   {
-    id: 'oneauto-p2-master-admin-ui-2026-11-01',
+    id: 'oneauto-p25a-contract-hardening-2026-11-01',
+    version: '4.9.5004',
+    title: 'One Auto API — P2.5A documented contracts & HTTP hardening',
+    summary: [
+      'Six vendor-documented GET paths, `x-api-key`, and `vehicle_identification_number` recorded in `oneauto-documented-contracts.ts` — DOCUMENTED ≠ executable.',
+      'Execution registry remains empty; allowlist + outbound HTTP require EXECUTION_VERIFIED attestation. HTTP 206 and async poll billing fail-closed.',
+      'DE PrePay EUR reference minors in `oneauto-prepay-reference-prices.ts` (not auto-quoted); catalog paths updated; `ONEAUTO_MAX_RETRIES` default 0.',
+    ],
+    reason:
+      'Align P1 foundation with P2.5 audit without enabling paid provider calls or bypassing MFA/budget/idempotency gates.',
+    previousBehavior:
+      'Placeholder `oe/.../v1/lookup` paths, `Authorization`/`vin` HTTP defaults, empty verified registry only.',
+    details:
+      'backend: `oneauto-contract-types`, `oneauto-documented-contracts`, `oneauto-prepay-reference-prices`, HTTP client + execution 206/async policy, `oneauto-p25a.contract-hardening.spec.ts`, evidence doc refresh.',
+    affectsArchitecture: false,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-11-01T08:40:00.000Z',
+  },
     version: '4.9.5003',
     title: 'One Auto API — Master Admin service dialog (frontend P2)',
     summary: [

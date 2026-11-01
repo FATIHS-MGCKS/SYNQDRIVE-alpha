@@ -16,7 +16,7 @@ export type OneAutoProviderJobPayload = {
   phase: 'initial' | 'poll';
 };
 
-const TERMINAL_SUCCESS = new Set([200, 206]);
+const TERMINAL_SUCCESS_HTTP = new Set([200]);
 const AWAITING = new Set([202]);
 
 const BILLABLE_JOB_OPTIONS = {
@@ -136,10 +136,9 @@ export class OneAutoProviderExecutionService {
     }
 
     try {
-      const result = await this.http.getVinLookup({
-        relativePath: contract.providerPathTemplate,
+      const result = await this.http.executeProviderGet({
+        contract,
         vin: job.vinSnapshot,
-        vinQueryParameter: contract.vinQueryParameter,
       });
 
       await this.prisma.oneAutoProviderResponse.create({
@@ -152,7 +151,18 @@ export class OneAutoProviderExecutionService {
         },
       });
 
-      if (TERMINAL_SUCCESS.has(result.httpStatus)) {
+      if (result.httpStatus === 206) {
+        if (!contract.http206CompleteSuccessAllowed) {
+          await this.failJob(
+            jobId,
+            'ONEAUTO_PARTIAL_CONTENT',
+            'HTTP 206 partial content — not attested as complete success',
+          );
+          return;
+        }
+      }
+
+      if (TERMINAL_SUCCESS_HTTP.has(result.httpStatus)) {
         await this.prisma.oneAutoProviderJob.update({
           where: { id: jobId },
           data: {
