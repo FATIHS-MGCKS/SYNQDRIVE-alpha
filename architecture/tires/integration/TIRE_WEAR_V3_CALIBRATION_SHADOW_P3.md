@@ -43,9 +43,22 @@ Requires `MASTER_ADMIN` role.
 
 ## Idempotency
 
-Unique `idempotency_key` = SHA-256 over org, setup, mount period, wheel, model version, input fingerprint, schema version.
+Unique `idempotency_key` = SHA-256 over org, setup, mount period, wheel, model version, **`calibrationEligibilityDigest`**, schema version. Row still stores canonical customer `input_fingerprint` from the compute result for audit.
 
-## Pairing foundation
+## Snapshot cadence (calibration eligibility)
+
+- Canonical customer `inputFingerprint` is **unchanged**.
+- Calibration uses `computeTireWearV3CalibrationEligibilityDigest()` — prediction-relevant inputs only (setup, mount, ledger digest, in-period measurements, model/config); **excludes live `currentOdometerKm` telemetry churn**.
+- Writer compares latest stored `calibration_eligibility_digest` per setup; **skips V3 compute and inserts** when unchanged (repeat scheduler ticks with stable inputs ⇒ zero new rows).
+- **Odometer progression over time:** represented when the **trip usage ledger** changes (new trips / ledger content digest), not on incidental live odometer telemetry drift between ticks.
+- New snapshots when ledger trips, measurements-in-period, setup/mount revision, or model config change.
+- Idempotency key uses `calibrationEligibilityDigest` + wheel + mount + model version (not odometer-only drift).
+
+## Immutability
+
+- PostgreSQL trigger forbids UPDATE; DELETE requires session `synqdrive.calibration_snapshot_privileged_delete=1` (retention/maintenance only).
+
+## Pairing
 
 Policy module `tire-wear-v3-calibration-pairing.policy.ts` — prospective match only (`computed_at` / `prediction_created_at` strictly before measurement). No coefficient updates.
 

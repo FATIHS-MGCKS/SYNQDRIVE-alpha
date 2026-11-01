@@ -28,6 +28,12 @@ export interface TireWearV3CalibrationSnapshotPayload {
     modelVersion: string;
     modelConfigHash: string;
     inputFingerprint: string;
+    calibrationEligibilityDigest: string;
+    latestSourceMeasurementAt: string | null;
+    sourceDataCutoffAt: string;
+    measurementIdsUsed: string[];
+    pairingEligible: boolean;
+    physicalIdentityAmbiguous: boolean;
     predictedTreadMm: { lo: number; hi: number } | null;
     displayTreadMm: { lo: number; hi: number } | null;
     remainingKm: { lo: number; hi: number } | null;
@@ -73,8 +79,13 @@ export interface TireWearV3CalibrationSnapshotInsertRow {
   modelVersion: string;
   modelConfigHash: string;
   inputFingerprint: string;
+  calibrationEligibilityDigest: string;
   snapshotSchemaVersion: string;
   idempotencyKey: string;
+  latestSourceMeasurementAt: Date | null;
+  sourceDataCutoffAt: Date;
+  pairingEligible: boolean;
+  measurementIdsUsed: string[];
   snapshotPayload: TireWearV3CalibrationSnapshotPayload;
 }
 
@@ -91,7 +102,11 @@ export type TireWearV3CalibrationPairingRejectionReason =
   | 'ODOMETER_CHRONOLOGY_INVALID'
   | 'MEASUREMENT_VALUE_MISSING'
   | 'INSUFFICIENT_MEASUREMENT_EVIDENCE'
-  | 'POST_MEASUREMENT_DATA_LEAKAGE';
+  | 'POST_MEASUREMENT_DATA_LEAKAGE'
+  | 'TARGET_MEASUREMENT_IN_PREDICTION_INPUT'
+  | 'PAIRING_OBSERVATIONAL_ONLY'
+  | 'PHYSICAL_IDENTITY_AMBIGUOUS'
+  | 'PHYSICAL_TIRE_MISMATCH';
 
 export interface TireWearV3CalibrationPairingCandidate {
   eligible: boolean;
@@ -118,6 +133,12 @@ export function buildCalibrationSnapshotPayload(args: {
   physicalTireId: string | null;
   predictionCreatedAt: Date;
   rotationDuringMountPeriod: boolean;
+  calibrationEligibilityDigest: string;
+  latestSourceMeasurementAt: Date | null;
+  sourceDataCutoffAt: Date;
+  measurementIdsUsed: string[];
+  pairingEligible: boolean;
+  physicalIdentityAmbiguous: boolean;
 }): TireWearV3CalibrationSnapshotPayload {
   const { result, wheel } = args;
   return {
@@ -137,6 +158,12 @@ export function buildCalibrationSnapshotPayload(args: {
       modelVersion: result.modelVersion,
       modelConfigHash: result.modelConfigHash,
       inputFingerprint: result.inputFingerprint,
+      calibrationEligibilityDigest: args.calibrationEligibilityDigest,
+      latestSourceMeasurementAt: args.latestSourceMeasurementAt?.toISOString() ?? null,
+      sourceDataCutoffAt: args.sourceDataCutoffAt.toISOString(),
+      measurementIdsUsed: args.measurementIdsUsed,
+      pairingEligible: args.pairingEligible,
+      physicalIdentityAmbiguous: args.physicalIdentityAmbiguous,
       predictedTreadMm: wheel.estimatedTreadMm ?? null,
       displayTreadMm: wheel.displayTreadMm,
       remainingKm: wheel.remainingKm ?? null,

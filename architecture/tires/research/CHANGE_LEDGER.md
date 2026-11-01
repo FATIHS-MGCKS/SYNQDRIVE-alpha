@@ -316,3 +316,14 @@ Newest entry last. Never rewrite or delete entries.
 | EXPECTED_EFFECT | When ops enables flag on leader replica, idempotent per-wheel snapshots on changed V3 fingerprints; pairing rejects retroactive/leakage cases |
 | VALIDATION | Jest calibration-shadow + pairing + writer + scheduler specs |
 | NON_EFFECTS | Customer read path unchanged; β=0; P3A prior shadow flag unchanged; no production activation in PR |
+
+### Tire Wear V3 Calibration Shadow P3 — PR #2289 pre-merge hardening (2026-11-01)
+
+| Event | Detail |
+|-------|--------|
+| BEFORE | Snapshots keyed on full V3 `inputFingerprint` (odometer telemetry churn); no physical tire id / temporal cutoff fields; no DB immutability trigger; pairing gaps on leakage and ambiguous rotation |
+| WHY | Safety audit before merge: reduce redundant compute/writes, fail-closed pairing, temporal leakage guards, tenant-scoped eligibility, insert-only enforcement |
+| CHANGE | `computeTireWearV3CalibrationEligibilityDigest()` + `TireWearV3CalibrationEligibilityService`; writer digest gate; columns `calibration_eligibility_digest`, measurement cutoff fields, `pairing_eligible`, `measurement_ids_used`; migration `20261101183000_*` immutability trigger; extended pairing rejections; hardening Jest specs |
+| EXPECTED_EFFECT | Odometer-only telemetry ticks do not insert; ledger/measurement/setup changes still snapshot; pairing rejects cross-identity/leakage; UPDATE forbidden at DB |
+| VALIDATION | Jest calibration + fingerprint eligibility specs; backend build |
+| NON_EFFECTS | Customer V3 fusion/fingerprint math unchanged; β=0; writer flag default OFF; no DS4 / V4 / production activation |

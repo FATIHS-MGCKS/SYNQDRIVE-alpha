@@ -382,6 +382,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Additive table `tire_wear_v3_calibration_snapshot_v1` for immutable per-wheel V3 predictions; reuses `computeForSetup` with `persistShadow: false`.',
       'Leader scheduler `tire_wear_v3_calibration_shadow_writer` and `TIRE_WEAR_V3_CALIBRATION_SHADOW_WRITE_ENABLED` (default false); pairing policy + Master Admin read-only inspection API.',
+      'Pre-merge hardening: calibration eligibility digest gate (no odometer-only churn), physical tire id + temporal leakage fields, DB immutability trigger, org-scoped eligibility.',
       'Separate from P3A `tire_wear_v3_prior_shadow_v1`; no customer UI or wear-equation changes.',
     ],
     reason:
@@ -389,7 +390,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       'P2 calibration shadow persistence plan only; no calibration snapshot store or scheduled writer.',
     details:
-      'backend: wear-v3-calibration-shadow/*, migration 20261101120000; architecture/tires/integration/TIRE_WEAR_V3_CALIBRATION_SHADOW_P3.md.',
+      'backend: wear-v3-calibration-shadow/*, migrations 20261101120000 + 20261101183000; architecture/tires/integration/TIRE_WEAR_V3_CALIBRATION_SHADOW_P3.md.',
     affectsArchitecture: true,
     module: 'Tires Health',
     createdAt: '2026-11-01T02:00:00.000Z',

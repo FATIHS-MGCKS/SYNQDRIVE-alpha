@@ -16,9 +16,14 @@ export type TireWearV3CalibrationSnapshotRef = {
   tireSetupId: string;
   mountPeriodId: string | null;
   wheelPosition: string;
+  physicalTireId: string | null;
   predictionCreatedAt: Date;
   sourceComputedAt: Date;
+  sourceDataCutoffAt: Date;
   sourceOdometerKm: number | null;
+  latestSourceMeasurementAt: Date | null;
+  measurementIdsUsed: string[];
+  pairingEligible: boolean;
 };
 
 export type TireWearV3CalibrationMeasurementRef = {
@@ -46,7 +51,7 @@ export function evaluateTireWearV3CalibrationPairing(args: {
   wheel: WheelPos;
   mountPeriod: MountPeriodWindow | null;
   rotationDuringMountPeriod: boolean;
-  dataCutoff: Date;
+  targetPhysicalTireId?: string | null;
 }): TireWearV3CalibrationPairingCandidate {
   const base = {
     snapshotId: args.snapshot?.id ?? null,
@@ -58,6 +63,10 @@ export function evaluateTireWearV3CalibrationPairing(args: {
 
   if (!args.snapshot) {
     return { ...base, rejectionReason: 'NO_ELIGIBLE_SNAPSHOT' };
+  }
+
+  if (!args.snapshot.pairingEligible) {
+    return { ...base, rejectionReason: 'PAIRING_OBSERVATIONAL_ONLY' };
   }
 
   if (args.snapshot.organizationId !== args.measurement.organizationId) {
@@ -75,12 +84,21 @@ export function evaluateTireWearV3CalibrationPairing(args: {
 
   if (
     args.snapshot.predictionCreatedAt.getTime() >= args.measurement.measuredAt.getTime() ||
-    args.snapshot.sourceComputedAt.getTime() >= args.measurement.measuredAt.getTime()
+    args.snapshot.sourceComputedAt.getTime() >= args.measurement.measuredAt.getTime() ||
+    args.snapshot.sourceDataCutoffAt.getTime() > args.measurement.measuredAt.getTime()
   ) {
     return { ...base, rejectionReason: 'SNAPSHOT_NOT_BEFORE_MEASUREMENT' };
   }
 
-  if (args.snapshot.sourceComputedAt.getTime() > args.dataCutoff.getTime()) {
+  if (args.snapshot.measurementIdsUsed.includes(args.measurement.id)) {
+    return { ...base, rejectionReason: 'TARGET_MEASUREMENT_IN_PREDICTION_INPUT' };
+  }
+
+  if (
+    args.snapshot.latestSourceMeasurementAt != null &&
+    args.snapshot.latestSourceMeasurementAt.getTime() >=
+      args.measurement.measuredAt.getTime()
+  ) {
     return { ...base, rejectionReason: 'POST_MEASUREMENT_DATA_LEAKAGE' };
   }
 
@@ -113,6 +131,18 @@ export function evaluateTireWearV3CalibrationPairing(args: {
     return { ...base, rejectionReason: 'INSUFFICIENT_MEASUREMENT_EVIDENCE' };
   }
 
+  if (
+    args.snapshot.physicalTireId != null &&
+    args.targetPhysicalTireId != null &&
+    args.snapshot.physicalTireId !== args.targetPhysicalTireId
+  ) {
+    return { ...base, rejectionReason: 'PHYSICAL_TIRE_MISMATCH' };
+  }
+
+  if (args.snapshot.physicalTireId == null) {
+    return { ...base, rejectionReason: 'PHYSICAL_IDENTITY_AMBIGUOUS' };
+  }
+
   const snapOdo = args.snapshot.sourceOdometerKm;
   const measOdo = args.measurement.odometerAtMeasurement;
   if (
@@ -123,6 +153,10 @@ export function evaluateTireWearV3CalibrationPairing(args: {
     measOdo + 1e-6 < snapOdo
   ) {
     return { ...base, rejectionReason: 'ODOMETER_CHRONOLOGY_INVALID' };
+  }
+
+  if (Number.isNaN(args.measurement.measuredAt.getTime())) {
+    return { ...base, rejectionReason: 'INSUFFICIENT_MEASUREMENT_EVIDENCE' };
   }
 
   return {
@@ -142,8 +176,11 @@ export function selectLatestProspectiveSnapshotBeforeMeasurement(
       (s) =>
         s.wheelPosition === wheel &&
         s.tireSetupId === measurement.tireSetupId &&
+        s.pairingEligible &&
         s.predictionCreatedAt.getTime() < measurement.measuredAt.getTime() &&
-        s.sourceComputedAt.getTime() < measurement.measuredAt.getTime(),
+        s.sourceComputedAt.getTime() < measurement.measuredAt.getTime() &&
+        s.sourceDataCutoffAt.getTime() <= measurement.measuredAt.getTime() &&
+        !s.measurementIdsUsed.includes(measurement.id),
     )
     .sort(
       (a, b) => b.predictionCreatedAt.getTime() - a.predictionCreatedAt.getTime(),

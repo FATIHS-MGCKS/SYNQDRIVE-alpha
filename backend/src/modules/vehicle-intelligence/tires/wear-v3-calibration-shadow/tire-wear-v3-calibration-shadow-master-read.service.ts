@@ -159,9 +159,14 @@ export class TireWearV3CalibrationShadowMasterReadService {
         tireSetupId: true,
         mountPeriodId: true,
         wheelPosition: true,
+        physicalTireId: true,
         predictionCreatedAt: true,
         sourceComputedAt: true,
+        sourceDataCutoffAt: true,
         sourceOdometerKm: true,
+        latestSourceMeasurementAt: true,
+        measurementIdsUsed: true,
+        pairingEligible: true,
       },
     });
 
@@ -172,9 +177,16 @@ export class TireWearV3CalibrationShadowMasterReadService {
       tireSetupId: s.tireSetupId,
       mountPeriodId: s.mountPeriodId,
       wheelPosition: s.wheelPosition,
+      physicalTireId: s.physicalTireId,
       predictionCreatedAt: s.predictionCreatedAt,
       sourceComputedAt: s.sourceComputedAt,
+      sourceDataCutoffAt: s.sourceDataCutoffAt,
       sourceOdometerKm: s.sourceOdometerKm,
+      latestSourceMeasurementAt: s.latestSourceMeasurementAt,
+      measurementIdsUsed: Array.isArray(s.measurementIdsUsed)
+        ? (s.measurementIdsUsed as string[])
+        : [],
+      pairingEligible: s.pairingEligible,
     }));
 
     const rejectionCounts: Partial<
@@ -232,7 +244,6 @@ export class TireWearV3CalibrationShadowMasterReadService {
           wheel,
           mountPeriod,
           rotationDuringMountPeriod,
-          dataCutoff: m.measuredAt,
         });
         if (evalResult.eligible) pairableCount += 1;
         else if (evalResult.rejectionReason) {

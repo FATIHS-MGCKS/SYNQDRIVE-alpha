@@ -5,6 +5,7 @@ import { TireWearV3PriorModule } from '../wear-v3-prior/tire-wear-v3-prior.modul
 import { TireWearV3CalibrationShadowMasterReadController } from './tire-wear-v3-calibration-shadow-master-read.controller';
 import { TireWearV3CalibrationShadowMasterReadService } from './tire-wear-v3-calibration-shadow-master-read.service';
 import { TireWearV3CalibrationShadowWriterService } from './tire-wear-v3-calibration-shadow-writer.service';
+import { TireWearV3CalibrationEligibilityService } from './tire-wear-v3-calibration-eligibility.service';
 import { TireWearV3CalibrationSnapshotRepository } from './tire-wear-v3-calibration-snapshot.repository';
 
 @Module({
@@ -15,6 +16,7 @@ import { TireWearV3CalibrationSnapshotRepository } from './tire-wear-v3-calibrat
   controllers: [TireWearV3CalibrationShadowMasterReadController],
   providers: [
     TireWearV3CalibrationSnapshotRepository,
+    TireWearV3CalibrationEligibilityService,
     TireWearV3CalibrationShadowWriterService,
     TireWearV3CalibrationShadowMasterReadService,
   ],

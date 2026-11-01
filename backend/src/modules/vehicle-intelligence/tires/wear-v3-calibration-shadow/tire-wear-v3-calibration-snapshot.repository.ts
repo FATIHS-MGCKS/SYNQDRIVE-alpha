@@ -3,14 +3,23 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { TireWearV3CalibrationSnapshotInsertRow } from './tire-wear-v3-calibration-snapshot.types';
 
+export type TireWearV3CalibrationSetupCandidate = {
+  tireSetupId: string;
+  organizationId: string;
+};
+
 @Injectable()
 export class TireWearV3CalibrationSnapshotRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findSetupIdsForSnapshotBatch(limit: number): Promise<string[]> {
-    const rows = await this.prisma.$queryRaw<Array<{ tire_setup_id: string }>>(
+  async findSetupCandidatesForSnapshotBatch(
+    limit: number,
+  ): Promise<TireWearV3CalibrationSetupCandidate[]> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{ tire_setup_id: string; organization_id: string }>
+    >(
       Prisma.sql`
-        SELECT s.id AS tire_setup_id
+        SELECT s.id AS tire_setup_id, s.organization_id AS organization_id
         FROM vehicle_tire_setups s
         WHERE s.removed_at IS NULL
           AND s.organization_id IS NOT NULL
@@ -22,7 +31,22 @@ export class TireWearV3CalibrationSnapshotRepository {
         LIMIT ${limit}
       `,
     );
-    return rows.map((r) => r.tire_setup_id);
+    return rows.map((r) => ({
+      tireSetupId: r.tire_setup_id,
+      organizationId: r.organization_id,
+    }));
+  }
+
+  async findLatestCalibrationEligibilityDigest(
+    tireSetupId: string,
+    organizationId: string,
+  ): Promise<string | null> {
+    const row = await this.prisma.tireWearV3CalibrationSnapshotV1.findFirst({
+      where: { tireSetupId, organizationId },
+      orderBy: { predictionCreatedAt: 'desc' },
+      select: { calibrationEligibilityDigest: true },
+    });
+    return row?.calibrationEligibilityDigest ?? null;
   }
 
   async findByIdempotencyKey(idempotencyKey: string) {
@@ -56,8 +80,13 @@ export class TireWearV3CalibrationSnapshotRepository {
           modelVersion: row.modelVersion,
           modelConfigHash: row.modelConfigHash,
           inputFingerprint: row.inputFingerprint,
+          calibrationEligibilityDigest: row.calibrationEligibilityDigest,
           snapshotSchemaVersion: row.snapshotSchemaVersion,
           idempotencyKey: row.idempotencyKey,
+          latestSourceMeasurementAt: row.latestSourceMeasurementAt,
+          sourceDataCutoffAt: row.sourceDataCutoffAt,
+          pairingEligible: row.pairingEligible,
+          measurementIdsUsed: row.measurementIdsUsed,
           snapshotPayload: row.snapshotPayload as object,
         },
         select: { id: true },
@@ -118,7 +147,10 @@ export class TireWearV3CalibrationSnapshotRepository {
         mountPeriodId: true,
         predictionCreatedAt: true,
         sourceComputedAt: true,
+        sourceDataCutoffAt: true,
         inputFingerprint: true,
+        calibrationEligibilityDigest: true,
+        pairingEligible: true,
         modelVersion: true,
         snapshotSchemaVersion: true,
       },

@@ -1,11 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@shared/database/prisma.service';
-import {
-  hasRotationDuringMountPeriod,
-  resolveActiveMountPeriod,
-} from '../wear-v3-prior/tire-wear-v3-prior.lifecycle';
 import { TireWearV3PriorService } from '../wear-v3-prior/tire-wear-v3-prior.service';
+import { TireWearV3CalibrationEligibilityService } from './tire-wear-v3-calibration-eligibility.service';
 import { buildTireWearV3CalibrationSnapshotIdempotencyKey } from './tire-wear-v3-calibration-snapshot.idempotency';
 import { TireWearV3CalibrationSnapshotRepository } from './tire-wear-v3-calibration-snapshot.repository';
 import {
@@ -31,8 +27,8 @@ export class TireWearV3CalibrationShadowWriterService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
     private readonly priorService: TireWearV3PriorService,
+    private readonly eligibilityService: TireWearV3CalibrationEligibilityService,
     private readonly snapshotRepository: TireWearV3CalibrationSnapshotRepository,
   ) {}
 
@@ -76,11 +72,14 @@ export class TireWearV3CalibrationShadowWriterService {
     let skipped = 0;
 
     try {
-      const setupIds =
-        await this.snapshotRepository.findSetupIdsForSnapshotBatch(batchSize);
+      const candidates =
+        await this.snapshotRepository.findSetupCandidatesForSnapshotBatch(batchSize);
 
-      for (const tireSetupId of setupIds) {
-        const outcome = await this.snapshotSetupIfChanged(tireSetupId);
+      for (const candidate of candidates) {
+        const outcome = await this.snapshotSetupIfChanged(
+          candidate.tireSetupId,
+          candidate.organizationId,
+        );
         inserted += outcome.inserted;
         existing += outcome.existing;
         if (outcome.skipped) skipped += 1;
@@ -90,7 +89,7 @@ export class TireWearV3CalibrationShadowWriterService {
         lastTickAt: new Date().toISOString(),
         lastResult: 'COMPLETED',
         lastError: null,
-        lastCandidateSetups: setupIds.length,
+        lastCandidateSetups: candidates.length,
         lastSnapshotsInserted: inserted,
         lastSnapshotsExisting: existing,
         lastSetupsSkipped: skipped,
@@ -112,17 +111,40 @@ export class TireWearV3CalibrationShadowWriterService {
     return this.getWriterStats();
   }
 
-  async snapshotSetupIfChanged(tireSetupId: string): Promise<{
+  async snapshotSetupIfChanged(
+    tireSetupId: string,
+    organizationId: string,
+  ): Promise<{
     inserted: number;
     existing: number;
     skipped: boolean;
   }> {
     const predictionCreatedAt = new Date();
-    const result = await this.priorService.computeForSetup(tireSetupId, {
-      persistShadow: false,
+    const eligibility = await this.eligibilityService.resolveForSetup({
+      tireSetupId,
+      organizationId,
+      asOf: predictionCreatedAt,
     });
 
-    if (!result?.organizationId) {
+    if (!eligibility) {
+      return { inserted: 0, existing: 0, skipped: true };
+    }
+
+    const latestDigest =
+      await this.snapshotRepository.findLatestCalibrationEligibilityDigest(
+        tireSetupId,
+        organizationId,
+      );
+    if (latestDigest === eligibility.calibrationEligibilityDigest) {
+      return { inserted: 0, existing: 0, skipped: true };
+    }
+
+    const result = await this.priorService.computeForSetup(tireSetupId, {
+      persistShadow: false,
+      asOf: predictionCreatedAt,
+    });
+
+    if (!result?.organizationId || result.organizationId !== organizationId) {
       return { inserted: 0, existing: 0, skipped: true };
     }
 
@@ -130,89 +152,63 @@ export class TireWearV3CalibrationShadowWriterService {
       return { inserted: 0, existing: 0, skipped: true };
     }
 
-    const setup = await this.prisma.vehicleTireSetup.findUnique({
-      where: { id: tireSetupId },
-      select: {
-        installedAt: true,
-        removedAt: true,
-        installedOdometerKm: true,
-        odometerAnchorStatus: true,
-        mountPeriods: {
-          select: {
-            id: true,
-            installedAt: true,
-            removedAt: true,
-            installedOdometerKm: true,
-            odometerAnchorStatus: true,
-          },
-          orderBy: { installedAt: 'asc' },
-        },
-      },
-    });
-    if (!setup) {
-      return { inserted: 0, existing: 0, skipped: true };
-    }
-
-    const activePeriod = resolveActiveMountPeriod(
-      setup.mountPeriods,
-      predictionCreatedAt,
-      {
-        installedAt: setup.installedAt,
-        removedAt: setup.removedAt,
-        installedOdometerKm: setup.installedOdometerKm,
-        odometerAnchorStatus: setup.odometerAnchorStatus,
-      },
-    );
-    if (!activePeriod) {
-      return { inserted: 0, existing: 0, skipped: true };
-    }
-
-    const rotationEvents = await this.prisma.tirePositionHistory.findMany({
-      where: { tireSetId: tireSetupId },
-      select: { changedAt: true },
-    });
-
-    const rotationDuringMountPeriod = activePeriod
-      ? hasRotationDuringMountPeriod(rotationEvents, activePeriod)
-      : false;
+    const pairingEligibleBase =
+      !eligibility.rotationDuringMountPeriod &&
+      !eligibility.physicalIdentityAmbiguous &&
+      eligibility.activePeriod.id != null;
 
     let inserted = 0;
     let existing = 0;
 
     for (const wheel of result.wheels) {
+      const physicalTireId = eligibility.physicalTireIdByWheel[wheel.position];
+      const pairingEligible =
+        pairingEligibleBase && physicalTireId != null;
+
       const idempotencyKey = buildTireWearV3CalibrationSnapshotIdempotencyKey({
         organizationId: result.organizationId,
         tireSetupId: result.tireSetupId,
-        mountPeriodId: activePeriod.id,
+        mountPeriodId: eligibility.activePeriod.id,
         wheelPosition: wheel.position,
         modelVersion: result.modelVersion,
-        inputFingerprint: result.inputFingerprint,
+        calibrationEligibilityDigest: eligibility.calibrationEligibilityDigest,
       });
 
       const payload = buildCalibrationSnapshotPayload({
         result,
         wheel,
-        mountPeriodId: activePeriod.id,
-        physicalTireId: null,
+        mountPeriodId: eligibility.activePeriod.id,
+        physicalTireId,
         predictionCreatedAt,
-        rotationDuringMountPeriod,
+        rotationDuringMountPeriod: eligibility.rotationDuringMountPeriod,
+        calibrationEligibilityDigest: eligibility.calibrationEligibilityDigest,
+        latestSourceMeasurementAt: eligibility.latestSourceMeasurementAt,
+        sourceDataCutoffAt: eligibility.sourceDataCutoffAt,
+        measurementIdsUsed: eligibility.measurementIdsUsed,
+        pairingEligible,
+        physicalIdentityAmbiguous: eligibility.physicalIdentityAmbiguous,
       });
 
       const row: TireWearV3CalibrationSnapshotInsertRow = {
         organizationId: result.organizationId,
         vehicleId: result.vehicleId,
         tireSetupId: result.tireSetupId,
-        mountPeriodId: activePeriod.id,
+        mountPeriodId: eligibility.activePeriod.id,
         wheelPosition: wheel.position,
-        physicalTireId: null,
+        physicalTireId,
         predictionCreatedAt,
         sourceComputedAt: new Date(result.computedAt),
         sourceOdometerKm: result.currentOdometerKm,
         modelVersion: result.modelVersion,
         modelConfigHash: result.modelConfigHash,
         inputFingerprint: result.inputFingerprint,
+        calibrationEligibilityDigest: eligibility.calibrationEligibilityDigest,
         snapshotSchemaVersion: TIRE_WEAR_V3_CALIBRATION_SNAPSHOT_SCHEMA_VERSION,
         idempotencyKey,
+        latestSourceMeasurementAt: eligibility.latestSourceMeasurementAt,
+        sourceDataCutoffAt: eligibility.sourceDataCutoffAt,
+        pairingEligible,
+        measurementIdsUsed: eligibility.measurementIdsUsed,
         snapshotPayload: payload,
       };
 

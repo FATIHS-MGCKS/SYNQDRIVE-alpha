@@ -8,7 +8,7 @@ export function buildTireWearV3CalibrationSnapshotIdempotencyKey(args: {
   mountPeriodId: string | null;
   wheelPosition: WheelPos;
   modelVersion: string;
-  inputFingerprint: string;
+  calibrationEligibilityDigest: string;
   snapshotSchemaVersion?: string;
 }): string {
   const material = [
@@ -17,7 +17,7 @@ export function buildTireWearV3CalibrationSnapshotIdempotencyKey(args: {
     args.mountPeriodId ?? 'NO_MOUNT_PERIOD',
     args.wheelPosition,
     args.modelVersion,
-    args.inputFingerprint,
+    args.calibrationEligibilityDigest,
     args.snapshotSchemaVersion ?? TIRE_WEAR_V3_CALIBRATION_SNAPSHOT_SCHEMA_VERSION,
   ].join('|');
   return createHash('sha256').update(material).digest('hex');

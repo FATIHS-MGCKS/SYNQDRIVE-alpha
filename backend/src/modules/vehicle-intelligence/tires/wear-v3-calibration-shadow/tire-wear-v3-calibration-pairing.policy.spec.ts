@@ -19,9 +19,14 @@ describe('tire-wear-v3-calibration-pairing.policy', () => {
     tireSetupId: 'setup-1',
     mountPeriodId: 'mp-1',
     wheelPosition: 'FL',
+    physicalTireId: 'tire-a',
     predictionCreatedAt: new Date('2026-06-01T10:00:00Z'),
     sourceComputedAt: new Date('2026-06-01T10:00:00Z'),
+    sourceDataCutoffAt: new Date('2026-06-01T10:00:00Z'),
     sourceOdometerKm: 5000,
+    latestSourceMeasurementAt: new Date('2026-05-01T10:00:00Z'),
+    measurementIdsUsed: ['older-meas'],
+    pairingEligible: true,
   };
 
   const measurement = {
@@ -42,7 +47,6 @@ describe('tire-wear-v3-calibration-pairing.policy', () => {
       wheel: 'FL',
       mountPeriod,
       rotationDuringMountPeriod: false,
-      dataCutoff: measurement.measuredAt,
     });
     expect(result.eligible).toBe(true);
   });
@@ -52,6 +56,7 @@ describe('tire-wear-v3-calibration-pairing.policy', () => {
       ...snapshot,
       predictionCreatedAt: new Date('2026-08-01T00:00:00Z'),
       sourceComputedAt: new Date('2026-08-01T00:00:00Z'),
+      sourceDataCutoffAt: new Date('2026-08-01T00:00:00Z'),
     };
     const result = evaluateTireWearV3CalibrationPairing({
       snapshot: lateSnapshot,
@@ -59,7 +64,6 @@ describe('tire-wear-v3-calibration-pairing.policy', () => {
       wheel: 'FL',
       mountPeriod,
       rotationDuringMountPeriod: false,
-      dataCutoff: measurement.measuredAt,
     });
     expect(result.rejectionReason).toBe('SNAPSHOT_NOT_BEFORE_MEASUREMENT');
   });
@@ -71,14 +75,25 @@ describe('tire-wear-v3-calibration-pairing.policy', () => {
       wheel: 'FL',
       mountPeriod,
       rotationDuringMountPeriod: true,
-      dataCutoff: measurement.measuredAt,
     });
     expect(result.rejectionReason).toBe('ROTATION_DURING_MOUNT');
   });
 
   it('selects latest snapshot strictly before measurement', () => {
-    const older = { ...snapshot, id: 'old', predictionCreatedAt: new Date('2026-05-01T00:00:00Z'), sourceComputedAt: new Date('2026-05-01T00:00:00Z') };
-    const newer = { ...snapshot, id: 'new', predictionCreatedAt: new Date('2026-06-15T00:00:00Z'), sourceComputedAt: new Date('2026-06-15T00:00:00Z') };
+    const older = {
+      ...snapshot,
+      id: 'old',
+      predictionCreatedAt: new Date('2026-05-01T00:00:00Z'),
+      sourceComputedAt: new Date('2026-05-01T00:00:00Z'),
+      sourceDataCutoffAt: new Date('2026-05-01T00:00:00Z'),
+    };
+    const newer = {
+      ...snapshot,
+      id: 'new',
+      predictionCreatedAt: new Date('2026-06-15T00:00:00Z'),
+      sourceComputedAt: new Date('2026-06-15T00:00:00Z'),
+      sourceDataCutoffAt: new Date('2026-06-15T00:00:00Z'),
+    };
     const picked = selectLatestProspectiveSnapshotBeforeMeasurement(
       [older, newer],
       measurement,
