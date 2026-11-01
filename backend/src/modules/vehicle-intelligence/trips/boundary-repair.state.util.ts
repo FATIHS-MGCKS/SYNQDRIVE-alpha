@@ -128,6 +128,49 @@ export function boundaryRefreshGenerationMatchesRepair(
   return current != null && current === refresh.generation;
 }
 
+/**
+ * Committed partial-extension repair meta must match persisted trip row boundaries
+ * (guards torn reads / concurrent mutation between repair commit and admission).
+ */
+export function committedBoundaryRepairMatchesTripRow(
+  raw: unknown,
+  startTime: Date,
+  endTime: Date | null,
+): boolean {
+  if (endTime == null) return false;
+  const meta = readRawDetectionMeta(raw);
+  const repair = meta.boundaryRepair;
+  if (repair == null || typeof repair !== 'object' || Array.isArray(repair)) {
+    return false;
+  }
+  const record = repair as Record<string, unknown>;
+  if (record.repairType !== PARTIAL_TRIP_BOUNDARY_EXTENSION_REPAIR_TYPE) {
+    return false;
+  }
+  const newStart = record.newStartTime;
+  const newEnd = record.newEndTime;
+  if (typeof newStart !== 'string' || typeof newEnd !== 'string') {
+    return false;
+  }
+  return (
+    new Date(newStart).getTime() === startTime.getTime() &&
+    new Date(newEnd).getTime() === endTime.getTime()
+  );
+}
+
+/**
+ * When boundaryRefresh is retryable, DI admission may proceed only if refresh generation
+ * matches the active committed boundary repair (not repairType alone).
+ */
+export function partialExtensionAllowsAdmissionDuringRetryableRefresh(raw: unknown): boolean {
+  if (!hasCommittedPartialTripBoundaryExtension(raw)) return false;
+  if (readCurrentBoundaryRepairGeneration(raw) == null) return false;
+  const refresh = readBoundaryRefreshRecord(raw);
+  if (!isBoundaryRefreshRetryable(refresh)) return true;
+  if (refresh == null) return false;
+  return boundaryRefreshGenerationMatchesRepair(refresh, raw);
+}
+
 export function readRawDetectionMeta(
   raw: unknown,
 ): Record<string, unknown> {

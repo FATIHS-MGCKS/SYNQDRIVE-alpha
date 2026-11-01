@@ -5,9 +5,9 @@
 import { buildDiV0S4BoundaryFingerprint, type DiV0S4BoundaryInput } from '../../driving-intelligence/s4a-foundation/di-v0-s4a-identity';
 import {
   isBoundaryRefreshRetryable,
+  partialExtensionAllowsAdmissionDuringRetryableRefresh,
   readBoundaryRefreshRecord,
   readCurrentBoundaryRepairGeneration,
-  hasCommittedPartialTripBoundaryExtension,
 } from '../boundary-repair.state.util';
 
 export const TRIP_DI_BOUNDARY_ADMISSION_V1_KEY = 'diV0BoundaryAdmissionV1';
@@ -106,9 +106,7 @@ export function canReleaseTripDiBoundaryAdmission(scope: TripDiBoundaryAdmission
   if (scope.proposedBoundaryRepairCount > 0) return 'PROPOSED_BOUNDARY_REPAIR_OPEN';
   const refresh = readBoundaryRefreshRecord(scope.rawDetectionMeta);
   if (isBoundaryRefreshRetryable(refresh)) {
-    // Route/behavior refresh must not block DI admission once canonical boundaries are
-    // durably committed via PARTIAL_TRIP_BOUNDARY_EXTENSION on the trip row.
-    if (!hasCommittedPartialTripBoundaryExtension(scope.rawDetectionMeta)) {
+    if (!partialExtensionAllowsAdmissionDuringRetryableRefresh(scope.rawDetectionMeta)) {
       return 'BOUNDARY_REFRESH_IN_FLIGHT';
     }
   }

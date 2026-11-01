@@ -21,7 +21,7 @@ Record whether a **separate**, explicitly authorized historical replay could be 
 ## Fix shape (draft PR)
 
 - After `repairResult.applied` and **before** `finalizeBoundaryRepairRefresh`, call `TripDiBoundaryAdmissionService.tryReleaseAfterPartialTripBoundaryExtension` → existing `tryReleaseForTripTransactional(..., 'RECONCILIATION')`.
-- `canReleaseTripDiBoundaryAdmission` allows release when `hasCommittedPartialTripBoundaryExtension(meta)` despite retryable `boundaryRefresh` (downstream refresh must not block DI admission once boundaries are durably committed).
+- `canReleaseTripDiBoundaryAdmission` allows release when partial extension is committed **and** retryable `boundaryRefresh.generation` matches `readCurrentBoundaryRepairGeneration` **and** trip row times match repair meta (not `repairType` alone).
 
 ## Preconditions for any future historical replay (not executed here)
 

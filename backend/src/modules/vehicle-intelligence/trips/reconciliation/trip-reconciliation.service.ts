@@ -165,6 +165,7 @@ export class TripReconciliationService {
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly overlapDetector: TripOverlapDetector,
     private readonly dimoSegments: DimoSegmentsService,
+    private readonly diBoundaryAdmission: TripDiBoundaryAdmissionService,
     @Optional() private readonly ignitionDetector: IgnitionSegmentDetector,
     @Optional() private readonly motionDetector: MotionSegmentDetector,
     @Optional() private readonly activityDetector: ActivityWindowDetector,
@@ -180,8 +181,6 @@ export class TripReconciliationService {
     @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
     @Optional()
     private readonly reconciliationMutex?: ReconciliationExecutionMutexService,
-    @Optional()
-    private readonly diBoundaryAdmission?: TripDiBoundaryAdmissionService,
   ) {
     this.maxSameTripQualifiedStopMs =
       this.configService?.get<number>('worker.tripSameTripMaxQualifiedStopMs') ??
@@ -364,29 +363,27 @@ export class TripReconciliationService {
         }
       }
 
-      if (this.diBoundaryAdmission) {
-        if (boundaryScannedTripIds.length > 0) {
-          try {
-            await this.diBoundaryAdmission.releaseForBoundaryScannedTripIds(boundaryScannedTripIds);
-          } catch (err: unknown) {
-            this.logger.warn(
-              `DI boundary admission release failed for vehicle ${vehicleId}: ${(err as Error).message}`,
-            );
-          }
-        }
+      if (boundaryScannedTripIds.length > 0) {
         try {
-          const organizationId = await this.resolveOrganizationId(vehicleId);
-          await this.diBoundaryAdmission.releaseLiveFsmSplitSegmentsInReconciliationWindow(
-            organizationId,
-            vehicleId,
-            from,
-            to,
-          );
+          await this.diBoundaryAdmission.releaseForBoundaryScannedTripIds(boundaryScannedTripIds);
         } catch (err: unknown) {
           this.logger.warn(
-            `DI boundary admission LIVE_FSM split recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+            `DI boundary admission release failed for vehicle ${vehicleId}: ${(err as Error).message}`,
           );
         }
+      }
+      try {
+        const organizationId = await this.resolveOrganizationId(vehicleId);
+        await this.diBoundaryAdmission.releaseLiveFsmSplitSegmentsInReconciliationWindow(
+          organizationId,
+          vehicleId,
+          from,
+          to,
+        );
+      } catch (err: unknown) {
+        this.logger.warn(
+          `DI boundary admission LIVE_FSM split recovery failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+        );
       }
     } catch (err: unknown) {
       this.logger.warn(
@@ -875,6 +872,17 @@ export class TripReconciliationService {
     }
 
     for (const trip of trips) {
+      try {
+        await this.diBoundaryAdmission.tryReleaseAfterPartialTripBoundaryExtension(
+          trip.id,
+          vehicleId,
+        );
+      } catch (err: unknown) {
+        this.logger.warn(
+          `DI boundary admission recovery failed for trip ${trip.id}: ${(err as Error).message}`,
+        );
+      }
+
       const refresh = readBoundaryRefreshRecord(trip.rawDetectionMeta);
       if (!isBoundaryRefreshRetryable(refresh)) continue;
 
@@ -1186,23 +1194,21 @@ export class TripReconciliationService {
         return { handled: true, proposed: false, applied: false, rejected: false };
       }
 
-      if (this.diBoundaryAdmission) {
-        try {
-          const admissionOutcome =
-            await this.diBoundaryAdmission.tryReleaseAfterPartialTripBoundaryExtension(
-              classification.tripId,
-              input.vehicleId,
-            );
-          if (!admissionOutcome.released) {
-            this.logger.debug(
-              `DI boundary admission deferred after partial extension trip=${classification.tripId}: ${admissionOutcome.reason ?? 'RELEASE_GUARDS'}`,
-            );
-          }
-        } catch (err: unknown) {
-          this.logger.warn(
-            `DI boundary admission release failed after partial extension trip=${classification.tripId}: ${(err as Error).message}`,
+      try {
+        const admissionOutcome =
+          await this.diBoundaryAdmission.tryReleaseAfterPartialTripBoundaryExtension(
+            classification.tripId,
+            input.vehicleId,
+          );
+        if (!admissionOutcome.released) {
+          this.logger.debug(
+            `DI boundary admission deferred after partial extension trip=${classification.tripId}: ${admissionOutcome.reason ?? 'RELEASE_GUARDS'}`,
           );
         }
+      } catch (err: unknown) {
+        this.logger.warn(
+          `DI boundary admission release failed after partial extension trip=${classification.tripId}: ${(err as Error).message}`,
+        );
       }
 
       await this.finalizeBoundaryRepairRefresh(

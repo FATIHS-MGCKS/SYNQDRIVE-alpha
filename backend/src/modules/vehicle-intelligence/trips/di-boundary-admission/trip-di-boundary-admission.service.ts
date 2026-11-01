@@ -20,11 +20,24 @@ import {
   LIVE_FSM_AUTO_RECONCILIATION_MAX_TRIPS_PER_VEHICLE,
   readLiveFsmAutomaticAdmissionPolicyFromEnv,
 } from './trip-di-boundary-admission-live-fsm-auto.policy';
-import { hasCommittedPartialTripBoundaryExtension } from '../boundary-repair.state.util';
+import {
+  committedBoundaryRepairMatchesTripRow,
+  hasCommittedPartialTripBoundaryExtension,
+  partialExtensionAllowsAdmissionDuringRetryableRefresh,
+} from '../boundary-repair.state.util';
 
 export type TryReleaseAfterPartialTripBoundaryExtensionResult =
   | { released: true }
-  | { released: false; reason: 'TRIP_NOT_FOUND' | 'VEHICLE_MISMATCH' | 'BOUNDARY_REPAIR_NOT_COMMITTED' | 'RELEASE_GUARDS' };
+  | {
+      released: false;
+      reason:
+        | 'TRIP_NOT_FOUND'
+        | 'VEHICLE_MISMATCH'
+        | 'BOUNDARY_REPAIR_NOT_COMMITTED'
+        | 'BOUNDARY_ROW_MISMATCH'
+        | 'REFRESH_GENERATION_MISMATCH'
+        | 'RELEASE_GUARDS';
+    };
 
 @Injectable()
 export class TripDiBoundaryAdmissionService {
@@ -180,6 +193,18 @@ export class TripDiBoundaryAdmissionService {
     }
     if (!hasCommittedPartialTripBoundaryExtension(scope.rawDetectionMeta)) {
       return { released: false, reason: 'BOUNDARY_REPAIR_NOT_COMMITTED' };
+    }
+    if (
+      !committedBoundaryRepairMatchesTripRow(
+        scope.rawDetectionMeta,
+        scope.startTime,
+        scope.endTime,
+      )
+    ) {
+      return { released: false, reason: 'BOUNDARY_ROW_MISMATCH' };
+    }
+    if (!partialExtensionAllowsAdmissionDuringRetryableRefresh(scope.rawDetectionMeta)) {
+      return { released: false, reason: 'REFRESH_GENERATION_MISMATCH' };
     }
     const ok = await this.tryReleaseForTripTransactional(tripId, 'RECONCILIATION');
     return ok ? { released: true } : { released: false, reason: 'RELEASE_GUARDS' };
