@@ -79,3 +79,25 @@ Evidence **nicht** automatisch committen. Optional manuell anhand `architecture/
 - Custom `ONEAUTO_BASE_URL` / Host-Overrides
 - API-Key in Logs oder Git
 - Automatische `EXECUTION_VERIFIED`-Promotion aus Evidence
+
+## Owner ohne Terminal (Cursor Cloud Agent / Composer)
+
+**Bevorzugt:** Geheimnisse **nicht** in Composer-Chat und **nicht** ins Repository.
+
+1. **Cursor Dashboard** → [Cloud Agents Environment](https://cursor.com/dashboard/cloud-agents/environments/e/176ce4e1-74cc-11f1-a8a0-cafc5ef88358) → Tab **Secrets**.
+2. **Runtime Secret** anlegen (Wert nur in der Dashboard-UI einfügen):
+   - `ONEAUTO_PRODUCTION_ATTESTATION_API_KEY`
+   - `ONEAUTO_PRODUCTION_ATTESTATION_VIN` (empfohlen ebenfalls Runtime Secret)
+3. **Environment Variable** (nicht geheim, Wert `1`):
+   - `ONEAUTO_PRODUCTION_ATTESTATION_OWNER_AUTHORIZED`
+   - `ONEAUTO_PRODUCTION_ATTESTATION_VIN_USE_AUTHORIZED`
+   - `ONEAUTO_PRODUCTION_ATTESTATION_BILLING_ACK`
+   - `ONEAUTO_PRODUCTION_ATTESTATION_ONE_GET_CONFIRMED`
+4. Cloud Agent **neu starten**, damit Secrets injiziert werden.
+5. Composer bitten: Offline-Preflight ausführen (`bash .cursor/scripts/oneauto-p25e-attestation-offline-preflight.sh`).
+6. Status prüfen ohne Werte anzuzeigen: `bash .cursor/scripts/oneauto-p25e-attestation-secrets-status.sh`
+7. Produktions-One-Shot **erst** in einem separaten, explizit autorisierten Schritt — nicht in derselben Nachricht wie die Key-Eingabe.
+
+**Optional (nur lokale Shell mit TTY):** `bash .cursor/scripts/oneauto-p25e-attestation-secrets-capture.sh` schreibt nach `~/.config/synqdrive/oneauto-attestation.env` (Modus `600`). Entfernen: `bash .cursor/scripts/oneauto-p25e-attestation-secrets-wipe.sh`
+
+Composer/Agent **druckt Secret-Werte nicht** (Runtime Secrets sind für den Agent-Transcript redacted); Evidence bleibt redacted.
