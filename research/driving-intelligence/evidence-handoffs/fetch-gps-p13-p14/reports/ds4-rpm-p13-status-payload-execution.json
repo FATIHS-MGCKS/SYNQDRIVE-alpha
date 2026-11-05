@@ -1,0 +1,37 @@
+{
+  "operation": "DS4_RPM_P13_STATUS_PAYLOAD_EXECUTION",
+  "owner_authorization": "EXPLICITLY_GRANTED_BY_OWNER_FOR_P13_PAYLOAD",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicle_label": "TIG22 VW Tiguan",
+  "window_utc": {
+    "from": "2026-10-22T18:40:00Z",
+    "to": "2026-10-22T18:50:00Z"
+  },
+  "generated_at_utc": "2026-11-05T11:15:00Z",
+  "fetch_requests_executed": 1,
+  "http_status": 200,
+  "REQUEST_STATUS": "SUCCESS",
+  "EVENTS_INSPECTED": 5,
+  "GPS_PRESENT_COUNT": 5,
+  "RPM_94_PRESENT_COUNT": 5,
+  "RPM_197_PRESENT_COUNT": 0,
+  "RPM_PRESENT_COUNT": 5,
+  "GPS_AND_RPM_SAME_EVENT_COUNT": 5,
+  "HEADER_TIME_PRESENT_COUNT": 5,
+  "RAW_EVENT_ID_PRESENT_COUNT": 0,
+  "per_event_summary": [
+    { "n": 1, "HEADER_TIME": true, "RAW_EVENT_ID": false, "GPS": true, "RPM_94": true, "RPM_197": false, "SAME_EVENT": true },
+    { "n": 2, "HEADER_TIME": true, "RAW_EVENT_ID": false, "GPS": true, "RPM_94": true, "RPM_197": false, "SAME_EVENT": true },
+    { "n": 3, "HEADER_TIME": true, "RAW_EVENT_ID": false, "GPS": true, "RPM_94": true, "RPM_197": false, "SAME_EVENT": true },
+    { "n": 4, "HEADER_TIME": true, "RAW_EVENT_ID": false, "GPS": true, "RPM_94": true, "RPM_197": false, "SAME_EVENT": true },
+    { "n": 5, "HEADER_TIME": true, "RAW_EVENT_ID": false, "GPS": true, "RPM_94": true, "RPM_197": false, "SAME_EVENT": true }
+  ],
+  "classification": "SAME_PROCESSED_STATUS_EVENT_PROVEN",
+  "SAME_EVENT_PROVENANCE_VERDICT": "ALL_RETURNED_EVENTS_CONTAIN_POS_AND_RPM_SIGNAL_IN_SAME_PAYLOAD (signals.94 only in sample; 197 absent)",
+  "DEVICE_TIMESTAMP_AUTHORITY_VERDICT": "HEADER_TIME on all 5 — processed CloudEvent time available; raweventid absent; not proof of simultaneous physical GPS/RPM acquisition",
+  "DS4_RPM_CORRELATION_GO_NO_GO": "NO_GO_FOR_HISTORICAL_DI_BUCKET_JOIN — R1 veto preserved; separate source-specific attestation required for any CORRELATION_ELIGIBLE upgrade",
+  "attestation_study_justified": true,
+  "SINGLE_NEXT_TECHNICAL_ACTION": "Bounded offline attestation: export Fetch header.time + presence flags for trip sub-window vs DS4 L3 support timing (phase diagnostic only); no GraphQL bucket relabel",
+  "payload_persistence": "NONE",
+  "STOP": "ORCHESTRATOR_REVIEW"
+}

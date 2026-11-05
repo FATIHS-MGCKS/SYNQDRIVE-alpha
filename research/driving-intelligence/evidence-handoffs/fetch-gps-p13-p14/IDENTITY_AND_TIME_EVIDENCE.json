@@ -1,0 +1,38 @@
+{
+  "schema": "DS4_FETCH_GPS_IDENTITY_TIME_EVIDENCE_V1",
+  "synqdrive_vehicle_id": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "dimo_token_id_sealed_s4": 192922,
+  "did_hash_prefix_p12_p14": "c97c71d17e9f",
+  "full_did_format": "did:erc721:137:<vehicleNftContract>:<tokenId> — not stored in git handoff",
+  "ruptela_device_binding": "NOT_CAPTURED in P12-P14 artifacts",
+  "time_fields": [
+    {
+      "field": "Fetch header.time",
+      "semantics": "CloudEvent event time on archived status",
+      "path": "Fetch API cloudEvents",
+      "physical_gnss_fix_proven": false,
+      "trust": "Processed event timestamp"
+    },
+    {
+      "field": "GraphQL signals.timestamp / S3A bucketLabel",
+      "semantics": "1s query bucket start label",
+      "path": "Telemetry historical → S3A pin",
+      "physical_gnss_fix_proven": false,
+      "trust": "BUCKET_BOUNDED per DI position acquisition spec"
+    },
+    {
+      "field": "P14 join key",
+      "semantics": "floor(header.time) with ±2s bucket neighbor search",
+      "physical_gnss_fix_proven": false,
+      "trust": "Methodological only — see P14_1"
+    }
+  ],
+  "graphql_position_source": "currentLocationCoordinates AVG 1s — pinned in S4, not Fetch archive",
+  "layers": {
+    "SAME_VEHICLE": "CONFIRMED",
+    "SAME_DEVICE": "NOT_PROVEN",
+    "SAME_PHYSICAL_GNSS_SOURCE": "NOT_PROVEN",
+    "SAME_INDIVIDUAL_POSITION_FIX": "NOT_PROVEN"
+  }
+}

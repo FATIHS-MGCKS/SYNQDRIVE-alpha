@@ -1,0 +1,43 @@
+{
+  "operation": "DS4_RPM_P12_FETCH_METADATA_PREFLIGHT",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "mode": "LOCAL_PREFLIGHT_ONLY_NO_FETCH_EXECUTED",
+  "generated_at_utc": "2026-11-05T10:55:00Z",
+  "query_window_requested": {
+    "after": "2026-10-22T18:25:00Z",
+    "before": "2026-10-22T19:10:00Z"
+  },
+  "local_preflight": {
+    "dimo_client_id_configured": true,
+    "dimo_private_key_configured": true,
+    "fetch_api_url_configured": false,
+    "owner_fetch_authorization_env": {
+      "DS4_RPM_FETCH_AUTHORIZED": "UNSET",
+      "CLOUD_AGENT_OWNER_FETCH_AUTHORIZED": "UNSET"
+    },
+    "explicit_owner_approval_in_operation_message": false,
+    "vehicle_synqdrive_id_from_sealed_provenance": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+    "dimo_token_asset_from_sealed_s4_pin": "present_in_research_container_matches_vehicle",
+    "vehicle_did_constructible": true,
+    "did_equals_nft_token_asset": "VERIFIED_OFFLINE — production NFT contract from dimo.config.ts + sealed S4 subject pin (DIMO token asset ↔ SynqDrive vehicle id row)",
+    "did_format_reference": "did:erc721:137:<vehicleNftContract>:<tokenId> (SynqDrive webhook/DIMO convention)",
+    "get_raw_data_in_synqdrive_repo": "NOT_DOCUMENTED — no Fetch API client; vehicle JWT default privileges [1,2,3,4,5,6] only in dimo-auth.service.ts and ops scripts",
+    "get_raw_data_jwt_confirmed": false,
+    "network_requests_executed": false
+  },
+  "AUTHORIZATION_VERDICT": "STOP — PREFLIGHT_INCOMPLETE_FOR_FETCH",
+  "stop_reasons": [
+    "MISSING_EXPLICIT_OWNER_AUTHORIZATION_FOR_FETCH_METADATA_CALLS",
+    "GET_RAW_DATA_PRIVILEGE_NOT_VERIFIED_IN_REPO_OR_RUNTIME"
+  ],
+  "classification_primary": "ACCESS_DENIED",
+  "classification_note": "Operational gate — not a confirmed DIMO API 403; fetch never attempted",
+  "EVENT_TYPES_FOUND": "NOT_EXECUTED",
+  "RUPTELA_STATUS_COUNT": "NOT_EXECUTED",
+  "RUPTELA_INDEX_SAMPLE_COUNT": "NOT_EXECUTED",
+  "RAWEVENTID_PRESENT_COUNT": "NOT_EXECUTED",
+  "ORIGINAL_TIME_AVAILABLE": "NOT_EXECUTED",
+  "NEXT_EVIDENCE_GATE": "Owner sets explicit fetch authorization (e.g. DS4_RPM_FETCH_AUTHORIZED=1 or written approve in task) AND confirm vehicle privilege grant includes Fetch/GetRawData per DIMO identity policy; then run REQUEST_1 availableCloudEventTypes only; classify ARCHIVE_EMPTY vs FILTER_NO_MATCH vs RAW_EVENT_CANDIDATE_FOUND from counts and firstSeen/lastSeen only",
+  "HISTORICAL_R1_VETO": "UNCHANGED — no fetch performed; no pairing attestation",
+  "STOP": "ORCHESTRATOR_REVIEW"
+}

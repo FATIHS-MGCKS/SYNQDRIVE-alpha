@@ -1,0 +1,30 @@
+{
+  "schema": "DS4_FETCH_GPS_P12_METADATA_SUMMARY_V1",
+  "source_report_sha256": "74fcc35995f0e0865d71e6e2379c1ef86604476d1aa824798ce4d24c20115ec4",
+  "provenance": "PREVIOUSLY_REPORTED — verbatim fields from P12 report copy in reports/",
+  "metadata_window_utc": {
+    "from": "2026-10-22T18:25:00Z",
+    "to": "2026-10-22T19:10:00Z"
+  },
+  "fetch_requests_executed": 2,
+  "event_types_found": [
+    {
+      "type": "dimo.fingerprint",
+      "count": 574,
+      "firstSeen": "2026-10-22T18:31:18Z",
+      "lastSeen": "2026-10-22T19:05:00Z"
+    },
+    {
+      "type": "dimo.status",
+      "count": 710,
+      "firstSeen": "2026-10-22T18:31:18Z",
+      "lastSeen": "2026-10-22T19:05:00Z"
+    }
+  ],
+  "indexes_sample_r_v0_s_limit_5": {
+    "header_time_min": "2026-10-22T19:04:55Z",
+    "header_time_max": "2026-10-22T19:05:00Z",
+    "raweventid_present_count": 0
+  },
+  "payloads_fetched": false
+}

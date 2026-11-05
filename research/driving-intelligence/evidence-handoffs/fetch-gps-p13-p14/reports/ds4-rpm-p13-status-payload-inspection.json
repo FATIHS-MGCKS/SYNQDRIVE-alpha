@@ -1,0 +1,37 @@
+{
+  "operation": "DS4_RPM_P13_STATUS_PAYLOAD_INSPECTION",
+  "mode": "BOUNDED_OWNER_GATED_READ_ONLY",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicle_label": "TIG22 VW Tiguan",
+  "target_window_utc": {
+    "after": "2026-10-22T18:40:00Z",
+    "before": "2026-10-22T18:50:00Z"
+  },
+  "generated_at_utc": "2026-11-05T11:10:00Z",
+  "authorization_gate": {
+    "p12_scope": "metadata_only_availableCloudEventTypes_and_indexes",
+    "p13_payload_authorization_required": true,
+    "explicit_p13_owner_grant_in_task": false,
+    "required_signal": "EXPLICIT P13 payload authorization (separate from P12); not present in operation message"
+  },
+  "preflight": {
+    "vehicle_did_resolvable_offline": true,
+    "dimo_credentials_configured": true,
+    "p12_proved_fetch_metadata_200": true,
+    "cloudEvents_payload_query_executed": false,
+    "fail_closed_reason": "MISSING_EXPLICIT_P13_PAYLOAD_AUTHORIZATION"
+  },
+  "REQUEST_STATUS": "NOT_EXECUTED — STOPPED_AT_AUTHORIZATION_GATE",
+  "EVENTS_INSPECTED": 0,
+  "GPS_PRESENT_COUNT": null,
+  "RPM_PRESENT_COUNT": null,
+  "GPS_AND_RPM_SAME_EVENT_COUNT": null,
+  "HEADER_TIME_PRESENT_COUNT": null,
+  "RAW_EVENT_ID_PRESENT_COUNT": null,
+  "per_event_fields": "NOT_COLLECTED",
+  "DEVICE_TIME_AUTHORITY_VERDICT": "NOT_ASSESSED — no payload inspection performed",
+  "SCIENTIFIC_CLASSIFICATION": "AUTHORIZATION_BLOCKED",
+  "HISTORICAL_R1_VETO": "PRESERVED — unchanged",
+  "NEXT_TECHNICAL_GATE": "Owner adds explicit P13 payload authorization (e.g. OWNER_AUTHORIZATION: EXPLICITLY_GRANTED_P13_PAYLOAD in task); then re-run single cloudEvents query (limit 5, in-memory boolean inspection only, no coordinate/RPM values or IDs in output).",
+  "STOP": "ORCHESTRATOR_REVIEW"
+}

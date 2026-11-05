@@ -1,0 +1,97 @@
+{
+  "schema": "DS4_FETCH_GPS_EVIDENCE_MANIFEST_V1",
+  "operation": "DS4_FETCH_GPS_P13_P14_EVIDENCE_HANDOFF_V1",
+  "generated_at_utc": "2026-11-05T12:15:00Z",
+  "handoff_branch": "research/ds4-fetch-gps-p13-p14-evidence-handoff",
+  "research_context": {
+    "vehicle_label": "VW Tiguan WOB L 7503",
+    "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+    "dimo_token_id_sealed_s4": 192922,
+    "analysis_window_utc": {
+      "from": "2026-10-22T18:40:00Z",
+      "to": "2026-10-22T18:50:00Z"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "P12_REPORT",
+      "original_filename": "ds4-rpm-p12-fetch-metadata-execution.json",
+      "current_location_agent_vm": "/opt/cursor/artifacts/ds4-rpm-p12-fetch-metadata-execution.json",
+      "current_location_repo": "research/driving-intelligence/evidence-handoffs/fetch-gps-p13-p14/reports/ds4-rpm-p12-fetch-metadata-execution.json",
+      "sha256": "74fcc35995f0e0865d71e6e2379c1ef86604476d1aa824798ce4d24c20115ec4",
+      "size_bytes": 4096,
+      "content_class": "Report",
+      "completeness": "COMPLETE for metadata-only scope",
+      "origin": "Derived from Fetch API responses (types/indexes); no payloads"
+    },
+    {
+      "id": "P13_REPORT",
+      "original_filename": "ds4-rpm-p13-status-payload-execution.json",
+      "current_location_agent_vm": "/opt/cursor/artifacts/ds4-rpm-p13-status-payload-execution.json",
+      "current_location_repo": "research/driving-intelligence/evidence-handoffs/fetch-gps-p13-p14/reports/ds4-rpm-p13-status-payload-execution.json",
+      "sha256": "b598dedc263a65234100e1c9be3e67cd4f1aeb92596055fd127b513d303b6717",
+      "size_bytes": 2048,
+      "content_class": "Report",
+      "completeness": "INCOMPLETE for raw replay — boolean summaries only",
+      "origin": "Derived; raw cloudEvents not persisted"
+    },
+    {
+      "id": "P13_BLOCKED",
+      "original_filename": "ds4-rpm-p13-status-payload-inspection.json",
+      "current_location_agent_vm": "/opt/cursor/artifacts/ds4-rpm-p13-status-payload-inspection.json",
+      "current_location_repo": "research/driving-intelligence/evidence-handoffs/fetch-gps-p13-p14/reports/ds4-rpm-p13-status-payload-inspection.json",
+      "sha256": "7c4ca0cc6946c9695c514b1b8734e415992fbed8c578e435441d9bfca9013572",
+      "content_class": "Report",
+      "completeness": "N/A — authorization gate stop only",
+      "origin": "Interpretation"
+    },
+    {
+      "id": "P14_REPORT",
+      "original_filename": "ds4-rpm-p14-raw-to-ds4-provenance-study.json",
+      "current_location_agent_vm": "/opt/cursor/artifacts/ds4-rpm-p14-raw-to-ds4-provenance-study.json",
+      "current_location_repo": "research/driving-intelligence/evidence-handoffs/fetch-gps-p13-p14/reports/ds4-rpm-p14-raw-to-ds4-provenance-study.json",
+      "sha256": "9159e9836ff9563eca143e485f72a9080c7c3151fefae22708682ff9123804e0",
+      "content_class": "Report",
+      "completeness": "INCOMPLETE — aggregates without pairs[]",
+      "origin": "Derived from one Fetch + offline S4 parse"
+    },
+    {
+      "id": "P14_1_REPORT",
+      "original_filename": "ds4-rpm-p14-1-position-mismatch-forensics.json",
+      "current_location_repo": "research/driving-intelligence/evidence-handoffs/fetch-gps-p13-p14/reports/ds4-rpm-p14-1-position-mismatch-forensics.json",
+      "sha256": "b3d9e8147b4a4d20a8c0281ddf388bfe5257c81af696840bca4b19d188058edc",
+      "content_class": "Interpretation",
+      "completeness": "COMPLETE for offline forensics scope",
+      "origin": "Interpretation from reports + repo spec"
+    },
+    {
+      "id": "S4_CONTAINER",
+      "original_filename": "di_v0_s4_evidence_container.bin",
+      "current_location_repo": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_s4_evidence_container.bin",
+      "sha256_file": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "size_bytes": 886052,
+      "content_class": "Raw",
+      "completeness": "COMPLETE sealed pin (contains coordinates — not duplicated in handoff)",
+      "origin": "Production pin at shadow export; already in monorepo",
+      "git_handoff_policy": "REFERENCE_ONLY via S4_FROZEN_REFERENCE.json"
+    },
+    {
+      "id": "TIG22_PROVENANCE",
+      "original_filename": "PROVENANCE_MANIFEST.json",
+      "current_location_repo": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/PROVENANCE_MANIFEST.json",
+      "sha256": "0d27b311d765f9f93f46d4c3a49afe2070df859c3e18ea94f672f0b317778f6a",
+      "content_class": "Derived",
+      "origin": "Sealed eval provenance"
+    }
+  ],
+  "tier_b_local_only": {
+    "path_agent_vm": "/opt/cursor/artifacts/ds4-fetch-gps-tier-b-local-only",
+    "committed_to_git": false,
+    "contains_raw_cloud_events": false,
+    "status": "RAW_DATA_TRANSFER_PENDING"
+  },
+  "cursor_agent_transcript": {
+    "note": "Full tool transcript may be retrieved via cursor-cloud batch-fetch for bc-01a1a2b9-67a2-73da-88cc-548579ff2c57",
+    "content_class": "Derived"
+  }
+}

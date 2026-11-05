@@ -1,0 +1,45 @@
+{
+  "schema": "DS4_FETCH_GPS_P13_EVENT_SCHEMA_AND_METADATA_V1",
+  "execution_report_sha256": "b598dedc263a65234100e1c9be3e67cd4f1aeb92596055fd127b513d303b6717",
+  "raw_cloud_events_persisted": false,
+  "tier_b_status": "RAW_DATA_TRANSFER_PENDING",
+  "query_contract": {
+    "endpoint": "https://fetch-api.dimo.zone/query",
+    "operation": "cloudEvents",
+    "limit": 5,
+    "filter": {
+      "type": "dimo.status",
+      "dataversion": "r/v0/s",
+      "after": "2026-10-22T18:40:00Z",
+      "before": "2026-10-22T18:50:00Z"
+    },
+    "pagination": "NOT_CAPTURED",
+    "sort_order_documented_by_fetch_api": "NOT_CAPTURED in P13 report"
+  },
+  "required_fields_capture_matrix": {
+    "cloudEvent_id": "NOT_CAPTURED",
+    "header.time": "PREVIOUSLY_REPORTED present 5/5",
+    "header.raweventid": "PREVIOUSLY_REPORTED 0/5",
+    "header.producer": "NOT_CAPTURED in report",
+    "dataversion": "PREVIOUSLY_REPORTED r/v0/s filter",
+    "data.pos.lat": "PREVIOUSLY_REPORTED present 5/5 boolean only",
+    "data.pos.lon": "PREVIOUSLY_REPORTED present 5/5 boolean only",
+    "coordinate_json_type": "NOT_CAPTURED",
+    "data.pos.hdop": "NOT_CAPTURED",
+    "data.pos.sat": "NOT_CAPTURED",
+    "signals.94": "PREVIOUSLY_REPORTED 5/5",
+    "signals.197": "PREVIOUSLY_REPORTED 0/5",
+    "subject": "NOT_CAPTURED",
+    "vehicle_token_identity": "NOT_IN_PAYLOAD_EXPORT — identity via sealed S4 pin token 192922"
+  },
+  "previously_reported_summary": {
+    "events_inspected": 5,
+    "gps_present_count": 5,
+    "rpm_94_present_count": 5,
+    "gps_and_rpm_same_event_count": 5
+  },
+  "decoder_used_at_execution": {
+    "coordinate_note": "In-memory presence check only; model-garage posToLocation semantics documented in P14_JOIN_SPEC — values not written to disk",
+    "rpm_note": "signals.94 hex presence only"
+  }
+}

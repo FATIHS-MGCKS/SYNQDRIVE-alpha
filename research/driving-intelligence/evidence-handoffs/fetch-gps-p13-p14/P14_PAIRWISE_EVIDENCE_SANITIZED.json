@@ -1,0 +1,38 @@
+{
+  "schema": "DS4_FETCH_GPS_P14_PAIRWISE_EVIDENCE_SANITIZED_V1",
+  "provenance": "Aggregate statistics PREVIOUSLY_REPORTED from P14; per-event pairs NOT_CAPTURED at execution",
+  "pairwise_replay_possible": false,
+  "pairs": [],
+  "sampleSelection": {
+    "window_utc": { "from": "2026-10-22T18:40:00Z", "to": "2026-10-22T18:50:00Z" },
+    "limit": 30,
+    "events_inspected": 30,
+    "fetch_sample_span_relative_s": { "min": 496, "max": 562, "note": "PREVIOUSLY_REPORTED from final P14 run" }
+  },
+  "statistics": {
+    "source": "PREVIOUSLY_REPORTED — ds4-rpm-p14-raw-to-ds4-provenance-study.json",
+    "gps_present_count": 30,
+    "header_time_present_count": 30,
+    "rpm_present_count": 26,
+    "gps_rpm_same_event_count": 26,
+    "join_compared_count_offset_0s": 30,
+    "matched_within_75m_offset_0s": 0,
+    "mean_haversine_m_offset_0s": 1014,
+    "max_haversine_m_offset_0s": 1460,
+    "mean_haversine_m_offset_plus_14s": 1114,
+    "median_m": "NOT_CAPTURED",
+    "p95_m": "NOT_CAPTURED",
+    "duplicate_bucket_assignments": "NOT_CAPTURED",
+    "join_cardinality": "NOT_CAPTURED"
+  },
+  "fields_not_captured_per_pair": [
+    "cloudEvent_id",
+    "fetch_header_time",
+    "raw_fetch_lat_lon",
+    "decoded_fetch_lat_lon",
+    "s4_bucket_label",
+    "s4_lat_lon",
+    "timeDeltaSeconds",
+    "haversineDistanceM"
+  ]
+}

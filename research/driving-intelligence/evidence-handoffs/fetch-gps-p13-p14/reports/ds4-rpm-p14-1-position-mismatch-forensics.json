@@ -1,0 +1,127 @@
+{
+  "operation": "DS4_RPM_P14_1_POSITION_MISMATCH_FORENSICS",
+  "mode": "STRICT_OFFLINE_READ_ONLY",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicle_label": "TIG22 VW Tiguan",
+  "generated_at_utc": "2026-11-05T11:30:00Z",
+  "inputs_used": [
+    "ds4-rpm-p12-fetch-metadata-execution.json",
+    "ds4-rpm-p13-status-payload-execution.json",
+    "ds4-rpm-p14-raw-to-ds4-provenance-study.json",
+    "sealed di_v0_s4_evidence_container.bin (S3A position pin)",
+    "sealed PROVENANCE_MANIFEST / trip identity",
+    "backend position-acquisition + EXP-021 contradiction register",
+    "public model-garage posToLocation"
+  ],
+  "missing_evidence": {
+    "persisted_fetch_payloads_from_p14": false,
+    "per_event_lat_lon_pairs": "NOT AVAILABLE — P13/P14 did not persist coordinates; cannot re-verify decode or compute residuals offline without new Fetch",
+    "telemetry_measurement_time_on_graphql_path": "P1 documented ORIGINAL_MEASUREMENT_TIMESTAMPS_AVAILABLE=NO",
+    "cloud_event_id_in_s4_pin": false
+  },
+  "PHASE_1_IDENTITY_AND_TIME": {
+    "VEHICLE_IDENTITY_CONSISTENCY": "CONSISTENT — sealed S4 pin subject token asset 192922, SynqDrive vehicle id 19fedd4b-c4e8-4de8-a125-dab293326e7e, trip 98d2a8e0-8b7d-4529-bf76-acee44d61fbe; P12/P13/P14 same DID hash prefix c97c71d17e9f",
+    "fetch_subject_producer_semantics": "Fetch dimo.status r/v0/s CloudEvents for ERC721 vehicle DID; header.time = processed CloudEvent time (not persisted raweventid in samples)",
+    "s4_pin_identity": "POSITION channel query subject DIMO token 192922 + same vehicle id; window 2026-10-22T18:30:00Z–19:04:54Z (trip boundary pin, superset of P14 18:40–18:50)",
+    "TIME_WINDOW_CONSISTENCY": "PARTIAL — P14 analysis window 18:40–18:50Z is inside trip/S4 pin; Fetch limit=30 returned only late slice (relative seconds 496–562 ≈ 18:48:16–18:49:22Z), not full 10-minute coverage",
+    "event_time_vs_bucket_label": "CODE_PROVEN MISMATCH RISK — S3A spec: GraphQL row timestamp is a 1s query-bucket label, not proven physical observation time; Fetch header.time is CloudEvent event time. P14 joined them by second-floored equality (±2s neighbor). That join is proximity of labels, not proven co-temporal physical fixes",
+    "timezone_epoch": "All UTC Z; no local TZ conversion in SynqDrive pin or P14 script",
+    "same_physical_movement_period": "PLAUSIBLE SAME TRIP SEGMENT for late-window slice (moving drive per sealed shadow speeds ~30–56 km/h in 18:40–18:49), but not proven same instant-level trajectory pairing"
+  },
+  "PHASE_2_POSITION_DECODING": {
+    "COORDINATE_DECODER_VERDICT": {
+      "ruptela_status_pos": "CODE_PROVEN (public model-garage) — pos.lat/lon float64 microdegrees ÷ 10_000_000; sentinel -0x80000000 excluded; lat/lon order fixed (not swapped in spec)",
+      "p14_heuristic": "HYPOTHESIS — P14 used divide-by-1e7 only when |lat| or |lon|>180 else treat as decimal degrees; consistent with model-garage for typical EU magnitudes",
+      "s3a_pin_coordinates": "Decimal degrees in S4 snapshot rows (VALID); sourced from Telemetry GraphQL AVG(currentLocationCoordinates)",
+      "encoding_equivalence": "NOT ASSUMED — same WGS84 degrees family after decode, but different upstream fields and aggregation",
+      "verification_status": "NOT_OBSERVABLE offline — no saved Fetch payloads to re-decode"
+    }
+  },
+  "PHASE_3_DATA_PATH": {
+    "FETCH_STATUS_TO_VSS_LINEAGE": [
+      { "step": "Ruptela r/v0/s JSON data.pos", "status": "CODE_PROVEN (model-garage SignalsFromV1Payload / posToLocation)" },
+      { "step": "DIMO ingest → VSS currentLocationCoordinates signal", "status": "HYPOTHESIS (architecture-compatible; not SynqDrive-proven end-to-end)" },
+      { "step": "Telemetry GraphQL historical 1s AVG", "status": "CODE_PROVEN (S4 pin query id DIMO_SIGNALS_HISTORICAL_LOCATION_1S_AVG_V0_1)" },
+      { "step": "S3A normalized buckets → S4 pin", "status": "CODE_PROVEN (di-v0-position snapshot format)" },
+      { "step": "L3/C4 speed support", "status": "CODE_PROVEN separate — hold/release/gates; speed authority DS4 estimatedSpeedKmh not Fetch pos" }
+    ],
+    "S3A_AGGREGATION_SEMANTICS": {
+      "classification": "CODE_PROVEN",
+      "text": "interval 1s; coordinateAggregation AVG; when a bucket aggregates >1 sample the returned coordinate may not equal any single observed sample (di-v0-position-acquisition.versions.ts)",
+      "temporal_confidence": "BUCKET_BOUNDED — bucket label is not physical measurement instant (di-v0-position-acquisition.types.ts)"
+    },
+    "semantic_change_points": [
+      "Raw status pos (single payload field) → VSS signal timestamp = event.Time at conversion",
+      "GraphQL bucket groups signals into 1s AVG with row timestamp = bucket start label",
+      "Fetch archive exposes pre-aggregated status payload pos + CloudEvent header.time (different anchors)"
+    ]
+  },
+  "PHASE_4_OFFLINE_DIAGNOSTICS": {
+    "p14_residual_pattern": {
+      "mean_residual_m": 1014,
+      "stable_across_offsets_minus60_to_plus60": true,
+      "except_offset_plus14": "mean ~1114m (slight change, still >>75m threshold)",
+      "interpretation": "Dominant ~1km offset is not resolved by ±EXP-021-scale time shifts alone in the tested join model — inconsistent with simple constant-time misalignment at 50 km/h (45s ≈ 625m along-track) unless combined with other errors"
+    },
+    "residual_mechanism_candidates": [
+      {
+        "rank": 1,
+        "label": "Invalid comparison contract (label-time join + unlike fields)",
+        "class": "CODE_PROVEN + HYPOTHESIS",
+        "detail": "P14 compared Fetch status data.pos to S3A AVG coordinates at S4 bucket keyed by Fetch header.time second. SynqDrive explicitly states bucket labels are not proven physical times and AVG may differ from any single sample. This alone can produce large residuals without decode bugs or different vehicles."
+      },
+      {
+        "rank": 2,
+        "label": "Different data planes (Fetch archive vs Telemetry GraphQL pin)",
+        "class": "CODE_PROVEN",
+        "detail": "S4 evidence is pinned Telemetry API acquisition at trip shadow time; Fetch is archived CloudEvents. No CloudEventID linkage in S4 pin (P14). Residual measures cross-plane disagreement, not necessarily device error."
+      },
+      {
+        "rank": 3,
+        "label": "R1 grid / record-time contamination on telemetry path",
+        "class": "HYPOTHESIS",
+        "detail": "DI-DEF-020 / DI-CONTRA-PROVIDER-TS-R1-OBD-001: OBD rows grid-labelled and misdated (P50 14s / P90 45s) with backlog foreign GPS on OBD records. Position channel is separate query but shares R1 telemetry family context; may contribute if bucket contents do not align with Fetch event-time fixes. Not proven for currentLocationCoordinates AVG in this offline pass."
+      },
+      {
+        "rank": 4,
+        "label": "Static decode / scaling defect in P14",
+        "class": "HYPOTHESIS NOT_OBSERVABLE",
+        "detail": "Would require re-inspecting persisted Fetch JSON; swap test on synthetic S4 coords shows correct scale yields 0m; no evidence of lat/lon swap (would be ~6000km error)."
+      },
+      {
+        "rank": 5,
+        "label": "Different vehicle or trajectory",
+        "class": "NOT_SUPPORTED",
+        "detail": "Identity pins align on token 192922 and trip; P12 status counts overlap trip drive window."
+      },
+      {
+        "rank": 6,
+        "label": "Parallel offset ~1km map error",
+        "class": "HYPOTHESIS LOW",
+        "detail": "Stable residual could indicate systematic spatial bias, but without raw pairs cannot distinguish from along-route time skew under invalid join."
+      }
+    ],
+    "s4_trajectory_in_sample_window": "Sealed S4 shows moving coordinates in relative 496–562s slice (urban/highway scale step sizes; sparse seconds inflate naive speed — confirms non-stationary segment, not 1km static S4 grid)"
+  },
+  "PHASE_5_VERDICT": {
+    "POSITION_RESIDUAL_EXPLANATION": "The ~1014 m mean residual is expected under the P14 join methodology: Fetch archived status GPS (single pos field at CloudEvent header time) was compared to S3A pinned Telemetry 1s AVG coordinates indexed by GraphQL bucket labels. SynqDrive code states bucket timestamps are not proven physical observation times and AVG coordinates need not match any single sample. Fetch and S4 pin are different planes without event-id lineage. Therefore large residuals do not prove Fetch archive is wrong, S3A is wrong, or decode is wrong — they primarily show non-equivalent comparison. Residual stability across ±60s shifts further contradicts a simple single-offset correction at 75m tolerance under this join.",
+    "PROVEN_ROOT_CAUSE_OR_UNRESOLVED": "PARTIALLY PROVEN — root cause category = INVALID_OR_NON-COMPARABLE CROSS-PLANE PAIRING + AGGREGATION SEMANTICS (code-proven). Exact per-meter physical explanation for ~1014 (along-track vs foreign snapshot vs decode) remains UNRESOLVED without persisted Fetch payloads and measurement-time metadata.",
+    "HYPOTHESES_RANKED_BY_EVIDENCE": "See phase_4.residual_mechanism_candidates ranks 1–6",
+    "NEED_FOR_NEW_FETCH_REQUESTS": "OPTIONAL NOT MANDATORY for explaining the mismatch category; REQUIRED only to test decode/trajectory hypotheses or build valid same-event / same-archive comparisons (e.g. compare pos within payload vs telemetry-derived fields at documented conversion, or paginated uniform window with pre-registered alignment rules — not header.time = bucket label alone).",
+    "MINIMAL_NEXT_EVIDENCE_ACTION": "Offline methodology fix first: document forbidden join (Fetch header.time ↔ S3A bucket label as co-temporal proof). If owner authorizes new Fetch: persist redacted structural fields only and compare (a) status pos vs (b) coordinates reconstructed from same archived event via documented VSS path, OR compare Fetch pos series to S3A using pre-registered alignment contract from EXP-021 (no best-fit). Do not use ~1014m as DS4×RPM attestation input.",
+    "DS4_SPEED_UNCHANGED": true,
+    "R1_VETO": "PRESERVED — historical GraphQL/INTERVAL_ONLY RPM pairing blocked; this forensics does not lift veto"
+  },
+  "OUTPUT_SUMMARY": {
+    "VEHICLE_IDENTITY_CONSISTENCY": "CONSISTENT",
+    "TIME_WINDOW_CONSISTENCY": "PARTIAL (same trip; Fetch sample late slice only)",
+    "COORDINATE_DECODER_VERDICT": "Spec-consistent decode; offline re-verify NOT_OBSERVABLE",
+    "FETCH_STATUS_TO_VSS_LINEAGE": "Two planes; model-garage conversion path documented; SynqDrive S4 uses Telemetry AVG pin",
+    "S3A_AGGREGATION_SEMANTICS": "1s AVG; bucket label ≠ proven physical time; AVG ≠ single sample",
+    "POSITION_RESIDUAL_EXPLANATION": "Non-equivalent cross-plane + label-time join; ~1km is diagnostic of comparison invalidity, not archive deletion",
+    "PROVEN_ROOT_CAUSE_OR_UNRESOLVED": "PROVEN: invalid comparison contract; UNRESOLVED: exact meter-level physics",
+    "NEED_FOR_NEW_FETCH_REQUESTS": "Optional for hypothesis testing; not required to explain mismatch class",
+    "MINIMAL_NEXT_EVIDENCE_ACTION": "Fix alignment contract before any re-Fetch; no best-fit offset as truth"
+  },
+  "STOP": "ORCHESTRATOR_REVIEW"
+}

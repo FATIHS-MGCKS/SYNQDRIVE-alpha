@@ -1,0 +1,65 @@
+{
+  "schema": "DS4_FETCH_GPS_P14_JOIN_SPEC_V1",
+  "provenance": "Reconstructed from P14 agent execution script (November 2025); not a separate repo file at time of original run",
+  "reconstruction_confidence": "HIGH for methodology; raw inputs not persisted",
+  "fetch_query": {
+    "endpoint": "https://fetch-api.dimo.zone/query",
+    "operation": "cloudEvents",
+    "limit": 30,
+    "filter": {
+      "type": "dimo.status",
+      "dataversion": "r/v0/s",
+      "after": "2026-10-22T18:40:00Z",
+      "before": "2026-10-22T18:50:00Z"
+    },
+    "selection": "header { id time type dataversion producer raweventid } data",
+    "requests_executed": 1,
+    "pagination": "NONE",
+    "sort_order": "NOT_CAPTURED — Fetch API default ordering assumed; P14 reported late-window slice seconds 496–562 relative to window start"
+  },
+  "sampleSelection": {
+    "window_utc": { "from": "2026-10-22T18:40:00Z", "to": "2026-10-22T18:50:00Z" },
+    "limit": 30,
+    "actual_coverage": "PREVIOUSLY_REPORTED: ~66s late sub-window only (relative seconds 496–562)",
+    "uniform_coverage": false
+  },
+  "fetch_position_decode": {
+    "source_field": "data.pos.lat / data.pos.lon",
+    "reference_spec": "DIMO-Network/model-garage pkg/ruptela convert_signal_location.go posToLocation",
+    "rules": [
+      "Parse data as JSON object (or JSON string then parse)",
+      "lat/lon as Number",
+      "Reject sentinel -2147483648 (-0x80000000)",
+      "If abs(lat)>180 OR abs(lon)>180: divide by 10_000_000 (microdegrees)",
+      "Else treat as decimal degrees WGS84"
+    ],
+    "rpm_optional": "signals.94 hex × 0.25 per Convert94 (presence only in P14 aggregates)"
+  },
+  "s4_source": {
+    "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_s4_evidence_container.bin",
+    "channel": "POSITION",
+    "format": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+    "query_id": "DIMO_SIGNALS_HISTORICAL_LOCATION_1S_AVG_V0_1",
+    "bucket_rows": "JSON lines [\"b\", bucketLabelUtc, availability, coordinateStatus, lat, lon, sampleCount, ...]",
+    "coordinates_in_pin": "Decimal degrees when VALID/PRESENT"
+  },
+  "joinSpec": {
+    "fetch_time_field": "header.time (CloudEvent)",
+    "s4_time_field": "bucketLabelUtc (1s grid label from S3A pin)",
+    "alignment_method": "floor_to_utc_second then optional offset_seconds; neighbor search d in [-2..+2] seconds for bucket key match",
+    "tolerance_seconds_neighbor_search": 2,
+    "tie_break": "First matching bucket key in neighbor loop order (d from -2 to +2)",
+    "cardinality": "n:1 (many fetch events may map to same bucket; not explicitly deduped)",
+    "offset_sensitivity_offsets_seconds": [-60, -45, -30, -14, 0, 14, 30, 45, 60],
+    "distance_metric": "haversine_wgs84",
+    "earth_radius_m": 6371008.8,
+    "match_threshold_m": 75,
+    "implementation_language": "Node.js (agent one-off script on Cloud Agent VM)"
+  },
+  "identity_layers_documented": {
+    "SAME_VEHICLE": "Sealed S4 subject token 192922 + trip/vehicle ids in provenance",
+    "SAME_DEVICE": "NOT_PROVEN from Fetch export alone",
+    "SAME_PHYSICAL_GNSS_SOURCE": "NOT_PROVEN",
+    "SAME_INDIVIDUAL_POSITION_FIX": "NOT_PROVEN — compare used different semantic time anchors"
+  }
+}

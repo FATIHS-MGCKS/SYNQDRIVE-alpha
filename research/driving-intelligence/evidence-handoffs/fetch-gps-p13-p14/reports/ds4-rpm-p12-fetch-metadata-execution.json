@@ -1,0 +1,64 @@
+{
+  "operation": "DS4_RPM_P12_FETCH_METADATA_EXECUTION",
+  "mode": "OWNER_AUTHORIZED_BOUNDED_READ_ONLY",
+  "owner_authorization": "EXPLICITLY_GRANTED_BY_OWNER",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicle_label": "VW Tiguan TIG22",
+  "time_window_utc": {
+    "from": "2026-10-22T18:25:00Z",
+    "to": "2026-10-22T19:10:00Z"
+  },
+  "generated_at_utc": "2026-11-05T11:05:00Z",
+  "preflight": {
+    "vehicle_identity_source": "sealed S4 pin + SynqDrive provenance (token asset matches vehicle)",
+    "authorized_vehicle_did_verified": true,
+    "did_disclosure": "sha256_prefix_only:c97c71d17e9f",
+    "fetch_api_endpoint": "https://fetch-api.dimo.zone/query",
+    "token_exchange_http_status": 200,
+    "vehicle_jwt_valid": true,
+    "vehicle_jwt_token_id_matches_asset": true,
+    "privilege_ids_in_jwt_count": 6,
+    "get_raw_data_string_in_jwt": false,
+    "privilege_id_7_present": false,
+    "fetch_metadata_succeeded_despite_no_named_getrawdata_claim": true
+  },
+  "AUTHORIZATION_VERDICT": "OWNER_AUTHORIZED_FETCH_COMPLETED",
+  "REQUESTS_EXECUTED": 2,
+  "FETCH_API_RESPONSE_STATUS": "HTTP 200 (GraphQL request 1), HTTP 200 (GraphQL request 2); no GraphQL errors",
+  "EVENT_TYPES_FOUND": [
+    {
+      "type": "dimo.fingerprint",
+      "count": 574,
+      "firstSeen": "2026-10-22T18:31:18Z",
+      "lastSeen": "2026-10-22T19:05:00Z"
+    },
+    {
+      "type": "dimo.status",
+      "count": 710,
+      "firstSeen": "2026-10-22T18:31:18Z",
+      "lastSeen": "2026-10-22T19:05:00Z"
+    }
+  ],
+  "RUPTELA_STATUS_COUNT": 710,
+  "RUPTELA_INDEX_SAMPLE_COUNT": 5,
+  "index_sample_metadata": {
+    "filter": "type=dimo.status dataversion=r/v0/s limit=5",
+    "header_time_min": "2026-10-22T19:04:55Z",
+    "header_time_max": "2026-10-22T19:05:00Z",
+    "dataversion_r_v0_s_present_in_sample": 5,
+    "producer_field_present_in_sample": 5
+  },
+  "RAWEVENTID_PRESENT_COUNT": 0,
+  "ORIGINAL_EVENT_TIME_PRESENT": true,
+  "SCIENTIFIC_CLASSIFICATION": "RAW_EVENT_CANDIDATE_FOUND",
+  "classification_notes": [
+    "710 dimo.status events in window — not ARCHIVE_EMPTY and not ACCESS_DENIED",
+    "Index sample confirms r/v0/s headers with CloudEvent time field populated",
+    "raweventid absent in all 5 sampled headers — provenance chain incomplete at metadata layer",
+    "Index sample times cluster at window end only (limit=5); does not prove uniform coverage — not proof of deletion elsewhere"
+  ],
+  "RAW_DATA_RECOVERY_FEASIBILITY": "METADATA_FEASIBLE — archived dimo.status / r/v0/s index entries exist for trip window; full payload recovery would require separate owner-scoped cloudEvents query (explicitly out of scope here). Does not lift R1 historical GraphQL point-time veto for existing DI buckets.",
+  "HISTORICAL_R1_VETO": "PRESERVED",
+  "SINGLE_NEXT_TECHNICAL_ACTION": "Owner-scoped follow-up: bounded cloudEvents (limit 1–2, header+pos+RPM keys only) to confirm same-payload structure and whether raweventid is ever populated; parallel offline join of Fetch header.time vs DS4 bucket labels for phase diagnostic only — no CORRELATION_ELIGIBLE until new pairing attestation bundle.",
+  "STOP": "ORCHESTRATOR_REVIEW"
+}

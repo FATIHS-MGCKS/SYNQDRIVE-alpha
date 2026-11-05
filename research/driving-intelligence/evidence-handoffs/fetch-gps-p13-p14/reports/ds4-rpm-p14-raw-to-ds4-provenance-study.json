@@ -1,0 +1,80 @@
+{
+  "operation": "DS4_RPM_P14_RAW_TO_DS4_PROVENANCE_STUDY",
+  "owner_authorization": "EXPLICITLY_GRANTED_BY_OWNER_FOR_P14",
+  "trip_id": "98d2a8e0-8b7d-4529-bf76-acee44d61fbe",
+  "vehicle_label": "TIG22",
+  "window_utc": {
+    "from": "2026-10-22T18:40:00Z",
+    "to": "2026-10-22T18:50:00Z"
+  },
+  "did_hash_prefix": "c97c71d17e9f",
+  "FETCH_REQUEST_STATUS": "SUCCESS",
+  "REQUEST_STATUS": "SUCCESS",
+  "fetch_http_status": 200,
+  "fetch_requests_executed": 1,
+  "EVENTS_INSPECTED": 30,
+  "EVENT_COUNT": 30,
+  "VALID_DEVICE_EVENT_TIMES": 30,
+  "GPS_PRESENT_COUNT": 30,
+  "RPM_PRESENT_COUNT": 26,
+  "GPS_RPM_SAME_EVENT_COUNT": 26,
+  "MISSING_RPM_COUNT": 4,
+  "HEADER_TIME_PRESENT_COUNT": 30,
+  "RAW_EVENT_ID_PRESENT_COUNT": 0,
+  "INVALID_COORDINATE_COUNT": 0,
+  "DUPLICATE_EVENT_TIME_COUNT": 0,
+  "fetch_sample_coverage_note": "Returned 30 events span seconds 496–562 relative to window start (late sub-window sample; not uniform 10-minute coverage)",
+  "ds4_position_buckets_in_window": 600,
+  "ds4_position_source": "Sealed S4 pin — S3A DIMO historical 1s AVG currentLocationCoordinates (GraphQL telemetry path, not Fetch archive)",
+  "ds4_c4_speed_buckets_in_window": 600,
+  "coordinate_scale": "model-garage posToLocation: microdegree integers /1e7 when magnitude >180; else decimal degrees",
+  "rpm_decode": "signals.94 hex × 0.25 RPM per model-garage Convert94",
+  "TIMESTAMP_OFFSET_DIAGNOSTICS": {
+    "method": "Shift header.time by offset; join to S4 bucket label with ±2s neighbor search",
+    "match_threshold_m": 75,
+    "exp021_reference_offsets_s": { "p50_documented": 14, "p90_documented": 45 },
+    "no_best_offset_selected": true,
+    "offset_sensitivity": [
+      { "offsetS": -60, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": -45, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": -30, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": -14, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": 0, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": 14, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1114, "max_residual_m": 1425 },
+      { "offsetS": 30, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": 45, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+      { "offsetS": 60, "compared": 30, "matched_within_threshold": 0, "mean_residual_m": 1014, "max_residual_m": 1460 }
+    ],
+    "phase_classification": "INCONCLUSIVE — tested offsets do not improve sub-75m agreement; EXP-021 band not supported by this 30-event late-window slice"
+  },
+  "COORDINATE_MATCH_DIAGNOSTICS": {
+    "threshold_m": 75,
+    "offset_0s": { "compared": 30, "matched": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+    "offset_plus_14s": { "compared": 30, "matched": 0, "mean_residual_m": 1114, "max_residual_m": 1425 },
+    "offset_plus_45s": { "compared": 30, "matched": 0, "mean_residual_m": 1014, "max_residual_m": 1460 },
+    "interpretation": "Temporal bucket join succeeded for all 30 samples, but coordinate residuals remain ~1 km — does not establish Fetch status pos ≡ pinned S3A AVG at tested alignment; does not prove archive deletion"
+  },
+  "DS4_POSITION_PROVENANCE_VERDICT": "NOT_PROVEN at 75m threshold — same-second S4 buckets found for Fetch header times, but status payload coordinates diverge from pinned S3A grid (~1 km mean residual); likely distinct processing paths or remaining time/label misalignment beyond tested offsets",
+  "DS4_SPEED_SUPPORT_LINK_VERDICT": {
+    "cloud_event_id_retained_in_sealed_s4": false,
+    "ds4_position_input_transform": "DIMO telemetry 1s AVG + DI hold/release/gates before L3/C4",
+    "link_fetch_record_to_c4_support_window": "NOT_PROVEN",
+    "speed_authority": "DS4 C4/L3 estimatedSpeedKmh only — not Ruptela GPS/OBD speed"
+  },
+  "RPM_SAMPLE_TIME_VERDICT": "RPM co-located with GPS in same status payload using shared header.time — processed event time only; independent physical RPM sample instant NOT PROVEN (G5)",
+  "SAME_EVENT_PROVENANCE_VERDICT": "PARTIAL — 26/30 events contain GPS+RPM (signals.94) in one r/v0/s payload; not physical synchrony proof",
+  "DEVICE_TIMESTAMP_AUTHORITY_VERDICT": "PARTIAL — header.time on all events; raweventid absent; coordinate similarity does not confer timestamp authority",
+  "G1_TO_G6_EVIDENCE_MATRIX": {
+    "G1_FETCH_STATUS_AVAILABLE": "PROVEN",
+    "G2_GPS_RPM_SAME_EVENT": "PARTIAL",
+    "G3_FETCH_POSITION_TO_DS4_PROVENANCE": "NOT_PROVEN",
+    "G4_DEVICE_EVENT_TIME_TRUST": "PARTIAL",
+    "G5_RPM_PHYSICAL_SAMPLE_TIME_BOUNDED": "NOT_PROVEN",
+    "G6_DS4_RPM_TEMPORAL_PAIRING_ATTESTED": "BLOCKED"
+  },
+  "R1_VETO_STATUS": "UNCHANGED — hasUncertainHistoricalObdRecordTime(RUPTELA_R1); no GraphQL bucket relabel",
+  "CORRELATION_GO_NO_GO": "NO_GO — insufficient provenance to upgrade DS4×RPM pairing; attestation study may continue with fuller Fetch coverage + explicit coordinate-lineage hypothesis tests",
+  "SINGLE_NEXT_TECHNICAL_ACTION": "Owner-gated paginated Fetch for uniform 18:40–18:50 coverage; compare status pos against S3A using pre-registered time-alignment hypotheses and stricter lineage audit (telemetry AVG vs status pos field semantics) — still no best-fit offset as production truth",
+  "report_bytes_approx": 6200,
+  "STOP": "ORCHESTRATOR_REVIEW"
+}
