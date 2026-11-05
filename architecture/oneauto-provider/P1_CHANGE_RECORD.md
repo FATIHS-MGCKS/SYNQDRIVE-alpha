@@ -179,3 +179,11 @@
 - **Evidence:** `architecture/oneauto-provider/evidence/P1_OE_SERVICE_SCHEDULE_INTEGRATION_DRAFT.md`
 - **Tests:** `oneauto-oe-service-schedule-eu-provider.util.spec.ts`, `oneauto-p1-oe-service-schedule-integration.spec.ts`, `oneauto-sku-runtime-activation.util.spec.ts`
 - **Non-effects:** Not seeded in execution-verified registry; no provider HTTP; no VehicleServiceEvent / HM-OEM writes; `ONEAUTO_SKU_OE_SERVICE_SCHEDULE_RUNTIME_ENABLED` default OFF.
+
+## P2 — OE Service Schedule scoped attestation canary (2026-11-05, draft PR)
+
+- **Scope:** Owner-gated single-shot attestation path for `OE_SERVICE_SCHEDULE` without global execution-verified promotion.
+- **Schema:** `OneAutoOeServiceScheduleAttestationPermit`, job `executionAuthorizationMode` / `attestationPermitId`.
+- **Evidence:** `architecture/oneauto-provider/evidence/P2_OE_SERVICE_SCHEDULE_ATTESTATION_CANARY.md`
+- **Tests:** `oneauto-p2-oe-service-schedule-attestation-canary.spec.ts`; P1/P3 registry regressions retained.
+- **Non-effects:** No production deploy; no provider HTTP in CI; no budget/pricing mutation; standard execute still `CONTRACT_UNVERIFIED` for schedule SKU.

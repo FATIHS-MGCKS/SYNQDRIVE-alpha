@@ -71,6 +71,82 @@ export class OneAutoProviderController {
     });
   }
 
+  @Get('attestation-canary/status')
+  getAttestationCanaryStatus() {
+    return this.oneAuto.getAttestationCanaryStatus();
+  }
+
+  @Post('vehicles/:vehicleId/attestation-canary/quote')
+  quoteAttestationCanary(@Param('orgId') orgId: string, @Param('vehicleId') vehicleId: string) {
+    return this.oneAuto.quoteAttestationCanary(orgId, vehicleId);
+  }
+
+  @Post('vehicles/:vehicleId/attestation-canary/arm')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ONEAUTO_OE_SERVICE_SCHEDULE_ATTESTATION_CANARY_ARM)
+  armAttestationCanary(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body()
+    body: {
+      configuredPriceMinor: number;
+      maxAuthorizedSpendMinor: number;
+      pricingSourceVersion: string;
+      ownerSpendAcknowledged: boolean;
+      accountPricingAcknowledged: boolean;
+    },
+    @Req() req: AuthedRequest,
+  ) {
+    const masterAdminUserId = req.user?.id;
+    if (!masterAdminUserId) {
+      throw new UnauthorizedException('Authenticated master admin required');
+    }
+    return this.oneAuto.armAttestationCanaryPermit({
+      orgId,
+      vehicleId,
+      masterAdminUserId,
+      configuredPriceMinor: body.configuredPriceMinor,
+      maxAuthorizedSpendMinor: body.maxAuthorizedSpendMinor,
+      pricingSourceVersion: body.pricingSourceVersion,
+      ownerSpendAcknowledged: body.ownerSpendAcknowledged === true,
+      accountPricingAcknowledged: body.accountPricingAcknowledged === true,
+    });
+  }
+
+  @Post('vehicles/:vehicleId/attestation-canary/execute')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ONEAUTO_PROVIDER_EXECUTE)
+  executeAttestationCanary(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body()
+    body: {
+      serviceSku: string;
+      idempotencyKey: string;
+      confirmedPriceMinor: number;
+      pricingSourceVersion: string;
+      quoteIssuedAt: string;
+      acknowledgeIndicativeNotGuaranteed: boolean;
+      ownerSpendAcknowledged: boolean;
+    },
+    @Req() req: AuthedRequest,
+  ) {
+    const masterAdminUserId = req.user?.id;
+    if (!masterAdminUserId) {
+      throw new UnauthorizedException('Authenticated master admin required');
+    }
+    return this.oneAuto.executeAttestationCanary({
+      orgId,
+      vehicleId,
+      serviceSku: body.serviceSku,
+      idempotencyKey: body.idempotencyKey,
+      confirmedPriceMinor: body.confirmedPriceMinor,
+      pricingSourceVersion: body.pricingSourceVersion,
+      quoteIssuedAt: body.quoteIssuedAt,
+      acknowledgeIndicativeNotGuaranteed: body.acknowledgeIndicativeNotGuaranteed === true,
+      ownerSpendAcknowledged: body.ownerSpendAcknowledged === true,
+      masterAdminUserId,
+    });
+  }
+
   @Get('jobs/:jobId')
   getJob(@Param('orgId') orgId: string, @Param('jobId') jobId: string) {
     return this.oneAuto.getJob(orgId, jobId);

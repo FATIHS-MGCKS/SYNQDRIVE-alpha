@@ -2,8 +2,12 @@
  * Strict boolean env parsing for OneAuto feature flags.
  * Unknown values resolve to `defaultValue` (never accidentally enable).
  */
-export function readOneAutoBooleanEnv(name: string, defaultValue = false): boolean {
-  const raw = process.env[name];
+export function readOneAutoBooleanEnv(
+  name: string,
+  defaultValue = false,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const raw = env[name];
   if (raw == null || raw.trim() === '') {
     return defaultValue;
   }

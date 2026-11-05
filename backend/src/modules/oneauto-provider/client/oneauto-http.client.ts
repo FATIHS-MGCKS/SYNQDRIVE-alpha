@@ -1,8 +1,9 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { OneAutoProviderHttpContract } from '../catalog/oneauto-contract-types';
+import { isAttestationScopedOeServiceScheduleContract } from '../service-schedule/oneauto-oe-service-schedule-attestation-contract.util';
 import { assertOneAutoPositiveOrgBudgetWhenEnabled } from '../oneauto-execution-budget-guard.util';
-import { assertOneAutoAllowlistedPath } from './oneauto-allowlist';
+import { assertOneAutoAllowlistedPath, assertOneAutoAttestationScopedAllowlistedPath } from './oneauto-allowlist';
 import { ONEAUTO_HTTP_FETCH, type OneAutoHttpFetchImpl } from './oneauto-http-fetch.token';
 import {
   nonJsonResponsePlaceholder,
@@ -85,7 +86,8 @@ export class OneAutoHttpClient {
   }): Promise<OneAutoHttpResult> {
     this.assertOutboundAllowed();
     const contract = input.contract;
-    if (contract.evidenceState !== 'EXECUTION_VERIFIED') {
+    const attestationScoped = isAttestationScopedOeServiceScheduleContract(contract);
+    if (!attestationScoped && contract.evidenceState !== 'EXECUTION_VERIFIED') {
       throw Object.assign(new Error('One Auto contract not execution-verified'), {
         code: 'CONTRACT_UNVERIFIED',
       });
@@ -102,7 +104,11 @@ export class OneAutoHttpClient {
     }
     const validatedVin = vin as string;
 
-    assertOneAutoAllowlistedPath(contract.httpMethod, contract.providerPathTemplate);
+    if (attestationScoped) {
+      assertOneAutoAttestationScopedAllowlistedPath(contract.httpMethod, contract.providerPathTemplate);
+    } else {
+      assertOneAutoAllowlistedPath(contract.httpMethod, contract.providerPathTemplate);
+    }
 
     const cfg = this.cfg();
     const base = (cfg?.baseUrl ?? '').replace(/\/+$/, '');

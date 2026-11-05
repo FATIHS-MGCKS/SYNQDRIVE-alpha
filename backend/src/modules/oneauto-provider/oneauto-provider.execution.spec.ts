@@ -11,7 +11,7 @@ describe('OneAutoProviderExecutionService dispatch safety', () => {
           organizationId: 'org1',
           vehicleId: 'v1',
           vinSnapshot: 'WBA12345678901234',
-          serviceSku: 'OE_SERVICE_HISTORY_EU',
+          serviceSku: 'OE_BUILD_DECODE',
           status: OneAutoProviderJobStatus.QUEUED,
           pollAttemptCount: 0,
           expiresAt: new Date(Date.now() + 60_000),
@@ -24,7 +24,7 @@ describe('OneAutoProviderExecutionService dispatch safety', () => {
       vehicle: { findFirst: jest.fn() },
     };
     const http = { executeProviderGet: jest.fn() };
-    const config = { get: () => ({ enabled: true }) } as unknown as ConfigService;
+    const config = { get: () => ({ enabled: true, orgDailyBudgetMinor: 500 }) } as unknown as ConfigService;
     const queue = { add: jest.fn() };
     const oemMaterialization = { tryMaterializeFromSucceededJob: jest.fn() };
     const svc = new OneAutoProviderExecutionService(

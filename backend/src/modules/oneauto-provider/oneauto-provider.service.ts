@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OneAutoProviderJobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -28,6 +28,15 @@ import {
   oneAutoUnavailableException,
 } from './oneauto-provider.errors';
 import { OneAutoProviderExecutionService } from './oneauto-provider-execution.service';
+import { ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU } from './service-schedule/oneauto-service-schedule-eu.types';
+import {
+  loadOneAutoOeServiceScheduleAttestationCanaryFromEnv,
+} from './service-schedule/oneauto-oe-service-schedule-attestation-canary.config';
+import {
+  assertAttestationRequestScope,
+  resolveAttestationPricingSourceVersion,
+} from './service-schedule/oneauto-oe-service-schedule-attestation-guards.util';
+import { OneAutoOeServiceScheduleAttestationPermitService } from './service-schedule/oneauto-oe-service-schedule-attestation-permit.service';
 
 type RuntimeCfg = {
   enabled?: boolean;
@@ -48,6 +57,7 @@ export class OneAutoProviderService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly execution: OneAutoProviderExecutionService,
+    private readonly attestationPermit: OneAutoOeServiceScheduleAttestationPermitService,
   ) {}
 
   private runtimeCfg(): RuntimeCfg {
@@ -243,6 +253,207 @@ export class OneAutoProviderService {
 
     await this.execution.enqueueExecution(job.id);
     return this.toJobDto(job);
+  }
+
+  getAttestationCanaryStatus() {
+    return this.attestationPermit.getCanaryStatus();
+  }
+
+  async quoteAttestationCanary(orgId: string, vehicleId: string) {
+    const cfg = loadOneAutoOeServiceScheduleAttestationCanaryFromEnv();
+    const { vehicle } = await this.loadVehicleAndSku(
+      orgId,
+      vehicleId,
+      ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU,
+    );
+    assertAttestationRequestScope({
+      cfg,
+      organizationId: orgId,
+      vehicleId,
+      vehicleVin: vehicle.vin,
+      serviceSku: ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU,
+    });
+    this.assertFeatureEnabledForQuote();
+    try {
+      assertOneAutoPositiveOrgBudgetWhenEnabled(this.runtimeCfg());
+    } catch {
+      throw oneAutoBudgetNotConfiguredException();
+    }
+    const runtime = this.runtimeCfg();
+    const indicative =
+      runtime.indicativePriceMinorBySku?.[ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU] ?? null;
+    if (indicative == null || indicative <= 0) {
+      throw oneAutoUnavailableException('Indicative price not configured for attestation canary');
+    }
+    const vin = normalizeVin(vehicle.vin)!;
+    const quoteIssuedAt = new Date();
+    const quoteTtlMs = runtime.quoteTtlMs ?? 5 * 60_000;
+    return {
+      organizationId: orgId,
+      vehicleId,
+      serviceSku: ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU,
+      vinSnapshot: vin,
+      estimatedPriceMinor: indicative,
+      currency: 'EUR',
+      pricingSourceVersion: resolveAttestationPricingSourceVersion(),
+      executionAuthorizationMode: 'ATTESTATION_CANARY' as const,
+      indicativeNotGuaranteed: true,
+      accountPriceNotAttested: true,
+      quoteIssuedAt: quoteIssuedAt.toISOString(),
+      quoteExpiresAt: new Date(quoteIssuedAt.getTime() + quoteTtlMs).toISOString(),
+      contractGate: buildOneAutoContractGateReport(ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU),
+    };
+  }
+
+  async armAttestationCanaryPermit(input: {
+    orgId: string;
+    vehicleId: string;
+    masterAdminUserId: string;
+    configuredPriceMinor: number;
+    maxAuthorizedSpendMinor: number;
+    pricingSourceVersion: string;
+    ownerSpendAcknowledged: boolean;
+    accountPricingAcknowledged: boolean;
+  }) {
+    try {
+      return await this.attestationPermit.armPermit({
+        organizationId: input.orgId,
+        vehicleId: input.vehicleId,
+        masterAdminUserId: input.masterAdminUserId,
+        configuredPriceMinor: input.configuredPriceMinor,
+        maxAuthorizedSpendMinor: input.maxAuthorizedSpendMinor,
+        pricingSourceVersion: input.pricingSourceVersion,
+        ownerSpendAcknowledged: input.ownerSpendAcknowledged,
+        accountPricingAcknowledged: input.accountPricingAcknowledged,
+      });
+    } catch (err: unknown) {
+      throw this.mapAttestationError(err);
+    }
+  }
+
+  async executeAttestationCanary(input: {
+    orgId: string;
+    vehicleId: string;
+    serviceSku: string;
+    idempotencyKey: string;
+    confirmedPriceMinor: number;
+    pricingSourceVersion: string;
+    quoteIssuedAt: string;
+    acknowledgeIndicativeNotGuaranteed: boolean;
+    ownerSpendAcknowledged: boolean;
+    masterAdminUserId: string;
+  }) {
+    const cfg = this.runtimeCfg();
+    if (cfg.enabled !== true) throw oneAutoDisabledException();
+    if (input.serviceSku !== ONEAUTO_OE_SERVICE_SCHEDULE_EU_SERVICE_SKU) {
+      throw oneAutoUnavailableException('Attestation canary is locked to OE_SERVICE_SCHEDULE');
+    }
+    if (!input.idempotencyKey?.trim()) throw oneAutoConfirmationRequiredException();
+
+    const existing = await this.prisma.oneAutoProviderJob.findUnique({
+      where: {
+        organizationId_idempotencyKey: {
+          organizationId: input.orgId,
+          idempotencyKey: input.idempotencyKey.trim(),
+        },
+      },
+    });
+    if (existing) {
+      return this.toJobDto(existing);
+    }
+
+    const inflight = await this.prisma.oneAutoProviderJob.findFirst({
+      where: {
+        organizationId: input.orgId,
+        vehicleId: input.vehicleId,
+        serviceSku: input.serviceSku,
+        executionAuthorizationMode: 'ATTESTATION_CANARY',
+        status: {
+          in: [
+            OneAutoProviderJobStatus.CREATED,
+            OneAutoProviderJobStatus.QUEUED,
+            OneAutoProviderJobStatus.RUNNING,
+            OneAutoProviderJobStatus.AWAITING_PROVIDER,
+          ],
+        },
+      },
+    });
+    if (inflight) throw oneAutoJobInFlightException();
+
+    const quoteIssuedAtMs = Date.parse(input.quoteIssuedAt);
+    if (Number.isNaN(quoteIssuedAtMs)) throw oneAutoQuoteExpiredException();
+
+    const freshQuote = await this.quoteAttestationCanary(input.orgId, input.vehicleId);
+    if (
+      freshQuote.estimatedPriceMinor !== input.confirmedPriceMinor ||
+      freshQuote.pricingSourceVersion !== input.pricingSourceVersion
+    ) {
+      throw oneAutoPriceMismatchException();
+    }
+
+    const quoteTtlMs = cfg.quoteTtlMs ?? 5 * 60_000;
+    const jobTtlMs = cfg.jobTtlMs ?? 24 * 60 * 60_000;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + jobTtlMs);
+
+    let job;
+    try {
+      job = await this.attestationPermit.claimPermitAndCreateJob(
+        {
+          organizationId: input.orgId,
+          vehicleId: input.vehicleId,
+          masterAdminUserId: input.masterAdminUserId,
+          idempotencyKey: input.idempotencyKey,
+          confirmedPriceMinor: input.confirmedPriceMinor,
+          pricingSourceVersion: input.pricingSourceVersion,
+          quoteIssuedAt: input.quoteIssuedAt,
+          acknowledgeIndicativeNotGuaranteed: input.acknowledgeIndicativeNotGuaranteed,
+          ownerSpendAcknowledged: input.ownerSpendAcknowledged,
+        },
+        {
+          quoteIssuedAtMs,
+          quoteTtlMs,
+          jobTtlMs,
+          expiresAt,
+          vinSnapshot: freshQuote.vinSnapshot,
+          now,
+        },
+      );
+    } catch (err: unknown) {
+      throw this.mapAttestationError(err);
+    }
+
+    this.logger.warn(
+      `OneAuto attestation-canary job=${job.id} org=${input.orgId} permit=${job.attestationPermitId}`,
+    );
+    await this.execution.enqueueExecution(job.id);
+    return this.toJobDto(job);
+  }
+
+  private mapAttestationError(err: unknown): never {
+    if (err && typeof err === 'object' && 'code' in err) {
+      const code = String((err as { code: unknown }).code);
+      if (code === 'ONEAUTO_CROSS_TENANT') throw oneAutoCrossTenantException();
+      if (code === 'ONEAUTO_BINDING_MISMATCH') throw oneAutoBindingMismatchException();
+      if (code === 'ONEAUTO_BUDGET_NOT_CONFIGURED') throw oneAutoBudgetNotConfiguredException();
+      if (code === 'ONEAUTO_BUDGET_EXCEEDED') throw oneAutoBudgetExceededException();
+      if (code === 'ONEAUTO_PRICE_MISMATCH') throw oneAutoPriceMismatchException();
+      if (code === 'ONEAUTO_COST_CONFIRMATION_REQUIRED') throw oneAutoConfirmationRequiredException();
+      if (code === 'ONEAUTO_QUOTE_EXPIRED') throw oneAutoQuoteExpiredException();
+      if (code === 'ONEAUTO_ATTESTATION_PERMIT_NOT_READY') {
+        throw new ConflictException({
+          code,
+          message: 'Attestation permit is not ready — arm permit after owner and billing gates',
+        });
+      }
+      if (code === 'ONEAUTO_ATTESTATION_PERMIT_CONSUMED' || code === 'ONEAUTO_ATTESTATION_PERMIT_BLOCKED') {
+        throw new ConflictException({ code, message: (err as Error).message });
+      }
+      if (code.startsWith('ATTESTATION_')) {
+        throw new ForbiddenException({ code, message: (err as Error).message });
+      }
+    }
+    throw err;
   }
 
   async getJob(orgId: string, jobId: string) {

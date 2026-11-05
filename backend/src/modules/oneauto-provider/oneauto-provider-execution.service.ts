@@ -1,13 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
-import { OneAutoProviderJobStatus, Prisma } from '@prisma/client';
+import { OneAutoExecutionAuthorizationMode, OneAutoProviderJobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { OneAutoHttpClient } from './client/oneauto-http.client';
 import { assertOneAutoSkuExecutable } from './catalog/oneauto-contract-gate.util';
-import { getVerifiedOneAutoContract } from './catalog/oneauto-verified-contracts';
 import { isValidVin, normalizeVin } from './client/oneauto-vin.util';
 import { assertOneAutoPositiveOrgBudgetWhenEnabled } from './oneauto-execution-budget-guard.util';
 import {
@@ -30,6 +29,9 @@ import {
 } from './oneauto-callback-delivery.util';
 import { isOneAutoSkuRuntimeExecutionEnabled } from './oneauto-sku-runtime-activation.util';
 import type { OneAutoExecutionVerifiedProviderContract } from './catalog/oneauto-contract-types';
+import { loadOneAutoOeServiceScheduleAttestationCanaryFromEnv } from './service-schedule/oneauto-oe-service-schedule-attestation-canary.config';
+import { resolveOneAutoExecutionContractForJob } from './service-schedule/oneauto-oe-service-schedule-execution-contract-resolver.util';
+import { OneAutoOeServiceScheduleAttestationPermitService } from './service-schedule/oneauto-oe-service-schedule-attestation-permit.service';
 
 export type OneAutoProviderJobPayload = {
   jobId: string;
@@ -56,6 +58,7 @@ export class OneAutoProviderExecutionService {
     @InjectQueue(QUEUE_NAMES.ONEAUTO_PROVIDER) private readonly queue: Queue<OneAutoProviderJobPayload>,
     private readonly oemSuggestionMaterialization: OneAutoOemVinLookupEuSuggestionMaterializationService,
     private readonly oeServiceHistoryIngestion: OneAutoOeServiceHistoryEuIngestionService,
+    @Optional() private readonly attestationPermit?: OneAutoOeServiceScheduleAttestationPermitService,
   ) {}
 
   async enqueueExecution(jobId: string): Promise<void> {
@@ -151,14 +154,28 @@ export class OneAutoProviderExecutionService {
       return;
     }
 
+    const isAttestationCanary =
+      job.executionAuthorizationMode === OneAutoExecutionAuthorizationMode.ATTESTATION_CANARY;
+
+    if (isAttestationCanary && (phase === 'poll' || phase === 'retrieval')) {
+      await this.failJob(
+        jobId,
+        'ONEAUTO_ATTESTATION_FOLLOWUP_DISPATCH_BLOCKED',
+        'Attestation canary forbids poll and retrieval provider GET',
+      );
+      return;
+    }
+
     try {
-      assertOneAutoSkuExecutable(job.serviceSku);
+      if (!isAttestationCanary) {
+        assertOneAutoSkuExecutable(job.serviceSku);
+      }
     } catch {
       await this.failJob(jobId, 'CONTRACT_UNVERIFIED', 'Provider contract unverified');
       return;
     }
 
-    const contract = getVerifiedOneAutoContract(job.serviceSku);
+    const contract = resolveOneAutoExecutionContractForJob(job);
     if (!contract) {
       await this.failJob(jobId, 'CONTRACT_UNVERIFIED', 'Provider contract unverified');
       return;
@@ -193,8 +210,10 @@ export class OneAutoProviderExecutionService {
     }
 
     if (!isOneAutoSkuRuntimeExecutionEnabled(job.serviceSku)) {
-      await this.failJob(jobId, 'ONEAUTO_SKU_RUNTIME_DISABLED', 'Service SKU runtime activation disabled');
-      return;
+      if (!isAttestationCanary || !loadOneAutoOeServiceScheduleAttestationCanaryFromEnv().enabled) {
+        await this.failJob(jobId, 'ONEAUTO_SKU_RUNTIME_DISABLED', 'Service SKU runtime activation disabled');
+        return;
+      }
     }
 
     const bindingOk = await this.assertJobBinding(job);
@@ -485,6 +504,7 @@ export class OneAutoProviderExecutionService {
     vehicleId: string;
     vinSnapshot: string;
     serviceSku: string;
+    executionAuthorizationMode: OneAutoExecutionAuthorizationMode;
   }): Promise<boolean> {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: job.vehicleId, organizationId: job.organizationId },
@@ -493,7 +513,7 @@ export class OneAutoProviderExecutionService {
     if (!vehicle) return false;
     const vin = normalizeVin(vehicle.vin);
     if (!isValidVin(vin) || vin !== job.vinSnapshot) return false;
-    if (!getVerifiedOneAutoContract(job.serviceSku)) return false;
+    if (!resolveOneAutoExecutionContractForJob(job)) return false;
     return true;
   }
 
@@ -519,5 +539,6 @@ export class OneAutoProviderExecutionService {
         actualChargeKnown: false,
       },
     });
+    await this.attestationPermit?.markPermitBlockedForJob(jobId, `${code}: ${message}`);
   }
 }

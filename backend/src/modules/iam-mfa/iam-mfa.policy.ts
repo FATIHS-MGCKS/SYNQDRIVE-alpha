@@ -34,6 +34,9 @@ export const STEP_UP_ACTION = {
   MASTER_AUDIT_EXPORT: 'MASTER_AUDIT_EXPORT',
   /** Master admin — chargeable One Auto provider execution */
   MASTER_ONEAUTO_PROVIDER_EXECUTE: 'MASTER_ONEAUTO_PROVIDER_EXECUTE',
+  /** Master admin — arm OE Service Schedule attestation canary permit (scoped, single-use) */
+  MASTER_ONEAUTO_OE_SERVICE_SCHEDULE_ATTESTATION_CANARY_ARM:
+    'MASTER_ONEAUTO_OE_SERVICE_SCHEDULE_ATTESTATION_CANARY_ARM',
 } as const;
 
 export type StepUpActionCode = (typeof STEP_UP_ACTION)[keyof typeof STEP_UP_ACTION];

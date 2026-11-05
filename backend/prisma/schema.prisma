@@ -3222,6 +3222,42 @@ enum OneAutoProviderJobStatus {
   EXPIRED
 }
 
+enum OneAutoExecutionAuthorizationMode {
+  STANDARD
+  ATTESTATION_CANARY
+}
+
+enum OneAutoOeServiceScheduleAttestationPermitStatus {
+  READY
+  CONSUMED
+  BLOCKED
+}
+
+model OneAutoOeServiceScheduleAttestationPermit {
+  id                          String                                      @id @default(cuid())
+  organizationId              String                                      @map("organization_id")
+  vehicleId                   String                                      @map("vehicle_id")
+  serviceSku                  String                                      @default("OE_SERVICE_SCHEDULE") @map("service_sku")
+  vinSnapshot                 String                                      @map("vin_snapshot")
+  status                      OneAutoOeServiceScheduleAttestationPermitStatus
+  ownerAuthorizedByUserId     String                                      @map("owner_authorized_by_user_id")
+  ownerAuthorizedAt           DateTime                                    @map("owner_authorized_at")
+  accountPricingAcknowledgedAt DateTime                                   @map("account_pricing_acknowledged_at")
+  maxAuthorizedSpendMinor     Int                                         @map("max_authorized_spend_minor")
+  configuredPriceMinor        Int                                         @map("configured_price_minor")
+  pricingSourceVersion        String                                      @map("pricing_source_version")
+  currency                    String                                      @default("EUR")
+  blockedReason               String?                                     @map("blocked_reason")
+  createdAt                   DateTime                                    @default(now()) @map("created_at")
+  updatedAt                   DateTime                                    @updatedAt @map("updated_at")
+
+  job OneAutoProviderJob?
+
+  @@unique([organizationId, serviceSku])
+  @@index([organizationId, vehicleId])
+  @@map("one_auto_oe_service_schedule_attestation_permits")
+}
+
 model OneAutoProviderJob {
   id                          String                   @id @default(cuid())
   organizationId              String                   @map("organization_id")
@@ -3253,6 +3289,8 @@ model OneAutoProviderJob {
   callbackDeliveryTokenSha256 String?                  @unique @map("callback_delivery_token_sha256")
   providerCallbackReceivedAt  DateTime?                @map("provider_callback_received_at")
   retrievalProviderDispatchAt DateTime?                @map("retrieval_provider_dispatch_at")
+  executionAuthorizationMode OneAutoExecutionAuthorizationMode @default(STANDARD) @map("execution_authorization_mode")
+  attestationPermitId         String?                  @unique @map("attestation_permit_id")
   createdAt                   DateTime                 @default(now()) @map("created_at")
   updatedAt                   DateTime                 @updatedAt @map("updated_at")
 
@@ -3263,6 +3301,7 @@ model OneAutoProviderJob {
   oemVinLookupEuSuggestionSnapshot OneAutoOemVinLookupEuSuggestionSnapshot?
   oeServiceHistoryEuIngestion      OneAutoOeServiceHistoryEuIngestion?
   oeServiceHistoryEuIngestionEventLinks OneAutoOeServiceHistoryEuIngestionEventLink[]
+  oeServiceScheduleAttestationPermit OneAutoOeServiceScheduleAttestationPermit? @relation(fields: [attestationPermitId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, vehicleId])
