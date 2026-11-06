@@ -9,7 +9,10 @@ const RPM_POLICY = M1_DEFAULTS.rpmVisualUncertaintyPolicyRpm;
  * k_sigma_policy_exploratory uses uniform half-width/√3 over speed weights — not validated certainty.
  * Run count is not n_eff; small per-step gates can chain across large k drift within one run.
  */
-export function segmentRatioStableRuns(rows: VideoEligibleRow[]): {
+export function segmentRatioStableRuns(
+  rows: VideoEligibleRow[],
+  rpmPolicy: number = RPM_POLICY,
+): {
   runs: RatioStableRun[];
   break_class_counts: Record<RunBreakClass, number>;
   uncertainty_disclaimer: string;
@@ -68,7 +71,7 @@ export function segmentRatioStableRuns(rows: VideoEligibleRow[]): {
     }
     const kPrev = prev.rpm / prev.speed_kmh;
     const kCur = r.rpm / r.speed_kmh;
-    const gate = RPM_POLICY * (1 / prev.speed_kmh + 1 / r.speed_kmh);
+    const gate = rpmPolicy * (1 / prev.speed_kmh + 1 / r.speed_kmh);
     if (Math.abs(kCur - kPrev) > gate) {
       breakCounts.UNCERTAINTY_GATE++;
       acc.push(cur);
@@ -89,7 +92,7 @@ export function segmentRatioStableRuns(rows: VideoEligibleRow[]): {
   const runs: RatioStableRun[] = acc.map((run) => {
     const kHat = leastSquaresOriginSlope(run.rows);
     const kSpread = withinRunKSpread(run.rows);
-    const driftFlag = kSpread > RPM_POLICY / Math.min(...run.rows.map((x) => x.speed_kmh));
+    const driftFlag = kSpread > rpmPolicy / Math.min(...run.rows.map((x) => x.speed_kmh));
     if (driftFlag && run.rows.length >= 3) {
       breakCounts.DRIFT_WITHIN_RUN++;
     }
@@ -99,7 +102,7 @@ export function segmentRatioStableRuns(rows: VideoEligibleRow[]): {
       end_second: run.end,
       n_seconds: run.rows.length,
       k_hat: kHat,
-      k_sigma_policy_exploratory: policyExploratorySigma(run.rows),
+      k_sigma_policy_exploratory: policyExploratorySigma(run.rows, rpmPolicy),
       within_run_k_min: kSpread === 0 ? kHat : Math.min(...run.rows.map((r) => r.rpm / r.speed_kmh)),
       within_run_k_max: Math.max(...run.rows.map((r) => r.rpm / r.speed_kmh)),
       drift_within_run_descriptive: driftFlag,
@@ -130,8 +133,8 @@ function withinRunKSpread(rows: VideoEligibleRow[]): number {
   return Math.max(...ks) - Math.min(...ks);
 }
 
-function policyExploratorySigma(rows: VideoEligibleRow[]): number {
-  const uniformHalfWidth = RPM_POLICY;
+function policyExploratorySigma(rows: VideoEligibleRow[], rpmPolicy: number): number {
+  const uniformHalfWidth = rpmPolicy;
   const sigmaRpm = uniformHalfWidth / Math.sqrt(3);
   let den = 0;
   for (const r of rows) den += r.speed_kmh * r.speed_kmh;
