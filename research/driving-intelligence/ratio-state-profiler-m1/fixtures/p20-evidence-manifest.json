@@ -1,0 +1,21 @@
+{
+  "schema": "DS4_RPM_P20_EVIDENCE_MANIFEST_V1",
+  "operation": "DS4_RPM_P20_M1_REAL_DATA_DESCRIPTIVE_REPORT",
+  "p16_manifest_sha256_self_recomputed": "5774d38fa2bb96adc89fbe04ca4f37b6ca7b730e06d0febd31bb50b7d9f704e6",
+  "p20_report_content_sha256_excluding_generated_at": "ea63c9c2f3d9ac0dfebd41bde6f6d752469148481ad3a8f01fa78b6f509fa524",
+  "test_command": "cd research/driving-intelligence/ratio-state-profiler-m1 && npm ci && npm run typecheck && npm test",
+  "verified_counts": {
+    "video_eligible_pairs": 242,
+    "block5_subsample": 49,
+    "r1_same_row_vmin20": 442,
+    "global_ratio_median": 32.67,
+    "manoeuvre_windows_csv_rows": 9,
+    "p17_1_unique_eligible_in_windows": 50,
+    "p17_1_sum_per_window_counts": 51
+  },
+  "negative_control_baseline": {
+    "NC_A": "SCIENTIFIC_NEGATIVE",
+    "NC_E": "SCIENTIFIC_NEGATIVE",
+    "ray_run_p18b": "NO_GO"
+  }
+}
