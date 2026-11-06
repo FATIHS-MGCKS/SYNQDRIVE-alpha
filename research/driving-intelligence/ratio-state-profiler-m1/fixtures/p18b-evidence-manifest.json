@@ -1,0 +1,35 @@
+{
+  "schema": "DS4_RPM_P18B_EVIDENCE_MANIFEST_V1",
+  "operation": "DS4_RPM_P18B_RAY_RUN_EXPERIMENTAL_ALGORITHM",
+  "base_p18a_head": "229a8a275c4f414187476f86a269b004027ca513",
+  "preregistration_commit": "372774090",
+  "p16_manifest_sha256_self_recomputed": "5774d38fa2bb96adc89fbe04ca4f37b6ca7b730e06d0febd31bb50b7d9f704e6",
+  "p18b_report_content_sha256_excluding_generated_at": "b6e9c499ca8b60570c305ac3e096e4ae4131d3322cb32bade48883de9b423679",
+  "p18a_report_content_sha256_on_this_branch": "e5ec91d550cffec6701b3821b3feebc8e549f468416d7a80cc0459cff48ee2df",
+  "p18a_science_sections_sha256": {
+    "before_p18b": "02b8814250dff1742b454d6e03d8d2363b3a8accde38c7b8883b46be0e6b51db",
+    "after_p18b": "02b8814250dff1742b454d6e03d8d2363b3a8accde38c7b8883b46be0e6b51db",
+    "definition": "sha256 of canonical JSON (sorted keys) of the P18A report excluding generated_at_utc, content_sha256_excluding_generated_at and RAY_RUN_INTERFACE_READINESS",
+    "unchanged": true
+  },
+  "test_command": "cd research/driving-intelligence/ratio-state-profiler-m1 && npm ci && npm run typecheck && npm test",
+  "verified_metrics": {
+    "video_pair_count": 242,
+    "block5_count": 49,
+    "r1_same_row_vmin_20": 442,
+    "run_units_pm500": 20,
+    "n_eff_total_pm500": 85.7,
+    "accepted_regime_centres_pm500": [23.27, 40.14, 53.93],
+    "accepted_regime_centres_pm250": [23.55, 39.83, 53.02],
+    "classification_coverage_pm500": 0.7686,
+    "abstention_rate_pm500": 0.2314,
+    "abstention_rate_pm250": 0.4793
+  },
+  "hard_criteria_failed": [
+    "AC2_P16_FAMILY_DIRECTION",
+    "AC7_LEAVE_ONE_CLIP_OUT",
+    "AC8_CVT_NO_FALSE_REGIMES"
+  ],
+  "scientific_go_no_go": "NO_GO_RECOMMEND_B0_B1_BASELINE",
+  "ray_run_classifier_validated": false
+}

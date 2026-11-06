@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --import tsx --test tests/**/*.spec.ts",
     "typecheck": "tsc --noEmit",
-    "run:p18a": "node --import tsx src/run_p18a_foundation.ts"
+    "run:p18a": "node --import tsx src/run_p18a_foundation.ts",
+    "run:p18b": "node --import tsx src/run_p18b_experimental.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
