@@ -48,10 +48,10 @@ import {
   rpmBySpeedBandVideo,
   VIDEO_SPEED_BANDS,
   ratioBySpeedBandR1,
-  numericDistribution,
+  rpmDistributionVideo,
 } from "./compute/descriptive_stats.js";
 import { stratifyByDrivingContext } from "./interfaces/context_stratify.js";
-import type { DrivingContextLabel, VideoEligibleRow } from "./types.js";
+import type { DrivingContextLabel, NegativeControlResult, VideoEligibleRow } from "./types.js";
 
 const SCHEMA = "DS4_RPM_M1_DESCRIPTIVE_REPORT_V1";
 
@@ -90,6 +90,48 @@ function countSumPerWindowP171(eligible: VideoEligibleRow[], windows: ManoeuvreW
   return s;
 }
 
+function statisticalReplicationFromNcAE(
+  ncA: NegativeControlResult | undefined,
+  ncE: NegativeControlResult | undefined,
+): { verdict: string; detail: string[]; controls: Record<string, string> } {
+  const a = ncA?.verdict ?? "UNKNOWN";
+  const e = ncE?.verdict ?? "UNKNOWN";
+  const controls = { NC_A: a, NC_E: e };
+  const isNeg = (v: string) => v === "SCIENTIFIC_NEGATIVE";
+  if (a === "UNKNOWN" || e === "UNKNOWN") {
+    return {
+      verdict: "UNKNOWN",
+      detail: ["NC-A or NC-E verdict missing; do not assert SCIENTIFIC_NEGATIVE for replication governance."],
+      controls,
+    };
+  }
+  if (isNeg(a) && isNeg(e)) {
+    return {
+      verdict: "SCIENTIFIC_NEGATIVE",
+      detail: [String(ncA?.detail ?? ""), String(ncE?.detail ?? "")].filter((x) => x.length > 0),
+      controls,
+    };
+  }
+  if (!isNeg(a) && !isNeg(e)) {
+    return {
+      verdict: "REPLICATION_NOT_NEGATED_BY_NC_A_NC_E",
+      detail: [
+        "Both NC-A and NC-E passed their registered criteria; statistical_replication is not summarized as SCIENTIFIC_NEGATIVE from these two controls.",
+      ],
+      controls,
+    };
+  }
+  return {
+    verdict: "MIXED_NC_A_NC_E",
+    detail: [
+      `NC-A verdict ${a}; NC-E verdict ${e}. Read per-control detail in LIMITATIONS; do not infer a single blanket SCIENTIFIC_NEGATIVE.`,
+      String(ncA?.detail ?? ""),
+      String(ncE?.detail ?? ""),
+    ].filter((x) => x.length > 0),
+    controls,
+  };
+}
+
 function drivingContextProfiles(
   eligible: VideoEligibleRow[],
   labels: Map<string, DrivingContextLabel>,
@@ -113,7 +155,7 @@ function drivingContextProfiles(
       });
       return {
         band_id: spec.band_id,
-        ...numericDistribution(inBand.map((r) => r.rpm)),
+        ...rpmDistributionVideo(inBand),
       };
     });
     return {
@@ -146,11 +188,12 @@ function germanMarkdown(report: Record<string, unknown>): string {
   };
   const r1 = report.R1_SAME_ROW as Record<string, unknown>;
   const lim = report.LIMITATIONS as Record<string, unknown>;
+  const ncSummary = (lim.negative_controls_summary as Record<string, string>) ?? {};
 
   const rpmLines = rpm.bands.map((b) => {
     const id = b.band_id;
     if (b.status === "AVAILABLE") {
-      return `- **${id}**: n=${b.n_observations}, Median=${b.rpm_median} min⁻¹, p05=${b.rpm_p05}, p95=${b.rpm_p95}, min=${b.rpm_min}, max=${b.rpm_max}`;
+      return `- **${id}**: n=${b.n_observations}, Median=${b.rpm_median} min⁻¹ (beobachtet); p05/p95=${b.rpm_p05}/${b.rpm_p95} (explorativ, keine Kalibrierung); min=${b.rpm_min}, max=${b.rpm_max}`;
     }
     return `- **${id}**: ${String(b.status)} (${String((b as { reason_code?: string }).reason_code)}) n=${b.n_observations}`;
   });
@@ -178,8 +221,19 @@ function germanMarkdown(report: Record<string, unknown>): string {
     const st = w.status;
     const rs = (w.reason as string | undefined) ?? "";
     if (st === "DESCRIPTIVE" && w.rpm_distribution && typeof w.rpm_distribution === "object") {
-      const d = w.rpm_distribution as { median: number; n_observations: number };
-      return `- **${String(id)}** ${String(clip)}: n=${n}, RPM Median=${d.median} min⁻¹`;
+      const d = w.rpm_distribution as {
+        rpm_median?: number;
+        median?: number;
+        n_observations: number;
+        rpm_p05?: number;
+        rpm_p95?: number;
+      };
+      const med = d.rpm_median ?? d.median;
+      const tails =
+        d.rpm_p05 != null && d.rpm_p95 != null
+          ? `, p05/p95=${d.rpm_p05}/${d.rpm_p95} (explorativ)`
+          : "";
+      return `- **${String(id)}** ${String(clip)}: n=${n}, RPM Median=${med} min⁻¹ (beobachtet)${tails}`;
     }
     return `- **${String(id)}** ${String(clip)}: n=${n}, ${String(st)}${rs ? ` (${rs})` : ""}`;
   });
@@ -225,11 +279,12 @@ function germanMarkdown(report: Record<string, unknown>): string {
     "",
     `- n=${r1.n_pairs}, ${String(r1.pairing_authority)}`,
     "- RPM‑ und Verhältnis‑Bänder sind **getrennt** von den Video‑Spalten berechnet.",
+    "- OBD‑Auflösung/Abtastgenauigkeit der RPM‑Werte: **UNKNOWN** (keine Video‑Optik‑±500‑ und keine 250‑min⁻¹‑Quantisierung).",
     "",
     "## Wissenschaftliche Grenzen",
     "",
     "- Verhältnis‑Peaks sind **anonyme Modus‑Kandidaten**, keine Gänge.",
-    '- Hohe „Coverage" heißt nicht kausale Validierung; Replikationskontrollen sind **negativ**.',
+    `- Hohe „Coverage" heißt nicht kausale Validierung; **NC‑A** = ${ncSummary["NC-A_RPM_PERMUTATION_NULL"] ?? "?"}, **NC‑E** = ${ncSummary["NC-E_SPLIT_HALF_TEMPORAL_STABILITY"] ?? "?"} (siehe \`governance.statistical_replication\`).`,
     "",
     `Negative‑Control‑Stichworte: ${JSON.stringify((lim.negative_controls_summary as Record<string, string>) ?? {})}`,
     "",
@@ -307,7 +362,7 @@ export function buildP20DescriptiveReport(options?: P16GateOptions): Record<stri
     } else {
       status = "DESCRIPTIVE";
     }
-    const rpm = status === "DESCRIPTIVE" ? numericDistribution(rows.map((r) => r.rpm)) : null;
+    const rpm = status === "DESCRIPTIVE" ? rpmDistributionVideo(rows) : null;
     return {
       window_id: w.id,
       source_clip: w.source_clip,
@@ -321,6 +376,8 @@ export function buildP20DescriptiveReport(options?: P16GateOptions): Record<stri
     };
   });
 
+  const replicationGov = statisticalReplicationFromNcAE(ncA, ncE);
+
   const report: Record<string, unknown> = {
     schema: SCHEMA,
     report_kind: "DESCRIPTIVE_ONLY",
@@ -332,15 +389,9 @@ export function buildP20DescriptiveReport(options?: P16GateOptions): Record<stri
       source_integrity: { verdict: "PASS", detail: ["P16 sealed SHA-256 checks passed"] },
       descriptive_usability: { verdict: "USABLE", detail: ["Descriptive sections emitted under explicit caveats"] },
       statistical_replication: {
-        verdict: "SCIENTIFIC_NEGATIVE",
-        detail: [
-          "NC-A: B0 major modes are not specific to true (v,rpm) pairing under within-clip rpm permutation.",
-          "NC-E: temporal half-split does not replicate major-mode centres — no stable cross-time regime claim.",
-        ],
-        controls: {
-          NC_A: ncA?.verdict ?? "UNKNOWN",
-          NC_E: ncE?.verdict ?? "UNKNOWN",
-        },
+        verdict: replicationGov.verdict,
+        detail: replicationGov.detail,
+        controls: replicationGov.controls,
       },
       classification_eligibility: {
         verdict: "NOT_ELIGIBLE",

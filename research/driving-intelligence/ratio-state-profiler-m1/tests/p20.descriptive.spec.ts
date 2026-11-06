@@ -42,7 +42,19 @@ describe("P20 M1 descriptive report (TIG22)", () => {
     const gov = a.governance as Record<string, Record<string, unknown>>;
     assert.equal(gov.source_integrity.verdict, "PASS");
     assert.equal(gov.descriptive_usability.verdict, "USABLE");
-    assert.equal(gov.statistical_replication.verdict, "SCIENTIFIC_NEGATIVE");
+    const rep = gov.statistical_replication as {
+      verdict: string;
+      detail: string[];
+      controls: Record<string, string>;
+    };
+    assert.equal(rep.verdict, "SCIENTIFIC_NEGATIVE");
+    assert.equal(rep.controls.NC_A, "SCIENTIFIC_NEGATIVE");
+    assert.equal(rep.controls.NC_E, "SCIENTIFIC_NEGATIVE");
+    assert.ok(rep.detail.some((d) => d.includes("rpm permutation")), "NC-A detail should describe permutation control");
+    assert.ok(
+      rep.detail.some((d) => d.includes("Temporal halves") || d.includes("major modes")),
+      "NC-E detail should describe temporal split",
+    );
     assert.equal(gov.classification_eligibility.verdict, "NOT_ELIGIBLE");
     assert.equal(
       (gov.classification_eligibility as { ray_run_p18b: string }).ray_run_p18b,
@@ -53,6 +65,19 @@ describe("P20 M1 descriptive report (TIG22)", () => {
     ) as { p20_report_content_sha256_excluding_generated_at: string };
     assert.equal(a.content_sha256_excluding_generated_at, manifest.p20_report_content_sha256_excluding_generated_at);
     assert.deepEqual(a.forbidden_field_scan, []);
+
+    const r1Bands = (a.R1_SAME_ROW as { rpm_by_speed_band: Array<Record<string, unknown>> }).rpm_by_speed_band;
+    for (const b of r1Bands) {
+      const sq = b.source_quality as { rpm_quantization_step_rpm?: string; reading_uncertainty_video_policy_rpm?: string };
+      assert.equal(sq.rpm_quantization_step_rpm, "UNKNOWN");
+      assert.equal(sq.reading_uncertainty_video_policy_rpm, "NOT_APPLICABLE");
+    }
+    const vidBand0 = (a.RPM_BY_SPEED_BAND as { bands: Array<Record<string, unknown>> }).bands[0];
+    assert.equal((vidBand0.source_quality as { evidence_stream?: string }).evidence_stream, "VIDEO_P5_POSITIVE_VISUAL_CANDIDATE");
+    assert.equal(
+      (vidBand0.statistical_presentation as { p05_p95?: string }).p05_p95,
+      "EXPLORATORY_NOT_CALIBRATED_PRECISION",
+    );
   });
 
   it("FAIL_CLOSED on mutated P5 sealed copy (temp path)", () => {

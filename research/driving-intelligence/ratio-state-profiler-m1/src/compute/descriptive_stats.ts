@@ -47,8 +47,63 @@ export interface NumericDistributionUnavailable {
 
 export type NumericDistributionResult = NumericDistributionAvailable | NumericDistributionUnavailable;
 
-const RPM_QUANT_NOTE =
-  "RPM readings are 250 min⁻¹ quantization steps. ±500 min⁻¹ is a policy reading bound from the pin, not a calibrated probability interval.";
+const VIDEO_RPM_SOURCE_QUALITY = {
+  evidence_stream: "VIDEO_P5_POSITIVE_VISUAL_CANDIDATE",
+  rpm_quantization_step_rpm: 250,
+  speed_display: "integer_kmh_display",
+  reading_uncertainty_policy_rpm: M1_DEFAULTS.rpmVisualUncertaintyPolicyRpm,
+  note:
+    "Video tachometer overlay: 250 min⁻¹ steps; ±500 min⁻¹ is the frozen P16 reading policy bound, not a calibrated probability interval.",
+} as const;
+
+const R1_RPM_SOURCE_QUALITY = {
+  evidence_stream: "R1_SAME_EVIDENCE_ROW_INTERVAL_ONLY",
+  rpm_field: "powertrainCombustionEngineSpeed",
+  speed_field: "speed",
+  rpm_quantization_step_rpm: "UNKNOWN",
+  reading_uncertainty_video_policy_rpm: "NOT_APPLICABLE",
+  sampling_interval_seconds: "UNKNOWN",
+  sampling_accuracy: "UNKNOWN",
+  note:
+    "OBD values on the same DIMO evidence row as speed (interval authority). Video optical ±500 policy and 250 min⁻¹ display quantization do not apply.",
+} as const;
+
+function statisticalPresentationBlock(
+  dist: NumericDistributionAvailable,
+  opts: { cohort: string; temporal_dependence: boolean },
+): Record<string, unknown> {
+  return {
+    cohort: opts.cohort,
+    status: dist.status,
+    n_observations: dist.n_observations,
+    statistical_presentation: {
+      median_and_count: "OBSERVED",
+      p05_p95: "EXPLORATORY_NOT_CALIBRATED_PRECISION",
+      p25_p75: "EXPLORATORY_NOT_CALIBRATED_PRECISION",
+      caveat:
+        "Order statistics on 1 s buckets that are not assumed independent; tails are descriptive only, not sampling precision intervals.",
+      temporal_dependence: opts.temporal_dependence,
+      small_sample_tail_warning: dist.n_observations < 30,
+    },
+  };
+}
+
+export function attachStatisticalPresentation(
+  dist: NumericDistributionResult,
+  opts: { cohort: string; temporal_dependence: boolean },
+): Record<string, unknown> {
+  if (dist.status !== "AVAILABLE") return { ...dist, cohort: opts.cohort };
+  return {
+    ...statisticalPresentationBlock(dist, opts),
+    median: dist.median,
+    p05: dist.p05,
+    p25: dist.p25,
+    p75: dist.p75,
+    p95: dist.p95,
+    min: dist.min,
+    max: dist.max,
+  };
+}
 
 export function numericDistribution(values: number[]): NumericDistributionResult {
   const sorted = [...values].sort((a, b) => a - b);
@@ -72,18 +127,11 @@ export function numericDistribution(values: number[]): NumericDistributionResult
   };
 }
 
-export function rpmDistributionForRows(
-  rows: Array<{ rpm: number }>,
-  opts: {
-    evidenceStream: string;
-    rpmUncertaintyPolicyRpm: number;
-  },
-): Record<string, unknown> {
+export function rpmDistributionVideo(rows: Array<{ rpm: number }>): Record<string, unknown> {
   const dist = numericDistribution(rows.map((r) => r.rpm));
-  if (dist.status !== "AVAILABLE") return { ...dist };
+  if (dist.status !== "AVAILABLE") return { ...dist, source_quality: VIDEO_RPM_SOURCE_QUALITY };
   return {
-    status: "AVAILABLE",
-    n_observations: dist.n_observations,
+    ...statisticalPresentationBlock(dist, { cohort: "VIDEO_P16_ELIGIBLE", temporal_dependence: true }),
     rpm_median: dist.median,
     rpm_p05: dist.p05,
     rpm_p25: dist.p25,
@@ -91,13 +139,23 @@ export function rpmDistributionForRows(
     rpm_p95: dist.p95,
     rpm_min: dist.min,
     rpm_max: dist.max,
-    source_quality: {
-      evidence_stream: opts.evidenceStream,
-      rpm_quantization_step_rpm: 250,
-      speed_display: "integer_kmh_display",
-      reading_uncertainty_policy_rpm: opts.rpmUncertaintyPolicyRpm,
-      note: RPM_QUANT_NOTE,
-    },
+    source_quality: VIDEO_RPM_SOURCE_QUALITY,
+  };
+}
+
+export function rpmDistributionR1(rows: Array<{ rpm: number }>): Record<string, unknown> {
+  const dist = numericDistribution(rows.map((r) => r.rpm));
+  if (dist.status !== "AVAILABLE") return { ...dist, source_quality: R1_RPM_SOURCE_QUALITY };
+  return {
+    ...statisticalPresentationBlock(dist, { cohort: "R1_SAME_ROW_VMIN20", temporal_dependence: true }),
+    rpm_median: dist.median,
+    rpm_p05: dist.p05,
+    rpm_p25: dist.p25,
+    rpm_p75: dist.p75,
+    rpm_p95: dist.p95,
+    rpm_min: dist.min,
+    rpm_max: dist.max,
+    source_quality: R1_RPM_SOURCE_QUALITY,
   };
 }
 
@@ -119,10 +177,7 @@ export function rpmBySpeedBandVideo(rows: VideoEligibleRow[]): Array<Record<stri
       const b = speedBandFor(r.speed_kmh, VIDEO_SPEED_BANDS);
       return b?.band_id === spec.band_id;
     });
-    const dist = rpmDistributionForRows(inBand, {
-      evidenceStream: "VIDEO_P5_POSITIVE_VISUAL_CANDIDATE",
-      rpmUncertaintyPolicyRpm: M1_DEFAULTS.rpmVisualUncertaintyPolicyRpm,
-    });
+    const dist = rpmDistributionVideo(inBand);
     return {
       band_id: spec.band_id,
       v_kmh_min_exclusive: spec.v_kmh_min_exclusive,
@@ -138,10 +193,7 @@ export function rpmBySpeedBandR1(rows: R1SameRowPair[]): Array<Record<string, un
       const b = speedBandFor(r.speed_kmh, R1_SPEED_BANDS);
       return b?.band_id === spec.band_id;
     });
-    const dist = rpmDistributionForRows(inBand, {
-      evidenceStream: "R1_SAME_ROW_INTERVAL_ONLY",
-      rpmUncertaintyPolicyRpm: M1_DEFAULTS.rpmVisualUncertaintyPolicyRpm,
-    });
+    const dist = rpmDistributionR1(inBand);
     return {
       band_id: spec.band_id,
       v_kmh_min_exclusive: spec.v_kmh_min_exclusive,
@@ -158,14 +210,18 @@ export function ratioBySpeedBandR1(rows: R1SameRowPair[]): Array<Record<string, 
       return b?.band_id === spec.band_id;
     });
     const dist = numericDistribution(inBand.map((r) => r.ratio));
+    const r1RatioSourceQuality = {
+      derived_from: "rpm_div_speed_same_r1_row",
+      obd_value_precision: "UNKNOWN",
+      note: "Ratio is a derived quantity from OBD fields on the same row; video optical policies do not apply.",
+    } as const;
     if (dist.status === "AVAILABLE") {
       return {
         band_id: spec.band_id,
         quantity: "ratio_rpm_per_kmh",
         v_kmh_min_exclusive: spec.v_kmh_min_exclusive,
         v_kmh_max_inclusive: spec.v_kmh_max_inclusive,
-        status: "AVAILABLE",
-        n_observations: dist.n_observations,
+        ...statisticalPresentationBlock(dist, { cohort: "R1_RATIO_SAME_ROW", temporal_dependence: true }),
         ratio_median: dist.median,
         ratio_p05: dist.p05,
         ratio_p25: dist.p25,
@@ -173,7 +229,7 @@ export function ratioBySpeedBandR1(rows: R1SameRowPair[]): Array<Record<string, 
         ratio_p95: dist.p95,
         ratio_min: dist.min,
         ratio_max: dist.max,
-        note: "rpm/(km/h) from the same R1 evidence row only; never joined to video.",
+        source_quality: r1RatioSourceQuality,
       };
     }
     return {
@@ -184,6 +240,7 @@ export function ratioBySpeedBandR1(rows: R1SameRowPair[]): Array<Record<string, 
       status: dist.status,
       reason_code: dist.reason_code,
       n_observations: dist.n_observations,
+      source_quality: r1RatioSourceQuality,
     };
   });
 }
