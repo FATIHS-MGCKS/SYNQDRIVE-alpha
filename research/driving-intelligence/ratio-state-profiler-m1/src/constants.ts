@@ -75,8 +75,10 @@ export const P17_1_CONTEXT = {
   windowsZeroEligibleVgt20: ["W01", "W02", "W06"] as const,
 };
 
-export const RAY_RUN_P18A = {
-  classifierEnabled: false,
+export const RAY_RUN_STATUS = {
+  classifierEnabledInFoundationReport: false,
+  implementationModule: "src/rayrun/",
+  experimentalReport: "src/run_p18b_experimental.ts",
   readinessNote:
-    "P18A exposes typed interfaces only; RAY-RUN population classifier is NOT validated in this PR.",
+    "RAY-RUN V1 is implemented as an offline P18B experiment; the foundation report does not run it and no output is validated for product use.",
 };

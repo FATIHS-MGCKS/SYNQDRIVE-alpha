@@ -72,9 +72,9 @@ export interface NegativeControlResult {
 }
 
 export interface RayRunInterfaceReadiness {
-  ray_fit: "TYPED_STUB_ONLY";
-  separability: "TYPED_STUB_ONLY";
-  abstain_state: "TYPED_STUB_ONLY";
+  ray_fit: "P18B_EXPERIMENTAL";
+  separability: "P18B_EXPERIMENTAL";
+  abstain_state: "P18B_EXPERIMENTAL";
   context_stratify: "PARTIAL_IMPLEMENTED_P17_1";
   classifier_validated: false;
 }
