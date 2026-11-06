@@ -5,7 +5,21 @@ Research-only offline harness for **RAY-RUN V1 foundation** and falsification co
 - **Not** production, backend, or customer-facing.
 - **P16 pin gate** must pass before any compute (`5774d38f…704e6` manifest self-hash).
 - **B0/B1** histogram + block-5 baselines are immutable comparison references.
-- **RAY-RUN classifier** (`ray_fit`, population separability, per-second `abstain_state`) is **typed/stub only** in P18A — not validated.
+- **RAY-RUN V1** is implemented as an **offline P18B experiment** in `src/rayrun/` — not validated for any product use.
+
+## P18B RAY-RUN experiment
+
+Pipeline (Fable M1 design): I2 run-level rays → I1 origin-ray mixture with background (J by BIC on n_eff, cap 4, no J assumed) → I3 separability/merge (z=2, ≥3 runs, both clips) → I5 abstaining per-second state → I6 driving-context description.
+
+- Thresholds and acceptance criteria are pre-registered in `src/rayrun/preregistration.ts` (committed before the evaluation code).
+- Claims adopt ±500 rpm; ±250 is a sensitivity run only.
+- Mandatory NC-E = `SCIENTIFIC_NEGATIVE`: regimes are `TRIP_POOLED_NOT_TEMPORALLY_REPLICATED` and tiers are capped at MEDIUM. No probabilities are emitted.
+- If RAY-RUN does not outperform B0/B1 under the pre-registered rule, the report recommends the B0/B1 baselines.
+
+```bash
+npm run run:p18b
+# default: /opt/cursor/artifacts/ds4-rpm-p18b-ray-run-experimental-report.json
+```
 
 ## CI
 

@@ -38,7 +38,6 @@ import {
 import { runNegativeControls } from "../src/controls/negative_controls.js";
 import { buildP18aFoundationReport } from "../src/run_p18a_foundation.js";
 import { stableReportHash } from "../src/hash.js";
-import { rayFitFromEligibleRows } from "../src/interfaces/ray_fit.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const repoRoot = resolveRepoRoot(join(here, ".."));
@@ -141,6 +140,8 @@ describe("P18A RAY-RUN foundation", () => {
     assert.equal(a.SOURCE_INTEGRITY && (a.SOURCE_INTEGRITY as { verdict: string }).verdict, "PASS");
     assert.equal(stableReportHash(a as Record<string, unknown>), stableReportHash(b as Record<string, unknown>));
     assert.deepEqual(reportHasForbiddenGearFields(a), []);
-    assert.equal(rayFitFromEligibleRows([]).status, "NOT_ENABLED_P18A");
+    assert.deepEqual(a.forbidden_field_scan, []);
+    const readiness = a.RAY_RUN_INTERFACE_READINESS as { classifier_enabled: boolean };
+    assert.equal(readiness.classifier_enabled, false);
   });
 });

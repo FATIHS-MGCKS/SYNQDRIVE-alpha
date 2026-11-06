@@ -10,7 +10,7 @@ import { block5Subsample } from "../loaders/video_cohort.js";
 
 export type ControlVerdict = NegativeControlResult["verdict"];
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   return () => {
     let t = (seed += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -19,7 +19,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function majorModeCenters(peaks: ReturnType<typeof histogramPeaks>): number[] {
+export function majorModeCenters(peaks: ReturnType<typeof histogramPeaks>): number[] {
   return peaks
     .filter((p) => p.count >= 8)
     .slice(0, 4)

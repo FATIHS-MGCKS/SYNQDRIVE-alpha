@@ -6,7 +6,7 @@ import {
   P16_REGRESSION,
   P16_SEALED_ARTIFACTS,
   P17_1_CONTEXT,
-  RAY_RUN_P18A,
+  RAY_RUN_STATUS,
 } from "./constants.js";
 import { stableReportHash } from "./hash.js";
 import {
@@ -38,9 +38,6 @@ import {
   windowOverlapRootCauseReport,
 } from "./compute/driving_context.js";
 import { runNegativeControls } from "./controls/negative_controls.js";
-import { rayFitFromEligibleRows } from "./interfaces/ray_fit.js";
-import { assessSeparability } from "./interfaces/separability.js";
-import { classifyPerSecondState } from "./interfaces/abstain_state.js";
 import { stratifyByDrivingContext } from "./interfaces/context_stratify.js";
 import type { RayRunInterfaceReadiness } from "./types.js";
 
@@ -91,9 +88,9 @@ export function buildP18aFoundationReport(): Record<string, unknown> {
   for (const r of eligible) clipCounts[r.source_clip] = (clipCounts[r.source_clip] ?? 0) + 1;
 
   const readiness: RayRunInterfaceReadiness = {
-    ray_fit: "TYPED_STUB_ONLY",
-    separability: "TYPED_STUB_ONLY",
-    abstain_state: "TYPED_STUB_ONLY",
+    ray_fit: "P18B_EXPERIMENTAL",
+    separability: "P18B_EXPERIMENTAL",
+    abstain_state: "P18B_EXPERIMENTAL",
     context_stratify: "PARTIAL_IMPLEMENTED_P17_1",
     classifier_validated: false,
   };
@@ -170,18 +167,11 @@ export function buildP18aFoundationReport(): Record<string, unknown> {
     },
     RAY_RUN_INTERFACE_READINESS: {
       ...readiness,
-      classifier_enabled: RAY_RUN_P18A.classifierEnabled,
-      p18b_readiness: "NOT_READY_CLASSIFIER_DISABLED",
+      classifier_enabled: RAY_RUN_STATUS.classifierEnabledInFoundationReport,
+      implementation_module: RAY_RUN_STATUS.implementationModule,
+      experimental_report: RAY_RUN_STATUS.experimentalReport,
+      note: RAY_RUN_STATUS.readinessNote,
       sample_calls: {
-        ray_fit: rayFitFromEligibleRows(eligible),
-        separability: assessSeparability({ candidates: [], z_threshold: 2, require_both_clips: true }),
-        abstain_state: classifyPerSecondState({
-          speed_kmh: 80,
-          posterior_by_regime: {},
-          regime_centers_k: [22.5, 37.5],
-          rpm_uncertainty_policy_rpm: 500,
-          posterior_threshold: 0.8,
-        }),
         context_stratify: stratifyByDrivingContext({
           eligible,
           labels: contextLabels,
@@ -189,8 +179,8 @@ export function buildP18aFoundationReport(): Record<string, unknown> {
         }),
       },
     },
-    forbidden_field_scan: reportHasForbiddenGearFields({ report: "safe" }),
   };
+  report.forbidden_field_scan = reportHasForbiddenGearFields(report);
 
   report.content_sha256_excluding_generated_at = stableReportHash(report);
   return report;
