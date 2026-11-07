@@ -48,4 +48,26 @@ describe('validateResearchOsmBbox', () => {
     );
     expect(reason).toBeNull();
   });
+
+  it('rejects production Tiguan corridor at default 0.08° but accepts minimal raised cap 0.102°', () => {
+    const tiguan = {
+      south: 51.32570126661876,
+      north: 51.37382873338124,
+      west: 9.468077875051009,
+      east: 9.56978872494899,
+    };
+    expect(validateResearchOsmBbox(tiguan, 0.08)).toBe('BBOX_TOO_LARGE');
+    expect(validateResearchOsmBbox(tiguan, 0.102)).toBeNull();
+  });
+
+  it('rejects production Audi A4 corridor at default 0.08° but accepts minimal raised cap 0.102°', () => {
+    const audi = {
+      south: 51.24263626661876,
+      north: 51.33605373338124,
+      west: 9.431630994998526,
+      east: 9.518267305001473,
+    };
+    expect(validateResearchOsmBbox(audi, 0.08)).toBe('BBOX_TOO_LARGE');
+    expect(validateResearchOsmBbox(audi, 0.102)).toBeNull();
+  });
 });
