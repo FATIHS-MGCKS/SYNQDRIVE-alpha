@@ -68,3 +68,13 @@ Explicit **UNKNOWN** items. Absence of an answer here is not a documentation fai
 | DI-OQ-R1-005 | Can SMART5 / UNKNOWN-family OBD records be shown to have reliable record time, or do they need the same containment? | Containment is R1-only by evidence scope |
 | DI-OQ-R1-006 | Should context misuse rules stop reading persisted anchor-relative values (`coolantAtAnchor`, `preSpeed`) for R1? | Escalation capped, but candidate generation still uses them |
 | DI-OQ-R1-007 | Should R1 **vehicle speed** ever influence DS4 L3 metadata, speed-QC verdicts, or motion-FSM sparse input after video-reference evidence? | **PARTIALLY_CLOSED (2026-10-23):** product boundary excludes speed from those paths; comparison series retained; fleet prevalence + #2134 C4 protections still open |
+
+## DS4 motion events — acceleration / braking (video-reference evaluation 2026-10-23)
+
+| ID | Question | Why it matters |
+|----|----------|----------------|
+| DI-OQ-DS4-EVT-001 | Should `eventQuality` (`OK / DEGRADED / LIMITED`) enter event acceptance (`eventAcceptedCount` currently = all except `ARTEFACT_SUSPECT`)? Offline K-A2 (reject DEGRADED) is regression-free in-sample but NOT_PROVEN under §10 | 7/8 non-OK events on the four references are problematic; a decision needs a hard false alarm on an independent EVAL drive, which the current sample lacks |
+| DI-OQ-DS4-EVT-002 | How should pull-away onsets after standstill be represented when C4 has no usable support in the first 1–3 s and `postGapGuardS` delays entry (F1: 2 hard misses, +4/+5 s late starts)? | Threshold lowering would move the 12 borderline cases into hits and false alarms alike; a Standstill→Moving onset belongs to FSM / speed-QC level, not the manoeuvre detector |
+| DI-OQ-DS4-EVT-003 | Should K3 `applySpikeReversionCheck` also compare the post-event level with the last usable **pre-event** sample (candidate K-B), so that artefacts whose start sample is itself the dip are caught? | TES16 03:50:20 (+35 km/h on flat reference) escapes K3; K-B flags it and changes nothing on TIG22/TES21, but is derived from TES16 only |
+| DI-OQ-DS4-EVT-004 | Why does C4 deliver ≈ 2× OBD speed on the TIG22 trip tail (19:04:20–53; `SPARSE_SUPPORT`, `MIN_SUPPORT_3_POINTS`, `JITTER`), producing accepted events of 6.6 / 8.3 m/s²? | Speed-path question (not event-level); documented for the speed workstream — explicitly out of scope of the event evaluation |
+| DI-OQ-DS4-EVT-005 | Should the motion-core-shadow `summary_json` carry per-quality and per-kind event counters so that non-OK-event share can be measured on production runs without behaviour change? | Precondition for ever proving or rejecting K-A2 / K-B on production data (21 `SUCCEEDED` runs exist, counters do not) |

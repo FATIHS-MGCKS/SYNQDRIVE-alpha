@@ -1,0 +1,74 @@
+{
+  "schema": "DS4_ACCEL_BRAKE_VIDEO_REFERENCE_INPUT_MANIFEST_V1",
+  "generatedAtUtc": "2026-10-23T12:23:26.761Z",
+  "codeSha": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "note": "Identical input set for all tags/scripts. Paths relative to repository root. No video files are included; reference tables are the sealed 1 Hz transcriptions from the speed evaluation and the ldi-10d fixtures. The prod_run_v4_20261023 payload is the production motion-core shadow payload of run 15cdc8ae (read-only copy).",
+  "videosInRepository": false,
+  "inputs": [
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/TIGUAN_2026-10-22_1Hz.csv",
+      "sha256": "9c8933c223e58706d1cc1ce82fe8c623e2429d3bd1f4f570e10353f9f3b9aaa2",
+      "bytes": 191132
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/TIGUAN_2026-10-22_analysis_windows.csv",
+      "sha256": "52255b8a7bc89be47385356d9a82650df38da32d80a8611b890dee00e3e83d2d",
+      "bytes": 1342
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/reference/manifest.json",
+      "sha256": "e20d6f735e0b82611fb8a5db01c2ee6fba29b3a22b8c4a7d08728533911350e4",
+      "bytes": 5795
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/PROVENANCE_MANIFEST.json",
+      "sha256": "0d27b311d765f9f93f46d4c3a49afe2070df859c3e18ea94f672f0b317778f6a",
+      "bytes": 3236
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_motion_core_shadow_payload.json",
+      "sha256": "fca7baef63b3ef84e2cd0f1f44f08f0b6ced2294738ba65a5a1b74eca99f7c8a",
+      "bytes": 875907
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023/inputs/tiguan-20261022/prod_run_v4_20261023/di_v0_motion_core_shadow_payload.json",
+      "sha256": "ddcf32cd111ef21859e7df9f20915190efbe89aa416a22132e02c7d658712ccd",
+      "bytes": 1099811
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023/inputs/tiguan-20261022/prod_run_v4_20261023/di_v0_motion_core_shadow_run_meta.json",
+      "sha256": "9f465c7bb374969030709acc6696cc00f102d80a62dc56634956358caa333713",
+      "bytes": 1965
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tiguan-20261022/snapshots/di_v0_s4_evidence_container.bin",
+      "sha256": "22e2a662af3a07458e5713bd004f563e9d038c86fb89f3353d39b8e7ea3504b3",
+      "bytes": 886052
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/JOINED_REFERENCE_TABLE.csv",
+      "sha256": "dfa4ccd3aec1f1e3065c2c3307ba609a3278afbdf534c303ca279fd17d336ce6",
+      "bytes": 145974
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/s4_evidence/TRIP_1_evidence_payload.gz",
+      "sha256": "4c6c95e0c0230cc5a38b59d31644f10bc95bb7047a67dfc080244d1743475e5a",
+      "bytes": 3352
+    },
+    {
+      "file": "research/driving-intelligence/evaluations/ds4-speed-video-reference-20261023/inputs/tesla-20261021/s4_evidence/TRIP_2_evidence_payload.gz",
+      "sha256": "508450980f979e13135d18164ef094cff431b5e87642716486e606cdbf831dbe",
+      "bytes": 3551
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/VIDEO_TACHO_REFERENCE.json",
+      "sha256": "4fa007f94284f31d962d7f8c33cc870e99d9dd992025da9a38ca0c135af1689f",
+      "bytes": 307735
+    },
+    {
+      "file": "architecture/drivingintelligence/evidence/ldi-10d/fixtures/tesla-20261016/TESLA_POSITION_GRID.json",
+      "sha256": "5e198ee9b48a2af223423f1f0086989ff36fa31ff072235e3fc421f4310090b4",
+      "bytes": 575801
+    }
+  ]
+}

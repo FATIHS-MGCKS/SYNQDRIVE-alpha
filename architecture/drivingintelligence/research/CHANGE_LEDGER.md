@@ -2142,6 +2142,29 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | R1 acquisition/pinning; non-speed OBD; trip lifecycle; C4 GPS path; **not** PR #2134 leg-gate/C4-V0.5; no deploy in workstream |
 | OPEN | Fleet-wide R1 speed prevalence; independent EVAL beyond TIG22+TES16 |
 
+### DS4 events — acceleration / braking video-reference evaluation + production run evidence (2026-10-23, research only)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | `origin/main` `579ee8b2` (= deployed production DI); detector `detectMotionManoeuvreEvents` on C4 V0_5 with `MOTION_EVENT_HF_THRESHOLDS_V1`, `MOTION_CORE_EVENT_GUARDS_V0_1_DEV`, `MOTION_EVENT_V0_2_CANDIDATE_OPTIONS` (K3 on), as wired in `di-v0-motion-core-shadow-processor.ts` |
+| CHANGE | **Research package only** — `research/driving-intelligence/evaluations/ds4-accel-brake-video-reference-20261023/` (`EVALUATION_RULES.md` fixed before first metric, `DETECTOR_INVENTORY.md`, `PRODUCTION_RUN_EVIDENCE.md`, `REPORT.md`, `INPUT_MANIFEST.json`, scripts `replay_event_eval.cjs` / `candidates.cjs` / `probe_windows.cjs` / `render_tables.cjs`, `outputs/main/`). No backend / frontend code touched |
+| WHY | Validate acceleration / braking events (direction, start, end, Δv, duration, gap / quarantine proximity) against the four sealed video references with explicit reading resolution (1 km/h, 1 s, ±1 s) before any detector change; trace the actual motion-shadow job trigger after deploy `579ee8b2` |
+| VALIDATION | Baseline 45 events / 36 verifiable: 33 TREFFER, 1 fragment, 1 hard FA (K3-flagged, not accepted), 1 soft FA; oracle 50: 33 detected, 2 hard missed, 12 borderline, 3 no DS4 speed; recall hard 0.90 (EVAL 0.94, n = 17); offsets median 0/0 s; Δv bias −3.0 km/h (TIG22 same-window −0.6). Detector ↔ processor-payload parity assert in every replay; production run `15cdc8ae` (TIG22) byte-identical. 21 `SUCCEEDED` runs bundle `…_V4` observed read-only (psql SELECT + pm2 logs) |
+| DEFECTS | F1 pull-away onsets missed / +4–5 s late (segment restart + `postGapGuardS` 2 + L3 attenuation); F2 jitter/sparse artefacts over bridged 1 s gaps (K3 blind when start sample is the dip); F3 TIG22 trip tail C4 ≈ 2× OBD → 2 implausible accepted events (6.6 / 8.3 m/s²); F4 quality (`OK/DEGRADED/LIMITED`) separates 7/8 problem cases but is unused in acceptance; F5 2 s position cadence → `minSteps` miss; F6 Δv deficit = boundary placement |
+| CANDIDATES | K-A (accept OK only) loses 1 TREFFER → NOT_PROVEN; K-A2 (no DEGRADED), K-B (K3 vs pre-event level), K-C (vehicle-class plausibility) regression-free in-sample but §10 criterion 1 not satisfiable (0 hard FA in accepted baseline within reference windows) → NOT_PROVEN; none adopted |
+| OPEN | Quality-split counters in shadow `summary_json` (observability, no behaviour change); additional reference drive with pull-aways + in-video trip end; K-B as non-default option pending evidence; trip-tail C4 ≈ 2× OBD belongs to the speed workstream |
+| NON_EFFECTS | No flag change, no job start, no production mutation, no merge, no deploy, no speed-path tuning, no threshold change, no wear / intensity scores, no time shift of references |
+
+### DS4 events — evaluation methodology correction (match2s / §12 N4, 2026-10-23)
+
+| Event | Detail |
+|-------|--------|
+| BASELINE | First run `outputs/main` + `REPORT_v1_main.md` (`matchingMode=v1_bilateral`, bilateral ±2 s on both intervals) |
+| CHANGE | `EVALUATION_RULES.md` §12 N4; `event_eval_lib.cjs` `intervalGapS` / `v2_gap2s`; `outputs/match2s/` + `REPORT_v2_match2s.md`; `metricsLayers` (T1/T2/T3 vs non-evaluable; detected/accepted/correct); TES16 03:50:20 reclassified `TREFFER_FRAGMENT` → `FEHLALARM`; `TIG22_TRIP_END_FORENSIC.md`; K-A2/K-B on match2s with `knownErrorCaseEffect` (§10 still NOT_PROVEN) |
+| WHY | PR review: total tolerance ±2 s must not double-expand intervals; separate metric layers; clarify NOT_PROVEN vs in-sample effect on F1–F4 |
+| VALIDATION | Replay `match2s`; candidates `--only K-A2,K-B`; forensic script; v1 outputs preserved under `outputs/main` |
+| NON_EFFECTS | No detector/C4/threshold/production change |
+
 ### EXP-021 motion core — shadow integration (post-S4 comparison wiring) (2026-10-21)
 
 | Event | Detail |

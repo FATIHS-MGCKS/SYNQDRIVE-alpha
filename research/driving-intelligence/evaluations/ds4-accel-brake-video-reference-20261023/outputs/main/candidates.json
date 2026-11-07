@@ -1,0 +1,1007 @@
+{
+  "schema": "DS4_ACCEL_BRAKE_EVENT_CANDIDATES_V1",
+  "codeSha": "579ee8b2fed06593d7d2aa57cffb6036dbf53a24",
+  "tag": "main",
+  "generatedAtUtc": "2026-10-23T12:35:39.823Z",
+  "spikeReversionWindowS": 2,
+  "candidates": [
+    {
+      "id": "K-A",
+      "title": "Akzeptanz nur bei Ereignisqualität OK",
+      "level": "Processor-Akzeptanz (eventAcceptedCount)",
+      "derivedFrom": [
+        "TIG22",
+        "TES21-1",
+        "TES16"
+      ],
+      "lookaheadS": 0,
+      "criteria": {
+        "perDrive": [
+          {
+            "id": "TIG22",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              12,
+              12
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              4,
+              4
+            ],
+            "startMedian": [
+              -1,
+              -1
+            ],
+            "endMedian": [
+              -0.5,
+              -0.5
+            ],
+            "acceptedEvents": [
+              20,
+              16
+            ]
+          },
+          {
+            "id": "TES21-1",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              1,
+              0
+            ],
+            "hits": [
+              2,
+              1
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              2,
+              3
+            ],
+            "startMedian": [
+              1,
+              0
+            ],
+            "endMedian": [
+              0.5,
+              0
+            ],
+            "acceptedEvents": [
+              3,
+              1
+            ]
+          },
+          {
+            "id": "TES21-2",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              4,
+              4
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              2,
+              2
+            ],
+            "endMedian": [
+              2,
+              2
+            ],
+            "acceptedEvents": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "TES16",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              15,
+              15
+            ],
+            "fragments": [
+              1,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0,
+              0
+            ],
+            "acceptedEvents": [
+              17,
+              16
+            ]
+          }
+        ],
+        "c1_hardFalseDownOnEval_noIncrease": false,
+        "c2_noNewHardMiss_borderlineLe1": true,
+        "c3_hitsKept_noMoreFragments": false,
+        "c4_medianOffsetsStable": true
+      },
+      "c5_noExtraLookahead": true,
+      "independentDrives": [
+        "TES21-2"
+      ],
+      "c1OnIndependentEval": false,
+      "verdict": "NOT_PROVEN",
+      "changedAcceptance": [
+        {
+          "drive": "TIG22",
+          "event": "DECELERATION 19:04:26–19:04:29 (2026-10-22)",
+          "speeds": "34.7->5.5",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        },
+        {
+          "drive": "TIG22",
+          "event": "ACCELERATION 19:04:34–19:04:38 (2026-10-22)",
+          "speeds": "5.5->100.1",
+          "quality": "LIMITED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 1,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TIG22",
+          "event": "DECELERATION 19:04:39–19:04:42 (2026-10-22)",
+          "speeds": "98.2->68.6",
+          "quality": "LIMITED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TIG22",
+          "event": "ACCELERATION 19:04:49–19:04:52 (2026-10-22)",
+          "speeds": "52.3->142.1",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 1,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TES21-1",
+          "event": "DECELERATION 12:05:20–12:05:23 (2026-10-21)",
+          "speeds": "34->14.9",
+          "quality": "DEGRADED",
+          "baselineClass": "WEICHER_FEHLALARM",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        },
+        {
+          "drive": "TES21-1",
+          "event": "DECELERATION 12:05:43–12:05:46 (2026-10-21)",
+          "speeds": "20.1->3.3",
+          "quality": "LIMITED",
+          "baselineClass": "TREFFER",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TES16",
+          "event": "ACCELERATION 03:50:20–03:50:23 (2026-10-16)",
+          "speeds": "113.1->148.3",
+          "quality": "DEGRADED",
+          "baselineClass": "TREFFER_FRAGMENT",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 1,
+          "nearBoundary": 0
+        }
+      ],
+      "extras": {}
+    },
+    {
+      "id": "K-A2",
+      "title": "Akzeptanz ohne DEGRADED (JITTER_SUSPECT/REPAIRED im Ereignisfenster)",
+      "level": "Processor-Akzeptanz (eventAcceptedCount)",
+      "derivedFrom": [
+        "TIG22",
+        "TES21-1",
+        "TES16"
+      ],
+      "lookaheadS": 0,
+      "criteria": {
+        "perDrive": [
+          {
+            "id": "TIG22",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              12,
+              12
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              4,
+              4
+            ],
+            "startMedian": [
+              -1,
+              -1
+            ],
+            "endMedian": [
+              -0.5,
+              -0.5
+            ],
+            "acceptedEvents": [
+              20,
+              18
+            ]
+          },
+          {
+            "id": "TES21-1",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              1,
+              0
+            ],
+            "hits": [
+              2,
+              2
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              2,
+              2
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0.5,
+              0.5
+            ],
+            "acceptedEvents": [
+              3,
+              2
+            ]
+          },
+          {
+            "id": "TES21-2",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              4,
+              4
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              2,
+              2
+            ],
+            "endMedian": [
+              2,
+              2
+            ],
+            "acceptedEvents": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "TES16",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              15,
+              15
+            ],
+            "fragments": [
+              1,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0,
+              0
+            ],
+            "acceptedEvents": [
+              17,
+              16
+            ]
+          }
+        ],
+        "c1_hardFalseDownOnEval_noIncrease": false,
+        "c2_noNewHardMiss_borderlineLe1": true,
+        "c3_hitsKept_noMoreFragments": true,
+        "c4_medianOffsetsStable": true
+      },
+      "c5_noExtraLookahead": true,
+      "independentDrives": [
+        "TES21-2"
+      ],
+      "c1OnIndependentEval": false,
+      "verdict": "NOT_PROVEN",
+      "changedAcceptance": [
+        {
+          "drive": "TIG22",
+          "event": "DECELERATION 19:04:26–19:04:29 (2026-10-22)",
+          "speeds": "34.7->5.5",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        },
+        {
+          "drive": "TIG22",
+          "event": "ACCELERATION 19:04:49–19:04:52 (2026-10-22)",
+          "speeds": "52.3->142.1",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 1,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TES21-1",
+          "event": "DECELERATION 12:05:20–12:05:23 (2026-10-21)",
+          "speeds": "34->14.9",
+          "quality": "DEGRADED",
+          "baselineClass": "WEICHER_FEHLALARM",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 0,
+          "nearBoundary": 0
+        },
+        {
+          "drive": "TES16",
+          "event": "ACCELERATION 03:50:20–03:50:23 (2026-10-16)",
+          "speeds": "113.1->148.3",
+          "quality": "DEGRADED",
+          "baselineClass": "TREFFER_FRAGMENT",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 1,
+          "nearBoundary": 0
+        }
+      ],
+      "extras": {}
+    },
+    {
+      "id": "K-B",
+      "title": "K3-Erweiterung: Rückkehr auf Vor-Ereignis-Niveau (letzte nutzbare Probe vor Beginn)",
+      "level": "Detektor-Option (wie spikeReversionCheck), Fenster unverändert",
+      "derivedFrom": [
+        "TES16"
+      ],
+      "lookaheadS": 2,
+      "criteria": {
+        "perDrive": [
+          {
+            "id": "TIG22",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              12,
+              12
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              4,
+              4
+            ],
+            "startMedian": [
+              -1,
+              -1
+            ],
+            "endMedian": [
+              -0.5,
+              -0.5
+            ],
+            "acceptedEvents": [
+              20,
+              20
+            ]
+          },
+          {
+            "id": "TES21-1",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              1,
+              1
+            ],
+            "hits": [
+              2,
+              2
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              2,
+              2
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0.5,
+              0.5
+            ],
+            "acceptedEvents": [
+              3,
+              3
+            ]
+          },
+          {
+            "id": "TES21-2",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              4,
+              4
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              2,
+              2
+            ],
+            "endMedian": [
+              2,
+              2
+            ],
+            "acceptedEvents": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "TES16",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              15,
+              15
+            ],
+            "fragments": [
+              1,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0,
+              0
+            ],
+            "acceptedEvents": [
+              17,
+              16
+            ]
+          }
+        ],
+        "c1_hardFalseDownOnEval_noIncrease": false,
+        "c2_noNewHardMiss_borderlineLe1": true,
+        "c3_hitsKept_noMoreFragments": true,
+        "c4_medianOffsetsStable": true
+      },
+      "c5_noExtraLookahead": true,
+      "independentDrives": [
+        "TIG22",
+        "TES21-1",
+        "TES21-2"
+      ],
+      "c1OnIndependentEval": false,
+      "verdict": "NOT_PROVEN",
+      "changedAcceptance": [
+        {
+          "drive": "TES16",
+          "event": "ACCELERATION 03:50:20–03:50:23 (2026-10-16)",
+          "speeds": "113.1->148.3",
+          "quality": "ARTEFACT_SUSPECT",
+          "baselineClass": "TREFFER_FRAGMENT",
+          "note": [],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 0,
+          "artefactSuspectView": 1,
+          "nearBoundary": 0
+        }
+      ],
+      "extras": {
+        "TIG22": {
+          "flagged": []
+        },
+        "TES21-1": {
+          "flagged": []
+        },
+        "TES21-2": {
+          "flagged": []
+        },
+        "TES16": {
+          "flagged": [
+            {
+              "event": "ACCELERATION|2026-10-16T03:50:20Z|2026-10-16T03:50:23Z",
+              "revert": "2026-10-16T03:50:24Z:126.50004402279643",
+              "preSpeedKmh": 129.42698033003452,
+              "preLabel": "2026-10-16T03:50:19Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "K-C",
+      "title": "Fahrzeugklassen-Plausibilitätsschranke (§8) → nicht akzeptiert",
+      "level": "Processor-Akzeptanz (benötigt Fahrzeugklasse)",
+      "derivedFrom": [
+        "TIG22"
+      ],
+      "lookaheadS": 0,
+      "criteria": {
+        "perDrive": [
+          {
+            "id": "TIG22",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              12,
+              12
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              4,
+              4
+            ],
+            "startMedian": [
+              -1,
+              -1
+            ],
+            "endMedian": [
+              -0.5,
+              -0.5
+            ],
+            "acceptedEvents": [
+              20,
+              18
+            ]
+          },
+          {
+            "id": "TES21-1",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              1,
+              1
+            ],
+            "hits": [
+              2,
+              2
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              1,
+              1
+            ],
+            "borderlineMissed": [
+              2,
+              2
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0.5,
+              0.5
+            ],
+            "acceptedEvents": [
+              3,
+              3
+            ]
+          },
+          {
+            "id": "TES21-2",
+            "role": "DEV",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              4,
+              4
+            ],
+            "fragments": [
+              0,
+              0
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              2,
+              2
+            ],
+            "endMedian": [
+              2,
+              2
+            ],
+            "acceptedEvents": [
+              4,
+              4
+            ]
+          },
+          {
+            "id": "TES16",
+            "role": "EVAL",
+            "hardFalse": [
+              0,
+              0
+            ],
+            "softFalse": [
+              0,
+              0
+            ],
+            "hits": [
+              15,
+              15
+            ],
+            "fragments": [
+              1,
+              1
+            ],
+            "hardMissed": [
+              0,
+              0
+            ],
+            "borderlineMissed": [
+              3,
+              3
+            ],
+            "startMedian": [
+              1,
+              1
+            ],
+            "endMedian": [
+              0,
+              0
+            ],
+            "acceptedEvents": [
+              17,
+              17
+            ]
+          }
+        ],
+        "c1_hardFalseDownOnEval_noIncrease": false,
+        "c2_noNewHardMiss_borderlineLe1": true,
+        "c3_hitsKept_noMoreFragments": true,
+        "c4_medianOffsetsStable": true
+      },
+      "c5_noExtraLookahead": true,
+      "independentDrives": [
+        "TES21-1",
+        "TES21-2",
+        "TES16"
+      ],
+      "c1OnIndependentEval": false,
+      "verdict": "NOT_PROVEN",
+      "changedAcceptance": [
+        {
+          "drive": "TIG22",
+          "event": "ACCELERATION 19:04:34–19:04:38 (2026-10-22)",
+          "speeds": "5.5->100.1",
+          "quality": "LIMITED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 1,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        },
+        {
+          "drive": "TIG22",
+          "event": "ACCELERATION 19:04:49–19:04:52 (2026-10-22)",
+          "speeds": "52.3->142.1",
+          "quality": "DEGRADED",
+          "baselineClass": "UNVERIFIZIERBAR",
+          "note": [
+            "AUSSERHALB_REFERENZFENSTER"
+          ],
+          "accepted": [
+            1,
+            0
+          ],
+          "implausible": 1,
+          "artefactSuspectView": 0,
+          "nearBoundary": 1
+        }
+      ],
+      "extras": {}
+    }
+  ]
+}
