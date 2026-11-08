@@ -36,6 +36,20 @@ docker_container_running() {
   docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name"
 }
 
+# prom/prometheus runs promtool as a non-root user; mktemp -d (0700) bind-mounts deny access.
+promtool_make_docker_mount_readable() {
+  local rules_file="$1"
+  local dir base
+  dir="$(cd "$(dirname "$rules_file")" && pwd)"
+  base="$(basename "$rules_file")"
+  if [[ ! -f "${dir}/${base}" ]]; then
+    return 1
+  fi
+  # Traverse-only on the staging dir (not world-readable listing); read on the rule under test.
+  chmod a+x "$dir"
+  chmod a+r "${dir}/${base}"
+}
+
 promtool_check_rules_file() {
   local rules_file="$1"
   local dir base promtool_bin
@@ -53,6 +67,7 @@ promtool_check_rules_file() {
     return $?
   fi
   if command -v docker >/dev/null 2>&1; then
+    promtool_make_docker_mount_readable "$rules_file" || return 1
     # prom/prometheus image ENTRYPOINT is the prometheus binary — promtool must be the entrypoint.
     docker run --rm --entrypoint promtool \
       -v "${dir}:/rules:ro" prom/prometheus:v2.54.1 \
@@ -91,10 +106,6 @@ validate_prometheus_bundle() {
     return 1
   fi
   if ! cp "$SRC_PROM/alerts-di-s4.yml" "$tmp/alerts-di-s4.yml"; then
-    rm -rf "$tmp"
-    return 1
-  fi
-  if ! cp "$SRC_PROM/prometheus.vps.yml" "$tmp/prometheus.yml"; then
     rm -rf "$tmp"
     return 1
   fi
