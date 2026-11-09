@@ -16,6 +16,13 @@
 
 Dedicated specs: `*.negative-evidence.opus.spec.ts` under A1/B1/B3/B2; P2-C1.5 `S09` pin updated to `COMPUTED`; full `dbi-p2c*` + powertrain/RPM suites (412 tests in chain).
 
+## W1 closeout (assessability refinement)
+
+| Area | Fix |
+|------|-----|
+| B3 `computeLongestLoadPresentRunLabelCount` | Resets on missing load **or** label gap > `maxAdjacentLabelGapMs` (negative gate only; candidate detector unchanged) |
+| B2 subtype assessability | Load/throttle/RPM channel opportunity requires evidence **inside the same cadence-valid cold triple**, not unrelated cold buckets |
+
 ## Remaining limitations
 
 - B3 does not use a trip-wide load **ratio** threshold (empirical validation unresolved).

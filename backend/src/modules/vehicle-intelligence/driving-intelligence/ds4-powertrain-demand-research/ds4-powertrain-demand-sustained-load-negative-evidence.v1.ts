@@ -2,20 +2,30 @@ import type { Ds4SustainedLoadTripEvidenceClassificationV1 } from './ds4-powertr
 import type { Ds4CanonicalMultichannelBucketV1 } from './ds4-powertrain-demand-multichannel-canonicalize.v1';
 import { DS4_SUSTAINED_LOAD_GAP_AWARE_POLICY } from './ds4-powertrain-demand-sustained-load-reference.v1';
 
-/** Longest contiguous run of load-labelled buckets (label adjacency, not physical duration). */
+/**
+ * Longest admissible load-present label run for negative-evidence gating only.
+ * Resets on missing load or label gaps above maxAdjacentLabelGapMs (not physical duration).
+ */
 export function computeLongestLoadPresentRunLabelCount(
   buckets: readonly Ds4CanonicalMultichannelBucketV1[],
+  maxAdjacentLabelGapMs: number = DS4_SUSTAINED_LOAD_GAP_AWARE_POLICY.maxAdjacentLabelGapMs,
 ): number {
   const sorted = [...buckets].sort((a, b) => a.recordedAtMs - b.recordedAtMs);
   let longest = 0;
   let current = 0;
+  let prevLoadLabelMs: number | null = null;
   for (const bucket of sorted) {
-    if (bucket.loadPct != null) {
-      current += 1;
-      longest = Math.max(longest, current);
-    } else {
+    if (bucket.loadPct == null) {
+      current = 0;
+      prevLoadLabelMs = null;
+      continue;
+    }
+    if (prevLoadLabelMs != null && bucket.recordedAtMs - prevLoadLabelMs > maxAdjacentLabelGapMs) {
       current = 0;
     }
+    current += 1;
+    longest = Math.max(longest, current);
+    prevLoadLabelMs = bucket.recordedAtMs;
   }
   return longest;
 }
