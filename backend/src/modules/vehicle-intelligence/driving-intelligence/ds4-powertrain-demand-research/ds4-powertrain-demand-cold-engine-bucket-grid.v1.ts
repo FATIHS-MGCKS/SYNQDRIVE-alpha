@@ -105,11 +105,12 @@ export function computeColdEngineSubtypeAssessability(input: {
   const loadInEligibleTriple = forEachEligibleColdTriple(input.buckets, input.nominalIntervalMs, (slice) =>
     slice.some((b) => b.loadPct != null),
   );
+  /** Detector uses a three-bucket window; assessability matches channel presence on all three labels. */
   const throttleInEligibleTriple = forEachEligibleColdTriple(input.buckets, input.nominalIntervalMs, (slice) =>
-    slice.some((b) => b.throttlePct != null),
+    slice.every((b) => b.throttlePct != null),
   );
   const rpmInEligibleTriple = forEachEligibleColdTriple(input.buckets, input.nominalIntervalMs, (slice) =>
-    slice.some((b) => b.rpm != null),
+    slice.every((b) => b.rpm != null),
   );
 
   const highLoad: Ds4ColdEngineSubtypeAssessabilityV1 = loadInEligibleTriple

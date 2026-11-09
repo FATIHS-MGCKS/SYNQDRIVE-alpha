@@ -21,7 +21,7 @@ Dedicated specs: `*.negative-evidence.opus.spec.ts` under A1/B1/B3/B2; P2-C1.5 `
 | Area | Fix |
 |------|-----|
 | B3 `computeLongestLoadPresentRunLabelCount` | Resets on missing load **or** label gap > `maxAdjacentLabelGapMs` (negative gate only; candidate detector unchanged) |
-| B2 subtype assessability | Load/throttle/RPM channel opportunity requires evidence **inside the same cadence-valid cold triple**, not unrelated cold buckets |
+| B2 subtype assessability | Channel opportunity inside the same cadence-valid cold triple; **HIGH_RPM** and **FULL_THROTTLE** require the channel on **all three** buckets (detector parity); **HIGH_LOAD** needs load on any bucket of a triple |
 
 ## Remaining limitations
 

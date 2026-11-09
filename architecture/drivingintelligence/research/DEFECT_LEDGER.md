@@ -3,7 +3,7 @@
 Significant defects discovered during the 2026-08-30 → 2026-09-06 workstream.  
 **Rejected hypotheses are NOT defects** — see `HYPOTHESIS_REGISTER.md`.
 
-**Summary:** TOTAL=**26** | FIXED=**22** (DI-DEF-003–017, 019 production-validated; DI-DEF-021–026 W1) | OPEN=**4** (DI-DEF-001, 002, 018, 020)
+**Summary:** TOTAL=**27** | FIXED=**23** (DI-DEF-003–017, 019 production-validated; DI-DEF-021–027 W1) | OPEN=**4** (DI-DEF-001, 002, 018, 020)
 
 | ID | Phase | Symptom | Cause | Risk | Fix | Tests | Status |
 |----|-------|---------|-------|------|-----|-------|--------|
@@ -33,3 +33,4 @@ Significant defects discovered during the 2026-08-30 → 2026-09-06 workstream.
 | DI-DEF-024 | DBI P2-C4 audit (B2) | Warm / non-assessable cold → trip `NOT_OBSERVED` | Dead ternary; single cold bucket assessable | Trip-level negative without subtype opportunity | W1 `resolveColdEngineTripStatus` + triple-window assessability | cold-engine opus + S09 pin | FIXED |
 | DI-DEF-025 | W1 closeout (B3) | Load run counted across 60s label gaps | Array-adjacent only in negative gate | False local NOT_OBSERVED | Gap-aware `computeLongestLoadPresentRunLabelCount` | sustained-load opus closeout tests | FIXED |
 | DI-DEF-026 | W1 closeout (B2) | Global cold-bucket channel + any triple → ASSESSABLE | Decoupled triple vs channel | False subtype assessability | Per-subtype channel-in-triple predicate | cold-engine opus closeout tests | FIXED |
+| DI-DEF-027 | B2 detector parity | HIGH_RPM/FULL_THROTTLE assessable with 1-of-3 channel in triple | Assessability looser than 3-bucket detector | False ASSESSABLE → NOT_OBSERVED | Require channel on all three triple labels | `detector-assessability.spec.ts` | FIXED |
