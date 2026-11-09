@@ -67,34 +67,68 @@ function resolvePhevIceConfirmed(slice: readonly Ds4CanonicalMultichannelBucketV
   return rpmIceSamples >= COLD_ENGINE_SHADOW_POLICY.iceConfirmationMinSamples;
 }
 
+function hasCadenceAdjacentColdTriple(
+  buckets: readonly Ds4CanonicalMultichannelBucketV1[],
+  nominalIntervalMs: number,
+): boolean {
+  const sorted = [...buckets].sort((a, b) => a.recordedAtMs - b.recordedAtMs);
+  for (let i = 2; i < sorted.length; i += 1) {
+    if (!windowBucketsConsecutive(sorted, i, nominalIntervalMs)) continue;
+    const slice = [sorted[i - 2]!, sorted[i - 1]!, sorted[i]!];
+    if (slice.every(isBucketCold)) return true;
+  }
+  return false;
+}
+
 export function computeColdEngineSubtypeAssessability(input: {
   buckets: readonly Ds4CanonicalMultichannelBucketV1[];
   highRpmReference: Ds4ColdEngineHighRpmReferenceVerdictV1;
   rpmEvidencePresent: boolean;
+  nominalIntervalMs: number;
 }): Record<Ds4ColdEngineProxyKindV1, Ds4ColdEngineSubtypeAssessabilityV1> {
   const coldBuckets = input.buckets.filter(isBucketCold);
+  const coldTripleOpportunity = hasCadenceAdjacentColdTriple(input.buckets, input.nominalIntervalMs);
   const hasLoad = coldBuckets.some((b) => b.loadPct != null);
   const hasThrottle = coldBuckets.some((b) => b.throttlePct != null);
   const hasRpmOnCold = coldBuckets.some((b) => b.rpm != null);
 
-  const highLoad: Ds4ColdEngineSubtypeAssessabilityV1 = hasLoad
-    ? { status: 'ASSESSABLE', reasonCodes: [] }
-    : { status: 'NOT_ASSESSABLE', reasonCodes: ['NO_ENGINE_LOAD_CHANNEL_EVIDENCE'] };
+  const highLoad: Ds4ColdEngineSubtypeAssessabilityV1 =
+    coldTripleOpportunity && hasLoad
+      ? { status: 'ASSESSABLE', reasonCodes: [] }
+      : {
+          status: 'NOT_ASSESSABLE',
+          reasonCodes: !coldTripleOpportunity
+            ? ['INSUFFICIENT_COLD_WINDOW_OPPORTUNITY']
+            : ['NO_ENGINE_LOAD_CHANNEL_EVIDENCE'],
+        };
 
-  const fullThrottle: Ds4ColdEngineSubtypeAssessabilityV1 = hasThrottle
-    ? { status: 'ASSESSABLE', reasonCodes: [] }
-    : { status: 'NOT_ASSESSABLE', reasonCodes: ['NO_THROTTLE_CHANNEL_EVIDENCE'] };
+  const fullThrottle: Ds4ColdEngineSubtypeAssessabilityV1 =
+    coldTripleOpportunity && hasThrottle
+      ? { status: 'ASSESSABLE', reasonCodes: [] }
+      : {
+          status: 'NOT_ASSESSABLE',
+          reasonCodes: !coldTripleOpportunity
+            ? ['INSUFFICIENT_COLD_WINDOW_OPPORTUNITY']
+            : ['NO_THROTTLE_CHANNEL_EVIDENCE'],
+        };
 
   const highRpmReasons = [...input.highRpmReference.reasonCodes];
   if (!input.rpmEvidencePresent) highRpmReasons.push('NO_RPM_CHANNEL_EVIDENCE');
   if (!hasRpmOnCold) highRpmReasons.push('NO_RPM_LABEL_ON_COLD_BUCKETS');
 
   const highRpm: Ds4ColdEngineSubtypeAssessabilityV1 =
-    input.highRpmReference.admitted && input.rpmEvidencePresent && hasRpmOnCold
+    coldTripleOpportunity &&
+    input.highRpmReference.admitted &&
+    input.rpmEvidencePresent &&
+    hasRpmOnCold
       ? { status: 'ASSESSABLE', reasonCodes: [] }
       : {
           status: 'NOT_ASSESSABLE',
-          reasonCodes: highRpmReasons.length > 0 ? highRpmReasons : ['REFERENCE_MAX_RPM_NOT_ADMITTED'],
+          reasonCodes: !coldTripleOpportunity
+            ? ['INSUFFICIENT_COLD_WINDOW_OPPORTUNITY', ...highRpmReasons]
+            : highRpmReasons.length > 0
+              ? highRpmReasons
+              : ['REFERENCE_MAX_RPM_NOT_ADMITTED'],
         };
 
   return {
