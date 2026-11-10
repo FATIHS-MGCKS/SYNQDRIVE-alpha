@@ -3,6 +3,11 @@ export const APDS_V3_CONSUMER_DEMAND_REGISTRY_VERSION =
 
 export type ConsumerFreshnessRequirement =
   | { kind: 'KNOWN_MAX_AGE_MS'; maxAgeMs: number; provenance: string }
+  | {
+      kind: 'UNCALIBRATED_ASSUMPTION';
+      assumedMaxAgeMs: number;
+      provenance: string;
+    }
   | { kind: 'UNKNOWN' };
 
 export type ConsumerDemandEntry = {
@@ -27,7 +32,12 @@ export const APDS_V3_CONSUMER_DEMAND_REGISTRY_V1: readonly ConsumerDemandEntry[]
     consumerId: 'LV_BATTERY_V2',
     dataSource: 'DIMO_SNAPSHOT',
     signalGroup: 'STRICT_LV_PROVIDER_SOURCE',
-    freshness: { kind: 'KNOWN_MAX_AGE_MS', maxAgeMs: 3_600_000, provenance: 'battery-v2 strict LV advance path' },
+    freshness: {
+      kind: 'UNCALIBRATED_ASSUMPTION',
+      assumedMaxAgeMs: 3_600_000,
+      provenance:
+        'LV rest-window engineering default (getRest60mDelayMs) — not a certified snapshot skip limit',
+    },
     hardSafety: true,
     softPreference: false,
     tripStateDependent: false,

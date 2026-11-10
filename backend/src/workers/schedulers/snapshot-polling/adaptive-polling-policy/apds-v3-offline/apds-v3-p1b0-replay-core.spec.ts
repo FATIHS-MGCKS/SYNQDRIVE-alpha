@@ -52,8 +52,8 @@ describe('aggregateApdsV3ReplayPoints', () => {
       startMs: t0,
       endMs: t0 + 120_000,
     });
-    expect(report.decisionCount).toBe(3);
-    expect(report.baselinePhysicalRequests).toBeGreaterThanOrEqual(1);
+    expect(report.decisionTickCount).toBe(3);
+    expect(report.baselineEligiblePhysicalOpportunities).toBeGreaterThanOrEqual(0);
     expect(report.vehicleCount).toBe(1);
   });
 

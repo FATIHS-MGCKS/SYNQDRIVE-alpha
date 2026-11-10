@@ -1,6 +1,3 @@
-import type { ConsumerDemandEntry } from './consumer-demand-registry.v1';
-import { listSnapshotBackedConsumers } from './consumer-demand-registry.v1';
-
 export const APDS_V3_INFORMATION_GAIN_MODEL_VERSION =
   'APDS_V3_INFORMATION_GAIN_HEURISTIC_V1' as const;
 
@@ -42,11 +39,7 @@ export function estimateVsiInformationGain(
     (input.lastTopLevelProviderSourceMs != null &&
       input.lastTopLevelProviderSourceMs > input.decisionAtMs);
 
-  const contradictory =
-    futureLeak ||
-    (input.lastLvProviderSourceMs != null &&
-      input.lastTopLevelProviderSourceMs != null &&
-      input.lastTopLevelProviderSourceMs < input.lastLvProviderSourceMs);
+  const contradictory = futureLeak;
 
   if (contradictory || input.observationQuality === 'UNKNOWN') {
     return {
@@ -81,18 +74,4 @@ export function estimateVsiInformationGain(
     contradictoryEvidence: false,
     stalenessMs: staleness,
   };
-}
-
-export function hardestUnmetSnapshotConsumer(
-  consumers: ConsumerDemandEntry[],
-  input: VsiInformationGainInput,
-): ConsumerDemandEntry | null {
-  const snapshot = consumers.length > 0 ? consumers : listSnapshotBackedConsumers();
-  for (const c of snapshot) {
-    if (!c.hardSafety) continue;
-    if (c.freshness.kind === 'UNKNOWN') continue;
-    const age = lvStalenessMs(input);
-    if (age == null || age > c.freshness.maxAgeMs) return c;
-  }
-  return null;
 }

@@ -1,16 +1,24 @@
 import { evaluateP25ApdB2V1Core, evaluateP25ApdB4V1Core } from '../p25-apd-policy-engine';
 import {
   evaluateApdsV3OfflinePolicy,
-  evaluateCanonicalBaselineSchedulerWouldPoll,
   buildP25ShadowInputFromOffline,
+  evaluateOfflineBaselinePollDueFromPolicyInput,
 } from './apds-v3-offline-policy.evaluator';
 import type { ApdsV3OfflinePolicyInput } from './apds-v3-offline.types';
+import {
+  classifyV3ReplayPhysicalAccounting,
+  physicalRequestDedupKey,
+  type PhysicalRequestOutcomeClass,
+} from './apds-v3-replay-accounting.v1';
+import { evaluateFrozenB2B4Intersection } from './p25-apd-b2b4-intersection.v1';
+import { APDS_V3_BASELINE_AUTHORITY } from './apds-v3-baseline-poll-due.adapter';
 
 export type ApdsV3ReplayEpochPoint = {
   decisionAtMs: number;
   organizationId: string;
   vehicleId: string;
   tierIntervalMs: number;
+  physicalRequestId?: string | null;
   input: ApdsV3OfflinePolicyInput;
 };
 
@@ -18,16 +26,16 @@ export type ApdsV3ReplayAggregatorReport = {
   windowStartMs: number;
   windowEndMs: number;
   vehicleCount: number;
-  decisionCount: number;
-  /** Would have skipped physical poll vs canonical baseline at same tick */
-  historicalSkipOpportunities: number;
-  /** Estimated provider requests if baseline polled every eligible tick */
-  baselinePhysicalRequests: number;
-  /** Estimated if V3 offline candidate applied (projected — not realized) */
-  v3ProjectedPhysicalRequests: number;
+  decisionTickCount: number;
+  baselineEligiblePhysicalOpportunities: number;
+  dedupedBaselinePhysicalOpportunities: number;
+  /** Hypothetical only — not realized savings */
+  hypotheticalIncrementalSkipSavings: number;
+  v3ProjectedPhysicalPolls: number;
+  v3AdditionalPollsVsBaseline: number;
   b2WouldSkip: number;
   b4WouldSkip: number;
-  b2b4IntersectionWouldSkip: number;
+  b2b4JointSkipCandidate: number;
   v3WouldSkip: number;
   forcedSafetyPoll: number;
   insufficientEvidence: number;
@@ -40,22 +48,15 @@ export type ApdsV3ReplayAggregatorReport = {
   staleP50Ms: number | null;
   staleP95Ms: number | null;
   staleP99Ms: number | null;
+  baselineAuthority: typeof APDS_V3_BASELINE_AUTHORITY;
+  outcomeClassCounts: Partial<Record<PhysicalRequestOutcomeClass, number>>;
+  disclaimer: string;
 };
 
 function percentile(sorted: number[], p: number): number | null {
   if (sorted.length === 0) return null;
   const idx = Math.min(sorted.length - 1, Math.floor(p * sorted.length));
   return sorted[idx] ?? null;
-}
-
-function allowFromDecision(
-  d: 'WOULD_POLL' | 'WOULD_SKIP' | 'FORCED_SAFETY_POLL' | 'INSUFFICIENT_EVIDENCE' | 'NOT_ASSESSABLE',
-): boolean {
-  return (
-    d === 'WOULD_POLL' ||
-    d === 'FORCED_SAFETY_POLL' ||
-    d === 'INSUFFICIENT_EVIDENCE'
-  );
 }
 
 /** Deterministic offline replay — no counterfactual DIMO responses. */
@@ -67,12 +68,16 @@ export function aggregateApdsV3ReplayPoints(
     (p) => p.decisionAtMs >= window.startMs && p.decisionAtMs <= window.endMs,
   );
   const vehicleIds = new Set(inWindow.map((p) => `${p.organizationId}:${p.vehicleId}`));
-  let baselinePhysical = 0;
+  const seenBaselineKeys = new Set<string>();
+
+  let baselineEligible = 0;
+  let dedupedBaseline = 0;
+  let hypotheticalSkip = 0;
   let v3Projected = 0;
-  let historicalSkip = 0;
+  let v3Additional = 0;
   let b2WouldSkip = 0;
   let b4WouldSkip = 0;
-  let b2b4 = 0;
+  let b2b4Joint = 0;
   let v3WouldSkip = 0;
   let forced = 0;
   let insuf = 0;
@@ -83,36 +88,72 @@ export function aggregateApdsV3ReplayPoints(
   let freshViol = 0;
   let ksMx = 0;
   const staleness: number[] = [];
+  const outcomeClassCounts: Partial<Record<PhysicalRequestOutcomeClass, number>> = {};
 
   for (const p of inWindow) {
-    const baseline = evaluateCanonicalBaselineSchedulerWouldPoll({
-      decisionAtMs: p.decisionAtMs,
-      lastPhysicalPollMs: p.input.lastPhysicalPollMs,
-      tierIntervalMs: p.tierIntervalMs,
-    });
-    if (baseline) baselinePhysical += 1;
+    const baselineDue = evaluateOfflineBaselinePollDueFromPolicyInput(
+      p.input,
+      p.tierIntervalMs,
+    );
+
+    if (baselineDue) {
+      baselineEligible += 1;
+      const dedupeKey = physicalRequestDedupKey({
+        organizationId: p.organizationId,
+        vehicleId: p.vehicleId,
+        physicalRequestId: p.physicalRequestId,
+        decisionAtMs: p.decisionAtMs,
+      });
+      if (!seenBaselineKeys.has(dedupeKey)) {
+        seenBaselineKeys.add(dedupeKey);
+        dedupedBaseline += 1;
+      }
+    }
 
     const v3 = evaluateApdsV3OfflinePolicy(p.input);
-    const v3Poll = allowFromDecision(v3.decision);
-    if (v3Poll) v3Projected += 1;
+    const shadow = buildP25ShadowInputFromOffline(p.input);
+    const b2 = evaluateP25ApdB2V1Core(shadow);
+    const b4 = evaluateP25ApdB4V1Core(shadow);
+    const joint = evaluateFrozenB2B4Intersection(b2, b4);
 
-    if (baseline && !v3Poll) historicalSkip += 1;
+    const accounting = classifyV3ReplayPhysicalAccounting({
+      baselineDue,
+      v3,
+      b2,
+      b4,
+    });
+    outcomeClassCounts[accounting.outcomeClass] =
+      (outcomeClassCounts[accounting.outcomeClass] ?? 0) + 1;
+
+    if (accounting.countsTowardProjectedPhysicalPoll) {
+      v3Projected += 1;
+    }
+
+    if (baselineDue && accounting.countsTowardProjectedPhysicalPoll && v3.decision === 'FORCED_SAFETY_POLL') {
+      v3Additional += 1;
+    }
+    if (baselineDue && !accounting.countsTowardProjectedPhysicalPoll && v3.decision === 'WOULD_SKIP') {
+      v3Additional -= 1;
+    }
+
+    if (accounting.countsTowardHypotheticalSkipSavings) {
+      hypotheticalSkip += 1;
+    }
+
+    if (b2.decision === 'WOULD_SKIP') b2WouldSkip += 1;
+    if (b4.decision === 'WOULD_SKIP') b4WouldSkip += 1;
+    if (joint.kind === 'JOINT_SKIP_CANDIDATE') b2b4Joint += 1;
+
     if (v3.decision === 'WOULD_SKIP') v3WouldSkip += 1;
     if (v3.decision === 'FORCED_SAFETY_POLL') forced += 1;
     if (v3.decision === 'INSUFFICIENT_EVIDENCE') insuf += 1;
     if (v3.decision === 'NOT_ASSESSABLE') na += 1;
 
-    const shadow = buildP25ShadowInputFromOffline(p.input);
-    const b2 = evaluateP25ApdB2V1Core(shadow);
-    const b4 = evaluateP25ApdB4V1Core(shadow);
-    if (b2.decision === 'WOULD_SKIP') b2WouldSkip += 1;
-    if (b4.decision === 'WOULD_SKIP') b4WouldSkip += 1;
-  if (b2.decision === 'WOULD_SKIP' && b4.decision === 'WOULD_SKIP') b2b4 += 1;
-
     if (
       v3.decision === 'WOULD_SKIP' &&
       p.input.lastLvProviderSourceMs != null &&
-      p.decisionAtMs - p.input.lastLvProviderSourceMs > 3_600_000
+      p.decisionAtMs - p.input.lastLvProviderSourceMs >
+        (p.input.excludeFromOptimizationCalibration ? 0 : 3_600_000)
     ) {
       lvMiss += 1;
     }
@@ -133,13 +174,15 @@ export function aggregateApdsV3ReplayPoints(
     windowStartMs: window.startMs,
     windowEndMs: window.endMs,
     vehicleCount: vehicleIds.size,
-    decisionCount: inWindow.length,
-    historicalSkipOpportunities: historicalSkip,
-    baselinePhysicalRequests: baselinePhysical,
-    v3ProjectedPhysicalRequests: v3Projected,
+    decisionTickCount: inWindow.length,
+    baselineEligiblePhysicalOpportunities: baselineEligible,
+    dedupedBaselinePhysicalOpportunities: dedupedBaseline,
+    hypotheticalIncrementalSkipSavings: hypotheticalSkip,
+    v3ProjectedPhysicalPolls: v3Projected,
+    v3AdditionalPollsVsBaseline: v3Additional,
     b2WouldSkip,
     b4WouldSkip,
-    b2b4IntersectionWouldSkip: b2b4,
+    b2b4JointSkipCandidate: b2b4Joint,
     v3WouldSkip,
     forcedSafetyPoll: forced,
     insufficientEvidence: insuf,
@@ -152,5 +195,9 @@ export function aggregateApdsV3ReplayPoints(
     staleP50Ms: percentile(staleness, 0.5),
     staleP95Ms: percentile(staleness, 0.95),
     staleP99Ms: percentile(staleness, 0.99),
+    baselineAuthority: APDS_V3_BASELINE_AUTHORITY,
+    outcomeClassCounts,
+    disclaimer:
+      'PROJECTED_AND_HYPOTHETICAL_COUNTS_NOT_REALIZED_SAVINGS_NO_COUNTERFACTUAL_DIMO_RESPONSE',
   };
 }

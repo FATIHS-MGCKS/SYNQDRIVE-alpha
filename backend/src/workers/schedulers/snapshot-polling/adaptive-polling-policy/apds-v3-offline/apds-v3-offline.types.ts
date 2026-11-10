@@ -39,8 +39,11 @@ export type ApdsV3OfflinePolicyInput = {
   providerErrorRecent: boolean;
   /** P2C proof of top-level advance exists at decision time (not future). */
   p2cTopLevelAdvanceKnown: boolean;
+  p2cObservationId?: string | null;
   consumerDemandRevision: string;
   signalProfileRevision: string | null;
+  signalProfileRevisionEffectiveAtMs?: number | null;
+  lastObservedAtMs?: number | null;
   /** Exclude KS_MX_2024 calibration vehicle id fingerprint */
   excludeFromOptimizationCalibration?: boolean;
 };

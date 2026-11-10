@@ -8,13 +8,15 @@ import {
   type ApdsV3OfflinePolicyDecision,
   type ApdsV3OfflinePolicyInput,
 } from './apds-v3-offline.types';
+import { estimateVsiInformationGain } from './vsi-information-gain.v1';
+import { evaluateFrozenB2B4Intersection } from './p25-apd-b2b4-intersection.v1';
+import { evaluateConsumerDemandGate } from './consumer-demand-gate.v1';
+import { validateCausalEvidenceAtDecision } from './apds-v3-causal-evidence.v1';
 import {
-  estimateVsiInformationGain,
-  hardestUnmetSnapshotConsumer,
-} from './vsi-information-gain.v1';
-import { listSnapshotBackedConsumers } from './consumer-demand-registry.v1';
+  evaluateVerifiedBaselinePollDue,
+  mapActivityTierLabelToSnapshotTier,
+} from './apds-v3-baseline-poll-due.adapter';
 
-const MAX_PHYSICAL_POLL_AGE_WATCHDOG_MS = 3_600_000;
 const BACKOFF_SKIP_GAIN_THRESHOLD = 0.15;
 const HYSTERESIS_MIN_POLL_GAP_MS = 60_000;
 
@@ -90,6 +92,18 @@ export function evaluateApdsV3OfflinePolicy(
     };
   }
 
+  const causal = validateCausalEvidenceAtDecision(input);
+  if (!causal.ok) {
+    return {
+      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
+      decision: causal.kind,
+      reason: causal.reason,
+      expectedInformationGain: null,
+      heuristic: false,
+      hardSafetyTriggered: false,
+    };
+  }
+
   if (input.tripFsmState === 'UNKNOWN') {
     return {
       policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
@@ -100,6 +114,13 @@ export function evaluateApdsV3OfflinePolicy(
       hardSafetyTriggered: false,
     };
   }
+
+  const demandGate = evaluateConsumerDemandGate(input.consumerDemandRevision, {
+    decisionAtMs: input.decisionAtMs,
+    strictLvProviderSourceMs: input.lastLvProviderSourceMs,
+    topLevelProviderSourceMs: input.lastTopLevelProviderSourceMs,
+    tripFsmState: input.tripFsmState,
+  });
 
   const gainInput = {
     decisionAtMs: input.decisionAtMs,
@@ -113,7 +134,7 @@ export function evaluateApdsV3OfflinePolicy(
         : input.profileClass === 'PROVIDER_OBSERVABILITY_GAP'
           ? ('UNKNOWN' as const)
           : ('UNSTABLE' as const),
-    observationQuality: input.signalProfileRevision ? ('HIGH' as const) : ('UNKNOWN' as const),
+    observationQuality: causal.observationQuality,
     p2cTopLevelAdvanceKnown: input.p2cTopLevelAdvanceKnown,
   };
   const gain = estimateVsiInformationGain(gainInput);
@@ -126,35 +147,6 @@ export function evaluateApdsV3OfflinePolicy(
       expectedInformationGain: gain.expectedGain,
       heuristic: true,
       hardSafetyTriggered: false,
-    };
-  }
-
-  const hardConsumer = hardestUnmetSnapshotConsumer(
-    listSnapshotBackedConsumers(),
-    gainInput,
-  );
-  if (hardConsumer) {
-    return {
-      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
-      decision: 'FORCED_SAFETY_POLL',
-      reason: `CONSUMER_HARD_FRESHNESS:${hardConsumer.consumerId}`,
-      expectedInformationGain: gain.expectedGain,
-      heuristic: true,
-      hardSafetyTriggered: true,
-    };
-  }
-
-  if (
-    input.lastPhysicalPollMs != null &&
-    input.decisionAtMs - input.lastPhysicalPollMs >= MAX_PHYSICAL_POLL_AGE_WATCHDOG_MS
-  ) {
-    return {
-      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
-      decision: 'FORCED_SAFETY_POLL',
-      reason: 'MAX_AGE_WATCHDOG',
-      expectedInformationGain: gain.expectedGain,
-      heuristic: true,
-      hardSafetyTriggered: true,
     };
   }
 
@@ -172,8 +164,40 @@ export function evaluateApdsV3OfflinePolicy(
   const shadow = buildP25ShadowInputFromOffline(input);
   const b2 = evaluateP25ApdB2V1Core(shadow);
   const b4 = evaluateP25ApdB4V1Core(shadow);
-  const frozenWouldPoll =
-    b2.decision === 'WOULD_POLL' && b4.decision === 'WOULD_POLL';
+  const joint = evaluateFrozenB2B4Intersection(b2, b4);
+
+  if (joint.kind === 'NOT_ASSESSABLE') {
+    return {
+      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
+      decision: 'NOT_ASSESSABLE',
+      reason: joint.reason,
+      expectedInformationGain: gain.expectedGain,
+      heuristic: false,
+      hardSafetyTriggered: false,
+    };
+  }
+
+  if (joint.kind === 'NOT_JOINT_SKIP') {
+    return {
+      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
+      decision: 'WOULD_POLL',
+      reason: `B2B4_REFERENCE_POLL:${joint.reason}`,
+      expectedInformationGain: gain.expectedGain,
+      heuristic: false,
+      hardSafetyTriggered: joint.reason === 'FORCED_OR_SAFETY_PRESENT',
+    };
+  }
+
+  if (demandGate.blocksAuthoritativeSafeSkip) {
+    return {
+      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
+      decision: 'INSUFFICIENT_EVIDENCE',
+      reason: `CONSUMER_FAIL_CLOSED:${demandGate.reasons.join(',')}`,
+      expectedInformationGain: gain.expectedGain,
+      heuristic: false,
+      hardSafetyTriggered: false,
+    };
+  }
 
   if (
     input.lastPhysicalPollMs != null &&
@@ -183,17 +207,6 @@ export function evaluateApdsV3OfflinePolicy(
       policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
       decision: 'WOULD_SKIP',
       reason: 'HYSTERESIS_MIN_GAP',
-      expectedInformationGain: gain.expectedGain,
-      heuristic: true,
-      hardSafetyTriggered: false,
-    };
-  }
-
-  if (!frozenWouldPoll) {
-    return {
-      policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
-      decision: 'WOULD_SKIP',
-      reason: 'FROZEN_B2B4_CONSERVATIVE_INTERSECTION',
       expectedInformationGain: gain.expectedGain,
       heuristic: true,
       hardSafetyTriggered: false,
@@ -214,14 +227,14 @@ export function evaluateApdsV3OfflinePolicy(
   return {
     policyVersion: APDS_V3_OFFLINE_POLICY_VERSION,
     decision: 'WOULD_POLL',
-    reason: 'INFORMATION_GAIN_AND_FROZEN_PARITY',
+    reason: 'JOINT_SKIP_CANDIDATE_INFORMATION_GAIN_SUFFICIENT',
     expectedInformationGain: gain.expectedGain,
     heuristic: true,
     hardSafetyTriggered: false,
   };
 }
 
-/** Baseline canonical scheduler: poll when tier interval elapsed (offline model). */
+/** @deprecated Use evaluateVerifiedBaselinePollDue — tier-interval-only helper */
 export function evaluateCanonicalBaselineSchedulerWouldPoll(input: {
   decisionAtMs: number;
   lastPhysicalPollMs: number | null;
@@ -229,4 +242,16 @@ export function evaluateCanonicalBaselineSchedulerWouldPoll(input: {
 }): boolean {
   if (input.lastPhysicalPollMs == null) return true;
   return input.decisionAtMs - input.lastPhysicalPollMs >= input.tierIntervalMs;
+}
+
+export function evaluateOfflineBaselinePollDueFromPolicyInput(
+  input: ApdsV3OfflinePolicyInput,
+  _tierIntervalMs: number,
+): boolean {
+  const tier = mapActivityTierLabelToSnapshotTier(input.activityTier);
+  return evaluateVerifiedBaselinePollDue({
+    decisionAtMs: input.decisionAtMs,
+    lastPhysicalPollMs: input.lastPhysicalPollMs,
+    effectiveTier: tier,
+  }).due;
 }
