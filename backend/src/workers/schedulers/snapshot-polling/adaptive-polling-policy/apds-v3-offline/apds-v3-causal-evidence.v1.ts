@@ -13,6 +13,10 @@ function atOrBefore(decisionAtMs: number, ts: number | null | undefined): boolea
   return ts != null && Number.isFinite(ts) && ts <= decisionAtMs;
 }
 
+function nonEmpty(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 /**
  * Validates causally available evidence at decisionAtMs.
  * Does not assume cross-signal-group timestamp ordering.
@@ -61,7 +65,7 @@ export function validateCausalEvidenceAtDecision(
   }
 
   if (input.p2cTopLevelAdvanceKnown) {
-    if (!input.p2cObservationId) {
+    if (!nonEmpty(input.p2cObservationId)) {
       return {
         ok: false,
         kind: 'INSUFFICIENT_EVIDENCE',
@@ -75,28 +79,41 @@ export function validateCausalEvidenceAtDecision(
         reason: 'P2C_OBSERVATION_NOT_AVAILABLE_AT_DECISION',
       };
     }
-    if (
-      input.p2cBoundOrganizationId != null &&
-      input.p2cBoundOrganizationId !== input.organizationId
-    ) {
-      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_ORG_BINDING_MISMATCH' };
-    }
-    if (input.p2cBoundVehicleId != null && input.p2cBoundVehicleId !== input.vehicleId) {
-      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_VEHICLE_BINDING_MISMATCH' };
-    }
-    if (
-      input.p2cBoundProviderSourceLinkId != null &&
-      input.providerSourceLinkId != null &&
-      input.p2cBoundProviderSourceLinkId !== input.providerSourceLinkId
-    ) {
-      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_SOURCE_LINK_BINDING_MISMATCH' };
-    }
     if (!atOrBefore(input.decisionAtMs, input.p2cDataSourceTimestampMs)) {
       return {
         ok: false,
         kind: 'INSUFFICIENT_EVIDENCE',
         reason: 'P2C_DATA_SOURCE_TIMESTAMP_UNAVAILABLE',
       };
+    }
+    if (!nonEmpty(input.p2cBoundOrganizationId)) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_ORG_BINDING_MISSING' };
+    }
+    if (input.p2cBoundOrganizationId !== input.organizationId) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_ORG_BINDING_MISMATCH' };
+    }
+    if (!nonEmpty(input.p2cBoundVehicleId)) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_VEHICLE_BINDING_MISSING' };
+    }
+    if (input.p2cBoundVehicleId !== input.vehicleId) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_VEHICLE_BINDING_MISMATCH' };
+    }
+    if (!nonEmpty(input.p2cBoundProviderSourceLinkId)) {
+      return {
+        ok: false,
+        kind: 'INSUFFICIENT_EVIDENCE',
+        reason: 'P2C_SOURCE_LINK_BINDING_MISSING',
+      };
+    }
+    if (!nonEmpty(input.providerSourceLinkId)) {
+      return {
+        ok: false,
+        kind: 'INSUFFICIENT_EVIDENCE',
+        reason: 'P2C_DECISION_SOURCE_LINK_MISSING',
+      };
+    }
+    if (input.p2cBoundProviderSourceLinkId !== input.providerSourceLinkId) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_SOURCE_LINK_BINDING_MISMATCH' };
     }
   }
 
@@ -106,12 +123,19 @@ export function validateCausalEvidenceAtDecision(
     if (effective == null || effective > input.decisionAtMs) {
       observationQuality = 'UNKNOWN';
     } else if (
-      input.p2cObservationId &&
+      nonEmpty(input.p2cObservationId) &&
       atOrBefore(input.decisionAtMs, input.p2cObservationAvailableAtMs) &&
-      input.p2cObservationCoverageVerified === true
+      input.p2cObservationCoverageVerified === true &&
+      nonEmpty(input.p2cBoundOrganizationId) &&
+      input.p2cBoundOrganizationId === input.organizationId &&
+      nonEmpty(input.p2cBoundVehicleId) &&
+      input.p2cBoundVehicleId === input.vehicleId &&
+      nonEmpty(input.p2cBoundProviderSourceLinkId) &&
+      nonEmpty(input.providerSourceLinkId) &&
+      input.p2cBoundProviderSourceLinkId === input.providerSourceLinkId
     ) {
       observationQuality = 'HIGH';
-    } else if (input.p2cObservationId) {
+    } else if (nonEmpty(input.p2cObservationId)) {
       observationQuality = 'LOW';
     } else {
       observationQuality = 'UNKNOWN';

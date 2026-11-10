@@ -60,12 +60,8 @@ describe('aggregateApdsV3ReplayPoints adversarial', () => {
     );
     expect(report.decisionTickCount).toBe(2);
     expect(report.physicalCountPrecision).toBe('CONFIRMED_PHYSICAL_ID');
-    expect(report.dedupedBaselinePhysicalOpportunities).toBeLessThanOrEqual(
-      report.baselineEligiblePhysicalOpportunities,
-    );
-    expect(report.dedupedV3ProjectedPhysicalPolls).toBeLessThanOrEqual(
-      report.decisionTickCount,
-    );
+    expect(report.dedupedBaselinePhysicalOpportunities).toBe(1);
+    expect(report.dedupedV3ProjectedPhysicalPolls).toBe(1);
   });
 
   it('does not credit savings for excluded calibration vehicles', () => {
@@ -91,7 +87,7 @@ describe('aggregateApdsV3ReplayPoints adversarial', () => {
     const report = aggregateApdsV3ReplayPoints(
       [
         point(t0, {
-          lastPhysicalPollMs: t0 - 5_000,
+          lastPhysicalPollMs: t0 - 600_000,
           providerWakeOrReconnect: true,
         }),
       ],

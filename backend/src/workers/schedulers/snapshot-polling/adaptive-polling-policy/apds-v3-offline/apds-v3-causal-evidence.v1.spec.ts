@@ -52,6 +52,9 @@ describe('apds-v3-causal-evidence.v1', () => {
         p2cObservationId: 'obs-1',
         p2cObservationAvailableAtMs: t - 1000,
         p2cObservationCoverageVerified: true,
+        p2cBoundOrganizationId: 'org-1',
+        p2cBoundVehicleId: 'veh-1',
+        p2cBoundProviderSourceLinkId: 'link-1',
       }),
     );
     expect(v.ok).toBe(true);
@@ -67,9 +70,33 @@ describe('apds-v3-causal-evidence.v1', () => {
         p2cObservationAvailableAtMs: t - 1000,
         p2cDataSourceTimestampMs: t - 2000,
         p2cBoundOrganizationId: 'wrong-org',
+        p2cBoundVehicleId: 'veh-1',
+        p2cBoundProviderSourceLinkId: 'link-1',
       }),
     );
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.reason).toBe('P2C_ORG_BINDING_MISMATCH');
+  });
+
+  it.each([
+    ['P2C_ORG_BINDING_MISSING', { p2cBoundOrganizationId: null }],
+    ['P2C_VEHICLE_BINDING_MISSING', { p2cBoundVehicleId: null }],
+    ['P2C_SOURCE_LINK_BINDING_MISSING', { p2cBoundProviderSourceLinkId: null }],
+  ] as const)('missing %s fails closed', (reason, partial) => {
+    const t = 1_700_000_000_000;
+    const v = validateCausalEvidenceAtDecision(
+      base({
+        p2cTopLevelAdvanceKnown: true,
+        p2cObservationId: 'obs-1',
+        p2cObservationAvailableAtMs: t - 1000,
+        p2cDataSourceTimestampMs: t - 2000,
+        p2cBoundOrganizationId: 'org-1',
+        p2cBoundVehicleId: 'veh-1',
+        p2cBoundProviderSourceLinkId: 'link-1',
+        ...partial,
+      }),
+    );
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe(reason);
   });
 });

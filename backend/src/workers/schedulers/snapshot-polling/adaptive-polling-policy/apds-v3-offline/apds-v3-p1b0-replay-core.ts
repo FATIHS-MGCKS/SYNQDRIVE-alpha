@@ -13,6 +13,7 @@ import {
 } from './apds-v3-replay-accounting.v1';
 import { evaluateFrozenB2B4Intersection } from './p25-apd-b2b4-intersection.v1';
 import { APDS_V3_BASELINE_AUTHORITY } from './apds-v3-baseline-poll-due.adapter';
+import { validateCausalEvidenceAtDecision } from './apds-v3-causal-evidence.v1';
 
 export type ApdsV3ReplayEpochPoint = {
   decisionAtMs: number;
@@ -23,7 +24,10 @@ export type ApdsV3ReplayEpochPoint = {
   input: ApdsV3OfflinePolicyInput;
 };
 
-export type ReplayCountPrecision = 'CONFIRMED_PHYSICAL_ID' | 'NOT_ASSESSABLE_TICK_ONLY';
+export type ReplayCountPrecision =
+  | 'CONFIRMED_PHYSICAL_ID'
+  | 'MIXED_PHYSICAL_ID_INCOMPLETE'
+  | 'NOT_ASSESSABLE_TICK_ONLY';
 
 export type ApdsV3ReplayAggregatorReport = {
   windowStartMs: number;
@@ -60,6 +64,21 @@ export type ApdsV3ReplayAggregatorReport = {
   disclaimer: string;
 };
 
+function hasValidPhysicalRequestId(id: string | null | undefined): boolean {
+  return typeof id === 'string' && id.trim().length > 0;
+}
+
+/** Every replay point with a physical-eligibility role must carry an id for CONFIRMED precision. */
+export function resolveReplayPhysicalCountPrecision(
+  points: ApdsV3ReplayEpochPoint[],
+): ReplayCountPrecision {
+  if (points.length === 0) return 'NOT_ASSESSABLE_TICK_ONLY';
+  const withId = points.filter((p) => hasValidPhysicalRequestId(p.physicalRequestId));
+  if (withId.length === 0) return 'NOT_ASSESSABLE_TICK_ONLY';
+  if (withId.length === points.length) return 'CONFIRMED_PHYSICAL_ID';
+  return 'MIXED_PHYSICAL_ID_INCOMPLETE';
+}
+
 function percentile(sorted: number[], p: number): number | null {
   if (sorted.length === 0) return null;
   const idx = Math.min(sorted.length - 1, Math.floor(p * sorted.length));
@@ -67,14 +86,11 @@ function percentile(sorted: number[], p: number): number | null {
 }
 
 function p2cAdvanceCausallyBound(input: ApdsV3OfflinePolicyInput): boolean {
-  return (
-    input.p2cTopLevelAdvanceKnown &&
-    !!input.p2cObservationId &&
-    input.p2cObservationAvailableAtMs != null &&
-    input.p2cObservationAvailableAtMs <= input.decisionAtMs &&
-    input.p2cDataSourceTimestampMs != null &&
-    input.p2cDataSourceTimestampMs <= input.decisionAtMs
-  );
+  if (!input.p2cTopLevelAdvanceKnown) return false;
+  return validateCausalEvidenceAtDecision({
+    ...input,
+    p2cTopLevelAdvanceKnown: true,
+  }).ok;
 }
 
 /** Deterministic offline replay — no counterfactual DIMO responses. */
@@ -89,6 +105,7 @@ export function aggregateApdsV3ReplayPoints(
 
   const seenBaselinePhysical = new Set<string>();
   const seenV3ProjectedPhysical = new Set<string>();
+  const seenV3AdditionalBaselineNotDue = new Set<string>();
   const seenHypotheticalSavings = new Set<string>();
 
   let canonicalAssessable = 0;
@@ -115,10 +132,7 @@ export function aggregateApdsV3ReplayPoints(
   const staleness: number[] = [];
   const outcomeClassCounts: Partial<Record<PhysicalRequestOutcomeClass, number>> = {};
 
-  const hasPhysicalId = inWindow.some((p) => !!p.physicalRequestId);
-  const physicalCountPrecision: ReplayCountPrecision = hasPhysicalId
-    ? 'CONFIRMED_PHYSICAL_ID'
-    : 'NOT_ASSESSABLE_TICK_ONLY';
+  const physicalCountPrecision = resolveReplayPhysicalCountPrecision(inWindow);
 
   for (const p of inWindow) {
     const dedupeKey = physicalRequestDedupKey({
@@ -162,7 +176,17 @@ export function aggregateApdsV3ReplayPoints(
     outcomeClassCounts[accounting.outcomeClass] =
       (outcomeClassCounts[accounting.outcomeClass] ?? 0) + 1;
 
-    if (accounting.v3ProjectsPhysicalPoll) {
+    if (accounting.countsAsV3PollWhenBaselineNotDue) {
+      if (accounting.v3ProjectsPhysicalPoll) {
+        if (firstPhysicalOccurrence(dedupeKey, seenV3ProjectedPhysical)) {
+          dedupedV3Projected += 1;
+        }
+        if (firstPhysicalOccurrence(dedupeKey, seenV3AdditionalBaselineNotDue)) {
+          v3HypotheticalNotDue += 1;
+          v3Additional += 1;
+        }
+      }
+    } else if (accounting.v3ProjectsPhysicalPoll) {
       if (firstPhysicalOccurrence(dedupeKey, seenV3ProjectedPhysical)) {
         dedupedV3Projected += 1;
       }
@@ -176,13 +200,6 @@ export function aggregateApdsV3ReplayPoints(
 
     if (accounting.countsAsHypotheticalResearchCandidate) {
       researchCandidates += 1;
-    }
-
-    if (accounting.countsAsV3PollWhenBaselineNotDue) {
-      if (firstPhysicalOccurrence(dedupeKey, seenV3ProjectedPhysical)) {
-        v3HypotheticalNotDue += 1;
-        v3Additional += 1;
-      }
     }
 
     if (b2.decision === 'WOULD_SKIP') b2WouldSkip += 1;
