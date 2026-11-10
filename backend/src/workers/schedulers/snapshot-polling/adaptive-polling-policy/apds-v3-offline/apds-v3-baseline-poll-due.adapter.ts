@@ -5,7 +5,7 @@ import {
 import { DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG } from '../../snapshot-polling-tier.config';
 import { SnapshotPollingTier } from '../../snapshot-polling-tier.types';
 
-export const APDS_V3_BASELINE_AUTHORITY = 'VERIFIED_IS_SNAPSHOT_POLL_DUE' as const;
+export const APDS_V3_BASELINE_AUTHORITY = 'BASELINE_PARTIAL_PARITY' as const;
 
 export type OfflineBaselinePollDueInput = {
   decisionAtMs: number;
@@ -13,16 +13,21 @@ export type OfflineBaselinePollDueInput = {
   effectiveTier: SnapshotPollingTier;
   rawTier?: SnapshotPollingTier;
   previousEffectiveTier?: SnapshotPollingTier | null;
+  lastProviderFetchedAtMs?: number | null;
 };
 
+export type OfflineBaselineEligibility =
+  | { assessable: true; canonicalDue: boolean; authority: typeof APDS_V3_BASELINE_AUTHORITY }
+  | { assessable: false; reason: string };
+
 /**
- * Pure adapter to production `isSnapshotPollDue` for offline replay parity.
- * Coalescing / queue dedupe are out of scope — documented separately.
+ * Partial adapter to production `isSnapshotPollDue`.
+ * Missing promotion/hysteresis/coalescing context — not certified full scheduler parity.
  */
-export function evaluateVerifiedBaselinePollDue(
+export function evaluateOfflineBaselineEligibility(
   input: OfflineBaselinePollDueInput,
   config = DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG,
-): { due: boolean; authority: typeof APDS_V3_BASELINE_AUTHORITY } {
+): OfflineBaselineEligibility {
   const pollDueInput: SnapshotPollDueInput = {
     effectiveTier: input.effectiveTier,
     rawTier: input.rawTier ?? input.effectiveTier,
@@ -37,7 +42,10 @@ export function evaluateVerifiedBaselinePollDue(
       connectionStatus: 'CONNECTED',
       tokenId: 1,
       tripDetectionState: null,
-      observationAt: null,
+      observationAt:
+        input.lastProviderFetchedAtMs != null
+          ? new Date(input.lastProviderFetchedAtMs)
+          : null,
       lastActivityAt: null,
       speedKmh: null,
       isIgnitionOn: null,
@@ -45,16 +53,38 @@ export function evaluateVerifiedBaselinePollDue(
     },
   };
   return {
-    due: isSnapshotPollDue(pollDueInput),
+    assessable: true,
+    canonicalDue: isSnapshotPollDue(pollDueInput),
     authority: APDS_V3_BASELINE_AUTHORITY,
   };
 }
 
-export function mapActivityTierLabelToSnapshotTier(label: string): SnapshotPollingTier {
+/** Legacy alias */
+export function evaluateVerifiedBaselinePollDue(
+  input: OfflineBaselinePollDueInput,
+  config = DEFAULT_SNAPSHOT_POLLING_TIER_CONFIG,
+): { due: boolean; authority: typeof APDS_V3_BASELINE_AUTHORITY } {
+  const r = evaluateOfflineBaselineEligibility(input, config);
+  if (!r.assessable) {
+    return { due: false, authority: APDS_V3_BASELINE_AUTHORITY };
+  }
+  return { due: r.canonicalDue, authority: r.authority };
+}
+
+export function mapActivityTierLabelToSnapshotTier(
+  label: string,
+): SnapshotPollingTier | null {
   const normalized = label.trim().toUpperCase();
-  if (normalized.includes('ACTIVE_DRIVING')) return SnapshotPollingTier.ACTIVE_DRIVING;
-  if (normalized.includes('RECENTLY_ACTIVE')) return SnapshotPollingTier.RECENTLY_ACTIVE;
+  if (normalized.includes('ACTIVE_DRIVING')) {
+    return SnapshotPollingTier.ACTIVE_DRIVING;
+  }
+  if (normalized.includes('RECENTLY_ACTIVE')) {
+    return SnapshotPollingTier.RECENTLY_ACTIVE;
+  }
   if (normalized.includes('LONG_IDLE')) return SnapshotPollingTier.LONG_IDLE;
   if (normalized.includes('OFFLINE')) return SnapshotPollingTier.OFFLINE;
-  return SnapshotPollingTier.RESTING_STANDBY;
+  if (normalized.includes('RESTING') || normalized.includes('STANDBY')) {
+    return SnapshotPollingTier.RESTING_STANDBY;
+  }
+  return null;
 }

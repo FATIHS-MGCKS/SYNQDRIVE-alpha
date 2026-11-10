@@ -13,8 +13,9 @@ import { evaluateFrozenB2B4Intersection } from './p25-apd-b2b4-intersection.v1';
 import { evaluateConsumerDemandGate } from './consumer-demand-gate.v1';
 import { validateCausalEvidenceAtDecision } from './apds-v3-causal-evidence.v1';
 import {
-  evaluateVerifiedBaselinePollDue,
+  evaluateOfflineBaselineEligibility,
   mapActivityTierLabelToSnapshotTier,
+  type OfflineBaselineEligibility,
 } from './apds-v3-baseline-poll-due.adapter';
 
 const BACKOFF_SKIP_GAIN_THRESHOLD = 0.15;
@@ -244,14 +245,26 @@ export function evaluateCanonicalBaselineSchedulerWouldPoll(input: {
   return input.decisionAtMs - input.lastPhysicalPollMs >= input.tierIntervalMs;
 }
 
+export function evaluateOfflineBaselineEligibilityFromPolicyInput(
+  input: ApdsV3OfflinePolicyInput,
+): OfflineBaselineEligibility {
+  const tier = mapActivityTierLabelToSnapshotTier(input.activityTier);
+  if (tier == null) {
+    return { assessable: false, reason: `UNKNOWN_ACTIVITY_TIER:${input.activityTier}` };
+  }
+  return evaluateOfflineBaselineEligibility({
+    decisionAtMs: input.decisionAtMs,
+    lastPhysicalPollMs: input.lastPhysicalPollMs,
+    effectiveTier: tier,
+    lastProviderFetchedAtMs: input.lastProviderFetchedAtMs,
+  });
+}
+
+/** @deprecated Use evaluateOfflineBaselineEligibilityFromPolicyInput */
 export function evaluateOfflineBaselinePollDueFromPolicyInput(
   input: ApdsV3OfflinePolicyInput,
   _tierIntervalMs: number,
 ): boolean {
-  const tier = mapActivityTierLabelToSnapshotTier(input.activityTier);
-  return evaluateVerifiedBaselinePollDue({
-    decisionAtMs: input.decisionAtMs,
-    lastPhysicalPollMs: input.lastPhysicalPollMs,
-    effectiveTier: tier,
-  }).due;
+  const r = evaluateOfflineBaselineEligibilityFromPolicyInput(input);
+  return r.assessable && r.canonicalDue;
 }

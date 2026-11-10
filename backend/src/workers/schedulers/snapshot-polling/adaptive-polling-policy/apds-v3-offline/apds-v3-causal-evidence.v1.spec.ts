@@ -5,9 +5,9 @@ import type { ApdsV3OfflinePolicyInput } from './apds-v3-offline.types';
 function base(over: Partial<ApdsV3OfflinePolicyInput> = {}): ApdsV3OfflinePolicyInput {
   const t = 1_700_000_000_000;
   return {
-    organizationId: 'o',
-    vehicleId: 'v',
-    providerSourceLinkId: 'link',
+    organizationId: 'org-1',
+    vehicleId: 'veh-1',
+    providerSourceLinkId: 'link-1',
     decisionAtMs: t,
     reconciliation: true,
     tripFsmState: 'RESTING',
@@ -45,18 +45,31 @@ describe('apds-v3-causal-evidence.v1', () => {
     expect(v.ok).toBe(false);
   });
 
-  it('does not treat profile revision alone as HIGH without P2C id', () => {
+  it('HIGH requires coverage verification and availability', () => {
+    const t = 1_700_000_000_000;
     const v = validateCausalEvidenceAtDecision(
-      base({ p2cTopLevelAdvanceKnown: false, p2cObservationId: null }),
+      base({
+        p2cObservationId: 'obs-1',
+        p2cObservationAvailableAtMs: t - 1000,
+        p2cObservationCoverageVerified: true,
+      }),
     );
     expect(v.ok).toBe(true);
-    if (v.ok) expect(v.observationQuality).toBe('LOW');
+    if (v.ok) expect(v.observationQuality).toBe('HIGH');
   });
 
-  it('requires P2C observation id when advance claimed', () => {
+  it('P2C advance claim requires binding and data source timestamp', () => {
+    const t = 1_700_000_000_000;
     const v = validateCausalEvidenceAtDecision(
-      base({ p2cTopLevelAdvanceKnown: true, p2cObservationId: null }),
+      base({
+        p2cTopLevelAdvanceKnown: true,
+        p2cObservationId: 'obs-1',
+        p2cObservationAvailableAtMs: t - 1000,
+        p2cDataSourceTimestampMs: t - 2000,
+        p2cBoundOrganizationId: 'wrong-org',
+      }),
     );
     expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe('P2C_ORG_BINDING_MISMATCH');
   });
 });

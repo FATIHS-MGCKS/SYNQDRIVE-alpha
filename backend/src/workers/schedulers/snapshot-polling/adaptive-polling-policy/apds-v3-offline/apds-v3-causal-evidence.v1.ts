@@ -9,8 +9,8 @@ function isFiniteMs(v: number | null | undefined): v is number {
   return v != null && Number.isFinite(v) && !Number.isNaN(v);
 }
 
-function notAfterDecision(decisionAtMs: number, ts: number | null): boolean {
-  return ts == null || ts <= decisionAtMs;
+function atOrBefore(decisionAtMs: number, ts: number | null | undefined): boolean {
+  return ts != null && Number.isFinite(ts) && ts <= decisionAtMs;
 }
 
 /**
@@ -18,11 +18,7 @@ function notAfterDecision(decisionAtMs: number, ts: number | null): boolean {
  * Does not assume cross-signal-group timestamp ordering.
  */
 export function validateCausalEvidenceAtDecision(
-  input: ApdsV3OfflinePolicyInput & {
-    lastObservedAtMs?: number | null;
-    signalProfileRevisionEffectiveAtMs?: number | null;
-    p2cObservationId?: string | null;
-  },
+  input: ApdsV3OfflinePolicyInput,
 ): CausalEvidenceVerdict {
   if (!isFiniteMs(input.decisionAtMs)) {
     return { ok: false, kind: 'NOT_ASSESSABLE', reason: 'DECISION_AT_INVALID' };
@@ -35,6 +31,9 @@ export function validateCausalEvidenceAtDecision(
     input.lastPhysicalPollMs,
     input.lastObservedAtMs ?? null,
     input.signalProfileRevisionEffectiveAtMs ?? null,
+    input.p2cObservationAvailableAtMs ?? null,
+    input.p2cDataSourceTimestampMs ?? null,
+    input.lvStrictSourceAdvanceObservedAtMs ?? null,
   ];
 
   for (const ts of timestamps) {
@@ -46,7 +45,10 @@ export function validateCausalEvidenceAtDecision(
     }
   }
 
-  if (input.medianIntervalMs != null && (!Number.isFinite(input.medianIntervalMs) || input.medianIntervalMs <= 0)) {
+  if (
+    input.medianIntervalMs != null &&
+    (!Number.isFinite(input.medianIntervalMs) || input.medianIntervalMs <= 0)
+  ) {
     return { ok: false, kind: 'NOT_ASSESSABLE', reason: 'MEDIAN_INTERVAL_INVALID' };
   }
 
@@ -54,8 +56,48 @@ export function validateCausalEvidenceAtDecision(
     return { ok: false, kind: 'NOT_ASSESSABLE', reason: 'CONSUMER_REGISTRY_VERSION_MISMATCH' };
   }
 
-  if (!notAfterDecision(input.decisionAtMs, input.lastProviderFetchedAtMs)) {
-    return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'FETCHED_AT_FUTURE' };
+  if (input.providerSourceLinkId == null && input.sourceLinkInvalidated) {
+    return { ok: false, kind: 'NOT_ASSESSABLE', reason: 'SOURCE_LINK_INCOHERENT' };
+  }
+
+  if (input.p2cTopLevelAdvanceKnown) {
+    if (!input.p2cObservationId) {
+      return {
+        ok: false,
+        kind: 'INSUFFICIENT_EVIDENCE',
+        reason: 'P2C_CLAIM_WITHOUT_OBSERVATION_ID',
+      };
+    }
+    if (!atOrBefore(input.decisionAtMs, input.p2cObservationAvailableAtMs)) {
+      return {
+        ok: false,
+        kind: 'INSUFFICIENT_EVIDENCE',
+        reason: 'P2C_OBSERVATION_NOT_AVAILABLE_AT_DECISION',
+      };
+    }
+    if (
+      input.p2cBoundOrganizationId != null &&
+      input.p2cBoundOrganizationId !== input.organizationId
+    ) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_ORG_BINDING_MISMATCH' };
+    }
+    if (input.p2cBoundVehicleId != null && input.p2cBoundVehicleId !== input.vehicleId) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_VEHICLE_BINDING_MISMATCH' };
+    }
+    if (
+      input.p2cBoundProviderSourceLinkId != null &&
+      input.providerSourceLinkId != null &&
+      input.p2cBoundProviderSourceLinkId !== input.providerSourceLinkId
+    ) {
+      return { ok: false, kind: 'INSUFFICIENT_EVIDENCE', reason: 'P2C_SOURCE_LINK_BINDING_MISMATCH' };
+    }
+    if (!atOrBefore(input.decisionAtMs, input.p2cDataSourceTimestampMs)) {
+      return {
+        ok: false,
+        kind: 'INSUFFICIENT_EVIDENCE',
+        reason: 'P2C_DATA_SOURCE_TIMESTAMP_UNAVAILABLE',
+      };
+    }
   }
 
   let observationQuality: 'HIGH' | 'LOW' | 'UNKNOWN' = 'UNKNOWN';
@@ -63,23 +105,17 @@ export function validateCausalEvidenceAtDecision(
     const effective = input.signalProfileRevisionEffectiveAtMs;
     if (effective == null || effective > input.decisionAtMs) {
       observationQuality = 'UNKNOWN';
-    } else if (input.p2cObservationId) {
+    } else if (
+      input.p2cObservationId &&
+      atOrBefore(input.decisionAtMs, input.p2cObservationAvailableAtMs) &&
+      input.p2cObservationCoverageVerified === true
+    ) {
       observationQuality = 'HIGH';
-    } else {
+    } else if (input.p2cObservationId) {
       observationQuality = 'LOW';
+    } else {
+      observationQuality = 'UNKNOWN';
     }
-  }
-
-  if (input.p2cTopLevelAdvanceKnown && !input.p2cObservationId) {
-    return {
-      ok: false,
-      kind: 'INSUFFICIENT_EVIDENCE',
-      reason: 'P2C_CLAIM_WITHOUT_OBSERVATION_ID',
-    };
-  }
-
-  if (input.providerSourceLinkId == null && input.sourceLinkInvalidated) {
-    return { ok: false, kind: 'NOT_ASSESSABLE', reason: 'SOURCE_LINK_INCOHERENT' };
   }
 
   return { ok: true, observationQuality };

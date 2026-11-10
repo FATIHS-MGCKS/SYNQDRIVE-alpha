@@ -42,7 +42,11 @@ Unknown freshness remains `UNKNOWN`. Timestamp classes: provider source, observe
 
 ## REPLAY_HARNESS
 
-`apds-v3-p1b0-replay-core.ts` + `backend/scripts/ops/apds-v3-p1b0-replay-harness.ts` — compares canonical baseline tier scheduler, B2 skip counts, B4 skip counts, B2∩B4, V3 candidate. Projected savings are not realized savings. `KS_MX_2024` excluded via `excludeFromOptimizationCalibration`.
+`apds-v3-p1b0-replay-core.ts` + `backend/scripts/ops/apds-v3-p1b0-replay-harness.ts` — separates decision ticks, canonical eligibility, deduped physical requests, hypothetical research candidates, and counterfactual skip metrics. **Not realized savings.** `KS_MX_2024` excluded from savings calibration. LV miss metrics require `lvStrictSourceAdvanceObservedAtMs` evidence.
+
+## Consumer demand research boundary
+
+Certified `WOULD_SKIP` is blocked when hard-safety consumers have UNKNOWN freshness (registry v1). `HYPOTHETICAL_RESEARCH_CANDIDATE_SKIP` replay class is observational only.
 
 ## Scientific limitations
 

@@ -2,12 +2,13 @@ import { evaluateP25ApdB2V1Core, evaluateP25ApdB4V1Core } from '../p25-apd-polic
 import {
   evaluateApdsV3OfflinePolicy,
   buildP25ShadowInputFromOffline,
-  evaluateOfflineBaselinePollDueFromPolicyInput,
+  evaluateOfflineBaselineEligibilityFromPolicyInput,
 } from './apds-v3-offline-policy.evaluator';
 import type { ApdsV3OfflinePolicyInput } from './apds-v3-offline.types';
 import {
   classifyV3ReplayPhysicalAccounting,
   physicalRequestDedupKey,
+  firstPhysicalOccurrence,
   type PhysicalRequestOutcomeClass,
 } from './apds-v3-replay-accounting.v1';
 import { evaluateFrozenB2B4Intersection } from './p25-apd-b2b4-intersection.v1';
@@ -22,16 +23,21 @@ export type ApdsV3ReplayEpochPoint = {
   input: ApdsV3OfflinePolicyInput;
 };
 
+export type ReplayCountPrecision = 'CONFIRMED_PHYSICAL_ID' | 'NOT_ASSESSABLE_TICK_ONLY';
+
 export type ApdsV3ReplayAggregatorReport = {
   windowStartMs: number;
   windowEndMs: number;
   vehicleCount: number;
   decisionTickCount: number;
+  canonicalEligibilityTicksAssessable: number;
+  canonicalEligibilityTicksNotAssessable: number;
   baselineEligiblePhysicalOpportunities: number;
   dedupedBaselinePhysicalOpportunities: number;
-  /** Hypothetical only — not realized savings */
-  hypotheticalIncrementalSkipSavings: number;
-  v3ProjectedPhysicalPolls: number;
+  dedupedV3ProjectedPhysicalPolls: number;
+  counterfactualHypotheticalSkipSavings: number;
+  hypotheticalResearchCandidateSkips: number;
+  v3HypotheticalPollsWhenBaselineNotDue: number;
   v3AdditionalPollsVsBaseline: number;
   b2WouldSkip: number;
   b4WouldSkip: number;
@@ -40,7 +46,7 @@ export type ApdsV3ReplayAggregatorReport = {
   forcedSafetyPoll: number;
   insufficientEvidence: number;
   notAssessable: number;
-  strictLvAdvancesPotentiallyMissed: number;
+  hindsightLvSourceAdvanceMissObserved: number;
   p2cTopLevelAdvancesAtRisk: number;
   tripSafetyViolations: number;
   consumerFreshnessViolations: number;
@@ -48,6 +54,7 @@ export type ApdsV3ReplayAggregatorReport = {
   staleP50Ms: number | null;
   staleP95Ms: number | null;
   staleP99Ms: number | null;
+  physicalCountPrecision: ReplayCountPrecision;
   baselineAuthority: typeof APDS_V3_BASELINE_AUTHORITY;
   outcomeClassCounts: Partial<Record<PhysicalRequestOutcomeClass, number>>;
   disclaimer: string;
@@ -59,6 +66,17 @@ function percentile(sorted: number[], p: number): number | null {
   return sorted[idx] ?? null;
 }
 
+function p2cAdvanceCausallyBound(input: ApdsV3OfflinePolicyInput): boolean {
+  return (
+    input.p2cTopLevelAdvanceKnown &&
+    !!input.p2cObservationId &&
+    input.p2cObservationAvailableAtMs != null &&
+    input.p2cObservationAvailableAtMs <= input.decisionAtMs &&
+    input.p2cDataSourceTimestampMs != null &&
+    input.p2cDataSourceTimestampMs <= input.decisionAtMs
+  );
+}
+
 /** Deterministic offline replay — no counterfactual DIMO responses. */
 export function aggregateApdsV3ReplayPoints(
   points: ApdsV3ReplayEpochPoint[],
@@ -68,12 +86,19 @@ export function aggregateApdsV3ReplayPoints(
     (p) => p.decisionAtMs >= window.startMs && p.decisionAtMs <= window.endMs,
   );
   const vehicleIds = new Set(inWindow.map((p) => `${p.organizationId}:${p.vehicleId}`));
-  const seenBaselineKeys = new Set<string>();
 
+  const seenBaselinePhysical = new Set<string>();
+  const seenV3ProjectedPhysical = new Set<string>();
+  const seenHypotheticalSavings = new Set<string>();
+
+  let canonicalAssessable = 0;
+  let canonicalNotAssessable = 0;
   let baselineEligible = 0;
   let dedupedBaseline = 0;
+  let dedupedV3Projected = 0;
   let hypotheticalSkip = 0;
-  let v3Projected = 0;
+  let researchCandidates = 0;
+  let v3HypotheticalNotDue = 0;
   let v3Additional = 0;
   let b2WouldSkip = 0;
   let b4WouldSkip = 0;
@@ -82,7 +107,7 @@ export function aggregateApdsV3ReplayPoints(
   let forced = 0;
   let insuf = 0;
   let na = 0;
-  let lvMiss = 0;
+  let lvMissObserved = 0;
   let p2cRisk = 0;
   let tripViol = 0;
   let freshViol = 0;
@@ -90,22 +115,32 @@ export function aggregateApdsV3ReplayPoints(
   const staleness: number[] = [];
   const outcomeClassCounts: Partial<Record<PhysicalRequestOutcomeClass, number>> = {};
 
+  const hasPhysicalId = inWindow.some((p) => !!p.physicalRequestId);
+  const physicalCountPrecision: ReplayCountPrecision = hasPhysicalId
+    ? 'CONFIRMED_PHYSICAL_ID'
+    : 'NOT_ASSESSABLE_TICK_ONLY';
+
   for (const p of inWindow) {
-    const baselineDue = evaluateOfflineBaselinePollDueFromPolicyInput(
-      p.input,
-      p.tierIntervalMs,
-    );
+    const dedupeKey = physicalRequestDedupKey({
+      organizationId: p.organizationId,
+      vehicleId: p.vehicleId,
+      physicalRequestId: p.physicalRequestId,
+      decisionAtMs: p.decisionAtMs,
+    });
+
+    const baselineElig = evaluateOfflineBaselineEligibilityFromPolicyInput(p.input);
+    if (baselineElig.assessable) {
+      canonicalAssessable += 1;
+    } else {
+      canonicalNotAssessable += 1;
+    }
+
+    const baselineDue = baselineElig.assessable && baselineElig.canonicalDue;
+    const baselineAssessable = baselineElig.assessable;
 
     if (baselineDue) {
       baselineEligible += 1;
-      const dedupeKey = physicalRequestDedupKey({
-        organizationId: p.organizationId,
-        vehicleId: p.vehicleId,
-        physicalRequestId: p.physicalRequestId,
-        decisionAtMs: p.decisionAtMs,
-      });
-      if (!seenBaselineKeys.has(dedupeKey)) {
-        seenBaselineKeys.add(dedupeKey);
+      if (firstPhysicalOccurrence(dedupeKey, seenBaselinePhysical)) {
         dedupedBaseline += 1;
       }
     }
@@ -118,6 +153,8 @@ export function aggregateApdsV3ReplayPoints(
 
     const accounting = classifyV3ReplayPhysicalAccounting({
       baselineDue,
+      baselineAssessable,
+      excludeFromOptimizationCalibration: p.input.excludeFromOptimizationCalibration,
       v3,
       b2,
       b4,
@@ -125,19 +162,27 @@ export function aggregateApdsV3ReplayPoints(
     outcomeClassCounts[accounting.outcomeClass] =
       (outcomeClassCounts[accounting.outcomeClass] ?? 0) + 1;
 
-    if (accounting.countsTowardProjectedPhysicalPoll) {
-      v3Projected += 1;
-    }
-
-    if (baselineDue && accounting.countsTowardProjectedPhysicalPoll && v3.decision === 'FORCED_SAFETY_POLL') {
-      v3Additional += 1;
-    }
-    if (baselineDue && !accounting.countsTowardProjectedPhysicalPoll && v3.decision === 'WOULD_SKIP') {
-      v3Additional -= 1;
+    if (accounting.v3ProjectsPhysicalPoll) {
+      if (firstPhysicalOccurrence(dedupeKey, seenV3ProjectedPhysical)) {
+        dedupedV3Projected += 1;
+      }
     }
 
     if (accounting.countsTowardHypotheticalSkipSavings) {
-      hypotheticalSkip += 1;
+      if (firstPhysicalOccurrence(dedupeKey, seenHypotheticalSavings)) {
+        hypotheticalSkip += 1;
+      }
+    }
+
+    if (accounting.countsAsHypotheticalResearchCandidate) {
+      researchCandidates += 1;
+    }
+
+    if (accounting.countsAsV3PollWhenBaselineNotDue) {
+      if (firstPhysicalOccurrence(dedupeKey, seenV3ProjectedPhysical)) {
+        v3HypotheticalNotDue += 1;
+        v3Additional += 1;
+      }
     }
 
     if (b2.decision === 'WOULD_SKIP') b2WouldSkip += 1;
@@ -151,15 +196,21 @@ export function aggregateApdsV3ReplayPoints(
 
     if (
       v3.decision === 'WOULD_SKIP' &&
-      p.input.lastLvProviderSourceMs != null &&
-      p.decisionAtMs - p.input.lastLvProviderSourceMs >
-        (p.input.excludeFromOptimizationCalibration ? 0 : 3_600_000)
+      p.input.lvStrictSourceAdvanceObservedAtMs != null &&
+      p.input.lvStrictSourceAdvanceObservedAtMs <= p.decisionAtMs
     ) {
-      lvMiss += 1;
+      lvMissObserved += 1;
     }
-    if (v3.decision === 'WOULD_SKIP' && p.input.p2cTopLevelAdvanceKnown) p2cRisk += 1;
-    if (p.input.tripFsmState === 'ACTIVE' && v3.decision === 'WOULD_SKIP') tripViol += 1;
-    if (v3.decision === 'WOULD_SKIP' && v3.hardSafetyTriggered) freshViol += 1;
+
+    if (v3.decision === 'WOULD_SKIP' && p2cAdvanceCausallyBound(p.input)) {
+      p2cRisk += 1;
+    }
+    if (p.input.tripFsmState === 'ACTIVE' && v3.decision === 'WOULD_SKIP') {
+      tripViol += 1;
+    }
+    if (v3.decision === 'WOULD_SKIP' && v3.hardSafetyTriggered) {
+      freshViol += 1;
+    }
 
     if (p.input.lastLvProviderSourceMs != null) {
       staleness.push(Math.max(0, p.decisionAtMs - p.input.lastLvProviderSourceMs));
@@ -175,10 +226,14 @@ export function aggregateApdsV3ReplayPoints(
     windowEndMs: window.endMs,
     vehicleCount: vehicleIds.size,
     decisionTickCount: inWindow.length,
+    canonicalEligibilityTicksAssessable: canonicalAssessable,
+    canonicalEligibilityTicksNotAssessable: canonicalNotAssessable,
     baselineEligiblePhysicalOpportunities: baselineEligible,
     dedupedBaselinePhysicalOpportunities: dedupedBaseline,
-    hypotheticalIncrementalSkipSavings: hypotheticalSkip,
-    v3ProjectedPhysicalPolls: v3Projected,
+    dedupedV3ProjectedPhysicalPolls: dedupedV3Projected,
+    counterfactualHypotheticalSkipSavings: hypotheticalSkip,
+    hypotheticalResearchCandidateSkips: researchCandidates,
+    v3HypotheticalPollsWhenBaselineNotDue: v3HypotheticalNotDue,
     v3AdditionalPollsVsBaseline: v3Additional,
     b2WouldSkip,
     b4WouldSkip,
@@ -187,7 +242,7 @@ export function aggregateApdsV3ReplayPoints(
     forcedSafetyPoll: forced,
     insufficientEvidence: insuf,
     notAssessable: na,
-    strictLvAdvancesPotentiallyMissed: lvMiss,
+    hindsightLvSourceAdvanceMissObserved: lvMissObserved,
     p2cTopLevelAdvancesAtRisk: p2cRisk,
     tripSafetyViolations: tripViol,
     consumerFreshnessViolations: freshViol,
@@ -195,9 +250,10 @@ export function aggregateApdsV3ReplayPoints(
     staleP50Ms: percentile(staleness, 0.5),
     staleP95Ms: percentile(staleness, 0.95),
     staleP99Ms: percentile(staleness, 0.99),
+    physicalCountPrecision,
     baselineAuthority: APDS_V3_BASELINE_AUTHORITY,
     outcomeClassCounts,
     disclaimer:
-      'PROJECTED_AND_HYPOTHETICAL_COUNTS_NOT_REALIZED_SAVINGS_NO_COUNTERFACTUAL_DIMO_RESPONSE',
+      'OBSERVATIONAL_HYPOTHETICAL_AND_COUNTERFACTUAL_METRICS_NOT_REALIZED_SAVINGS',
   };
 }

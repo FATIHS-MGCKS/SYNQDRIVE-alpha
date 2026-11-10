@@ -41,7 +41,7 @@ export function estimateVsiInformationGain(
 
   const contradictory = futureLeak;
 
-  if (contradictory || input.observationQuality === 'UNKNOWN') {
+  if (contradictory) {
     return {
       modelVersion: APDS_V3_INFORMATION_GAIN_MODEL_VERSION,
       expectedGain: 0,
