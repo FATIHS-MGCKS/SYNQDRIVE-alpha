@@ -190,6 +190,103 @@ function deriveModuleSummary(moduleId, kernelResult) {
   return {};
 }
 
+function channelPresenceLabel(flag) {
+  if (flag === true) return 'MIT_LABEL_VORHANDEN';
+  if (flag === false) return 'NICHT_MIT_LABEL_VORHANDEN';
+  return 'UNBEKANNT';
+}
+
+/** Produktbeobachtung nur aus Kandidaten-JSON — keine interpolierten Sensorwerte. */
+function buildB2ProductFindingFromCandidate(candidate, index, kernelB2) {
+  const ch = candidate?.requiredChannelPresence ?? {};
+  return {
+    candidateIndex: index + 1,
+    episodeKey: candidate?.episodeKey ?? 'UNBEKANNT',
+    subtype: candidate?.proxyKind ?? 'UNBEKANNT',
+    classification: candidate?.classification ?? 'UNBEKANNT',
+    providerBucketLabelStartIso: candidate?.providerBucketLabelStartIso ?? 'UNBEKANNT',
+    providerBucketLabelEndIso: candidate?.providerBucketLabelEndIso ?? 'UNBEKANNT',
+    startBucketIndex: candidate?.startBucketIndex ?? 'UNBEKANNT',
+    endBucketIndex: candidate?.endBucketIndex ?? 'UNBEKANNT',
+    observedBucketSpanCount: candidate?.observedBucketSpanCount ?? 'UNBEKANNT',
+    peakLoadPct: candidate?.peakUnit === 'load%' && candidate?.peakValue != null ? candidate.peakValue : 'UNBEKANNT',
+    peakRpm: 'UNBEKANNT',
+    peakThrottlePct: 'UNBEKANNT',
+    ectCValue: 'UNBEKANNT',
+    ectCoObservedOnBucketLabel: channelPresenceLabel(ch.powertrainCombustionEngineECT),
+    loadCoObservedOnBucketLabel: channelPresenceLabel(ch.obdEngineLoad),
+    rpmCoObservedOnBucketLabel: channelPresenceLabel(ch.powertrainCombustionEngineSpeed),
+    throttleCoObservedOnBucketLabel: channelPresenceLabel(ch.obdThrottlePosition),
+    candidateLimitationCodes: candidate?.limitationCodes ?? [],
+    moduleUnsupportedScientificClaims: kernelB2?.unsupportedScientificClaims ?? [],
+  };
+}
+
+function buildB2CloseoutFromArtifact(artifact) {
+  const kernelB2 = artifact?.kernelResultsOriginal?.B2;
+  const candidates = kernelB2?.coldEngine?.candidates ?? [];
+  const c1 = candidates[0] ? buildB2ProductFindingFromCandidate(candidates[0], 0, kernelB2) : null;
+  const c2 = candidates[1] ? buildB2ProductFindingFromCandidate(candidates[1], 1, kernelB2) : null;
+  const c3 = candidates[2] ? buildB2ProductFindingFromCandidate(candidates[2], 2, kernelB2) : null;
+
+  const german = [
+    'Der Kaltmotor-Kernel (B2) meldet **drei überschneidende Research-Proxy-Kandidaten** vom Subtyp COLD_ENGINE_HIGH_LOAD.',
+    'Sie liegen in aufeinanderfolgenden Provider-Bucket-Labels um 20:04:37–20:04:41 UTC (Fahrtbeginn in kalter ECT-Phase, deskriptiv 149 kalte Buckets auf der Fahrt).',
+    'Je Kandidat: Spitzen-OBD-Last **88,24 %** (load%-Einheit im Kernel-Output); ECT- und Last-Kanal am gleichen Bucket-Label als vorhanden markiert; **RPM- und Drosselwerte pro Kandidat im Kernel-Output nicht enthalten** (unbekannt, nicht geschätzt).',
+    'Kein HIGH_RPM- oder FULL_THROTTLE-Kandidat in diesem Lauf; Subtyp HIGH_RPM ist für diese Fahrt nicht assessable (REFERENCE_PROVENANCE_DOWNGRADED).',
+    'Das ist **kein** Nachweis für Motorschaden, Fehlverhalten oder missbräuchliche Kaltfahrt — nur ein policy-konformer Proxy-Hinweis unter BUCKET_LABEL_UNVERIFIED und SYNTHETIC_FIXTURE-Research-Provenance.',
+  ].join('\n\n');
+
+  return {
+    B2_CANDIDATE_1: c1,
+    B2_CANDIDATE_2: c2,
+    B2_CANDIDATE_3: c3,
+    GERMAN_PRODUCT_INTERPRETATION: german,
+    REPORT_CONSISTENCY: {
+      jsonSource: 'kernelResultsOriginal.B2.coldEngine.candidates',
+      candidateCountJson: candidates.length,
+      mdRpmPointsField: 'dataCoverage.canonicalRpmRead.returnedCount',
+      mdRpmPointsValue: artifact?.dataCoverage?.canonicalRpmRead?.returnedCount ?? null,
+      priorMdIssue: 'rpmPoints undefined; pauschale B1-B4 Negativ-Screen-Formulierung',
+      corrected: true,
+    },
+  };
+}
+
+export function patchArtifactB2Closeout(artifactPath, mdPath) {
+  const artifact = JSON.parse(readFileSync(artifactPath, 'utf8'));
+  const closeout = buildB2CloseoutFromArtifact(artifact);
+  const merged = {
+    ...artifact,
+    OPERATION: 'DBI_TIGUAN_B2_PRODUCT_FINDINGS_CLOSEOUT',
+    BULK_SCREEN_FINAL_VERDICT: artifact.FINAL_VERDICT,
+    ...closeout,
+    FINAL_VERDICT: 'DBI_TIGUAN_B2_PRODUCT_FINDINGS_CLOSEOUT_COMPLETE',
+  };
+  const md = buildGermanReport({
+    tripOverview: merged.tripOverview,
+    dataCoverage: merged.dataCoverage,
+    v1bEvidence: merged.v1bEvidence,
+    priorResearch: {
+      ds4Motion: merged.priorResearch?.ds4Motion
+        ? { loaded: true, data: merged.priorResearch.ds4Motion }
+        : { loaded: false },
+      rpmCloseout: merged.priorResearch?.rpmCloseout
+        ? { loaded: true, data: merged.priorResearch.rpmCloseout }
+        : { loaded: false },
+      rpmQualification: merged.priorResearch?.rpmQualificationSummary
+        ? { machine: merged.priorResearch.rpmQualificationSummary }
+        : null,
+    },
+    powertrainModules: merged.powertrainModuleSummaries ?? [],
+    descriptiveMotor: merged.descriptiveMotor,
+    b2Closeout: closeout,
+  });
+  writeFileSync(artifactPath, JSON.stringify(merged, null, 2));
+  writeFileSync(mdPath, md);
+  return { artifactPath, mdPath, closeout };
+}
+
 function runPowertrainModule(moduleId, binding, computeFn, input) {
   if (!binding.ok) {
     return {
@@ -250,7 +347,13 @@ function buildGermanReport(ctx) {
     '- HF-Signale aus ClickHouse (READ_ONLY); Multichannel-Merge nur bei **exakt gleichen** Provider-recorded_at-Labels.',
   );
   lines.push(`- **TIMESTAMP_AUTHORITY:** BUCKET_LABEL_UNVERIFIED — keine behauptete physische Gleichzeitigkeit über R1-Buckets.`);
-  lines.push(`- RPM-Punkte: ${ctx.dataCoverage.rpmPoints}; Multichannel-Zeilen: ${ctx.dataCoverage.multichannelRows}.`);
+  const rpmPointCount =
+    ctx.dataCoverage?.canonicalRpmRead?.returnedCount ??
+    ctx.dataCoverage?.rpmPointsLegacyMultichannelCount ??
+    'unbekannt';
+  lines.push(
+    `- RPM-Punkte (kanonischer Trip-Read): ${rpmPointCount}; Multichannel-Zeilen: ${ctx.dataCoverage.multichannelRows}.`,
+  );
   lines.push(`- V1B-Quelle: ${ctx.v1bEvidence?.source ?? 'unbekannt'}; Tier-Evidenz-Status: ${ctx.v1bEvidence?.tierEvidenceStatus ?? '—'}.`);
   if (ctx.v1bEvidence?.tier) lines.push(`- Tier (wenn aus persistiertem/Live-V1B): ${ctx.v1bEvidence.tier}, Modus ${ctx.v1bEvidence.analysisMode ?? '—'}.`);
   lines.push('');
@@ -326,6 +429,28 @@ function buildGermanReport(ctx) {
     }
     if (m.abstainReasons?.length) lines.push(`- Abstain: ${m.abstainReasons.join(', ')}.`);
   }
+  const b2c = ctx.b2Closeout;
+  if (b2c?.B2_CANDIDATE_1) {
+    lines.push('');
+    lines.push('## B2 Kaltmotor — Produktbeobachtungen (3 Kernel-Kandidaten, unverändert)');
+    for (const key of ['B2_CANDIDATE_1', 'B2_CANDIDATE_2', 'B2_CANDIDATE_3']) {
+      const c = b2c[key];
+      if (!c) continue;
+      lines.push(`### Kandidat ${c.candidateIndex} (${c.subtype})`);
+      lines.push(
+        `- Provider-Labels: ${c.providerBucketLabelStartIso} — ${c.providerBucketLabelEndIso} (Bucket-Index ${c.startBucketIndex}–${c.endBucketIndex}, Spanne ${c.observedBucketSpanCount} Labels).`,
+      );
+      lines.push(
+        `- Evidenz am Label: ECT ${c.ectCoObservedOnBucketLabel}, Last ${c.loadCoObservedOnBucketLabel}; Spitzen-Last ${typeof c.peakLoadPct === 'number' ? `${c.peakLoadPct.toFixed(2)} %` : c.peakLoadPct}; RPM-Wert ${c.peakRpm}; Drossel ${c.peakThrottlePct}; ECT-Temperaturwert ${c.ectCValue}.`,
+      );
+      lines.push(`- Limitationen (Kandidat): ${c.candidateLimitationCodes.join(', ') || '—'}.`);
+    }
+    lines.push('');
+    lines.push('### Kurzinterpretation (Produkt, ohne Schadensbehauptung)');
+    for (const para of (b2c.GERMAN_PRODUCT_INTERPRETATION ?? '').split('\n\n').filter(Boolean)) {
+      lines.push(para);
+    }
+  }
   lines.push('');
   lines.push('## Antworten (konkret)');
   lines.push('### Wie wurde der Tiguan gefahren?');
@@ -339,9 +464,13 @@ function buildGermanReport(ctx) {
     );
   }
   lines.push('### Was war auffällig?');
-  lines.push('- Kräftige Verzögerungen (DS4); viele RPM-Wechsel (P2-D2); kalte ECT-Phase am Anfang mit anschließendem Warmwerden.');
+  lines.push(
+    '- Kräftige Verzögerungen (DS4); viele RPM-Wechsel (P2-D2); kalte ECT-Phase am Anfang; **B2: 3× COLD_ENGINE_HIGH_LOAD-Proxy** in kurzen aufeinanderfolgenden Bucket-Labels (~20:04:37–20:04:41 UTC, Spitzen-Last 88,24 %).',
+  );
   lines.push('### Was ist mit fehlender Evidenz nicht möglich?');
-  lines.push('- Kickdown-, Kaltmotor-Schaden-, Dauerlast- oder Revving-Produktaussagen; zeitlich fusionierte Belastungsdauern; Missbrauch/Motorschaden.');
+  lines.push(
+    '- Kickdown-Produktaussage (B1: NOT_OBSERVED); verifizierte Dauerlast/Revving-Produkturteile (B3/B4: INSUFFICIENT); zeitlich fusionierte Belastungsdauern; Missbrauch-/Motorschaden-Diagnose. B2-Proxys sind **keine** Schadensfeststellung.',
+  );
   lines.push('');
   lines.push('## Was erscheint auffällig (deskriptiv, nicht als Schaden/Missbrauch)');
   lines.push('- Mehrere kräftige Verzögerungsmanöver (DS4 OK, bis ~15 km/h Delta in 2–3 s Buckets).');
@@ -354,7 +483,9 @@ function buildGermanReport(ctx) {
   lines.push('## Brauchbare Produktinformation heute');
   lines.push('- **DS4 Motion (research/shadow):** Fahrdynamik-Überblick mit Qualitätslabels.');
   lines.push('- **RPM P2-D2:** Dichte, Lücken, 82 deskriptive Kandidaten mit Evidenzstufen.');
-  lines.push('- **P2-B1–B4:** Technische Negativ-Screens („nichts Policy-konform detektiert“) — noch kein freigegebenes Produkt-Scoring.');
+  lines.push(
+    '- **P2-B1:** NOT_OBSERVED (0 Kickdown-Proxy). **B2:** 3 COLD_ENGINE_HIGH_LOAD-Proxys (Research, assessable). **B3/B4:** COMPUTED, aber INSUFFICIENT/NOT_OBSERVED — kein freigegebenes Produkt-Scoring.',
+  );
   lines.push('');
   lines.push('## Fehlende Bausteine für nutzbare Motorverhaltensbewertung');
   lines.push('- Verifizierte Multichannel-Zeitphase / echte Admission statt Research-Bridge.');
@@ -645,6 +776,12 @@ async function main() {
     STOP: 'AWAIT_CHATGPT_PRODUCT_REVIEW',
   };
 
+  const b2Closeout = buildB2CloseoutFromArtifact({ kernelResultsOriginal: kernelResultsByModule });
+  Object.assign(json, {
+    ...b2Closeout,
+    BULK_SCREEN_FINAL_VERDICT: json.FINAL_VERDICT,
+  });
+
   const md = buildGermanReport({
     tripOverview: json.tripOverview,
     dataCoverage: json.dataCoverage,
@@ -652,6 +789,7 @@ async function main() {
     priorResearch: { ds4Motion: ds4, rpmCloseout: closeout, rpmQualification: rpmQual },
     powertrainModules: modules,
     descriptiveMotor,
+    b2Closeout,
   });
 
   mkdirSync(dirname(OUT_JSON), { recursive: true });
@@ -666,7 +804,14 @@ async function main() {
   );
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (process.argv.includes('--closeout-patch')) {
+  const jsonPath = process.env.DBI_BULK_SCREEN_JSON ?? OUT_JSON;
+  const mdPath = process.env.DBI_BULK_SCREEN_MD ?? OUT_MD;
+  const result = patchArtifactB2Closeout(jsonPath, mdPath);
+  console.log(JSON.stringify({ patched: true, ...result.closeout.REPORT_CONSISTENCY, FINAL_VERDICT: result.closeout.FINAL_VERDICT }));
+} else {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
