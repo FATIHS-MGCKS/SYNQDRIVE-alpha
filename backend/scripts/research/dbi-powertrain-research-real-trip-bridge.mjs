@@ -84,12 +84,42 @@ export function initResearchBackend(backendRoot) {
         'src/modules/vehicle-intelligence/driving-intelligence/ds4-powertrain-demand-research/ds4-powertrain-demand-binding-shared.v1.ts',
       ),
     ).buildManifestChannelExpectations,
-    buildTierTripClassification: require(
+    resolveTierEvidenceForTrip: require(
       join(
         backendRoot,
-        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1b/__tests__/ds4-rpm-hf-v1b-tier-fixtures.ts',
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1b/ds4-rpm-hf-v1b-tier-evidence.util.ts',
       ),
-    ).buildTierTripClassification,
+    ).resolveTierEvidenceForTrip,
+    readEngineRpmCadenceFromSignalsSnapshot: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1a/ds4-rpm-hf-v1a-profile.reader.ts',
+      ),
+    ).readEngineRpmCadenceFromSignalsSnapshot,
+    resolveDs4RpmHfV1aAdmission: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1a/ds4-rpm-hf-v1a-admission.ts',
+      ),
+    ).resolveDs4RpmHfV1aAdmission,
+    resolveTripRpmProfileFromVsi: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1a/ds4-rpm-hf-v1a-admission.ts',
+      ),
+    ).resolveTripRpmProfileFromVsi,
+    resolveIceRpmApplicability: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-cadence-stats.util.ts',
+      ),
+    ).resolveIceRpmApplicability,
+    DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1b/ds4-rpm-hf-v1b.contract.ts',
+      ),
+    ).DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE,
     DS4_POWERTRAIN_DEMAND_RESEARCH_CONTRACT_VERSION: require(
       join(
         backendRoot,
@@ -111,12 +141,6 @@ export function initResearchBackend(backendRoot) {
         'src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-acquisition.versions.ts',
       ),
     ).DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3,
-    VSI_RPM_CADENCE_TIER_RESOLUTION_CONTRACT_VERSION: require(
-      join(
-        backendRoot,
-        'src/modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-cadence.types.ts',
-      ),
-    ).VSI_RPM_CADENCE_TIER_RESOLUTION_CONTRACT_VERSION,
   };
 
   return { require, libs };
@@ -182,6 +206,36 @@ export async function loadPostgresTrip({ tripId, vehicleId }) {
   await client.query('COMMIT');
   await client.end();
   return trip.rows[0] ?? null;
+}
+
+export async function loadEvidenceFromPostgres({ orgId, vehicleId, tripId, linkId, libs }) {
+  const client = new pg.Client(
+    process.env.DATABASE_URL
+      ? { connectionString: process.env.DATABASE_URL.replace(/\?schema=[^&]*/, '') }
+      : { user: 'postgres', database: 'synqdrive', host: '/var/run/postgresql' },
+  );
+  await client.connect();
+  await client.query('BEGIN');
+  await client.query('SET TRANSACTION READ ONLY');
+  const vsi = await client.query(
+    `SELECT signals_snapshot, recorded_at FROM vehicle_signal_capability_profile_revisions
+     WHERE organization_id = $1 AND vehicle_id = $2 AND provider_source_link_id = $3
+     ORDER BY recorded_at DESC LIMIT 1`,
+    [orgId, vehicleId, linkId],
+  );
+  const v1b = await client.query(
+    `SELECT summary_json, input_fingerprint, shadow_status, computed_at
+     FROM ds4_rpm_hf_v1b_shadow_runs_v1
+     WHERE organization_id = $1 AND trip_id = $2 AND engine_version = $3 AND shadow_status = 'SUCCEEDED'
+     ORDER BY computed_at DESC LIMIT 1`,
+    [orgId, tripId, libs.DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE],
+  );
+  await client.query('COMMIT');
+  await client.end();
+  return {
+    vsiRevision: vsi.rows[0] ?? null,
+    v1bPersistedRun: v1b.rows[0] ?? null,
+  };
 }
 
 export async function loadMultichannelTrip({
@@ -258,55 +312,43 @@ export function buildRealV1aTripInput({
   tripEndIso,
   rpmPoints,
   chTotals,
-  tierOverrides,
+  fuelType,
+  vsiSignalsSnapshot,
 }) {
   const intervals = rpmIntervals(rpmPoints);
-  const tripDurSec = Math.max(1, (Date.parse(tripEndIso) - Date.parse(tripStartIso)) / 1000);
-  const tierRow = libs.buildTierTripClassification({
-    tier: 'RPM_1S',
+  const vsiParsed = vsiSignalsSnapshot
+    ? libs.readEngineRpmCadenceFromSignalsSnapshot(vsiSignalsSnapshot)
+    : { cadence: null, activeRpmProfile: null, rpmCadenceTierResolution: null };
+
+  const rpmCadenceTierSnapshot = vsiParsed.rpmCadenceTierResolution;
+  const activeRpmProfileSnapshot = vsiParsed.activeRpmProfile;
+  const iceRpmApplicability = libs.resolveIceRpmApplicability(fuelType);
+  const tripRpmProfile = libs.resolveTripRpmProfileFromVsi({
     tripId,
-    endMs: Date.parse(tripEndIso),
-    cadenceConfidence: 'HIGH',
-    tripCoverageBand: 'LIMITED_TRIP',
-    analysisReadiness: 'TIER_ANALYTICS_OK',
-    decisionCode: 'TIER_ASSIGNED',
-    intervalEvidenceUsed: {
-      rpmPointCount: rpmPoints.length,
-      activeIntervalCount: Math.max(0, rpmPoints.length - 1),
-      tripDurationSeconds: tripDurSec,
-    },
-    p50ActiveSeconds: percentile(intervals, 0.5) ?? 1,
-    p75ActiveSeconds: percentile(intervals, 0.75) ?? 1,
-    p90ActiveSeconds: percentile(intervals, 0.9) ?? 2,
-    activeSpanRatio: rpmPoints.length / tripDurSec,
-    activeDensityVsTier: tierOverrides?.activeDensityVsTier ?? rpmPoints.length / tripDurSec,
-    tierPuritySharePlusOne: tierOverrides?.tierPuritySharePlusOne ?? null,
-    longestSequenceIntervals: tierOverrides?.longestSequenceIntervals ?? Math.min(200, intervals.length),
+    tripClassifications: activeRpmProfileSnapshot?.tripClassifications ?? [],
+  });
+  const hfDataPresent = rpmPoints.length > 0;
+  const hfReadComplete = chTotals.returned >= chTotals.total;
+
+  const admission = libs.resolveDs4RpmHfV1aAdmission({
+    iceRpmApplicability,
+    tripId,
+    tripRpmProfile,
+    vehicleActiveRpmProfile: activeRpmProfileSnapshot?.activeProfile ?? null,
+    hfDataPresent,
+    chReadAvailable: true,
+    tenantScopeViolation: false,
+    hfReadComplete,
   });
 
-  const snapshot = {
-    contractVersion: libs.VSI_RPM_CADENCE_TIER_RESOLUTION_CONTRACT_VERSION,
-    evaluatedTripIds: [tripId],
-    tripClassifications: [{ ...tierRow, tripId, endMs: Date.parse(tripEndIso) }],
-    rollingVehicleTierSummary: {
-      tier: 'RPM_1S',
-      agreementRatio: null,
-      classificationDecisionCode: 'SINGLE_TRIP_CH_BRIDGE',
-      classificationDecisionSummary: 'single-trip read-only CH bridge — not rolling vehicle quorum',
-      sufficientEvidence: false,
-    },
-    provenance: ['clickhouse_read_only_trip_bridge'],
-    evidenceObservedAt: new Date().toISOString(),
-  };
-
-  const tierEvidence = {
-    contractVersion: 'ds4-rpm-hf-tier-evidence-v1',
-    status: 'AVAILABLE',
+  const tierEvidence = libs.resolveTierEvidenceForTrip({
     tripId,
+    tripEndIso,
     providerSourceLinkId: linkId,
-    tripClassification: { ...tierRow, tripId, endMs: Date.parse(tripEndIso) },
-    blockEvidenceObservedAt: snapshot.evidenceObservedAt,
-  };
+    tierSnapshot: rpmCadenceTierSnapshot,
+    hfReadComplete,
+    hfDataPresent,
+  });
 
   return {
     contractVersion: libs.DS4_RPM_HF_V1A_CONTRACT_VERSION,
@@ -316,16 +358,7 @@ export function buildRealV1aTripInput({
     providerSourceLinkId: linkId,
     tripStartIso,
     tripEndIso,
-    admission: {
-      contractVersion: 'ds4-rpm-hf-admission-v1',
-      iceRpmApplicability: 'APPLICABLE',
-      tripRpmProfile: 'RPM_1HZ',
-      vehicleActiveRpmProfile: 'RPM_1HZ',
-      processingStatus: 'ENABLED',
-      processingAllowed: true,
-      reasonCode: 'RPM_1HZ_WITH_HF_DATA',
-      reasonSummary: 'read-only-ch-multichannel-bridge',
-    },
+    admission,
     dataQuality: {
       contractVersion: 'ds4-rpm-hf-data-quality-v1',
       validPointCount: rpmPoints.length,
@@ -356,8 +389,8 @@ export function buildRealV1aTripInput({
       tenantScopeViolation: false,
     },
     rpmPoints,
-    vsiActiveRpmProfileSnapshot: null,
-    vsiRpmCadenceTierSnapshot: snapshot,
+    vsiActiveRpmProfileSnapshot: activeRpmProfileSnapshot,
+    vsiRpmCadenceTierSnapshot: rpmCadenceTierSnapshot,
     tierEvidence,
     readOnly: true,
     productionActivationForbidden: true,
@@ -374,16 +407,39 @@ export function buildPowertrainResearchInput({
   tripInput,
   multichannelObservations,
   fuelType,
+  v1bPersistedRun,
 }) {
   const family = libs.resolveTelemetrySourceFamily(dimoRaw) ?? 'UNKNOWN';
-  const v1bOut = libs.processDs4RpmHfV1bShadowTripTierAware({
-    tripInput,
-    attemptCount: 1,
-    computedAt: new Date(),
-    existingSucceededFingerprint: null,
-  });
-  if (v1bOut.kind !== 'SUCCEEDED') {
-    return { ok: false, blocker: v1bOut.kind, family };
+  let v1bSource = 'NONE';
+  let v1bResult = null;
+  let v1bOut = null;
+
+  if (v1bPersistedRun?.summary_json && v1bPersistedRun.shadow_status === 'SUCCEEDED') {
+    v1bResult = v1bPersistedRun.summary_json;
+    v1bSource = 'PERSISTED_V1B_SHADOW_RUN';
+  } else if (tripInput.tierEvidence?.status === 'AVAILABLE' && tripInput.admission.processingAllowed) {
+    v1bOut = libs.processDs4RpmHfV1bShadowTripTierAware({
+      tripInput,
+      attemptCount: 1,
+      computedAt: new Date(),
+      existingSucceededFingerprint: null,
+    });
+    if (v1bOut.kind === 'SUCCEEDED') {
+      v1bResult = v1bOut.result;
+      v1bSource = 'LIVE_TIER_AWARE_PROCESSOR';
+    }
+  }
+
+  if (!v1bResult) {
+    return {
+      ok: false,
+      blocker: v1bOut?.kind ?? 'V1B_EVIDENCE_UNAVAILABLE',
+      v1bSource,
+      family,
+      tripInput,
+      tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
+      admissionProcessingAllowed: tripInput.admission.processingAllowed,
+    };
   }
 
   const canon = libs.canonicalizeMultichannelObservations(multichannelObservations);
@@ -419,7 +475,7 @@ export function buildPowertrainResearchInput({
     providerSourceLinkId: linkId,
     dimoVehicleRawJson: dimoRaw,
     tripInput,
-    v1bResult: v1bOut.result,
+    v1bResult,
     multichannelObservations,
     multichannelManifest: manifest,
     multichannelFingerprint: mcFp,
@@ -436,14 +492,18 @@ export function buildPowertrainResearchInput({
     canon,
     mcFp,
     manifest,
+    v1bSource,
     provenance: {
       clickHouseRealData: true,
       contractEvidenceOrigin: 'SYNTHETIC_FIXTURE',
+      v1bEvidenceSource: v1bSource,
+      v1bPersistedFingerprint: v1bPersistedRun?.input_fingerprint ?? null,
       limitation:
-        'Real CH multichannel replay; SYNTHETIC_FIXTURE avoids forged OFFLINE attestation. COMPUTED ≠ field-validated product assessment.',
+        'Real CH multichannel replay; SYNTHETIC_FIXTURE enum only satisfies binding without forged OFFLINE attestation. Kernel COMPUTED ≠ product field validation.',
       telemetrySourceFamily: family,
       multichannelFingerprint: mcFp,
       timestampAuthority: 'BUCKET_LABEL_UNVERIFIED',
+      tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
     },
   };
 }

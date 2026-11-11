@@ -10,9 +10,11 @@ import {
   buildPowertrainResearchInput,
   buildRealV1aTripInput,
   initResearchBackend,
+  loadEvidenceFromPostgres,
   loadMultichannelTrip,
   loadPostgresTrip,
 } from './dbi-powertrain-research-real-trip-bridge.mjs';
+import { computeDescriptiveMotorAnalysis } from './dbi-descriptive-motor-analysis.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BACKEND_ROOT = process.env.DBI_EVAL_BACKEND_ROOT ?? join(__dirname, '../..');
@@ -92,75 +94,135 @@ function loadJsonIfExists(path) {
   return { path, loaded: true, data: JSON.parse(readFileSync(path, 'utf8')) };
 }
 
-function summarizeKernel(moduleId, binding, computeFn, input) {
+const MAPPING_CORRECTION_NOTES = {
+  before: {
+    B2: 'Falsch: coldEngine.episodes (existiert nicht) statt coldEngine.candidates + subtypeAssessability',
+    B3: 'Falsch: INSUFFICIENT_OBSERVATIONS als OBSERVATION_NEGATIVE / Negativ-Nachweis',
+    B4: 'Falsch: revvingIdle.episodes statt facetA/facetB mit eigener tripEvidenceClassification',
+    V1B: 'Falsch: erfundene Tier-Zeile aus __tests__-Fixtures',
+  },
+  after: {
+    B2: 'coldEngine.deduplicatedCandidateCount, candidates[], subtypeAssessability',
+    B3: 'sustainedLoad.tripEvidenceClassification; INSUFFICIENT ≠ NOT_OBSERVED',
+    B4: 'revvingIdle.facetA und facetB jeweils vollständig',
+    V1B: 'VSI-Snapshot + tierEvidence aus resolveTierEvidenceForTrip; optional persistierter V1B-Shadow-Run',
+  },
+};
+
+function assessModule(moduleId, binding, kernelResult) {
+  if (!binding?.ok) return 'NOT_ASSESSABLE';
+  if (!kernelResult) return 'NOT_ASSESSABLE';
+  if (kernelResult.status === 'ABSTAINED') return 'NOT_ASSESSABLE';
+
+  if (moduleId === 'B1') {
+    if (kernelResult.status === 'NOT_OBSERVED') return 'NOT_OBSERVED';
+    return kernelResult.kickdown.deduplicatedCandidateCount > 0 ? 'CANDIDATE' : 'NOT_OBSERVED';
+  }
+  if (moduleId === 'B2') {
+    if (kernelResult.coldEngine.deduplicatedCandidateCount > 0) return 'CANDIDATE';
+    const sub = kernelResult.coldEngine.subtypeAssessability;
+    const anyAssessable = sub && Object.values(sub).some((s) => s.status === 'ASSESSABLE');
+    return anyAssessable ? 'NOT_OBSERVED' : 'NOT_ASSESSABLE';
+  }
+  if (moduleId === 'B3') {
+    const tec = kernelResult.sustainedLoad.tripEvidenceClassification;
+    if (tec === 'INSUFFICIENT_OBSERVATIONS') return 'INSUFFICIENT';
+    if (tec === 'NOT_ASSESSABLE') return 'NOT_ASSESSABLE';
+    if (kernelResult.sustainedLoad.deduplicatedCandidateCount > 0) return 'CANDIDATE';
+    if (tec === 'NOT_OBSERVED') return 'NOT_OBSERVED';
+    return tec;
+  }
+  if (moduleId === 'B4') {
+    const a = kernelResult.revvingIdle.facetA;
+    const b = kernelResult.revvingIdle.facetB;
+    if (a.deduplicatedCandidateCount > 0 || b.deduplicatedCandidateCount > 0) return 'CANDIDATE';
+    if (a.tripEvidenceClassification === 'INSUFFICIENT_OBSERVATIONS' || b.tripEvidenceClassification === 'INSUFFICIENT_OBSERVATIONS') {
+      return 'INSUFFICIENT';
+    }
+    if (a.assessability === 'NOT_ASSESSABLE' && b.assessability === 'NOT_ASSESSABLE') return 'NOT_ASSESSABLE';
+    return 'NOT_OBSERVED';
+  }
+  return 'UNKNOWN';
+}
+
+function deriveModuleSummary(moduleId, kernelResult) {
+  if (moduleId === 'B1') {
+    return {
+      deduplicatedCandidateCount: kernelResult.kickdown.deduplicatedCandidateCount,
+      rawWindowCount: kernelResult.kickdown.rawWindowCount,
+      tripEvidenceClassification: undefined,
+    };
+  }
+  if (moduleId === 'B2') {
+    return {
+      deduplicatedCandidateCount: kernelResult.coldEngine.deduplicatedCandidateCount,
+      rawWindowCount: kernelResult.coldEngine.rawWindowCount,
+      subtypeAssessability: kernelResult.coldEngine.subtypeAssessability,
+      coverageEvidence: kernelResult.coldEngine.coverageEvidence,
+    };
+  }
+  if (moduleId === 'B3') {
+    return {
+      deduplicatedCandidateCount: kernelResult.sustainedLoad.deduplicatedCandidateCount,
+      tripEvidenceClassification: kernelResult.sustainedLoad.tripEvidenceClassification,
+      entryLabelCount: kernelResult.sustainedLoad.entryLabelCount,
+      coverageEvidence: kernelResult.sustainedLoad.coverageEvidence,
+    };
+  }
+  if (moduleId === 'B4') {
+    return {
+      facetA: {
+        assessability: kernelResult.revvingIdle.facetA.assessability,
+        tripEvidenceClassification: kernelResult.revvingIdle.facetA.tripEvidenceClassification,
+        deduplicatedCandidateCount: kernelResult.revvingIdle.facetA.deduplicatedCandidateCount,
+        coverageDiagnostics: kernelResult.revvingIdle.facetA.coverageDiagnostics,
+      },
+      facetB: {
+        assessability: kernelResult.revvingIdle.facetB.assessability,
+        tripEvidenceClassification: kernelResult.revvingIdle.facetB.tripEvidenceClassification,
+        deduplicatedCandidateCount: kernelResult.revvingIdle.facetB.deduplicatedCandidateCount,
+        coverageDiagnostics: kernelResult.revvingIdle.facetB.coverageDiagnostics,
+      },
+      coverageEvidence: kernelResult.revvingIdle.coverageEvidence,
+    };
+  }
+  return {};
+}
+
+function runPowertrainModule(moduleId, binding, computeFn, input) {
   if (!binding.ok) {
     return {
       module: moduleId,
-      execution: 'BLOCKED',
-      bindingOk: false,
-      reasonCodes: binding.reasonCodes,
+      binding: { ok: false, reasonCodes: binding.reasonCodes },
+      kernelInvoked: false,
+      kernelResultOriginal: null,
+      derivedSummary: null,
       productAssessability: 'NOT_ASSESSABLE',
-      assessabilityNote: 'Input binding failed; kernel not invoked.',
     };
   }
-  let result;
+  let kernelResultOriginal;
   try {
-    result = computeFn(input);
+    kernelResultOriginal = computeFn(input);
   } catch (err) {
     return {
       module: moduleId,
-      execution: 'KERNEL_RUNTIME_ERROR',
-      bindingOk: true,
-      error: String(err?.message ?? err),
+      binding: { ok: true },
+      kernelInvoked: false,
+      kernelRuntimeError: String(err?.message ?? err),
+      kernelResultOriginal: null,
+      derivedSummary: null,
       productAssessability: 'NOT_ASSESSABLE',
-      assessabilityNote: 'Binding passed but kernel threw — no fabricated fallback result.',
     };
   }
-  const status = result.status;
-  let candidates = 0;
-  if (result.kickdown?.candidates) candidates = result.kickdown.candidates.length;
-  if (result.coldEngine?.episodes) candidates = result.coldEngine.episodes.length;
-  if (result.sustainedLoad?.candidates) candidates = result.sustainedLoad.candidates.length;
-  if (result.revvingIdle?.episodes) candidates = result.revvingIdle.episodes.length;
-
-  const productAssessability =
-    status === 'ABSTAINED'
-      ? 'NOT_ASSESSABLE'
-      : status === 'COMPUTED' && candidates > 0
-        ? 'DESCRIPTIVE_RESEARCH_ONLY'
-        : status === 'COMPUTED' || status === 'NOT_OBSERVED'
-          ? 'OBSERVATION_NEGATIVE'
-          : 'UNKNOWN';
-
   return {
     module: moduleId,
-    execution: 'COMPUTED',
-    bindingOk: true,
-    kernelStatus: status,
-    abstainReasons: result.abstainReasons ?? [],
-    candidateOrEpisodeCount: candidates,
-    productAssessability,
-    tripEvidenceClassification:
-      result.kickdown?.tripEvidenceClassification ??
-      result.coldEngine?.tripEvidenceClassification ??
-      result.sustainedLoad?.tripEvidenceClassification ??
-      result.revvingIdle?.tripEvidenceClassification ??
-      null,
-    coverageEvidence:
-      result.kickdown?.coverageEvidence ??
-      result.coldEngine?.coverageEvidence ??
-      result.sustainedLoad?.coverageEvidence ??
-      result.revvingIdle?.coverageEvidence ??
-      null,
-    unsupportedScientificClaims: result.unsupportedScientificClaims ?? [],
-    sampleCandidates: (
-      result.kickdown?.candidates ??
-      result.coldEngine?.episodes ??
-      result.sustainedLoad?.candidates ??
-      result.revvingIdle?.episodes ??
-      []
-    ).slice(0, 8),
-    limitations: (result.limitations ?? []).slice?.(0, 12) ?? result.limitations,
+    binding: { ok: true },
+    kernelInvoked: true,
+    kernelStatus: kernelResultOriginal.status,
+    kernelResultOriginal,
+    derivedSummary: deriveModuleSummary(moduleId, kernelResultOriginal),
+    productAssessability: assessModule(moduleId, binding, kernelResultOriginal),
+    abstainReasons: kernelResultOriginal.abstainReasons,
   };
 }
 
@@ -170,6 +232,7 @@ function buildGermanReport(ctx) {
   const rpm = ctx.priorResearch.rpmCloseout;
   const qual = ctx.priorResearch.rpmQualification?.machine;
   const modules = ctx.powertrainModules;
+  const desc = ctx.descriptiveMotor;
 
   const lines = [];
   lines.push('# DBI-Fahrtenbericht (Research-Screen, READ_ONLY)');
@@ -187,7 +250,30 @@ function buildGermanReport(ctx) {
   );
   lines.push(`- **TIMESTAMP_AUTHORITY:** BUCKET_LABEL_UNVERIFIED — keine behauptete physische Gleichzeitigkeit über R1-Buckets.`);
   lines.push(`- RPM-Punkte: ${ctx.dataCoverage.rpmPoints}; Multichannel-Zeilen: ${ctx.dataCoverage.multichannelRows}.`);
-  lines.push(`- V1B nach Verarbeitung: Tier ${ctx.v1b.tier}, Modus ${ctx.v1b.analysisMode}.`);
+  lines.push(`- V1B-Quelle: ${ctx.v1bEvidence?.source ?? 'unbekannt'}; Tier-Evidenz-Status: ${ctx.v1bEvidence?.tierEvidenceStatus ?? '—'}.`);
+  if (ctx.v1bEvidence?.tier) lines.push(`- Tier (wenn aus persistiertem/Live-V1B): ${ctx.v1bEvidence.tier}, Modus ${ctx.v1bEvidence.analysisMode ?? '—'}.`);
+  lines.push('');
+  lines.push('## Deskriptive Motoranalyse (ClickHouse, ohne Detektor-Fusion)');
+  if (desc) {
+    lines.push(
+      `- **Drehzahl (RPM):** Median ${desc.rpm.median}, P95 ${desc.rpm.p95}, Max ${desc.rpm.max} (${desc.rpm.count} Punkte).`,
+    );
+    lines.push(
+      `- **Motorlast:** Median ${desc.engineLoadPct.median} %, P95 ${desc.engineLoadPct.p95} %, Max ${desc.engineLoadPct.max} %.`,
+    );
+    lines.push(
+      `- **Drossel:** Median ${desc.throttlePct.median} %, P95 ${desc.throttlePct.p95} %; ${desc.throttlePct.bucketsAtOrAbove75Pct} Buckets ≥ 75 %.`,
+    );
+    lines.push(
+      `- **Kühlmittel (ECT):** ${desc.ectC.coldBucketCount} kalte (unter ${desc.ectC.coldThresholdC} °C), ${desc.ectC.warmBucketCount} warme Buckets; Median ${desc.ectC.median} °C.`,
+    );
+    lines.push(
+      `- **Kalt-ECT-Buckets Motor:** Last Median ${desc.coldEctBucketMotorStats.loadMedian ?? '—'} %, RPM Median ${desc.coldEctBucketMotorStats.rpmMedian ?? '—'}.`,
+    );
+    lines.push(
+      `- **Stationary-like (Speed ≤ 3 km/h):** ${desc.stationaryLikeBuckets.bucketCount} Buckets, RPM Median ${desc.stationaryLikeBuckets.rpmMedian ?? '—'}.`,
+    );
+  }
   lines.push('');
   lines.push('## DS4 Fahrverhalten (bestehende P2-D2E-Analyse)');
   if (ds4?.loaded) {
@@ -217,27 +303,44 @@ function buildGermanReport(ctx) {
     lines.push(`- RPM-only Driving Intelligence: **${qual.RPM_ONLY_FEATURE_READINESS?.rpmOnlyDrivingIntelligence ?? 'siehe Artefakt'}**.`);
   }
   lines.push('');
-  lines.push('## Powertrain-Research-Kernels (P2-B1–B4, unverändert)');
+  lines.push('## Powertrain-Research-Kernels (P2-B1–B4, Original-Resultate)');
   for (const m of modules) {
     const label = { B1: 'Kickdown-like', B2: 'Cold Engine', B3: 'Sustained Load', B4: 'Revving/Idle' }[m.module];
     lines.push(`### ${label} (${m.module})`);
-    if (m.execution === 'BLOCKED') {
-      lines.push(`- **BLOCKED** — Binding: ${m.reasonCodes?.join(', ')}`);
+    if (!m.kernelInvoked) {
+      lines.push(`- **${m.binding?.ok ? 'KERNEL_NICHT_LAUFGEFÄHIG' : 'BINDING_BLOCKIERT'}** — ${m.binding?.reasonCodes?.join(', ') ?? m.kernelRuntimeError ?? 'kein Kernel-Lauf'}.`);
+      lines.push(`- Bewertbarkeit: **${m.productAssessability}**.`);
       continue;
     }
-    lines.push(`- Kernel-Status: **${m.kernelStatus}**; Kandidaten/Episoden: **${m.candidateOrEpisodeCount}**.`);
-    lines.push(`- Produktbewertbarkeit: **${m.productAssessability}** (COMPUTED ≠ automatisch nutzbar).`);
-    if (m.tripEvidenceClassification) lines.push(`- Trip-Evidenz: ${m.tripEvidenceClassification}.`);
-    if (m.abstainReasons?.length) lines.push(`- Abstain-Gründe: ${m.abstainReasons.join(', ')}.`);
+    lines.push(`- Kernel-Status: **${m.kernelStatus}**; Bewertbarkeit: **${m.productAssessability}**.`);
+    const d = m.derivedSummary;
+    if (m.module === 'B4' && d?.facetA) {
+      lines.push(`- Facet A: ${d.facetA.tripEvidenceClassification}, Kandidaten ${d.facetA.deduplicatedCandidateCount}, Assessability ${d.facetA.assessability}.`);
+      lines.push(`- Facet B: ${d.facetB.tripEvidenceClassification}, Kandidaten ${d.facetB.deduplicatedCandidateCount}, Assessability ${d.facetB.assessability}.`);
+    } else if (d) {
+      lines.push(`- Kandidaten: ${d.deduplicatedCandidateCount ?? '—'}; Trip-Evidenz: ${d.tripEvidenceClassification ?? '—'}.`);
+      if (d.subtypeAssessability) {
+        lines.push(`- Subtype-Assessability: ${JSON.stringify(d.subtypeAssessability)}`);
+      }
+    }
+    if (m.abstainReasons?.length) lines.push(`- Abstain: ${m.abstainReasons.join(', ')}.`);
   }
   lines.push('');
-  lines.push('## Zusammenfassung');
+  lines.push('## Antworten (konkret)');
+  lines.push('### Wie wurde der Tiguan gefahren?');
   lines.push(
-    'Es liegt eine reale Stadt-/ Überlandfahrt (~41 min) mit dichter R1-OBD-Abdeckung vor. DS4 beschreibt **16** Fahrereignisse (7× Beschleunigung, 9× Verzögerung) auf Sparse-Bucket-Basis. RPM zeigt viele lokale Drehzahlwechsel, aber nur wenige streng qualifizierte Musterevidenz.',
+    `Überwiegend städtisch/fluide: ~${Math.round(t.durationMinutes ?? 0)} min, ~${t.distanceKm ?? '?'} km, Ø ${t.avgSpeedKmh != null ? Number(t.avgSpeedKmh).toFixed(1) : '?'} km/h. DS4 zeigt häufige Beschleunigungs- und Verzögerungs-Buckets; kein Autobahn-Dauerhochlauf erkennbar.`,
   );
-  lines.push(
-    'Die multichannel Powertrain-Kernels laufen technisch durch, liefern auf dieser Fahrt aber **keine** bestätigten Kickdown-, Kaltstart-, Dauerlast- oder Revving-Kandidaten im Sinne der jeweiligen Policies — insbesondere B3 meldet COMPUTED mit 0 Kandidaten und INSUFFICIENT_OBSERVATIONS.',
-  );
+  lines.push('### Wie stark wurde der Motor nachweisbar beansprucht?');
+  if (desc) {
+    lines.push(
+      `OBD-Last typischerweise moderat (Median ${desc.engineLoadPct.median} %, Spitzen P95 ${desc.engineLoadPct.p95} %). RPM Median ${desc.rpm.median}, P95 ${desc.rpm.p95}. Starke Drosseln (≥75 %) in ${desc.throttlePct.bucketsAtOrAbove75Pct} Buckets — ohne Kickdown-Bestätigung durch B1.`,
+    );
+  }
+  lines.push('### Was war auffällig?');
+  lines.push('- Kräftige Verzögerungen (DS4); viele RPM-Wechsel (P2-D2); kalte ECT-Phase am Anfang mit anschließendem Warmwerden.');
+  lines.push('### Was ist mit fehlender Evidenz nicht möglich?');
+  lines.push('- Kickdown-, Kaltmotor-Schaden-, Dauerlast- oder Revving-Produktaussagen; zeitlich fusionierte Belastungsdauern; Missbrauch/Motorschaden.');
   lines.push('');
   lines.push('## Was erscheint auffällig (deskriptiv, nicht als Schaden/Missbrauch)');
   lines.push('- Mehrere kräftige Verzögerungsmanöver (DS4 OK, bis ~15 km/h Delta in 2–3 s Buckets).');
@@ -275,6 +378,14 @@ async function main() {
   const orgId = pgRow.organization_id;
   const dimoRaw = pgRow.dimo_raw_json ?? { aftermarketDevice: { serial: 'R1-UNRESOLVED' } };
 
+  const evidence = await loadEvidenceFromPostgres({
+    orgId,
+    vehicleId: VEHICLE_ID,
+    tripId: TRIP_ID,
+    linkId: SOURCE_LINK_ID,
+    libs,
+  });
+
   const { signalCounts, multichannelObservations, rpmPoints } = await loadMultichannelTrip({
     tripId: TRIP_ID,
     vehicleId: VEHICLE_ID,
@@ -282,12 +393,7 @@ async function main() {
     parseHfRpmValueFloat: libs.parseHfRpmValueFloat,
   });
 
-  const tierOverrides = closeout.loaded
-    ? {
-        activeDensityVsTier: closeout.data?.CANONICAL_VSI?.activeCadence?.activeDensityVsTier,
-        longestSequenceIntervals: closeout.data?.CANONICAL_VSI?.qualifiedActiveIntervals,
-      }
-    : {};
+  const descriptiveMotor = computeDescriptiveMotorAnalysis(multichannelObservations);
 
   const tripInput = buildRealV1aTripInput({
     libs,
@@ -303,7 +409,8 @@ async function main() {
       returned: rpmPoints.length,
       limit: 50000,
     },
-    tierOverrides,
+    fuelType: pgRow.fuel_type,
+    vsiSignalsSnapshot: evidence.vsiRevision?.signals_snapshot ?? null,
   });
 
   const bridge = buildPowertrainResearchInput({
@@ -316,9 +423,8 @@ async function main() {
     tripInput,
     multichannelObservations,
     fuelType: pgRow.fuel_type,
+    v1bPersistedRun: evidence.v1bPersistedRun,
   });
-
-  if (!bridge.ok) throw new Error(`V1B_FAILED:${bridge.blocker}`);
 
   const buildRef = require(
     join(
@@ -327,36 +433,63 @@ async function main() {
     ),
   ).buildDs4RpmReferenceIntelligenceV1ReferenceBlock;
 
-  const coldInput = {
-    ...bridge.researchInput,
-    vehicleRpmReference: buildRef({
-      idleRpm: pgRow.idle_rpm,
-      maxRpm: pgRow.max_rpm,
-      iceRpmApplicability: 'APPLICABLE',
-    }),
-    vehicleRpmReferenceBinding: { organizationId: orgId, vehicleId: VEHICLE_ID },
-  };
+  let modules = [];
+  let kernelResultsByModule = { B1: null, B2: null, B3: null, B4: null };
 
-  const coldPre =
-    pgRow.idle_rpm == null || pgRow.max_rpm == null
-      ? {
-          ok: false,
-          reasonCodes: ['REFERENCE_SPEC_UNAVAILABLE_FROM_VEHICLE_ROW'],
-        }
-      : validateCold(coldInput);
+  if (bridge.ok) {
+    const input = bridge.researchInput;
+    const coldInput = {
+      ...input,
+      vehicleRpmReference: buildRef({
+        idleRpm: pgRow.idle_rpm,
+        maxRpm: pgRow.max_rpm,
+        iceRpmApplicability: 'APPLICABLE',
+      }),
+      vehicleRpmReferenceBinding: { organizationId: orgId, vehicleId: VEHICLE_ID },
+    };
+    const coldBinding =
+      pgRow.idle_rpm == null || pgRow.max_rpm == null
+        ? { ok: false, reasonCodes: ['REFERENCE_SPEC_UNAVAILABLE_FROM_VEHICLE_ROW'] }
+        : validateCold(coldInput);
 
-  const input = bridge.researchInput;
-  const modules = [
-    summarizeKernel('B1', validateKickdown(input), computeKickdown, input),
-    summarizeKernel(
-      'B2',
-      coldPre,
-      computeCold,
-      coldPre.ok ? coldInput : coldInput,
-    ),
-    summarizeKernel('B3', validateSustained(input), computeSustained, input),
-    summarizeKernel('B4', validateRevving(input), computeRevving, input),
-  ];
+    modules = [
+      runPowertrainModule('B1', validateKickdown(input), computeKickdown, input),
+      runPowertrainModule('B2', coldBinding, computeCold, coldInput),
+      runPowertrainModule('B3', validateSustained(input), computeSustained, input),
+      runPowertrainModule('B4', validateRevving(input), computeRevving, input),
+    ];
+    kernelResultsByModule = {
+      B1: modules[0].kernelResultOriginal,
+      B2: modules[1].kernelResultOriginal,
+      B3: modules[2].kernelResultOriginal,
+      B4: modules[3].kernelResultOriginal,
+    };
+  } else {
+    modules = ['B1', 'B2', 'B3', 'B4'].map((module) => ({
+      module,
+      binding: { ok: false, reasonCodes: [bridge.blocker] },
+      kernelInvoked: false,
+      kernelResultOriginal: null,
+      derivedSummary: null,
+      productAssessability: 'NOT_ASSESSABLE',
+      powertrainBridgeBlocked: true,
+    }));
+  }
+
+  const v1bEvidence = bridge.ok
+    ? {
+        source: bridge.v1bSource,
+        tier: bridge.researchInput.v1bResult.tierEvidence?.tier ?? null,
+        analysisMode: bridge.researchInput.v1bResult.tierEvidence?.analysisMode ?? null,
+        tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
+        admissionProcessingAllowed: tripInput.admission.processingAllowed,
+      }
+    : {
+        source: bridge.v1bSource ?? 'NONE',
+        tierEvidenceStatus: bridge.tierEvidenceStatus ?? tripInput.tierEvidence?.status,
+        admissionProcessingAllowed: bridge.admissionProcessingAllowed ?? tripInput.admission.processingAllowed,
+        blocker: bridge.blocker,
+      };
 
   const productMaturity = [
     {
@@ -371,40 +504,38 @@ async function main() {
       productUse: 'Drehzahl-Dichte, 82 deskriptive Kandidaten, Evidenzqualifikation',
       blocker: 'Kein Produkt-Scoring; DS4×RPM fusion verboten',
     },
-    {
-      module: 'P2-B1_Kickdown',
-      maturity: modules[0].productAssessability,
-      productUse: 'Kickdown-ähnliche Muster',
-      blocker: modules[0].execution === 'BLOCKED' ? modules[0].reasonCodes?.join(',') : 'Keine Kandidaten auf dieser Fahrt',
-    },
-    {
-      module: 'P2-B2_Cold_Engine',
-      maturity: modules[1].productAssessability,
-      productUse: 'Kaltmotor / ECT',
-      blocker: modules[1].execution === 'BLOCKED' ? modules[1].reasonCodes?.join(',') : 'Keine Episoden',
-    },
-    {
-      module: 'P2-B3_Sustained_Load',
-      maturity: modules[2].productAssessability,
-      productUse: 'Dauerlast',
-      blocker: '0 Kandidaten; INSUFFICIENT_OBSERVATIONS trotz vieler Load-Buckets',
-    },
-    {
-      module: 'P2-B4_Revving_Idle',
-      maturity: modules[3].productAssessability,
-      productUse: 'Leerlauf/Revving',
-      blocker: modules[3].execution === 'BLOCKED' ? modules[3].reasonCodes?.join(',') : 'Keine Episoden',
-    },
+    ...['B1', 'B2', 'B3', 'B4'].map((id, i) => ({
+      module: `P2-${id}_${ { B1: 'Kickdown', B2: 'Cold_Engine', B3: 'Sustained_Load', B4: 'Revving_Idle' }[id]}`,
+      maturity: modules[i]?.productAssessability ?? 'NOT_ASSESSABLE',
+      productUse: 'Research-Kernel (unverändert)',
+      blocker: modules[i]?.derivedSummary
+        ? JSON.stringify(modules[i].derivedSummary).slice(0, 120)
+        : modules[i]?.binding?.reasonCodes?.join(',') ?? bridge.blocker,
+    })),
   ];
 
+  const priorResearchCompact = {
+    rpmCloseout: closeout.loaded ? closeout.data : null,
+    ds4Motion: ds4.loaded ? ds4.data : null,
+    rpmQualificationSummary: rpmQual.loaded ? rpmQual.data?.machine : null,
+    rpmAnalysisSummary: rpmAnalysis.loaded
+      ? {
+          observationCount: rpmAnalysis.data?.observationCount,
+          intervalSeconds: rpmAnalysis.data?.intervalSeconds,
+        }
+      : null,
+  };
+
   const json = {
-    OPERATION: 'DBI_FULL_TRIP_BULK_SCREEN_V1',
+    OPERATION: 'DBI_BULK_SCREEN_V1_PRODUCT_RESULT_CORRECTION',
+    OPERATION_BASE: 'DBI_FULL_TRIP_BULK_SCREEN_V1',
     BASE_SHA: gitSha(),
     TRIP_ID,
     VEHICLE_ID,
     VEHICLE: 'VW_TIGUAN',
     MODE: 'READ_ONLY_REAL_DATA',
     TIMESTAMP_AUTHORITY: 'BUCKET_LABEL_UNVERIFIED',
+    mappingCorrection: MAPPING_CORRECTION_NOTES,
     tripOverview: {
       startUtc: tripStartIso,
       endUtc: tripEndIso,
@@ -414,36 +545,57 @@ async function main() {
       maxSpeedKmh: pgRow.max_speed_kmh,
     },
     dataCoverage: { signalCounts, rpmPoints: rpmPoints.length, multichannelRows: multichannelObservations.length },
-    v1b: {
-      tier: bridge.v1bOut.result.tierEvidence?.tier,
-      analysisMode: bridge.v1bOut.result.tierEvidence?.analysisMode,
-      processingAllowed: bridge.v1bOut.result.admission?.processingAllowed,
+    vsiEvidence: {
+      revisionLoaded: Boolean(evidence.vsiRevision),
+      recordedAt: evidence.vsiRevision?.recorded_at ?? null,
+      tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
+      tripRpmProfile: tripInput.admission.tripRpmProfile,
+      admissionReasonCode: tripInput.admission.reasonCode,
     },
-    provenance: bridge.provenance,
-    priorResearch: {
-      rpmCloseout: closeout,
-      rpmQualification: rpmQual,
-      rpmAnalysis,
-      ds4Motion: ds4,
+    v1bEvidence,
+    descriptiveMotor,
+    provenance: bridge.provenance ?? {
+      bridgeBlocked: true,
+      blocker: bridge.blocker,
+      tierEvidenceStatus: tripInput.tierEvidence?.status,
     },
-    powertrainModules: modules,
+    priorResearch: priorResearchCompact,
+    powertrainModuleSummaries: modules,
+    kernelResultsOriginal: kernelResultsByModule,
     productMaturityTable: productMaturity,
-    FINAL_VERDICT: 'BULK_SCREEN_COMPLETE',
+    evidenceLimits: [
+      'BUCKET_LABEL_UNVERIFIED',
+      'NO_DS4_RPM_TEMPORAL_FUSION',
+      'SYNTHETIC_FIXTURE_BINDING_ENUM_NOT_FIELD_ATTESTATION',
+      'COMPUTED_NOT_PRODUCT_ASSESSABLE_BY_DEFAULT',
+    ],
+    FINAL_VERDICT: modules.some((m) => m.kernelInvoked)
+      ? 'BULK_SCREEN_V1_CORRECTED_COMPLETE'
+      : bridge.ok
+        ? 'BULK_SCREEN_DESCRIPTIVE_ONLY_POWERTRAIN_BINDING_BLOCKED'
+        : 'BULK_SCREEN_DESCRIPTIVE_ONLY_V1B_UNAVAILABLE',
     STOP: 'AWAIT_CHATGPT_PRODUCT_REVIEW',
   };
 
   const md = buildGermanReport({
     tripOverview: json.tripOverview,
     dataCoverage: json.dataCoverage,
-    v1b: json.v1b,
-    priorResearch: json.priorResearch,
+    v1bEvidence: json.v1bEvidence,
+    priorResearch: { ds4Motion: ds4, rpmCloseout: closeout, rpmQualification: rpmQual },
     powertrainModules: modules,
+    descriptiveMotor,
   });
 
   mkdirSync(dirname(OUT_JSON), { recursive: true });
   writeFileSync(OUT_JSON, JSON.stringify(json, null, 2));
   writeFileSync(OUT_MD, md);
-  console.log(JSON.stringify({ json: OUT_JSON, md: OUT_MD, modules: modules.map((m) => ({ m: m.module, s: m.kernelStatus, n: m.candidateOrEpisodeCount })) }));
+  console.log(
+    JSON.stringify({
+      json: OUT_JSON,
+      verdict: json.FINAL_VERDICT,
+      modules: modules.map((m) => ({ m: m.module, a: m.productAssessability, inv: m.kernelInvoked })),
+    }),
+  );
 }
 
 main().catch((e) => {
