@@ -36,8 +36,9 @@ export function isAdmissibleApdsV3EnqueueEvidence(
 }
 
 /**
- * Physical fetch identity is always DERIVED from BullMQ job id + attemptsMade.
- * Enqueue attempt is correlated metadata only (CORRELATED), never CONFIRMED physical id.
+ * Physical fetch identity is bound to a baseline poll execution, not the stable BullMQ
+ * canonical job id (`snapshot-${vehicleId}`) which is reused across completed jobs.
+ * Admissible enqueue attempt UUID is the execution anchor; BullMQ attemptsMade scopes retries.
  */
 export function resolveApdsV3ShadowPhysicalRequestIdentity(
   job: JobLike,
@@ -47,13 +48,23 @@ export function resolveApdsV3ShadowPhysicalRequestIdentity(
     return null;
   }
   const attemptsMade = job.attemptsMade ?? 0;
-  const physicalFetchAttemptId = `physical-fetch:${job.id}:run:${attemptsMade}`;
+  const canonicalJobId = snapshotJobId(vehicleId);
   const ev = job.data?.apdShadowEnqueueEvidence;
   const enqueueAttemptId =
     isAdmissibleApdsV3EnqueueEvidence(ev, vehicleId) ? ev.attemptId : null;
-  const identityClass: ApdsV3PhysicalRequestIdentityClass = enqueueAttemptId
-    ? 'CORRELATED'
-    : 'DERIVED';
+
+  let physicalFetchAttemptId: string;
+  let identityClass: ApdsV3PhysicalRequestIdentityClass;
+
+  if (enqueueAttemptId) {
+    physicalFetchAttemptId = `physical-fetch:exec:${enqueueAttemptId}:run:${attemptsMade}`;
+    identityClass = 'CORRELATED';
+  } else if (job.id !== canonicalJobId) {
+    physicalFetchAttemptId = `physical-fetch:${job.id}:run:${attemptsMade}`;
+    identityClass = 'DERIVED';
+  } else {
+    return null;
+  }
 
   return {
     physicalRequestId: physicalFetchAttemptId,
