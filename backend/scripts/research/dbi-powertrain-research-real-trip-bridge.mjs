@@ -141,6 +141,25 @@ export function initResearchBackend(backendRoot) {
         'src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-acquisition.versions.ts',
       ),
     ).DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3,
+    buildDs4RpmHfV1aDataQuality: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1a/ds4-rpm-hf-v1a-data-quality.ts',
+      ),
+    ).buildDs4RpmHfV1aDataQuality,
+    computeDs4RpmHfV1bTierAwareInputFingerprint: require(
+      join(
+        backendRoot,
+        'src/modules/vehicle-intelligence/driving-intelligence/rpm-hf-v1b/ds4-rpm-hf-v1b-input-fingerprint.ts',
+      ),
+    ).computeDs4RpmHfV1bTierAwareInputFingerprint,
+    HF_TRIP_RPM_DEFAULT_READ_LIMIT: require(
+      join(backendRoot, 'src/modules/clickhouse/clickhouse-hf.service.ts'),
+    ).HF_TRIP_RPM_DEFAULT_READ_LIMIT,
+    toChDateTimeParam: require(join(backendRoot, 'src/modules/clickhouse/clickhouse-hf.service.ts'))
+      .toChDateTimeParam,
+    parseChUtc: require(join(backendRoot, 'src/modules/clickhouse/clickhouse-hf.service.ts')).parseChUtc,
+    HF_POINTS_TABLE: 'telemetry_hf_points',
   };
 
   return { require, libs };
@@ -208,7 +227,49 @@ export async function loadPostgresTrip({ tripId, vehicleId }) {
   return trip.rows[0] ?? null;
 }
 
-export async function loadEvidenceFromPostgres({ orgId, vehicleId, tripId, linkId, libs }) {
+function scanVsiSnapshotForTrip(signalsSnapshot, tripId, libs) {
+  if (!signalsSnapshot) {
+    return {
+      tripInActive: null,
+      tripInTier: null,
+      activeTripCount: 0,
+      tierTripCount: 0,
+    };
+  }
+  const parsed = libs.readEngineRpmCadenceFromSignalsSnapshot(signalsSnapshot);
+  const activeTrips = parsed.activeRpmProfile?.tripClassifications ?? [];
+  const tierTrips = parsed.rpmCadenceTierResolution?.tripClassifications ?? [];
+  return {
+    tripInActive: activeTrips.find((t) => t.tripId === tripId) ?? null,
+    tripInTier: tierTrips.find((t) => t.tripId === tripId) ?? null,
+    activeTripCount: activeTrips.length,
+    tierTripCount: tierTrips.length,
+    activeProfile: parsed.activeRpmProfile?.activeProfile ?? null,
+  };
+}
+
+async function loadVsiRevisionContainingTrip(client, { orgId, vehicleId, linkId, tripId, notAfter }) {
+  const res = await client.query(
+    `SELECT signals_snapshot, recorded_at, profile_revision, evaluated_at
+     FROM vehicle_signal_capability_profile_revisions
+     WHERE organization_id = $1 AND vehicle_id = $2 AND provider_source_link_id = $3
+       AND signals_snapshot::text LIKE $4
+       AND ($5::timestamptz IS NULL OR recorded_at <= $5)
+     ORDER BY recorded_at DESC
+     LIMIT 1`,
+    [orgId, vehicleId, linkId, `%${tripId}%`, notAfter],
+  );
+  return res.rows[0] ?? null;
+}
+
+export async function loadEvidenceFromPostgres({
+  orgId,
+  vehicleId,
+  tripId,
+  linkId,
+  tripEndIso,
+  libs,
+}) {
   const client = new pg.Client(
     process.env.DATABASE_URL
       ? { connectionString: process.env.DATABASE_URL.replace(/\?schema=[^&]*/, '') }
@@ -217,10 +278,21 @@ export async function loadEvidenceFromPostgres({ orgId, vehicleId, tripId, linkI
   await client.connect();
   await client.query('BEGIN');
   await client.query('SET TRANSACTION READ ONLY');
-  const vsi = await client.query(
-    `SELECT signals_snapshot, recorded_at FROM vehicle_signal_capability_profile_revisions
+  const vsiCurrent = await client.query(
+    `SELECT signals_snapshot, evaluated_at, profile_revision, updated_at FROM vehicle_signal_capability_profiles
+     WHERE organization_id = $1 AND vehicle_id = $2 AND provider_source_link_id = $3`,
+    [orgId, vehicleId, linkId],
+  );
+  const vsiRevisionLatest = await client.query(
+    `SELECT signals_snapshot, recorded_at, profile_revision FROM vehicle_signal_capability_profile_revisions
      WHERE organization_id = $1 AND vehicle_id = $2 AND provider_source_link_id = $3
      ORDER BY recorded_at DESC LIMIT 1`,
+    [orgId, vehicleId, linkId],
+  );
+  const revisionScan = await client.query(
+    `SELECT signals_snapshot, recorded_at, profile_revision FROM vehicle_signal_capability_profile_revisions
+     WHERE organization_id = $1 AND vehicle_id = $2 AND provider_source_link_id = $3
+     ORDER BY recorded_at DESC LIMIT 40`,
     [orgId, vehicleId, linkId],
   );
   const v1b = await client.query(
@@ -230,11 +302,198 @@ export async function loadEvidenceFromPostgres({ orgId, vehicleId, tripId, linkI
      ORDER BY computed_at DESC LIMIT 1`,
     [orgId, tripId, libs.DS4_RPM_HF_V1B_ENGINE_VERSION_TIER_AWARE],
   );
+
+  const currentRow = vsiCurrent.rows[0] ?? null;
+  const latestRevisionRow = vsiRevisionLatest.rows[0] ?? null;
+  const currentScan = scanVsiSnapshotForTrip(currentRow?.signals_snapshot, tripId, libs);
+  const latestRevisionScan = scanVsiSnapshotForTrip(latestRevisionRow?.signals_snapshot, tripId, libs);
+
+  const v1bPersistedRun = v1b.rows[0] ?? null;
+  const decisionNotAfter =
+    v1bPersistedRun?.computed_at ??
+    (tripEndIso ? new Date(tripEndIso) : null);
+
+  let decisionTimeRevision = null;
+  if (!(currentScan.tripInActive && currentScan.tripInTier)) {
+    decisionTimeRevision = await loadVsiRevisionContainingTrip(client, {
+      orgId,
+      vehicleId,
+      linkId,
+      tripId,
+      notAfter: decisionNotAfter,
+    });
+  }
+
   await client.query('COMMIT');
   await client.end();
+
+  const revisionsWithTrip = revisionScan.rows
+    .map((r) => ({
+      profileRevision: r.profile_revision,
+      recordedAt: r.recorded_at,
+      ...scanVsiSnapshotForTrip(r.signals_snapshot, tripId, libs),
+    }))
+    .filter((r) => r.tripInActive || r.tripInTier);
+
+  const decisionScan = scanVsiSnapshotForTrip(decisionTimeRevision?.signals_snapshot, tripId, libs);
+
+  let vsiSignalsSnapshot =
+    currentScan.tripInActive || currentScan.tripInTier
+      ? currentRow?.signals_snapshot
+      : decisionTimeRevision?.signals_snapshot ??
+        currentRow?.signals_snapshot ??
+        latestRevisionRow?.signals_snapshot ??
+        null;
+
+  let vsiSource = 'MISSING';
+  if (vsiSignalsSnapshot === currentRow?.signals_snapshot && currentScan.tripInActive) {
+    vsiSource = 'vehicle_signal_capability_profiles';
+  } else if (vsiSignalsSnapshot === decisionTimeRevision?.signals_snapshot) {
+    vsiSource = 'vehicle_signal_capability_profile_revisions_decision_time';
+  } else if (currentRow?.signals_snapshot) {
+    vsiSource = 'vehicle_signal_capability_profiles_without_trip_binding';
+  } else if (latestRevisionRow?.signals_snapshot) {
+    vsiSource = 'vehicle_signal_capability_profile_revisions_latest_fallback';
+  }
+
   return {
-    vsiRevision: vsi.rows[0] ?? null,
+    vsiCurrentProfile: currentRow,
+    vsiRevisionLatest: latestRevisionRow,
+    vsiDecisionTimeRevision: decisionTimeRevision,
+    vsiSignalsSnapshot,
+    vsiSource,
+    vsiDiagnostic: {
+      currentScan,
+      latestRevisionScan,
+      decisionTimeScan: decisionScan,
+      decisionNotAfter: decisionNotAfter ? new Date(decisionNotAfter).toISOString() : null,
+      revisionsWithTripBinding: revisionsWithTrip.slice(0, 8),
+      rootCauseHint:
+        currentScan.tripInActive || decisionScan.tripInActive
+          ? currentScan.tripInActive
+            ? null
+            : 'ROLLING_VSI_WINDOW_EVICTED_TRIP_USE_DECISION_TIME_REVISION'
+          : 'TRIP_ABSENT_FROM_activeRpmProfile_tripClassifications_IN_CURRENT_AND_DECISION_TIME_REVISION',
+      tierRootCauseHint:
+        currentScan.tripInTier || decisionScan.tripInTier
+          ? currentScan.tripInTier
+            ? null
+            : 'TIER_ROW_EVICTED_FROM_ROLLING_WINDOW_USE_DECISION_TIME_REVISION'
+          : 'TRIP_ABSENT_FROM_rpmCadenceTierResolution_tripClassifications',
+    },
+    /** @deprecated use vsiCurrentProfile / vsiSignalsSnapshot */
+    vsiRevision: latestRevisionRow,
     v1bPersistedRun: v1b.rows[0] ?? null,
+  };
+}
+
+/**
+ * Production-aligned trip RPM HF read (org scope, trip time window, default limit 12_000).
+ */
+export async function loadCanonicalTripRpmHfPoints({ orgId, vehicleId, tripId, tripStart, tripEnd, libs }) {
+  const signalName = 'powertrainCombustionEngineSpeed';
+  const limit = libs.HF_TRIP_RPM_DEFAULT_READ_LIMIT;
+  const offset = 0;
+  const table = libs.HF_POINTS_TABLE;
+  const fromParam = libs.toChDateTimeParam(tripStart);
+  const toParam = libs.toChDateTimeParam(tripEnd);
+
+  const countRows = await chQuery(
+    `SELECT count() AS cnt FROM ${table}
+     WHERE org_id={orgId:String} AND vehicle_id={vehicleId:String} AND trip_id={tripId:String}
+       AND signal_name={signalName:String}
+       AND recorded_at >= parseDateTime64BestEffort({from:String})
+       AND recorded_at <= parseDateTime64BestEffort({to:String})`,
+    { orgId, vehicleId, tripId, signalName, from: fromParam, to: toParam },
+  );
+  const totalMatchingCount = Number(countRows[0]?.cnt ?? 0);
+
+  if (totalMatchingCount === 0) {
+    return {
+      status: 'EMPTY',
+      available: true,
+      points: [],
+      totalMatchingCount: 0,
+      returnedCount: 0,
+      rawRowsReturned: 0,
+      completenessStatus: 'EMPTY',
+      duplicateTimestampCount: 0,
+      invalidValueCount: 0,
+      tenantScopeViolation: false,
+      limit,
+      offset,
+    };
+  }
+
+  const rows = await chQuery(
+    `SELECT org_id, vehicle_id, trip_id, recorded_at, value_float
+     FROM ${table}
+     WHERE org_id={orgId:String} AND vehicle_id={vehicleId:String} AND trip_id={tripId:String}
+       AND signal_name={signalName:String}
+       AND recorded_at >= parseDateTime64BestEffort({from:String})
+       AND recorded_at <= parseDateTime64BestEffort({to:String})
+     ORDER BY recorded_at ASC LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
+    { orgId, vehicleId, tripId, signalName, from: fromParam, to: toParam, limit, offset },
+  );
+
+  let invalidValueCount = 0;
+  const seenTimestamps = new Map();
+  const points = [];
+
+  for (const r of rows) {
+    if (r.org_id !== orgId || r.vehicle_id !== vehicleId || r.trip_id !== tripId) {
+      return {
+        status: 'TENANT_SCOPE_VIOLATION',
+        available: true,
+        points: [],
+        totalMatchingCount,
+        returnedCount: 0,
+        rawRowsReturned: rows.length,
+        completenessStatus: 'COMPLETE',
+        duplicateTimestampCount: 0,
+        invalidValueCount: 0,
+        tenantScopeViolation: true,
+        limit,
+        offset,
+      };
+    }
+    const iso = libs.parseChUtc(r.recorded_at);
+    if (!iso) {
+      invalidValueCount += 1;
+      continue;
+    }
+    const recordedAtMs = Date.parse(iso);
+    const valueRpm = libs.parseHfRpmValueFloat(r.value_float);
+    if (valueRpm == null) {
+      invalidValueCount += 1;
+      continue;
+    }
+    seenTimestamps.set(recordedAtMs, (seenTimestamps.get(recordedAtMs) ?? 0) + 1);
+    points.push({ recordedAtMs, recordedAtIso: iso, valueRpm });
+  }
+
+  let duplicateTimestampCount = 0;
+  for (const c of seenTimestamps.values()) {
+    if (c > 1) duplicateTimestampCount += c - 1;
+  }
+
+  const rawRowsReturned = rows.length;
+  const completenessStatus =
+    totalMatchingCount > offset + rawRowsReturned ? 'INCOMPLETE_MORE_POINTS_AVAILABLE' : 'COMPLETE';
+
+  return {
+    status: 'SUCCESS',
+    available: true,
+    points,
+    totalMatchingCount,
+    returnedCount: points.length,
+    rawRowsReturned,
+    completenessStatus,
+    duplicateTimestampCount,
+    invalidValueCount,
+    tenantScopeViolation: false,
+    limit,
+    offset,
   };
 }
 
@@ -310,12 +569,10 @@ export function buildRealV1aTripInput({
   linkId,
   tripStartIso,
   tripEndIso,
-  rpmPoints,
-  chTotals,
+  canonicalRpmRead,
   fuelType,
   vsiSignalsSnapshot,
 }) {
-  const intervals = rpmIntervals(rpmPoints);
   const vsiParsed = vsiSignalsSnapshot
     ? libs.readEngineRpmCadenceFromSignalsSnapshot(vsiSignalsSnapshot)
     : { cadence: null, activeRpmProfile: null, rpmCadenceTierResolution: null };
@@ -327,8 +584,34 @@ export function buildRealV1aTripInput({
     tripId,
     tripClassifications: activeRpmProfileSnapshot?.tripClassifications ?? [],
   });
-  const hfDataPresent = rpmPoints.length > 0;
-  const hfReadComplete = chTotals.returned >= chTotals.total;
+
+  const read = canonicalRpmRead
+    ? {
+        status: canonicalRpmRead.status,
+        available: canonicalRpmRead.available,
+        totalMatchingCount: canonicalRpmRead.totalMatchingCount,
+        returnedCount: canonicalRpmRead.returnedCount,
+        completenessStatus: canonicalRpmRead.completenessStatus,
+        duplicateTimestampCount: canonicalRpmRead.duplicateTimestampCount,
+        invalidValueCount: canonicalRpmRead.invalidValueCount,
+        limit: canonicalRpmRead.limit,
+        offset: canonicalRpmRead.offset,
+        tenantScopeViolation: canonicalRpmRead.tenantScopeViolation,
+      }
+    : null;
+
+  const hfReadComplete =
+    read != null &&
+    read.status === 'SUCCESS' &&
+    read.completenessStatus === 'COMPLETE' &&
+    read.offset === 0;
+  const hfDataPresent =
+    read != null && read.available && read.status === 'SUCCESS' && read.returnedCount > 0;
+  const chReadAvailable =
+    read != null &&
+    read.status !== 'UNAVAILABLE' &&
+    read.status !== 'QUERY_FAILED' &&
+    read.status !== 'TENANT_SCOPE_VIOLATION';
 
   const admission = libs.resolveDs4RpmHfV1aAdmission({
     iceRpmApplicability,
@@ -336,10 +619,13 @@ export function buildRealV1aTripInput({
     tripRpmProfile,
     vehicleActiveRpmProfile: activeRpmProfileSnapshot?.activeProfile ?? null,
     hfDataPresent,
-    chReadAvailable: true,
-    tenantScopeViolation: false,
+    chReadAvailable,
+    tenantScopeViolation: read?.tenantScopeViolation ?? false,
     hfReadComplete,
   });
+
+  const rpmPointRows = admission.processingAllowed && read?.status === 'SUCCESS' ? canonicalRpmRead.points : [];
+  const dataQuality = libs.buildDs4RpmHfV1aDataQuality({ read, points: rpmPointRows });
 
   const tierEvidence = libs.resolveTierEvidenceForTrip({
     tripId,
@@ -359,36 +645,14 @@ export function buildRealV1aTripInput({
     tripStartIso,
     tripEndIso,
     admission,
-    dataQuality: {
-      contractVersion: 'ds4-rpm-hf-data-quality-v1',
-      validPointCount: rpmPoints.length,
-      invalidValueCount: 0,
-      duplicateTimestampCount: 0,
-      earliestRecordedAtIso: rpmPoints[0]?.recordedAtIso ?? null,
-      latestRecordedAtIso: rpmPoints[rpmPoints.length - 1]?.recordedAtIso ?? null,
-      observedIntervals: {
-        intervalCount: Math.max(0, rpmPoints.length - 1),
-        intervalMedianSeconds: percentile(intervals, 0.5),
-        intervalP95Seconds: percentile(intervals, 0.95),
-        minIntervalSeconds: intervals[0] ?? null,
-        maxIntervalSeconds: intervals[intervals.length - 1] ?? null,
-      },
-      identifiedGaps: [],
-      completenessLabel: chTotals.returned >= chTotals.total ? 'COMPLETE' : 'INCOMPLETE_MORE_POINTS_AVAILABLE',
-      totalMatchingCount: chTotals.total,
-      returnedPointCount: chTotals.returned,
-      readLimit: chTotals.limit,
-      readOffset: 0,
-      bucketSemanticsNote: 'PROVIDER_BUCKET_LABELS_NOT_VERIFIED_PHYSICAL_SIMULTANEITY',
-      gapInterpretationPolicy: 'MISSING_POINTS_NOT_ENGINE_STOP',
-    },
+    dataQuality,
     clickHouseRead: {
-      status: chTotals.returned >= chTotals.total ? 'SUCCESS' : 'TRUNCATED',
-      available: true,
+      status: read?.status ?? 'UNAVAILABLE',
+      available: read?.available ?? false,
       degradedReason: null,
-      tenantScopeViolation: false,
+      tenantScopeViolation: read?.tenantScopeViolation ?? false,
     },
-    rpmPoints,
+    rpmPoints: rpmPointRows.map((p) => ({ recordedAtIso: p.recordedAtIso, valueRpm: p.valueRpm })),
     vsiActiveRpmProfileSnapshot: activeRpmProfileSnapshot,
     vsiRpmCadenceTierSnapshot: rpmCadenceTierSnapshot,
     tierEvidence,
@@ -414,10 +678,38 @@ export function buildPowertrainResearchInput({
   let v1bResult = null;
   let v1bOut = null;
 
+  let v1bFingerprintDiagnosis = null;
+
   if (v1bPersistedRun?.summary_json && v1bPersistedRun.shadow_status === 'SUCCEEDED') {
-    v1bResult = v1bPersistedRun.summary_json;
-    v1bSource = 'PERSISTED_V1B_SHADOW_RUN';
-  } else if (tripInput.tierEvidence?.status === 'AVAILABLE' && tripInput.admission.processingAllowed) {
+    const expectedFingerprint = libs.computeDs4RpmHfV1bTierAwareInputFingerprint(tripInput);
+    const persistedFingerprint = v1bPersistedRun.input_fingerprint ?? '';
+    if (persistedFingerprint === expectedFingerprint) {
+      v1bResult = {
+        ...v1bPersistedRun.summary_json,
+        inputFingerprint: persistedFingerprint,
+      };
+      v1bSource = 'PERSISTED_V1B_SHADOW_RUN';
+    } else {
+      v1bFingerprintDiagnosis = {
+        reason: 'V1B_INPUT_FINGERPRINT_MISMATCH',
+        expectedFingerprint,
+        persistedFingerprint,
+        persistedComputedAt: v1bPersistedRun.computed_at ?? null,
+        tripInputDigestFields: {
+          rpmPointCount: tripInput.rpmPoints.length,
+          completenessLabel: tripInput.dataQuality.completenessLabel,
+          tripRpmProfile: tripInput.admission.tripRpmProfile,
+          tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
+        },
+      };
+    }
+  }
+
+  if (
+    !v1bResult &&
+    tripInput.tierEvidence?.status === 'AVAILABLE' &&
+    tripInput.admission.processingAllowed
+  ) {
     v1bOut = libs.processDs4RpmHfV1bShadowTripTierAware({
       tripInput,
       attemptCount: 1,
@@ -433,12 +725,16 @@ export function buildPowertrainResearchInput({
   if (!v1bResult) {
     return {
       ok: false,
-      blocker: v1bOut?.kind ?? 'V1B_EVIDENCE_UNAVAILABLE',
+      blocker:
+        v1bFingerprintDiagnosis?.reason ??
+        v1bOut?.kind ??
+        (tripInput.admission.processingAllowed ? 'V1B_EVIDENCE_UNAVAILABLE' : 'TRIP_ADMISSION_NOT_ALLOWED'),
       v1bSource,
       family,
       tripInput,
       tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
       admissionProcessingAllowed: tripInput.admission.processingAllowed,
+      v1bFingerprintDiagnosis,
     };
   }
 
@@ -495,9 +791,13 @@ export function buildPowertrainResearchInput({
     v1bSource,
     provenance: {
       clickHouseRealData: true,
+      tripRpmReader: 'canonical_getTripRpmHfPoints_aligned',
+      vsiProfileSource: 'vehicle_signal_capability_profiles_preferred',
       contractEvidenceOrigin: 'SYNTHETIC_FIXTURE',
       v1bEvidenceSource: v1bSource,
       v1bPersistedFingerprint: v1bPersistedRun?.input_fingerprint ?? null,
+      v1bRecomputedFingerprint: libs.computeDs4RpmHfV1bTierAwareInputFingerprint(tripInput),
+      v1bFingerprintDiagnosis,
       limitation:
         'Real CH multichannel replay; SYNTHETIC_FIXTURE enum only satisfies binding without forged OFFLINE attestation. Kernel COMPUTED ≠ product field validation.',
       telemetrySourceFamily: family,

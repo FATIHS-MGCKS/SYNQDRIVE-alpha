@@ -10,6 +10,7 @@ import {
   buildPowertrainResearchInput,
   buildRealV1aTripInput,
   initResearchBackend,
+  loadCanonicalTripRpmHfPoints,
   loadEvidenceFromPostgres,
   loadMultichannelTrip,
   loadPostgresTrip,
@@ -383,6 +384,16 @@ async function main() {
     vehicleId: VEHICLE_ID,
     tripId: TRIP_ID,
     linkId: SOURCE_LINK_ID,
+    tripEndIso,
+    libs,
+  });
+
+  const canonicalRpmRead = await loadCanonicalTripRpmHfPoints({
+    orgId,
+    vehicleId: VEHICLE_ID,
+    tripId: TRIP_ID,
+    tripStart: new Date(tripStartIso),
+    tripEnd: new Date(tripEndIso),
     libs,
   });
 
@@ -403,15 +414,12 @@ async function main() {
     linkId: SOURCE_LINK_ID,
     tripStartIso,
     tripEndIso,
-    rpmPoints,
-    chTotals: {
-      total: signalCounts.powertrainCombustionEngineSpeed?.total ?? rpmPoints.length,
-      returned: rpmPoints.length,
-      limit: 50000,
-    },
+    canonicalRpmRead,
     fuelType: pgRow.fuel_type,
-    vsiSignalsSnapshot: evidence.vsiRevision?.signals_snapshot ?? null,
+    vsiSignalsSnapshot: evidence.vsiSignalsSnapshot,
   });
+
+  const v1bRecomputedFingerprint = libs.computeDs4RpmHfV1bTierAwareInputFingerprint(tripInput);
 
   const bridge = buildPowertrainResearchInput({
     libs,
@@ -526,9 +534,43 @@ async function main() {
       : null,
   };
 
+  const realEvidenceRecovered = Boolean(bridge.ok && modules.some((m) => m.kernelInvoked));
+
   const json = {
-    OPERATION: 'DBI_BULK_SCREEN_V1_PRODUCT_RESULT_CORRECTION',
+    OPERATION: 'DBI_BULK_SCREEN_V1_REAL_EVIDENCE_RECONNECT',
     OPERATION_BASE: 'DBI_FULL_TRIP_BULK_SCREEN_V1',
+    VSI_ROOT_CAUSE: evidence.vsiDiagnostic?.rootCauseHint
+      ? {
+          tripRpmProfile: tripInput.admission.tripRpmProfile,
+          tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
+          hint: evidence.vsiDiagnostic.rootCauseHint,
+          tierHint: evidence.vsiDiagnostic.tierRootCauseHint,
+          vsiSource: evidence.vsiSource,
+          decisionNotAfter: evidence.vsiDiagnostic.decisionNotAfter,
+          decisionTimeScan: evidence.vsiDiagnostic.decisionTimeScan,
+          revisionsWithTripBinding: evidence.vsiDiagnostic.revisionsWithTripBinding,
+          currentScan: evidence.vsiDiagnostic.currentScan,
+          latestRevisionScan: evidence.vsiDiagnostic.latestRevisionScan,
+        }
+      : {
+          tripRpmProfile: tripInput.admission.tripRpmProfile,
+          tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
+          vsiSource: evidence.vsiSource,
+          note: 'TRIP_PRESENT_IN_VSI_SNAPSHOT',
+        },
+    V1B_FINGERPRINT_ROOT_CAUSE:
+      bridge.v1bFingerprintDiagnosis ??
+      (bridge.provenance?.v1bRecomputedFingerprint === bridge.provenance?.v1bPersistedFingerprint
+        ? null
+        : {
+            reason: bridge.provenance?.v1bPersistedFingerprint
+              ? 'V1B_INPUT_FINGERPRINT_MISMATCH'
+              : 'NO_PERSISTED_V1B_ROW',
+            expectedFingerprint: v1bRecomputedFingerprint,
+            persistedFingerprint: evidence.v1bPersistedRun?.input_fingerprint ?? null,
+          }),
+    REAL_EVIDENCE_RECOVERED: realEvidenceRecovered,
+    B1_B2_B3_B4_RESULTS: kernelResultsByModule,
     BASE_SHA: gitSha(),
     TRIP_ID,
     VEHICLE_ID,
@@ -544,13 +586,27 @@ async function main() {
       avgSpeedKmh: pgRow.avg_speed_kmh,
       maxSpeedKmh: pgRow.max_speed_kmh,
     },
-    dataCoverage: { signalCounts, rpmPoints: rpmPoints.length, multichannelRows: multichannelObservations.length },
+    dataCoverage: {
+      signalCounts,
+      rpmPointsLegacyMultichannelCount: rpmPoints.length,
+      canonicalRpmRead: {
+        status: canonicalRpmRead.status,
+        totalMatchingCount: canonicalRpmRead.totalMatchingCount,
+        returnedCount: canonicalRpmRead.returnedCount,
+        completenessStatus: canonicalRpmRead.completenessStatus,
+      },
+      multichannelRows: multichannelObservations.length,
+    },
     vsiEvidence: {
-      revisionLoaded: Boolean(evidence.vsiRevision),
-      recordedAt: evidence.vsiRevision?.recorded_at ?? null,
+      vsiSource: evidence.vsiSource,
+      decisionTimeProfileRevision: evidence.vsiDecisionTimeRevision?.profile_revision ?? null,
+      decisionTimeRecordedAt: evidence.vsiDecisionTimeRevision?.recorded_at ?? null,
+      currentProfileRevision: evidence.vsiCurrentProfile?.profile_revision ?? null,
+      latestRevisionRecordedAt: evidence.vsiRevisionLatest?.recorded_at ?? null,
       tierEvidenceStatus: tripInput.tierEvidence?.status ?? null,
       tripRpmProfile: tripInput.admission.tripRpmProfile,
       admissionReasonCode: tripInput.admission.reasonCode,
+      admissionProcessingAllowed: tripInput.admission.processingAllowed,
     },
     v1bEvidence,
     descriptiveMotor,
@@ -569,11 +625,23 @@ async function main() {
       'SYNTHETIC_FIXTURE_BINDING_ENUM_NOT_FIELD_ATTESTATION',
       'COMPUTED_NOT_PRODUCT_ASSESSABLE_BY_DEFAULT',
     ],
+    REMAINING_BLOCKERS: realEvidenceRecovered
+      ? []
+      : [
+          bridge.blocker,
+          tripInput.admission.processingAllowed ? null : tripInput.admission.reasonCode,
+          bridge.v1bFingerprintDiagnosis?.reason,
+          evidence.vsiDiagnostic?.rootCauseHint,
+        ].filter(Boolean),
+    ACTUAL_PRODUCT_OBSERVATIONS: {
+      descriptiveMotorSummary: descriptiveMotor?.summary ?? descriptiveMotor,
+      powertrainAssessability: Object.fromEntries(modules.map((m) => [m.module, m.productAssessability])),
+    },
     FINAL_VERDICT: modules.some((m) => m.kernelInvoked)
-      ? 'BULK_SCREEN_V1_CORRECTED_COMPLETE'
+      ? 'BULK_SCREEN_V1_REAL_EVIDENCE_KERNEL_COMPLETE'
       : bridge.ok
         ? 'BULK_SCREEN_DESCRIPTIVE_ONLY_POWERTRAIN_BINDING_BLOCKED'
-        : 'BULK_SCREEN_DESCRIPTIVE_ONLY_V1B_UNAVAILABLE',
+        : 'BULK_SCREEN_DESCRIPTIVE_ONLY_V1B_OR_VSI_BLOCKED',
     STOP: 'AWAIT_CHATGPT_PRODUCT_REVIEW',
   };
 
