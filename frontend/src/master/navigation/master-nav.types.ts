@@ -10,6 +10,7 @@ export type MasterView =
   | 'device-inventory'
   | 'prospects'
   | 'billing'
+  | 'product-management'
   | 'activity-log'
   | 'platform-ops'
   | 'platform-health'

@@ -48,6 +48,8 @@ import { api } from '../lib/api';
 import { MasterAdminShell, PageContainer } from './shell';
 import { MasterMfaGate } from './components/MasterMfaGate';
 import { MfaStepUpDialog } from '../components/mfa/MfaStepUpDialog';
+import { ProductManagementView } from './components/organization-products/ProductManagementView';
+import { writeOrgTabToUrl } from './organizations/org.utils';
 
 function mapApiOrg(o: any): Organization {
   return {
@@ -485,6 +487,15 @@ export default function App() {
           <PageContainer variant="wide">
             <PhysicalDeviceInventoryHub organizations={organizations} />
           </PageContainer>
+        )}
+
+        {currentView === 'product-management' && (
+          <ProductManagementView
+            onOpenOrgProducts={(orgId) => {
+              writeOrgTabToUrl('products', false);
+              navigateMaster('organizations', { orgId });
+            }}
+          />
         )}
 
         {currentView === 'billing' && (

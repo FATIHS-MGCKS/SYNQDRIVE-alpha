@@ -6,6 +6,7 @@
 ## CHANGE
 
 - Master Admin organization detail gains **Produkte** tab integrating existing admin APIs (P2-PR1–PR4A).
+- Dedicated **Produktmanagement** sidebar view (`view=product-management`) with roadmap overview, org search, and deep-link into org **Produkte** tab (reuses `OrganizationProductsTab` without duplicating mutations).
 - Business launch labels (RENTAL existing, FLEET/VYMOD preparation) are **UI presentation only** — not a new DB status model.
 - TAXI excluded from assignable catalog; historical `OrganizationProduct` rows remain visible read-only in UI.
 

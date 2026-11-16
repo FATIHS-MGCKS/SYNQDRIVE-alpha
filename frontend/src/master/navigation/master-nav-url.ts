@@ -2,6 +2,7 @@ import type { MasterNavLocationState, MasterView } from './master-nav.types';
 
 const CANONICAL_VIEWS: MasterView[] = [
   'dashboard', 'organizations', 'security-access', 'users', 'vehicles', 'device-inventory', 'prospects', 'billing',
+  'product-management',
   'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'platform-integrations',
   'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
